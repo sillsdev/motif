@@ -569,6 +569,8 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
             UsageArgumentShape.Text("fwDataPath"));
         StopConfirmingStoreDeletion();
         if (!string.Equals(projectPath, Context.ProjectPath, StringComparison.Ordinal)) return;
+        await Context.StopProjectWorkAsync().ConfigureAwait(true);
+        if (!string.Equals(projectPath, Context.ProjectPath, StringComparison.Ordinal)) return;
         var outcome = await _commandClient.DeleteRefusedStoreAsync(
             new ProjectStoreResetRequest(projectPath), CancellationToken.None).ConfigureAwait(true);
         if (outcome.Refusal is { } refusal)
@@ -788,6 +790,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
                 OnPropertyChanged(nameof(SelectedPage));
                 OnPropertyChanged(nameof(ShowsRefreshAction));
                 OnPropertyChanged(nameof(ShowsChooseWhatToParseAction));
+                RaiseFreshness();
                 RefreshPages();
                 break;
             case nameof(WorkspaceContext.ProjectPath):

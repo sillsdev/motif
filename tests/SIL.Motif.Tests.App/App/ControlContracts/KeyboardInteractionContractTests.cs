@@ -794,7 +794,7 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
             try
             {
                 var inText = workspace.PageModel<TextsPageModel>().ResultsInText;
-                var occurrences = inText.SelectedText!.Lines.SelectMany(line => line.Tokens)
+                var occurrences = AnalyzeTextsLayoutTests.RealizedLines(inText).SelectMany(line => line.Tokens)
                     .Where(token => token.IsWord).ToArray();
                 Assert.NotEmpty(occurrences);
 
@@ -802,13 +802,13 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
                 AnalyzeTextsLayoutTests.Settle(window);
                 window.KeyPress(Key.Left, RawInputModifiers.None, PhysicalKey.None, null);
                 AnalyzeTextsLayoutTests.Settle(window);
-                Assert.Same(occurrences[0], inText.SelectedToken);
+                Assert.Equal(occurrences[0].Occurrence, inText.SelectedToken?.Occurrence);
 
                 await inText.OpenTokenCardAsync(occurrences[^1]);
                 AnalyzeTextsLayoutTests.Settle(window);
                 window.KeyPress(Key.Right, RawInputModifiers.None, PhysicalKey.None, null);
                 AnalyzeTextsLayoutTests.Settle(window);
-                Assert.Same(occurrences[^1], inText.SelectedToken);
+                Assert.Equal(occurrences[^1].Occurrence, inText.SelectedToken?.Occurrence);
 
                 var readingOccurrence = occurrences.FirstOrDefault(occurrence => occurrence.HasReadings);
                 Assert.NotNull(readingOccurrence);
@@ -821,7 +821,7 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
 
                 window.KeyPress(Key.Right, RawInputModifiers.None, PhysicalKey.None, null);
                 AnalyzeTextsLayoutTests.Settle(window);
-                Assert.True(ReferenceEquals(readingOccurrence, inText.SelectedToken),
+                Assert.True(readingOccurrence.Occurrence == inText.SelectedToken?.Occurrence,
                     "The card's arrow navigation must leave the selected occurrence alone while its reading picker has focus.");
             }
             finally
@@ -842,7 +842,7 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
                 var inText = workspace.PageModel<TextsPageModel>().ResultsInText;
                 var panel = AnalyzeTextsLayoutTests.Panel(window);
                 var occurrence = Assert.IsType<ResultsTokenViewModel>(
-                    AnalyzeTextsLayoutTests.Strips(panel).Last().Tag);
+                    ResultsInTextPanel.TokenOf(AnalyzeTextsLayoutTests.Strips(panel).Last()));
                 await inText.OpenTokenCardAsync(occurrence);
                 AnalyzeTextsLayoutTests.Settle(window);
 
@@ -853,7 +853,7 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
 
                 Assert.Null(inText.SelectedToken);
                 var strip = Assert.Single(AnalyzeTextsLayoutTests.Strips(panel), candidate =>
-                    ReferenceEquals(candidate.Tag, occurrence));
+                    ResultsInTextPanel.TokenOf(candidate)?.Occurrence == occurrence.Occurrence);
                 Assert.True(strip.IsFocused, "Closing the card returns focus to that word occurrence.");
             }
             finally

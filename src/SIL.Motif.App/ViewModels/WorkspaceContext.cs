@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App.Services;
 using SIL.Motif.Commands.Handoff;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Commands.SelectionReading;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 
@@ -116,7 +117,6 @@ public sealed record OpenInspectorRequest(InspectorSubject Subject)
 /// </remarks>
 public sealed partial class WorkspaceContext : ObservableObject, IProjectStateParticipant
 {
-    private Func<OccurrenceAnchor, IReadOnlyList<ResultsTokenViewModel>?>? _occurrenceContextProvider;
     private Func<OccurrenceAnchor, bool>? _occurrenceNavigator;
     private Func<OccurrenceAnchor, TextOccurrenceLocation?>? _occurrenceLocationProvider;
 
@@ -136,6 +136,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         Assess = assess;
         Changes = changes;
         Commands = commands;
+        SelectionReads = new WorkspaceSelection(commands);
         FolderPicker = folderPicker;
         DragSource = dragSource;
         Clipboard = clipboard ?? NoDesktopServices.Instance;
@@ -228,6 +229,9 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     /// <summary>The command seam a page runs its own queries through.</summary>
     public ICommandClient Commands { get; }
 
+    /// <summary>The one Selection reader shared by the window's word views and expanded Review context.</summary>
+    public WorkspaceSelection SelectionReads { get; }
+
     /// <summary>The clock every page reads: when a run completed, a check's elapsed time, what "today" is.</summary>
     public TimeProvider Clock { get; }
 
@@ -292,6 +296,10 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     private int _openGeneration;
     private bool _publishing;
     private bool _republish;
+    private CurrentEvidenceSnapshot? _readerEvidence;
+    private bool _selectionReaderRequested;
+    private long _pageRequestVersion;
+    private Task _requestDelivery = Task.CompletedTask;
 
     /// <summary>The publication to the pages under way, or a completed task when none is.</summary>
     internal Task EvidencePublication { get; private set; } = Task.CompletedTask;
@@ -314,6 +322,9 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         _projectParticipants.Add(setup);
         setup.PropertyChanged += (_, e) =>
         {
+            if (setup.IsOpen && setup.Step >= 1 &&
+                e.PropertyName is nameof(SetupViewModel.Step) or nameof(SetupViewModel.IsOpen))
+                RequireSelectionReader();
             if (e.PropertyName is not (nameof(SetupViewModel.CanRunDefaultSelection) or nameof(SetupViewModel.IsOpen)))
                 return;
             OnPropertyChanged(nameof(ParsePromptActionText));
@@ -326,6 +337,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     {
         Interlocked.Increment(ref _openGeneration);
         Interlocked.Exchange(ref _openCancellation, null)?.Cancel();
+        SelectionReads.Clear();
         ClearOwnProjectState();
         foreach (var participant in _projectParticipants.Where(participant => !ReferenceEquals(participant, this))
                      .Reverse().ToArray())
@@ -334,6 +346,9 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
 
     private void ClearOwnProjectState()
     {
+        ++_pageRequestVersion;
+        _selectionReaderRequested = false;
+        _readerEvidence = null;
         Assess.Reset();
         Baseline = null;
         Evidence.Clear();
@@ -423,9 +438,12 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     /// <summary>Cancels and awaits project commands and page work before switching or closing the workspace.</summary>
     internal async Task StopProjectWorkAsync()
     {
+        ++_pageRequestVersion;
         await Assess.DisposeAsync().ConfigureAwait(true);
         await Assess.Trace.StopAsync().ConfigureAwait(true);
         await StopPageWorkAsync().ConfigureAwait(true);
+        await SelectionReads.StopAsync().ConfigureAwait(true);
+        await _requestDelivery.ConfigureAwait(true);
     }
 
     private bool IsCurrentOpen(int generation) => generation == Volatile.Read(ref _openGeneration);
@@ -434,6 +452,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     public void PublishEvidence(WorkspaceEvidence evidence)
     {
         ArgumentNullException.ThrowIfNull(evidence);
+        _readerEvidence = null;
         Evidence.ShowRun(evidence);
         Changes.AssessmentId = Evidence.ParseTimeAssessmentId;
         _ = PublishToPagesAsync(CancellationToken.None);
@@ -442,6 +461,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     /// <summary>Clears numbers from the replaced Baseline before pages reload its saved evidence.</summary>
     internal void ClearAssessmentForNewBaseline()
     {
+        _readerEvidence = null;
         Evidence.ClearForNewBaseline();
         Changes.AssessmentId = null;
         _ = PublishToPagesAsync(CancellationToken.None);
@@ -463,6 +483,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     {
         ArgumentNullException.ThrowIfNull(evidence);
         var shown = Evidence.Assessment;
+        _readerEvidence = evidence;
         Evidence.ShowStored(evidence);
         if (Evidence.Assessment is { IsStored: true } restored && !ReferenceEquals(restored, shown))
             Assess.Restore(restored);
@@ -499,6 +520,10 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
             do
             {
                 _republish = false;
+                if (ProjectPath is { } path && (_selectionReaderRequested || Evidence.HasAssessment))
+                    await SelectionReads.ReloadAsync(path, Selection.ChosenTextIds, Selection.PastedWordEntries,
+                        _readerEvidence, cancellationToken, ShownSelectionAssessment()).ConfigureAwait(true);
+                if (!IsCurrentOpen(generation)) return;
                 await Task.WhenAll(_pages.ToArray()
                     .Select(page => page.EvidencePublishedAsync(Evidence, cancellationToken))).ConfigureAwait(true);
             }
@@ -511,11 +536,37 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         }
     }
 
+    private SelectionAssessmentEvidence? ShownSelectionAssessment()
+    {
+        if (Evidence.Assessment?.Assessment is not { } shown ||
+            ProjectEvidence.ParseTimeMeasurementOf(shown) is not { } root) return null;
+        return new SelectionAssessmentEvidence(shown.Baseline.Token, root,
+            shown.TimingOverrideAssessmentIds.ToArray(), shown.Measurements
+                .Where(measurement => measurement.Kind is AssessmentKinds.Correctness or AssessmentKinds.ObjectTiming)
+                .GroupBy(measurement => measurement.Kind, StringComparer.Ordinal)
+                .OrderBy(group => group.Key, StringComparer.Ordinal)
+                .Select(group => group.Last().AssessmentId).ToArray());
+    }
+
     /// <summary>Notifies pages after a grammar check has updated the stored warning summary.</summary>
     public async Task PublishGrammarCheckedAsync(CancellationToken cancellationToken = default)
     {
         foreach (var page in _pages.ToArray())
             await page.GrammarCheckedAsync(cancellationToken).ConfigureAwait(true);
+    }
+
+    partial void OnCurrentPageChanged(WorkspacePage value)
+    {
+        ++_pageRequestVersion;
+        if (value is not (WorkspacePage.Texts or WorkspacePage.Review)) return;
+        RequireSelectionReader();
+    }
+
+    private void RequireSelectionReader()
+    {
+        _selectionReaderRequested = true;
+        if (ProjectPath is not null && !IsOpeningProject && SelectionReads.Reader is null)
+            _ = PublishToPagesAsync(CancellationToken.None);
     }
 
     /// <summary>Opens <paramref name="page"/> as it stands.</summary>
@@ -526,6 +577,20 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     {
         ArgumentNullException.ThrowIfNull(request);
         CurrentPage = request.Page;
+        var version = ++_pageRequestVersion;
+        var publication = EvidencePublication;
+        var delivery = DeliverRequestAsync(request, publication, version, Volatile.Read(ref _openGeneration));
+        _requestDelivery = _requestDelivery.IsCompleted ? delivery : Task.WhenAll(_requestDelivery, delivery);
+    }
+
+    private async Task DeliverRequestAsync(PageRequest request, Task publication, long version, int generation)
+    {
+        await publication.ConfigureAwait(true);
+        if (version != _pageRequestVersion || !IsCurrentOpen(generation)) return;
+        if (request is DeferredOccurrenceRequest occurrence)
+            request = _occurrenceNavigator?.Invoke(occurrence.Anchor) == true
+                ? new OpenTextsRequest(TextsTab.AnalyzeTexts)
+                : new OpenWordRequest(occurrence.Word, occurrence.WordformId);
         foreach (var page in _pages.ToArray()) page.Requested(request);
     }
 
@@ -544,22 +609,13 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
 
     public void OpenOccurrence(OccurrenceAnchor? occurrence, string word, string? wordformId = null)
     {
-        if (occurrence is { } anchor && _occurrenceNavigator?.Invoke(anchor) == true)
-        {
-            OpenTexts(TextsTab.AnalyzeTexts);
-            return;
-        }
-        Open(new OpenWordRequest(word, wordformId));
+        Open(occurrence is { } anchor
+            ? new DeferredOccurrenceRequest(anchor, word, wordformId)
+            : new OpenWordRequest(word, wordformId));
     }
 
-    /// <summary>Registers the Texts page as the source of loaded sentence context.</summary>
-    internal void RegisterOccurrenceContextProvider(
-        Func<OccurrenceAnchor, IReadOnlyList<ResultsTokenViewModel>?> provider) =>
-        _occurrenceContextProvider = provider ?? throw new ArgumentNullException(nameof(provider));
-
-    /// <summary>Gets the loaded sentence for an exact source occurrence, when it is available.</summary>
-    internal IReadOnlyList<ResultsTokenViewModel>? OccurrenceContext(OccurrenceAnchor occurrence) =>
-        _occurrenceContextProvider?.Invoke(occurrence);
+    private sealed record DeferredOccurrenceRequest(OccurrenceAnchor Anchor, string Word, string? WordformId)
+        : PageRequest(WorkspacePage.Texts);
 
     internal void RegisterOccurrenceNavigator(Func<OccurrenceAnchor, bool> navigator) =>
         _occurrenceNavigator = navigator ?? throw new ArgumentNullException(nameof(navigator));
@@ -621,6 +677,9 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     {
         if (e.PropertyName == nameof(SelectionViewModel.HasTexts))
             Assess.Words.Routes.HasTexts = Selection.HasTexts;
+        if (e.PropertyName is nameof(SelectionViewModel.ChosenTextIds) or nameof(SelectionViewModel.PastedWords) &&
+            ProjectPath is not null && !IsOpeningProject)
+            _ = PublishToPagesAsync(CancellationToken.None);
     }
 
     private void OnEvidencePropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -645,10 +704,10 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         return Task.CompletedTask;
     }
 
-    // Opens beside the pages, once the Baseline is known, as a page's own read would.
+    // Restoring the chosen Texts first prevents evidence from opening the reader over the previous Selection.
     private sealed class StoredEvidenceLoader(WorkspaceContext context) : IProjectStateParticipant
     {
-        public ProjectOpenStage OpenStage => ProjectOpenStage.Independent;
+        public ProjectOpenStage OpenStage => ProjectOpenStage.Evidence;
 
         public void ClearProject()
         {

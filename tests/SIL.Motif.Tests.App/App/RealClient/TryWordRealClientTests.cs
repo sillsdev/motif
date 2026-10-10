@@ -13,10 +13,14 @@ public sealed class TryWordRealClientTests(PristineProjectFixture pristine)
     {
         using var project = await GrammarClientProject.OpenAsync(pristine);
         var word = SeededProject.FirstForm;
-        var textWords = await project.Client.ListTextWordsAsync(
-            new TextWordsRequest(project.FwDataPath, []), CancellationToken.None);
+        var textWords = await project.Client.OpenSelectionReaderAsync(
+            new SIL.Motif.Commands.SelectionReading.OpenSelectionReaderRequest(project.FwDataPath, [], []), CancellationToken.None);
         Assert.True(textWords.Succeeded, textWords.Refusal?.Message);
-        Assert.DoesNotContain(textWords.Value!.Words, row => row.Form == word);
+        await using var reader = textWords.Value!;
+        var summary = await reader.ReadSummaryAsync(new SIL.Motif.Commands.SelectionReading.SelectionViewRequest());
+        Assert.True(summary.Succeeded, summary.Refusal?.Message);
+        using var read = summary.Value!;
+        Assert.DoesNotContain(read.Value.Words, row => row.Key.Form == word);
 
         project.Behave(new { traceSignature = "-" });
         var noParse = await project.Client.TraceWordAsync(new WordTraceRequest(project.FwDataPath, word),

@@ -44,21 +44,21 @@ internal sealed class ResultsTextWordPresentationHost(
                 await inText.OpenTokenCardAsync(token).ConfigureAwait(true);
                 return new WordActionResult(true);
             case WordAction.NavigatePrevious:
-                return new WordActionResult(panel.FocusNeighbour(token, -1));
+                return new WordActionResult(await panel.FocusNativeNeighbourAsync(token, -1));
             case WordAction.NavigateNext:
-                return new WordActionResult(panel.FocusNeighbour(token, 1));
+                return new WordActionResult(await panel.FocusNativeNeighbourAsync(token, 1));
             case WordAction.NavigatePreviousLine:
-                return new WordActionResult(panel.FocusLine(token, -1));
+                return new WordActionResult(await panel.FocusLineAsync(token, -1));
             case WordAction.NavigateNextLine:
-                return new WordActionResult(panel.FocusLine(token, 1));
+                return new WordActionResult(await panel.FocusLineAsync(token, 1));
             case WordAction.NavigatePreviousPage:
-                return new WordActionResult(panel.FocusLine(token, -panel.ScreenLineCount(token), clamp: true));
+                return new WordActionResult(await panel.FocusLineAsync(token, -panel.ScreenLineCount(token), clamp: true));
             case WordAction.NavigateNextPage:
-                return new WordActionResult(panel.FocusLine(token, panel.ScreenLineCount(token), clamp: true));
+                return new WordActionResult(await panel.FocusLineAsync(token, panel.ScreenLineCount(token), clamp: true));
             case WordAction.NavigateFirst:
-                return new WordActionResult(panel.FocusBoundary(0));
+                return new WordActionResult(await panel.FocusBoundaryAsync(0));
             case WordAction.NavigateLast:
-                return new WordActionResult(panel.FocusBoundary(inText.VisibleLines.Count - 1));
+                return new WordActionResult(await panel.FocusBoundaryAsync(inText.DisplayedLineCount - 1));
             case WordAction.NavigateCardPrevious:
                 await inText.MoveTokenCardAsync(-1).ConfigureAwait(true);
                 return new WordActionResult(true);
@@ -75,7 +75,7 @@ internal sealed class ResultsTextWordPresentationHost(
     private ResultsTokenViewModel? Find(WordPresentationKey key) =>
         inText.SelectedToken is { } selected && selected.PresentationKey == key
             ? selected
-            : inText.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens)
+            : (inText.LinePages?.RealizedLines ?? []).SelectMany(line => line.Tokens)
                 .FirstOrDefault(token => token.PresentationKey == key);
 
     private static async Task<WordActionResult> SetOpinionAsync(
@@ -118,10 +118,10 @@ internal sealed class ResultsTextWordPresentationHost(
                 ? $"{token.Form} is already {label}."
                 : $"Motif cannot stage {label} for {token.Form} from this view.");
         }
-        if (token.StageMarkingChoiceForTokenCommand?.CanExecute(choice) != true)
+        if (token.StageMarkingChoiceForTokenCommand?.CanExecute(token.BindMarkingChoice(choice)) != true)
             return new WordActionResult(false, $"Motif cannot stage the change for {token.Form} right now.");
 
-        await token.StageMarkingChoiceForTokenCommand.ExecuteAsync(choice).ConfigureAwait(true);
+        await token.StageMarkingChoiceForTokenCommand.ExecuteAsync(token.BindMarkingChoice(choice)).ConfigureAwait(true);
         return new WordActionResult(true);
     }
 }

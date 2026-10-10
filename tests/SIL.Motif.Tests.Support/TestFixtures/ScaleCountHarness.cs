@@ -3,7 +3,8 @@ namespace SIL.Motif.Tests.TestFixtures;
 public sealed record ScaleControlCount(string Key, int Count, int MaximumDepth);
 
 /// <summary>Repository reads observed in one measured asynchronous flow.</summary>
-public readonly record struct ScaleRepositoryReadCount(long Queries, long RecordsDeserialized);
+public readonly record struct ScaleRepositoryReadCount(long Queries, long RecordsDeserialized,
+    long BaselineJsonPayloadBytes = 0, long BaselineOccurrenceTuples = 0);
 
 /// <summary>Counts this async flow's reads; nested scopes are separate and outside reads are ignored.</summary>
 public sealed class ScaleRepositoryReadObservation : IDisposable
@@ -17,7 +18,8 @@ public sealed class ScaleRepositoryReadObservation : IDisposable
     public ScaleRepositoryReadCount Snapshot()
     {
         var counts = _scope.Snapshot();
-        return new ScaleRepositoryReadCount(counts.Queries, counts.RecordsDeserialized);
+        return new ScaleRepositoryReadCount(counts.Queries, counts.RecordsDeserialized,
+            counts.BaselineJsonPayloadBytes, counts.BaselineOccurrenceTuples);
     }
 
     /// <summary>Stops counting reads in the current async flow.</summary>

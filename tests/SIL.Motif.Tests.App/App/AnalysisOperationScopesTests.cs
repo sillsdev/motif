@@ -18,37 +18,40 @@ public sealed class AnalysisOperationScopesTests(PristineProjectFixture pristine
     [InlineData(AnalysisOperationScope.SelectedText)]
     [InlineData(AnalysisOperationScope.ChosenTexts)]
     [InlineData(AnalysisOperationScope.CheckedWords)]
-    public async Task RemovalScopeUsesTheRealCommandClientForOnlyItsStoredAnalyses(
+    public void RemovalScopeUsesTheRealCommandClientForOnlyItsStoredAnalyses(
         AnalysisOperationScope scope)
     {
-        using var project = await OpenProjectAsync();
-        var tokens = project.InText.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens)
-            .Where(token => token.IsWord).ToArray();
-        if (scope == AnalysisOperationScope.CheckedWords)
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var chosen = Assert.Single(tokens, token => token.HasFieldWorksAnalyses);
-            chosen.IsSelectedForActions = true;
-        }
+            await using var project = await OpenProjectAsync();
+            var tokens = SelectionModelFixture.VisibleLines(project.InText).SelectMany(line => line.Tokens)
+                .Where(token => token.IsWord).ToArray();
+            if (scope == AnalysisOperationScope.CheckedWords)
+            {
+                var chosen = Assert.Single(tokens, token => token.HasFieldWorksAnalyses);
+                chosen.IsSelectedForActions = true;
+            }
 
-        var targets = scope switch
-        {
-            AnalysisOperationScope.SelectedText => project.InText.SelectedText!.Lines
-                .SelectMany(line => line.Tokens),
-            AnalysisOperationScope.ChosenTexts => tokens,
-            _ => tokens.Where(token => token.IsSelectedForActions),
-        };
-        var expected = targets.SelectMany(token => token.Marking.FieldWorksAnalyses)
-            .Select(analysis => analysis.StoredAnalysisId).Distinct(StringComparer.Ordinal)
-            .Order(StringComparer.Ordinal).ToArray();
-        Assert.NotEmpty(expected);
+            var targets = scope switch
+            {
+                AnalysisOperationScope.SelectedText => SelectionModelFixture.VisibleLines(project.InText)
+                    .SelectMany(line => line.Tokens),
+                AnalysisOperationScope.ChosenTexts => tokens,
+                _ => tokens.Where(token => token.IsSelectedForActions),
+            };
+            var expected = targets.SelectMany(token => token.Marking.FieldWorksAnalyses)
+                .Select(analysis => analysis.StoredAnalysisId).Distinct(StringComparer.Ordinal)
+                .Order(StringComparer.Ordinal).ToArray();
+            Assert.NotEmpty(expected);
 
-        await project.InText.RemoveAnalysesCommand.ExecuteAsync(scope);
+            await project.InText.RemoveAnalysesCommand.ExecuteAsync(scope);
 
-        var actual = project.InText.Changes.Snapshot.Changes
-            .Where(change => change.Kind == "remove-analysis")
-            .Select(change => change.StoredAnalysisId).Distinct(StringComparer.Ordinal)
-            .Order(StringComparer.Ordinal).ToArray();
-        Assert.Equal(expected, actual);
+            var actual = project.InText.Changes.Snapshot.Changes
+                .Where(change => change.Kind == "remove-analysis")
+                .Select(change => change.StoredAnalysisId).Distinct(StringComparer.Ordinal)
+                .Order(StringComparer.Ordinal).ToArray();
+            Assert.Equal(expected, actual);
+        }, TimeSpan.FromSeconds(120));
     }
 
     private async Task<ScopeProject> OpenProjectAsync()
@@ -74,21 +77,20 @@ public sealed class AnalysisOperationScopesTests(PristineProjectFixture pristine
                 project.FwDataPath, Path.GetFileNameWithoutExtension(project.FwDataPath),
                 [project.Text.TextId], []), CancellationToken.None);
             Assert.True(selected.Succeeded, selected.Refusal?.Message);
-            var listed = await client.ListTextWordsAsync(new TextWordsRequest(
-                project.FwDataPath, [project.Text.TextId]), CancellationToken.None);
-            Assert.True(listed.Succeeded, listed.Refusal?.Message);
+            var reads = new WorkspaceSelection(client);
+            await reads.ReloadAsync(project.FwDataPath, [project.Text.TextId], []);
 
             var fake = new FakeCommandClient();
             fake.ReadWordStateCompletesWith(new WordReadStateResponse([], true));
-            fake.ListTextWordsCompletesWith(listed.Value!);
             var selection = new SelectionViewModel(fake) { AllWordforms = true };
-            var texts = new TextWordsViewModel(fake, selection);
+            var texts = new TextWordsViewModel(fake, selection, reads);
             var assess = new AssessViewModel(fake, selection) { ProjectPath = project.FwDataPath };
             var changes = new ChangesViewModel(client);
             await changes.OpenProjectAsync(project.FwDataPath);
-            var inText = new ResultsInTextViewModel(texts, assess, _ => { }, _ => { }, changes, fake);
+            var inText = new ResultsInTextViewModel(texts, assess, _ => { }, _ => { }, changes, fake, reads);
             await texts.SetProjectAsync(project.FwDataPath);
-            return new ScopeProject(project, inText);
+            await SelectionModelFixture.RealizeAsync(inText);
+            return new ScopeProject(project, inText, texts, reads);
         }
         catch
         {
@@ -97,10 +99,17 @@ public sealed class AnalysisOperationScopesTests(PristineProjectFixture pristine
         }
     }
 
-    private sealed class ScopeProject(WalkthroughProject project, ResultsInTextViewModel inText) : IDisposable
+    private sealed class ScopeProject(WalkthroughProject project, ResultsInTextViewModel inText,
+        TextWordsViewModel words, WorkspaceSelection reads) : IAsyncDisposable
     {
         public ResultsInTextViewModel InText { get; } = inText;
 
-        public void Dispose() => project.Dispose();
+        public async ValueTask DisposeAsync()
+        {
+            await InText.StopAsync();
+            await words.StopAsync();
+            await reads.StopAsync();
+            project.Dispose();
+        }
     }
 }

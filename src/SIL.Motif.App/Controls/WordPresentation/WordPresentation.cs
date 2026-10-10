@@ -110,7 +110,12 @@ public sealed record WordCardAnalysis(
     string? NotParsedText = null) : WordCardSection;
 
 /// <summary>Places where an Analyze texts word occurs, kept as typed sentence rows.</summary>
-public sealed record WordCardOccurrences(IReadOnlyList<WordOccurrenceRowViewModel> Occurrences) : WordCardSection;
+public sealed record WordCardOccurrences(IReadOnlyList<WordOccurrenceRowViewModel> Occurrences,
+    object? Source = null) : WordCardSection
+{
+    /// <summary>The bounded occurrence page source, or the supplied finite rows.</summary>
+    public object DisplaySource => Source ?? Occurrences;
+}
 
 /// <summary>A pending Review change and its sentence context, rendered inside the shared word card.</summary>
 public sealed record WordCardPendingChange(
@@ -123,7 +128,8 @@ public sealed record WordCardPendingChange(
     IReadOnlyList<WordCardSentenceToken> BeforeWords,
     IReadOnlyList<WordCardSentenceToken> ContextTokens,
     bool HasUnavailableContext,
-    WorkspaceContext Context) : WordCardSection;
+    WorkspaceContext Context,
+    SIL.Motif.App.Services.IProgressivePageSource? ContextSource = null) : WordCardSection;
 
 /// <summary>A sentence word with its writing system and whether Review marks it as changed.</summary>
 public sealed record WordCardSentenceToken(string Form, string? WritingSystem, bool IsChanged);

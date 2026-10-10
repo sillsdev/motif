@@ -29,15 +29,25 @@ public sealed class NamedSelectionRepository(MotifDatabase database)
     public NamedSelectionRecord? GetDefault()
     {
         using var connection = _database.OpenConnection();
+        return GetDefault(connection, null);
+    }
+
+    internal NamedSelectionRecord? GetDefault(SqliteConnection connection, SqliteTransaction? transaction)
+    {
+        ArgumentNullException.ThrowIfNull(connection);
         using var command = connection.CreateCommand();
+        command.Transaction = transaction;
         command.CommandText = """
             SELECT s.SelectionName, s.TextIdsJson, s.AddedWordsJson, s.CreatedUtc, s.UpdatedUtc,
                 s.TimeLimitMode, s.ExplicitPerWordLimitMs, s.PerWordStepLimit, s.Revision
             FROM DefaultSelection d JOIN NamedSelections s ON s.SelectionName = d.SelectionName
             WHERE d.Id = 1;
             """;
+        RepositoryReadCounters.QueryExecuted();
         using var reader = command.ExecuteReader();
-        return reader.Read() ? Read(reader) : null;
+        if (!reader.Read()) return null;
+        RepositoryReadCounters.RecordDeserialized();
+        return Read(reader);
     }
 
     /// <summary>Reads a named Selection, or returns null when its name is unknown.</summary>

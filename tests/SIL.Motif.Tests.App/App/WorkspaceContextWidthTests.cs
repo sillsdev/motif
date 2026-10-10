@@ -20,7 +20,7 @@ public sealed class WorkspaceContextWidthTests
         Type[] allowed =
         [
             typeof(string), typeof(bool), typeof(WorkspacePage), typeof(ProjectEvidence), typeof(WorkspaceBaseline),
-            typeof(TimeProvider),
+            typeof(TimeProvider), typeof(WorkspaceSelection),
             typeof(GrammarSummary), typeof(OpenInspectorRequest), typeof(ChangesViewModel), typeof(AssessViewModel), typeof(SelectionViewModel),
             typeof(SetupViewModel), typeof(TextStyles),
             typeof(ICommandClient), typeof(IHandoffFolderPicker), typeof(IFileDragSource), typeof(IClipboard),

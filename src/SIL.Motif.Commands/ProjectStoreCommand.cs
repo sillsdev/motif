@@ -39,7 +39,17 @@ public static class ProjectStoreCommand
     /// <param name="timeProvider">The clock used when creating the store, or <see langword="null"/> for system time.</param>
     public static CommandOutcome<T> Run<T>(string fwDataPath, string productVersion,
         Func<MotifDatabase, ProjectLocator, CommandOutcome<T>> act,
-        TimeSpan? ownershipPatience = null, TimeProvider? timeProvider = null) where T : class
+        TimeSpan? ownershipPatience = null, TimeProvider? timeProvider = null) where T : class =>
+        RunCore(fwDataPath, productVersion, act, ownershipPatience, timeProvider, retainDatabase: false);
+
+    /// <summary>A successful result owns the database lease and must release it when its session is disposed.</summary>
+    internal static CommandOutcome<T> OpenSession<T>(string fwDataPath, string productVersion,
+        Func<MotifDatabase, ProjectLocator, CommandOutcome<T>> act) where T : class =>
+        RunCore(fwDataPath, productVersion, act, null, null, retainDatabase: true);
+
+    private static CommandOutcome<T> RunCore<T>(string fwDataPath, string productVersion,
+        Func<MotifDatabase, ProjectLocator, CommandOutcome<T>> act,
+        TimeSpan? ownershipPatience, TimeProvider? timeProvider, bool retainDatabase) where T : class
     {
         ArgumentNullException.ThrowIfNull(act);
 
@@ -92,49 +102,63 @@ public static class ProjectStoreCommand
             return CommandOutcome<T>.Refused(StoreRefusal(exception, "project.store-io", fwDataPath));
         }
 
-        using (database)
+        var transferred = false;
+        try
         {
-            try
-            {
-                return act(database, project);
-            }
-            catch (ProjectBaselineBusyException)
-            {
-                return CommandOutcome<T>.Refused(new Refusal("project.busy", FailureReason.Busy,
-                    "Another Motif task is using this project's Baseline. Try again in a moment.",
-                    Fact(fwDataPath)));
-            }
-            catch (ProjectSavingException)
-            {
-                return CommandOutcome<T>.Refused(new Refusal("change.project-saving", FailureReason.Busy,
-                    "FieldWorks is saving the project. Try again in a moment.", Fact(fwDataPath)));
-            }
-            catch (LcmFileLockedException)
-            {
-                return CommandOutcome<T>.Refused(new Refusal("project.in-use", FailureReason.Busy,
-                    ProjectInUseMessage(fwDataPath, "continue with this command"), Fact(fwDataPath)));
-            }
-            catch (LcmInitializationException exception)
-            {
-                return CommandOutcome<T>.Refused(new Refusal("project.unloadable", FailureReason.Refused,
-                    exception.Message, Fact(fwDataPath)));
-            }
-            catch (IOException exception)
-            {
-                return CommandOutcome<T>.Refused(StoreRefusal(exception, "project.operation-io", fwDataPath));
-            }
-            catch (UnauthorizedAccessException exception)
-            {
-                return CommandOutcome<T>.Refused(StoreRefusal(exception, "project.operation-io", fwDataPath));
-            }
-            catch (NotSupportedException exception)
-            {
-                return CommandOutcome<T>.Refused(StoreRefusal(exception, "project.operation-io", fwDataPath));
-            }
-            catch (InvalidDataException exception)
-            {
-                return CommandOutcome<T>.Refused(StoreRefusal(exception, "project.operation-io", fwDataPath));
-            }
+            var outcome = RunOperation(fwDataPath, () => act(database, project));
+            transferred = retainDatabase && outcome.Succeeded;
+            return outcome;
+        }
+        finally
+        {
+            if (!transferred) database.Dispose();
+        }
+    }
+
+    internal static CommandOutcome<T> RunOperation<T>(string fwDataPath,
+        Func<CommandOutcome<T>> operation) where T : class
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(fwDataPath);
+        ArgumentNullException.ThrowIfNull(operation);
+        try
+        {
+            return operation();
+        }
+        catch (ProjectBaselineBusyException)
+        {
+            return CommandOutcome<T>.Refused(new Refusal("project.busy", FailureReason.Busy,
+                "Another Motif task is using this project's Baseline. Try again in a moment.", Fact(fwDataPath)));
+        }
+        catch (ProjectSavingException)
+        {
+            return CommandOutcome<T>.Refused(new Refusal("change.project-saving", FailureReason.Busy,
+                "FieldWorks is saving the project. Try again in a moment.", Fact(fwDataPath)));
+        }
+        catch (LcmFileLockedException)
+        {
+            return CommandOutcome<T>.Refused(new Refusal("project.in-use", FailureReason.Busy,
+                ProjectInUseMessage(fwDataPath, "continue with this command"), Fact(fwDataPath)));
+        }
+        catch (LcmInitializationException exception)
+        {
+            return CommandOutcome<T>.Refused(new Refusal("project.unloadable", FailureReason.Refused,
+                exception.Message, Fact(fwDataPath)));
+        }
+        catch (IOException exception)
+        {
+            return CommandOutcome<T>.Refused(StoreRefusal(exception, "project.operation-io", fwDataPath));
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            return CommandOutcome<T>.Refused(StoreRefusal(exception, "project.operation-io", fwDataPath));
+        }
+        catch (NotSupportedException exception)
+        {
+            return CommandOutcome<T>.Refused(StoreRefusal(exception, "project.operation-io", fwDataPath));
+        }
+        catch (InvalidDataException exception)
+        {
+            return CommandOutcome<T>.Refused(StoreRefusal(exception, "project.operation-io", fwDataPath));
         }
     }
 

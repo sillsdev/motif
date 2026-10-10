@@ -1,5 +1,6 @@
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Contract.Requests;
 
 namespace SIL.Motif.App.ViewModels;
 
@@ -10,7 +11,8 @@ internal sealed record KeyboardStoredAnalysis(string Id, string Opinion, IReadOn
 }
 
 internal sealed record PendingStoredOpinionChange(
-    string Kind, string Word, Guid? WordformId, string StoredAnalysisId, string DisplayReading);
+    string Kind, string Word, Guid? WordformId, string StoredAnalysisId, string DisplayReading,
+    ExpectedContext? ExpectedContext = null);
 
 internal sealed record KeyboardOpinionShortcutResult(bool Handled, string? StatusMessage);
 
@@ -18,7 +20,7 @@ internal static class KeyboardOpinionShortcuts
 {
     public static async Task<KeyboardOpinionShortcutResult> StageAsync(
         string word, Guid? wordformId, IReadOnlyList<KeyboardStoredAnalysis> analyses,
-        WordRowRoutes? routes, KeyboardShortcutBehavior behavior)
+        WordRowRoutes? routes, KeyboardShortcutBehavior behavior, ExpectedContext? expectedContext = null)
     {
         var kind = behavior switch
         {
@@ -47,7 +49,7 @@ internal static class KeyboardOpinionShortcuts
             return new(true, "Open a project before collecting a change.");
 
         var change = new PendingStoredOpinionChange(kind, word, wordformId, analysis.Id,
-            analysis.DisplayReading);
+            analysis.DisplayReading, expectedContext);
         var staged = await stage(change).ConfigureAwait(true);
         return new(true, staged ? null : $"Motif could not stage the change for {word}.");
     }

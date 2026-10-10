@@ -2,6 +2,8 @@ using Avalonia.Input;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Contract.Baselines;
+using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -12,6 +14,72 @@ namespace SIL.Motif.Tests.App;
 public sealed class PendingChangesViewModelTests
 {
     private const string InternalId = "12345678-1234-1234-1234-123456789abc";
+
+    [Theory]
+    [InlineData(ChangeKinds.Approve, true)]
+    [InlineData(ChangeKinds.Reject, true)]
+    [InlineData(ChangeKinds.Candidate, true)]
+    [InlineData(ChangeKinds.IncorrectSpelling, false)]
+    [InlineData(ChangeKinds.AddCandidate, false)]
+    public async Task RecordActionsPreserveCapturedTargetsAndEvidenceWithoutDisplayedTokens(string kind, bool hasOccurrence)
+    {
+        var fake = new FakeCommandClient();
+        var changes = new ChangesViewModel(fake);
+        await changes.OpenProjectAsync("project.fwdata");
+        changes.AssessmentId = "newer-global-assessment";
+        var wordform = Guid.NewGuid();
+        var anchor = new OccurrenceAnchor(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 37);
+        var expected = new ExpectedContext(new BaselineToken("project", "sha256:" + new string('a', 64),
+            "1", "2026-09-05T11:02:00Z", "sha256:" + new string('b', 64))) { TextIds = [anchor.TextId] };
+        var target = new WordActionTarget("captured", wordform, anchor, "producing-assessment", expected);
+        var reading = new WordActionReading(new ParseAnalysis([new ParseMorph(null, null, null, "frozen")]),
+            "frozen reading", 2);
+
+        Assert.True(await changes.AddFromTextAsync(kind, target, reading));
+
+        var request = Assert.Single(fake.PendingPutRequests);
+        Assert.Same(expected, request.ExpectedContext);
+        Assert.Equal(CanonicalId.FromGuid(wordform).Value, request.Change.WordformId);
+        Assert.Equal("captured", request.Change.Word);
+        Assert.Equal("producing-assessment", request.Change.AssessmentId);
+        Assert.Same(reading.Analysis, request.Change.Reading);
+        Assert.Equal(2, request.Change.ReadingIndex);
+        Assert.Equal("frozen reading", request.Change.DisplayReading);
+        Assert.Equal(hasOccurrence ? anchor : null, request.Change.Occurrence);
+    }
+
+    [Fact]
+    public async Task ARecordMarkingChoiceKeepsItsTargetWhileTheWindowMovesAndReportsContextRefusal()
+    {
+        var fake = new FakeCommandClient();
+        var changes = new ChangesViewModel(fake);
+        await changes.OpenProjectAsync("project.fwdata");
+        var anchor = new OccurrenceAnchor(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 3);
+        var expected = new ExpectedContext(new BaselineToken("project", "sha256:" + new string('a', 64),
+            "1", "2026-09-05T11:02:00Z", "sha256:" + new string('b', 64))) { TextIds = [anchor.TextId] };
+        var target = new WordActionTarget("first", Guid.NewGuid(), anchor, "producing-assessment", expected);
+        var action = new AnalysisMarkingAction(AnalysisMarkingActionKind.Approve, "Approve", null,
+            new ParseAnalysis([new ParseMorph(null, null, null, "first")]), 0,
+            "Unknown", "Approved", ChangeKinds.Approve);
+        var completion = new TaskCompletionSource<CommandOutcome<PendingChangesSnapshot>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        fake.PendingPutHandler = (_, _) => completion.Task;
+        var writing = changes.AddFromMarkingAsync(action, target);
+        changes.AssessmentId = "different-assessment";
+        var refusal = new Refusal("change.context-changed", FailureReason.Refused, "Refresh this Selection first.");
+        completion.SetResult(CommandOutcome<PendingChangesSnapshot>.Refused(refusal));
+
+        Assert.False(await writing);
+
+        var request = Assert.Single(fake.PendingPutRequests);
+        Assert.Same(expected, request.ExpectedContext);
+        Assert.Equal("first", request.Change.Word);
+        Assert.Equal("producing-assessment", request.Change.AssessmentId);
+        Assert.Equal(anchor, request.Change.Occurrence);
+        Assert.Equal(0, request.Change.ReadingIndex);
+        Assert.Same(refusal, changes.LastRefusal);
+        Assert.Empty(changes.Items);
+    }
 
     [Fact]
     public async Task CollectionReportsReplacementsAndSkippedBulkWords()

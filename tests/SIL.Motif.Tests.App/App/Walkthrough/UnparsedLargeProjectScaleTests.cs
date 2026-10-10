@@ -37,11 +37,13 @@ public sealed class UnparsedLargeProjectScaleTests(ITestOutputHelper output)
             Assert.Equal(76761, project.TotalOccurrenceCount);
             var parser = FakeParser.CopyRecordingInvocations(project.ManagedRoot);
             var client = RealCommandClient.Create(project.ManagedRoot, parser);
+            string? baselinePath = null;
             measurements.Checkpoint("Unparsed: before baseline cache open");
             await measurements.MeasureAsync("Unparsed: capture Baseline", 60, async () =>
             {
                 var result = await client.CaptureBaselineAsync(new BaselineCaptureRequest(project.FwDataPath), CancellationToken.None);
                 Assert.True(result.Succeeded, result.Refusal?.Message);
+                baselinePath = result.Value!.FwDataPath;
             }, managedMiB: 768, processMemoryMiB: 1024);
             measurements.Checkpoint("Unparsed: after baseline cache open and ICU use");
             var configured = await client.SetDefaultSelectionAsync(new SetDefaultSelectionRequest(
@@ -49,46 +51,63 @@ public sealed class UnparsedLargeProjectScaleTests(ITestOutputHelper output)
             Assert.True(configured.Succeeded, configured.Refusal?.Message);
             var skipped = await client.SkipSetupAsync(new SkipSetupRequest(project.FwDataPath), CancellationToken.None);
             Assert.True(skipped.Succeeded, skipped.Refusal?.Message);
-            await OpenAndReadAsync(project, parser, measurements);
+            await OpenAndReadAsync(project, parser, measurements, baselinePath!);
             using var reopened = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath, parserPath: parser);
             await measurements.MeasureAsync("Unparsed: reopen project", 45,
-                () => OpenAsync(reopened, measurements, "Unparsed reopened window"));
+                () => OpenAsync(reopened, measurements, "Unparsed reopened window", baselinePath!));
             Assert.Null(reopened.Workspace.Assess.Result);
             Capture(reopened, "reopened");
-            measurements.AssertReadCounts("Unparsed: reopen project", 0, 64, 0, 24000);
+            measurements.AssertReadCounts("Unparsed: reopen project", 1, 64, 1, 64);
+            measurements.AssertBaselineReadVolume("Unparsed: reopen project", 8L * 1048576, 0);
             Assert.DoesNotContain(FakeParser.Invocations(parser), command => command is "batch" or "parse" or "trace");
         }, TimeSpan.FromMinutes(10));
         measurements.AssertBudgets();
     }
 
-    private async Task OpenAndReadAsync(LargeProjectFixture project, string parser, ScaleMeasurements measurements)
+    private async Task OpenAndReadAsync(LargeProjectFixture project, string parser, ScaleMeasurements measurements, string baselinePath)
     {
         using var window = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath, parserPath: parser);
         var texts = window.Workspace.PageModel<TextsPageModel>();
         var createdRows = new ConcurrentBag<WeakReference<object>>();
         using var rowCreationObservation = texts.Words.ObserveRowCreation(createdRows.Add);
         await measurements.MeasureAsync("Unparsed: open configured Selection", 45,
-            () => OpenAsync(window, measurements, "Unparsed first window"));
+            () => OpenAsync(window, measurements, "Unparsed first window", baselinePath));
         Assert.Null(window.Workspace.Assess.Result);
-        measurements.AssertReadCounts("Unparsed: open configured Selection", 1, 45, 1, 42);
+        measurements.AssertReadCounts("Unparsed: open configured Selection", 1, 64, 1, 64);
+        measurements.AssertBaselineReadVolume("Unparsed: open configured Selection", 8L * 1048576, 0);
+        Assert.Null(window.Workspace.Context.SelectionReads.Reader);
         Capture(window, "opened");
         await measurements.MeasureAsync("Unparsed: show all 21604 Word list rows", 30, async () =>
         {
             window.ShowPage(WorkspacePage.Texts);
             window.ShowTextsTab(TextsTab.AnalyzeTexts);
             texts.ShowAnalyzeViewCommand.Execute(AnalyzeTextsView.WordList);
-            await texts.Words.ReloadAsync();
+            await window.Workspace.Context.EvidencePublication;
             window.WaitUntil(() => !texts.Words.IsLoading && texts.Words.Rows.Count == project.SelectedWordCount,
                 TimeSpan.FromSeconds(30), "the large Word list did not load");
             PageScreenshots.Settle(window.Window);
             var list = Assert.Single(window.Window.GetVisualDescendants().OfType<ListBox>(),
-                control => control.IsEffectivelyVisible && ReferenceEquals(control.ItemsSource, texts.Words.Rows));
+                control => control.IsEffectivelyVisible && ReferenceEquals(control.ItemsSource, texts.Words.DisplayRows));
+            await texts.Words.SettleVisibleDetailsAsync();
+            PageScreenshots.Settle(window.Window);
             list.ScrollIntoView(texts.Words.Rows.Count - 1);
             PageScreenshots.Settle(window.Window);
+            await texts.Words.SettleVisibleDetailsAsync();
+            list.ScrollIntoView(texts.Words.Rows.Count - 1);
+            PageScreenshots.Settle(window.Window);
+            var visible = list.GetVisualDescendants().OfType<WordRow>().First(row => row.IsEffectivelyVisible).Data!;
+            var wordPanel = list.FindAncestorOfType<TextWordsPanel>()!;
+            Assert.True((await wordPanel.PresentationHost.HandleAsync(new WordRequest(visible.Key,
+                visible.EvidenceRevision, WordAction.NavigateLast), CancellationToken.None)).Handled);
+            window.WaitUntil(() => list.ContainerFromIndex(list.ItemCount - 1) is not null,
+                TimeSpan.FromSeconds(5), "the last Word list row did not arrive after scrolling");
             var finalContainer = Assert.IsAssignableFrom<Control>(list.ContainerFromIndex(list.ItemCount - 1));
             var finalRow = new[] { finalContainer }.Concat(finalContainer.GetVisualDescendants())
                 .OfType<WordRow>().Single();
             Assert.Equal(texts.Words.Rows[^1].Form, finalRow.Data?.Facts.Word);
+            var rowViewport = Assert.IsType<ScrollViewer>(finalRow.FindAncestorOfType<ScrollViewer>());
+            Assert.True(new Rect(rowViewport.Viewport).Intersects(new Rect(
+                finalRow.TranslatePoint(default, rowViewport)!.Value, finalRow.Bounds.Size)));
             var tree = AvaloniaScaleCounts.CaptureRealizedControls(window.Window);
             var rows = tree.MotifControl(typeof(WordRow).FullName!);
             Assert.InRange(rows.Count, 1, 64);
@@ -97,8 +116,9 @@ public sealed class UnparsedLargeProjectScaleTests(ITestOutputHelper output)
             output.WriteLine($"Word list realized {rows.Count} rows at depth {rows.MaximumDepth}; " +
                 $"{rowModels} row models survive collection from {createdRows.Count} creation observations");
         });
-        measurements.AssertReadCounts("Unparsed: show all 21604 Word list rows", 0, 9,
-            project.SelectedWordCount, project.SelectedWordCount * 3L);
+        measurements.AssertReadCounts("Unparsed: show all 21604 Word list rows", 0, 128, 1, 4096);
+        var openedReader = window.Workspace.Context.SelectionReads.Reader!;
+        Assert.Equal(project.TotalOccurrenceCount, openedReader.Diagnostics.PhysicalOccurrences);
         Capture(window, "word-list-end");
         await measurements.MeasureAsync("Unparsed: read and scroll 224-line Text", 30, async () =>
         {
@@ -109,55 +129,72 @@ public sealed class UnparsedLargeProjectScaleTests(ITestOutputHelper output)
             await model.ReadStateRefresh;
             Assert.Equal(project.TotalOccurrenceCount, model.AllCount);
             var longest = model.Texts.Single(text => text.TextId == project.TextIds[0]);
-            var lineModels = ScaleCountHarness.ObserveViewModels(longest.Lines, typeof(ResultsLineViewModel));
-            var tokenModels = ScaleCountHarness.ObserveViewModels(
-                longest.Lines.SelectMany(line => line.Tokens), typeof(ResultsTokenViewModel));
+            Assert.Equal(224, longest.Summary!.LineCount);
             model.SelectedText = longest;
-            PageScreenshots.Settle(window.Window);
-            Assert.Equal(224, ScaleCountHarness.CountLiveViewModels(lineModels, typeof(ResultsLineViewModel)));
-            Assert.Equal(project.LongestTextLength,
-                ScaleCountHarness.CountLiveViewModels(tokenModels, typeof(ResultsTokenViewModel)));
             var panel = window.Window.GetLogicalDescendants().OfType<ResultsInTextPanel>().Single();
+            PageScreenshots.Settle(window.Window);
             var reader = Assert.Single(panel.GetVisualDescendants().OfType<ScrollViewer>(),
                 viewer => viewer.IsEffectivelyVisible && viewer.Content is ItemsControl);
-            reader.Offset = new Vector(0, Math.Max(0, reader.Extent.Height - reader.Viewport.Height));
-            PageScreenshots.Settle(window.Window);
-            var lineItems = panel.FindControl<ItemsControl>("TextLineItems")!;
-            var finalLine = Assert.IsAssignableFrom<Control>(lineItems.ContainerFromIndex(lineItems.ItemCount - 1));
-            var tokenItems = Assert.Single(finalLine.GetVisualDescendants().OfType<ProgressiveItemsControl>(),
-                items => items.Name == "ResultsInTextPanelTokensItems");
-            var finalToken = Assert.IsAssignableFrom<Control>(tokenItems.ContainerFromIndex(tokenItems.ItemCount - 1));
-            var strip = new[] { finalToken }.Concat(finalToken.GetVisualDescendants().OfType<Border>())
-                .Single(border => border.Name == "WordStrip");
+            Assert.IsType<ItemsControl>(reader.Content).ScrollIntoView(longest.Summary.LineCount - 1);
+            reader.ScrollToEnd();
+            reader.UpdateLayout();
+            var pages = model.LinePages!;
+            await pages.Pending;
+            foreach (var words in panel.GetVisualDescendants().OfType<ProgressiveItemsControl>().ToArray())
+                await words.PageRefresh;
+            reader.UpdateLayout();
+            var finalPosition = window.Workspace.Context.SelectionReads.Summary!.SourcePositions.Last(position =>
+                position.Location.Anchor.TextId == longest.TextId);
+            var diagnostics = window.Workspace.Context.SelectionReads.Reader!.Diagnostics;
+            Assert.InRange(diagnostics.LiveLineModels, 1, 48);
+            Assert.InRange(diagnostics.LiveTokenModels, 1, 512);
+            var strip = Assert.Single(AnalyzeTextsLayoutTests.Strips(panel), strip =>
+                ResultsInTextPanel.TokenOf(strip)?.Occurrence == finalPosition.Location.Anchor);
             var origin = strip.TranslatePoint(new Point(), reader);
             Assert.NotNull(origin);
             Assert.True(new Rect(reader.Viewport).Intersects(new Rect(origin!.Value, strip.Bounds.Size)));
         });
-        measurements.AssertReadCounts("Unparsed: read and scroll 224-line Text", 0, 0, 0, 0);
+        measurements.AssertReadCounts("Unparsed: read and scroll 224-line Text", 1, 128, 1, 4096);
         Assert.Null(window.Workspace.Assess.Result);
         Capture(window, "text-reader-end");
-        var allWords = texts.Words.Response?.Words ??
-            throw new InvalidOperationException("The selected Texts did not retain their source words.");
-        foreach (var word in allWords) _ = texts.Words.ProjectRow(word);
-        Assert.Equal(project.SelectedWordCount, createdRows.Count);
-        var retentionFailure = Assert.Throws<InvalidOperationException>(() =>
-            ScaleCountHarness.AssertLiveViewModelBudget(createdRows, typeof(TextWordRowViewModel), 1, 128));
-        Assert.Contains(project.SelectedWordCount.ToString(), retentionFailure.Message);
-        output.WriteLine($"Intentional row-cache retention probe: {project.SelectedWordCount} live models; " +
-            "the 128-model budget rejected it.");
+        texts.ShowAnalyzeViewCommand.Execute(AnalyzeTextsView.WordList);
+        PageScreenshots.Settle(window.Window);
+        var list = Assert.Single(window.Window.GetVisualDescendants().OfType<ListBox>(),
+            control => control.IsEffectivelyVisible && ReferenceEquals(control.ItemsSource, texts.Words.DisplayRows));
+        VisitRows(texts.Words.Rows);
+        list.ScrollIntoView(texts.Words.Rows.Count - 1);
+        PageScreenshots.Settle(window.Window);
+        await texts.Words.SettleVisibleDetailsAsync();
+        PageScreenshots.Settle(window.Window);
+        var retained = ScaleCountHarness.AssertLiveViewModelBudget(createdRows, typeof(TextWordRowViewModel), 1, 128);
+        output.WriteLine($"All {project.SelectedWordCount} indexed Word rows were visited; {retained} models remain.");
+    }
+
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+    private static void VisitRows(IReadOnlyList<TextWordRowViewModel> rows)
+    {
+        for (var index = 0; index < rows.Count; index++) _ = rows[index];
     }
 
     private static async Task OpenAsync(
-        WalkthroughWindow window, ScaleMeasurements measurements, string checkpointPrefix)
+        WalkthroughWindow window, ScaleMeasurements measurements, string checkpointPrefix, string baselinePath)
     {
-        measurements.Checkpoint($"{checkpointPrefix}: before show");
-        window.Window.Show();
-        measurements.Checkpoint($"{checkpointPrefix}: after show, before render");
-        window.OpenRecentProjectByClick(window.ProjectPath);
-        await window.Workspace.Context.EvidencePublication;
-        window.WaitUntilProjectIsQuiet(TimeSpan.FromSeconds(45), "the unparsed project did not finish opening");
-        PageScreenshots.Settle(window.Window);
-        measurements.Checkpoint($"{checkpointPrefix}: after Skia render");
+        var hidden = baselinePath + ".opening-hidden";
+        File.Move(baselinePath, hidden);
+        try
+        {
+            measurements.Checkpoint($"{checkpointPrefix}: before show");
+            window.Window.Show();
+            measurements.Checkpoint($"{checkpointPrefix}: after show, before render");
+            window.OpenRecentProjectByClick(window.ProjectPath);
+            await window.Workspace.Context.EvidencePublication;
+            window.WaitUntilProjectIsQuiet(TimeSpan.FromSeconds(45), "the unparsed project did not finish opening");
+            Assert.Null(window.Workspace.OpenRefusal);
+            Assert.NotNull(window.Workspace.Context.Evidence.Stored?.ProjectSummary);
+            PageScreenshots.Settle(window.Window);
+            measurements.Checkpoint($"{checkpointPrefix}: after Skia render");
+        }
+        finally { File.Move(hidden, baselinePath); }
     }
 
     private static void Capture(WalkthroughWindow window, string state)

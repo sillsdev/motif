@@ -63,12 +63,41 @@ public sealed class TextInventoryQueryTests : IDisposable
         Assert.Equal(seededText.TextId, choice.Id);
         Assert.Equal(SeededProject.TextTitle, choice.Title);
         using (var cache = new FwDataProjectLoader().LoadScratchCache(fwDataPath))
-            Assert.Equal(TextOccurrenceReader.Read(cache, [seededText.TextId]).OccurrencesByWord.Count,
-                choice.WordCount);
+        {
+            var expected = TextOccurrenceReader.Read(cache, [seededText.TextId]);
+            Assert.Equal(expected.OccurrencesByWord.Count, choice.WordCount);
+            Assert.Equal(expected.InterlinearizedOccurrencesByWord.Count, choice.InterlinearizedWordCount);
+            Assert.Equal(expected.TotalOccurrences, choice.OccurrenceCount);
+            Assert.Equal(expected.InterlinearizedOccurrences, choice.InterlinearizedOccurrenceCount);
+        }
         using var json = System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(choice));
         Assert.True(json.RootElement.TryGetProperty("InterlinearizationPercent", out var share));
         Assert.Equal(50d, share.GetDouble());
         Assert.Equal(before, ManifestOf(baselineDirectory));
+    }
+
+    [Fact]
+    public void CapturedInventoryDoesNotOpenTheBaselineProjectCopy()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        var seededText = WriteTextOnto(fwDataPath);
+        var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(fwDataPath), NewManagedRoot());
+        Assert.True(captured.Succeeded, captured.Refusal?.Message);
+        var baselinePath = captured.Value!.FwDataPath;
+        var hidden = baselinePath + ".inventory-hidden";
+        File.Move(baselinePath, hidden);
+        try
+        {
+            using var reads = ScaleCountHarness.ObserveRepositoryReads();
+            var outcome = TextInventoryQuery.Query(new TextInventoryRequest(fwDataPath));
+            Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+            var choice = Assert.Single(outcome.Value!.Texts);
+            Assert.Equal(seededText.TextId, choice.Id);
+            Assert.Equal(50d, choice.InterlinearizationPercent);
+            Assert.InRange(reads.Snapshot().BaselineJsonPayloadBytes, 1, 1048576);
+            Assert.Equal(0, reads.Snapshot().BaselineOccurrenceTuples);
+        }
+        finally { File.Move(hidden, baselinePath); }
     }
 
     [Fact]

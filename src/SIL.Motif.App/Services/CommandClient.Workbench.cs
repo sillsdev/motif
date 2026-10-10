@@ -1,5 +1,6 @@
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Commands.SelectionReading;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -36,9 +37,9 @@ public sealed partial class CommandClient
         GrammarCheckRequest request, CancellationToken cancellationToken) =>
         Task.Run(() => StoredGrammarCheckQuery.Query(request));
 
-    public Task<CommandOutcome<TextWordsResponse>> ListTextWordsAsync(
-        TextWordsRequest request, CancellationToken cancellationToken) =>
-        Task.Run(() => TextWordsQuery.Query(request, cancellationToken));
+    public Task<CommandOutcome<SelectionReader>> OpenSelectionReaderAsync(
+        OpenSelectionReaderRequest request, CancellationToken cancellationToken) =>
+        SelectionReader.OpenAsync(request, cancellationToken);
 
     public Task<CommandOutcome<WordTraceResponse>> TraceWordAsync(
         WordTraceRequest request, CancellationToken cancellationToken, IProgress<AssessmentProgress>? progress = null) =>

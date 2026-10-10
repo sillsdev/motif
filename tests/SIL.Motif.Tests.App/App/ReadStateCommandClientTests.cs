@@ -64,13 +64,8 @@ public sealed class ReadStateCommandClientTests(PristineProjectFixture pristine)
     public async Task WholeTextReadMarksParsedOccurrencesAndReportsThoseWhoseParagraphIsUnparsed()
     {
         using var scenario = await NewScenarioAsync();
-        var words = await scenario.Client.ListTextWordsAsync(new TextWordsRequest(scenario.Project.FwDataPath,
-            [scenario.Project.Text.TextId]), CancellationToken.None);
-        Assert.True(words.Succeeded, words.Refusal?.Message);
-        var occurrences = words.Value!.Texts.Single().Lines.SelectMany(line => line.Tokens
-            .Where(token => token.WordformId is not null)
-            .Select(token => new OccurrenceAnchor(scenario.Project.Text.TextId,
-                line.ParagraphId, line.SegmentId, token.OccurrenceIndex))).ToArray();
+        var positions = await ReadPositionsAsync(scenario.Client, scenario.Project.FwDataPath, scenario.Project.Text.TextId);
+        var occurrences = positions.Select(position => position.Location.Anchor).ToArray();
         Assert.Equal(2, occurrences.Length);
         var unparsed = Assert.Single(occurrences, occurrence =>
             occurrence.ParagraphId != scenario.Occurrence.ParagraphId);
@@ -210,15 +205,12 @@ public sealed class ReadStateCommandClientTests(PristineProjectFixture pristine)
             });
         });
         await CaptureBaselineAsync(scenario);
-        var words = await scenario.Client.ListTextWordsAsync(new TextWordsRequest(scenario.Project.FwDataPath,
-            [scenario.Project.Text.TextId]), CancellationToken.None);
-        Assert.True(words.Succeeded, words.Refusal?.Message);
-        var line = Assert.Single(words.Value!.Texts.SelectMany(text => text.Lines), candidate =>
-            candidate.ParagraphId == scenario.Occurrence.ParagraphId);
-        var moved = Assert.Single(line.Tokens, token => token.WordformId == scenario.Project.Text.AnalysedWordformId);
-        Assert.NotEqual(scenario.Occurrence.Index, moved.OccurrenceIndex);
-        var movedOccurrence = new OccurrenceAnchor(scenario.Project.Text.TextId, line.ParagraphId,
-            line.SegmentId, moved.OccurrenceIndex);
+        var positions = await ReadPositionsAsync(scenario.Client, scenario.Project.FwDataPath, scenario.Project.Text.TextId);
+        var moved = Assert.Single(positions, position =>
+            position.Location.Anchor.ParagraphId == scenario.Occurrence.ParagraphId &&
+            position.Word.WordformId == scenario.Project.Text.AnalysedWordformId);
+        Assert.NotEqual(scenario.Occurrence.Index, moved.Location.Anchor.Index);
+        var movedOccurrence = moved.Location.Anchor;
 
         var afterRefresh = await ReadStateAsync(scenario);
 
@@ -282,14 +274,22 @@ public sealed class ReadStateCommandClientTests(PristineProjectFixture pristine)
         var captured = await client.CaptureBaselineAsync(new BaselineCaptureRequest(project.FwDataPath),
             CancellationToken.None);
         Assert.True(captured.Succeeded, captured.Refusal?.Message);
-        var words = await client.ListTextWordsAsync(new TextWordsRequest(project.FwDataPath,
-            [project.Text.TextId]), CancellationToken.None);
-        Assert.True(words.Succeeded, words.Refusal?.Message);
-        var line = Assert.Single(words.Value!.Texts.SelectMany(text => text.Lines), candidate =>
-            candidate.Tokens.Any(token => token.Form == SeededProject.AnalysedWordForm));
-        var token = Assert.Single(line.Tokens, candidate => candidate.Form == SeededProject.AnalysedWordForm);
-        return new ReadScenario(project, client, parserPath,
-            new OccurrenceAnchor(project.Text.TextId, line.ParagraphId, line.SegmentId, token.OccurrenceIndex));
+        var positions = await ReadPositionsAsync(client, project.FwDataPath, project.Text.TextId);
+        var token = Assert.Single(positions, position => position.Word.Form == SeededProject.AnalysedWordForm);
+        return new ReadScenario(project, client, parserPath, token.Location.Anchor);
+    }
+
+    private static async Task<IReadOnlyList<SIL.Motif.Commands.SelectionReading.SelectionSourcePosition>> ReadPositionsAsync(
+        ICommandClient client, string path, Guid textId)
+    {
+        var opened = await client.OpenSelectionReaderAsync(
+            new SIL.Motif.Commands.SelectionReading.OpenSelectionReaderRequest(path, [textId], []), CancellationToken.None);
+        Assert.True(opened.Succeeded, opened.Refusal?.Message);
+        await using var reader = opened.Value!;
+        var outcome = await reader.ReadSummaryAsync(new SIL.Motif.Commands.SelectionReading.SelectionViewRequest());
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        using var read = outcome.Value!;
+        return read.Value.SourcePositions.ToArray();
     }
 
     private static async Task<CommandOutcome<WordReadStateResponse>> MarkReadAsync(ReadScenario scenario) =>

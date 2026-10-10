@@ -1,11 +1,7 @@
 using SIL.Motif.Host;
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using SIL.LCModel;
 using SIL.Motif.Contract.Commands;
-using SIL.Motif.Host.LcmUtils;
-using SIL.Motif.Host.Texts;
 using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Projects;
 
@@ -39,73 +35,22 @@ public sealed record TextChoiceSummary(
 /// </param>
 public sealed record TextInventoryResponse(IReadOnlyList<TextChoiceSummary> Texts, bool HasBaseline);
 
-/// <summary>
-/// Lists the Texts held in a project's current Baseline scratch copy, for the Selection editor's Text
-/// picker. It reads a private copy and leaves the published Baseline unchanged.
-/// </summary>
-/// <remarks>
-/// Reads only a private copy of the published Baseline — never the live project — the same
-/// separation <see cref="SIL.Motif.Commands.Assess.SelectionComposer"/> relies on. A project with no
-/// current Baseline yet has no scratch copy to read, so it reports an empty inventory rather than opening
-/// the live project to make one up.
-/// </remarks>
+/// <summary>Lists captured Text identities, titles and counts for the Selection editor.</summary>
 public static class TextInventoryQuery
 {
     public static CommandOutcome<TextInventoryResponse> Query(TextInventoryRequest request) =>
-        ProjectStoreCommand.Run(request.ProjectPath, ResolveProductVersion(), (database, project) =>
+        ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, project) =>
         {
-            var workspaceKey = ProjectWorkspaceKey.Compute(project);
-            var baseline = new BaselineRepository(database).GetCurrent(workspaceKey);
-            if (baseline is null)
+            var current = new BaselineRepository(database).GetCurrentEvidence(ProjectWorkspaceKey.Compute(project));
+            if (current is null)
                 return CommandOutcome<TextInventoryResponse>.Success(
                     new TextInventoryResponse(Array.Empty<TextChoiceSummary>(), HasBaseline: false));
-
-            var scratchRoot = Path.Combine(Path.GetTempPath(), "SIL.Motif.TextInventory", Guid.NewGuid().ToString("N"));
-            try
+            var texts = current.Summary.Texts.Select(text => new TextChoiceSummary(text.TextId, text.Title,
+                text.WordCount, text.InterlinearizedWordCount, text.OccurrenceCount, text.InterlinearizedOccurrenceCount)
             {
-                using var cache = new ScratchCacheFactory().CreateFromFileCopy(baseline.FwDataPath, scratchRoot);
-                var repository = cache.ServiceLocator.GetInstance<ITextRepository>();
-                var texts = repository.AllInstances()
-                    .Select(text => ReadChoice(cache, text))
-                    .OrderByDescending(choice => choice.WordCoveragePercent)
-                    .ThenBy(choice => choice.Title, StringComparer.CurrentCultureIgnoreCase)
-                    .ToList();
-                return CommandOutcome<TextInventoryResponse>.Success(new TextInventoryResponse(texts, HasBaseline: true));
-            }
-            finally
-            {
-                try { Directory.Delete(scratchRoot, recursive: true); }
-                catch (IOException) { }
-                catch (UnauthorizedAccessException) { }
-            }
+                InterlinearizationPercent = text.WordCount == 0 ? 0 : 100d * text.InterlinearizedWordCount / text.WordCount,
+            }).OrderByDescending(choice => choice.WordCoveragePercent)
+                .ThenBy(choice => choice.Title, StringComparer.CurrentCultureIgnoreCase).ToArray();
+            return CommandOutcome<TextInventoryResponse>.Success(new TextInventoryResponse(texts, HasBaseline: true));
         });
-
-    // Mirrors InterlinearTextReader's own title choice: the first populated writing system, ws id ascending.
-    private static string ReadTitle(IText text)
-    {
-        foreach (var ws in text.Name.AvailableWritingSystemIds.OrderBy(w => w))
-        {
-            var value = text.Name.get_String(ws)?.Text;
-            if (!string.IsNullOrEmpty(value)) return value;
-        }
-        return "(Untitled Text)";
-    }
-
-    private static TextChoiceSummary ReadChoice(LcmCache cache, IText text)
-    {
-        var occurrences = TextOccurrenceReader.Read(cache, [text.Guid]);
-        var wordCount = occurrences.OccurrencesByWord.Count;
-        var interlinearizedWordCount = occurrences.InterlinearizedOccurrencesByWord.Count;
-        return new TextChoiceSummary(text.Guid, ReadTitle(text),
-            wordCount,
-            interlinearizedWordCount,
-            occurrences.TotalOccurrences, occurrences.InterlinearizedOccurrences)
-        {
-            InterlinearizationPercent = wordCount == 0
-                ? 0
-                : 100d * interlinearizedWordCount / wordCount,
-        };
-    }
-
-    private static string ResolveProductVersion() => MotifProductVersion.CurrentText;
 }

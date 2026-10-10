@@ -116,6 +116,15 @@ public static class RefusalCodes
     public const string SelectionInvalid = "selection.invalid";
     public const string SelectionTextNotFound = "selection.text-not-found";
 
+    public const string SelectionReaderCancelled = "selection-reader.cancelled";
+    public const string SelectionReaderDisposed = "selection-reader.disposed";
+    public const string SelectionReaderBusy = "selection-reader.busy";
+    public const string SelectionReaderInvalid = "selection-reader.invalid";
+    public const string SelectionReaderNoBaseline = "selection-reader.no-baseline";
+    public const string SelectionReaderRangeInvalid = "selection-reader.range-invalid";
+    public const string SelectionReaderOwnershipLimit = "selection-reader.ownership-limit";
+    public const string SelectionReaderProjectPathRequired = "selection-reader.project-path-required";
+
     public const string StatsCancelled = "stats.cancelled";
     public const string StatsInvalidEvidence = "stats.invalid-evidence";
     public const string StatsNoAssessment = "stats.no-assessment";
@@ -137,9 +146,7 @@ public static class RefusalCodes
     public const string StoreUnsupported = "store.unsupported";
 
     public const string TextsWordsCancelled = "texts.words-cancelled";
-
-    /// <summary>Reading a Text's words failed in the window's own adapter rather than in a command.</summary>
-    public const string TextsWordsQueryFailed = "texts.words-query-failed";
+    public const string TextsEvidenceChanged = "texts.evidence-changed";
 
     public const string TimingInvalidOverride = "timing.invalid-override";
     public const string TimingNoAssessment = "timing.no-assessment";

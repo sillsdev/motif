@@ -49,7 +49,7 @@ public static class CliVerbCatalog
                 "[--assessment <id> --reading-index <zero-based> --reading-json <json>] " +
                 "[--stored-analysis-id <id>] [--occurrence-text-id <guid> " +
                 "--occurrence-paragraph-id <guid> --occurrence-segment-id <guid> " +
-                "--occurrence-index <zero-based>] [--json]" }),
+                "--occurrence-index <zero-based>] [--expected-context <json>] [--json]" }),
         new CliVerbDescriptor("Commands", "remove-analysis", "remove-analysis",
             new[] { "remove-analysis --project <fwdata> --expected-revision <revision> " +
                 "(--analysis-id <id> --change-id <id> --wordform-id <id> --word <word> " +
@@ -239,7 +239,8 @@ public static class CliVerbCatalog
             new[]
             {
                 "word read-state --project <fwdata> --text <textId> [--read | --unread] " +
-                "[--occurrences <paragraphId>/<segmentId>/<wordIndex>[,...]] [--json]",
+                "[--occurrences <paragraphId>/<segmentId>/<wordIndex>[,...]] " +
+                "[--expected-context <json>] [--json]",
                 "With no action flag, it reads state; without occurrence anchors, an action applies to every word in the Text.",
             }),
         new CliVerbDescriptor(

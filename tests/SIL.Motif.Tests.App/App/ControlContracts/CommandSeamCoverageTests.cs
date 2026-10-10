@@ -69,23 +69,22 @@ public sealed class CommandSeamCoverageTests(PristineProjectFixture pristine)
             project.FwDataPath, Path.GetFileNameWithoutExtension(project.FwDataPath), [project.Text.TextId], []),
             CancellationToken.None);
         Assert.True(selection.Succeeded, selection.Refusal?.Message);
-        var listed = await client.ListTextWordsAsync(new TextWordsRequest(
-            project.FwDataPath, [project.Text.TextId]), CancellationToken.None);
-        Assert.True(listed.Succeeded, listed.Refusal?.Message);
+        var reads = new WorkspaceSelection(client);
+        await reads.ReloadAsync(project.FwDataPath, [project.Text.TextId], []);
 
         var fake = new FakeCommandClient();
         fake.ReadWordStateCompletesWith(new WordReadStateResponse([], true));
-        fake.ListTextWordsCompletesWith(listed.Value!);
         var selectionViewModel = new SelectionViewModel(fake) { AllWordforms = true };
-        var texts = new TextWordsViewModel(fake, selectionViewModel);
+        var texts = new TextWordsViewModel(fake, selectionViewModel, reads);
         var assess = new AssessViewModel(fake, selectionViewModel) { ProjectPath = project.FwDataPath };
         var changes = new ChangesViewModel(client);
         await changes.OpenProjectAsync(project.FwDataPath);
-        var inText = new ResultsInTextViewModel(texts, assess, _ => { }, _ => { }, changes, fake);
+        var inText = new ResultsInTextViewModel(texts, assess, _ => { }, _ => { }, changes, fake, reads);
         await texts.SetProjectAsync(project.FwDataPath);
+        await SelectionModelFixture.RealizeAsync(inText);
 
         Assert.NotNull(inText.SelectedText);
-        var expected = inText.SelectedText!.Lines.SelectMany(line => line.Tokens)
+        var expected = SelectionModelFixture.VisibleLines(inText).SelectMany(line => line.Tokens)
             .SelectMany(token => token.Marking.FieldWorksAnalyses)
             .Select(analysis => analysis.StoredAnalysisId).Distinct(StringComparer.Ordinal)
             .Order(StringComparer.Ordinal).ToArray();
@@ -100,5 +99,8 @@ public sealed class CommandSeamCoverageTests(PristineProjectFixture pristine)
             .Select(change => change.StoredAnalysisId).Distinct(StringComparer.Ordinal)
             .Order(StringComparer.Ordinal).ToArray();
         Assert.Equal(expected, actual);
+        await inText.StopAsync();
+        await texts.StopAsync();
+        await reads.StopAsync();
     }
 }

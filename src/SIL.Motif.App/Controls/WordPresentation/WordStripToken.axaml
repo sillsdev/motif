@@ -79,8 +79,8 @@
         <StackPanel Classes="stripRows">
           <StackPanel x:Name="ActionRow" Classes="stripWordRow stripActionRow" Orientation="Horizontal">
             <Button x:Name="PrimaryActionButton" Classes="actionChip primary" Content="{Binding PrimaryActionLabel}" VerticalAlignment="Center"
-                    Command="{Binding Actions.StagePrimaryMarkingActionForTokenCommand}"
-                    CommandParameter="{Binding}" IsVisible="{Binding HasPrimaryAction}"
+                    Command="{Binding StageMarkingChoiceForTokenCommand}"
+                    CommandParameter="{Binding BoundPrimaryAction}" IsVisible="{Binding HasPrimaryAction}"
                     AutomationProperties.AutomationId="{Binding PrimaryActionAutomationId}"
                     AutomationProperties.Name="{Binding Marking.PrimaryAction.Label, StringFormat='Choose {0} for this word'}" />
           </StackPanel>

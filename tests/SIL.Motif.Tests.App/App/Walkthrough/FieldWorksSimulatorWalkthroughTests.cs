@@ -59,10 +59,10 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
             walkthrough.ShowPage(WorkspacePage.Texts);
             walkthrough.ShowTextsTab(TextsTab.AnalyzeTexts);
             var inText = walkthrough.Workspace.PageModel<TextsPageModel>().ResultsInText;
-            walkthrough.WaitUntil(() => inText.Texts.SelectMany(text => text.Lines)
+            walkthrough.WaitUntil(() => AnalyzeTextsLayoutTests.RealizedLines(inText)
                     .SelectMany(line => line.Tokens).Any(token => token.Form == SeededProject.FirstForm),
                 WalkthroughSteps.Remaining(deadline), "Analyze texts did not load the seeded sentence");
-            var token = inText.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens)
+            var token = AnalyzeTextsLayoutTests.RealizedLines(inText).SelectMany(line => line.Tokens)
                 .Single(candidate => candidate.Form == SeededProject.FirstForm);
             var expectedAnchor = new OccurrenceAnchor(project.Text.TextId, project.Text.FirstParagraphId,
                 project.Text.FirstSegmentId, 0);
@@ -71,7 +71,7 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
                 string.Join("; ", walkthrough.Workspace.Assess.Result?.Words.Select(word =>
                     $"{word.Word}: {word.Outcome}, {word.Morphology?.Analyses.Count ?? 0} analyses") ?? []));
             var strip = walkthrough.Window.GetLogicalDescendants().OfType<Border>()
-                .Single(control => control.Name == "WordStrip" && ReferenceEquals(control.Tag, token));
+                .Single(control => control.Name == "WordStrip" && SIL.Motif.App.Views.ResultsInTextPanel.TokenOf(control)?.Occurrence == token.Occurrence);
             var fixMenu = strip.GetLogicalDescendants().OfType<Button>().Single(button =>
                 Equals(Avalonia.Automation.AutomationProperties.GetName(button), WordDispositionButtons.AddButtonName));
             HeadlessClick.Click(walkthrough.Window, fixMenu, WordDispositionButtons.AddButtonName);

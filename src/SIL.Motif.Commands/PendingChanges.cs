@@ -45,6 +45,9 @@ public static class PendingChanges
                 Snapshot(database, project, repository));
         });
 
+    internal static PendingChangesSnapshot ReadForSelection(MotifDatabase database, ProjectLocator project) =>
+        Snapshot(database, project, new ProposalRepository(database), persistFitState: false);
+
     public static CommandOutcome<PendingChangesSnapshot> Put(PutPendingChangeRequest request) =>
         ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
         {
@@ -80,15 +83,20 @@ public static class PendingChanges
             if (baseline is null)
                 return Refuse("change.baseline-missing", "Capture a Baseline before collecting changes.",
                     ("changeId", change.ChangeId));
+            if (request.ExpectedContext is { } expectedContext &&
+                !repository.IsCurrentExpectedContext(ProjectWorkspaceKey.Compute(project), expectedContext))
+                return Refuse("texts.evidence-changed", "The saved Selection evidence changed. Reload it and try again.",
+                    ("changeId", change.ChangeId));
 
             var draft = LoadDraft(current);
-            var saved = ComposeAndSave(database, repository, current, draft, change, baseline, project,
-                request.ExpectedRevision);
+            using var cache = LoadBaselineCache(baseline.FwDataPath);
+            var saved = ComposeAndSave(cache, database, repository, current, draft, change, baseline, project,
+                request.ExpectedRevision, request.ExpectedContext);
             if (!saved.Succeeded)
                 return CommandOutcome<PendingChangesSnapshot>.Refused(saved.Refusal!);
             var details = saved.Value!;
             return CommandOutcome<PendingChangesSnapshot>.Success(
-                Snapshot(database, project, repository) with
+                Snapshot(database, project, repository, fitCache: cache, fitCacheBaseline: baseline) with
                 {
                     SkippedWord = details.SkippedWord,
                     ReplacedChangeId = details.ReplacedChangeId,
@@ -409,11 +417,11 @@ public static class PendingChanges
             return CommandOutcome<PendingChangesSnapshot>.Success(Snapshot(database, project, repository));
         });
 
-    private static CommandOutcome<PutDetails> ComposeAndSave(MotifDatabase database,
+    private static CommandOutcome<PutDetails> ComposeAndSave(LcmCache cache, MotifDatabase database,
         ProposalRepository repository, ProposalRecord? current, DraftDocument draft,
-        ChangeIntent change, BaselineRecord baseline, ProjectLocator project, string expectedRevision)
+        ChangeIntent change, BaselineRecord baseline, ProjectLocator project, string expectedRevision,
+        ExpectedContext? expectedContext)
     {
-        using var cache = LoadBaselineCache(baseline.FwDataPath);
         IWfiWordform wordform;
         try
         {
@@ -622,10 +630,16 @@ public static class PendingChanges
                     baseline.FwDataPath), wordform, change, reading),
                 operationIds = operations.Select(operation => operation.OperationId.Value).ToArray(),
             });
-        var saved = SaveDraft(repository, current, draft);
+        var saved = SaveDraft(repository, current, draft, expectedContext,
+            expectedContext is null ? null : ProjectWorkspaceKey.Compute(project));
         if (!saved)
+        {
+            if (expectedContext is not null)
+                return RefusePut("texts.evidence-changed", "The saved Selection evidence changed. Reload it and try again.",
+                    ("changeId", change.ChangeId));
             return RefusePut("change.revision-conflict", "The pending Draft changed. Reload it and try again.",
                 ("changeId", change.ChangeId), ("expectedRevision", expectedRevision));
+        }
         var replacedChangeId = operations.Count > 0 && occupied.ChangeId != change.ChangeId
             ? occupied.ChangeId : null;
         var cancelledChangeId = operations.Count == 0 && removed > 0
@@ -811,9 +825,19 @@ public static class PendingChanges
         }
         : ParseDraft(current.ProposalJson!);
 
-    private static bool SaveDraft(ProposalRepository repository, ProposalRecord? current, DraftDocument draft)
+    private static bool SaveDraft(ProposalRepository repository, ProposalRecord? current, DraftDocument draft,
+        ExpectedContext? expectedContext = null, string? projectKey = null)
     {
         var json = JsonSerializer.Serialize(draft, JsonOptions);
+        if (expectedContext is not null)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(projectKey);
+            return current is null
+                ? repository.TryCreateDraftForExpectedContext(DraftName, CanonicalId.Parse(draft.ProposalId), json,
+                    projectKey, expectedContext)
+                : repository.TrySaveDraftForExpectedContext(DraftName, current.ProposalJson!, json,
+                    projectKey, expectedContext);
+        }
         return current is null
             ? repository.TryCreateDraft(DraftName, CanonicalId.Parse(draft.ProposalId), json)
             : repository.TrySaveDraft(DraftName, current.ProposalJson!, json);
@@ -830,13 +854,13 @@ public static class PendingChanges
 
     private static PendingChangesSnapshot Snapshot(MotifDatabase database, ProjectLocator project,
         ProposalRepository repository, LcmCache? fitCache = null, long? observedLastWriteTicks = null,
-        BaselineRecord? currentBaseline = null)
+        BaselineRecord? currentBaseline = null, bool persistFitState = true, BaselineRecord? fitCacheBaseline = null)
     {
         var current = Current(repository);
         var fitRepository = new PendingChangeFitRepository(database);
         if (current is null)
         {
-            fitRepository.Clear();
+            if (persistFitState) fitRepository.Clear();
             return new PendingChangesSnapshot(null, "none", [], []);
         }
         var draft = ParseDraft(current.ProposalJson!);
@@ -886,7 +910,7 @@ public static class PendingChanges
         }).ToArray();
         if (changes.Length == 0)
         {
-            fitRepository.Clear();
+            if (persistFitState) fitRepository.Clear();
             return new PendingChangesSnapshot(draft.ProposalId, Revision(current.ProposalJson), changes, []);
         }
 
@@ -902,23 +926,23 @@ public static class PendingChanges
         }).ToArray();
         var baselineIdentity = BaselineIdentity(currentBaseline?.Token);
         var lastWriteTicks = observedLastWriteTicks ?? File.GetLastWriteTimeUtc(project.FullFwDataPath).Ticks;
+        if (fitCacheBaseline is not null && (currentBaseline?.Token != fitCacheBaseline.Token ||
+                lastWriteTicks != fitCacheBaseline.SourceLastWriteUtc.UtcDateTime.Ticks))
+            fitCache = null;
         var fits = fitRepository.Get(revision, lastWriteTicks, baselineIdentity);
         if (fits is null)
         {
             fits = fitCache is null
-                ? WithFitCache(project, currentBaseline, lastWriteTicks,
-                    (cache, cacheLastWriteTicks) => SaveFit(cache, cacheLastWriteTicks))
-                : SaveFit(fitCache, lastWriteTicks);
+                ? WithFitCache(project, currentBaseline, lastWriteTicks, ComputeFit)
+                : ComputeFit(fitCache, lastWriteTicks);
 
-            IReadOnlyList<ChangeFit> SaveFit(LcmCache cache, long cacheLastWriteTicks)
-            {
-                var computed = ComputeFitSummary(cache, draft, changes, provenance, currentBaseline?.Token);
-                fitRepository.Save(revision, cacheLastWriteTicks, baselineIdentity, computed);
-                    return computed;
-            }
+            if (persistFitState) fitRepository.Save(revision, lastWriteTicks, baselineIdentity, fits);
         }
         fits = AddOccurrenceAnchors(fits, draft, changes);
         return new PendingChangesSnapshot(draft.ProposalId, revision, changes, fits);
+
+        IReadOnlyList<ChangeFit> ComputeFit(LcmCache cache, long _) =>
+            ComputeFitSummary(cache, draft, changes, provenance, currentBaseline?.Token);
     }
 
     private static IReadOnlyList<ChangeFit> ComputeFitSummary(LcmCache cache, DraftDocument draft,

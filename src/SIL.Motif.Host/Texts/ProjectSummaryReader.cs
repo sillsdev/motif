@@ -18,7 +18,11 @@ public static class ProjectSummaryReader
                 var byWord = occurrences.OccurrencesByWord.OrderBy(entry => entry.Key, StringComparer.Ordinal)
                     .ToDictionary(entry => entry.Key, entry => entry.Value, StringComparer.Ordinal);
                 return new ProjectTextSummary(text.Guid, ReadTitle(text), byWord.Count,
-                    occurrences.TotalOccurrences, byWord);
+                    occurrences.TotalOccurrences, byWord)
+                {
+                    InterlinearizedWordCount = occurrences.InterlinearizedOccurrencesByWord.Count,
+                    InterlinearizedOccurrenceCount = occurrences.InterlinearizedOccurrences,
+                };
             })
             .OrderBy(text => text.TextId.ToString("D"), StringComparer.Ordinal)
             .ToArray();

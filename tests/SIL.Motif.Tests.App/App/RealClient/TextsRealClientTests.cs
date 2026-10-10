@@ -40,24 +40,29 @@ public sealed class TextsRealClientTests(PristineProjectFixture pristine)
         var client = CountingCommandClient.Around(real);
         var selection = new SelectionViewModel(client);
         await selection.SetProjectAsync(project.FwDataPath);
-        var texts = new TextWordsViewModel(client, selection);
+        var reads = new WorkspaceSelection(client);
+        var texts = new TextWordsViewModel(client, selection, reads);
         var assess = new AssessViewModel(client, selection) { ProjectPath = project.FwDataPath };
-        var inText = new ResultsInTextViewModel(texts, assess, _ => { }, _ => { }, new ChangesViewModel(client), client);
+        var inText = new ResultsInTextViewModel(texts, assess, _ => { }, _ => { }, new ChangesViewModel(client), client, reads);
         Assert.Single(selection.Texts, text => text.Title == SeededProject.TextTitle).IsChecked = true;
         await texts.SetProjectAsync(project.FwDataPath);
-        await texts.ReloadAsync();
-        await inText.ReadStateRefresh;
+        await reads.ReloadAsync(project.FwDataPath, [project.Text.TextId], []);
+        Assert.Null(reads.Refusal);
+        await SelectionModelFixture.RealizeAsync(inText);
 
         Assert.False(inText.HasAssessment);
         Assert.True(inText.HasLines);
         Assert.Null(inText.Message);
-        var word = inText.VisibleLines.SelectMany(line => line.Tokens)
+        var word = SelectionModelFixture.VisibleLines(inText).SelectMany(line => line.Tokens)
             .Single(token => token.Form == SeededProject.AnalysedWordForm);
         Assert.Equal([SeededProject.FirstGloss, SeededProject.SecondGloss],
             word.PrimaryFieldWorksMorphs.Select(morph => morph.GlossOrPlaceholder));
         Assert.Equal("Not parsed yet", word.PanGlossSummary);
         Assert.False(word.ShowUnread);
         Assert.Equal(0, CountingCommandClient.CallsTo(client, nameof(ICommandClient.ReadWordStateAsync)));
+        await inText.StopAsync();
+        await texts.StopAsync();
+        await reads.StopAsync();
     }
 
     /// <summary>Passes every call to the real client and counts them by method name.</summary>

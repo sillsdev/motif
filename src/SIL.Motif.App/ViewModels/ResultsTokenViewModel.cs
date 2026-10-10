@@ -4,6 +4,7 @@ using System.Globalization;
 using SIL.Motif.App.Controls;
 using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Commands.SelectionReading;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -14,15 +15,18 @@ namespace SIL.Motif.App.ViewModels;
 /// <summary>
 /// One line token and the shared morphology comparison for its word, when it is a word.
 /// </summary>
-public sealed partial class ResultsTokenViewModel : ObservableObject
+public sealed partial class ResultsTokenViewModel : ObservableObject, IDisposable
 {
+    private IDisposable? _modelRegistration;
+    private readonly ExpectedContext? _expectedContext;
+    private SelectionWordActionFacts? _actionFacts;
+    private readonly string? _producingAssessmentId;
     private readonly TextToken _source;
     private readonly AssessmentWordResult? _assessment;
-    private TextWordRowViewModel? _projectWord;
-    private readonly Func<TextWordRowViewModel?>? _projectWordFactory;
     private readonly Guid _textId;
     private Uri? _wordLink;
     private WordComparison? _comparison;
+    private readonly bool _storedAnalysesAvailable;
     private IReadOnlyList<ParserReadingMorphViewModel>? _stored;
     private IReadOnlyList<FieldWorksAnalysisDisplayViewModel>? _fieldWorksAnalyses;
     private bool _isUnread = true;
@@ -33,14 +37,18 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     private bool _isCardOpen;
 
     public ResultsTokenViewModel(string title, int line, TextToken token, AssessmentWordResult? result,
-        TextWordRowViewModel? projectWord = null, string? location = null, OccurrenceAnchor? occurrence = null,
-        Guid textId = default, Func<TextWordRowViewModel?>? projectWordFactory = null)
+        string? location = null, OccurrenceAnchor? occurrence = null,
+        Guid textId = default,
+        SelectionReadLease? lease = null, ExpectedContext? expectedContext = null, string? producingAssessmentId = null,
+        SelectionWordActionFacts? actionFacts = null, bool storedAnalysesAvailable = true)
     {
         ArgumentNullException.ThrowIfNull(token);
         _source = token;
+        _expectedContext = expectedContext;
+        _actionFacts = actionFacts;
+        _storedAnalysesAvailable = storedAnalysesAvailable;
+        _producingAssessmentId = producingAssessmentId;
         _assessment = result;
-        _projectWord = projectWord;
-        _projectWordFactory = projectWordFactory;
         Text = token.Text;
         Form = token.Form ?? token.Text;
         TextWritingSystem = token.TextWritingSystem;
@@ -98,11 +106,55 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
             _ when ParserRefusals.Of(result?.Morphology, result?.Outcome) is { } refused => refused.Reason,
             _ => "not in the last parse",
         };
+        _modelRegistration = lease?.RegisterModel(SelectionModelKind.Token);
     }
+
+    /// <summary>Releases this displayed token's registration when its range or card owner removes it.</summary>
+    public void Dispose() => Interlocked.Exchange(ref _modelRegistration, null)?.Dispose();
+
+    internal void OwnRegistration(IDisposable registration)
+    {
+        _modelRegistration?.Dispose();
+        _modelRegistration = registration;
+    }
+
+    internal void BindActionFacts(SelectionWordActionFacts facts) => _actionFacts = facts;
+
+    internal ResultsTokenViewModel CopyForCard() => new(string.Empty, 0, _source, _assessment,
+        location: Location, occurrence: Occurrence, textId: _textId, expectedContext: _expectedContext,
+        producingAssessmentId: _producingAssessmentId, actionFacts: _actionFacts,
+        storedAnalysesAvailable: _storedAnalysesAvailable);
+
+    internal bool HasUniqueActionTarget => _actionFacts is null || _actionFacts.CandidateWordformIds.Count == 1;
+
+    internal bool AllowsMarkingAction(AnalysisMarkingActionKind kind, string? storedAnalysisId, ParseAnalysis? reading)
+    {
+        if (_actionFacts is null) return true;
+        var exactStored = storedAnalysisId is not null && _actionFacts.StoredAnalysisIds.Any(id =>
+            id == storedAnalysisId || Guid.TryParse(id, out var guid) && CanonicalId.FromGuid(guid).Value == storedAnalysisId);
+        return kind switch
+        {
+            AnalysisMarkingActionKind.KeepFieldWorks => _actionFacts.CanMarkRead && Occurrence is not null,
+            AnalysisMarkingActionKind.RemoveAnalysis => _actionFacts.CanRemoveAnalysis && exactStored,
+            AnalysisMarkingActionKind.AcceptNewSet => _actionFacts.CanAcceptNewSet,
+            _ when exactStored => _actionFacts.CanChangeOpinion,
+            _ when reading is not null => _actionFacts.CanAddParserReading,
+            _ => false,
+        };
+    }
+
+    internal WordActionTarget CaptureActionTarget(string? fallbackAssessmentId) =>
+        new(Form, WordformId, Occurrence, _expectedContext is null ? fallbackAssessmentId : _producingAssessmentId,
+            _expectedContext)
+        {
+            ParserOnlyReadings = (_actionFacts?.Classification?.Readings ?? []).Where(reading => reading.IsParserOnly)
+                .Select(reading => new WordActionReading(_assessment?.Morphology?.Analyses.ElementAtOrDefault(reading.Index),
+                    null, reading.Index)).ToArray(),
+        };
 
     private WordComparison BuildComparison()
     {
-        if (_assessment is { } assessed) return CompareSemantics.Compare(assessed);
+        if (_assessment is { } assessed && _expectedContext is null) return CompareSemantics.Compare(assessed);
         var contextAnalyses = _source.StoredAnalyses.Select(analysis => new ParserReading(analysis.Morphs)
         {
             StoredAnalysisId = analysis.StoredAnalysisId,
@@ -113,6 +165,9 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
             contextAnalyses.Any(analysis => analysis.StoredAnalysisOpinion == ReadingGrade.Approved) ? ProjectStanding.Approved :
             contextAnalyses.Any(analysis => (analysis.StoredAnalysisOpinion ?? ReadingGrade.Candidate) == ReadingGrade.Candidate)
                 ? ProjectStanding.Candidate : contextAnalyses.Length > 0 ? ProjectStanding.Rejected : ProjectStanding.NotPresent;
+        if (_assessment is { } captured) return CompareSemantics.Compare(new CompareWordFacts(standing,
+            captured.Outcome, captured.IsIncomplete, captured.Morphology, null, 0)
+        { StoredAnalyses = contextAnalyses, StoredAnalysesAvailable = _storedAnalysesAvailable });
         var comparisonWord = new AssessmentWordResult(Form, "unassessed", false, "Not parsed", null, null)
         {
             ProjectStanding = standing,
@@ -121,6 +176,19 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
         };
         return CompareSemantics.Compare(comparisonWord);
     }
+
+    private object? _stripTarget;
+    public object StripTarget => _stripTarget ?? this;
+    internal void BindStripTarget(object target)
+    {
+        _stripTarget = target;
+        OnPropertyChanged(nameof(StripTarget));
+    }
+
+    public WordMarkingChoice? BoundPrimaryAction => Marking.PrimaryAction is { } action ? new WordMarkingChoice(
+        CaptureActionTarget(Actions?.Changes.AssessmentId), new AnalysisMarkingChoice(action.Kind, action.Label,
+            string.Empty, action.StoredAnalysisId, action.Reading, action.ReadingIndex, action.Now, action.AfterApply,
+            action.ChangeKind), IsWord && AllowsMarkingAction(action.Kind, action.StoredAnalysisId, action.Reading)) : null;
 
     public string Text { get; }
     public string? TextWritingSystem { get; }
@@ -188,7 +256,7 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     private WordDisposition? _disposition;
 
     /// <summary>The word's two buttons, what FieldWorks holds and the PanGloss readings to add, from <see cref="Marking"/>.</summary>
-    public WordDisposition Disposition => _disposition ??= WordDisposition.From(Marking);
+    public WordDisposition Disposition => _disposition ??= WordDisposition.From(Marking, BindMarkingChoice);
 
     /// <summary>The common word comparison, independent of this occurrence's action selection.</summary>
     public WordComparison Comparison => _comparison ??= BuildComparison();
@@ -522,29 +590,58 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     /// <summary>The Analyze texts actions available to this word card.</summary>
     public ResultsInTextViewModel? Actions { get; internal set; }
 
-    public IAsyncRelayCommand<string>? AddChangeForTokenCommand { get; internal set; }
+    public IAsyncRelayCommand<WordChangeAction>? AddChangeForTokenCommand => Actions?.AddChangeForTargetCommand;
 
-    public IRelayCommand? TryWordForTokenCommand { get; internal set; }
+    public IRelayCommand<string>? TryWordForTokenCommand => Actions?.TryWordForTargetCommand;
 
-    public IAsyncRelayCommand<AnalysisMarkingChoice>? StageMarkingChoiceForTokenCommand { get; internal set; }
+    public IAsyncRelayCommand<WordMarkingChoice>? StageMarkingChoiceForTokenCommand => Actions?.StageMarkingChoiceForTargetCommand;
+
+    /// <summary>The spelling action captured from this card rather than the reader's later selected token.</summary>
+    public WordChangeAction IncorrectSpellingAction => new(CaptureActionTarget(Actions?.Changes.AssessmentId),
+        ChangeKinds.IncorrectSpelling, [], IsWord && HasUniqueActionTarget);
+
+    private IReadOnlyList<WordMarkingChoice>? _boundFixChoices;
+
+    /// <summary>Fix choices that retain the target and producing evidence named when the menu is built.</summary>
+    public IReadOnlyList<WordMarkingChoice> BoundFixChoices => _boundFixChoices ??=
+        Marking.FixChoices.Select(BindMarkingChoice).ToArray();
+
+    /// <summary>Captures an offered Fix or keyboard opinion choice for this word.</summary>
+    public WordMarkingChoice BindMarkingChoice(AnalysisMarkingChoice choice) => new(
+        CaptureActionTarget(Actions?.Changes.AssessmentId), choice,
+        ResultsInTextViewModel.CanStageMarkingChoice(this, choice));
 
     /// <summary>The morphs of the analysis stored at this occurrence, each linked to its entry.</summary>
     public IReadOnlyList<ParserReadingMorphViewModel> Stored => _stored ??=
         (_source.Analysis?.Morphs ?? _source.StoredAnalyses.FirstOrDefault()?.Morphs)
             ?.Select(morph => new ParserReadingMorphViewModel(morph)).ToArray() ?? [];
 
-    private TextWordRowViewModel? ProjectWord => _projectWord ??= _projectWordFactory?.Invoke();
+    private IReadOnlyList<ProjectAnalysisViewModel>? _capturedApprovedAnalyses;
+    private WordProjectStatus CapturedProjectStatus => _source.IncorrectSpelling ? WordProjectStatus.IncorrectSpelling :
+        _source.StoredAnalyses.Any(analysis => analysis.StoredAnalysisOpinion == ReadingGrade.Approved) ? WordProjectStatus.Approved :
+        _source.StoredAnalyses.Any(analysis => analysis.StoredAnalysisOpinion != ReadingGrade.Disapproved) ? WordProjectStatus.Candidate :
+        _source.StoredAnalyses.Count > 0 ? WordProjectStatus.Rejected : WordProjectStatus.NotPresent;
 
-    public string ProjectSummary => ProjectWord?.ProjectSummary ?? "No project entry is loaded for this word.";
+    public string ProjectSummary => CapturedProjectStatus switch
+    {
+        WordProjectStatus.Approved => string.Join(", ", ProjectApprovedAnalyses.Select(analysis => analysis.Gloss).Distinct()),
+        WordProjectStatus.Candidate => "Unknown: stored, but nobody has approved it",
+        WordProjectStatus.Rejected => "Only disapproved analyses are stored",
+        WordProjectStatus.IncorrectSpelling => "FieldWorks marks this spelling as incorrect",
+        _ => "Not analysed in the project",
+    };
 
-    public string ProjectStatusLabel => ProjectWord?.StatusLabel ?? ReadingGradeLabels.NotPresent;
+    public string ProjectStatusLabel => WordProjectStatuses.LabelOf(CapturedProjectStatus,
+        _source.StoredAnalyses.Count(analysis => analysis.StoredAnalysisOpinion == ReadingGrade.Approved));
 
     /// <summary>The opinion mark for what the project holds for this word; an incorrect spelling has none.</summary>
-    public Mark? ProjectStatusMark => ProjectWord is { } word ? word.StatusMark : Mark.NotInFieldWorks;
+    public Mark? ProjectStatusMark => WordProjectStatuses.MarkOf(CapturedProjectStatus);
 
-    public IReadOnlyList<ProjectAnalysisViewModel> ProjectApprovedAnalyses => ProjectWord?.ApprovedAnalyses ?? [];
+    public IReadOnlyList<ProjectAnalysisViewModel> ProjectApprovedAnalyses => (_capturedApprovedAnalyses ??= _source.StoredAnalyses
+            .Where(analysis => analysis.StoredAnalysisOpinion == ReadingGrade.Approved)
+            .Select(analysis => new ProjectAnalysisViewModel(analysis)).ToArray());
 
-    public bool HasProjectApprovedAnalyses => ProjectWord?.HasApproved == true;
+    public bool HasProjectApprovedAnalyses => _source.StoredAnalyses.Any(analysis => analysis.StoredAnalysisOpinion == ReadingGrade.Approved);
 
     public bool HasStored => (_source.Analysis?.Morphs ?? _source.StoredAnalyses.FirstOrDefault()?.Morphs)?.Count > 0;
     public bool HasNothingStored => IsWord && !HasFieldWorksAnalyses;
@@ -610,12 +707,14 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     private void OnMarkingChanged()
     {
         _disposition = null;
+        _boundFixChoices = null;
+        OnPropertyChanged(nameof(BoundFixChoices));
         foreach (var name in new[]
                  {
                      nameof(Marking), nameof(ShowUnread), nameof(IsPanGlossSame), nameof(IsPanGlossDifferent),
                      nameof(IsPanGlossExtra), nameof(IsPanGlossNone), nameof(IsPanGlossCapped), nameof(PanGlossSummary),
                      nameof(PanGlossNote), nameof(PanGlossNoteMark), nameof(ShowsPanGlossReading), nameof(ShowsPanGlossNote),
-                     nameof(HasMorePanGlossReadings), nameof(HasPrimaryAction), nameof(PrimaryActionLabel),
+                     nameof(HasMorePanGlossReadings), nameof(HasPrimaryAction), nameof(PrimaryActionLabel), nameof(BoundPrimaryAction),
                      nameof(HoverSummary), nameof(Disposition),
                  })
             OnPropertyChanged(name);

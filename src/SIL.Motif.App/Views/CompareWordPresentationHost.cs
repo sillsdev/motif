@@ -68,7 +68,7 @@ internal sealed class CompareWordPresentationHost(
             case WordAction.NavigateFirst:
                 return await FocusIndexAsync(0, cancellationToken);
             case WordAction.NavigateLast:
-                return await FocusIndexAsync(Words().Count - 1, cancellationToken);
+                return await FocusIndexAsync((owner == WordListOwner.FixFirst ? compare.FixFirstRows.Count : compare.Words.Count) - 1, cancellationToken);
             default:
                 return new WordActionResult(false);
         }
@@ -86,19 +86,9 @@ internal sealed class CompareWordPresentationHost(
 
     private async Task<WordActionResult> FocusIndexAsync(int target, CancellationToken cancellationToken)
     {
-        var words = Words();
-        if (target < 0 || target >= words.Count) return new WordActionResult(false);
-        list.ScrollIntoView(target);
-        var row = await Dispatcher.UIThread.InvokeAsync(() =>
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            list.UpdateLayout();
-            var container = list.ContainerFromIndex(target);
-            return container is ModuleWordRow direct
-                ? direct
-                : container?.GetVisualDescendants().OfType<ModuleWordRow>().FirstOrDefault();
-        });
-        cancellationToken.ThrowIfCancellationRequested();
+        var count = owner == WordListOwner.FixFirst ? compare.FixFirstRows.Count : compare.Words.Count;
+        if (target < 0 || target >= count) return new WordActionResult(false);
+        var row = await WordListNavigation.RealizeAsync(list, target, cancellationToken);
         if (row is null) return new WordActionResult(false);
         row.FocusWord();
         return new WordActionResult(true);
@@ -113,14 +103,10 @@ internal sealed class CompareWordPresentationHost(
     }
 
     private int IndexOf(CompareWordViewModel word) =>
-        Array.FindIndex(Words().ToArray(), item => ReferenceEquals(item, word));
-
-    private IReadOnlyList<CompareWordViewModel> Words() => owner == WordListOwner.FixFirst
-        ? compare.FixFirstRows.Select(item => item.Word).ToArray()
-        : compare.Words.ToArray();
+        compare.IndexOfDisplayedWord(word, owner == WordListOwner.FixFirst);
 
     private CompareWordViewModel? Find(WordPresentationKey key) =>
-        Words().FirstOrDefault(word => word.PresentationFor(owner).Key == key);
+        compare.FindMaterializedWord(key, owner);
 
     private static WordActionResult Execute(System.Windows.Input.ICommand command)
     {

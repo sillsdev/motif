@@ -27,7 +27,11 @@ public sealed record OccurrenceAnchor(Guid TextId, Guid ParagraphId, Guid Segmen
 
 /// <summary>Writes one change only if the Draft still has the revision the caller read.</summary>
 public sealed record PutPendingChangeRequest(
-    string FwDataPath, string ProductVersion, string ExpectedRevision, ChangeIntent Change);
+    string FwDataPath, string ProductVersion, string ExpectedRevision, ChangeIntent Change)
+{
+    /// <summary>The evidence identity that must still be current when the change is saved.</summary>
+    public ExpectedContext? ExpectedContext { get; init; }
+}
 
 /// <summary>Accepts the missing parser readings for one word, one Selection, or one Text.</summary>
 /// <param name="FwDataPath">The path to the FieldWorks project's <c>.fwdata</c> file.</param>

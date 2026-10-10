@@ -29,6 +29,8 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
         _commandClient = commandClient;
         _selection = selection;
         _timeProvider = timeProvider ?? TimeProvider.System;
+        Compare = new CompareViewModel(Words.Routes);
+        Difference = new DifferenceViewModel(Words.Routes);
         _selection.PropertyChanged += OnSelectionPropertyChanged;
         Trace = new TraceWordViewModel(commandClient, traceViewPreferences, _timeProvider);
         ParseProgress = new ParseProgressViewModel(_timeProvider);
@@ -155,10 +157,10 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
     public AssessWordsViewModel Words { get; } = new();
 
     /// <summary>The same words in the matrix of what the project held against what the parser did.</summary>
-    public CompareViewModel Compare { get; } = new();
+    public CompareViewModel Compare { get; }
 
     /// <summary>What changed since the run before this one, when there was one.</summary>
-    public DifferenceViewModel Difference { get; } = new();
+    public DifferenceViewModel Difference { get; }
 
     /// <summary>Whether the latest run gave some words more time rather than measuring the whole Selection again.</summary>
     public bool LastRunWasRerun { get; private set; }
@@ -248,12 +250,14 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
         // A run clears the result as it starts; the words and the Matrix wait for the new result rather than empty.
         if (Result is null && _keepShownThroughRun) return;
         Words.Load(Result?.Words, TextWords is { } textWords ? word => LookUpOccurrences(textWords, word) : null);
-        Compare.Load(Result is null ? null : Words.AllRows);
+        Compare.LoadSources(Result?.Words, TextWords is { } selectedWords
+            ? word => LookUpOccurrences(selectedWords, word) : null);
         if (Result is null) return;
-        var before = _previous?.Words.Select(word => new AssessWordRowViewModel(word)).ToArray();
-        Difference.Load(before, before is null ? null : Words.AllRows,
+        var before = _previous?.Words;
+        Difference.LoadSources(before, before is null ? null : Result.Words,
             _previousAt is { } at ? $"Run of {at.ToLocalTime():t}" : "The run before",
-            _rerunDescription is { } rerun ? $"This run: {rerun}" : "This run");
+            _rerunDescription is { } rerun ? $"This run: {rerun}" : "This run",
+            TextWords is { } occurrenceWords ? word => LookUpOccurrences(occurrenceWords, word) : null);
     }
 
     private static int? LookUpOccurrences(TextWordsViewModel textWords, string word) =>

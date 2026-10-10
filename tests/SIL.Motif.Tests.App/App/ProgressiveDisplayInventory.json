@@ -431,14 +431,14 @@
   {
     "view": "ResultsInTextPanel",
     "name": "TextLineItems",
-    "source": "InText.VisibleLines",
+    "source": "InText.DisplayedLines",
     "mode": "rows",
     "control": "ItemsControl"
   },
   {
     "view": "ResultsInTextPanel",
     "name": "ResultsInTextPanelTokensItems",
-    "source": "Tokens",
+    "source": "DisplayTokens",
     "mode": "paged",
     "control": "ProgressiveItemsControl"
   },
@@ -480,7 +480,7 @@
   {
     "view": "WordCard",
     "name": "WordCardPendingContextTokensItems",
-    "source": "ContextTokens",
+    "source": "ContextSource",
     "mode": "paged",
     "control": "ProgressiveItemsControl"
   },
@@ -529,7 +529,7 @@
   {
     "view": "TextWordsPanel",
     "name": "TextWordsPanelRowsItems",
-    "source": "Words.Rows",
+    "source": "Words.DisplayRows",
     "mode": "rows",
     "control": "ListBox"
   },
@@ -690,7 +690,7 @@
   {
     "view": "WordCard",
     "name": "WordCardOccurrencesItems",
-    "source": "Occurrences",
+    "source": "DisplaySource",
     "mode": "paged",
     "control": "ProgressiveItemsControl"
   },

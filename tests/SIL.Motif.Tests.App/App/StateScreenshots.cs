@@ -356,24 +356,34 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         };
 
         // Texts, Analyze texts.
-        yield return new("analyze", "word-hover", stage => stage.Hover(WorkspacePage.Texts,
-            () => stage.Strip("hawajafika"), "the hawajafika word strip", TextsTab.AnalyzeTexts));
-        yield return new("analyze", "word-focus", stage => stage.FocusFromKeyboard(WorkspacePage.Texts,
-            () => stage.Strip("Sungura"), "the Sungura word strip", TextsTab.AnalyzeTexts));
+        yield return new("analyze", "word-hover", async stage =>
+        {
+            await stage.ReachWordAsync("hawajafika");
+            return await stage.Hover(null, () => stage.Strip("hawajafika"), "the hawajafika word strip");
+        });
+        yield return new("analyze", "word-focus", async stage =>
+        {
+            await stage.ReachWordAsync("Sungura");
+            return await stage.FocusFromKeyboard(WorkspacePage.Texts,
+                () => stage.Strip("Sungura"), "the Sungura word strip", TextsTab.AnalyzeTexts);
+        });
         yield return new("analyze", "disapproved-tooltip", async stage =>
         {
-            stage.InText.SelectedText = stage.InText.Texts.Single(text => text.Lines.SelectMany(line => line.Tokens)
-                .Any(token => token.Form == "walikula"));
+            await stage.ReachWordAsync("walikula");
             return await stage.Hover(WorkspacePage.Texts,
                 () => stage.Strip("walikula").GetVisualDescendants().OfType<Border>()
                 .First(border => border.Classes.Contains("markChip") && border.IsEffectivelyVisible),
                 "the Built anyway mark on walikula", TextsTab.AnalyzeTexts);
         })
         { Teardown = stage => { stage.InText.SelectedText = stage.InText.Texts.First(); return Task.CompletedTask; } };
-        yield return new("analyze", "fix-menu", stage => stage.OpenMenu(WorkspacePage.Texts,
-            () => stage.Strip("chakula").GetVisualDescendants().OfType<Button>()
-                .First(button => AutomationProperties.GetName(button) == WordDispositionButtons.MarkButtonName),
-            "the opinion mark on the chakula strip", TextsTab.AnalyzeTexts));
+        yield return new("analyze", "fix-menu", async stage =>
+        {
+            await stage.ReachWordAsync("chakula");
+            return await stage.OpenMenu(null,
+                () => stage.Strip("chakula").GetVisualDescendants().OfType<Button>()
+                    .First(button => AutomationProperties.GetName(button) == WordDispositionButtons.MarkButtonName),
+                "the opinion mark on the chakula strip");
+        });
         yield return new("analyze", "select-menu", stage => stage.OpenMenu(WorkspacePage.Texts,
             () => stage.Named<Button>("Select words for actions"), "Select words", TextsTab.AnalyzeTexts));
         yield return new("analyze", "mark-read-menu", stage => stage.OpenMenu(WorkspacePage.Texts,
@@ -826,16 +836,21 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         }
 
         public ResultsTokenViewModel Token(string form) =>
-            InText.VisibleLines.SelectMany(line => line.Tokens).First(token => token.Form == form);
+            Assert.IsType<ResultsTokenViewModel>(ResultsInTextPanel.TokenOf(Strip(form)));
 
-        public Border Strip(string form)
+        public Border Strip(string form) =>
+            Visible<Border>(border => border.Name == "WordStrip" && ResultsInTextPanel.TokenOf(border)?.Form == form).First();
+
+        public async Task ReachWordAsync(string form)
         {
-            var token = Token(form);
-            var line = InText.VisibleLines.First(line => line.Tokens.Contains(token));
+            Open(WorkspacePage.Texts, TextsTab.AnalyzeTexts);
+            Workspace.PageModel<TextsPageModel>().ShowAnalyzeViewCommand.Execute(AnalyzeTextsView.TextReader);
+            await Workspace.Context.EvidencePublication;
+            var position = Workspace.Context.SelectionReads.Summary!.SourcePositions.First(item => item.Word.Form == form);
             var panel = Visible<ResultsInTextPanel>(_ => true).Single();
-            panel.FindControl<ItemsControl>("TextLineItems")!.ScrollIntoView(InText.VisibleLines.IndexOf(line));
-            PageScreenshots.Settle(Window);
-            return Visible<Border>(border => border.Name == "WordStrip" && ReferenceEquals(border.Tag, token)).First();
+            Assert.True(await panel.FocusOccurrenceAsync(position.Location.Anchor));
+            await AnalyzeTextsLayoutTests.SettleReaderAsync(Workspace, Window);
+            Window.Focus();
         }
 
         public async Task<string> Hover(WorkspacePage? page, Func<Control> find, string what, TextsTab? tab = null)
@@ -935,6 +950,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         {
             Open(WorkspacePage.Texts, TextsTab.AnalyzeTexts);
             InText.CloseTokenCard();
+            await ReachWordAsync(form);
             await InText.OpenTokenCardAsync(Token(form));
             PageScreenshots.Settle(Window);
             return $"Opened the word card for {form}.";
@@ -999,16 +1015,16 @@ public sealed class StateScreenshots(ITestOutputHelper output)
 
         public async Task StageChakula()
         {
-            Open(WorkspacePage.Texts, TextsTab.AnalyzeTexts);
+            await ReachWordAsync("chakula");
             var chakula = Token("chakula");
             var add = chakula.Marking.FixChoices.Single(choice => choice.Label == "Add as Approved");
-            await chakula.StageMarkingChoiceForTokenCommand!.ExecuteAsync(add);
+            await chakula.StageMarkingChoiceForTokenCommand!.ExecuteAsync(chakula.BindMarkingChoice(add));
             await Until(() => Token("chakula").HasStagedChanges, "the staged change on chakula");
         }
 
         public async Task UnstageChakula()
         {
-            Open(WorkspacePage.Texts, TextsTab.AnalyzeTexts);
+            await ReachWordAsync("chakula");
             foreach (var staged in Token("chakula").StagedChanges.ToList())
                 await InText.Changes.RemoveCommand.ExecuteAsync(staged.Change);
             await Until(() => !Token("chakula").HasStagedChanges, "chakula with nothing staged");

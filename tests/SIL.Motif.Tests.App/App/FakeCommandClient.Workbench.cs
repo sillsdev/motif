@@ -1,4 +1,5 @@
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Commands.SelectionReading;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -8,6 +9,10 @@ namespace SIL.Motif.Tests.App;
 // Unconfigured queries return an empty value or a refusal, depending on the query.
 public sealed partial class FakeCommandClient
 {
+    private SIL.Motif.App.ViewModels.WorkspaceSelection? _readerOwner;
+    internal SIL.Motif.App.ViewModels.WorkspaceSelection ReaderOwner =>
+        _readerOwner ??= new SIL.Motif.App.ViewModels.WorkspaceSelection(this);
+
     public Func<WordContextRequest, CancellationToken, Task<CommandOutcome<WordContextResponse>>>? WordContextHandler
         { get; set; }
     public List<WordContextRequest> WordContextRequests { get; } = [];
@@ -38,9 +43,6 @@ public sealed partial class FakeCommandClient
 
     private GrammarCheckResponse? _storedGrammarCheck;
 
-    private Func<TextWordsRequest, CancellationToken, Task<CommandOutcome<TextWordsResponse>>>
-        _listTextWords = (_, _) => Completed(new TextWordsResponse([], [], HasBaseline: true));
-
     private Func<WordTraceRequest, CancellationToken, Task<CommandOutcome<WordTraceResponse>>>
         _traceWord = (_, _) => Refused<WordTraceResponse>(
             new Refusal("trace.not-configured", FailureReason.Refused, "No trace configured."));
@@ -54,7 +56,6 @@ public sealed partial class FakeCommandClient
     public List<OverviewRequest> OverviewRequests { get; } = [];
     public List<GrammarCheckRequest> CheckGrammarRequests { get; } = [];
     public List<GrammarCheckRequest> StoredGrammarCheckRequests { get; } = [];
-    public List<TextWordsRequest> ListTextWordsRequests { get; } = [];
     public List<WordTraceRequest> TraceWordRequests { get; } = [];
     public List<TimingRequest> TimingRequests { get; } = [];
     public List<string> CurrentEvidenceRequests { get; } = [];
@@ -98,13 +99,6 @@ public sealed partial class FakeCommandClient
 
     /// <summary>What the stored grammar check read answers; nothing stored until a test says otherwise.</summary>
     public void StoredGrammarCheckIs(GrammarCheckResponse? response) => _storedGrammarCheck = response;
-
-    public void OnListTextWords(
-        Func<TextWordsRequest, CancellationToken, Task<CommandOutcome<TextWordsResponse>>> behavior) =>
-        _listTextWords = behavior;
-
-    public void ListTextWordsCompletesWith(TextWordsResponse response) =>
-        OnListTextWords((_, _) => Completed(response));
 
     public void OnTraceWord(
         Func<WordTraceRequest, CancellationToken, Task<CommandOutcome<WordTraceResponse>>> behavior) =>
@@ -164,11 +158,17 @@ public sealed partial class FakeCommandClient
         return Completed(new StoredGrammarCheckResponse(_storedGrammarCheck));
     }
 
-    public Task<CommandOutcome<TextWordsResponse>> ListTextWordsAsync(
-        TextWordsRequest request, CancellationToken cancellationToken)
+    public Func<OpenSelectionReaderRequest, CancellationToken, Task<CommandOutcome<SelectionReader>>>?
+        SelectionReaderHandler { get; set; }
+    public List<OpenSelectionReaderRequest> OpenSelectionReaderRequests { get; } = [];
+
+    public Task<CommandOutcome<SelectionReader>> OpenSelectionReaderAsync(
+        OpenSelectionReaderRequest request, CancellationToken cancellationToken)
     {
-        ListTextWordsRequests.Add(request);
-        return _listTextWords(request, cancellationToken);
+        OpenSelectionReaderRequests.Add(request);
+        return SelectionReaderHandler?.Invoke(request, cancellationToken) ??
+            Refused<SelectionReader>(new Refusal("selection-reader.no-baseline", FailureReason.Refused,
+                "Capture a Baseline before opening its Selection reader."));
     }
 
     public Task<CommandOutcome<WordTraceResponse>> TraceWordAsync(

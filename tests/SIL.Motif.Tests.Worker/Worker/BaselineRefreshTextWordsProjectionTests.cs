@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.Data.Sqlite;
 using SIL.LCModel;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Projects;
@@ -46,6 +47,7 @@ public sealed class BaselineRefreshTextWordsProjectionTests : IDisposable
         var firstToken = await refresh.RefreshAsync(cache, project, CancellationToken.None);
 
         Assert.Equal(1, Count(database, "BaselineTextWords", projectKey));
+        Assert.Equal(1, Count(database, "BaselineTextReadIndex", projectKey));
         var secondText = SeededProject.SeedText(cache, _pristine.Seed);
         new FwDataProjectLoader().Save(cache);
         var secondToken = await refresh.RefreshAsync(cache, project, CancellationToken.None);
@@ -67,9 +69,58 @@ public sealed class BaselineRefreshTextWordsProjectionTests : IDisposable
             current.Projection.Texts.Select(text => text.TextId).ToHashSet());
         Assert.Equal(Serialize(expected), Serialize(stored.Projection));
         Assert.Equal(2, Count(database, "BaselineTextWords", projectKey));
+        Assert.Equal(2, Count(database, "BaselineTextReadIndex", projectKey));
         Assert.Equal(expected.Wordforms.Count, Count(database, "BaselineTextWordforms", projectKey));
         Assert.Equal(0, CountOtherDigest(database, "BaselineTextWords", projectKey, secondToken.BundleDigest));
+        Assert.Equal(0, CountOtherDigest(database, "BaselineTextReadIndex", projectKey, secondToken.BundleDigest));
         Assert.Equal(0, CountOtherDigest(database, "BaselineTextWordforms", projectKey, secondToken.BundleDigest));
+    }
+
+    [Fact]
+    public async Task RefreshIndexesAnEmptyTextAndRollsBackAllRowsWhenIndexPublicationFails()
+    {
+        using var cache = _pristine.NewScratch();
+        SIL.LCModel.IText emptyText = null!;
+        SIL.LCModel.Infrastructure.NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            emptyText = cache.ServiceLocator.GetInstance<SIL.LCModel.ITextFactory>().Create();
+            emptyText.Name.set_String(cache.DefaultAnalWs, "Empty");
+            emptyText.ContentsOA = cache.ServiceLocator.GetInstance<SIL.LCModel.IStTextFactory>().Create();
+        });
+        new FwDataProjectLoader().Save(cache);
+        var (project, database) = Open(cache);
+        using var owned = database;
+        var repository = new BaselineRepository(database);
+        var refresh = new BaselineRefresh(repository, Path.Combine(_root, "empty-managed"));
+        var projectKey = ProjectWorkspaceKey.Compute(project);
+        var first = await refresh.RefreshAsync(cache, project, CancellationToken.None);
+
+        var index = repository.ReadCurrentSelectionIndexes(projectKey, [emptyText.Guid]);
+        Assert.Empty(Assert.Single(index!.Texts).Lines);
+        Assert.Equal(1, Count(database, "BaselineTextReadIndex", projectKey));
+
+        using (var connection = database.OpenConnection())
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = """
+                CREATE TRIGGER RejectReadIndex BEFORE INSERT ON BaselineTextReadIndex
+                BEGIN SELECT RAISE(ABORT, 'blocked'); END;
+                """;
+            command.ExecuteNonQuery();
+        }
+
+        SIL.LCModel.Infrastructure.NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            emptyText.Name.set_String(cache.DefaultAnalWs, "Changed");
+        });
+        new FwDataProjectLoader().Save(cache);
+
+        await Assert.ThrowsAsync<SqliteException>(() => refresh.RefreshAsync(cache, project, CancellationToken.None));
+
+        Assert.Equal(first, repository.GetCurrent(projectKey)!.Token);
+        Assert.Equal(1, Count(database, "BaselineTextReadIndex", projectKey));
+        Assert.Equal(1, Count(database, "BaselineTextWords", projectKey));
+        Assert.Equal(0, CountOtherDigest(database, "BaselineTextReadIndex", projectKey, first.BundleDigest));
     }
 
     [Fact]

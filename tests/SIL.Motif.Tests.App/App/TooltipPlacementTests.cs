@@ -85,7 +85,7 @@ public sealed class TooltipPlacementTests
                                 failures.Add($"{where}: the {scene} scene showed no such owner");
                                 continue;
                             }
-                            if (owner.Key is "opinion on a word card" or "statistics object name" or "statistics word" or
+                            if (owner.Key is "FieldWorks link on a morpheme" or "opinion on a word card" or "statistics object name" or "statistics word" or
                                 "statistics heat value")
                                 Assert.True(ClearTipPlacement.GetIsEnabled(control),
                                     $"{where}: the tooltip must use measured clear placement.");

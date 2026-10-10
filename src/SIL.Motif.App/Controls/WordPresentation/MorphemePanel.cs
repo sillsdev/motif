@@ -406,6 +406,11 @@ public sealed class MorphemePanel : Decorator
             part.Children.Add(category);
         }
         if (ShowLinks && morph.HasLink && !formIsLink) part.Children.Add(Link(morph, RevealLinks, CompactLinks));
+        foreach (var link in part.Children.OfType<HyperlinkButton>())
+        {
+            ClearTipPlacement.SetIsEnabled(link, true);
+            ClearTipPlacement.SetAnchor(link, part);
+        }
         if (last) part.Classes.Add("morphemePanelPartLast");
         if (RevealLinks && morph.HasLink) part.Classes.Add("hoverReveal");
         if (morph.InspectSubject is not { } reference) return part;

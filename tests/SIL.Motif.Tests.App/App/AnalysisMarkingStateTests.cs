@@ -1,5 +1,6 @@
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Commands.SelectionReading;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using Xunit;
@@ -42,6 +43,63 @@ public sealed class AnalysisMarkingStateTests
         Assert.Equal(expectedLabel, state.PrimaryAction?.Label);
         Assert.Equal(expectedChangeKind, state.PrimaryAction?.ChangeKind);
         Assert.Equal(expectedNeedsALook, state.NeedsALook);
+        Assert.Equal(expectedNeedsALook, CompactNeedsALook(token, result));
+    }
+
+    [Fact]
+    public void CompactAttentionCountsAgreeWithTheActionsForMixedOpinionsAndIncompleteEvidence()
+    {
+        IReadOnlyList<ProjectAnalysis>[] storedSets =
+        [
+            [],
+            [Stored(Book, ReadingGrade.Candidate, "book")],
+            [Stored(Book, "unknown", "book")],
+            [Stored(Book, ReadingGrade.Approved, "book")],
+            [Stored(Book, ReadingGrade.Disapproved, "book")],
+            [Stored(Book, ReadingGrade.Approved, "book"), Stored(Child, ReadingGrade.Candidate, "child")],
+            [Stored(Book, ReadingGrade.Candidate, "book"), Stored(Child, ReadingGrade.Approved, "child")],
+            [Stored(Book, ReadingGrade.Disapproved, "book"), Stored(Child, ReadingGrade.Candidate, "child")],
+        ];
+        AssessmentWordResult?[] results = [null, Result("none"), Result("built", Book),
+            Result("built", Child), Result("built", Book, Child), Result("capped", true, Book)];
+        foreach (var stored in storedSets)
+        foreach (var result in results)
+        foreach (var incorrect in new[] { false, true })
+        {
+            var token = Token(stored.ToArray()) with { IncorrectSpelling = incorrect };
+            Assert.Equal(AnalysisMarkingState.Create(token, result).NeedsALook, CompactNeedsALook(token, result));
+        }
+    }
+
+    [Fact]
+    public void MatchingStoredApprovalRemainsAvailableWithoutAParserAddCapability()
+    {
+        var id = Guid.NewGuid();
+        var source = Token(Stored(Book, ReadingGrade.Candidate, "stored-1")) with { WordformId = id };
+        using var token = new ResultsTokenViewModel("Text", 1, source, Result("same", Book),
+            actionFacts: new SelectionWordActionFacts(true, true, false, false, true, ["stored-1"])
+            { CandidateWordformIds = [id] });
+
+        var choice = Assert.IsType<WordMarkingChoice>(token.BoundPrimaryAction);
+        Assert.Equal(AnalysisMarkingActionKind.Approve, choice.Choice.Kind);
+        Assert.NotNull(choice.Choice.Reading);
+        Assert.Equal("stored-1", choice.Choice.StoredAnalysisId);
+        Assert.True(choice.IsAvailable);
+        Assert.Equal(id, choice.Target.WordformId);
+    }
+
+    private static bool CompactNeedsALook(TextToken token, AssessmentWordResult? result)
+    {
+        var readings = token.StoredAnalyses.Select(stored => new ParserReading([])
+        {
+            StoredAnalysisId = stored.StoredAnalysisId,
+            StoredAnalysisOpinion = stored.StoredAnalysisOpinion,
+            Identity = stored.Identity,
+        }).ToArray();
+        var classification = SelectionAnalysisRules.Build(token.IncorrectSpelling, result?.Outcome,
+            result?.IsIncomplete ?? false, result?.Morphology, readings);
+        return SelectionAnalysisRules.NeedsALook(classification, readings.ToDictionary(reading =>
+            reading.StoredAnalysisId!, reading => SelectionAnalysisRules.NormalizeOpinion(reading.StoredAnalysisOpinion)));
     }
 
     [Fact]

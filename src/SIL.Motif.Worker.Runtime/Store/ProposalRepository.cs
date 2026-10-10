@@ -7,6 +7,8 @@ using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Contract.Canonicalization;
+using SIL.Motif.Contract.Baselines;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Runner.DryRun;
 using SIL.Motif.Model.Receipts;
@@ -366,6 +368,56 @@ public sealed class ProposalRepository : IProposalRepository
         return command.ExecuteNonQuery() == 1;
     }
 
+    /// <summary>Saves a Draft only while both its revision and the expected Baseline remain current.</summary>
+    public bool TrySaveDraftForBaseline(string draftName, string expectedJson, string draftJson,
+        string projectKey, BaselineToken expectedBaseline)
+        => TrySaveDraftForExpectedContext(draftName, expectedJson, draftJson, projectKey,
+            new ExpectedContext(expectedBaseline));
+
+    /// <summary>Checks a reader's expected Baseline and Selection evidence in one read transaction.</summary>
+    public bool IsCurrentExpectedContext(string projectKey, ExpectedContext expectedContext)
+    {
+        using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction(deferred: true);
+        var current = ExpectedContextRepository.IsCurrentContext(_database, connection, transaction,
+            projectKey, expectedContext);
+        transaction.Commit();
+        return current;
+    }
+
+    /// <summary>Saves a Draft only while its revision and full expected Selection evidence remain current.</summary>
+    public bool TrySaveDraftForExpectedContext(string draftName, string expectedJson, string draftJson,
+        string projectKey, ExpectedContext expectedContext)
+    {
+        using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction();
+        if (!ExpectedContextRepository.IsCurrentSelectionEvidence(_database, connection, transaction,
+                projectKey, expectedContext))
+        {
+            transaction.Commit();
+            return false;
+        }
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            UPDATE Proposals SET DraftJson = $json
+            WHERE DraftName = $name AND DraftJson = $expected AND EXISTS (
+                SELECT 1 FROM Baselines b WHERE b.ProjectKey = $project
+                    AND b.ProjectIdentity = $identity AND b.SemanticSnapshotDigest = $semantic
+                    AND b.ProjectionVersion = $projection AND b.CapturedUtc = $captured
+                    AND b.BundleDigest = $bundle
+                    AND b.CapturedHostSessionId IS $hostSession
+                    AND b.CapturedEditGeneration IS $editGeneration);
+            """;
+        command.Parameters.AddWithValue("$json", draftJson);
+        command.Parameters.AddWithValue("$name", draftName);
+        command.Parameters.AddWithValue("$expected", expectedJson);
+        AddBaselineParameters(command, projectKey, expectedContext.Baseline);
+        var saved = command.ExecuteNonQuery() == 1;
+        transaction.Commit();
+        return saved;
+    }
+
     public bool TryCreateDraft(string draftName, CanonicalId proposalId, string draftJson)
     {
         using var connection = _database.OpenConnection();
@@ -382,6 +434,60 @@ public sealed class ProposalRepository : IProposalRepository
         return command.ExecuteNonQuery() == 1;
     }
 
+    /// <summary>Creates a Draft only while the expected Baseline remains current.</summary>
+    public bool TryCreateDraftForBaseline(string draftName, CanonicalId proposalId, string draftJson,
+        string projectKey, BaselineToken expectedBaseline)
+        => TryCreateDraftForExpectedContext(draftName, proposalId, draftJson, projectKey,
+            new ExpectedContext(expectedBaseline));
+
+    /// <summary>Creates a Draft only while the full expected Selection evidence remains current.</summary>
+    public bool TryCreateDraftForExpectedContext(string draftName, CanonicalId proposalId, string draftJson,
+        string projectKey, ExpectedContext expectedContext)
+    {
+        using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction();
+        if (!ExpectedContextRepository.IsCurrentSelectionEvidence(_database, connection, transaction,
+                projectKey, expectedContext))
+        {
+            transaction.Commit();
+            return false;
+        }
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            INSERT INTO Proposals (ProposalId, CurrentIntentDigest, Status, DraftName, DraftJson)
+            SELECT $id, NULL, $status, $name, $json
+            WHERE EXISTS (
+                SELECT 1 FROM Baselines b WHERE b.ProjectKey = $project
+                    AND b.ProjectIdentity = $identity AND b.SemanticSnapshotDigest = $semantic
+                    AND b.ProjectionVersion = $projection AND b.CapturedUtc = $captured
+                    AND b.BundleDigest = $bundle
+                    AND b.CapturedHostSessionId IS $hostSession
+                    AND b.CapturedEditGeneration IS $editGeneration)
+            ON CONFLICT(DraftName) DO NOTHING;
+            """;
+        command.Parameters.AddWithValue("$id", proposalId.Value);
+        command.Parameters.AddWithValue("$status", DraftStatus);
+        command.Parameters.AddWithValue("$name", draftName);
+        command.Parameters.AddWithValue("$json", draftJson);
+        AddBaselineParameters(command, projectKey, expectedContext.Baseline);
+        var created = command.ExecuteNonQuery() == 1;
+        transaction.Commit();
+        return created;
+    }
+
+    private static void AddBaselineParameters(SqliteCommand command, string projectKey, BaselineToken token)
+    {
+        command.Parameters.AddWithValue("$project", projectKey);
+        command.Parameters.AddWithValue("$identity", token.ProjectIdentity);
+        command.Parameters.AddWithValue("$semantic", token.SemanticSnapshotDigest);
+        command.Parameters.AddWithValue("$projection", token.ProjectionVersion);
+        command.Parameters.AddWithValue("$captured", token.CapturedUtc);
+        command.Parameters.AddWithValue("$bundle", token.BundleDigest);
+        command.Parameters.AddWithValue("$hostSession", (object?)token.CapturedHostSessionId ?? DBNull.Value);
+        command.Parameters.AddWithValue("$editGeneration", (object?)token.CapturedEditGeneration ?? DBNull.Value);
+    }
+
     /// <inheritdoc />
     public ProposalRecord GetDraft(string draftName)
     {
@@ -389,8 +495,11 @@ public sealed class ProposalRepository : IProposalRepository
         using var command = connection.CreateCommand();
         command.CommandText = DraftSelectSql + " WHERE DraftName = $name;";
         command.Parameters.AddWithValue("$name", draftName);
+        RepositoryReadCounters.QueryExecuted();
         using var reader = command.ExecuteReader();
-        return reader.Read() ? ReadDraftRecord(reader) : throw new KeyNotFoundException($"Draft '{draftName}' was not found.");
+        if (!reader.Read()) throw new KeyNotFoundException($"Draft '{draftName}' was not found.");
+        RepositoryReadCounters.RecordDeserialized();
+        return ReadDraftRecord(reader);
     }
 
     /// <inheritdoc />
@@ -673,6 +782,7 @@ public sealed class ProposalRepository : IProposalRepository
         using var command = connection.CreateCommand();
         command.CommandText = "SELECT 1 FROM Proposals WHERE DraftName = $name;";
         command.Parameters.AddWithValue("$name", draftName);
+        RepositoryReadCounters.QueryExecuted();
         return command.ExecuteScalar() is not null;
     }
 

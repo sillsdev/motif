@@ -136,12 +136,7 @@ public sealed partial class WordStripToken : Border
         return size;
     }
 
-    private static double MeasuredLineHeight(Control row)
-    {
-        var textHeight = row.GetVisualDescendants().OfType<TextBlock>()
-            .Select(block => block.TextLayout.Height).DefaultIfEmpty(0).Max();
-        return Math.Max(row.DesiredSize.Height, textHeight);
-    }
+    private static double MeasuredLineHeight(Control row) => row.DesiredSize.Height;
 
     private void OnDataChanged()
     {
@@ -149,6 +144,7 @@ public sealed partial class WordStripToken : Border
         if (Data is not { } data)
         {
             _observedData = null;
+            _strip.Tag = null;
             _fieldWorksMorphology.OverflowRequest = null;
             _panGlossMorphology.OverflowRequest = null;
             SyncOptionalControls();
@@ -211,13 +207,16 @@ public sealed partial class WordStripToken : Border
         Place(_actionRow, _primaryAction, data?.HasPrimaryAction == true, 0);
     }
 
-    private static void Place(Panel parent, Control child, bool include, int index)
+    private void Place(Panel parent, Control child, bool include, int index)
     {
         if (!include)
         {
             if (ReferenceEquals(child.Parent, parent)) parent.Children.Remove(child);
+            // Omitted controls keep logical ownership so their bindings follow recycled token data.
+            if (!LogicalChildren.Contains(child)) LogicalChildren.Add(child);
             return;
         }
+        if (ReferenceEquals(child.Parent, this)) LogicalChildren.Remove(child);
         if (parent is Grid) Grid.SetColumn(child, index);
         if (ReferenceEquals(child.Parent, parent)) return;
         if (child.Parent is Panel previous) previous.Children.Remove(child);
@@ -323,14 +322,17 @@ public sealed partial class WordStripToken : Border
                 break;
             case KeyboardShortcutBehavior.RemoveAnalysis:
                 if (token.Disposition.StoredRows.FirstOrDefault()?.Tiles
-                        .FirstOrDefault(tile => tile.Kind == WordDispositionKind.Absent)?.Choice is not { } removal)
+                        .FirstOrDefault(tile => tile.Kind == WordDispositionKind.Absent)?.Action is not { } removal)
                     break;
                 e.Handled = true;
-                token.StageMarkingChoiceForTokenCommand.Execute(removal);
+                if (token.StageMarkingChoiceForTokenCommand?.CanExecute(removal) == true)
+                    await token.StageMarkingChoiceForTokenCommand.ExecuteAsync(removal);
                 break;
             case KeyboardShortcutBehavior.IncorrectSpelling:
                 e.Handled = true;
-                token.AddChangeForTokenCommand.Execute("incorrect-spelling");
+                var spelling = token.IncorrectSpellingAction;
+                if (token.AddChangeForTokenCommand?.CanExecute(spelling) == true)
+                    await token.AddChangeForTokenCommand.ExecuteAsync(spelling);
                 break;
             case KeyboardShortcutBehavior.OpenAddList:
             case KeyboardShortcutBehavior.OpenDispositionMenu:

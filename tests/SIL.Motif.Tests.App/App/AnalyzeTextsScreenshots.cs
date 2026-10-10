@@ -35,17 +35,16 @@ public sealed class AnalyzeTextsScreenshots
                 AnalyzeTextsLayoutTests.Settle(window);
                 var inText = workspace.PageModel<TextsPageModel>().ResultsInText;
                 await inText.WarningEvidenceRefresh;
-                var words = inText.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens).ToArray();
-                var warned = words.Single(token => token.Form == "alikula");
-                var notNamed = words.Single(token => token.Form == "hawajafika");
-
+                var warned = await FindTokenAsync(workspace, window, "alikula");
                 await inText.OpenTokenCardAsync(warned);
                 CaptureStates(window, folder, "named-warning-card");
 
+                var notNamed = await FindTokenAsync(workspace, window, "hawajafika");
                 await inText.OpenTokenCardAsync(notNamed);
                 CaptureStates(window, folder, "no-named-warning-card");
 
                 inText.Filter = ResultsInTextFilter.NamedInWarning;
+                warned = await FindTokenAsync(workspace, window, "alikula");
                 await inText.OpenTokenCardAsync(warned);
                 CaptureStates(window, folder, "named-warning-filter");
             }
@@ -84,7 +83,7 @@ public sealed class AnalyzeTextsScreenshots
             try
             {
                 var inText = workspace.PageModel<TextsPageModel>().ResultsInText;
-                var hawajafika = inText.VisibleLines[1].Tokens.Single(token => token.Form == "hawajafika");
+                var hawajafika = await FindTokenAsync(workspace, window, "hawajafika");
                 foreach (var (theme, variant) in Themes())
                 {
                     Application.Current!.RequestedThemeVariant = variant;
@@ -92,14 +91,15 @@ public sealed class AnalyzeTextsScreenshots
                     {
                         inText.CloseTokenCard();
                         await inText.OpenTokenCardAsync(hawajafika);
+                        Assert.Null(inText.ReadStateRefusal);
                         Save(window, width, Path.Combine(folder, $"10-word-card-{width}-{theme}.png"));
                     }
                 }
 
                 inText.CloseTokenCard();
-                var chakula = inText.VisibleLines[0].Tokens.Single(token => token.Form == "chakula");
+                var chakula = await FindTokenAsync(workspace, window, "chakula");
                 var add = chakula.Marking.FixChoices.Single(choice => choice.Label == "Add as Approved");
-                await chakula.StageMarkingChoiceForTokenCommand!.ExecuteAsync(add);
+                await chakula.StageMarkingChoiceForTokenCommand!.ExecuteAsync(chakula.BindMarkingChoice(add));
                 foreach (var (theme, variant) in Themes())
                 {
                     Application.Current!.RequestedThemeVariant = variant;
@@ -112,6 +112,17 @@ public sealed class AnalyzeTextsScreenshots
                 window.Close();
             }
         }, TimeSpan.FromMinutes(3));
+    }
+
+    private static async Task<ResultsTokenViewModel> FindTokenAsync(
+        WorkspaceShellViewModel workspace, MainWindow window, string form)
+    {
+        var reader = workspace.PageModel<TextsPageModel>().ResultsInText;
+        var anchor = workspace.Context.SelectionReads.Summary!.SourcePositions
+            .Single(position => position.Word.Form == form).Location.Anchor;
+        reader.CloseTokenCard();
+        Assert.True(await AnalyzeTextsLayoutTests.Panel(window).FocusOccurrenceAsync(anchor));
+        return Assert.IsType<ResultsTokenViewModel>(await reader.ReadOccurrenceAsync(anchor));
     }
 
     private static (string Theme, ThemeVariant Variant)[] Themes() =>

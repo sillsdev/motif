@@ -6,6 +6,7 @@ internal enum ProjectOpenStage
     Baseline = 1,
     Independent = 2,
     Setup = 3,
+    Evidence = 4,
 }
 
 internal interface IProjectStateParticipant

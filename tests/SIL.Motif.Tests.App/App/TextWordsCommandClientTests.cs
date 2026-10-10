@@ -1,15 +1,11 @@
 using SIL.Motif.App.Services;
-using SIL.Motif.Commands.Queries;
+using SIL.Motif.Commands.SelectionReading;
 using SIL.Motif.Contract.Responses;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
 
-/// <summary>
-/// Pins that the production <see cref="CommandClient"/> hands its token to the Text words read: a cancelled request
-/// comes back as a typed cancellation before the project store is opened. It does not pin that the read runs
-/// outside the one-at-a-time project gate; a test that holds the gate while reading would.
-/// </summary>
+/// <summary>Pins cancellation and missing-project refusals at the production Selection-reader seam.</summary>
 public sealed class TextWordsCommandClientTests : IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), "SIL.Motif.TextWordsCommandClientTests",
@@ -25,11 +21,11 @@ public sealed class TextWordsCommandClientTests : IDisposable
         cancelled.Cancel();
         var missingProject = Path.Combine(_root, "absent.fwdata");
 
-        var outcome = await client.ListTextWordsAsync(new TextWordsRequest(missingProject, []), cancelled.Token);
+        var outcome = await client.OpenSelectionReaderAsync(new OpenSelectionReaderRequest(missingProject, [], []), cancelled.Token);
 
         Assert.False(outcome.Succeeded);
         Assert.Equal(FailureReason.Cancelled, outcome.Refusal!.Reason);
-        Assert.Equal("texts.words-cancelled", outcome.Refusal.Code);
+        Assert.Equal("selection-reader.cancelled", outcome.Refusal.Code);
     }
 
     [Fact]
@@ -38,7 +34,7 @@ public sealed class TextWordsCommandClientTests : IDisposable
         var client = RealCommandClient.Create(Path.Combine(_root, "managed"));
         var missingProject = Path.Combine(_root, "absent.fwdata");
 
-        var outcome = await client.ListTextWordsAsync(new TextWordsRequest(missingProject, []), CancellationToken.None);
+        var outcome = await client.OpenSelectionReaderAsync(new OpenSelectionReaderRequest(missingProject, [], []), CancellationToken.None);
 
         Assert.Equal("project.not-found", outcome.Refusal?.Code);
     }

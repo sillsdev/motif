@@ -23,7 +23,7 @@ public sealed class SelectionPanelLayoutTests
             var selection = new SelectionViewModel(client);
             await selection.SetProjectAsync("selection-layout.fwdata");
             foreach (var text in selection.Texts) selection.SetTextCounts(text.Id, 400, 400);
-            var panel = new SelectionPanel(selection, new TextWordsViewModel(client, selection));
+            var panel = new SelectionPanel(selection, new TextWordsViewModel(client, selection, client.ReaderOwner));
             var window = new Window { Content = panel, Width = 230, Height = 780 };
             try
             {

@@ -95,26 +95,31 @@ public sealed class CancelAssessmentWalkthroughTests(PristineProjectFixture pris
             walkthrough.ShowTextsTab(TextsTab.AnalyzeTexts);
 
             var inText = walkthrough.Workspace.PageModel<TextsPageModel>().ResultsInText;
-            walkthrough.WaitUntil(() => inText.Texts.SingleOrDefault()?.Lines.Count == 302,
+            walkthrough.WaitUntil(() => inText.Texts.SingleOrDefault()?.Summary?.LineCount == 302,
                 WalkthroughSteps.Remaining(deadline), "Analyze texts did not load all generated lines");
             await inText.ReadStateRefresh;
             var text = Assert.Single(inText.Texts);
-            var finalLine = text.Lines[^1];
-            var finalToken = finalLine.Tokens[^1];
+            var finalPosition = walkthrough.Workspace.Context.SelectionReads.Summary!.SourcePositions.Last();
+            var panel = walkthrough.Window.GetLogicalDescendants().OfType<SIL.Motif.App.Views.ResultsInTextPanel>()
+                .Single();
+            Assert.True(await panel.FocusOccurrenceAsync(finalPosition.Location.Anchor));
+            await AnalyzeTextsLayoutTests.SettleReaderAsync(walkthrough.Workspace, walkthrough.Window);
+            var finalLine = Assert.Single(inText.LinePages!.RealizedLines, line => line.Number == 302);
+            var finalToken = Assert.Single(finalLine.Tokens, token => token.Occurrence == finalPosition.Location.Anchor);
+            Assert.InRange(walkthrough.Workspace.Context.SelectionReads.Reader!.Diagnostics.LiveLineModels, 1, 48);
+            Assert.InRange(walkthrough.Workspace.Context.SelectionReads.Reader.Diagnostics.LiveTokenModels, 1, 512);
             Assert.Equal(302, finalLine.Number);
             Assert.Equal(SeededProject.AnalysedWordForm, finalToken.Form);
             Assert.Equal(7, finalToken.OccurrenceIndex);
             Assert.Equal(firstProject.Text.TextId, finalToken.Occurrence?.TextId);
 
-            var panel = walkthrough.Window.GetLogicalDescendants().OfType<SIL.Motif.App.Views.ResultsInTextPanel>()
-                .Single();
             var reader = Assert.Single(panel.GetVisualDescendants().OfType<ScrollViewer>(), viewer =>
                 viewer.IsEffectivelyVisible && viewer.Content is ItemsControl);
             reader.Offset = new Vector(reader.Offset.X, Math.Max(0, reader.Extent.Height - reader.Viewport.Height));
             Dispatcher.UIThread.RunJobs();
             walkthrough.Window.UpdateLayout();
             var finalStrip = Assert.Single(panel.GetVisualDescendants().OfType<Border>(), strip =>
-                strip.Name == "WordStrip" && ReferenceEquals(strip.Tag, finalToken));
+                strip.Name == "WordStrip" && SIL.Motif.App.Views.ResultsInTextPanel.TokenOf(strip)?.Occurrence == finalToken.Occurrence);
             var stripOrigin = finalStrip.TranslatePoint(new Point(0, 0), reader);
             Assert.NotNull(stripOrigin);
             var viewport = new Rect(0, 0, reader.Viewport.Width, reader.Viewport.Height);
@@ -122,7 +127,7 @@ public sealed class CancelAssessmentWalkthroughTests(PristineProjectFixture pris
                 "The final occurrence is outside the reader's visible bounds after scrolling to the end.");
 
             inText.SetFilterCommand.Execute(ResultsInTextFilter.Unread);
-            Assert.Contains(finalLine, inText.VisibleLines);
+            Assert.Contains(inText.VisibleHeaders, line => line.Number == finalLine.Number);
             await inText.MarkReadAsync(finalToken);
             Assert.Null(inText.ReadStateRefusal);
             Assert.Null(inText.ReadStateNotice);
@@ -146,7 +151,7 @@ public sealed class CancelAssessmentWalkthroughTests(PristineProjectFixture pris
                 "The final occurrence's card is outside the reader's visible bounds.");
             var removal = Assert.Single(finalToken.Marking.FixChoices, choice =>
                 choice.Kind == AnalysisMarkingActionKind.RemoveAnalysis);
-            await finalToken.StageMarkingChoiceForTokenCommand!.ExecuteAsync(removal);
+            await finalToken.StageMarkingChoiceForTokenCommand!.ExecuteAsync(finalToken.BindMarkingChoice(removal));
             var change = Assert.Single(inText.Changes.Items);
             Assert.True(finalToken.IsPending);
             await inText.Changes.RemoveCommand.ExecuteAsync(change);
@@ -157,7 +162,7 @@ public sealed class CancelAssessmentWalkthroughTests(PristineProjectFixture pris
             walkthrough.ChooseNewProject();
             walkthrough.WaitUntilProjectIsQuiet(WalkthroughSteps.Remaining(deadline),
                 "the second project's dispatcher work did not finish");
-            walkthrough.WaitUntil(() => inText.Texts.Count == 0 || inText.Texts.Single().Lines.Count != 302,
+            walkthrough.WaitUntil(() => inText.Texts.Count == 0 || inText.Texts.Single().Summary.LineCount != 302,
                 WalkthroughSteps.Remaining(deadline), "the first project's long Text remained in Analyze texts");
             Assert.Empty(inText.Changes.Items);
             Assert.False(walkthrough.Workspace.Context.IsOpeningProject);
@@ -175,13 +180,15 @@ public sealed class CancelAssessmentWalkthroughTests(PristineProjectFixture pris
         var releaseBatch = Path.Combine(project.ManagedRoot, "release-cancelled-assessment-batch");
         var deadline = Stopwatch.GetTimestamp() + 120 * Stopwatch.Frequency;
 
-        AvaloniaHeadlessFixture.RunUntilComplete(() =>
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             using var walkthrough = new WalkthroughWindow(
                 project.ManagedRoot, project.FwDataPath, parserPath: parserPath);
             WalkthroughSteps.ChooseProjectAndCaptureBaseline(walkthrough, deadline);
             walkthrough.TypePastedWords(string.Join(Environment.NewLine,
                 SeededProject.FirstForm, SeededProject.SecondForm));
+            await walkthrough.Workspace.Context.EvidencePublication;
+            await AnalyzeTextsLayoutTests.SettleReaderAsync(walkthrough.Workspace, walkthrough.Window);
             InteractiveControlSweep.AssertScene(walkthrough, "ready to assess pasted words",
                 InteractiveControlFamily.Action,
                 InteractiveControlFamily.Link,
@@ -315,7 +322,6 @@ public sealed class CancelAssessmentWalkthroughTests(PristineProjectFixture pris
                 invocation.Selection.ResolvedWords.Order(StringComparer.Ordinal));
             Assert.True(baselineToken.HasSameSemanticIdentity(invocation.BaselineToken));
             Assert.Equal(baselineToken.BundleDigest, invocation.BaselineToken.BundleDigest);
-            return Task.CompletedTask;
         }, WalkthroughSteps.Remaining(deadline));
     }
 

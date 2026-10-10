@@ -45,7 +45,7 @@
                             <Button Classes="dispositionButton" Classes.unavailable="{Binding !IsAvailable}"
                                     Theme="{DynamicResource BorderlessButton}"
                                     Command="{Binding #DispositionMenu.((vm:ResultsTokenViewModel)DataContext).StageMarkingChoiceForTokenCommand}"
-                                    CommandParameter="{Binding Choice}"
+                                    CommandParameter="{Binding Action}"
                                     ToolTip.Tip="{Binding Tip}" AutomationProperties.Name="{Binding Tip}">
                               <Border Classes="dispositionFace tile"
                                       Classes.approved="{Binding IsApproved}" Classes.unknown="{Binding IsUnknown}"
@@ -62,13 +62,13 @@
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
               <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
-                      Command="{Binding AddChangeForTokenCommand}" CommandParameter="incorrect-spelling"
+                      Command="{Binding AddChangeForTokenCommand}" CommandParameter="{Binding IncorrectSpellingAction}"
                       AutomationProperties.Name="Mark this spelling Incorrect" ToolTip.Tip="Incorrect spelling: FieldWorks stops treating it as a word (S)">
                 <TextBlock Classes="menuTitle" Text="Incorrect spelling" />
               </Button>
               <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
                       IsVisible="{Binding Disposition.KeepFieldWorks, Converter={x:Static ObjectConverters.IsNotNull}}"
-                      Command="{Binding StageMarkingChoiceForTokenCommand}" CommandParameter="{Binding Disposition.KeepFieldWorks}"
+                      Command="{Binding StageMarkingChoiceForTokenCommand}" CommandParameter="{Binding Disposition.KeepFieldWorksAction}"
                       AutomationProperties.Name="Keep FieldWorks">
                 <TextBlock Classes="menuTitle" Text="Keep FieldWorks as it is" />
               </Button>
@@ -117,7 +117,7 @@
                           <DataTemplate x:DataType="vm:WordDispositionTile">
                             <Button Classes="dispositionButton" Theme="{DynamicResource BorderlessButton}"
                                     Command="{Binding #AddMenu.((vm:ResultsTokenViewModel)DataContext).StageMarkingChoiceForTokenCommand}"
-                                    CommandParameter="{Binding Choice}"
+                                    CommandParameter="{Binding Action}"
                                     ToolTip.Tip="{Binding Choice.Label}" AutomationProperties.Name="{Binding Choice.Label}">
                               <Border Classes="dispositionFace tile"
                                       Classes.approved="{Binding IsApproved}" Classes.unknown="{Binding IsUnknown}"
@@ -134,7 +134,7 @@
               </ItemsControl>
               <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
                       IsVisible="{Binding Disposition.AddAllAsUnknown, Converter={x:Static ObjectConverters.IsNotNull}}"
-                      Command="{Binding StageMarkingChoiceForTokenCommand}" CommandParameter="{Binding Disposition.AddAllAsUnknown}"
+                      Command="{Binding StageMarkingChoiceForTokenCommand}" CommandParameter="{Binding Disposition.AddAllAsUnknownAction}"
                       AutomationProperties.Name="Add every PanGloss analysis as Unknown">
                 <TextBlock Classes="menuTitle" Text="Add them all as Unknown" />
               </Button>

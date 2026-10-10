@@ -32,7 +32,7 @@ public static class MotifSchema
         {
             command.Transaction = transaction;
             command.CommandText = MetadataDdl + CorpusDdl + ProposalWorkflowDdl + SelectionDdl + AssessmentDdl + JobDdl +
-                BaselineDdl + BaselineTextWordsDdl + RetainedInvocationDdl + GrammarCheckDdl + PendingChangeFitDdl +
+                BaselineDdl + BaselineTextWordsDdl + BaselineTextReadIndexDdl + RetainedInvocationDdl + GrammarCheckDdl + PendingChangeFitDdl +
                 ReadOccurrenceDdl + ActiveParseDdl + ParserRefusalDdl;
             command.ExecuteNonQuery();
         }
@@ -61,7 +61,7 @@ public static class MotifSchema
             "ParsedAnalyses", "AssessmentPins", "Proposals", "ProposalRevisions",
             "Decisions", "Receipts", "Reports", "AppliedIndex", "Jobs", "Baselines", "RetainedInvocations",
             "RetainedInvocationMembers", "NamedSelections", "DefaultSelection", "AssessmentObjectTimings",
-            "BaselineSummaries", "BaselineTextWords", "BaselineTextWordforms", "GrammarChecks", "PendingChangeFits",
+            "BaselineSummaries", "BaselineTextWords", "BaselineTextWordforms", "BaselineTextReadIndex", "GrammarChecks", "PendingChangeFits",
             "ReadOccurrences", "ActiveParse", "ParserRefusals"
         };
         var expectedIndexes = new HashSet<string>(StringComparer.Ordinal)
@@ -307,6 +307,7 @@ public static class MotifSchema
         "BaselineSummaries" => [new("Baselines", "ProjectKey", "ProjectKey", "NO ACTION", "NO ACTION", "NONE")],
         "BaselineTextWords" => [new("Baselines", "ProjectKey", "ProjectKey", "NO ACTION", "NO ACTION", "NONE")],
         "BaselineTextWordforms" => [new("Baselines", "ProjectKey", "ProjectKey", "NO ACTION", "NO ACTION", "NONE")],
+        "BaselineTextReadIndex" => [new("Baselines", "ProjectKey", "ProjectKey", "NO ACTION", "NO ACTION", "NONE")],
         "AssessedWords" => [new("Assessments", "AssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE")],
         "ParsedAnalyses" => [new("AssessedWords", "AssessedWordId", "AssessedWordId", "NO ACTION", "NO ACTION", "NONE")],
         "AssessmentPins" => [new("Assessments", "AssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE")],
@@ -378,6 +379,8 @@ public static class MotifSchema
             C("BundleDigest", "TEXT", true), C("TextJson", "TEXT", true)],
         "BaselineTextWordforms" => [C("ProjectKey", "TEXT", true, 1), C("WordformId", "TEXT", true, 2),
             C("BundleDigest", "TEXT", true), C("WordformJson", "TEXT", true)],
+        "BaselineTextReadIndex" => [C("ProjectKey", "TEXT", true, 1), C("TextId", "TEXT", true, 2),
+            C("BundleDigest", "TEXT", true), C("IndexJson", "TEXT", true)],
         "ParsedAnalyses" =>
         [C("AssessedWordId", "INTEGER", true), C("OrdinalIndex", "INTEGER", true), C("CategoryGuid", "TEXT"),
             C("MorphemeGuidsJson", "TEXT", true), C("RootIndex", "INTEGER", true), C("IdentityDigest", "TEXT", true)],
@@ -761,6 +764,16 @@ public static class MotifSchema
             BundleDigest TEXT NOT NULL,
             WordformJson TEXT NOT NULL,
             PRIMARY KEY (ProjectKey, WordformId)
+        );
+        """;
+
+    private const string BaselineTextReadIndexDdl = """
+        CREATE TABLE BaselineTextReadIndex (
+            ProjectKey TEXT NOT NULL REFERENCES Baselines(ProjectKey),
+            TextId TEXT NOT NULL,
+            BundleDigest TEXT NOT NULL,
+            IndexJson TEXT NOT NULL,
+            PRIMARY KEY (ProjectKey, TextId)
         );
         """;
 

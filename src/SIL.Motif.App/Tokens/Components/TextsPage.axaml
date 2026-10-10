@@ -12,6 +12,7 @@
     <StaticResource x:Key="Component.TextsPage.CardIndent" ResourceKey="Primitive.Inset.66_6_0_2" />
     <StaticResource x:Key="Component.TextsPage.CountIndent" ResourceKey="Primitive.Inset.26_0_0_4" />
     <StaticResource x:Key="Component.TextsPage.EmptyStateMargin" ResourceKey="Primitive.Inset.0_8_0_8" />
+    <StaticResource x:Key="Component.TextsPage.AssessmentStatusMaxHeight" ResourceKey="Primitive.Size.240" />
     <StaticResource x:Key="Component.TextsPage.AssessmentStatusPadding" ResourceKey="Primitive.Inset.8_4_8_4" />
     <StaticResource x:Key="Component.TextsPage.FixFirstListHeight" ResourceKey="Primitive.Size.156" />
     <StaticResource x:Key="Component.TextsPage.CompareWordsListHeight" ResourceKey="Primitive.Size.320" />

@@ -275,6 +275,9 @@ public sealed class AssessmentRepository : IAssessmentRepository
         return GetHeader(connection, assessmentId);
     }
 
+    internal AssessmentRecord? GetHeader(SqliteConnection connection, SqliteTransaction transaction,
+        string assessmentId) => ReadHeader(connection, transaction, assessmentId);
+
     /// <inheritdoc />
     public IReadOnlyList<AssessmentRecord> ListByProposal(CanonicalId proposalId)
     {
@@ -360,6 +363,90 @@ public sealed class AssessmentRepository : IAssessmentRepository
             Words = ReadWords(connection, header.AssessmentId),
             ObjectTimings = ReadObjectTimings(connection, header.AssessmentId)
         };
+    }
+
+    internal AssessmentRecord? FindLatestBaselineAssessment(
+        SqliteConnection connection, SqliteTransaction transaction, string kind, string baselineToken,
+        string selectionSha256, IReadOnlyList<string> selectionWords, string selectionName)
+    {
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = HeaderSelectSql + """
+             WHERE Kind = $kind AND ProposalId IS NULL AND BaselineToken = $baseline
+               AND SelectionSha256 = $selectionSha AND SelectionWordsJson = $selectionWords
+               AND SelectionName = $selectionName AND ReplacesAssessmentId IS NULL
+             ORDER BY SavedUtc DESC, AssessmentId DESC LIMIT 1;
+            """;
+        command.Parameters.AddWithValue("$kind", kind);
+        command.Parameters.AddWithValue("$baseline", baselineToken);
+        command.Parameters.AddWithValue("$selectionSha", selectionSha256);
+        command.Parameters.AddWithValue("$selectionWords", JsonSerializer.Serialize(selectionWords));
+        command.Parameters.AddWithValue("$selectionName", selectionName);
+        RepositoryReadCounters.QueryExecuted();
+        using var reader = command.ExecuteReader();
+        if (!reader.Read()) return null;
+        var header = ReadHeader(reader);
+        return header with
+        {
+            Words = ReadWords(connection, header.AssessmentId,
+                selectionWords.ToHashSet(StringComparer.Ordinal), transaction),
+            ObjectTimings = ReadObjectTimings(connection, header.AssessmentId, transaction),
+        };
+    }
+
+    internal AssessmentRecord? FindLatestBaselineAssessmentHeader(
+        SqliteConnection connection, SqliteTransaction transaction, string kind, string baselineToken,
+        string selectionSha256, string selectionName)
+    {
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = HeaderSelectSql + """
+             WHERE Kind = $kind AND ProposalId IS NULL AND BaselineToken = $baseline
+               AND SelectionSha256 = $selectionSha AND SelectionName = $selectionName
+               AND ReplacesAssessmentId IS NULL
+             ORDER BY SavedUtc DESC, AssessmentId DESC LIMIT 1;
+            """;
+        command.Parameters.AddWithValue("$kind", kind);
+        command.Parameters.AddWithValue("$baseline", baselineToken);
+        command.Parameters.AddWithValue("$selectionSha", selectionSha256);
+        command.Parameters.AddWithValue("$selectionName", selectionName);
+        RepositoryReadCounters.QueryExecuted();
+        using var reader = command.ExecuteReader();
+        return reader.Read() ? ReadHeader(reader) : null;
+    }
+
+    internal IReadOnlyList<AssessmentRecord> ReadReplacementHeaders(
+        SqliteConnection connection, SqliteTransaction transaction, string kind, string baselineToken,
+        string rootAssessmentId)
+    {
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = HeaderSelectSql + """
+             WHERE Kind = $kind AND ProposalId IS NULL AND BaselineToken = $baseline
+               AND ReplacesAssessmentId = $root
+             ORDER BY SavedUtc, AssessmentId;
+            """;
+        command.Parameters.AddWithValue("$kind", kind);
+        command.Parameters.AddWithValue("$baseline", baselineToken);
+        command.Parameters.AddWithValue("$root", rootAssessmentId);
+        RepositoryReadCounters.QueryExecuted();
+        using var reader = command.ExecuteReader();
+        var rows = new List<AssessmentRecord>();
+        while (reader.Read()) rows.Add(ReadHeader(reader));
+        return rows;
+    }
+
+    internal IReadOnlyList<AssessmentRecord> ReadSelectedWords(
+        SqliteConnection connection, SqliteTransaction transaction,
+        IReadOnlyList<AssessmentRecord> headers, IReadOnlyCollection<string> wordForms)
+    {
+        ArgumentNullException.ThrowIfNull(headers);
+        var selected = wordForms.ToHashSet(StringComparer.Ordinal);
+        return headers.Select(header => header with
+        {
+            Words = ReadWords(connection, header.AssessmentId, selected, transaction),
+            ObjectTimings = ReadObjectTimings(connection, header.AssessmentId, transaction),
+        }).ToArray();
     }
 
     /// <inheritdoc />
@@ -688,9 +775,11 @@ public sealed class AssessmentRepository : IAssessmentRepository
         }
     }
 
-    private static IReadOnlyList<AssessmentObjectTiming> ReadObjectTimings(SqliteConnection connection, string assessmentId)
+    private static IReadOnlyList<AssessmentObjectTiming> ReadObjectTimings(SqliteConnection connection,
+        string assessmentId, SqliteTransaction? transaction = null)
     {
         using var command = connection.CreateCommand();
+        command.Transaction = transaction;
         command.CommandText = """
             SELECT Kind, Key, IdentityQuality, Direction, Object, Word, Attempts, Passes, ElapsedNs
             FROM AssessmentObjectTimings WHERE AssessmentId = $id ORDER BY OrdinalIndex;
@@ -786,9 +875,10 @@ public sealed class AssessmentRepository : IAssessmentRepository
 
     // One streaming pass over a word/analysis join, grouped by word — no N+1 querying.
     private static List<AssessedWord> ReadWords(SqliteConnection connection, string assessmentId,
-        IReadOnlySet<string>? wordForms = null)
+        IReadOnlySet<string>? wordForms = null, SqliteTransaction? transaction = null)
     {
         using var command = connection.CreateCommand();
+        command.Transaction = transaction;
         command.CommandText = """
             SELECT aw.AssessedWordId, aw.Word, aw.Outcome, aw.ElapsedMs, aw.ElapsedNs,
                    pa.CategoryGuid, pa.MorphemeGuidsJson, pa.RootIndex, pa.IdentityDigest, aw.RawSignature,

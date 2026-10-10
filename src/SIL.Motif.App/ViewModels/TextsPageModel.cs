@@ -32,7 +32,7 @@ public sealed partial class TextsPageModel : PageModel
 {
     public TextsPageModel(WorkspaceContext context) : base(context)
     {
-        Words = new TextWordsViewModel(context.Commands, context.Selection);
+        Words = new TextWordsViewModel(context.Commands, context.Selection, context.SelectionReads);
         Words.OpenWord = context.OpenWord;
         Words.HandOff = context.HandOff;
         Assess.TextWords = Words;
@@ -40,23 +40,21 @@ public sealed partial class TextsPageModel : PageModel
         ShowTabCommand = new RelayCommand<TextsTab>(tab => Tab = tab);
         ShowAnalyzeViewCommand = new RelayCommand<AnalyzeTextsView>(view => AnalyzeView = view);
         ResultsInText = new ResultsInTextViewModel(Words, Assess, context.OpenWord, context.TryWord, context.Changes,
-            context.Commands)
+            context.Commands, context.SelectionReads)
         {
             OpenTexts = () => context.OpenTexts(TextsTab.AnalyzeTexts),
             OpenWarnings = () => context.OpenPage(WorkspacePage.Warnings),
         };
-        Words.WordCardTokenFactory = ResultsInText.GetCardToken;
+        Words.WordCardActions = ResultsInText;
         Assess.Compare.WordCardTokenFactory = ResultsInText.GetCardToken;
-        context.RegisterOccurrenceContextProvider(anchor => ResultsInText.FindOccurrenceLine(anchor)?.Tokens);
         context.RegisterOccurrenceLocationProvider(ResultsInText.LocateOccurrence);
         context.RegisterOccurrenceNavigator(anchor =>
         {
-            var line = ResultsInText.FindOccurrenceLine(anchor);
-            var token = line?.Tokens.FirstOrDefault(item => item.Occurrence == anchor);
-            if (line is null || token is null) return false;
-            ResultsInText.SelectedText = ResultsInText.Texts.FirstOrDefault(text => text.Lines.Contains(line));
-            ResultsInText.Filter = ResultsInTextFilter.All;
-            ResultsInText.SelectToken(token);
+            Tab = TextsTab.AnalyzeTexts;
+            AnalyzeView = AnalyzeTextsView.TextReader;
+            ResultsInText.ShowReader();
+            if (!ResultsInText.SelectOccurrenceText(anchor)) return false;
+            ResultsInText.NavigateOccurrence(anchor);
             return true;
         });
         Assess.Compare.Changes = context.Changes;
@@ -154,12 +152,25 @@ public sealed partial class TextsPageModel : PageModel
     protected override Task OnProjectOpenedAsync(string projectPath, CancellationToken cancellationToken) =>
         Words.SetProjectAsync(projectPath, cancellationToken);
 
-    protected override Task OnStopWorkAsync() => Words.StopAsync();
+    protected override Task OnStopWorkAsync() => Task.WhenAll(Words.StopAsync(), ResultsInText.StopAsync());
 
     protected override Task OnEvidencePublishedAsync(ProjectEvidence evidence, CancellationToken cancellationToken)
     {
         if (evidence.Assessment is not { } shown) return Task.CompletedTask;
-        Words.ShowAssessment(Assess.Words.Find);
+        Assess.Words.UpdateOccurrences(Words.OccurrenceCountOf);
+        Assess.Compare.UpdateOccurrences(Words.OccurrenceCountOf);
+        var expected = Context.SelectionReads.Reader?.Context.ExpectedWriteContext();
+        var root = Context.Evidence.ParseTimeAssessmentId;
+        var wordforms = (Context.SelectionReads.Summary?.Words ?? []).GroupBy(word => word.Key.Form, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.SelectMany(word => word.Actions.CandidateWordformIds)
+                .Distinct().ToArray(), StringComparer.Ordinal);
+        Assess.Compare.WordTargetFactory = result =>
+        {
+            var ids = wordforms.GetValueOrDefault(result.Word.Trim().Normalize(System.Text.NormalizationForm.FormD)) ?? [];
+            return new WordActionTarget(result.Word, ids.Length == 1 ? ids[0] : null, null,
+                result.Origin?.AssessmentId ?? root, expected);
+        };
+        Words.ShowAssessmentSource(Assess.Words.SourceOf);
         if (shown.WasRerun && Assess.Difference.HasDifference) Tab = TextsTab.WhatChanged;
         return Task.CompletedTask;
     }
@@ -173,10 +184,11 @@ public sealed partial class TextsPageModel : PageModel
                 if (texts.Cells is { } cells) Assess.Compare.SelectCells(cells);
                 break;
             case OpenWordRequest word:
-                Assess.SelectWord(word.Word);
-                ResultsInText.SelectWord(word.Word, word.WordformId);
                 AnalyzeView = AnalyzeTextsView.TextReader;
                 Tab = TextsTab.AnalyzeTexts;
+                ResultsInText.ShowReader();
+                Assess.SelectWord(word.Word);
+                ResultsInText.SelectWord(word.Word, word.WordformId);
                 break;
         }
     }

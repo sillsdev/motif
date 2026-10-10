@@ -28,4 +28,13 @@ public sealed record ProjectTextSummary(
     string Title,
     int WordCount,
     int OccurrenceCount,
-    IReadOnlyDictionary<string, int> OccurrencesByWord);
+    IReadOnlyDictionary<string, int> OccurrencesByWord)
+{
+    /// <summary>The distinct spellings with an analysed occurrence in this captured Text.</summary>
+    [System.Text.Json.Serialization.JsonRequired]
+    public int InterlinearizedWordCount { get; init; }
+
+    /// <summary>The analysed occurrences in this captured Text, counted by spelling.</summary>
+    [System.Text.Json.Serialization.JsonRequired]
+    public int InterlinearizedOccurrenceCount { get; init; }
+}

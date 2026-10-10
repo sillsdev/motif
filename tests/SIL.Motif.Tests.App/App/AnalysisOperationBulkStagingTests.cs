@@ -11,6 +11,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.App;
 
+[Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class AnalysisOperationBulkStagingTests
 {
     private const string ProjectPath = @"C:\projects\bulk.fwdata";
@@ -32,103 +33,96 @@ public sealed class AnalysisOperationBulkStagingTests
     [InlineData(BulkAction.AddParserReadings)]
     [InlineData(BulkAction.IncorrectSpellings)]
     [InlineData(BulkAction.AcceptNewSet)]
-    public async Task BulkActionStopsAtRevisionConflictAndKeepsEarlierChange(BulkAction action)
+    public void BulkActionStopsAtRevisionConflictAndKeepsEarlierChange(BulkAction action)
     {
-        var project = await OpenProjectAsync();
-        var refusal = new Refusal(RefusalCodes.ChangeRevisionConflict, FailureReason.Refused,
-            "The pending changes changed elsewhere.");
-        var latest = EmptySnapshot();
-        var putCalls = 0;
-        var acceptCalls = 0;
-        var reloads = 0;
-        var wordforms = project.InText.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens)
-            .Where(token => token.IsWord)
-            .ToDictionary(token => CanonicalId.FromGuid(token.WordformId!.Value).Value, StringComparer.Ordinal);
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            await using var project = await OpenProjectAsync();
+            var refusal = new Refusal(RefusalCodes.ChangeRevisionConflict, FailureReason.Refused,
+                "The pending changes changed elsewhere.");
+            var latest = EmptySnapshot();
+            var putCalls = 0;
+            var reloads = 0;
 
-        project.Client.PendingLoadHandler = (_, _) =>
-        {
-            reloads++;
-            return Task.FromResult(CommandOutcome<PendingChangesSnapshot>.Success(latest));
-        };
-        project.Client.PendingPutHandler = (request, _) =>
-        {
-            putCalls++;
-            if (putCalls == 2)
-                return Task.FromResult(CommandOutcome<PendingChangesSnapshot>.Refused(refusal));
-            latest = WithChange(latest, FromIntent(request.Change));
-            return Task.FromResult(CommandOutcome<PendingChangesSnapshot>.Success(latest));
-        };
-        project.Client.AcceptNewSetHandler = (request, _) =>
-        {
-            acceptCalls++;
-            if (acceptCalls == 2)
-                return Task.FromResult(CommandOutcome<PendingChangesSnapshot>.Refused(refusal));
-            var token = wordforms[request.WordformId!];
-            var change = new PendingChange($"accept/{acceptCalls}", request.WordformId!, token.Form,
-                ChangeKinds.AddCandidate, request.AssessmentId, "parser reading", [$"operation/{acceptCalls}"]);
-            latest = WithChange(latest, change);
-            return Task.FromResult(CommandOutcome<PendingChangesSnapshot>.Success(latest));
-        };
+            project.Client.PendingLoadHandler = (_, _) =>
+            {
+                reloads++;
+                return Task.FromResult(CommandOutcome<PendingChangesSnapshot>.Success(latest));
+            };
+            project.Client.PendingPutHandler = (request, _) =>
+            {
+                putCalls++;
+                if (putCalls == 2)
+                    return Task.FromResult(CommandOutcome<PendingChangesSnapshot>.Refused(refusal));
+                latest = WithChange(latest, FromIntent(request.Change));
+                return Task.FromResult(CommandOutcome<PendingChangesSnapshot>.Success(latest));
+            };
+            switch (action)
+            {
+                case BulkAction.AddParserReadings:
+                    await project.InText.AddParserReadingsCommand.ExecuteAsync(AnalysisOperationScope.ChosenTexts);
+                    break;
+                case BulkAction.IncorrectSpellings:
+                    await project.InText.MarkSpellingsIncorrectCommand.ExecuteAsync(AnalysisOperationScope.ChosenTexts);
+                    break;
+                case BulkAction.AcceptNewSet:
+                    foreach (var token in SelectionModelFixture.VisibleLines(project.InText)
+                                 .SelectMany(line => line.Tokens).Where(token => token.IsWord).Take(3))
+                        token.IsSelectedForActions = true;
+                    await project.InText.AcceptNewSetCommand.ExecuteAsync(AnalysisOperationScope.CheckedWords);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(action));
+            }
 
-        switch (action)
-        {
-            case BulkAction.AddParserReadings:
-                await project.InText.AddParserReadingsCommand.ExecuteAsync(AnalysisOperationScope.ChosenTexts);
-                break;
-            case BulkAction.IncorrectSpellings:
-                await project.InText.MarkSpellingsIncorrectCommand.ExecuteAsync(AnalysisOperationScope.ChosenTexts);
-                break;
-            case BulkAction.AcceptNewSet:
-                foreach (var token in project.InText.Texts.SelectMany(text => text.Lines)
-                             .SelectMany(line => line.Tokens).Where(token => token.IsWord).Take(3))
-                    token.IsSelectedForActions = true;
-                await project.InText.AcceptNewSetCommand.ExecuteAsync(AnalysisOperationScope.CheckedWords);
-                break;
-            default:
-                throw new ArgumentOutOfRangeException(nameof(action));
-        }
-
-        var requestCount = action == BulkAction.AcceptNewSet
-            ? project.Client.AcceptNewSetRequests.Count
-            : project.Client.PendingPutRequests.Count;
-        Assert.Equal(2, requestCount);
-        Assert.Equal(1, reloads);
-        var firstChange = Assert.Single(project.InText.Changes.Snapshot.Changes);
-        Assert.Equal(Forms[0], firstChange.Word);
-        Assert.Equal("revision/1", project.InText.Changes.Snapshot.Revision);
-        Assert.DoesNotContain(project.InText.Changes.Snapshot.Changes, change => change.Word == Forms[2]);
-        Assert.Single(project.InText.Changes.Items);
-        Assert.Equal(firstChange.ChangeId, project.InText.Changes.Items[0].ChangeId);
-        Assert.Equal(refusal.Code, project.InText.Changes.LastRefusal?.Code);
-        Assert.Equal(refusal.Message, project.InText.Changes.LastRefusal?.Message);
-        Assert.True(project.InText.Changes.HasError);
+            var requestCount = project.Client.PendingPutRequests.Count;
+            if (action == BulkAction.AcceptNewSet)
+            {
+                Assert.NotNull(project.Client.PendingPutRequests[0].Change.GroupId);
+                Assert.Equal(project.Client.PendingPutRequests[0].Change.GroupId, project.Client.PendingPutRequests[1].Change.GroupId);
+            }
+            Assert.Equal(2, requestCount);
+            Assert.Equal(1, reloads);
+            var firstChange = Assert.Single(project.InText.Changes.Snapshot.Changes);
+            Assert.Equal(Forms[0], firstChange.Word);
+            Assert.Equal("revision/1", project.InText.Changes.Snapshot.Revision);
+            Assert.DoesNotContain(project.InText.Changes.Snapshot.Changes, change => change.Word == Forms[2]);
+            Assert.Single(project.InText.Changes.Items);
+            Assert.Equal(firstChange.ChangeId, project.InText.Changes.Items[0].ChangeId);
+            Assert.Equal(refusal.Code, project.InText.Changes.LastRefusal?.Code);
+            Assert.Equal(refusal.Message, project.InText.Changes.LastRefusal?.Message);
+            Assert.True(project.InText.Changes.HasError);
+        }, TimeSpan.FromSeconds(180));
     }
 
     [Fact]
-    public async Task ProjectChangeDuringSpellingRequestStopsTheRemainingWords()
+    public void ProjectChangeDuringSpellingRequestStopsTheRemainingWords()
     {
-        var project = await OpenProjectAsync();
-        var entered = new TaskCompletionSource<PutPendingChangeRequest>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var release = new TaskCompletionSource<CommandOutcome<PendingChangesSnapshot>>(
-            TaskCreationOptions.RunContinuationsAsynchronously);
-        project.Client.PendingPutHandler = (request, _) =>
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            entered.TrySetResult(request);
-            return release.Task;
-        };
+            await using var project = await OpenProjectAsync();
+            var entered = new TaskCompletionSource<PutPendingChangeRequest>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var release = new TaskCompletionSource<CommandOutcome<PendingChangesSnapshot>>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            project.Client.PendingPutHandler = (request, _) =>
+            {
+                entered.TrySetResult(request);
+                return release.Task;
+            };
 
-        var action = project.InText.MarkSpellingsIncorrectCommand.ExecuteAsync(AnalysisOperationScope.ChosenTexts);
-        var firstRequest = await entered.Task;
-        await project.InText.Changes.OpenProjectAsync(NextProjectPath);
-        release.SetResult(CommandOutcome<PendingChangesSnapshot>.Success(
-            WithChange(EmptySnapshot(), FromIntent(firstRequest.Change))));
+            var action = project.InText.MarkSpellingsIncorrectCommand.ExecuteAsync(AnalysisOperationScope.ChosenTexts);
+            var firstRequest = await entered.Task;
+            await project.InText.Changes.OpenProjectAsync(NextProjectPath);
+            release.SetResult(CommandOutcome<PendingChangesSnapshot>.Success(
+                WithChange(EmptySnapshot(), FromIntent(firstRequest.Change))));
 
-        await action;
+            await action;
 
-        Assert.Single(project.Client.PendingPutRequests);
-        Assert.Equal(ProjectPath, project.Client.PendingPutRequests[0].FwDataPath);
-        Assert.Equal(NextProjectPath, project.InText.Changes.ProjectPath);
-        Assert.Empty(project.InText.Changes.Items);
+            Assert.Single(project.Client.PendingPutRequests);
+            Assert.Equal(ProjectPath, project.Client.PendingPutRequests[0].FwDataPath);
+            Assert.Equal(NextProjectPath, project.InText.Changes.ProjectPath);
+            Assert.Empty(project.InText.Changes.Items);
+        }, TimeSpan.FromSeconds(180));
     }
 
     private static async Task<TestProject> OpenProjectAsync()
@@ -136,7 +130,7 @@ public sealed class AnalysisOperationBulkStagingTests
         var client = new FakeCommandClient();
         client.ReadWordStateCompletesWith(new WordReadStateResponse([], true));
         var selection = new SelectionViewModel(client) { AllWordforms = true };
-        var texts = new TextWordsViewModel(client, selection);
+        var texts = new TextWordsViewModel(client, selection, client.ReaderOwner);
         var assess = new AssessViewModel(client, selection) { ProjectPath = ProjectPath };
         var changes = new ChangesViewModel(client);
         await changes.OpenProjectAsync(ProjectPath);
@@ -150,14 +144,16 @@ public sealed class AnalysisOperationBulkStagingTests
             SegmentId = SegmentId,
             ParseIsCurrent = true,
         };
-        client.ListTextWordsCompletesWith(new TextWordsResponse([], [new TextLines(TextId, "Bulk text", [line])], true));
-        var inText = new ResultsInTextViewModel(texts, assess, _ => { }, _ => { }, changes, client);
+        var source = new TextWordsResponse([], [new TextLines(TextId, "Bulk text", [line])], true);
+        var fixture = new SelectionModelFixture(client);
+        var inText = new ResultsInTextViewModel(texts, assess, _ => { }, _ => { }, changes, client, client.ReaderOwner);
         await texts.SetProjectAsync(ProjectPath);
-        client.AssessCompletesWith(Assessment(Forms));
+        client.AssessCompletesWith(SelectionModelFixture.WithOrigins(Assessment(Forms)));
         await assess.RunCommand.ExecuteAsync(null);
-        await inText.ReadStateRefresh;
+        await fixture.PublishAsync(source, assess.Result);
+        await SelectionModelFixture.RealizeAsync(inText);
         changes.AssessmentId = AssessmentId;
-        return new TestProject(inText, client);
+        return new TestProject(inText, client, texts, fixture);
     }
 
     private static AssessCommandResponse Assessment(IReadOnlyList<string> words) =>
@@ -190,7 +186,16 @@ public sealed class AnalysisOperationBulkStagingTests
         new(change.ChangeId, change.WordformId, change.Word, change.Kind, change.AssessmentId,
             change.DisplayReading, [change.ChangeId]);
 
-    private sealed record TestProject(ResultsInTextViewModel InText, FakeCommandClient Client);
+    private sealed record TestProject(ResultsInTextViewModel InText, FakeCommandClient Client,
+        TextWordsViewModel Words, SelectionModelFixture Fixture) : IAsyncDisposable
+    {
+        public async ValueTask DisposeAsync()
+        {
+            await InText.StopAsync();
+            await Words.StopAsync();
+            await Fixture.DisposeAsync();
+        }
+    }
 
     public enum BulkAction
     {

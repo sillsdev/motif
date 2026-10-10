@@ -4,13 +4,17 @@ using SIL.Motif.App.ViewModels;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host.Texts;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
 
-public sealed class ReviewChangeActionsTests
+public sealed class ReviewChangeActionsTests : IAsyncLifetime
 {
     private const string ProjectPath = @"C:\projects\review-actions.fwdata";
+    private readonly List<StoredSelectionFixture> _fixtures = [];
+    private readonly List<WorkspaceContext> _contexts = [];
 
     [Fact]
     public async Task GoToTextOnARowOpensThatRowsWord()
@@ -63,11 +67,16 @@ public sealed class ReviewChangeActionsTests
         context.OpenPage(WorkspacePage.Review);
 
         // Opening the row's card runs this; a second opening keeps the context shown rather than hiding it.
-        page.ShowContextCommand.Execute(change);
-        page.ShowContextCommand.Execute(change);
+        await page.ShowContextCommand.ExecuteAsync(change);
+        var first = change.ContextTokens;
+        await page.ShowContextCommand.ExecuteAsync(change);
 
         Assert.True(change.IsContextExpanded);
         Assert.Equal(["near", "same"], change.ContextTokens.Select(token => token.Form));
+        Assert.Same(first, change.ContextTokens);
+        Assert.All(change.ContextTokens, token => Assert.IsType<ReviewSentenceToken>(token));
+        Assert.Equal(2, context.SelectionReads.Reader!.Diagnostics.LiveTokenModels);
+        Assert.Equal(2, context.SelectionReads.Reader.Diagnostics.LivePinnedModels);
         Assert.Equal(WorkspacePage.Review, context.CurrentPage);
     }
 
@@ -85,26 +94,48 @@ public sealed class ReviewChangeActionsTests
         var change = Assert.Single(Assert.Single(page.ReviewGroups).Items);
         context.OpenPage(WorkspacePage.Review);
 
-        page.ToggleContextCommand.Execute(change);
+        await page.ToggleContextCommand.ExecuteAsync(change);
 
         Assert.True(change.IsContextExpanded);
         Assert.Equal(["near", "same"], change.ContextTokens.Select(token => token.Form));
         Assert.Equal(occurrence, change.ContextTokens[1].Occurrence);
         Assert.Equal(WorkspacePage.Review, context.CurrentPage);
+        var reader = context.SelectionReads.Reader!;
+        await page.ToggleContextCommand.ExecuteAsync(change);
+        Assert.Empty(change.ContextTokens);
+        Assert.Equal(0, reader.Diagnostics.LiveTokenModels);
+        Assert.Equal(0, reader.Diagnostics.LeasedResults - 1);
     }
 
-    private static async Task<(WorkspaceContext Context, ReviewPageModel Page)> OpenReviewAsync(
+    private async Task<(WorkspaceContext Context, ReviewPageModel Page)> OpenReviewAsync(
         IReadOnlyList<PendingChange> changes)
     {
         var (context, page, _) = await OpenReviewWithContextAsync(changes);
         return (context, page);
     }
 
-    private static async Task<(WorkspaceContext Context, ReviewPageModel Page, TextsPageModel Texts)>
+    private async Task<(WorkspaceContext Context, ReviewPageModel Page, TextsPageModel Texts)>
         OpenReviewWithContextAsync(IReadOnlyList<PendingChange> changes, Guid textId = default,
             Guid paragraphId = default, Guid otherSegmentId = default, Guid targetSegmentId = default)
     {
         var fake = new FakeCommandClient();
+        StoredSelectionFixture? fixture = null;
+        if (textId != Guid.Empty)
+        {
+            var lines = new[]
+            {
+                new TextWordsProjectedLine(1, "elsewhere same", [Word("elsewhere", 0), Word("same", 1)],
+                    paragraphId, otherSegmentId, true),
+                new TextWordsProjectedLine(2, "near same", [Word("near", 0), Word("same", 1)],
+                    paragraphId, targetSegmentId, true),
+            };
+            var wordforms = lines.SelectMany(line => line.Tokens).Select(token =>
+                new TextWordsProjectedWordform(token.WordformId!.Value, [], [], 0, false, [])).ToArray();
+            fixture = new StoredSelectionFixture(new TextWordsProjection(
+                [new TextWordsProjectedText(textId, "Sample", lines, [])], wordforms));
+            _fixtures.Add(fixture);
+            fake.SelectionReaderHandler = fixture.OpenAsync;
+        }
         fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(null, null, false));
         fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one", changes,
             changes.Select(change => new ChangeFit(change.ChangeId, true, [])).ToArray()));
@@ -112,35 +143,31 @@ public sealed class ReviewChangeActionsTests
         var context = new WorkspaceContext(selection, new AssessViewModel(fake, selection),
             new ChangesViewModel(fake), fake, new FolderPicker(), new DragSource(), new BaselineViewModel(fake));
         var page = new ReviewPageModel(context);
+        _contexts.Add(context);
         await context.OpenProjectAsync(ProjectPath);
         var texts = new TextsPageModel(context);
-        if (textId != Guid.Empty)
+        if (fixture is not null)
         {
-            var lines = new[]
-            {
-                new TextLine(1,
-                [
-                    Word("elsewhere", 0),
-                    Word("same", 1),
-                ]) { ParagraphId = paragraphId, SegmentId = otherSegmentId },
-                new TextLine(2,
-                [
-                    Word("near", 0),
-                    Word("same", 1),
-                ]) { ParagraphId = paragraphId, SegmentId = targetSegmentId },
-            };
-            texts.ResultsInText.Texts.Add(new ResultsTextViewModel(
-                new TextLines(textId, "Sample", lines), new Dictionary<string, AssessmentWordResult>()));
+            await context.SelectionReads.ReloadAsync(ProjectPath, [], []);
+            Assert.Null(context.SelectionReads.Refusal);
+            Assert.NotNull(context.SelectionReads.Reader);
         }
+        Assert.Empty(texts.ResultsInText.Texts);
 
         return (context, page, texts);
     }
 
-    private static TextToken Word(string form, int index) => new(form, form, null, "approved")
+    private static TextWordsProjectedToken Word(string form, int index) =>
+        new(form, [new WritingSystemText(form, "en")], Guid.NewGuid(), "unanalysed", null, null, null, null, index, null)
+            { TextWritingSystem = "en" };
+
+    public Task InitializeAsync() => Task.CompletedTask;
+
+    public async Task DisposeAsync()
     {
-        WordformId = Guid.NewGuid(),
-        OccurrenceIndex = index,
-    };
+        foreach (var context in _contexts) await context.StopProjectWorkAsync();
+        foreach (var fixture in _fixtures) fixture.Dispose();
+    }
 
     private static PendingChange Change(string id, string word, string kind, OccurrenceAnchor? occurrence = null) =>
         new(id, "wordform/" + id, word, kind, "assessment/one", "reading", ["operation/" + id])

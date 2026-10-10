@@ -3,6 +3,7 @@ using System.Text.Json;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Store;
+using SIL.Motif.Worker.Store;
 
 namespace SIL.Motif.Commands.Store;
 
@@ -21,8 +22,10 @@ public sealed class GrammarCheckRepository(MotifDatabase database)
             SELECT ResponseJson FROM GrammarChecks WHERE BaselineToken = $baseline;
             """;
         command.Parameters.AddWithValue("$baseline", baselineToken);
+        RepositoryReadCounters.QueryExecuted();
         var json = command.ExecuteScalar() as string;
         if (json is null) return null;
+        RepositoryReadCounters.RecordDeserialized();
         try
         {
             return JsonSerializer.Deserialize<GrammarCheckResponse>(json, MotifJson.CreateOptions())

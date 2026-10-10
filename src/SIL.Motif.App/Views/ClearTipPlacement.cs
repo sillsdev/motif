@@ -23,6 +23,10 @@ public static class ClearTipPlacement
     public static readonly AttachedProperty<bool> IsEnabledProperty =
         AvaloniaProperty.RegisterAttached<Control, bool>("IsEnabled", typeof(ClearTipPlacement));
 
+    /// <summary>The containing control whose edges the tooltip clears, when larger than its clickable owner.</summary>
+    public static readonly AttachedProperty<Control?> AnchorProperty =
+        AvaloniaProperty.RegisterAttached<Control, Control?>("Anchor", typeof(ClearTipPlacement));
+
     /// <summary>The sides tried, in order: the anchor edge or corner of the owner, and the way the tip grows from it.</summary>
     internal static IReadOnlyList<(PopupAnchor Anchor, PopupGravity Gravity)> Sides { get; } =
     [
@@ -63,6 +67,12 @@ public static class ClearTipPlacement
     /// <summary>Sets whether <paramref name="owner"/>'s tooltip opens where it covers no other control.</summary>
     public static void SetIsEnabled(Control owner, bool value) => owner.SetValue(IsEnabledProperty, value);
 
+    /// <summary>Gets the containing control used for placement, or null to use the tooltip owner.</summary>
+    public static Control? GetAnchor(Control owner) => owner.GetValue(AnchorProperty);
+
+    /// <summary>Sets the containing control whose edges the tooltip clears.</summary>
+    public static void SetAnchor(Control owner, Control? anchor) => owner.SetValue(AnchorProperty, anchor);
+
     /// <summary>
     /// The first of <see cref="Sides"/> whose tip, of <paramref name="tip"/> size beside <paramref name="owner"/>,
     /// lies inside <paramref name="window"/> and meets the fewest of <paramref name="obstacles"/>, ideally none; the
@@ -97,7 +107,9 @@ public static class ClearTipPlacement
             .Select(other => Shown(other, window))
             .Where(shown => shown.Width > 0 && shown.Height > 0)
             .ToList();
-        var (anchor, gravity) = Choose(AreaOf(owner, window), placement.PopupSize, new Rect(window.Bounds.Size), obstacles);
+        var target = GetAnchor(owner) ?? owner;
+        if (target != owner) placement.AnchorRectangle = AreaOf(target, window);
+        var (anchor, gravity) = Choose(AreaOf(target, window), placement.PopupSize, new Rect(window.Bounds.Size), obstacles);
         placement.Anchor = anchor;
         placement.Gravity = gravity;
         // The tooltip's own offset would push the tip back onto what the chosen side was clear of.

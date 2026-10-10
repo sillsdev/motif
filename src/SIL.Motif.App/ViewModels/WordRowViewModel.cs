@@ -62,6 +62,8 @@ public sealed partial class WordRowViewModel : ObservableObject
     private readonly WordPresentationKey _presentationKey = new($"warning-word:{Guid.NewGuid():N}");
     private WordInteractionState _presentationState;
 
+    internal WordRowRoutes? Routes => _routes;
+
     public WordRowViewModel(WordRow row, WordRowRoutes? routes = null) : this(row, routes, notParsedYet: false)
     {
     }

@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
 using Avalonia.Media;
+using Avalonia.VisualTree;
 using SIL.Motif.App.Controls.WordPresentation;
 
 namespace SIL.Motif.App.Controls;
@@ -25,6 +26,7 @@ internal readonly record struct RunningTextLineMetrics(double Word, double Field
 public sealed class RunningTextPanel : Panel
 {
     private static readonly ConditionalWeakTable<Control, MinHeightState> OriginalMinHeights = new();
+    private static readonly ConditionalWeakTable<ItemsControl, MetricsState> ListMetrics = new();
     private FlowDirection _textDirection;
 
     /// <summary>The direction used to place the gutter and word strips.</summary>
@@ -46,11 +48,13 @@ public sealed class RunningTextPanel : Panel
         parts.Gutter.Measure(availableSize);
         var contentWidth = AvailableContentWidth(availableSize.Width, parts.Gutter.DesiredSize.Width);
         parts.Strips.Measure(new Size(contentWidth, availableSize.Height));
-        SetGutterRows(parts.Gutter, StripMetrics(parts.Strips));
+        var (rows, reserved) = RowMetrics(parts.Strips);
+        SetGutterRows(parts.Gutter, rows);
         parts.Gutter.Measure(availableSize);
         var desiredWidth = parts.Gutter.DesiredSize.Width + parts.Strips.DesiredSize.Width;
         var width = double.IsInfinity(availableSize.Width) ? desiredWidth : availableSize.Width;
-        return new Size(width, Math.Max(parts.Gutter.DesiredSize.Height, parts.Strips.DesiredSize.Height));
+        var height = Math.Max(reserved, Math.Max(parts.Gutter.DesiredSize.Height, parts.Strips.DesiredSize.Height));
+        return new Size(width, height);
     }
 
     protected override Size ArrangeOverride(Size finalSize)
@@ -67,6 +71,18 @@ public sealed class RunningTextPanel : Panel
 
     private static double AvailableContentWidth(double availableWidth, double gutterWidth) =>
         double.IsInfinity(availableWidth) ? double.PositiveInfinity : Math.Max(0, availableWidth - gutterWidth);
+
+    private (RunningTextLineMetrics Rows, double Height) RowMetrics(ItemsControl strips)
+    {
+        var metrics = StripMetrics(strips);
+        var height = strips.GetRealizedContainers().Select(container => container.DesiredSize.Height).DefaultIfEmpty(0).Max();
+        if (this.FindAncestorOfType<ItemsControl>() is not { } lines) return (metrics, 0);
+        var known = ListMetrics.GetOrCreateValue(lines);
+        if (metrics != default) (known.Rows, known.Height) = (metrics, height);
+        // A line whose strip page is unread keeps one read strip's height, so virtualized lines do not jump.
+        else if (!strips.GetRealizedContainers().Any()) return (known.Rows, known.Height);
+        return (metrics, 0);
+    }
 
     private static RunningTextLineMetrics StripMetrics(ItemsControl strips)
     {
@@ -100,4 +116,11 @@ public sealed class RunningTextPanel : Panel
     }
 
     private sealed record MinHeightState(double Value);
+
+    private sealed class MetricsState
+    {
+        public RunningTextLineMetrics Rows { get; set; }
+
+        public double Height { get; set; }
+    }
 }

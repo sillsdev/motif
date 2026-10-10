@@ -272,27 +272,33 @@ public sealed class WalkthroughWindow : IDisposable
 
     internal void ScrollIntoView(string automationId)
     {
-        if (FindOptionalByAutomationId(automationId) is null)
-        {
-            foreach (var panel in Window.GetLogicalDescendants().OfType<ResultsInTextPanel>()
-                         .Where(panel => panel.IsEffectivelyVisible))
-            {
-                var lines = panel.FindControl<ItemsControl>("TextLineItems")!;
-                for (var index = 0; index < lines.ItemCount; index++)
-                {
-                    lines.ScrollIntoView(index);
-                    Window.UpdateLayout();
-                    Pump();
-                    RealizeWrappingItem(automationId);
-                    if (FindOptionalByAutomationId(automationId) is not null) break;
-                }
-                if (FindOptionalByAutomationId(automationId) is not null) break;
-            }
-        }
+        // A reader line's tokens arrive with its page read, which can outlast one pump under load, so scan again.
+        WaitUntil(() => FindOptionalByAutomationId(automationId) is not null || ScanReaderLinesFor(automationId),
+            TimeSpan.FromSeconds(15), $"'{automationId}' never appeared in the window",
+            () => DescribeAutomationId(automationId));
         var target = FindByAutomationId(automationId);
         target.BringIntoView();
         Pump();
         Window.UpdateLayout();
+    }
+
+    private bool ScanReaderLinesFor(string automationId)
+    {
+        foreach (var panel in Window.GetLogicalDescendants().OfType<ResultsInTextPanel>()
+                     .Where(panel => panel.IsEffectivelyVisible))
+        {
+            var lines = panel.FindControl<ItemsControl>("TextLineItems")!;
+            for (var index = 0; index < lines.ItemCount; index++)
+            {
+                lines.ScrollIntoView(index);
+                Window.UpdateLayout();
+                Pump();
+                RealizeWrappingItem(automationId);
+                if (FindOptionalByAutomationId(automationId) is not null) return true;
+            }
+        }
+        RealizeWrappingItem(automationId);
+        return FindOptionalByAutomationId(automationId) is not null;
     }
 
     private void RealizeWrappingItem(string automationId)
@@ -300,7 +306,9 @@ public sealed class WalkthroughWindow : IDisposable
         foreach (var items in Window.GetVisualDescendants().OfType<ProgressiveItemsControl>()
                      .Where(items => items.IsEffectivelyVisible).ToArray())
         {
-            foreach (var item in items.FullItemsSource?.Cast<object>() ?? [])
+            var source = items.FullItemsSource is System.Collections.IEnumerable indexed
+                ? indexed.Cast<object>() : items.Items.OfType<ReviewSentenceToken>();
+            foreach (var item in source)
             {
                 if (FindOptionalByAutomationId(automationId) is not null) return;
                 items.ShowItem(item);

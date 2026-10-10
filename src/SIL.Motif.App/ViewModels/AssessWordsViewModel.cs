@@ -24,14 +24,30 @@ public enum ResultsWordFilter
 /// </summary>
 public sealed partial class AssessWordsViewModel : ObservableObject
 {
-    private readonly List<AssessWordRowViewModel> _all = [];
+    private readonly List<AssessmentRowFacts> _all = [];
+    private readonly Dictionary<string, AssessmentRowFacts> _byWord = new(StringComparer.Ordinal);
+    private readonly DisplayProjectionCache<AssessmentRowFacts, AssessWordRowViewModel> _rows;
+    private Func<string, bool?>? _readState;
+    private long _generation;
 
-    public AssessWordsViewModel() => SetFilterCommand = new RelayCommand<ResultsWordFilter>(filter => SelectedFilter = filter);
+    public AssessWordsViewModel()
+    {
+        _rows = new DisplayProjectionCache<AssessmentRowFacts, AssessWordRowViewModel>(facts =>
+        {
+            var row = new AssessWordRowViewModel(facts, Routes);
+            row.WordRow.IsUnread = _readState?.Invoke(row.Word);
+            return row;
+        }, _ => { }, row => ReferenceEquals(row, SelectedRow));
+        SetFilterCommand = new RelayCommand<ResultsWordFilter>(filter => SelectedFilter = filter);
+    }
+
+    internal int MaterializedRowCount => _rows.Count;
+    internal IReadOnlyList<AssessmentWordResult> Sources => _all.Select(facts => facts.Source).ToArray();
 
     /// <summary>Where every word row's next steps lead; the page that hosts the rows fills them in.</summary>
     public WordRowRoutes Routes { get; } = new();
 
-    public ObservableCollection<AssessWordRowViewModel> Rows { get; } = [];
+    public IReadOnlyList<AssessWordRowViewModel> Rows { get; private set; } = [];
 
     /// <summary>Chooses one of the six filter chips, replacing whichever was chosen before.</summary>
     public IRelayCommand<ResultsWordFilter> SetFilterCommand { get; }
@@ -69,7 +85,8 @@ public sealed partial class AssessWordsViewModel : ObservableObject
     public int AllCount => _all.Count;
 
     /// <summary>The row for <paramref name="word"/> exactly as spelled, or <see langword="null"/> when this Assessment did not try it.</summary>
-    public AssessWordRowViewModel? Find(string word) => _all.FirstOrDefault(row => row.Word == word);
+    public AssessWordRowViewModel? Find(string word) => _byWord.TryGetValue(word, out var facts) ? _rows.Get(facts) : null;
+    internal AssessmentWordResult? SourceOf(string word) => _byWord.GetValueOrDefault(word)?.Source;
 
     /// <summary>
     /// <paramref name="word"/> as another page lists it: its row and card from this parse, or a Not parsed row when
@@ -107,8 +124,15 @@ public sealed partial class AssessWordsViewModel : ObservableObject
     /// </summary>
     public IReadOnlyList<OutcomeSegment> Outcomes { get; private set; } = [];
 
-    /// <summary>Every word of the Assessment, whatever the filters, for views that count the whole run.</summary>
-    public IReadOnlyList<AssessWordRowViewModel> AllRows => _all;
+    /// <summary>Indexed display rows for the Assessment; counts and identity queries use its compact facts.</summary>
+    public IReadOnlyList<AssessWordRowViewModel> AllRows => Project(_all);
+
+    private IReadOnlyList<AssessWordRowViewModel> Project(IReadOnlyList<AssessmentRowFacts> facts)
+    {
+        var generation = _generation;
+        return new LazyProjectionList<AssessmentRowFacts, AssessWordRowViewModel>(facts, _rows.Get,
+            row => row.Facts, () => generation == _generation);
+    }
 
     /// <summary>
     /// The same parts as <see cref="Outcomes"/> in one line, counted in words rather than searches, such as
@@ -136,9 +160,16 @@ public sealed partial class AssessWordsViewModel : ObservableObject
     /// </summary>
     public void Load(IReadOnlyList<AssessmentWordResult>? words, Func<string, int?>? occurrenceCounts = null)
     {
+        ++_generation;
+        SelectedRow = null;
+        _rows.Clear();
+        _readState = null;
         _all.Clear();
+        _byWord.Clear();
         if (words is not null)
-            _all.AddRange(words.Select(word => new AssessWordRowViewModel(word, occurrenceCounts?.Invoke(word.Word), Routes)));
+            _all.AddRange(words.Select(word => new AssessmentRowFacts(word,
+                occurrenceCounts?.Invoke(word.Word) ?? word.OccurrenceCount)));
+        foreach (var facts in _all) _byWord.TryAdd(facts.Word, facts);
         TotalCount = _all.Count;
         Outcomes = CountOutcomes();
         OnPropertyChanged(nameof(AllRows));
@@ -160,7 +191,21 @@ public sealed partial class AssessWordsViewModel : ObservableObject
     public void ApplyReadState(Func<string, bool?> isUnread)
     {
         ArgumentNullException.ThrowIfNull(isUnread);
-        foreach (var row in _all) row.WordRow.IsUnread = isUnread(row.Word);
+        _readState = isUnread;
+        foreach (var row in _rows.Models) row.WordRow.IsUnread = isUnread(row.Word);
+    }
+
+    internal void UpdateOccurrences(Func<string, int?> occurrenceCounts)
+    {
+        var selected = SelectedRow?.Word;
+        ++_generation;
+        _rows.Clear();
+        for (var index = 0; index < _all.Count; index++)
+            _all[index] = _all[index] with { OccurrenceCount = occurrenceCounts(_all[index].Word) };
+        _byWord.Clear();
+        foreach (var facts in _all) _byWord.TryAdd(facts.Word, facts);
+        SelectedRow = selected is not null ? Find(selected) : null;
+        Refresh();
     }
 
     partial void OnWordFilterChanged(string value) => Refresh();
@@ -177,14 +222,14 @@ public sealed partial class AssessWordsViewModel : ObservableObject
 
     private void Refresh()
     {
-        Rows.Clear();
-        var matches = _all.Where(Matches);
-        foreach (var row in matches) Rows.Add(row);
-        ShownCount = Rows.Count;
-        if (SelectedRow is null || !Rows.Contains(SelectedRow)) SelectedRow = Rows.FirstOrDefault();
+        var matches = _all.Where(Matches).ToArray();
+        Rows = Project(matches);
+        OnPropertyChanged(nameof(Rows));
+        ShownCount = matches.Length;
+        if (SelectedRow is null || !matches.Contains(SelectedRow.Facts)) SelectedRow = Rows.FirstOrDefault();
     }
 
-    private bool Matches(AssessWordRowViewModel row) =>
+    private bool Matches(AssessmentRowFacts row) =>
         (_onlyWords is null || _onlyWords.Contains(row.Word)) &&
         (string.IsNullOrWhiteSpace(WordFilter) ||
             row.Word.Contains(WordFilter.Trim(), StringComparison.CurrentCultureIgnoreCase)) &&
@@ -205,17 +250,24 @@ public sealed partial class AssessWordsViewModel : ObservableObject
 /// </summary>
 public sealed class AssessWordRowViewModel
 {
+    internal AssessmentRowFacts Facts { get; }
+
     public AssessWordRowViewModel(AssessmentWordResult word, int? occurrenceCount = null, WordRowRoutes? routes = null)
+        : this(new AssessmentRowFacts(word, occurrenceCount ?? word.OccurrenceCount), routes) { }
+
+    internal AssessWordRowViewModel(AssessmentRowFacts facts, WordRowRoutes? routes = null)
     {
+        Facts = facts;
+        var word = facts.Source;
         ArgumentNullException.ThrowIfNull(word);
         Source = word;
         Marking = AnalysisMarkingState.Create(word);
-        Comparison = CompareSemantics.Compare(word);
+        Comparison = facts.Comparison;
         Word = word.Word;
         Outcome = word.Outcome;
         Morphology = word.Morphology;
         FixFirst = word.FixFirst;
-        OccurrenceCount = occurrenceCount ?? word.OccurrenceCount;
+        OccurrenceCount = facts.OccurrenceCount;
         Result = Comparison.MeaningCode == "refused" ? ParserRefusals.Title : word.Outcome switch
         {
             "analysed" => "Parsed",

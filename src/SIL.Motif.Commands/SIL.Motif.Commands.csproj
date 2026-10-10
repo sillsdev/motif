@@ -6,6 +6,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="SIL.Motif.Tests.Commands" />
+    <InternalsVisibleTo Include="SIL.Motif.Tests.App" />
     <ProjectReference Include="..\SIL.Motif.Contract\SIL.Motif.Contract.csproj" />
     <ProjectReference Include="..\SIL.Motif.Host\SIL.Motif.Host.csproj" />
     <ProjectReference Include="..\SIL.Motif.Model\SIL.Motif.Model.csproj" />

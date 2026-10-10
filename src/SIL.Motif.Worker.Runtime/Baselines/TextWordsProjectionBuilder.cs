@@ -154,7 +154,35 @@ public static class TextWordsProjectionBuilder
             ParserReadingReader.EntryTargetFor(cache, morphs[index])) { Entry = morph.Entry, FormWritingSystem = morph.FormWritingSystem,
                 GlossWritingSystem = morph.GlossWritingSystem, CategoryWritingSystem = morph.CategoryWritingSystem,
                 InflectionTypeWritingSystem = morph.InflectionTypeWritingSystem, EntryWritingSystem = morph.EntryWritingSystem }).ToArray();
-        var identity = new ApprovedMorphology(analysis.MorphBundlesOS.Select(bundle => new ApprovedMorph(
+        var identity = ReadIdentity(cache, wordform, analysis);
+        return new TextWordsProjectedAnalysis(AnalysisContent.ComputeDigest(bundles), projectedMorphs)
+        {
+            AnalysisId = analysis.Guid,
+            Opinion = opinion,
+            Identity = identity,
+        };
+    }
+
+    /// <summary>Reads matching identities and opinions without constructing display morphology.</summary>
+    public static BaselineTextReadWordform ReadWordformFacts(LcmCache cache, IWfiWordform wordform)
+    {
+        var approved = wordform.HumanApprovedAnalyses.ToHashSet();
+        var disapproved = wordform.HumanDisapprovedParses.ToHashSet();
+        var analyses = wordform.AnalysesOC.Select(analysis => new BaselineTextReadAnalysis(
+            AnalysisContent.ComputeDigest(analysis.MorphBundlesOS.Select(bundle => new MorphBundleContent(
+                bundle.MorphRA?.Guid.ToString("D"), bundle.MsaRA?.Guid.ToString("D"),
+                bundle.InflTypeRA?.Guid.ToString("D"))).ToList()),
+            analysis.Guid, OpinionOf(approved, disapproved, analysis), ReadIdentity(cache, wordform, analysis))).ToArray();
+        return new BaselineTextReadWordform(wordform.Guid,
+            analyses.Count(analysis => analysis.Opinion == "approved"),
+            analyses.Count(analysis => analysis.Opinion == "unknown"),
+            analyses.Count(analysis => analysis.Opinion == "disapproved"),
+            wordform.SpellingStatus == IncorrectSpellingStatus, analyses);
+    }
+
+    private static ApprovedMorphology ReadIdentity(LcmCache cache, IWfiWordform wordform, IWfiAnalysis analysis)
+    {
+        return new ApprovedMorphology(analysis.MorphBundlesOS.Select(bundle => new ApprovedMorph(
             bundle.MorphRA?.Guid.ToString("D"), bundle.MsaRA?.Guid.ToString("D"), bundle.InflTypeRA?.Guid.ToString("D"),
             bundle.Form.AvailableWritingSystemIds.Order().Select(ws => bundle.Form.get_String(ws)?.Text)
                 .OfType<string>().Where(text => text.Length > 0).Distinct(StringComparer.Ordinal)
@@ -163,12 +191,6 @@ public static class TextWordsProjectionBuilder
             SourceAnalysisId = CanonicalId.FromGuid(analysis.Guid).Value,
             SourceWordformGuid = CanonicalId.FromGuid(wordform.Guid).Value,
             WritingSystem = cache.WritingSystemFactory.GetStrFromWs(cache.DefaultVernWs),
-        };
-        return new TextWordsProjectedAnalysis(AnalysisContent.ComputeDigest(bundles), projectedMorphs)
-        {
-            AnalysisId = analysis.Guid,
-            Opinion = opinion,
-            Identity = identity,
         };
     }
 

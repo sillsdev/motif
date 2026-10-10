@@ -177,6 +177,8 @@ public sealed class AssessmentWalkthroughTests(PristineProjectFixture pristine)
             walkthrough.Window.UpdateLayout();
             Dispatcher.UIThread.RunJobs();
             walkthrough.Window.UpdateLayout();
+            walkthrough.ShowPage(WorkspacePage.Texts);
+            walkthrough.ShowTextsTab(TextsTab.Matrix);
             var comparePanel = Assert.Single(walkthrough.Window.GetLogicalDescendants().OfType<ComparePanel>());
             Assert.Same(walkthrough.Workspace.Assess.Compare, comparePanel.Compare);
             Assert.Equal(result.Words.Select(word => word.Word).Order(StringComparer.Ordinal),

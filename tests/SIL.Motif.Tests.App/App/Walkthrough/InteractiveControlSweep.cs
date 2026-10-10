@@ -211,6 +211,7 @@ internal static class InteractiveControlSweep
         WordRow or WordStripToken => InteractiveControlFamily.Occurrence,
         ScrollViewer { Classes: var classes } when classes.Contains("refusalViewport") =>
             InteractiveControlFamily.ScrollViewport,
+        ScrollViewer { Name: "TextsParseStatusScroll" } => InteractiveControlFamily.ScrollViewport,
         TimingKindBar => InteractiveControlFamily.Summary,
         OutcomeBar => InteractiveControlFamily.Summary,
         ProgressBar => InteractiveControlFamily.Progress,
@@ -242,7 +243,9 @@ internal static class InteractiveControlSweep
     {
         var name = AutomationProperties.GetName(control);
         var id = AutomationProperties.GetAutomationId(control);
-        var source = family is null ? "unmapped source" : SourceFor(family.Value);
+        var source = family is null ? "unmapped source" :
+            control is ScrollViewer { Name: "TextsParseStatusScroll" }
+                ? "src/SIL.Motif.App/Views/Pages/TextsPage.axaml" : SourceFor(family.Value);
         return $"page/root={root}, source={source}, family={family?.ToString() ?? "unmapped"}, " +
             $"type={control.GetType().Name}, name='{name ?? control.Name}', id='{id}'";
     }

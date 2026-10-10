@@ -155,6 +155,9 @@ public sealed class TextWordsReadNoProjectFileTests : IDisposable
 
         Assert.True(before.Succeeded, before.Refusal?.Message);
         Assert.Equal([firstText.TextId, secondText.TextId], before.Value!.Texts.Select(text => text.TextId));
+        Assert.Equal(4, before.Value.OccurrenceCount);
+        Assert.Equal(before.Value.OccurrenceCount,
+            before.Value.Words.Sum(word => word.Occurrences.Count));
         AssertSameResponseWithoutFile(refreshed.Value.FwDataPath, request, before.Value);
     }
 

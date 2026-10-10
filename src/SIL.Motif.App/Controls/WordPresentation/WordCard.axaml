@@ -61,18 +61,18 @@
           <views:ParsePrompt DataContext="{Binding Context}" />
         </Border>
         <views:ProgressiveItemsControl x:Name="WordCardPendingContextTokensItems"
-                                       FullItemsSource="{Binding ContextTokens}"
+                                       FullItemsSource="{Binding ContextSource}"
                                        AutomationProperties.Name="Sentence context"
-                                       IsVisible="{Binding ContextTokens.Count}">
+                                       IsVisible="{Binding ContextSource, Converter={x:Static ObjectConverters.IsNotNull}}">
           <ItemsControl.ItemsPanel>
             <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
           </ItemsControl.ItemsPanel>
           <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="word:WordCardSentenceToken">
+            <DataTemplate x:DataType="vm:ReviewSentenceToken">
               <Border Classes="reviewSentenceToken">
-                <views:CopyableTextBlock Text="{Binding Form}"
-                                         controls:WritingSystemText.Id="{Binding WritingSystem}"
-                                         controls:WritingSystemText.StyleName="Normal" />
+                <views:CopyableTextBlock Text="{Binding Text}"
+                                         controls:WritingSystemText.Id="{Binding TextWritingSystem}"
+                                         controls:WritingSystemText.StyleName="{Binding SentenceStyle}" />
               </Border>
             </DataTemplate>
           </ItemsControl.ItemTemplate>
@@ -221,11 +221,11 @@
                     <WrapPanel>
                       <Button Classes="wordPresentationCardAction primary"
                               Content="{Binding Marking.PrimaryAction.Label, StringFormat='✓ {0}'}"
-                              Command="{Binding Actions.StagePrimaryMarkingActionForTokenCommand}"
-                              CommandParameter="{Binding}" IsVisible="{Binding HasPrimaryAction}"
+                              Command="{Binding StageMarkingChoiceForTokenCommand}"
+                              CommandParameter="{Binding BoundPrimaryAction}" IsVisible="{Binding HasPrimaryAction}"
                               AutomationProperties.Name="{Binding Marking.PrimaryAction.Label, StringFormat='Choose {0} for this word'}" />
                       <views:WordDispositionButtons />
-                      <Button Classes="wordPresentationCardAction" Content="Try a Word" Command="{Binding TryWordForTokenCommand}" />
+                      <Button Classes="wordPresentationCardAction" Content="Try a Word" Command="{Binding TryWordForTokenCommand}" CommandParameter="{Binding Form}" />
                       <Button Classes="wordPresentationCardAction" Content="Mark as unread"
                               Command="{Binding Actions.MarkTokenUnreadCommand}" CommandParameter="{Binding}"
                               AutomationProperties.Name="Mark this occurrence as unread"
@@ -306,7 +306,7 @@
       </StackPanel>
     </DataTemplate>
     <DataTemplate x:Key="WordCardOccurrencesTemplate" x:DataType="word:WordCardOccurrences">
-      <views:ProgressiveItemsControl x:Name="WordCardOccurrencesItems" FullItemsSource="{Binding Occurrences}">
+      <views:ProgressiveItemsControl x:Name="WordCardOccurrencesItems" FullItemsSource="{Binding DisplaySource}">
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:WordOccurrenceRowViewModel">
             <StackPanel Classes="wordPresentationOccurrence" Spacing="{DynamicResource Intent.Space.Minimal}">

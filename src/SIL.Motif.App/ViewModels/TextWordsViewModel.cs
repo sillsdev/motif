@@ -5,7 +5,10 @@ using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.App.Services;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Commands.SelectionReading;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Texts;
 using SIL.Motif.Host.PanGloss;
@@ -81,38 +84,28 @@ public static class WordProjectStatuses
 }
 
 /// <summary>
-/// Reads words from the selected Texts for the Words table: one row per form and wordform identity, its
-/// occurrences, and what the project holds for it. Reloads whenever <see cref="SelectionViewModel.ChosenTextIds"/>
-/// changes. A newer selection cancels the read it replaces, and only the current generation's answer is ever
-/// applied, so a rapid run of checkbox clicks shows the last one's words. A read that fails clears the words it
-/// would have replaced and sets <see cref="Refusal"/> instead of throwing.
+/// Displays the owned Selection's compact word summary, projecting only bounded rows and their requested detail.
+/// The workspace replaces the reader when the chosen Texts or evidence change; pages release their models first.
 /// </summary>
 public sealed partial class TextWordsViewModel : ObservableObject
 {
-    private readonly ICommandClient _commandClient;
     private readonly SelectionViewModel _selection;
-    private readonly List<TextWord> _all = [];
-    private Dictionary<TextWord, TextWordRowViewModel> _rowCache = new(ReferenceEqualityComparer.Instance);
+    private readonly WorkspaceSelection _selectionReads;
     private IReadOnlyList<TextWordRowViewModel> _projectRows = [];
-    private IReadOnlyList<TextWord> _shownWords = [];
-    private readonly object _loadGate = new();
-    private readonly HashSet<Task> _activeLoads = [];
     private string? _projectPath;
-    private int _generation;
     private bool _acceptLoads = true;
-    private CancellationTokenSource? _reloadCancellation;
-    private Func<AssessmentWordResult, ResultsTokenViewModel?>? _wordCardTokenFactory;
     private event Action<WeakReference<object>>? RowCreatedForDiagnostics;
 
-    public TextWordsViewModel(ICommandClient commandClient, SelectionViewModel selection)
+    public TextWordsViewModel(ICommandClient commandClient, SelectionViewModel selection,
+        WorkspaceSelection selectionReads)
     {
         ArgumentNullException.ThrowIfNull(commandClient);
         ArgumentNullException.ThrowIfNull(selection);
-        _commandClient = commandClient;
         _selection = selection;
+        _selectionReads = selectionReads ?? throw new ArgumentNullException(nameof(selectionReads));
+        _selectionReads.PropertyChanged += OnReaderPropertyChanged;
+        _selectionReads.Replacing += ReleaseSummaryRows;
         _selection.PropertyChanged += OnSelectionPropertyChanged;
-        ReloadCommand = new AsyncRelayCommand(ReloadAsync,
-            AsyncRelayCommandOptions.AllowConcurrentExecutions | AsyncRelayCommandOptions.FlowExceptionsToTaskScheduler);
         HandOffCheckedWordsCommand = new RelayCommand(HandOffCheckedWords, CanHandOffCheckedWords);
         OpenWordCommand = new RelayCommand<string>(word =>
         {
@@ -128,13 +121,18 @@ public sealed partial class TextWordsViewModel : ObservableObject
             StatusFilter = null;
             SeveralOnly = true;
         });
+        OnReaderPropertyChanged(_selectionReads, new PropertyChangedEventArgs(nameof(WorkspaceSelection.Summary)));
+        IsLoading = _selectionReads.IsLoading;
+        Refusal = _selectionReads.Refusal;
     }
 
     public IReadOnlyList<TextWordRowViewModel> Rows { get; private set; } = [];
 
+    public IReadOnlyList<object> DisplayRows { get; private set; } = [];
+
     public IReadOnlyList<TextWordRowViewModel> ProjectWords => _projectRows;
 
-    internal int MaterializedRowCount => _rowCache.Count;
+    internal int MaterializedRowCount => _summaryRows.Count;
 
     internal IDisposable ObserveRowCreation(Action<WeakReference<object>> observer)
     {
@@ -144,32 +142,15 @@ public sealed partial class TextWordsViewModel : ObservableObject
     }
 
     internal int? OccurrenceCountOf(string form) =>
-        _shownWords.FirstOrDefault(word => word.Form == form)?.Occurrences.Count;
+        _selectionReads.Summary is { } summary && summary.OccurrencesByForm.TryGetValue(Normalize(form), out var count)
+            ? count : null;
 
-    internal Guid? WordformIdOf(string form) =>
-        _all.FirstOrDefault(word => word.Form == form)?.WordformGuid is { } id ? Guid.Parse(id) : null;
-
-    internal TextWordRowViewModel ProjectRow(TextWord word) => GetRow(word, _rowCache,
-        Path.GetFileNameWithoutExtension(_projectPath));
-
-    private IReadOnlyList<TextWordRowViewModel> ProjectRows(IReadOnlyList<TextWord> source)
+    internal Guid? WordformIdOf(string form)
     {
-        var cache = _rowCache;
-        var projectName = Path.GetFileNameWithoutExtension(_projectPath);
-        return new LazyProjectionList<TextWord, TextWordRowViewModel>(source,
-            word => GetRow(word, cache, projectName), row => row.Source);
-    }
-
-    private TextWordRowViewModel GetRow(TextWord word, Dictionary<TextWord, TextWordRowViewModel> cache,
-        string? projectName)
-    {
-        if (cache.TryGetValue(word, out var row)) return row;
-        row = new TextWordRowViewModel(word, WordRowRoutes, projectName, WordCardTokenFactory);
-        RowCreatedForDiagnostics?.Invoke(new WeakReference<object>(row));
-        row.ShowAssessment(_assessed?.Invoke(row.Form));
-        cache.Add(word, row);
-        if (ReferenceEquals(cache, _rowCache)) row.PropertyChanged += OnWordRowPropertyChanged;
-        return row;
+        var normalized = Normalize(form);
+        var ids = (_selectionReads.Summary?.Words ?? []).Where(word => word.Key.Form == normalized)
+            .SelectMany(word => word.Actions.CandidateWordformIds).Distinct().Take(2).ToArray();
+        return ids.Length == 1 ? ids[0] : null;
     }
 
     private sealed class RowCreationObservation(TextWordsViewModel owner, Action<WeakReference<object>> observer) : IDisposable
@@ -186,24 +167,8 @@ public sealed partial class TextWordsViewModel : ObservableObject
     /// <summary>Whether the current Baseline contains any Texts to open from a word row.</summary>
     public bool HasAvailableTexts => _selection.HasTexts;
 
-    /// <summary>
-    /// Reloads the words for the Texts checked now. A Text selection change runs it, and each run cancels the
-    /// read it supersedes. Its execution task never faults: a failed read becomes <see cref="Refusal"/>.
-    /// </summary>
-    public IAsyncRelayCommand ReloadCommand { get; }
-
     /// <summary>Opens a word's detail in the Analyze text reader.</summary>
     public IRelayCommand<string> OpenWordCommand { get; }
-
-    public Func<AssessmentWordResult, ResultsTokenViewModel?>? WordCardTokenFactory
-    {
-        get => _wordCardTokenFactory;
-        set
-        {
-            _wordCardTokenFactory = value;
-            foreach (var row in _rowCache.Values.ToArray()) row.WordCardTokenFactory = value;
-        }
-    }
 
     public IRelayCommand HandOffCheckedWordsCommand { get; }
 
@@ -222,7 +187,7 @@ public sealed partial class TextWordsViewModel : ObservableObject
         }
     }
 
-    public int CheckedWordCount => _rowCache.Values.Count(row => row.IsChecked);
+    public int CheckedWordCount => _checkedKeys.Count;
 
     public string HandOffCheckedWordsLabel => CheckedWordCount switch
     {
@@ -275,14 +240,10 @@ public sealed partial class TextWordsViewModel : ObservableObject
     [ObservableProperty]
     private int _occurrenceCount;
 
-    /// <summary>The last answer read for the checked Texts, for other views of the same words.</summary>
-    [ObservableProperty]
-    private TextWordsResponse? _response;
-
     [ObservableProperty]
     private int _approvedCount;
 
-    public int WordCount => _all.Select(row => row.Form).Distinct(StringComparer.Ordinal).Count();
+    public int WordCount => _selectionReads.Summary?.DistinctFormCount ?? 0;
 
     public string SummaryText => IsLoading ? "Reading words in selected texts…"
         : WordCount == 0
@@ -291,183 +252,85 @@ public sealed partial class TextWordsViewModel : ObservableObject
             : "No words to test yet"
         : $"{WordCount:N0} word{(WordCount == 1 ? string.Empty : "s")} · {OccurrenceCount:N0} place{(OccurrenceCount == 1 ? string.Empty : "s")}";
 
-    public int AllCount => _all.Count;
-    public int ApprovedFilterCount => _all.Count(row => WordProjectStatuses.Of(row) == WordProjectStatus.Approved);
-    public int CandidateFilterCount => _all.Count(row => WordProjectStatuses.Of(row) == WordProjectStatus.Candidate);
-    public int RejectedFilterCount => _all.Count(row => WordProjectStatuses.Of(row) == WordProjectStatus.Rejected);
-    public int NotPresentFilterCount => _all.Count(row => WordProjectStatuses.Of(row) == WordProjectStatus.NotPresent);
-    public int IncorrectSpellingFilterCount => _all.Count(row => WordProjectStatuses.Of(row) == WordProjectStatus.IncorrectSpelling);
-    public int SeveralFilterCount => _all.Count(TextWordRowViewModel.HasSeveral);
+    public int AllCount => _selectionReads.Summary?.WordRowCount ?? 0;
+    public int ApprovedFilterCount => CountStanding(ProjectStanding.Approved);
+    public int CandidateFilterCount => CountStanding(ProjectStanding.Candidate);
+    public int RejectedFilterCount => CountStanding(ProjectStanding.Rejected);
+    public int NotPresentFilterCount => CountStanding(ProjectStanding.NotPresent);
+    public int IncorrectSpellingFilterCount => CountStanding(ProjectStanding.IncorrectSpelling);
+    public int SeveralFilterCount => _selectionReads.Summary?.SeveralAnalysisRowCount ?? 0;
+
+    private int CountStanding(string standing) =>
+        _selectionReads.Summary?.WordRowsByProjectStanding.GetValueOrDefault(standing) ?? 0;
+
+    private static string Normalize(string form) => form.Trim().Normalize(System.Text.NormalizationForm.FormD);
+
+    private void OnReaderPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(WorkspaceSelection.IsLoading)) IsLoading = _selectionReads.IsLoading;
+        if (e.PropertyName == nameof(WorkspaceSelection.Refusal)) Refusal = _selectionReads.Refusal;
+        if (e.PropertyName != nameof(WorkspaceSelection.Summary)) return;
+        _readState = null;
+        var summary = _selectionReads.Summary;
+        OccurrenceCount = summary?.PhysicalOccurrenceCount ?? 0;
+        ApprovedCount = summary?.Words.Count(word => word.ApprovedAnalysisCount > 0) ?? 0;
+        HasBaseline = summary is not null;
+        _selection.ClearTextCounts();
+        foreach (var text in summary?.Texts ?? [])
+            _selection.SetTextCounts(text.TextId, text.OccurrenceCount, text.DistinctFormCount);
+        PublishSummaryRows();
+        RaiseCounts();
+    }
 
     partial void OnSearchTextChanged(string value) => ApplyFilter();
     partial void OnStatusFilterChanged(WordProjectStatus? value) => ApplyFilter();
     partial void OnSeveralOnlyChanged(bool value) => ApplyFilter();
 
-    /// <summary>Sets the project to read words from and immediately reloads for whatever is checked now.</summary>
-    public async Task SetProjectAsync(string? fwDataPath, CancellationToken cancellationToken = default)
+    /// <summary>Sets the project name used by rows that borrow the workspace reader.</summary>
+    public Task SetProjectAsync(string? fwDataPath, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         ClearProject();
-        if (fwDataPath is null) return;
-        lock (_loadGate) _projectPath = fwDataPath;
-        await ReloadAsync(cancellationToken).ConfigureAwait(true);
+        _projectPath = fwDataPath;
+        if (fwDataPath is not null)
+            OnReaderPropertyChanged(_selectionReads, new PropertyChangedEventArgs(nameof(WorkspaceSelection.Summary)));
+        IsLoading = _selectionReads.IsLoading;
+        Refusal = _selectionReads.Refusal;
+        return Task.CompletedTask;
     }
 
     internal void ClearProject()
     {
-        CancellationTokenSource? superseded;
-        lock (_loadGate)
-        {
-            superseded = _reloadCancellation;
-            _reloadCancellation = null;
-            _acceptLoads = true;
-            _projectPath = null;
-            _generation++;
-        }
-        Cancel(superseded);
-        ClearWords();
+        _acceptLoads = true;
+        _projectPath = null;
+        ReleaseSummaryRows();
+        _projectRows = [];
+        Rows = [];
+        DisplayRows = [];
+        _checkedKeys.Clear();
+        OccurrenceCount = 0;
+        ApprovedCount = 0;
         SearchText = string.Empty;
         StatusFilter = null;
         SeveralOnly = false;
-        HasBaseline = true;
+        HasBaseline = false;
         IsLoading = false;
         Refusal = null;
-    }
-
-    public async Task ReloadAsync(CancellationToken cancellationToken = default)
-    {
-        TaskCompletionSource completed;
-        CancellationTokenSource loadCancellation;
-        CancellationTokenSource? superseded;
-        string path;
-        IReadOnlyList<Guid> textIds;
-        int generation;
-        lock (_loadGate)
-        {
-            if (!_acceptLoads || _projectPath is not { } projectPath) return;
-            path = projectPath;
-            textIds = _selection.ChosenTextIds;
-            generation = ++_generation;
-            superseded = _reloadCancellation;
-            loadCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            _reloadCancellation = loadCancellation;
-            completed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            _activeLoads.Add(completed.Task);
-            IsLoading = true;
-            Refusal = null;
-        }
-
-        try
-        {
-            Cancel(superseded);
-            var outcome = await _commandClient.ListTextWordsAsync(
-                    new TextWordsRequest(path, textIds), loadCancellation.Token)
-                .ConfigureAwait(true);
-            if (generation != _generation) return;
-
-            if (!outcome.Succeeded)
-            {
-                // A read the caller cancelled says nothing about the words, so the page stays as it is.
-                if (!loadCancellation.IsCancellationRequested) ShowFailure(outcome.Refusal);
-                return;
-            }
-
-            HasBaseline = outcome.Value!.HasBaseline;
-
-            foreach (var row in _rowCache.Values)
-            {
-                row.PropertyChanged -= OnWordRowPropertyChanged;
-                row.DetachPendingChanges();
-            }
-            _rowCache = new(ReferenceEqualityComparer.Instance);
-            _all.Clear();
-            _all.AddRange(outcome.Value.Words);
-            _projectRows = ProjectRows(_all.ToArray());
-            Response = outcome.Value;
-            RaiseCheckedWords();
-            HandOffCheckedWordsCommand.NotifyCanExecuteChanged();
-            OnPropertyChanged(nameof(ProjectWords));
-            if (_assessed is { } assessed)
-                foreach (var row in _rowCache.Values.ToArray()) row.ShowAssessment(assessed(row.Form));
-            OccurrenceCount = outcome.Value.OccurrenceCount;
-            ApprovedCount = _all.Count(row => row.Approved.Count > 0);
-            RaiseCounts();
-            ApplyFilter();
-
-            _selection.ClearTextCounts();
-            foreach (var textId in textIds)
-            {
-                var occurrences = outcome.Value.Words.Sum(word => word.Occurrences.Count(occurrence => occurrence.TextId == textId));
-                var distinct = outcome.Value.Words.Count(word => word.Occurrences.Any(occurrence => occurrence.TextId == textId));
-                _selection.SetTextCounts(textId, occurrences, distinct);
-            }
-        }
-        catch (OperationCanceledException) when (loadCancellation.IsCancellationRequested || cancellationToken.IsCancellationRequested)
-        {
-        }
-        catch (Exception exception)
-        {
-            if (generation == _generation)
-                ShowFailure(new Refusal("texts.words-query-failed", FailureReason.Refused, exception.Message));
-        }
-        finally
-        {
-            lock (_loadGate)
-            {
-                _activeLoads.Remove(completed.Task);
-                if (ReferenceEquals(_reloadCancellation, loadCancellation)) _reloadCancellation = null;
-                if (generation == _generation) IsLoading = false;
-            }
-            completed.SetResult();
-            loadCancellation.Dispose();
-        }
-    }
-
-    /// <summary>Stops accepting word reads and returns once every active read has finished.</summary>
-    public async Task StopAsync()
-    {
-        Task[] activeLoads;
-        CancellationTokenSource? activeCancellation;
-        lock (_loadGate)
-        {
-            _acceptLoads = false;
-            _generation++;
-            activeCancellation = _reloadCancellation;
-            _reloadCancellation = null;
-            IsLoading = false;
-            activeLoads = _activeLoads.ToArray();
-        }
-        Cancel(activeCancellation);
-        await Task.WhenAll(activeLoads).ConfigureAwait(true);
-    }
-
-    // Empties the Words table and its counts, so no earlier selection's words outlive a reset or a failure.
-    private void ClearWords()
-    {
-        foreach (var row in _rowCache.Values)
-        {
-            row.PropertyChanged -= OnWordRowPropertyChanged;
-            row.DetachPendingChanges();
-        }
-        _rowCache = new(ReferenceEqualityComparer.Instance);
-        _all.Clear();
-        _projectRows = [];
-        _shownWords = [];
-        Rows = [];
         OnPropertyChanged(nameof(Rows));
-        OccurrenceCount = 0;
-        ApprovedCount = 0;
-        Response = null;
+        OnPropertyChanged(nameof(DisplayRows));
+        OnPropertyChanged(nameof(ProjectWords));
         RaiseCheckedWords();
         HandOffCheckedWordsCommand.NotifyCanExecuteChanged();
-        OnPropertyChanged(nameof(ProjectWords));
         RaiseCounts();
     }
 
-    private void ShowFailure(Refusal? refusal)
+    /// <summary>Releases row ownership and drains outstanding visible detail and card reads.</summary>
+    public async Task StopAsync()
     {
-        ClearWords();
-        _selection.ClearTextCounts();
-        Refusal = refusal;
+        _acceptLoads = false;
+        IsLoading = false;
+        ReleaseSummaryRows();
+        await Task.WhenAll(_detailPending, CardPending).ConfigureAwait(true);
     }
 
     private static void Cancel(CancellationTokenSource? cancellation)
@@ -477,20 +340,12 @@ public sealed partial class TextWordsViewModel : ObservableObject
         catch (ObjectDisposedException) { }
     }
 
-    private void ApplyFilter()
-    {
-        var matches = _all.AsEnumerable();
-        if (StatusFilter is { } status) matches = matches.Where(row => WordProjectStatuses.Of(row) == status);
-        if (SeveralOnly) matches = matches.Where(TextWordRowViewModel.HasSeveral);
-        if (!string.IsNullOrWhiteSpace(SearchText))
-            matches = matches.Where(row => row.Form.Contains(SearchText.Trim(), StringComparison.CurrentCultureIgnoreCase));
-        // The most frequent words first: a fix that helps them helps the most of the text.
-        _shownWords = matches.OrderByDescending(row => row.Occurrences.Count).ToArray();
-        Rows = ProjectRows(_shownWords);
-        OnPropertyChanged(nameof(Rows));
-    }
+    private void ApplyFilter() => ApplySummaryFilter();
 
     private Func<string, AssessWordRowViewModel?>? _assessed;
+
+    internal void ShowAssessmentSource(Func<string, AssessmentWordResult?> source) => ShowAssessment(word =>
+        source(word) is { } result ? new AssessWordRowViewModel(result, OccurrenceCountOf(word), WordRowRoutes) : null);
 
     /// <summary>
     /// Shows, on each word, what the latest Assessment came to for it; <see langword="null"/> clears that column.
@@ -499,7 +354,8 @@ public sealed partial class TextWordsViewModel : ObservableObject
     public void ShowAssessment(Func<string, AssessWordRowViewModel?>? assessed)
     {
         _assessed = assessed;
-        foreach (var row in _rowCache.Values.ToArray()) row.ShowAssessment(assessed?.Invoke(row.Form));
+        foreach (var entry in _summaryRows.Values.ToArray())
+            entry.Row.ShowAssessment(ShownAssessmentOf(entry.Row.Summary, assessed?.Invoke(entry.Row.Form)));
     }
 
     private void RaiseCounts()
@@ -525,12 +381,16 @@ public sealed partial class TextWordsViewModel : ObservableObject
     }
 
     private void HandOffCheckedWords() =>
-        HandOff?.Invoke(_all.Where(word => _rowCache.TryGetValue(word, out var row) && row.IsChecked)
-            .Select(word => word.Form).ToArray());
+        HandOff?.Invoke(_checkedKeys.Select(key => key.Form).Distinct().ToArray());
 
     private void OnWordRowPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName != nameof(TextWordRowViewModel.IsChecked)) return;
+        if (sender is TextWordRowViewModel { Summary: { } summary } row)
+        {
+            if (row.IsChecked) _checkedKeys.Add(summary.Key);
+            else _checkedKeys.Remove(summary.Key);
+        }
         RaiseCheckedWords();
         HandOffCheckedWordsCommand.NotifyCanExecuteChanged();
     }
@@ -539,12 +399,11 @@ public sealed partial class TextWordsViewModel : ObservableObject
     {
         if (e.PropertyName == nameof(SelectionViewModel.HasTexts)) OnPropertyChanged(nameof(HasAvailableTexts));
         if (e.PropertyName == nameof(SelectionViewModel.PastedWords)) OnPropertyChanged(nameof(SummaryText));
-        if (e.PropertyName == nameof(SelectionViewModel.ChosenTextIds)) ReloadCommand.Execute(null);
     }
 }
 
 /// <summary>One wordform spelling as the Words table shows it: its occurrences and its own project analyses.</summary>
-public sealed partial class TextWordRowViewModel : ObservableObject
+public sealed partial class TextWordRowViewModel : ObservableObject, IDisposable
 {
     private Func<AssessmentWordResult, ResultsTokenViewModel?>? _wordCardTokenFactory;
     private readonly WordPresentationKey _presentationKey;
@@ -585,13 +444,7 @@ public sealed partial class TextWordRowViewModel : ObservableObject
         _observedAssessmentWordRow = value?.WordRow;
         if (_observedAssessmentWordRow is not null)
             _observedAssessmentWordRow.PropertyChanged += OnAssessmentWordRowPropertyChanged;
-        var wasOpen = (_listed ?? _notParsed)?.IsOpen == true;
-        _listed = null;
-        _observedListed = null;
-        _presentationRevision++;
-        OnPropertyChanged(nameof(Presentation));
-        OnPropertyChanged(nameof(PresentationState));
-        if (wasOpen) Listed.IsOpen = true;
+        ResetListed();
     }
 
     private void OnAssessmentWordRowPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -621,7 +474,19 @@ public sealed partial class TextWordRowViewModel : ObservableObject
 
     private ListedWordViewModel? _listed;
     private ListedWordViewModel? _notParsed;
-    private readonly TextWord _word;
+    private bool _hasReadState;
+    private bool? _isUnread;
+
+    internal void ApplyReadState(bool? isUnread)
+    {
+        if (_hasReadState && _isUnread == isUnread) return;
+        _hasReadState = true;
+        _isUnread = isUnread;
+        if ((_listed ?? _notParsed) is { } listed) listed.Row.IsUnread = isUnread;
+        _presentationRevision++;
+        OnPropertyChanged(nameof(Presentation));
+    }
+    private TextWord _word;
     private readonly WordRowRoutes? _routes;
     private readonly string? _projectName;
     private NotifyCollectionChangedEventHandler? _pendingChangesHandler;
@@ -651,7 +516,7 @@ public sealed partial class TextWordRowViewModel : ObservableObject
             StoredAnalyses = stored,
             StoredAnalysesAvailable = true,
             ExpectedAnalysis = expected,
-            ProjectStanding = WordProjectStatuses.StandingOf(_word),
+            ProjectStanding = Summary?.ProjectStanding ?? Summary?.ProjectStanding ?? WordProjectStatuses.StandingOf(_word),
             OccurrenceCount = OccurrenceCount,
         };
         var projected = new AssessWordRowViewModel(source, OccurrenceCount, _routes);
@@ -670,14 +535,16 @@ public sealed partial class TextWordRowViewModel : ObservableObject
             var listed = LastResult is { } result
                 ? _listed ??= ListedWordViewModel.Of(ProjectAssessment(result), _routes, _wordCardTokenFactory)
                 : _notParsed ??= new ListedWordViewModel(WordRowViewModel.NotParsed(_word.Form,
-                    WordProjectStatuses.StandingOf(_word),
+                    Summary?.ProjectStanding ?? WordProjectStatuses.StandingOf(_word),
                     (_word.Approved.FirstOrDefault() ?? (_word.Analyses.Count == 1 ? _word.Analyses[0] : null))?.Morphs,
-                    _word.Occurrences.Count, _routes, _word.FormWritingSystem));
+                    OccurrenceCount, _routes, _word.FormWritingSystem));
+            if (_hasReadState) listed.Row.IsUnread = _isUnread;
             if (!ReferenceEquals(_observedListed, listed))
             {
                 if (_observedListed is not null) _observedListed.PropertyChanged -= OnListedPropertyChanged;
                 _observedListed = listed;
                 listed.PropertyChanged += OnListedPropertyChanged;
+                listed.PropertyChanged += OnListedChanged;
             }
             return listed;
         }
@@ -739,6 +606,138 @@ public sealed partial class TextWordRowViewModel : ObservableObject
             };
     }
 
+    internal SelectionWordSummary? Summary { get; }
+    private readonly ExpectedContext? _expectedContext;
+    private ResultsTokenViewModel? _ownedCardToken;
+    private IDisposable? _registration;
+    private IDisposable? _detailOwnership;
+    private TextWordsProjectedWordform? _storedWordform;
+    internal bool HasStoredDetail => _detailOwnership is not null;
+    internal event Action<TextWordRowViewModel, bool>? CardChanged;
+
+    internal TextWordRowViewModel(SelectionWordSummary summary, IDisposable registration,
+        WordRowRoutes? routes, string? projectName, ExpectedContext expectedContext) : this(new TextWord(summary.Key.Form,
+            summary.Key.WordformId?.ToString("D"), [], [], [], summary.CandidateCount, summary.IncorrectSpelling)
+            { FormWritingSystem = summary.Key.WritingSystem }, routes, projectName)
+    {
+        Summary = summary;
+        _expectedContext = expectedContext;
+        _registration = registration;
+        WordformId = summary.Key.WordformId ?? (summary.Actions.CandidateWordformIds.Count == 1
+            ? summary.Actions.CandidateWordformIds[0] : null);
+        OccurrenceCount = summary.OccurrenceCount;
+        HasApproved = summary.ApprovedAnalysisCount > 0;
+        Status = WordProjectStatuses.FromStanding(summary.ProjectStanding);
+        HasSeveralAnalyses = summary.ChosenAnalysisCount > 1;
+        StatusLabel = WordProjectStatuses.LabelOf(Status, summary.ApprovedAnalysisCount);
+        ProjectSummary = StatusLabel;
+    }
+
+    internal void SetStoredDetail(TextWordsProjectedWordform? wordform, IDisposable ownership)
+    {
+        var unchanged = HasStoredDetail && ReferenceEquals(_storedWordform, wordform);
+        _detailOwnership?.Dispose();
+        _detailOwnership = ownership;
+        if (unchanged) return;
+        _storedWordform = wordform;
+        if (wordform is not null)
+        {
+            var stored = SelectionDisplayProjection.StoredAnalyses(wordform, _projectName);
+            _word = _word with { Analyses = stored,
+                Approved = stored.Where(analysis => analysis.StoredAnalysisOpinion == ReadingGrade.Approved).ToArray(),
+                Disapproved = stored.Where(analysis => analysis.StoredAnalysisOpinion == ReadingGrade.Disapproved).ToArray() };
+        }
+        var chosen = _word.Analyses.Where(analysis => CanonicalId.TryParse(analysis.StoredAnalysisId, out var id) &&
+            Summary!.ChosenAnalysisIds.Contains(id.ToGuid()));
+        ProjectSummary = HasSeveralAnalyses
+            ? $"{Summary!.ChosenAnalysisCount} analyses: {string.Join(", ", chosen.Select(GlossOf).Distinct())}"
+            : Status switch
+            {
+                WordProjectStatus.Approved => _word.Approved.Select(GlossOf).FirstOrDefault() ?? string.Empty,
+                WordProjectStatus.Candidate => "Unknown: stored, but nobody has approved it",
+                WordProjectStatus.Rejected => "Only disapproved analyses are stored",
+                WordProjectStatus.IncorrectSpelling => "FieldWorks marks this spelling as incorrect",
+                _ => "Not analysed in the project",
+            };
+        OnPropertyChanged(nameof(ProjectSummary));
+        _approvedAnalyses = null;
+        ResetListed();
+        UpdateStagedText();
+    }
+
+    internal void SetOccurrences(WordOccurrences occurrences, IReadOnlyList<SelectionTextSummary> texts)
+    {
+        var titles = texts.ToDictionary(text => text.TextId);
+        _occurrences = occurrences.Occurrences.Select(item => new WordOccurrenceRowViewModel(new WordOccurrence(
+            item.Location.Anchor.TextId, titles.GetValueOrDefault(item.Location.Anchor.TextId)?.Title ?? string.Empty,
+            item.Location.LineNumber, item.Sentence, item.Location.Status, null)
+            { SentenceStyle = item.SentenceStyle, SentenceWritingSystem = item.SentenceWritingSystem,
+              TextTitleWritingSystem = titles.GetValueOrDefault(item.Location.Anchor.TextId)?.TitleWritingSystem })).ToArray();
+        OnPropertyChanged(nameof(Occurrences));
+    }
+
+    internal ResultsTokenViewModel CreateCardToken(AssessmentWordResult result,
+        ResultsInTextViewModel? actions, IDisposable registration)
+    {
+        _ownedCardToken?.Dispose();
+        var token = new ResultsTokenViewModel("Selection", 0, new TextToken(Form, Form, null, null)
+        {
+            WordformId = WordformId, StoredAnalyses = _word.Analyses,
+            IncorrectSpelling = _word.IncorrectSpelling, FormWritingSystem = FormWritingSystem,
+            TextWritingSystem = FormWritingSystem, WordLink = result.TryWordLink,
+        }, result, location: "From the selected Assessment", expectedContext: _expectedContext,
+            producingAssessmentId: Summary?.Assessment?.AssessmentId, actionFacts: Summary?.Actions) { Actions = actions };
+        token.OwnRegistration(registration);
+        return _ownedCardToken = token;
+    }
+
+    internal void CloseCard()
+    {
+        if ((_listed ?? _notParsed) is { } listed) listed.IsOpen = false;
+        _occurrences = [];
+        _ownedCardToken?.Dispose();
+        _ownedCardToken = null;
+        OnPropertyChanged(nameof(Occurrences));
+    }
+
+    private void ResetListed()
+    {
+        _ownedCardToken?.Dispose();
+        _ownedCardToken = null;
+        var previous = _listed ?? _notParsed;
+        var wasOpen = previous?.IsOpen == true;
+        if (previous is not null)
+        {
+            previous.PropertyChanged -= OnListedChanged;
+            previous.PropertyChanged -= OnListedPropertyChanged;
+        }
+        _observedListed = null;
+        _presentationRevision++;
+        _listed = null;
+        _notParsed = null;
+        OnPropertyChanged(nameof(Listed));
+        OnPropertyChanged(nameof(Presentation));
+        OnPropertyChanged(nameof(PresentationState));
+        if (wasOpen) Listed.IsOpen = true;
+    }
+
+    private void OnListedChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ListedWordViewModel.IsOpen) && sender is ListedWordViewModel listed)
+            CardChanged?.Invoke(this, listed.IsOpen);
+    }
+
+    /// <summary>Releases this row's stored detail, registration and pending-change subscription.</summary>
+    public void Dispose()
+    {
+        CloseCard();
+        DetachPendingChanges();
+        if ((_listed ?? _notParsed) is { } listed) listed.PropertyChanged -= OnListedChanged;
+        _detailOwnership?.Dispose();
+        _detailOwnership = null;
+        Interlocked.Exchange(ref _registration, null)?.Dispose();
+    }
+
     internal TextWord Source => _word;
 
     internal static bool HasSeveral(TextWord word) => word.Occurrences
@@ -746,24 +745,39 @@ public sealed partial class TextWordRowViewModel : ObservableObject
 
     public string Form { get; }
     public string? FormWritingSystem { get; }
-    public Guid? WordformId { get; }
-    public int OccurrenceCount { get; }
-    public bool HasApproved { get; }
-    public WordProjectStatus Status { get; }
+    public Guid? WordformId { get; private set; }
+    public int OccurrenceCount { get; private set; }
+    public bool HasApproved { get; private set; }
+    public WordProjectStatus Status { get; private set; }
 
     /// <summary>Whether this spelling carries different analyses in different places, usually homographs.</summary>
-    public bool HasSeveralAnalyses { get; }
+    public bool HasSeveralAnalyses { get; private set; }
 
     /// <summary>The opinion mark behind <see cref="Status"/>; an incorrect spelling has none.</summary>
     public Mark? StatusMark => WordProjectStatuses.MarkOf(Status);
 
-    public string StatusLabel { get; }
-    public string ProjectSummary { get; }
+    public string StatusLabel { get; private set; }
+    public string ProjectSummary { get; private set; }
     private IReadOnlyList<WordOccurrenceRowViewModel>? _occurrences;
     private IReadOnlyList<ProjectAnalysisViewModel>? _approvedAnalyses;
 
     public IReadOnlyList<WordOccurrenceRowViewModel> Occurrences => _occurrences ??=
         _word.Occurrences.Select(occurrence => new WordOccurrenceRowViewModel(occurrence)).ToArray();
+    /// <summary>The card's complete occurrence source, displaying one leased context page at a time.</summary>
+    public object OccurrenceSource => (object?)_occurrenceSource ?? Occurrences;
+    private SelectionWordOccurrences? _occurrenceSource;
+
+    internal void SetOccurrenceSource(SelectionWordOccurrences? source)
+    {
+        _occurrenceSource = source;
+        OnPropertyChanged(nameof(OccurrenceSource));
+    }
+
+    internal void SetOccurrencePage(IReadOnlyList<WordOccurrenceRowViewModel> rows)
+    {
+        _occurrences = rows;
+        OnPropertyChanged(nameof(Occurrences));
+    }
     public IReadOnlyList<ProjectAnalysisViewModel> ApprovedAnalyses => _approvedAnalyses ??=
         _word.Approved.Select(analysis => new ProjectAnalysisViewModel(analysis)).ToArray();
 
@@ -771,7 +785,7 @@ public sealed partial class TextWordRowViewModel : ObservableObject
         KeyboardOpinionShortcuts.StageAsync(Form, WordformId, _word.Analyses.Select(analysis =>
             new KeyboardStoredAnalysis(analysis.StoredAnalysisId ?? string.Empty,
                 analysis.StoredAnalysisOpinion ?? ReadingGrade.Candidate, analysis.Morphs)).ToArray(),
-            _routes, behavior);
+            _routes, behavior, _expectedContext);
 
     private void UpdateStagedText()
     {
@@ -789,6 +803,8 @@ public sealed partial class TextWordRowViewModel : ObservableObject
         _pendingChangesHandler = null;
     }
 
+    private static string GlossOf(ProjectAnalysis analysis) => string.Join(" ", analysis.Morphs.Select(morph => morph.Gloss));
+
     private static IEnumerable<string> DistinctGlosses(TextWord word) =>
         word.Occurrences.Select(occurrence => occurrence.Analysis)
             .Where(analysis => analysis is not null)
@@ -797,11 +813,20 @@ public sealed partial class TextWordRowViewModel : ObservableObject
 }
 
 /// <summary>One place a word occurs, as the Words table's expanded row shows it.</summary>
-public sealed class WordOccurrenceRowViewModel
+public sealed class WordOccurrenceRowViewModel : IDisposable
 {
-    public WordOccurrenceRowViewModel(WordOccurrence occurrence)
+    private IDisposable? _registration;
+    internal object? SourceIdentity { get; }
+    internal int SourceOffset { get; }
+
+    public WordOccurrenceRowViewModel(WordOccurrence occurrence) : this(occurrence, null, null, 0) { }
+
+    internal WordOccurrenceRowViewModel(WordOccurrence occurrence, IDisposable? registration, object? identity, int offset)
     {
         ArgumentNullException.ThrowIfNull(occurrence);
+        _registration = registration;
+        SourceIdentity = identity;
+        SourceOffset = offset;
         TextId = occurrence.TextId;
         TextTitle = occurrence.TextTitle;
         Line = occurrence.Line;
@@ -824,6 +849,9 @@ public sealed class WordOccurrenceRowViewModel
     public string Status { get; }
     public ProjectAnalysisViewModel? Analysis { get; }
     public string Location { get; }
+
+    /// <inheritdoc />
+    public void Dispose() => Interlocked.Exchange(ref _registration, null)?.Dispose();
 }
 
 /// <summary>One analysis the project holds, as morphs a person reads.</summary>

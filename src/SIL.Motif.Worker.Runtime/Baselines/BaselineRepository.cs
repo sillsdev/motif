@@ -30,6 +30,35 @@ public sealed record CurrentBaselineTextWords(BaselineRecord Baseline, TextWords
     public IReadOnlyList<SIL.Motif.Contract.Responses.WritingSystemDisplay> WritingSystems { get; init; } = [];
 }
 
+public sealed record CurrentBaselineTextRows(
+    BaselineRecord Baseline,
+    IReadOnlyList<TextWordsProjectedText> Texts,
+    long Queries);
+
+public sealed record CurrentBaselineWordformRows(
+    BaselineRecord Baseline,
+    IReadOnlyList<TextWordsProjectedWordform> Wordforms,
+    long Queries);
+
+public sealed record CurrentBaselineSelectionRead(
+    BaselineRecord Baseline,
+    ProjectSummarySnapshot Summary,
+    int TextRows,
+    int WordformRows,
+    int TextLines,
+    int TextTokens,
+    int TextAnalyses,
+    int WordformAnalyses,
+    int Morphs,
+    long Queries);
+
+/// <summary>A current Baseline, project display settings and selected compact Text indexes from one read.</summary>
+public sealed record CurrentBaselineSelectionIndexRead(
+    BaselineRecord Baseline,
+    ProjectSummarySnapshot Summary,
+    IReadOnlyList<BaselineTextReadIndex> Texts,
+    long Queries);
+
 /// <summary>Reads and writes the project's single current-Baseline pointer and its recorded metadata.</summary>
 public sealed class BaselineRepository
 {
@@ -68,6 +97,147 @@ public sealed class BaselineRepository
         if (reader.IsDBNull(12))
             throw new InvalidDataException("The current Baseline has no stored project summary.");
         return new CurrentBaselineEvidence(baseline, ReadSummary(reader.GetString(12)));
+    }
+
+    public CurrentBaselineSelectionRead? ReadCurrentSelectionRows(
+        string projectKey,
+        IReadOnlyCollection<Guid> textIds,
+        Action<TextWordsProjectedText> onText,
+        Action<TextWordsProjectedWordform> onWordform,
+        CancellationToken cancellationToken = default)
+    {
+        RequireProjectKey(projectKey);
+        ArgumentNullException.ThrowIfNull(textIds);
+        ArgumentNullException.ThrowIfNull(onText);
+        ArgumentNullException.ThrowIfNull(onWordform);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction(deferred: true);
+        BaselineRecord baseline;
+        using (var command = connection.CreateCommand())
+        {
+            command.Transaction = transaction;
+            command.CommandText = SelectSql + " WHERE ProjectKey = $project;";
+            command.Parameters.AddWithValue("$project", projectKey);
+            using var reader = command.ExecuteReader();
+            if (!reader.Read()) return null;
+            baseline = Read(reader);
+        }
+
+        string summaryJson;
+        using (var command = connection.CreateCommand())
+        {
+            command.Transaction = transaction;
+            command.CommandText = "SELECT SummaryJson FROM BaselineSummaries WHERE ProjectKey = $project;";
+            command.Parameters.AddWithValue("$project", projectKey);
+            summaryJson = command.ExecuteScalar() as string
+                ?? throw DamagedTextWords("The project summary is missing.");
+        }
+        var summary = ReadSummary(summaryJson);
+        var requested = textIds.Distinct().ToArray();
+        var wordformIds = new HashSet<Guid>();
+        var textRows = 0;
+        var textLines = 0;
+        var textTokens = 0;
+        var textAnalyses = 0;
+        var wordformAnalyses = 0;
+        var morphs = 0;
+        long queries = 2;
+        foreach (var textId in requested)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            queries++;
+            VisitRows<TextWordsProjectedText>(connection, transaction,
+                "SELECT TextId, BundleDigest, TextJson FROM BaselineTextWords", "TextId", projectKey,
+                [textId], baseline.Token.BundleDigest, IsValid, row => row.TextId, cancellationToken, (id, text) =>
+                {
+                    textRows++;
+                    textLines += text.Lines.Count;
+                    textTokens += text.Lines.Sum(line => line.Tokens.Count);
+                    textAnalyses += text.Analyses.Count;
+                    morphs += text.Analyses.Sum(analysis => analysis.Morphs.Count);
+                    foreach (var token in text.Lines.SelectMany(line => line.Tokens))
+                        if (token.WordformId is { } wordformId) wordformIds.Add(wordformId);
+                    onText(text);
+                });
+        }
+
+        var missingWordforms = new HashSet<Guid>(wordformIds);
+        foreach (var batch in wordformIds.OrderBy(id => id.ToString("D"), StringComparer.Ordinal).Chunk(256))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            queries++;
+            VisitRows<TextWordsProjectedWordform>(connection, transaction,
+                "SELECT WordformId, BundleDigest, WordformJson FROM BaselineTextWordforms", "WordformId",
+                projectKey, batch, baseline.Token.BundleDigest, IsValid, row => row.WordformId,
+                cancellationToken, (id, wordform) =>
+                {
+                    missingWordforms.Remove(id);
+                    wordformAnalyses += wordform.Analyses.Count;
+                    morphs += wordform.Analyses.Sum(analysis => analysis.Morphs.Count);
+                    onWordform(wordform);
+                });
+        }
+        if (missingWordforms.Count > 0)
+            throw DamagedTextWords("A token names a wordform with no stored row.");
+
+        return new CurrentBaselineSelectionRead(baseline, summary, textRows, wordformIds.Count,
+            textLines, textTokens, textAnalyses, wordformAnalyses, morphs, queries);
+    }
+
+    /// <summary>Reads selected compact Text indexes without hydrating their Text or wordform detail rows.</summary>
+    public CurrentBaselineSelectionIndexRead? ReadCurrentSelectionIndexes(
+        string projectKey, IReadOnlyCollection<Guid> textIds, CancellationToken cancellationToken = default)
+        => ReadCurrentSelectionIndexesInSnapshot(projectKey, textIds,
+            (snapshot, _, _) => snapshot, cancellationToken);
+
+    internal T? ReadCurrentSelectionIndexesInSnapshot<T>(
+        string projectKey, IReadOnlyCollection<Guid> textIds,
+        Func<CurrentBaselineSelectionIndexRead, SqliteConnection, SqliteTransaction, T> select,
+        CancellationToken cancellationToken = default) where T : class
+    {
+        RequireProjectKey(projectKey);
+        ArgumentNullException.ThrowIfNull(textIds);
+        ArgumentNullException.ThrowIfNull(select);
+        cancellationToken.ThrowIfCancellationRequested();
+        using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction(deferred: true);
+        BaselineRecord baseline;
+        using (var command = connection.CreateCommand())
+        {
+            command.Transaction = transaction;
+            command.CommandText = SelectSql + " WHERE ProjectKey = $project;";
+            command.Parameters.AddWithValue("$project", projectKey);
+            RepositoryReadCounters.QueryExecuted();
+            using var reader = command.ExecuteReader();
+            if (!reader.Read()) return null;
+            RepositoryReadCounters.RecordDeserialized();
+            baseline = Read(reader);
+        }
+
+        ProjectSummarySnapshot summary;
+        using (var command = connection.CreateCommand())
+        {
+            command.Transaction = transaction;
+            command.CommandText = "SELECT SummaryJson FROM BaselineSummaries WHERE ProjectKey = $project;";
+            command.Parameters.AddWithValue("$project", projectKey);
+            RepositoryReadCounters.QueryExecuted();
+            summary = ReadSummary(command.ExecuteScalar() as string
+                ?? throw DamagedTextWords("The project summary is missing."));
+        }
+
+        var requested = textIds.Distinct().ToArray();
+        var rows = ReadRows<BaselineTextReadIndex>(connection, transaction,
+            "SELECT TextId, BundleDigest, IndexJson FROM BaselineTextReadIndex", "TextId", projectKey,
+            requested, baseline.Token.BundleDigest, IsValid, index => index.TextId, cancellationToken);
+        if (rows.Count != requested.Length)
+            throw DamagedTextWords("A selected Text has no compact read-index row.");
+        var ordered = requested.Select(id => rows[id]).ToArray();
+        foreach (var text in ordered) ValidateIndexReferences(text);
+        var snapshot = new CurrentBaselineSelectionIndexRead(baseline, summary, ordered,
+            requested.Length == 0 ? 2 : 3);
+        return select(snapshot, connection, transaction);
     }
 
     /// <summary>
@@ -127,6 +297,71 @@ public sealed class BaselineRepository
             { WritingSystems = summary.WritingSystems };
     }
 
+    public CurrentBaselineTextRows? GetCurrentTextRows(string projectKey, IReadOnlyCollection<Guid> textIds,
+        BaselineToken? expectedBaseline = null, CancellationToken cancellationToken = default)
+    {
+        RequireProjectKey(projectKey);
+        ArgumentNullException.ThrowIfNull(textIds);
+        cancellationToken.ThrowIfCancellationRequested();
+        using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction(deferred: true);
+        BaselineRecord baseline;
+        using (var command = connection.CreateCommand())
+        {
+            command.Transaction = transaction;
+            command.CommandText = SelectSql + " WHERE ProjectKey = $project;";
+            command.Parameters.AddWithValue("$project", projectKey);
+            using var reader = command.ExecuteReader();
+            if (!reader.Read()) return null;
+            baseline = Read(reader);
+        }
+        if (expectedBaseline is not null && baseline.Token != expectedBaseline) return null;
+        var requested = textIds.Distinct().ToArray();
+        var rows = ReadRows<TextWordsProjectedText>(connection, transaction,
+            "SELECT TextId, BundleDigest, TextJson FROM BaselineTextWords", "TextId", projectKey,
+            requested, baseline.Token.BundleDigest, IsValid, text => text.TextId, cancellationToken);
+        return new CurrentBaselineTextRows(baseline,
+            requested.Where(rows.ContainsKey).Select(id => rows[id]).ToArray(), requested.Length == 0 ? 1 : 2);
+    }
+
+    public CurrentBaselineWordformRows? GetCurrentWordformRows(string projectKey, BaselineToken expectedBaseline,
+        IReadOnlyCollection<Guid> wordformIds, CancellationToken cancellationToken = default)
+    {
+        RequireProjectKey(projectKey);
+        ArgumentNullException.ThrowIfNull(expectedBaseline);
+        ArgumentNullException.ThrowIfNull(wordformIds);
+        cancellationToken.ThrowIfCancellationRequested();
+        using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction(deferred: true);
+        BaselineRecord baseline;
+        using (var command = connection.CreateCommand())
+        {
+            command.Transaction = transaction;
+            command.CommandText = SelectSql + " WHERE ProjectKey = $project;";
+            command.Parameters.AddWithValue("$project", projectKey);
+            using var reader = command.ExecuteReader();
+            if (!reader.Read()) return null;
+            baseline = Read(reader);
+        }
+        if (baseline.Token != expectedBaseline) return null;
+        var requested = wordformIds.Distinct().ToArray();
+        var rows = new Dictionary<Guid, TextWordsProjectedWordform>();
+        long queries = 1;
+        foreach (var batch in requested.Chunk(256))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            queries++;
+            VisitRows<TextWordsProjectedWordform>(connection, transaction,
+                "SELECT WordformId, BundleDigest, WordformJson FROM BaselineTextWordforms", "WordformId",
+                projectKey, batch, expectedBaseline.BundleDigest, IsValid, wordform => wordform.WordformId,
+                cancellationToken, (id, wordform) => rows.Add(id, wordform));
+        }
+        if (rows.Count != requested.Length)
+            throw DamagedTextWords("A selected Text token names a missing wordform row.");
+        return new CurrentBaselineWordformRows(baseline,
+            requested.OrderBy(id => id.ToString("D"), StringComparer.Ordinal).Select(id => rows[id]).ToArray(), queries);
+    }
+
     private static ProjectSummarySnapshot ReadSummary(string json)
     {
         try
@@ -135,6 +370,10 @@ public sealed class BaselineRepository
             if (summary is null || summary.WordCount < 0 || summary.OccurrenceCount < 0 ||
                 summary.WordformCount < 0 || summary.RuleCount < 0 || summary.LexemeCount < 0 ||
                 summary.Wordforms is null || summary.Texts is null || summary.WordWritingSystems is null ||
+                summary.Texts.Any(text => text is null || text.WordCount < 0 || text.OccurrenceCount < 0 ||
+                    text.InterlinearizedWordCount < 0 || text.InterlinearizedWordCount > text.WordCount ||
+                    text.InterlinearizedOccurrenceCount < 0 ||
+                    text.InterlinearizedOccurrenceCount > text.OccurrenceCount) ||
                 summary.WritingSystems is null || summary.WritingSystems.Any(ws => ws is null ||
                     string.IsNullOrEmpty(ws.Id) || ws.Name is null || ws.Abbreviation is null ||
                     ws.FontFamily is null || ws.FontFeatures is null || !Enum.IsDefined(ws.Kind) ||
@@ -145,7 +384,7 @@ public sealed class BaselineRepository
                     SIL.Motif.Host.WritingSystems.WritingSystemDisplayReader.Styles.Any(style =>
                         !ws.StyleSizes.TryGetValue(style, out var size) || !double.IsFinite(size) || size <= 0)))
                 throw new JsonException("The stored project summary has invalid counts or display settings.");
-            RepositoryReadCounters.RecordDeserialized();
+            RepositoryReadCounters.RecordDeserialized(System.Text.Encoding.UTF8.GetByteCount(json));
             return summary;
         }
         catch (JsonException exception)
@@ -161,7 +400,17 @@ public sealed class BaselineRepository
         Func<T?, bool> isValid, Func<T, Guid> idOf, CancellationToken cancellationToken) where T : class
     {
         var rows = new Dictionary<Guid, T>();
-        if (ids.Count == 0) return rows;
+        VisitRows(connection, transaction, select, idColumn, projectKey, ids, digest, isValid, idOf,
+            cancellationToken, (id, row) => rows.Add(id, row));
+        return rows;
+    }
+
+    private static int VisitRows<T>(SqliteConnection connection, SqliteTransaction transaction,
+        string select, string idColumn, string projectKey, IReadOnlyCollection<Guid> ids, string digest,
+        Func<T?, bool> isValid, Func<T, Guid> idOf, CancellationToken cancellationToken,
+        Action<Guid, T> visit) where T : class
+    {
+        if (ids.Count == 0) return 0;
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
         command.CommandText = select +
@@ -170,30 +419,39 @@ public sealed class BaselineRepository
         command.Parameters.AddWithValue("$ids", JsonSerializer.Serialize(ids.Select(id => id.ToString("D"))));
         RepositoryReadCounters.QueryExecuted();
         using var reader = command.ExecuteReader();
+        var count = 0;
         while (reader.Read())
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (!string.Equals(reader.GetString(1), digest, StringComparison.Ordinal))
                 throw DamagedTextWords("A stored row belongs to another Baseline.");
+            var json = reader.GetString(2);
             T? row;
             try
             {
-                row = JsonSerializer.Deserialize<T>(reader.GetString(2), TextWordsJson);
+                row = JsonSerializer.Deserialize<T>(json, TextWordsJson);
             }
             catch (JsonException exception)
             {
                 throw DamagedTextWords("A stored row is not valid JSON.", exception);
             }
-            RepositoryReadCounters.RecordDeserialized();
             if (!isValid(row) || !Guid.TryParse(reader.GetString(0), out var key) || idOf(row!) != key)
                 throw DamagedTextWords("A stored row has an invalid shape.");
-            rows.Add(key, row!);
+            var occurrences = row switch
+            {
+                BaselineTextReadIndex index => index.Lines.Sum(line => line.Tokens.Count(token => token.WordformId is not null)),
+                TextWordsProjectedText text => text.Lines.Sum(line => line.Tokens.Count(token => token.WordformId is not null)),
+                _ => 0,
+            };
+            RepositoryReadCounters.RecordDeserialized(System.Text.Encoding.UTF8.GetByteCount(json), occurrences);
+            visit(key, row!);
+            count++;
         }
-        return rows;
+        return count;
     }
 
     private static InvalidDataException DamagedTextWords(string detail, Exception? cause = null) =>
-        new("Motif's stored words for this Baseline are missing or damaged. Refresh the project to rebuild them.",
+        new("Motif's stored words for this Baseline are missing or damaged. Delete the refused store and let Motif recreate it.",
             new InvalidDataException(detail, cause));
 
     // BaselinePublication is internal: every caller (BaselineCapturePublisher, BaselineRefresh) lives here too.
@@ -214,7 +472,8 @@ public sealed class BaselineRepository
         using (var deleteProjection = connection.CreateCommand())
         {
             deleteProjection.Transaction = transaction;
-            deleteProjection.CommandText = "DELETE FROM BaselineTextWords WHERE ProjectKey = $project; " +
+            deleteProjection.CommandText = "DELETE FROM BaselineTextReadIndex WHERE ProjectKey = $project; " +
+                "DELETE FROM BaselineTextWords WHERE ProjectKey = $project; " +
                 "DELETE FROM BaselineTextWordforms WHERE ProjectKey = $project;";
             deleteProjection.Parameters.AddWithValue("$project", projectKey);
             deleteProjection.ExecuteNonQuery();
@@ -264,6 +523,11 @@ public sealed class BaselineRepository
             "INSERT INTO BaselineTextWordforms (ProjectKey, WordformId, BundleDigest, WordformJson) " +
             "VALUES ($project, $id, $bundle, $json);",
             projectKey, publication.Token.BundleDigest, textWordsProjection.Wordforms, wordform => wordform.WordformId);
+        InsertRows(connection, transaction,
+            "INSERT INTO BaselineTextReadIndex (ProjectKey, TextId, BundleDigest, IndexJson) " +
+            "VALUES ($project, $id, $bundle, $json);",
+            projectKey, publication.Token.BundleDigest,
+            BaselineTextReadIndexBuilder.Build(textWordsProjection), text => text.TextId);
         command.CommandText = SelectSql + " WHERE ProjectKey = $project;";
         using var reader = command.ExecuteReader();
         if (!reader.Read()) throw new InvalidOperationException("The Baseline publication was not recorded.");
@@ -355,6 +619,58 @@ public sealed class BaselineRepository
                     return false;
         }
         return true;
+    }
+
+    private static bool IsValid(BaselineTextReadIndex? text)
+    {
+        if (text is null || text.TextId == Guid.Empty || text.Title is null || text.Lines is null ||
+            text.Wordforms is null || text.Lines.Any(line => line is null || line.Number < 1 ||
+                line.ParagraphId == Guid.Empty || line.SegmentId == Guid.Empty || line.Tokens is null ||
+                line.Tokens.Any(token => token is null || token.OccurrenceIndex < 0 || token.Forms is null ||
+                    token.Forms.Any(form => form is null || form.Text is null ||
+                        string.IsNullOrEmpty(form.WritingSystem)) ||
+                    (token.WordformId is null) != (token.Status is null) ||
+                    (token.AnalysisId is null) != (token.AnalysisKey is null))) ||
+            text.Wordforms.Any(wordform => wordform is null || wordform.WordformId == Guid.Empty ||
+                wordform.ApprovedCount < 0 || wordform.CandidateCount < 0 || wordform.DisapprovedCount < 0 ||
+                wordform.Analyses is null || wordform.Analyses.Any(analysis => analysis is null ||
+                    string.IsNullOrWhiteSpace(analysis.Key) || analysis.AnalysisId == Guid.Empty ||
+                    analysis.Opinion is not ("approved" or "disapproved" or "unknown") ||
+                    analysis.Identity is not { Morphs: not null } ||
+                    analysis.Identity.SourceAnalysisId != CanonicalId.FromGuid(analysis.AnalysisId).Value ||
+                    analysis.Identity.Morphs.Any(morph => morph is null || morph.Forms is null ||
+                        morph.Forms.Any(form => form is null)))) ||
+            text.Wordforms.Select(wordform => wordform.WordformId).Distinct().Count() != text.Wordforms.Count ||
+            text.Lines.Select(line => line.Number).Distinct().Count() != text.Lines.Count)
+            return false;
+        foreach (var wordform in text.Wordforms)
+        {
+            var analyses = wordform.Analyses;
+            if (analyses.Select(analysis => analysis.Key).Distinct(StringComparer.Ordinal).Count() != analyses.Count ||
+                analyses.Select(analysis => analysis.AnalysisId).Distinct().Count() != analyses.Count ||
+                wordform.ApprovedCount != analyses.Count(analysis => analysis.Opinion == "approved") ||
+                wordform.CandidateCount != analyses.Count(analysis => analysis.Opinion == "unknown") ||
+                wordform.DisapprovedCount != analyses.Count(analysis => analysis.Opinion == "disapproved"))
+                return false;
+        }
+
+        var byWordform = text.Wordforms.ToDictionary(wordform => wordform.WordformId);
+        return text.Lines.SelectMany(line => line.Tokens).All(token =>
+        {
+            if (token.AnalysisKey is null) return true;
+            if (token.WordformId is not { } wordformId || !byWordform.TryGetValue(wordformId, out var wordform))
+                return false;
+            return wordform.Analyses.Any(analysis => analysis.Key == token.AnalysisKey &&
+                analysis.AnalysisId == token.AnalysisId);
+        });
+    }
+
+    private static void ValidateIndexReferences(BaselineTextReadIndex text)
+    {
+        var wordforms = text.Wordforms.Select(wordform => wordform.WordformId).ToHashSet();
+        if (text.Lines.SelectMany(line => line.Tokens).Any(token =>
+                token.WordformId is { } id && !wordforms.Contains(id)))
+            throw DamagedTextWords("A compact Text index references an absent wordform identity.");
     }
 
     private static bool IsValid(TextWordsProjectedWordform? wordform)

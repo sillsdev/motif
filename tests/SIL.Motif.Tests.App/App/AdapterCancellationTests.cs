@@ -109,7 +109,7 @@ public sealed class AdapterCancellationTests(PristineProjectFixture pristine)
         var path = project.FwDataPath;
         var reads = new (string Name, Task Read)[]
         {
-            ("ListTextWords", client.ListTextWordsAsync(new TextWordsRequest(path, []), CancellationToken.None)),
+            ("OpenSelectionReader", OpenReaderAndDisposeAsync(client, path)),
             ("ReadCurrentEvidence", client.ReadCurrentEvidenceAsync(path, CancellationToken.None)),
             ("ReadStoredGrammarCheck", client.ReadStoredGrammarCheckAsync(
                 new GrammarCheckRequest(path), CancellationToken.None)),
@@ -242,10 +242,17 @@ public sealed class AdapterCancellationTests(PristineProjectFixture pristine)
             client.GetProjectHistoryAsync(new ProjectHistoryRequest(path), token)));
         yield return new("ReadStoredGrammarCheck", Observe(token =>
             client.ReadStoredGrammarCheckAsync(new GrammarCheckRequest(path), token)));
-        yield return new("ListTextWords", Observe(token =>
-            client.ListTextWordsAsync(new TextWordsRequest(path, []), token)));
+        yield return new("OpenSelectionReader", Observe(token =>
+            client.OpenSelectionReaderAsync(new SIL.Motif.Commands.SelectionReading.OpenSelectionReaderRequest(path, [], []), token)));
         yield return new("ReadWordState", Observe(token =>
             client.ReadWordStateAsync(new WordReadStateRequest(path, Guid.NewGuid()), token)));
+    }
+
+    private static async Task OpenReaderAndDisposeAsync(ICommandClient client, string path)
+    {
+        var outcome = await client.OpenSelectionReaderAsync(
+            new SIL.Motif.Commands.SelectionReading.OpenSelectionReaderRequest(path, [], []), CancellationToken.None);
+        if (outcome.Value is { } reader) await reader.DisposeAsync();
     }
 
     private static void CaptureBaselineWithAWaitingParser(WalkthroughProject project, out string heartbeat)

@@ -33,15 +33,70 @@ public sealed partial class CompareViewModel : ObservableObject
         new(AnalysisMarkingClass.NotAssessed, WindowWords.Of(ParserOutcome.NotParsed)),
     ];
 
-    private readonly List<CompareWordViewModel> _all = [];
+    private readonly List<AssessmentRowFacts> _all = [];
+    private IReadOnlyList<AssessmentRowFacts> _listed = [];
+    private readonly DisplayProjectionCache<AssessmentRowFacts, CompareWordViewModel> _wordModels;
+    private long _generation;
+    private bool _displayRows = true;
+    private readonly HashSet<object> _rowDisplays = new(ReferenceEqualityComparer.Instance);
+    internal CompareWordViewModel? FindMaterializedWord(WordPresentationKey key, WordListOwner owner) =>
+        _wordModels.Models.FirstOrDefault(word => word.PresentationFor(owner).Key == key);
+
+    internal int IndexOfDisplayedWord(CompareWordViewModel word, bool fixFirst)
+    {
+        var facts = fixFirst ? _all.Where(fact => fact.FixFirst is not null).OrderBy(fact => fact.FixFirst!.Rank)
+            .ThenByDescending(fact => fact.Occurrences ?? 0)
+            .ThenBy(fact => fact.Word, StringComparer.CurrentCulture).ToArray() : _listed.ToArray();
+        return Array.FindIndex(facts, fact => ReferenceEquals(fact, word.Facts));
+    }
+
+    internal int MaterializedRowCount => _wordModels.Count;
+    internal IDisposable ObserveRowCreation(Action<WeakReference<object>> observer) => _wordModels.Observe(observer);
+
+    internal void ReleaseVisibleRows(object? owner = null)
+    {
+        if (owner is null) _rowDisplays.Clear();
+        else
+        {
+            _rowDisplays.Remove(owner);
+            if (_rowDisplays.Count > 0) return;
+        }
+        ++_generation;
+        _displayRows = false;
+        _wordModels.Clear();
+        Words = [];
+        OnPropertyChanged(nameof(Words));
+    }
+
+    internal void ShowVisibleRows(object? owner = null)
+    {
+        if (owner is not null) _rowDisplays.Add(owner);
+        _displayRows = true;
+        ApplyFilter();
+    }
     private ChangesViewModel? _changes;
     private string? _focusedWordSearch;
     private long _evidenceRevision;
 
     public Func<AssessmentWordResult, ResultsTokenViewModel>? WordCardTokenFactory { get; set; }
+    internal Func<AssessmentWordResult, WordActionTarget>? WordTargetFactory { get; set; }
 
-    public CompareViewModel()
+    private WordRowRoutes? _wordRowRoutes;
+
+    public CompareViewModel(WordRowRoutes? routes = null)
     {
+        _wordRowRoutes = routes;
+        _wordModels = new DisplayProjectionCache<AssessmentRowFacts, CompareWordViewModel>(facts =>
+        {
+            var word = new CompareWordViewModel(new AssessWordRowViewModel(facts, _wordRowRoutes), facts.Place,
+                cardTokenFactory: WordCardTokenFactory, target: WordTargetFactory?.Invoke(facts.Source),
+                evidenceRevision: _evidenceRevision)
+            { IsChecked = facts.IsChecked, PendingState = facts.PendingState,
+                HasPendingChange = facts.PendingState != PendingChangeState.None,
+                StagedOpinionText = facts.StagedOpinionText };
+            word.PropertyChanged += OnWordPropertyChanged;
+            return word;
+        }, word => { word.PropertyChanged -= OnWordPropertyChanged; word.Dispose(); }, word => word.IsExpanded);
         Rows = Enum.GetValues<WordProjectStatus>().OrderBy(RowOrder)
             .Select(status => new CompareRowViewModel(status, Enum.GetValues<CompareColumnKind>()
                 .Select(column => new CompareCellViewModel(status, column)).ToArray()))
@@ -77,7 +132,7 @@ public sealed partial class CompareViewModel : ObservableObject
             if (word is not null) OpenWord?.Invoke(word.Word);
         });
         RerunCommand = new AsyncRelayCommand(RerunUnknownAsync, () => Rerun is not null && RerunWords.Count > 0);
-        HandOffCommand = new RelayCommand(() => HandOff?.Invoke(Words.Select(word => word.Word).ToArray()),
+        HandOffCommand = new RelayCommand(() => HandOff?.Invoke(_listed.Select(word => word.Word).ToArray()),
             () => HandOff is not null && Words.Count > 0);
         FocusFixFirstCommand = new RelayCommand<CompareFixFirstViewModel>(item =>
         {
@@ -86,15 +141,24 @@ public sealed partial class CompareViewModel : ObservableObject
         ProposeCommand = new AsyncRelayCommand<string>(async kind =>
         {
             if (kind is null || !CanPropose(kind)) return;
-            var chosen = Words.Where(word => word.IsChecked).ToList();
-            using var usageAction = Changes.BeginMatrixStagingAction(kind, chosen);
+            var chosen = _listed.Where(word => word.IsChecked).ToArray();
+            var actions = chosen.Select(word => word.CaptureMatrixAction(kind,
+                WordTargetFactory?.Invoke(word.Source) ?? new WordActionTarget(word.Word, null, null,
+                    word.Source.Origin?.AssessmentId ?? Changes.AssessmentId))).ToArray();
+            using var usageAction = Changes.BeginMatrixStagingAction(kind,
+                kind == ChangeKinds.IncorrectSpelling ? chosen.Length : chosen.Sum(word => word.ReadingCount));
             using var historyAction = Changes.BeginStagingAction();
             Changes.BeginCollection();
-            foreach (var word in chosen)
+            for (var index = 0; index < chosen.Length; index++)
             {
-                await Changes.AddAsync(kind, word);
+                var word = chosen[index];
+                await Changes.AddMatrixActionAsync(actions[index]);
                 if (Changes.LastRefusal is null && Changes.Snapshot.SkippedWord != word.Word)
+                {
                     word.IsChecked = false;
+                    foreach (var model in _wordModels.Models.Where(model => ReferenceEquals(model.Facts, word)))
+                        model.IsChecked = false;
+                }
             }
         }, CanPropose);
     }
@@ -125,7 +189,7 @@ public sealed partial class CompareViewModel : ObservableObject
 
     private bool CanPropose(string? kind)
     {
-        var chosen = Words.Where(word => word.IsChecked).ToArray();
+        var chosen = _listed.Where(word => word.IsChecked).ToArray();
         return kind switch
         {
             ChangeKinds.IncorrectSpelling => chosen.Length > 0,
@@ -136,8 +200,13 @@ public sealed partial class CompareViewModel : ObservableObject
 
     private void OnWordPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (sender is not CompareWordViewModel model) return;
+        if (e.PropertyName == nameof(CompareWordViewModel.IsExpanded) && model.IsExpanded)
+            foreach (var other in _wordModels.Models.Where(other => !ReferenceEquals(other, model)).ToArray())
+                other.IsExpanded = false;
         if (e.PropertyName == nameof(CompareWordViewModel.IsChecked))
         {
+            model.Facts.IsChecked = model.IsChecked;
             OnPropertyChanged(nameof(CheckedWordCount));
             OnPropertyChanged(nameof(CheckedWordText));
             OnPropertyChanged(nameof(HasCheckedWords));
@@ -213,7 +282,7 @@ public sealed partial class CompareViewModel : ObservableObject
     public IReadOnlyList<ComparePresetViewModel> Presets { get; }
 
     /// <summary>The words in the chosen cells, or every word when none is chosen, searched and sorted.</summary>
-    public ObservableCollection<CompareWordViewModel> Words { get; } = [];
+    public IReadOnlyList<CompareWordViewModel> Words { get; private set; } = [];
 
     /// <summary>Every ticked word, including rows hidden by the current list filter.</summary>
     public IReadOnlyList<string> CheckedWords => _all.Where(word => word.IsChecked)
@@ -233,14 +302,14 @@ public sealed partial class CompareViewModel : ObservableObject
     {
         var chosen = cells.ToHashSet();
         var words = _all.Where(word => chosen.Contains(new TextsListCell(word.Row, word.Column))).ToArray();
-        return words.Select(word => word.WordRow.Row.MeaningCode)
+        return words.Select(word => word.Comparison.MeaningCode)
             .Distinct(StringComparer.Ordinal).Take(2).Count() > 1;
     }
 
     public int RefusalCountInCells(IReadOnlyList<TextsListCell> cells)
     {
         var chosen = cells.ToHashSet();
-        return _all.Count(word => word.WordRow.HasRefusalReason &&
+        return _all.Count(word => word.IsRefused &&
             chosen.Contains(new TextsListCell(word.Row, word.Column)));
     }
 
@@ -292,18 +361,25 @@ public sealed partial class CompareViewModel : ObservableObject
     /// <summary>Whether to say the rows are unknown, rather than let every word look as if nothing were stored.</summary>
     public bool ShowsNoStandingsNotice => HasWords && !HasStandings;
 
-    public IReadOnlyList<CompareFixFirstViewModel> FixFirstRows => _all
-        .Where(word => word.FixFirst is not null)
-        .OrderBy(word => word.FixFirst!.Rank)
-        .ThenByDescending(word => word.Occurrences ?? 0)
-        .ThenBy(word => word.Word, StringComparer.CurrentCulture)
-        .Select(word => new CompareFixFirstViewModel(word, word.FixFirst!))
-        .ToArray();
+    public IReadOnlyList<CompareFixFirstViewModel> FixFirstRows
+    {
+        get
+        {
+            var facts = _all.Where(word => word.FixFirst is not null).OrderBy(word => word.FixFirst!.Rank)
+                .ThenByDescending(word => word.Occurrences ?? 0).ThenBy(word => word.Word, StringComparer.CurrentCulture)
+                .ToArray();
+            var generation = _generation;
+            return new LazyProjectionList<AssessmentRowFacts, CompareFixFirstViewModel>(facts,
+                word => new CompareFixFirstViewModel(_wordModels.Get(word), word.FixFirst!), item => item.Word.Facts,
+                () => _displayRows && generation == _generation);
+        }
+    }
 
     /// <summary>Whether any word needs fixing first; an empty list is hidden rather than shown open with 0.</summary>
     public bool HasFixFirst => _all.Any(word => word.FixFirst is not null);
 
-    public string FixFirstSummary => FixFirstRows.Count.ToString("N0", System.Globalization.CultureInfo.CurrentCulture);
+    public string FixFirstSummary => _all.Count(word => word.FixFirst is not null)
+        .ToString("N0", System.Globalization.CultureInfo.CurrentCulture);
 
     public bool AnySelected => Cells.Any(cell => cell.IsSelected);
 
@@ -363,7 +439,7 @@ public sealed partial class CompareViewModel : ObservableObject
         return (chosen.Length == 0 ? Cells : chosen).Where(cell => cell.WordCount > 0);
     }
 
-    private IEnumerable<string> ListedMeanings() => Words.Select(word => word.WordRow.Meaning)
+    private IEnumerable<string> ListedMeanings() => _listed.Select(word => MeaningOf(word))
         .Distinct(StringComparer.Ordinal);
 
     /// <summary>The one line under the heading: what the chosen cell means, or how to choose cells.</summary>
@@ -385,8 +461,8 @@ public sealed partial class CompareViewModel : ObservableObject
             var inCells = chosen.Length == 0 ? TotalCount : chosen.Sum(cell => cell.WordCount);
             var words = Words.Count == inCells
                 ? CompareCellViewModel.WordsText(Words.Count) : $"{Words.Count:N0} of {inCells:N0} words";
-            return Words.Any(word => word.Occurrences is not null)
-                ? $"{words} · {CompareCellViewModel.PlacesTextOf(Words.Sum(word => word.Occurrences ?? 0))}" : words;
+            return _listed.Any(word => word.Occurrences is not null)
+                ? $"{words} · {CompareCellViewModel.PlacesTextOf(_listed.Sum(word => word.Occurrences ?? 0))}" : words;
         }
     }
 
@@ -413,7 +489,7 @@ public sealed partial class CompareViewModel : ObservableObject
     [ObservableProperty]
     private string? _sharedMoreText;
 
-    public int CheckedWordCount => Words.Count(word => word.IsChecked);
+    public int CheckedWordCount => _listed.Count(word => word.IsChecked);
 
     /// <summary>Whether any listed word is ticked, so the list's controls say how many.</summary>
     public bool HasCheckedWords => CheckedWordCount > 0;
@@ -433,22 +509,35 @@ public sealed partial class CompareViewModel : ObservableObject
     partial void OnSortChanged(CompareSort value) => ApplyFilter();
 
     /// <summary>Places every word in its cell and clears the selection; <see langword="null"/> empties the matrix.</summary>
-    public void Load(IEnumerable<AssessWordRowViewModel>? rows)
+    public void Load(IEnumerable<AssessWordRowViewModel>? rows) =>
+        LoadFacts(rows?.Select(row =>
+        {
+            _wordRowRoutes ??= row.WordRow.Routes;
+            return row.Facts;
+        }));
+
+    internal void LoadSources(IReadOnlyList<AssessmentWordResult>? words, Func<string, int?>? occurrenceCounts = null) =>
+        LoadFacts(words?.Select(word => new AssessmentRowFacts(word,
+            occurrenceCounts?.Invoke(word.Word) ?? word.OccurrenceCount)));
+
+    internal void UpdateOccurrences(Func<string, int?> occurrenceCounts) => LoadFacts(
+        _all.Select(facts => facts with { OccurrenceCount = occurrenceCounts(facts.Word) }).ToArray(), clearSelection: false);
+
+    internal void LoadFacts(IEnumerable<AssessmentRowFacts>? rows, bool clearSelection = true)
     {
-        foreach (var word in _all) word.PropertyChanged -= OnWordPropertyChanged;
+        ++_generation;
+        _wordModels.Clear();
         _all.Clear();
-        var evidenceRevision = checked(++_evidenceRevision);
-        if (rows is not null)
-            _all.AddRange(rows.Select(row => new CompareWordViewModel(row, Place(row),
-                WordCardTokenFactory?.Invoke(row.Source), evidenceRevision)));
-        foreach (var word in _all) word.PropertyChanged += OnWordPropertyChanged;
+        checked { _evidenceRevision++; }
+        if (rows is not null) _all.AddRange(rows);
+        if (clearSelection) foreach (var facts in _all) facts.IsChecked = false;
         var placesAvailable = _all.Any(word => word.Occurrences is not null);
         foreach (var cell in Cells)
         {
             var words = _all.Where(word => word.Row == cell.Row && word.Column == cell.Column).ToArray();
             cell.SetCounts(words.Length, placesAvailable ? words.Sum(word => word.Occurrences ?? 0) : null,
-                words.Count(word => word.WordRow.HasRefusalReason));
-            cell.IsSelected = false;
+                words.Count(word => word.IsRefused));
+            if (clearSelection) cell.IsSelected = false;
         }
         RefreshCounts();
         UpdatePendingMarkers();
@@ -469,7 +558,7 @@ public sealed partial class CompareViewModel : ObservableObject
     public void FocusWord(CompareWordViewModel word)
     {
         ArgumentNullException.ThrowIfNull(word);
-        foreach (var item in _all) item.IsFocused = ReferenceEquals(item, word);
+        foreach (var item in _wordModels.Models) item.IsFocused = ReferenceEquals(item, word);
         word.IsExpanded = true;
         _focusedWordSearch = word.Word;
         SearchText = word.Word;
@@ -541,7 +630,8 @@ public sealed partial class CompareViewModel : ObservableObject
     {
         Shared.Clear();
         // Assessment order, not the list's sort, so re-sorting the list never reorders what the words share.
-        var listed = _all.Where(Words.ToHashSet().Contains).ToArray();
+        var listedKeys = _listed.ToHashSet();
+        var listed = _all.Where(listedKeys.Contains).ToArray();
         var shared = anyCellChosen && listed.Length >= 2
             ? ObjectUsesQuery.SharedBy(listed.Select(word => word.Source).ToArray(), listed.Select(word => word.Word).ToArray())
             : [];
@@ -563,9 +653,14 @@ public sealed partial class CompareViewModel : ObservableObject
         {
             pending.TryGetValue(word.Word, out var changes);
             word.PendingState = PendingChangeStates.FromChanges(changes);
-            word.HasPendingChange = word.PendingState != PendingChangeState.None;
             word.StagedOpinionText = changes?.FirstOrDefault(change => change.StoredAnalysisId is not null &&
                 change.Kind is ChangeKinds.Approve or ChangeKinds.Reject or ChangeKinds.Candidate)?.TransitionText;
+        }
+        foreach (var model in _wordModels.Models)
+        {
+            model.PendingState = model.Facts.PendingState;
+            model.HasPendingChange = model.PendingState != PendingChangeState.None;
+            model.StagedOpinionText = model.Facts.StagedOpinionText;
         }
         foreach (var cell in Cells)
         {
@@ -593,8 +688,11 @@ public sealed partial class CompareViewModel : ObservableObject
             CompareSort.Slowest => matches.OrderByDescending(word => word.ElapsedMs ?? -1),
             _ => matches.OrderByDescending(word => word.Occurrences ?? 0).ThenBy(word => word.Word, StringComparer.CurrentCulture),
         };
-        Words.Clear();
-        foreach (var word in matches) Words.Add(word);
+        _listed = matches.ToArray();
+        var generation = _generation;
+        Words = new LazyProjectionList<AssessmentRowFacts, CompareWordViewModel>(_listed, _wordModels.Get,
+            word => word.Facts, () => _displayRows && generation == _generation);
+        OnPropertyChanged(nameof(Words));
         RefreshShared(chosen.Count > 0);
         OnPropertyChanged(nameof(ShowsMeaning));
         OnPropertyChanged(nameof(ListMeaning));
@@ -608,6 +706,9 @@ public sealed partial class CompareViewModel : ObservableObject
         ProposeCommand.NotifyCanExecuteChanged();
         ChosenCellsChanged?.Invoke(this, EventArgs.Empty);
     }
+
+    private static string MeaningOf(AssessmentRowFacts word) => word.IsRefused ? ParserRefusals.Title
+        : WindowWords.MeaningOf(word.Source.ProjectStanding, WindowWords.OutcomeOf(word.Column)).Word;
 
     /// <summary>Places a word by the same comparison used by the commands and common word rows.</summary>
     public static (WordProjectStatus Row, CompareColumnKind Column) Place(AssessWordRowViewModel word)
@@ -923,17 +1024,21 @@ public sealed partial class ComparePresetViewModel(string label, IReadOnlyList<C
 }
 
 /// <summary>One word in the Compare list, with the cell it sits in.</summary>
-public sealed partial class CompareWordViewModel : ObservableObject
+public sealed partial class CompareWordViewModel : ObservableObject, IDisposable
 {
     private readonly WordPresentationKey _presentationKey;
     private WordInteractionState _presentationState;
 
     public CompareWordViewModel(AssessWordRowViewModel word, (WordProjectStatus Row, CompareColumnKind Column) place,
-        ResultsTokenViewModel? cardToken = null, long evidenceRevision = 0)
+        ResultsTokenViewModel? cardToken = null, Func<AssessmentWordResult, ResultsTokenViewModel>? cardTokenFactory = null,
+        WordActionTarget? target = null, long evidenceRevision = 0)
     {
         ArgumentNullException.ThrowIfNull(word);
         Word = word.Word;
-        CardToken = cardToken;
+        _cardToken = cardToken;
+        _cardTokenFactory = cardTokenFactory;
+        _target = target;
+        Facts = word.Facts;
         Source = word.Source;
         WordRow = word.WordRow;
         var form = WordRow.Word;
@@ -978,9 +1083,32 @@ public sealed partial class CompareWordViewModel : ObservableObject
 
     public string Word { get; }
 
-    public ResultsTokenViewModel? CardToken { get; }
+    private ResultsTokenViewModel? _cardToken;
+    private readonly Func<AssessmentWordResult, ResultsTokenViewModel>? _cardTokenFactory;
+    private readonly WordActionTarget? _target;
+    internal AssessmentRowFacts Facts { get; }
+    public ResultsTokenViewModel? CardToken => _cardToken ??= IsExpanded ? _cardTokenFactory?.Invoke(Source) : null;
 
-    public bool HasCardToken => CardToken is not null;
+    public bool HasCardToken => _cardToken is not null || _cardTokenFactory is not null;
+
+    partial void OnIsExpandedChanged(bool value)
+    {
+        SyncPresentationState(_presentationState with { IsOpen = value });
+        if (!value && _cardTokenFactory is not null)
+        {
+            _cardToken?.Dispose();
+            _cardToken = null;
+        }
+        OnPropertyChanged(nameof(CardToken));
+    }
+
+    /// <summary>Releases the card created for this row when its display projection is evicted.</summary>
+    public void Dispose()
+    {
+        IsExpanded = false;
+        if (_cardTokenFactory is not null) _cardToken?.Dispose();
+        _cardToken = null;
+    }
 
     /// <summary>The Assessment's result for the word, read by identity for what listed words share.</summary>
     public AssessmentWordResult Source { get; }
@@ -1062,9 +1190,9 @@ public sealed partial class CompareWordViewModel : ObservableObject
     private string? _stagedOpinionText;
 
     internal Task<KeyboardOpinionShortcutResult> StageOpinionShortcutAsync(KeyboardShortcutBehavior behavior) =>
-        KeyboardOpinionShortcuts.StageAsync(Word, null, Marking.FieldWorksAnalyses.Select(analysis =>
+        KeyboardOpinionShortcuts.StageAsync(Word, _target?.WordformId, Marking.FieldWorksAnalyses.Select(analysis =>
             new KeyboardStoredAnalysis(analysis.StoredAnalysisId, analysis.Opinion, analysis.Morphs)).ToArray(),
-            WordRow.OpinionRoutes, behavior);
+            WordRow.OpinionRoutes, behavior, _target?.ExpectedContext);
 
     /// <summary>Whether FieldWorks holds more than one analysis of the word, so the card names each opinion.</summary>
     public bool HasSeveralOpinions => OpinionMarks.Count > 1;
@@ -1117,7 +1245,6 @@ public sealed partial class CompareWordViewModel : ObservableObject
 
     partial void OnIsCheckedChanged(bool value) => SyncPresentationState(_presentationState with { IsChecked = value });
 
-    partial void OnIsExpandedChanged(bool value) => SyncPresentationState(_presentationState with { IsOpen = value });
 
     private void SyncPresentationState(WordInteractionState value)
     {

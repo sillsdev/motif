@@ -109,6 +109,37 @@ public sealed class ProjectEvidenceTests
     }
 
     [Fact]
+    public async Task ReaderPublicationNamesTheShownRunAcrossSelectionChangesAndOlderStoredEvidence()
+    {
+        var fake = new FakeCommandClient();
+        var context = NewContext(fake);
+        fake.ReadCurrentEvidenceCompletesWith(StoredSnapshot());
+        await context.OpenProjectAsync(ProjectPath);
+        var run = Run("shown") with
+        {
+            TimingOverrideAssessmentIds = ["shown-subset"],
+            Measurements =
+            [
+                new("shown-root", AssessmentKinds.ParseTime, "shown"),
+                new("shown-correctness", AssessmentKinds.Correctness, "shown"),
+                new("shown-timing", AssessmentKinds.ObjectTiming, "shown"),
+            ],
+        };
+        context.PublishEvidence(new WorkspaceEvidence(run, Saved.AddHours(1), false));
+        await context.EvidencePublication;
+        await context.PublishCurrentEvidenceAsync(StoredSnapshot());
+        context.Selection.PastedWords = "another";
+        await context.EvidencePublication;
+        var request = fake.OpenSelectionReaderRequests.Last();
+        Assert.Equal("shown-root", request.ShownAssessment!.AssessmentId);
+        Assert.Equal(Token, request.ShownAssessment.Baseline);
+        Assert.Equal(["shown-subset"], request.ShownAssessment.ReplacementAssessmentIds);
+        Assert.Equal(["shown-correctness", "shown-timing"], request.ShownAssessment.MeasurementAssessmentIds);
+        Assert.Contains("another", request.AddedWords);
+        await context.SelectionReads.StopAsync();
+    }
+
+    [Fact]
     public async Task ABurstOfPublicationsReachesEachPageOnceMoreWithTheLatestEvidence()
     {
         var fake = new FakeCommandClient();

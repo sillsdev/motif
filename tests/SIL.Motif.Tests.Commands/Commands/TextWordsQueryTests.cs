@@ -320,9 +320,16 @@ public sealed class TextWordsQueryTests : IDisposable
         Assert.Equal(1, otherWord.CandidateCount);
         Assert.Single(otherWord.Occurrences);
         Assert.Equal(2, outcome.Value.OccurrenceCount);
-        var tokens = Assert.Single(outcome.Value.Texts).Lines.SelectMany(line => line.Tokens).ToArray();
-        var approvedToken = Assert.Single(tokens, token => token.WordformId == approvedId);
-        var disapprovedToken = Assert.Single(tokens, token => token.WordformId == otherId);
+        var lines = Assert.Single(outcome.Value.Texts).Lines.Where(line => line.Tokens.Count > 0)
+            .OrderBy(line => line.Number).ToArray();
+        var tokens = lines.Select(line => (Line: line, Token: Assert.Single(line.Tokens))).ToArray();
+        Assert.Equal(2, lines.Length);
+        Assert.All(tokens, item => Assert.Equal(0, item.Token.OccurrenceIndex));
+        Assert.Equal(2, lines.Select(line => line.SegmentId).Distinct().Count());
+        Guid?[] expectedWordforms = reverse ? [otherId, approvedId] : [approvedId, otherId];
+        Assert.Equal(expectedWordforms, tokens.Select(item => item.Token.WordformId));
+        var approvedToken = Assert.Single(tokens, item => item.Token.WordformId == approvedId).Token;
+        var disapprovedToken = Assert.Single(tokens, item => item.Token.WordformId == otherId).Token;
         Assert.Equal(CanonicalId.FromGuid(approvedAnalysisId).Value, approvedToken.Analysis!.StoredAnalysisId);
         Assert.Equal(ReadingGrade.Approved, approvedToken.Analysis.StoredAnalysisOpinion);
         Assert.Equal(CanonicalId.FromGuid(approvedId).Value, approvedToken.Analysis.Identity!.SourceWordformGuid);

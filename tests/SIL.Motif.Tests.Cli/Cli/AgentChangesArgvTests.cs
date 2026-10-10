@@ -3,7 +3,10 @@ using SIL.LCModel;
 using SIL.LCModel.Core.Text;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Contract;
+using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Commands;
+using SIL.Motif.Commands.Store;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Projects;
@@ -130,6 +133,67 @@ public sealed class AgentChangesArgvTests : IDisposable
         var removed = SuccessfulSnapshot(removedResult);
         Assert.Empty(removed.Changes);
         Assert.NotNull(removed.DraftId);
+    }
+
+    [Fact]
+    public async Task ExpectedContextArgumentsRefuseStaleReadAndPendingWritesWithoutChangingTheStore()
+    {
+        using var cache = _pristine.NewScratch();
+        var text = SeededProject.SeedText(cache, _pristine.Seed);
+        var projectPath = cache.ProjectId.Path;
+        new FwDataProjectLoader().Save(cache);
+        await CaptureBaseline(projectPath);
+        var project = new ProjectLocator(Path.GetFullPath(projectPath),
+            Path.GetFileNameWithoutExtension(projectPath));
+        using var database = ProjectMotifDatabase.Open(projectPath);
+        var workspaceKey = ProjectWorkspaceKey.Compute(project);
+        var baseline = new BaselineRepository(database).GetCurrent(workspaceKey)!.Token;
+        var staleBaseline = new BaselineToken(baseline.ProjectIdentity, baseline.SemanticSnapshotDigest,
+            baseline.ProjectionVersion, baseline.CapturedUtc, "sha256:" + new string('0', 64),
+            baseline.CapturedHostSessionId, baseline.CapturedEditGeneration);
+        var staleContext = new ExpectedContext(staleBaseline);
+        var contextJson = System.Text.Json.JsonSerializer.Serialize(staleContext, MotifJson.CreateOptions());
+
+        var projection = new BaselineRepository(database).GetCurrentTextWords(workspaceKey, [text.TextId])!;
+        var sourceLine = projection.Projection.Texts.Single().Lines.First(line => line.Tokens.Count > 0);
+        var sourceToken = sourceLine.Tokens.First(token => token.WordformId is not null);
+        var anchor = new OccurrenceAnchor(text.TextId, sourceLine.ParagraphId, sourceLine.SegmentId,
+            sourceToken.OccurrenceIndex);
+        var readRepository = new ReadStateRepository(database);
+        readRepository.Upsert(new ReadOccurrenceRecord(anchor, "{}"));
+        var readRowsBefore = readRepository.GetForText(text.TextId);
+
+        var read = CliInProcess.Run(_workerRoot, null, true, "word", "read-state",
+            "--project", projectPath, "--text", text.TextId.ToString("D"), "--unread",
+            "--expected-context", contextJson, "--json");
+        Assert.NotEqual(0, read.ExitCode);
+        Assert.Equal("texts.evidence-changed", ProjectionJson.Deserialize<FailureEnvelope>(read.Error)!.Code);
+        Assert.Equal(readRowsBefore, readRepository.GetForText(text.TextId));
+
+        var initial = PendingChanges.Put(new PutPendingChangeRequest(projectPath,
+            SIL.Motif.Host.MotifProductVersion.CurrentText, "none",
+            new ChangeIntent("cli-context-existing", AnalysisChangeKinds.Reject,
+                CanonicalId.FromGuid(text.AnalysedWordformId).Value, SeededProject.AnalysedWordForm,
+                StoredAnalysisId: CanonicalId.FromGuid(text.ApprovedAnalysisId).Value))
+        {
+            ExpectedContext = new ExpectedContext(baseline),
+        });
+        Assert.True(initial.Succeeded, initial.Refusal?.Message);
+        var proposalRepository = new ProposalRepository(database);
+        var draftBefore = proposalRepository.GetDraft(PendingChanges.DraftName);
+        var fitRowsBefore = ReadPendingFitRows(database);
+
+        var put = CliInProcess.Run(_workerRoot, null, true, "put-pending-change",
+            "--project", projectPath, "--expected-revision", initial.Value!.Revision,
+            "--change-id", "cli-context-stale", "--kind", AnalysisChangeKinds.Reject,
+            "--word", SeededProject.AnalysedWordForm,
+            "--wordform-id", CanonicalId.FromGuid(text.AnalysedWordformId).Value,
+            "--stored-analysis-id", CanonicalId.FromGuid(text.ApprovedAnalysisId).Value,
+            "--expected-context", contextJson, "--json");
+        Assert.NotEqual(0, put.ExitCode);
+        Assert.Equal("texts.evidence-changed", ProjectionJson.Deserialize<FailureEnvelope>(put.Error)!.Code);
+        Assert.Equal(draftBefore, proposalRepository.GetDraft(PendingChanges.DraftName));
+        Assert.Equal(fitRowsBefore, ReadPendingFitRows(database));
     }
 
     [Fact]
@@ -315,6 +379,22 @@ public sealed class AgentChangesArgvTests : IDisposable
     {
         Assert.True(result.ExitCode == 0, result.FailureDetails);
         return ProjectionJson.Deserialize<PendingChangesSnapshot>(result.Output)!;
+    }
+
+    private static IReadOnlyList<string> ReadPendingFitRows(MotifDatabase database)
+    {
+        using var connection = database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT DraftRevision, ProjectLastWriteUtcTicks, BaselineIdentity, FitSummaryJson
+            FROM PendingChangeFits ORDER BY DraftRevision, ProjectLastWriteUtcTicks, BaselineIdentity;
+            """;
+        using var reader = command.ExecuteReader();
+        var rows = new List<string>();
+        while (reader.Read())
+            rows.Add(string.Join("\u001f", reader.GetString(0), reader.GetInt64(1), reader.GetString(2),
+                reader.GetString(3)));
+        return rows;
     }
 
     private static void RecordParseAssessment(string path, string word, Guid formId, Guid msaId)

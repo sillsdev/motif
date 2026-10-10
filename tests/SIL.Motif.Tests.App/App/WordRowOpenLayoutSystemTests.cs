@@ -63,7 +63,13 @@ public sealed class WordRowOpenLayoutSystemTests(ITestOutputHelper output)
 
                     var row = window.GetVisualDescendants().OfType<WordRow>().Single(item =>
                         item.IsEffectivelyVisible && item.Data?.Facts.Word == "hawajafika");
-                    row.State = row.State! with { IsOpen = true };
+                    row.SetCurrentValue(WordRow.StateProperty, row.State! with { IsOpen = true });
+                    for (var pass = 0; pass < 50 && !row.GetVisualDescendants().OfType<WordCard>()
+                        .Any(card => card.Document?.Sections.OfType<WordCardAnalysis>().Any(section => section.Token is not null) == true); pass++)
+                    {
+                        await Task.Delay(10);
+                        PageScreenshots.Settle(window);
+                    }
                     PageScreenshots.Settle(window);
                     LayoutAssertions.AssertCurrent(row);
 
@@ -77,6 +83,7 @@ public sealed class WordRowOpenLayoutSystemTests(ITestOutputHelper output)
                         text.Classes.Contains("wordPresentationGloss") && text.IsEffectivelyVisible);
 
                     var card = row.GetVisualDescendants().OfType<WordCard>().Single();
+                    Assert.True(card.Document is not null, $"Card read: {card.Failure}");
                     var analysis = Assert.Single(card.Document!.Sections.OfType<WordCardAnalysis>());
                     Assert.NotNull(analysis.Token);
                     Assert.Contains(card.GetVisualDescendants().OfType<CopyableTextBlock>(),

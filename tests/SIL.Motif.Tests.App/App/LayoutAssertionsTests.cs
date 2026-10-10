@@ -206,6 +206,37 @@ public sealed class LayoutAssertionsTests(AvaloniaHeadlessFixture avalonia)
         });
     }
 
+    [Fact]
+    public void RejectsOverflowInAnOpenNestedPopup()
+    {
+        avalonia.Invoke(() =>
+        {
+            var heading = new TextBlock { Text = "Popup heading must fit", Width = 20 };
+            var popup = new Popup { Child = heading };
+            var window = new Window
+            {
+                Content = new Border { Child = new Grid { Children = { popup } } },
+                Width = 1040,
+                Height = 780,
+            };
+            try
+            {
+                window.Show();
+                popup.PlacementTarget = window;
+                popup.IsOpen = true;
+                PageScreenshots.Settle(window);
+                var error = Assert.ThrowsAny<Xunit.Sdk.XunitException>(
+                    () => LayoutAssertions.AssertCurrent(window));
+                Assert.Contains(heading.Text, error.Message, StringComparison.Ordinal);
+            }
+            finally
+            {
+                popup.IsOpen = false;
+                window.Close();
+            }
+        });
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -236,6 +267,25 @@ public sealed class LayoutAssertionsTests(AvaloniaHeadlessFixture avalonia)
                 PageScreenshots.Settle(window);
                 var error = Assert.ThrowsAny<Xunit.Sdk.XunitException>(() => LayoutAssertions.AssertCurrent(grid));
                 Assert.Contains("is clipped outside a scroll viewport", error.Message, StringComparison.Ordinal);
+            }
+            finally { window.Close(); }
+        });
+    }
+
+    [Fact]
+    public void InspectingAnImplicitGridLeavesItSafeToArrangeAgain()
+    {
+        avalonia.Invoke(() =>
+        {
+            var grid = new Grid { Children = { new Border { Height = 24 } } };
+            var window = new Window { Content = grid, Width = 1040, Height = 120 };
+            try
+            {
+                window.Show();
+                PageScreenshots.Settle(window);
+                LayoutAssertions.AssertCurrent(window);
+                grid.InvalidateArrange();
+                PageScreenshots.Settle(window);
             }
             finally { window.Close(); }
         });

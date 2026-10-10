@@ -17,6 +17,7 @@ using SIL.Motif.Commands.Handoff;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Canonicalization;
+using SIL.Motif.Contract;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
@@ -419,7 +420,10 @@ try
                     "[--wordform-id <id>] [--assessment <id> --reading-index <zero-based> " +
                     "--reading-json <json>] [--stored-analysis-id <id>] " +
                     "[--occurrence-text-id <guid> --occurrence-paragraph-id <guid> " +
-                    "--occurrence-segment-id <guid> --occurrence-index <zero-based>] [--json]", asJson);
+                    "--occurrence-segment-id <guid> --occurrence-index <zero-based>] " +
+                    "[--expected-context <json>] [--json]", asJson);
+            if (!TryParseExpectedContext(flags.GetValueOrDefault("expected-context"), out var putExpectedContext))
+                return Usage("--expected-context must contain one ExpectedContext object.", asJson);
             ParseAnalysis? chosenReading = null;
             if (flags.TryGetValue("reading-json", out var readingJson))
             {
@@ -459,7 +463,7 @@ try
                 new ChangeIntent(putId, putKind, flags.GetValueOrDefault("wordform-id") ?? "",
                     putWord, flags.GetValueOrDefault("assessment"), chosenReading,
                     flags.GetValueOrDefault("stored-analysis-id"), flags.GetValueOrDefault("display-reading"),
-                    readingIndex, Occurrence: occurrence))));
+                    readingIndex, Occurrence: occurrence)) { ExpectedContext = putExpectedContext }));
             break;
 
         case "remove-analysis":
@@ -978,9 +982,12 @@ try
             var wantsUnread = flags.ContainsKey("unread");
             if (readStateOccurrences is not null && !wantsRead && !wantsUnread)
                 return Usage(UsageLineFor("word read-state"), asJson);
+            if (!TryParseExpectedContext(flags.GetValueOrDefault("expected-context"), out var readExpectedContext))
+                return Usage("--expected-context must contain one ExpectedContext object.", asJson);
             bool? isRead = wantsRead ? true : wantsUnread ? false : null;
             result = RenderCommand(ReadStateCommands.Execute(new WordReadStateRequest(
-                readStateProject, readStateTextId, readStateOccurrences, isRead)));
+                readStateProject, readStateTextId, readStateOccurrences, isRead)
+                { ExpectedContext = readExpectedContext }));
             break;
 
         case "setup":
@@ -1570,6 +1577,22 @@ static bool TryParseReadOccurrences(string? value, Guid textId,
     if (parsed.Count == 0) return false;
     occurrences = parsed;
     return true;
+}
+
+static bool TryParseExpectedContext(string? value, out ExpectedContext? expectedContext)
+{
+    expectedContext = null;
+    if (value is null) return true;
+    try
+    {
+        expectedContext = System.Text.Json.JsonSerializer.Deserialize<ExpectedContext>(value,
+            MotifJson.CreateOptions());
+        return expectedContext?.Baseline is not null;
+    }
+    catch (System.Text.Json.JsonException)
+    {
+        return false;
+    }
 }
 
 static (Dictionary<string, string> Flags, List<string> Positionals, IReadOnlyList<string> Forwarded) ParseArgs(

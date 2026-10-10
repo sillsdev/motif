@@ -45,14 +45,18 @@
           </StackPanel>
         </DockPanel>
         <!-- The top bar carries the run's one progress bar and Cancel; this line says what the page still shows. -->
-        <StackPanel Spacing="{DynamicResource Intent.Space.Compact}"
-                    Margin="{DynamicResource Component.TextsPage.AssessmentStatusPadding}"
-                    IsVisible="{Binding ShowAssessStatus}">
-          <views:CopyableTextBlock Classes="muted" Text="{Binding Assess.EarlierResultsNote}" TextWrapping="Wrap"
-                                   IsVisible="{Binding Assess.ShowsEarlierResults}"
-                                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.EarlierResultsNote}" />
-          <views:RefusalBlock DataContext="{Binding Assess.ShownRefusal}" />
-        </StackPanel>
+        <ScrollViewer x:Name="TextsParseStatusScroll" IsVisible="{Binding ShowAssessStatus}"
+                      MaxHeight="{DynamicResource Component.TextsPage.AssessmentStatusMaxHeight}"
+                      HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
+                      AutomationProperties.Name="Parse status">
+          <StackPanel Spacing="{DynamicResource Intent.Space.Compact}"
+                      Margin="{DynamicResource Component.TextsPage.AssessmentStatusPadding}">
+            <views:CopyableTextBlock Classes="muted" Text="{Binding Assess.EarlierResultsNote}" TextWrapping="Wrap"
+                                     IsVisible="{Binding Assess.ShowsEarlierResults}"
+                                     AutomationProperties.AutomationId="{x:Static app:AutomationIds.EarlierResultsNote}" />
+            <views:RefusalBlock DataContext="{Binding Assess.ShownRefusal}" />
+          </StackPanel>
+        </ScrollViewer>
       </StackPanel>
     </Border>
 

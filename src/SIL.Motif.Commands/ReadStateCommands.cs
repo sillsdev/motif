@@ -45,47 +45,87 @@ public static class ReadStateCommands
             (database, project) => ReadOrChange(database, project, request));
     }
 
+    internal static CommandOutcome<WordReadStateResponse> ReadValid(
+        WordReadStateRequest request, CancellationToken cancellationToken = default,
+        Action<TextWordsProjection>? onProjectionRead = null)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (cancellationToken.IsCancellationRequested)
+            return CommandOutcome<WordReadStateResponse>.Refused(new Refusal(
+                "word.read-state-cancelled", FailureReason.Cancelled, "Reading word state was cancelled."));
+        if (request.TextId == Guid.Empty || request.IsRead is not null || request.Occurrences is not null)
+            return Invalid("A Text identity and read-only request are required.");
+        return ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText,
+            (database, project) => ReadOrChange(database, project, request, pruneInvalidReads: false,
+                onProjectionRead));
+    }
+
     private static CommandOutcome<WordReadStateResponse> ReadOrChange(
-        MotifDatabase database, ProjectLocator project, WordReadStateRequest request)
+        MotifDatabase database, ProjectLocator project, WordReadStateRequest request,
+        bool pruneInvalidReads = true, Action<TextWordsProjection>? onProjectionRead = null)
     {
         var repository = new ReadStateRepository(database);
+        using var write = request.ExpectedContext is null ? null : repository.BeginTransaction();
+        CommandOutcome<WordReadStateResponse> Complete(CommandOutcome<WordReadStateResponse> outcome)
+        {
+            if (outcome.Succeeded) write?.Commit();
+            return outcome;
+        }
+
         var workspaceKey = ProjectWorkspaceKey.Compute(project);
+        if (request.ExpectedContext is { } expectedContext &&
+            !repository.IsCurrentContext(workspaceKey, expectedContext))
+            return ContextChanged();
         var current = new BaselineRepository(database).GetCurrentTextWords(workspaceKey, [request.TextId]);
+        if (current is not null) onProjectionRead?.Invoke(current.Projection);
+        if (request.ExpectedContext is { } expectedCurrent &&
+            (current is null || current.Baseline.Token != expectedCurrent.Baseline))
+            return ContextChanged();
         if (current is null)
         {
-            repository.DeleteForText(request.TextId);
+            if (pruneInvalidReads) repository.DeleteForText(request.TextId);
             if (request.IsRead == true)
                 return Invalid("A current Baseline is required before marking a word Read.");
-            return Success([], hasBaseline: false);
+            return Complete(Success([], hasBaseline: false));
         }
 
         var text = current.Projection.Texts.SingleOrDefault(candidate => candidate.TextId == request.TextId);
         if (text is null)
         {
-            repository.DeleteForText(request.TextId);
+            if (pruneInvalidReads) repository.DeleteForText(request.TextId);
             return request.IsRead == true
                 ? Invalid("The requested Text is not present in the current Baseline.")
-                : Success([], hasBaseline: true);
+                : Complete(Success([], hasBaseline: true));
         }
 
         var saved = repository.GetForText(request.TextId);
         // No saved Read marks means there are no fingerprints to validate against parser evidence.
-        if (request.IsRead is null && saved.Count == 0) return Success([], hasBaseline: true);
+        if (request.IsRead is null && saved.Count == 0) return Complete(Success([], hasBaseline: true));
 
         var assessmentDigests = CurrentAssessmentDigests(database, current.Baseline.Token, text,
             request.AssessmentIds);
-        Revalidate(repository, current.Projection, text, assessmentDigests, saved);
-
         if (request.IsRead is null)
-            return Success(repository.GetForText(request.TextId).Select(record => record.Occurrence).ToArray(),
-                hasBaseline: true);
+        {
+            var valid = ValidateReadRecords(current.Projection, text, assessmentDigests, saved);
+            if (pruneInvalidReads)
+            {
+                Revalidate(repository, saved, valid);
+                return Complete(Success(repository.GetForText(request.TextId)
+                    .Select(record => record.Occurrence).ToArray(), hasBaseline: true));
+            }
+            return Complete(Success(valid.Select(item => item.Occurrence).Distinct().ToArray(),
+                hasBaseline: true));
+        }
+
+        Revalidate(repository, saved,
+            ValidateReadRecords(current.Projection, text, assessmentDigests, saved));
 
         var targets = request.Occurrences ?? AllOccurrences(text);
         if (request.IsRead == false)
         {
             foreach (var target in targets) repository.Delete(target);
-            return Success(repository.GetForText(request.TextId).Select(record => record.Occurrence).ToArray(),
-                hasBaseline: true);
+            return Complete(Success(repository.GetForText(request.TextId)
+                .Select(record => record.Occurrence).ToArray(), hasBaseline: true));
         }
 
         var fingerprints = new List<(OccurrenceAnchor Occurrence, ReadOccurrenceFingerprint Fingerprint)>();
@@ -105,16 +145,35 @@ public static class ReadStateCommands
         foreach (var (occurrence, fingerprint) in fingerprints)
             repository.Upsert(new ReadOccurrenceRecord(occurrence, JsonSerializer.Serialize(fingerprint, JsonOptions)));
 
-        return Success(repository.GetForText(request.TextId).Select(record => record.Occurrence).ToArray(),
-            hasBaseline: true, skipped);
+        return Complete(Success(repository.GetForText(request.TextId)
+            .Select(record => record.Occurrence).ToArray(), hasBaseline: true, skipped));
     }
 
-    private static void Revalidate(ReadStateRepository repository, TextWordsProjection projection,
+    private static void Revalidate(ReadStateRepository repository, IReadOnlyList<ReadOccurrenceRecord> saved,
+        IReadOnlyList<ReadOccurrenceValidation> valid)
+    {
+        var byOriginal = valid.ToDictionary(item => item.Original);
+        foreach (var record in saved)
+        {
+            if (!byOriginal.TryGetValue(record.Occurrence, out var current))
+            {
+                repository.Delete(record.Occurrence);
+                continue;
+            }
+            if (current.Occurrence != record.Occurrence)
+            {
+                repository.Delete(record.Occurrence);
+                repository.Upsert(new ReadOccurrenceRecord(current.Occurrence,
+                    JsonSerializer.Serialize(current.Fingerprint, JsonOptions)));
+            }
+        }
+    }
+
+    private static IReadOnlyList<ReadOccurrenceValidation> ValidateReadRecords(TextWordsProjection projection,
         TextWordsProjectedText text, IReadOnlyDictionary<string, string> assessmentDigests,
         IReadOnlyList<ReadOccurrenceRecord> saved)
     {
-        var deletes = new List<OccurrenceAnchor>();
-        var rekeys = new List<(OccurrenceAnchor Old, ReadOccurrenceRecord Current)>();
+        var valid = new List<ReadOccurrenceValidation>(saved.Count);
         foreach (var record in saved)
         {
             try
@@ -128,22 +187,15 @@ public static class ReadStateCommands
                     expected.WordformDigest != current.WordformDigest ||
                     !expected.Assessments.SequenceEqual(current.Assessments))
                 {
-                    deletes.Add(record.Occurrence);
                     continue;
                 }
-
-                if (anchor != record.Occurrence)
-                    rekeys.Add((record.Occurrence, new ReadOccurrenceRecord(anchor,
-                        JsonSerializer.Serialize(current, JsonOptions))));
+                valid.Add(new ReadOccurrenceValidation(record.Occurrence, anchor, current));
             }
             catch (JsonException)
             {
-                deletes.Add(record.Occurrence);
             }
         }
-        foreach (var occurrence in deletes) repository.Delete(occurrence);
-        foreach (var (old, _) in rekeys) repository.Delete(old);
-        foreach (var (_, current) in rekeys) repository.Upsert(current);
+        return valid;
     }
 
     private static FingerprintStatus CaptureFingerprint(TextWordsProjection projection, TextWordsProjectedText text,
@@ -271,12 +323,20 @@ public static class ReadStateCommands
         CommandOutcome<WordReadStateResponse>.Refused(new Refusal(
             "word.read-state-invalid", FailureReason.InvalidArgument, message));
 
+    private static CommandOutcome<WordReadStateResponse> ContextChanged() =>
+        CommandOutcome<WordReadStateResponse>.Refused(new Refusal(
+            "texts.evidence-changed", FailureReason.Refused,
+            "The saved Selection evidence changed. Reload it and try again."));
+
     private sealed record ReadOccurrenceFingerprint(
         OccurrenceFitEvidence Occurrence,
         string WordformDigest,
         IReadOnlyList<ReadAssessmentEvidence> Assessments);
 
     private sealed record ReadAssessmentEvidence(string Form, string? Digest);
+
+    private sealed record ReadOccurrenceValidation(
+        OccurrenceAnchor Original, OccurrenceAnchor Occurrence, ReadOccurrenceFingerprint Fingerprint);
 
     private enum FingerprintStatus
     {

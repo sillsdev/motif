@@ -1,4 +1,5 @@
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Commands.SelectionReading;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Analysis;
 
@@ -191,37 +192,33 @@ public sealed record AnalysisMarkingState(
     {
         ArgumentNullException.ThrowIfNull(token);
         var stored = token.StoredAnalyses.Select(analysis => new FieldWorksAnalysisMarking(
-            analysis.StoredAnalysisId ?? string.Empty, NormalizeOpinion(analysis.StoredAnalysisOpinion),
+            analysis.StoredAnalysisId ?? string.Empty,
+            SelectionAnalysisRules.NormalizeOpinion(analysis.StoredAnalysisOpinion),
             analysis.Morphs)).ToArray();
         var parses = result?.Morphology?.Analyses ?? [];
         var renderings = result?.Readings;
+        var storedReadings = token.StoredAnalyses.Select(analysis => new ParserReading(analysis.Morphs)
+        {
+            StoredAnalysisId = analysis.StoredAnalysisId,
+            StoredAnalysisOpinion = analysis.StoredAnalysisOpinion,
+            Identity = analysis.Identity,
+        }).ToArray();
+        var classification = SelectionAnalysisRules.Build(token.IncorrectSpelling, result?.Outcome,
+            result?.IsIncomplete ?? false, result?.Morphology, storedReadings);
         var readings = parses.Select((analysis, index) =>
         {
             var display = renderings is not null && index < renderings.Count ? renderings[index] : null;
-            var matches = token.StoredAnalyses.Where(storedAnalysis =>
-                storedAnalysis.Identity is { } identity && AnalysisMorphologyMatcher.Matches(analysis, identity))
-                .ToArray();
-            var opinions = matches.Select(match => NormalizeOpinion(match.StoredAnalysisOpinion))
-                .Distinct(StringComparer.Ordinal).ToArray();
-            return new PanGlossReadingMarking(analysis,
-                display,
-                matches.Select(match => match.StoredAnalysisId ?? string.Empty).ToArray(),
-                opinions.Length == 0 ? null : string.Join(", ", opinions));
+            var matches = classification.Readings[index];
+            return new PanGlossReadingMarking(analysis, display, matches.MatchingAnalysisIds,
+                matches.MatchingOpinions.Count == 0 ? null : string.Join(", ", matches.MatchingOpinions));
         }).ToArray();
 
-        var markingClass = Classify(token.IncorrectSpelling, result, stored, readings);
+        var markingClass = ToMarkingClass(classification.Class);
         var primary = BuildPrimaryAction(markingClass, stored, readings);
         var fixes = BuildFixChoices(markingClass, stored, readings);
         return new AnalysisMarkingState(stored, markingClass, readings, primary, fixes, [],
             false, false, isUnread);
     }
-
-    private static string NormalizeOpinion(string? opinion) =>
-        opinion switch
-        {
-            null => ReadingGrade.Candidate,
-            _ => opinion,
-        };
 
     /// <summary>Builds the shared marking state from the resolved evidence for one Assessment word.</summary>
     public static AnalysisMarkingState Create(AssessmentWordResult result)
@@ -260,27 +257,17 @@ public sealed record AnalysisMarkingState(
         };
     }
 
-    private static AnalysisMarkingClass Classify(bool incorrectSpelling, AssessmentWordResult? result,
-        IReadOnlyList<FieldWorksAnalysisMarking> stored, IReadOnlyList<PanGlossReadingMarking> readings)
+    private static AnalysisMarkingClass ToMarkingClass(SelectionAnalysisClass markingClass) => markingClass switch
     {
-        if (result is null || result.Outcome == "unassessed") return AnalysisMarkingClass.NotAssessed;
-        if (ParserRefusals.Of(result.Morphology, result.Outcome) is not null) return AnalysisMarkingClass.Refused;
-        if (incorrectSpelling && readings.Count > 0) return AnalysisMarkingClass.Conflict;
-        if (readings.Any(reading => reading.MatchingAnalysisIds.Any(id => stored.Any(analysis =>
-                analysis.StoredAnalysisId == id && analysis.Opinion == ReadingGrade.Disapproved))))
-            return AnalysisMarkingClass.Conflict;
-        if (result.IsIncomplete) return AnalysisMarkingClass.Capped;
-        if (readings.Count == 0) return AnalysisMarkingClass.None;
-        if (stored.Any(analysis => analysis.Opinion == ReadingGrade.Approved &&
-                !readings.Any(reading => reading.MatchingAnalysisIds.Contains(analysis.StoredAnalysisId,
-                    StringComparer.Ordinal)))) return AnalysisMarkingClass.Conflict;
-        if (readings.All(reading => reading.MatchesStored))
-            return AnalysisMarkingClass.Same;
-        if (readings.Any(reading => reading.IsParserOnly) && readings.Any(reading =>
-                reading.MatchingAnalysisIds.Any(id => stored.Any(analysis => analysis.StoredAnalysisId == id &&
-                    analysis.Opinion == ReadingGrade.Approved)))) return AnalysisMarkingClass.Extra;
-        return AnalysisMarkingClass.Different;
-    }
+        SelectionAnalysisClass.Same => AnalysisMarkingClass.Same,
+        SelectionAnalysisClass.Conflict => AnalysisMarkingClass.Conflict,
+        SelectionAnalysisClass.Different => AnalysisMarkingClass.Different,
+        SelectionAnalysisClass.Extra => AnalysisMarkingClass.Extra,
+        SelectionAnalysisClass.None => AnalysisMarkingClass.None,
+        SelectionAnalysisClass.Capped => AnalysisMarkingClass.Capped,
+        SelectionAnalysisClass.Refused => AnalysisMarkingClass.Refused,
+        _ => AnalysisMarkingClass.NotAssessed,
+    };
 
     private static AnalysisMarkingAction? BuildPrimaryAction(AnalysisMarkingClass markingClass,
         IReadOnlyList<FieldWorksAnalysisMarking> stored, IReadOnlyList<PanGlossReadingMarking> readings)

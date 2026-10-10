@@ -139,11 +139,18 @@ public sealed partial class WordCard : UserControl
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
         CancelHostedRead();
+        if (Host is not null) Document = null;
         base.OnDetachedFromVisualTree(e);
     }
 
     private void Build()
     {
+        // Removed section presenters can outlive a frame; release their evidence before recycling them.
+        foreach (var section in _sections.Children.OfType<ContentControl>())
+        {
+            section.Content = null;
+            section.DataContext = null;
+        }
         _sections.Children.Clear();
         if (Header is { } header) _sections.Children.Add(header);
         if (Document is { } document)

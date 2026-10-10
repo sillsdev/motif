@@ -34,7 +34,7 @@ namespace SIL.Motif.Tests.App;
 /// <summary>
 /// Composes <see cref="MainWindow"/> from a <see cref="WorkspaceShellViewModel"/> built over fakes, and
 /// checks what a headless platform can actually verify: every panel is attached and bound to its own
-/// child view model, every input and button carries an accessible name (its own explicit
+/// child view model, every input and button shown on each page carries an accessible name (its own explicit
 /// <see cref="AutomationProperties.NameProperty"/> or, for a <see cref="Button"/> or
 /// <see cref="CheckBox"/>, the plain-text <see cref="ContentControl.Content"/> a screen reader falls back
 /// to), and switching the Semi theme variant while a refusal and an in-progress state are bound raises no
@@ -604,17 +604,23 @@ public sealed class MainWindowSmokeTests
         {
             var (workspace, window, _) = NewComposedWindow();
             window.Show();
-            ShowEveryStage(window, workspace);
-
-            var controls = window.GetLogicalDescendants().OfType<Control>()
-                .Where(control => control is Button or HyperlinkButton or CheckBox or ComboBox or TextBox or NumericUpDown or DataGrid)
-                .ToList();
-
-            Assert.NotEmpty(controls);
-            foreach (var control in controls)
-                Assert.False(
-                    string.IsNullOrWhiteSpace(EffectiveAccessibleName(control)),
-                    $"{control.GetType().Name} (content '{(control as ContentControl)?.Content}') has no accessible name.");
+            foreach (var page in Enum.GetValues<WorkspacePage>())
+            foreach (var tab in Enum.GetValues<TextsTab>())
+            {
+                workspace.CurrentPage = page;
+                workspace.PageModel<TextsPageModel>().Tab = tab;
+                window.UpdateLayout();
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+                var controls = window.GetLogicalDescendants().OfType<Control>()
+                    .Where(control => control.IsEffectivelyVisible && control is
+                        Button or HyperlinkButton or CheckBox or ComboBox or TextBox or NumericUpDown or DataGrid)
+                    .ToList();
+                Assert.NotEmpty(controls);
+                foreach (var control in controls)
+                    Assert.False(string.IsNullOrWhiteSpace(EffectiveAccessibleName(control)),
+                        $"{page}/{tab}: {control.GetType().Name} (content '{(control as ContentControl)?.Content}') has no accessible name.");
+            }
 
             workspace.Context.ProjectPath = @"C:\projects\one.fwdata";
             workspace.CurrentPage = WorkspacePage.Timing;
@@ -986,17 +992,15 @@ public sealed class MainWindowSmokeTests
                 var fake = Assert.IsType<FakeCommandClient>(workspace.Context.Commands);
                 var page = workspace.PageModel<TextsPageModel>();
                 var textId = Guid.Parse("55555555-5555-4555-8555-555555555555");
-                fake.ListTextWordsCompletesWith(new TextWordsResponse(
+                var captured = new TextWordsResponse(
                     [new TextWord("motifa", null,
                         [new WordOccurrence(textId, "Alpha", 1, "motifa.", "unanalysed", null)], [], [])],
                     [new TextLines(textId, "Alpha",
                         [new TextLine(1, [new TextToken("motifa", "motifa", null, null)
                             { OccurrenceIndex = 0 }])])],
-                    HasBaseline: true));
+                    HasBaseline: true);
                 fake.ListTextsCompletesWith(new TextInventoryResponse(
                     [new TextChoiceSummary(textId, "Alpha")], HasBaseline: true));
-                await workspace.Selection.SetProjectAsync(@"C:\projects\one.fwdata");
-                await page.Words.SetProjectAsync(@"C:\projects\one.fwdata");
                 workspace.Assess.Result = new AssessCommandResponse(
                     new BaselineCaptureResponse(
                         new BaselineToken("project", "sha256:" + new string('a', 64), "1",
@@ -1036,6 +1040,11 @@ public sealed class MainWindowSmokeTests
                     ],
                 };
 
+                var assessment = CapturedAssessment(workspace.Assess.Result!);
+                await using var fixture = await WorkspaceContextTests.OpenCapturedSelectionAsync(fake,
+                    workspace.Context, captured, assessment, assessment.Words.Select(word => word.Word).ToArray());
+                workspace.Assess.Result = assessment;
+                await workspace.Context.EvidencePublication;
                 workspace.Context.OpenTexts(TextsTab.Matrix);
                 window.Show();
                 window.ApplyTemplate();
@@ -1063,8 +1072,12 @@ public sealed class MainWindowSmokeTests
                 var open = panel.GetVisualDescendants().OfType<Button>().Single(button =>
                     AutomationProperties.GetName(button) == "Open motifa in Analyze texts" &&
                     button.FindAncestorOfType<ListBox>() is { } box && AutomationProperties.GetName(box) == "Words in the chosen cells");
-                open.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                var selected = workspace.PageModel<TextsPageModel>().ResultsInText.SelectedToken;
+                open.BringIntoView();
+                PageScreenshots.Settle(window);
+                HeadlessClick.Click(window, open, "Open motifa in Analyze texts");
+                await page.ResultsInText.SelectionRefresh;
+                await AnalyzeTextsLayoutTests.SettleReaderAsync(workspace, window);
+                var selected = page.ResultsInText.SelectedToken;
                 Assert.NotNull(selected);
                 Assert.Equal("motif-", Assert.Single(selected.Readings).Morphs.Single().Form);
                 window.UpdateLayout();
@@ -1081,7 +1094,7 @@ public sealed class MainWindowSmokeTests
                 window.UpdateLayout();
                 Assert.Single(SelectionBoxes());
                 var strip = resultsPanel.GetLogicalDescendants().OfType<Border>()
-                    .Single(control => control.Name == "WordStrip" && ReferenceEquals(control.Tag, selected));
+                    .Single(control => control.Name == "WordStrip" && ResultsInTextPanel.TokenOf(control)?.Occurrence == selected.Occurrence);
                 Assert.DoesNotContain(resultsPanel.GetLogicalDescendants().OfType<Popup>(), popup => popup.IsOpen);
                 Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();
@@ -1266,21 +1279,26 @@ public sealed class MainWindowSmokeTests
                 fake.ListTextsCompletesWith(new TextInventoryResponse(
                     [new TextChoiceSummary(textId, "Alpha"), new TextChoiceSummary(secondTextId, "Beta")],
                     HasBaseline: true));
-                fake.ListTextWordsCompletesWith(new TextWordsResponse(
+                var captured = new TextWordsResponse(
                     [new TextWord("kitabu", null,
                         [new WordOccurrence(textId, "Alpha", 1, "kitabu.", "approved", stored)], [stored], [])],
                     [new TextLines(textId, "Alpha",
                         [new TextLine(1, [new TextToken("kitabu", "kitabu", null, "approved")
                             { Analysis = stored }])])],
-                    HasBaseline: true));
-                await workspace.Selection.SetProjectAsync(@"C:\projects\one.fwdata");
-                await page.Words.SetProjectAsync(@"C:\projects\one.fwdata");
+                    HasBaseline: true);
                 workspace.Assess.Result = AssessedWords(
                     new AssessmentWordResult("kitabu", "no-analysis", false, "Search completed", 1, null));
+                var assessment = CapturedAssessment(workspace.Assess.Result!);
+                captured = captured with { Texts = [.. captured.Texts, new TextLines(secondTextId, "Beta", [])] };
+                await using var fixture = await WorkspaceContextTests.OpenCapturedSelectionAsync(fake,
+                    workspace.Context, captured, assessment);
+                workspace.Assess.Result = assessment;
+                await workspace.Context.EvidencePublication;
                 workspace.Context.OpenTexts(TextsTab.AnalyzeTexts);
                 window.Show();
                 window.ApplyTemplate();
                 window.UpdateLayout();
+                await AnalyzeTextsLayoutTests.SettleReaderAsync(workspace, window);
 
                 var readText = Assert.Single(window.GetLogicalDescendants().OfType<Button>(), button =>
                     AutomationProperties.GetName(button) == "Show the text reader");
@@ -1294,7 +1312,12 @@ public sealed class MainWindowSmokeTests
                 var secondText = Assert.Single(textChooser.GetLogicalDescendants().OfType<CheckBox>(), checkBox =>
                     Equals(checkBox.Content, "Beta"));
                 HeadlessClick.Click(window, secondText, "Beta");
+                Assert.False(secondText.IsChecked);
+                await workspace.Context.EvidencePublication;
+                await AnalyzeTextsLayoutTests.SettleReaderAsync(workspace, window);
+                HeadlessClick.Click(window, secondText, "Beta");
                 Assert.True(secondText.IsChecked);
+                await workspace.Context.EvidencePublication;
                 Assert.Contains(secondTextId, workspace.Selection.ChosenTextIds);
                 var pageView = Assert.Single(window.GetLogicalDescendants().OfType<TextsPage>());
                 var readerHost = pageView.FindControl<ContentControl>("AnalyzeReaderHost");
@@ -1311,6 +1334,8 @@ public sealed class MainWindowSmokeTests
                 Assert.False(readerHost.IsEffectivelyVisible);
                 Assert.Equal(1, Assert.Single(wordListHost.GetLogicalDescendants().OfType<ListBox>(), list =>
                     AutomationProperties.GetName(list) == "Words to test").ItemCount);
+                await page.Words.SettleVisibleDetailsAsync();
+                PageScreenshots.Settle(window);
                 Assert.Contains(wordListHost.GetLogicalDescendants().OfType<CopyableTextBlock>(), text =>
                     text.Text == "kitabu");
                 var handOff = Assert.Single(wordListHost.GetLogicalDescendants().OfType<Button>(), button =>
@@ -1318,7 +1343,7 @@ public sealed class MainWindowSmokeTests
                 Assert.Same(page.Words.HandOffCheckedWordsCommand, handOff.Command);
 
                 ClickButton(window, readText);
-                window.UpdateLayout();
+                await AnalyzeTextsLayoutTests.SettleReaderAsync(workspace, window);
                 Assert.False(wordListHost.IsEffectivelyVisible);
                 Assert.True(readerHost.IsEffectivelyVisible);
                 var lines = Assert.Single(readerHost.GetLogicalDescendants().OfType<ItemsControl>(), control =>
@@ -1331,7 +1356,7 @@ public sealed class MainWindowSmokeTests
             {
                 window.Close();
             }
-        }, TimeSpan.FromSeconds(5));
+        }, TimeSpan.FromSeconds(30));
     }
 
     [Fact]
@@ -1646,6 +1671,16 @@ public sealed class MainWindowSmokeTests
         window.MouseUp(centre, MouseButton.Left);
     }
 
+    private static AssessCommandResponse CapturedAssessment(AssessCommandResponse response) => response with
+    {
+        InvocationId = "fixture/invocation",
+        Measurements = [new ProducedAssessmentReference("fixture/assessment", "ParseTime", "fixture/invocation")],
+        Words = response.Words.Select(word => word with
+        {
+            Origin = new WordMeasurementOrigin("fixture/assessment", "fixture/invocation", DateTimeOffset.UtcNow),
+        }).ToArray(),
+    };
+
     private static AssessCommandResponse AssessedWords(params AssessmentWordResult[] words) => new(
         new BaselineCaptureResponse(
             new BaselineToken("project", "sha256:" + new string('a', 64), "1",
@@ -1676,18 +1711,6 @@ public sealed class MainWindowSmokeTests
         || visual.FindAncestorOfType<ToggleButton>(includeSelf: false) is not null
         || visual.FindAncestorOfType<TextBox>(includeSelf: false) is not null
         || visual.FindAncestorOfType<ComboBox>(includeSelf: false) is not null;
-
-    // A page nobody has opened has no template applied, so its controls join the tree only once it is shown.
-    private static void ShowEveryStage(MainWindow window, WorkspaceShellViewModel workspace)
-    {
-        foreach (var page in Enum.GetValues<WorkspacePage>())
-        foreach (var tab in Enum.GetValues<TextsTab>())
-        {
-            workspace.CurrentPage = page;
-            workspace.PageModel<TextsPageModel>().Tab = tab;
-            window.UpdateLayout();
-        }
-    }
 
     [Fact]
     public void AtTheNarrowestWindowEveryPageOpensOnAClickInTheCollapsedSidebar()

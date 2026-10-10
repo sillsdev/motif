@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.App.ViewModels;
 
@@ -51,8 +52,12 @@ public enum MoveKind
 /// </remarks>
 public sealed partial class DifferenceViewModel : ObservableObject
 {
-    public DifferenceViewModel()
+    private readonly DisplayProjectionCache<MovedWordViewModel, ListedWordViewModel> _listed;
+
+    public DifferenceViewModel(WordRowRoutes? routes = null)
     {
+        _listed = new(word => ListedWordViewModel.Of(new AssessWordRowViewModel(word.AfterFacts, routes)),
+            row => row.IsOpen = false, row => row.IsOpen);
         ClearCommand = new RelayCommand(() => Load(null, null, string.Empty, string.Empty));
         OpenWordCommand = new RelayCommand<MovedWordViewModel>(word =>
         {
@@ -75,7 +80,7 @@ public sealed partial class DifferenceViewModel : ObservableObject
     public ObservableCollection<MoveViewModel> Moves { get; } = [];
 
     /// <summary>The words of the chosen move.</summary>
-    public ObservableCollection<MovedWordViewModel> Words { get; } = [];
+    public IReadOnlyList<MovedWordViewModel> Words { get; private set; } = [];
 
     public IRelayCommand ClearCommand { get; }
 
@@ -110,8 +115,8 @@ public sealed partial class DifferenceViewModel : ObservableObject
 
     partial void OnSelectedMoveChanged(MoveViewModel? value)
     {
-        Words.Clear();
-        foreach (var word in value?.Words ?? []) Words.Add(word);
+        Words = value?.Words ?? [];
+        OnPropertyChanged(nameof(Words));
         MarkMoveInMatrices(value);
     }
 
@@ -121,11 +126,23 @@ public sealed partial class DifferenceViewModel : ObservableObject
     /// </summary>
     public void Load(IReadOnlyList<AssessWordRowViewModel>? before, IReadOnlyList<AssessWordRowViewModel>? after,
         string beforeLabel, string afterLabel)
+        => LoadFacts(before?.Select(row => row.Facts).ToArray(), after?.Select(row => row.Facts).ToArray(),
+            beforeLabel, afterLabel);
+
+    internal void LoadSources(IReadOnlyList<AssessmentWordResult>? before, IReadOnlyList<AssessmentWordResult>? after,
+        string beforeLabel, string afterLabel, Func<string, int?>? occurrences = null) =>
+        LoadFacts(before?.Select(word => new AssessmentRowFacts(word, word.OccurrenceCount)).ToArray(),
+            after?.Select(word => new AssessmentRowFacts(word, occurrences?.Invoke(word.Word) ?? word.OccurrenceCount))
+                .ToArray(), beforeLabel, afterLabel);
+
+    private void LoadFacts(IReadOnlyList<AssessmentRowFacts>? before, IReadOnlyList<AssessmentRowFacts>? after,
+        string beforeLabel, string afterLabel)
     {
+        _listed.Clear();
         Moves.Clear();
         SelectedMove = null;
-        Before.Load(before);
-        After.Load(after);
+        Before.LoadFacts(before);
+        After.LoadFacts(after);
         BeforeLabel = beforeLabel;
         AfterLabel = afterLabel;
         (ComparedCount, MovedCount, RegressedCount, OnlyInOneCount) = (0, 0, 0, 0);
@@ -138,7 +155,7 @@ public sealed partial class DifferenceViewModel : ObservableObject
             ComparedCount = both.Count;
             OnlyInOneCount = earlier.Count + later.Count - 2 * both.Count;
 
-            var moved = both.Select(word => new MovedWordViewModel(earlier[word], later[word]))
+            var moved = both.Select(word => new MovedWordViewModel(earlier[word], later[word], _listed.Get))
                 .GroupBy(word => (word.From, word.To))
                 .Select(group => new MoveViewModel(group.Key.From, group.Key.To, group.ToList()))
                 .OrderBy(move => move.Kind)
@@ -269,21 +286,29 @@ public sealed class MoveViewModel
 /// <summary>One word of a move, with what the parser said for it in each run.</summary>
 public sealed class MovedWordViewModel
 {
+    private readonly Func<MovedWordViewModel, ListedWordViewModel> _listed;
+    internal AssessmentRowFacts AfterFacts { get; }
+
     public MovedWordViewModel(AssessWordRowViewModel before, AssessWordRowViewModel after)
+        : this(before.Facts, after.Facts, _ => ListedWordViewModel.Of(after)) { }
+
+    internal MovedWordViewModel(AssessmentRowFacts before, AssessmentRowFacts after,
+        Func<MovedWordViewModel, ListedWordViewModel> listed)
     {
         ArgumentNullException.ThrowIfNull(before);
         ArgumentNullException.ThrowIfNull(after);
         Word = after.Word;
         Occurrences = after.OccurrenceCount ?? before.OccurrenceCount;
-        From = CompareViewModel.Place(before);
-        To = CompareViewModel.Place(after);
+        From = before.Place;
+        To = after.Place;
         BeforeText = Describe(before);
         AfterText = Describe(after);
-        Listed = ListedWordViewModel.Of(after);
+        AfterFacts = after;
+        _listed = listed;
     }
 
     /// <summary>The word as it is now, as its row and card show it on every page.</summary>
-    public ListedWordViewModel Listed { get; }
+    public ListedWordViewModel Listed => _listed(this);
 
     /// <summary>What the earlier run came to, under the word's row.</summary>
     public string BeforeNote => $"Before: {BeforeText}";
@@ -309,6 +334,14 @@ public sealed class MovedWordViewModel
 
     public string AfterText { get; }
 
-    private static string Describe(AssessWordRowViewModel row) =>
-        row.Readings.Count == 0 ? row.Result : $"{row.Result}: {row.ReadingText}";
+    private static string Describe(AssessmentRowFacts row)
+    {
+        var readings = row.Source.Readings?.Select(reading => string.Join(" + ", reading.Morphs.Select(morph => morph.Form))
+            + " = " + string.Join(" + ", reading.Morphs.Select(morph => morph.Gloss.Length == 0 ? "?" : morph.Gloss)))
+            ?? row.Source.Morphology?.Analyses.Select(analysis =>
+                string.Join(" + ", analysis.Morphs.Select(morph => morph.GuessedString ?? "?")) + " = " +
+                string.Join(" + ", analysis.Morphs.Select(_ => "?"))) ?? [];
+        var text = string.Join(" | ", readings);
+        return text.Length == 0 ? row.Result : $"{row.Result}: {text}";
+    }
 }

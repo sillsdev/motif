@@ -1,61 +1,55 @@
 using SIL.Motif.App.ViewModels;
-using SIL.Motif.Commands.Queries;
+using SIL.Motif.Commands.SelectionReading;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
 
-/// <summary>
-/// Pins that a Text selection change reloads the words through <see cref="TextWordsViewModel.ReloadCommand"/>,
-/// so the read the checkbox started is a task someone can observe rather than an unobserved handler, and a read
-/// that throws surfaces as a refusal on the model while the command's own task still completes.
-/// </summary>
+[Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class TextWordsReloadCommandTests
 {
-    private const string ProjectPath = @"C:\projects\one.fwdata";
-    private static readonly Guid TextId = Guid.Parse("11111111-1111-1111-1111-111111111111");
-
-    [Fact]
-    public async Task ASelectionChangeReloadsThroughAnObservableCommand()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void OwnedReaderReloadHasAnObservableTaskAndPublishesLoadingAndRefusal(bool throws)
     {
-        var (fake, selection, words) = await OpenAsync();
-        fake.OnListTextWords((_, _) => Task.FromResult(CommandOutcome<TextWordsResponse>.Success(
-            new TextWordsResponse([], [], HasBaseline: true))));
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            using var fixture = TextWordsReloadTests.Records();
+            var client = new FakeCommandClient();
+            var reads = client.ReaderOwner;
+            var words = new TextWordsViewModel(client, new SelectionViewModel(client), reads);
+            var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var resume = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            client.SelectionReaderHandler = async (request, cancellation) =>
+            {
+                entered.SetResult();
+                await resume.Task;
+                if (throws) throw new IOException("store unavailable");
+                return await fixture.OpenAsync(request, cancellation);
+            };
+            try
+            {
+                await words.SetProjectAsync(fixture.ProjectPath);
+                var reload = reads.ReloadAsync(fixture.ProjectPath, [], []);
+                await entered.Task;
+                Assert.Same(reload, reads.Pending);
+                Assert.False(reload.IsCompleted);
+                Assert.True(words.IsLoading);
+                resume.SetResult();
+                await reload;
+                Assert.True(reload.IsCompletedSuccessfully);
+                Assert.False(words.IsLoading);
+                Assert.Equal(throws ? "store unavailable" : null, words.Refusal?.Message);
 
-        selection.Texts[0].IsChecked = true;
-
-        var reload = Assert.IsAssignableFrom<Task>(words.ReloadCommand.ExecutionTask);
-        await reload.WaitAsync(TimeSpan.FromSeconds(5));
-        Assert.True(reload.IsCompletedSuccessfully);
-        Assert.False(words.IsLoading);
-    }
-
-    [Fact]
-    public async Task ASelectionReloadThatThrowsShowsTheRefusalAndItsTaskStillCompletes()
-    {
-        var (fake, selection, words) = await OpenAsync();
-        fake.OnListTextWords((_, _) =>
-            Task.FromException<CommandOutcome<TextWordsResponse>>(new IOException("store unavailable")));
-
-        selection.Texts[0].IsChecked = true;
-
-        var reload = Assert.IsAssignableFrom<Task>(words.ReloadCommand.ExecutionTask);
-        await reload.WaitAsync(TimeSpan.FromSeconds(5));
-        Assert.True(reload.IsCompletedSuccessfully);
-        Assert.Equal("store unavailable", words.Refusal?.Message);
-        Assert.False(words.IsLoading);
-    }
-
-    private static async Task<(FakeCommandClient, SelectionViewModel, TextWordsViewModel)> OpenAsync()
-    {
-        var fake = new FakeCommandClient();
-        var selection = new SelectionViewModel(fake);
-        var words = new TextWordsViewModel(fake, selection);
-        fake.ListTextsCompletesWith(new TextInventoryResponse(
-            [new TextChoiceSummary(TextId, "Alpha")], HasBaseline: true));
-        await selection.SetProjectAsync(ProjectPath);
-        await words.SetProjectAsync(ProjectPath);
-        return (fake, selection, words);
+            }
+            finally
+            {
+                resume.TrySetResult();
+                await words.StopAsync();
+                await reads.StopAsync();
+            }
+        }, TimeSpan.FromSeconds(30));
     }
 }

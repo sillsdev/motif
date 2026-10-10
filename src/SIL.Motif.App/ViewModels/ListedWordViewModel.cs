@@ -15,7 +15,7 @@ public sealed partial class ListedWordViewModel : ObservableObject
     {
         ArgumentNullException.ThrowIfNull(row);
         Row = row;
-        Card = card;
+        _card = card;
         _presentationKey = card?.PresentationFor(WordListOwner.Timing).Key ??
             new WordPresentationKey($"listed-word:{Guid.NewGuid():N}");
     }
@@ -28,8 +28,11 @@ public sealed partial class ListedWordViewModel : ObservableObject
     {
         ArgumentNullException.ThrowIfNull(word);
         var row = routes is null ? word.WordRow : new WordRowViewModel(word.WordRow.Row, routes);
-        return new ListedWordViewModel(row, new CompareWordViewModel(word, CompareViewModel.Place(word),
-            cardTokenFactory?.Invoke(word.Source)));
+        return new ListedWordViewModel(row)
+        {
+            _cardFactory = () => new CompareWordViewModel(word, CompareViewModel.Place(word),
+                cardTokenFactory?.Invoke(word.Source)) { IsExpanded = true },
+        };
     }
 
     public string Word => Row.Word;
@@ -57,12 +60,15 @@ public sealed partial class ListedWordViewModel : ObservableObject
     /// <summary>The word's row: its marks, its morphemes and the three next steps.</summary>
     public WordRowViewModel Row { get; }
 
+    private CompareWordViewModel? _card;
+    private Func<CompareWordViewModel>? _cardFactory;
+
     /// <summary>What the opened row shows, or <see langword="null"/> when the latest parse did not reach the word.</summary>
-    public CompareWordViewModel? Card { get; }
+    public CompareWordViewModel? Card => _card ?? (IsOpen ? _card = _cardFactory?.Invoke() : null);
 
     public ResultsTokenViewModel? CardToken => Card?.CardToken;
 
-    public bool HasCard => Card is not null;
+    public bool HasCard => _card is not null || _cardFactory is not null;
 
     /// <summary>What the opened row says when there is no parse to show.</summary>
     public string NotParsedText => $"No parse of {Word} is on screen yet. Parse all words to see what PanGloss builds.";
@@ -70,6 +76,13 @@ public sealed partial class ListedWordViewModel : ObservableObject
     /// <summary>Whether the row's card is open.</summary>
     [ObservableProperty]
     private bool _isOpen;
+
+    partial void OnIsOpenChanged(bool value)
+    {
+        if (!value && _cardFactory is not null) _card = null;
+        OnPropertyChanged(nameof(Card));
+        OnPropertyChanged(nameof(CardToken));
+    }
 
     /// <summary>The page's own measure of the word's time, in place of its parse time; <see langword="null"/> for that.</summary>
     public string? TimeText { get; set; }

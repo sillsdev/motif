@@ -42,7 +42,7 @@ public sealed class WordRowEverywhereTests
             await Until(window, () => Token(texts, "chakula") is not null, "chakula in Analyze texts");
             var chakula = Token(texts, "chakula")!;
             var add = chakula.Marking.FixChoices.Single(choice => choice.Label == "Add as Approved");
-            await chakula.StageMarkingChoiceForTokenCommand!.ExecuteAsync(add);
+            await chakula.StageMarkingChoiceForTokenCommand!.ExecuteAsync(chakula.BindMarkingChoice(add));
             await Until(window, () => workspace.Context.Changes.HasItems, "the staged change on chakula");
             workspace.CurrentPage = WorkspacePage.Review;
         });
@@ -142,9 +142,7 @@ public sealed class WordRowEverywhereTests
         {
             var texts = workspace.PageModel<TextsPageModel>();
             var compare = workspace.Assess.Compare;
-            await Until(window, () => compare.Words.Any(word => word.Word == "kitabu"), "kitabu in the Assessment");
-            var word = compare.Words.Single(item => item.Word == "kitabu");
-            var list = texts.TextsLists.Lists.Single(item => item.Cells.Contains(new TextsListCell(word.Row, word.Column)));
+            var list = texts.TextsLists.Lists.Single(item => compare.WordsInCells(item.Cells).Contains("kitabu"));
             texts.TextsLists.SelectListCommand.Execute(list);
             texts.Tab = TextsTab.Lists;
             workspace.CurrentPage = WorkspacePage.Texts;
@@ -187,7 +185,7 @@ public sealed class WordRowEverywhereTests
                 if (list == "what-changed")
                     Assert.StartsWith("Before:", row.Data?.Note);
                 row.FocusWord();
-                row.State = row.State! with { IsOpen = true };
+                row.SetCurrentValue(ModuleWordRow.StateProperty, row.State! with { IsOpen = true });
                 await Until(window, () => window.GetVisualDescendants()
                     .OfType<SIL.Motif.App.Controls.WordPresentation.WordCard>().Any(card => card.Document is not null),
                     "the opened word card's details");
@@ -223,13 +221,13 @@ public sealed class WordRowEverywhereTests
     }
 
     private static ResultsTokenViewModel? Token(TextsPageModel texts, string form) =>
-        texts.ResultsInText.VisibleLines.SelectMany(line => line.Tokens).FirstOrDefault(token => token.Form == form);
+        AnalyzeTextsLayoutTests.RealizedLines(texts.ResultsInText).SelectMany(line => line.Tokens).FirstOrDefault(token => token.Form == form);
 
     private static async Task Until(MainWindow window, Func<bool> done, string what)
     {
         for (var pass = 0; pass < 50 && !done(); pass++)
         {
-            await Task.Yield();
+            await Task.Delay(10);
             PageScreenshots.Settle(window);
         }
         Assert.True(done(), $"The window never showed {what}.");

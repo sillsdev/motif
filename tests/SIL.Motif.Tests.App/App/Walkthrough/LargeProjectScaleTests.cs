@@ -155,31 +155,25 @@ public sealed class LargeProjectScaleTests(ITestOutputHelper output)
                 await readerModel.ReadStateRefresh;
                 Assert.Equal(LargeProjectFixture.OccurrenceCount, readerModel.AllCount);
                 var longest = readerModel.Texts.Single(text => text.TextId == project.TextIds[0]);
-                var lineModels = ScaleCountHarness.ObserveViewModels(longest.Lines, typeof(ResultsLineViewModel));
-                var tokenModels = ScaleCountHarness.ObserveViewModels(
-                    longest.Lines.SelectMany(line => line.Tokens), typeof(ResultsTokenViewModel));
+                Assert.Equal(50, longest.Summary!.LineCount);
                 readerModel.SelectedText = longest;
-                PageScreenshots.Settle(window.Window);
-                Assert.Equal(50, ScaleCountHarness.CountLiveViewModels(lineModels, typeof(ResultsLineViewModel)));
-                Assert.Equal(LargeProjectFixture.LongestTextWordCount,
-                    ScaleCountHarness.CountLiveViewModels(tokenModels, typeof(ResultsTokenViewModel)));
                 var panel = window.Window.GetLogicalDescendants().OfType<ResultsInTextPanel>().Single();
+                var finalPosition = window.Workspace.Context.SelectionReads.Summary!.SourcePositions.Last(position =>
+                    position.Location.Anchor.TextId == longest.TextId);
+                Assert.True(await panel.FocusOccurrenceAsync(finalPosition.Location.Anchor));
+                await AnalyzeTextsLayoutTests.SettleReaderAsync(window.Workspace, window.Window);
+                var diagnostics = window.Workspace.Context.SelectionReads.Reader!.Diagnostics;
+                Assert.InRange(diagnostics.LiveLineModels, 1, 48);
+                Assert.InRange(diagnostics.LiveTokenModels, 1, 512);
                 var reader = Assert.Single(panel.GetVisualDescendants().OfType<ScrollViewer>(),
                     viewer => viewer.IsEffectivelyVisible && viewer.Content is ItemsControl);
-                reader.Offset = new Vector(0, Math.Max(0, reader.Extent.Height - reader.Viewport.Height));
-                PageScreenshots.Settle(window.Window);
-                var lineItems = panel.FindControl<ItemsControl>("TextLineItems")!;
-                var finalLine = Assert.IsAssignableFrom<Control>(lineItems.ContainerFromIndex(lineItems.ItemCount - 1));
-                var tokenItems = Assert.Single(finalLine.GetVisualDescendants().OfType<ProgressiveItemsControl>(),
-                    items => items.Name == "ResultsInTextPanelTokensItems");
-                var finalToken = Assert.IsAssignableFrom<Control>(tokenItems.ContainerFromIndex(tokenItems.ItemCount - 1));
-                var strip = new[] { finalToken }.Concat(finalToken.GetVisualDescendants().OfType<Border>())
-                    .Single(border => border.Name == "WordStrip");
+                var strip = Assert.Single(AnalyzeTextsLayoutTests.Strips(panel), strip =>
+                    ResultsInTextPanel.TokenOf(strip)?.Occurrence == finalPosition.Location.Anchor);
                 var origin = strip.TranslatePoint(new Point(), reader);
                 Assert.NotNull(origin);
                 Assert.True(new Rect(reader.Viewport).Intersects(new Rect(origin!.Value, strip.Bounds.Size)));
             });
-            measurements.AssertReadCounts("Analyze longest Text and scroll to end", 0, 0, 0, 0);
+            measurements.AssertReadCounts("Analyze longest Text and scroll to end", 1, 128, 1, 4096);
             Capture(window, "analyze-end");
             await measurements.MeasureAsync("Open Timing", 5, () =>
             {

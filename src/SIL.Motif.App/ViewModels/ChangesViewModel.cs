@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Text.Json;
+using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App.Controls;
@@ -149,11 +150,12 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
     }
 
     private async Task<bool> PutAsync(
-        ChangeIntent change, string path, int generation, CancellationToken cancellationToken)
+        ChangeIntent change, string path, int generation, CancellationToken cancellationToken,
+        ExpectedContext? expectedContext = null)
     {
         var before = Snapshot;
         var outcome = await _client.PutPendingChangeAsync(new PutPendingChangeRequest(
-            path, MotifProductVersion.CurrentText, Snapshot.Revision, change),
+            path, MotifProductVersion.CurrentText, Snapshot.Revision, change) { ExpectedContext = expectedContext },
             cancellationToken).ConfigureAwait(true);
         if (!IsCurrentProject(path, generation)) return false;
         Accept(outcome, path, generation);
@@ -193,6 +195,15 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
             CanonicalId.Mint().Value, wordformId, word, analysisId);
         var outcome = await _client.RemoveAnalysisAsync(request, cancellationToken).ConfigureAwait(true);
         return await AcceptStagingOutcomeAsync(outcome, path, generation, cancellationToken).ConfigureAwait(true);
+    }
+
+    internal Task<bool> RemoveCapturedAnalysisAsync(WordActionTarget target, string analysisId)
+    {
+        if (ProjectPath is not { } path) throw new InvalidOperationException("Open a project before collecting changes.");
+        return PutAsync(new ChangeIntent(CanonicalId.Mint().Value, ChangeKinds.RemoveAnalysis,
+            target.WordformId is { } id ? CanonicalId.FromGuid(id).Value : string.Empty, target.Form,
+            StoredAnalysisId: analysisId, OriginPage: WorkspacePage.Texts.ToString()), path,
+            _projectGeneration, CancellationToken.None, target.ExpectedContext);
     }
 
     /// <summary>Stages removal of selected stored analyses.</summary>
@@ -272,6 +283,39 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
             UsageArgumentShape.Text("kind"), UsageArgumentShape.List("changes", count));
     }
 
+    internal IDisposable BeginMatrixStagingAction(string kind, int count) =>
+        _client.BeginUsageAction("put-pending-change", UsageArgumentShape.Text("fwDataPath"),
+            UsageArgumentShape.Text("kind"), UsageArgumentShape.List("changes", count));
+
+    internal async Task AddMatrixActionAsync(WordChangeAction action)
+    {
+        if (!action.IsAvailable) return;
+        if (ProjectPath is not { } path) throw new InvalidOperationException("Open a project before collecting changes.");
+        var generation = _projectGeneration;
+        var target = action.Target;
+        var readings = action.Kind == ChangeKinds.IncorrectSpelling ? new WordActionReading?[] { null }
+            : action.Readings.Cast<WordActionReading?>().ToArray();
+        using var usageAction = BeginMatrixStagingAction(action.Kind, readings.Length);
+        Refusal? firstRefusal = null;
+        foreach (var reading in readings)
+        {
+            await PutAsync(new ChangeIntent(CanonicalId.Mint().Value, action.Kind,
+                target.WordformId is { } id ? CanonicalId.FromGuid(id).Value : string.Empty, target.Form,
+                target.AssessmentId, reading?.Analysis, DisplayReading: reading?.Text ?? string.Empty,
+                ReadingIndex: reading?.Index, OriginPage: WorkspacePage.Texts.ToString()), path, generation,
+                CancellationToken.None, target.ExpectedContext).ConfigureAwait(true);
+            firstRefusal ??= LastRefusal;
+            if (!IsCurrentProject(path, generation)) return;
+        }
+        if (firstRefusal is not null)
+        {
+            LastRefusal = firstRefusal;
+            OnPropertyChanged(nameof(LastRefusal));
+            OnPropertyChanged(nameof(ShownRefusal));
+            OnPropertyChanged(nameof(HasError));
+        }
+    }
+
     public async Task AddAsync(string kind, CompareWordViewModel word,
         WorkspacePage originPage = WorkspacePage.Texts)
     {
@@ -306,28 +350,44 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
         }
     }
 
-    public async Task<bool> AddFromTextAsync(string kind, ResultsTokenViewModel token,
+    public Task<bool> AddFromTextAsync(string kind, ResultsTokenViewModel token,
         ResultsReadingViewModel? reading = null)
     {
         ArgumentNullException.ThrowIfNull(token);
+        return AddFromTextAsync(kind, token.CaptureActionTarget(AssessmentId),
+            reading is null ? null : new WordActionReading(reading.Analysis, reading.Text, reading.Index));
+    }
+
+    /// <summary>Stages a Text action from frozen identity and reading records without constructing display models.</summary>
+    public async Task<bool> AddFromTextAsync(string kind, WordActionTarget target, WordActionReading? reading = null,
+        string? groupId = null)
+    {
+        ArgumentNullException.ThrowIfNull(target);
         if (ProjectPath is not { } path)
             throw new InvalidOperationException("Open a project before collecting changes.");
         var generation = _projectGeneration;
         using var usageAction = _client.BeginUsageAction("put-pending-change", UsageArgumentShape.Text("fwDataPath"),
             UsageArgumentShape.Text("kind"));
         var occurrence = kind is ChangeKinds.Approve or ChangeKinds.Reject or ChangeKinds.Candidate
-            ? token.Occurrence : null;
-        var wordformId = token.WordformId is { } id ? CanonicalId.FromGuid(id).Value : string.Empty;
-        return await PutAsync(new ChangeIntent(CanonicalId.Mint().Value, kind, wordformId, token.Form,
-            AssessmentId, reading?.Analysis, DisplayReading: reading?.Text,
+            ? target.Occurrence : null;
+        var wordformId = target.WordformId is { } id ? CanonicalId.FromGuid(id).Value : string.Empty;
+        return await PutAsync(new ChangeIntent(CanonicalId.Mint().Value, kind, wordformId, target.Form,
+            target.AssessmentId, reading?.Analysis, DisplayReading: reading?.Text,
             ReadingIndex: reading?.Index, OriginPage: WorkspacePage.Texts.ToString(),
-            Occurrence: occurrence), path, generation, CancellationToken.None).ConfigureAwait(true);
+            Occurrence: occurrence) { GroupId = groupId }, path, generation, CancellationToken.None, target.ExpectedContext).ConfigureAwait(true);
     }
 
-    public async Task<bool> AddFromMarkingAsync(AnalysisMarkingAction action, ResultsTokenViewModel token)
+    public Task<bool> AddFromMarkingAsync(AnalysisMarkingAction action, ResultsTokenViewModel token)
+    {
+        ArgumentNullException.ThrowIfNull(token);
+        return AddFromMarkingAsync(action, token.CaptureActionTarget(AssessmentId));
+    }
+
+    /// <summary>Stages a marking choice against its frozen target and captured Selection evidence.</summary>
+    public async Task<bool> AddFromMarkingAsync(AnalysisMarkingAction action, WordActionTarget target)
     {
         ArgumentNullException.ThrowIfNull(action);
-        ArgumentNullException.ThrowIfNull(token);
+        ArgumentNullException.ThrowIfNull(target);
         var kind = action.ChangeKind is ChangeKinds.Approve or ChangeKinds.Reject or ChangeKinds.Candidate or
             ChangeKinds.AddCandidate
             ? action.ChangeKind
@@ -342,11 +402,11 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
         if (hasParserReading)
             argumentShape.Add(UsageArgumentShape.Text("reading"));
         using var usageAction = _client.BeginUsageAction("put-pending-change", [.. argumentShape]);
-        return await PutAsync(new ChangeIntent(CanonicalId.Mint().Value, kind, token.WordformId is { } id ? CanonicalId.FromGuid(id).Value : "", token.Form,
-            hasParserReading ? AssessmentId : null, action.Reading, action.StoredAnalysisId,
+        return await PutAsync(new ChangeIntent(CanonicalId.Mint().Value, kind, target.WordformId is { } id ? CanonicalId.FromGuid(id).Value : "", target.Form,
+            hasParserReading ? target.AssessmentId : null, action.Reading, action.StoredAnalysisId,
             ReadingIndex: action.ReadingIndex, OriginPage: WorkspacePage.Texts.ToString(),
             Occurrence: kind is ChangeKinds.Approve or ChangeKinds.Reject or ChangeKinds.Candidate
-                ? token.Occurrence : null), path, _projectGeneration, CancellationToken.None).ConfigureAwait(true);
+                ? target.Occurrence : null), path, _projectGeneration, CancellationToken.None, target.ExpectedContext).ConfigureAwait(true);
     }
 
     /// <summary>Adds an Approve change for one stored analysis without a parser reading.</summary>
@@ -379,7 +439,7 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
         return await PutAsync(new ChangeIntent(CanonicalId.Mint().Value, change.Kind,
             change.WordformId is { } wordformId ? CanonicalId.FromGuid(wordformId).Value : string.Empty,
             change.Word, StoredAnalysisId: change.StoredAnalysisId, DisplayReading: change.DisplayReading,
-            OriginPage: originPage.ToString()), path, generation, CancellationToken.None).ConfigureAwait(true);
+            OriginPage: originPage.ToString()), path, generation, CancellationToken.None, change.ExpectedContext).ConfigureAwait(true);
     }
 
     private async Task AddOneAsync(string kind, CompareWordViewModel word, CompareReadingChoice? choice,
@@ -738,12 +798,18 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
     {
         ArgumentNullException.ThrowIfNull(token);
         if (!token.IsWord) return false;
+        return Addresses(token.WordformId, token.Occurrence);
+    }
+
+    /// <summary>Joins a pending change to compact identities without constructing a displayed token.</summary>
+    internal bool Addresses(Guid? wordformId, OccurrenceAnchor? occurrence)
+    {
         if (WordformId is not null)
         {
-            if (token.WordformId is not { } id || WordformId != CanonicalId.FromGuid(id).Value) return false;
+            if (wordformId is not { } id || WordformId != CanonicalId.FromGuid(id).Value) return false;
         }
         else if (Occurrence is null) return false;
-        return Occurrence is null || Occurrence == token.Occurrence;
+        return Occurrence is null || Occurrence == occurrence;
     }
 
     public string? StoredAnalysisId { get; } = storedAnalysisId;
@@ -862,14 +928,32 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
         }
     }
 
-    /// <summary>The sentence tokens surrounding the exact occurrence, when the Texts page has loaded them.</summary>
-    public IReadOnlyList<ResultsTokenViewModel> ContextTokens { get; private set; } = [];
+    private ReviewSentenceContext? _contextSource;
+
+    /// <summary>The currently leased plain sentence strip surrounding this change's exact source occurrence.</summary>
+    public IReadOnlyList<ReviewSentenceToken> ContextTokens => _contextSource?.Tokens ?? [];
+
+    /// <summary>The independently paged sentence context, without references to the Analyze page.</summary>
+    public SIL.Motif.App.Services.IProgressivePageSource? ContextSource => _contextSource;
+
+    public bool HasContextSource => _contextSource is not null;
 
     public bool HasUnavailableContext => IsContextExpanded && Occurrence is not null && ContextTokens.Count == 0;
 
-    internal void SetContextTokens(IReadOnlyList<ResultsTokenViewModel> tokens)
+    internal void SetContextSource(ReviewSentenceContext? source)
     {
-        ContextTokens = tokens;
+        if (_contextSource is not null) _contextSource.PropertyChanged -= OnContextSourceChanged;
+        _contextSource = source;
+        if (_contextSource is not null) _contextSource.PropertyChanged += OnContextSourceChanged;
+        OnPropertyChanged(nameof(ContextSource));
+        OnPropertyChanged(nameof(HasContextSource));
+        OnPropertyChanged(nameof(ContextTokens));
+        OnPropertyChanged(nameof(HasUnavailableContext));
+    }
+
+    private void OnContextSourceChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(ReviewSentenceContext.Tokens)) return;
         OnPropertyChanged(nameof(ContextTokens));
         OnPropertyChanged(nameof(HasUnavailableContext));
     }

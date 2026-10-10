@@ -48,6 +48,7 @@ internal sealed class ScaleMeasurements(ITestOutputHelper output)
                 processMemoryMeasure = OperatingSystem.IsMacOS() ? "physical footprint" : "rss",
                 timeBudgetSeconds = timeLimitSeconds, managedBudgetBytes = managedLimit,
                 processMemoryBudgetBytes = processMemoryLimit,
+                repositoryReads = readObservation.Snapshot(),
             }) + Environment.NewLine);
             lastRecord = clock.Elapsed;
         }
@@ -91,7 +92,8 @@ internal sealed class ScaleMeasurements(ITestOutputHelper output)
             output.WriteLine(row);
             var reads = readObservation.Snapshot();
             _readCounts[step] = reads;
-            output.WriteLine($"SCALE READ | {step} | {reads.Queries} queries | {reads.RecordsDeserialized} records");
+            output.WriteLine($"SCALE READ | {step} | {reads.Queries} queries | {reads.RecordsDeserialized} records | " +
+                $"{reads.BaselineJsonPayloadBytes} Baseline JSON bytes | {reads.BaselineOccurrenceTuples} occurrence tuples");
             if (clock.Elapsed.TotalSeconds > timeLimitSeconds || managed > managedLimit || processMemory > processMemoryLimit)
                 _failures.Add(row);
         }
@@ -107,6 +109,14 @@ internal sealed class ScaleMeasurements(ITestOutputHelper output)
             throw new InvalidOperationException($"No read counts were recorded for {step}.");
         Assert.InRange(counts.Queries, minimumQueries, maximumQueries);
         Assert.InRange(counts.RecordsDeserialized, minimumRecords, maximumRecords);
+    }
+
+    public void AssertBaselineReadVolume(string step, long maximumBytes, long maximumOccurrenceTuples)
+    {
+        if (!_readCounts.TryGetValue(step, out var counts))
+            throw new InvalidOperationException($"No read counts were recorded for {step}.");
+        Assert.InRange(counts.BaselineJsonPayloadBytes, 1, maximumBytes);
+        Assert.InRange(counts.BaselineOccurrenceTuples, 0, maximumOccurrenceTuples);
     }
 
     public void AssertBudgets() => Assert.True(_failures.Count == 0, string.Join(Environment.NewLine, _failures));

@@ -1,4 +1,5 @@
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Commands.SelectionReading;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -35,9 +36,9 @@ public partial interface ICommandClient
     Task<CommandOutcome<StoredGrammarCheckResponse>> ReadStoredGrammarCheckAsync(
         GrammarCheckRequest request, CancellationToken cancellationToken);
 
-    /// <summary>Reads the chosen Texts' words, where each occurs, and the analyses the project holds for them.</summary>
-    Task<CommandOutcome<TextWordsResponse>> ListTextWordsAsync(
-        TextWordsRequest request, CancellationToken cancellationToken);
+    /// <summary>Opens the workspace-owned Selection session; the caller disposes it when replacing the Selection.</summary>
+    Task<CommandOutcome<SelectionReader>> OpenSelectionReaderAsync(
+        OpenSelectionReaderRequest request, CancellationToken cancellationToken);
 
     /// <summary>Traces one word against the current Baseline's grammar, with optional progress while waiting.</summary>
     Task<CommandOutcome<WordTraceResponse>> TraceWordAsync(

@@ -4,11 +4,12 @@ namespace SIL.Motif.App.ViewModels;
 
 // The item source needs indexed access without projecting a whole list.
 internal sealed class LazyProjectionList<TSource, TResult>(IReadOnlyList<TSource> source,
-    Func<TSource, TResult> project, Func<TResult, TSource> sourceOf) : IReadOnlyList<TResult>, IList
+    Func<TSource, TResult> project, Func<TResult, TSource> sourceOf, Func<bool>? isCurrent = null) : IReadOnlyList<TResult>, IList
     where TSource : class where TResult : class
 {
-    public int Count => source.Count;
-    public TResult this[int index] => project(source[index]);
+    public int Count => isCurrent?.Invoke() == false ? 0 : source.Count;
+    public TResult this[int index] => index >= 0 && index < Count
+        ? project(source[index]) : throw new ArgumentOutOfRangeException(nameof(index));
     object? IList.this[int index] { get => this[index]; set => throw new NotSupportedException(); }
     bool IList.IsReadOnly => true;
     bool IList.IsFixedSize => true;

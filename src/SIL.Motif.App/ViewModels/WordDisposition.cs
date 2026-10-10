@@ -24,13 +24,13 @@ public enum WordDispositionKind
 /// <param name="IsStaged">Whether a pending change makes FieldWorks hold this after Apply.</param>
 /// <param name="Choice">The staged change this tile makes, or <see langword="null"/> when it changes nothing.</param>
 public sealed record WordDispositionTile(
-    WordDispositionKind Kind, bool IsCurrent, bool IsStaged, AnalysisMarkingChoice? Choice)
+    WordDispositionKind Kind, bool IsCurrent, bool IsStaged, AnalysisMarkingChoice? Choice, WordMarkingChoice? Action = null)
 {
     /// <summary>The tile's letter: A, U, D, or a dash for an analysis FieldWorks does not hold.</summary>
     public string Letter => WordDisposition.LetterOf(Kind);
 
     /// <summary>Whether choosing the tile does anything: it stages a change, or it is what FieldWorks already holds.</summary>
-    public bool IsAvailable => Choice is not null || IsCurrent;
+    public bool IsAvailable => Action?.IsAvailable ?? (Choice is not null || IsCurrent);
 
     /// <summary>The hover text: the full phrase and, for the word's main analysis, its key.</summary>
     public string Tip => (IsCurrent ? "Now: " : string.Empty) + WordDisposition.PhraseOf(Kind);
@@ -69,13 +69,15 @@ public sealed record WordDispositionRow(
 public sealed class WordDisposition
 {
     private WordDisposition(IReadOnlyList<WordDispositionRow> stored, IReadOnlyList<WordDispositionRow> readings,
-        AnalysisMarkingChoice? keep, AnalysisMarkingChoice? addAll, bool spellingStaged)
+        AnalysisMarkingChoice? keep, AnalysisMarkingChoice? addAll, bool spellingStaged, Func<AnalysisMarkingChoice, WordMarkingChoice>? bind)
     {
         StoredRows = stored;
         Readings = readings;
         KeepFieldWorks = keep;
         AddAllAsUnknown = addAll;
         IsSpellingStaged = spellingStaged;
+        KeepFieldWorksAction = keep is null ? null : bind?.Invoke(keep);
+        AddAllAsUnknownAction = addAll is null ? null : bind?.Invoke(addAll);
     }
 
     /// <summary>Each analysis FieldWorks stores, with tiles for what it should hold.</summary>
@@ -87,8 +89,14 @@ public sealed class WordDisposition
     /// <summary>The choice that keeps FieldWorks as it is and marks the word read, when the word offers it.</summary>
     public AnalysisMarkingChoice? KeepFieldWorks { get; }
 
+    /// <summary>The keep choice bound to the captured word and evidence that supplied the menu.</summary>
+    public WordMarkingChoice? KeepFieldWorksAction { get; }
+
     /// <summary>The choice that adds every PanGloss reading FieldWorks lacks as Unknown, when offered.</summary>
     public AnalysisMarkingChoice? AddAllAsUnknown { get; }
+
+    /// <summary>The add-all choice bound to the captured word and evidence that supplied the menu.</summary>
+    public WordMarkingChoice? AddAllAsUnknownAction { get; }
 
     /// <summary>Whether a pending change marks the word as an incorrect spelling.</summary>
     public bool IsSpellingStaged { get; }
@@ -150,11 +158,11 @@ public sealed class WordDisposition
         : "Change what FieldWorks holds";
 
     /// <summary>Builds both buttons from a word's marking.</summary>
-    public static WordDisposition From(AnalysisMarkingState marking)
+    public static WordDisposition From(AnalysisMarkingState marking, Func<AnalysisMarkingChoice, WordMarkingChoice>? bind = null)
     {
         ArgumentNullException.ThrowIfNull(marking);
         var staged = marking.StagedTransitions;
-        var stored = marking.FieldWorksAnalyses.Select((analysis, index) => StoredRow(analysis, index, marking, staged))
+        var stored = marking.FieldWorksAnalyses.Select((analysis, index) => StoredRow(analysis, index, marking, staged, bind))
             .ToArray();
 
         var readings = new List<WordDispositionRow>();
@@ -173,7 +181,7 @@ public sealed class WordDisposition
                     candidate.AfterApply == PhraseWordOf(kind));
                 if (choice is null) continue;
                 tiles.Add(new WordDispositionTile(kind, false,
-                    staged.Any(change => change.ReadingIndex == index && change.AfterApply == choice.AfterApply), choice));
+                    staged.Any(change => change.ReadingIndex == index && change.AfterApply == choice.AfterApply), choice, bind?.Invoke(choice)));
             }
             readings.Add(new WordDispositionRow(readings.Count + 1, MorphText(morphs), GlossText(morphs),
                 "Different from FieldWorks", tiles));
@@ -182,11 +190,11 @@ public sealed class WordDisposition
         var keep = marking.FixChoices.FirstOrDefault(choice => choice.Kind == AnalysisMarkingActionKind.KeepFieldWorks);
         var addAll = marking.FixChoices.FirstOrDefault(choice => choice.Kind == AnalysisMarkingActionKind.AcceptNewSet);
         var spelling = staged.Any(change => change.AfterApply == "Incorrect");
-        return new WordDisposition(stored, readings, keep, addAll, spelling);
+        return new WordDisposition(stored, readings, keep, addAll, spelling, bind);
     }
 
     private static WordDispositionRow StoredRow(FieldWorksAnalysisMarking analysis, int index,
-        AnalysisMarkingState marking, IReadOnlyList<StagedMarkingTransition> staged)
+        AnalysisMarkingState marking, IReadOnlyList<StagedMarkingTransition> staged, Func<AnalysisMarkingChoice, WordMarkingChoice>? bind)
     {
         var current = KindOfGrade(analysis.Opinion);
         var pending = staged.FirstOrDefault(change => change.StoredAnalysisId == analysis.StoredAnalysisId);
@@ -197,7 +205,7 @@ public sealed class WordDisposition
                 var choice = marking.FixChoices.FirstOrDefault(candidate =>
                     candidate.StoredAnalysisId == analysis.StoredAnalysisId && candidate.Kind == ActionFor(kind));
                 return new WordDispositionTile(kind, kind == current,
-                    pending is not null && KindOfAfterApply(pending.AfterApply) == kind, choice);
+                    pending is not null && KindOfAfterApply(pending.AfterApply) == kind, choice, choice is null ? null : bind?.Invoke(choice));
             }).ToArray();
         var matching = marking.PanGlossReadings.Any(reading => reading.MatchingAnalysisIds.Contains(analysis.StoredAnalysisId));
         return new WordDispositionRow(index + 1, MorphText(analysis.Morphs), GlossText(analysis.Morphs),

@@ -175,12 +175,13 @@
                 Click="OnGoToTextsClick" AutomationProperties.Name="Choose texts to analyze" />
       </StackPanel>
       <ScrollViewer Grid.Row="2" x:Name="TextScrollViewer" IsVisible="{Binding InText.HasLines}">
-        <ItemsControl x:Name="TextLineItems" ItemsSource="{Binding InText.VisibleLines}" AutomationProperties.Name="Text lines and parser results">
+        <ItemsControl x:Name="TextLineItems" ItemsSource="{Binding InText.DisplayedLines}" AutomationProperties.Name="Text lines and parser results">
           <ItemsControl.ItemsPanel>
             <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
           </ItemsControl.ItemsPanel>
           <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="vm:ResultsLineViewModel">
+            <views:ResultsModelTemplate>
+                  <DataTemplate x:DataType="vm:ResultsLineViewModel">
               <StackPanel Margin="{DynamicResource Component.TextsPage.LineMargin}" HorizontalAlignment="Stretch">
               <Grid Classes="lineHead" ColumnDefinitions="Auto,*,Auto"
                     controls:WritingSystemText.FlowId="{Binding SentenceWritingSystem}"
@@ -204,22 +205,25 @@
                   <TextBlock Classes="gutterLabel analysisRow fieldWorksRow" Text="FieldWorks" />
                   <TextBlock Classes="gutterLabel analysisRow" Text="PanGloss" />
                 </StackPanel>
-                <views:ProgressiveItemsControl x:Name="ResultsInTextPanelTokensItems" FullItemsSource="{Binding Tokens}" HorizontalAlignment="Stretch">
+                <views:ProgressiveItemsControl x:Name="ResultsInTextPanelTokensItems" FullItemsSource="{Binding DisplayTokens}" HorizontalAlignment="Stretch">
                   <ItemsControl.ItemsPanel><ItemsPanelTemplate><views:WordStripWrapPanel Orientation="Horizontal"
                                                                                            HorizontalAlignment="Stretch"
                                                                                            controls:WritingSystemText.FlowEnabled="True" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                   <ItemsControl.ItemTemplate>
+                    <views:ResultsModelTemplate>
                     <DataTemplate x:DataType="vm:ResultsTokenViewModel">
                       <word:WordStripToken Data="{Binding}" State="{Binding PresentationState, Mode=TwoWay}"
                                            Host="{Binding $parent[views:ResultsInTextPanel].WordHost}"
                                            ShowsSelectionCheckBox="{Binding $parent[views:ResultsInTextPanel].InText.ShowWordCheckboxes}" />
                     </DataTemplate>
+                  </views:ResultsModelTemplate>
                   </ItemsControl.ItemTemplate>
                 </views:ProgressiveItemsControl>
               </controls:RunningTextPanel>
               <ContentControl Content="{Binding OpenCard}" IsVisible="{Binding HasOpenCard}"
                               Margin="{DynamicResource Component.TextsPage.CardIndent}">
                 <ContentControl.ContentTemplate>
+                  <views:ResultsModelTemplate>
                   <DataTemplate x:DataType="vm:ResultsTokenViewModel">
                     <word:WordCard Host="{Binding $parent[views:ResultsInTextPanel].WordHost}"
                                    Key="{Binding PresentationKey}" EvidenceRevision="{Binding EvidenceRevision}"
@@ -261,10 +265,12 @@
                       </word:WordCard.Header>
                     </word:WordCard>
                   </DataTemplate>
+                  </views:ResultsModelTemplate>
                 </ContentControl.ContentTemplate>
               </ContentControl>
               </StackPanel>
-            </DataTemplate>
+                  </DataTemplate>
+            </views:ResultsModelTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>
       </ScrollViewer>

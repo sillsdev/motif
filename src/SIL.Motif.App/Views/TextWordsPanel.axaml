@@ -58,13 +58,15 @@
     <views:WordListSlot Grid.Row="3" Schema="{x:Static word:WordListSchemas.WordList}">
       <Grid RowDefinitions="Auto,*">
       <word:WordRowHeader />
-      <ListBox x:Name="TextWordsPanelRowsItems" Grid.Row="1" Classes="wordRows" ItemsSource="{Binding Words.Rows}"
+      <ListBox x:Name="TextWordsPanelRowsItems" Grid.Row="1" Classes="wordRows" ItemsSource="{Binding Words.DisplayRows}"
                AutomationProperties.Name="Words to test" KeyboardNavigation.TabNavigation="Continue">
         <ListBox.ItemTemplate>
+          <views:ResultsModelTemplate>
           <DataTemplate x:DataType="vm:TextWordRowViewModel">
             <word:WordRow Data="{Binding Presentation}" State="{Binding PresentationState, Mode=TwoWay}"
                           Host="{Binding $parent[views:TextWordsPanel].PresentationHost}" />
           </DataTemplate>
+          </views:ResultsModelTemplate>
         </ListBox.ItemTemplate>
       </ListBox>
       </Grid>

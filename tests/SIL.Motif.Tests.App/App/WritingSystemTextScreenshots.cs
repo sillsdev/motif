@@ -29,7 +29,7 @@ public sealed class WritingSystemTextScreenshots
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var (workspace, window) = await PageScreenshots.OpenOverSampleData(parse: false,
-                configure: (fake, _) => fake.ListTextWordsCompletesWith(WritingSystemTestData.ArabicText()));
+                capturedWords: WritingSystemTestData.ArabicText());
             try
             {
                 window.SetValue(TextElement.FontFamilyProperty, new FontFamily("fonts:MotifWalkthrough#Andika"));
@@ -42,10 +42,15 @@ public sealed class WritingSystemTextScreenshots
                 texts.Tab = TextsTab.AnalyzeTexts;
                 texts.ShowAnalyzeViewCommand.Execute(AnalyzeTextsView.TextReader);
                 workspace.CurrentPage = WorkspacePage.Texts;
-                await wordsView.SetProjectAsync(PageScreenshots.SampleProjectPath);
+                await workspace.Context.EvidencePublication;
+                await texts.ResultsInText.SelectionRefresh;
                 resolver.SetFallbackFamilies(["fonts:MotifWalkthrough#DejaVu Sans"]);
                 resolver.ReplaceContext([WritingSystemTestData.Arabic]);
-                PageScreenshots.Settle(window);
+                await AnalyzeTextsLayoutTests.SettleReaderAsync(workspace, window);
+                var anchor = workspace.Context.SelectionReads.Summary!.SourcePositions
+                    .Single(position => position.Word.Form == WritingSystemTestData.Form).Location.Anchor;
+                Assert.True(await AnalyzeTextsLayoutTests.Panel(window).FocusOccurrenceAsync(anchor));
+                await AnalyzeTextsLayoutTests.SettleReaderAsync(workspace, window);
                 Assert.Equal(WritingSystemTestData.Arabic.FontFamily,
                     resolver.Resolve(TextStyleRequest.Linguistic(WritingSystemTestData.Arabic.Id, "Normal"))
                         .RequestedFontFamily);
@@ -57,12 +62,12 @@ public sealed class WritingSystemTextScreenshots
                 Assert.Same(resolver, SIL.Motif.App.Controls.WritingSystemText.GetResolver(languageForm));
                 Assert.Equal("Normal", SIL.Motif.App.Controls.WritingSystemText.GetStyleName(languageForm));
                 Assert.Contains(languageForm.GetVisualAncestors(), ancestor => ancestor is TopLevel);
-                Assert.Contains(WritingSystemTestData.Form, wordsView.Response!.Texts
-                    .SelectMany(text => text.Lines).SelectMany(line => line.Tokens).Select(token => token.Form));
+                Assert.Contains(workspace.Context.SelectionReads.Summary!.SourcePositions,
+                    position => position.Word.Form == WritingSystemTestData.Form);
                 Assert.Single(resolver.MissingFontNotices);
-                var visible = texts.ResultsInText.VisibleLines.SelectMany(line => line.Tokens).ToArray();
-                Assert.Contains(visible, item => item.Form == WritingSystemTestData.Form);
-                var token = visible.Single(item => item.Form == WritingSystemTestData.Form);
+                var token = await texts.ResultsInText.ReadOccurrenceAsync(anchor);
+                Assert.NotNull(token);
+                Assert.Equal(WritingSystemTestData.Form, token.Form);
                 foreach (var (theme, variant) in Themes())
                 {
                     Application.Current!.RequestedThemeVariant = variant;

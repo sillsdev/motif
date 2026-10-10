@@ -10,15 +10,22 @@ namespace SIL.Motif.App.Views;
 
 internal sealed class TextWordPresentationHost(TextWordsViewModel words, TextWordsPanel panel) : IWordPresentationHost
 {
-    public Task<WordCardReadResult> ReadCardAsync(
+    public async Task<WordCardReadResult> ReadCardAsync(
         WordPresentationKey key,
         long evidenceRevision,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (Find(key) is not { } row || row.Presentation.EvidenceRevision != evidenceRevision)
-            return Task.FromResult(WordCardReadResult.Failed("The word changed before its details could be shown.", false));
+            return WordCardReadResult.Failed("The word changed before its details could be shown.", false);
 
+        // The row starts its read before the two-way open-state binding reaches the model.
+        await Task.Yield();
+        await words.SettleVisibleDetailsAsync().ConfigureAwait(true);
+        await words.CardPending.ConfigureAwait(true);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (Find(key) != row || row.Presentation.EvidenceRevision != evidenceRevision)
+            return WordCardReadResult.Failed("The word changed before its details could be shown.", false);
         var listed = row.Listed;
         var sections = new List<WordCardSection>
         {
@@ -26,8 +33,8 @@ internal sealed class TextWordPresentationHost(TextWordsViewModel words, TextWor
         };
         if (row.HasSeveralAnalyses) sections.Add(new WordCardText(string.Empty, row.ProjectSummary));
         sections.Add(new WordCardHeading("WHERE IT APPEARS"));
-        sections.Add(new WordCardOccurrences(row.Occurrences));
-        return Task.FromResult(WordCardReadResult.Read(new WordCardDocument(key, evidenceRevision, sections)));
+        sections.Add(new WordCardOccurrences(row.Occurrences, row.OccurrenceSource));
+        return WordCardReadResult.Read(new WordCardDocument(key, evidenceRevision, sections));
     }
 
     public async ValueTask<WordActionResult> HandleAsync(WordRequest request, CancellationToken cancellationToken)
@@ -94,17 +101,7 @@ internal sealed class TextWordPresentationHost(TextWordsViewModel words, TextWor
         if (target < 0 || target >= words.Rows.Count) return new WordActionResult(false);
         var list = panel.FindControl<ListBox>("TextWordsPanelRowsItems");
         if (list is null) return new WordActionResult(false);
-        cancellationToken.ThrowIfCancellationRequested();
-        list.ScrollIntoView(target);
-        var container = await Dispatcher.UIThread.InvokeAsync(() =>
-        {
-            list.UpdateLayout();
-            return list.ContainerFromIndex(target);
-        });
-        cancellationToken.ThrowIfCancellationRequested();
-        var row = container is ModuleWordRow direct
-            ? direct
-            : container?.GetVisualDescendants().OfType<ModuleWordRow>().FirstOrDefault();
+        var row = await WordListNavigation.RealizeAsync(list, target, cancellationToken);
         if (row is null) return new WordActionResult(false);
         row.FocusWord();
         return new WordActionResult(true);
@@ -119,10 +116,14 @@ internal sealed class TextWordPresentationHost(TextWordsViewModel words, TextWor
     }
 
     private int IndexOf(TextWordRowViewModel row) =>
-        Array.FindIndex(words.Rows.ToArray(), item => ReferenceEquals(item, row));
+        words.DisplayRows.Select((position, index) => (position, index))
+            .Where(item => item.position is SelectionWordRowPosition position && position.Summary.Key == row.Summary?.Key)
+            .Select(item => item.index).DefaultIfEmpty(-1).First();
 
     private TextWordRowViewModel? Find(WordPresentationKey key) =>
-        words.Rows.FirstOrDefault(row => row.Presentation.Key == key);
+        panel.GetVisualDescendants().OfType<ModuleWordRow>()
+            .Where(control => control.Data?.Key == key).Select(control => control.DataContext)
+            .OfType<TextWordRowViewModel>().FirstOrDefault();
 
     private static void Execute(System.Windows.Input.ICommand command)
     {

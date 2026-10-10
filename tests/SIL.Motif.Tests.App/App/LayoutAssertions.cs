@@ -218,11 +218,11 @@ internal static class LayoutAssertions
             if (control.ContextFlyout is PopupFlyoutBase { IsOpen: true } contextFlyout &&
                 contextFlyout.Popup.Child is { } contextContent)
                 yield return TopLevel.GetTopLevel(contextContent) is { } contextRoot ? contextRoot : contextContent;
-
-            foreach (var popup in control.GetVisualDescendants().OfType<Popup>().Where(popup => popup.IsOpen))
-                if (popup.Child is { } popupContent)
-                    yield return TopLevel.GetTopLevel(popupContent) is { } popupRoot ? popupRoot : popupContent;
         }
+
+        foreach (var popup in Controls(root).OfType<Popup>().Where(popup => popup.IsOpen))
+            if (popup.Child is { } popupContent)
+                yield return TopLevel.GetTopLevel(popupContent) is { } popupRoot ? popupRoot : popupContent;
 
         if (root is Window mainWindow && Application.Current?.ApplicationLifetime is
             IClassicDesktopStyleApplicationLifetime desktop)
@@ -279,8 +279,8 @@ internal static class LayoutAssertions
             if (IsCompactMorphemePreview(text)) continue;
             var scrollCanRevealText = text.GetSelfAndVisualAncestors().OfType<ScrollViewer>()
                 .Any(scroll => IsWithinScrollExtent(text, scroll)) || DataGridCanRevealText(text, ancestor);
-            Assert.True(scrollCanRevealText,
-                $"Text '{text.Text}' ({name}) is clipped outside a scroll viewport that can reveal it. " +
+            if (!scrollCanRevealText)
+                Assert.Fail($"Text '{text.Text}' ({name}) is clipped outside a scroll viewport that can reveal it. " +
                 $"{ClipDiagnostics(text, textBounds, ancestor, BoundsIn(ancestor, layoutRoot))} " +
                 $"Path: {path}.{TooltipDetails(text, layoutRoot)}");
         }
@@ -323,6 +323,7 @@ internal static class LayoutAssertions
     private static string TooltipDetails(TextBlock text, Visual layoutRoot)
     {
         var tooltip = text.GetVisualAncestors().OfType<ToolTip>().FirstOrDefault();
+        if (tooltip is null) return string.Empty;
         var owner = Controls(layoutRoot).OfType<Control>().FirstOrDefault(control =>
             ToolTip.GetIsOpen(control) && ToolTip.GetTip(control) is string tip &&
             string.Equals(tip, text.Text, StringComparison.Ordinal));
@@ -368,8 +369,12 @@ internal static class LayoutAssertions
 
     private static void AssertGridChildrenStayInTheirColumns(Visual root)
     {
-        foreach (var grid in Controls(root).OfType<Grid>().Where(grid => grid.ColumnDefinitions.Count > 1))
+        foreach (var grid in Controls(root).OfType<Grid>())
         {
+            var definitions = grid.ColumnDefinitions;
+            // The getter creates layout state; pinned by `InspectingAnImplicitGridLeavesItSafeToArrangeAgain`.
+            if (definitions.Count == 0) grid.InvalidateMeasure();
+            if (definitions.Count <= 1) continue;
             var origin = grid.TranslatePoint(default, grid);
             if (origin is null) continue;
             var widths = grid.ColumnDefinitions.Select(column => column.ActualWidth).ToArray();

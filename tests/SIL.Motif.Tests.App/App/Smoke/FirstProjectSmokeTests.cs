@@ -296,6 +296,7 @@ public sealed class FirstProjectSmokeTests(PristineProjectFixture pristine)
                 InteractiveControlFamily.Collection);
             walkthrough.ShowPage(WorkspacePage.Texts);
             walkthrough.ShowTextsTab(TextsTab.AnalyzeTexts);
+            await AnalyzeTextsLayoutTests.SettleReaderAsync(walkthrough.Workspace, walkthrough.Window);
             InteractiveControlSweep.AssertScene(walkthrough, "completed Analyze texts",
                 InteractiveControlFamily.Action,
                 InteractiveControlFamily.Link,
@@ -320,10 +321,11 @@ public sealed class FirstProjectSmokeTests(PristineProjectFixture pristine)
                 InteractiveControlFamily.List, InteractiveControlFamily.SelectableText, InteractiveControlFamily.Mark,
                 InteractiveControlFamily.Morpheme, InteractiveControlFamily.FocusableSurface, InteractiveControlFamily.Collection);
             textsPage.AnalyzeView = AnalyzeTextsView.TextReader;
+            await AnalyzeTextsLayoutTests.SettleReaderAsync(walkthrough.Workspace, walkthrough.Window);
             var inText = walkthrough.Workspace.PageModel<TextsPageModel>().ResultsInText;
             var panel = AnalyzeTextsLayoutTests.Panel(walkthrough.Window);
             var occurrence = AnalyzeTextsLayoutTests.Strips(panel)
-                .Select(strip => Assert.IsType<ResultsTokenViewModel>(strip.Tag))
+                .Select(strip => Assert.IsType<ResultsTokenViewModel>(SIL.Motif.App.Views.ResultsInTextPanel.TokenOf(strip)))
                 .FirstOrDefault(token => token.HasReadings);
             Assert.NotNull(occurrence);
             await inText.OpenTokenCardAsync(occurrence);

@@ -241,48 +241,61 @@ public sealed class WordRowViewModelTests
     }
 
     [Fact]
-    public async Task TheReadMarksAnalyzeTextsLoadsReachTheWordRows()
+    public void TheReadMarksAnalyzeTextsLoadsReachTheWordRows()
     {
-        const string projectPath = "word-row.fwdata";
-        var client = new FakeCommandClient();
-        client.ReadWordStateCompletesWith(new WordReadStateResponse([], true));
-        var selection = new SelectionViewModel(client) { AllWordforms = true };
-        var texts = new TextWordsViewModel(client, selection);
-        var assess = new AssessViewModel(client, selection) { ProjectPath = projectPath };
-        var changes = new ChangesViewModel(client);
-        await changes.OpenProjectAsync(projectPath);
-        var line = new TextLine(1, [new TextToken("kata", "kata", null, "unanalysed")
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            WordformId = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000001"),
-            OccurrenceIndex = 0,
-        }])
-        {
-            ParagraphId = Guid.Parse("bbbbbbbb-0000-0000-0000-000000000001"),
-            SegmentId = Guid.Parse("cccccccc-0000-0000-0000-000000000001"),
-            ParseIsCurrent = true,
-        };
-        client.ListTextWordsCompletesWith(new TextWordsResponse([],
-            [new TextLines(Guid.Parse("dddddddd-0000-0000-0000-000000000001"), "Text", [line])], true));
-        var inText = new ResultsInTextViewModel(texts, assess, _ => { }, _ => { }, changes, client);
-        await texts.SetProjectAsync(projectPath);
-        client.AssessCompletesWith(new AssessCommandResponse(
-            new BaselineCaptureResponse(new BaselineToken("p", Digest, "1", "2026-09-05T00:00:00Z", Digest),
-                projectPath, DateTimeOffset.UtcNow, FieldWorksHeldProject: false, ReusedExistingBytes: true),
-            new SelectionProjection([], []), ["assessment/row"], "(summary)")
-        {
-            Measurements = [new ProducedAssessmentReference("assessment/row", AssessmentKinds.ParseTime, "invocation/row")],
-            Words =
-            [
-                new AssessmentWordResult("kata", "no-analysis", false, "Complete", 3, null),
-                new AssessmentWordResult("elsewhere", "no-analysis", false, "Complete", 3, null),
-            ],
-        });
+            const string projectPath = "word-row.fwdata";
+            var client = new FakeCommandClient();
+            var selection = new SelectionViewModel(client) { AllWordforms = true };
+            var texts = new TextWordsViewModel(client, selection, client.ReaderOwner);
+            var assess = new AssessViewModel(client, selection) { ProjectPath = projectPath };
+            var changes = new ChangesViewModel(client);
+            await changes.OpenProjectAsync(projectPath);
+            var line = new TextLine(1, [new TextToken("kata", "kata", null, "unanalysed")
+            {
+                WordformId = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000001"),
+                OccurrenceIndex = 0,
+            }])
+            {
+                ParagraphId = Guid.Parse("bbbbbbbb-0000-0000-0000-000000000001"),
+                SegmentId = Guid.Parse("cccccccc-0000-0000-0000-000000000001"),
+                ParseIsCurrent = true,
+            };
+            var source = new TextWordsResponse([],
+                [new TextLines(Guid.Parse("dddddddd-0000-0000-0000-000000000001"), "Text", [line])], true);
+            await using var fixture = new SelectionModelFixture(client);
+            var inText = new ResultsInTextViewModel(texts, assess, _ => { }, _ => { }, changes, client, client.ReaderOwner);
+            await texts.SetProjectAsync(projectPath);
+            client.AssessCompletesWith(SelectionModelFixture.WithOrigins(new AssessCommandResponse(
+                new BaselineCaptureResponse(new BaselineToken("p", Digest, "1", "2026-09-05T00:00:00Z", Digest),
+                    projectPath, DateTimeOffset.UtcNow, FieldWorksHeldProject: false, ReusedExistingBytes: true),
+                new SelectionProjection([], []), ["assessment/row"], "(summary)")
+            {
+                Measurements = [new ProducedAssessmentReference("assessment/row", AssessmentKinds.ParseTime, "invocation/row")],
+                Words =
+                [
+                    new AssessmentWordResult("kata", "no-analysis", false, "Complete", 3, null),
+                    new AssessmentWordResult("elsewhere", "no-analysis", false, "Complete", 3, null),
+                ],
+            }));
 
-        await assess.RunCommand.ExecuteAsync(null);
-        await inText.ReadStateRefresh;
+            await assess.RunCommand.ExecuteAsync(null);
+            await fixture.PublishAsync(source, assess.Result);
+            await SelectionModelFixture.RealizeAsync(inText);
 
-        Assert.True(assess.Words.Find("kata")!.WordRow.ShowUnread);
-        Assert.Null(assess.Words.Find("elsewhere")!.WordRow.IsUnread);
+            Assert.True(assess.Words.Find("kata")!.WordRow.ShowUnread);
+            Assert.Null(assess.Words.Find("elsewhere")!.WordRow.IsUnread);
+            client.OnReadWordState((request, _) => Task.FromResult(fixture.WriteReadState(request)));
+            await inText.MarkTextReadCommand.ExecuteAsync(null);
+            Assert.False(assess.Words.Find("kata")!.WordRow.ShowUnread);
+            Assert.False(assess.Words.Find("kata")!.WordRow.IsUnread);
+            Assert.Null(assess.Words.Find("elsewhere")!.WordRow.IsUnread);
+            await inText.MarkTextUnreadCommand.ExecuteAsync(null);
+            Assert.True(assess.Words.Find("kata")!.WordRow.ShowUnread);
+            await inText.StopAsync();
+            await texts.StopAsync();
+        }, TimeSpan.FromSeconds(60));
     }
 
     [Fact]

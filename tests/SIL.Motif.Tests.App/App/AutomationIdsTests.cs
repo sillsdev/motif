@@ -39,9 +39,8 @@ public sealed class AutomationIdsTests
     [Fact]
     public void WordPartIdsIncludeTheirChosenTextIdentity()
     {
-        static ResultsTokenViewModel Token(Guid textId) => new ResultsLineViewModel("Text",
-            new TextLine(1, [new TextToken("same", "same", null, "unanalysed") { OccurrenceIndex = 0 }]),
-            new Dictionary<string, AssessmentWordResult>(StringComparer.Ordinal), textId: textId).Tokens.Single();
+        static ResultsTokenViewModel Token(Guid textId) => new("Text", 1,
+            new TextToken("same", "same", null, "unanalysed") { OccurrenceIndex = 0 }, null, textId: textId);
 
         var first = Token(Guid.Parse("11111111-1111-1111-1111-111111111111"));
         var second = Token(Guid.Parse("22222222-2222-2222-2222-222222222222"));
@@ -53,9 +52,8 @@ public sealed class AutomationIdsTests
     [Fact]
     public void PastedWordPartsHaveStableIdsWithoutATextIdentity()
     {
-        static ResultsTokenViewModel Token(string form, int index) => new ResultsLineViewModel("Pasted words",
-            new TextLine(1, [new TextToken(form, form, null, "unanalysed") { OccurrenceIndex = index }]),
-            new Dictionary<string, AssessmentWordResult>(StringComparer.Ordinal)).Tokens.Single();
+        static ResultsTokenViewModel Token(string form, int index) => new("Pasted words", 1,
+            new TextToken(form, form, null, "unanalysed") { OccurrenceIndex = index }, null);
 
         var first = Token("günler", 2);
         var repeated = Token("gu\u0308nler", 2);

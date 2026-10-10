@@ -54,8 +54,8 @@ public sealed class ExplainedWordCardCaptureTests
                 {
                     WalkthroughReplay.Run(walkthrough, script with { Steps = steps[stage..capture] }, help, clock,
                         [], [], deadline, root, preparation);
-                    var evler = walkthrough.Workspace.PageModel<TextsPageModel>().ResultsInText.Texts
-                        .SelectMany(text => text.Lines).SelectMany(line => line.Tokens)
+                    var evler = AnalyzeTextsLayoutTests.RealizedLines(
+                        walkthrough.Workspace.PageModel<TextsPageModel>().ResultsInText).SelectMany(line => line.Tokens)
                         .Single(token => token.Form.Normalize(NormalizationForm.FormC) == "evler");
                     Assert.True(evler.HasStagedChanges);
                     Assert.True(evler.ShowUnread, "The held read-state write should leave evler Unread.");
@@ -70,8 +70,8 @@ public sealed class ExplainedWordCardCaptureTests
 
                 walkthrough.WaitUntil(() => WalkthroughReplay.CardIsQuiet(walkthrough), TimeSpan.FromSeconds(30),
                     "approving evler did not finish once its read-state write was released");
-                Assert.False(walkthrough.Workspace.PageModel<TextsPageModel>().ResultsInText.Texts
-                    .SelectMany(text => text.Lines).SelectMany(line => line.Tokens)
+                Assert.False(AnalyzeTextsLayoutTests.RealizedLines(
+                    walkthrough.Workspace.PageModel<TextsPageModel>().ResultsInText).SelectMany(line => line.Tokens)
                     .Single(token => token.Form.Normalize(NormalizationForm.FormC) == "evler").ShowUnread);
                 return Task.CompletedTask;
             }

@@ -298,7 +298,7 @@ internal static class WalkthroughReplayTestRunner
             var clipSegments = new List<WalkthroughClipSegment>();
             var deadline = Stopwatch.GetTimestamp() + (long)(WalkthroughReplay.DeadlineBudget(script).TotalSeconds * Stopwatch.Frequency);
 
-            AvaloniaHeadlessFixture.RunUntilComplete(() =>
+            AvaloniaHeadlessFixture.RunUntilComplete(async () =>
             {
                 var previousCulture = CultureInfo.CurrentCulture;
                 var previousUiCulture = CultureInfo.CurrentUICulture;
@@ -335,11 +335,10 @@ internal static class WalkthroughReplayTestRunner
                     WalkthroughReplay.AssertFixtureOutcome(walkthrough, script, parserPath, deadline);
                     if (script.Id == "explained-word-card")
                     {
-                        AssertExplainedWordCard(walkthrough);
+                        await AssertExplainedWordCardAsync(walkthrough);
                         LayoutAssertions.AssertMorphemeGlyphsFitAnalysisRows(walkthrough.Window);
                     }
                     if (script.Id == "right-to-left-text") AssertRightToLeftText(walkthrough);
-                    return Task.CompletedTask;
                 }
                 finally
                 {
@@ -400,7 +399,7 @@ internal static class WalkthroughReplayTestRunner
     private static void AssertRightToLeftText(WalkthroughWindow walkthrough)
     {
         var page = walkthrough.Workspace.PageModel<TextsPageModel>();
-        Assert.Contains(page.ResultsInText.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens),
+        Assert.Contains(AnalyzeTextsLayoutTests.RealizedLines(page.ResultsInText).SelectMany(line => line.Tokens),
             token => token.Form == WritingSystemTestData.Form &&
                 token.FormWritingSystem == SeededProject.RightToLeftTag);
         var panel = Assert.Single(walkthrough.Window.GetLogicalDescendants().OfType<ResultsInTextPanel>());
@@ -418,13 +417,21 @@ internal static class WalkthroughReplayTestRunner
         SIL.Motif.Tests.App.LayoutAssertions.AssertCurrent(walkthrough.Window);
     }
 
-    private static void AssertExplainedWordCard(WalkthroughWindow walkthrough)
+    private static async Task AssertExplainedWordCardAsync(WalkthroughWindow walkthrough)
     {
-        var tokens = walkthrough.Workspace.PageModel<TextsPageModel>().ResultsInText.Texts
-            .SelectMany(text => text.Lines)
-            .SelectMany(line => line.Tokens)
-            .Where(token => token.IsWord)
-            .ToArray();
+        var page = walkthrough.Workspace.PageModel<TextsPageModel>();
+        page.AnalyzeView = AnalyzeTextsView.TextReader;
+        await AnalyzeTextsLayoutTests.SettleReaderAsync(walkthrough.Workspace, walkthrough.Window);
+        var panel = walkthrough.Window.GetLogicalDescendants().OfType<ResultsInTextPanel>().Single();
+        var tokens = new List<ResultsTokenViewModel>();
+        foreach (var position in walkthrough.Workspace.Context.SelectionReads.Summary!.SourcePositions)
+        {
+            Assert.True(await panel.FocusOccurrenceAsync(position.Location.Anchor));
+            var strip = Assert.Single(AnalyzeTextsLayoutTests.Strips(panel), strip =>
+                ResultsInTextPanel.TokenOf(strip)?.Occurrence == position.Location.Anchor);
+            tokens.Add(Assert.IsType<ResultsTokenViewModel>(ResultsInTextPanel.TokenOf(strip)));
+        }
+        await AnalyzeTextsLayoutTests.SettleReaderAsync(walkthrough.Workspace, walkthrough.Window);
         var forms = tokens.Select(token => token.Form.Normalize(NormalizationForm.FormC)).ToArray();
         Assert.Equal(["geldi", "evler", "kediye", "adamlarında", "günler", "okullarında"], forms);
         var byForm = tokens.ToDictionary(token => token.Form.Normalize(NormalizationForm.FormC),
@@ -704,6 +711,8 @@ internal static class WalkthroughReplay
     internal static bool CardIsQuiet(WalkthroughWindow window) =>
         window.Workspace.Context.EvidencePublication.IsCompleted &&
         !window.Workspace.Assess.IsActive && !window.Workspace.RefreshCommand.IsRunning &&
+        !window.Workspace.PageModel<TextsPageModel>().ResultsInText.StageMarkingChoiceForTargetCommand.IsRunning &&
+        !window.Workspace.PageModel<TextsPageModel>().ResultsInText.AddChangeForTargetCommand.IsRunning &&
         !window.Workspace.PageModel<TextsPageModel>().ResultsInText
             .StagePrimaryMarkingActionForTokenCommand.IsRunning;
 

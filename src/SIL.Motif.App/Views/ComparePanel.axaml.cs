@@ -24,6 +24,15 @@ public sealed partial class ComparePanel : UserControl
             this.FindControl<ListBox>("ComparePanelFixFirstRowsItems")!, WordListOwner.FixFirst);
         MatrixPresentationHost = new CompareWordPresentationHost(compare,
             this.FindControl<ListBox>("ComparePanelWordsItems")!, WordListOwner.Matrix);
+        _ = new VisibleControlLifetime(this, () =>
+        {
+            Compare.ShowVisibleRows(this);
+            DataContext = this;
+        }, () =>
+        {
+            DataContext = null;
+            Compare.ReleaseVisibleRows(this);
+        });
         SizeChanged += (_, e) =>
         {
             SetExpandedMatrixLabel(e.NewSize.Width >= ExpandedMatrixLabelWidth);

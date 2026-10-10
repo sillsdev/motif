@@ -296,7 +296,7 @@ internal sealed class TooltipScenes
                 var wordRowsList = Visible<ListBox>().Single(box =>
                     AutomationProperties.GetName(box) == "Words in the chosen cells");
                 var word = Workspace.Assess.Compare.Words.First();
-                var wordIndex = Workspace.Assess.Compare.Words.IndexOf(word);
+                var wordIndex = ((System.Collections.IList)Workspace.Assess.Compare.Words).IndexOf(word);
                 wordRowsList.ScrollIntoView(wordIndex);
                 PageScreenshots.Settle(Window);
                 var container = wordRowsList.ContainerFromIndex(wordIndex);
@@ -310,47 +310,60 @@ internal sealed class TooltipScenes
                 PageScreenshots.Settle(Window);
                 break;
             case TooltipScene.MatrixStaged: Show(WorkspacePage.Texts, TextsTab.Matrix); break;
-            case TooltipScene.Reader: Show(WorkspacePage.Texts, TextsTab.AnalyzeTexts); break;
+            case TooltipScene.Reader:
+                Show(WorkspacePage.Texts, TextsTab.AnalyzeTexts);
+                await AnalyzeTextsLayoutTests.SettleReaderAsync(Workspace, Window);
+                break;
             case TooltipScene.AnalyzeWordList:
                 Show(WorkspacePage.Texts, TextsTab.AnalyzeTexts);
                 await InText.ReadStateRefresh;
-                Workspace.Assess.Words.ApplyReadState(_ => true);
+                await InText.MarkTextUnreadAsync();
+                await InText.ReadStateRefresh;
                 PageScreenshots.Settle(Window);
                 Workspace.PageModel<TextsPageModel>().ShowAnalyzeViewCommand.Execute(AnalyzeTextsView.WordList);
                 await Until(() => Visible<Button>().Any(button =>
                     button.FindAncestorOfType<TextWordsPanel>() is not null &&
                     AutomationProperties.GetName(button)?.StartsWith("AI Handoff", StringComparison.Ordinal) == true &&
                     ToolTip.GetTip(button) is not null), "the Analyze texts word list handoff tooltip");
+                await Workspace.PageModel<TextsPageModel>().Words.SettleVisibleDetailsAsync();
+                PageScreenshots.Settle(Window);
                 break;
             case TooltipScene.ReaderDisapproved:
                 Show(WorkspacePage.Texts, TextsTab.AnalyzeTexts);
-                InText.SelectedText = InText.Texts.Single(text => text.Lines.SelectMany(line => line.Tokens)
-                    .Any(token => token.Form == "walikula"));
-                PageScreenshots.Settle(Window);
+                await AnalyzeTextsLayoutTests.SettleReaderAsync(Workspace, Window);
+                var walikula = Workspace.Context.SelectionReads.Summary!.SourcePositions.Single(position =>
+                    position.Word.Form == "walikula");
+                Assert.True(await AnalyzeTextsLayoutTests.Panel(Window).FocusOccurrenceAsync(walikula.Location.Anchor));
+                await AnalyzeTextsLayoutTests.SettleReaderAsync(Workspace, Window);
                 break;
             case TooltipScene.ReaderStaged:
                 Show(WorkspacePage.Texts, TextsTab.AnalyzeTexts);
+                await AnalyzeTextsLayoutTests.SettleReaderAsync(Workspace, Window);
                 await StageChakula();
                 PageScreenshots.Settle(Window);
                 break;
             case TooltipScene.TextPicker:
                 Show(WorkspacePage.Texts, TextsTab.AnalyzeTexts);
+                await AnalyzeTextsLayoutTests.SettleReaderAsync(Workspace, Window);
                 var picker = Visible<ComboBox>().First(box => AutomationProperties.GetName(box) == "Text to read");
                 picker.IsDropDownOpen = true;
                 await Until(() => picker.IsDropDownOpen && Visible<ComboBoxItem>().Any(), "the texts to read");
                 break;
             case TooltipScene.WordCard:
                 Show(WorkspacePage.Texts, TextsTab.AnalyzeTexts);
+                await AnalyzeTextsLayoutTests.SettleReaderAsync(Workspace, Window);
                 await InText.OpenTokenCardAsync(Token("alikula"));
                 await Until(() => Visible<WordCard>().Any(), "the word card");
                 break;
             case TooltipScene.WordCardWithoutOccurrence:
                 Show(WorkspacePage.Texts, TextsTab.AnalyzeTexts);
+                await AnalyzeTextsLayoutTests.SettleReaderAsync(Workspace, Window);
                 var assessedWord = Workspace.Assess.Result?.Words.FirstOrDefault()
                     ?? throw new InvalidOperationException("The sample must contain an assessed word.");
                 var otherWordformId = CanonicalId.FromGuid(
                     Guid.Parse("f00dbabe-cafe-4dad-9dad-bbbbbbbbbbbb")).Value;
                 InText.SelectWord(assessedWord.Word, otherWordformId);
+                await InText.SelectionRefresh;
                 if (InText.SelectedToken is not { Occurrence: null })
                     throw new InvalidOperationException("The sample word must open without a chosen-text occurrence.");
                 await Until(() => Visible<WordCard>().Any(),
@@ -547,7 +560,7 @@ internal sealed class TooltipScenes
     }
 
     private ResultsTokenViewModel Token(string form) =>
-        InText.VisibleLines.SelectMany(line => line.Tokens).First(token => token.Form == form);
+        AnalyzeTextsLayoutTests.RealizedLines(InText).SelectMany(line => line.Tokens).First(token => token.Form == form);
 
     private static bool HasNamedEntryAction(Button button) => button.Classes.Contains("warningSummary") &&
         button.DataContext is GrammarWarningRowViewModel row &&
@@ -559,7 +572,7 @@ internal sealed class TooltipScenes
         var chakula = Token("chakula");
         if (chakula.HasStagedChanges) return;
         var add = chakula.Marking.FixChoices.Single(choice => choice.Label == "Add as Approved");
-        await chakula.StageMarkingChoiceForTokenCommand!.ExecuteAsync(add);
+        await chakula.StageMarkingChoiceForTokenCommand!.ExecuteAsync(chakula.BindMarkingChoice(add));
         await Until(() => Token("chakula").HasStagedChanges, "the staged change on chakula");
     }
 

@@ -100,8 +100,9 @@ public sealed class ContrastScreenshots
             parse: false, leaveSetupOpen: true, configure: (fake, _) => fake.OverviewCompletesWith(BeforeTheFirstParse()));
         var setup = workspace.Context.Setup!;
         foreach (var text in workspace.Selection.Texts) text.IsChecked = true;
-        await workspace.PageModel<TextsPageModel>().Words.ReloadAsync();
+        await workspace.Context.EvidencePublication;
         for (var step = 0; step < 3; step++) setup.NextCommand.Execute(null);
+        await workspace.Context.EvidencePublication;
         return (workspace, window);
     }
 

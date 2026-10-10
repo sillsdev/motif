@@ -15,4 +15,7 @@ public sealed record WordReadStateRequest(
 {
     /// <summary>The ParseTime Assessments represented by the window, including its displayed reruns.</summary>
     public IReadOnlyList<string>? AssessmentIds { get; init; }
+
+    /// <summary>The evidence identity that must still be current before changing Read marks.</summary>
+    public ExpectedContext? ExpectedContext { get; init; }
 }

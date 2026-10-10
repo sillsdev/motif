@@ -15,6 +15,15 @@ public sealed partial class TextsListsPanel : UserControl
         AvaloniaXamlLoader.Load(this);
         PresentationHost = new CompareWordPresentationHost(lists.Compare,
             this.FindControl<ListBox>("TextsListsPanelWordsItems")!, WordListOwner.Lists);
+        _ = new VisibleControlLifetime(this, () =>
+        {
+            Lists.Compare.ShowVisibleRows(this);
+            DataContext = this;
+        }, () =>
+        {
+            DataContext = null;
+            Lists.Compare.ReleaseVisibleRows(this);
+        });
     }
 
     public TextsListsViewModel Lists { get; }

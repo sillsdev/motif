@@ -36,7 +36,7 @@ public sealed class StoreRefusalWalkthroughTests(PristineProjectFixture pristine
                 command.CommandText = $"PRAGMA user_version = {MotifSchema.CurrentSchema - 1};";
                 return command.ExecuteNonQuery();
             });
-            var oldStoreBytes = File.ReadAllBytes(storePath);
+            var oldStoreBytes = ReadSharedBytes(storePath);
             Assert.Equal(MotifSchema.CurrentSchema - 1, UserVersion(storePath));
 
             var refresh = walkthrough.Workspace.RefreshCommand.ExecuteAsync(null);
@@ -81,7 +81,7 @@ public sealed class StoreRefusalWalkthroughTests(PristineProjectFixture pristine
             Assert.True(block.FindDeleteButton().IsEffectivelyVisible);
             walkthrough.WaitUntilProjectIsQuiet(
                 WalkthroughSteps.Remaining(deadline), "keeping the older store left the project being read");
-            Assert.Equal(oldStoreBytes, File.ReadAllBytes(storePath));
+            Assert.Equal(oldStoreBytes, ReadSharedBytes(storePath));
             Assert.Equal(MotifSchema.CurrentSchema - 1, UserVersion(storePath));
 
             walkthrough.ClickDeleteButton();
@@ -128,10 +128,18 @@ public sealed class StoreRefusalWalkthroughTests(PristineProjectFixture pristine
             Assert.False(block.FindDeleteButton().IsEffectivelyVisible);
             walkthrough.WaitUntilProjectIsQuiet(
                 WalkthroughSteps.Remaining(deadline), "the damaged project's open stages did not finish");
-            Assert.Equal(corruptBytes, File.ReadAllBytes(storePath));
+            Assert.Equal(corruptBytes, ReadSharedBytes(storePath));
 
             return Task.CompletedTask;
         }, WalkthroughSteps.Remaining(deadline));
+    }
+
+    private static byte[] ReadSharedBytes(string path)
+    {
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        using var bytes = new MemoryStream();
+        stream.CopyTo(bytes);
+        return bytes.ToArray();
     }
 
     private static string StorePath(string projectPath)

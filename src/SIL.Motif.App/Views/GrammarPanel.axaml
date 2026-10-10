@@ -22,15 +22,18 @@
                    Text="The parser reads the whole project, so the first check of a Baseline can take a minute on a large project. Later visits are instant until the Baseline is refreshed. You can choose texts meanwhile; they do not depend on the grammar." />
       </StackPanel>
 
-      <StackPanel IsVisible="{Binding Grammar.ShowRefused}" Spacing="{DynamicResource Intent.Space.Related}">
-        <Border Classes="notice">
-          <views:RefusalBlock DataContext="{Binding Grammar.ShownRefusal}" />
-        </Border>
-        <Button Content="Try again"
-                Classes="Primary" Theme="{DynamicResource SolidButton}"
-                Command="{Binding Grammar.CheckCommand}"
-                AutomationProperties.Name="Try checking the grammar again" />
-      </StackPanel>
+      <ScrollViewer x:Name="GrammarRefusalScroll" IsVisible="{Binding Grammar.ShowRefused}" HorizontalScrollBarVisibility="Disabled"
+                    VerticalScrollBarVisibility="Auto" AutomationProperties.Name="Grammar check refusal">
+        <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
+          <Border Classes="notice">
+            <views:RefusalBlock DataContext="{Binding Grammar.ShownRefusal}" />
+          </Border>
+          <Button Content="Try again"
+                  Classes="Primary" Theme="{DynamicResource SolidButton}"
+                  Command="{Binding Grammar.CheckCommand}"
+                  AutomationProperties.Name="Try checking the grammar again" />
+        </StackPanel>
+      </ScrollViewer>
 
       <StackPanel IsVisible="{Binding Grammar.ShowNoBaseline}" Spacing="{DynamicResource Intent.Space.Related}">
         <views:CopyableTextBlock Classes="muted" Text="Capture a Baseline before the grammar can be checked." TextWrapping="Wrap" />

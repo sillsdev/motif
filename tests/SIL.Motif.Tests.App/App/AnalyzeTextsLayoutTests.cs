@@ -46,18 +46,18 @@ public sealed class AnalyzeTextsLayoutTests
                 inText.CloseTokenCard();
                 Settle(window);
                 var panel = Panel(window);
-                var sungura = inText.VisibleLines.SelectMany(line => line.Tokens).Single(token => token.Form == "Sungura");
-                var watoto = inText.VisibleLines.SelectMany(line => line.Tokens).Single(token => token.Form == "watoto");
-                var hawajafika = inText.VisibleLines.SelectMany(line => line.Tokens).Single(token => token.Form == "hawajafika");
-                var mwalimu = inText.VisibleLines.SelectMany(line => line.Tokens).Single(token => token.Form == "mwalimu");
+                var sungura = RealizedLines(inText).SelectMany(line => line.Tokens).Single(token => token.Form == "Sungura");
+                var watoto = RealizedLines(inText).SelectMany(line => line.Tokens).Single(token => token.Form == "watoto");
+                var hawajafika = RealizedLines(inText).SelectMany(line => line.Tokens).Single(token => token.Form == "hawajafika");
+                var mwalimu = RealizedLines(inText).SelectMany(line => line.Tokens).Single(token => token.Form == "mwalimu");
 
                 Assert.True(StripOf(panel, "Sungura").Focus());
                 window.KeyPress(Key.Right, RawInputModifiers.None, PhysicalKey.None, null);
                 Settle(window);
-                Assert.Same(inText.VisibleLines[0].Tokens.Single(token => token.Form == "alikula"), FocusedToken(panel));
+                Assert.Same(RealizedLines(inText)[0].Tokens.Single(token => token.Form == "alikula"), FocusedToken(panel));
                 window.KeyPress(Key.Right, RawInputModifiers.None, PhysicalKey.None, null);
                 Settle(window);
-                Assert.Same(inText.VisibleLines[0].Tokens.Single(token => token.Form == "chakula"), FocusedToken(panel));
+                Assert.Same(RealizedLines(inText)[0].Tokens.Single(token => token.Form == "chakula"), FocusedToken(panel));
                 window.KeyPress(Key.Down, RawInputModifiers.None, PhysicalKey.None, null);
                 Settle(window);
                 Assert.Same(watoto, FocusedToken(panel));
@@ -124,11 +124,21 @@ public sealed class AnalyzeTextsLayoutTests
                 page.Words.SearchText = "mwalimu";
                 page.AnalyzeView = AnalyzeTextsView.WordList;
                 Settle(window);
-                var rows = window.GetVisualDescendants().OfType<SIL.Motif.App.Controls.WordPresentation.WordRow>().ToArray();
-                Assert.True(rows.Any(row => row.Data?.Owner == WordListOwner.WordList && row.Data.Facts.Word == "mwalimu"),
-                    $"Realized rows: {string.Join(", ", rows.Select(row => $"{row.Data?.Owner}:{row.Data?.Facts.Word ?? "<null>"}"))}");
-                var unknownWord = Assert.Single(rows, row =>
-                    row.Data?.Owner == WordListOwner.WordList && row.Data.Facts.Word == "mwalimu");
+                var wordList = Assert.Single(window.GetVisualDescendants().OfType<ListBox>(), list =>
+                    list.IsEffectivelyVisible && ReferenceEquals(list.ItemsSource, page.Words.DisplayRows));
+                var targetIndex = Enumerable.Range(0, page.Words.Rows.Count)
+                    .Single(index => page.Words.Rows[index].Form == "mwalimu");
+                wordList.SelectedIndex = targetIndex;
+                wordList.ScrollIntoView(targetIndex);
+                Settle(window);
+                await page.Words.SettleVisibleDetailsAsync();
+                await Task.Yield();
+                Settle(window);
+                var realizedRows = window.GetVisualDescendants().OfType<SIL.Motif.App.Controls.WordPresentation.WordRow>()
+                    .Where(row => row.Data?.Owner == WordListOwner.WordList).ToArray();
+                var unknownWord = realizedRows.SingleOrDefault(row => row.Data?.Facts.Word == "mwalimu");
+                Assert.True(unknownWord is not null, "Word list rows: " + string.Join("; ", realizedRows.Select(row =>
+                    $"{row.Data?.Facts.Word ?? "no row"}, context={row.DataContext?.GetType().Name}")));
                 unknownWord.FocusWord();
                 window.KeyPress(Key.A, RawInputModifiers.None, PhysicalKey.None, null);
                 await WaitForPendingChanges(workspace, window, 1);
@@ -136,6 +146,9 @@ public sealed class AnalyzeTextsLayoutTests
                     change.Kind == ChangeKinds.Approve);
 
                 page.Tab = TextsTab.Lists;
+                var (approvedRow, approvedColumn) = CompareViewModel.Place(page.Assess.Words.Find("hawajafika")!);
+                page.TextsLists.SelectListCommand.Execute(page.TextsLists.Lists.First(list =>
+                    list.Cells.Contains(new TextsListCell(approvedRow, approvedColumn))));
                 Settle(window);
                 var approvedWord = Assert.Single(window.GetVisualDescendants().OfType<SIL.Motif.App.Controls.WordPresentation.WordRow>(), row =>
                     row.Data?.Owner == WordListOwner.Lists && row.Data.Facts.Word == "hawajafika");
@@ -153,7 +166,7 @@ public sealed class AnalyzeTextsLayoutTests
     }
 
     private static ResultsTokenViewModel FocusedToken(ResultsInTextPanel panel) =>
-        Assert.IsType<ResultsTokenViewModel>(Assert.Single(Strips(panel), strip => strip.IsFocused).Tag);
+        Assert.IsType<ResultsTokenViewModel>(ResultsInTextPanel.TokenOf(Assert.Single(Strips(panel), strip => strip.IsFocused)));
 
     private static async Task WaitForPendingChanges(WorkspaceShellViewModel workspace, Window window, int count)
     {
@@ -162,7 +175,12 @@ public sealed class AnalyzeTextsLayoutTests
             await Task.Delay(10);
             Settle(window);
         }
-        Assert.Equal(count, workspace.Context.Changes.Items.Count);
+        if (workspace.PageModel<TextsPageModel>().ResultsInText.StageMarkingChoiceForTargetCommand.ExecutionTask is { } write)
+            await write;
+        Assert.True(count == workspace.Context.Changes.Items.Count,
+            $"Expected {count} changes, got {workspace.Context.Changes.Items.Count}; " +
+            $"refusal={workspace.Context.Changes.LastRefusal}; " +
+            $"keyboard={window.FindControl<TextBlock>("KeyboardShortcutStatusLine")?.Text}");
     }
 
     [Fact]
@@ -215,11 +233,11 @@ public sealed class AnalyzeTextsLayoutTests
                     $"{panel.Bounds.Width:0.#} px panel with the app's default text size.");
                 LayoutAssertions.AssertCurrent(card);
                 var strips = Strips(panel).ToArray();
-                var ownStrip = Assert.Single(strips, strip => ReferenceEquals(strip.Tag, open));
+                var ownStrip = Assert.Single(strips, strip => ResultsInTextPanel.TokenOf(strip)?.Occurrence == open.Occurrence);
                 Assert.True(cardBounds.Top >= BoundsIn(ownStrip, panel).Bottom,
                     $"The card starts at {cardBounds.Top}, above the bottom of its word at {BoundsIn(ownStrip, panel).Bottom}.");
                 Assert.All(strips, strip => Assert.False(BoundsIn(strip, panel).Intersects(cardBounds),
-                    $"The card covers {((ResultsTokenViewModel)strip.Tag!).Form}."));
+                    $"The card covers {ResultsInTextPanel.TokenOf(strip)!.Form}."));
             }
             finally
             {
@@ -240,16 +258,17 @@ public sealed class AnalyzeTextsLayoutTests
                 workspace.PageModel<TextsPageModel>().Tab = TextsTab.AnalyzeTexts;
                 workspace.CurrentPage = WorkspacePage.Texts;
                 window.Height = 1500;
-                Settle(window);
+                await SettleReaderAsync(workspace, window);
                 var inText = workspace.PageModel<TextsPageModel>().ResultsInText;
                 await inText.WarningEvidenceRefresh;
-                Assert.Equal(1, inText.NamedInWarningCount);
+                Assert.Equal(3, inText.NamedInWarningCount);
                 Assert.True(inText.HasWarningEvidence);
-                var token = inText.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens)
+                var token = RealizedLines(inText).SelectMany(line => line.Tokens)
                     .Single(item => item.Form == "alikula");
                 Assert.True(token.HasNamedWarning);
-                Assert.Equal("anapenda", Assert.Single(token.MembershipCandidateWarnings).WordsLabel);
-                Assert.Equal("watoto", Assert.Single(token.SpellingCandidateWarnings).WordsLabel);
+                Assert.Equal("alikula, walikula, anapenda", Assert.Single(token.MembershipCandidateWarnings).WordsLabel);
+                Assert.Equal("Sungura, alikula, chakula, hawajafika, watoto, walikula, mwalimu, anapenda, kitabu",
+                    Assert.Single(token.SpellingCandidateWarnings).WordsLabel);
                 await inText.OpenTokenCardAsync(token);
                 Settle(window);
                 Assert.Contains(OpenCard(window).GetVisualDescendants().OfType<Button>(), button =>
@@ -258,9 +277,9 @@ public sealed class AnalyzeTextsLayoutTests
                 var panel = Panel(window);
                 var warningFilter = Assert.Single(panel.GetVisualDescendants().OfType<FilterChip>(),
                     chip => chip.Label == "Named in a warning");
-                Assert.Equal(1, warningFilter.Count);
+                Assert.Equal(3, warningFilter.Count);
                 var warningStrip = Assert.Single(Strips(panel), strip =>
-                    strip.Tag is ResultsTokenViewModel { Form: "alikula" });
+                    ResultsInTextPanel.TokenOf(strip) is ResultsTokenViewModel { Form: "alikula" });
                 var warningIcon = Assert.Single(warningStrip.GetVisualDescendants().OfType<MarkGlyph>(),
                     glyph => glyph.Mark == Mark.Warning);
                 Assert.IsType<PathIcon>(warningIcon.Child);
@@ -295,15 +314,15 @@ public sealed class AnalyzeTextsLayoutTests
                 Assert.Contains("anapenda", token.OtherWordsUsingMorpheme);
                 Assert.Contains(token.WarningMarkedFieldWorksMorphs,
                     morph => morph.Form == "-a" && morph.IsNamedInWarning);
-                Assert.InRange(token.TimingShares.Sum(row => row.Share) + token.NotAttributedShare!.Value,
+                Assert.InRange(inText.SelectedToken!.TimingShares.Sum(row => row.Share) + inText.SelectedToken!.NotAttributedShare!.Value,
                     0.999, 1.001);
 
                 warningFilter.Command!.Execute(warningFilter.CommandParameter);
                 Settle(window);
                 Assert.Equal("NamedInWarning", inText.Filter.ToString());
                 Assert.False(token.IsDimmed);
-                Assert.All(inText.SelectedText!.Lines.SelectMany(line => line.Tokens)
-                    .Where(item => item.IsWord && item.Form != "alikula"), item => Assert.True(item.IsDimmed));
+                Assert.All(RealizedLines(inText).SelectMany(line => line.Tokens)
+                    .Where(item => item.IsWord), item => Assert.Equal(!item.HasNamedWarning, item.IsDimmed));
                 var openWarning = Assert.Single(OpenCard(window).GetVisualDescendants().OfType<Button>(),
                     button => button.Content?.ToString() == "Open the warning");
                 Assert.NotNull(openWarning.Command);
@@ -329,17 +348,17 @@ public sealed class AnalyzeTextsLayoutTests
                 workspace.PageModel<TextsPageModel>().Tab = TextsTab.AnalyzeTexts;
                 workspace.CurrentPage = WorkspacePage.Texts;
                 window.Height = 1500;
-                Settle(window);
+                await SettleReaderAsync(workspace, window);
                 var inText = workspace.PageModel<TextsPageModel>().ResultsInText;
                 await inText.WarningEvidenceRefresh;
-                var token = inText.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens)
+                var token = RealizedLines(inText).SelectMany(line => line.Tokens)
                     .Single(item => item.Form == "hawajafika");
                 await inText.OpenTokenCardAsync(token);
                 Settle(window);
 
-                Assert.InRange(token.TimingShares.Sum(row => row.Share) + token.NotAttributedShare!.Value,
+                Assert.InRange(inText.SelectedToken!.TimingShares.Sum(row => row.Share) + inText.SelectedToken!.NotAttributedShare!.Value,
                     0.999, 1.001);
-                Assert.Contains(token.TimingShares, row => row.Name == "Other rules");
+                Assert.Contains(inText.SelectedToken!.TimingShares, row => row.Name == "Other rules");
             }
             finally
             {
@@ -441,6 +460,7 @@ public sealed class AnalyzeTextsLayoutTests
             {
                 var inText = workspace.PageModel<TextsPageModel>().ResultsInText;
                 var alikula = inText.SelectedToken!;
+                Assert.Equal("alikula", alikula.Form);
                 inText.CloseTokenCard();
                 Settle(window);
                 await inText.OpenTokenCardAsync(alikula);
@@ -462,7 +482,7 @@ public sealed class AnalyzeTextsLayoutTests
                 Assert.DoesNotContain(Panel(window).GetVisualDescendants().OfType<Border>(),
                     border => border.Classes.Contains("wordPresentationCardFrame"));
                 var strip = Assert.Single(Strips(Panel(window)), candidate =>
-                    candidate.Tag is ResultsTokenViewModel { Form: "chakula" });
+                    ResultsInTextPanel.TokenOf(candidate) is ResultsTokenViewModel { Form: "chakula" });
                 Assert.True(strip.IsFocused, "Escape returns the keyboard to the word whose card closed.");
 
                 window.KeyPress(Key.Right, RawInputModifiers.None, PhysicalKey.None, null);
@@ -506,7 +526,7 @@ public sealed class AnalyzeTextsLayoutTests
                     };
                     var chips = panel.GetVisualDescendants().OfType<FilterChip>()
                         .Where(chip => chip.IsEffectivelyVisible).ToArray();
-                    Assert.Equal(["All", "Unread", "Different", "Not in FieldWorks", "No parse", "Stopped"],
+                    Assert.Equal(["All", "Unread", "Different", "Not in FieldWorks", "No parse", "Stopped", "Named in a warning"],
                         chips.Select(chip => chip.Label));
                     var chipRow = panel.FindControl<WrapPanel>("ResultsInTextFilterChips")!;
                     var rowBounds = BoundsIn(chipRow, panel);
@@ -603,7 +623,7 @@ public sealed class AnalyzeTextsLayoutTests
                 var panel = Panel(window);
                 var strips = Strips(panel).ToArray();
                 Assert.Equal(["Sungura", "alikula", "chakula"],
-                    strips.Take(3).Select(strip => ((ResultsTokenViewModel)strip.Tag!).Form));
+                    strips.Take(3).Select(strip => ResultsInTextPanel.TokenOf(strip)!.Form));
                 Assert.True(BoundsIn(prompt, page).Bottom <= BoundsIn(strips[0], page).Top,
                     "The prompt sits above the text.");
                 var sungura = strips[0];
@@ -635,8 +655,7 @@ public sealed class AnalyzeTextsLayoutTests
                 Settle(window);
                 var panel = Panel(window);
                 var sungura = StripOf(panel, "Sungura");
-                var line = sungura.GetVisualAncestors().OfType<ContentPresenter>()
-                    .First(presenter => presenter.DataContext is ResultsLineViewModel);
+                var line = LineContainer(sungura);
                 foreach (var (label, part) in new[] { ("Word", "word"), ("FieldWorks", "fieldworks"), ("PanGloss", "pangloss") })
                 {
                     var gutter = Assert.Single(line.GetVisualDescendants().OfType<TextBlock>(), text =>
@@ -733,7 +752,7 @@ public sealed class AnalyzeTextsLayoutTests
                 var rowsMinWidth = (double)Application.Current!.FindResource("Component.WordStrip.RowsMinWidth")!;
                 foreach (var strip in Strips(panel))
                 {
-                    var form = ((ResultsTokenViewModel)strip.Tag!).Form;
+                    var form = ResultsInTextPanel.TokenOf(strip)!.Form;
                     Assert.DoesNotContain(strip.GetVisualDescendants().OfType<Expander>(), _ => true);
                     var marks = strip.GetVisualDescendants().OfType<Button>().Where(button =>
                         Avalonia.Automation.AutomationProperties.GetName(button) ==
@@ -760,7 +779,7 @@ public sealed class AnalyzeTextsLayoutTests
                     "The Unread dot comes before the word.");
                 Assert.DoesNotContain(unread.GetVisualDescendants().OfType<TextBlock>(), text => text.IsEffectivelyVisible);
                 await workspace.PageModel<TextsPageModel>().ResultsInText.OpenTokenCardAsync(
-                    (ResultsTokenViewModel)alikula.Tag!);
+                    ResultsInTextPanel.TokenOf(alikula)!);
                 Settle(window);
                 var wordLink = Assert.Single(OpenCard(window).GetVisualDescendants().OfType<HyperlinkButton>(),
                     link => Avalonia.Automation.AutomationProperties.GetName(link) == "Open alikula in Word Analyses");
@@ -788,18 +807,18 @@ public sealed class AnalyzeTextsLayoutTests
             {
                 var inText = workspace.PageModel<TextsPageModel>().ResultsInText;
                 inText.CloseTokenCard();
-                var chakula = inText.VisibleLines[0].Tokens.Single(token => token.Form == "chakula");
+                var chakula = RealizedLines(inText)[0].Tokens.Single(token => token.Form == "chakula");
                 var add = Assert.Single(chakula.Marking.FixChoices, choice => choice.Label == "Add as Approved");
-                await chakula.StageMarkingChoiceForTokenCommand!.ExecuteAsync(add);
+                await chakula.StageMarkingChoiceForTokenCommand!.ExecuteAsync(chakula.BindMarkingChoice(add));
                 Settle(window);
 
                 var panel = Panel(window);
                 var staged = Part(StripOf(panel, "chakula"), "staged");
                 Assert.Contains("Will add as Approved", VisibleText(staged), StringComparison.Ordinal);
                 var stagedBounds = BoundsIn(staged, panel);
-                Assert.All(Strips(panel).Where(strip => !ReferenceEquals(strip.Tag, chakula)), strip =>
+                Assert.All(Strips(panel).Where(strip => !ReferenceEquals(ResultsInTextPanel.TokenOf(strip), chakula)), strip =>
                     Assert.False(BoundsIn(strip, panel).Intersects(stagedBounds),
-                        $"The staged note covers {((ResultsTokenViewModel)strip.Tag!).Form}."));
+                        $"The staged note covers {ResultsInTextPanel.TokenOf(strip)!.Form}."));
             }
             finally
             {
@@ -825,8 +844,8 @@ public sealed class AnalyzeTextsLayoutTests
                 foreach (var text in inText.Texts)
                 {
                     inText.SelectedText = text;
-                    Settle(window);
-                    var lastWord = text.Lines.Last().Tokens.Last(token => token.IsWord).Form;
+                    await SettleReaderAsync(workspace, window);
+                    var lastWord = RealizedLines(inText).Last().Tokens.Last(token => token.IsWord).Form;
                     var last = BoundsIn(StripOf(panel, lastWord), viewer);
                     Assert.True(last.Bottom <= viewer.Viewport.Height,
                         $"{text.Title} ends at {last.Bottom}, below the {viewer.Viewport.Height} px the reader shows.");
@@ -844,19 +863,17 @@ public sealed class AnalyzeTextsLayoutTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await OpenAnalyzeTexts(parse: false);
+            var firstId = Guid.NewGuid();
+            var secondId = Guid.NewGuid();
+            TextLines Text(Guid id, string title) => new(id, title,
+                Enumerable.Range(1, 80).Select(number => new TextLine(number,
+                    [new TextToken($"word{number}", $"word{number}", null, "unanalysed")])).ToArray());
+            var records = new TextWordsResponse([], [Text(firstId, "First"), Text(secondId, "Second")],
+                HasBaseline: true, OccurrenceCount: 160);
+            var (workspace, window) = await OpenAnalyzeTexts(parse: false, capturedWords: records);
             try
             {
-                var firstId = Guid.NewGuid();
-                var secondId = Guid.NewGuid();
-                TextLines Text(Guid id, string title) => new(id, title,
-                    Enumerable.Range(1, 80).Select(number => new TextLine(number,
-                        [new TextToken($"word{number}", $"word{number}", null, "unanalysed")])).ToArray());
-                var fake = Assert.IsType<FakeCommandClient>(workspace.Context.Commands);
-                fake.ListTextWordsCompletesWith(new TextWordsResponse([],
-                    [Text(firstId, "First"), Text(secondId, "Second")], HasBaseline: true, OccurrenceCount: 160));
                 var page = workspace.PageModel<TextsPageModel>();
-                await page.Words.ReloadAsync();
                 window.Height = 320;
                 Settle(window);
 
@@ -869,7 +886,7 @@ public sealed class AnalyzeTextsLayoutTests
                 Assert.True(viewer.Offset.Y > 0);
 
                 page.ResultsInText.SelectedText = page.ResultsInText.Texts[1];
-                Settle(window);
+                await SettleReaderAsync(workspace, window);
 
                 Assert.Equal(0, viewer.Offset.Y);
             }
@@ -892,10 +909,16 @@ public sealed class AnalyzeTextsLayoutTests
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var (workspace, window) = await OpenAnalyzeTexts(parse: false,
-                configure: (fake, _) => fake.ListTextWordsCompletesWith(words));
+                capturedWords: words);
             try
             {
                 var panel = Panel(window);
+                var state = workspace.PageModel<TextsPageModel>();
+                Assert.True(state.ResultsInText.HasLines && state.ShowTextReader,
+                    $"View={state.AnalyzeView}; Lines={state.ResultsInText.HasLines}; " +
+                    $"Texts={state.ResultsInText.Texts.Count}; Selected={state.ResultsInText.SelectedText?.Title}; " +
+                    $"Message={state.ResultsInText.Message}; Refusal={workspace.Context.SelectionReads.Refusal}; " +
+                    $"Summary={workspace.Context.SelectionReads.Summary?.Texts.Count}");
                 var viewer = Assert.Single(panel.GetVisualDescendants().OfType<ScrollViewer>(), candidate =>
                     candidate.IsEffectivelyVisible && candidate.Content is ItemsControl);
                 foreach (var form in forms)
@@ -924,17 +947,16 @@ public sealed class AnalyzeTextsLayoutTests
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var (workspace, window) = await OpenAnalyzeTexts(parse: false,
-                configure: (fake, _) => fake.ListTextWordsCompletesWith(words));
+                capturedWords: words);
             try
             {
                 var resolver = workspace.Context.TextStyles;
                 resolver.SetFallbackFamilies(["fonts:MotifWalkthrough#DejaVu Sans"]);
                 resolver.ReplaceContext([WritingSystemTestData.Arabic]);
-                await workspace.PageModel<TextsPageModel>().Words.SetProjectAsync(PageScreenshots.SampleProjectPath);
-                Settle(window);
+                await SettleReaderAsync(workspace, window);
 
                 var panel = Panel(window);
-                Assert.Contains(workspace.PageModel<TextsPageModel>().ResultsInText.VisibleLines
+                Assert.Contains(RealizedLines(workspace.PageModel<TextsPageModel>().ResultsInText)
                     .SelectMany(line => line.Tokens), token => token.Form == WritingSystemTestData.Form);
                 var strip = StripOf(panel, WritingSystemTestData.Form);
                 var form = Assert.Single(strip.GetVisualDescendants().OfType<TextBlock>(), text =>
@@ -957,9 +979,7 @@ public sealed class AnalyzeTextsLayoutTests
 
                 Assert.Equal(24, form.FontSize);
                 Assert.Equal(FlowDirection.RightToLeft, form.FlowDirection);
-                var sentence = Assert.Single(lineBody.GetVisualAncestors().OfType<ContentPresenter>()
-                    .First(presenter => presenter.DataContext is ResultsLineViewModel)
-                    .GetVisualDescendants().OfType<TextBlock>(), text =>
+                var sentence = Assert.Single(LineContainer(strip).GetVisualDescendants().OfType<TextBlock>(), text =>
                     SIL.Motif.App.Controls.WritingSystemText.GetStyleName(text) == "Paragraph");
                 Assert.Equal(20 * 96d / 72d, sentence.FontSize);
                 var tokenLayout = lineBody.Children.OfType<ItemsControl>().Single();
@@ -997,12 +1017,12 @@ public sealed class AnalyzeTextsLayoutTests
                 Settle(window);
                 var panel = Panel(window);
                 var showing = new Dictionary<string, int>(StringComparer.Ordinal)
-                { ["All"] = 0, ["Unread"] = 0, ["Different"] = 0, ["Not in FieldWorks"] = 0, ["No parse"] = 0, ["Stopped"] = 0 };
+                { ["All"] = 0, ["Unread"] = 0, ["Different"] = 0, ["Not in FieldWorks"] = 0, ["No parse"] = 0, ["Stopped"] = 0, ["Named in a warning"] = 0 };
                 var inText = workspace.PageModel<TextsPageModel>().ResultsInText;
                 foreach (var text in inText.Texts)
                 {
                     inText.SelectedText = text;
-                    Settle(window);
+                    await SettleReaderAsync(workspace, window);
                     var strips = Strips(panel).ToArray();
                     bool ShowsReading(Border strip) => Part(strip, "pangloss").GetVisualDescendants().OfType<TextBlock>()
                         .Any(text => text.Classes.Contains("morphemePanelForm") && text.IsEffectivelyVisible);
@@ -1010,6 +1030,7 @@ public sealed class AnalyzeTextsLayoutTests
                         VisibleText(Part(strip, "fieldworks")).StartsWith("Nothing in FieldWorks", StringComparison.Ordinal);
                     showing["All"] += strips.Length;
                     showing["Unread"] += strips.Count(strip => HasPart(strip, "unread"));
+                    showing["Named in a warning"] += strips.Count(strip => ResultsInTextPanel.TokenOf(strip)!.HasNamedWarning);
                     showing["Different"] += strips.Count(strip => ShowsReading(strip) && !HoldsNothing(strip));
                     showing["Not in FieldWorks"] += strips.Count(strip => ShowsReading(strip) && HoldsNothing(strip));
                     showing["No parse"] += strips.Count(strip => VisibleText(Part(strip, "pangloss")) == "∅ No parse");
@@ -1039,7 +1060,7 @@ public sealed class AnalyzeTextsLayoutTests
                 .EndsWith("-" + part, StringComparison.Ordinal) && control.IsEffectivelyVisible);
 
     internal static Border StripOf(ResultsInTextPanel panel, string form) =>
-        Assert.Single(Strips(panel), strip => strip.Tag is ResultsTokenViewModel token && token.Form == form);
+        Assert.Single(Strips(panel), strip => ResultsInTextPanel.TokenOf(strip) is ResultsTokenViewModel token && token.Form == form);
 
     internal static Control Part(Border strip, string part) =>
         Assert.Single(strip.GetVisualDescendants().OfType<Control>(), control =>
@@ -1059,15 +1080,36 @@ public sealed class AnalyzeTextsLayoutTests
 
     internal static async Task<(WorkspaceShellViewModel Workspace, MainWindow Window)> OpenAnalyzeTexts(
         int width = 1240, bool parse = true,
-        Action<FakeCommandClient, AssessCommandResponse>? configure = null)
+        Action<FakeCommandClient, AssessCommandResponse>? configure = null, TextWordsResponse? capturedWords = null)
     {
-        var (workspace, window) = await PageScreenshots.OpenOverSampleData(parse: parse, configure: configure);
+        var (workspace, window) = await PageScreenshots.OpenOverSampleData(
+            parse: parse, configure: configure, capturedWords: capturedWords);
         window.Width = width;
         window.Height = 780;
         workspace.PageModel<TextsPageModel>().Tab = TextsTab.AnalyzeTexts;
         workspace.CurrentPage = WorkspacePage.Texts;
-        Settle(window);
+        await SettleReaderAsync(workspace, window);
         return (workspace, window);
+    }
+
+    internal static IReadOnlyList<ResultsLineViewModel> RealizedLines(ResultsInTextViewModel reader) =>
+        reader.LinePages?.RealizedLines.ToArray() ?? [];
+
+    internal static async Task SettleReaderAsync(WorkspaceShellViewModel workspace, Window window)
+    {
+        var reader = workspace.PageModel<TextsPageModel>().ResultsInText;
+        await reader.SelectionRefresh;
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            await workspace.Context.EvidencePublication;
+            await workspace.Context.SelectionReads.Pending;
+            await reader.SelectionRefresh;
+            Settle(window);
+            if (reader.LinePages is { } pages) await pages.Pending;
+            foreach (var words in Panel(window).GetVisualDescendants().OfType<ProgressiveItemsControl>().ToArray())
+                await words.PageRefresh;
+        }
+        Settle(window);
     }
 
     internal static void Settle(Window window)
@@ -1079,6 +1121,10 @@ public sealed class AnalyzeTextsLayoutTests
             Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
         }
     }
+
+    internal static Control LineContainer(Control strip) => strip.GetVisualAncestors().OfType<StackPanel>()
+        .First(panel => panel.DataContext is ResultsLineViewModel &&
+            panel.GetVisualDescendants().OfType<Control>().Any(control => control.Classes.Contains("lineSentence")));
 
     internal static ResultsInTextPanel Panel(Window window) =>
         Assert.Single(window.GetLogicalDescendants().OfType<ResultsInTextPanel>());
@@ -1110,6 +1156,7 @@ public sealed class AnalyzeTextsLayoutTests
     }
 
     private static double MaxNativeTextHeight(Control row) => row.GetVisualDescendants().OfType<TextBlock>()
+        .Where(block => block.IsEffectivelyVisible)
         .Select(block => block.TextLayout.Height).DefaultIfEmpty(0).Max();
 
     private static Rect TransformedBoundsIn(Visual visual, Visual relativeTo)

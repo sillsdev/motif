@@ -5,19 +5,17 @@ namespace SIL.Motif.App.Views;
 
 internal sealed class ReviewWordPresentationHost(ReviewPageModel page) : IWordPresentationHost
 {
-    public Task<WordCardReadResult> ReadCardAsync(
+    public async Task<WordCardReadResult> ReadCardAsync(
         WordPresentationKey key,
         long evidenceRevision,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (Find(key) is not { } change || change.Presentation.EvidenceRevision != evidenceRevision)
-            return Task.FromResult(WordCardReadResult.Failed("This change has changed before its details could be shown.", false));
+            return WordCardReadResult.Failed("This change has changed before its details could be shown.", false);
 
-        page.ShowContextCommand.Execute(change);
+        await page.ShowContextCommand.ExecuteAsync(change).ConfigureAwait(true);
         var listed = change.Listed!;
-        WordCardSentenceToken[] Tokens(IEnumerable<ResultsTokenViewModel> tokens) =>
-            tokens.Select(token => new WordCardSentenceToken(token.Text, token.TextWritingSystem, false)).ToArray();
         WordCardSentenceToken[] ChangedTokens(IEnumerable<UncertaintyTokenViewModel> tokens) =>
             tokens.Select(token => new WordCardSentenceToken(token.Form, token.FormWritingSystem, token.IsChanged)).ToArray();
         var pending = new WordCardPendingChange(
@@ -28,15 +26,15 @@ internal sealed class ReviewWordPresentationHost(ReviewPageModel page) : IWordPr
             change.RowMorphs,
             change.IsUncertain,
             ChangedTokens(change.BeforeWords),
-            Tokens(change.ContextTokens),
+            [],
             change.HasUnavailableContext,
-            page.Context);
+            page.Context, change.ContextSource);
         var sections = new WordCardSection[]
         {
             pending,
             new WordCardAnalysis(listed.Card, listed.CardToken, listed.HasCard ? null : listed.NotParsedText),
         };
-        return Task.FromResult(WordCardReadResult.Read(new WordCardDocument(key, evidenceRevision, sections)));
+        return WordCardReadResult.Read(new WordCardDocument(key, evidenceRevision, sections));
     }
 
     public async ValueTask<WordActionResult> HandleAsync(WordRequest request, CancellationToken cancellationToken)
@@ -48,7 +46,7 @@ internal sealed class ReviewWordPresentationHost(ReviewPageModel page) : IWordPr
         switch (request.Action)
         {
             case WordAction.OpenCard:
-                page.ShowContextCommand.Execute(change);
+                await page.ShowContextCommand.ExecuteAsync(change).ConfigureAwait(true);
                 return new WordActionResult(true);
             case WordAction.CloseCard:
             case WordAction.OpenMorphology:

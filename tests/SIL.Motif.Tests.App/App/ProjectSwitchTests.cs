@@ -385,6 +385,7 @@ public sealed class ProjectSwitchTests
         Assert.DoesNotContain(parts.Fake.ListTextsRequests, request => request.ProjectPath == ProjectB);
         Assert.DoesNotContain(parts.Fake.PendingLoadRequests, request => request.FwDataPath == ProjectB);
         Assert.DoesNotContain(parts.Fake.DefaultSelectionRequests, request => request.ProjectPath == ProjectB);
+        Assert.DoesNotContain(parts.Fake.OpenSelectionReaderRequests, request => request.ProjectPath == ProjectB);
 
         releaseBaseline.SetResult(CommandOutcome<CurrentBaselineResponse>.Success(
             new CurrentBaselineResponse(NewToken(), DateTimeOffset.UtcNow, false)));
@@ -397,7 +398,9 @@ public sealed class ProjectSwitchTests
         Assert.Contains(projectReads, read => read.Kind == "list-texts");
         Assert.Contains(projectReads, read => read.Kind == "pending-changes");
         Assert.All(projectReads.Select((read, index) => (read, index))
-            .Where(item => item.read.Kind is "current-evidence" or "list-texts" or "pending-changes"),
+            .Where(item => item.read.Kind == "current-evidence"), item => Assert.True(item.index > setupIndex));
+        Assert.All(projectReads.Select((read, index) => (read, index))
+            .Where(item => item.read.Kind is "list-texts" or "pending-changes"),
             item => Assert.True(item.index < setupIndex));
     }
 
@@ -418,7 +421,7 @@ public sealed class ProjectSwitchTests
         texts.Words.StatusFilter = WordProjectStatus.NotPresent;
         texts.Words.SeveralOnly = true;
         texts.ResultsInText.SelectedText = new ResultsTextViewModel(
-            new TextLines(TextGuid, "Alpha", []), new Dictionary<string, AssessmentWordResult>());
+            new SIL.Motif.Commands.SelectionReading.SelectionTextSummary(TextGuid, "Alpha", null, 0, 0, 0, 0));
         texts.Tab = TextsTab.Lists;
         texts.AnalyzeView = AnalyzeTextsView.WordList;
         texts.ResultsInText.Filter = ResultsInTextFilter.New;

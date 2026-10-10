@@ -20,6 +20,9 @@ public sealed class ReviewPageModel : PageModel
     private CancellationTokenSource? _measurementCancellation;
     private CancellationTokenSource? _applyCancellation;
     private IReadOnlyList<ReviewListEntryViewModel>? _reviewEntries;
+    private ReviewSentenceContext? _sentenceContext;
+    private ChangeViewModel? _contextChange;
+    private Task _contextStop = Task.CompletedTask;
 
     public ReviewPageModel(WorkspaceContext context) : base(context)
     {
@@ -27,6 +30,7 @@ public sealed class ReviewPageModel : PageModel
         Changes.PropertyChanged += OnChangesChanged;
         context.PropertyChanged += OnContextPropertyChanged;
         context.Evidence.PropertyChanged += OnEvidencePropertyChanged;
+        context.SelectionReads.Replacing += ReleaseContext;
         // A change's row comes from the parse on screen, so a new parse rebuilds the rows.
         context.Assess.Words.PropertyChanged += (_, e) =>
         {
@@ -38,8 +42,10 @@ public sealed class ReviewPageModel : PageModel
             () => HasNonFittingChanges && !Context.Evidence.IsStale);
         ReconfirmChangeCommand = new AsyncRelayCommand<ChangeViewModel>(ReconfirmChangeAsync,
             change => change is { IsUncertain: true });
-        ToggleContextCommand = new RelayCommand<ChangeViewModel>(ToggleContext);
-        ShowContextCommand = new RelayCommand<ChangeViewModel>(ShowContext);
+        ToggleContextCommand = new AsyncRelayCommand<ChangeViewModel>(ToggleContextAsync,
+            AsyncRelayCommandOptions.AllowConcurrentExecutions | AsyncRelayCommandOptions.FlowExceptionsToTaskScheduler);
+        ShowContextCommand = new AsyncRelayCommand<ChangeViewModel>(ShowContextAsync,
+            AsyncRelayCommandOptions.AllowConcurrentExecutions | AsyncRelayCommandOptions.FlowExceptionsToTaskScheduler);
         GoToTextCommand = new RelayCommand<ChangeViewModel>(change =>
         {
             if (change is not null) Context.OpenOccurrence(change.Occurrence, change.Word, change.WordformId);
@@ -67,12 +73,12 @@ public sealed class ReviewPageModel : PageModel
 
     public IAsyncRelayCommand<ChangeViewModel> ReconfirmChangeCommand { get; }
 
-    public IRelayCommand<ChangeViewModel> ToggleContextCommand { get; }
+    public IAsyncRelayCommand<ChangeViewModel> ToggleContextCommand { get; }
 
     public IRelayCommand<ChangeViewModel> GoToTextCommand { get; }
 
     /// <summary>Shows the sentence a change was made in, as its row's card opens.</summary>
-    public IRelayCommand<ChangeViewModel> ShowContextCommand { get; }
+    public IAsyncRelayCommand<ChangeViewModel> ShowContextCommand { get; }
 
     /// <summary>Starts a Trial of the touched words only when the person asks for one.</summary>
     public IAsyncRelayCommand MeasureCommand { get; }
@@ -492,6 +498,7 @@ public sealed class ReviewPageModel : PageModel
         }
         if (e.PropertyName == nameof(ChangesViewModel.Count))
         {
+            if (_contextChange is not null && !Changes.Items.Contains(_contextChange)) ReleaseContext();
             Badge = Changes.Count > 0 ? Changes.Count.ToString(CultureInfo.CurrentCulture) : string.Empty;
             OnPropertyChanged(nameof(CountText));
             OnPropertyChanged(nameof(ShowsSideCards));
@@ -530,20 +537,58 @@ public sealed class ReviewPageModel : PageModel
         change.Listed.IsOpen = wasOpen;
     }
 
-    private void ShowContext(ChangeViewModel? change)
+    private async Task ShowContextAsync(ChangeViewModel? change)
     {
         if (change is null) return;
+        if (ReferenceEquals(change, _contextChange) && _sentenceContext is not null)
+        {
+            change.IsContextExpanded = true;
+            return;
+        }
+        ReleaseContext();
         change.IsContextExpanded = true;
-        change.SetContextTokens(change.Occurrence is { } occurrence ? Context.OccurrenceContext(occurrence) ?? [] : []);
+        if (change.Occurrence is not { } occurrence || Context.SelectionReads.Reader is not { } reader) return;
+        var source = new ReviewSentenceContext(reader, occurrence);
+        _sentenceContext = source;
+        _contextChange = change;
+        change.PropertyChanged += OnContextChangeChanged;
+        if (await source.OpenAsync().ConfigureAwait(true) && ReferenceEquals(source, _sentenceContext))
+            change.SetContextSource(source);
     }
 
-    private void ToggleContext(ChangeViewModel? change)
+    private Task ToggleContextAsync(ChangeViewModel? change)
     {
-        if (change is null) return;
-        change.ToggleContext();
-        if (change.IsContextExpanded)
-            change.SetContextTokens(change.Occurrence is { } occurrence
-                ? Context.OccurrenceContext(occurrence) ?? [] : []);
+        if (change is null) return Task.CompletedTask;
+        if (!change.IsContextExpanded) return ShowContextAsync(change);
+        if (ReferenceEquals(change, _contextChange)) ReleaseContext();
+        else change.IsContextExpanded = false;
+        return Task.CompletedTask;
+    }
+
+    private void ReleaseContext()
+    {
+        var change = _contextChange;
+        var source = _sentenceContext;
+        _contextChange = null;
+        _sentenceContext = null;
+        if (change is not null)
+        {
+            change.PropertyChanged -= OnContextChangeChanged;
+            change.SetContextSource(null);
+            change.IsContextExpanded = false;
+            if (change.Listed is { } listed) listed.IsOpen = false;
+        }
+        if (source is not null)
+        {
+            source.ReleasePage();
+            _contextStop = Task.WhenAll(_contextStop, source.StopAsync());
+        }
+    }
+
+    private void OnContextChangeChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ChangeViewModel.IsContextExpanded) && _contextChange?.IsContextExpanded == false)
+            ReleaseContext();
     }
 
     private static ReviewChangeGroupDefinition GroupFor(ChangeViewModel change)
@@ -577,6 +622,8 @@ public sealed class ReviewPageModel : PageModel
 
     private void OnContextPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(WorkspaceContext.CurrentPage) && Context.CurrentPage != WorkspacePage.Review)
+            ReleaseContext();
         if (e.PropertyName == nameof(WorkspaceContext.ProjectName)) OnPropertyChanged(nameof(ProjectName));
         if (e.PropertyName == nameof(WorkspaceContext.ProjectPath))
         {
@@ -632,6 +679,7 @@ public sealed class ReviewPageModel : PageModel
 
     protected override void OnProjectCleared()
     {
+        ReleaseContext();
         _measurementCancellation?.Cancel();
         _applyCancellation?.Cancel();
         Receipt = null;
@@ -651,6 +699,8 @@ public sealed class ReviewPageModel : PageModel
 
     protected override async Task OnStopWorkAsync()
     {
+        ReleaseContext();
+        await _contextStop.ConfigureAwait(true);
         _measurementCancellation?.Cancel();
         _applyCancellation?.Cancel();
         if (MeasureCommand.ExecutionTask is { } running) await running.ConfigureAwait(true);

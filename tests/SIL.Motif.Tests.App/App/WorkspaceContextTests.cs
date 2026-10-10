@@ -3,9 +3,14 @@ using System.Reflection;
 using Avalonia.Input;
 using SIL.Motif.App.Services;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Commands.SelectionReading;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Projects;
+using SIL.Motif.Contract.Requests;
+using SIL.Motif.Host.Store;
+using SIL.Motif.Worker.Projects;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
@@ -39,37 +44,107 @@ public sealed class WorkspaceContextTests
         "project-1", "sha256:" + new string('a', 64), "1", "2026-09-05T11:02:00Z", "sha256:" + new string('b', 64));
 
     [Fact]
-    public async Task StopPageWorkWaitsForAnInFlightTextWordsRead()
+    public void StopPageWorkWaitsForAnInFlightVisibleWordDetailRead()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var wordformId = Guid.NewGuid();
+            using var fixture = StoredSelectionFixture.FromDisplayRecords(new TextWordsResponse(
+                [new TextWord("word", wordformId.ToString("D"), [], [], [])],
+                [new TextLines(TextId, "Alpha", [new TextLine(1,
+                    [new TextToken("word", "word", null, "unanalysed") { WordformId = wordformId }])])], true), Token);
+            var project = new ProjectLocator(fixture.ProjectPath, "project");
+            using var database = new ProjectDatabaseCatalog(MotifSchema.CurrentSchema, new Version(1, 0)).OpenOwned(project);
+            using var reached = new ManualResetEventSlim();
+            using var resume = new ManualResetEventSlim();
+            var armed = false;
+            var fake = new FakeCommandClient();
+            fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(Token, DateTimeOffset.UtcNow, false));
+            fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")], true));
+            fake.SelectionReaderHandler = (request, cancellation) => SelectionReader.OpenAsync(database,
+                new SelectionReadRequest(ProjectWorkspaceKey.Compute(project), request.TextIds, request.AddedWords)
+                {
+                    ProjectPath = fixture.ProjectPath,
+                    PauseAt = point =>
+                    {
+                        if (point != SelectionReaderPausePoint.AfterContextValidation || !Volatile.Read(ref armed)) return;
+                        reached.Set();
+                        if (!resume.Wait(TimeSpan.FromSeconds(10)))
+                            throw new TimeoutException("The visible word detail read was not released.");
+                    },
+                }, cancellation);
+            var context = NewContext(fake);
+            var page = new TextsPageModel(context);
+            try
+            {
+                await context.OpenProjectAsync(fixture.ProjectPath);
+                context.Setup?.SkipCommand.Execute(null);
+                context.Selection.Texts.Single().IsChecked = true;
+                context.OpenPage(WorkspacePage.Texts);
+                await context.EvidencePublication;
+                await page.ResultsInText.SelectionRefresh;
+                var row = page.Words.Rows[0];
+                var reader = context.SelectionReads.Reader!;
+                var heldResults = reader.Diagnostics.LeasedResults;
+                Volatile.Write(ref armed, true);
+                page.Words.RealizeRow(row);
+                var details = page.Words.SettleVisibleDetailsAsync();
+                Assert.True(await Task.Run(() => reached.Wait(TimeSpan.FromSeconds(10))));
+                var stopped = context.StopPageWorkAsync();
+                Assert.False(stopped.IsCompleted);
+                resume.Set();
+                await stopped.WaitAsync(TimeSpan.FromSeconds(10));
+                await details;
+                Assert.False(row.HasStoredDetail);
+
+                Assert.Equal(0, reader.Diagnostics.LiveRowModels);
+                Assert.Equal(heldResults, reader.Diagnostics.LeasedResults);
+                await context.StopProjectWorkAsync();
+                Assert.Equal(0, reader.Diagnostics.LeasedResults);
+            }
+            finally
+            {
+                resume.Set();
+                await context.StopProjectWorkAsync();
+            }
+        }, TimeSpan.FromSeconds(30));
+    }
+
+    [Fact]
+    public async Task StopProjectWorkWaitsForAnInFlightSelectionReaderOpen()
     {
         var fake = new FakeCommandClient();
+        using var fixture = StoredSelectionFixture.FromDisplayRecords(new TextWordsResponse([], [], true));
+        fake.SelectionReaderHandler = fixture.OpenAsync;
         fake.ListTextsCompletesWith(new TextInventoryResponse(
             [new TextChoiceSummary(TextId, "Alpha")], HasBaseline: true));
         var context = NewContext(fake);
         _ = new TextsPageModel(context);
         await context.Selection.SetProjectAsync(ProjectPath);
         await context.OpenProjectAsync(ProjectPath);
+        context.OpenPage(WorkspacePage.Texts);
+        await context.EvidencePublication;
 
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var completion = new TaskCompletionSource<CommandOutcome<TextWordsResponse>>(
+        var completion = new TaskCompletionSource<CommandOutcome<SelectionReader>>(
             TaskCreationOptions.RunContinuationsAsynchronously);
-        fake.OnListTextWords((_, _) =>
+        fake.SelectionReaderHandler = (_, _) =>
         {
             started.SetResult();
             return completion.Task;
-        });
-        context.Selection.Texts.Single().IsChecked = true;
-        await started.Task;
-
-        var stopped = context.StopPageWorkAsync();
+        };
         try
         {
+            context.Selection.Texts.Single().IsChecked = true;
+            await started.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            var stopped = context.StopProjectWorkAsync();
             Assert.False(stopped.IsCompleted);
         }
         finally
         {
-            completion.SetResult(CommandOutcome<TextWordsResponse>.Success(
-                new TextWordsResponse([], [], HasBaseline: true)));
-            await stopped;
+            completion.SetResult(await fixture.OpenAsync(new OpenSelectionReaderRequest(fixture.ProjectPath, [], []),
+                CancellationToken.None));
+            await context.StopProjectWorkAsync().WaitAsync(TimeSpan.FromSeconds(10));
         }
     }
 
@@ -763,93 +838,119 @@ public sealed class WorkspaceContextTests
     [InlineData(ChangeKinds.AddCandidate, true, false, false)]
     [InlineData(ChangeKinds.IncorrectSpelling, false, true, false)]
     [InlineData(ChangeKinds.AddCandidate, false, true, true)]
-    public async Task ReviewNavigationPreservesAnOccurrenceFreeHomographsIdentity(
+    public void ReviewNavigationPreservesAnOccurrenceFreeHomographsIdentity(
         string kind, bool reverse, bool absent, bool rowRoute)
     {
-        var ownId = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000011");
-        var otherId = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000099");
-        var (fake, context) = NewContextWithFake();
-        var texts = new TextsPageModel(context);
-        var review = new ReviewPageModel(context);
-        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
-            [new PendingChange("other", CanonicalId.FromGuid(otherId).Value, "dogs", kind, null, null, [])], []));
-        var own = new TextToken("dogs", "dogs", null, null) { WordformId = ownId };
-        var other = own with { WordformId = otherId };
-        fake.ListTextWordsCompletesWith(new TextWordsResponse([], [new TextLines(Guid.NewGuid(), "Alpha",
-            [new TextLine(1, absent ? [own] : reverse ? [other, own] : [own, other])])], true));
-        await context.OpenProjectAsync(ProjectPath);
-        await texts.Words.ReloadAsync();
-        var evidence = new WorkspaceEvidence(Assessment() with
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            Words = [new AssessmentWordResult("dogs", "no-analysis", false, "Complete", 1, null)
+            var ownId = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000011");
+            var otherId = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000099");
+            var (fake, context) = NewContextWithFake();
+            var texts = new TextsPageModel(context);
+            var review = new ReviewPageModel(context);
+            fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
+                [new PendingChange("other", CanonicalId.FromGuid(otherId).Value, "dogs", kind, null, null, [])], []));
+            var own = new TextToken("dogs", "dogs", null, null) { WordformId = ownId };
+            var other = own with { WordformId = otherId };
+            var captured = new TextWordsResponse([], [new TextLines(Guid.NewGuid(), "Alpha",
+                [new TextLine(1, absent ? [own] : reverse ? [other, own] : [own, other])])], true);
+            var evidence = new WorkspaceEvidence(Assessment() with
             {
-                ProjectStanding = ProjectStanding.Approved,
-                Comparison = new WordComparison(ProjectStanding.Approved, WordRowOutcome.Same,
-                    "kept", "Shared spelling comparison", WordRowTone.Fine)
-                    { Availability = AnalysisComparisonAvailability.Available },
-            }],
-        }, null, false);
-        context.Assess.Restore(evidence);
-        context.PublishEvidence(evidence);
-        var change = Assert.Single(context.Changes.Items);
+                Words = [new AssessmentWordResult("dogs", "no-analysis", false, "Complete", 1, null)
+                {
+                    ProjectStanding = ProjectStanding.Approved,
+                    Comparison = new WordComparison(ProjectStanding.Approved, WordRowOutcome.Same,
+                        "kept", "Shared spelling comparison", WordRowTone.Fine)
+                        { Availability = AnalysisComparisonAvailability.Available },
+                }],
+            }, null, false);
+            await using var fixture = await OpenCapturedSelectionAsync(fake, context, captured, evidence.Assessment);
+            context.Assess.Restore(evidence);
+            context.PublishEvidence(evidence);
+            await context.EvidencePublication;
+            await texts.ResultsInText.SelectionRefresh;
+            Assert.Null(context.SelectionReads.Refusal);
+            var change = Assert.Single(context.Changes.Items);
 
-        Assert.Single(review.ReviewGroups);
-        if (rowRoute) change.Listed!.Row.OpenInTextCommand.Execute(null);
-        else review.GoToTextCommand.Execute(change);
+            Assert.Single(review.ReviewGroups);
+            if (rowRoute) change.Listed!.Row.OpenInTextCommand.Execute(null);
+            else review.GoToTextCommand.Execute(change);
 
-        var selected = Assert.IsType<ResultsTokenViewModel>(texts.ResultsInText.SelectedToken);
-        Assert.Equal(otherId, selected.WordformId);
-        if (absent)
-        {
-            Assert.Equal("Not in a chosen text", selected.Location);
-            Assert.Empty(selected.ProjectApprovedAnalyses);
-            Assert.Equal(AnalysisComparisonAvailability.Unavailable, selected.Comparison.Availability);
-            Assert.Empty(selected.FieldWorksAnalyses);
-        }
-        else Assert.Contains(texts.ResultsInText.Texts.SelectMany(text => text.Lines)
-            .SelectMany(line => line.Tokens), token => ReferenceEquals(token, selected));
+            await texts.ResultsInText.SelectionRefresh;
+            var selected = Assert.IsType<ResultsTokenViewModel>(texts.ResultsInText.SelectedToken);
+            Assert.Equal(otherId, selected.WordformId);
+            if (absent)
+            {
+                Assert.Equal("Not in a chosen text", selected.Location);
+                Assert.Empty(selected.ProjectApprovedAnalyses);
+                Assert.Equal(AnalysisComparisonAvailability.Unavailable, selected.Comparison.Availability);
+                Assert.Empty(selected.FieldWorksAnalyses);
+            }
+            else Assert.Contains(context.SelectionReads.Summary!.SourcePositions,
+                position => position.Location.Anchor == selected.Occurrence);
+        }, TimeSpan.FromSeconds(60));
     }
 
     [Fact]
     public void OpeningATypedAssessedWordThroughTheContextSelectsItsReadingDetail()
     {
-        var context = NewContext();
-        var texts = new TextsPageModel(context);
-        texts.AnalyzeView = AnalyzeTextsView.WordList;
-        var analysis = new ParseAnalysis(
-            [new ParseMorph("typed-only", "bbbbbbbb-0000-0000-0000-000000000001", null, null)]);
-        context.Assess.Result = Assessment() with
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            Words =
-            [
-                new AssessmentWordResult("typed-only", "analysed", false, "Search completed", 3, null)
-                {
-                    Morphology = new ParseWordEvidence(
-                        ParseMorphEvidence.Schema, 0, "typed-only", 3, false, false, false, [analysis], []),
-                    Readings = [new ParserReading([new ParserReadingMorph(
-                        "typed-only", "gloss", "n", null, false, null)])],
-                    ReadingGrades = ["no-opinion"],
-                },
-            ],
-        };
+            var (fake, context) = NewContextWithFake();
+            var texts = new TextsPageModel(context);
+            texts.AnalyzeView = AnalyzeTextsView.WordList;
+            var analysis = new ParseAnalysis(
+                [new ParseMorph("typed-only", "bbbbbbbb-0000-0000-0000-000000000001", null, null)]);
+            var assessment = Assessment() with
+            {
+                Words =
+                [
+                    new AssessmentWordResult("typed-only", "analysed", false, "Search completed", 3, null)
+                    {
+                        Morphology = new ParseWordEvidence(
+                            ParseMorphEvidence.Schema, 0, "typed-only", 3, false, false, false, [analysis], []),
+                        Readings = [new ParserReading([new ParserReadingMorph(
+                            "typed-only", "gloss", "n", null, false, null)])],
+                        ReadingGrades = ["no-opinion"],
+                    },
+                ],
+            };
 
-        context.OpenWord("typed-only");
+            await using var fixture = await OpenCapturedSelectionAsync(fake, context,
+                new TextWordsResponse([], [], true), assessment, ["typed-only"]);
+            context.Assess.Result = assessment;
+            await context.EvidencePublication;
+            await texts.ResultsInText.SelectionRefresh;
+            Assert.Null(context.SelectionReads.Refusal);
+            texts.ResultsInText.ShowReader();
+            context.OpenWord("typed-only");
+            await texts.ResultsInText.SelectionRefresh;
 
-        Assert.Equal(WorkspacePage.Texts, context.CurrentPage);
-        Assert.Equal(TextsTab.AnalyzeTexts, texts.Tab);
-        Assert.Equal(AnalyzeTextsView.TextReader, texts.AnalyzeView);
-        Assert.True(texts.ResultsInText.HasSelectedToken);
-        var selected = Assert.IsType<ResultsTokenViewModel>(texts.ResultsInText.SelectedToken);
-        Assert.Equal("typed-only", selected.Form);
-        Assert.DoesNotContain(texts.ResultsInText.Texts.SelectMany(text => text.Lines)
-            .SelectMany(line => line.Tokens), token => token.Form == "typed-only");
-        var reading = Assert.Single(selected.Readings);
-        Assert.Equal(analysis, reading.Analysis);
-        Assert.False(texts.ResultsInText.AddChangeCommand.CanExecute(ChangeKinds.Approve));
-        selected.SelectedReading = reading;
-        Assert.True(texts.ResultsInText.AddChangeCommand.CanExecute(ChangeKinds.Approve));
-        Assert.True(texts.ResultsInText.AddChangeCommand.CanExecute(ChangeKinds.Reject));
-        Assert.True(texts.ResultsInText.AddChangeCommand.CanExecute(ChangeKinds.Candidate));
+            Assert.Equal(WorkspacePage.Texts, context.CurrentPage);
+            Assert.Equal(TextsTab.AnalyzeTexts, texts.Tab);
+            Assert.Equal(AnalyzeTextsView.TextReader, texts.AnalyzeView);
+            Assert.True(texts.ResultsInText.HasSelectedToken);
+            await texts.ResultsInText.SelectionRefresh;
+            var selected = Assert.IsType<ResultsTokenViewModel>(texts.ResultsInText.SelectedToken);
+            Assert.Equal("typed-only", selected.Form);
+            Assert.Null(texts.ResultsInText.LinePages);
+            Assert.Empty(texts.ResultsInText.VisibleHeaders);
+            var standaloneReference = Assert.IsType<WeakReference<object>>(Assert.Single(
+                Assert.IsAssignableFrom<IEnumerable<object>>(texts.ResultsInText.DisplayedLines)));
+            Assert.True(standaloneReference.TryGetTarget(out var standaloneModel));
+            var standalone = Assert.IsType<ResultsLineViewModel>(standaloneModel);
+            Assert.True(standalone.IsStandalone);
+            Assert.Equal(Guid.Empty, standalone.TextId);
+            Assert.Null(selected.Occurrence);
+            Assert.Same(selected, Assert.Single(standalone.Tokens));
+            var reading = Assert.Single(selected.Readings);
+            Assert.Equal(analysis, reading.Analysis);
+            Assert.False(texts.ResultsInText.AddChangeCommand.CanExecute(ChangeKinds.Approve));
+            selected.SelectedReading = reading;
+            Assert.False(texts.ResultsInText.AddChangeCommand.CanExecute(ChangeKinds.Approve));
+            Assert.False(texts.ResultsInText.AddChangeCommand.CanExecute(ChangeKinds.Reject));
+            Assert.False(texts.ResultsInText.AddChangeCommand.CanExecute(ChangeKinds.Candidate));
+        }, TimeSpan.FromSeconds(60));
     }
 
     [Fact]
@@ -904,128 +1005,302 @@ public sealed class WorkspaceContextTests
     }
 
     [Fact]
-    public async Task AnalyzeTextsCanHandOffOnlyTheTickedWords()
+    public void AnalyzeTextsCanHandOffOnlyTheTickedWords()
     {
-        var (fake, context) = NewContextWithFake();
-        var texts = new TextsPageModel(context);
-        var handoff = new AiHandoffPageModel(context);
-        fake.ListTextWordsCompletesWith(new TextWordsResponse(
-            [new TextWord("dogs", null,
-                    [new WordOccurrence(TextId, "Alpha", 1, "dogs", "unanalysed", null)], [], []),
-                new TextWord("cats", null,
-                    [new WordOccurrence(TextId, "Alpha", 2, "cats", "unanalysed", null)], [], [])],
-            [], HasBaseline: true, OccurrenceCount: 2));
-        await texts.Words.SetProjectAsync(ProjectPath);
-        texts.Words.Rows.Single(row => row.Form == "cats").IsChecked = true;
-
-        Assert.True(texts.Words.HandOffCheckedWordsCommand.CanExecute(null));
-        texts.Words.HandOffCheckedWordsCommand.Execute(null);
-
-        Assert.Equal(["cats"], handoff.Handoff.ChosenWords);
-    }
-
-    [Fact]
-    public async Task MatrixAnalyzeTextsAndListsShowTheSameWords()
-    {
-        var (fake, context) = NewContextWithFake();
-        var texts = new TextsPageModel(context);
-        fake.ListTextWordsCompletesWith(new TextWordsResponse(
-            [new TextWord("kitabu", null,
-                [new WordOccurrence(TextId, "Alpha", 1, "kitabu", "unanalysed", null)], [], [])],
-            [new TextLines(TextId, "Alpha", [new TextLine(1, [new TextToken("kitabu", "kitabu", null, null)])])],
-            HasBaseline: true, OccurrenceCount: 1));
-        await texts.Words.SetProjectAsync(ProjectPath);
-        context.Assess.Result = Assessment() with { Words = [ApprovedUnparsed("kitabu")] };
-        var matrixWord = Assert.Single(texts.Assess.Compare.Words);
-        var list = Assert.Single(texts.TextsLists.Lists, candidate =>
-            candidate.Cells.Contains(new TextsListCell(matrixWord.Row, matrixWord.Column)));
-        texts.TextsLists.SelectListCommand.Execute(list);
-
-        Assert.Equal(["kitabu"], texts.Words.Rows.Select(row => row.Form));
-        Assert.Equal(["kitabu"], texts.ResultsInText.Texts.SelectMany(text => text.Lines)
-            .SelectMany(line => line.Tokens).Where(token => token.IsWord).Select(token => token.Form));
-        Assert.Equal(["kitabu"], texts.Assess.Compare.Words.Select(word => word.Word));
-        Assert.Equal(["kitabu"], texts.TextsLists.Compare.Words.Select(word => word.Word));
-    }
-
-    [Fact]
-    public async Task AnAnalyzeChangeShowsNotAppliedYetInTheMatrixAndItsList()
-    {
-        var (fake, context) = NewContextWithFake();
-        var texts = new TextsPageModel(context);
-        var wordformId = Guid.NewGuid();
-        await context.Changes.OpenProjectAsync(ProjectPath);
-        fake.ListTextWordsCompletesWith(new TextWordsResponse(
-            [new TextWord("kitabu", wordformId.ToString("D"),
-                [new WordOccurrence(TextId, "Alpha", 1, "kitabu", "unanalysed", null)], [], [])],
-            [new TextLines(TextId, "Alpha", [new TextLine(1, [new TextToken("kitabu", "kitabu", null, null) { WordformId = wordformId }])])],
-            HasBaseline: true, OccurrenceCount: 1));
-        await texts.Words.SetProjectAsync(ProjectPath);
-        context.Assess.Result = Assessment() with { Words = [ApprovedUnparsed("kitabu")] };
-        var matrixWord = Assert.Single(texts.Assess.Compare.Words);
-        var list = Assert.Single(texts.TextsLists.Lists, candidate =>
-            candidate.Cells.Contains(new TextsListCell(matrixWord.Row, matrixWord.Column)));
-        texts.TextsLists.SelectListCommand.Execute(list);
-        var token = Assert.Single(texts.ResultsInText.Texts.SelectMany(text => text.Lines)
-            .SelectMany(line => line.Tokens), item => item.IsWord);
-        texts.ResultsInText.SelectToken(token);
-
-        await texts.ResultsInText.AddChangeCommand.ExecuteAsync(ChangeKinds.IncorrectSpelling);
-
-        Assert.Equal("Not applied yet", token.PendingChangeStatus);
-        Assert.Equal("Not applied yet", Assert.Single(texts.Assess.Compare.Words).PendingChangeStatus);
-        Assert.Equal("Not applied yet", list.PendingChangeStatus);
-
-        context.Changes.Items.Add(new ChangeViewModel(ChangeKinds.IncorrectSpelling, "kitabu", "",
-            fit: new ChangeFit("stale-change", false, ["The project changed."]),
-            wordformId: CanonicalId.FromGuid(wordformId).Value));
-
-        Assert.Equal(PendingChangeState.NoLongerFits, token.PendingState);
-        Assert.Equal(PendingChangeState.NoLongerFits, Assert.Single(texts.Assess.Compare.Words).PendingState);
-        Assert.Equal(PendingChangeState.NoLongerFits, list.PendingState);
-    }
-
-    [Fact]
-    public async Task AnalyzeOpinionSendsTheChosenAnalysisAndReadingIndex()
-    {
-        var fake = new FakeCommandClient();
-        fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(Token, DateTimeOffset.UtcNow, false));
-        var selection = new SelectionViewModel(fake);
-        var changes = new ChangesViewModel(fake);
-        var context = new WorkspaceContext(selection, new AssessViewModel(fake, selection), changes, fake,
-            new NoFolderPicker(), new NoDragSource(), new BaselineViewModel(fake));
-        var texts = new TextsPageModel(context);
-        var first = new ParseAnalysis([new ParseMorph("typed-only", "bbbbbbbb-0000-0000-0000-000000000001", null, null)]);
-        var second = new ParseAnalysis([new ParseMorph("typed-only", "bbbbbbbb-0000-0000-0000-000000000002", null, null)]);
-        fake.ListTextWordsCompletesWith(new TextWordsResponse([], [], HasBaseline: true));
-        await context.OpenProjectAsync(ProjectPath);
-        changes.AssessmentId = "assessment/one";
-        context.Assess.Result = Assessment() with
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            Words =
-            [
-                new AssessmentWordResult("typed-only", "analysed", false, "Search completed", 3, null)
-                {
-                    Morphology = new ParseWordEvidence(ParseMorphEvidence.Schema, 0, "typed-only", 3,
-                        false, false, false, [first, second], []),
-                    Readings =
-                    [
-                        new ParserReading([new ParserReadingMorph("typed-only", "first", "n", null, false, null)]),
-                        new ParserReading([new ParserReadingMorph("typed-only", "second", "n", null, false, null)]),
-                    ],
-                    ReadingGrades = ["no-opinion", "no-opinion"],
-                },
-            ],
-        };
-        texts.ResultsInText.SelectWord("typed-only");
-        var token = Assert.IsType<ResultsTokenViewModel>(texts.ResultsInText.SelectedToken);
-        token.SelectedReading = token.Readings[1];
+            var (fake, context) = NewContextWithFake();
+            var texts = new TextsPageModel(context);
+            var handoff = new AiHandoffPageModel(context);
+            var captured = new TextWordsResponse(
+                [new TextWord("dogs", null,
+                        [new WordOccurrence(TextId, "Alpha", 1, "dogs", "unanalysed", null)], [], []),
+                    new TextWord("cats", null,
+                        [new WordOccurrence(TextId, "Alpha", 2, "cats", "unanalysed", null)], [], [])],
+                [new TextLines(TextId, "Alpha", [new TextLine(1, [new TextToken("dogs", "dogs", null, null)]),
+                    new TextLine(2, [new TextToken("cats", "cats", null, null)])])],
+                HasBaseline: true, OccurrenceCount: 2);
+            await using var fixture = await OpenCapturedSelectionAsync(fake, context, captured);
+            texts.Words.Rows.Single(row => row.Form == "cats").IsChecked = true;
 
-        await texts.ResultsInText.AddChangeCommand.ExecuteAsync(ChangeKinds.Approve);
+            Assert.True(texts.Words.HandOffCheckedWordsCommand.CanExecute(null));
+            texts.Words.HandOffCheckedWordsCommand.Execute(null);
 
-        var change = Assert.Single(fake.PendingPutRequests).Change;
-        Assert.Equal(second, change.Reading);
-        Assert.Equal(1, change.ReadingIndex);
+            Assert.Equal(["cats"], handoff.Handoff.ChosenWords);
+        }, TimeSpan.FromSeconds(60));
+    }
+
+    [Fact]
+    public void MatrixAnalyzeTextsAndListsShowTheSameWords()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (fake, context) = NewContextWithFake();
+            var texts = new TextsPageModel(context);
+            var captured = new TextWordsResponse(
+                [new TextWord("kitabu", null,
+                    [new WordOccurrence(TextId, "Alpha", 1, "kitabu", "unanalysed", null)], [], [])],
+                [new TextLines(TextId, "Alpha", [new TextLine(1, [new TextToken("kitabu", "kitabu", null, null)])])],
+                HasBaseline: true, OccurrenceCount: 1);
+            var assessment = Assessment() with { Words = [ApprovedUnparsed("kitabu")] };
+            await using var fixture = await OpenCapturedSelectionAsync(fake, context, captured, assessment);
+            context.Assess.Result = assessment;
+            await context.EvidencePublication;
+            await texts.ResultsInText.SelectionRefresh;
+            var matrixWord = Assert.Single(texts.Assess.Compare.Words);
+            var list = Assert.Single(texts.TextsLists.Lists, candidate =>
+                candidate.Cells.Contains(new TextsListCell(matrixWord.Row, matrixWord.Column)));
+            texts.TextsLists.SelectListCommand.Execute(list);
+
+            Assert.Equal(["kitabu"], texts.Words.Rows.Select(row => row.Form));
+            texts.ResultsInText.ShowReader();
+            var occurrence = Assert.Single(context.SelectionReads.Summary!.SourcePositions);
+            Assert.Equal("kitabu", (await texts.ResultsInText.ReadOccurrenceAsync(occurrence.Location.Anchor))?.Form);
+            Assert.Equal(["kitabu"], texts.Assess.Compare.Words.Select(word => word.Word));
+            Assert.Equal(["kitabu"], texts.TextsLists.Compare.Words.Select(word => word.Word));
+        }, TimeSpan.FromSeconds(60));
+    }
+
+    [Fact]
+    public void AnAnalyzeChangeShowsNotAppliedYetInTheMatrixAndItsList()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (fake, context) = NewContextWithFake();
+            var texts = new TextsPageModel(context);
+            var wordformId = Guid.NewGuid();
+            var captured = new TextWordsResponse(
+                [new TextWord("kitabu", wordformId.ToString("D"),
+                    [new WordOccurrence(TextId, "Alpha", 1, "kitabu", "unanalysed", null)], [], [])],
+                [new TextLines(TextId, "Alpha", [new TextLine(1, [new TextToken("kitabu", "kitabu", null, null) { WordformId = wordformId }])])],
+                HasBaseline: true, OccurrenceCount: 1);
+            var assessment = Assessment() with { Words = [ApprovedUnparsed("kitabu")] };
+            await using var fixture = await OpenCapturedSelectionAsync(fake, context, captured, assessment);
+            context.Assess.Result = assessment;
+            await context.EvidencePublication;
+            await texts.ResultsInText.SelectionRefresh;
+            var matrixWord = Assert.Single(texts.Assess.Compare.Words);
+            var list = Assert.Single(texts.TextsLists.Lists, candidate =>
+                candidate.Cells.Contains(new TextsListCell(matrixWord.Row, matrixWord.Column)));
+            texts.TextsLists.SelectListCommand.Execute(list);
+            await texts.ResultsInText.SelectionRefresh;
+            Assert.Null(context.SelectionReads.Refusal);
+            texts.ResultsInText.ShowReader();
+            var token = Assert.IsType<ResultsTokenViewModel>(await texts.ResultsInText.ReadOccurrenceAsync(
+                Assert.Single(context.SelectionReads.Summary!.SourcePositions).Location.Anchor));
+            texts.ResultsInText.SelectToken(token);
+
+            await texts.ResultsInText.AddChangeCommand.ExecuteAsync(ChangeKinds.IncorrectSpelling);
+
+            Assert.Equal("Not applied yet", token.PendingChangeStatus);
+            Assert.Equal("Not applied yet", Assert.Single(texts.Assess.Compare.Words).PendingChangeStatus);
+            Assert.Equal("Not applied yet", list.PendingChangeStatus);
+
+            context.Changes.Items.Add(new ChangeViewModel(ChangeKinds.IncorrectSpelling, "kitabu", "",
+                fit: new ChangeFit("stale-change", false, ["The project changed."]),
+                wordformId: CanonicalId.FromGuid(wordformId).Value));
+
+            Assert.Equal(PendingChangeState.NoLongerFits, token.PendingState);
+            Assert.Equal(PendingChangeState.NoLongerFits, Assert.Single(texts.Assess.Compare.Words).PendingState);
+            Assert.Equal(PendingChangeState.NoLongerFits, list.PendingState);
+        }, TimeSpan.FromSeconds(60));
+    }
+
+    [Fact]
+    public void AnalyzeOpinionSendsTheChosenAnalysisAndReadingIndex()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var fake = new FakeCommandClient();
+            fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(Token, DateTimeOffset.UtcNow, false));
+            var selection = new SelectionViewModel(fake);
+            var changes = new ChangesViewModel(fake);
+            var context = new WorkspaceContext(selection, new AssessViewModel(fake, selection), changes, fake,
+                new NoFolderPicker(), new NoDragSource(), new BaselineViewModel(fake));
+            var texts = new TextsPageModel(context);
+            var first = new ParseAnalysis([new ParseMorph("typed-only", "bbbbbbbb-0000-0000-0000-000000000001", null, null)]);
+            var second = new ParseAnalysis([new ParseMorph("typed-only", "bbbbbbbb-0000-0000-0000-000000000002", null, null)]);
+            var assessment = Assessment() with
+            {
+                Words =
+                [
+                    new AssessmentWordResult("typed-only", "analysed", false, "Search completed", 3, null)
+                    {
+                        Morphology = new ParseWordEvidence(ParseMorphEvidence.Schema, 0, "typed-only", 3,
+                            false, false, false, [first, second], []),
+                        Readings =
+                        [
+                            new ParserReading([new ParserReadingMorph("typed-only", "first", "n", null, false, null)]),
+                            new ParserReading([new ParserReadingMorph("typed-only", "second", "n", null, false, null)]),
+                        ],
+                        ReadingGrades = ["no-opinion", "no-opinion"],
+                    },
+                ],
+            };
+            var wordformId = Guid.NewGuid();
+            var captured = new TextWordsResponse([], [new TextLines(TextId, "Alpha", [new TextLine(1,
+                [new TextToken("typed-only", "typed-only", null, null) { WordformId = wordformId }])])], true);
+            await using var fixture = await OpenCapturedSelectionAsync(fake, context, captured, assessment);
+            context.Assess.Result = assessment;
+            await context.EvidencePublication;
+            await texts.ResultsInText.SelectionRefresh;
+            Assert.Null(context.SelectionReads.Refusal);
+            texts.ResultsInText.ShowReader();
+            texts.ResultsInText.SelectWord("typed-only");
+            await texts.ResultsInText.SelectionRefresh;
+            var token = Assert.IsType<ResultsTokenViewModel>(texts.ResultsInText.SelectedToken);
+            token.SelectedReading = token.Readings[1];
+
+            await texts.ResultsInText.AddChangeCommand.ExecuteAsync(ChangeKinds.Approve);
+
+            var change = Assert.Single(fake.PendingPutRequests).Change;
+            Assert.Equal(CanonicalId.FromGuid(wordformId).Value, change.WordformId);
+            Assert.Equal(second.Morphs, change.Reading!.Morphs);
+            Assert.Equal(1, change.ReadingIndex);
+        }, TimeSpan.FromSeconds(60));
+    }
+
+    internal static async Task<CapturedSelectionOwner> OpenCapturedSelectionAsync(FakeCommandClient fake,
+        WorkspaceContext context, TextWordsResponse records, AssessCommandResponse? assessment = null,
+        IReadOnlyList<string>? addedWords = null)
+    {
+        var fixture = StoredSelectionFixture.FromDisplayRecords(records, assessment?.Baseline.Token ?? Token);
+        if (assessment is not null) fixture.RecordAssessment(assessment);
+        fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(assessment?.Baseline.Token ?? Token,
+            DateTimeOffset.UtcNow, false));
+        fake.SelectionReaderHandler = fixture.OpenAsync;
+        fake.ListTextsCompletesWith(new TextInventoryResponse(records.Texts
+            .Select(text => new TextChoiceSummary(text.TextId, text.Title)).ToArray(), true));
+        await context.OpenProjectAsync(fixture.ProjectPath);
+        context.Setup?.SkipCommand.Execute(null);
+
+        foreach (var text in context.Selection.Texts) text.IsChecked = true;
+        if (addedWords is not null) context.Selection.PastedWords = string.Join("\n", addedWords);
+        if (assessment is not null)
+        {
+            var evidence = new WorkspaceEvidence(assessment, DateTimeOffset.UtcNow, false);
+            context.Assess.Restore(evidence);
+            context.PublishEvidence(evidence);
+        }
+        context.OpenPage(WorkspacePage.Texts);
+        await context.EvidencePublication;
+        Assert.Null(context.SelectionReads.Refusal);
+        return new CapturedSelectionOwner(context, fixture);
+    }
+
+    internal sealed class CapturedSelectionOwner(WorkspaceContext context, StoredSelectionFixture fixture) : IAsyncDisposable
+    {
+        public async ValueTask DisposeAsync()
+        {
+            await context.StopProjectWorkAsync();
+            fixture.Dispose();
+        }
+    }
+
+    [Fact]
+    public void SetupSelectionStepRequestsCapturedCountsWithoutRealizingDisplayModels()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var wordform = Guid.NewGuid();
+            using var fixture = new StoredSelectionFixture(new SIL.Motif.Host.Texts.TextWordsProjection([
+                new SIL.Motif.Host.Texts.TextWordsProjectedText(TextId, "Alpha", [
+                    new SIL.Motif.Host.Texts.TextWordsProjectedLine(1, "dogs", [
+                        new SIL.Motif.Host.Texts.TextWordsProjectedToken("dogs", [new WritingSystemText("dogs", "en")],
+                            wordform, "unanalysed", null, null, null, null, 0, null),
+                    ], Guid.NewGuid(), Guid.NewGuid(), false),
+                ], []),
+            ], [new SIL.Motif.Host.Texts.TextWordsProjectedWordform(wordform, [], [], 0, false, [])]));
+            var fake = new FakeCommandClient();
+            fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(Token, DateTimeOffset.UtcNow, false));
+            fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")], true));
+            fake.SelectionReaderHandler = fixture.OpenAsync;
+            var context = NewContext(fake);
+            var page = new TextsPageModel(context);
+            var setup = new SetupViewModel(context, page.Words);
+            context.AttachSetup(setup);
+            try
+            {
+                await context.OpenProjectAsync(fixture.ProjectPath);
+                context.Selection.Texts.Single().IsChecked = true;
+                await context.EvidencePublication;
+                setup.IsOpen = true;
+                Assert.Null(context.SelectionReads.Reader);
+                setup.NextCommand.Execute(null);
+                await context.EvidencePublication;
+                Assert.Null(context.SelectionReads.Refusal);
+                Assert.Equal(WorkspacePage.Overview, context.CurrentPage);
+                Assert.Equal(1, page.Words.WordCount);
+                Assert.Equal(1, page.Words.OccurrenceCount);
+                Assert.Equal(page.Words.SummaryText, setup.RunSummary);
+                var reader = Assert.IsType<SelectionReader>(context.SelectionReads.Reader);
+                Assert.Equal(0, reader.Diagnostics.TextRowsDeserialized);
+                Assert.Equal(0, reader.Diagnostics.WordformRowsDeserialized);
+                Assert.Equal(0, reader.Diagnostics.LiveRowModels);
+                Assert.Equal(0, reader.Diagnostics.LiveLineModels);
+                Assert.Equal(0, reader.Diagnostics.LiveTokenModels);
+            }
+            finally { await context.StopProjectWorkAsync(); }
+        }, TimeSpan.FromSeconds(30));
+    }
+
+    [Fact]
+    public void UnparsedOverviewDefersSourceReadsAndOccurrenceNavigationWaitsForItsReader()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var paragraph = Guid.NewGuid();
+            var segment = Guid.NewGuid();
+            var wordform = Guid.NewGuid();
+            using var fixture = new StoredSelectionFixture(new SIL.Motif.Host.Texts.TextWordsProjection([
+                new SIL.Motif.Host.Texts.TextWordsProjectedText(TextId, "Alpha", [
+                    new SIL.Motif.Host.Texts.TextWordsProjectedLine(1, "dogs", [
+                        new SIL.Motif.Host.Texts.TextWordsProjectedToken("dogs", [new WritingSystemText("dogs", "en")],
+                            wordform, "unanalysed", null, null, null, null, 0, null),
+                    ], paragraph, segment, false),
+                ], []),
+            ], [new SIL.Motif.Host.Texts.TextWordsProjectedWordform(wordform, [], [], 0, false, [])]));
+            var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var resume = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var navigated = new TaskCompletionSource<OccurrenceAnchor>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var reads = 0;
+            var fake = new FakeCommandClient();
+            fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(Token, DateTimeOffset.UtcNow, false));
+            fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")], true));
+            fake.SelectionReaderHandler = async (request, cancellation) =>
+            {
+                reads++;
+                entered.TrySetResult();
+                await resume.Task.WaitAsync(cancellation);
+                return await fixture.OpenAsync(request, cancellation);
+            };
+            var context = NewContext(fake);
+            var page = new TextsPageModel(context);
+            page.ResultsInText.OccurrenceRequested += anchor => navigated.TrySetResult(anchor);
+            try
+            {
+                await context.OpenProjectAsync(fixture.ProjectPath);
+                context.Selection.Texts.Single().IsChecked = true;
+                await context.EvidencePublication;
+                Assert.Equal(WorkspacePage.Overview, context.CurrentPage);
+                Assert.Null(context.SelectionReads.Reader);
+                Assert.Equal(0, reads);
+                var anchor = new OccurrenceAnchor(TextId, paragraph, segment, 0);
+                context.OpenOccurrence(anchor, "dogs", wordform.ToString("D"));
+                await entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+                Assert.False(navigated.Task.IsCompleted);
+                resume.SetResult();
+                Assert.Equal(anchor, await navigated.Task.WaitAsync(TimeSpan.FromSeconds(10)));
+                Assert.Equal(TextId, page.ResultsInText.SelectedText!.TextId);
+                Assert.Equal(1, reads);
+
+            }
+            finally
+            {
+                resume.TrySetResult();
+                await context.StopProjectWorkAsync();
+            }
+        }, TimeSpan.FromSeconds(30));
     }
 
     [Fact]

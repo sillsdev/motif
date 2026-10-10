@@ -181,6 +181,16 @@ public sealed partial record WindowRefusal
         [C.SelectionInvalid] = "Choose at least one text or add a word before continuing.",
         [C.SelectionTextNotFound] = "A chosen text is no longer in the project. Choose the texts again.",
 
+        [RefusalCodes.SelectionReaderBusy] = "Motif is already reading these texts. Try again in a moment.",
+        [RefusalCodes.SelectionReaderCancelled] = "Reading these texts was cancelled.",
+        [RefusalCodes.SelectionReaderDisposed] = "This text view is no longer open. Reopen it and try again.",
+        [RefusalCodes.SelectionReaderInvalid] = "Motif could not read this text view. Reopen it and try again.",
+        [RefusalCodes.SelectionReaderNoBaseline] = "Refresh this project before reading its saved texts.",
+        [RefusalCodes.SelectionReaderRangeInvalid] = "Choose a valid range of words to read.",
+        [RefusalCodes.SelectionReaderOwnershipLimit] = "Too much text is open at once. Close a card or choose a smaller range.",
+        [RefusalCodes.SelectionReaderProjectPathRequired] = "Motif needs the saved project path to read current text state.",
+        [C.TextsEvidenceChanged] = "The project's saved texts changed. Refresh and reopen them.",
+
         [C.StatsCancelled] = "Reading the statistics was cancelled.",
         [C.StatsInvalidEvidence] = "The stored statistics are damaged. Measure the words again.",
         [C.StatsNoAssessment] = "No measurements with statistics are stored yet. Measure the words first.",
@@ -194,7 +204,6 @@ public sealed partial record WindowRefusal
         [C.StoreUnsupported] = "Motif's file for this project cannot be used by this version of Motif.",
 
         [C.TextsWordsCancelled] = "Reading the texts' words was cancelled.",
-        [C.TextsWordsQueryFailed] = "Motif could not read the words of the chosen texts. Try again.",
 
         [C.TimingInvalidOverride] = "A re-run does not belong to these measurements. Re-run the words again.",
         [C.TimingNoAssessment] = "No timings are stored yet. Measure the words first.",

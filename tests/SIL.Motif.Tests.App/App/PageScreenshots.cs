@@ -17,6 +17,13 @@ using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Contract.Ids;
+using SIL.Motif.Commands.SelectionReading;
+using SIL.Motif.Host.Texts;
+using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Host.Parser;
+using SIL.Motif.Host.Corpus;
+using SIL.Motif.Worker.Store;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
@@ -85,6 +92,8 @@ public sealed class PageScreenshots
                             // Choosing a word on Texts primes Try a Word afresh, so the trace is run again here.
                             if (page == WorkspacePage.TryAWord) await TryTheSampleWord(workspace);
                             workspace.CurrentPage = page;
+                            if (page == WorkspacePage.Texts && tab == TextsTab.AnalyzeTexts)
+                                await AnalyzeTextsLayoutTests.SettleReaderAsync(workspace, window);
                             AssertSceneHasExpectedErrorState(window, workspace, name);
                             Save(window, Path.Combine(folder, $"{name}-{width}-{theme}.png"));
                             if (page != WorkspacePage.TryAWord) continue;
@@ -440,7 +449,7 @@ public sealed class PageScreenshots
             foreach (var token in texts.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens)
                          .Where(token => token.Form == word.Form))
             {
-                var inText = new ResultsTokenViewModel("Sample", 1, token, result, new TextWordRowViewModel(word));
+                var inText = new ResultsTokenViewModel("Sample", 1, token, result);
                 var row = WordRowProjection.Of(result);
                 Assert.Equal(row.Comparison!.MeaningCode, inText.Comparison.MeaningCode);
                 Assert.Equal(row.Outcome, inText.Comparison.Outcome);
@@ -591,7 +600,8 @@ public sealed class PageScreenshots
     /// </summary>
     internal static async Task<(WorkspaceShellViewModel Workspace, MainWindow Window)> OpenOverSampleData(
         bool parse = true, Action<FakeCommandClient, AssessCommandResponse>? configure = null, bool leaveSetupOpen = false,
-        string? settingsFilePath = null)
+        string? settingsFilePath = null, TextWordsResponse? capturedWords = null,
+        AssessCommandResponse? capturedAssessment = null)
     {
         var fake = new FakeCommandClient();
         var clock = NewCaptureClock();
@@ -609,8 +619,7 @@ public sealed class PageScreenshots
         fake.CheckGrammarCompletesWith(new GrammarCheckResponse(GrammarFindings(), HasBaseline: true));
         fake.ListTextsCompletesWith(new TextInventoryResponse(
             [new TextChoiceSummary(Story, "Hadithi ya sungura"), new TextChoiceSummary(Letter, "Barua kwa mwalimu")], HasBaseline: true));
-        fake.ListTextWordsCompletesWith(TextWords());
-        fake.AssessCompletesWith(Assessment());
+        fake.AssessCompletesWith(capturedAssessment ?? Assessment());
         fake.StatsCompletesWith(new StatsCommandResponse("assessment/one", ProjectPath, "cache", null, StatisticsRows()));
         fake.HandoffCompletesWith(new HandoffCommandResponse(@"C:\Users\linguist\Documents\Motif Handoffs\Sample 2 Oct 6:47 PM",
             Capture(), new SelectionProjection([], []),
@@ -642,9 +651,21 @@ public sealed class PageScreenshots
             }));
         };
         fake.OnInspect((request, _) => Task.FromResult(CommandOutcome<InspectResponse>.Success(SampleInspection(request.Subject))));
-        OverviewTimingScreenshots.ReadOverviewAndTiming(fake, Assessment());
+        OverviewTimingScreenshots.ReadOverviewAndTiming(fake, capturedAssessment ?? Assessment());
         if (!parse) fake.OverviewCompletesWith(EmptyOverview());
-        configure?.Invoke(fake, Assessment());
+        configure?.Invoke(fake, capturedAssessment ?? Assessment());
+        var readerFixture = capturedWords is null ? SampleReaderFixture(parse) :
+            StoredSelectionFixture.FromDisplayRecords(capturedWords, Token());
+        if (parse && capturedWords is not null) readerFixture.RecordAssessment(capturedAssessment ?? Assessment());
+        fake.SelectionReaderHandler = readerFixture.OpenAsync;
+        fake.OnReadWordState((request, cancellation) => Task.Run(() =>
+            SIL.Motif.Commands.ReadStateCommands.Execute(request with { ProjectPath = readerFixture.ProjectPath },
+                cancellation), cancellation));
+        var check = await fake.ReadStoredGrammarCheckAsync(new GrammarCheckRequest(ProjectPath), CancellationToken.None);
+        if (check.Value?.Check is { } warnings) readerFixture.RecordGrammarCheck(warnings);
+        if (capturedWords is not null)
+            fake.ListTextsCompletesWith(new TextInventoryResponse(capturedWords.Texts.Select(text =>
+                new TextChoiceSummary(text.TextId, text.Title)).ToArray(), true));
 
         var selection = new SelectionViewModel(fake);
         var workspace = new WorkspaceShellViewModel(
@@ -657,20 +678,43 @@ public sealed class PageScreenshots
             : new FileUserPreferencesStore(settingsFilePath);
         var window = new MainWindow(rememberBounds: false, uriLauncher: null, preferencesStore: preferences);
         window.Compose(workspace);
+        window.Closed += async (_, _) =>
+        {
+            await workspace.Context.StopProjectWorkAsync();
+            readerFixture.Dispose();
+        };
         window.Show();
 
-        await workspace.SetProjectAsync(ProjectPath);
+        await workspace.SetProjectAsync(readerFixture.ProjectPath);
         if (leaveSetupOpen) return (workspace, window);
         workspace.Context.Setup?.SkipCommand.Execute(null);
         foreach (var text in selection.Texts) text.IsChecked = true;
         await Task.Yield();
-        await workspace.PageModel<TextsPageModel>().Words.ReloadAsync();
-        if (!parse) return (workspace, window);
+        await workspace.Context.EvidencePublication;
+        if (!parse)
+        {
+            await workspace.Context.EvidencePublication;
+            return (workspace, window);
+        }
         await workspace.Assess.RunCommand.ExecuteAsync(null);
+        await workspace.Context.EvidencePublication;
         workspace.PageModel<TimingPageModel>().Statistics.AssessmentId = "assessment/one";
         await workspace.PageModel<TimingPageModel>().Statistics.LoadCommand.ExecuteAsync(null);
         workspace.Assess.Words.SelectedRow = workspace.Assess.Words.Rows.FirstOrDefault(row => row.Word == "hawajafika");
-        workspace.PageModel<TextsPageModel>().ResultsInText.SelectToken(workspace.PageModel<TextsPageModel>().ResultsInText.VisibleLines[0].Tokens[1]);
+        var textsPage = workspace.PageModel<TextsPageModel>();
+        workspace.CurrentPage = WorkspacePage.Texts;
+        textsPage.Tab = TextsTab.AnalyzeTexts;
+        textsPage.ShowAnalyzeViewCommand.Execute(AnalyzeTextsView.TextReader);
+        Settle(window);
+        var reader = textsPage.ResultsInText;
+        await reader.SelectionRefresh;
+        Assert.Null(workspace.Context.SelectionReads.Refusal);
+        var positions = workspace.Context.SelectionReads.Summary!.SourcePositions;
+        var first = positions.FirstOrDefault(position => position.Word.Form == "alikula") ?? positions.FirstOrDefault();
+        Assert.NotNull(first);
+        var token = await reader.ReadOccurrenceAsync(first.Location.Anchor);
+        Assert.NotNull(token);
+        reader.SelectToken(token);
         await workspace.PageModel<AiHandoffPageModel>().Handoff.RunCommand.ExecuteAsync(null);
         clock.Advance(TimeSpan.FromDays(1).Add(TimeSpan.FromMinutes(35)));
         workspace.PageModel<AiHandoffPageModel>().Handoff.LatestAssessmentAt = clock.GetLocalNow();
@@ -896,6 +940,85 @@ public sealed class PageScreenshots
         Identity = reading.Identity,
     };
 
+    [Fact]
+    public async Task ScreenshotSelectionOpensAndReadsItsCurrentFormatCapturedLines()
+    {
+        using var fixture = SampleReaderFixture(true);
+        var opened = await fixture.OpenAsync(new OpenSelectionReaderRequest(fixture.ProjectPath, [Story, Letter], []));
+        Assert.True(opened.Succeeded, opened.Refusal?.Message);
+        await using var reader = opened.Value!;
+        var presentation = await reader.ReadPresentationAsync();
+        Assert.True(presentation.Succeeded, presentation.Refusal?.Message);
+        using var state = presentation.Value!;
+        var outcome = await reader.ReadLinePagesAsync(Story,
+            [new TextLinePage(1, 0, 4), new(2, 0, 4)]);
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        using var lines = outcome.Value!;
+        Assert.Equal(["Sungura alikula chakula.", "watoto hawajafika, mwalimu"],
+            lines.Value.Lines.Select(line => line.Sentence));
+        var anchor = new OccurrenceAnchor(Story, Guid.Parse(Id("paragraph " + Story, 1)),
+            Guid.Parse(Id("segment " + Story, 1)), 1);
+        var marked = SIL.Motif.Commands.ReadStateCommands.Execute(new WordReadStateRequest(fixture.ProjectPath,
+            Story, [anchor], true) { ExpectedContext = reader.Context.ExpectedWriteContext() });
+        Assert.True(marked.Succeeded, marked.Refusal?.Message);
+        Assert.Contains(anchor, marked.Value!.ReadOccurrences);
+        Assert.Empty(marked.Value.SkippedOccurrences);
+    }
+
+    private static StoredSelectionFixture SampleReaderFixture(bool parse)
+    {
+        var assessment = Assessment();
+        var forms = assessment.Words.ToDictionary(word => word.Word, word =>
+        {
+            var analyses = word.StoredAnalyses.Select(reading => new TextWordsProjectedAnalysis(reading.StoredAnalysisId!,
+                reading.Morphs.Select(morph => new TextWordsProjectedMorph(morph.Form, morph.Gloss, morph.Category,
+                    null, morph.Guessed, null)
+                { FormWritingSystem = morph.FormWritingSystem, GlossWritingSystem = morph.GlossWritingSystem,
+                    CategoryWritingSystem = morph.CategoryWritingSystem }).ToArray())
+            { AnalysisId = Guid.Parse(reading.StoredAnalysisId!),
+                Opinion = reading.StoredAnalysisOpinion == ReadingGrade.Candidate ? "unknown" : reading.StoredAnalysisOpinion!,
+                Identity = reading.Identity! with
+                { SourceAnalysisId = CanonicalId.FromGuid(Guid.Parse(reading.StoredAnalysisId!)).Value } }).ToArray();
+            return new TextWordsProjectedWordform(Guid.Parse(Id("wordform " + word.Word, 0)),
+                analyses.Where(analysis => analysis.Opinion == ReadingGrade.Approved).ToArray(),
+                analyses.Where(analysis => analysis.Opinion == ReadingGrade.Disapproved).ToArray(),
+                analyses.Count(analysis => analysis.Opinion == "unknown"), false, analyses);
+        });
+        TextWordsProjectedText Text(Guid id, string title, params string[][] lines) => new(id, title,
+            lines.Select((items, index) => new TextWordsProjectedLine(index + 1,
+                string.Join(" ", items).Replace(" .", ".").Replace(" ,", ","),
+                items.Select((form, offset) =>
+                {
+                    var word = forms.GetValueOrDefault(form);
+                    var analysis = word?.Analyses.FirstOrDefault();
+                    return new TextWordsProjectedToken(form, word is null ? [] : [new WritingSystemText(form, "sw")],
+                        word?.WordformId, word is null ? null : analysis?.Opinion == ReadingGrade.Approved ? "approved" :
+                            analysis?.Opinion == ReadingGrade.Disapproved ? "disapproved" : analysis is null ? "unanalysed" : "unapproved",
+                        analysis?.Key, null, null, word is null ? null : new FieldWorksLinkTarget("analyses", word.WordformId),
+                        offset, analysis?.AnalysisId);
+                }).ToArray(), Guid.Parse(Id("paragraph " + id, index + 1)),
+                Guid.Parse(Id("segment " + id, index + 1)), true)).ToArray(),
+            lines.SelectMany(items => items).Distinct().Where(forms.ContainsKey)
+                .SelectMany(form => forms[form].Analyses).ToArray());
+        var projection = new TextWordsProjection(
+        [
+            Text(Story, "Hadithi ya sungura", ["Sungura", "alikula", "chakula", "."],
+                ["watoto", "hawajafika", ",", "mwalimu"]),
+            Text(Letter, "Barua kwa mwalimu", ["walikula", "anapenda", "kitabu", "."]),
+        ], forms.Values.ToArray());
+        var fixture = new StoredSelectionFixture(projection, Token());
+        if (parse) fixture.RecordAssessment(new NewAssessmentRecord("assessment/one", null, null, "pangloss", AssessmentKinds.ParseTime,
+            "{}", "sha256:sample-scope", "whitespace", "1", JsonSerializer.Serialize(Token(), SIL.Motif.Contract.MotifJson.CreateOptions()),
+            Selection.Create("Sample", assessment.Words.Select(word => word.Word)), "sha256:sample-outcome", "sha256:sample-semantic",
+            "sha256:sample-grammar", "sample", "sample", 0, assessment.Words.Select(word => new AssessedWord(
+                word.Word, word.Outcome, [], word.ElapsedMs)
+            { Morphology = word.Morphology, IsIncomplete = word.IsIncomplete, ProjectStanding = word.ProjectStanding,
+                ReadingGrades = word.ReadingGrades, OccurrenceCount = word.OccurrenceCount,
+                AnalysisComparison = word.AnalysisComparison, MissedApproved = word.MissedApproved }).ToArray(),
+            SavedUtc: CaptureStartAt.ToString("O")));
+        return fixture;
+    }
+
     private static TextWordsResponse TextWords()
     {
         var assessment = Assessment();
@@ -985,8 +1108,10 @@ public sealed class PageScreenshots
         };
         return response with
         {
+            Measurements = [new ProducedAssessmentReference("assessment/one", AssessmentKinds.ParseTime, "assessment/one")],
             Words = response.Words.Select(word => word with
             {
+                Origin = new WordMeasurementOrigin("assessment/one", null, CaptureStartAt),
                 StoredAnalysesAvailable = true,
                 ReadingGrades = (word.Morphology?.Analyses ?? []).Select(reading =>
                     word.StoredAnalyses.FirstOrDefault(stored => stored.Identity is not null &&
@@ -1010,7 +1135,7 @@ public sealed class PageScreenshots
         File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-hawajafika.json"));
 
     private static BaselineToken Token() =>
-        new("project-1", "sha256:" + new string('a', 64), "1", "2026-09-22T10:00:00Z", "sha256:" + new string('b', 64));
+        new("11111111-1111-1111-1111-111111111111", "sha256:" + new string('a', 64), "1", "2026-09-22T10:00:00Z", "sha256:" + new string('b', 64));
 
     private static BaselineCaptureResponse Capture() =>
         new(Token(), ProjectPath, BaselineSaveAt, FieldWorksHeldProject: false, ReusedExistingBytes: true);

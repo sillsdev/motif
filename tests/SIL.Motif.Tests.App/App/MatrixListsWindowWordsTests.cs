@@ -355,10 +355,14 @@ public sealed partial class MatrixListsWindowWordsTests(AvaloniaHeadlessFixture 
             Assert.Contains(matrixButtons, button => Equals(button.Content, "Add as Unknown"));
 
             var lists = new TextsListsViewModel(compare);
-            var listButtons = Buttons(new TextsListsPanel(lists));
-            Assert.Single(listButtons, button => Equals(button.Content, lists.HandOffListLabel));
-            Assert.Single(listButtons, button => Equals(button.Content, WindowCopy.AiHandoff));
-            Assert.DoesNotContain(listButtons, button => button.CommandParameter is string);
+            WithWindow(new TextsListsPanel(lists), window =>
+            {
+                var listButtons = window.GetLogicalDescendants().OfType<Button>().ToArray();
+                Assert.Single(listButtons, button => Equals(button.Content, lists.HandOffListLabel));
+                Assert.Single(listButtons, button => Equals(button.Content, WindowCopy.AiHandoff));
+                Assert.DoesNotContain(listButtons, button => button.CommandParameter is string);
+                return true;
+            });
         });
     }
 
