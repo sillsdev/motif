@@ -104,7 +104,7 @@ public sealed class ReviewChangeActionsTests : IAsyncLifetime
         await page.ToggleContextCommand.ExecuteAsync(change);
         Assert.Empty(change.ContextTokens);
         Assert.Equal(0, reader.Diagnostics.LiveTokenModels);
-        Assert.Equal(0, reader.Diagnostics.LeasedResults - 1);
+        Assert.True(reader.Diagnostics.LeasedResults == 1, reader.Diagnostics.ToString());
     }
 
     private async Task<(WorkspaceContext Context, ReviewPageModel Page)> OpenReviewAsync(

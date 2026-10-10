@@ -152,7 +152,9 @@ public sealed class UnparsedLargeProjectScaleTests(ITestOutputHelper output)
                 ResultsInTextPanel.TokenOf(strip)?.Occurrence == finalPosition.Location.Anchor);
             var origin = strip.TranslatePoint(new Point(), reader);
             Assert.NotNull(origin);
-            Assert.True(new Rect(reader.Viewport).Intersects(new Rect(origin!.Value, strip.Bounds.Size)));
+            Assert.True(new Rect(reader.Viewport).Intersects(new Rect(origin!.Value, strip.Bounds.Size)),
+                $"the last strip at {origin.Value} size {strip.Bounds.Size} is outside the reader viewport " +
+                $"{reader.Viewport} at offset {reader.Offset} in extent {reader.Extent}");
         });
         measurements.AssertReadCounts("Unparsed: read and scroll 224-line Text", 1, 128, 1, 4096);
         Assert.Null(window.Workspace.Assess.Result);
