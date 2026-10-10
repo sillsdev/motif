@@ -118,7 +118,12 @@ internal static class AlternationDiscovery
                         // Uncompiled allomorphs are counted once and left out; they are not a reason to abstain.
                         if (left.Gate is null || right.Gate is null) continue;
                         // Allomorphs under different compiled gate signatures are never one family.
-                        if (left.Gate.Key != right.Gate.Key) continue;
+                        if (left.Gate.Key != right.Gate.Key)
+                        {
+                            abstentions["different-compiled-gates-pair"] =
+                                abstentions.GetValueOrDefault("different-compiled-gates-pair") + 1;
+                            continue;
+                        }
                         if (!TrySingleForm(left, writingSystem, out var leftForm) ||
                             !TrySingleForm(right, writingSystem, out var rightForm))
                         {
@@ -239,6 +244,9 @@ internal static class AlternationDiscovery
 
         if (!input.RuleInventoryKnown)
             limitations.Add("Existing loaded rule effects could not be fully determined from the available evidence.");
+        if (abstentions.TryGetValue("different-compiled-gates-pair", out var setAside))
+            limitations.Add($"{setAside} allomorph pairs were not compared because the parser selects their " +
+                "allomorphs under different conditions, such as a stem name.");
         if (uncompiledAllomorphs.Count > 0)
             limitations.Add($"{uncompiledAllomorphs.Count} allomorphs the parser does not load were left out.");
         var families = new List<AlternationFamilyFacts>();

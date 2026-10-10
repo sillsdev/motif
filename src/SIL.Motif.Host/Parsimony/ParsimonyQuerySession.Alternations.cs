@@ -120,13 +120,14 @@ public sealed partial class ParsimonyQuerySession
         return Array.AsReadOnly(entries.ToArray());
     }
 
-    // Absent when the compiler did not represent the allomorph; disagreeing compiled outputs are Conflicting.
+    // Absent when uncompiled; one compile per owning MSA, so only two signatures under one owner are Conflicting.
     private Dictionary<string, AlternationGateFacts?> ReadAllomorphGates()
     {
-        var signatures = new Dictionary<string, string?>(StringComparer.Ordinal);
+        // allomorph guid -> owner key -> signature, or null once one owner has two different signatures.
+        var signatures = new Dictionary<string, Dictionary<string, string?>>(StringComparer.Ordinal);
         using (var command = NewCommand())
         {
-            command.CommandText = "SELECT o.source_allomorph_guid, out.gate_signature " +
+            command.CommandText = "SELECT o.source_allomorph_guid, COALESCE(o.source_msa_guid, ''), out.gate_signature " +
                 "FROM facts.compiled_allomorph_order AS o " +
                 "JOIN facts.compiled_output AS out ON out.output_id=o.output_id " +
                 "WHERE out.kind='allomorph' AND o.source_allomorph_guid IS NOT NULL " +
@@ -135,19 +136,30 @@ public sealed partial class ParsimonyQuerySession
             while (reader.Read())
             {
                 var guid = reader.GetString(0);
-                var signature = reader.IsDBNull(1) ? null : reader.GetString(1);
-                signatures[guid] = !signatures.TryGetValue(guid, out var existing) ? signature
+                var owner = reader.GetString(1);
+                var signature = reader.IsDBNull(2) ? null : reader.GetString(2);
+                if (!signatures.TryGetValue(guid, out var owners)) signatures[guid] = owners = new(StringComparer.Ordinal);
+                owners[owner] = !owners.TryGetValue(owner, out var existing) ? signature
                     : existing == signature ? existing : null;
             }
         }
         var classes = ReadAppliedGateTargets("inflection_class");
         var features = ReadAppliedGateFeatureStructures();
         var result = new Dictionary<string, AlternationGateFacts?>(StringComparer.Ordinal);
-        foreach (var (guid, signature) in signatures)
-            result[guid] = signature is null
-                ? new AlternationGateFacts(string.Empty, string.Empty, Conflicting: true)
-                : DescribeAllomorphGate(signature, classes.GetValueOrDefault(guid) ?? [],
-                    features.GetValueOrDefault(guid) ?? []) ?? new AlternationGateFacts(string.Empty, string.Empty, true);
+        foreach (var (guid, owners) in signatures)
+        {
+            if (owners.Values.Any(signature => signature is null))
+            {
+                result[guid] = new AlternationGateFacts(string.Empty, string.Empty, Conflicting: true);
+                continue;
+            }
+            var profile = owners.Select(pair => $"{pair.Key}:{pair.Value}").Order(StringComparer.Ordinal).ToArray();
+            var described = DescribeAllomorphGate(owners.Values.Order(StringComparer.Ordinal).First()!,
+                classes.GetValueOrDefault(guid) ?? [], features.GetValueOrDefault(guid) ?? []);
+            result[guid] = described is null
+                ? new AlternationGateFacts(string.Empty, string.Empty, true)
+                : described with { Key = owners.Values.Distinct().Count() == 1 ? described.Key : string.Join("|", profile) };
+        }
         return result;
     }
 

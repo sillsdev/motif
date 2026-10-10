@@ -32,12 +32,13 @@ public static class MeasureEvidence
         return Convert.ToHexStringLower(SHA256.HashData(CanonicalJson.CanonicalizeToUtf8(preimage.ToJsonString())));
     }
 
+    internal static readonly IReadOnlyList<string> ScopedViews =
+        ["approved-morph-sequences", "environment-excess", "natural-class-excess"];
+
     internal static string Compute(MeasureDefinition measure, ParsimonyQuerySession session, string evidence)
     {
         var inputs = session.Inputs;
-        var scoped = measure.Tier != ParsimonyTier.Static || measure.EvidenceViews.Any(view =>
-            view is "approved-morph-sequences" or "environment-excess" or "natural-class-excess" or
-                "template-precedence" or "slot-blocking" or "adhoc-slot-order");
+        var scoped = measure.Tier != ParsimonyTier.Static || measure.EvidenceViews.Any(ScopedViews.Contains);
         return Compute(measure, evidence, inputs.GrammarFacts.SchemaVersion,
             inputs.Evidence.SchemaVersion, scoped ? inputs.EvidenceScope.ToString() : null,
             scoped && inputs.EvidenceScope == ParsimonyEvidenceScopeKind.DefaultSelection ? inputs.SelectionSha256 : null,

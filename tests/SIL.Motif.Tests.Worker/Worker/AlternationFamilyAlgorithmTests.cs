@@ -386,6 +386,28 @@ public sealed class AlternationFamilyAlgorithmTests
         Assert.Empty(result.Families);
     }
 
+    [Fact]
+    public void PairsUnderDifferentCompiledGatesAreCountedAndSaidSoWithoutBeingInconclusive()
+    {
+        var entries = new[]
+        {
+            new AlternationEntryFacts("entry-one", "entry-one", ["shared-gate"],
+            [
+                GatedAllomorph("entry-one-n", "n", NoGate),
+                GatedAllomorph("entry-one-m", "m", new AlternationGateFacts("stem=x", "stem x")),
+            ]),
+            IdentityEntry("entry-two", "shared-gate"),
+        };
+
+        var result = AlternationDiscovery.Analyze(new AlternationInput(0, IdentityPhonemes(), entries, [], true));
+
+        Assert.Equal(1, result.AbstentionsByReason["different-compiled-gates-pair"]);
+        Assert.False(result.Inconclusive);
+        Assert.Contains(result.Limitations, limitation => limitation ==
+            "1 allomorph pairs were not compared because the parser selects their allomorphs under different " +
+            "conditions, such as a stem name.");
+    }
+
     private static AlternationAllomorphFacts GatedAllomorph(string guid, string form, AlternationGateFacts? gate) =>
         new(guid, "prefix", new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)
         {

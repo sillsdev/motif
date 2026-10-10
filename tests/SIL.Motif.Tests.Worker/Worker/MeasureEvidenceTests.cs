@@ -7,6 +7,13 @@ namespace SIL.Motif.Tests.Worker;
 public sealed class MeasureEvidenceTests
 {
     [Fact]
+    public void EveryScopedViewNamesARealCatalogView()
+    {
+        Assert.NotEmpty(MeasureEvidence.ScopedViews);
+        Assert.All(MeasureEvidence.ScopedViews, view => Assert.NotNull(ParsimonyViewCatalog.Find(view)));
+    }
+
+    [Fact]
     public void CanonicalEvidenceAndCapabilityOrderDoNotChangeTheDigest()
     {
         var measure = MeasureCatalog.Find("P-statement-unused")!;

@@ -3499,6 +3499,50 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
             finding.AttachesTo.Identity.Contains(AlternationAllomorphC2, StringComparison.Ordinal));
     }
 
+    private static void AddSecondCompiledOutput(string factsPath, string allomorph, string owner, string msa,
+        string signature, int order) =>
+        UpdateGrammarFacts(factsPath,
+            CompiledOutputSql.EnsureOwner + CompiledOutputSql.EnsureAllomorphOutputWithSignature +
+            CompiledOutputSql.OrderRow,
+            ("$owner", owner), ("$bucket", "Morphology"), ("$output", "second-out-" + allomorph + "-" + owner),
+            ("$order", order), ("$phone", 0), ("$gate", 0), ("$signature", signature),
+            ("$entry", AlternationEntryB), ("$msa", msa), ("$sourceKey", allomorph), ("$allomorph", allomorph));
+
+    [Fact]
+    public async Task SiblingsCompiledUnderTwoMsasWithDifferentGatesAreNotConflicting()
+    {
+        await PublishBaselineAsync(_pristine);
+        var (bundleId, bundle) = await RunScopedMeasureJobAsync("P-allo-alternation-family",
+            new ParsimonyScopeBinding(ParsimonyEvidenceScopeKind.ProjectApproved, null), "two-msa-gate-worker");
+        AddNamedMeasureFacts(bundle.GrammarFactsPath);
+        AddAlternationFamilyGrammarFacts(bundle.GrammarFactsPath);
+        foreach (var allomorph in new[] { "80000000-0000-0000-0000-000000000001", "80000000-0000-0000-0000-000000000002" })
+            AddSecondCompiledOutput(bundle.GrammarFactsPath, allomorph, "second-owner",
+                "70000000-0000-0000-0000-000000000004", "mpr=;xmpr=6,7,8;fs=[];stem=", 10);
+        using var session = OpenAlternationSession(bundleId, bundle);
+
+        var result = session.ReadAlternationFamilies();
+
+        Assert.False(result.AbstentionsByReason.ContainsKey("conflicting-compiled-gates-pair"));
+    }
+
+    [Fact]
+    public async Task OneAllomorphWithTwoGatesUnderOneMsaIsConflicting()
+    {
+        await PublishBaselineAsync(_pristine);
+        var (bundleId, bundle) = await RunScopedMeasureJobAsync("P-allo-alternation-family",
+            new ParsimonyScopeBinding(ParsimonyEvidenceScopeKind.ProjectApproved, null), "one-msa-gate-worker");
+        AddNamedMeasureFacts(bundle.GrammarFactsPath);
+        AddAlternationFamilyGrammarFacts(bundle.GrammarFactsPath);
+        AddSecondCompiledOutput(bundle.GrammarFactsPath, "80000000-0000-0000-0000-000000000001", "second-owner",
+            AlternationMsaB, "mpr=;xmpr=6,7,8;fs=[];stem=", 10);
+        using var session = OpenAlternationSession(bundleId, bundle);
+
+        var result = session.ReadAlternationFamilies();
+
+        Assert.True(result.AbstentionsByReason.GetValueOrDefault("conflicting-compiled-gates-pair") > 0);
+    }
+
     [Fact]
     public async Task ADerivationalAllomorphGateAddsItsOwnNoEffectSentence()
     {
