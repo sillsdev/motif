@@ -4,7 +4,7 @@
 
 ## When to use it
 
-Use this after a command returns a job id, or when a job appears in the queue. A job can represent a Baseline Refresh, Dry Run, Trial, or Apply; its status shows where that work is in its lifecycle.
+Use this after a command returns a job id, or when a job appears in the queue. A job can represent a Baseline Refresh, Dry Run, Trial, or Parsimony measurement; its status shows where that work is in its lifecycle.
 
 ## Example
 

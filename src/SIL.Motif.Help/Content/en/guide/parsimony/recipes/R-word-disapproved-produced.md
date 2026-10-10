@@ -8,7 +8,7 @@ This measure reads a saved parser run bound to the exact Baseline or proposed so
 
 Compare the ordered Form, MSA, and inflection-type identities under ADR 0027. The finding says that PanGloss produced the same morphology as a Disapproved analysis; it does not declare the whole word impossible. Approved and Unknown readings stay separate.
 
-Inspect its retained parser case with [parser cases](cmd:parsimony%20view) and the finding's exact case key. Incomplete searches and surfaces that cannot be joined to one writing-system wordform do not count as completed evidence.
+Inspect its retained parser case with `parsimony view` (parser cases) and the finding's exact case key. Incomplete searches and surfaces that cannot be joined to one writing-system wordform do not count as completed evidence.
 
 ## Disposition
 

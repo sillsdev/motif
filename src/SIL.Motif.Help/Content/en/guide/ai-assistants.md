@@ -2,11 +2,11 @@
 
 Advanced AI mode lets selected assistants use Motif's project tools. The assistant still cannot Apply a Proposal; a person reviews and Applies it in Motif.
 
-Open **AI assistants** in the window and turn on Advanced AI mode. Motif lists the supported assistants it finds. Check the ones to connect, then choose **Connect selected assistants**.
+Open **AI assistants** in the window and turn on Advanced AI mode. Motif lists the supported assistants it finds (Claude Desktop, Claude Code and Codex); if it finds none, the page says so. Check the ones to connect, then choose **Connect selected assistants**.
 
 Changing Advanced AI mode affects new Motif sessions. Restart an assistant session to apply the setting to a session that is already open.
 
-For Claude Desktop, Motif adds `motif mcp` to Claude's MCP configuration. Open the Motif plugin folder, upload `motif-plugin.zip` in **Customize → Plugins**, and restart Claude Desktop. Upload the latest ZIP again after a Motif update to refresh the skills saved to your Claude account.
+For Claude Desktop, Motif adds `motif mcp` to Claude's MCP configuration. Choose **Open plugin folder**, then **Open Claude Plugins**, upload `motif-plugin.zip` in **Customize → Plugins**, and restart Claude Desktop. Upload the latest ZIP again after a Motif update to refresh the skills saved to your Claude account.
 
 For Claude Code and Codex, Motif installs the plugin from its local marketplace with the assistant's CLI. Start a new assistant session so it loads the plugin and its tools.
 

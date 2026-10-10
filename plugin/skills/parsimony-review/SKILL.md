@@ -37,8 +37,8 @@ evidence, its limits, and the linguist's decision connected throughout the revie
 - **Defer:** use when attribution, identity, or an update capability is missing, or when a parser case
   stays incomplete after a rerun. Name the missing evidence or action and do not invent a substitute.
 
-An incomplete parser case is missing evidence, not a decision. First rerun the same words with a longer
-per-word time limit; defer only if a case is still incomplete.
+An incomplete parser case is missing evidence, not a decision. First rerun the same words with `motif_assess` and a longer
+`perWordLimitMs`; defer only if a case is still incomplete.
 
 Stage a decision with `motif_dispose_parsimony_finding` or the typed
 `motif_record_parsimony_disposition` tool. `ask` requires a question. Run `motif_dry_run` on the Draft

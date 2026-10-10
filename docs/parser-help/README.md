@@ -17,19 +17,19 @@ dragged along.
 
 ## What the four subdirectories cover
 
-- **[`broken/`](broken/README.md)** — "why is this wrong, missing, or crashing?" Sixteen files:
+- **[`broken/`](broken/README.md)** — "why is this wrong, missing, or crashing?" Fifteen files:
   wrong parses, missing parses, crashes, and silent misconfigurations, each citing the specific
   `machine` (and, where the trap is in how FieldWorks compiles a grammar into HermitCrab's XML,
   `FieldWorks`) source that produces the behavior.
 - **[`speed/`](speed/README.md)** — "why is this slow?" Ten files on performance: combinatorial
   blowups and other parse-time costs, each with the asymptotic shape and the source it's grounded
   in.
-- **[`workflow/`](workflow/README.md)** — "how should I approach modeling this?" Eight files of
+- **[`workflow/`](workflow/README.md)** — "how should I approach modeling this?" Six files of
   authoring guidance for building a grammar well in the first place, grounded in HermitCrab's
   actual mechanics and in H. Andrew Black's FLEx parsing methodology; `workflow/sources/` carries
   Black's original text verbatim for anyone who wants it directly, rather than through this
   reference's own summaries.
-- **[`texts/`](texts/README.md)** — "I also have real corpus texts, not just a grammar." Five
+- **[`texts/`](texts/README.md)** — "I also have real corpus texts, not just a grammar." Four
   files on FLExText: what it is, how to extract it, and how to get an LLM to reason over it
   correctly — including the `analysisStatus` ground-truth caveat and which AI products can
   actually run code against an uploaded file.

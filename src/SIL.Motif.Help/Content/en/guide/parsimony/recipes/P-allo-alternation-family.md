@@ -20,7 +20,7 @@ Ask whether the change extends to held-out contexts and how the replacement maps
 
 ## Update
 
-For a confirmed, supported phonological route, use `ReplaceListedAllomorphsWithRule` to create the bounded rule and explicitly map and retarget referenced allomorphs before retiring redundant shapes, together, as changes not applied yet.
+For a confirmed, supported phonological route, use `RetireAllomorph` with its `motif-allomorph-retirement` intent to create the bounded rule, explicitly map and retarget referenced allomorphs, and retire the redundant shapes, together, as changes not applied yet. `AuthorPhonologicalRule` authors a rule on its own.
 
 ## Verify
 

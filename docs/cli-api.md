@@ -16,6 +16,8 @@ motif help --all --json
 
 The shared user-facing Guides, including agent Guides, are authored under [`src/SIL.Motif.Help/Content/en/guide/`](../src/SIL.Motif.Help/Content/en/guide/). For current agent guidance, see [Start here](../src/SIL.Motif.Help/Content/en/guide/agents/start-here.md), [Output and exit codes](../src/SIL.Motif.Help/Content/en/guide/agents/output-and-exit-codes.md), and [Work with jobs](../src/SIL.Motif.Help/Content/en/guide/agents/work-with-jobs.md). Command and glossary Help is authored under `src/SIL.Motif.Help/Content/en/` and embedded by `SIL.Motif.Help` with logical resource names beginning `help/`.
 
+Two entry points are not catalogued commands. `motif mcp [--profile <file | shipped name>] [--activity-log <file.jsonl>]` serves the tools to an AI assistant over standard input and output. `motif settings advanced-ai on|off` turns Advanced AI mode on or off; commands on the Advanced AI surface are refused, with that instruction, while it is off. Developer commands appear only with `MOTIF_DEVELOPER_COMMANDS=1`.
+
 ## Process and data boundary
 
 Scripts and external integrations call the `motif` executable and read its JSON responses. Those response shapes are defined in `SIL.Motif.Contract`, which has no LibLCM reference; the repository targets `net10.0` only. Non-.NET integrations can read the JSON contract without loading a Motif assembly. The current response types are in [`SIL.Motif.Contract.Responses`](../src/SIL.Motif.Contract/Responses/), and the shared failure envelope and exit-code mapping are defined by [`FailureEnvelope`](../src/SIL.Motif.Contract/Responses/FailureEnvelope.cs).

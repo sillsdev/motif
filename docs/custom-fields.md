@@ -25,19 +25,23 @@ IDs, or project-specific lexical classifications.
 
 ### Frequent: editing values
 
-Change Sets set or clear typed scalar/text alternatives, attach/detach references, or edit
+Proposals set or clear typed scalar/text alternatives, attach/detach references, or edit
 collections and sequences. Every operation validates the live definition, applicable owner class,
 destination type, cardinality, and writing system.
 
 ### Occasional: feature/schema installation
 
-An application or project installs a required field during setup, import, or the first Change Set
+An application or project installs a required field during setup, import, or the first Proposal
 that uses it. Definition should have ensure semantics:
 
 - absent: create;
 - present and structurally compatible: reuse and report no-op/metadata differences;
 - same class/name with incompatible structure: conflict;
 - similar label or content: never infer a match.
+
+Motif's own reserved `MotifHumanJudgment` String field on `RnGenericRec` is the one definition Motif
+installs for itself, and only through the confirmed `project initialize` command
+([ADR 0056](adr/0056-human-judgments-belong-to-the-fieldworks-project.md)).
 
 ### Rare: metadata update or destructive migration
 
@@ -177,7 +181,7 @@ Final names follow the contract-wide naming review, but semantic families includ
 - owned entity create/delete/placement through the ordinary entity vocabulary.
 
 A field definition must exist before the first value operation executes. It may be defined earlier
-in the same Change Set. Later operations reference it by class/name, not by its newly allocated
+in the same Proposal. Later operations reference it by class/name, not by its newly allocated
 `flid`.
 
 ## Mechanical diff

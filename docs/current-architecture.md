@@ -15,12 +15,15 @@ These arrows show direct `<ProjectReference>` edges in the current project files
 ```text
 SIL.Motif.App -> SIL.Motif.Commands, SIL.Motif.Contract, SIL.Motif.Help
 SIL.Motif.Cli -> SIL.Motif.Commands, SIL.Motif.Host, SIL.Motif.Runner, SIL.Motif.Worker.Runtime,
-                 SIL.Motif.Contract, SIL.Motif.Model, SIL.Motif.Projection, SIL.Motif.Help
+                 SIL.Motif.Contract, SIL.Motif.Model, SIL.Motif.Projection, SIL.Motif.Help,
+                 SIL.Motif.Mcp
 SIL.Motif.Commands -> SIL.Motif.Contract, SIL.Motif.Host, SIL.Motif.Model,
                       SIL.Motif.Projection, SIL.Motif.Runner, SIL.Motif.LiveHost,
-                      SIL.Motif.Worker.Runtime
-SIL.Motif.Host -> SIL.Motif.Projection, SIL.Motif.Runner
-SIL.Motif.LiveHost -> SIL.Motif.Contract, SIL.Motif.Model, SIL.Motif.Runner
+                      SIL.Motif.Help, SIL.Motif.Worker.Runtime
+SIL.Motif.Host -> SIL.Motif.Help, SIL.Motif.Projection, SIL.Motif.Runner
+SIL.Motif.LiveHost -> SIL.Motif.Contract, SIL.Motif.Model, SIL.Motif.Projection, SIL.Motif.Runner
+SIL.Motif.Mcp -> SIL.Motif.Commands, SIL.Motif.Contract, SIL.Motif.Host, SIL.Motif.Help,
+                 SIL.Motif.Runner, SIL.Motif.Worker.Runtime
 SIL.Motif.Model -> SIL.Motif.Contract
 SIL.Motif.Projection -> SIL.Motif.Contract, SIL.Motif.Model, SIL.Motif.Runner
 SIL.Motif.Runner -> SIL.Motif.Contract, SIL.Motif.Model
@@ -38,6 +41,10 @@ Reusable job, store, and project-runtime code lives in `SIL.Motif.Worker.Runtime
 Only the CLI test project adds a build-only project reference to `SIL.Motif.Worker`, with
 `ReferenceOutputAssembly="false"` and `Private="false"`. This makes the apphost available to
 sibling-process tests without adding the executable to the product CLI's references.
+
+## AI assistants
+
+`motif mcp` serves Motif to an AI assistant over standard input and output. The server lives in `SIL.Motif.Mcp`, which the CLI references; it is a server rather than a catalogued command, so it has no JSON result of its own. It builds its tools from the shared command catalog: a command becomes a tool when its surface is Released or Advanced AI and its agent class is not HumanOnly, so Apply and other human-only commands are never tools. A launch `--profile` selects which tools are shown, and every diagnostic goes to standard error. Every project-reading tool takes a `project` argument naming a Known project; the server holds no current project. Commands on the `AdvancedAi` surface are catalogued, shown and dispatched only while Advanced AI mode is on, which `motif settings advanced-ai on|off` or the window's setting changes; the server reads that preference at launch and, while the mode is off, starts with no tools. [ADR 0058](adr/0058-the-agent-edit-loop.md) defines the edit loop an assistant follows: it can Dry Run and Trial a Draft before finalizing it, and every result names the content and Baseline it ran against.
 
 ## Reading stored evidence
 
@@ -65,11 +72,11 @@ A Report keeps an explanation beside the frozen measurements and project facts t
 
 `IReportProducer` accepts a closed `ReportInput`: a stored Assessment, or a validated frozen Parsimony bundle with zero or more explicitly named Assessment references. Existing coverage, correctness, and difference producers still require their existing Assessment material and name the missing capability on refusal. `ReportResponse.AssessmentId` is nullable for Report kinds that have no Assessment link.
 
-Parsimony input bindings identify the Baseline token, source kind, candidate when present, grammar model, derived-file schema and byte digests, optional Selection and expectation revision, and referenced Assessments. `grammar-facts.sqlite` and `evidence.sqlite` are disposable files; Report renderings and their bindings stay in the Motif store. Reviewed negatives and Parsimony dispositions belong to the FieldWorks project as one Data Notebook `RnGenericRec` per judgment revision. The reserved `RnGenericRec.MotifHumanJudgment` String holds a readable sentence, optional quoted reason and strict versioned marker. [ADR 0056](adr/0056-human-judgments-belong-to-the-fieldworks-project.md) and the [Human judgment contract](human-judgment-contract.md) define that boundary. Contract types and the pure value codec are implemented; project initialization, LibLCM readers/writers and Suppressed queries are subsequent slices.
+Parsimony input bindings identify the Baseline token, source kind, candidate when present, grammar model, derived-file schema and byte digests, optional Selection and expectation revision, and referenced Assessments. `grammar-facts.sqlite` and `evidence.sqlite` are disposable files; Report renderings and their bindings stay in the Motif store. Reviewed negatives and Parsimony dispositions belong to the FieldWorks project as one Data Notebook `RnGenericRec` per judgment revision. The reserved `RnGenericRec.MotifHumanJudgment` String holds a readable sentence, optional quoted reason and strict versioned marker. [ADR 0056](adr/0056-human-judgments-belong-to-the-fieldworks-project.md) and the [Human judgment contract](human-judgment-contract.md) define that boundary. 
 
-Project initialization is designed as a separate confirmed, HumanOnly command in the shared catalog, with the same original-project ownership requirement as Apply. It creates the definition only; it is never implicit in opening, authoring or Apply. Its pinned XML-backend recovery proof is a prerequisite for judgment reads/writes. Ordinary judgment Intents stage Draft changes and use existing Dry Run, Preflight and Apply. The Runner receives the loaded cache; LiveHost owns lock, save and recovery. Derived projections bind native Opinions and Notebook revisions to the exact Baseline or candidate scratch. A meaningful judgment edit changes the human-input digest independently of parser grammar fingerprints. A Suppressed set is derived from those captured revisions and exact finding evidence, not a canonical SQLite table. Pending choices and invalid/conflicting heads cannot suppress current findings.
+Project initialization is a separate confirmed, HumanOnly command, `project initialize`, in the shared catalog, with the same original-project ownership requirement as Apply. It creates the definition only; it is never implicit in opening, authoring or Apply. Its pinned XML-backend recovery proof is a prerequisite for judgment reads/writes. Ordinary judgment Intents stage Draft changes and use existing Dry Run, Preflight and Apply. The Runner receives the loaded cache; LiveHost owns lock, save and recovery. Derived projections bind native Opinions and Notebook revisions to the exact Baseline or candidate scratch. A meaningful judgment edit changes the human-input digest independently of parser grammar fingerprints. A Suppressed set is derived from those captured revisions and exact finding evidence, not a canonical SQLite table. Pending choices and invalid/conflicting heads cannot suppress current findings.
 
-The `ReportCommands` catalog continues to register each producer once. The current generic CLI `report` path still accepts an Assessment ID; the Parsimony artifact builder and evidence-bundle command are separate implementation work. A Parsimony Report is always advisory and does not affect Readiness or Apply. Other Report kinds retain their configured regression behavior.
+The `ReportCommands` catalog registers each producer once. The generic `report` command still accepts an Assessment ID; Parsimony Reports are built by the Advanced AI `parsimony` commands, which run as Worker jobs, capture the grammar facts and evidence files, and record dispositions with `parsimony dispose`, `parsimony revise` and `parsimony retract`. A Parsimony Report is always advisory and does not affect Readiness or Apply. Other Report kinds retain their configured regression behavior.
 
 ## Live FieldWorks navigation
 

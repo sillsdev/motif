@@ -16,7 +16,7 @@ Examples:
 - treating equivalent LibLCM-normalized text as equal;
 - recognizing an already-realized creation only when identity and complete expected structure
   agree;
-- the whole-project baseline digest moved but the Change Set's comparison footprint and effects are
+- the whole-project baseline digest moved but the Proposal's comparison footprint and effects are
   unchanged — the normal state of a project under ongoing manual editing.
 
 ### Warning / application-policy decision
@@ -26,7 +26,7 @@ reports it; the application/user decides whether to apply, rebase, or reject.
 
 Examples:
 
-- before-state differs from a prior Assessment but unconditional `set` remains well-defined;
+- before-state differs from a prior Dry Run but unconditional `set` remains well-defined;
 - a same-type GUID already exists and values would be overwritten/reused;
 - delete cascade changed;
 - display-only custom-field metadata differs;
@@ -59,10 +59,10 @@ Examples:
 - invalid 22-character ID suffix;
 - forbidden unknown semantic property;
 - dependency/order violation;
-- a referenced target is neither present in the baseline nor created earlier in the same Change Set;
-- a declared prerequisite Change Set is absent from the applied history, or the prerequisite graph
+- a referenced target is neither present in the baseline nor created earlier in the same Proposal;
+- a declared prerequisite Proposal is absent from the applied history, or the prerequisite graph
   contains a cycle;
-- apply is invoked with no bound prior Assessment;
+- apply is invoked with no bound prior Dry Run;
 - unsupported model member;
 - broken LibLCM invariant;
 - rollback failure.
@@ -78,24 +78,24 @@ Normative rule:
 
 Two operations must not be conflated:
 
-- **Reassessment** evaluates unchanged intent against a new baseline, a new runner or projection
-  version, or both, and produces a new Assessment. The intent digest cannot change.
-- **Rebase** may produce an amended Change Set when a unique mechanical anchor rewrite is needed.
-  It returns an explicit old-intent-to-new-intent record and the amended Change Set has a new intent
-  digest but keeps its frozen `changeSetId`, so references to it never break.
+- **Re-evaluation** evaluates unchanged intent against a new baseline, a new runner or projection
+  version, or both, and produces a new Dry Run. The intent digest cannot change.
+- **Rebase** may produce an amended Proposal when a unique mechanical anchor rewrite is needed.
+  It returns an explicit old-intent-to-new-intent record and the amended Proposal has a new intent
+  digest but keeps its frozen `proposalId`, so references to it never break.
 
-Reassessment may update:
+Re-evaluation may update:
 
-- baseline semantic digest association in a new Assessment;
-- before-state evidence in a newly produced Assessment;
-- assessed delete/reference effects;
+- baseline semantic digest association in a new Dry Run;
+- before-state evidence in a newly produced Dry Run;
+- evaluated delete/reference effects;
 - resolved execution anchors in the output-only mutation plan when authored anchors still identify
   one unique intended gap;
 - diagnostics and impact calculations.
 
 Rebase may rewrite an authored identity-relative placement anchor only when exactly one new anchor
 pair preserves the same relative ordering intent. This is never silent and always produces new
-intent. Reassessment or rebase may not update:
+intent. Re-evaluation or rebase may not update:
 
 - operation target;
 - operation kind/verb;
@@ -105,9 +105,9 @@ intent. Reassessment or rebase may not update:
 - operation order;
 - ambiguous reference choice.
 
-The Change Set intent digest remains unchanged after reassessment because runner evidence is not
-embedded in intent. Any actual Change Set amendment, including an authored-anchor rewrite,
-produces a new intent digest while preserving the frozen `changeSetId`
+The Proposal intent digest remains unchanged after re-evaluation because runner evidence is not
+embedded in intent. Any actual Proposal amendment, including an authored-anchor rewrite,
+produces a new intent digest while preserving the frozen `proposalId`
 (see [identity](change-set-contract.md#change-set-identity-vs-content-digest)).
 
 ### Removing a stored analysis
@@ -143,7 +143,7 @@ merge-queue or approval policy.
 ## Review equivalence
 
 A reviewer asks one question — *these actions will happen, this is the resulting state delta; is that
-what I intended?* — and the answer does not depend on why the assessment moved. A changed baseline and
+what I intended?* — and the answer does not depend on why the evaluation moved. A changed baseline and
 a changed engine produce the same review. Cause is recorded as an attribute of the diagnostic, never
 as a separate category, artifact, or workflow.
 
@@ -151,7 +151,7 @@ Ordered actions and the state delta are both presented. Execution order governs 
 for comprehension. Where order carries meaning it is already visible in the state delta, because
 ordered model properties are sequences and a position change is a state change.
 
-Effect-set equality is therefore the unit a reviewing application needs. When a reassessment produces
+Effect-set equality is therefore the unit a reviewing application needs. When a re-evaluation produces
 an effect set identical to one already reviewed, nothing has changed for the reviewer, whatever moved
 underneath. When it differs, the delta is the review. This repository supplies the comparison and the
 stable effect digests that make it checkable. Whether a prior approval carries is application policy
@@ -161,7 +161,7 @@ and remains host-owned.
 
 A reviewer's practical question is *what does Motif actually check to decide something changed?* It
 does not diff the whole project — under normal use the project changes constantly for reasons no
-Change Set caused. It checks each Change Set's **comparison footprint**: the facts its meaning depends
+Proposal caused. It checks each Proposal's **comparison footprint**: the facts its meaning depends
 on, and nothing else. In plain terms:
 
 - **For unordered data** (most of the lexicon), the question is *did the thing I am editing change?* —
@@ -174,7 +174,7 @@ on, and nothing else. In plain terms:
 
 A membership change to the object itself is always shown — a lexeme joining a new template or class is
 a change to that lexeme. The template's or class's own internal churn is not shown, unless placing the
-lexeme there is what the Change Set is doing. The normative definition and the migratable
+lexeme there is what the Proposal is doing. The normative definition and the migratable
 per-property classification live in the
 [comparison footprint](change-set-contract.md#comparison-footprint). Effect comparison remains the
 final word; the footprint is what makes the cheap "still clean?" check possible.
@@ -187,7 +187,7 @@ Diagnostics require:
 - category/disposition;
 - operation and target IDs;
 - baseline, expected, and observed facts;
-- what moved since the compared Assessment — baseline, runner or projection version, or both —
+- what moved since the compared Dry Run — baseline, runner or projection version, or both —
   recorded as an attribute rather than as the diagnostic's category;
 - candidate resolutions when deterministic mechanisms exist;
 - effect/cascade differences;

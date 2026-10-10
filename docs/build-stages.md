@@ -1,5 +1,10 @@
 # Build stages
 
+This page records the order the first end-to-end slice was built in and the scope boundaries chosen then.
+It does not describe the current product: Motif now has a window, a Worker, a SQLite store, an MCP server
+and a single `net10.0` target. For the current structure read [current architecture](current-architecture.md),
+and for the current command surface read [CLI and command API](cli-api.md).
+
 The core is built as a **walking skeleton** — the thinnest end-to-end slice first, then thicken.
 Sonnet subagents do the implementation; each stage is reviewed, verified (build + tests run), and
 committed before the next begins.

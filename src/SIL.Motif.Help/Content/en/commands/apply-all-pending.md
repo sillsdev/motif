@@ -11,13 +11,13 @@ A Proposal made only of the bounded Notebook judgment writes can be ready withou
 ## Example
 
 ```text
-motif apply --all-pending --project <project> --json
+motif apply --all-pending --project <project> [--revision <r>] [--user <name>] [--json]
 ```
 
 ## What it prints
 
-The JSON response reports whether Motif applied changes and includes the Readiness decision. Reload after `applied: true`. If the response contains `apply.reconciliation-needed`, reload and inspect the project because a write may have happened. A no-op does not need a reload, and an uncertain change stays pending for review.
+The JSON response has `ok`, `applied`, `summary` and, when changes were applied, a `receipt` that carries the Readiness decision. Reload after `applied: true`. If the response contains `apply.reconciliation-needed`, reload and inspect the project because a write may have happened. A no-op does not need a reload, and an uncertain change stays pending for review.
 
 ## Related commands
 
-See the [Overview](cmd:overview) for the command flow.
+- [Read the project Overview](cmd:overview) reads stored evidence after you reload the project.

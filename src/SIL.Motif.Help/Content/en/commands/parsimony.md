@@ -1,6 +1,6 @@
 # Review grammar parsimony
 
-`parsimony` queues an advisory review of the project's current Baseline. Select a registered check with `--measure`; each Report records the measure's findings and full eligibility counts. Pass a completed Dry Run job id with `--dry-run` to compare the same measure before and after an exact Proposal on a private project copy.
+`parsimony` queues an advisory review of the project's current Baseline. Select a registered check with `--measure` (it defaults to `P-adhoc-duplicate`); each Report records the measure's findings and full eligibility counts. Pass a completed Dry Run job id with `--dry-run` to compare the same measure before and after an exact Proposal on a private project copy.
 
 ## When to use it
 
@@ -20,7 +20,7 @@ motif parsimony --project "C:\FieldWorks\Projects\Koro\Koro.fwdata" --dry-run <j
 
 The candidate Report records the same frozen Baseline source, Proposal revision, prerequisite revisions, and published Dry Run effects. Motif rebuilds the before and after evidence from their own project states and saves only the private candidate copy. A Dry Run without the required frozen evidence is refused with instructions to rerun it.
 
-The default evidence scope is the project's saved Default Selection. Add `--evidence-scope project-approved` to use every wordform with an Approved or Disapproved analysis; typed words in a Default Selection keep no FieldWorks identity. Omit `--wait` to receive the queued job id, or use `--wait-timeout-ms` to set the wait bound.
+For a Baseline Report the default evidence scope is the project's saved Default Selection; add `--evidence-scope project-approved` to use every wordform with an Approved or Disapproved analysis. With `--dry-run` the default is `project-approved`, and `--evidence-scope default-selection` needs the Dry Run's own Baseline to be current. Typed words in a Default Selection keep no FieldWorks identity. Omit `--wait` to receive the queued job id, or use `--wait-timeout-ms` to set the wait bound.
 
 Parser-tier measures use only ParseTime Assessments you name with `--assessment <id>`. Repeat the flag to supply more than one. Each Assessment must name the exact source and PanGloss executable used for the Report. Without an Assessment, a parser-tier measure reports `not-run`; a missing morphology sidecar reports `not-available`. A capped, timed-out, invalid, or unattributable case cannot establish a completed result.
 

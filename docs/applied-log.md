@@ -1,11 +1,11 @@
 # Applied-change log
 
-A deliberately thin, append-only record written into the project itself, recording which Change Sets
-Motif applied. It answers three questions: *did Motif already apply this Change Set, who applied
+A deliberately thin, append-only record written into the project itself, recording which Proposals
+Motif applied. It answers three questions: *did Motif already apply this Proposal, who applied
 it, and when.*
 
-It is not the record of the change. Change Sets, Assessments, and Receipts live outside this
-repository and may be discarded without loss of this record.
+It is not the record of the change. Proposals, Assessments, and Receipts live in Motif's store and may be
+discarded without loss of this record.
 
 ## Where it lives
 
@@ -13,25 +13,21 @@ repository and may be discarded without loss of this record.
 uses for named one-time markers such as `TeStyles` and `FlexStyles`. `CmResource` has exactly two
 properties, and both are used:
 
-- `Version` (`Guid`) holds the stable `changeSetId`. **This is the field used for identity matching.**
+- `Version` (`Guid`) holds the stable `proposalId`. **This is the field used for identity matching.**
 - `Name` (`Unicode`) holds a packed, single-line provenance string.
 
 ## Record format
 
 ```
-Version = <changeSetId>
+Version = <proposalId>
 Name    = Motif|<format>|<timestamp>|<user>|<intentDigest>|<description>
 ```
 
 Every field before the description is fixed-width or constrained, so the description is a free tail
 and **no escaping is needed**: parse by splitting on the first five `|` and taking the remainder.
 
-> **The prefix changed on 2026-07-30**, from `LCAtom` to `Motif`, with the product rename
-> (grill-decisions D7). This is a **format-breaking change to persisted data**: an entry written by the
-> older code is not recognized by the current parser and is treated as a foreign `CmResource` — that is,
-> ignored, never rewritten. It was taken now, and without a `<format>` bump, because nothing has shipped
-> and no project in the field carries an `LCAtom`-prefixed entry. If one is ever found, it is a
-> migration, not a parse bug.
+An entry whose `Name` does not start with `Motif|` is not recognized by the parser and is treated as a
+foreign `CmResource`: ignored, never rewritten.
 
 | Field | Rule |
 | --- | --- |
@@ -39,7 +35,7 @@ and **no escaping is needed**: parse by splitting on the first five `|` and taki
 | `<format>` | decimal format version, currently `1` |
 | `<timestamp>` | UTC ISO 8601 basic, fixed 16 characters, e.g. `20260724T055701Z` |
 | `<user>` | applier identity, at most 64 characters, may be empty, must not contain `\|` or control characters |
-| `<intentDigest>` | the Change Set's intent digest recorded at apply, fixed-length lowercase hex, no `\|` |
+| `<intentDigest>` | the Proposal's intent digest recorded at apply, fixed-length lowercase hex, no `\|` |
 | `<description>` | free single-line text, at most 128 characters, may contain `\|` |
 
 No length limit is declared on `Unicode` model properties in `MasterLCModel.xml`, and the 100-character
@@ -64,24 +60,24 @@ The log is normatively excluded from **both**:
 - `expectedEffects` and every effect digest.
 
 The second exclusion is not optional. The entry carries a timestamp and an identity, so including it
-would make every effect digest unique — destroying drift detection and approval continuity — and
+would make every effect digest unique — destroying drift detection and the binding of evidence to content — and
 would change the project's semantic digest on every apply, so two operators applying the same Change
 Set could never agree on a result digest.
 
 ## Atomicity
 
 The entry is written inside the same unit of work as the change it records. A rolled-back application
-leaves no entry. Exactly one entry is written per applied Change Set.
+leaves no entry. Exactly one entry is written per applied Proposal.
 
 ## What presence and absence mean
 
 - **Presence** of GUID `G`: Motif applied `G` to this project, at that time, by that user. It does
-  *not* mean `G`'s effects are still present — a later Change Set or a manual edit may have changed
+  *not* mean `G`'s effects are still present — a later Proposal or a manual edit may have changed
   or reverted them.
 - **Absence** of GUID `G`: Motif never applied `G` to this project. This is the idempotence check.
-- **Content check**: `G` present but the stored `<intentDigest>` differing from the Change Set now
+- **Content check**: `G` present but the stored `<intentDigest>` differing from the Proposal now
   under consideration is surfaced — same identity, different content — rather than reported as a clean
-  "already applied." Matching is on the stable `changeSetId`; the digest catches drift in what that
+  "already applied." Matching is on the stable `proposalId`; the digest catches drift in what that
   identity refers to (the Flyway/Liquibase checksum pattern; see
   [ADR 0004](adr/0004-prerequisite-graph-stable-ids-bound-apply.md)).
 - The log says nothing about non-Motif edits. Projects will carry manual FieldWorks edits
@@ -92,14 +88,14 @@ leaves no entry. Exactly one entry is written per applied Change Set.
 
 FieldWorks projects sync between machines with Chorus Send/Receive, a 3-way XML merge. Distinct
 entries — different `Version` GUIDs — always union: LibChorus retains every unmatched insertion and
-never drops one, so two operators applying different Change Sets and then syncing both keep their
+never drops one, so two operators applying different Proposals and then syncing both keep their
 entries. For that union to be free of a spurious order-ambiguity note, FieldWorks must register
 `CmResource` as GUID-keyed and order-irrelevant — the pattern Chorus's own append-only `.ChorusNotes`
-log already uses. That registration lives in FLExBridge and is verified in Phase 0.
+log already uses. That registration lives in FLExBridge.
 See [ADR 0003](adr/0003-feasibility-findings.md).
 
 The one collision is two entries written under the *same* `Version` GUID with different `Name` text —
-a race applying the same Change Set on two diverged copies before either syncs. Chorus keeps one and
+a race applying the same Proposal on two diverged copies before either syncs. Chorus keeps one and
 overwrites the other's `Name`. This costs only provenance: the GUID still appears exactly once, so
 the idempotence check (which reads only the GUID) is unaffected, and the record was never
 authoritative.

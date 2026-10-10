@@ -9,7 +9,7 @@
 
 If a change says **No longer fits**, Apply stays blocked. Remove that change or refresh the project and check it again. A change that no longer fits cannot be forced. See **When a change no longer fits** for steps to recheck it.
 
-If a change is **Uncertain**, its sentence changed in FieldWorks after you made it. The page shows the sentence as it reads now. Choose **Check again** to keep the change, or **Undo** to take it back.
+If a change is in the **Needs another look** group, its sentence changed in FieldWorks after you made it. The page shows the sentence as it reads now. Choose **Check again** to keep the change, or **Undo** to take it back.
 
 If Motif could not confirm an Apply, the page says that FieldWorks may already have these changes. Choose **Refresh** to check what the project holds now. Apply stays blocked until you do.
 

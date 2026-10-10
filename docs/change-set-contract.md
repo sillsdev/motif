@@ -633,6 +633,12 @@ policy-independent options. It contains:
 
 Warnings do not silently become errors or approvals. The host owns application policy.
 
+A Dry Run can also be taken of a Draft, so an author can check a change before finalizing it. Evidence
+names the content digest it ran against and the Baseline it ran on, and counts only for that same
+content on that same project state. Finalizing an unchanged Draft carries its evidence over; Applying
+another Proposal changes the project state and leaves the rest needing a fresh measurement. See
+[ADR 0058](adr/0058-the-agent-edit-loop.md).
+
 ### Drift
 
 `expectedEffects`, defined in [expected effects](#expected-effects), are the compatibility oracle.

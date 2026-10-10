@@ -28,6 +28,6 @@ For an assessed folder, the current CLI exports a retained Assessment invocation
 motif handoff "C:\Projects\Sena.fwdata" --out "C:\handoffs\Sena" --invocation <invocationId> --json
 ```
 
-The successful JSON response reports `outputDirectory`, `baseline`, `selection`, `files`, `assessmentIds`, optional `invocationId`, `pastedHeader`, and `handoffMarkdown`. Use `--no-assess` for a folder without `parse-results.json`; `--texts <guid,guid>` can be used with that option to select texts.
+The successful JSON response reports `outputDirectory`, `baseline`, `selection`, `files`, `assessmentIds`, optional `invocationId`, `pastedHeader`, and `handoffMarkdown`. Use `--no-assess` for a folder without `parse-results.json`; `--texts <guid,guid>` is accepted only with that option, to select texts.
 
 Treat every file as potentially sensitive and share it only with a service approved for that project.

@@ -6,18 +6,18 @@ The page appears only while Advanced AI mode is on. Without a stored check it sa
 
 The page has two tabs. **Active** lists the findings still to review. **Suppressed** lists the findings you kept or deferred, each with its reason, or with "No reason given" when you gave none. Each tab shows its count.
 
-Findings are grouped by check. Each group carries its own grammar side: **Restrictiveness** or **Parsimony**. The page counts the two sides separately and gives no combined score. A finding you have decided shows its decision beside it until Apply writes it.
+Findings are grouped by check. Each group names its grammar side: **Restrictiveness**, **Parsimony**, or both. A line under the tabs says once what each side means, and the page gives no combined score. A finding you have decided shows "staged, not yet applied" beside its decision until Apply writes it.
 
-Select a finding to read its evidence in the detail column: what was counted, why it was reported, the strength of the evidence, whether a paired parser check has run, and the limits of the count. A finding is a suggestion to look at, not a verdict on the grammar.
+Select a finding to read its evidence in the detail column: what was counted, the items it names, why it was reported, the strength of the evidence, whether a paired parser check has run, and the limits of the count. A finding is a suggestion to look at, not a verdict on the grammar.
 
 ## Deciding a finding
 
-Select an active finding, then choose one action:
+Select an active finding. Its detail column has **Keep**, **Defer** and **Ask** buttons, and a note about **Fix**:
 
 - **Keep** records that the finding is intended. You may write a reason. A kept finding moves to Suppressed once Apply and Refresh have run.
 - **Defer** records that you will come back to the finding later. Like Keep, it takes an optional reason and moves to Suppressed once applied.
 - **Ask** records a question about the finding. It needs the question you write. It stays active, because a question is not a decision to suppress.
-- **Fix** links to the check's supported update in its own Guide page. It records nothing by itself. Where a check has no supported update yet, the page says so, and you can ask or defer instead.
+- **Fix** is not a button. A note under the buttons names the Guide page that describes the update Motif supports for the check, and says you make the fix itself in FieldWorks. It records nothing. Where a check has no supported update yet, the note says so, and you can ask or defer instead.
 
 When there are several Notebook record types, choose the one the decision goes under. The page never picks one by its English name.
 
@@ -25,7 +25,7 @@ Each action is staged in pending changes, which the Review changes page shows. N
 
 ## Suppressed decisions
 
-A Suppressed decision stays in its own tab with its reason. Select it to read its details; that only shows them. **Return to Active** stages the withdrawal of the decision, so the finding comes back to the Active tab once applied.
+A Suppressed decision stays in its own tab with its reason. Select it to read its details; that only shows them. **Return to Active** stages the withdrawal of the decision, so the finding comes back to the Active tab once Apply and Refresh have run.
 
 A decision returns to Active on its own when the evidence it was made on changes. It then shows "Changed since it was kept" or "Changed since it was deferred" with the reason you gave before, so you can decide again.
 

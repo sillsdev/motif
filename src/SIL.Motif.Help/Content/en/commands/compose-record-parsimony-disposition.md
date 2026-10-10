@@ -6,4 +6,4 @@ Use this command to stage a decision about one finding in a Draft Proposal. The 
 motif compose-record-parsimony-disposition --project language.fwdata --draft review-one --intent '{"recordTypeId":"...","measureId":"P-allo-duplicate-form","subject":{},"disposition":"keep","evidenceDigest":"...","evidenceContract":"...","subjectCaption":"...","measureCaption":"...","reason":"..."}'
 ```
 
-The command appends bounded Notebook and reserved-field operations to the Draft. Review the Proposal with Dry Run and Preflight before a human Applies it. A pending keep does not change the live findings; it becomes project data only after Apply and a later Refresh.
+The command appends bounded Notebook and reserved-field operations to the Draft. Review the Proposal with Dry Run before a human Applies it. A pending keep does not change the live findings; it becomes project data only after Apply and a later Refresh.

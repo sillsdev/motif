@@ -11,7 +11,7 @@ The unit an AI assistant installs: one directory holding all five skills, their 
 and the registration of Motif's agent server. Named `motif` because the skills assume Motif is there:
 FieldWorks itself offers an agent no safe way to change a project. Every skill is invoked as
 `motif:<skill>`. A plugin cannot read files outside its own directory. Motif's installer carries it,
-and turning on Advanced AI mode installs it into the assistants Motif finds.
+and the AI assistants page installs it into the assistants a person selects there once Advanced AI mode is on.
 _Avoid_: extension, package, bundle, "the fieldworks plugin"
 
 **Marketplace**:

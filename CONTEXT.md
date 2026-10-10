@@ -238,6 +238,18 @@ A specific Parsimony finding about one grammar object or group, tied to its exac
 recipe or stated limitation. Its evidence digest is separate from its stable finding identity.
 _Avoid_: lint, warning, verdict
 
+**Measure**:
+One fixed Parsimony check registered in a Motif build, such as repeated ad hoc prohibitions or a reviewed
+negative that still parses. It names the axis it serves, the evidence it needs, and its Recipe; the
+`parsimony measures` command lists them. Not the verb "measure" for what an Assessment or a Trial does.
+_Avoid_: rule, lint, check (alone), metric
+
+**Recipe**:
+The guidance attached to one Measure: what a finding means, which evidence supports it, what a
+person may reasonably fix, keep, ask or defer, and the update a Draft can stage for it. A recommendation
+without a Recipe states what information is missing instead.
+_Avoid_: fix, autofix, script, playbook
+
 **Parsimony note**:
 An information line in a Parsimony review that is never a recommendation: either a check that could not look
 (for example, no Approved words in the Default Selection) or an authored statement that has no effect on parsing.
@@ -418,6 +430,13 @@ An installation-wide choice a person makes to let AI agents work on their projec
 is off, Motif offers agents no tools at all. An agent working under it may read, draft, Dry Run, Trial and
 Finalize, but never Apply: Apply is always a person's act.
 _Avoid_: AI mode, agent mode, MCP mode
+
+**MCP server**:
+The `motif mcp` process through which an AI assistant reaches Motif's typed commands as tools. It is the
+Motif API presented as Model Context Protocol tools, not a second API: every tool is a catalogued command,
+each tool names its project by Known project name or recorded path, and the server shows no tools and
+refuses every call while Advanced AI mode is off.
+_Avoid_: agent server, AI endpoint, Motif service
 
 **Text**:
 FieldWorks' term, kept for FieldWorks' meaning: an interlinearised document **in the language project**.
@@ -612,10 +631,10 @@ experiment will run: gold answers pass, empty and tempting wrong answers fail. I
 whenever any of those changes, before an agent is run.
 _Avoid_: self-check, smoke test, sanity check
 
-## The FieldWorks skills
+## The plugin and its skills
 
-Motif also publishes three Claude Code skills about FieldWorks itself (a FLEx expert, a parsing expert,
-a linguistic consultant) as the `fieldworks` plugin. That is a bounded context of its own with its own
-vocabulary — plugin, marketplace, skill, corpus, index, crosswalk, persona, job map — in
-[fieldworks/CONTEXT.md](fieldworks/CONTEXT.md). Inside that plugin, **corpus** means a
+Motif publishes the `motif` plugin: five skills (a FieldWorks expert, a parsing expert, a linguistic
+consultant, a Motif workflow and a Parsimony review) that an AI assistant installs beside the MCP server. That
+is a bounded context of its own with its own vocabulary — plugin, marketplace, skill, corpus, index, crosswalk,
+persona, job map — in [plugin/CONTEXT.md](plugin/CONTEXT.md). Inside the plugin, **corpus** means a
 documentation source, not the text corpus defined above.

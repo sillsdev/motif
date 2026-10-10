@@ -106,7 +106,7 @@
   },
   "compose-record-parsimony-disposition": {
     "title": "Stage a Parsimony disposition",
-    "description": "Stages a keep, fix, ask, or defer decision for one exact Parsimony finding in a Draft Proposal. Only a human can Apply it, and a pending keep does not suppress current findings. Only a person can Apply.",
+    "description": "Stages a keep, fix, ask, or defer decision for one exact Parsimony finding in a Draft Proposal. A pending keep does not suppress current findings, and only a person can Apply it.",
     "source": "Hand-written from command behavior."
   },
   "retire-allomorph": {
@@ -246,7 +246,7 @@
   },
   "jobs show": {
     "title": "Inspect a job",
-    "description": "Reads the stored status of one durable job. Use it to inspect a Baseline Refresh, Dry Run, Trial, or Apply job's current lifecycle state.",
+    "description": "Reads the stored status of one durable job. Use it to inspect a Baseline Refresh, Dry Run, Trial, or Parsimony job's current lifecycle state.",
     "source": "Hand-written from docs/cli-api.md and command behavior."
   },
   "jobs assessments": {
@@ -350,18 +350,18 @@
     "source": "Authored from the typed command contract."
   },
   "show": {
-    "title": "Show",
-    "description": "Reads the requested saved project information without changing the FieldWorks project.",
+    "title": "Show a Proposal",
+    "description": "Reads one saved Proposal or Draft by id, with its status, label, comment and operations. It does not change the FieldWorks project.",
     "source": "Authored from the typed command contract."
   },
   "parsimony --dry-run": {
     "title": "Parsimony dry run",
-    "description": "Produces evidence about the saved project or Proposal without changing the FieldWorks project.",
+    "description": "Queues a comparison of one measure before and after the Proposal behind a completed Dry Run job, on a private copy of the project. It does not change the FieldWorks project.",
     "source": "Authored from the typed command contract."
   },
   "parsimony --dry-run --wait": {
     "title": "Parsimony dry run wait",
-    "description": "Produces evidence about the saved project or Proposal without changing the FieldWorks project.",
+    "description": "Queues the before and after comparison for a completed Dry Run job and waits for its two stored Reports. It does not change the FieldWorks project.",
     "source": "Authored from the typed command contract."
   },
   "trial": {
