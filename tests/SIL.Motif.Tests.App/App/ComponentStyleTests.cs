@@ -727,6 +727,10 @@ public sealed partial class ComponentStyleTests
             Border.BackgroundProperty, "Intent.Surface.Subtle");
         yield return new("Parsimony", "a measure group", host => Add(host, Stack("parsimonyGroup")),
             StackPanel.MarginProperty, "Component.Parsimony.GroupMargin");
+        yield return new("Parsimony", "a group header", host => Add(host, With(new Grid(), ["parsimonyGroupHeader"])),
+            Grid.ColumnSpacingProperty, "Intent.Space.Compact");
+        yield return new("Parsimony", "a finding row's layout", host => Add(host, With(new Grid(), ["parsimonyRowGrid"])),
+            Grid.ColumnSpacingProperty, "Intent.Space.Compact");
         yield return new("Parsimony", "a measure's title", host => Add(host, Text("parsimonyGroupTitle")),
             TextBlock.ForegroundProperty, "Intent.Text");
         yield return new("Parsimony", "a finding row", host => Add(host, Press("parsimonyRow")),

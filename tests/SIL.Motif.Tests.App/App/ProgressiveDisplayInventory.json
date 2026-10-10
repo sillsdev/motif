@@ -777,5 +777,19 @@
     "source": "Evidence.Limitations",
     "mode": "finite",
     "control": "ItemsControl"
+  },
+  {
+    "view": "Pages/ParsimonyPage",
+    "name": "ParsimonySuppressedItems",
+    "source": "SuppressedItems",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "Pages/ParsimonyPage",
+    "name": "ParsimonyRecordTypes",
+    "source": "RecordTypes",
+    "mode": "finite",
+    "control": "ComboBox"
   }
 ]

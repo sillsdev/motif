@@ -40,6 +40,10 @@ public sealed class ICommandClientCatalogParityTests
             [nameof(ICommandClient.TraceWordAsync)] = "trace",
             [nameof(ICommandClient.ReadWordContextAsync)] = "word-context",
             [nameof(ICommandClient.InspectAsync)] = "inspect",
+            [nameof(ICommandClient.ReadParsimonyViewAsync)] = "parsimony view",
+            [nameof(ICommandClient.ListNotebookRecordTypesAsync)] = "parsimony record-types",
+            [nameof(ICommandClient.RecordParsimonyDispositionAsync)] = "parsimony dispose",
+            [nameof(ICommandClient.RetractParsimonyDispositionAsync)] = "parsimony retract",
         };
 
     // A store-writing client method must map to a catalogued CLI verb.

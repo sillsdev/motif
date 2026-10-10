@@ -15,6 +15,23 @@ public static class AutomationIds
     public const string ParsimonySummary = "motif-parsimony-summary";
     /// <summary>The evidence column, shown while a finding is selected.</summary>
     public const string ParsimonyEvidence = "motif-parsimony-evidence";
+    /// <summary>The Parsimony page's Active and Suppressed tabs.</summary>
+    public const string ParsimonyActiveTab = "motif-parsimony-tab-active";
+    public const string ParsimonySuppressedTab = "motif-parsimony-tab-suppressed";
+    /// <summary>The record type a decision is recorded under, and the reason and question fields.</summary>
+    public const string ParsimonyRecordType = "motif-parsimony-record-type";
+    public const string ParsimonyReason = "motif-parsimony-reason";
+    public const string ParsimonyQuestion = "motif-parsimony-question";
+    /// <summary>The decision actions and the line that says what the last one did.</summary>
+    public const string ParsimonyKeep = "motif-parsimony-keep";
+    public const string ParsimonyDefer = "motif-parsimony-defer";
+    public const string ParsimonyAsk = "motif-parsimony-ask";
+    public const string ParsimonyReturn = "motif-parsimony-return";
+    public const string ParsimonyActionMessage = "motif-parsimony-action-message";
+    /// <summary>A finding's decision, shown as the window's chip beside its text.</summary>
+    public const string ParsimonyDecision = "motif-parsimony-decision";
+    /// <summary>The Suppressed decision of one revision.</summary>
+    public static string ForParsimonySuppressed(string revisionId) => "motif-parsimony-suppressed-" + revisionId;
     public const string SelectNewProject = "motif-select-new-project";
     public const string RefreshProject = "motif-refresh-project";
     public const string AnalyzeTextsTab = "motif-analyze-texts-tab";

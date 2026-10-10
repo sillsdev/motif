@@ -9,6 +9,7 @@ using Avalonia.LogicalTree;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using SIL.Motif.App.Controls;
+using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Composition;
 using SIL.Motif.App;
 using SIL.Motif.App.Services;
@@ -266,7 +267,8 @@ public sealed class WalkthroughWindow : IDisposable
         var control = FindOptionalByAutomationId(automationId);
         if (control is null) return $"AutomationId '{automationId}' is missing.";
         if (control.DataContext is not ResultsTokenViewModel token)
-            return $"AutomationId '{automationId}' visible={control.IsEffectivelyVisible}.";
+            return $"AutomationId '{automationId}' visible={control.IsEffectivelyVisible}, bounds={control.Bounds}, " +
+                $"text='{TextByAutomationId(automationId)}'.";
         var opinions = string.Join(", ", token.Marking.FieldWorksAnalyses.Select(analysis => analysis.Opinion));
         var readings = string.Join(", ", token.Marking.PanGlossReadings.Select(reading =>
             $"stored={reading.MatchesStored}, opinion={reading.MatchingOpinions ?? "none"}"));

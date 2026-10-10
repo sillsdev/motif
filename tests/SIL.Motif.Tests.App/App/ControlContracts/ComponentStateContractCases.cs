@@ -307,6 +307,8 @@ internal static class ComponentStateContractCases
             StatePart.Face, ContentPresenter.BackgroundProperty, "Intent.Surface.Subtle");
         yield return new("Button.parsimonyRow.selected", "selected", () => Alone(Press("parsimonyRow", "selected")),
             StateStimulus.None, StatePart.Self, Button.BackgroundProperty, "Intent.Surface.Subtle");
+        yield return new("Button.parsimonyTab.selected", "selected", () => Alone(Press("parsimonyTab", "selected")),
+            StateStimulus.None, StatePart.Self, Button.BackgroundProperty, "Intent.Surface.Subtle");
 
         yield return new(":is(Border).wordStrip:pointerover", "hover", () => Alone(Strip()), StateStimulus.Pointer,
             StatePart.Self, Border.BackgroundProperty, "Intent.Surface.Hover");

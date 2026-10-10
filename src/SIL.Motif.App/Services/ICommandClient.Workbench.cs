@@ -2,6 +2,7 @@ using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Commands.SelectionReading;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Parsimony;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 
@@ -63,4 +64,19 @@ public partial interface ICommandClient
     Task<CommandOutcome<ParsimonyReportResponse>> ReadParsimonyReportAsync(
         ShowParsimonyReportRequest request, CancellationToken cancellationToken);
 
+    /// <summary>Reads one fixed Parsimony view, such as the Active or Suppressed findings, from the stored bundle.</summary>
+    Task<CommandOutcome<ParsimonyNamedViewResponse>> ReadParsimonyViewAsync(
+        ReadParsimonyViewRequest request, CancellationToken cancellationToken);
+
+    /// <summary>Lists the saved Notebook record types a Parsimony decision can be recorded under.</summary>
+    Task<CommandOutcome<NotebookRecordTypesResponse>> ListNotebookRecordTypesAsync(
+        ListNotebookRecordTypesRequest request, CancellationToken cancellationToken);
+
+    /// <summary>Stages a keep, ask, or defer for one finding in the pending changes; nothing is written.</summary>
+    Task<CommandOutcome<ComposedOperationsResponse>> RecordParsimonyDispositionAsync(
+        RecordParsimonyDispositionFromFindingRequest request, CancellationToken cancellationToken);
+
+    /// <summary>Stages the withdrawal of a saved decision so its finding returns to Active once applied.</summary>
+    Task<CommandOutcome<ComposedOperationsResponse>> RetractParsimonyDispositionAsync(
+        RetractParsimonyDispositionRequest request, CancellationToken cancellationToken);
 }

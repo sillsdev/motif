@@ -12,7 +12,8 @@ namespace SIL.Motif.Tests.App;
 /// </summary>
 internal static class ParsimonySampleReports
 {
-    internal const string ReportId = "report/parsimony-sample";
+    // Shaped like a minted Report id, so the page's view filter accepts it as a canonical id.
+    internal const string ReportId = "report/AAAAAAAAAAAAAAAAAAAAAA";
     internal const string BundleId = "bundle/parsimony-sample";
     internal const string ParsimonyMeasure = "P-adhoc-duplicate";
 

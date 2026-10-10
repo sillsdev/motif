@@ -4,6 +4,7 @@ using SIL.Motif.Commands.Requests;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands.SelectionReading;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Parsimony;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 
@@ -63,5 +64,21 @@ public sealed partial class CommandClient
     public Task<CommandOutcome<ParsimonyReportResponse>> ReadParsimonyReportAsync(
         ShowParsimonyReportRequest request, CancellationToken cancellationToken) =>
         Task.Run(() => ParsimonyCommands.Show(request));
+
+    public Task<CommandOutcome<ParsimonyNamedViewResponse>> ReadParsimonyViewAsync(
+        ReadParsimonyViewRequest request, CancellationToken cancellationToken) =>
+        Task.Run(() => ParsimonyViewsCommand.View(request), cancellationToken);
+
+    public Task<CommandOutcome<NotebookRecordTypesResponse>> ListNotebookRecordTypesAsync(
+        ListNotebookRecordTypesRequest request, CancellationToken cancellationToken) =>
+        Task.Run(() => ParsimonyCommands.ListNotebookRecordTypes(request), cancellationToken);
+
+    public Task<CommandOutcome<ComposedOperationsResponse>> RecordParsimonyDispositionAsync(
+        RecordParsimonyDispositionFromFindingRequest request, CancellationToken cancellationToken) =>
+        OneAtATime(() => ParsimonyCommands.RecordDisposition(request), cancellationToken);
+
+    public Task<CommandOutcome<ComposedOperationsResponse>> RetractParsimonyDispositionAsync(
+        RetractParsimonyDispositionRequest request, CancellationToken cancellationToken) =>
+        OneAtATime(() => ParsimonyCommands.RetractDisposition(request), cancellationToken);
 
 }

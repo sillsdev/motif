@@ -34,6 +34,14 @@
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Minimal}" />
   </Style>
 
+  <Style Selector="Grid.parsimonyGroupHeader">
+    <Setter Property="ColumnSpacing" Value="{DynamicResource Intent.Space.Compact}" />
+  </Style>
+
+  <Style Selector="Grid.parsimonyRowGrid">
+    <Setter Property="ColumnSpacing" Value="{DynamicResource Intent.Space.Compact}" />
+  </Style>
+
   <Style Selector=":is(TextBlock).parsimonyGroupTitle">
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.Text}" />
@@ -63,6 +71,24 @@
 
   <Style Selector="Border.parsimonyDetail">
     <Setter Property="Padding" Value="{DynamicResource Component.Parsimony.NoticePadding}" />
+  </Style>
+
+  <Style Selector="StackPanel.parsimonyTabs">
+    <Setter Property="Margin" Value="{DynamicResource Component.Parsimony.GroupMargin}" />
+  </Style>
+
+  <Style Selector="Button.parsimonyTab">
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.None}" />
+  </Style>
+
+  <Style Selector="Button.parsimonyTab.selected">
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface.Subtle}" />
+  </Style>
+
+  <Style Selector="StackPanel.parsimonyDecisionRow">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
   </Style>
 
   <Style Selector="StackPanel.parsimonyDetailColumn">

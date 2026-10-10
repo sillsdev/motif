@@ -1,6 +1,8 @@
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Commands.Requests;
 using SIL.Motif.Commands.SelectionReading;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Parsimony;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 
@@ -181,4 +183,62 @@ public sealed partial class FakeCommandClient
         TraceWordRequests.Add(request);
         return _traceWord(request, cancellationToken);
     }
+
+    /// <summary>The Parsimony view each read asked for, in order.</summary>
+    public List<ReadParsimonyViewRequest> ParsimonyViewRequests { get; } = [];
+
+    /// <summary>Answers a Parsimony view read; unconfigured reads are refused so a test states what it expects.</summary>
+    public Func<ReadParsimonyViewRequest, CancellationToken, Task<CommandOutcome<ParsimonyNamedViewResponse>>>?
+        ParsimonyViewHandler { get; set; }
+
+    public Task<CommandOutcome<ParsimonyNamedViewResponse>> ReadParsimonyViewAsync(
+        ReadParsimonyViewRequest request, CancellationToken cancellationToken)
+    {
+        ParsimonyViewRequests.Add(request);
+        return ParsimonyViewHandler?.Invoke(request, cancellationToken) ?? Refused<ParsimonyNamedViewResponse>(
+            new Refusal("parsimony.view-not-configured", FailureReason.Refused, "No Parsimony view configured."));
+    }
+
+    /// <summary>The record-type list answer; by default one saved type, so a single type needs no choice.</summary>
+    public Func<ListNotebookRecordTypesRequest, CancellationToken, Task<CommandOutcome<NotebookRecordTypesResponse>>>?
+        RecordTypesHandler { get; set; }
+
+    public List<ListNotebookRecordTypesRequest> RecordTypeRequests { get; } = [];
+
+    public Task<CommandOutcome<NotebookRecordTypesResponse>> ListNotebookRecordTypesAsync(
+        ListNotebookRecordTypesRequest request, CancellationToken cancellationToken)
+    {
+        RecordTypeRequests.Add(request);
+        return RecordTypesHandler?.Invoke(request, cancellationToken) ?? Completed(new NotebookRecordTypesResponse(
+            [new NotebookRecordType("record-type/" + new string('A', 22), "Parsimony finding")]));
+    }
+
+    /// <summary>Every staged keep, ask or defer, in order; a test that stages one reads it here.</summary>
+    public List<RecordParsimonyDispositionFromFindingRequest> RecordDispositionRequests { get; } = [];
+
+    public Func<RecordParsimonyDispositionFromFindingRequest, CancellationToken,
+        Task<CommandOutcome<ComposedOperationsResponse>>>? RecordDispositionHandler { get; set; }
+
+    public Task<CommandOutcome<ComposedOperationsResponse>> RecordParsimonyDispositionAsync(
+        RecordParsimonyDispositionFromFindingRequest request, CancellationToken cancellationToken)
+    {
+        RecordDispositionRequests.Add(request);
+        return RecordDispositionHandler?.Invoke(request, cancellationToken) ?? Refused<ComposedOperationsResponse>(
+            new Refusal("parsimony.disposition-not-configured", FailureReason.Refused, "No disposition configured."));
+    }
+
+    /// <summary>Every staged withdrawal of a saved decision, in order.</summary>
+    public List<RetractParsimonyDispositionRequest> RetractDispositionRequests { get; } = [];
+
+    public Func<RetractParsimonyDispositionRequest, CancellationToken,
+        Task<CommandOutcome<ComposedOperationsResponse>>>? RetractDispositionHandler { get; set; }
+
+    public Task<CommandOutcome<ComposedOperationsResponse>> RetractParsimonyDispositionAsync(
+        RetractParsimonyDispositionRequest request, CancellationToken cancellationToken)
+    {
+        RetractDispositionRequests.Add(request);
+        return RetractDispositionHandler?.Invoke(request, cancellationToken) ?? Refused<ComposedOperationsResponse>(
+            new Refusal("parsimony.retraction-not-configured", FailureReason.Refused, "No retraction configured."));
+    }
+
 }

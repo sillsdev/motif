@@ -12,6 +12,7 @@ using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Parsimony;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Contract.HumanJudgments;
 using SIL.Motif.Help;
 using Xunit;
 
@@ -31,6 +32,8 @@ public sealed class ParsimonyPageModelTests
 
     private static readonly BaselineToken CurrentToken = Token("1");
     private static readonly BaselineToken EarlierToken = Token("2");
+
+    private static readonly string RecordTypeId = "record-type/" + new string('A', 22);
 
     private static readonly string ParsimonyMeasure = "P-adhoc-duplicate";
 
@@ -161,31 +164,60 @@ public sealed class ParsimonyPageModelTests
         Assert.Equal("Parsimony", parsimonyGroup.AxisLabel);
         var restrictivenessGroup = Assert.Single(page.Groups, group => group.Title == Title(RestrictivenessMeasure));
         Assert.Equal("Restrictiveness", restrictivenessGroup.AxisLabel);
-        Assert.Equal("Parsimony: 2 · Restrictiveness: 1", page.AxisSummary);
+        Assert.Equal("3 findings to review", page.AxisSummary);
+        Assert.Equal("Parsimony: a simpler grammar. Restrictiveness: a grammar that accepts fewer wrong forms.", page.AxisLegend);
+        var headers = page.Rows.Where(row => row.IsHeader).ToArray();
+        Assert.Equal("2 findings", headers.Single(row => row.Title == Title(ParsimonyMeasure)).Count);
+        Assert.Equal("Restrictiveness: a grammar that accepts fewer wrong forms",
+            headers.Single(row => row.Title == Title(RestrictivenessMeasure)).Detail);
+        Assert.Equal("1 finding", headers.Single(row => row.Title == Title(RestrictivenessMeasure)).Count);
         Assert.Equal("3", page.Badge);
     }
 
     [Fact]
-    public async Task KeptAndDeferredFindingsStayVisibleAsSuchAndUndecidedOnesAreNot()
+    public async Task SuppressedFindingsLeaveActiveAndAppearInSuppressedWithTheirReason()
     {
         var fake = new FakeCommandClient();
         var kept = Finding("kept", ParsimonyMeasure, ParsimonyAxis.Parsimony, 1, 3);
         var deferred = Finding("deferred", ParsimonyMeasure, ParsimonyAxis.Parsimony, 1, 4);
         var open = Finding("open", ParsimonyMeasure, ParsimonyAxis.Parsimony, 1, 5);
-        ExpectReport(fake, Report([kept, deferred, open],
-            dispositions:
-            [
-                Disposition(kept, "keep", "active"),
-                Disposition(deferred, "defer", "suppressed"),
-            ]));
+        ExpectReport(fake, Report([kept, deferred, open]),
+        [
+            History(kept, "keep", "suppressed", "Checked against the paradigm."),
+            History(deferred, "defer", "suppressed", null),
+        ]);
         var (context, page) = Build(fake, advancedAi: true);
 
         await context.OpenProjectAsync(ProjectA);
 
-        var rows = page.Groups.SelectMany(group => group.Items).ToDictionary(row => row.Description);
-        Assert.Equal("Kept", rows[Describe(kept)].Disposition);
-        Assert.Equal("Deferred", rows[Describe(deferred)].Disposition);
-        Assert.Equal(string.Empty, rows[Describe(open)].Disposition);
+        var active = Assert.Single(page.Groups.SelectMany(group => group.Items));
+        Assert.Equal(Describe(open), active.Description);
+        Assert.Equal(string.Empty, active.Disposition);
+        Assert.Equal("Active (1)", page.ActiveTabLabel);
+        Assert.Equal("Suppressed (2)", page.SuppressedTabLabel);
+        var suppressed = page.SuppressedItems.ToDictionary(item => item.Decision + "/" + item.Reason);
+        Assert.Equal("Suppressed", suppressed["Kept/Reason: Checked against the paradigm."].StateLabel);
+        Assert.Equal("No reason given", suppressed["Deferred/No reason given"].Reason);
+    }
+
+    [Fact]
+    public async Task AFindingDecidedAndAppliedLeavesTheActiveListAfterARefresh()
+    {
+        var fake = new FakeCommandClient();
+        var finding = Finding("f1", ParsimonyMeasure, ParsimonyAxis.Parsimony, 2, 3);
+        var report = Report([finding]);
+        ExpectReport(fake, report);
+        var (context, page) = Build(fake, advancedAi: true);
+        await context.OpenProjectAsync(ProjectA);
+        Assert.Single(page.Groups.SelectMany(group => group.Items));
+
+        // Apply wrote the decision: the live views now name it suppressed, and a Refresh reads them again.
+        ExpectReport(fake, report, [History(finding, "keep", "suppressed", null)]);
+        await page.ReloadAsync();
+
+        Assert.Empty(page.Groups);
+        Assert.Single(page.SuppressedItems);
+        Assert.Equal("Active (0)", page.ActiveTabLabel);
     }
 
     [Fact]
@@ -240,6 +272,8 @@ public sealed class ParsimonyPageModelTests
 
         Assert.Equal(2, fake.ReadLatestParsimonyRequests.Count);
         Assert.Equal(2, fake.ShowParsimonyReportRequests.Count);
+        Assert.Empty(fake.RecordDispositionRequests);
+        Assert.Empty(fake.RetractDispositionRequests);
         Assert.All(fake.ReadLatestParsimonyRequests, request => Assert.Equal(ProjectA, request.FwDataPath));
         Assert.Equal(ParsimonyPageState.Listed, page.State);
     }
@@ -339,6 +373,256 @@ public sealed class ParsimonyPageModelTests
             page.MissingInputsText);
     }
 
+    [Fact]
+    public async Task SelectingAFindingTellsTheViewItsDecisionActionsAreAvailable()
+    {
+        var fake = new FakeCommandClient();
+        ExpectReport(fake, Report([Finding("f1", ParsimonyMeasure, ParsimonyAxis.Parsimony, 2, 3)]));
+        var (context, page) = Build(fake, advancedAi: true);
+        await context.OpenProjectAsync(ProjectA);
+        var availableWhenSignalled = new List<bool>();
+        page.KeepCommand.CanExecuteChanged += (_, _) => availableWhenSignalled.Add(page.KeepCommand.CanExecute(null));
+
+        Assert.True(page.SelectFinding(Assert.Single(page.Rows, row => !row.IsHeader).Link!));
+
+        // The view enables a button only on this signal, so it must come after the selection is in place.
+        Assert.Contains(true, availableWhenSignalled);
+        Assert.True(page.KeepCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public async Task KeepStagesAPendingChangeWithTheReasonAndTheSelectedRecordTypeAndWritesNothing()
+    {
+        var fake = new FakeCommandClient();
+        var finding = Finding("f1", ParsimonyMeasure, ParsimonyAxis.Parsimony, 2, 3);
+        ExpectReport(fake, Report([finding]));
+        var (context, page) = Build(fake, advancedAi: true);
+        await context.OpenProjectAsync(ProjectA);
+        Assert.True(page.SelectFinding(Assert.Single(page.Rows, row => !row.IsHeader).Link!));
+        page.ReasonText = "  Attested in the field notes.  ";
+
+        await page.KeepCommand.ExecuteAsync(null);
+
+        var request = Assert.Single(fake.RecordDispositionRequests);
+        Assert.Equal("keep", request.Disposition);
+        Assert.Equal("Attested in the field notes.", request.Reason);
+        Assert.Null(request.Question);
+        Assert.Equal(ReportId, request.ReportId);
+        Assert.Equal(finding.FindingId, request.FindingId);
+        Assert.Equal(PendingChanges.DraftName, request.DraftName);
+        Assert.Equal(RecordTypeId, request.RecordTypeId);
+        Assert.Empty(fake.RetractDispositionRequests);
+        Assert.Equal("Staged in pending changes. Nothing is written to FieldWorks until Apply.", page.ActionMessage);
+        Assert.Equal("Kept · staged, not yet applied", Assert.Single(page.Rows, row => !row.IsHeader).Disposition);
+        Assert.Empty(page.SuppressedItems);
+    }
+
+    [Fact]
+    public async Task AskNeedsOneQuestionAndDeferWithNoReasonSendsNone()
+    {
+        var fake = new FakeCommandClient();
+        var finding = Finding("f1", ParsimonyMeasure, ParsimonyAxis.Parsimony, 2, 3);
+        ExpectReport(fake, Report([finding]));
+        var (context, page) = Build(fake, advancedAi: true);
+        await context.OpenProjectAsync(ProjectA);
+        Assert.True(page.SelectFinding(Assert.Single(page.Rows, row => !row.IsHeader).Link!));
+
+        await page.AskCommand.ExecuteAsync(null);
+        Assert.Empty(fake.RecordDispositionRequests);
+        Assert.Equal("Write the question to ask first.", page.ActionMessage);
+
+        page.QuestionText = "Is this allomorph conditioned by the stem class?";
+        await page.AskCommand.ExecuteAsync(null);
+        var ask = Assert.Single(fake.RecordDispositionRequests);
+        Assert.Equal("ask", ask.Disposition);
+        Assert.Equal("Is this allomorph conditioned by the stem class?", ask.Question);
+        Assert.Null(ask.Reason);
+
+        await page.DeferCommand.ExecuteAsync(null);
+        var defer = fake.RecordDispositionRequests[1];
+        Assert.Equal("defer", defer.Disposition);
+        Assert.Null(defer.Reason);
+        Assert.Null(defer.Question);
+    }
+
+    [Fact]
+    public async Task ADecisionWithoutAChosenRecordTypeCannotBeStaged()
+    {
+        var fake = new FakeCommandClient();
+        fake.RecordTypesHandler = (_, _) => Task.FromResult(CommandOutcome<NotebookRecordTypesResponse>.Success(
+            new NotebookRecordTypesResponse(
+            [
+                new NotebookRecordType("record-type/" + new string('B', 22), "Review"),
+                new NotebookRecordType("record-type/" + new string('C', 22), "Question"),
+            ])));
+        ExpectReport(fake, Report([Finding("f1", ParsimonyMeasure, ParsimonyAxis.Parsimony, 2, 3)]));
+        var (context, page) = Build(fake, advancedAi: true);
+        await context.OpenProjectAsync(ProjectA);
+        Assert.True(page.SelectFinding(Assert.Single(page.Rows, row => !row.IsHeader).Link!));
+
+        Assert.Null(page.SelectedRecordType);
+        Assert.False(page.KeepCommand.CanExecute(null));
+        page.SelectedRecordType = page.RecordTypes[1];
+        Assert.True(page.KeepCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public async Task ANotebookWithNoRecordTypeSaysSoAndOffersNoDecision()
+    {
+        var fake = new FakeCommandClient();
+        fake.RecordTypesHandler = (_, _) => Task.FromResult(CommandOutcome<NotebookRecordTypesResponse>.Success(
+            new NotebookRecordTypesResponse([])));
+        ExpectReport(fake, Report([Finding("f1", ParsimonyMeasure, ParsimonyAxis.Parsimony, 2, 3)]));
+        var (context, page) = Build(fake, advancedAi: true);
+
+        await context.OpenProjectAsync(ProjectA);
+
+        Assert.False(page.HasRecordTypes);
+        Assert.Contains("no record types", page.ActionMessage, StringComparison.Ordinal);
+        Assert.True(page.SelectFinding(Assert.Single(page.Rows, row => !row.IsHeader).Link!));
+        Assert.False(page.KeepCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public async Task ARefusedDecisionShowsTheCommandsMessageAndStagesNothing()
+    {
+        var fake = new FakeCommandClient();
+        fake.RecordDispositionHandler = (_, _) => Task.FromResult(CommandOutcome<ComposedOperationsResponse>.Refused(
+            new Refusal("parsimony.report-baseline-mismatch", FailureReason.Refused,
+                "The Report was measured from a different Baseline.")));
+        ExpectReport(fake, Report([Finding("f1", ParsimonyMeasure, ParsimonyAxis.Parsimony, 2, 3)]));
+        var (context, page) = Build(fake, advancedAi: true);
+        await context.OpenProjectAsync(ProjectA);
+        Assert.True(page.SelectFinding(Assert.Single(page.Rows, row => !row.IsHeader).Link!));
+
+        await page.DeferCommand.ExecuteAsync(null);
+
+        Assert.Equal("The Report was measured from a different Baseline.", page.ActionMessage);
+        Assert.Equal(string.Empty, Assert.Single(page.Rows, row => !row.IsHeader).Disposition);
+    }
+
+    [Fact]
+    public async Task PendingDecisionsAreShownAsStagedAndSurviveAReopenWhileTheDraftExists()
+    {
+        var fake = new FakeCommandClient();
+        var finding = Finding("f1", ParsimonyMeasure, ParsimonyAxis.Parsimony, 2, 3);
+        ExpectReport(fake, Report([finding]));
+        fake.PendingLoadHandler = (_, _) => Task.FromResult(CommandOutcome<PendingChangesSnapshot>.Success(
+            new PendingChangesSnapshot("draft-1", "revision-1", [], [])));
+        var (context, page) = Build(fake, advancedAi: true);
+        await context.OpenProjectAsync(ProjectA);
+        Assert.True(page.SelectFinding(Assert.Single(page.Rows, row => !row.IsHeader).Link!));
+        await page.DeferCommand.ExecuteAsync(null);
+
+        await page.ReloadAsync();
+
+        Assert.Equal("Deferred · staged, not yet applied", Assert.Single(page.Rows, row => !row.IsHeader).Disposition);
+        Assert.Empty(page.SuppressedItems);
+    }
+
+    [Fact]
+    public async Task ReturnToActiveStagesTheWithdrawalWithTheExactHeadAndWritesNothing()
+    {
+        var fake = new FakeCommandClient();
+        var kept = Finding("kept", ParsimonyMeasure, ParsimonyAxis.Parsimony, 1, 3);
+        ExpectReport(fake, Report([kept]), [History(kept, "keep", "suppressed", "Checked.")]);
+        var (context, page) = Build(fake, advancedAi: true);
+        await context.OpenProjectAsync(ProjectA);
+        Assert.True(page.SelectSuppressed("revision-kept"));
+        Assert.True(page.ShowSuppressedActions);
+
+        await page.ReturnToActiveCommand.ExecuteAsync(null);
+
+        var request = Assert.Single(fake.RetractDispositionRequests);
+        Assert.Equal(PendingChanges.DraftName, request.DraftName);
+        using var intent = JsonDocument.Parse(request.IntentJson);
+        Assert.Equal("record-kept", intent.RootElement.GetProperty("recordId").GetString());
+        var head = Assert.Single(intent.RootElement.GetProperty("expectedHeads").EnumerateArray());
+        Assert.Equal("revision-kept", head.GetProperty("revisionId").GetString());
+        Assert.Equal("sha256:" + new string('8', 64), head.GetProperty("contentDigest").GetString());
+        Assert.Empty(fake.RecordDispositionRequests);
+        Assert.Equal("Return to Active is staged. Staged in pending changes. Nothing is written to FieldWorks until Apply.",
+            page.ActionMessage);
+        Assert.Equal("Return to Active is staged. Apply writes it.", Assert.Single(page.SuppressedItems).ReturnLabel);
+    }
+
+    [Fact]
+    public async Task OnlyAnActiveSuppressionOffersReturnAndAStaleOneSaysWhy()
+    {
+        var fake = new FakeCommandClient();
+        var stale = Finding("stale", ParsimonyMeasure, ParsimonyAxis.Parsimony, 1, 3);
+        ExpectReport(fake, Report([]), [History(stale, "defer", "no-current-finding", null)]);
+        var (context, page) = Build(fake, advancedAi: true);
+        await context.OpenProjectAsync(ProjectA);
+
+        Assert.True(page.SelectSuppressed("revision-stale"));
+
+        Assert.False(page.ReturnToActiveCommand.CanExecute(null));
+        Assert.Equal("Stale: no current finding matches it", Assert.Single(page.SuppressedItems).StateLabel);
+    }
+
+    [Fact]
+    public async Task AChangedEvidenceFindingComesBackToActiveWithItsEarlierReason()
+    {
+        var fake = new FakeCommandClient();
+        var changed = Finding("changed", ParsimonyMeasure, ParsimonyAxis.Parsimony, 2, 3);
+        ExpectReport(fake, Report([changed]));
+        ServeActive(fake, new ParsimonyFindingDispositionViewRow(ReportId, BundleId, "resurfaced", changed, "keep",
+            "Checked against the paradigm.", null, "judgment-changed", "revision-changed", "sha256:" + new string('9', 64),
+            "evidence-changed", null, null));
+        var (context, page) = Build(fake, advancedAi: true);
+
+        await context.OpenProjectAsync(ProjectA);
+
+        var row = Assert.Single(page.Rows, item => !item.IsHeader);
+        Assert.Equal("Changed since it was kept: back for review", row.Disposition);
+        Assert.True(page.SelectFinding(row.Link!));
+        Assert.Contains(page.Evidence!.Details, detail => detail.Label == "Earlier reason" &&
+            detail.Value == "Checked against the paradigm.");
+    }
+
+    [Fact]
+    public async Task AConflictingDecisionStaysVisibleAndActive()
+    {
+        var fake = new FakeCommandClient();
+        var contested = Finding("contested", ParsimonyMeasure, ParsimonyAxis.Parsimony, 2, 3);
+        ExpectReport(fake, Report([contested]));
+        ServeActive(fake, new ParsimonyFindingDispositionViewRow(ReportId, BundleId, "active", contested, null, null, null,
+            null, null, null, "unresolved", "Two judgments name this finding.", null));
+        var (context, page) = Build(fake, advancedAi: true);
+
+        await context.OpenProjectAsync(ProjectA);
+
+        var row = Assert.Single(page.Rows, item => !item.IsHeader);
+        Assert.Equal("Conflict: Two judgments name this finding.", row.Disposition);
+        Assert.Equal("Active (1)", page.ActiveTabLabel);
+        Assert.Empty(page.SuppressedItems);
+    }
+
+    [Fact]
+    public async Task FixStagesNothingAndSaysWhetherTheCheckHasASupportedUpdate()
+    {
+        var fake = new FakeCommandClient();
+        ExpectReport(fake, Report([Finding("f1", ParsimonyMeasure, ParsimonyAxis.Parsimony, 2, 3)]));
+        var (context, page) = Build(fake, advancedAi: true);
+        await context.OpenProjectAsync(ProjectA);
+
+        Assert.True(page.SelectFinding(Assert.Single(page.Rows, row => !row.IsHeader).Link!));
+
+        Assert.Empty(fake.RecordDispositionRequests);
+        Assert.Empty(fake.RetractDispositionRequests);
+        var recipe = ParsimonyRecipeCatalog.Load().Find(ParsimonyMeasure)!;
+        Assert.StartsWith(recipe.Metadata.UpdateIntents.Count > 0
+            ? "The check's supported update is in its Guide page"
+            : "This check has no supported update in Motif yet", page.FixNote, StringComparison.Ordinal);
+    }
+
+    // Serves the given rows as the Active view and no Suppressed rows, for a test that needs an exact Active state.
+    private static void ServeActive(FakeCommandClient fake, params ParsimonyViewRow[] active) =>
+        fake.ParsimonyViewHandler = (request, _) => Task.FromResult(CommandOutcome<ParsimonyNamedViewResponse>.Success(
+            new ParsimonyNamedViewResponse(BundleId, request.Query.View, 1, ParsimonyMeasureStatus.Computed, [], 0, 0,
+                null, false, request.Query.View == "parsimony-active-findings" ? active : [], null, null)));
+
     private static (WorkspaceContext Context, ParsimonyPageModel Page) Build(FakeCommandClient fake, bool advancedAi)
     {
         var selection = new SelectionViewModel(fake);
@@ -355,17 +639,35 @@ public sealed class ParsimonyPageModelTests
         Task.FromResult(CommandOutcome<ParsimonyLatestReportResponse>.Refused(
             new Refusal("parsimony.no-report", FailureReason.NotFound, "No Parsimony Report yet."))));
 
-    private static void ExpectReport(FakeCommandClient fake, ParsimonyReportResponse report)
+    private static void ExpectReport(FakeCommandClient fake, ParsimonyReportResponse report,
+        IReadOnlyList<ParsimonySuppressionHistoryViewRow>? suppressed = null)
     {
+        suppressed ??= [];
+        fake.RecordDispositionHandler ??= (request, _) => Task.FromResult(CommandOutcome<ComposedOperationsResponse>.Success(
+            new ComposedOperationsResponse(request.DraftName, "RecordParsimonyDisposition", [], 1)));
+        fake.RetractDispositionHandler ??= (request, _) => Task.FromResult(CommandOutcome<ComposedOperationsResponse>.Success(
+            new ComposedOperationsResponse(request.DraftName, "RetractParsimonyDisposition", [], 1)));
         fake.OnReadLatestParsimony((_, _) => Task.FromResult(CommandOutcome<ParsimonyLatestReportResponse>.Success(
             new ParsimonyLatestReportResponse(report.ReportId, report.Inputs.BundleId))));
         fake.OnReadParsimonyReport((_, _) => Task.FromResult(CommandOutcome<ParsimonyReportResponse>.Success(report)));
+        fake.ParsimonyViewHandler = (request, _) =>
+        {
+            var rows = request.Query.View == "parsimony-suppressed"
+                ? suppressed.Cast<ParsimonyViewRow>().ToArray()
+                : report.Findings
+                    .Where(finding => !suppressed.Any(row => row.JudgmentId == "judgment-" + finding.FindingId))
+                    .Select(finding => (ParsimonyViewRow)new ParsimonyFindingDispositionViewRow(ReportId, BundleId,
+                        "active", finding, null, null, null, null, null, null))
+                    .ToArray();
+            return Task.FromResult(CommandOutcome<ParsimonyNamedViewResponse>.Success(new ParsimonyNamedViewResponse(
+                BundleId, request.Query.View, 1, ParsimonyMeasureStatus.Computed, [], rows.Length, rows.Length, null,
+                false, rows, null, null)));
+        };
     }
 
     private static ParsimonyReportResponse Report(
         IReadOnlyList<ParsimonyFinding> findings,
         IReadOnlyList<ParsimonyMeasureRun>? measureRuns = null,
-        IReadOnlyList<ParsimonyFindingDispositionViewRow>? dispositions = null,
         BaselineToken? token = null)
     {
         var inputs = new ParsimonyReportInputs(BundleId, token ?? CurrentToken, "baseline", null,
@@ -378,8 +680,6 @@ public sealed class ParsimonyPageModelTests
             MeasureRuns = measureRuns ?? [.. findings.Select(finding => finding.MeasureId).Distinct(StringComparer.Ordinal)
                 .Select(measure => new ParsimonyMeasureRun(measure, ParsimonyMeasureStatus.Computed, 3, 1, "prohibitions",
                     new ParsimonyMeasureNumber(1, 3, "prohibitions"), 0.33, null))],
-            DispositionProjection = dispositions is null ? null : new ParsimonyDispositionProjection(BundleId, ReportId,
-                null, "project", "sha256:" + new string('6', 64), 0, 0, 0, 0, dispositions, [], []),
         };
     }
 
@@ -395,9 +695,12 @@ public sealed class ParsimonyPageModelTests
             "guide:parsimony/recipes/" + measureId, limitations ?? ["The count is a suggestion, not a verdict."],
             ParsimonyVerification.NotRun) with { ItemNames = items ?? [] });
 
-    private static ParsimonyFindingDispositionViewRow Disposition(ParsimonyFinding finding, string disposition,
-        string state) => new(ReportId, BundleId, state, finding, disposition, "Reviewed.", null, "judgment-" + finding.FindingId,
-            "revision-" + finding.FindingId, null);
+    private static ParsimonySuppressionHistoryViewRow History(ParsimonyFinding finding, string disposition, string state,
+        string? reason) => new("judgment-" + finding.FindingId, "revision-" + finding.FindingId,
+            "record-" + finding.FindingId, "sha256:" + new string('8', 64), finding.MeasureId, "subject-" + finding.FindingId,
+            "the prohibition", ParsimonyRecipeCatalog.Load().Find(finding.MeasureId)?.Title ?? "Parsimony check",
+            finding.EvidenceDigest, disposition, reason, state, ReportId, ReportId, "sha256:" + new string('6', 64),
+            "project", null, null, null, null, null);
 
     private static string Describe(ParsimonyFinding finding) =>
         $"{finding.Number.Numerator} of {finding.Number.Denominator} {finding.Number.Unit}";
