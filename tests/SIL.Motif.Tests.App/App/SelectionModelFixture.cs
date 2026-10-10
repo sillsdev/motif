@@ -104,7 +104,11 @@ internal sealed class SelectionModelFixture(FakeCommandClient client) : IAsyncDi
             { Origin = word.Origin ?? new WordMeasurementOrigin(root, source.InvocationId, DateTimeOffset.UnixEpoch) }).ToArray() };
     }
 
-    public static async Task RealizeAsync(ResultsInTextViewModel reader, bool waitForPresentation = true)
+    // Line pages need one thread, as the UI thread; pinned by `SelectionLinePagesThreadTests`.
+    public static Task RealizeAsync(ResultsInTextViewModel reader, bool waitForPresentation = true) =>
+        SingleThreadPump.RunAsync(() => RealizeOnPumpAsync(reader, waitForPresentation));
+
+    private static async Task RealizeOnPumpAsync(ResultsInTextViewModel reader, bool waitForPresentation)
     {
         if (waitForPresentation) await reader.SelectionRefresh;
         Xunit.Assert.InRange(reader.VisibleHeaders.Count, 0, 48);

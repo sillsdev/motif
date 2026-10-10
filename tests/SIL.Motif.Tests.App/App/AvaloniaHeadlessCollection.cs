@@ -70,6 +70,8 @@ internal static class AvaloniaHeadlessPlatform
 
     public static void Initialize() => _ = Shared.Value;
 
+    public static bool IsCurrentThread => Shared.IsValueCreated && Shared.Value.IsCurrentThread;
+
     public static void Invoke(Action work) => Shared.Value.Invoke(work);
 
     public static void RunUntilComplete(Func<Task> work, TimeSpan timeout) =>
@@ -92,6 +94,8 @@ internal static class AvaloniaHeadlessPlatform
                 _thread.Start();
             ready.Task.GetAwaiter().GetResult();
         }
+
+        public bool IsCurrentThread => Thread.CurrentThread == _thread;
 
         public void Invoke(Action work)
         {

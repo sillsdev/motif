@@ -96,6 +96,8 @@ public sealed class SelectionTextViewportTests(PristineProjectFixture pristine) 
         try
         {
             await viewport.ShowAsync(reader, Assert.Single(summary.Value.Texts), new TextLineRange());
+            // Resumed inline inside ShowCoreAsync's frame, whose model temporaries Debug still reports as roots.
+            await Task.Yield();
             var references = Observe(viewport);
             await reader.DisposeAsync();
             Assert.True(reader.Diagnostics.LiveLineModels > 0);
