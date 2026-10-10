@@ -31,88 +31,98 @@ public sealed class ParsimonySampleSurveySystemTests
         new("Sena", "sena.fwdata"),
     ];
 
-    [ParsimonySurveyFact]
-    public Task FivePanGlossSampleGrammarsCompleteParsimonySurvey() => RunSampleSurveyAsync(null);
+    public const string OutputVariable = "MOTIF_PARSIMONY_SURVEY_OUTPUT";
 
-    [ParsimonySurveyFact]
-    public Task FivePanGlossSampleGrammarsCompleteAlternationFamilySurvey() =>
-        RunSampleSurveyAsync(["P-allo-alternation-family"]);
+    public static TheoryData<string> SampleNames
+    {
+        get
+        {
+            var data = new TheoryData<string>();
+            foreach (var sample in Samples) data.Add(sample.Name);
+            return data;
+        }
+    }
 
-    private async Task RunSampleSurveyAsync(IReadOnlyCollection<string>? selectedMeasureIds)
+    [ParsimonySurveyTheory]
+    [MemberData(nameof(SampleNames))]
+    public Task PanGlossSampleGrammarCompletesParsimonySurvey(string sampleName) =>
+        RunSampleSurveyAsync(Samples.Single(sample => sample.Name == sampleName), null, "parsimony-survey");
+
+    [ParsimonySurveyTheory]
+    [MemberData(nameof(SampleNames))]
+    public Task PanGlossSampleGrammarCompletesAlternationFamilySurvey(string sampleName) =>
+        RunSampleSurveyAsync(Samples.Single(sample => sample.Name == sampleName), ["P-allo-alternation-family"],
+            "alternation-family-survey");
+
+    private async Task RunSampleSurveyAsync(
+        SampleGrammar sample, IReadOnlyCollection<string>? selectedMeasureIds, string outputName)
     {
         var samplesPath = RequiredPath("MOTIF_PANGLOSS_SAMPLES");
         var parserPath = RequiredPath(PanGlossExecutable.PathVariable);
         var scratch = Path.Combine(Path.GetTempPath(), "motif-parsimony-survey-" + Guid.NewGuid().ToString("N"));
-        var outputPath = Path.Combine(scratch, "survey");
         Directory.CreateDirectory(scratch);
 
         try
         {
-            var results = new List<GrammarSurvey>();
-            foreach (var sample in Samples)
+            var sampleRoot = Path.Combine(scratch, sample.Slug);
+            Directory.CreateDirectory(sampleRoot);
+            CopySharedDirectory(samplesPath, sampleRoot, "SharedSettings");
+            CopySharedDirectory(samplesPath, sampleRoot, "WritingSystemStore");
+            var sourceProject = Path.Combine(samplesPath, sample.FileName);
+            var projectPath = Path.Combine(sampleRoot, sample.FileName);
+            File.Copy(sourceProject, projectPath);
+            var projectSha256 = Sha256File(projectPath);
+
+            var projectRoot = Path.Combine(sampleRoot, "motif");
+            var workerRoot = Path.Combine(projectRoot, "worker");
+            var preferencePath = Path.Combine(projectRoot, "advanced-ai-mode.json");
+            Directory.CreateDirectory(projectRoot);
+            new FileAdvancedAiModePreferenceStore(preferencePath).SetEnabled(true);
+
+            var capture = await RunMotifAsync(workerRoot, parserPath, preferencePath,
+                "baseline", "capture", projectPath, "--json");
+            Assert.True(capture.ExitCode == 0, capture.FailureDetails);
+
+            var measures = MeasureCatalog.All.Where(measure => MeasureRunner.Supports(measure.Id) &&
+                (selectedMeasureIds is null || selectedMeasureIds.Contains(measure.Id, StringComparer.Ordinal)))
+                .ToArray();
+            var measureResults = new List<MeasureSurvey>();
+            foreach (var measure in measures)
             {
-                var sampleRoot = Path.Combine(scratch, sample.Slug);
-                Directory.CreateDirectory(sampleRoot);
-                CopySharedDirectory(samplesPath, sampleRoot, "SharedSettings");
-                CopySharedDirectory(samplesPath, sampleRoot, "WritingSystemStore");
-                var sourceProject = Path.Combine(samplesPath, sample.FileName);
-                var projectPath = Path.Combine(sampleRoot, sample.FileName);
-                File.Copy(sourceProject, projectPath);
-                var projectSha256 = Sha256File(projectPath);
-
-                var projectRoot = Path.Combine(sampleRoot, "motif");
-                var workerRoot = Path.Combine(projectRoot, "worker");
-                var preferencePath = Path.Combine(projectRoot, "advanced-ai-mode.json");
-                Directory.CreateDirectory(projectRoot);
-                new FileAdvancedAiModePreferenceStore(preferencePath).SetEnabled(true);
-
-                var capture = await RunMotifAsync(workerRoot, parserPath, preferencePath,
-                    "baseline", "capture", projectPath, "--json");
-                Assert.True(capture.ExitCode == 0, capture.FailureDetails);
-
-                var measures = MeasureCatalog.All.Where(measure => MeasureRunner.Supports(measure.Id) &&
-                    (selectedMeasureIds is null || selectedMeasureIds.Contains(measure.Id, StringComparer.Ordinal)))
-                    .ToArray();
-                var measureResults = new List<MeasureSurvey>();
-                foreach (var measure in measures)
-                {
-                    var report = await RunMotifAsync(workerRoot, parserPath, preferencePath,
-                        "parsimony", "--project", projectPath, "--measure", measure.Id,
-                        "--evidence-scope", "project-approved", "--wait", "--wait-timeout-ms", "900000", "--json");
-                    Assert.True(report.ExitCode == 0, report.FailureDetails);
-                    var response = JsonSerializer.Deserialize<ParsimonyReportResponse>(report.Output,
-                        new JsonSerializerOptions(JsonSerializerDefaults.Web));
-                    Assert.NotNull(response);
-                    AssertDenominatorsArePresent(report.Output, response!.JoinQuality);
-                    var run = Assert.Single(response.MeasureRuns, item => item.MeasureId == measure.Id);
-                    measureResults.Add(new MeasureSurvey(measure.Id, run.Status.ToString(), run.EligibleItems,
-                        run.FindingItems, response.Findings.Select(finding =>
-                            $"{finding.FindingId} → {finding.AttachesTo.Identity} " +
-                            $"({finding.Number.Numerator}/{finding.Number.Denominator} {finding.Number.Unit})").ToArray(),
-                        response.JoinQuality!, measure.Id == "P-allo-alternation-family" ? run.Detail :
-                            measure.Id is "B-adhoc-is-slot-order" or "R-env-broad" or "R-nc-excess"
-                                ? response.Text
-                                : null));
-                }
-
-                Assert.Equal(projectSha256, Sha256File(projectPath));
-                _output.WriteLine($"{sample.Name} copied project unchanged: sha256={projectSha256}");
-
-                results.Add(new GrammarSurvey(sample.Name, measureResults));
+                var report = await RunMotifAsync(workerRoot, parserPath, preferencePath,
+                    "parsimony", "--project", projectPath, "--measure", measure.Id,
+                    "--evidence-scope", "project-approved", "--wait", "--wait-timeout-ms", "900000", "--json");
+                Assert.True(report.ExitCode == 0, report.FailureDetails);
+                var response = JsonSerializer.Deserialize<ParsimonyReportResponse>(report.Output,
+                    new JsonSerializerOptions(JsonSerializerDefaults.Web));
+                Assert.NotNull(response);
+                AssertDenominatorsArePresent(report.Output, response!.JoinQuality);
+                var run = Assert.Single(response.MeasureRuns, item => item.MeasureId == measure.Id);
+                measureResults.Add(new MeasureSurvey(measure.Id, run.Status.ToString(), run.EligibleItems,
+                    run.FindingItems, response.Findings.Select(finding =>
+                        $"{finding.FindingId} → {finding.AttachesTo.Identity} " +
+                        $"({finding.Number.Numerator}/{finding.Number.Denominator} {finding.Number.Unit})").ToArray(),
+                    response.JoinQuality!, measure.Id == "P-allo-alternation-family" ? run.Detail :
+                        measure.Id is "B-adhoc-is-slot-order" or "R-env-broad" or "R-nc-excess"
+                            ? response.Text
+                            : null));
             }
 
-            Directory.CreateDirectory(outputPath);
-            var artifact = new SurveyArtifact(results);
-            File.WriteAllText(Path.Combine(outputPath, "parsimony-survey.json"),
-                JsonSerializer.Serialize(artifact, new JsonSerializerOptions(JsonSerializerDefaults.Web)
-                {
-                    WriteIndented = true,
-                }));
-            var markdown = RenderMarkdown(results);
-            File.WriteAllText(Path.Combine(outputPath, "parsimony-survey.md"), markdown);
+            Assert.Equal(projectSha256, Sha256File(projectPath));
+            _output.WriteLine($"{sample.Name} copied project unchanged: sha256={projectSha256}");
+
+            var markdown = RenderMarkdown([new GrammarSurvey(sample.Name, measureResults)]);
             _output.WriteLine(markdown);
-            Assert.True(new FileInfo(Path.Combine(outputPath, "parsimony-survey.json")).Length > 0);
-            Assert.True(new FileInfo(Path.Combine(outputPath, "parsimony-survey.md")).Length > 0);
+            Assert.True(markdown.Length > 0);
+
+            var outputDirectory = Environment.GetEnvironmentVariable(OutputVariable);
+            if (!string.IsNullOrWhiteSpace(outputDirectory))
+            {
+                Directory.CreateDirectory(outputDirectory);
+                var file = Path.Combine(outputDirectory, $"{outputName}-{sample.Slug}.md");
+                File.WriteAllText(file, markdown);
+                Assert.True(new FileInfo(file).Length > 0);
+            }
         }
         finally
         {
@@ -276,9 +286,10 @@ public sealed class ParsimonySampleSurveySystemTests
     private sealed record SurveyArtifact(IReadOnlyList<GrammarSurvey> Grammars);
 }
 
-public sealed class ParsimonySurveyFactAttribute : FactAttribute
+/// <summary>Theory form of the survey gate, for a survey split into one case per sample grammar.</summary>
+public sealed class ParsimonySurveyTheoryAttribute : TheoryAttribute
 {
-    public ParsimonySurveyFactAttribute()
+    public ParsimonySurveyTheoryAttribute()
     {
         var missing = new[] { "MOTIF_PANGLOSS_SAMPLES", PanGlossExecutable.PathVariable }
             .Where(variable => string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(variable)))
