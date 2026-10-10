@@ -139,10 +139,14 @@ public sealed class UnparsedLargeProjectScaleTests(ITestOutputHelper output)
             reader.ScrollToEnd();
             reader.UpdateLayout();
             var pages = model.LinePages!;
-            await pages.Pending;
-            foreach (var words in panel.GetVisualDescendants().OfType<ProgressiveItemsControl>().ToArray())
-                await words.PageRefresh;
-            reader.UpdateLayout();
+            // Each arriving page can move the end again, so the reader settles over up to four passes.
+            for (var pass = 0; pass < 4; pass++)
+            {
+                await pages.Pending;
+                foreach (var words in panel.GetVisualDescendants().OfType<ProgressiveItemsControl>().ToArray())
+                    await words.PageRefresh;
+                PageScreenshots.Settle(window.Window);
+            }
             var finalPosition = window.Workspace.Context.SelectionReads.Summary!.SourcePositions.Last(position =>
                 position.Location.Anchor.TextId == longest.TextId);
             var diagnostics = window.Workspace.Context.SelectionReads.Reader!.Diagnostics;
