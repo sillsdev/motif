@@ -88,11 +88,15 @@ public sealed class ReviewChangeActionsTests : IAsyncLifetime
         var otherSegmentId = Guid.Parse("00000003-0000-0000-0000-000000000000");
         var targetSegmentId = Guid.Parse("00000004-0000-0000-0000-000000000000");
         var occurrence = new OccurrenceAnchor(textId, paragraphId, targetSegmentId, 1);
-        var (context, page, _) = await OpenReviewWithContextAsync(
+        var (context, page, texts) = await OpenReviewWithContextAsync(
             [Change("target", "same", ChangeKinds.Approve, occurrence)],
             textId, paragraphId, otherSegmentId, targetSegmentId);
         var change = Assert.Single(Assert.Single(page.ReviewGroups).Items);
         context.OpenPage(WorkspacePage.Review);
+        // Only the context's leases are counted, so other reader work settles first.
+        await texts.ResultsInText.SelectionRefresh;
+        var reader = context.SelectionReads.Reader!;
+        var leasedBefore = reader.Diagnostics.LeasedResults;
 
         await page.ToggleContextCommand.ExecuteAsync(change);
 
@@ -100,11 +104,11 @@ public sealed class ReviewChangeActionsTests : IAsyncLifetime
         Assert.Equal(["near", "same"], change.ContextTokens.Select(token => token.Form));
         Assert.Equal(occurrence, change.ContextTokens[1].Occurrence);
         Assert.Equal(WorkspacePage.Review, context.CurrentPage);
-        var reader = context.SelectionReads.Reader!;
         await page.ToggleContextCommand.ExecuteAsync(change);
         Assert.Empty(change.ContextTokens);
         Assert.Equal(0, reader.Diagnostics.LiveTokenModels);
-        Assert.True(reader.Diagnostics.LeasedResults == 1, reader.Diagnostics.ToString());
+        Assert.True(reader.Diagnostics.LeasedResults == leasedBefore,
+            $"{leasedBefore} leases before the context opened; now {reader.Diagnostics}");
     }
 
     private async Task<(WorkspaceContext Context, ReviewPageModel Page)> OpenReviewAsync(
