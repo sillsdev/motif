@@ -1,2 +1,2 @@
 # <test project name> | <dotnet test --filter expression>; empty filter runs the whole project.
-SIL.Motif.Tests.App | FullyQualifiedName~SIL.Motif.Tests.App.Walkthrough.UnparsedLargeProjectScaleTests.
+SIL.Motif.Tests.App | FullyQualifiedName~SIL.Motif.Tests.App.Walkthrough.UnparsedLargeProjectScaleTests.|FullyQualifiedName~ScrollEndAnchorTests|FullyQualifiedName~ReviewChangeActionsTests
