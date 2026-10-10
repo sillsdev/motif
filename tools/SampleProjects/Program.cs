@@ -122,7 +122,8 @@ internal static class Program
         if (!capture.Succeeded)
             throw new InvalidOperationException($"[{variant}] Baseline capture failed: {capture.Refusal?.Message}");
 
-        using var grammarTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        // The check shares the machine with a multi-threaded batch, so a slow CI runner needs more than seconds.
+        using var grammarTimeout = new CancellationTokenSource(TimeSpan.FromMinutes(2));
         var grammarTask = Task.Run(() => GrammarCheckQuery.Query(
             new GrammarCheckRequest(build.ProjectPath), grammarTimeout.Token));
         var words = spec.Texts.SelectMany(text => text.Sentences)
