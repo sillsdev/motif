@@ -152,13 +152,27 @@ public static class HelpCommand
 
         var lines = source.SelectMany(verb => verb.UsageLines)
             .SelectMany(line => line.Split(" OR ", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-            .Where(line => line.Contains(commandName, StringComparison.Ordinal))
+            .Where(line => NamesCommand(line, commandName))
             .Distinct(StringComparer.Ordinal)
             .Select(NormalizeUsage)
             .ToArray();
         if (lines.Length == 0)
             throw new InvalidDataException($"No CLI usage line is catalogued for '{commandName}'.");
         return lines;
+    }
+
+    // A usage line names a command when the command's words appear in it in order, arguments between them allowed.
+    private static bool NamesCommand(string line, string commandName)
+    {
+        var words = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var at = 0;
+        foreach (var word in commandName.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+        {
+            at = Array.IndexOf(words, word, at);
+            if (at < 0) return false;
+            at++;
+        }
+        return true;
     }
 
     private static string NormalizeUsage(string usage) =>

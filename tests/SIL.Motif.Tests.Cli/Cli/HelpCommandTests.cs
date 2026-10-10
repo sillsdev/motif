@@ -253,7 +253,23 @@ public sealed class HelpCommandTests
             .Select(command => command.Name).Order(StringComparer.Ordinal));
     }
 
-    private static CliRun Run(params string[] arguments)
+    [Fact]
+    public void AdvancedAiHelpListsEveryCommandWithAUsageLine()
+    {
+        var result = Run(true, "help", "--all", "--json");
+
+        Assert.True(result.ExitCode == 0, result.Error);
+        using var help = JsonDocument.Parse(result.Output);
+        var commands = help.RootElement.GetProperty("entries").EnumerateArray()
+            .Where(entry => entry.GetProperty("kind").GetString() == "command")
+            .ToDictionary(entry => entry.GetProperty("code").GetString()!, StringComparer.Ordinal);
+        foreach (var name in new[] { "dry-run --wait", "parsimony --dry-run --wait" })
+            Assert.Contains("--wait", commands[name].GetRawText(), StringComparison.Ordinal);
+    }
+
+    private static CliRun Run(params string[] arguments) => Run(false, arguments);
+
+    private static CliRun Run(bool advancedAi, params string[] arguments)
     {
         var start = new ProcessStartInfo(BuildOutput.Cli)
         {
@@ -267,7 +283,7 @@ public sealed class HelpCommandTests
         start.Environment.Remove(CommandSurfacePolicy.DeveloperCommandsEnvironmentVariable);
         var preferencePath = Path.Combine(Path.GetTempPath(), "motif-help-preferences", Guid.NewGuid().ToString("N"),
             "advanced-ai-mode.json");
-        new FileAdvancedAiModePreferenceStore(preferencePath).SetEnabled(false);
+        new FileAdvancedAiModePreferenceStore(preferencePath).SetEnabled(advancedAi);
         start.Environment[FileAdvancedAiModePreferenceStore.PathEnvironmentVariable] = preferencePath;
 
         try
