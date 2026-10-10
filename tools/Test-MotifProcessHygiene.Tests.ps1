@@ -14,7 +14,7 @@ Import-Module (Join-Path $PSScriptRoot 'MotifProcessHygiene.psm1') -Force
 if ($LockOwner) {
     $lock = Enter-MotifWorktreeLock -RepoRoot $RepoRoot -Context 'lock owner test'
     [IO.File]::WriteAllText($ReadyFile, 'ready')
-    [Threading.Thread]::Sleep([Timeout]::Infinite)
+    [System.Threading.Thread]::Sleep([System.Threading.Timeout]::Infinite)
     exit 0
 }
 
