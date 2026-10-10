@@ -109,7 +109,7 @@ public sealed class CorpusProjectionTests
 
         Assert.Equal("No corpora in store." + Environment.NewLine, CommandTextRenderer.Render(projection));
         Assert.Equal(
-            "{" + Environment.NewLine + "  \"corpora\": []" + Environment.NewLine + "}",
+            "{\n  \"corpora\": []\n}",
             ProjectionJson.Serialize(projection));
     }
 

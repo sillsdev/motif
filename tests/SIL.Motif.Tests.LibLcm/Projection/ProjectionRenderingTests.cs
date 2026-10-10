@@ -131,7 +131,7 @@ public sealed class ProjectionRenderingTests
             "      after:     {\"ws\":\"en\",\"text\":\"move quickly\"}",
         }) + System.Environment.NewLine;
 
-        var expectedJson = string.Join(System.Environment.NewLine, new[]
+        var expectedJson = string.Join("\n", new[]
         {
             "{",
             "  \"proposalId\": \"agent_AAECAwQFBgcICQoLDA0ODw\",",

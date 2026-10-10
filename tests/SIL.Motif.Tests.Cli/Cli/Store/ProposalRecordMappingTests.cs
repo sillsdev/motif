@@ -97,7 +97,7 @@ public sealed class ProposalRecordMappingTests : IDisposable
             "proposal/AQIDBAUGBwgJCgsMDQ4PEA  draft     ",
         }) + Environment.NewLine;
 
-        var expectedJson = string.Join(Environment.NewLine, new[]
+        var expectedJson = string.Join("\n", new[]
         {
             "{",
             "  \"proposals\": [",

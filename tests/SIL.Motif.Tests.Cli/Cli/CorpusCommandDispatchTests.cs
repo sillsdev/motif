@@ -56,7 +56,7 @@ public sealed class CorpusCommandDispatchTests : IDisposable
         Assert.Equal(0, exitCode);
         Assert.Equal(string.Empty, error);
         Assert.Equal(
-            "{" + Environment.NewLine + "  \"corpora\": []" + Environment.NewLine + "}" + Environment.NewLine,
+            "{\n  \"corpora\": []\n}" + Environment.NewLine,
             output);
         var entry = Assert.Single(ReadUsage());
         Assert.Equal("corpora", entry.Command);
