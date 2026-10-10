@@ -19,6 +19,7 @@ public static class HelpCommand
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
         WriteIndented = true,
+        NewLine = "\n",
     };
 
     /// <summary>Runs the help front end for the supplied help arguments.</summary>

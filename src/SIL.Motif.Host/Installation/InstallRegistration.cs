@@ -11,7 +11,7 @@ internal static class InstallRegistration
 {
     private const string RegistryKeyPath = "Software\\SIL\\Motif";
     private const string UserEnvironmentKeyPath = "Environment";
-    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
+    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true, NewLine = "\n" };
 
     internal static void RegisterCurrent()
     {

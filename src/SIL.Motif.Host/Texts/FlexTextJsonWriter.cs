@@ -37,7 +37,7 @@ public static class FlexTextJsonWriter
 
     /// <summary>Serializes <paramref name="projection"/> to an indented JSON string.</summary>
     public static string Serialize(InterlinearTextProjection projection) =>
-        Write(projection).ToJsonString(new JsonSerializerOptions { WriteIndented = true });
+        Write(projection).ToJsonString(new JsonSerializerOptions { WriteIndented = true, NewLine = "\n" });
 
     /// <summary>Parses JSON written by <see cref="Write"/> back into a projection.</summary>
     public static InterlinearTextProjection Read(JsonNode root)

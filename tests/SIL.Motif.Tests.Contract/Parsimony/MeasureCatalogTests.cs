@@ -150,7 +150,10 @@ public sealed class MeasureCatalogTests
                     "condition:unspecified", "gate/one", "prefixes", [], [], [], [], [], []),
             ], new string('a', 64), null);
 
-        using var document = System.Text.Json.JsonDocument.Parse(ProjectionJson.Serialize(response));
+        var json = ProjectionJson.Serialize(response);
+        Assert.Contains('\n', json);
+        Assert.DoesNotContain('\r', json);
+        using var document = System.Text.Json.JsonDocument.Parse(json);
         var rows = document.RootElement.GetProperty("rows").EnumerateArray().ToArray();
 
         Assert.Equal("natural-class", rows[0].GetProperty("kind").GetString());

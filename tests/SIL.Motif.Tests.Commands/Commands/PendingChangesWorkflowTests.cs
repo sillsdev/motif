@@ -343,6 +343,7 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine,
         var input = TrialJobInput.Parse(Assert.IsType<JobRecord>(job).InputJson);
         using var proposal = System.Text.Json.JsonDocument.Parse(input.ProposalJson);
         Assert.Equal(pending.DraftId, proposal.RootElement.GetProperty("proposalId").GetString());
+        Assert.DoesNotContain('\r', input.ProposalJson);
     }
 
     [Fact]

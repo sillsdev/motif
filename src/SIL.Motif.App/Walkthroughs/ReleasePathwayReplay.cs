@@ -445,7 +445,7 @@ internal static class ReleasePathwayReplay
         }
         var fullPath = Path.GetFullPath(path);
         Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
-        File.WriteAllText(fullPath, JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true }));
+        File.WriteAllText(fullPath, JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true, NewLine = "\n" }));
     }
 
     private sealed class FixedProjectPicker(string projectPath) : IProjectPicker

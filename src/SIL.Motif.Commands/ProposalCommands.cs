@@ -69,9 +69,11 @@ public static partial class ProposalCommands
         OperationRegistryBootstrap.Initialize();
     }
 
+    // Stored and compared JSON must read the same on every OS, so indentation never uses Windows CRLF.
     private static readonly JsonSerializerOptions DraftJsonOptions = new()
     {
         WriteIndented = true,
+        NewLine = "\n",
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         // Case-insensitive: Anchor's nested record matches JSON to ctor params, robust across runtimes.
         PropertyNameCaseInsensitive = true,
@@ -80,6 +82,7 @@ public static partial class ProposalCommands
     private static readonly JsonSerializerOptions ProposalJsonOptions = new()
     {
         WriteIndented = true,
+        NewLine = "\n",
         // Omit null entityId entirely: ParseOptionalId treats present-but-null as a type error, not absent.
         DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
     };

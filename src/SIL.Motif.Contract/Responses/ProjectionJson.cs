@@ -14,6 +14,7 @@ public static class ProjectionJson
     private static readonly JsonSerializerOptions Options = new()
     {
         WriteIndented = true,
+        NewLine = "\n",
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
         // Names not ordinals, domain converters first so JobStatus stays "queued" rather than "Queued".
