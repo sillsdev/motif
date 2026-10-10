@@ -204,7 +204,7 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
 
     public ChangesViewModel Changes => _changes;
 
-    internal Task ReadStateRefresh => _selectionWork;
+    internal Task ReadStateRefresh => Task.WhenAll(_selectionWork, _readStateWrites);
 
     [ObservableProperty]
     private ResultsTextViewModel? _selectedText;
@@ -563,7 +563,10 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         SetReadStateAsync(selection.Where(token => token.IsWord)
             .Select(token => token.CaptureActionTarget(_changes.AssessmentId)).ToArray(), isRead);
 
-    private async Task SetReadStateAsync(IReadOnlyList<WordActionTarget> selection, bool isRead)
+    private Task SetReadStateAsync(IReadOnlyList<WordActionTarget> selection, bool isRead) =>
+        TrackReadStateWrite(WriteReadStateAsync(selection, isRead));
+
+    private async Task WriteReadStateAsync(IReadOnlyList<WordActionTarget> selection, bool isRead)
     {
         if (string.IsNullOrWhiteSpace(_assess.ProjectPath)) return;
         var groups = selection.Where(token => token.Occurrence is not null)
@@ -612,7 +615,7 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         System.Text.Json.JsonSerializer.Serialize(left, SIL.Motif.Contract.MotifJson.CreateOptions()) ==
         System.Text.Json.JsonSerializer.Serialize(right, SIL.Motif.Contract.MotifJson.CreateOptions());
 
-    private Task SetSelectedTextReadStateAsync(bool isRead) => SetNativeTextReadStateAsync(isRead);
+    private Task SetSelectedTextReadStateAsync(bool isRead) => TrackReadStateWrite(SetNativeTextReadStateAsync(isRead));
 
     private static string? ReadStateSkipNotice(int count) => count switch
     {
