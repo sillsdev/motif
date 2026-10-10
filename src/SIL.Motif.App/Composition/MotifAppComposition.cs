@@ -2,6 +2,7 @@ using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Commands;
+using SIL.Motif.Commands.Assistants;
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Commands.Preferences;
 
@@ -33,6 +34,7 @@ namespace SIL.Motif.App.Composition;
 /// </param>
 /// <param name="UserPreferencesStore">The shared per-user App preferences, or process-local defaults when omitted.</param>
 /// <param name="AdvancedAiModePreferences">Where the user's Advanced AI mode choice is read and saved.</param>
+/// <param name="AssistantConnections">The replaceable assistant discovery and connection service.</param>
 public sealed record MotifAppOptions(
     string ManagedRoot,
     string? ParserPath,
@@ -46,7 +48,8 @@ public sealed record MotifAppOptions(
     CrashWindowServices? CrashWindow = null,
     bool RememberBounds = false,
     IUserPreferencesStore? UserPreferencesStore = null,
-    IAdvancedAiModePreferenceStore? AdvancedAiModePreferences = null)
+    IAdvancedAiModePreferenceStore? AdvancedAiModePreferences = null,
+    IAssistantConnectionService? AssistantConnections = null)
 {
     /// <summary>The command surface the window may show for the current preference choice.</summary>
     public CommandSurfacePolicy SurfacePolicy =>
@@ -62,7 +65,8 @@ public sealed record MotifAppOptions(
         return new MotifAppOptions(commands.ManagedRoot, commands.ParserPath, commands.RunnerLauncher,
             TimeProvider.System, RememberBounds: true,
             UserPreferencesStore: new FileUserPreferencesStore(FileUserPreferencesStore.DefaultPath),
-            AdvancedAiModePreferences: FileAdvancedAiModePreferenceStore.ForInstallation());
+            AdvancedAiModePreferences: FileAdvancedAiModePreferenceStore.ForInstallation(),
+            AssistantConnections: AssistantConnectionService.ForInstallation());
     }
 }
 
@@ -110,7 +114,10 @@ public static class MotifAppComposition
             diagnosticDialogs.For(window),
             diagnosticDialogs,
             techDemoNotice,
-            advancedAiModeEnabled: surfacePolicy.AdvancedAiModeEnabled);
+            advancedAiModeEnabled: surfacePolicy.AdvancedAiModeEnabled,
+            advancedAiModePreferences: options.AdvancedAiModePreferences,
+            assistantConnections: options.AssistantConnections,
+            uriLauncher: new AvaloniaLauncher(window));
         window.Compose(workspace);
         var crashes = new CrashReporter(options.TimeProvider, options.CrashWindow ?? new CrashWindowServices());
         return new MotifAppCompositionResult(window, workspace, crashes, surfacePolicy);

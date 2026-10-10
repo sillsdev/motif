@@ -43,7 +43,8 @@ public static class ParsimonyDispositionQuery
                 disposition.MeasureId == finding.MeasureId &&
                 SubjectMatches(disposition.Subject, finding, judgments.ProjectId)).ToArray();
             var exact = related.Where(item => item.Judgment.Body is DispositionJudgment disposition &&
-                SameEvidenceDigest(disposition.EvidenceDigest, finding.EvidenceDigest)).ToArray();
+                SameEvidenceDigest(disposition.EvidenceDigest, finding.EvidenceDigest) &&
+                disposition.EvidenceContract == MeasureCatalog.Find(finding.MeasureId)?.QueryId).ToArray();
             var unresolvedRelated = judgments.Heads.Where(item => item.State is "conflict" or "unavailable")
                 .Where(item => revisions.TryGetValue(item.RevisionId, out var revision) &&
                     revision.Judgment.Body is DispositionJudgment disposition &&
@@ -80,7 +81,8 @@ public static class ParsimonyDispositionQuery
             var prior = reportAvailable
                 ? related.Where(item => item.Judgment.Body is DispositionJudgment
                     { Disposition: ParsimonyDispositionKind.Keep or ParsimonyDispositionKind.Defer } disposition &&
-                    !SameEvidenceDigest(disposition.EvidenceDigest, finding.EvidenceDigest))
+                    (!SameEvidenceDigest(disposition.EvidenceDigest, finding.EvidenceDigest) ||
+                    disposition.EvidenceContract != MeasureCatalog.Find(finding.MeasureId)?.QueryId))
                     .OrderBy(item => item.Judgment.JudgmentId, StringComparer.Ordinal)
                     .ThenBy(item => item.RevisionId, StringComparer.Ordinal).ToArray()
                 : [];
@@ -136,8 +138,10 @@ public static class ParsimonyDispositionQuery
                 heads.GetValueOrDefault(item.RevisionId)?.State == "effective");
             var matchingSubject = findings.Where(finding => finding.MeasureId == disposition.MeasureId &&
                 SubjectMatches(disposition.Subject, finding, judgments.ProjectId)).ToArray();
-            var exact = matchingSubject.Any(finding => SameEvidenceDigest(disposition.EvidenceDigest, finding.EvidenceDigest));
-            var changed = matchingSubject.Any(finding => !SameEvidenceDigest(disposition.EvidenceDigest, finding.EvidenceDigest));
+            var exact = matchingSubject.Any(finding => SameEvidenceDigest(disposition.EvidenceDigest, finding.EvidenceDigest) &&
+                disposition.EvidenceContract == MeasureCatalog.Find(finding.MeasureId)?.QueryId);
+            var changed = matchingSubject.Any(finding => (!SameEvidenceDigest(disposition.EvidenceDigest, finding.EvidenceDigest) ||
+                    disposition.EvidenceContract != MeasureCatalog.Find(finding.MeasureId)?.QueryId));
             string state;
             if (head?.State == "conflict") state = "conflict";
             else if (head?.State == "unavailable") state = "unavailable";

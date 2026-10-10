@@ -14,6 +14,10 @@ public sealed record DryRunProjection(
     string EffectDigest,
     string FootprintDigest)
 {
+    public SIL.Motif.Contract.Baselines.BaselineToken? Baseline { get; init; }
+
+    public bool EvidenceCurrent { get; init; }
+
     /// <summary>The Proposal's operations in declared dependency order, with prerequisites named explicitly.</summary>
     public IReadOnlyList<ProposalOperationView> Operations { get; init; } = [];
 }

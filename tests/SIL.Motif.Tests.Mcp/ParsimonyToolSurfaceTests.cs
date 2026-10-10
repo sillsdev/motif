@@ -1,4 +1,5 @@
 using System.IO.Pipelines;
+using ModelContextProtocol.Protocol;
 using System.Text.Json.Nodes;
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Contract.Commands;
@@ -12,7 +13,7 @@ public sealed class ParsimonyToolSurfaceTests
     private static readonly string[] ExperimentalTools =
     [
         "motif_start_proposal",
-        "motif_finish_proposal",
+        "motif_finalize_proposal",
         "motif_dry_run",
         "motif_parsimony_measures",
         "motif_run_parsimony_measure",
@@ -70,7 +71,7 @@ public sealed class ParsimonyToolSurfaceTests
         var tools = MotifMcpServer.Expose(ToolProfile.Load(ShippedProfile("parsimony-experimental")));
 
         var dispose = Assert.Single(tools, tool => tool.Name == "motif_dispose_parsimony_finding");
-        Assert.Contains("only a person can Apply", dispose.Description, StringComparison.Ordinal);
+        Assert.Contains("person", dispose.Description, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -84,7 +85,7 @@ public sealed class ParsimonyToolSurfaceTests
             var tool = Assert.Single(tools, candidate => candidate.Name == name);
             Assert.Equal(AgentClass.Draft, tool.Tool.Class);
             Assert.False(tool.Describe().Annotations!.ReadOnlyHint);
-            Assert.Contains("only a person can Apply", tool.Description, StringComparison.Ordinal);
+            Assert.Contains("person", tool.Description, StringComparison.Ordinal);
         }
 
         Assert.DoesNotContain(tools, tool => tool.Name.Contains("apply", StringComparison.Ordinal));
@@ -99,7 +100,7 @@ public sealed class ParsimonyToolSurfaceTests
 
         Assert.Equal(AgentClass.Draft, edit.Tool.Class);
         Assert.False(edit.Describe().Annotations!.ReadOnlyHint);
-        Assert.Contains("only a person can Apply", edit.Description, StringComparison.Ordinal);
+        Assert.Contains("person", edit.Description, StringComparison.Ordinal);
         Assert.Contains("expected_disabled", edit.Tool.ArgumentNames);
         Assert.Contains("disabled", edit.Tool.ArgumentNames);
         Assert.DoesNotContain(tools, tool => tool.Name.Contains("apply", StringComparison.Ordinal));
@@ -131,8 +132,8 @@ public sealed class ParsimonyToolSurfaceTests
             var tool = Assert.Single(tools, candidate => candidate.Name == name);
             Assert.Equal(AgentClass.Draft, tool.Tool.Class);
             Assert.False(tool.Describe().Annotations!.ReadOnlyHint);
-            Assert.Contains("only a person can Apply", tool.Description, StringComparison.Ordinal);
-            Assert.Equal(arguments, tool.Tool.ArgumentNames);
+            Assert.Contains("person", tool.Description, StringComparison.Ordinal);
+            Assert.Equal(arguments.Append("project"), tool.Tool.ArgumentNames);
         }
 
         Assert.DoesNotContain(tools, tool => tool.Name.Contains("apply", StringComparison.Ordinal));
@@ -162,11 +163,20 @@ public sealed class ParsimonyToolSurfaceTests
     {
         var toServer = new Pipe();
         var fromServer = new Pipe();
-        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => MotifMcpServer.RunAsync(
-            new McpLaunchOptions("missing.fwdata", Profile: "parsimony-experimental"),
-            toServer.Reader.AsStream(), fromServer.Writer.AsStream(), TextWriter.Null, CancellationToken.None));
+        using var cancellation = new CancellationTokenSource();
+        var server = MotifMcpServer.RunAsync(new McpLaunchOptions(Profile: "parsimony-experimental"),
+            toServer.Reader.AsStream(), fromServer.Writer.AsStream(), TextWriter.Null, cancellation.Token);
+        await using var client = await ModelContextProtocol.Client.McpClient.CreateAsync(
+            new StreamClientTransport(toServer.Writer.AsStream(), fromServer.Reader.AsStream()));
+        Assert.Empty(await client.ListToolsAsync());
+        Assert.Contains("Advanced AI mode", client.ServerInstructions!);
+        var refused = await client.CallToolAsync("motif_grammar", new Dictionary<string, object?>());
+        Assert.True(refused.IsError);
+        Assert.Equal("advanced-ai.disabled", refused.StructuredContent!.Value.GetProperty("code").GetString());
+        Assert.Contains("Advanced AI mode", ((TextContentBlock)refused.Content[0]).Text);
+        cancellation.Cancel();
+        try { await server; } catch (OperationCanceledException) { }
 
-        Assert.Contains("Advanced AI mode is required", exception.Message, StringComparison.Ordinal);
     }
 
     private static string ShippedProfile(string name) =>

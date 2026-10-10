@@ -1,7 +1,7 @@
 [
   {
     "name": "motif_overview",
-    "description": "Start here. Returns how well the project\u0027s grammar currently analyzes its texts: how many words get an analysis, the accuracy against the words the linguist has approved, and which words to look at first. Call it once at the beginning and again after the linguist applies a Proposal. Returns a refusal with Next: when Motif has not yet measured the project.",
+    "description": "Read the project Overview. Displays the latest saved counts, Text Coverage, manual-analysis agreement, timing, and warnings. It reads stored evidence and does not start a new run.\nCommand: overview. Agent class: Read.\n",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -18,9 +18,16 @@
           "description": "The most list items to return in concise mode. Default 25.",
           "minimum": 1,
           "maximum": 200
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
         }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "required": [
+        "project"
+      ]
     },
     "readOnlyHint": true,
     "destructiveHint": false,
@@ -28,11 +35,19 @@
   },
   {
     "name": "motif_capture_baseline",
-    "description": "Takes a fresh saved copy of the project that every read tool uses. Call it when a read tool reports that Motif has no saved copy, or after the linguist says they saved changes in FieldWorks. It reads the saved file only and never changes the project. It can take a minute on a large project.",
+    "description": "Capture a Baseline. Reads the saved .fwdata project to create or reuse a file-backed Baseline. Use it when the latest FieldWorks save should be the point of comparison for later work.\nCommand: baseline capture. Agent class: Evaluate.\n",
     "inputSchema": {
       "type": "object",
-      "properties": {},
-      "additionalProperties": false
+      "properties": {
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "project"
+      ]
     },
     "readOnlyHint": false,
     "destructiveHint": false,
@@ -40,7 +55,7 @@
   },
   {
     "name": "motif_grammar",
-    "description": "Reads the project\u0027s grammar. With no kind it returns counts of everything the grammar holds. With a kind (categories, phonemes, natural_classes, environments, phonological_rules, features, phonological_features, inflection_classes, templates, strata, morph_types) it lists those objects with their ids, ready to name in a change. Narrow with query (matches the name or abbreviation). Ids are 22 characters; copy them exactly. To read affixes and stems, use motif_lexicon. For encoding help, use motif_guide with the matching topic.",
+    "description": "Read grammar. Reads the Baseline grammar by kind and exact object identity. Choose a kind to page through its objects, or omit it for counts.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -84,9 +99,16 @@
           "description": "The most list items to return in concise mode. Default 25.",
           "minimum": 1,
           "maximum": 200
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
         }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "required": [
+        "project"
+      ]
     },
     "readOnlyHint": true,
     "destructiveHint": false,
@@ -94,7 +116,7 @@
   },
   {
     "name": "motif_lexicon",
-    "description": "Searches the lexicon. Each entry has its id, headword, morph type (stem, suffix, prefix...), its lexeme form, and its senses with the glosses and the id of each sense\u0027s grammatical info. Use it to find the entry a change is about, and to see what already exists before you add anything. query matches the headword, a gloss, or an allomorph form. detail=detailed adds every allomorph with its environments. Use motif_guide for affix slots, conditioned allomorphs or feature-conditioned slots.",
+    "description": "Read lexicon. Searches Baseline entries, senses, forms and glosses. Detailed results include allomorphs and their environments.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -125,9 +147,16 @@
           "description": "The most list items to return in concise mode. Default 25.",
           "minimum": 1,
           "maximum": 200
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
         }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "required": [
+        "project"
+      ]
     },
     "readOnlyHint": true,
     "destructiveHint": false,
@@ -135,7 +164,7 @@
   },
   {
     "name": "motif_word",
-    "description": "Shows what FieldWorks already knows about one exact word: each analysis it holds and the linguist\u0027s opinion of it (approved, disapproved, or not yet judged). Use it to see what the linguist expects a word to mean before you change the grammar to parse it.",
+    "description": "Read one word\u0027s context. Reads a word\u0027s captured FieldWorks presence and every stored analysis with its individual Opinion. Uses the current Baseline without requiring a Selection or an Assessment, and reports whether FieldWorks has saved since.\nCommand: word-context. Agent class: Read.\nWord: The exact word form to read.\nExpectedBaseline: The required Baseline identity; null accepts the current Baseline.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -156,10 +185,15 @@
           "description": "The most list items to return in concise mode. Default 25.",
           "minimum": 1,
           "maximum": 200
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
         }
       },
       "required": [
-        "word"
+        "word",
+        "project"
       ],
       "additionalProperties": false
     },
@@ -169,7 +203,7 @@
   },
   {
     "name": "motif_start_proposal",
-    "description": "Starts a new Draft Proposal: a named container for one small, related set of changes. Give it a short draft name (letters, digits and hyphens), a one-line label a person reads in Motif\u0027s window, such as \u0027Add the plural suffix -s\u0027, and a comment explaining why the change is right, which the linguist reads while deciding. Keep each Proposal to one concept. Returns the draft name and the proposal id; use the draft name with the motif_add_* tools and the proposal id with motif_trial.",
+    "description": "Start a Proposal. Starts a named Draft holding one related set of semantic changes. Measure it and revise it before Finalize. Only a person can Apply.\nCommand: new. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nLabel: The short description a person reads while reviewing the Proposal.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -184,12 +218,17 @@
         "comment": {
           "type": "string",
           "description": "Why this change is right: the evidence, in a few sentences."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
         }
       },
       "required": [
         "draft",
         "label",
-        "comment"
+        "comment",
+        "project"
       ],
       "additionalProperties": false
     },
@@ -199,7 +238,7 @@
   },
   {
     "name": "motif_guide",
-    "description": "Reads Motif\u0027s FieldWorks encoding guidance. Choose a topic for affix slots, conditioned allomorphs, feature-conditioned slots, nasal assimilation, no inflection, the workflow or asking the linguist. Each guide names the FieldWorks objects and whether Motif can compose them today.",
+    "description": "Read encoding guidance. Reads an encoding guide or the draft, Dry Run, Trial, revise and Finalize workflow.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -229,7 +268,7 @@
   },
   {
     "name": "motif_add_lexeme_form",
-    "description": "Adds a lexeme form (the written form of an entry, such as the stem or affix text) to an entry that already exists, and optionally a gloss on one of its senses, to a Draft. Find the entry, its morph type id and its sense in motif_lexicon, and the writing system tag shown on existing forms in motif_lexicon. It does not create entries, senses or allomorphs; Motif cannot author those yet, so tell the linguist when a task needs one. See motif_guide for suffix-prefix-slots or conditioned-allomorphs.",
+    "description": "Author a lexeme form. Stages a lexeme form with explicitly authored spelling, writing system and morph type in a Draft. Dry Run and Trial the Draft before Finalize; only a person can Apply.\nCommand: compose-author-lexeme-form. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -275,6 +314,10 @@
         "gloss_text": {
           "type": "string",
           "description": "The gloss text."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
         }
       },
       "required": [
@@ -282,7 +325,8 @@
         "entry",
         "morph_type",
         "ws",
-        "text"
+        "text",
+        "project"
       ],
       "additionalProperties": false
     },
@@ -292,7 +336,7 @@
   },
   {
     "name": "motif_set_gloss",
-    "description": "Sets the gloss of an existing sense, in one writing system, in a Draft. Find the sense id in motif_lexicon. Setting a gloss that is already in the draft replaces the draft\u0027s earlier value.",
+    "description": "Set a sense gloss. Stages the explicitly authored gloss of one sense in one writing system in a Draft. Dry Run and Trial the Draft before Finalize; only a person can Apply.\nCommand: add-set-gloss. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nTarget: The exact canonical identity of the existing object.\nWs: The project writing system tag for this value.\nText: The authored Unicode text.\nDependsOn: Explicit operation dependencies; array position implies no dependency.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -311,13 +355,51 @@
         "text": {
           "type": "string",
           "description": "The new gloss."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
         }
       },
       "required": [
         "draft",
         "sense",
         "ws",
-        "text"
+        "text",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": true
+  },
+  {
+    "name": "motif_remove_operations",
+    "description": "Remove Draft operations. Removes explicit operations from a Draft while respecting declared dependencies. Revise and measure the content again before Finalize. Only a person can Apply.\nCommand: remove-operations. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nOperationIds: The exact operation identities to remove from the Draft.\nForce: Whether to override the requested command constraint.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "The draft name."
+        },
+        "operation_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Operation ids to remove."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "operation_ids",
+        "project"
       ],
       "additionalProperties": false
     },
@@ -327,7 +409,7 @@
   },
   {
     "name": "motif_dry_run",
-    "description": "Checks that a finished Proposal\u0027s changes fit the project by applying them to a throwaway copy, and reports what each change did. It does not touch the real project. The Proposal must be finished with motif_finish_proposal first. If it takes longer than wait_seconds you get status \u0027running\u0027 and a job id: call again with that job to keep waiting.",
+    "description": "Dry Run a Proposal. Queues a Dry Run of a Draft or finalized Proposal on a throwaway copy of its Baseline. Its effects are bound to that content and project state.\nCommand: dry-run. Agent class: Evaluate.\nProposalId: The exact canonical Proposal identity.\nRead a Dry Run. Waits for the Dry Run of a Draft or finalized Proposal and reads its effects. Content and Baseline identify whether the evidence remains current.\nCommand: dry-run --wait. Agent class: Evaluate.\nProposalId: The exact canonical Proposal identity.\nJobId: The exact job identity returned when evidence was queued.\nTimeout: The maximum wait for a result before returning progress.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -358,10 +440,15 @@
           "description": "The most list items to return in concise mode. Default 25.",
           "minimum": 1,
           "maximum": 200
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
         }
       },
       "required": [
-        "proposal"
+        "proposal",
+        "project"
       ],
       "additionalProperties": false
     },
@@ -371,7 +458,7 @@
   },
   {
     "name": "motif_trial",
-    "description": "Tests a Proposal on sample words: Motif applies the draft to a throwaway copy and parses the words you name, with and without the changes, and reports which words now parse, which stopped parsing, and what changed. Works on a draft or a finished Proposal. Always include words that should NOT parse so a rule that is too broad shows up. Omit words to use the words the Proposal changes. If it takes longer than wait_seconds you get \u0027running\u0027 and a job id: call again with that job. See motif_guide(topic=workflow) for choosing positive, contrasting and negative forms.",
+    "description": "Trial a Proposal. Measures a Draft or finalized Proposal on a throwaway copy, producing a Dry Run and Assessments. Read negatives now parsing, positives lost, unfinished cases, other changes and counts before revising.\nCommand: trial. Agent class: Evaluate.\nProposalId: The exact canonical Proposal identity.\nScope: The named Assessment scope, or the project default when omitted.\nWords: The explicit words to measure, or the configured Selection when omitted.\nAllWords: Whether to measure all project wordforms.\nExpectedDraftRevision: The required Draft revision for this Trial.\nLimits: Optional per-word limits copied from the earlier Assessment being compared.\nBaselineAssessmentIds: The project Assessments used as the before side of a Trial Difference.\nNegativeWords: Attested counterexamples that should not parse.\nRead Trial progress. Waits for a Trial job and reads its state. Read the stored Difference after the Trial completes.\nCommand: trial --wait. Agent class: Evaluate.\nJobId: The exact job identity returned when evidence was queued.\nTimeout: The maximum wait for a result before returning progress.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -384,7 +471,14 @@
           "items": {
             "type": "string"
           },
-          "description": "Words to parse. Omit to use the words the Proposal affects."
+          "description": "Words to parse. Omit to use the saved Default Selection."
+        },
+        "negative_words": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Attested counterexamples that should not parse."
         },
         "job": {
           "type": "string",
@@ -409,10 +503,15 @@
           "description": "The most list items to return in concise mode. Default 25.",
           "minimum": 1,
           "maximum": 200
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
         }
       },
       "required": [
-        "proposal"
+        "proposal",
+        "project"
       ],
       "additionalProperties": false
     },
@@ -422,7 +521,7 @@
   },
   {
     "name": "motif_try_word",
-    "description": "Parses one word with the project\u0027s current grammar and shows how the parser handled it: the analyses it found, or where each attempt failed. This is the project as it is now, not a draft. Use it to learn why a word fails before you write a change. Needs the parser installed.",
+    "description": "Trace a word. Runs PanGloss for one word against the project\u0027s current Baseline and returns its diagnostic. Use it to inspect recorded analyses and trace events.\nCommand: trace. Agent class: Evaluate.\nWord: The exact word form to trace.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -443,10 +542,15 @@
           "description": "The most list items to return in concise mode. Default 25.",
           "minimum": 1,
           "maximum": 200
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
         }
       },
       "required": [
-        "word"
+        "word",
+        "project"
       ],
       "additionalProperties": false
     },
@@ -455,8 +559,8 @@
     "idempotentHint": true
   },
   {
-    "name": "motif_finish_proposal",
-    "description": "Finishes a Draft so it becomes a Proposal the linguist can review in Motif\u0027s window. Do this before a dry run or trial, which require a finished Proposal. Finishing does not change the project; the linguist decides whether to apply it. After finishing, the draft is closed: further edits start from a copy.",
+    "name": "motif_finalize_proposal",
+    "description": "Finalize a Proposal. Finalizes a Draft as an immutable Proposal revision for a person to review. Evidence for unchanged content on the same Baseline remains current.\nCommand: finalize. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nExpectedRevision: The required Draft revision for this write.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -467,10 +571,15 @@
         "expected_revision": {
           "type": "string",
           "description": "The revision you last read, to refuse if the draft changed."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
         }
       },
       "required": [
-        "draft"
+        "draft",
+        "project"
       ],
       "additionalProperties": false
     },
@@ -480,7 +589,7 @@
   },
   {
     "name": "motif_proposals",
-    "description": "Lists every Proposal in the project with its status (proposed, deferred, rejected, applied, superseded) and label; or, with proposal, shows one Proposal\u0027s operations in full. Use it to see what exists before starting a new one and to see what the linguist did with earlier ones.",
+    "description": "List Proposals. Lists saved Proposals and Drafts, including each identity, label and status. Read one Proposal to inspect its semantic intent.\nCommand: list. Agent class: Read.\n\nShow. Reads the requested saved project information without changing the FieldWorks project.\nCommand: show. Agent class: Read.\nProposalId: The exact canonical Proposal identity.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -501,9 +610,16 @@
           "description": "The most list items to return in concise mode. Default 25.",
           "minimum": 1,
           "maximum": 200
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
         }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "required": [
+        "project"
+      ]
     },
     "readOnlyHint": true,
     "destructiveHint": false,
@@ -511,10 +627,119 @@
   },
   {
     "name": "motif_activity",
-    "description": "Tells you what you have already done in this project: your tool calls (counts, errors, the most recent ones), the Proposals that exist and their states, and the jobs you started and how they ended. Call it when you resume work or lose track of where you were.",
+    "description": "Read agent activity. Reads calls, Proposals and jobs from this conversation and the selected project.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "project"
+      ]
+    },
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true
+  },
+  {
+    "name": "motif_list_projects",
+    "description": "List Known projects. Lists the Known projects a person has added to this installation. Select one by name or its recorded path for project tools.",
     "inputSchema": {
       "type": "object",
       "properties": {},
+      "additionalProperties": false
+    },
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true
+  },
+  {
+    "name": "motif_assess",
+    "description": "Measure a Selection. Runs PanGloss over chosen Texts or word forms and stores the resulting Assessments. After FieldWorks saves project changes, capture a new Baseline before measuring them.\nCommand: assess. Agent class: Evaluate.\nSelection: The words or Texts to measure; null uses the saved Default Selection.\nPerWordLimitMs: The per-word duration limit in milliseconds; null keeps the configured limit.\nPerWordStepLimit: The per-word parser step cap; null keeps the configured cap.\nReplaceAssessmentId: The prior complete Assessment to replace for an explicit reparse.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "words": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Words to assess; omit for the Default Selection."
+        },
+        "detail": {
+          "type": "string",
+          "description": "\u0027concise\u0027 (default) drops empty fields and long lists; \u0027detailed\u0027 returns everything.",
+          "enum": [
+            "concise",
+            "detailed"
+          ]
+        },
+        "limit": {
+          "type": "integer",
+          "description": "The most list items to return in concise mode. Default 25.",
+          "minimum": 1,
+          "maximum": 200
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "project"
+      ]
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_difference",
+    "description": "Read Trial Difference. Pages through a stored Trial Difference by category. Unfinished parser cases are separate from words that no longer parse.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "difference": {
+          "type": "string",
+          "description": "Stored Difference Assessment id."
+        },
+        "category": {
+          "type": "string",
+          "description": "Category to page through.",
+          "enum": [
+            "negatives-now-parsing",
+            "positives-lost",
+            "unfinished",
+            "other-changes"
+          ]
+        },
+        "offset": {
+          "type": "integer",
+          "description": "Rows to skip.",
+          "minimum": 0,
+          "maximum": 1000000
+        },
+        "limit": {
+          "type": "integer",
+          "description": "Page size, maximum 200.",
+          "minimum": 1,
+          "maximum": 200
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "difference",
+        "category",
+        "project"
+      ],
       "additionalProperties": false
     },
     "readOnlyHint": true,

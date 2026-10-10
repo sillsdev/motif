@@ -1,0 +1,571 @@
+{
+  "format": 1,
+  "oracle_version": "v1",
+  "state": "prepared",
+  "live_runs": 0,
+  "human_checks_completed": 0,
+  "live_judge_qualified": false,
+  "models": {
+    "opus": {
+      "provider": "Anthropic",
+      "requested_model": "claude-opus-4-7",
+      "effort": "xhigh",
+      "tier": "big",
+      "resolved_model": null
+    },
+    "sol": {
+      "provider": "OpenAI",
+      "requested_model": "gpt-6.1-sol",
+      "effort": "xhigh",
+      "tier": "big",
+      "resolved_model": null
+    }
+  },
+  "model_pin_policy": "Requested identifiers are fixed; provider-resolved identifiers and actual effort are required on activation. Unavailable routing holds activation; never silently substitute. Opus selection is a fixed release choice, not a claim it is the newest model. Sol identifier is supplied by the current Codex model catalog.",
+  "roles": {
+    "author": {
+      "model": "sol",
+      "prompt": "prompts/author.md"
+    },
+    "first_rulers": {
+      "models": [
+        "opus",
+        "sol"
+      ],
+      "prompt": "prompts/first-ruler.md",
+      "independent": true
+    },
+    "rebuttal": {
+      "models": [
+        "opus",
+        "sol"
+      ],
+      "rounds": 1,
+      "prompt": "prompts/rebuttal.md"
+    },
+    "devils_advocate": {
+      "models": [
+        "opus",
+        "sol"
+      ],
+      "per_key": true,
+      "fresh_sessions": true,
+      "prompt": "prompts/devils-advocate.md"
+    },
+    "curator": {
+      "model": "sol",
+      "prompt": "prompts/curator.md"
+    },
+    "parser_facts": {
+      "operator": "human or deterministic fixture host",
+      "prompt": "prompts/parser-facts.md"
+    },
+    "human_review": {
+      "operator": "qualified person",
+      "prompt": "prompts/human-review.md"
+    },
+    "judge_opus": {
+      "model": "opus",
+      "prompt": "prompts/judge-opus.md"
+    },
+    "judge_sol": {
+      "model": "sol",
+      "prompt": "prompts/judge-sol.md"
+    }
+  },
+  "consultant": "plugin/skills/linguistic-consultant/SKILL.md",
+  "checklist": "plugin/skills/linguistic-consultant/references/checklist.md",
+  "references_used": [
+    "L01",
+    "L02",
+    "L03",
+    "L04",
+    "F01",
+    "F02",
+    "F03",
+    "F04",
+    "F05",
+    "F06",
+    "I01",
+    "I02",
+    "I03",
+    "I04",
+    "I05",
+    "I06",
+    "I07",
+    "F07",
+    "F08",
+    "F09",
+    "F10"
+  ],
+  "human_sample": {
+    "initial_21_keys": 21,
+    "later_random_sample": "min(N, max(21, ceil(N / 4)))",
+    "targeted_additions": "all disputed, amended-after-attack and critical keys not in random sample",
+    "actual_unique_checks": 0
+  },
+  "qualification": {
+    "fixture_cases": 40,
+    "fixture_contexts": 20,
+    "future_current_suite_anchors": 42,
+    "future_adversarial_anchors": 16,
+    "minimum_decision_agreement": 0.95,
+    "critical_false_passes_allowed": 0,
+    "disputes": "unscored until human ruling",
+    "live_qualification_performed": false
+  },
+  "content": [
+    {
+      "path": "docs/adr/0058-the-agent-edit-loop.md",
+      "sha256": "1074982743efd5ed3f4038961ee8f8bf2e2ae620e3f5d7e78c9c4c88f07f8428"
+    },
+    {
+      "path": "docs/adr/0059-measuring-agents-fairly.md",
+      "sha256": "8e2d14aff9c138a5991db08745415b48f7e0421b0334aeac488d5d99be5c16e5"
+    },
+    {
+      "path": "docs/references/README.md",
+      "sha256": "d4f4da7aa12b4dc20d8ff491859d76e63e52f17337d9d1397154b6e99fbff922"
+    },
+    {
+      "path": "docs/references/fieldworks/black-conceptual-introduction.md",
+      "sha256": "61e9b5ae03e23097ff8c225e9c5bcd543f6194462e1853c7da916fb743c936b5"
+    },
+    {
+      "path": "docs/references/fieldworks/black-workshop.md",
+      "sha256": "dc3128442c6cb064c3ba4b830966ab216313f57727e5cc2bb0701098acad967b"
+    },
+    {
+      "path": "docs/references/fieldworks/flex-loader.md",
+      "sha256": "fb22c610f06eeadfa872a16f1eb11b4c941e07b41e6ce5bdf18ae4a5950a26aa"
+    },
+    {
+      "path": "docs/references/fieldworks/hermitcrab-engine.md",
+      "sha256": "5308b29ca77b94d2606db693133f05814627ecc8c4cb94b1c4b27dc513af4bc2"
+    },
+    {
+      "path": "docs/references/fieldworks/lexicography.md",
+      "sha256": "bbd46b7ddc7468cd4b44b008d2ce7809706897d798afd5e4c57efb0694a39f62"
+    },
+    {
+      "path": "docs/references/fieldworks/liblcm-model.md",
+      "sha256": "59a6d4c0a22a8514994119d7a02c2582d4e6fd80a6f7c453ae7d90fe6cdc6c7b"
+    },
+    {
+      "path": "docs/references/fieldworks/official-help-corpus.md",
+      "sha256": "563ff4ce303ac4367db6678eb619050d3b9c4cfc212e413a5efa198c242df668"
+    },
+    {
+      "path": "docs/references/fieldworks/parser-gotchas.md",
+      "sha256": "e65efdeb8cd48e8e4100f9d2acfe455542c615c0bd0a38eb396d74c56bd073fc"
+    },
+    {
+      "path": "docs/references/fieldworks/pc-patr.md",
+      "sha256": "8b308bdcb7f9aaab4448d1c3d3a046a2ed2b487bdba61e72651091a445210c40"
+    },
+    {
+      "path": "docs/references/fieldworks/released-flex-ui.md",
+      "sha256": "a8a7e0d87155b528083f79c1f67e7ed790d80010b8cba92b822566b6c56a2368"
+    },
+    {
+      "path": "docs/references/industry/ace.md",
+      "sha256": "cb359694611f4865a622342203d2b7576437ef438f96806a5499f5521f4a0546"
+    },
+    {
+      "path": "docs/references/industry/agent-evals.md",
+      "sha256": "7adc2bf2433ac0c62dc74a47123fae517c2e5fae8a7f6446fecaede482324f22"
+    },
+    {
+      "path": "docs/references/industry/effective-tools.md",
+      "sha256": "b252d350d11b294a14af22fab61ea48f028ca7441e1ffde980b452c698b1652b"
+    },
+    {
+      "path": "docs/references/industry/gepa.md",
+      "sha256": "814cda3c559de51398f3c2d2d4cdd2c13b00cb8d63f7ffdd41cd5ce4168f7b91"
+    },
+    {
+      "path": "docs/references/industry/meta-harness.md",
+      "sha256": "e96c003561325369bfcc987ad00abd6a2dbcd5974671a47c0f83cd80c9b75b95"
+    },
+    {
+      "path": "docs/references/industry/opus-model.md",
+      "sha256": "f62eca85a2ad016af81b789a7369db3a94c985bc9f2883ffe15b06061b81b869"
+    },
+    {
+      "path": "docs/references/industry/self-harness.md",
+      "sha256": "090ede7f66e08aa0546e206b39ab9590ae8aca7cab3792ee9ebb17afd2d0aff1"
+    },
+    {
+      "path": "docs/references/linguistics/fieldwork.md",
+      "sha256": "503d004ae8d86072bd56e410ea2a0ec40a878f9dc8bc8447c882b2d24dfcc984"
+    },
+    {
+      "path": "docs/references/linguistics/leipzig-glossing.md",
+      "sha256": "f7d2f9d942d6559fa2a73f86637dd9a09d029636e3b1b19e36d064c7345a120a"
+    },
+    {
+      "path": "docs/references/linguistics/morphosyntax.md",
+      "sha256": "cc827e0104457588f7ba687478da71fb24c4f217fdb17ff56d7ede2e29db7805"
+    },
+    {
+      "path": "docs/references/linguistics/word-structure.md",
+      "sha256": "f7b69d77a223e27f9c67a22c7dadf7b1d93e5ea675dcdde8b5583844b961b770"
+    },
+    {
+      "path": "docs/references/sources.json",
+      "sha256": "e4d70afddc240c0ce2cca1f44cef2556bf8ed5b5b7768e3c5c31e6dab72512d0"
+    },
+    {
+      "path": "evals/oracle/v1/README.md",
+      "sha256": "9223bd5b90647b62c9697feee23994d5c3037a3fe89217f9469a5edb75f33627"
+    },
+    {
+      "path": "evals/oracle/v1/judge-ruling.schema.json",
+      "sha256": "b888c2427ea4b4d437b570c744ec8844ec2070e5259e39888dacb87d3fc917f3"
+    },
+    {
+      "path": "evals/oracle/v1/judge.md",
+      "sha256": "fcfb5cf9f30ef5c8b4a7d76374c1bcfd523b9c53bd2ecdeb563caa38bfb88409"
+    },
+    {
+      "path": "evals/oracle/v1/prompts/author.md",
+      "sha256": "5a74f9df7ec22173afb4259dac8a91b4fb2076794a99cdfaa8fa90b92afda75f"
+    },
+    {
+      "path": "evals/oracle/v1/prompts/curator.md",
+      "sha256": "96da744d2c36af3a69e0e872e7515610c9167e0eb42931156d239a3d7ecdb04a"
+    },
+    {
+      "path": "evals/oracle/v1/prompts/devils-advocate.md",
+      "sha256": "6790f8a90aac90f8ec109ee6173f490d570a830634f30fd886ece64e1b069c97"
+    },
+    {
+      "path": "evals/oracle/v1/prompts/first-ruler.md",
+      "sha256": "916371f7ac3576355a84f0afbc3182feb22fac554317df09b97c72dc243e2271"
+    },
+    {
+      "path": "evals/oracle/v1/prompts/human-review.md",
+      "sha256": "cb86b22576674903d7b26b883cf56a7383b5cb4d35036c54b4bc098e6002616c"
+    },
+    {
+      "path": "evals/oracle/v1/prompts/judge-opus.md",
+      "sha256": "7b067dda781b1cfae5db387a09e21127d1816448f9a5e5b2727dcab3fa227b4f"
+    },
+    {
+      "path": "evals/oracle/v1/prompts/judge-sol.md",
+      "sha256": "2038220697c9476a666b6399edad9d9795b0f4a5699cd5df3bc3c48279f04fab"
+    },
+    {
+      "path": "evals/oracle/v1/prompts/parser-facts.md",
+      "sha256": "e2273441677e3936b175924579fba9f53a45aa64220da94c4621d3917a821780"
+    },
+    {
+      "path": "evals/oracle/v1/prompts/rebuttal.md",
+      "sha256": "a6a442bed35cce54a83f3164324f772bceb54c3c1ce0a2b90ef6192e2c8f3549"
+    },
+    {
+      "path": "evals/oracle/v1/qualification/README.md",
+      "sha256": "349c286316ae743b5c345421fc0396c9bcbe5f78aca966f0098713a8d488b258"
+    },
+    {
+      "path": "evals/oracle/v1/qualification/anchors.jsonl",
+      "sha256": "6c3d0c942ea2ce477772240a275bed5e32bf062b1ce366aaae9e68ac7fc33a4f"
+    },
+    {
+      "path": "evals/oracle/v1/qualification/cases.jsonl",
+      "sha256": "eabc81cfcfb87b613a77aee0ea9b027f4611af0cdfc0b49a40ab004a737c51d4"
+    },
+    {
+      "path": "evals/oracle/v1/qualification/fake-opus.jsonl",
+      "sha256": "aabf5bd33c7c23877ef76cd7d8cbeb4ef40566a755c0c36dc48b2615beaae939"
+    },
+    {
+      "path": "evals/oracle/v1/qualification/fake-sol.jsonl",
+      "sha256": "ac86ed95403f406646533fda035085f82d9d9b161f0982d36e377d95bcc7a6e5"
+    },
+    {
+      "path": "evals/oracle/v1/qualification/score.py",
+      "sha256": "66a61dc905bd42fc39563525cd93b35fbb0097354e6666402416a3742ebaa8ba"
+    },
+    {
+      "path": "evals/oracle/v1/qualification/split-sol.jsonl",
+      "sha256": "0ddf4f9f08ffb51a3bb901f92749a512dbaeeb9b6121fe6dad9c8fa46a889e87"
+    },
+    {
+      "path": "evals/oracle/v1/rules.md",
+      "sha256": "6d10e2b4a6f18689517125966da2699c455355db8e36efd8bf783a99cfd27215"
+    },
+    {
+      "path": "evals/oracle/v1/rulings.md",
+      "sha256": "d20a5aa0ee5fe64049b61d9428df6831a1eac09a1cecc715a8edb722be60f424"
+    },
+    {
+      "path": "evals/test-grammars.lock.json",
+      "sha256": "77a32da7b61857734b15ac618bf1ebf08954406a5a42d8166291eed498d65bbe"
+    },
+    {
+      "path": "pangloss-release.json",
+      "sha256": "4c56cee190c456d412a1dc2a42d3decafa9c20d9faab9a52e21d951bd5f8292b"
+    },
+    {
+      "path": "plugin/references/crosswalk.md",
+      "sha256": "b155211002d8a6609dfa2ce539d6e37021333ca9e26576899cffbf097ddba976"
+    },
+    {
+      "path": "plugin/skills/fieldworks-expert/SKILL.md",
+      "sha256": "2c75c5b0f5a70a129bbf424a19dee9bf8f2ae42d84d3e2d3d5bb06b2681ffb05"
+    },
+    {
+      "path": "plugin/skills/fieldworks-expert/references/areas-tools-views.md",
+      "sha256": "43641a7cabea6812709be33df983f53c8965b7fdc4b007e898498bb02655ce8b"
+    },
+    {
+      "path": "plugin/skills/fieldworks-expert/references/crosswalk.md",
+      "sha256": "b155211002d8a6609dfa2ce539d6e37021333ca9e26576899cffbf097ddba976"
+    },
+    {
+      "path": "plugin/skills/fieldworks-expert/references/custom-fields.md",
+      "sha256": "295d12a71c3503dc2cc6b98f55ce35f0d2491e53c60f74e0001635d46be3cf14"
+    },
+    {
+      "path": "plugin/skills/fieldworks-expert/references/data-model.md",
+      "sha256": "5fbc7247d28be392db97fff3ab2dd2f262ca52b5aeb5b279866074161971c8f7"
+    },
+    {
+      "path": "plugin/skills/fieldworks-expert/references/field-visibility.md",
+      "sha256": "2a5399d309dfe3c12c4571fcf15ad3fedb99eda7fe0f46a5bd3747fe5ba81664"
+    },
+    {
+      "path": "plugin/skills/fieldworks-expert/references/help-index.tsv",
+      "sha256": "3eb97de0162c43178202c8ee63b4b7f01a1324e8e1c031b8bb4c202f3f1af6c3"
+    },
+    {
+      "path": "plugin/skills/fieldworks-expert/references/help-query.md",
+      "sha256": "6404a067bdcee12f8ab59ddfde0fdf99ac6a1a94ca8467d1b9d73fce7b442fd4"
+    },
+    {
+      "path": "plugin/skills/fieldworks-expert/references/sources.md",
+      "sha256": "bd17d24b5af6fc3fb13d1673a384d7e073bdcb28cf7273c90691543f19b21ddf"
+    },
+    {
+      "path": "plugin/skills/fieldworks-expert/scripts/index_help.py",
+      "sha256": "9192e70d22a6e4f7df65e865fe36487e69c14812424062bd19febb5387e0c1a3"
+    },
+    {
+      "path": "plugin/skills/fieldworks-parsing-expert/SKILL.md",
+      "sha256": "67752875d9c661945ce58a9ec25899a0769a3f7d4a6488181653d5a612b0ac5a"
+    },
+    {
+      "path": "plugin/skills/fieldworks-parsing-expert/references/broken/circumfix-as-two-affixes-loses-atomicity.md",
+      "sha256": "8b9e48cd342b0909c41b08baebd39bc8658cfb6e22cca040bf9b424d377aca33"
+    },
+    {
+      "path": "plugin/skills/fieldworks-parsing-expert/references/broken/compounding-max-application-count-default.md",
+      "sha256": "3dfd085cda97b607e53fdff867e05c728cbceb2f0efd050fa8e47cb6ce2b8b7c"
+    },
+    {
+      "path": "plugin/skills/fieldworks-parsing-expert/references/broken/coocurrence-rule-requires-all-not-any.md",
+      "sha256": "1254b592af7bed571e1bed80e2a62d4244521f6f958a179255b961639b6ad0ca"
+    },
+    {
+      "path": "plugin/skills/fieldworks-parsing-expert/references/broken/index.md",
+      "sha256": "b844e9b614b4908a0cdfd78c398536506e85e016565a1f9d2d9dc7849cf0cdf7"
+    },
+    {
+      "path": "plugin/skills/fieldworks-parsing-expert/references/broken/inflection-class-no-default-silent-gating.md",
+      "sha256": "e16291894864423c4d609f971305c6106912184c51524dc087686dc11f09a559"
+    },
+    {
+      "path": "plugin/skills/fieldworks-parsing-expert/references/broken/lexfamily-blocking-generation-only.md",
+      "sha256": "61b44ec6207dd55bd9bac99187a8c20e4faf6df639b94277b537c9c6267f20fd"
+    },
+    {
+      "path": "plugin/skills/fieldworks-parsing-expert/references/broken/mpr-group-matchtype-default-is-any.md",
+      "sha256": "bc8ec2c1fde9bbbed66923383ec74fe77a8730591b50b040e693af2ffc8d46ee"
+    },
+    {
+      "path": "plugin/skills/fieldworks-parsing-expert/references/broken/mpr-group-output-default-overwrite.md",
+      "sha256": "948e783904f6d1bc4d811d8808f2a95ba7d13b493316de3a71f43824189d252e"
+    },
+    {
+      "path": "plugin/skills/fieldworks-parsing-expert/references/broken/null-affix-cannot-express-default.md",
+      "sha256": "a8cec0c80a0035c9ed51870a2f426b3b7c96cc91babff45647b6ee8769689de0"
+    },
+    {
+      "path": "plugin/skills/fieldworks-parsing-expert/references/broken/realizational-rule-cannot-add-features.md",
+      "sha256": "749ffb3e540bcfc97cb9a3894c53a5293fdd7212e5fa9162ff9b9074c302ba4f"
+    },
+    {
+      "path": "plugin/skills/fieldworks-parsing-expert/references/broken/realizational-rule-no-application-cap.md",
+      "sha256": "ace184f59886f2db77e6395c3e77054e27af49feee6bc54f28066e0f4d669d1a"
+    },
+    {
+      "path": "plugin/skills/fieldworks-parsing-expert/references/broken/single-template-independent-slots-illegal-combos.md",
+      "sha256": "30c9417d04629f864172f7541574cee861a9e9c0e244aa4b5cd21df194679ac4"
+    },
+    {
+      "path": "plugin/skills/fieldworks-parsing-expert/references/broken/stem-name-affix-requirement-trace-misreading.md",
+      "sha256": "921a6d1482266f24dc7d935c3131555bde07de2f9d073ccee136c091ab956b35"
+    },
+    {
+      "path": "plugin/skills/fieldworks-parsing-expert/references/broken/stem-name-explicit-feature-requirement.md",
+      "sha256": "baf7a283cbb2ceb74cc599b0180c7c4a68b84f4636465d4b1fff5cc7dc65e25c"
+    },
+    {
+      "path": "plugin/skills/fieldworks-parsing-expert/references/broken/stemname-partsofspeech-required-not-silent.md",
+      "sha256": "d501ddbf5e3fe97eb59a205614afc8e176d38529b42498cf5016f8ec554f7d68"
+    },
+    {
+      "path": "plugin/skills/fieldworks-parsing-expert/references/broken/unclassified-affix-bypasses-template-ordering.md",
+      "sha256": "0c62ae616cdff054dd32c84364d0bab1ae4e9745d5da1b7b9c8ef0a592c0ef84"
+    },
+    {
+      "path": "plugin/skills/fieldworks-parsing-expert/references/concept-map.md",
+      "sha256": "1d6ae2c02f9ef820300abf18d4381f2926012ec7db4da1479a31ab83677d05c5"
+    },
+    {
+      "path": "plugin/skills/fieldworks-parsing-expert/references/crosswalk.md",
+      "sha256": "b155211002d8a6609dfa2ce539d6e37021333ca9e26576899cffbf097ddba976"
+    },
+    {
+      "path": "plugin/skills/fieldworks-parsing-expert/references/diagnosis.md",
+      "sha256": "8718c95ab428ced1227f465f7b41b9219280054881c3d4ee1e7500082da3dcc6"
+    },
+    {
+      "path": "plugin/skills/fieldworks-parsing-expert/references/loader-traps.md",
+      "sha256": "a87ffe3562da0ddb3a54251ed8e08d1953c713b7e965bd98555dc5a81390f064"
+    },
+    {
+      "path": "plugin/skills/fieldworks-parsing-expert/references/sources.md",
+      "sha256": "9182f437da3338b62ba72713e1f6c3b59bb2165380ecfb0eab08245dfbf2a46c"
+    },
+    {
+      "path": "plugin/skills/fieldworks-parsing-expert/references/speed/affix-template-optional-slots.md",
+      "sha256": "689f1f4946c5dc8a014dee8a86f0964e8f79f0baeaed15bf3a5dc062ace7c917"
+    },
+    {
+      "path": "plugin/skills/fieldworks-parsing-expert/references/speed/compounding-split-point-enumeration.md",
+      "sha256": "980747ee54e14e982c4e604dc3a38e55c7751dca8087e0735af427c3b0475c88"
+    },
+    {
+      "path": "plugin/skills/fieldworks-parsing-expert/references/speed/disjunctive-allomorph-deferred-recheck.md",
+      "sha256": "ff924ba22f30cdabf0bfa3b4c696870f1a7f1047c30111d8664eec7431c9d098"
+    },
+    {
+      "path": "plugin/skills/fieldworks-parsing-expert/references/speed/epenthesis-metathesis-self-feeding-crash.md",
+      "sha256": "c1a221991395367bc384ff11fdf29811b43af7b999eaab8a0fd1d1a86066439a"
+    },
+    {
+      "path": "plugin/skills/fieldworks-parsing-expert/references/speed/index.md",
+      "sha256": "ce3bf874314b367967ed3e522b6357b5f78459116a12a0e5982025317e8abc60"
+    },
+    {
+      "path": "plugin/skills/fieldworks-parsing-expert/references/speed/mpr-cooccurrence-late-filter.md",
+      "sha256": "fc7f71cc50650b314b038474a703dba6dd851452308d75264bd4754df532dff5"
+    },
+    {
+      "path": "plugin/skills/fieldworks-parsing-expert/references/speed/mpr-overwrite-order-dependence.md",
+      "sha256": "22067209fab25867ec520d22d867aaf8132794e5184a146ed7b7cde407611af2"
+    },
+    {
+      "path": "plugin/skills/fieldworks-parsing-expert/references/speed/natural-class-feature-widening.md",
+      "sha256": "74350dd818033848df6768b890d3b770b7641d22e68055847526abfd0a4aea38"
+    },
+    {
+      "path": "plugin/skills/fieldworks-parsing-expert/references/speed/phonological-simultaneous-vs-iterative.md",
+      "sha256": "ecd24abc95f69818e7f193700923fb31c427a11efad8eb1af0a2c332ca2d83e3"
+    },
+    {
+      "path": "plugin/skills/fieldworks-parsing-expert/references/speed/root-allomorph-trie-vs-pattern.md",
+      "sha256": "938eb678ab545ad1e7ba3fc1f6f4af5a1951b8bddb2cea1079f71cc91eb014cc"
+    },
+    {
+      "path": "plugin/skills/fieldworks-parsing-expert/references/speed/stratum-rule-ordering.md",
+      "sha256": "cf64975b1cbe4a2c67265f1f5bd27f08ffd5b2e5292db5dff6ff468cefeeac2e"
+    },
+    {
+      "path": "plugin/skills/fieldworks-parsing-expert/references/workflow/affix-status-and-spurious-parses.md",
+      "sha256": "df5141c57c52a463037c7e65a705412e02fdb3530738d56fef05ee414bb9c25c"
+    },
+    {
+      "path": "plugin/skills/fieldworks-parsing-expert/references/workflow/circumfixes-and-discontinuous-morphemes.md",
+      "sha256": "072d1d58509e2a15a6e1a97c5626af195fcbe06b21d3fc9f9f59c3e4da8ccd1d"
+    },
+    {
+      "path": "plugin/skills/fieldworks-parsing-expert/references/workflow/inflection-classes-and-mpr-features.md",
+      "sha256": "55042225dfc02e334efdccd1aeed525ade8a0ebb89115f395bc69f7b9b385866"
+    },
+    {
+      "path": "plugin/skills/fieldworks-parsing-expert/references/workflow/measuring.md",
+      "sha256": "28d9a3241d6906a03a4a534c02525d3c77ef1a27561d0793ad11f72dafdfe05c"
+    },
+    {
+      "path": "plugin/skills/fieldworks-parsing-expert/references/workflow/optional-slots-null-affixes-multiple-templates.md",
+      "sha256": "755a575196f0744fb915923705c962b91d8250fe018f0fb2843349bc41dac5d0"
+    },
+    {
+      "path": "plugin/skills/fieldworks-parsing-expert/references/workflow/ordered-rule-exception-blocks.md",
+      "sha256": "085ca2ed021c2ff08b3080e638bf86418fa5d0577ebf419d1aca5d6d72c00343"
+    },
+    {
+      "path": "plugin/skills/fieldworks-parsing-expert/references/workflow/parser-controls.md",
+      "sha256": "4666f00b7bd2c1f2a5efee87554caae75e52d549b7e07d86f133c05fc959ffcd"
+    },
+    {
+      "path": "plugin/skills/fieldworks-parsing-expert/references/workflow/setup.md",
+      "sha256": "3ddf3a7b2ba3f1282b238a774e22f504bdb8e0c09928401f5a5c4e8fb7c56977"
+    },
+    {
+      "path": "plugin/skills/fieldworks-parsing-expert/references/xample.md",
+      "sha256": "640fa060a41a749e90e46129af6a16be565147c5763f254d4b0ae1013b31b21e"
+    },
+    {
+      "path": "plugin/skills/linguistic-consultant/SKILL.md",
+      "sha256": "24128689d1c5164a1c71e4284f070d3a46233fa78e1e1f52c4101f62980d7380"
+    },
+    {
+      "path": "plugin/skills/linguistic-consultant/references/bibliography.md",
+      "sha256": "aa33f83c945dff9958d72a4725b4f8dbdfa7bcdea3c17a2a2d935ad34218dccc"
+    },
+    {
+      "path": "plugin/skills/linguistic-consultant/references/checklist.json",
+      "sha256": "b2aae4fb0c99050ffd22e33294efdd085fec84722bcba833b6a55a0c4d45eef9"
+    },
+    {
+      "path": "plugin/skills/linguistic-consultant/references/checklist.md",
+      "sha256": "82a0b5ffc52c02e5a5b90e59f6718bb98803be1d0c5fa709ce9857079b4bf90f"
+    },
+    {
+      "path": "plugin/skills/linguistic-consultant/references/crosswalk.md",
+      "sha256": "b155211002d8a6609dfa2ce539d6e37021333ca9e26576899cffbf097ddba976"
+    },
+    {
+      "path": "plugin/skills/linguistic-consultant/references/job-map.md",
+      "sha256": "c8edfa0abc9eff578a068770e7627ba9b77ffd82dd05b0c28635f39648f460b1"
+    },
+    {
+      "path": "plugin/skills/linguistic-consultant/references/methodology.md",
+      "sha256": "ccf36437a20ad0b444e1eaf76e369e29684a1d865c453c29852e0dd18a3498c7"
+    },
+    {
+      "path": "plugin/skills/linguistic-consultant/references/personas.md",
+      "sha256": "af081d8c12686bd4b7bcd1ab2be1441f18a50b2ddefe24ed5d4fd14ff38298e3"
+    },
+    {
+      "path": "tools/Sync-SkillCrosswalk.py",
+      "sha256": "55189c2bba5e98b03f108bd412e87b7eec45309b2f723f8463b1b3c302b7a2b0"
+    }
+  ],
+  "activation_requires": [
+    "accepted task keys and attack controls",
+    "actual parser and starting-project evidence",
+    "independent first and rebuttal rulings",
+    "recorded human sample and resolved linguistic disputes",
+    "qualified independent Judge pair excluding model under test",
+    "full Validity fingerprint for each Arm"
+  ],
+  "expert_skills": {
+    "fieldworks": "plugin/skills/fieldworks-expert/SKILL.md",
+    "parsing": "plugin/skills/fieldworks-parsing-expert/SKILL.md"
+  }
+}

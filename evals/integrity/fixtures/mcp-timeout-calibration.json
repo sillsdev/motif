@@ -36,7 +36,7 @@
     {
       "task": "t1-lexicon-correct-gloss",
       "profile": "default",
-      "tool": "motif_finish_proposal",
+      "tool": "motif_finalize_proposal",
       "untracedMs": 830,
       "tracedMs": 852
     },
@@ -78,7 +78,7 @@
     {
       "task": "t1-lexicon-correct-gloss",
       "profile": "lean",
-      "tool": "motif_finish_proposal",
+      "tool": "motif_finalize_proposal",
       "untracedMs": 221,
       "tracedMs": 860
     },
@@ -121,7 +121,7 @@
     {
       "task": "t1-lexicon-restore-missing-form",
       "profile": "default",
-      "tool": "motif_finish_proposal",
+      "tool": "motif_finalize_proposal",
       "untracedMs": 255,
       "tracedMs": 14933
     },
@@ -164,7 +164,7 @@
     {
       "task": "t1-lexicon-restore-missing-form",
       "profile": "lean",
-      "tool": "motif_finish_proposal",
+      "tool": "motif_finalize_proposal",
       "untracedMs": 535,
       "tracedMs": 12436
     },
@@ -200,7 +200,7 @@
     {
       "task": "t0-lexicon-correct-gloss",
       "profile": "default",
-      "tool": "motif_finish_proposal",
+      "tool": "motif_finalize_proposal",
       "untracedMs": 498,
       "tracedMs": 878
     },
@@ -236,7 +236,7 @@
     {
       "task": "t0-lexicon-correct-gloss",
       "profile": "lean",
-      "tool": "motif_finish_proposal",
+      "tool": "motif_finalize_proposal",
       "untracedMs": 389,
       "tracedMs": 7061
     },
@@ -279,7 +279,7 @@
     {
       "task": "t0-lexicon-restore-missing-form",
       "profile": "default",
-      "tool": "motif_finish_proposal",
+      "tool": "motif_finalize_proposal",
       "untracedMs": 320,
       "tracedMs": 3038
     },
@@ -329,7 +329,7 @@
     {
       "task": "t0-lexicon-restore-missing-form",
       "profile": "lean",
-      "tool": "motif_finish_proposal",
+      "tool": "motif_finalize_proposal",
       "untracedMs": 286,
       "tracedMs": 2081
     },

@@ -12,7 +12,7 @@
     { "tool": "motif_add_lexeme_form", "description": "Add a lexeme form (and optional gloss) to an existing entry in a draft." },
     { "tool": "motif_set_gloss", "description": "Set a sense's gloss in a draft." },
     { "tool": "motif_trial", "description": "Parse sample words with and without the draft's changes." },
-    { "tool": "motif_finish_proposal", "description": "Finish the draft so the linguist can review it." },
+    { "tool": "motif_finalize_proposal", "description": "Finalize the Draft so the linguist can review it." },
     { "tool": "motif_proposals", "description": "List Proposals, or show one." }
   ]
 }

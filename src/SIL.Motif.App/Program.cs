@@ -19,13 +19,13 @@ internal static class Program
 
         // Motif's own error window reports an escaped error; Windows' dialog must not appear beside it.
         CrashDialogs.Suppress();
-        MotifInstallLifecycle.CompleteStartup();
-        if (ShouldRunReleasePathways(args, Environment.GetEnvironmentVariable("MOTIF_RELEASE_PATHWAYS")))
-            return ReleasePathwayReplay.Run(Environment.GetEnvironmentVariable("MOTIF_RELEASE_PATHWAYS")!);
         if (args.Length > 0 && args[0] == "--smoke")
             return Smoke();
         if (args.Length > 0 && args[0] == "--cli")
             return RunCli(args[1..]);
+        MotifInstallLifecycle.CompleteStartup();
+        if (ShouldRunReleasePathways(args, Environment.GetEnvironmentVariable("MOTIF_RELEASE_PATHWAYS")))
+            return ReleasePathwayReplay.Run(Environment.GetEnvironmentVariable("MOTIF_RELEASE_PATHWAYS")!);
         return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
 

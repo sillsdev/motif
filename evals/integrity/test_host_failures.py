@@ -46,13 +46,15 @@ class HostFailureTests(unittest.TestCase):
                 return run({'archive': str(archive), 'session': str(session), 'host': 'fake', 'protected': [],
                             'mounts': [[str(product), '/opt/product']], 'allowedTools': ['motif_read'], 'timeout': 300})
 
-    def test_all_seven_captured_timeouts_are_infrastructure_failures(self):
+    def test_captured_host_failures_keep_clean_integrity_and_classify_transport_defects(self):
         samples = json.loads((Path(__file__).parent / 'fixtures/host8-timeouts.json').read_text())
         self.assertEqual(7, len(samples))
         for sample in samples:
             with self.subTest(source=sample['source']):
                 result = self.replay(sample)
-                self.assertEqual('infrastructure_failure', result['state'], result['reasons'])
+                self.assertEqual('clean', result['state'], result['reasons'])
+                expected_class = 'harness_defect' if sample['bridgeErrors'] else 'agent_failure'
+                self.assertEqual(expected_class, result['failureClass'])
                 self.assertTrue(result['processTree'])
 
     def test_timeout_cannot_hide_missing_audit_or_wrong_tools(self):
@@ -65,16 +67,19 @@ class HostFailureTests(unittest.TestCase):
         result = self.replay(sample, agent_extra='openat(AT_FDCWD, "/session/project/project.fwdata", O_RDONLY) = 7\n')
         self.assertEqual('invalid', result['state'], result['reasons'])
 
-    def test_closed_wall_timeout_is_infrastructure_failure(self):
+    def test_boundary_supervisor_timeout_is_harness_defect(self):
         sample = {'exitCode': -9, 'failure': 'wall timeout', 'finalMessage': '', 'bridgeErrors': []}
-        self.assertEqual('infrastructure_failure', self.replay(sample, timed_out=True, summary=False)['state'])
+        result = self.replay(sample, timed_out=True, summary=False)
+        self.assertEqual('clean', result['state'])
+        self.assertEqual('harness_defect', result['failureClass'])
 
-    def test_inference_failure_with_closed_audit_is_infrastructure_and_preserves_misconduct(self):
+    def test_inference_failure_with_closed_audit_is_cloud_and_preserves_misconduct(self):
         sample = {'exitCode': 0, 'failure': None, 'finalMessage': '', 'bridgeErrors': []}
         reason = 'ChatGPT login is missing, expired or unusable; run codex on the host to refresh the login'
         result = self.replay(sample, inference_errors=[reason])
-        self.assertEqual('infrastructure_failure', result['state'])
-        self.assertIn(reason, [row['reason'] for row in result['reasons']])
+        self.assertEqual('clean', result['state'])
+        self.assertEqual('cloud_failure', result['failureClass'])
+        self.assertIn(reason, [row['evidence'] for row in result['failureEvidence']])
         self.assertEqual('isolation_failure', self.replay(sample, audit_complete=False, inference_errors=[reason])['state'])
         result = self.replay(sample, inference_errors=[reason],
                              agent_extra='openat(AT_FDCWD, "/session/project/project.fwdata", O_RDONLY) = 7\n')

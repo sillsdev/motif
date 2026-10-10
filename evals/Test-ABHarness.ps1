@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
     [switch] $ValidityOnly,
+    [string] $ArmManifest,
     [string] $Configuration = 'Debug',
     [Alias('-keep')][switch] $Keep
 )
@@ -49,6 +50,16 @@ $fakeArm.server.profilePath = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot ([
 $fakeArm.server.profileArgument = [string]$fakeArm.server.profile
 $fakeArm.server.executable = [IO.Path]::GetFullPath($motifExe)
 $fakeArm.host = 'fake'
+[object[]]$fingerprintArms = @()
+if ($ArmManifest) { $fingerprintArms = @(Read-ABJson $ArmManifest) }
+if ($fingerprintArms.Count -eq 0) { $fingerprintArms = @($fakeArm) }
+$validationArms = foreach ($sourceArm in $fingerprintArms) {
+    $validationArm = @{} + $sourceArm
+    $validationArm.server = @{} + $sourceArm.server
+    $validationArm.host = 'fake'
+    $validationArm.authMode = 'none'
+    $validationArm
+}
 $stampPath = Join-Path $PSScriptRoot 'results/.validity.json'
 $sampleRoot = Join-Path $PSScriptRoot 'results/validity-samples'
 $validityFinals = @(Read-ABJson (Join-Path $PSScriptRoot 'integrity/fixtures/validity-finals.json'))
@@ -63,7 +74,8 @@ if (-not $originalJudgeCommand) {
 }
 
 try {
-    foreach ($task in $tasks) {
+    foreach ($arm in $validationArms) {
+      foreach ($task in $tasks) {
         $cases = @(
             [ordered]@{ name = 'gold'; start = [string]$task.start; validationMode = $null; minimum = 0.99; maximum = 1.0 },
             [ordered]@{ name = 'empty'; start = [string]$task.start; validationMode = 'empty'; minimum = 0.0; maximum = 0.01 }
@@ -74,7 +86,7 @@ try {
         }
         foreach ($case in $cases) {
             $safeTask = [string]$task.id
-            $outputRoot = Join-Path $sampleRoot ("{0}/{1}" -f $safeTask, $case.name)
+            $outputRoot = Join-Path $sampleRoot ("{0}/{1}/{2}" -f $safeTask, [string]$arm.id, $case.name)
             $privateRoot = New-ABTrialDirectory $repoRoot $temporaryRoot
             if (Test-Path -LiteralPath $outputRoot) { Remove-Item -LiteralPath $outputRoot -Recurse -Force }
             New-Item -ItemType Directory -Path $outputRoot, $privateRoot -Force | Out-Null
@@ -92,7 +104,7 @@ try {
                 setPath = $task.setPath
                 taskPath = $task.taskPath
                 task = $validationTask
-                arm = $fakeArm
+                arm = $arm
                 validationMode = $case.validationMode
                 keep = [bool]$Keep
             }
@@ -123,8 +135,9 @@ try {
             if ($case.name -eq 'gold' -and $grade.success -ne $true) {
                 throw "Task '$($task.id)' gold solution did not pass all graders. See $resultPath"
             }
-            Write-Host "Validity $($task.id) / $($case.name): $score ($resultPath)"
+            Write-Host "Validity $($arm.id) / $($task.id) / $($case.name): $score ($resultPath)"
         }
+      }
     }
 
     $questionPath = Join-Path $PSScriptRoot 'questions/default-vs-lean-fake.yaml'
@@ -158,9 +171,17 @@ try {
     Write-Host "Fake-host end to end: $sampleReport"
 
     if ($ValidityOnly) {
-        $fingerprint = Get-ABRepositoryFingerprint $repoRoot $Configuration
+        $fingerprint = if ($ArmManifest) { Get-ABRepositoryFingerprint $repoRoot $Configuration $fingerprintArms }
+            else { Get-ABRepositoryFingerprint $repoRoot $Configuration }
+        $armFingerprints = [ordered]@{}
+        if ($ArmManifest) {
+            foreach ($arm in $fingerprintArms) {
+                $armFingerprints[[string]$arm.id] = Get-ABRepositoryFingerprint $repoRoot $Configuration @($arm)
+            }
+        }
         Write-ABJson $stampPath ([ordered]@{
             fingerprint = $fingerprint
+            armFingerprints = $armFingerprints
             configuration = $Configuration
             checkedUtc = [DateTimeOffset]::UtcNow.ToString('O')
             taskCount = $tasks.Count

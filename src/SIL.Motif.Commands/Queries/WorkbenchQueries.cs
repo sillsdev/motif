@@ -38,6 +38,8 @@ public sealed record TextWordsRequest(string ProjectPath, IReadOnlyList<Guid> Te
 /// every place that wordform occurs, and the analyses the project approves and disapproves for it.
 /// Also the Texts line by line, for reading the words in place.
 /// </summary>
+/// <param name="Words">The chosen Texts' wordforms and their analyses.</param>
+/// <param name="Texts">The chosen Texts as lines and occurrences.</param>
 /// <param name="HasBaseline">False when the project has no Baseline yet, so there was nothing to read.</param>
 /// <param name="OccurrenceCount">The command's total number of word occurrences across the returned Texts.</param>
 public sealed record TextWordsResponse(
@@ -193,7 +195,10 @@ public sealed record TextToken(string Text, string? Form, string? Gloss, string?
 }
 
 /// <summary>Which word to trace against the current Baseline grammar.</summary>
+/// <param name="ProjectPath">The recorded project path.</param>
+/// <param name="Word">The exact word form to trace.</param>
 public sealed record WordTraceRequest(string ProjectPath, string Word);
 
 /// <summary>Which saved trace file to read: a PanGloss trace document, as the window's Save diagnostic writes it.</summary>
+/// <param name="DiagnosticPath">The saved parser diagnostic to read.</param>
 public sealed record WordTraceLoadRequest(string DiagnosticPath);

@@ -2,7 +2,9 @@ using System.Reflection;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
+using SIL.Motif.Commands.Assistants;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Commands.Preferences;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -24,9 +26,10 @@ public sealed class WorkspaceContextWidthTests
             typeof(GrammarSummary), typeof(OpenInspectorRequest), typeof(ChangesViewModel), typeof(AssessViewModel), typeof(SelectionViewModel),
             typeof(SetupViewModel), typeof(TextStyles),
             typeof(ICommandClient), typeof(IHandoffFolderPicker), typeof(IFileDragSource), typeof(IClipboard),
-            typeof(IDiagnosticFilePicker), typeof(IDiagnosticWindowDialogs),
+            typeof(IDiagnosticFilePicker), typeof(IDiagnosticWindowDialogs), typeof(IUriLauncher),
             typeof(IAsyncRelayCommand), typeof(IAsyncRelayCommand<string>), typeof(IRelayCommand),
             typeof(System.Collections.ObjectModel.ObservableCollection<KnownProjectSummary>),
+            typeof(IAdvancedAiModePreferenceStore), typeof(IAssistantConnectionService),
         ];
         var carried = typeof(WorkspaceContext).GetProperties(BindingFlags.Instance | BindingFlags.Public)
             .Select(property => Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType);

@@ -20,7 +20,23 @@ if ($configData.confirmation) {
     $privateTaskPath = Join-Path $gradingSetPath ("tasks/" + [string]$configData.task.id)
     if (Test-Path -LiteralPath $privateTaskPath -PathType Container) { $configData.task.taskPath = $privateTaskPath }
 }
+$hostData = Read-ABJson (Join-Path $configData.bundle 'host.json')
+$hostData.primaryMetric = $configData.primaryMetric
 $started = [DateTimeOffset]::UtcNow
+if ($hostData.Contains('failureClass') -and $hostData.failureClass -eq 'agent_failure') {
+    $intent = Read-ABJson (Join-Path $configData.bundle 'intent.json')
+    $operations = if ($intent -and $intent.Contains('operations')) { @($intent.operations) } else { @() }
+    $grade = [ordered]@{
+        grade = 0.0; success = $false; primaryMetric = $configData.primaryMetric; primaryScore = 0.0
+        operationCount = $operations.Count; gradingState = 'measured'; failureClass = 'agent_failure'
+        failureEvidence = @([string]$(if ($hostData.Contains('failure')) { $hostData.failure } else { 'Agent execution failed within its budget.' }))
+        graders = @(); agentBudget = $hostData.agentBudget; agentElapsedMs = $hostData.agentElapsedMs
+        gradedUtc = $started.ToString('O'); trialClosedUtc = $integrity.closedUtc
+    }
+    Write-ABJson (Join-Path $configData.outputRoot 'proposals.json') @{ proposal = $intent; operationCount = $operations.Count }
+    Write-ABJson (Join-Path $configData.outputRoot 'grade.json') $grade
+    return
+}
 $measurementEnvironment = @{
     MOTIF_WORKER_ROOT = Join-Path $configData.scratchRoot 'work'
     MOTIF_RUNNER_NAMESPACE = 'grade-' + [Guid]::NewGuid().ToString('N')
@@ -33,12 +49,12 @@ $measurement = Invoke-ABProcess $configData.builder @('measure-output', '--set',
     '--out', $configData.scratchRoot) $configData.outputRoot $measurementEnvironment 720000
 if ($measurement.ExitCode) { throw "Independent output measurement failed: $($measurement.Stderr)" }
 $measured = $measurement.Stdout | ConvertFrom-Json -AsHashtable
-$hostData = Read-ABJson (Join-Path $configData.bundle 'host.json')
-$hostData.primaryMetric = $configData.primaryMetric
 $activity = @(Read-ABLines (Join-Path $configData.bundle 'activity.jsonl'))
 $operations = @($measured.proposal.operations).Count
+$judgeFamilies = if ($configData.Contains('judgeFamilies')) { @($configData.judgeFamilies) } else { @('opus', 'sol') }
 $grade = Get-ABGrade $configData.task $gradingSetPath @($measured.parserRows) $operations $hostData $activity `
-    (Join-Path $configData.bundle 'transcript.jsonl') $configData.profile $measured.proposal $integrity
+    (Join-Path $configData.bundle 'transcript.jsonl') $configData.profile $measured.proposal $integrity `
+    $measured.lexiconBefore $measured.lexiconAfter $measured.proposalFailure $judgeFamilies
 $grade.gradedUtc = $started.ToString('O')
 $grade.trialClosedUtc = $integrity.closedUtc
 Write-ABJson (Join-Path $configData.outputRoot 'proposals.json') @{ proposal = $measured.proposal; operationCount = $operations }

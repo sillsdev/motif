@@ -456,6 +456,27 @@ public sealed class ComposeRecordParsimonyDispositionTests : IDisposable
     }
 
     [Fact]
+    public void AChangedDecisionFromAReportMeasuredBeforeAnApplyIsRefusedAsStale()
+    {
+        var reportId = StageReportAndDraft("applied-stale");
+        Assert.True(ParsimonyCommands.RecordDisposition(DispositionRequest(reportId, "applied-stale", "keep")).Succeeded);
+        Assert.True(ProposalCommands.Comment(new CommentRequest(_projectPath, ProductVersion, "applied-stale",
+            "Record the exact Parsimony finding.")).Succeeded);
+        var finalized = ProposalCommands.Finalize(new FinalizeRequest(_projectPath, ProductVersion, "applied-stale"));
+        Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
+        Assert.True(DryRunJobRunner.Run(_projectPath, ProductVersion, finalized.Value!.ProposalId).Succeeded);
+        Assert.True(ProposalCommands.Apply(new ApplyRequest(_projectPath, ProductVersion,
+            finalized.Value.ProposalId, "reviewer")).Succeeded);
+        Assert.True(ProposalCommands.New(new NewDraftRequest(_projectPath, ProductVersion, "stale-change",
+            "Change the decision from the old Report")).Succeeded);
+
+        var result = ParsimonyCommands.RecordDisposition(DispositionRequest(reportId, "stale-change", "fix"));
+
+        Assert.False(result.Succeeded);
+        Assert.Equal("parsimony.report-baseline-mismatch", result.Refusal!.Code);
+    }
+
+    [Fact]
     public void AChangedDecisionIsStagedAsANewDecision()
     {
         var reportId = StageReportAndDraft("changed");

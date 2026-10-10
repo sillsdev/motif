@@ -57,6 +57,64 @@ if ($nuspecs.Count -ne 0) {
 if ($manifest.runtimeIdentifier -ne $RuntimeIdentifier) {
     throw "Package manifest RID '$($manifest.runtimeIdentifier)' does not match '$RuntimeIdentifier'."
 }
+$manifestFileMap = @{}
+foreach ($record in $manifest.files) {
+    if ($manifestFileMap.ContainsKey([string] $record.path)) {
+        throw "Package manifest lists the same file more than once: $($record.path)"
+    }
+    $manifestFileMap[[string] $record.path] = $record
+}
+$manifestPath = Join-Path $stage 'release-manifest.json'
+$actualPayloadFiles = @(Get-ChildItem -LiteralPath $stage -File -Recurse -Force |
+    Where-Object { $_.FullName -ne $manifestPath })
+foreach ($payloadFile in $actualPayloadFiles) {
+    $relativePath = [System.IO.Path]::GetRelativePath($stage, $payloadFile.FullName).Replace('\', '/')
+    if (-not $manifestFileMap.ContainsKey($relativePath)) {
+        throw "Package manifest does not record a staged file: $relativePath"
+    }
+    $record = $manifestFileMap[$relativePath]
+    if ($record.size -ne $payloadFile.Length -or
+        $record.sha256 -ne (Get-FileHash -LiteralPath $payloadFile.FullName -Algorithm SHA256).Hash.ToLowerInvariant()) {
+        throw "Package manifest does not match its staged file: $relativePath"
+    }
+}
+if ($manifestFileMap.Count -ne $actualPayloadFiles.Count) {
+    throw 'Package manifest contains files that are absent from the package stage.'
+}
+if (-not (Test-Path -LiteralPath (Join-Path $stage 'plugin/.claude-plugin/plugin.json') -PathType Leaf) -or
+    -not (Test-Path -LiteralPath (Join-Path $stage 'plugin/plugin.json') -PathType Leaf) -or
+    -not (Test-Path -LiteralPath (Join-Path $stage 'plugin/.mcp.json') -PathType Leaf) -or
+    -not (Test-Path -LiteralPath (Join-Path $stage 'plugin/mcp.json') -PathType Leaf) -or
+    -not (Test-Path -LiteralPath (Join-Path $stage 'plugin/.agents/plugins/marketplace.json') -PathType Leaf) -or
+    -not (Test-Path -LiteralPath (Join-Path $stage '.claude-plugin/marketplace.json') -PathType Leaf) -or
+    -not (Test-Path -LiteralPath (Join-Path $stage 'motif-plugin.zip') -PathType Leaf)) {
+    throw 'Package must carry the plugin folder, both client marketplaces, and the plugin ZIP.'
+}
+
+$pluginManifest = Get-Content -LiteralPath (Join-Path $stage 'plugin/plugin.json') -Raw | ConvertFrom-Json
+$claudeMarketplace = Get-Content -LiteralPath (Join-Path $stage '.claude-plugin/marketplace.json') -Raw | ConvertFrom-Json
+$codexMarketplace = Get-Content -LiteralPath (Join-Path $stage 'plugin/.agents/plugins/marketplace.json') -Raw | ConvertFrom-Json
+if ($pluginManifest.version -ne $manifest.productVersion -or
+    $claudeMarketplace.metadata.version -ne $manifest.productVersion -or
+    @($claudeMarketplace.plugins | Where-Object { $_.version -ne $manifest.productVersion }).Count -ne 0 -or
+    @($codexMarketplace.plugins | Where-Object { $_.version -ne $manifest.productVersion }).Count -ne 0) {
+    throw 'Plugin and marketplace versions must match the product package version.'
+}
+
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$pluginZip = [System.IO.Compression.ZipFile]::OpenRead((Join-Path $stage 'motif-plugin.zip'))
+try {
+    $zipEntries = @($pluginZip.Entries | ForEach-Object { $_.FullName })
+    foreach ($requiredEntry in @('.claude-plugin/plugin.json', '.mcp.json', 'skills/motif-workflow/SKILL.md',
+            'mcp.json', '.agents/plugins/marketplace.json', 'skills/parsimony-review/SKILL.md')) {
+        if ($requiredEntry -notin $zipEntries) {
+            throw "Plugin ZIP is missing a required file: $requiredEntry"
+        }
+    }
+}
+finally {
+    $pluginZip.Dispose()
+}
 
 $repoRoot = Split-Path $PSScriptRoot -Parent
 $icuPayload = Get-Content -LiteralPath (Join-Path $repoRoot 'tools/icu-payload.json') -Raw | ConvertFrom-Json

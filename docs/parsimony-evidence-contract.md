@@ -78,3 +78,11 @@ The typed `ParsimonyReportInputs` contract binds the bundle ID, full Baseline to
 File byte digests are recorded in the bundle descriptor, not in the file they hash. Build into a staging file, commit the artifact transaction, set completeness last, verify the result, close it, and publish it atomically. A reader opens published artifacts read-only. No transaction spans the two files.
 
 Queries are fixed and named. A shared read session may use connection-local temporary views over attached artifacts; it does not expose persistent cross-file views, caller-authored SQL, or expressions in a profile. Dispositions do not change an artifact's evidence digest.
+
+## Finding evidence identity
+
+A saved Keep or Defer decision applies only while the evidence for that finding is unchanged. Display names and unrelated project text cannot make a finding reappear.
+
+Every measure uses the RFC 8785 canonical `motif-parsimony-evidence/v2` preimage. It includes the measure ID, registered detector contract (`QueryId`), typed threshold and policy version, facts and evidence projection versions, sorted required capabilities, and the measure's semantic evidence. It omits the parser model fingerprint, which covers the whole canonical source and so moves when unrelated project content, such as an applied disposition, changes. Scoped measures additionally include the resolved evidence scope and Selection digest; measures using reviewed negatives include the human-input revision digest. Static measures omit scope and unrelated human input.
+
+The item evidence excludes captions, display labels, publication timestamps and whole-project digests. Each detector chooses the semantic projection relevant to its subject; an unused statement includes its canonical identity, reference counts and loader disposition rather than its display name. SHA-256 of the common preimage is the finding evidence digest. A disposition whose evidence contract or digest differs remains visible as history and does not suppress the current finding.

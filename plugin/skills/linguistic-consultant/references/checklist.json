@@ -1,0 +1,85 @@
+{
+  "format": 1,
+  "checks": [
+    {
+      "id": "C01",
+      "title": "User and job",
+      "requirement": "Identify the intended user\u2019s need and the job the recommendation serves."
+    },
+    {
+      "id": "C02",
+      "title": "Language evidence",
+      "requirement": "Separate observed forms and contextual readings from hypotheses; preserve provenance."
+    },
+    {
+      "id": "C03",
+      "title": "Terminology",
+      "requirement": "Use the user\u2019s/FLEx terms, explaining necessary MSA or engine abbreviations."
+    },
+    {
+      "id": "C04",
+      "title": "Identity and scope",
+      "requirement": "Bind statements to the supplied project and exact objects; never invent identities."
+    },
+    {
+      "id": "C05",
+      "title": "Affix meaning",
+      "requirement": "State the grammatical contrast and distribution before choosing inflection or derivation."
+    },
+    {
+      "id": "C06",
+      "title": "MSA and category",
+      "requirement": "Check the relevant MSA, category and sense link instead of treating an affix string as a rule."
+    },
+    {
+      "id": "C07",
+      "title": "Slots and templates",
+      "requirement": "Check template participation, declared slot order and required versus optional marking."
+    },
+    {
+      "id": "C08",
+      "title": "Classes and features",
+      "requirement": "Distinguish arbitrary lexical conditioning from semantic/agreement features and sound environments."
+    },
+    {
+      "id": "C09",
+      "title": "Parser reach",
+      "requirement": "Ground engine claims in the pinned importer and parser evidence; saving alone proves nothing about arrival."
+    },
+    {
+      "id": "C10",
+      "title": "Positive readings",
+      "requirement": "Preserve every distinct approved morphology within the declared scope; one reading does not cover all."
+    },
+    {
+      "id": "C11",
+      "title": "Negative evidence",
+      "requirement": "Use Reviewed negatives or a declared universe; unattested forms alone do not prove over-generation."
+    },
+    {
+      "id": "C12",
+      "title": "Completion",
+      "requirement": "Keep unfinished, skipped or unassessed searches distinct from demonstrated absence."
+    },
+    {
+      "id": "C13",
+      "title": "Proportionate change",
+      "requirement": "State parsimony and restrictiveness separately; check regressions and accept alternative valid solutions."
+    },
+    {
+      "id": "C14",
+      "title": "Uncertainty and escalation",
+      "requirement": "Name what is unknown and ask a discriminating question; a person settles linguistic disputes."
+    },
+    {
+      "id": "C15",
+      "title": "Authority and review",
+      "requirement": "Respect project ownership, human Apply and evidence binding to content and Baseline."
+    },
+    {
+      "id": "C16",
+      "title": "Usable explanation",
+      "requirement": "Lead with the action/question, one concrete example, evidence and limits in plain language."
+    }
+  ]
+}

@@ -49,9 +49,8 @@ namespace SIL.Motif.Commands;
 /// <remarks>
 /// <para>
 /// This class never re-implements dry-run/apply/log semantics: it calls
-/// <see cref="ProposalDryRunner.Run"/>, <see cref="ProposalApplier.Apply"/>,
-/// <see cref="ProjectAppliedLog.ReadAll"/>, and <see cref="FwDataProjectLoader"/> exactly as Stages
-/// C/D/A left them.
+/// <see cref="ProposalDryRunner.Run(DryRunScratch, SIL.Motif.Contract.Model.Proposal)"/>, <see cref="ProposalApplier.Apply"/>,
+/// <see cref="ProjectAppliedLog.ReadAll"/>, and <see cref="FwDataProjectLoader"/> through the shared handlers.
 /// </para>
 /// <para>
 /// The static constructor force-loads the Runner assembly's module initializers up front. Kind
@@ -1390,7 +1389,9 @@ public static partial class ProposalCommands
                         StringComparison.Ordinal))
                     continue;
 
-                if (!DryRunUsesCurrentBaseline(completion, currentBaseline.Token))
+                if (completion.ContentDigest != currentIntentDigest ||
+                    !DryRunUsesCurrentBaseline(completion, currentBaseline.Token) ||
+                    !new BaselineRepository(database).IsCurrentEvidence(workspaceKey, completion.BaselineToken))
                     continue;
 
                 matches.Add(dryRun);
@@ -1426,6 +1427,21 @@ public static partial class ProposalCommands
         if (completion.Freshness is not ("current" or "currentness-not-checked"))
             return false;
         return currentBaseline.HasSameSemanticIdentity(completion.BaselineToken);
+    }
+
+    private static bool AssessmentUsesCurrentBaseline(BaselineRepository baselines, string projectKey,
+        AssessmentRecord? assessment)
+    {
+        if (assessment is null) return false;
+        try
+        {
+            var token = JsonSerializer.Deserialize<BaselineToken>(assessment.BaselineToken, MotifJson.CreateOptions());
+            return token is not null && baselines.IsCurrentEvidence(projectKey, token);
+        }
+        catch (Exception exception) when (exception is JsonException or ArgumentException)
+        {
+            return false;
+        }
     }
 
     internal static IReadOnlyCollection<string> ChangedWords(SIL.Motif.Contract.Model.Proposal proposal) =>
@@ -1468,6 +1484,19 @@ public static partial class ProposalCommands
                 ? null
                 : FindCandidateAssessment(assessments, canonicalId, manifest.CurrentIntentDigest);
             var current = assessments.GetCurrent();
+            var baselines = new BaselineRepository(database);
+            var projectKey = ProjectWorkspaceKey.Compute(project);
+            var baseline = baselines.GetCurrent(projectKey);
+            var currentBaselineToken = baseline is null ? current?.BaselineToken
+                : JsonSerializer.Serialize(baseline.Token, MotifJson.CreateOptions());
+            if (baseline is not null && !AssessmentUsesCurrentBaseline(baselines, projectKey, current))
+                current = candidate is null ? null : assessments.FindLatestBaselineAssessment(
+                    RegressionChecker.RequiredKind, currentBaselineToken!, candidate.Selection.Sha256,
+                    candidate.Selection.Words);
+            var candidateBaselineToken = candidate?.BaselineToken ?? "";
+            if (baseline is not null && candidate is not null)
+                candidateBaselineToken = AssessmentUsesCurrentBaseline(baselines, projectKey, candidate)
+                    ? currentBaselineToken! : "stale:" + candidate.BaselineToken;
             var currentCorrectness = current is not null &&
                 string.Equals(current.Kind, RegressionChecker.RequiredKind, StringComparison.Ordinal)
                     ? current.ToCorrectness()
@@ -1480,8 +1509,8 @@ public static partial class ProposalCommands
 
             // Checked before loading the project, same as the anchor check above.
             var readiness = Readiness.Evaluate(
-                candidate?.ToCorrectness(), currentCorrectness, current?.BaselineToken,
-                candidate?.BaselineToken ?? "", configuration.GateOnRegression,
+                candidate?.ToCorrectness(), currentCorrectness, currentBaselineToken,
+                candidateBaselineToken, configuration.GateOnRegression,
                 ChangedWords(envelope), exemptionReason);
             if (readiness.Reasons.Count > 0 && !force)
             {

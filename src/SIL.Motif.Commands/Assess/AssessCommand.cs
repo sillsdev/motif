@@ -82,7 +82,11 @@ public static class AssessCommand
         Assess(request, managedRoot, PanGlossExecutable.TryLocate(), onProgress, cancellationToken);
 
     /// <summary>Measures a project under an explicit managed root with an explicitly selected parser.</summary>
+    /// <param name="request">The project and Selection to measure.</param>
+    /// <param name="managedRoot">The root holding this project's managed workspace.</param>
     /// <param name="parserPath">The parser to run, or <see langword="null"/> when none is available.</param>
+    /// <param name="onProgress">Receives Assessment progress, when supplied.</param>
+    /// <param name="cancellationToken">Cancels the measurement.</param>
     public static CommandOutcome<AssessCommandResponse> Assess(
         AssessRequest request, string managedRoot, string? parserPath,
         Action<AssessmentProgress>? onProgress, CancellationToken cancellationToken)
@@ -644,7 +648,7 @@ public static class AssessCommand
 
 /// <summary>
 /// Defers parser discovery until the command has validated the project and Selection. Callers must read
-/// <see cref="SupportedKinds"/> or call <see cref="ProduceAsync"/> only after that validation. A discovery
+/// <see cref="SupportedKinds"/> or call <see cref="ProduceAsync(AssessmentScope, string, CancellationToken)"/> only after that validation. A discovery
 /// failure is surfaced as <see cref="AssessorUnavailableException"/>.
 /// </summary>
 internal sealed class LazyPanGlossAssessor : IAssessor

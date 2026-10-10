@@ -106,6 +106,9 @@ public static class HandoffWriter
     /// record rather than a fragment of one, but every record except the last also carries the array's
     /// separating comma, so a line parses alone only once that comma is stripped.
     /// </summary>
+    /// <param name="cache">The loaded project supplying the Texts.</param>
+    /// <param name="requestedTextIds">The chosen Texts, or an empty list for every Text.</param>
+    /// <param name="incomingRoot">The destination folder for texts.json.</param>
     /// <param name="firstKey">The first written Text's own <c>key</c> field, for a working example elsewhere.</param>
     /// <returns>
     /// A refusal naming the first unresolved Text id, or <see langword="null"/> on success. An id that does

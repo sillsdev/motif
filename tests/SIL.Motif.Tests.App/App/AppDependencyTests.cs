@@ -4,10 +4,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.App;
 
-/// <summary>
-/// Pins the dependency boundary for <c>SIL.Motif.App</c>: it binds to typed command outcomes from
-/// <c>SIL.Motif.Commands</c> and Help content, and never reaches around it into the CLI, LibLCM, or SQLite.
-/// </summary>
+/// <summary>Pins the App's direct project references to Commands, Contract and Help.</summary>
 public sealed class AppDependencyTests
 {
     [Fact]

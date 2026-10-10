@@ -45,6 +45,9 @@ public static class WordTraceQuery
         Query(request, PanGlossExecutable.TryLocate(), cancellationToken);
 
     /// <summary>Traces a word with an explicitly selected parser.</summary>
+    /// <param name="request">The project and word to trace.</param>
+    /// <param name="cancellationToken">Cancels the trace.</param>
+    /// <param name="onProgress">Receives parser progress, when supplied.</param>
     /// <param name="parserPath">The parser to run, or <see langword="null"/> when none is available.</param>
     public static CommandOutcome<WordTraceResponse> Query(
         WordTraceRequest request, string? parserPath, CancellationToken cancellationToken = default,

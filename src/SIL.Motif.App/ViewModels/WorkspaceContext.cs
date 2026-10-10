@@ -3,7 +3,9 @@ using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App.Services;
+using SIL.Motif.Commands.Assistants;
 using SIL.Motif.Commands.Handoff;
+using SIL.Motif.Commands.Preferences;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands.SelectionReading;
 using SIL.Motif.Contract.Requests;
@@ -123,7 +125,9 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     public WorkspaceContext(
         SelectionViewModel selection, AssessViewModel assess, ChangesViewModel changes, ICommandClient commands, IHandoffFolderPicker folderPicker,
         IFileDragSource dragSource, BaselineViewModel baseline, TimeProvider? clock = null, IClipboard? clipboard = null,
-        IDiagnosticFilePicker? diagnosticFiles = null, IDiagnosticWindowDialogs? diagnosticDialogs = null)
+        IDiagnosticFilePicker? diagnosticFiles = null, IDiagnosticWindowDialogs? diagnosticDialogs = null,
+        IAdvancedAiModePreferenceStore? advancedAiModePreferences = null,
+        IAssistantConnectionService? assistantConnections = null, IUriLauncher? uriLauncher = null)
     {
         ArgumentNullException.ThrowIfNull(selection);
         ArgumentNullException.ThrowIfNull(assess);
@@ -145,6 +149,9 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         Clock = clock ?? TimeProvider.System;
         TextStyles = new TextStyles();
         Assess.Trace.SetTextStyles(TextStyles);
+        AdvancedAiModePreferences = advancedAiModePreferences;
+        AssistantConnections = assistantConnections ?? NoAssistantConnectionService.Instance;
+        UriLauncher = uriLauncher;
         Assess.PropertyChanged += OnAssessPropertyChanged;
         Selection.PropertyChanged += OnSelectionPropertyChanged;
         Assess.Words.Routes.HasTexts = Selection.HasTexts;
@@ -216,6 +223,15 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
 
     /// <summary>Where a page puts text a person copies; one composed without it fails each copy.</summary>
     public IClipboard Clipboard { get; }
+
+    /// <summary>The saved choice that determines whether AI assistants receive project tools.</summary>
+    public IAdvancedAiModePreferenceStore? AdvancedAiModePreferences { get; }
+
+    /// <summary>The service that finds assistants and connects them to Motif.</summary>
+    public IAssistantConnectionService AssistantConnections { get; }
+
+    /// <summary>The window launcher for the plugin ZIP and client setup page.</summary>
+    public IUriLauncher? UriLauncher { get; }
 
     /// <summary>The dialogs a page opens and saves diagnostic JSON through; one composed without them fails each use.</summary>
     public IDiagnosticFilePicker DiagnosticFiles { get; }

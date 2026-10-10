@@ -86,6 +86,7 @@ public sealed class HelpPopupViewModelTests
     [InlineData(WorkspacePage.Warnings)]
     [InlineData(WorkspacePage.Review)]
     [InlineData(WorkspacePage.AiHandoff)]
+    [InlineData(WorkspacePage.AiAssistants)]
     public void PageHelpSaysItsTitleAndOpeningOnce(WorkspacePage page)
     {
         _avalonia.Invoke(() =>

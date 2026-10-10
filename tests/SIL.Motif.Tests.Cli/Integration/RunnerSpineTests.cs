@@ -281,6 +281,7 @@ public sealed class RunnerSpineTests : IDisposable
         start.Environment[RunnerOptions.RootVariable] = _root;
         // This suite starts and manages its own runners explicitly; RunnerKickRaceTests covers the kick itself.
         start.Environment[ProcessRunnerLauncher.SuppressVariable] = "1";
+        CliProcess.EnableAdvancedAiMode(start, _root);
         using var process = Process.Start(start)!;
         // Both pipes drain concurrently: a sequential read deadlocks past the pipe buffer.
         var outputTask = process.StandardOutput.ReadToEndAsync();

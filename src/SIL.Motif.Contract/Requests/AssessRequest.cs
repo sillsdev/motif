@@ -8,6 +8,11 @@ namespace SIL.Motif.Contract.Requests;
 /// <c>ReplaceAssessmentId</c> names the complete run whose main answers an explicit reparse replaces;
 /// absent for exploration and ordinary new runs.
 /// </summary>
+/// <param name="ProjectPath">The recorded project path.</param>
+/// <param name="Selection">The words or Texts to measure; null uses the saved Default Selection.</param>
+/// <param name="PerWordLimitMs">The per-word duration limit in milliseconds; null keeps the configured limit.</param>
+/// <param name="PerWordStepLimit">The per-word parser step cap; null keeps the configured cap.</param>
+/// <param name="ReplaceAssessmentId">The prior complete Assessment to replace for an explicit reparse.</param>
 public sealed record AssessRequest(
     string ProjectPath,
     SelectionRequest? Selection = null,

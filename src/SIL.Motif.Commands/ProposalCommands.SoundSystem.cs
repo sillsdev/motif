@@ -169,7 +169,8 @@ public static partial class ProposalCommands
         ProjectLocator project,
         RecordParsimonyDispositionFromFindingRequest request,
         ParsimonyReportResponse report,
-        ParsimonyFinding finding)
+        ParsimonyFinding finding,
+        bool evidenceIsCurrent)
     {
         var repository = new ProposalRepository(database);
         if (!TryLoadDraft(repository, request.DraftName, out var draft))
@@ -192,6 +193,9 @@ public static partial class ProposalCommands
                 return CommandOutcome<ComposedOperationsResponse>.Success(new ComposedOperationsResponse(
                     request.DraftName, "RecordParsimonyDisposition", [], draft.Operations.Count,
                     Outcome: "already-recorded"));
+            if (!evidenceIsCurrent)
+                return CommandOutcome<ComposedOperationsResponse>.Refused(new Refusal(
+                    "parsimony.report-baseline-mismatch", FailureReason.Refused, ParsimonyCommands.ReportBaselineMismatch));
             if (state == DecisionState.Staged)
                 return CommandOutcome<ComposedOperationsResponse>.Refused(new Refusal(
                     "parsimony.decision-already-staged", FailureReason.Refused,

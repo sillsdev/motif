@@ -1,0 +1,22 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "motif",
+  "owner": {
+    "name": "SIL"
+  },
+  "metadata": {
+    "description": "FieldWorks expertise and safe Motif Proposal workflows.",
+    "version": "0.2.0"
+  },
+  "plugins": [
+    {
+      "name": "motif",
+      "source": {
+        "source": "directory",
+        "path": "./plugin"
+      },
+      "description": "FieldWorks expertise and safe Motif Proposal workflows.",
+      "version": "0.2.0"
+    }
+  ]
+}

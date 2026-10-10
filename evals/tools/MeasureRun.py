@@ -1,8 +1,8 @@
-"""Deterministic cost and effort measures for an A/B run, harvested from stored trial transcripts.
+"""Deterministic cost and effort measures for an A/B run, harvested from stored trial records.
 
-Usage: MeasureRun.py <run-dir> [--grades <regrade-dir>] [--prices <prices.json>]
+Usage: MeasureRun.py <run-dir> [--grades <regrade-dir>]
 Writes metrics.csv (one row per trial) and metrics.md (per arm and task) into the grades directory.
-Nothing here judges an answer: every number is counted from records the trial already wrote.
+Nothing here judges an answer: token, time and actual cost values come from records the trial wrote.
 """
 import argparse
 import csv
@@ -11,7 +11,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 EVALS = Path(__file__).resolve().parents[1]
-LIFECYCLE = ('motif_new_proposal', 'motif_start_proposal', 'motif_finish_proposal')
+LIFECYCLE = ('motif_new_proposal', 'motif_start_proposal', 'motif_finalize_proposal')
 
 
 def lines(path):
@@ -99,28 +99,13 @@ def measure_trial(trial, classes):
     }
 
 
-def price(row, model, prices):
-    rate = prices.get(model) or {}
-    keys = ('inputUsdPerMTok', 'cachedInputUsdPerMTok', 'outputUsdPerMTok')
-    if any(not isinstance(rate.get(key), (int, float)) for key in keys):
-        return None
-    # Input tokens include cached reads and cache writes; each is priced at its own rate. Reasoning is output.
-    writes = row['cacheWriteTokens']
-    write_rate = rate.get('cacheWriteUsdPerMTok', rate[keys[0]])
-    fresh = row['inputTokens'] - row['cachedInputTokens'] - writes
-    return round((fresh * rate[keys[0]] + row['cachedInputTokens'] * rate[keys[1]] + writes * write_rate
-                  + row['outputTokens'] * rate[keys[2]]) / 1_000_000, 4)
-
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('run')
     parser.add_argument('--grades')
-    parser.add_argument('--prices', default=str(EVALS / 'prices.json'))
     args = parser.parse_args()
     run = Path(args.run)
     grades = Path(args.grades) if args.grades else run
-    prices = json.loads(Path(args.prices).read_text()) if Path(args.prices).is_file() else {}
     classes = tool_classes()
     rows = []
     for trial in sorted(run.glob('trials/*/*/trial-*')):
@@ -136,7 +121,7 @@ def main():
         row = {'task': task, 'arm': arm, 'trial': number, 'model': model, 'integrity': integrity,
                'grade': grade.get('grade'), 'success': grade.get('success')}
         row.update(measure_trial(trial, classes))
-        row['costUsd'] = price(row, model, prices)
+        row['costUsd'] = manifest.get('costUsd')
         rows.append(row)
     if not rows:
         raise SystemExit('No trials found under ' + str(run))
@@ -160,25 +145,29 @@ def write_summary(path, rows):
             groups[(row['arm'], row['task'])].append(row)
             groups[(row['arm'], 'ALL')].append(row)
     out = ['# Cost and effort', '',
-           'Counted from stored transcripts; only clean, graded trials. "To solve" divides the total spent on '
-           'every scored attempt by the number of successes, so failures count against an arm.', '',
-           '| Arm | Task | Solved | Tokens to solve | Price to solve (USD) | Mean tokens | Mean wall s '
+           'Counted from stored trial records; only clean, graded Episodes. Price to solve divides the actual '
+           'spend on every scored Episode by the number solved, so Agent failures count against an Arm. Average '
+           'cost per Episode appears beside it; missing cost data remains incomplete.', '',
+           '| Arm | Task | Solved | Tokens to solve | Price to solve (USD) | Average cost / Episode (USD) | Mean tokens | Mean wall s '
            '| Mean MCP calls | Mean reads | Mean result kchars | Guide topics | MCP errors |',
-           '|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|']
+           '|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|']
     for (arm, task), items in sorted(groups.items(), key=lambda kv: (kv[0][0], kv[0][1] == 'ALL', kv[0][1])):
         n = len(items)
         solved = sum(1 for row in items if row['success'])
         tokens = sum(row['totalTokens'] for row in items)
         costs = [row['costUsd'] for row in items]
         cost = sum(costs) if all(c is not None for c in costs) else None
+        average_cost = cost / n if cost is not None and n else None
         mean = lambda key: round(sum(row[key] for row in items) / n, 1)
-        out.append('| {} | {} | {}/{} | {} | {} | {} | {} | {} | {} | {} | {} | {} |'.format(
-            arm, task, solved, n, per_success(tokens, solved) or 'n/a',
-            round(cost / solved, 4) if cost is not None and solved else 'not priced' if cost is None else 'n/a',
+        tokens_to_solve = per_success(tokens, solved)
+        out.append('| {} | {} | {}/{} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} |'.format(
+            arm, task, solved, n, tokens_to_solve if tokens_to_solve is not None else 'n/a',
+            round(cost / solved, 4) if cost is not None and solved else 'incomplete costs' if cost is None else 'n/a',
+            round(average_cost, 4) if average_cost is not None else 'incomplete costs',
             round(tokens / n), mean('wallSeconds'), mean('mcpCalls'), mean('readCalls'), mean('resultKiloChars'),
             mean('guideTopics'), sum(row['mcpErrors'] for row in items)))
-    out += ['', 'Prices use the API rates in evals/prices.json (fresh input, cached input, cache writes, output; '
-            'short-context tier), whatever the run was actually billed to; a model without rates is not priced.']
+    out += ['', 'Costs come from the Episode manifest, including recorded Cloud retry spend. A missing value is '
+            'not replaced with a token-rate estimate.']
     path.write_text('\n'.join(out) + '\n', encoding='utf-8')
 
 

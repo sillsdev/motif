@@ -15,8 +15,9 @@ import stat
 import subprocess
 import sys
 import time
+from urllib.parse import urlsplit
 
-from InferenceBroker import Broker, InferenceFailure, PROVIDERS, inference_upstream
+from InferenceBroker import Broker, CloudFailure, InferenceFailure, PROVIDERS, inference_upstream
 
 MAX_FILE = 16 * 1024 * 1024
 
@@ -176,11 +177,20 @@ def audited_run(config, label, command, timeout):
     if broker:
         if not broker.closed():
             audit_complete = False
-        inference_errors = broker.failures
+        inference_errors = broker.failure_events
     if broker and broker.denials:
         config["networkDenials"] = broker.denials
+    network_path = archive / "network.jsonl"
+    network_records = read_lines(network_path) if network_path.is_file() else []
+    allowed_hosts = []
+    if broker:
+        allowed_hosts = [urlsplit(broker.origin).hostname]
+    observed_hosts = sorted({urlsplit(row.get("destination", "")).hostname for row in network_records
+                             if isinstance(row, dict) and row.get("destination")})
     return {"exitCode": process.returncode, "timedOut": timed_out, "started": started,
             "closed": time.time(), "auditComplete": audit_complete, "inferenceErrors": inference_errors,
+            "networkEvidence": {"allowedHosts": allowed_hosts, "observedHosts": observed_hosts,
+                                "allowedHostsOnly": bool(set(observed_hosts).issubset(set(allowed_hosts)))},
             "auditFiles": [str(p) for p in files], "processEvents": str(births),
             "processAuditorHash": hashlib.sha256(library.read_bytes()).hexdigest(), "pidAttribution": pid_attribution}
 
@@ -393,14 +403,16 @@ def read_lines(path):
     return [json.loads(line) for line in path.read_text(encoding="utf-8-sig").splitlines() if line.strip()]
 
 
-class InfrastructureFailure(RuntimeError):
-    """Execution failed without evidence that the containment boundary failed."""
+class HarnessFailure(RuntimeError):
+    """The experiment harness failed without evidence that the agent crossed its boundary."""
 
 
-def infrastructure_failure(integrity, reason):
-    if integrity['state'] == 'clean':
-        integrity['state'] = 'infrastructure_failure'
-    integrity['reasons'].append({'reason': reason, 'kind': 'infrastructure_failure'})
+def record_failure(integrity, failure_class, evidence):
+    priority = {'agent_failure': 1, 'cloud_failure': 2, 'harness_defect': 3}
+    current = integrity.get('failureClass')
+    if current is None or priority[failure_class] > priority[current]:
+        integrity['failureClass'] = failure_class
+    integrity['failureEvidence'].append({'class': failure_class, 'evidence': str(evidence)})
 
 
 def client_registration(session, names, host):
@@ -410,7 +422,7 @@ def client_registration(session, names, host):
         raise RuntimeError('The agent MCP connection did not initialize and close successfully')
     if sorted(row['name'] for row in read_json(received_tools)) != names:
         raise RuntimeError('The agent did not receive the intended Motif tool list')
-    evidence = {'clientToolsList': True, 'tools': names}
+    evidence = {'clientToolsList': True, 'fullToolListSeen': True, 'tools': names}
     registration = session / 'output/mcp-registration.json'
     if host != 'fake':
         if not registration.is_file() or read_json(registration)['exitCode']:
@@ -418,7 +430,7 @@ def client_registration(session, names, host):
         evidence['hostConfiguration'] = read_json(registration)
     errors = read_json(bridge_status)['errors']
     if errors:
-        raise InfrastructureFailure('The agent MCP transport failed: ' + '; '.join(errors))
+        raise HarnessFailure('The agent MCP transport failed: ' + '; '.join(errors))
     return evidence
 
 
@@ -488,7 +500,8 @@ def export(config):
 def run(config):
     archive = Path(config["archive"])
     archive.mkdir(parents=True, exist_ok=True)
-    integrity = {"state": "isolation_failure", "reasons": [], "network": {"policy": "none", "limitation": None}}
+    integrity = {"state": "isolation_failure", "reasons": [], "network": {"policy": "none", "limitation": None},
+                 "failureClass": None, "failureEvidence": []}
     try:
         if sys.platform != "linux":
             raise RuntimeError("A verified VM/container adapter is required on Windows and macOS")
@@ -533,6 +546,10 @@ def run(config):
         (session / "output/transcript.jsonl").touch()
         result = audited_run(config, "host", ["/opt/powershell/pwsh", "-NoProfile", "-File", "/opt/client/host.ps1", "-Session", "/input/session.json"], config["timeout"])
         integrity["closure"] = result
+        if result.get("networkEvidence"):
+            integrity["network"].update(result["networkEvidence"])
+        elif config["host"] == "fake":
+            integrity["network"].update(allowedHosts=[], observedHosts=[], allowedHostsOnly=True)
         for name in ('mcp-transcript.jsonl', 'client-tools.json', 'bridge-status.json', 'mcp-registration.json', 'mcp-stderr.log'):
             source = session / 'output' / name
             if source.exists():
@@ -555,14 +572,20 @@ def run(config):
             integrity.update(state="invalid", reasons=integrity["reasons"] + [{"reason": reason} for reason in config["networkDenials"]])
         if integrity['state'] == 'isolation_failure':
             return integrity
-        for reason in result.get('inferenceErrors', []):
-            infrastructure_failure(integrity, reason)
+        for failure in result.get('inferenceErrors', []):
+            if isinstance(failure, dict):
+                failure_class = failure.get('failureClass', 'harness_defect')
+                evidence = failure.get('evidence', 'Inference channel reported an unclassified failure.')
+            else:
+                failure_class = 'cloud_failure'
+                evidence = failure
+            record_failure(integrity, failure_class, evidence)
         try:
             integrity['mcpRegistration'] = client_registration(session, names, config['host'])
-        except InfrastructureFailure as error:
-            infrastructure_failure(integrity, str(error))
+        except HarnessFailure as error:
+            record_failure(integrity, 'harness_defect', str(error))
         if result['timedOut']:
-            infrastructure_failure(integrity, 'Host exceeded its wall-time limit with a closed external audit')
+            record_failure(integrity, 'harness_defect', 'The boundary supervisor exceeded its Episode shutdown allowance.')
             return integrity
         try:
             frozen, transcript = export(config)
@@ -571,7 +594,8 @@ def run(config):
             return integrity
         if result["exitCode"]:
             failure = read_json(frozen / 'host.json').get('failure') or 'no valid completion'
-            infrastructure_failure(integrity, 'Host execution failed: ' + str(failure))
+            host_class = read_json(frozen / 'host.json').get('failureClass') or 'agent_failure'
+            record_failure(integrity, host_class, 'Host execution failed: ' + str(failure))
         integrity["inputHashes"] = initial
         integrity["imageHash"] = hashlib.sha256(json.dumps(input_hashes, sort_keys=True).encode()).hexdigest()
         integrity["serverBuildHash"] = hashlib.sha256((Path(config["mounts"][0][0]) / "motif.dll").read_bytes()).hexdigest()
@@ -580,10 +604,14 @@ def run(config):
         integrity["toolsHash"] = hashlib.sha256(json.dumps(tools, sort_keys=True).encode()).hexdigest()
         integrity["closedUtc"] = result["closed"]
         integrity["exportedUtc"] = time.time()
+    except CloudFailure as error:
+        integrity['state'] = 'clean'
+        record_failure(integrity, 'cloud_failure', error)
     except InferenceFailure as error:
-        integrity.update(state="infrastructure_failure", reasons=[{"reason": str(error), "kind": "infrastructure_failure"}])
+        record_failure(integrity, 'harness_defect', error)
     except (OSError, ValueError, RuntimeError, sqlite3.Error) as error:
         integrity.update(state="isolation_failure", reasons=[{"reason": str(error)}])
+        record_failure(integrity, 'harness_defect', error)
     finally:
         write_json(archive / "integrity.json", integrity)
     return integrity

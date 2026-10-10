@@ -99,7 +99,7 @@ public static partial class MeasureRunner
                     new ParsimonyFindingAttachment(measure.AttachesTo, duplicate.Guid, measure.AuthoredObjectKind),
                     groupKey, new ParsimonyMeasureNumber(members.Length - 1, members.Length, measure.Unit),
                     measure.Threshold!,
-                    Digest(evidence),
+                    MeasureEvidence.Compute(measure, session, evidence),
                     [EvidenceReference(bundleId, "adhoc-context", new { objectGuid = duplicate.Guid }),
                      EvidenceReference(bundleId, "adhoc-context", new { objectGuid = retained.Guid })],
                     measure.RecipeLink, limitations, ParsimonyVerification.NotRun));
@@ -154,7 +154,7 @@ public static partial class MeasureRunner
                 "entry/" + group.Key.EntryGuid,
                 new ParsimonyMeasureNumber(members.Length - 1, members.Length, measure.Unit),
                 measure.Threshold!,
-                Digest(digestValue), references, measure.RecipeLink,
+                MeasureEvidence.Compute(measure, session, digestValue), references, measure.RecipeLink,
                 ["The listed allomorphs have identical authored environment lists.",
                  "Allomorphs with different environment lists are excluded from this exact-match finding.",
                  "The duplicate GUIDs identify records for inspection; no similarity or linguistic claim is inferred."],
@@ -194,7 +194,6 @@ public static partial class MeasureRunner
                         environments = item.Environments.Select(environment => new
                         {
                             environment.EnvironmentGuid,
-                            environment.Name,
                             environment.Representation,
                         }),
                     }),
@@ -217,7 +216,7 @@ public static partial class MeasureRunner
                         measure.AuthoredObjectKind),
                     family.Key,
                     new ParsimonyMeasureNumber(1, family.Siblings.Count, measure.Unit), measure.Threshold!,
-                    Digest(evidence), references, measure.RecipeLink, Array.AsReadOnly(limitations.ToArray()),
+                    MeasureEvidence.Compute(measure, session, evidence), references, measure.RecipeLink, Array.AsReadOnly(limitations.ToArray()),
                     ParsimonyVerification.NotRun));
             }
         }
@@ -247,7 +246,12 @@ public static partial class MeasureRunner
         var denominator = session.CountLoadedInflectionalAffixes();
         var findings = rows.Select(row =>
         {
-            var evidence = JsonSerializer.Serialize(row);
+            var evidence = JsonSerializer.Serialize(row with
+            {
+                Description = string.Empty,
+                Precedence = row.Precedence.Select(pair => pair with
+                    { FirstDescription = string.Empty, SecondDescription = string.Empty }).ToArray(),
+            });
             var references = new List<ParsimonyEvidenceReference>
             {
                 EvidenceReference(bundleId, "unslotted-affixes", new { objectGuid = row.MsaGuid }),
@@ -267,7 +271,7 @@ public static partial class MeasureRunner
                 $"{measure.Id}:{row.MsaGuid}", measure.Id, measure.Axis, measure.Tier,
                 new ParsimonyFindingAttachment(measure.AttachesTo, row.MsaGuid, measure.AuthoredObjectKind),
                 null, new ParsimonyMeasureNumber(1, denominator, measure.Unit), measure.Threshold!,
-                Digest(evidence), Array.AsReadOnly(references.ToArray()), measure.RecipeLink,
+                MeasureEvidence.Compute(measure, session, evidence), Array.AsReadOnly(references.ToArray()), measure.RecipeLink,
                 Array.AsReadOnly(limitations.Distinct(StringComparer.Ordinal).ToArray()),
                 ParsimonyVerification.NotRun);
         }).OrderBy(item => item.FindingId, StringComparer.Ordinal).ToArray();
@@ -298,7 +302,11 @@ public static partial class MeasureRunner
         var loadedZeros = rows.Where(row => row.IsLoadedZeroOnly).ToArray();
         var findings = loadedZeros.Select(row =>
         {
-            var evidence = JsonSerializer.Serialize(row);
+            var evidence = JsonSerializer.Serialize(row with
+            {
+                Description = string.Empty,
+                Slots = row.Slots.Select(slot => slot with { Name = string.Empty }).ToArray(),
+            });
             var references = new List<ParsimonyEvidenceReference>
             {
                 EvidenceReference(bundleId, "null-optional", new { objectGuid = row.MsaGuid }),
@@ -329,7 +337,7 @@ public static partial class MeasureRunner
                 $"{measure.Id}:{row.MsaGuid}", measure.Id, measure.Axis, measure.Tier,
                 new ParsimonyFindingAttachment(measure.AttachesTo, row.MsaGuid, measure.AuthoredObjectKind),
                 null, new ParsimonyMeasureNumber(1, loadedZeros.LongLength, measure.Unit), measure.Threshold!,
-                Digest(evidence), Array.AsReadOnly(references.ToArray()), measure.RecipeLink,
+                MeasureEvidence.Compute(measure, session, evidence), Array.AsReadOnly(references.ToArray()), measure.RecipeLink,
                 Array.AsReadOnly(limitations.Distinct(StringComparer.Ordinal).ToArray()),
                 ParsimonyVerification.NotRun);
         }).OrderBy(item => item.FindingId, StringComparer.Ordinal).ToArray();
@@ -382,7 +390,11 @@ public static partial class MeasureRunner
                 $"statement/{item.StatementKind}/{item.StatementGuid}", GroupKind: ParsimonyGroupKind.UnusedStatement),
             $"statement/{item.StatementKind}", new ParsimonyMeasureNumber(1, statements.Count, measure.Unit),
             measure.Threshold!,
-            Digest(JsonSerializer.Serialize(item)),
+            MeasureEvidence.Compute(measure, session, JsonSerializer.Serialize(new
+            {
+                item.StatementKind, item.StatementGuid, item.ReferenceCount, item.CompiledReferenceCount,
+                item.Loaded, item.LoadDisposition, item.Classification,
+            })),
             [EvidenceReference(bundleId, "statement-usage", new
             {
                 statementKind = item.StatementKind,
@@ -431,7 +443,7 @@ public static partial class MeasureRunner
                 new ParsimonyFindingAttachment(ParsimonyAttachmentKind.WordCase, item.WordformGuid),
                 "wordform/" + item.WordformGuid,
                 new ParsimonyMeasureNumber(1, facts.EligibleMorphologies, measure.Unit), measure.Threshold!,
-                Digest(evidence),
+                MeasureEvidence.Compute(measure, session, evidence),
                 [EvidenceReference(bundleId, "parser-cases", new { caseKey = item.CaseKey })],
                 measure.RecipeLink,
                 ["A completed parser search produced the same morphology as a Disapproved analysis.",
@@ -474,7 +486,7 @@ public static partial class MeasureRunner
                 new ParsimonyFindingAttachment(ParsimonyAttachmentKind.WordCase, item.CaseId),
                 "reviewed-negative/" + item.CaseId,
                 new ParsimonyMeasureNumber(1, facts.EligibleNegatives, measure.Unit), measure.Threshold!,
-                Digest(evidence),
+                MeasureEvidence.Compute(measure, session, evidence),
                 [EvidenceReference(bundleId, "parser-cases", new { caseKey = item.CaseKey })],
                 measure.RecipeLink,
                 ["A completed parser search accepted this human-confirmed negative case.",
@@ -512,7 +524,7 @@ public static partial class MeasureRunner
                 family.OutputPhonemeGuids,
                 family.ChangedFeatures,
                 family.SharedFeatures,
-                family.Members,
+                members = family.Members.Select(member => member with { EntryDescription = string.Empty }),
             });
             var evidenceRefs = new List<ParsimonyEvidenceReference>
             {
@@ -526,7 +538,7 @@ public static partial class MeasureRunner
                 new ParsimonyFindingAttachment(ParsimonyAttachmentKind.Group, family.Key,
                     GroupKind: ParsimonyGroupKind.AlternationFamily),
                 family.Key, new ParsimonyMeasureNumber(family.Members.Count, denominator, measure.Unit),
-                measure.Threshold!, Digest(evidence), Array.AsReadOnly(evidenceRefs.ToArray()),
+                measure.Threshold!, MeasureEvidence.Compute(measure, session, evidence), Array.AsReadOnly(evidenceRefs.ToArray()),
                 measure.RecipeLink, Array.AsReadOnly(limitations), ParsimonyVerification.NotRun);
         }).OrderBy(item => item.FindingId, StringComparer.Ordinal).ToArray();
         var participatingMorphemes = discovery.Families.SelectMany(item => item.Members)
@@ -637,7 +649,7 @@ public static partial class MeasureRunner
                     measure.Axis, measure.Tier,
                     new ParsimonyFindingAttachment(measure.AttachesTo, itemWithPairs.Template.Guid,
                         measure.AuthoredObjectKind), null,
-                    new ParsimonyMeasureNumber(1, 1, measure.Unit), measure.Threshold!, Digest(evidence),
+                    new ParsimonyMeasureNumber(1, 1, measure.Unit), measure.Threshold!, MeasureEvidence.Compute(measure, session, evidence),
                     references, measure.RecipeLink,
                     ["No active applicable template embeds this Approved sequence in order.",
                      "Multi-template chains are not inferred; parser comparison was not run."],
@@ -814,7 +826,7 @@ public static partial class MeasureRunner
                 new ParsimonyFindingAttachment(measure.AttachesTo, item.SlotGuid, measure.AuthoredObjectKind), null,
                 new ParsimonyMeasureNumber(witnessRows.Length,
                     Math.Max(witnessRows.Length, slotEligible.GetValueOrDefault(item.SlotGuid)?.Count ?? 0), measure.Unit),
-                measure.Threshold!, Digest(evidence), refs, measure.RecipeLink,
+                measure.Threshold!, MeasureEvidence.Compute(measure, session, evidence), refs, measure.RecipeLink,
                 limitations, ParsimonyVerification.Inconclusive);
         }).ToArray();
         var findingCases = witnesses.Values.SelectMany(item => item.Analyses.Keys)

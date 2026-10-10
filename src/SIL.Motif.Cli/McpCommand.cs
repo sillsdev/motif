@@ -12,25 +12,18 @@ namespace SIL.Motif.Cli;
 internal static class McpCommand
 {
     private const string Usage =
-        "Usage: motif mcp --project <path-to-.fwdata | Known project name> [--profile <file | shipped name>] " +
+        "Usage: motif mcp [--profile <file | shipped name>] " +
         "[--activity-log <file.jsonl>]";
 
     public static int Run(string[] args, TextWriter error)
     {
-        if (!FileAdvancedAiModePreferenceStore.ForInstallation().IsEnabled)
-        {
-            error.WriteLine(FileAdvancedAiModePreferenceStore.EnableInstruction);
-            return 2;
-        }
-
-        string? project = null, profile = null, activity = null;
+        string? profile = null, activity = null;
         for (var index = 0; index < args.Length; index++)
         {
             var flag = args[index];
             var value = index + 1 < args.Length ? args[index + 1] : null;
             switch (flag)
             {
-                case "--project" when value is not null: project = value; index++; break;
                 case "--profile" when value is not null: profile = value; index++; break;
                 case "--activity-log" when value is not null: activity = value; index++; break;
                 default:
@@ -38,18 +31,12 @@ internal static class McpCommand
                     return 1;
             }
         }
-        if (project is null)
-        {
-            error.WriteLine(Usage);
-            return 1;
-        }
-
         try
         {
-            var resolved = ProjectResolver.Resolve(project, RunnerOptions.ResolveRoot());
             using var cancellation = new CancellationTokenSource();
             Console.CancelKeyPress += (_, eventArgs) => { eventArgs.Cancel = true; cancellation.Cancel(); };
-            MotifMcpServer.RunAsync(new McpLaunchOptions(resolved, profile, activity, AdvancedAiModeEnabled: true),
+            MotifMcpServer.RunAsync(new McpLaunchOptions(profile, activity, AdvancedAiModeEnabled:
+                FileAdvancedAiModePreferenceStore.ForInstallation().IsEnabled),
                 Console.OpenStandardInput(),
                 Console.OpenStandardOutput(), error, cancellation.Token).GetAwaiter().GetResult();
             return 0;

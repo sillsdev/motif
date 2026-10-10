@@ -55,9 +55,9 @@ def calibrate(source_root, set_root, output_root):
     failures = [r for r in results if r['judge']['state'] != 'measured' or
                 (r['expectedScore'] is not None and r['expectedScore'] != r['judge']['score'])]
     splits = sum(r['judge']['disagreement'] for r in results)
-    report = [f"Calibration produced {len(results)} judgments, {len(failures)} failed controls or infrastructure failures, and {splits} recorded splits.",
-              '', 'Each judgment retains three independent samples. Review every stored answer and split against the rubric before accepting calibration.',
-              '', 'Known controls:', '', '| Task | Control | Expected | Majority | Split |', '|---|---|---:|---:|---|']
+    report = [f"Calibration produced {len(results)} paired judgments, {len(failures)} failed controls or unscored judgments, and {splits} recorded splits.",
+              '', 'Each judgment retains independent Opus and Sol responses. Review every stored answer and split against the rubric before accepting calibration.',
+              '', 'Known controls:', '', '| Task | Control | Expected | Agreement | Split |', '|---|---|---:|---:|---|']
     for row in results:
         if row['expectedScore'] is not None:
             report.append(f"| {row['task']} | {row['case']} | {row['expectedScore']} | {row['judge']['score']} | {row['judge']['disagreement']} |")

@@ -17,33 +17,45 @@ internal static class ParsimonyTools
     internal static IReadOnlyList<AgentTool> All { get; } =
     [
         new("motif_parsimony_measures",
-            "Lists the supported Parsimony measures and their fixed evidence views, capabilities, evidence tiers, " +
-            "citations and recipe links. This reads the same catalog as motif parsimony measures; it does not run " +
-            "a measure or launch a job.",
-            AgentClass.Read, Schema.Object(), true, true, false, false, false,
+            string.Empty,
+            AgentClass.Read,
+            Schema.Object(),
+            true,
+            true,
+            false,
+            false,
+            false,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ParsimonyViewsCommand.Measures(
-                new ListParsimonyMeasuresRequest(c.ProjectPath, c.ProductVersion))))),
+                new ListParsimonyMeasuresRequest(c.ProjectPath, c.ProductVersion))))) { Requests = [typeof(ListParsimonyMeasuresRequest)] },
 
         new("motif_run_parsimony_measure",
-            "Runs one registered Parsimony measure and returns its stored Report, using the same command handlers " +
-            "and Report shape as the CLI. It may take a while; if it returns running, repeat with the job id. This " +
-            "is advisory evidence only. A Proposal still needs Dry Run and only a person can Apply it.",
-            AgentClass.Evaluate, Schema.Object(
+            string.Empty,
+            AgentClass.Evaluate,
+            Schema.Object(
                 ("measure_id", Schema.String("Exact registered measure id.", MeasureCatalog.All
                     .Where(measure => MeasureRunner.Supports(measure.Id)).Select(measure => measure.Id).ToArray()), true),
                 ("evidence_scope", Schema.String("Which approved-word evidence to use.",
                     "default-selection", "project-approved"), false),
                 ("job", Schema.String("Job id from a previous running result; omit to start a new measure."), false),
                 ("wait_seconds", Schema.Integer("How long to wait for a result. Default 40.", 1, 300), false)),
-            false, false, false, false, false, RunMeasure),
+            false,
+            false,
+            false,
+            false,
+            false,
+            RunMeasure) { Requests = [typeof(EnqueueParsimonyReportRequest), typeof(WaitForParsimonyReportRequest)] },
 
         new("motif_parsimony_report",
-            "Reads one stored Parsimony Report by its exact id. The Report payload is the same serialized response " +
-            "returned by motif parsimony show; reading it does not start a parser run.",
-            AgentClass.Read, Schema.Object(("report_id", Schema.String("Stored Parsimony Report id."), true)),
-            true, true, false, false, true,
+            string.Empty,
+            AgentClass.Read,
+            Schema.Object(("report_id", Schema.String("Stored Parsimony Report id."), true)),
+            true,
+            true,
+            false,
+            false,
+            true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ParsimonyCommands.Show(
-                new ShowParsimonyReportRequest(c.ProjectPath, c.ProductVersion, a.Required("report_id")))))),
+                new ShowParsimonyReportRequest(c.ProjectPath, c.ProductVersion, a.Required("report_id")))))) { Requests = [typeof(ShowParsimonyReportRequest)] },
 
         new("motif_retirement_review",
             "Reads the review state for one staged rule-based allomorph retirement Draft. It returns its latest " +
@@ -51,14 +63,12 @@ internal static class ParsimonyTools
             AgentClass.Read, Schema.Object(("draft_id", Schema.String("Exact staged Draft Proposal id."), true)),
             true, true, false, false, true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ParsimonyCommands.ReadRetirementReview(
-                new ReadRetirementReviewRequest(c.ProjectPath, c.ProductVersion, a.Required("draft_id")))))),
+                new ReadRetirementReviewRequest(c.ProjectPath, c.ProductVersion, a.Required("draft_id")))))) { Requests = [typeof(ReadRetirementReviewRequest)] },
 
         new("motif_parsimony_view",
-            "Reads one page from a fixed Parsimony evidence or Active/Suppressed view. Filters are typed, bounded " +
-            "fields; arbitrary SQL or query text is not accepted. Missing evidence is reported with its status and " +
-            "detail, while saved judgments remain visible as unavailable. This read never launches a job; rerun a " +
-            "measure explicitly when new evidence is needed.",
-            AgentClass.Read, Schema.Object(
+            string.Empty,
+            AgentClass.Read,
+            Schema.Object(
                 ("bundle_id", Schema.String("Exact Parsimony bundle id."), true),
                 ("view", Schema.String("Exact fixed view code.", ParsimonyViewCatalog.All.Select(view => view.Code).ToArray()), true),
                 ("report_id", Schema.String("Stored Report id for finding views."), false),
@@ -75,13 +85,17 @@ internal static class ParsimonyTools
                 ("search", Schema.String("Bounded search over returned captions and reasons."), false),
                 ("limit", Schema.Integer("Rows in this page. Default 50, maximum 200.", 1, 200), false),
                 ("cursor", Schema.String("Next cursor from the same bundle, view and filters."), false)),
-            true, true, false, false, true, ReadView),
+            true,
+            true,
+            false,
+            false,
+            true,
+            ReadView) { Requests = [typeof(ReadParsimonyViewRequest)] },
 
         new("motif_revise_parsimony_disposition",
-            "Stages a revision of one saved Parsimony disposition in a Draft. Name the exact current head set and " +
-            "content digests; a conflict can be resolved only by naming every head. The revised choice keeps the " +
-            "same finding subject and evidence, and only a person can Apply it.",
-            AgentClass.Draft, Schema.Object(
+            string.Empty,
+            AgentClass.Draft,
+            Schema.Object(
                 ("draft", Schema.String("Draft name from motif_start_proposal."), true),
                 ("recordId", Schema.String("Notebook record id of a current disposition head."), true),
                 ("expectedHeads", Schema.Array("Every current head with its exact content digest.",
@@ -91,27 +105,34 @@ internal static class ParsimonyTools
                 ("reason", Schema.String("Replacement reason; omit to preserve the current reason."), false),
                 ("clearReason", Schema.Boolean("Clear the current optional reason."), false),
                 ("question", Schema.String("Required when disposition is ask."), false)),
-            false, false, false, false, true,
+            false,
+            false,
+            false,
+            false,
+            true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ParsimonyCommands.ReviseDisposition(
                 new ReviseParsimonyDispositionRequest(c.ProjectPath, c.ProductVersion, a.Required("draft"),
                     a.IntentJson("recordId", "expectedHeads", "disposition", "reason", "clearReason", "question"))),
-                r => $"Draft now has {r.OperationCount} operations. Only a person can Apply this revision."))),
+                r => $"Draft now has {r.OperationCount} operations. Only a person can Apply this revision."))) { Requests = [typeof(ReviseParsimonyDispositionRequest)] },
 
         new("motif_retract_parsimony_disposition",
-            "Stages a withdrawal of one saved Parsimony disposition in a Draft. Name the exact current head set " +
-            "and content digests; a conflict can be resolved only by naming every head. The Notebook history stays " +
-            "intact, and the finding returns to Active only after a person Applies the current retraction; only a person can Apply it.",
-            AgentClass.Draft, Schema.Object(
+            string.Empty,
+            AgentClass.Draft,
+            Schema.Object(
                 ("draft", Schema.String("Draft name from motif_start_proposal."), true),
                 ("recordId", Schema.String("Notebook record id of a current disposition head."), true),
                 ("expectedHeads", Schema.Array("Every current head with its exact content digest.",
                     Schema.Object(("revisionId", Schema.String("Portable id of the current revision."), true),
                         ("contentDigest", Schema.String("Canonical sha256 digest read with the revision."), true))), true)),
-            false, false, false, false, true,
+            false,
+            false,
+            false,
+            false,
+            true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ParsimonyCommands.RetractDisposition(
                 new RetractParsimonyDispositionRequest(c.ProjectPath, c.ProductVersion, a.Required("draft"),
                     a.IntentJson("recordId", "expectedHeads"))),
-                r => $"Draft now has {r.OperationCount} operations. Only a person can Apply this retraction."))),
+                r => $"Draft now has {r.OperationCount} operations. Only a person can Apply this retraction."))) { Requests = [typeof(RetractParsimonyDispositionRequest)] },
     ];
 
     internal static ListResourcesResult ListResources(bool includeMeasures) => new()
@@ -131,9 +152,8 @@ internal static class ParsimonyTools
 
     internal static ReadResourceResult ReadMeasuresResource(string projectPath, string productVersion)
     {
-        var outcome = ParsimonyViewsCommand.Measures(new ListParsimonyMeasuresRequest(projectPath, productVersion));
-        if (!outcome.Succeeded)
-            throw new InvalidOperationException(outcome.Refusal!.Message);
+        var catalog = new ParsimonyMeasureCatalogResponse(MeasureCatalog.MeasureSetVersion, MeasureCatalog.All,
+            ParsimonyViewCatalog.All);
         return new ReadResourceResult
         {
             Contents =
@@ -142,7 +162,7 @@ internal static class ParsimonyTools
                 {
                     Uri = MeasuresResourceUri,
                     MimeType = "application/json",
-                    Text = ProjectionJson.Serialize(outcome.Value!),
+                    Text = ProjectionJson.Serialize(catalog),
                 },
             ],
         };

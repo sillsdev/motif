@@ -12,7 +12,6 @@ using SIL.Motif.Host;
 namespace SIL.Motif.Mcp;
 
 /// <summary>What <c>motif mcp</c> was asked to serve.</summary>
-/// <param name="ProjectPath">The project's <c>.fwdata</c> path, already resolved from a Known project name.</param>
 /// <param name="Profile">A profile file or shipped profile name; <see langword="null"/> uses the built-in profile.</param>
 /// <param name="ActivityLogPath">A JSON Lines file every tool call is appended to, or <see langword="null"/>.</param>
 /// <param name="Runner">
@@ -20,8 +19,8 @@ namespace SIL.Motif.Mcp;
 /// </param>
 /// <param name="AdvancedAiModeEnabled">Whether the process has confirmed the user's Advanced AI mode choice.</param>
 public sealed record McpLaunchOptions(
-    string ProjectPath, string? Profile = null, string? ActivityLogPath = null, IJobRunnerLauncher? Runner = null,
-    bool AdvancedAiModeEnabled = false);
+    string? Profile = null, string? ActivityLogPath = null, IJobRunnerLauncher? Runner = null,
+    bool AdvancedAiModeEnabled = false, string? ParserPath = null);
 
 /// <summary>
 /// The MCP server over Motif's command catalog: it lists the tools a profile selects and runs each call
@@ -36,19 +35,18 @@ public static class MotifMcpServer
     public static async Task RunAsync(McpLaunchOptions options, Stream input, Stream output, TextWriter log,
         CancellationToken cancellation)
     {
-        if (!options.AdvancedAiModeEnabled)
-            throw new InvalidOperationException("Advanced AI mode is required to start Motif's MCP server.");
 
         var profile = options.Profile is null ? ToolProfile.Builtin : ToolProfile.Load(options.Profile);
-        var context = new ServerContext(options.ProjectPath, MotifProductVersion.CurrentText,
-            options.Runner ?? ProcessRunnerLauncher.FromEnvironment(), new ActivityLog(options.ActivityLogPath), profile, log);
-        var exposed = Expose(profile);
+        var context = new ServerContext(string.Empty, MotifProductVersion.CurrentText,
+            options.Runner ?? ProcessRunnerLauncher.FromEnvironment(), new ActivityLog(options.ActivityLogPath), profile, log, options.AdvancedAiModeEnabled, options.ParserPath);
+        var exposed = options.AdvancedAiModeEnabled ? Expose(profile) : [];
         var includeParsimonyResources = exposed.Any(tool => tool.Tool.Name == "motif_parsimony_measures");
         using var loggerFactory = new StderrLoggerFactory(log);
         var server = McpServer.Create(new StreamServerTransport(input, output, "motif"), new McpServerOptions
         {
             ServerInfo = new Implementation { Name = "motif", Version = MotifProductVersion.CurrentText },
-            ServerInstructions = profile.Instructions,
+            ServerInstructions = options.AdvancedAiModeEnabled ? profile.Instructions :
+                SIL.Motif.Commands.Preferences.FileAdvancedAiModePreferenceStore.EnableInstruction,
             Capabilities = new ServerCapabilities
             {
                 Tools = new ToolsCapability(),
@@ -66,7 +64,7 @@ public static class MotifMcpServer
                     ParsimonyTools.ListResources(includeParsimonyResources)),
                 ReadResourceHandler = (request, _) => ValueTask.FromResult(
                     includeParsimonyResources && request.Params?.Uri == ParsimonyTools.MeasuresResourceUri
-                        ? ParsimonyTools.ReadMeasuresResource(options.ProjectPath, MotifProductVersion.CurrentText)
+                        ? ParsimonyTools.ReadMeasuresResource(string.Empty, MotifProductVersion.CurrentText)
                         : EncodingGuides.ReadResource(request.Params?.Uri ?? string.Empty)),
             },
         }, loggerFactory);
@@ -103,7 +101,13 @@ public static class MotifMcpServer
         var tool = tools.FirstOrDefault(candidate => candidate.Name == name);
         ToolOutcome outcome;
         CallToolResult result;
-        if (tool is null)
+        if (!context.AdvancedAiModeEnabled)
+        {
+            outcome = ToolOutcome.Refused("advanced-ai.disabled", FailureReason.Refused,
+                SIL.Motif.Commands.Preferences.FileAdvancedAiModePreferenceStore.EnableInstruction);
+            result = RefusalMapper.ToResult(outcome.Refusal!);
+        }
+        else if (tool is null)
         {
             outcome = ToolOutcome.Refused("tool.unknown", FailureReason.InvalidArgument,
                 $"There is no tool named '{name}'. The tools are: {string.Join(", ", tools.Select(t => t.Name))}.");
@@ -126,10 +130,19 @@ public static class MotifMcpServer
         var gated = tool.Tool.Serialized;
         try
         {
+            if (tool.Tool.ArgumentNames.Contains("detail") && args["detail"] is null)
+                args["detail"] = tool.DefaultDetail;
             var toolArgs = new ToolArgs(args, tool.Tool.ArgumentNames);
+            if (tool.Tool.ArgumentNames.Contains("project"))
+                context = context.ForProject(ProjectResolver.Resolve(toolArgs.Required("project"),
+                    SIL.Motif.Worker.RunnerOptions.ResolveRoot()));
             if (gated) await context.ProjectGate.WaitAsync(cancellation);
             try { return await tool.Tool.Run(context, toolArgs, cancellation); }
             finally { if (gated) context.ProjectGate.Release(); }
+        }
+        catch (ProfileException exception)
+        {
+            return ToolOutcome.Refused("project.unknown", FailureReason.InvalidArgument, exception.Message);
         }
         catch (ToolArgumentException exception)
         {

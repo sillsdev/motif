@@ -1,0 +1,9 @@
+{
+  "question": "Check Opus and Sol once each on every active regression task.",
+  "arm_a": "claude-opus",
+  "arm_b": "codex-sol-chatgpt-plan",
+  "tasks": "t*",
+  "trials": 1,
+  "primary_metric": "task-success",
+  "judge_policy": "other-family-alone"
+}

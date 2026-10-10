@@ -32,6 +32,9 @@ public enum WorkspacePage
 
     /// <summary>Writing the AI Handoff files and passing them to a chat model.</summary>
     AiHandoff,
+
+    /// <summary>Choosing assistants that may use Motif's tools.</summary>
+    AiAssistants,
 }
 
 /// <summary>Which pages exist only while Advanced AI mode is on; the sidebar omits them and opening one does nothing.</summary>

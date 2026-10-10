@@ -72,7 +72,7 @@ public sealed class EncodingGuidesTests
         var fromServer = new Pipe();
         using var stop = new CancellationTokenSource();
         var server = Task.Run(() => MotifMcpServer.RunAsync(
-            new McpLaunchOptions("unused.fwdata", AdvancedAiModeEnabled: true),
+            new McpLaunchOptions(AdvancedAiModeEnabled: true),
             toServer.Reader.AsStream(), fromServer.Writer.AsStream(), TextWriter.Null, stop.Token));
         var client = await McpClient.CreateAsync(
             new StreamClientTransport(toServer.Writer.AsStream(), fromServer.Reader.AsStream()));
@@ -117,6 +117,16 @@ public sealed class EncodingGuidesTests
             Assert.Equal(EncodingGuides.UriPrefix + topic, value.GetProperty("uri").GetString());
             Assert.Equal(EncodingGuides.ReadTopic(topic), value.GetProperty("guide").GetString());
         }
+    }
+
+    [Fact]
+    public void TheWorkflowNamesOnlyToolsThatExist()
+    {
+        var workflow = EncodingGuides.ReadTopic("workflow");
+        foreach (System.Text.RegularExpressions.Match match in System.Text.RegularExpressions.Regex.Matches(
+            workflow, @"motif_[a-z_]+"))
+            Assert.Contains(match.Value, AgentTools.Names);
+        Assert.DoesNotContain("motif_finish_proposal", workflow);
     }
 
     [Fact]

@@ -15,10 +15,13 @@ using SIL.Motif.Contract.Parsimony;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host;
 using SIL.Motif.Host.LcmUtils;
+using SIL.Motif.Host.Store;
+using SIL.Motif.Contract.Projects;
 using SIL.Motif.Mcp;
 using SIL.Motif.Commands.Preferences;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker;
+using SIL.Motif.Worker.Projects;
 using Xunit;
 
 namespace SIL.Motif.Tests.Mcp;
@@ -27,15 +30,40 @@ namespace SIL.Motif.Tests.Mcp;
 public sealed class McpRoundTripTests(PristineProjectFixture pristine)
 {
     [Fact]
-    public async Task AnAgentReadsTheGrammarDraftsAProposalAndTestsItAgainstTheFakeParser()
+    public async Task KnownProjectSelectorsKeepDraftsInTheirOwnProjectsInOneSession()
+    {
+        using var first = new WalkthroughProject(pristine);
+        using var second = new WalkthroughProject(pristine);
+        await using var session = await Session.StartAsync(first.FwDataPath, new McpLaunchOptions());
+        using (var machine = MachineDatabase.Open(RunnerOptions.ResolveRoot()))
+            new KnownProjectRegistry(machine).Record(ProjectWorkspaceKey.Compute(
+                new ProjectLocator(second.FwDataPath, "second")), second.FwDataPath, DateTimeOffset.UtcNow);
+
+        var firstDraft = await session.CallAsync("motif_start_proposal", ("draft", "shared-name"),
+            ("label", "First project"), ("comment", "One linguistic claim."));
+        var secondDraft = await session.CallAsync("motif_start_proposal", ("project", second.FwDataPath),
+            ("draft", "shared-name"), ("label", "Second project"), ("comment", "The related claim in the first project."));
+        var firstId = firstDraft.GetProperty("result").GetProperty("proposalId").GetString();
+        var secondId = secondDraft.GetProperty("result").GetProperty("proposalId").GetString();
+        Assert.NotEqual(firstId, secondId);
+        var firstProposals = await session.CallAsync("motif_proposals");
+        var secondProposals = await session.CallAsync("motif_proposals", ("project", second.FwDataPath));
+        Assert.Equal(firstId, Assert.Single(firstProposals.GetProperty("result").GetProperty("proposals")
+            .EnumerateArray()).GetProperty("proposalId").GetString());
+        Assert.Equal(secondId, Assert.Single(secondProposals.GetProperty("result").GetProperty("proposals")
+            .EnumerateArray()).GetProperty("proposalId").GetString());
+    }
+
+    [Fact]
+    public async Task AnAgentMeasuresADraftBeforeFinalizingItsUnchangedContent()
     {
         using var project = new WalkthroughProject(pristine);
         var activityLog = Path.Combine(project.ManagedRoot, "activity.jsonl");
         Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(project.FwDataPath), project.ManagedRoot).Succeeded);
         await using var runner = new InProcessRunnerLauncher(
             new JobRunnerLaunchOptions(project.ManagedRoot, FakeParser.ExecutablePath));
-        await using var session = await Session.StartAsync(
-            new McpLaunchOptions(project.FwDataPath, ActivityLogPath: activityLog, Runner: runner));
+        await using var session = await Session.StartAsync(project.FwDataPath,
+            new McpLaunchOptions(ActivityLogPath: activityLog, Runner: runner));
         var client = session.Client;
 
         var listed = await client.ListToolsAsync();
@@ -63,15 +91,53 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
             ("text", "reworded gloss"));
         Assert.Equal(1, glossed.GetProperty("result").GetProperty("operationCount").GetInt32());
 
-        var finished = await session.CallAsync("motif_finish_proposal", ("draft", "gloss-fix"));
-        Assert.Equal(proposalId, finished.GetProperty("result").GetProperty("proposalId").GetString());
-
         var dryRun = await session.CallAsync("motif_dry_run", ("proposal", proposalId), ("wait_seconds", 120));
         Assert.True(dryRun.GetProperty("ok").GetBoolean(), dryRun.ToString());
+        Assert.True(dryRun.GetProperty("result").GetProperty("evidenceCurrent").GetBoolean());
 
         var trial = await session.CallAsync("motif_trial", ("proposal", proposalId),
             ("words", new[] { SeededProject.AnalysedWordForm }), ("wait_seconds", 120));
         Assert.True(trial.GetProperty("ok").GetBoolean(), trial.ToString());
+        var evidence = trial.GetProperty("result");
+        Assert.True(evidence.GetProperty("evidenceCurrent").GetBoolean());
+        Assert.Equal(TrialResults.Categories.Append("counts"),
+            evidence.GetProperty("summary").EnumerateObject().Select(property => property.Name));
+        var difference = evidence.GetProperty("difference").GetString()!;
+        var page = await session.CallAsync("motif_difference", ("difference", difference),
+            ("category", "other-changes"), ("offset", 0), ("limit", 1));
+        Assert.Equal(difference, page.GetProperty("result").GetProperty("difference").GetString());
+        Assert.InRange(page.GetProperty("result").GetProperty("returned").GetInt32(), 0, 1);
+
+        var operationId = glossed.GetProperty("result").GetProperty("operationId").GetString()!;
+        await session.CallAsync("motif_remove_operations", ("draft", "gloss-fix"),
+            ("operation_ids", new[] { operationId }));
+        await session.CallAsync("motif_set_gloss", ("draft", "gloss-fix"),
+            ("sense", sense.GetProperty("id").GetString()!), ("ws", sense.GetProperty("glossWs").GetString()!),
+            ("text", "revised gloss"));
+        var oldDryRun = await session.CallAsync("motif_dry_run", ("proposal", proposalId),
+            ("job", dryRun.GetProperty("result").GetProperty("job").GetString()));
+        Assert.False(oldDryRun.GetProperty("result").GetProperty("evidenceCurrent").GetBoolean());
+        var oldTrial = await session.CallAsync("motif_trial", ("proposal", proposalId),
+            ("job", evidence.GetProperty("job").GetString()));
+        Assert.False(oldTrial.GetProperty("result").GetProperty("evidenceCurrent").GetBoolean());
+        dryRun = await session.CallAsync("motif_dry_run", ("proposal", proposalId), ("wait_seconds", 120));
+        trial = await session.CallAsync("motif_trial", ("proposal", proposalId),
+            ("words", new[] { SeededProject.AnalysedWordForm }), ("wait_seconds", 120));
+        var revisedEvidence = trial.GetProperty("result");
+        Assert.NotEqual(evidence.GetProperty("contentDigest").GetString(), revisedEvidence.GetProperty("contentDigest").GetString());
+        Assert.True(revisedEvidence.GetProperty("evidenceCurrent").GetBoolean());
+        evidence = revisedEvidence;
+
+        var finished = await session.CallAsync("motif_finalize_proposal", ("draft", "gloss-fix"));
+        Assert.Equal(proposalId, finished.GetProperty("result").GetProperty("proposalId").GetString());
+        var retainedDryRun = await session.CallAsync("motif_dry_run", ("proposal", proposalId),
+            ("job", dryRun.GetProperty("result").GetProperty("job").GetString()));
+        Assert.True(retainedDryRun.GetProperty("result").GetProperty("evidenceCurrent").GetBoolean());
+        var retainedTrial = await session.CallAsync("motif_trial", ("proposal", proposalId),
+            ("job", evidence.GetProperty("job").GetString()));
+        Assert.True(retainedTrial.GetProperty("result").GetProperty("evidenceCurrent").GetBoolean());
+        var proposals = await session.CallAsync("motif_proposals");
+        Assert.Single(proposals.GetProperty("result").GetProperty("proposals").EnumerateArray());
 
         var activity = await session.CallAsync("motif_activity");
         var result = activity.GetProperty("result");
@@ -83,12 +149,30 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public async Task ProfileDetailReachesGrammarAndLexiconAndExplicitArgumentsOverrideIt()
+    {
+        using var project = new WalkthroughProject(pristine);
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(project.FwDataPath), project.ManagedRoot).Succeeded);
+        var profile = Path.Combine(project.ManagedRoot, "detailed.json");
+        File.WriteAllText(profile, "{\"name\":\"detailed\",\"defaultDetail\":\"detailed\",\"tools\":[{\"tool\":\"motif_grammar\"},{\"tool\":\"motif_lexicon\"}]}");
+        await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions(Profile: profile));
+        var grammar = await session.CallAsync("motif_grammar", ("kind", "categories"));
+        Assert.True(grammar.GetProperty("result").GetProperty("items")[0].TryGetProperty("parent", out _));
+        var conciseGrammar = await session.CallAsync("motif_grammar", ("kind", "categories"), ("detail", "concise"));
+        Assert.False(conciseGrammar.GetProperty("result").GetProperty("items")[0].TryGetProperty("parent", out _));
+        var lexicon = await session.CallAsync("motif_lexicon", ("query", SeededProject.FirstForm));
+        Assert.True(lexicon.GetProperty("result").GetProperty("entries")[0].TryGetProperty("alternateForms", out _));
+        var conciseLexicon = await session.CallAsync("motif_lexicon", ("query", SeededProject.FirstForm), ("detail", "concise"));
+        Assert.False(conciseLexicon.GetProperty("result").GetProperty("entries")[0].TryGetProperty("alternateForms", out _));
+    }
+
+    [Fact]
     public async Task AReadBeforeAnyBaselineIsAToolErrorThatSaysHowToTakeOne()
     {
         using var project = new WalkthroughProject(pristine);
-        await using var session = await Session.StartAsync(new McpLaunchOptions(project.FwDataPath));
+        await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions());
 
-        var result = await session.Client.CallToolAsync("motif_grammar", new Dictionary<string, object?>());
+        var result = await session.Client.CallToolAsync("motif_grammar", new Dictionary<string, object?> { ["project"] = project.FwDataPath });
 
         Assert.True(result.IsError);
         var text = ((TextContentBlock)result.Content[0]).Text;
@@ -110,10 +194,11 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
             EnvironmentVariables = new Dictionary<string, string?>
             {
                 [FileAdvancedAiModePreferenceStore.PathEnvironmentVariable] = preferencePath,
+                [RunnerOptions.RootVariable] = project.ManagedRoot,
             },
             Name = "motif process regression",
             Command = BuildOutput.Cli,
-            Arguments = ["mcp", "--project", project.FwDataPath],
+            Arguments = ["mcp"],
             WorkingDirectory = project.ManagedRoot,
             StandardErrorLines = serverErrors.Enqueue,
         });
@@ -122,7 +207,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         var tools = await client.ListToolsAsync();
         Assert.Contains(tools, tool => tool.Name == "motif_grammar");
 
-        var result = await client.CallToolAsync("motif_grammar", new Dictionary<string, object?>());
+        var result = await client.CallToolAsync("motif_grammar", new Dictionary<string, object?> { ["project"] = project.FwDataPath });
         Assert.True(result.IsError != true, string.Join(Environment.NewLine, serverErrors));
         Assert.True(result.StructuredContent!.Value.GetProperty("ok").GetBoolean());
         Assert.True(result.StructuredContent.Value.GetProperty("result").TryGetProperty("counts", out _));
@@ -132,7 +217,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
     public async Task AProfileThatRenamesAndHidesToolsChangesWhatTheClientSees()
     {
         using var project = new WalkthroughProject(pristine);
-        await using var session = await Session.StartAsync(new McpLaunchOptions(project.FwDataPath, Profile: "lean"));
+        await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions(Profile: "lean"));
 
         var names = (await session.Client.ListToolsAsync()).Select(tool => tool.Name).ToList();
 
@@ -154,7 +239,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         FakeParser.WriteFactsFixture(parserPath, new { prohibitions = Array.Empty<object>() });
         await using var runner = new InProcessRunnerLauncher(
             new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), parserPath));
-        await using var session = await Session.StartAsync(new McpLaunchOptions(project.FwDataPath,
+        await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions(
             Profile: "parsimony-experimental", Runner: runner));
 
         var resources = await session.Client.ListResourcesAsync();
@@ -249,7 +334,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
     public async Task PhonologyToolsUseDraftReferencesAndReturnActionableRefusals()
     {
         using var project = new WalkthroughProject(pristine);
-        await using var session = await Session.StartAsync(new McpLaunchOptions(project.FwDataPath, Profile: "phonology"));
+        await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions(Profile: "phonology"));
         await session.CallAsync("motif_start_proposal", ("draft", "sounds"), ("label", "Add vowel context"),
             ("comment", "Synthetic phonological contrast."));
         var phoneme = await session.CallAsync("motif_add_phoneme", ("draft", "sounds"), ("name", "z"), ("representations", new[] { "z" }));
@@ -272,13 +357,13 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
             operation.GetProperty("kind").GetString() == "grammar/phSegmentRule/setDisabled");
         var refused = await session.Client.CallToolAsync("motif_add_natural_class", new Dictionary<string, object?>
         {
-            ["draft"] = "sounds", ["name"] = "duplicate", ["abbreviation"] = "NewC", ["members"] = new[] { phonemeId },
+            ["project"] = project.FwDataPath, ["draft"] = "sounds", ["name"] = "duplicate", ["abbreviation"] = "NewC", ["members"] = new[] { phonemeId },
         });
         Assert.True(refused.IsError);
         var text = ((TextContentBlock)refused.Content[0]).Text;
         Assert.Contains("already exists", text);
         Assert.Contains("Next:", text);
-        await session.CallAsync("motif_finish_proposal", ("draft", "sounds"));
+        await session.CallAsync("motif_finalize_proposal", ("draft", "sounds"));
     }
 
     private sealed class Session : IAsyncDisposable
@@ -286,35 +371,46 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         private readonly CancellationTokenSource _stop = new();
         private readonly Task _server;
 
-        private Session(McpClient client, Task server)
+        private Session(McpClient client, Task server, string project)
         {
+            _project = project;
             Client = client;
             _server = server;
         }
 
+        private readonly string _project;
+
         public McpClient Client { get; }
 
-        public static async Task<Session> StartAsync(McpLaunchOptions options)
+        public static async Task<Session> StartAsync(string project, McpLaunchOptions options)
         {
+            Assert.True(ProposalCommands.Open(new OpenRequest(project)).Succeeded);
+            using (var machine = MachineDatabase.Open(RunnerOptions.ResolveRoot()))
+                new KnownProjectRegistry(machine).Record(ProjectWorkspaceKey.Compute(
+                    new ProjectLocator(project, Path.GetFileNameWithoutExtension(project))), project, DateTimeOffset.UtcNow);
             var advancedAiMode = FileAdvancedAiModePreferenceStore.ForInstallation();
             advancedAiMode.SetEnabled(true);
-            options = options with { AdvancedAiModeEnabled = advancedAiMode.IsEnabled };
+            options = options with { AdvancedAiModeEnabled = advancedAiMode.IsEnabled, ParserPath = FakeParser.ExecutablePath };
 
             var toServer = new Pipe();
             var fromServer = new Pipe();
             var stop = new CancellationTokenSource();
             var server = Task.Run(() => MotifMcpServer.RunAsync(options, toServer.Reader.AsStream(),
                 fromServer.Writer.AsStream(), TextWriter.Null, stop.Token));
-            var client = await McpClient.CreateAsync(
+            var connecting = McpClient.CreateAsync(
                 new StreamClientTransport(toServer.Writer.AsStream(), fromServer.Reader.AsStream()));
-            var session = new Session(client, server);
+            if (await Task.WhenAny(connecting, server) == server) await server;
+            var client = await connecting;
+            var session = new Session(client, server, project);
             session._stop.Token.Register(stop.Cancel);
             return session;
         }
 
         public async Task<JsonElement> CallAsync(string tool, params (string Name, object? Value)[] arguments)
         {
-            var result = await Client.CallToolAsync(tool, arguments.ToDictionary(pair => pair.Name, pair => pair.Value));
+            var input = arguments.ToDictionary(pair => pair.Name, pair => pair.Value);
+            if (tool is not ("motif_guide" or "motif_list_projects")) input.TryAdd("project", _project);
+            var result = await Client.CallToolAsync(tool, input);
             Assert.True(result.IsError != true, ((TextContentBlock)result.Content[0]).Text);
             return result.StructuredContent!.Value;
         }

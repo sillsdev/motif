@@ -103,9 +103,9 @@ class MonitorTests(unittest.TestCase):
 
     def test_gold_fake_trial_is_clean_with_server_worker_parser_threads(self):
         with tempfile.TemporaryDirectory() as root:
-            result = monitor(self.trial(root), ['/private'], ['motif_finish_proposal'],
+            result = monitor(self.trial(root), ['/private'], ['motif_finalize_proposal'],
                              [{'source': 'mcp-client', 'direction': 'sent', 'payload': {
-                                 'method': 'tools/call', 'params': {'name': 'motif_finish_proposal'}}}], 'nonce')
+                                 'method': 'tools/call', 'params': {'name': 'motif_finalize_proposal'}}}], 'nonce')
             self.assertEqual('clean', result['state'], result['reasons'])
             self.assertEqual([], result['reasons'])
 

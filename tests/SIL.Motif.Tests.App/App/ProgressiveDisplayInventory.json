@@ -1,5 +1,12 @@
 [
   {
+    "view": "Pages/AssistantConnectionsPage",
+    "name": "AssistantConnectionsItems",
+    "source": "Assistants",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
     "view": "ComparePanel",
     "name": "ComparePanelPresetsItems",
     "source": "Compare.Presets",

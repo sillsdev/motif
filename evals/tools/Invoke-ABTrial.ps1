@@ -14,7 +14,10 @@ $authMode = Get-ABInferenceAuthMode $manifest.arm
 $repoRoot = [string]$manifest.repoRoot
 $task = $manifest.task
 $task.taskPath = [string]$manifest.taskPath
-$profile = Read-ABJson $manifest.arm.server.profilePath
+$profilePath = if ($manifest.arm.server.Contains('gradeProfilePath')) {
+    [string]$manifest.arm.server.gradeProfilePath
+} else { [string]$manifest.arm.server.profilePath }
+$profile = Read-ABJson $profilePath
 $outputRoot = [string]$manifest.outputRoot
 $motifExe = [string]$manifest.arm.server.executable
 $builderExe = Join-Path $repoRoot ("bin/{0}/SIL.Motif.EvalSets{1}" -f $manifest.configuration, $(if ($IsWindows) { '.exe' } else { '' }))
@@ -25,6 +28,23 @@ $controlRoot = Join-Path $trialRoot 'control'
 $projectRoot = Join-Path $sessionRoot 'project'
 foreach ($path in @($outputRoot, $inputRoot, $runtimeRoot, $controlRoot, $projectRoot)) {
     New-Item -ItemType Directory -Path $path -Force | Out-Null
+}
+if ($authMode -eq 'claude-plan') {
+    $claudeConfig = if ($env:CLAUDE_CONFIG_DIR) { $env:CLAUDE_CONFIG_DIR }
+        else { Join-Path ([Environment]::GetFolderPath('UserProfile')) '.claude' }
+    $credentialSource = Join-Path $claudeConfig '.credentials.json'
+    if (-not (Test-Path -LiteralPath $credentialSource -PathType Leaf)) {
+        throw 'Claude plan auth requires the owner login at CLAUDE_CONFIG_DIR/.credentials.json.'
+    }
+    $credentialFile = Get-Item -LiteralPath $credentialSource -Force
+    if ($credentialFile.LinkTarget -or ($credentialFile.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+        throw 'Claude plan credentials must be a regular file.'
+    }
+    $jailClaudeConfig = Join-Path $sessionRoot 'agent/config/claude'
+    New-Item -ItemType Directory -Path $jailClaudeConfig -Force | Out-Null
+    Copy-Item -LiteralPath $credentialSource -Destination (Join-Path $jailClaudeConfig '.credentials.json')
+    $chmod = Get-Command chmod -ErrorAction SilentlyContinue
+    if ($chmod) { & $chmod.Source '400' (Join-Path $jailClaudeConfig '.credentials.json') }
 }
 $controlEnvironment = @{
     MOTIF_WORKER_ROOT = Join-Path $controlRoot 'work'
@@ -151,7 +171,7 @@ $integrityPath = Join-Path $outputRoot 'integrity.json'
 if (-not (Test-Path $integrityPath)) { throw "Boundary supervisor failed: $($boundaryRun.Stderr)" }
 $integrity = Read-ABJson $integrityPath
 $gradePath = Join-Path $outputRoot 'grade.json'
-if ($integrity.state -eq 'clean') {
+if ($integrity.state -eq 'clean' -and $integrity.failureClass -notin @('cloud_failure', 'harness_defect')) {
     $gradeConfig = [ordered]@{
         repoRoot = $repoRoot
         confirmation = $manifest.Contains('confirmation') -and [bool]$manifest.confirmation
@@ -162,6 +182,7 @@ if ($integrity.state -eq 'clean') {
         builder = $builderExe
         primaryMetric = $manifest.primaryMetric
         profile = $profile
+        judgeFamilies = if ($manifest.Contains('judgeFamilies')) { @($manifest.judgeFamilies) } else { @('opus', 'sol') }
         outputRoot = $outputRoot
         scratchRoot = Join-Path $controlRoot 'measurement'
     }
@@ -169,14 +190,21 @@ if ($integrity.state -eq 'clean') {
     Write-ABJson $gradeConfigPath $gradeConfig
     $gradeRun = Invoke-ABProcess (Get-Command pwsh).Source @('-NoProfile', '-File', (Join-Path $PSScriptRoot 'Invoke-ABGrade.ps1'), '-Config', $gradeConfigPath) $controlRoot @{} 1600000
     if ($gradeRun.ExitCode) {
-        # A grader that crashes says nothing about the agent; it is unscored, not misconduct.
-        $integrity.state = 'infrastructure_failure'
-        $integrity.reasons += @{ reason = 'The control-side grader failed'; evidence = $gradeRun.Stderr }
+        $integrity.failureClass = 'harness_defect'
+        $integrity.failureEvidence += @{ class = 'harness_defect'; evidence = 'The control-side grader failed: ' + $gradeRun.Stderr }
+        $grade = @{ grade = $null; success = $null; primaryScore = $null; primaryMetric = $manifest.primaryMetric;
+            operationCount = 0; graders = @(); gradingState = 'harness_defect'; failureClass = 'harness_defect';
+            failureEvidence = @($gradeRun.Stderr) }
+        Write-ABJson $gradePath $grade
         Write-ABJson $integrityPath $integrity
     }
 }
-if ($integrity.state -ne 'clean') {
-    Write-ABJson $gradePath @{ grade = $null; success = $null; primaryScore = $null; primaryMetric = $manifest.primaryMetric; operationCount = 0; graders = @() }
+if ($integrity.state -ne 'clean' -or $integrity.failureClass -in @('cloud_failure', 'harness_defect')) {
+    if (-not (Test-Path -LiteralPath $gradePath)) {
+        Write-ABJson $gradePath @{ grade = $null; success = $null; primaryScore = $null; primaryMetric = $manifest.primaryMetric;
+            operationCount = 0; graders = @(); gradingState = 'unscored'; failureClass = $integrity.failureClass;
+            failureEvidence = @($integrity.failureEvidence) }
+    }
 }
 $hostPath = Join-Path $outputRoot 'frozen/host.json'
 $hostData = if (Test-Path $hostPath) { Read-ABJson $hostPath } else { @{ wallMs = $null; turns = $null; inputTokens = $null; outputTokens = $null; costUsd = $null } }
@@ -187,20 +215,30 @@ foreach ($name in @('host.json', 'transcript.jsonl', 'activity.jsonl')) {
 $activity = @(Read-ABLines (Join-Path $outputRoot 'activity.jsonl'))
 $grade = Read-ABJson $gradePath
 $status = if ($integrity.state -ne 'clean') { $integrity.state }
-    elseif ($grade.Contains('gradingState') -and $grade.gradingState -eq 'infrastructure_failure') { 'infrastructure_failure' }
+    elseif ($grade.failureClass -in @('cloud_failure', 'harness_defect')) { $grade.failureClass }
+    elseif ($integrity.failureClass -in @('cloud_failure', 'harness_defect')) { $integrity.failureClass }
+    elseif ($grade.gradingState -eq 'judge_disagreement') { 'judge_disagreement' }
     elseif ($grade.success -eq $true) { 'passed' } elseif ($grade.success -eq $false) { 'failed' } else { 'inconclusive' }
 Write-ABJson (Join-Path $outputRoot 'manifest.json') ([ordered]@{
     schema = 'motif-controlled-trial/v1'
     runId = $manifest.runId; questionId = $manifest.questionId; taskId = $task.id; setId = $task.set
     caseId = [Guid]::NewGuid().ToString('N'); armId = $manifest.arm.id; host = $manifest.arm.host; trial = $manifest.trial
     status = $status; integrity = $integrity
+    failureClass = if ($grade.failureClass) { $grade.failureClass } else { $integrity.failureClass }
+    failureEvidence = @($grade.failureEvidence) + @($integrity.failureEvidence)
+    measurementFingerprint = if ($manifest.Contains('measurementFingerprint')) { $manifest.measurementFingerprint } else { $null }
+    armFingerprint = if ($manifest.arm.server.Contains('fingerprint')) { $manifest.arm.server.fingerprint } else { $null }
+    sourceCommit = if ($manifest.arm.server.Contains('sourceCommit')) { $manifest.arm.server.sourceCommit } else { $null }
     authMode = $authMode
     staging = @{ retained = [bool]$keepStaging; path = if ($keepStaging) { $trialRoot } else { $null } }
-    infrastructureInvalid = $integrity.state -in @('isolation_failure', 'infrastructure_failure')
-    infrastructureReason = ($integrity.reasons | ForEach-Object { $_.reason }) -join '; '
+    excludedFromScoring = $integrity.state -ne 'clean' -or $grade.failureClass -in @('cloud_failure', 'harness_defect') -or
+        $integrity.failureClass -in @('cloud_failure', 'harness_defect') -or
+        $grade.gradingState -eq 'judge_disagreement'
     wallMs = $hostData.wallMs; turns = $hostData.turns; toolCalls = $activity.Count
     toolErrors = @($activity | Where-Object { $_.isError }).Count
     timeToFirstProposalMs = $null; inputTokens = $hostData.inputTokens; outputTokens = $hostData.outputTokens; costUsd = $hostData.costUsd
+    agentBudget = if ($hostData.Contains('agentBudget')) { $hostData.agentBudget } else { $null }
+    agentElapsedMs = if ($hostData.Contains('agentElapsedMs')) { $hostData.agentElapsedMs } else { $null }
 })
 Write-Host (Join-Path $outputRoot 'manifest.json')
 }

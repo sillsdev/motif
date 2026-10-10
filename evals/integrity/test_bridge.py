@@ -13,6 +13,19 @@ from TrialBoundary import boundary
 
 @unittest.skipUnless(sys.platform == 'linux' and shutil.which('bwrap'), 'Namespace bridge check requires Linux and bubblewrap')
 class BridgeTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        with tempfile.TemporaryDirectory() as directory:
+            session = Path(directory) / 'session'
+            (session / 'output').mkdir(parents=True)
+            probe = subprocess.run(boundary({'session': str(session), 'mounts': []}, ['/usr/bin/true']),
+                                   stdin=subprocess.DEVNULL, capture_output=True, timeout=15)
+        if b'NETLINK_ROUTE socket: Operation not permitted' in probe.stderr:
+            raise unittest.SkipTest('The sandbox does not allow bubblewrap to create its private network namespace')
+        if probe.returncode:
+            raise RuntimeError(probe.stderr.decode(errors='replace'))
+
     def test_powershell_starts_with_private_identity_home_and_cache(self):
         with tempfile.TemporaryDirectory() as directory:
             session = Path(directory) / 'session'

@@ -42,6 +42,8 @@ public static class StatsCommand
         Stats(request, PanGlossExecutable.TryLocate(), cancellationToken);
 
     /// <summary>Queries statistics through an explicitly selected parser.</summary>
+    /// <param name="request">The project, retained Assessment and forwarded statistics arguments.</param>
+    /// <param name="cancellationToken">Cancels the statistics query.</param>
     /// <param name="parserPath">The parser to run, or <see langword="null"/> when none is available.</param>
     public static CommandOutcome<StatsCommandResponse> Stats(
         StatsRequest request, string? parserPath, CancellationToken cancellationToken = default)

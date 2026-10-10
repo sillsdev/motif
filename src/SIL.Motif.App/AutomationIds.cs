@@ -72,6 +72,7 @@ public static class AutomationIds
         WorkspacePage.Parsimony => "motif-page-parsimony",
         WorkspacePage.Review => "motif-page-review",
         WorkspacePage.AiHandoff => "motif-page-ai-handoff",
+        WorkspacePage.AiAssistants => "motif-page-ai-assistants",
         _ => throw new ArgumentOutOfRangeException(nameof(page), page, "Unknown workspace page."),
     };
 

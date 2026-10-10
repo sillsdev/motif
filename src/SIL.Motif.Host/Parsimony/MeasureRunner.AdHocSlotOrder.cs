@@ -36,14 +36,14 @@ public static partial class MeasureRunner
             candidatePairs += distinctPairs.Length;
             var family = distinctPairs.Length >= 2;
             var members = distinctPairs.SelectMany(group => group).ToArray();
-            findings.Add(CreateAdhocSlotOrderFinding(measure, bundleId, theme.Key, members,
+            findings.Add(CreateAdhocSlotOrderFinding(measure, session, bundleId, theme.Key, members,
                 distinctPairs.Length, eligible, family, false, session.GroupedAdhocFactsAvailable));
         }
 
         foreach (var review in reviews.Where(review => review.AdjacencyQuestion))
         {
             candidatePairs++;
-            findings.Add(CreateAdhocSlotOrderFinding(measure, bundleId,
+            findings.Add(CreateAdhocSlotOrderFinding(measure, session, bundleId,
                 review.ThemeKey + "/adjacency-question/" + review.Rule.Guid, [review], 1, eligible,
                 false, true, session.GroupedAdhocFactsAvailable));
         }
@@ -261,7 +261,7 @@ public static partial class MeasureRunner
             placements, relevantAnalyses, [], detail);
     }
 
-    private static ParsimonyFinding CreateAdhocSlotOrderFinding(MeasureDefinition measure, string bundleId,
+    private static ParsimonyFinding CreateAdhocSlotOrderFinding(MeasureDefinition measure, ParsimonyQuerySession session, string bundleId,
         string themeKey, IReadOnlyList<AdhocSlotOrderReview> members, long pairCount, long eligible,
         bool family, bool adjacencyQuestion, bool groupedFactsAvailable)
     {
@@ -315,7 +315,7 @@ public static partial class MeasureRunner
         return new ParsimonyFinding(findingId, measure.Id, measure.Axis, measure.Tier,
             new ParsimonyFindingAttachment(ParsimonyAttachmentKind.Group, identity,
                 GroupKind: ParsimonyGroupKind.AdhocSlotOrder), themeKey,
-            new ParsimonyMeasureNumber(pairCount, eligible, measure.Unit), measure.Threshold!, Digest(evidence),
+            new ParsimonyMeasureNumber(pairCount, eligible, measure.Unit), measure.Threshold!, MeasureEvidence.Compute(measure, session, evidence),
             references, measure.RecipeLink, limitations, ParsimonyVerification.NotRun);
     }
 

@@ -60,7 +60,7 @@ public interface IProposalRepository
     IReadOnlyList<ProposalRecord> ListDrafts();
     /// <summary>
     /// Commits a Draft: in one transaction, writes its first <c>ProposalRevisions</c> row, sets
-    /// <c>CurrentIntentDigest</c>, clears <c>DraftName</c>/<c>DraftJson</c>/<c>AnchorJson</c>, and moves
+    /// <c>CurrentIntentDigest</c>, clears <c>DraftName</c>/<c>DraftJson</c>, retains an anchor bound to the same digest, and moves
     /// the Proposal to <c>proposed</c>. A failure (for example a digest collision with different content
     /// already recorded under this Proposal) leaves the Draft exactly as it was — none of the four
     /// effects is observable without all of them.
@@ -570,7 +570,9 @@ public sealed class ProposalRepository : IProposalRepository
             commit.Transaction = transaction;
             commit.CommandText = """
                 UPDATE Proposals SET CurrentIntentDigest = $digest, Status = $status, Label = $label,
-                    Comment = $comment, DraftName = NULL, DraftJson = NULL, AnchorJson = NULL
+                    Comment = $comment, DraftName = NULL, DraftJson = NULL,
+                    AnchorJson = CASE WHEN json_extract(AnchorJson, '$.IntentDigest') = $digest
+                        OR json_extract(AnchorJson, '$.intentDigest') = $digest THEN AnchorJson ELSE NULL END
                 WHERE DraftName = $name;
                 """;
             commit.Parameters.AddWithValue("$digest", intentDigest);
@@ -786,6 +788,14 @@ public sealed class ProposalRepository : IProposalRepository
         command.CommandText = "UPDATE Proposals SET Status = 'applied' WHERE ProposalId = $id;";
         command.Parameters.AddWithValue("$id", receipt.ProposalId.Value);
         command.ExecuteNonQuery();
+        if (recordedDigest is null)
+        {
+            using var drift = connection.CreateCommand();
+            drift.Transaction = transaction;
+            drift.CommandText = "UPDATE Proposals SET AnchorJson = NULL WHERE ProposalId <> $id;";
+            drift.Parameters.AddWithValue("$id", receipt.ProposalId.Value);
+            drift.ExecuteNonQuery();
+        }
         transaction.Commit();
     }
 

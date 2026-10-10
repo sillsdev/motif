@@ -12,8 +12,22 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
 from TrialBoundary import boundary
 
 
-@unittest.skipUnless(sys.platform == 'linux' and shutil.which('bwrap'), 'Product boundary requires Linux and bubblewrap')
+@unittest.skipUnless(sys.platform == 'linux' and shutil.which('bwrap') and os.environ.get('MOTIF_PANGLOSS_EXE'),
+                     'Product boundary requires Linux, bubblewrap, and the pinned PanGloss executable')
 class ProductTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        with tempfile.TemporaryDirectory() as directory:
+            session = Path(directory) / 'session'
+            (session / 'output').mkdir(parents=True)
+            probe = subprocess.run(boundary({'session': str(session), 'mounts': []}, ['/usr/bin/true']),
+                                   stdin=subprocess.DEVNULL, capture_output=True, timeout=15)
+        if b'NETLINK_ROUTE socket: Operation not permitted' in probe.stderr:
+            raise unittest.SkipTest('The sandbox does not allow bubblewrap to create its private network namespace')
+        if probe.returncode:
+            raise RuntimeError(probe.stderr.decode(errors='replace'))
+
     def test_staged_baseline_capture_loads_native_assets(self):
         repo = Path(__file__).resolve().parents[2]
         build = repo / 'bin' / os.environ.get('MOTIF_TEST_CONFIGURATION', 'Debug')
@@ -76,7 +90,8 @@ class ProductTests(unittest.TestCase):
             parser_check = subprocess.run(boundary(config, ['/opt/product/pangloss', '--version']),
                                           stdin=subprocess.DEVNULL, capture_output=True, timeout=30)
             self.assertEqual(0, parser_check.returncode, parser_check.stderr.decode())
-            self.assertIn('0.6.0', parser_check.stdout.decode())
+            pin = json.loads((repo / 'pangloss-release.json').read_text())
+            self.assertIn(pin['version'], parser_check.stdout.decode())
             readonly = subprocess.run(boundary(config, ['/usr/bin/python3', '-c',
                 "import errno;\ntry: open('/opt/product/pangloss','wb'); raise RuntimeError('shared runtime is writable')\nexcept OSError as error: assert error.errno==errno.EROFS"]),
                 stdin=subprocess.DEVNULL, capture_output=True, timeout=30)

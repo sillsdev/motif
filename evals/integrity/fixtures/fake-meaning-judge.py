@@ -23,7 +23,7 @@ elif mode == 'validity':
     met = row is not None and row['gold'] == answer
 else:
     met = bool(answer) and mode != 'fail'
-if mode == 'split' and request['sampleIndex'] == 1:
+if mode == 'split' and request['family'] == 'sol':
     met = False
 violated = mode == 'violation'
 print(json.dumps({

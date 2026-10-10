@@ -42,7 +42,8 @@ public sealed class ProgressiveDisplayTests
     private static readonly string[] ViewNames =
     [
         "ComparePanel", "DiagnosticPanel", "DifferencePanel", "ExpertTracePanel", "GrammarPanel", "HandoffPanel",
-        "Inspector", "MainWindow", "MiniMatrix", "Pages/OverviewPage", "Pages/ParsimonyPage", "Pages/TimingPage",
+        "Inspector", "MainWindow", "MiniMatrix", "Pages/AssistantConnectionsPage", "Pages/OverviewPage", "Pages/ParsimonyPage",
+        "Pages/TimingPage",
         "RefusalBlock", "ResultsInTextPanel", "ReviewWordRow",
         "RetirementProposalReviewPanel", "ReviewPanel", "SelectionPanel", "SettingsPopupView", "SetupDialog", "StatisticsPanel", "TextWordsPanel", "TextsListsPanel",
         "TraceAnalysesView", "TryWordPanel", "WordCard", "WordDispositionButtons",
@@ -993,6 +994,8 @@ public sealed class ProgressiveDisplayTests
             "Inspector" => new Inspector { DataContext = workspace.Inspector },
             "SettingsPopupView" => BuildSettingsPopup(workspace),
             "MiniMatrix" => new MiniMatrix { DataContext = workspace.Assess.Compare },
+            "Pages/AssistantConnectionsPage" => new AssistantConnectionsPage(
+                workspace.PageModel<AssistantConnectionsPageModel>()),
             "Pages/OverviewPage" => new OverviewPage(workspace.PageModel<OverviewPageModel>()),
             "Pages/ParsimonyPage" => new ParsimonyPage(workspace.PageModel<ParsimonyPageModel>()),
             "Pages/TimingPage" => new TimingPage(workspace.PageModel<TimingPageModel>()),

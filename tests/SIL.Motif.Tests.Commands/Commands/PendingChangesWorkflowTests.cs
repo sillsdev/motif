@@ -3,6 +3,7 @@ using SIL.LCModel;
 using SIL.LCModel.Core.Text;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Commands;
+using SIL.Motif.Commands.Assess;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Commands.Requests;
@@ -158,6 +159,7 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine,
         Assert.Equal("Correct the spelling status of the selected word.", proposal.Comment);
         Assert.Equal(1L, CountReceipts(database, pending.DraftId!));
 
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root).Succeeded);
         var empty = LoadPending(path);
         var second = PutChange(path, empty.Revision, secondWordformId, "review-second");
         var stale = await ApplyStepAsync("the stale Apply", new ApplyPendingRequest(path, second.DraftId!,
@@ -171,7 +173,13 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine,
         Assert.Equal(second.DraftId, reopened.DraftId);
         Assert.Single(reopened.Changes);
 
-        var currentAssessmentId = new AssessmentRepository(database).GetCurrent()!.AssessmentId;
+        var refreshed = AssessCommand.Assess(new AssessRequest(path,
+            new SelectionRequest(false, [], ["review-second"], false, null)), root, runner.Options.ParserPath,
+            null, CancellationToken.None);
+        Assert.True(refreshed.Succeeded, refreshed.Refusal?.Message);
+        var assessments = new AssessmentRepository(database);
+        var currentAssessmentId = refreshed.Value!.AssessmentIds.Select(assessments.Get)
+            .Single(record => record.Kind == AssessmentKinds.Correctness).AssessmentId;
         var secondTrial = await MeasureStepAsync("the second Trial", new MeasurePendingRequest(path,
             reopened.DraftId!, reopened.Revision, ["review-second"], currentAssessmentId), runner);
         Assert.True(secondTrial.Succeeded,

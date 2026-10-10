@@ -142,7 +142,7 @@ internal sealed class DryRunJobHandler
         var publishedJson = BuildPublishedDryRunJson(dryRun!);
         claim.PublishDryRun(publishedJson);
         var completionJson = JsonSerializer.Serialize(
-            new DryRunJobCompletion(token, token.CapturedUtc, ToWire(freshness), source),
+            new DryRunJobCompletion(token, token.CapturedUtc, ToWire(freshness), source, dryRun!.IntentDigest),
             MotifJson.CreateOptions());
         return new JobOutcome(JobStatus.CompletedDryRunOnly, JobFailureCategory.None, completionJson);
     }

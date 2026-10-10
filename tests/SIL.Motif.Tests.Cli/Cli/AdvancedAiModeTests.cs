@@ -7,7 +7,7 @@ namespace SIL.Motif.Tests.Cli;
 public sealed class AdvancedAiModeTests
 {
     [Fact]
-    public async Task McpRefusesWithOnePlainInstructionWhenModeIsOff()
+    public async Task McpRejectsTheRemovedProjectLaunchOption()
     {
         var preferencePath = NewPreferencePath();
         new FileAdvancedAiModePreferenceStore(preferencePath).SetEnabled(false);
@@ -17,9 +17,10 @@ public sealed class AdvancedAiModeTests
             preferencePath, "mcp", "--project", "unused");
         var result = await CliProcess.RunAsync(start);
 
-        Assert.Equal(2, result.ExitCode);
+        Assert.Equal(1, result.ExitCode);
         Assert.Empty(result.Output);
-        Assert.Equal(FileAdvancedAiModePreferenceStore.EnableInstruction + Environment.NewLine, result.Error);
+        Assert.StartsWith("Usage: motif mcp [--profile", result.Error);
+        Assert.DoesNotContain("--project", result.Error);
     }
 
     [Theory]

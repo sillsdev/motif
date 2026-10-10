@@ -40,6 +40,8 @@ public static class GrammarCheckQuery
         Query(request, PanGlossExecutable.TryLocate(), cancellationToken);
 
     /// <summary>Checks the project's current Baseline grammar with an explicitly selected parser.</summary>
+    /// <param name="request">The project whose Baseline grammar to check.</param>
+    /// <param name="cancellationToken">Cancels the grammar check.</param>
     /// <param name="parserPath">The parser to run, or <see langword="null"/> when none is available.</param>
     public static CommandOutcome<GrammarCheckResponse> Query(
         GrammarCheckRequest request, string? parserPath, CancellationToken cancellationToken = default)
@@ -49,6 +51,9 @@ public static class GrammarCheckQuery
     }
 
     /// <summary>Checks through an explicitly supplied invoker, which allows tests to stand in for PanGloss.</summary>
+    /// <param name="request">The project whose Baseline grammar to check.</param>
+    /// <param name="invoker">Runs the grammar check.</param>
+    /// <param name="cancellationToken">Cancels the grammar check.</param>
     /// <param name="parserStamp">Identifies the parser build recorded with the findings.</param>
     internal static CommandOutcome<GrammarCheckResponse> Query(
         GrammarCheckRequest request,

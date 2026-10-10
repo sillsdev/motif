@@ -10,7 +10,7 @@
     { "name": "motif_add_lexeme_form", "class": "Draft" },
     { "name": "motif_set_gloss", "class": "Draft" },
     { "name": "motif_trial", "class": "Evaluate" },
-    { "name": "motif_finish_proposal", "class": "Draft" },
+    { "name": "motif_finalize_proposal", "class": "Draft" },
     { "name": "motif_proposals", "class": "Read" }
   ],
   "canonicalTools": ["motif_start_proposal"],

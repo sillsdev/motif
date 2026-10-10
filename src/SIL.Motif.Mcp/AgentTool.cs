@@ -7,9 +7,18 @@ namespace SIL.Motif.Mcp;
 
 /// <summary>Everything a tool call needs from the server that is not in its arguments.</summary>
 internal sealed class ServerContext(string projectPath, string productVersion, IJobRunnerLauncher runner,
-    ActivityLog activity, ToolProfile profile, TextWriter log)
+    ActivityLog activity, ToolProfile profile, TextWriter log, bool advancedAiModeEnabled = true, string? parserPath = null)
 {
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, SemaphoreSlim> Gates = new();
+
+    public bool AdvancedAiModeEnabled { get; } = advancedAiModeEnabled;
+
+    public ServerContext ForProject(string path) => new(path, ProductVersion, runner, Activity, Profile, Log,
+        AdvancedAiModeEnabled, ParserPath);
+
     public string ProjectPath { get; } = projectPath;
+
+    public string? ParserPath { get; } = parserPath;
 
     public string ProductVersion { get; } = productVersion;
 
@@ -21,7 +30,7 @@ internal sealed class ServerContext(string projectPath, string productVersion, I
     public TextWriter Log { get; } = log;
 
     /// <summary>LibLCM locks a project file exclusively, so calls that open it take turns.</summary>
-    public SemaphoreSlim ProjectGate { get; } = new(1, 1);
+    public SemaphoreSlim ProjectGate => Gates.GetOrAdd(ProjectPath, _ => new SemaphoreSlim(1, 1));
 
     /// <summary>Wakes the job runner after a job is queued, as every other front end does.</summary>
     public void StartRunner() => runner.Start(ProjectPath, Log.WriteLine);
@@ -70,6 +79,8 @@ internal sealed class ToolArgs
         return intent.ToJsonString();
     }
 
+    public JsonObject Copy() => _arguments.DeepClone().AsObject();
+
     public bool Flag(string name) =>
         _arguments.TryGetPropertyValue(name, out var node) && node is JsonValue value && value.TryGetValue<bool>(out var flag) && flag;
 
@@ -105,9 +116,9 @@ internal sealed class ToolArgumentException(string code, string message) : Excep
 
 /// <summary>One thing the model can call: its text, input schema, hints, and how it runs.</summary>
 /// <param name="Name">The built-in tool name; a profile may show the model another.</param>
-/// <param name="Description">Written as onboarding for a model: when to call it, what comes back, what to do next.</param>
+/// <param name="Description">Generated from catalog classification, shared Help and request-field documentation.</param>
 /// <param name="Class">The class of every catalogued command this tool is built over, or the tool's own.</param>
-/// <param name="InputSchema">JSON Schema for the arguments, with the project already bound by the server.</param>
+/// <param name="InputSchema">JSON Schema for the arguments, including the Known project selector.</param>
 /// <param name="ReadOnly">The MCP <c>readOnlyHint</c>: the call changes nothing in Motif's store or the project.</param>
 /// <param name="Idempotent">The MCP <c>idempotentHint</c>: repeating the call with the same arguments adds nothing.</param>
 /// <param name="OnByDefault">Whether the built-in profile exposes the tool.</param>
@@ -126,6 +137,10 @@ internal sealed record AgentTool(
     bool Serialized,
     Func<ServerContext, ToolArgs, CancellationToken, Task<ToolOutcome>> Run)
 {
+    public IReadOnlyList<Type> Requests { get; init; } = [];
+
+    public bool NeedsProject { get; init; } = true;
+
     /// <summary>The argument names the schema declares.</summary>
     public IEnumerable<string> ArgumentNames => ((JsonObject)InputSchema["properties"]!).Select(pair => pair.Key);
 }

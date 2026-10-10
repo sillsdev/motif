@@ -28,11 +28,11 @@ public sealed class ProgramTests
         try
         {
             var exitCode = global::SIL.Motif.Cli.Program.Run(
-                ["new"], output, error, environment, static (_, _) => { });
+                ["add-delete-lexeme-form"], output, error, environment, static (_, _) => { });
 
             Assert.Equal(1, exitCode);
             Assert.Empty(output.ToString());
-            Assert.Contains("Usage: motif new", error.ToString(), StringComparison.Ordinal);
+            Assert.Contains("Usage: motif add-delete-lexeme-form", error.ToString(), StringComparison.Ordinal);
             Assert.Equal("1", environment[key]);
             Assert.Equal(original, Environment.GetEnvironmentVariable(key));
         }

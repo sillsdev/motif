@@ -142,6 +142,7 @@ public sealed class FailureContractTests : IDisposable
             CreateNoWindow = true,
         };
         start.Environment[RunnerOptions.RootVariable] = _root;
+        CliProcess.EnableAdvancedAiMode(start, _root);
         using var process = Process.Start(start)!;
         // Both pipes drain concurrently: a sequential read deadlocks past the pipe buffer.
         var outputTask = process.StandardOutput.ReadToEndAsync();

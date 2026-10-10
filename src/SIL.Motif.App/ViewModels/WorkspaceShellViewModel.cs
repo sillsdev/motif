@@ -4,8 +4,10 @@ using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App.Services;
+using SIL.Motif.Commands.Assistants;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Commands.Preferences;
 using SIL.Motif.Projection.Usage;
 using SIL.Motif.App.Views;
 using SIL.Motif.Contract.Responses;
@@ -57,7 +59,9 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         ProjectViewModel project, BaselineViewModel baseline, SelectionViewModel selection, AssessViewModel assess, IHandoffFolderPicker folderPicker, IFileDragSource dragSource,
         ICommandClient commandClient, TimeProvider? clock = null, IClipboard? clipboard = null,
         IDiagnosticFilePicker? diagnosticFiles = null, IDiagnosticWindowDialogs? diagnosticDialogs = null,
-        TechDemoNoticeViewModel? techDemoNotice = null, bool advancedAiModeEnabled = false)
+        TechDemoNoticeViewModel? techDemoNotice = null,
+        IAdvancedAiModePreferenceStore? advancedAiModePreferences = null,
+        IAssistantConnectionService? assistantConnections = null, IUriLauncher? uriLauncher = null, bool advancedAiModeEnabled = false)
     {
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(baseline);
@@ -72,7 +76,8 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         Baseline = baseline;
         TechDemoNotice = techDemoNotice;
         Context = new WorkspaceContext(selection, assess, new ChangesViewModel(commandClient), commandClient, folderPicker,
-            dragSource, baseline, clock, clipboard, diagnosticFiles, diagnosticDialogs)
+            dragSource, baseline, clock, clipboard, diagnosticFiles, diagnosticDialogs,
+            advancedAiModePreferences, assistantConnections, uriLauncher)
         {
             AdvancedAiModeEnabled = advancedAiModeEnabled,
             KnownProjects = project.KnownProjects,

@@ -66,16 +66,16 @@ public sealed class WorkspacePageTests
         new(word, outcome, false, "Search completed", 10, null) { ProjectStanding = standing };
 
     [Fact]
-    public void TheSidebarListsTheSevenPagesInOrderAndOpensOnOverview()
+    public void TheSidebarListsEveryPageInOrderAndOpensOnOverview()
     {
         var (_, _, workspace) = NewWorkspace();
 
         Assert.Equal(
             [WorkspacePage.Overview, WorkspacePage.Texts, WorkspacePage.TryAWord, WorkspacePage.Timing,
-                WorkspacePage.Warnings, WorkspacePage.Parsimony, WorkspacePage.Review, WorkspacePage.AiHandoff],
+                WorkspacePage.Warnings, WorkspacePage.Parsimony, WorkspacePage.Review, WorkspacePage.AiHandoff, WorkspacePage.AiAssistants],
             workspace.Pages.Select(page => page.Page));
         Assert.Equal(
-            ["Overview", "Texts", "Try a Word", "Timing", "Warnings", "Parsimony", "Review changes", "AI Handoff"],
+            ["Overview", "Texts", "Try a Word", "Timing", "Warnings", "Parsimony", "Review changes", "AI Handoff", "AI assistants"],
             workspace.Pages.Select(page => page.Title));
         Assert.Equal(WorkspacePage.Overview, workspace.CurrentPage);
         Assert.All(workspace.Pages, page => Assert.False(page.HasBadge));
@@ -89,6 +89,7 @@ public sealed class WorkspacePageTests
     [InlineData(WorkspacePage.Warnings)]
     [InlineData(WorkspacePage.Review)]
     [InlineData(WorkspacePage.AiHandoff)]
+    [InlineData(WorkspacePage.AiAssistants)]
     public void ShowingAPageMovesTheCurrentMarkerToThatPageAlone(WorkspacePage page)
     {
         var (_, _, workspace) = NewWorkspace();

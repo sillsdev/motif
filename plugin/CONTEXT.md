@@ -1,21 +1,23 @@
-# The `fieldworks` plugin
+# The `motif` plugin
 
-The bounded context for the FieldWorks skills Motif publishes. Proposal, Assessment and the rest of
+The bounded context for the skills Motif publishes with its agent server. Proposal, Assessment and the rest of
 Motif's change vocabulary live in the root [CONTEXT.md](../CONTEXT.md) and are not repeated here.
 Decisions and their reasoning: [docs/research/2026-09-09-fieldworks-skills-research.md](../docs/research/2026-09-09-fieldworks-skills-research.md).
 
 ## The package
 
 **Plugin**:
-The unit Claude Code installs: this directory, `fieldworks/`, holding all three skills and
-their shared references. Named `fieldworks` because it is about the subject, not the source; every
-skill is invoked as `fieldworks:<skill>`. A plugin cannot read files outside its own directory.
-_Avoid_: extension, package, bundle, "the motif plugin"
+The unit an AI assistant installs: one directory holding all five skills, their shared references,
+and the registration of Motif's agent server. Named `motif` because the skills assume Motif is there:
+FieldWorks itself offers an agent no safe way to change a project. Every skill is invoked as
+`motif:<skill>`. A plugin cannot read files outside its own directory. Motif's installer carries it,
+and turning on Advanced AI mode installs it into the assistants Motif finds.
+_Avoid_: extension, package, bundle, "the fieldworks plugin"
 
 **Marketplace**:
 The catalog Claude Code adds with one command, `/plugin marketplace add sillsdev/motif`. It is this
 repository, named `motif`, declared in `.claude-plugin/marketplace.json` at the repo root. One
-marketplace, one plugin, three skills.
+marketplace, one plugin, five skills.
 _Avoid_: registry, store, feed
 
 **Skill**:
@@ -24,7 +26,7 @@ trigger: it is always in context, the body loads when it fires, references load 
 must stay self-contained enough to be zipped for Claude.ai on its own.
 _Avoid_: prompt, persona file, agent
 
-## The three skills
+## The five skills
 
 **FieldWorks expert** (`fieldworks-expert`):
 Answers what FLEx does, where, and how it maps to the data model: location, visibility, and the
@@ -35,7 +37,7 @@ _Avoid_: FLEx guide, help bot, UI skill
 **Parsing expert** (`fieldworks-parsing-expert`):
 Answers how HermitCrab and XAmple behave, what to configure in FLEx's Grammar area to teach the parser
 a language, and why a word parses wrong, not at all, too many ways, or slowly. Owns the HermitCrab
-gotcha corpus. XAmple is an honest appendix. Names PanGloss and Motif in one bounded section only.
+gotcha corpus. XAmple is an honest appendix.
 _Avoid_: HermitCrab skill, grammar skill
 
 **Linguistic consultant** (`linguistic-consultant`):
@@ -43,6 +45,19 @@ Plays the user. Frames the need and the persona, takes facts from the other two,
 evaluation checklist. Owns the job map, the terminology, the personas and the verdict; keeps no map of
 the UI of its own.
 _Avoid_: linguist bot, usability skill, reviewer
+
+**Motif workflow** (`motif-workflow`):
+How an agent changes a project through Motif: find the Known project, read, draft a Proposal, Dry Run,
+Trial, and Finalize it for a person to Apply. It and Parsimony review are the only skills that name
+Motif's tools. When those tools are missing, it tells the person how to turn on Advanced AI mode and
+never edits the project another way.
+_Avoid_: agent guide, MCP skill, tool manual
+
+**Parsimony review** (`parsimony-review`):
+How an agent reads a Parsimony finding's evidence and recipe and chooses fix, keep, ask or defer, staging
+the update or the disposition in a Draft for a person to Apply. Never promises a fix the recipe does not
+name.
+_Avoid_: simplification skill, cleanup skill
 
 ## Words the skills share
 

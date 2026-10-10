@@ -30,4 +30,8 @@ public sealed record AddCorpusBundleRequest(string FwDataPath, string ProductVer
 
 public sealed record ListCorporaRequest(string FwDataPath, string ProductVersion);
 
+/// <summary>Selects one retained corpus by its exact identity.</summary>
+/// <param name="FwDataPath">The recorded project path.</param>
+/// <param name="ProductVersion">The Motif product version writing the store.</param>
+/// <param name="CorpusId">The exact stored corpus identity.</param>
 public sealed record ShowCorpusRequest(string FwDataPath, string ProductVersion, string CorpusId);

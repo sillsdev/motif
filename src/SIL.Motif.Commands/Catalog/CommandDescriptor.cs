@@ -52,9 +52,7 @@ public enum AgentClass
 public sealed record CommandDescriptor(
     string Name, Type RequestType, Type ResponseType, CommandSurface Surface, AgentClass Agent)
 {
-    /// <summary>
-    /// The MCP tool this command serves, or <see langword="null"/> when no tool is built over it. Several
-    /// commands may serve one tool, such as a start and its wait.
-    /// </summary>
-    public string? AgentTool { get; init; }
+    /// <summary>Whether this command is available to agents under Advanced AI mode.</summary>
+    public bool IsAgentTool => Surface is CommandSurface.AdvancedAi or CommandSurface.Released &&
+        Agent != AgentClass.HumanOnly;
 }

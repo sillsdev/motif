@@ -28,7 +28,7 @@ internal static class RefusalMapper
         ["proposal.not-found"] = "Call motif_proposals to list the proposals that exist, then use one of those ids.",
         ["proposal.invalid-id"] = "Use the proposalId a tool returned, or one from motif_proposals; do not type one.",
         ["draft.revision-conflict"] = "The draft changed since you last read it. Call motif_proposals with its id and retry.",
-        ["job.dry-run-incomplete"] = "The dry run did not complete. Fix the draft, finish it again, and run a new dry run.",
+        ["job.dry-run-incomplete"] = "The Dry Run did not complete. Revise the Draft and run a new Dry Run.",
         ["store.other-version"] = "Motif's data for this project was made by another version. Tell the linguist; do not retry.",
         ["parse.already-running"] = "A parse is already running. Wait a minute, then repeat the call.",
         ["assess.parser-unavailable"] = "The parser is not installed here. Tell the linguist; evaluation tools cannot run.",

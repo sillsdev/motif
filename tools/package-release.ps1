@@ -300,6 +300,49 @@ try {
         -PinnedParserPath $stagedParserPath -Configuration Release -RequireParser
     if ($LASTEXITCODE -ne 0) { throw 'The bundled PanGloss interface gate failed; no package was published.' }
 
+    $pluginSource = Join-Path $repoRoot 'plugin'
+    $pluginStage = Join-Path $stage 'plugin'
+    Copy-Item -LiteralPath $pluginSource -Destination $pluginStage -Recurse -Force
+    $claudeMarketplaceSource = Join-Path $repoRoot '.claude-plugin/marketplace.json'
+    $claudeMarketplaceStage = Join-Path $stage '.claude-plugin/marketplace.json'
+    New-Item -ItemType Directory -Path (Split-Path $claudeMarketplaceStage -Parent) -Force | Out-Null
+    Copy-Item -LiteralPath $claudeMarketplaceSource -Destination $claudeMarketplaceStage
+
+    $versionFiles = @(
+        (Join-Path $pluginStage 'plugin.json'),
+        (Join-Path $pluginStage '.claude-plugin/plugin.json'),
+        (Join-Path $pluginStage '.codex-plugin/plugin.json'),
+        (Join-Path $pluginStage '.agents/plugins/marketplace.json'),
+        (Join-Path $pluginStage 'mcp.json'),
+        (Join-Path $pluginStage '.mcp.json'),
+        $claudeMarketplaceStage
+    )
+    foreach ($versionFile in $versionFiles) {
+        $versionDocument = Get-Content -LiteralPath $versionFile -Raw | ConvertFrom-Json
+        if ($versionFile -eq $claudeMarketplaceStage) {
+            $versionDocument.metadata.version = $ProductVersion
+            foreach ($pluginRecord in $versionDocument.plugins) {
+                $pluginRecord.version = $ProductVersion
+            }
+        }
+        elseif ([System.IO.Path]::GetFileName($versionFile) -eq 'marketplace.json') {
+            foreach ($pluginRecord in $versionDocument.plugins) {
+                $pluginRecord.version = $ProductVersion
+            }
+        }
+        elseif ($versionDocument.PSObject.Properties['version']) {
+            $versionDocument.version = $ProductVersion
+        }
+        $versionJson = $versionDocument | ConvertTo-Json -Depth 10
+        [System.IO.File]::WriteAllText($versionFile, $versionJson + [Environment]::NewLine,
+            [System.Text.UTF8Encoding]::new($false))
+    }
+
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $pluginZipPath = Join-Path $stage 'motif-plugin.zip'
+    [System.IO.Compression.ZipFile]::CreateFromDirectory(
+        $pluginStage, $pluginZipPath, [System.IO.Compression.CompressionLevel]::Optimal, $false)
+
     $icuRecords = @()
     foreach ($icuLibrary in $icuLibraries) {
         $sourcePath = Join-Path $icuBuildOutputDirectory $icuLibrary
@@ -354,7 +397,7 @@ try {
     }
     & (Join-Path $PSScriptRoot 'Copy-ThirdPartyNotices.ps1') -StageDirectory $stage -AssetsFiles $noticeAssets
 
-    $payloadFiles = @(Get-ChildItem -LiteralPath $stage -File -Recurse | Sort-Object FullName)
+    $payloadFiles = @(Get-ChildItem -LiteralPath $stage -File -Recurse -Force | Sort-Object FullName)
     $fileRecords = @($payloadFiles | ForEach-Object {
         [ordered]@{
             path = Get-RelativePackagePath $stage $_.FullName

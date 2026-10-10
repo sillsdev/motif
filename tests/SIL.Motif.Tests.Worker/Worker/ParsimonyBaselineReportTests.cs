@@ -399,6 +399,25 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         Assert.Contains(statements.Findings, finding => finding.AttachesTo.Identity.Contains(
             "10000000-0000-0000-0000-000000000032", StringComparison.Ordinal));
 
+        var renamedFacts = Path.Combine(_root, "renamed-statements.sqlite");
+        File.Copy(bundle.GrammarFactsPath, renamedFacts);
+        using (var renamed = new SqliteConnection("Data Source=" + renamedFacts))
+        {
+            renamed.Open();
+            using var change = renamed.CreateCommand();
+            change.CommandText = "UPDATE environment SET name = name || ' renamed';";
+            Assert.True(change.ExecuteNonQuery() > 0);
+        }
+        var renamedInputs = new ParsimonyReportInputs(inputs.BundleId, inputs.BaselineToken, inputs.InputKind,
+            inputs.Candidate, inputs.ModelFingerprint,
+            new ParsimonyArtifactDigest(inputs.GrammarFacts.SchemaVersion, Sha256Of(renamedFacts)),
+            inputs.Evidence, inputs.SelectionSha256, inputs.ExpectationRevisionSha256, inputs.AssessmentIds,
+            inputs.EvidenceScope, inputs.RetirementExpectationTranslation);
+        using (var renamedSession = new ParsimonyQuerySession(renamedFacts, bundle.EvidencePath, renamedInputs))
+            Assert.Equal(statements.Findings.Select(finding => finding.EvidenceDigest),
+                MeasureRunner.Execute("P-statement-unused", renamedSession, bundleId).Findings
+                    .Select(finding => finding.EvidenceDigest));
+
         var firstPage = ParsimonyViewsQuery.Execute(session, new ParsimonyNamedViewRequest(bundleId,
             "statement-usage", new ParsimonyViewFilters(StatementKind: "environment"), 1));
         Assert.Equal(2, firstPage.Total);

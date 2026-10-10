@@ -28,6 +28,7 @@ public sealed record TextChoiceSummary(
 }
 
 /// <summary>The current Baseline's Texts, and whether there was a Baseline to read them from.</summary>
+/// <param name="Texts">The Texts available for Selection.</param>
 /// <param name="HasBaseline">
 /// False when no Baseline has been captured yet. An empty <paramref name="Texts"/> means two different
 /// things — nothing captured, or a Baseline holding no Texts — and a caller that cannot tell them apart

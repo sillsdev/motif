@@ -78,17 +78,18 @@ public sealed class RefusalMappingTests
     }
 
     [Fact]
-    public async Task ACommandRefusalThroughATool_KeepsItsCommandCode()
+    public async Task AnUnknownProjectIsRefusedBeforeOpeningIt()
     {
         var context = new ServerContext(Path.Combine(Path.GetTempPath(), "no-such-motif-project.fwdata"), "1.0",
             new SIL.Motif.Commands.NoRunnerLauncher(new SIL.Motif.Commands.JobRunnerLaunchOptions("root", null)),
             new ActivityLog(null), ToolProfile.Builtin, TextWriter.Null);
         var tools = MotifMcpServer.Expose(ToolProfile.Builtin);
 
-        var result = await MotifMcpServer.CallAsync(context, tools, "motif_proposals", null, CancellationToken.None);
+        var result = await MotifMcpServer.CallAsync(context, tools, "motif_proposals", new Dictionary<string, JsonElement>
+            { ["project"] = JsonSerializer.SerializeToElement(context.ProjectPath) }, CancellationToken.None);
 
         Assert.True(result.IsError);
-        Assert.Equal("project.not-found", result.StructuredContent!.Value.GetProperty("code").GetString());
+        Assert.Equal("project.unknown", result.StructuredContent!.Value.GetProperty("code").GetString());
         Assert.Contains("Next:", ((ModelContextProtocol.Protocol.TextContentBlock)result.Content[0]).Text);
     }
 }

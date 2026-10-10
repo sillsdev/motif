@@ -402,6 +402,9 @@ public static class ParsimonyCommands
         });
     }
 
+    internal const string ReportBaselineMismatch =
+        "The Report was measured from a different Baseline. Run the measure again against the current Baseline.";
+
     /// <summary>Composes a disposition from one exact finding in the current project's stored Report.</summary>
     public static CommandOutcome<ComposedOperationsResponse> RecordDisposition(
         RecordParsimonyDispositionFromFindingRequest request)
@@ -425,11 +428,15 @@ public static class ParsimonyCommands
             if (!stored.Succeeded) return CommandOutcome<ComposedOperationsResponse>.Refused(stored.Refusal!);
 
             var workspaceKey = ProjectWorkspaceKey.Compute(project);
-            var current = new BaselineRepository(database).GetCurrent(workspaceKey);
-            if (current is null || current.Token != stored.Value!.Inputs.BaselineToken)
+            var baselines = new BaselineRepository(database);
+            var current = baselines.GetCurrent(workspaceKey);
+            var evidenceIsCurrent = current is not null && current.Token == stored.Value!.Inputs.BaselineToken;
+            // A Report measured just before an Apply may still confirm its decision was recorded; it stages nothing.
+            var measuredBeforeApply = !evidenceIsCurrent &&
+                baselines.GetLatestCaptured(workspaceKey)?.Token == stored.Value!.Inputs.BaselineToken;
+            if (!evidenceIsCurrent && !measuredBeforeApply)
                 return Refused<ComposedOperationsResponse>("parsimony.report-baseline-mismatch",
-                    FailureReason.Refused,
-                    "The Report was measured from a different Baseline. Run the measure again against the current Baseline.");
+                    FailureReason.Refused, ReportBaselineMismatch);
 
             var matches = stored.Value.Findings.Where(item =>
                 string.Equals(item.FindingId, request.FindingId, StringComparison.Ordinal)).ToArray();
@@ -445,7 +452,7 @@ public static class ParsimonyCommands
             var finding = matches[0];
 
             return ProposalCommands.ComposeRecordParsimonyDispositionFromFinding(
-                database, project, request, stored.Value, finding);
+                database, project, request, stored.Value, finding, evidenceIsCurrent);
         });
     }
 

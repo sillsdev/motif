@@ -1,0 +1,14 @@
+{
+  "name": "motif",
+  "plugins": [
+    {
+      "name": "motif",
+      "source": {
+        "source": "local",
+        "path": "./"
+      },
+      "description": "FieldWorks expertise and safe Motif Proposal workflows.",
+      "version": "0.2.0"
+    }
+  ]
+}

@@ -27,7 +27,8 @@ _Avoid_: compilation, translation, expansion
 **Proposal**:
 A stored, named set of Motif operations that is reviewable as one unit. It owns its attached
 Assessments, has a lifecycle, and can be applied to a language project or discarded. A Proposal does
-not combine unrelated changes.
+not combine unrelated changes, and belongs to exactly one project: the same change in two projects is
+two Proposals, each Applied on its own.
 _Avoid_: PR, change set, change group, patch, branch
 
 **Draft**:
@@ -36,6 +37,12 @@ Finalizing does not move it anywhere — it commits the first immutable revision
 Proposal's state. A Draft is therefore a phase of a Proposal's life, never a separate thing kept
 somewhere else ([ADR 0041](docs/adr/0041-the-database-is-the-only-store.md) decision 3).
 _Avoid_: working copy, staging area, scratch proposal, uncommitted proposal
+
+**Finalize**:
+To commit a Draft's content as the Proposal's first immutable revision, handing it to a person to review.
+Finalizing is not needed to measure a Proposal: a Draft can be Dry Run and Trialled as often as its author
+likes.
+_Avoid_: finish, submit, commit, publish
 
 **Construct**:
 One of the ~30 grammar things a Proposal can be about — a stratum, a natural class, an affix template,
@@ -157,7 +164,9 @@ _Avoid_: diff, delta, grammar delta, score change, improvement
 **Dry Run**:
 What a Proposal would do, computed by applying it to a throwaway copy of the project and reading the
 effects back from the engine — never by predicting them. The live model is not mutated
-([ADR 0016](docs/adr/0016-scratch-cache-copy-not-undo.md)).
+([ADR 0016](docs/adr/0016-scratch-cache-copy-not-undo.md)). A Draft can be Dry Run as well as a revision;
+the result is identified by the content it ran against, so editing the Draft afterwards leaves it describing
+the earlier content.
 _Avoid_: assessment, preview, plan, simulation
 
 **Baseline**:
@@ -193,7 +202,9 @@ _Avoid_: approval, sign-off, review, gate
 
 **Drift**:
 The condition where the project has moved since a Dry Run was computed, so the Dry Run no longer
-describes what applying the Proposal would do.
+describes what applying the Proposal would do. Applying one Proposal drifts every other Proposal's
+evidence that was measured against the earlier state; evidence counts only for the same content and the same
+project state. Finalizing unchanged content does not drift it.
 A single change drifts too, when FieldWorks has saved since and something it was made against is gone or
 different. The window says such a change "no longer fits".
 _Avoid_: staleness, conflict, merge failure
@@ -402,6 +413,12 @@ Motif's internals; a separate FieldWorks still only ever runs a `motif` verb and
 wire protocol.
 _Avoid_: wire protocol, worker protocol, endpoint, RPC
 
+**Advanced AI mode**:
+An installation-wide choice a person makes to let AI agents work on their projects through Motif. While it
+is off, Motif offers agents no tools at all. An agent working under it may read, draft, Dry Run, Trial and
+Finalize, but never Apply: Apply is always a person's act.
+_Avoid_: AI mode, agent mode, MCP mode
+
 **Text**:
 FieldWorks' term, kept for FieldWorks' meaning: an interlinearised document **in the language project**.
 Never used for a Corpus or a Document, which Motif holds and FieldWorks does not.
@@ -528,6 +545,72 @@ _Avoid_: article, manual page, docs page
 A declarative script of steps against the real window on fixed data. One Walkthrough is at once a test,
 the screenshots of its marked steps, and a short silent clip with a caption per step.
 _Avoid_: demo, tour, scenario, recording, tutorial
+
+## Evaluating agents
+
+**Episode**:
+One agent's work on one task, from a fresh copy of the project to its frozen final state. A comparison runs
+many Episodes per task and arm. Inside an Episode the agent may run many Trials of its own Proposal.
+_Avoid_: trial, attempt, sample, run
+
+**Arm**:
+One side of a comparison: a model at an effort level, an MCP profile, and a version of the shipped skills.
+Two arms differ in one thing, and only that thing is being measured.
+_Avoid_: variant, config, condition, branch
+
+**Hold**:
+The verdict on a change whose evidence does not settle it: it is not shipped, and the record says what
+evidence would settle it. Running more Episodes until a change wins is not a way out of Hold.
+_Avoid_: inconclusive pass, soft accept, neutral
+
+**Oracle**:
+A versioned recipe — these reference materials, these models at this effort, these rules — that produces
+answer keys and rulings for agent tasks. Every key or ruling is cited with the Oracle version that produced
+it. It is the best judgement available, not the truth, and a person checks a sample of each version's
+rulings before it is used, after a devil's advocate has tried to break each key. The model under test may
+sit on the Oracle; a result says when it did.
+_Avoid_: oracle pass, gold model, ground truth
+
+**Judge**:
+A fixed pair of big models from different families that decide, each independently, whether a free-text
+answer meets each point of its key and breaks none of its prohibitions, quoting the answer for every point
+they find. The same pair judges every arm. When they agree, that is the verdict; when they disagree, the
+answer is unscored until a person rules. The pair qualifies by agreeing with the Oracle's rulings, and a
+result names the Oracle version it was judged against. In the big-tier release check, the other family's
+model judges alone and the record marks the verdict "single judge"; a person reviews every failure and
+every task whose outcome changed since the previous release check.
+_Avoid_: grader, evaluator, scorer
+
+**Agent failure**:
+An Episode that ends without a correct result for a reason the agent owns: a wrong or unappliable
+answer, an invented identity, or running out of its budget while still working. Scored as a failure.
+_Avoid_: infrastructure failure, error
+
+**Cloud failure**:
+An Episode cut short because the model service failed or stalled. Retried; never counted against the agent.
+_Avoid_: infrastructure failure, timeout, outage
+
+**Harness defect**:
+An Episode cut short because Motif, the parser, the grader or the isolation around them failed. Never
+counted against the agent, and the task stays out of comparisons until the defect is fixed.
+_Avoid_: infrastructure failure, flake
+
+**Agent budget**:
+The time, turns and tokens an agent may spend on one task. Time spent waiting on a stalled model service
+does not count against it.
+_Avoid_: wall limit, timeout
+
+**Price to solve**:
+Everything an arm spent on its scored Episodes divided by the number it solved, so failed Episodes count
+against it. The headline cost of an arm; average cost per Episode is reported beside it for comparison
+with published leaderboards.
+_Avoid_: cost per success, cost-of-pass
+
+**Validity**:
+The evidence that every task and grader works against the exact product, parser, profiles and task sets an
+experiment will run: gold answers pass, empty and tempting wrong answers fail. It is established again
+whenever any of those changes, before an agent is run.
+_Avoid_: self-check, smoke test, sanity check
 
 ## The FieldWorks skills
 

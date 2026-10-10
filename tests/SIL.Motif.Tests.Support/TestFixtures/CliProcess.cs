@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Catalog;
+using SIL.Motif.Commands.Preferences;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Worker;
@@ -13,6 +14,14 @@ namespace SIL.Motif.Tests.TestFixtures;
 public static class CliProcess
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(60);
+
+    /// <summary>Enables Advanced AI mode for one CLI fixture without changing the test process's preference.</summary>
+    public static void EnableAdvancedAiMode(ProcessStartInfo start, string preferenceDirectory)
+    {
+        var path = Path.Combine(preferenceDirectory, "advanced-ai-mode-enabled.json");
+        new FileAdvancedAiModePreferenceStore(path).SetEnabled(true);
+        start.Environment[FileAdvancedAiModePreferenceStore.PathEnvironmentVariable] = path;
+    }
 
     public static ProcessStartInfo CreateStartInfo(
         string workerRoot, string? parserPath, bool developerCommands, params string[] arguments)

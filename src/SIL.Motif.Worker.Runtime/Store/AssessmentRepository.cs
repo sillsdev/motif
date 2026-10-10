@@ -87,8 +87,8 @@ public interface IAssessmentRepository
 /// One Assessment ready to record: its identity, Assessor, kind, scope and digests, and the words and
 /// analyses it produced. <see cref="ProposalId"/> and <see cref="ProposalIntentDigest"/> are both null for
 /// an Assessment that measures the project itself rather than a candidate Proposal (a Baseline run).
-/// <see cref="ProposalIntentDigest"/> alone is null when the Proposal it measured was an uncommitted
-/// draft, which has no revision to pin to and so cites the draft's content digest instead.
+/// An unfinalized Draft uses its normalized content digest in <see cref="ProposalIntentDigest"/>;
+/// Finalize of unchanged content has the same evidence identity.
 /// </summary>
 public sealed record NewAssessmentRecord(
     string AssessmentId,

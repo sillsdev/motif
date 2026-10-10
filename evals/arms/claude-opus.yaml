@@ -1,0 +1,8 @@
+{
+  "id": "claude-opus",
+  "host": "claude",
+  "model": "opus",
+  "effort": "high",
+  "authMode": "claude-plan",
+  "server": { "ref": "HEAD", "profile": "default", "grade_profile": "profiles/mcp-default-grade.json" }
+}

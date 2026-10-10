@@ -174,7 +174,7 @@ public sealed class WorkflowShellTests
                 var entries = SidebarEntries(window);
                 Assert.Equal(
                     ["Overview page", "Texts page", "Try a Word page", "Timing page", "Warnings page",
-                        "Parsimony page", "Review changes page", "AI Handoff page"],
+                        "Parsimony page", "Review changes page", "AI Handoff page", "AI assistants page"],
                     entries.Select(AutomationProperties.GetName));
 
                 foreach (var page in Enum.GetValues<WorkspacePage>().Reverse())

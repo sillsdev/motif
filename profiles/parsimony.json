@@ -9,7 +9,7 @@
     { "tool": "motif_dispose_parsimony_finding" },
     { "tool": "motif_record_parsimony_disposition" },
     { "tool": "motif_dry_run" },
-    { "tool": "motif_finish_proposal" },
+    { "tool": "motif_finalize_proposal" },
     { "tool": "motif_proposals" }
   ]
 }

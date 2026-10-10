@@ -2,8 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using SIL.Motif.Commands;
+using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Requests;
+using SIL.Motif.Contract;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Responses;
@@ -11,6 +14,8 @@ using SIL.Motif.Host.Config;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Tests.TestFixtures;
+using SIL.Motif.Worker.Baselines;
+using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker.Store;
 using Xunit;
 
@@ -20,7 +25,7 @@ namespace SIL.Motif.Tests.Cli;
 /// The trap ADR 0042's Trial amendment names, driven through the real <c>apply</c> verb on a real project:
 /// applying promotes the Proposal's candidate Assessment to current, and a sweep of the Proposal's own
 /// working Assessments must not take the promoted one with it. Also covers regression gating (ADR 0042
-/// decision 5) — off by default, blocking when configured, and an override recorded as a Decision.
+/// decision 5), including the default refusal and an explicit forced Apply.
 /// </summary>
 [Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group3)]
 public sealed class ApplyPromotionGatingAndSweepTests
@@ -94,6 +99,43 @@ public sealed class ApplyPromotionGatingAndSweepTests
         Assert.Equal(FailureReason.Refused, result.Refusal.Reason);
         Assert.Contains("not ready to apply", result.Refusal.Message, StringComparison.Ordinal);
         Assert.Equal("proposed", GetRecord(proposalId).Status);
+    }
+
+    [Fact]
+    public void FreshBaselineEvidenceGatesARegressionBeforeAnyAssessmentIsPromoted()
+    {
+        var proposalId = FinalizeAndTrial("baseline-regression", "baseline regression gloss");
+        var intentDigest = GetRecord(proposalId).IntentDigest!;
+        RecordAssessment(null, null, "Correctness", ("alpha", true));
+        RecordAssessment(proposalId, intentDigest, "Correctness", ("alpha", false));
+        Assert.Null(GetCurrentAssessmentId());
+
+        var result = ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, proposalId, "tester"));
+
+        Assert.False(result.Succeeded);
+        Assert.Equal("apply.regression", result.Refusal!.Code);
+        Assert.Contains("alpha", result.Refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RecapturingUnchangedStateKeepsMeasuredEvidenceReadyToApply()
+    {
+        var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(_fwDataPath));
+        Assert.True(captured.Succeeded, captured.Refusal?.Message);
+        var proposalId = FinalizeAndTrial("recaptured-evidence", "recaptured evidence gloss");
+        RecordAssessment(proposalId, GetRecord(proposalId).IntentDigest!, "Correctness", ("alpha", true));
+        using var database = ProjectMotifDatabase.Open(_fwDataPath);
+        var projectKey = ProjectWorkspaceKey.Compute(new ProjectLocator(_fwDataPath,
+            Path.GetFileNameWithoutExtension(_fwDataPath)));
+        var before = new BaselineRepository(database).GetCurrent(projectKey)!.Token;
+        var recaptured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(_fwDataPath));
+        Assert.True(recaptured.Succeeded, recaptured.Refusal?.Message);
+        var after = new BaselineRepository(database).GetCurrent(projectKey)!.Token;
+        Assert.Equal(before.SemanticIdentity, after.SemanticIdentity);
+
+        var result = ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, proposalId, "tester"));
+
+        Assert.True(result.Succeeded, result.Refusal?.Message);
     }
 
     [Fact]
@@ -231,10 +273,10 @@ public sealed class ApplyPromotionGatingAndSweepTests
 
     private string RecordAssessment(
         string? proposalId, string? intentDigest, string kind, params (string Word, bool Analysed)[] words) =>
-        RecordAssessment(proposalId, intentDigest, kind, "{}", words);
+        RecordAssessment(proposalId, intentDigest, kind, null, words);
 
     private string RecordAssessment(
-        string? proposalId, string? intentDigest, string kind, string baselineToken,
+        string? proposalId, string? intentDigest, string kind, string? baselineToken,
         params (string Word, bool Analysed)[] words)
     {
         var selection = Selection.Create("test", words.Select(w => w.Word));
@@ -244,6 +286,9 @@ public sealed class ApplyPromotionGatingAndSweepTests
             .ToArray();
 
         using var database = ProjectMotifDatabase.Open(_fwDataPath);
+        var project = new ProjectLocator(_fwDataPath, Path.GetFileNameWithoutExtension(_fwDataPath));
+        baselineToken ??= JsonSerializer.Serialize(new BaselineRepository(database)
+            .GetCurrent(ProjectWorkspaceKey.Compute(project))!.Token, MotifJson.CreateOptions());
         new AssessmentRepository(database).Record(new NewAssessmentRecord(
             AssessmentId: assessmentId,
             ProposalId: proposalId is null ? null : CanonicalId.Parse(proposalId),

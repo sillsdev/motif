@@ -11,6 +11,8 @@ namespace SIL.Motif.Tests.LibLcm.Projection;
 public sealed class ParsimonyDispositionQueryTests
 {
     private static readonly string ProjectId = Id();
+    private static readonly string SubjectId = Id();
+    private const string MeasureId = "P-adhoc-duplicate";
 
     [Theory]
     [InlineData(ParsimonyDispositionKind.Keep, "suppressed")]
@@ -59,7 +61,7 @@ public sealed class ParsimonyDispositionQueryTests
             new JudgmentObject("MoAffixAllomorph", CanonicalId.FromGuid(second).Value),
         ]);
         var judgment = NewJudgment(Id(), [], new DispositionJudgment(group, measureId,
-            ParsimonyDispositionKind.Keep, FindingDigest, "contract-v1", "duplicate forms", "Duplicate forms"),
+            ParsimonyDispositionKind.Keep, FindingDigest, MeasureCatalog.Find(measureId)!.QueryId!, "duplicate forms", "Duplicate forms"),
             "reviewed duplicate pair");
 
         var result = Query([judgment], finding);
@@ -68,6 +70,20 @@ public sealed class ParsimonyDispositionQueryTests
         Assert.Equal("reviewed duplicate pair", Assert.Single(result.Findings).Reason);
         Assert.Equal(1, result.SuppressedCount);
         Assert.Equal("suppressed", Assert.Single(result.History).State);
+    }
+
+    [Fact]
+    public void AnIncompatibleContractResurfacesEvenWhenTheDigestMatches()
+    {
+        var keep = Disposition([], ParsimonyDispositionKind.Keep, "earlier detector", evidence: FindingDigest);
+        keep = keep with { Body = Assert.IsType<DispositionJudgment>(keep.Body) with { EvidenceContract = "older-detector/v1" } };
+
+        var result = Query([keep], Finding());
+
+        Assert.Equal("resurfaced", Assert.Single(result.Findings).State);
+        Assert.Equal("earlier detector", Assert.Single(result.Findings).Reason);
+        Assert.Equal(0, result.SuppressedCount);
+        Assert.Equal("resurfaced", Assert.Single(result.History).State);
     }
 
     [Fact]
@@ -211,8 +227,9 @@ public sealed class ParsimonyDispositionQueryTests
     }
 
     private static ParsimonyFinding Finding(string evidence = FindingDigest) => new(
-        "P-test:item", "P-test", ParsimonyAxis.Parsimony, ParsimonyTier.Static,
-        new ParsimonyFindingAttachment(ParsimonyAttachmentKind.Project, ProjectId), null,
+        MeasureId + ":item", MeasureId, ParsimonyAxis.Parsimony, ParsimonyTier.Static,
+        new ParsimonyFindingAttachment(ParsimonyAttachmentKind.AuthoredObject, SubjectId,
+            ParsimonyAuthoredObjectKind.AdhocProhibition), null,
         new ParsimonyMeasureNumber(1, 1, "items"),
         new ParsimonyMeasureThreshold(ParsimonyThresholdOperator.RankedOnly, null, "1"),
         evidence, [], "P-test", [], ParsimonyVerification.NotRun);
@@ -223,8 +240,8 @@ public sealed class ParsimonyDispositionQueryTests
     private static HumanJudgment Disposition(IReadOnlyList<JudgmentPredecessor> replaces,
         ParsimonyDispositionKind disposition, string? reason, string? judgmentId = null,
         string evidence = FindingDigest) => NewJudgment(judgmentId ?? Id(), replaces,
-        new DispositionJudgment(new ProjectJudgmentSubject(ProjectId), "P-test", disposition, evidence,
-            "contract-v1", "sample subject", "Sample measure",
+        new DispositionJudgment(new ObjectJudgmentSubject(new JudgmentObject("MoAlloAdhocProhib", SubjectId)),
+            MeasureId, disposition, evidence, MeasureCatalog.Find(MeasureId)!.QueryId!, "sample subject", "Sample measure",
             disposition == ParsimonyDispositionKind.Ask ? "Should this remain active?" : null), reason);
 
     private static HumanJudgment NewJudgment(string judgmentId, IReadOnlyList<JudgmentPredecessor> replaces,

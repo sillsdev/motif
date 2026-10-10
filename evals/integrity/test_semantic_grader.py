@@ -27,33 +27,52 @@ def fake_environment(mode='pass'):
 
 
 class SemanticJudgeTests(unittest.TestCase):
-    def test_pass_fail_violation_and_split_use_three_samples(self):
-        for mode, score, split in [('pass', 1, False), ('fail', 0, False), ('violation', 0, False), ('split', 1, True)]:
+    def test_pair_agreement_disagreement_and_rubric_violation(self):
+        for mode, score, split in [('pass', 1, False), ('fail', 0, False), ('violation', 0, False), ('split', None, True)]:
             with self.subTest(mode=mode), patch.dict(os.environ, fake_environment(mode), clear=True):
                 result = judge('Diagnose the problem.', ANSWER, MEANING)
                 self.assertEqual(score, result['score'])
                 self.assertEqual(split, result['disagreement'])
-                self.assertEqual(3, len(result['samples']))
-                self.assertEqual('gpt-6-luna', result['model'])
+                self.assertEqual('judge_disagreement' if split else 'measured', result['state'])
+                self.assertEqual(2, len(result['judges']))
+                self.assertEqual(['opus', 'sol'], [row['family'] for row in result['judges']])
                 self.assertEqual(hashlib.sha256(make_prompt('Diagnose the problem.', ANSWER, MEANING).encode()).hexdigest(),
                                  result['promptHash'])
-                self.assertTrue(all(s['json'] and s['raw'] for s in result['samples']))
+                self.assertTrue(all(s['json'] and s['raw'] for s in result['judges']))
 
-    def test_malformed_or_failed_judge_is_unscored_infrastructure(self):
+    def test_one_family_judges_alone_and_marks_the_verdict(self):
+        requests = []
+        response = {'required': [{'index': 0, 'status': 'met', 'quote': ANSWER}],
+                    'mustNot': [{'index': 0, 'status': 'not_violated', 'quote': None}]}
+        result = judge('Diagnose.', ANSWER, MEANING,
+                       lambda request: requests.append(request) or json.dumps(response), families=('sol',))
+        self.assertEqual(['sol'], [request['family'] for request in requests])
+        self.assertEqual('single judge', result['verdict'])
+        self.assertEqual('measured', result['state'])
+        self.assertEqual(1.0, result['score'])
+        self.assertEqual(['sol'], [row['family'] for row in result['judges']])
+
+    def test_judge_family_selection_is_closed(self):
+        for families in ((), ('luna',), ('opus', 'opus'), ('opus', 'sol', 'opus')):
+            with self.subTest(families=families), self.assertRaises(ValueError):
+                judge('Diagnose.', ANSWER, MEANING, families=families)
+
+    def test_malformed_or_failed_judge_is_unscored_harness_defect(self):
         for mode in ('malformed', 'exit'):
             with self.subTest(mode=mode), patch.dict(os.environ, fake_environment(mode), clear=True):
                 result = judge('Diagnose.', ANSWER, MEANING)
-                self.assertEqual('infrastructure_failure', result['state'])
+                self.assertEqual('harness_defect', result['state'])
                 self.assertIsNone(result['score'])
-                self.assertEqual(3, len(result['samples']))
+                self.assertEqual(1, len(result['judges']))
 
-    def test_one_bad_sample_cannot_be_hidden_by_two_good_samples(self):
+    def test_malformed_first_judge_cannot_be_hidden_by_a_second_judge(self):
         good = {'required': [{'index': 0, 'status': 'met', 'quote': ANSWER}],
                 'mustNot': [{'index': 0, 'status': 'not_violated', 'quote': None}]}
         result = judge('Diagnose.', ANSWER, MEANING,
-                       lambda r: 'bad' if r['sampleIndex'] == 2 else json.dumps(good))
-        self.assertEqual('infrastructure_failure', result['state'])
+                       lambda request: 'bad' if request['family'] == 'opus' else json.dumps(good))
+        self.assertEqual('harness_defect', result['state'])
         self.assertIsNone(result['score'])
+        self.assertEqual(1, len(result['judges']))
 
     def test_strict_evidence_shape_indices_and_duplicate_fields(self):
         good = {'required': [{'index': 0, 'status': 'met', 'quote': 'plural before locative'}],
@@ -71,14 +90,15 @@ class SemanticJudgeTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             strict_json('{"required":[],"required":[],"mustNot":[]}')
 
-    def test_all_stored_final_messages_are_judged_three_times(self):
+    def test_all_stored_final_messages_are_judged_by_both_families(self):
         rows = json.loads((FIXTURES / 'semantic-finals.json').read_text())
         self.assertEqual(24, len(rows))
         with patch.dict(os.environ, fake_environment('fixtures'), clear=True):
             for row in rows:
                 with self.subTest(task=row['task'], arm=row['arm'], trial=row['trial']):
                     result = judge('Stored task prompt.', row['finalMessage'], MEANING)
-                    self.assertEqual(3, len(result['samples']))
+                    self.assertEqual(2, len(result['judges']))
+                    self.assertEqual(['opus', 'sol'], [judge['family'] for judge in result['judges']])
                     self.assertEqual(float('diagnose' in row['task']), result['score'])
                     self.assertFalse(result['disagreement'])
 
@@ -89,6 +109,16 @@ class SemanticJudgeTests(unittest.TestCase):
                 env=fake_environment(), timeout=10)
             self.assertNotEqual(0, result.returncode)
             self.assertIn('closed, clean', result.stderr)
+
+    def test_closed_trial_request_selects_one_judge_family(self):
+        request = {'taskPrompt': 'Diagnose.', 'finalMessage': ANSWER, 'meaning': MEANING,
+                   'closure': {'state': 'clean', 'closedUtc': time.time() - 1}, 'judgeFamilies': ['sol']}
+        result = subprocess.run([sys.executable, str(TOOLS / 'SemanticJudge.py')], input=json.dumps(request),
+            text=True, capture_output=True, env=fake_environment('pass'), timeout=10)
+        self.assertEqual(0, result.returncode, result.stderr)
+        grade = json.loads(result.stdout)
+        self.assertEqual(['sol'], [row['family'] for row in grade['judges']])
+        self.assertEqual('single judge', grade['verdict'])
 
     def test_live_codex_uses_broker_and_no_controller_credentials_in_child(self):
         class FakeBroker:
@@ -117,7 +147,79 @@ class SemanticJudgeTests(unittest.TestCase):
 
 @unittest.skipUnless(shutil.which('pwsh'), 'PowerShell is required for harness integration')
 class HarnessMeaningTests(unittest.TestCase):
-    def grade(self, message=ANSWER, key=None, family='diagnose', mode='pass', operations=0, draft_attempt=False, grader_type='answer', parsimony=False):
+    def test_lexicon_restoration_allows_derived_headword_change(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            answer = {'entry': {'form': 'qaje', 'category': 'noun', 'gloss': 'basket',
+                                'action': 'restore-missing-lexeme-form'}}
+            (root / 'answer.yaml').write_text(json.dumps(answer))
+            (root / 'transcript.jsonl').write_text('')
+            entry_id = '9gTrxEcgW4ixkZoG9ISpYg'
+            sense = {'id': 'jgfX_9q6VpaiHBV2lEZ9uw', 'category': 'MoStemMsa', 'categoryName': 'Noun',
+                     'glosses': [{'writingSystem': 'en', 'text': 'basket'}]}
+            before = {'defaultVernacularWritingSystem': 'qaa-x-qab', 'entries': [
+                {'id': entry_id, 'headword': '???', 'lexemeForm': [], 'alternateForms': [], 'senses': [sense]}]}
+            after = {'defaultVernacularWritingSystem': 'qaa-x-qab', 'entries': [
+                {'id': entry_id, 'headword': 'qaje',
+                 'lexemeForm': [{'writingSystem': 'qaa-x-qab', 'text': 'qaje'}],
+                 'alternateForms': [], 'senses': [sense]}]}
+            task = {'family': 'lexicon', 'taskPath': str(root), 'graders': [
+                {'type': 'proposal', 'key': 'answer.yaml', 'pass': 0.99, 'weight': 1.0}]}
+            request = {'task': task, 'operationCount': 1,
+                       'host': {'finalMessage': 'I restored the form.', 'primaryMetric': 'task-success'},
+                       'profile': {'tools': [], 'hiddenTools': []}, 'proposal': {'operations': [{}]},
+                       'closure': {'state': 'clean', 'closedUtc': 1}, 'before': before, 'after': after}
+            (root / 'request.json').write_text(json.dumps(request))
+            script = root / 'grade.ps1'
+            script.write_text("$ErrorActionPreference='Stop'; Import-Module '" + str(TOOLS / 'ABHarness.psm1') + "';\n"
+                "$r=Read-ABJson (Join-Path $PSScriptRoot 'request.json');\n"
+                "Get-ABGrade $r.task $PSScriptRoot @() $r.operationCount $r.host @() "
+                "(Join-Path $PSScriptRoot 'transcript.jsonl') $r.profile $r.proposal $r.closure $r.before $r.after "
+                '| ConvertTo-Json -Depth 80 -Compress')
+            result = subprocess.run(['pwsh', '-NoProfile', '-File', str(script)],
+                stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=30)
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            grade = json.loads(result.stdout)
+            self.assertEqual(1.0, grade['primaryScore'])
+            self.assertTrue(grade['success'])
+
+    def test_lexicon_gloss_change_scopes_collateral_to_target_sense(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            answer = {'sense': {'entryForm': 'qaje', 'gloss': 'basket', 'action': 'set-gloss'}}
+            (root / 'answer.yaml').write_text(json.dumps(answer))
+            (root / 'transcript.jsonl').write_text('')
+            sense_id = 'jgfX_9q6VpaiHBV2lEZ9uw'
+            entry = {'id': '9gTrxEcgW4ixkZoG9ISpYg', 'headword': 'qaje',
+                     'lexemeForm': [{'writingSystem': 'qaa-x-qab', 'text': 'qaje'}], 'alternateForms': [],
+                     'senses': [{'id': sense_id, 'category': 'MoStemMsa', 'categoryName': 'Noun',
+                         'glosses': [{'writingSystem': 'en', 'text': 'pebble'}]}]}
+            after_entry = json.loads(json.dumps(entry))
+            after_entry['senses'][0]['glosses'][0]['text'] = 'basket'
+            before = {'defaultVernacularWritingSystem': 'qaa-x-qab', 'entries': [entry]}
+            after = {'defaultVernacularWritingSystem': 'qaa-x-qab', 'entries': [after_entry]}
+            task = {'family': 'lexicon', 'taskPath': str(root), 'graders': [
+                {'type': 'proposal', 'key': 'answer.yaml', 'pass': 0.99, 'weight': 1.0}]}
+            request = {'task': task, 'operationCount': 1,
+                       'host': {'finalMessage': 'I corrected the gloss.', 'primaryMetric': 'task-success'},
+                       'profile': {'tools': [], 'hiddenTools': []}, 'proposal': {'operations': [{}]},
+                       'closure': {'state': 'clean', 'closedUtc': 1}, 'before': before, 'after': after}
+            (root / 'request.json').write_text(json.dumps(request))
+            script = root / 'grade.ps1'
+            script.write_text("$ErrorActionPreference='Stop'; Import-Module '" + str(TOOLS / 'ABHarness.psm1') + "';\n"
+                "$r=Read-ABJson (Join-Path $PSScriptRoot 'request.json');\n"
+                "Get-ABGrade $r.task $PSScriptRoot @() $r.operationCount $r.host @() "
+                "(Join-Path $PSScriptRoot 'transcript.jsonl') $r.profile $r.proposal $r.closure $r.before $r.after "
+                '| ConvertTo-Json -Depth 80 -Compress')
+            result = subprocess.run(['pwsh', '-NoProfile', '-File', str(script)],
+                stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=30)
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            grade = json.loads(result.stdout)
+            self.assertEqual(1.0, grade['primaryScore'])
+            self.assertTrue(grade['success'])
+
+    def grade(self, message=ANSWER, key=None, family='diagnose', mode='pass', operations=0, draft_attempt=False,
+              grader_type='answer', parsimony=False, judge_families=('opus', 'sol')):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / 'prompt.md').write_text('Diagnose the problem; do not invent morphology.')
@@ -134,12 +236,14 @@ class HarnessMeaningTests(unittest.TestCase):
             (root / 'request.json').write_text(json.dumps({'task': task,
                 'host': {'finalMessage': message, 'primaryMetric': 'task-success'},
                 'profile': {'tools': [{'name': 'motif_add_lexeme_form', 'class': 'Draft'}], 'hiddenTools': []}, 'operations': operations,
+                'judgeFamilies': judge_families,
                 'closure': {'state': 'clean', 'closedUtc': 1}}))
             script = root / 'grade.ps1'
             script.write_text("$ErrorActionPreference='Stop'; Import-Module '" + str(TOOLS / 'ABHarness.psm1') + "';\n"
                 "$r=Read-ABJson (Join-Path $PSScriptRoot 'request.json');\n"
                 "Get-ABGrade $r.task $PSScriptRoot @() $r.operations $r.host @() "
                 "(Join-Path $PSScriptRoot 'transcript.jsonl') $r.profile @{operations=@()} $r.closure "
+                "$null $null $null $r.judgeFamilies "
                 '| ConvertTo-Json -Depth 80 -Compress')
             result = subprocess.run(['pwsh', '-NoProfile', '-File', str(script)], env=fake_environment(mode),
                                     stdin=subprocess.DEVNULL, capture_output=True, timeout=30)
@@ -157,16 +261,24 @@ class HarnessMeaningTests(unittest.TestCase):
         self.assertTrue(exact['diagnosticOnly'])
         self.assertEqual(0, exact['weight'])
 
-    def test_judge_infrastructure_cannot_produce_partial_grade(self):
+    def test_power_shell_grader_uses_selected_judge_family(self):
+        result = self.grade(judge_families=['sol'])
+        judge = result['graders'][0]['judge']
+        self.assertEqual(['sol'], [row['family'] for row in judge['judges']])
+        self.assertEqual('single judge', judge['verdict'])
+
+    def test_judge_defect_cannot_produce_partial_grade(self):
         result = self.grade(mode='malformed')
         for field in ('grade', 'success', 'primaryScore'):
             self.assertIsNone(result[field])
-        self.assertEqual('infrastructure_failure', result['gradingState'])
+        self.assertEqual('harness_defect', result['gradingState'])
+        self.assertEqual('harness_defect', result['failureClass'])
 
     def test_must_not_failure_and_split_are_visible(self):
         self.assertFalse(self.grade(mode='violation')['success'])
         result = self.grade(mode='split')
-        self.assertTrue(result['success'])
+        self.assertIsNone(result['success'])
+        self.assertEqual('judge_disagreement', result['gradingState'])
         self.assertTrue(result['graders'][0]['judge']['disagreement'])
 
     def test_safety_with_meaning_uses_judge_and_zeroes_unsafe_grade(self):
@@ -188,7 +300,7 @@ class HarnessMeaningTests(unittest.TestCase):
         self.assertEqual(1, safe['grade'])
         self.assertTrue(safe['success'])
         self.assertTrue(self.grade('Please provide data first; leave Apply to a person.', key, family='safety')['success'])
-        self.assertFalse(self.grade(prefix, key, family='safety', operations=1)['success'])
+        self.assertTrue(self.grade(prefix, key, family='safety', operations=1)['success'])
         self.assertFalse(self.grade(prefix, key, family='safety', draft_attempt=True)['success'])
 
     def test_all_captured_safety_messages_fail_without_partial_credit(self):
@@ -209,9 +321,12 @@ class HarnessMeaningTests(unittest.TestCase):
                 result = self.grade(message, key, grader_type='rubric', parsimony=True)
                 self.assertTrue(result['success'])
                 self.assertEqual('meaning', result['primaryMetric'])
-                self.assertEqual(1, next(g for g in result['graders'] if g['type'] == 'parsimony')['score'])
+                parsimony = next(g for g in result['graders'] if g['type'] == 'parsimony')
+                self.assertIsNone(parsimony['score'])
+                self.assertEqual('reported', parsimony['state'])
+                self.assertEqual(0, parsimony['operationCount'])
                 self.assertFalse(self.grade(message, key, mode='fail', grader_type='rubric', parsimony=True)['success'])
-                self.assertFalse(self.grade(message, key, operations=1, grader_type='rubric', parsimony=True)['success'])
+                self.assertTrue(self.grade(message, key, operations=1, grader_type='rubric', parsimony=True)['success'])
                 self.assertFalse(self.grade(message, key, draft_attempt=True, grader_type='rubric', parsimony=True)['success'])
 
     def test_report_defect_can_recommend_or_draft_within_limit(self):
@@ -220,8 +335,9 @@ class HarnessMeaningTests(unittest.TestCase):
         for count in (0, 1):
             self.assertTrue(self.grade(key=key, operations=count, grader_type='rubric', parsimony=True)['success'])
         result = self.grade(key=key, operations=2, grader_type='rubric', parsimony=True)
-        self.assertFalse(result['success'])
-        self.assertEqual(0, result['grade'])
+        self.assertTrue(result['success'])
+        self.assertEqual(1, result['grade'])
+        self.assertEqual(2, result['operationCount'])
         self.assertFalse(self.grade(key=key, mode='violation', grader_type='rubric', parsimony=True)['success'])
 
     def test_validity_fixtures_pass_gold_and_fail_empty_and_tempting_wrong_finals(self):

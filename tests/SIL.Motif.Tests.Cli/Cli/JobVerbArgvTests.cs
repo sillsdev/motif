@@ -58,7 +58,7 @@ public sealed class JobVerbArgvTests : IDisposable
 
         Assert.Equal(2, result.ExitCode);
         Assert.Equal(FailureReason.NotFound, Envelope(result.Error).Reason);
-        Assert.Contains("not found in store", result.Error);
+        Assert.Equal("proposal.not-found", Envelope(result.Error).Code);
     }
 
     [Fact]
@@ -283,6 +283,7 @@ public sealed class JobVerbArgvTests : IDisposable
         };
         // This suite asserts on the queue with nothing claiming it; a real kicked runner would race it.
         start.Environment[RunnerOptions.RootVariable] = _root;
+        CliProcess.EnableAdvancedAiMode(start, _root);
         start.Environment[ProcessRunnerLauncher.SuppressVariable] = "1";
         start.Environment["MOTIF_DEVELOPER_COMMANDS"] = "1";
         using var process = Process.Start(start)!;

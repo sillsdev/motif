@@ -67,7 +67,39 @@ public sealed class BaselineRepository
     public BaselineRepository(MotifDatabase database) =>
         _database = database ?? throw new ArgumentNullException(nameof(database));
 
+    private static bool HasApplyAfter(SqliteConnection connection, SqliteTransaction transaction, DateTimeOffset publishedUtc)
+    {
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = "SELECT RecordedUtc FROM Receipts;";
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+            if (DateTimeOffset.Parse(reader.GetString(0), CultureInfo.InvariantCulture) > publishedUtc) return true;
+        return false;
+    }
+
     public BaselineRecord? GetCurrent(string projectKey)
+    {
+        RequireProjectKey(projectKey);
+        using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction(deferred: true);
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = SelectSql + " WHERE ProjectKey = $project;";
+        command.Parameters.AddWithValue("$project", projectKey);
+        RepositoryReadCounters.QueryExecuted();
+        using var reader = command.ExecuteReader();
+        if (!reader.Read()) return null;
+        RepositoryReadCounters.RecordDeserialized();
+        var baseline = Read(reader);
+        return HasApplyAfter(connection, transaction, baseline.PublishedUtc) ? null : baseline;
+    }
+
+    /// <summary>
+    /// Reads the most recently captured Baseline even when an Apply has since made it stale, for checks that must
+    /// recognise evidence measured before that Apply without treating it as current.
+    /// </summary>
+    internal BaselineRecord? GetLatestCaptured(string projectKey)
     {
         RequireProjectKey(projectKey);
         using var connection = _database.OpenConnection();
@@ -81,12 +113,32 @@ public sealed class BaselineRepository
         return Read(reader);
     }
 
+    /// <summary>Whether evidence names the current semantic Baseline with no intervening Apply.</summary>
+    public bool IsCurrentEvidence(string projectKey, BaselineToken token)
+    {
+        RequireProjectKey(projectKey);
+        using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction(deferred: true);
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = SelectSql + " WHERE ProjectKey = $project;";
+        command.Parameters.AddWithValue("$project", projectKey);
+        RepositoryReadCounters.QueryExecuted();
+        using var reader = command.ExecuteReader();
+        if (!reader.Read()) return false;
+        RepositoryReadCounters.RecordDeserialized();
+        return Read(reader).Token.HasSameSemanticIdentity(token) &&
+            !HasApplyAfter(connection, transaction, DateTimeOffset.Parse(token.CapturedUtc, CultureInfo.InvariantCulture));
+    }
+
     /// <summary>Reads the current Baseline and its saved project summary in one SQLite read.</summary>
     public CurrentBaselineEvidence? GetCurrentEvidence(string projectKey)
     {
         RequireProjectKey(projectKey);
         using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction(deferred: true);
         using var command = connection.CreateCommand();
+        command.Transaction = transaction;
         command.CommandText = EvidenceSelectSql + " WHERE b.ProjectKey = $project;";
         command.Parameters.AddWithValue("$project", projectKey);
         RepositoryReadCounters.QueryExecuted();
@@ -94,6 +146,7 @@ public sealed class BaselineRepository
         if (!reader.Read()) return null;
         RepositoryReadCounters.RecordDeserialized();
         var baseline = Read(reader);
+        if (HasApplyAfter(connection, transaction, baseline.PublishedUtc)) return null;
         if (reader.IsDBNull(12))
             throw new InvalidDataException("The current Baseline has no stored project summary.");
         return new CurrentBaselineEvidence(baseline, ReadSummary(reader.GetString(12)));
@@ -270,6 +323,7 @@ public sealed class BaselineRepository
             RepositoryReadCounters.RecordDeserialized();
             baseline = Read(reader);
         }
+        if (HasApplyAfter(connection, transaction, baseline.PublishedUtc)) return null;
 
         var requested = textIds.Distinct().ToArray();
         var digest = baseline.Token.BundleDigest;

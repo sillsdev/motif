@@ -1,7 +1,7 @@
 [
   {
     "name": "motif_overview",
-    "description": "Start here. Returns how well the project\u0027s grammar currently analyzes its texts: how many words get an analysis, the accuracy against the words the linguist has approved, and which words to look at first. Call it once at the beginning and again after the linguist applies a Proposal. Returns a refusal with Next: when Motif has not yet measured the project.",
+    "description": "Read the project Overview. Displays the latest saved counts, Text Coverage, manual-analysis agreement, timing, and warnings. It reads stored evidence and does not start a new run.\nCommand: overview. Agent class: Read.\n",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -18,9 +18,16 @@
           "description": "The most list items to return in concise mode. Default 25.",
           "minimum": 1,
           "maximum": 200
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
         }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "required": [
+        "project"
+      ]
     },
     "readOnlyHint": true,
     "destructiveHint": false,
@@ -28,7 +35,7 @@
   },
   {
     "name": "motif_grammar",
-    "description": "Reads the project\u0027s grammar. With no kind it returns counts of everything the grammar holds. With a kind (categories, phonemes, natural_classes, environments, phonological_rules, features, phonological_features, inflection_classes, templates, strata, morph_types) it lists those objects with their ids, ready to name in a change. Narrow with query (matches the name or abbreviation). Ids are 22 characters; copy them exactly. To read affixes and stems, use motif_lexicon. For encoding help, use motif_guide with the matching topic.",
+    "description": "Read grammar. Reads the Baseline grammar by kind and exact object identity. Choose a kind to page through its objects, or omit it for counts.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -72,9 +79,16 @@
           "description": "The most list items to return in concise mode. Default 25.",
           "minimum": 1,
           "maximum": 200
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
         }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "required": [
+        "project"
+      ]
     },
     "readOnlyHint": true,
     "destructiveHint": false,
@@ -82,7 +96,7 @@
   },
   {
     "name": "motif_start_proposal",
-    "description": "Starts a new Draft Proposal: a named container for one small, related set of changes. Give it a short draft name (letters, digits and hyphens), a one-line label a person reads in Motif\u0027s window, such as \u0027Add the plural suffix -s\u0027, and a comment explaining why the change is right, which the linguist reads while deciding. Keep each Proposal to one concept. Returns the draft name and the proposal id; use the draft name with the motif_add_* tools and the proposal id with motif_trial.",
+    "description": "Start a Proposal. Starts a named Draft holding one related set of semantic changes. Measure it and revise it before Finalize. Only a person can Apply.\nCommand: new. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nLabel: The short description a person reads while reviewing the Proposal.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -97,12 +111,17 @@
         "comment": {
           "type": "string",
           "description": "Why this change is right: the evidence, in a few sentences."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
         }
       },
       "required": [
         "draft",
         "label",
-        "comment"
+        "comment",
+        "project"
       ],
       "additionalProperties": false
     },
@@ -112,7 +131,7 @@
   },
   {
     "name": "motif_record_parsimony_disposition",
-    "description": "Stages an agent-attributed keep, fix, ask or defer decision for one exact Parsimony finding in a Draft. Use its existing Notebook record type and the finding\u0027s typed subject and evidence digest. A reason is optional; ask requires a question. This tool only stages the Proposal; only a person can Apply it, and a pending keep does not suppress findings. Next: finish the Draft and inspect it with motif_dry_run.",
+    "description": "Stage a Parsimony disposition. Stages a keep, fix, ask, or defer decision for one exact Parsimony finding in a Draft Proposal. Only a human can Apply it, and a pending keep does not suppress current findings. Only a person can Apply.\nCommand: compose-record-parsimony-disposition. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -387,6 +406,10 @@
         "reportId": {
           "type": "string",
           "description": "Optional source Parsimony Report id."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
         }
       },
       "required": [
@@ -398,7 +421,8 @@
         "evidenceDigest",
         "evidenceContract",
         "subjectCaption",
-        "measureCaption"
+        "measureCaption",
+        "project"
       ],
       "additionalProperties": false
     },
@@ -408,11 +432,19 @@
   },
   {
     "name": "motif_parsimony_record_types",
-    "description": "Lists the saved Notebook record types and their portable ids. Choose a type by its id, never by its English name. Use the selected id with motif_dispose_parsimony_finding.",
+    "description": "List Notebook record types. Lists the saved Notebook record types with their portable IDs and readable names. Use the ID when you stage a Parsimony disposition.\nCommand: parsimony record-types. Agent class: Read.\n",
     "inputSchema": {
       "type": "object",
-      "properties": {},
-      "additionalProperties": false
+      "properties": {
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "project"
+      ]
     },
     "readOnlyHint": true,
     "destructiveHint": false,
@@ -420,7 +452,7 @@
   },
   {
     "name": "motif_dispose_parsimony_finding",
-    "description": "Stages a keep, fix, ask or defer decision from one exact finding in a stored Parsimony Report. Motif derives the subject, evidence digest, evidence contract and captions from that finding. Choose record_type_id from motif_parsimony_record_types. A reason is optional; ask requires a question. This only stages a Draft Proposal: only a person can Apply it, and a pending keep does not suppress findings.",
+    "description": "Stage a finding disposition. Stages a keep, fix, ask, or defer decision from one finding in a stored Parsimony Report. It derives the exact subject and evidence from that finding and appends the existing Notebook operations to a Draft Proposal. Only a person can Apply.\nCommand: parsimony dispose. Agent class: Draft.\nReportId: The exact stored Parsimony report identity.\nFindingId: The exact finding identity within that report.\nDisposition: The advisory disposition to record for the finding.\nRecordTypeId: The project\u0027s Notebook record type for the advisory record.\nDraftName: The mutable Draft receiving the semantic intent.\nReason: The person\u0027s reason for the advisory disposition, when supplied.\nQuestion: The question to retain for later review, when supplied.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -457,6 +489,10 @@
         "question": {
           "type": "string",
           "description": "Required only when disposition is ask."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
         }
       },
       "required": [
@@ -464,7 +500,8 @@
         "finding_id",
         "disposition",
         "record_type_id",
-        "draft"
+        "draft",
+        "project"
       ],
       "additionalProperties": false
     },
@@ -474,7 +511,7 @@
   },
   {
     "name": "motif_dry_run",
-    "description": "Checks that a finished Proposal\u0027s changes fit the project by applying them to a throwaway copy, and reports what each change did. It does not touch the real project. The Proposal must be finished with motif_finish_proposal first. If it takes longer than wait_seconds you get status \u0027running\u0027 and a job id: call again with that job to keep waiting.",
+    "description": "Dry Run a Proposal. Queues a Dry Run of a Draft or finalized Proposal on a throwaway copy of its Baseline. Its effects are bound to that content and project state.\nCommand: dry-run. Agent class: Evaluate.\nProposalId: The exact canonical Proposal identity.\nRead a Dry Run. Waits for the Dry Run of a Draft or finalized Proposal and reads its effects. Content and Baseline identify whether the evidence remains current.\nCommand: dry-run --wait. Agent class: Evaluate.\nProposalId: The exact canonical Proposal identity.\nJobId: The exact job identity returned when evidence was queued.\nTimeout: The maximum wait for a result before returning progress.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -505,10 +542,15 @@
           "description": "The most list items to return in concise mode. Default 25.",
           "minimum": 1,
           "maximum": 200
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
         }
       },
       "required": [
-        "proposal"
+        "proposal",
+        "project"
       ],
       "additionalProperties": false
     },
@@ -517,8 +559,8 @@
     "idempotentHint": false
   },
   {
-    "name": "motif_finish_proposal",
-    "description": "Finishes a Draft so it becomes a Proposal the linguist can review in Motif\u0027s window. Do this before a dry run or trial, which require a finished Proposal. Finishing does not change the project; the linguist decides whether to apply it. After finishing, the draft is closed: further edits start from a copy.",
+    "name": "motif_finalize_proposal",
+    "description": "Finalize a Proposal. Finalizes a Draft as an immutable Proposal revision for a person to review. Evidence for unchanged content on the same Baseline remains current.\nCommand: finalize. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nExpectedRevision: The required Draft revision for this write.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -529,10 +571,15 @@
         "expected_revision": {
           "type": "string",
           "description": "The revision you last read, to refuse if the draft changed."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
         }
       },
       "required": [
-        "draft"
+        "draft",
+        "project"
       ],
       "additionalProperties": false
     },
@@ -542,7 +589,7 @@
   },
   {
     "name": "motif_proposals",
-    "description": "Lists every Proposal in the project with its status (proposed, deferred, rejected, applied, superseded) and label; or, with proposal, shows one Proposal\u0027s operations in full. Use it to see what exists before starting a new one and to see what the linguist did with earlier ones.",
+    "description": "List Proposals. Lists saved Proposals and Drafts, including each identity, label and status. Read one Proposal to inspect its semantic intent.\nCommand: list. Agent class: Read.\n\nShow. Reads the requested saved project information without changing the FieldWorks project.\nCommand: show. Agent class: Read.\nProposalId: The exact canonical Proposal identity.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -563,9 +610,16 @@
           "description": "The most list items to return in concise mode. Default 25.",
           "minimum": 1,
           "maximum": 200
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
         }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "required": [
+        "project"
+      ]
     },
     "readOnlyHint": true,
     "destructiveHint": false,

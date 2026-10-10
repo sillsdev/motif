@@ -3,7 +3,11 @@ $ErrorActionPreference = 'Stop'
 
 function Get-ABInferenceAuthMode([object] $Arm) {
     if ($Arm.host -eq 'fake') { return 'none' }
-    if ($Arm.host -eq 'claude') { return 'api-key' }
+    if ($Arm.host -eq 'claude') {
+        $mode = if ($Arm.Contains('authMode')) { [string]$Arm.authMode } else { 'api-key' }
+        if ($mode -cnotin @('api-key', 'claude-plan')) { throw 'Claude authMode must be api-key or claude-plan.' }
+        return $mode
+    }
     if ($Arm.host -ne 'codex') { throw 'Unsupported inference host.' }
     if ($Arm.Contains('authMode')) { $mode = [string]$Arm.authMode }
     else {
@@ -55,12 +59,16 @@ Read the project through the registered Motif MCP tools. In code mode, discover 
         $registration = @('mcp', 'list', '--json') + $registrationArgs
         $command = '/opt/host/client'
     } elseif ($Arm.host -eq 'claude') {
-        $environment.ANTHROPIC_BASE_URL = 'http://127.0.0.1:8181'
-        $environment.ANTHROPIC_API_KEY = 'local-session'
         $command = '/opt/host/client'
-        $arguments = @('-p', '--bare', '--strict-mcp-config', '--mcp-config', '/workspace/config/mcp.json',
+        $environment.ANTHROPIC_BASE_URL = 'http://127.0.0.1:8181'
+        $arguments = @('-p', '--strict-mcp-config', '--mcp-config', '/workspace/config/mcp.json',
             '--output-format', 'stream-json', '--permission-mode', 'dontAsk', '--allowedTools', 'mcp__motif__*',
             '--max-turns', [string]$Limits.turns, '--model', [string]$Arm.model, '--effort', [string]$Arm.effort)
+        if ($authMode -eq 'claude-plan') { $environment.CLAUDE_CONFIG_DIR = '/workspace/config/claude' }
+        else {
+            $environment.ANTHROPIC_API_KEY = 'local-session'
+            $arguments = @('-p', '--bare') + $arguments[1..($arguments.Count - 1)]
+        }
         if ($SystemAppend) { $arguments += @('--append-system-prompt', $SystemAppend) }
         $arguments += $Prompt
         $registration = @('mcp', 'list', '--strict-mcp-config', '--mcp-config', '/workspace/config/mcp.json')

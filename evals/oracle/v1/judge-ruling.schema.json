@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Oracle v1 Judge response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "oracle_version",
+    "case_id",
+    "judge",
+    "criteria",
+    "prohibitions",
+    "decision"
+  ],
+  "properties": {
+    "format": {
+      "const": 1
+    },
+    "oracle_version": {
+      "const": "v1"
+    },
+    "case_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "judge": {
+      "enum": [
+        "opus",
+        "sol"
+      ]
+    },
+    "criteria": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "status",
+          "quote",
+          "reason"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "enum": [
+              "met",
+              "not_met",
+              "insufficient_evidence"
+            ]
+          },
+          "quote": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "prohibitions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "status",
+          "quote",
+          "reason"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "enum": [
+              "clear",
+              "violated",
+              "insufficient_evidence"
+            ]
+          },
+          "quote": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "decision": {
+      "enum": [
+        "pass",
+        "fail",
+        "unscored"
+      ]
+    }
+  }
+}

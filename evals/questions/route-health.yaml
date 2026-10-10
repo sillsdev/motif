@@ -1,0 +1,8 @@
+{
+  "question": "Are the Haiku subscription route and the Luna ChatGPT plan route healthy?",
+  "arm_a": "claude-haiku-subscription",
+  "arm_b": "codex-luna-chatgpt-plan",
+  "tasks": ["t0-diagnose-noun-slot-order", "t1-diagnose-plural-environment", "t2-diagnose-class-a-sound-environment"],
+  "trials": 1,
+  "primary_metric": "task-success"
+}

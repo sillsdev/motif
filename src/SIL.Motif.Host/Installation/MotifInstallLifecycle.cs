@@ -27,8 +27,8 @@ public static class MotifInstallLifecycle
             .OnRestarted(_ => RegisterPackagedInstall());
         if (OperatingSystem.IsWindows())
         {
-            app.OnAfterInstallFastCallback(_ => InstallRegistration.RegisterCurrent())
-                .OnBeforeUninstallFastCallback(_ => RunUninstallCallback());
+            app.OnBeforeUninstallFastCallback(_ => RunUninstallCallback());
+            app.OnAfterInstallFastCallback(_ => InstallRegistration.RegisterCurrent());
         }
         return app;
     }
@@ -42,6 +42,7 @@ public static class MotifInstallLifecycle
     /// <summary>Removes Motif's discovery record and shell command while retaining user data.</summary>
     public static string RemoveRegistration()
     {
+        MotifAgentPackageStore.ForInstallation().Remove();
         InstallRegistration.UnregisterCurrent();
         var dataDirectory = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SIL", "Motif");
@@ -51,6 +52,7 @@ public static class MotifInstallLifecycle
 
     private static void RegisterPackagedInstall()
     {
+        MotifAgentPackageStore.ForInstallation().Refresh();
         if (OperatingSystem.IsWindows())
         {
             if (VelopackLocator.Current.CurrentlyInstalledVersion is not null)
@@ -73,7 +75,11 @@ public static class MotifInstallLifecycle
         WriteUninstallTrace("callback started");
         try
         {
-            WriteUninstallTrace("callback completed: " + InstallRegistration.UnregisterCurrent());
+            MotifAgentPackageStore.ForInstallation().Remove();
+            var registration = OperatingSystem.IsWindows()
+                ? InstallRegistration.UnregisterCurrent()
+                : "The Motif assistant package was removed.";
+            WriteUninstallTrace("callback completed: " + registration);
         }
         catch (Exception exception)
         {

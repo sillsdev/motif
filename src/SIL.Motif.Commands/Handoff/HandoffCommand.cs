@@ -87,7 +87,11 @@ public static class HandoffCommand
         Handoff(request, managedRoot, PanGlossExecutable.TryLocate(), onProgress, cancellationToken);
 
     /// <summary>Writes a Handoff folder under an explicit managed root with an explicitly selected parser.</summary>
+    /// <param name="request">The project and Selection to measure.</param>
+    /// <param name="managedRoot">The root holding this project's managed workspace.</param>
     /// <param name="parserPath">The parser to run, or <see langword="null"/> when none is available.</param>
+    /// <param name="onProgress">Receives Assessment progress, when supplied.</param>
+    /// <param name="cancellationToken">Cancels the measurement.</param>
     public static CommandOutcome<HandoffCommandResponse> Handoff(
         HandoffRequest request, string managedRoot, string? parserPath,
         Action<AssessmentProgress>? onProgress, CancellationToken cancellationToken)

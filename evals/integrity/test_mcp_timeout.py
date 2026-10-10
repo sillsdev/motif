@@ -21,13 +21,13 @@ for line in sys.stdin:
  r=json.loads(line)
  if 'id' not in r: continue
  if r['method']=='initialize': result={'capabilities':{'tools':{}}}
- elif r['method']=='tools/list': result={'tools':[{'name':'motif_finish_proposal'}]}
+ elif r['method']=='tools/list': result={'tools':[{'name':'motif_finalize_proposal'}]}
  else:
   time.sleep(0.3)
   result={'content':[], 'structuredContent':{'result':{}}}
  print(json.dumps({'jsonrpc':'2.0','id':r['id'],'result':result}),flush=True)
 ''')
-            (root / 'actions.jsonl').write_text(json.dumps({'tool': 'motif_finish_proposal', 'arguments': {}, 'expectDenied': expect_denied}) + '\n')
+            (root / 'actions.jsonl').write_text(json.dumps({'tool': 'motif_finalize_proposal', 'arguments': {}, 'expectDenied': expect_denied}) + '\n')
             manifest = {'server': {'command': shutil.which('python3'), 'arguments': [str(root / 'server.py')]},
                         'agentDirectory': str(root), 'childEnvironment': {}, 'transcriptPath': str(root / 'transcript.jsonl'),
                         'fakeScript': str(root / 'actions.jsonl'), 'task': {'limits': {'turns': 10}},
@@ -70,21 +70,26 @@ for line in sys.stdin:
                     self.assertEqual(0, result.returncode, result.stderr.decode())
                     self.assertEqual(expected, int(result.stdout.decode().strip()))
 
-    def test_infrastructure_failure_remains_in_report_denominator_and_schema(self):
+    def test_failure_classes_remain_in_report_denominator_and_schema(self):
         repo = Path(__file__).resolve().parents[2]
         module = repo / 'evals/tools/ABHarness.psm1'
         result = subprocess.run(['pwsh', '-NoProfile', '-Command',
             "Import-Module '" + str(module).replace("'", "''") + "'; "
-            "$rows=@(@{integrity=@{state='clean'}},@{integrity=@{state='infrastructure_failure'}},@{integrity=@{state='isolation_failure'}}); "
+            "$rows=@(@{integrity=@{state='clean'}},@{integrity=@{state='clean';failureClass='cloud_failure'}},@{integrity=@{state='isolation_failure'}}); "
             'Get-ABIntegritySummary $rows | ConvertTo-Json -Depth 10 -Compress'],
             stdin=subprocess.DEVNULL, capture_output=True, timeout=20)
         self.assertEqual(0, result.returncode, result.stderr.decode())
         summary = json.loads(result.stdout)
         self.assertEqual(3, summary['attempted'])
-        self.assertEqual(1, summary['counts']['infrastructure_failure'])
+        self.assertEqual(2, summary['counts']['clean'])
         self.assertEqual(1, summary['counts']['isolation_failure'])
-        self.assertEqual(1 / 3, summary['cleanRate'])
+        self.assertEqual(1, summary['failureClasses']['cloud_failure'])
+        self.assertEqual(1 / 3, summary['scorableRate'])
         self.assertIsNotNone(summary['confidenceInterval95'])
         schema = json.loads((repo / 'evals/integrity/Manifest.schema.json').read_text())
-        self.assertIn('infrastructure_failure', schema['properties']['status']['enum'])
-        self.assertIn('infrastructure_failure', schema['properties']['integrity']['properties']['state']['enum'])
+        self.assertEqual(['passed', 'failed', 'inconclusive', 'judge_disagreement', 'review', 'invalid',
+                          'isolation_failure', 'cloud_failure', 'harness_defect'], schema['properties']['status']['enum'])
+        self.assertEqual(['clean', 'review', 'invalid', 'isolation_failure'],
+                         schema['properties']['integrity']['properties']['state']['enum'])
+        self.assertIn('cloud_failure', schema['properties']['status']['enum'])
+        self.assertIn('cloud_failure', schema['properties']['failureClass']['enum'])

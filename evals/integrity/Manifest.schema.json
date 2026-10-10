@@ -12,14 +12,18 @@
     "setId": { "type": "string" },
     "armId": { "type": "string" },
     "host": { "enum": ["fake", "codex", "claude"] },
-    "authMode": { "enum": ["none", "api-key", "chatgpt-plan"] },
+    "authMode": { "enum": ["none", "api-key", "chatgpt-plan", "claude-plan"] },
     "trial": { "type": "integer", "minimum": 1 },
-    "status": { "enum": ["passed", "failed", "inconclusive", "review", "invalid", "isolation_failure", "infrastructure_failure"] },
+    "status": { "enum": ["passed", "failed", "inconclusive", "judge_disagreement", "review", "invalid", "isolation_failure", "cloud_failure", "harness_defect"] },
+    "failureClass": { "enum": ["agent_failure", "cloud_failure", "harness_defect", null] },
+    "failureEvidence": { "type": "array" },
     "integrity": {
       "type": "object",
       "required": ["state", "reasons"],
       "properties": {
-        "state": { "enum": ["clean", "review", "invalid", "isolation_failure", "infrastructure_failure"] },
+        "state": { "enum": ["clean", "review", "invalid", "isolation_failure"] },
+        "failureClass": { "enum": ["agent_failure", "cloud_failure", "harness_defect", null] },
+        "failureEvidence": { "type": "array" },
         "reasons": { "type": "array", "items": { "type": "object", "required": ["reason"] } },
         "processTree": {
           "type": "array",
@@ -39,7 +43,15 @@
         "exportedUtc": { "type": "number" },
         "evaluationAwareness": { "type": "boolean" },
         "toolsHash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
-        "network": { "type": "object", "required": ["policy", "limitation"] },
+        "network": { "type": "object", "required": ["policy", "limitation"],
+          "properties": {
+            "allowedHosts": { "type": "array", "items": { "type": "string" } },
+            "observedHosts": { "type": "array", "items": { "type": "string" } },
+            "allowedHostsOnly": { "type": "boolean" },
+            "authMode": { "enum": ["api-key", "chatgpt-plan", "claude-plan", "none"] }
+          }
+        },
+        "mcpRegistration": { "type": "object", "properties": { "fullToolListSeen": { "type": "boolean" } } },
         "bundleHashes": { "type": "object", "additionalProperties": { "type": "string", "pattern": "^[0-9a-f]{64}$" } },
         "inputHashes": { "type": "object", "additionalProperties": { "type": "string", "pattern": "^[0-9a-f]{64}$" } }
       }

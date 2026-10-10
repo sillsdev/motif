@@ -10,6 +10,7 @@ using SIL.Motif.Commands.Requests;
 using SIL.Motif.Commands.Store;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Canonicalization;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Projects;
@@ -66,9 +67,7 @@ public static class JobCommands
     }
 
     /// <summary>
-    /// Loads and validates the named Proposal through the same <see cref="ProposalRepository.GetFinalized"/>
-    /// path <c>show</c> and <c>apply</c> use, refusing before any row is queued when it is absent or
-    /// inconsistent, then queues a Dry Run job and returns the job id that names it.
+    /// Freezes a Draft or finalized Proposal and its prerequisite closure before queueing a Dry Run.
     /// </summary>
     public static CommandOutcome<JobEnqueuedResponse> EnqueueDryRun(EnqueueDryRunRequest request) =>
         ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
@@ -78,14 +77,16 @@ public static class JobCommands
             try
             {
                 var id = ProposalCommands.NormalizeId(request.ProposalId);
-                (record, _) = repository.GetFinalized(CanonicalId.Parse(id));
+                record = repository.Get(CanonicalId.Parse(id));
+                if (record.DraftName is null) (record, _) = repository.GetFinalized(CanonicalId.Parse(id));
             }
             catch (Exception exception)
             {
                 return CommandOutcome<JobEnqueuedResponse>.Refused(ProposalCommands.ProposalLoadRefusal(exception));
             }
 
-            var proposal = ProposalJsonParser.Parse(record.ProposalJson!);
+            var proposalJson = CanonicalProposalJson(record);
+            var proposal = ProposalJsonParser.Parse(proposalJson);
             IReadOnlyList<FrozenProposalRevision> prerequisites;
             try
             {
@@ -101,7 +102,7 @@ public static class JobCommands
             var source = baseline is null ? null : new DryRunSourceBinding(baseline.Token, baseline.RootDirectory,
                 baseline.FwDataPath, SourceDigest(baseline.FwDataPath));
             var input = new DryRunJobInput(DryRunJobInput.CurrentSchemaVersion,
-                FrozenProposalRevision.Create(record.ProposalJson!), prerequisites, source);
+                FrozenProposalRevision.Create(proposalJson), prerequisites, source);
             var jobs = new JobRepository(database);
             var jobId = CanonicalId.Mint("job/").Value;
             var inputJson = JsonSerializer.Serialize(input, MotifJson.CreateOptions());
@@ -130,6 +131,7 @@ public static class JobCommands
             {
                 var id = ProposalCommands.NormalizeId(request.ProposalId);
                 record = repository.Get(CanonicalId.Parse(id));
+                if (record.DraftName is null) (record, _) = repository.GetFinalized(CanonicalId.Parse(id));
             }
             catch (Exception exception)
             {
@@ -146,10 +148,7 @@ public static class JobCommands
             var jobs = new JobRepository(database);
             var jobId = CanonicalId.Mint("job/").Value;
             var workspaceKey = ProjectWorkspaceKey.Compute(project);
-            var proposalJson = record.DraftName is null ? record.ProposalJson! :
-                ProposalCommands.BuildProposalJson(JsonSerializer.Deserialize<DraftDocument>(
-                    record.ProposalJson!, new JsonSerializerOptions(JsonSerializerDefaults.Web))
-                    ?? throw new InvalidDataException("The Draft has no content."));
+            var proposalJson = CanonicalProposalJson(record);
             var proposal = ProposalJsonParser.Parse(proposalJson);
             IReadOnlyList<FrozenProposalRevision> prerequisites;
             try
@@ -163,7 +162,8 @@ public static class JobCommands
             var words = request.Words ?? (request.AllWords ? null :
                 ProposalCommands.ChangedWords(proposal).ToArray());
             var inputJson = JsonSerializer.Serialize(
-                new TrialJobInput(proposalJson, request.Scope, words, request.AllWords, prerequisites, request.Limits),
+                new TrialJobInput(proposalJson, request.Scope, words, request.AllWords, prerequisites, request.Limits,
+                    request.BaselineAssessmentIds, request.NegativeWords),
                 MotifJson.CreateOptions());
             var created = jobs.Create(jobId, workspaceKey, TrialKind, inputJson, NowStamp());
             return CommandOutcome<JobEnqueuedResponse>.Success(
@@ -209,10 +209,21 @@ public static class JobCommands
                     throw new InvalidDataException("The Dry Run job belongs to another Proposal.");
                 var dryRun = ParsePublishedDryRun(job.DryRunJson);
 
-                // Persist the bound-DryRun anchor: apply requires it present and unmoved.
-                repository.SetAnchor(canonicalId, JsonSerializer.Serialize(dryRun.Anchor));
+                var completion = DryRunJobCompletion.Parse(job.ResultJson
+                    ?? throw new InvalidDataException("The Dry Run has no source binding."));
+                if (completion.ContentDigest != dryRun.IntentDigest)
+                    throw new InvalidDataException("The Dry Run content differs from its source binding.");
+                var record = repository.Get(canonicalId);
+                var currentDigest = IntentDigest.Compute(ProposalJsonParser.Parse(CanonicalProposalJson(record)));
+                var current = currentDigest == dryRun.IntentDigest &&
+                    new BaselineRepository(database).IsCurrentEvidence(job.ProjectKey, completion.BaselineToken);
+                if (current) repository.SetAnchor(canonicalId, JsonSerializer.Serialize(dryRun.Anchor));
 
-                return CommandOutcome<DryRunProjection>.Success(DryRunProjectionBuilder.Build(id, dryRun, proposal));
+                return CommandOutcome<DryRunProjection>.Success(DryRunProjectionBuilder.Build(id, dryRun, proposal) with
+                {
+                    Baseline = completion.BaselineToken,
+                    EvidenceCurrent = current,
+                });
             }
             catch (Exception exception) when (exception is ArgumentException or KeyNotFoundException or InvalidDataException)
             {
@@ -500,6 +511,13 @@ public static class JobCommands
         MotifProductVersion.CompatibilityVersion(productVersion);
 
     private static string NowStamp() => JobTimestamp.FormatUtc(DateTimeOffset.UtcNow);
+
+    /// <summary>Returns the immutable revision or the canonical semantic content of a Draft.</summary>
+    public static string CanonicalProposalJson(ProposalRecord record) => record.DraftName is null
+        ? record.ProposalJson!
+        : ProposalCommands.BuildProposalJson(JsonSerializer.Deserialize<DraftDocument>(record.ProposalJson!,
+            new JsonSerializerOptions(JsonSerializerDefaults.Web))
+            ?? throw new InvalidDataException("The Draft has no content."));
 
     private static string SourceDigest(string path)
     {

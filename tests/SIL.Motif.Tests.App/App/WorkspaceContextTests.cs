@@ -2,10 +2,12 @@ using System.Globalization;
 using System.Reflection;
 using Avalonia.Input;
 using SIL.Motif.App.Services;
+using SIL.Motif.Commands.Assistants;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands.SelectionReading;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
+using SIL.Motif.Commands.Preferences;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Requests;
@@ -1520,7 +1522,11 @@ public sealed class WorkspaceContextTests
 
     internal static WorkspaceContext NewContext() => NewContextWithFake().Context;
 
-    internal static WorkspaceContext NewContext(ICommandClient commands)
+    internal static WorkspaceContext NewContext(
+        ICommandClient commands,
+        IAdvancedAiModePreferenceStore? advancedAiModePreferences = null,
+        IAssistantConnectionService? assistantConnections = null,
+        IUriLauncher? uriLauncher = null)
     {
         if (commands is FakeCommandClient fake)
             fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(Token, DateTimeOffset.UtcNow, false));
@@ -1532,7 +1538,10 @@ public sealed class WorkspaceContextTests
             commands,
             new NoFolderPicker(),
             new NoDragSource(),
-            new BaselineViewModel(commands));
+            new BaselineViewModel(commands),
+            advancedAiModePreferences: advancedAiModePreferences,
+            assistantConnections: assistantConnections,
+            uriLauncher: uriLauncher);
     }
 
     private static (FakeCommandClient Fake, WorkspaceContext Context) NewContextWithFake()

@@ -55,7 +55,7 @@ public sealed class HelpCatalogTests
 
         foreach (var code in new[]
                  {
-                     "parsimony", "parsimony --wait", "parsimony show", "parsimony record-types",
+                     "parsimony", "parsimony --wait", "parsimony show", "parsimony latest", "parsimony record-types",
                      "parsimony dispose", "parsimony revise", "parsimony retract",
                      "compose-record-parsimony-disposition", "retire-allomorph",
                      "retire-redundant-zero-affix",

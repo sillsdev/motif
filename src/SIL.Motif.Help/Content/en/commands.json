@@ -44,9 +44,19 @@
     "description": "Queues the requested Parsimony measure and waits for its stored Report. It does not capture a Baseline or require an Assessment.",
     "source": "Hand-written from command behavior."
   },
+  "parsimony latest": {
+    "title": "Find the newest Report",
+    "description": "Names the newest stored Parsimony Report and the bundle it was measured from. It reads the project's store only and does not run PanGloss.",
+    "source": "Hand-written from command behavior."
+  },
   "parsimony show": {
     "title": "Read a Parsimony Report",
     "description": "Reads a stored Parsimony Report by id. It uses the saved Report and does not run PanGloss.",
+    "source": "Hand-written from command behavior."
+  },
+  "parsimony retirement-review": {
+    "title": "Read a retirement review",
+    "description": "Reads the review state for one staged rule-based allomorph retirement Draft. It returns its latest matching Dry Run and names evidence that is not available yet; it never invents a finding or parser result.",
     "source": "Hand-written from command behavior."
   },
   "parsimony measures": {
@@ -61,7 +71,7 @@
   },
   "parsimony view": {
     "title": "Read a Parsimony view",
-    "description": "Reads a bounded page from a fixed view over one published bundle. Parser views use a Report id to bind the exact Assessment references; filters and cursors are bound to the bundle. Callers cannot submit SQL.",
+    "description": "Reads a bounded page from a fixed view over one frozen bundle. Parser views use a Report id to bind the exact Assessment references; filters and cursors are bound to the bundle. Only the declared view filters are accepted.",
     "source": "Hand-written from command behavior."
   },
   "parsimony record-types": {
@@ -71,7 +81,7 @@
   },
   "parsimony dispose": {
     "title": "Stage a finding disposition",
-    "description": "Stages a keep, fix, ask, or defer decision from one finding in a stored Parsimony Report. It derives the exact subject and evidence from that finding and appends the existing Notebook operations to a Draft Proposal.",
+    "description": "Stages a keep, fix, ask, or defer decision from one finding in a stored Parsimony Report. It derives the exact subject and evidence from that finding and appends the existing Notebook operations to a Draft Proposal. Only a person can Apply.",
     "source": "Hand-written from command behavior."
   },
   "parsimony revise": {
@@ -96,22 +106,22 @@
   },
   "compose-record-parsimony-disposition": {
     "title": "Stage a Parsimony disposition",
-    "description": "Stages a keep, fix, ask, or defer decision for one exact Parsimony finding in a Draft Proposal. Only a human can Apply it, and a pending keep does not suppress current findings.",
+    "description": "Stages a keep, fix, ask, or defer decision for one exact Parsimony finding in a Draft Proposal. Only a human can Apply it, and a pending keep does not suppress current findings. Only a person can Apply.",
     "source": "Hand-written from command behavior."
   },
   "retire-allomorph": {
     "title": "Retire or replace a form",
-    "description": "Stages one connected Proposal to retire ordinary prefix or suffix alternates after their references move; the sound-rule form also stages its natural class and rule. Dry Run shows bundle Morph and copied Form text changes, other references, and deletion together. Missing destinations are refused with counts for distinct unresolved Approved analyses, ad hoc rules, and other references.",
+    "description": "Stages one connected Proposal to retire ordinary prefix or suffix alternates after their references move; the sound-rule form also stages its natural class and rule. Dry Run shows bundle Morph and copied Form text changes, other references, and deletion together. Missing destinations are refused with counts for distinct unresolved Approved analyses, ad hoc rules, and other references; only a person can Apply.",
     "source": "Hand-written from the allomorph retirement and sound-rule replacement contracts."
   },
   "retire-redundant-zero-affix": {
     "title": "Retire an unused zero affix",
-    "description": "Stages deletion of one whole, unreferenced zero-affix entry when its only loaded realization is a recognized null marker, it adds no feature or class, every assigned slot is optional, and no assigned slot occurs in a template. Optional slot links are removed first and the slots remain; meaningful, referenced, or parser-distinguishing zeros are refused.",
+    "description": "Stages deletion of one whole, unreferenced zero-affix entry when its only loaded realization is a recognized null marker, it adds no feature or class, every assigned slot is optional, and no assigned slot occurs in a template. Optional slot links are removed first and the slots remain; meaningful, referenced, or parser-distinguishing zeros are refused. Only a person can Apply.",
     "source": "Hand-written from the zero-affix retirement contract and command behavior."
   },
   "compose-author-phonological-rule": {
     "title": "Author a sound rule",
-    "description": "Stages one simple rewrite rule in a Draft, using existing phonemes and natural classes with explicit context and rule placement. Empty input or output means insertion or deletion; unsupported alpha variables and metathesis are refused.",
+    "description": "Stages one simple rewrite rule in a Draft, using existing phonemes and natural classes with explicit context and rule placement. Empty input or output means insertion or deletion; unsupported alpha variables and metathesis are refused. Only a person can Apply.",
     "source": "Hand-written from the regular rewrite-rule composer contract and command behavior."
   },
   "compose-author-affix-slot": {
@@ -121,7 +131,7 @@
   },
   "compose-author-affix-template": {
     "title": "Author an affix template",
-    "description": "Stages an active alternative template on an existing category, using ordered prefix and suffix slots that belong to the category or an ancestor. It preserves existing template order and records whether this template requires further derivation.",
+    "description": "Stages an active alternative template on an existing category, using ordered prefix and suffix slots that belong to the category or an ancestor. It preserves existing template order and records whether this template requires further derivation. Only a person can Apply.",
     "source": "Hand-written from command behavior."
   },
   "compare": {
@@ -276,42 +286,162 @@
   },
   "compose-edit-adhoc-prohibition": {
     "title": "Edit an ad hoc prohibition",
-    "description": "Stages one explicit Disabled value for a flat allomorph or morpheme prohibition in a Draft. The expected value guards against stale evidence; Motif never Applies this change automatically.",
+    "description": "Stages one explicit Disabled value for a flat allomorph or morpheme prohibition in a Draft. The expected value guards against stale evidence; Motif never Applies this change automatically. Only a person can Apply.",
     "source": "Hand-written from command behavior."
   },
   "compose-edit-affix-slot": {
     "title": "Edit an affix slot",
-    "description": "Changes whether an existing inflectional affix slot is optional. The response lists every affix and template using the shared slot; Motif stages a Draft and never Applies it automatically.",
+    "description": "Changes whether an existing inflectional affix slot is optional. The response lists every affix and template using the shared slot; Motif stages a Draft and never Applies it automatically. Only a person can Apply.",
     "source": "Hand-written from command behavior."
   },
   "compose-edit-affix-template": {
     "title": "Reorder an affix template",
-    "description": "Changes the explicit order of existing prefix or suffix slots in a known affix template. The intent preserves the slot set, and Motif stages a Draft without Applying it automatically.",
+    "description": "Changes the explicit order of existing prefix or suffix slots in a known affix template. The intent preserves the slot set, and Motif stages a Draft without Applying it automatically. Only a person can Apply.",
     "source": "Hand-written from command behavior."
   },
   "compose-edit-inflectional-affix": {
     "title": "Edit an inflectional affix",
-    "description": "Changes which existing category slots an inflectional affix MSA uses. Other MSA kinds and slots outside the category hierarchy are refused; Motif stages a Draft and never Applies it automatically.",
+    "description": "Changes which existing category slots an inflectional affix MSA uses. Other MSA kinds and slots outside the category hierarchy are refused; Motif stages a Draft and never Applies it automatically. Only a person can Apply.",
     "source": "Hand-written from command behavior."
   },
   "compose-edit-allomorph-condition": {
     "title": "Edit an allomorph condition",
-    "description": "Changes the environment references on one existing stem or affix allomorph after checking its current list. Shared environments remain unchanged for every other allomorph that uses them.",
+    "description": "Changes the environment references on one existing stem or affix allomorph after checking its current list. Shared environments remain unchanged for every other allomorph that uses them. Only a person can Apply.",
     "source": "Hand-written from command behavior."
   },
   "compose-edit-natural-class": {
     "title": "Edit a natural class",
-    "description": "Adds or removes phonemes from one existing segment natural class after checking its exact current members. The response lists rules, environments and insertions that still use the class.",
+    "description": "Adds or removes phonemes from one existing segment natural class after checking its exact current members. The response lists rules, environments and insertions that still use the class. Only a person can Apply.",
     "source": "Hand-written from command behavior."
   },
   "compose-relink-natural-class": {
     "title": "Relink natural-class users",
-    "description": "Moves explicitly named environments and rewrite-rule contexts to a replacement class created earlier in the Draft. Other users remain on the source class.",
+    "description": "Moves explicitly named environments and rewrite-rule contexts to a replacement class created earlier in the Draft. Other users remain on the source class. Only a person can Apply.",
     "source": "Hand-written from command behavior."
   },
   "order-allomorphs": {
     "title": "Order alternate forms",
-    "description": "Changes the order of existing alternate forms within one entry after checking their current order. The lexeme form cannot be moved, and Motif stages the moves in a Draft for human review.",
+    "description": "Changes the order of existing alternate forms within one entry after checking their current order. The lexeme form cannot be moved, and Motif stages the moves in a Draft for human review. Only a person can Apply.",
     "source": "Hand-written from command behavior."
+  },
+  "compose-author-feature-structure": {
+    "title": "Author grammatical features",
+    "description": "Stages an empty feature structure on the specified stem grammatical information in a Draft. Use its created identity when authoring feature values. Only a person can Apply.",
+    "source": "Authored from the typed command contract."
+  },
+  "compose-author-feature-value": {
+    "title": "Author a feature value",
+    "description": "Stages a closed feature specification in an existing or Draft-created feature structure. The feature and optional symbolic value must belong to the project. Only a person can Apply.",
+    "source": "Authored from the typed command contract."
+  },
+  "compose-author-phoneme": {
+    "title": "Author a phoneme",
+    "description": "Stages a phoneme with explicitly authored name and representations in a Draft. Use its created identity in later natural classes or phonological rules. Only a person can Apply.",
+    "source": "Authored from the typed command contract."
+  },
+  "compose-author-natural-class": {
+    "title": "Author a natural class",
+    "description": "Stages a named segment natural class with explicitly declared phoneme members in a Draft. Members may name existing phonemes or phonemes created earlier through declared dependencies. Only a person can Apply.",
+    "source": "Authored from the typed command contract."
+  },
+  "compose-author-environment": {
+    "title": "Author an environment",
+    "description": "Stages an environment with explicitly declared left and right contexts in a Draft. Contexts use project phonemes, natural classes or boundaries. Only a person can Apply.",
+    "source": "Authored from the typed command contract."
+  },
+  "show": {
+    "title": "Show",
+    "description": "Reads the requested saved project information without changing the FieldWorks project.",
+    "source": "Authored from the typed command contract."
+  },
+  "parsimony --dry-run": {
+    "title": "Parsimony dry run",
+    "description": "Produces evidence about the saved project or Proposal without changing the FieldWorks project.",
+    "source": "Authored from the typed command contract."
+  },
+  "parsimony --dry-run --wait": {
+    "title": "Parsimony dry run wait",
+    "description": "Produces evidence about the saved project or Proposal without changing the FieldWorks project.",
+    "source": "Authored from the typed command contract."
+  },
+  "trial": {
+    "title": "Trial a Proposal",
+    "description": "Measures a Draft or finalized Proposal on a throwaway copy, producing a Dry Run and Assessments. Read negatives now parsing, positives lost, unfinished cases, other changes and counts before revising.",
+    "source": "Authored from ADR 0058 and the typed command contract."
+  },
+  "trial --wait": {
+    "title": "Read Trial progress",
+    "description": "Waits for a Trial job and reads its state. Read the stored Difference after the Trial completes.",
+    "source": "Authored from ADR 0058 and the typed command contract."
+  },
+  "motif_grammar": {
+    "title": "Read grammar",
+    "description": "Reads the Baseline grammar by kind and exact object identity. Choose a kind to page through its objects, or omit it for counts.",
+    "source": "Authored from the agent read contract."
+  },
+  "motif_lexicon": {
+    "title": "Read lexicon",
+    "description": "Searches Baseline entries, senses, forms and glosses. Detailed results include allomorphs and their environments.",
+    "source": "Authored from the agent read contract."
+  },
+  "motif_activity": {
+    "title": "Read agent activity",
+    "description": "Reads calls, Proposals and jobs from this conversation and the selected project.",
+    "source": "Authored from the agent read contract."
+  },
+  "motif_guide": {
+    "title": "Read encoding guidance",
+    "description": "Reads an encoding guide or the draft, Dry Run, Trial, revise and Finalize workflow.",
+    "source": "Authored from the agent read contract."
+  },
+  "motif_list_projects": {
+    "title": "List Known projects",
+    "description": "Lists the Known projects a person has added to this installation. Select one by name or its recorded path for project tools.",
+    "source": "Authored from the agent read contract."
+  },
+  "motif_difference": {
+    "title": "Read Trial Difference",
+    "description": "Pages through a stored Trial Difference by category. Unfinished parser cases are separate from words that no longer parse.",
+    "source": "Authored from the agent read contract."
+  },
+  "new": {
+    "title": "Start a Proposal",
+    "description": "Starts a named Draft holding one related set of semantic changes. Measure it and revise it before Finalize. Only a person can Apply.",
+    "source": "Authored from ADR 0058 and the typed command contract."
+  },
+  "finalize": {
+    "title": "Finalize a Proposal",
+    "description": "Finalizes a Draft as an immutable Proposal revision for a person to review. Evidence for unchanged content on the same Baseline remains current.",
+    "source": "Authored from ADR 0058 and the typed command contract."
+  },
+  "dry-run": {
+    "title": "Dry Run a Proposal",
+    "description": "Queues a Dry Run of a Draft or finalized Proposal on a throwaway copy of its Baseline. Its effects are bound to that content and project state.",
+    "source": "The shared command catalog and typed request contract."
+  },
+  "dry-run --wait": {
+    "title": "Read a Dry Run",
+    "description": "Waits for the Dry Run of a Draft or finalized Proposal and reads its effects. Content and Baseline identify whether the evidence remains current.",
+    "source": "Authored from ADR 0058 and the typed command contract."
+  },
+  "remove-operations": {
+    "title": "Remove Draft operations",
+    "description": "Removes explicit operations from a Draft while respecting declared dependencies. Revise and measure the content again before Finalize. Only a person can Apply.",
+    "source": "Authored from ADR 0058 and the typed command contract."
+  },
+  "add-set-gloss": {
+    "title": "Set a sense gloss",
+    "description": "Stages the explicitly authored gloss of one sense in one writing system in a Draft. Dry Run and Trial the Draft before Finalize; only a person can Apply.",
+    "source": "The shared command catalog and typed request contract."
+  },
+  "compose-author-lexeme-form": {
+    "title": "Author a lexeme form",
+    "description": "Stages a lexeme form with explicitly authored spelling, writing system and morph type in a Draft. Dry Run and Trial the Draft before Finalize; only a person can Apply.",
+    "source": "The shared command catalog and typed request contract."
+  },
+  "list": {
+    "title": "List Proposals",
+    "description": "Lists saved Proposals and Drafts, including each identity, label and status. Read one Proposal to inspect its semantic intent.",
+    "source": "The shared command catalog and typed request contract."
   }
 }

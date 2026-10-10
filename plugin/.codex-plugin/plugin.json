@@ -1,0 +1,7 @@
+{
+  "name": "motif",
+  "version": "0.2.0",
+  "description": "FieldWorks expertise and safe Motif Proposal workflows.",
+  "skills": "./skills/",
+  "mcpServers": "./mcp.json"
+}

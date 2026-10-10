@@ -18,6 +18,7 @@ internal static class CliInProcess
         string workerRoot, string? parserPath, bool developerCommands, params string[] arguments)
     {
         var start = CliProcess.CreateStartInfo(workerRoot, parserPath, developerCommands);
+        if (developerCommands) CliProcess.EnableAdvancedAiMode(start, workerRoot);
         var environment = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
         foreach (var entry in start.Environment)
             environment[entry.Key] = entry.Value;

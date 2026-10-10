@@ -2,7 +2,8 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 Import-Module (Join-Path $PSScriptRoot 'ABHarness.psm1')
 function Write-ABReport {
-    param($completed, $selectedTasks, $arms, $trialCount, $primaryMetric, $questionData, $questionId, $runId, $runRoot)
+    param($completed, $selectedTasks, $arms, $trialCount, $primaryMetric, $questionData, $questionId, $runId, $runRoot,
+        [string] $measurementFingerprint = '')
     function Get-ABMean([double[]] $Values) {
         if ($Values.Count -eq 0) { return $null }
         return [double](($Values | Measure-Object -Average).Average)
@@ -66,9 +67,15 @@ function Write-ABReport {
             if ($taskRows.Count -gt 0 -and $taskRows[0].success -eq $true) { $passedAtOne++ }
             if ($taskRows.Count -eq $trialCount -and @($taskRows | Where-Object { $_.success -ne $true }).Count -eq 0) { $passedAll++ }
         }
-        $successfulCosts = @($validRows | Where-Object { $_.success -eq $true -and $null -ne $_.costUsd } | ForEach-Object { [double]$_.costUsd })
-        $costPerSuccess = if ($successfulCosts.Count -gt 0) {
-            [double](($successfulCosts | Measure-Object -Sum).Sum) / @($validRows | Where-Object { $_.success -eq $true }).Count
+        $successfulCount = @($validRows | Where-Object { $_.success -eq $true }).Count
+        $costs = @($validRows | Where-Object { $null -ne $_.costUsd } | ForEach-Object { [double]$_.costUsd })
+        $completeCost = $costs.Count -eq $validRows.Count
+        $totalScoredCost = if ($completeCost -and $costs.Count -gt 0) { [double](($costs | Measure-Object -Sum).Sum) } else { $null }
+        $priceToSolve = if ($null -ne $totalScoredCost -and $successfulCount -gt 0) {
+            $totalScoredCost / $successfulCount
+        } else { $null }
+        $averageEpisodeCost = if ($null -ne $totalScoredCost -and $validRows.Count -gt 0) {
+            $totalScoredCost / $validRows.Count
         } else { $null }
         $errorCounts = @($armRows | ForEach-Object { $_.activity } | Where-Object { $_.isError } |
             Group-Object { if ($_.Contains('name')) { [string]$_.name } elseif ($_.Contains('tool')) { [string]$_.tool } else { '' } } |
@@ -83,13 +90,17 @@ function Write-ABReport {
             meanPrimaryScore = Get-ABMean @($validRows | ForEach-Object { [double]$_.primaryScore })
             passAt1 = if ($eligibleTasks -gt 0) { [double]$passedAtOne / $eligibleTasks } else { $null }
             passPowerK = if ($eligibleTasks -gt 0) { [double]$passedAll / $eligibleTasks } else { $null }
-            costPerSuccessUsd = $costPerSuccess
+            priceToSolveUsd = $priceToSolve
+            averageCostPerEpisodeUsd = $averageEpisodeCost
+            costCoverage = @{ scoredEpisodes = $validRows.Count; pricedEpisodes = $costs.Count; complete = $completeCost }
             successfulTasksAtK = $passedAll; eligibleTasks = $eligibleTasks
-            infrastructureInvalid = @($armRows | Where-Object { $_.infrastructureInvalid }).Count
+            harnessDefects = @($armRows | Where-Object { $_.failureClass -eq 'harness_defect' }).Count
+            cloudFailures = @($armRows | Where-Object { $_.failureClass -eq 'cloud_failure' }).Count
             quarantined = @($armRows | Where-Object { $_.integrity.state -ne 'clean' }).Count
             meanWallMs = Get-ABMean @($validRows | ForEach-Object { [double]$_.wallMs })
             meanTurns = Get-ABMean @($validRows | ForEach-Object { [double]$_.turns })
             meanToolCalls = Get-ABMean @($validRows | ForEach-Object { [double]$_.toolCalls })
+            meanOperationCount = Get-ABMean @($validRows | ForEach-Object { [double]$_.operationCount })
             meanInputTokens = Get-ABMean @($validRows | Where-Object { $null -ne $_.inputTokens } | ForEach-Object { [double]$_.inputTokens })
             meanOutputTokens = Get-ABMean @($validRows | Where-Object { $null -ne $_.outputTokens } | ForEach-Object { [double]$_.outputTokens })
             topToolErrors = $errorCounts; topRefusals = $refusalCounts
@@ -97,7 +108,8 @@ function Write-ABReport {
     }
 
     $failureExcerpts = [Collections.Generic.List[object]]::new()
-    foreach ($row in $completed | Where-Object { $_.infrastructureInvalid -or $_.success -ne $true }) {
+    foreach ($row in $completed | Where-Object { $_.failureClass -or $_.success -ne $true -or
+        ($_.Contains('cloudRetries') -and $_.cloudRetries -gt 0) }) {
         $activityTail = @($row.activity | Select-Object -Last 3 | ForEach-Object {
             [ordered]@{
                 name = if ($_.Contains('name')) { $_.name } elseif ($_.Contains('tool')) { $_.tool } else { '' }
@@ -114,6 +126,10 @@ function Write-ABReport {
         }
         $failureExcerpts.Add([ordered]@{
             task = $row.task; arm = $row.arm; trial = $row.trial; status = $row.status
+            failureClass = $row.failureClass
+            failureEvidence = if ($row.Contains('failureEvidence')) { @($row.failureEvidence) } else { @() }
+            cloudRetries = if ($row.Contains('cloudRetries')) { [int]$row.cloudRetries } else { 0 }
+            cloudRetryEvidence = if ($row.Contains('cloudRetryEvidence')) { @($row.cloudRetryEvidence) } else { @() }
             lastToolCalls = $activityTail
             finalMessage = if ($hostData -is [Collections.IDictionary] -and $hostData.Contains('finalMessage')) {
                 $hostData.finalMessage
@@ -151,14 +167,15 @@ function Write-ABReport {
     $integritySummary = Get-ABIntegritySummary @($completed)
     $report.Add('## Integrity')
     $report.Add('')
-    $report.Add("Attempted: $($integritySummary.attempted). Clean: $($integritySummary.counts.clean); review: $($integritySummary.counts.review); invalid: $($integritySummary.counts.invalid); isolation_failure: $($integritySummary.counts.isolation_failure); infrastructure_failure: $($integritySummary.counts.infrastructure_failure).")
+    $report.Add("Attempted Episodes: $($integritySummary.attempted). Scorable: $($integritySummary.scorable). Integrity states — clean: $($integritySummary.counts.clean); review: $($integritySummary.counts.review); invalid: $($integritySummary.counts.invalid); isolation_failure: $($integritySummary.counts.isolation_failure).")
+    $report.Add("Failure classes — Agent: $($integritySummary.failureClasses.agent_failure); Cloud: $($integritySummary.failureClasses.cloud_failure); Harness: $($integritySummary.failureClasses.harness_defect).")
     if ($integritySummary.confidenceInterval95) {
-        $report.Add(('Clean / attempted: {0:P1}, Wilson 95% interval [{1:P1}, {2:P1}].' -f $integritySummary.cleanRate, $integritySummary.confidenceInterval95.lower, $integritySummary.confidenceInterval95.upper))
+        $report.Add(('Scorable / attempted: {0:P1}, Wilson 95% interval [{1:P1}, {2:P1}].' -f $integritySummary.scorableRate, $integritySummary.confidenceInterval95.lower, $integritySummary.confidenceInterval95.upper))
     }
-    $gradingFailures = @($completed | Where-Object { $_.Contains('gradingState') -and $_.gradingState -eq 'infrastructure_failure' }).Count
+    $gradingFailures = @($completed | Where-Object { $_.failureClass -eq 'harness_defect' }).Count
     $judgeSplits = @($completed | Where-Object { $_.Contains('judgeDisagreements') -and $_.judgeDisagreements -gt 0 }).Count
     $report.Add("Control-side grading failures: $gradingFailures. Trials with a recorded judge split: $judgeSplits.")
-    $report.Add('Only clean trials with complete grading are scored. Evaluation awareness is recorded without penalty. All other outcomes remain in the denominator.')
+    $report.Add('Agent failures are scored. Cloud failures are retried and excluded from agent scores. Harness defects are excluded until fixed. Evaluation awareness is recorded without penalty.')
     foreach ($row in $completed | Where-Object { $_.integrity.state -ne 'clean' }) {
         $reasons = ($row.integrity.reasons | ForEach-Object { $_.reason }) -join '; '
         $report.Add("- $($row.task) / $($row.arm) / $($row.trial): $($row.integrity.state) — $reasons")
@@ -166,14 +183,17 @@ function Write-ABReport {
     $report.Add('')
     $report.Add('## Arms')
     $report.Add('')
-    $report.Add('| Arm | Host / model | Auth mode | Mean primary score | pass@1 | pass^k | Cost per success | Mean wall time | Mean turns | Mean tool calls | Quarantined trials |')
-    $report.Add('|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|')
+    $report.Add('| Arm | Host / model | Auth mode | Mean primary score | pass@1 | pass^k | Price to solve | Average cost / Episode | Mean wall time | Mean turns | Mean tool calls | Operations / Episode | Quarantined trials |')
+    $report.Add('|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|')
     foreach ($armResult in $armSummary) {
         $passAtOneText = if ($null -ne $armResult.passAt1) { '{0:P1}' -f $armResult.passAt1 } else { 'n/a' }
         $passKText = if ($null -ne $armResult.passPowerK) { '{0:P1}' -f $armResult.passPowerK } else { 'n/a' }
-        $costText = if ($null -ne $armResult.costPerSuccessUsd) { '$' + ('{0:N4}' -f $armResult.costPerSuccessUsd) } else { 'not reported' }
+        $priceText = if ($null -ne $armResult.priceToSolveUsd) { '$' + ('{0:N4}' -f $armResult.priceToSolveUsd) }
+            elseif (-not $armResult.costCoverage.complete) { 'incomplete costs' } else { 'no solves' }
+        $averageCostText = if ($null -ne $armResult.averageCostPerEpisodeUsd) { '$' + ('{0:N4}' -f $armResult.averageCostPerEpisodeUsd) }
+            elseif (-not $armResult.costCoverage.complete) { 'incomplete costs' } else { 'not reported' }
         $wallText = if ($null -ne $armResult.meanWallMs) { ('{0:N1}s' -f ($armResult.meanWallMs / 1000)) } else { 'n/a' }
-        $report.Add("| $($armResult.id) | $($armResult.host) / $($armResult.model) | $($armResult.authMode) | $($armResult.meanPrimaryScore) | $passAtOneText | $passKText | $costText | $wallText | $($armResult.meanTurns) | $($armResult.meanToolCalls) | $($armResult.quarantined) |")
+        $report.Add("| $($armResult.id) | $($armResult.host) / $($armResult.model) | $($armResult.authMode) | $($armResult.meanPrimaryScore) | $passAtOneText | $passKText | $priceText | $averageCostText | $wallText | $($armResult.meanTurns) | $($armResult.meanToolCalls) | $($armResult.meanOperationCount) | $($armResult.quarantined) |")
     }
     $report.Add('')
     $report.Add('pass@1 is the share of tasks passed on the first trial. pass^k is the share passed on every requested trial. Only clean trials are included in those rates and paired estimates.')
@@ -213,6 +233,15 @@ function Write-ABReport {
         foreach ($failure in $failureExcerpts) {
             $report.Add("### $($failure.task) — $($failure.arm), trial $($failure.trial) ($($failure.status))")
             $report.Add('')
+            if ($failure.failureClass) { $report.Add("Failure class: $($failure.failureClass).") }
+            foreach ($evidence in $failure.failureEvidence) { $report.Add('- Evidence: ' + [string]$evidence) }
+            if ($failure.cloudRetries -gt 0) {
+                $report.Add("Cloud retries: $($failure.cloudRetries).")
+                foreach ($retry in $failure.cloudRetryEvidence) {
+                    $report.Add('- Retry evidence: ' + (@($retry.evidence) -join '; '))
+                }
+            }
+            $report.Add('')
             $report.Add('Last tool calls:')
             $report.Add('')
             if ($failure.lastToolCalls.Count -eq 0) { $report.Add('- No tool calls recorded.') }
@@ -234,10 +263,12 @@ function Write-ABReport {
     Set-Content -LiteralPath $reportPath -Value ($report -join "`n") -Encoding utf8
     $summary = [ordered]@{
         runId = $runId
+        measurementFingerprint = $measurementFingerprint
         question = [string]$questionData.question
         questionId = $questionId
         integrity = $integritySummary
-        grading = @{ infrastructureFailures = $gradingFailures; trialsWithJudgeDisagreement = $judgeSplits }
+        grading = @{ harnessDefects = $gradingFailures; trialsWithJudgeDisagreement = $judgeSplits;
+            cloudFailures = @($completed | Where-Object { $_.failureClass -eq 'cloud_failure' }).Count }
         arms = @($armSummary)
         tasks = @($selectedTasks | ForEach-Object { [ordered]@{ id = $_.id; set = $_.set; family = $_.family; tier = $_.tier } })
         primaryMetric = $primaryMetric
@@ -250,7 +281,15 @@ function Write-ABReport {
                 task = $_.task; set = $_.set; arm = $_.arm; trial = $_.trial; status = $_.status
                 authMode = $_.authMode
                 integrity = $_.integrity
-                infrastructureInvalid = $_.infrastructureInvalid; grade = $_.grade; success = $_.success
+                failureClass = if ($_.Contains('failureClass')) { $_.failureClass } else { $null }
+                failureEvidence = if ($_.Contains('failureEvidence')) { $_.failureEvidence } else { @() }
+                measurementFingerprint = if ($_.Contains('measurementFingerprint')) { $_.measurementFingerprint } else { $measurementFingerprint }
+                armFingerprint = if ($_.Contains('armFingerprint')) { $_.armFingerprint } else { $null }
+                judgeFamilies = if ($_.Contains('judgeFamilies')) { @($_.judgeFamilies) } else { @() }
+                judgeVerdict = if ($_.Contains('judgeVerdict')) { $_.judgeVerdict } else { $null }
+                cloudRetries = if ($_.Contains('cloudRetries')) { $_.cloudRetries } else { 0 }
+                cloudRetryEvidence = if ($_.Contains('cloudRetryEvidence')) { $_.cloudRetryEvidence } else { @() }
+                grade = $_.grade; success = $_.success
                 gradingState = if ($_.Contains('gradingState')) { $_.gradingState } else { 'unscored' }
                 judgeDisagreements = if ($_.Contains('judgeDisagreements')) { $_.judgeDisagreements } else { 0 }
                 primaryMetric = if ($_.Contains('primaryMetric')) { $_.primaryMetric } else { $primaryMetric }
@@ -258,6 +297,8 @@ function Write-ABReport {
                 turns = $_.turns; toolCalls = $_.toolCalls; toolErrors = $_.toolErrors
                 timeToFirstProposalMs = $_.timeToFirstProposalMs; inputTokens = $_.inputTokens
                 outputTokens = $_.outputTokens; costUsd = $_.costUsd
+                agentBudget = if ($_.Contains('agentBudget')) { $_.agentBudget } else { $null }
+                agentElapsedMs = if ($_.Contains('agentElapsedMs')) { $_.agentElapsedMs } else { $null }
                 files = [ordered]@{
                     manifest = (Join-Path $_.trialRoot 'manifest.json')
                     transcript = (Join-Path $_.trialRoot 'transcript.jsonl')

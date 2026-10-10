@@ -16,6 +16,68 @@ public sealed class BaselineRepositoryTests : IDisposable
     public BaselineRepositoryTests() => Directory.CreateDirectory(_root);
 
     [Fact]
+    public void ApplyMakesThePreviousBaselineUnavailableUntilAFreshCaptureWithoutDeletingItsRows()
+    {
+        using var database = OpenDatabase("drift");
+        var repository = new BaselineRepository(database);
+        repository.Record("workspace", Publication("old", "sha256:" + new string('a', 64)),
+            DateTimeOffset.Parse("2026-08-23T12:00:00Z"),
+            DateTimeOffset.Parse("2026-08-23T11:00:00Z"), TestTextWords.Empty, Summary());
+        using (var connection = database.OpenConnection())
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "INSERT INTO Proposals (ProposalId, Status) VALUES ('proposal', 'applied'); " +
+                "INSERT INTO Receipts (ReceiptId, ProposalId, IntentDigest, ReceiptJson, RecordedUtc) " +
+                "VALUES ('receipt', 'proposal', 'digest', '{}', '2026-08-23T13:00:00Z');";
+            command.ExecuteNonQuery();
+        }
+        Assert.Null(repository.GetCurrent("workspace"));
+        Assert.Null(repository.GetCurrentEvidence("workspace"));
+        Assert.Null(repository.GetCurrentTextWords("workspace", []));
+        using (var connection = database.OpenConnection())
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "SELECT COUNT(*) FROM Baselines;";
+            Assert.Equal(1L, command.ExecuteScalar());
+        }
+        var fresh = Publication("fresh", "sha256:" + new string('b', 64));
+        fresh = fresh with { Token = new BaselineToken(fresh.Token.ProjectIdentity, fresh.Token.SemanticSnapshotDigest,
+            fresh.Token.ProjectionVersion, "2026-08-23T14:00:00Z", fresh.Token.BundleDigest) };
+        repository.Record("workspace", fresh,
+            DateTimeOffset.Parse("2026-08-23T14:00:00Z"),
+            DateTimeOffset.Parse("2026-08-23T13:30:00Z"), TestTextWords.Empty, Summary());
+        Assert.NotNull(repository.GetCurrentEvidence("workspace"));
+        Assert.True(repository.IsCurrentEvidence("workspace", fresh.Token));
+        Assert.False(repository.IsCurrentEvidence("workspace", Publication("old", "sha256:" + new string('a', 64)).Token));
+    }
+
+    [Fact]
+    public void RecapturingTheSameSemanticStateAfterApplyDoesNotReviveEarlierEvidence()
+    {
+        using var database = OpenDatabase("same-state-drift");
+        var repository = new BaselineRepository(database);
+        var old = Publication("old", "sha256:" + new string('a', 64));
+        repository.Record("workspace", old, DateTimeOffset.Parse("2026-08-23T12:00:00Z"),
+            DateTimeOffset.Parse("2026-08-23T11:00:00Z"), TestTextWords.Empty, Summary());
+        using (var connection = database.OpenConnection())
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "INSERT INTO Proposals (ProposalId, Status) VALUES ('proposal', 'applied'); " +
+                "INSERT INTO Receipts (ReceiptId, ProposalId, IntentDigest, ReceiptJson, RecordedUtc) " +
+                "VALUES ('receipt', 'proposal', 'digest', '{}', '2026-08-23T13:00:00Z');";
+            command.ExecuteNonQuery();
+        }
+        var fresh = old with { Token = new BaselineToken(old.Token.ProjectIdentity, old.Token.SemanticSnapshotDigest,
+            old.Token.ProjectionVersion, "2026-08-23T14:00:00Z", old.Token.BundleDigest) };
+        repository.Record("workspace", fresh, DateTimeOffset.Parse("2026-08-23T14:00:00Z"),
+            DateTimeOffset.Parse("2026-08-23T13:30:00Z"), TestTextWords.Empty, Summary());
+
+        Assert.True(old.Token.HasSameSemanticIdentity(fresh.Token));
+        Assert.False(repository.IsCurrentEvidence("workspace", old.Token));
+        Assert.True(repository.IsCurrentEvidence("workspace", fresh.Token));
+    }
+
+    [Fact]
     public void Record_RoundTripsThroughTheOwnedMotifDatabase()
     {
         var project = Project("roundtrip");

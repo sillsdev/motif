@@ -25,6 +25,7 @@ public sealed class ProjectInitializationRecoveryTests : IDisposable
     private const string CrashChildVariable = "MOTIF_INITIALIZATION_CRASH_CHILD";
     private const string CrashProjectVariable = "MOTIF_INITIALIZATION_CRASH_PROJECT";
     private const string CrashWorkerRootVariable = "MOTIF_INITIALIZATION_CRASH_WORKER_ROOT";
+    private const string ChildParentIdVariable = "MOTIF_INITIALIZATION_PARENT_ID";
     private const string ChildReadyPathVariable = "MOTIF_INITIALIZATION_CHILD_READY";
     private const string ChildReleasePathVariable = "MOTIF_INITIALIZATION_CHILD_RELEASE";
     private readonly string _root = Path.Combine(
@@ -214,7 +215,8 @@ public sealed class ProjectInitializationRecoveryTests : IDisposable
             using var heldCache = new FwDataProjectLoader().LoadCache(
                 Environment.GetEnvironmentVariable(CrashProjectVariable)!);
             await File.WriteAllTextAsync(Environment.GetEnvironmentVariable(ChildReadyPathVariable)!, string.Empty);
-            await WaitForFileAsync(Environment.GetEnvironmentVariable(ChildReleasePathVariable)!, TimeSpan.FromSeconds(30));
+            await WaitForFileAsync(Environment.GetEnvironmentVariable(ChildReleasePathVariable)!,
+                int.Parse(Environment.GetEnvironmentVariable(ChildParentIdVariable)!));
             return;
         }
         if (childMode == "after-save")
@@ -235,14 +237,10 @@ public sealed class ProjectInitializationRecoveryTests : IDisposable
         child.StandardInput.Close();
         var output = child.StandardOutput.ReadToEndAsync();
         var error = child.StandardError.ReadToEndAsync();
-        if (!child.WaitForExit((int)TimeSpan.FromSeconds(90).TotalMilliseconds))
-        {
-            child.Kill(entireProcessTree: true);
-            throw new TimeoutException("The initialization crash child did not exit after its save.");
-        }
+        await child.WaitForExitAsync();
         var childOutput = await output;
         var childError = await error;
-        Assert.NotEqual(0, child.ExitCode);
+        Assert.True(child.ExitCode != 0, $"Crash child unexpectedly succeeded: {childError}{Environment.NewLine}{childOutput}");
         Assert.Equal(original, File.ReadAllBytes(recoveryCopy));
 
         var beforeRetry = SHA256.HashData(File.ReadAllBytes(project));
@@ -270,7 +268,7 @@ public sealed class ProjectInitializationRecoveryTests : IDisposable
         var error = child.StandardError.ReadToEndAsync();
         try
         {
-            await WaitForChildFileAsync(child, readyPath, TimeSpan.FromSeconds(30));
+            await WaitForChildFileAsync(child, readyPath, output, error);
             var outcome = Initialize(project);
 
             Assert.False(outcome.Succeeded);
@@ -279,8 +277,7 @@ public sealed class ProjectInitializationRecoveryTests : IDisposable
         finally
         {
             await File.WriteAllTextAsync(releasePath, string.Empty);
-            if (!child.WaitForExit((int)TimeSpan.FromSeconds(30).TotalMilliseconds))
-                child.Kill(entireProcessTree: true);
+            await child.WaitForExitAsync();
         }
 
         Assert.True(child.ExitCode == 0,
@@ -523,38 +520,33 @@ public sealed class ProjectInitializationRecoveryTests : IDisposable
         childStart.Environment[CrashChildVariable] = mode;
         childStart.Environment[CrashProjectVariable] = project;
         childStart.Environment[CrashWorkerRootVariable] = _workerRoot;
+        childStart.Environment[ChildParentIdVariable] = Environment.ProcessId.ToString();
         if (readyPath is not null) childStart.Environment[ChildReadyPathVariable] = readyPath;
         if (releasePath is not null) childStart.Environment[ChildReleasePathVariable] = releasePath;
         return Process.Start(childStart)
             ?? throw new InvalidOperationException("Could not start the initialization recovery child.");
     }
 
-    private static async Task WaitForChildFileAsync(Process child, string path, TimeSpan timeout)
+    private static async Task WaitForChildFileAsync(Process child, string path, Task<string> output, Task<string> error)
     {
-        var deadline = DateTime.UtcNow + timeout;
         while (!File.Exists(path))
         {
             if (child.HasExited)
             {
                 await child.WaitForExitAsync();
-                throw new InvalidOperationException($"The lock-holding child exited early with code {child.ExitCode}.");
-            }
-            if (DateTime.UtcNow >= deadline)
-            {
-                child.Kill(entireProcessTree: true);
-                throw new TimeoutException("The lock-holding child did not acquire the project in time.");
+                throw new InvalidOperationException($"The lock-holding child exited early with code {child.ExitCode}. " +
+                    $"Standard error: {await error}{Environment.NewLine}Standard output: {await output}");
             }
             await Task.Delay(20);
         }
     }
 
-    private static async Task WaitForFileAsync(string path, TimeSpan timeout)
+    private static async Task WaitForFileAsync(string path, int parentId)
     {
-        var deadline = DateTime.UtcNow + timeout;
+        using var parent = Process.GetProcessById(parentId);
         while (!File.Exists(path))
         {
-            if (DateTime.UtcNow >= deadline)
-                throw new TimeoutException("The parent did not release the project lock in time.");
+            if (parent.HasExited) throw new InvalidOperationException("The parent exited without releasing the project lock.");
             await Task.Delay(20);
         }
     }

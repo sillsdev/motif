@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "motif": {
+      "command": "motif",
+      "args": ["mcp"]
+    }
+  }
+}

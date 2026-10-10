@@ -36,7 +36,7 @@
       "tool": "motif_try_word"
     },
     {
-      "tool": "motif_finish_proposal"
+      "tool": "motif_finalize_proposal"
     },
     {
       "tool": "motif_proposals"

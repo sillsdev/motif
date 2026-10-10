@@ -75,6 +75,7 @@ public sealed partial class ParsimonyQuerySession : IDisposable
 
     /// <summary>The bundle identity recorded for both attached artifacts.</summary>
     public string BundleId => _inputs.BundleId;
+    internal ParsimonyReportInputs Inputs => _inputs;
     public SIL.Motif.Contract.Baselines.BaselineToken BaselineToken => _inputs.BaselineToken;
 
     /// <summary>Reads the exact human-judgment revisions captured in this evidence artifact.</summary>

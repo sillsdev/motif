@@ -57,6 +57,9 @@ public static class PageRegistry
         PageEntry.Of(WorkspacePage.AiHandoff, "AI Handoff",
             "M12 3l1.8 4.8L18 9.5l-4.2 1.7L12 16l-1.8-4.8L6 9.5l4.2-1.7z M18 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z",
             context => new AiHandoffPageModel(context), model => new AiHandoffPage(model)),
+        PageEntry.Of(WorkspacePage.AiAssistants, "AI assistants",
+            Of(Circle(8, 8, 3), Circle(17, 9, 2), "M2 20c0-4 2-6 6-6s6 2 6 6 M15 15c4 0 6 2 6 5"),
+            context => new AssistantConnectionsPageModel(context), model => new AssistantConnectionsPage(model)),
     ];
 
     /// <summary>The entry for <paramref name="page"/>.</summary>

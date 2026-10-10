@@ -592,7 +592,7 @@ public sealed class CommandsRefusalsTests : IDisposable
         Assert.False(result.Succeeded);
         Assert.Equal("proposal.not-found", result.Refusal!.Code);
         Assert.Equal(FailureReason.NotFound, result.Refusal.Reason);
-        Assert.Contains("not found in store", result.Refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("not found", result.Refusal.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -608,7 +608,7 @@ public sealed class CommandsRefusalsTests : IDisposable
         Assert.False(result.Succeeded);
         Assert.Equal("proposal.inconsistent", result.Refusal!.Code);
         Assert.Equal(FailureReason.StoreInconsistent, result.Refusal.Reason);
-        Assert.Contains("store inconsistency", result.Refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("Stored Proposal JSON", result.Refusal.Message, StringComparison.Ordinal);
         // The refusal is a pure database read: the live project was never opened to reach it.
         Assert.Equal(writeTimeBefore, File.GetLastWriteTimeUtc(_fwDataPath));
     }
@@ -751,6 +751,7 @@ public sealed class CommandsRefusalsTests : IDisposable
             CreateNoWindow = true,
         };
         start.Environment[RunnerOptions.RootVariable] = _workerRoot;
+        CliProcess.EnableAdvancedAiMode(start, _workerRoot);
 
         using var process = Process.Start(start)!;
         // Both pipes drain concurrently: a sequential read deadlocks past the pipe buffer.

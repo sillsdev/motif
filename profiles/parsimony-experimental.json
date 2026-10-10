@@ -27,7 +27,7 @@
     { "tool": "motif_add_natural_class" },
     { "tool": "motif_edit_natural_class" },
     { "tool": "motif_relink_natural_class" },
-    { "tool": "motif_finish_proposal" },
+    { "tool": "motif_finalize_proposal" },
     { "tool": "motif_dry_run" }
   ]
 }

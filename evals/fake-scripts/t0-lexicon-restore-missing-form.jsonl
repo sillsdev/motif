@@ -2,5 +2,5 @@
 {"tool": "motif_grammar", "arguments": {"kind": "morph_types"}, "capture": {"stemMorphType": "items[name=Stem].id"}}
 {"tool": "motif_start_proposal", "arguments": {"draft": "restore-basket-form", "label": "Restore the basket form", "comment": "The existing noun entry is identified by its basket sense; the prompt supplies its missing form."}, "capture": {"proposal": "proposalId"}}
 {"tool": "motif_add_lexeme_form", "arguments": {"draft": "restore-basket-form", "entry": "${entry}", "morph_type": "${stemMorphType}", "ws": "qaa", "text": "qaje"}}
-{"tool": "motif_finish_proposal", "arguments": {"draft": "restore-basket-form"}}
+{"tool": "motif_finalize_proposal", "arguments": {"draft": "restore-basket-form"}}
 {"finalMessage": "I finalized a Proposal restoring the recorded form on the existing entry."}

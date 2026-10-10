@@ -159,6 +159,7 @@ public sealed class StoreDerivedFromProjectTests : IDisposable
             CreateNoWindow = true,
         };
         start.Environment[RunnerOptions.RootVariable] = _workerRoot;
+        CliProcess.EnableAdvancedAiMode(start, _workerRoot);
 
         using var process = Process.Start(start)!;
         // Both pipes drain concurrently: a sequential read deadlocks past the pipe buffer.

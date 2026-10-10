@@ -34,6 +34,9 @@ def agent_boundary(plan, command):
     args += ["--ro-bind", "/input/actions.jsonl", "/opt/client/actions.jsonl"] if Path("/input/actions.jsonl").exists() else []
     args += ["--ro-bind", "/session/channel/socket", "/channel/socket", "--bind", "/session/agent", "/workspace",
              "--proc", "/proc", "--dev", "/dev", "--tmpfs", "/var/lock", "--tmpfs", "/tmp"]
+    claude_credentials = Path("/session/agent/config/claude/.credentials.json")
+    if claude_credentials.is_file():
+        args += ["--ro-bind", str(claude_credentials), "/workspace/config/claude/.credentials.json"]
     env = {"PATH": "/opt/powershell:/usr/bin:/bin", "LANG": "C.UTF-8", "TMPDIR": "/tmp",
            "POWERSHELL_TELEMETRY_OPTOUT": "1", "DOTNET_CLI_WORKLOAD_UPDATE_NOTIFY_DISABLE": "1",
            "XDG_DATA_HOME": "/workspace/state/data", "XDG_CACHE_HOME": "/workspace/state/cache",

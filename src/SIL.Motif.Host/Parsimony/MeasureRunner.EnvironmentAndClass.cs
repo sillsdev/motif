@@ -96,7 +96,7 @@ public static partial class MeasureRunner
                 measure.Axis, measure.Tier,
                 new ParsimonyFindingAttachment(measure.AttachesTo, site.AllomorphGuid, measure.AuthoredObjectKind),
                 groupKey, new ParsimonyMeasureNumber(site.Extras.Count, site.Denominator, "context-types"),
-                measure.Threshold!, Digest(detail),
+                measure.Threshold!, MeasureEvidence.Compute(measure, session, detail),
                 references,
                 measure.RecipeLink, limitations, ParsimonyVerification.NotRun));
         }
@@ -171,7 +171,7 @@ public static partial class MeasureRunner
                 new ParsimonyFindingAttachment(measure.AttachesTo, site.ClassGuid, measure.AuthoredObjectKind),
                 $"class/{site.ClassGuid}/site/{Digest(site.UsageSite)}",
                 new ParsimonyMeasureNumber(site.Extras.Count, site.Denominator, "phoneme-types"),
-                measure.Threshold!, Digest(detail),
+                measure.Threshold!, MeasureEvidence.Compute(measure, session, detail),
                 [EvidenceReference(bundleId, "natural-class-excess", new { objectGuid = site.ClassGuid }),
                  EvidenceReference(bundleId, "natural-class-context", new { objectGuid = site.ClassGuid }),
                  EvidenceReference(bundleId, "approved-morph-sequences", new { objectGuid = (string?)null })],

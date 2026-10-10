@@ -22,7 +22,7 @@ namespace SIL.Motif.Commands.Queries;
 /// <c>ON CONFLICT(ProjectKey) DO UPDATE</c>), not a capture history, so at most one Baseline entry is ever
 /// produced here. Nothing in the store records a Handoff write, so no <see cref="ProjectHistoryKind.Handoff"/>
 /// entry is ever produced either — omitted rather than guessed at, the same discipline
-/// <see cref="ApprovedMorphologyReader"/> and its neighbours apply to unmeasured evidence.
+/// <see cref="SIL.Motif.Host.Analysis.ApprovedMorphologyReader"/> and its neighbours apply to unmeasured evidence.
 /// </remarks>
 public static class ProjectHistoryQuery
 {

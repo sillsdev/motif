@@ -72,7 +72,7 @@ foreach ($probe in $probes) {
     Write-Host "$($probe.name): $($result.state) ($outputRoot)"
 }
 $summary = Get-ABIntegritySummary @(@{ integrity = @{ state = 'clean' } }, @{ integrity = @{ state = 'review' } }, @{ integrity = @{ state = 'invalid' } }, @{ integrity = @{ state = 'isolation_failure' } })
-if ($summary.cleanRate -ne 0.25 -or $summary.attempted -ne 4 -or [Math]::Abs($summary.confidenceInterval95.upper - 0.6993581574) -gt 0.000001) { throw 'Integrity rate or Wilson interval is incorrect.' }
+if ($summary.scorableRate -ne 0.25 -or $summary.attempted -ne 4 -or [Math]::Abs($summary.confidenceInterval95.upper - 0.6993581574) -gt 0.000001) { throw 'Integrity rate or Wilson interval is incorrect.' }
 Write-Host "Integrity suite passed: $caseRoot"
 }
 finally {

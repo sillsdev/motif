@@ -178,7 +178,7 @@ For PR review, PR copy, review-comment responses, or Jira bug work, read
 they do not replace Motif's Proposal, Dry Run, or Assessment contracts.
 
 To interpret a Parsimony finding for a linguist, or to stage its fix, keep, ask or defer, read the
-[`parsimony-review`](.claude/skills/parsimony-review/SKILL.md) skill first.
+[`parsimony-review`](plugin/skills/parsimony-review/SKILL.md) skill first.
 
 **Linux and macOS:** before changing code that touches child processes, environment variables, file
 locks, paths, native libraries, stored timestamps or the Avalonia dispatcher, or when a test fails only on

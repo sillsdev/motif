@@ -16,6 +16,50 @@ public sealed class ProposalRepositoryTests : IDisposable
 
     public ProposalRepositoryTests() => Directory.CreateDirectory(_root);
 
+    [Theory]
+    [InlineData("sha256:same", true)]
+    [InlineData("sha256:changed", false)]
+    public void FinalizeKeepsOnlyEvidenceForTheSameContent(string finalDigest, bool retained)
+    {
+        using var database = MotifDatabase.OpenOwned(Path.Combine(_root, "evidence.motif.db"),
+            new ProjectLocator(Path.Combine(_root, "evidence.fwdata"), "evidence"),
+            MotifSchema.CurrentSchema, new Version(1, 0));
+        var repository = new ProposalRepository(database);
+        var id = CanonicalId.Mint("proposal/");
+        repository.CreateDraft("working", id, "{}");
+        repository.SetAnchor(id, "{\"IntentDigest\":\"sha256:same\"}");
+
+        repository.Finalize("working", finalDigest, "{}", "label", "reason");
+
+        Assert.Equal(retained, repository.Get(id).AnchorJson is not null);
+    }
+
+    [Fact]
+    public void ApplyDriftsOtherProposalsWithoutRemovingTheirReportsOrRevisions()
+    {
+        using var database = MotifDatabase.OpenOwned(Path.Combine(_root, "drift.motif.db"),
+            new ProjectLocator(Path.Combine(_root, "drift.fwdata"), "drift"),
+            MotifSchema.CurrentSchema, new Version(1, 0));
+        var repository = new ProposalRepository(database);
+        var applied = CanonicalId.Mint("proposal/");
+        var other = CanonicalId.Mint("proposal/");
+        var digest = "sha256:" + new string('a', 64);
+        foreach (var id in new[] { applied, other })
+        {
+            repository.SaveRevision(new ProposalRevisionRecord(id, digest, "{}", "proposed", null, null, "{}"));
+            repository.SetAnchor(id, "{}");
+        }
+        var reports = new ReportRepository(database);
+        reports.Save(new ReportRecord("evidence", other, null, "{}", "{}"));
+
+        repository.RecordAppliedReceipt(ReceiptFor(applied, digest));
+
+        Assert.Null(repository.Get(other).AnchorJson);
+        Assert.NotNull(repository.Get(applied).AnchorJson);
+        Assert.Equal(digest, repository.Get(other).IntentDigest);
+        Assert.NotNull(reports.Get("evidence"));
+    }
+
     [Fact]
     public void ExistingReceiptCannotMarkAChangedRevisionApplied()
     {

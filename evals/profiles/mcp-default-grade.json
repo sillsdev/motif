@@ -13,7 +13,7 @@
     { "name": "motif_dry_run", "class": "Evaluate" },
     { "name": "motif_trial", "class": "Evaluate" },
     { "name": "motif_try_word", "class": "Evaluate" },
-    { "name": "motif_finish_proposal", "class": "Draft" },
+    { "name": "motif_finalize_proposal", "class": "Draft" },
     { "name": "motif_proposals", "class": "Read" },
     { "name": "motif_activity", "class": "Read" }
   ],

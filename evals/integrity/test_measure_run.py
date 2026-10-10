@@ -20,13 +20,13 @@ def call(tool, text, arguments=None, error=None):
 
 
 class MeasureRunTests(unittest.TestCase):
-    def trial(self, run, arm, number, success, records):
+    def trial(self, run, arm, number, success, records, cost=None):
         trial = run / 'trials/task-a' / arm / f'trial-{number}'
         trial.mkdir(parents=True)
         (trial / 'transcript.jsonl').write_text('\n'.join(json.dumps(r) for r in records) + '\n')
         (trial / 'grade.json').write_text(json.dumps({'grade': 1.0 if success else 0.0, 'success': success}))
         (trial / 'integrity.json').write_text(json.dumps({'state': 'clean'}))
-        (trial / 'manifest.json').write_text(json.dumps({'armId': arm}))
+        (trial / 'manifest.json').write_text(json.dumps({'armId': arm, 'costUsd': cost}))
 
     def test_counts_tokens_calls_reads_and_divides_spend_by_successes(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -37,9 +37,7 @@ class MeasureRunTests(unittest.TestCase):
             self.trial(run, 'arm-a', 1, True, [call('motif_lexicon', 'x' * 2000), call('motif_guide', 'g', {'topic': 'slots'}),
                                                call('motif_guide', 'g', {'topic': 'slots'}), event(usage), summary])
             self.trial(run, 'arm-a', 2, False, [call('motif_grammar', 'y', error='boom'), event(usage), summary])
-            prices = run / 'prices.json'
-            prices.write_text(json.dumps({}))
-            result = subprocess.run([sys.executable, str(SCRIPT), str(run), '--prices', str(prices)],
+            result = subprocess.run([sys.executable, str(SCRIPT), str(run)],
                                     capture_output=True, text=True, stdin=subprocess.DEVNULL)
             self.assertEqual(0, result.returncode, result.stderr)
             rows = list(csv.DictReader(open(run / 'metrics.csv')))
@@ -50,21 +48,19 @@ class MeasureRunTests(unittest.TestCase):
                              (first['mcpCalls'], first['guideTopics'], first['resultKiloChars'], first['toolCounts']))
             self.assertEqual('1', rows[1]['mcpErrors'])
             summary_text = (run / 'metrics.md').read_text()
-            self.assertIn('| arm-a | task-a | 1/2 | 2200 | not priced |', summary_text)
+            self.assertIn('| arm-a | task-a | 1/2 | 2200 | incomplete costs | incomplete costs |', summary_text)
 
-    def test_price_uses_fresh_cached_and_output_rates(self):
+    def test_price_to_solve_counts_actual_cost_of_failed_scored_episodes(self):
         with tempfile.TemporaryDirectory() as directory:
             run = Path(directory)
             (run / 'arms').mkdir()
-            usage = {'type': 'turn.completed', 'usage': {'input_tokens': 1_000_000, 'cached_input_tokens': 500_000,
-                                                         'output_tokens': 100_000}}
-            self.trial(run, 'arm-a', 1, True, [event(usage)])
-            prices = run / 'prices.json'
-            prices.write_text(json.dumps({'': {'inputUsdPerMTok': 2.0, 'cachedInputUsdPerMTok': 0.5, 'outputUsdPerMTok': 10.0}}))
-            subprocess.run([sys.executable, str(SCRIPT), str(run), '--prices', str(prices)], check=True,
-                           capture_output=True, stdin=subprocess.DEVNULL)
+            self.trial(run, 'arm-a', 1, True, [], cost=1.0)
+            self.trial(run, 'arm-a', 2, False, [], cost=2.0)
+            subprocess.run([sys.executable, str(SCRIPT), str(run)], check=True, capture_output=True, stdin=subprocess.DEVNULL)
             row = next(csv.DictReader(open(run / 'metrics.csv')))
-            self.assertEqual(2.25, float(row['costUsd']))
+            self.assertEqual(1.0, float(row['costUsd']))
+            summary = (run / 'metrics.md').read_text()
+            self.assertIn('| arm-a | ALL | 1/2 | 0 | 3.0 | 1.5 |', summary)
 
 
 if __name__ == '__main__':

@@ -268,6 +268,7 @@ public sealed class PageScreenshots
         ("5-warnings", WorkspacePage.Warnings, TextsTab.Matrix),
         ("6-review", WorkspacePage.Review, TextsTab.Matrix),
         ("7-ai-handoff", WorkspacePage.AiHandoff, TextsTab.Matrix),
+        ("8-ai-assistants", WorkspacePage.AiAssistants, TextsTab.Matrix),
     ];
 
     [Fact]

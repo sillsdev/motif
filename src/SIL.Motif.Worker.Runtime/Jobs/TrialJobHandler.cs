@@ -27,8 +27,7 @@ namespace SIL.Motif.Worker.Jobs;
 /// way, since they run in different processes.
 /// </summary>
 /// <param name="ProposalJson">
-/// The Proposal's own JSON text, committed or an uncommitted Draft's working content — whatever
-/// <see cref="ProposalRepository.Get"/> returned, verbatim.
+/// The frozen canonical semantic content of a finalized revision or mutable Draft.
 /// </param>
 /// <param name="Scope">The declared Assessment scope to use, or <c>null</c> for the project's default.</param>
 /// <param name="Limits">Optional per-word limits copied from the earlier Assessment being compared.</param>
@@ -38,7 +37,9 @@ public sealed record TrialJobInput(
     [property: JsonPropertyName("words")] IReadOnlyList<string>? Words = null,
     [property: JsonPropertyName("allWords")] bool AllWords = false,
     [property: JsonPropertyName("prerequisites")] IReadOnlyList<FrozenProposalRevision>? Prerequisites = null,
-    [property: JsonPropertyName("limits")] TrialLimits? Limits = null)
+    [property: JsonPropertyName("limits")] TrialLimits? Limits = null,
+    [property: JsonPropertyName("baselineAssessmentIds")] IReadOnlyList<string>? BaselineAssessmentIds = null,
+    [property: JsonPropertyName("negativeWords")] IReadOnlyList<string>? NegativeWords = null)
 {
     /// <exception cref="InvalidOperationException">The input is not a well-formed Trial job input.</exception>
     public static TrialJobInput Parse(string inputJson) =>

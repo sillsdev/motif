@@ -1,7 +1,7 @@
 [
   {
     "name": "motif_start_proposal",
-    "description": "Starts a new Draft Proposal: a named container for one small, related set of changes. Give it a short draft name (letters, digits and hyphens), a one-line label a person reads in Motif\u0027s window, such as \u0027Add the plural suffix -s\u0027, and a comment explaining why the change is right, which the linguist reads while deciding. Keep each Proposal to one concept. Returns the draft name and the proposal id; use the draft name with the motif_add_* tools and the proposal id with motif_trial.",
+    "description": "Start a Proposal. Starts a named Draft holding one related set of semantic changes. Measure it and revise it before Finalize. Only a person can Apply.\nCommand: new. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nLabel: The short description a person reads while reviewing the Proposal.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -16,12 +16,17 @@
         "comment": {
           "type": "string",
           "description": "Why this change is right: the evidence, in a few sentences."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
         }
       },
       "required": [
         "draft",
         "label",
-        "comment"
+        "comment",
+        "project"
       ],
       "additionalProperties": false
     },
@@ -31,7 +36,7 @@
   },
   {
     "name": "motif_add_natural_class",
-    "description": "Authors a natural class in a Draft. Supply exactly one nonempty list: members (phoneme ids) or features (closed phonological feature/value pairs). Its abbreviation must be unique and use letters, digits or hyphens. References may name objects authored earlier in this Draft. Returns the class entityId. Next: author its context with motif_add_environment using this class id.",
+    "description": "Author a natural class. Stages a named segment natural class with explicitly declared phoneme members in a Draft. Members may name existing phonemes or phonemes created earlier through declared dependencies. Only a person can Apply.\nCommand: compose-author-natural-class. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -75,12 +80,17 @@
             "additionalProperties": false
           },
           "description": "Closed phonological feature/value pairs; copy ids from motif_grammar."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
         }
       },
       "required": [
         "draft",
         "name",
-        "abbreviation"
+        "abbreviation",
+        "project"
       ],
       "additionalProperties": false
     },
@@ -90,7 +100,7 @@
   },
   {
     "name": "motif_edit_natural_class",
-    "description": "Adds or removes members of one existing segment natural class after comparing its exact current phoneme identities. The desired class must remain nonempty, and feature classes cannot change subtype in place. The result lists environments, rewrite rules and insertions that still use the class. This only stages a Draft; only a person can Apply it.",
+    "description": "Edit a natural class. Adds or removes phonemes from one existing segment natural class after checking its exact current members. The response lists rules, environments and insertions that still use the class. Only a person can Apply.\nCommand: compose-edit-natural-class. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -115,13 +125,18 @@
             "type": "string"
           },
           "description": "Requested distinct phoneme ids; the class must remain nonempty."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
         }
       },
       "required": [
         "draft",
         "target",
         "expectedMembers",
-        "members"
+        "members",
+        "project"
       ],
       "additionalProperties": false
     },
@@ -131,7 +146,7 @@
   },
   {
     "name": "motif_relink_natural_class",
-    "description": "Moves only the named environment and rewrite-rule context users from one natural class to another class created earlier in this Draft. Supply each environment\u0027s exact typed left and right contexts; each relink depends on the replacement class creation. RelatedObjects lists the source class\u0027s current users for scope review. This only stages a Draft; only a person can Apply it.",
+    "description": "Relink natural-class users. Moves explicitly named environments and rewrite-rule contexts to a replacement class created earlier in the Draft. Other users remain on the source class. Only a person can Apply.\nCommand: compose-relink-natural-class. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -236,6 +251,10 @@
             "type": "string"
           },
           "description": "Explicit rewrite-rule context object ids using the source class."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
         }
       },
       "required": [
@@ -244,7 +263,8 @@
         "replacement",
         "replacementCreationOperation",
         "environments",
-        "ruleContexts"
+        "ruleContexts",
+        "project"
       ],
       "additionalProperties": false
     },
@@ -254,7 +274,7 @@
   },
   {
     "name": "motif_add_phonological_rule",
-    "description": "Stages one simple regular rewrite rule in a Draft. Input and output each contain at most one phoneme or natural class; an empty side means insertion or deletion. left and right are ordered lists of one to eight phoneme, class, boundary, or boundaryMarker contexts. A boundaryMarker id stays literal even when its code is #; use boundary=\u0027word\u0027 for the word edge. placement names the adjacent existing rule or rules. Alpha variables, metathesis and allomorph environments are unsupported. Returns created rule identities and operation details. Next: finish the Proposal, inspect motif_dry_run, and test parse and generate behavior with motif_trial.",
+    "description": "Author a sound rule. Stages one simple rewrite rule in a Draft, using existing phonemes and natural classes with explicit context and rule placement. Empty input or output means insertion or deletion; unsupported alpha variables and metathesis are refused. Only a person can Apply.\nCommand: compose-author-phonological-rule. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -388,6 +408,10 @@
             }
           },
           "additionalProperties": false
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
         }
       },
       "required": [
@@ -397,7 +421,8 @@
         "input",
         "output",
         "left",
-        "right"
+        "right",
+        "project"
       ],
       "additionalProperties": false
     },
@@ -407,7 +432,7 @@
   },
   {
     "name": "motif_add_affix_slot",
-    "description": "Stages a new inflectional affix slot owned by an existing category, gives it a name and optionality, and can assign existing inflectional affixes to it in the same Draft. Assignments must fit the slot category. This only stages a Proposal, and only a person can Apply it. Next: finish the Draft, inspect motif_dry_run, and run a bounded motif_trial on affected words.",
+    "description": "Author an affix slot. Stages a named inflectional affix slot owned by an existing category and can assign existing inflectional affixes to it in the same Draft. Inspect its Dry Run and Trial before a person Applies the Proposal.\nCommand: compose-author-affix-slot. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -437,6 +462,10 @@
             "type": "string"
           },
           "description": "Optional canonical ids of existing inflectional affix MSAs to assign."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
         }
       },
       "required": [
@@ -444,7 +473,8 @@
         "category",
         "name",
         "ws",
-        "optional"
+        "optional",
+        "project"
       ],
       "additionalProperties": false
     },
@@ -454,7 +484,7 @@
   },
   {
     "name": "motif_add_affix_template",
-    "description": "Stages an active alternative affix template in a Draft, preserving the category\u0027s existing template order. prefix_slots and suffix_slots are ordered canonical ids for existing slots or slots created earlier in this Draft; each must belong to the template category or an ancestor, and no slot may be repeated. final records whether the template requires further derivation. This only stages a Proposal, and only a person can Apply it. Next: finish the Draft, inspect motif_dry_run, and run a bounded motif_trial on affected words.",
+    "description": "Author an affix template. Stages an active alternative template on an existing category, using ordered prefix and suffix slots that belong to the category or an ancestor. It preserves existing template order and records whether this template requires further derivation. Only a person can Apply.\nCommand: compose-author-affix-template. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -491,6 +521,10 @@
         "final": {
           "type": "boolean",
           "description": "Whether the template requires further derivation."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
         }
       },
       "required": [
@@ -500,7 +534,8 @@
         "ws",
         "prefix_slots",
         "suffix_slots",
-        "final"
+        "final",
+        "project"
       ],
       "additionalProperties": false
     },
@@ -510,7 +545,7 @@
   },
   {
     "name": "motif_retire_allomorph",
-    "description": "Stages removal of an ordinary prefix or suffix alternate after every live use has an exact destination among the entry\u0027s duplicate forms. It refuses changed forms, unsupported references and owned dependents; the Draft can be checked with motif_dry_run before a person Applies it.",
+    "description": "Retire or replace a form. Stages one connected Proposal to retire ordinary prefix or suffix alternates after their references move; the sound-rule form also stages its natural class and rule. Dry Run shows bundle Morph and copied Form text changes, other references, and deletion together. Missing destinations are refused with counts for distinct unresolved Approved analyses, ad hoc rules, and other references; only a person can Apply.\nCommand: retire-allomorph. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -521,11 +556,16 @@
         "intent_json": {
           "type": "string",
           "description": "Closed motif-retire-allomorph/v1 JSON with exact source, destination and reference identities."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
         }
       },
       "required": [
         "draft",
-        "intent_json"
+        "intent_json",
+        "project"
       ],
       "additionalProperties": false
     },
@@ -535,7 +575,7 @@
   },
   {
     "name": "motif_edit_adhoc_prohibition",
-    "description": "Stages one explicit Disabled value for a flat allomorph or morpheme prohibition in a Draft. expected_disabled must match the target\u0027s current value; grouped prohibitions are refused. This only stages a Proposal, and only a person can Apply it. Next: finish the Draft, inspect motif_dry_run, and compare bounded before and after Trials with the same words.",
+    "description": "Edit an ad hoc prohibition. Stages one explicit Disabled value for a flat allomorph or morpheme prohibition in a Draft. The expected value guards against stale evidence; Motif never Applies this change automatically. Only a person can Apply.\nCommand: compose-edit-adhoc-prohibition. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -554,13 +594,18 @@
         "disabled": {
           "type": "boolean",
           "description": "The explicit Disabled value to write."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
         }
       },
       "required": [
         "draft",
         "target",
         "expected_disabled",
-        "disabled"
+        "disabled",
+        "project"
       ],
       "additionalProperties": false
     },
@@ -570,7 +615,7 @@
   },
   {
     "name": "motif_edit_affix_slot",
-    "description": "Changes whether one existing affix slot is optional. The response lists every inflectional affix and template using that shared slot; this only stages a Draft, and only a person can Apply it.",
+    "description": "Edit an affix slot. Changes whether an existing inflectional affix slot is optional. The response lists every affix and template using the shared slot; Motif stages a Draft and never Applies it automatically. Only a person can Apply.\nCommand: compose-edit-affix-slot. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -589,13 +634,18 @@
         "optional": {
           "type": "boolean",
           "description": "The requested optionality."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
         }
       },
       "required": [
         "draft",
         "target",
         "expected_optional",
-        "optional"
+        "optional",
+        "project"
       ],
       "additionalProperties": false
     },
@@ -605,7 +655,7 @@
   },
   {
     "name": "motif_edit_affix_template",
-    "description": "Reorders the existing prefix and suffix slots of one affix template using explicit slot identities. It cannot add or remove slots or create a template; this only stages a Draft, and only a person can Apply it.",
+    "description": "Reorder an affix template. Changes the explicit order of existing prefix or suffix slots in a known affix template. The intent preserves the slot set, and Motif stages a Draft without Applying it automatically. Only a person can Apply.\nCommand: compose-edit-affix-template. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -644,6 +694,10 @@
             "type": "string"
           },
           "description": "Requested suffix slot ids in explicit order."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
         }
       },
       "required": [
@@ -652,7 +706,8 @@
         "expected_prefix_slots",
         "prefix_slots",
         "expected_suffix_slots",
-        "suffix_slots"
+        "suffix_slots",
+        "project"
       ],
       "additionalProperties": false
     },
@@ -662,7 +717,7 @@
   },
   {
     "name": "motif_edit_inflectional_affix",
-    "description": "Changes the slot membership of one existing inflectional affix MSA. Slots must belong to its category or an ancestor; other MSA subtypes are refused. This only stages a Draft, and only a person can Apply it.",
+    "description": "Edit an inflectional affix. Changes which existing category slots an inflectional affix MSA uses. Other MSA kinds and slots outside the category hierarchy are refused; Motif stages a Draft and never Applies it automatically. Only a person can Apply.\nCommand: compose-edit-inflectional-affix. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -687,13 +742,18 @@
             "type": "string"
           },
           "description": "Requested slot ids; order has no meaning."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
         }
       },
       "required": [
         "draft",
         "target",
         "expected_slots",
-        "slots"
+        "slots",
+        "project"
       ],
       "additionalProperties": false
     },
@@ -703,7 +763,7 @@
   },
   {
     "name": "motif_edit_allomorph_condition",
-    "description": "Replaces one existing allomorph\u0027s environment references after checking the exact current list. Use field=phoneEnv for a stem or affix OR-list, and field=position for an affix\u0027s ordered position choices. The edit changes only this allomorph, so other users of a shared environment keep their references. This only stages a Draft; only a person can Apply it.",
+    "description": "Edit an allomorph condition. Changes the environment references on one existing stem or affix allomorph after checking its current list. Shared environments remain unchanged for every other allomorph that uses them. Only a person can Apply.\nCommand: compose-edit-allomorph-condition. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -736,6 +796,10 @@
             "type": "string"
           },
           "description": "Requested environment ids; order matters only for position."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
         }
       },
       "required": [
@@ -743,7 +807,8 @@
         "target",
         "field",
         "expected_environments",
-        "environments"
+        "environments",
+        "project"
       ],
       "additionalProperties": false
     },
@@ -753,7 +818,7 @@
   },
   {
     "name": "motif_order_allomorphs",
-    "description": "Reorders the existing alternate forms within one entry using explicit neighboring anchors. The lexeme form is outside that sequence and cannot be moved. Earlier forms have selection precedence; a final unrestricted form may serve as an elsewhere fallback. This only stages a Draft; only a person can Apply it.",
+    "description": "Order alternate forms. Changes the order of existing alternate forms within one entry after checking their current order. The lexeme form cannot be moved, and Motif stages the moves in a Draft for human review. Only a person can Apply.\nCommand: order-allomorphs. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -778,13 +843,18 @@
             "type": "string"
           },
           "description": "Requested order of those same alternate forms."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
         }
       },
       "required": [
         "draft",
         "target",
         "expected_alternates",
-        "alternates"
+        "alternates",
+        "project"
       ],
       "additionalProperties": false
     },
@@ -794,11 +864,19 @@
   },
   {
     "name": "motif_parsimony_record_types",
-    "description": "Lists the saved Notebook record types and their portable ids. Choose a type by its id, never by its English name. Use the selected id with motif_dispose_parsimony_finding.",
+    "description": "List Notebook record types. Lists the saved Notebook record types with their portable IDs and readable names. Use the ID when you stage a Parsimony disposition.\nCommand: parsimony record-types. Agent class: Read.\n",
     "inputSchema": {
       "type": "object",
-      "properties": {},
-      "additionalProperties": false
+      "properties": {
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "project"
+      ]
     },
     "readOnlyHint": true,
     "destructiveHint": false,
@@ -806,7 +884,7 @@
   },
   {
     "name": "motif_dispose_parsimony_finding",
-    "description": "Stages a keep, fix, ask or defer decision from one exact finding in a stored Parsimony Report. Motif derives the subject, evidence digest, evidence contract and captions from that finding. Choose record_type_id from motif_parsimony_record_types. A reason is optional; ask requires a question. This only stages a Draft Proposal: only a person can Apply it, and a pending keep does not suppress findings.",
+    "description": "Stage a finding disposition. Stages a keep, fix, ask, or defer decision from one finding in a stored Parsimony Report. It derives the exact subject and evidence from that finding and appends the existing Notebook operations to a Draft Proposal. Only a person can Apply.\nCommand: parsimony dispose. Agent class: Draft.\nReportId: The exact stored Parsimony report identity.\nFindingId: The exact finding identity within that report.\nDisposition: The advisory disposition to record for the finding.\nRecordTypeId: The project\u0027s Notebook record type for the advisory record.\nDraftName: The mutable Draft receiving the semantic intent.\nReason: The person\u0027s reason for the advisory disposition, when supplied.\nQuestion: The question to retain for later review, when supplied.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -843,6 +921,10 @@
         "question": {
           "type": "string",
           "description": "Required only when disposition is ask."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
         }
       },
       "required": [
@@ -850,7 +932,8 @@
         "finding_id",
         "disposition",
         "record_type_id",
-        "draft"
+        "draft",
+        "project"
       ],
       "additionalProperties": false
     },
@@ -860,7 +943,7 @@
   },
   {
     "name": "motif_dry_run",
-    "description": "Checks that a finished Proposal\u0027s changes fit the project by applying them to a throwaway copy, and reports what each change did. It does not touch the real project. The Proposal must be finished with motif_finish_proposal first. If it takes longer than wait_seconds you get status \u0027running\u0027 and a job id: call again with that job to keep waiting.",
+    "description": "Dry Run a Proposal. Queues a Dry Run of a Draft or finalized Proposal on a throwaway copy of its Baseline. Its effects are bound to that content and project state.\nCommand: dry-run. Agent class: Evaluate.\nProposalId: The exact canonical Proposal identity.\nRead a Dry Run. Waits for the Dry Run of a Draft or finalized Proposal and reads its effects. Content and Baseline identify whether the evidence remains current.\nCommand: dry-run --wait. Agent class: Evaluate.\nProposalId: The exact canonical Proposal identity.\nJobId: The exact job identity returned when evidence was queued.\nTimeout: The maximum wait for a result before returning progress.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -891,10 +974,15 @@
           "description": "The most list items to return in concise mode. Default 25.",
           "minimum": 1,
           "maximum": 200
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
         }
       },
       "required": [
-        "proposal"
+        "proposal",
+        "project"
       ],
       "additionalProperties": false
     },
@@ -903,8 +991,8 @@
     "idempotentHint": false
   },
   {
-    "name": "motif_finish_proposal",
-    "description": "Finishes a Draft so it becomes a Proposal the linguist can review in Motif\u0027s window. Do this before a dry run or trial, which require a finished Proposal. Finishing does not change the project; the linguist decides whether to apply it. After finishing, the draft is closed: further edits start from a copy.",
+    "name": "motif_finalize_proposal",
+    "description": "Finalize a Proposal. Finalizes a Draft as an immutable Proposal revision for a person to review. Evidence for unchanged content on the same Baseline remains current.\nCommand: finalize. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nExpectedRevision: The required Draft revision for this write.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -915,10 +1003,15 @@
         "expected_revision": {
           "type": "string",
           "description": "The revision you last read, to refuse if the draft changed."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
         }
       },
       "required": [
-        "draft"
+        "draft",
+        "project"
       ],
       "additionalProperties": false
     },
@@ -928,11 +1021,19 @@
   },
   {
     "name": "motif_parsimony_measures",
-    "description": "Lists the supported Parsimony measures and their fixed evidence views, capabilities, evidence tiers, citations and recipe links. This reads the same catalog as motif parsimony measures; it does not run a measure or launch a job.",
+    "description": "List Parsimony measures. Lists registered grammar checks, their axes, evidence tiers, citations, and fixed views. It reads the catalog without invoking PanGloss.\nCommand: parsimony measures. Agent class: Read.\n",
     "inputSchema": {
       "type": "object",
-      "properties": {},
-      "additionalProperties": false
+      "properties": {
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "project"
+      ]
     },
     "readOnlyHint": true,
     "destructiveHint": false,
@@ -940,7 +1041,7 @@
   },
   {
     "name": "motif_run_parsimony_measure",
-    "description": "Runs one registered Parsimony measure and returns its stored Report, using the same command handlers and Report shape as the CLI. It may take a while; if it returns running, repeat with the job id. This is advisory evidence only. A Proposal still needs Dry Run and only a person can Apply it.",
+    "description": "Review grammar parsimony. Runs a registered Parsimony measure over the current Baseline or compares a completed Proposal Dry Run against that Baseline. Candidate evidence uses a private copy and stores before and after Reports. Use parsimony measures to list checks and their evidence needs.\nCommand: parsimony. Agent class: Evaluate.\nMeasureId: The registered Parsimony measure to run.\nEvidenceScope: The declared source of word evidence for the measure.\nAssessmentIds: The exact retained Assessments supplying evidence, when supplied.\nWait for a Parsimony Report. Queues the requested Parsimony measure and waits for its stored Report. It does not capture a Baseline or require an Assessment.\nCommand: parsimony --wait. Agent class: Evaluate.\nJobId: The queued job whose result to read.\nTimeout: The maximum wait for this call; the job continues after the wait ends.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -981,10 +1082,15 @@
           "description": "How long to wait for a result. Default 40.",
           "minimum": 1,
           "maximum": 300
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
         }
       },
       "required": [
-        "measure_id"
+        "measure_id",
+        "project"
       ],
       "additionalProperties": false
     },
@@ -994,17 +1100,22 @@
   },
   {
     "name": "motif_parsimony_report",
-    "description": "Reads one stored Parsimony Report by its exact id. The Report payload is the same serialized response returned by motif parsimony show; reading it does not start a parser run.",
+    "description": "Read a Parsimony Report. Reads a stored Parsimony Report by id. It uses the saved Report and does not run PanGloss.\nCommand: parsimony show. Agent class: Read.\nReportId: The exact stored Parsimony report identity.",
     "inputSchema": {
       "type": "object",
       "properties": {
         "report_id": {
           "type": "string",
           "description": "Stored Parsimony Report id."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
         }
       },
       "required": [
-        "report_id"
+        "report_id",
+        "project"
       ],
       "additionalProperties": false
     },
@@ -1014,17 +1125,22 @@
   },
   {
     "name": "motif_retirement_review",
-    "description": "Reads the review state for one staged rule-based allomorph retirement Draft. It returns its latest matching Dry Run and names evidence that is not available yet; it never invents a finding or parser result.",
+    "description": "Read a retirement review. Reads the review state for one staged rule-based allomorph retirement Draft. It returns its latest matching Dry Run and names evidence that is not available yet; it never invents a finding or parser result.\nCommand: parsimony retirement-review. Agent class: Read.\nDraftId: The exact staged Draft Proposal identity.",
     "inputSchema": {
       "type": "object",
       "properties": {
         "draft_id": {
           "type": "string",
           "description": "Exact staged Draft Proposal id."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
         }
       },
       "required": [
-        "draft_id"
+        "draft_id",
+        "project"
       ],
       "additionalProperties": false
     },
@@ -1034,7 +1150,7 @@
   },
   {
     "name": "motif_parsimony_view",
-    "description": "Reads one page from a fixed Parsimony evidence or Active/Suppressed view. Filters are typed, bounded fields; arbitrary SQL or query text is not accepted. Missing evidence is reported with its status and detail, while saved judgments remain visible as unavailable. This read never launches a job; rerun a measure explicitly when new evidence is needed.",
+    "description": "Read a Parsimony view. Reads a bounded page from a fixed view over one frozen bundle. Parser views use a Report id to bind the exact Assessment references; filters and cursors are bound to the bundle. Only the declared view filters are accepted.\nCommand: parsimony view. Agent class: Read.\nQuery: The declared named Parsimony view and its filters.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -1144,11 +1260,16 @@
         "cursor": {
           "type": "string",
           "description": "Next cursor from the same bundle, view and filters."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
         }
       },
       "required": [
         "bundle_id",
-        "view"
+        "view",
+        "project"
       ],
       "additionalProperties": false
     },
@@ -1158,7 +1279,7 @@
   },
   {
     "name": "motif_revise_parsimony_disposition",
-    "description": "Stages a revision of one saved Parsimony disposition in a Draft. Name the exact current head set and content digests; a conflict can be resolved only by naming every head. The revised choice keeps the same finding subject and evidence, and only a person can Apply it.",
+    "description": "Revise a disposition. Stages a revision to a saved Parsimony disposition using its exact current Notebook heads and digests. The revision keeps the same finding subject and evidence, and only a person can Apply it.\nCommand: parsimony revise. Agent class: Draft.\nDraftName: The mutable Draft receiving the semantic intent.\nIntentJson: The closed semantic intent consumed by the typed composer.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -1213,13 +1334,18 @@
         "question": {
           "type": "string",
           "description": "Required when disposition is ask."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
         }
       },
       "required": [
         "draft",
         "recordId",
         "expectedHeads",
-        "disposition"
+        "disposition",
+        "project"
       ],
       "additionalProperties": false
     },
@@ -1229,7 +1355,7 @@
   },
   {
     "name": "motif_retract_parsimony_disposition",
-    "description": "Stages a withdrawal of one saved Parsimony disposition in a Draft. Name the exact current head set and content digests; a conflict can be resolved only by naming every head. The Notebook history stays intact, and the finding returns to Active only after a person Applies the current retraction; only a person can Apply it.",
+    "description": "Retract a disposition. Stages a withdrawal of a saved Parsimony disposition using its exact current Notebook heads and digests. The history stays in FieldWorks, and the finding returns to Active after a person Applies the current retraction.\nCommand: parsimony retract. Agent class: Draft.\nDraftName: The mutable Draft receiving the semantic intent.\nIntentJson: The closed semantic intent consumed by the typed composer.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -1262,12 +1388,17 @@
             "additionalProperties": false
           },
           "description": "Every current head with its exact content digest."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
         }
       },
       "required": [
         "draft",
         "recordId",
-        "expectedHeads"
+        "expectedHeads",
+        "project"
       ],
       "additionalProperties": false
     },

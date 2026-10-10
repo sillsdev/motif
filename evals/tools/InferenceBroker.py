@@ -25,6 +25,10 @@ class InferenceFailure(RuntimeError):
     """A control-side inference failure with a credential-free diagnostic."""
 
 
+class CloudFailure(InferenceFailure):
+    """A provider login or model-service failure that may be retried."""
+
+
 LOGIN_FAILURE = "ChatGPT login is missing, expired or unusable; run codex on the host to refresh the login"
 
 
@@ -32,9 +36,9 @@ def inference_upstream(host, auth_mode=None):
     if host == "fake":
         return None, "none"
     if host == "claude":
-        if auth_mode not in (None, "api-key"):
+        if auth_mode not in (None, "api-key", "claude-plan"):
             raise InferenceFailure("Unsupported inference auth mode for Claude")
-        return host, "api-key"
+        return host, auth_mode or "api-key"
     if host != "codex":
         raise InferenceFailure("Unsupported inference host")
     if auth_mode is None:
@@ -65,7 +69,7 @@ def chatgpt_credentials():
             raise ValueError()
         return token, account
     except (OSError, ValueError, KeyError, TypeError, OverflowError, binascii.Error):
-        raise InferenceFailure(LOGIN_FAILURE) from None
+        raise CloudFailure(LOGIN_FAILURE) from None
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -79,15 +83,18 @@ class Broker:
         self.origin, variable, self.paths = PROVIDERS[self.upstream]
         if self.upstream == "codex-chatgpt":
             chatgpt_credentials()
+        elif host == "claude" and self.auth_mode == "claude-plan":
+            self.key = None
         else:
             self.key = os.environ.get(variable)
             if not self.key:
-                raise InferenceFailure("Live inference requires the control-only " + variable)
+                raise CloudFailure("Live inference requires the control-only " + variable)
         self.host = host
         self.model = model
         self.archive = Path(archive)
         self.errors = []
         self.failures = []
+        self.failure_events = []
         self.denials = []
         self.count = 0
         self.session_id = str(uuid.uuid4())
@@ -140,6 +147,17 @@ class Broker:
         elif self.host == "codex":
             secrets = (self.key,)
             headers["Authorization"] = "Bearer " + self.key
+        elif self.auth_mode == "claude-plan":
+            incoming = {key.lower(): value for key, value in frame.get("headers", {}).items()}
+            authorization = incoming.get("authorization", "")
+            if not authorization.startswith("Bearer ") or not authorization[7:].strip():
+                raise CloudFailure("Claude subscription login is missing or unusable")
+            token = authorization[7:]
+            secrets = (token,)
+            headers["Authorization"] = authorization
+            headers["anthropic-version"] = incoming.get("anthropic-version", "2023-06-01")
+            if "anthropic-beta" in incoming:
+                headers["anthropic-beta"] = incoming["anthropic-beta"]
         else:
             secrets = (self.key,)
             headers["x-api-key"] = self.key
@@ -155,7 +173,7 @@ class Broker:
         except urllib.error.HTTPError as error:
             response = error
         except (OSError, urllib.error.URLError):
-            raise InferenceFailure("Inference upstream request failed") from None
+            raise CloudFailure("Inference upstream request failed") from None
         try:
             with response:
                 content = response.read(LIMIT + 1)
@@ -164,7 +182,7 @@ class Broker:
                 metadata = {"Content-Type": response.headers.get("Content-Type", "application/json")}
                 status = response.code
         except (OSError, http.client.HTTPException):
-            raise InferenceFailure("Inference upstream response failed") from None
+            raise CloudFailure("Inference upstream response failed") from None
         for secret in secrets:
             content = content.replace(secret.encode(), b"[redacted]")
             metadata["Content-Type"] = metadata["Content-Type"].replace(secret, "[redacted]")
@@ -172,9 +190,11 @@ class Broker:
             log.write(json.dumps({"at": time.time(), "destination": destination, "status": status, "authMode": self.auth_mode,
                                   "requestHash": hashlib.sha256(body).hexdigest()}) + "\n")
         if self.upstream == "codex-chatgpt" and status == 401:
-            raise InferenceFailure(LOGIN_FAILURE)
+            raise CloudFailure(LOGIN_FAILURE)
         if status >= 400:
-            self.failures.append("Inference upstream returned HTTP " + str(status))
+            evidence = "Inference upstream returned HTTP " + str(status)
+            self.failures.append(evidence)
+            self.failure_events.append({"failureClass": "cloud_failure", "evidence": evidence})
         return status, metadata, content
 
     def serve(self):
@@ -189,9 +209,12 @@ class Broker:
                     try:
                         status, headers, body = self.forward(json.loads(line))
                     except InferenceFailure as error:
-                        self.failures.append(str(error))
+                        evidence = str(error)
+                        self.failures.append(evidence)
+                        failure_class = "cloud_failure" if isinstance(error, CloudFailure) else "harness_defect"
+                        self.failure_events.append({"failureClass": failure_class, "evidence": evidence})
                         status, headers = 503, {"Content-Type": "application/json"}
-                        body = json.dumps({"error": {"message": str(error)}}).encode()
+                        body = json.dumps({"error": {"message": evidence}}).encode()
                     outgoing.write(json.dumps({"status": status, "headers": headers, "body": base64.b64encode(body).decode()}).encode() + b"\n")
                     outgoing.flush()
         except Exception as error:

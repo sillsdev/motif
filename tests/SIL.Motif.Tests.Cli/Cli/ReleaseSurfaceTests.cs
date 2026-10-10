@@ -178,14 +178,14 @@ public sealed class ReleaseSurfaceTests : IDisposable
         var projectPath = Path.Combine(_root, "Project.fwdata");
         File.WriteAllText(projectPath, string.Empty);
 
-        var result = Run($"new --project \"{projectPath}\" --json", developerCommands: false);
+        var result = Run($"add-delete-lexeme-form --project \"{projectPath}\" --json", developerCommands: false);
 
         Assert.Equal(FailureEnvelope.ExitCodeFor(FailureReason.Refused), result.ExitCode);
         Assert.Equal(string.Empty, result.Output);
         var envelope = ProjectionJson.Deserialize<FailureEnvelope>(result.Error)!;
         Assert.Equal(FailureReason.Refused, envelope.Reason);
         Assert.Equal("command.not-in-release", envelope.Code);
-        Assert.Contains("new", envelope.Message, StringComparison.Ordinal);
+        Assert.Contains("add-delete-lexeme-form", envelope.Message, StringComparison.Ordinal);
         Assert.Contains($"Motif {MotifProductVersion.CurrentText}", envelope.Message, StringComparison.Ordinal);
 
         using var machine = MachineDatabase.Open(Path.Combine(_root, "machine"));

@@ -3,6 +3,8 @@ using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Store;
+using SIL.Motif.Worker.Jobs;
+using SIL.Motif.Contract.Parsing;
 using Xunit;
 
 namespace SIL.Motif.Tests.Jobs;
@@ -44,6 +46,26 @@ public sealed class TrialDraftRevisionTests
 
         Assert.True(queued.Succeeded, queued.Refusal?.Message);
         Assert.Equal(1L, CountTrialJobs());
+    }
+
+    [Fact]
+    public void DryRunAndTrialFreezeTheDraftContentBeforeFurtherEdits()
+    {
+        var id = NewDraftWithOneGloss("frozen");
+        var dryRun = JobCommands.EnqueueDryRun(new EnqueueDryRunRequest(_fwDataPath, ProductVersion, id));
+        var trial = JobCommands.EnqueueTrial(new EnqueueTrialRequest(_fwDataPath, ProductVersion, id, Words: ["word"]));
+        Assert.True(dryRun.Succeeded, dryRun.Refusal?.Message);
+        Assert.True(trial.Succeeded, trial.Refusal?.Message);
+        Assert.True(ProposalCommands.AddSetGloss(new AddSetGlossRequest(_fwDataPath, ProductVersion,
+            "frozen", CanonicalId.Mint().Value, "en", "another gloss")).Succeeded);
+        using var database = ProjectMotifDatabase.Open(_fwDataPath);
+        var jobs = new JobRepository(database);
+        var frozenDryRun = DryRunJobInput.Parse(jobs.Get(dryRun.Value!.JobId)!.InputJson).Proposal.Validate();
+        var frozenTrial = ProposalJsonParser.Parse(TrialJobInput.Parse(jobs.Get(trial.Value!.JobId)!.InputJson).ProposalJson);
+        Assert.Single(frozenDryRun.Operations);
+        Assert.Single(frozenTrial.Operations);
+        Assert.Equal(2, ProposalJsonParser.Parse(JobCommands.CanonicalProposalJson(
+            new ProposalRepository(database).GetDraft("frozen"))).Operations.Count);
     }
 
     private string NewDraftWithOneGloss(string draftName)

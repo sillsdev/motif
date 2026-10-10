@@ -62,7 +62,7 @@ SQLite per project: proposals, jobs, (later) agent_activity, ui_context
 - **Long jobs** (dry-run, trial, assess) stay Motif jobs: start → status → bounded wait with progress.
   Do not depend on the experimental MCP Tasks extension.
 - **Tool profiles are the A/B lever.** `motif mcp --profile <file.json>` selects which tools exist, their
-  names, descriptions, grouping (fine vs coarse), result verbosity defaults, and server instructions. The
+  names, descriptions, result verbosity defaults, and server instructions. The
   default profile ships; other profiles are experiments. An A/B question that is "same server, different
   surface" must be expressible as two profile files, no code change. A question needing code is two git refs
   of the server.
@@ -135,3 +135,62 @@ replays a scripted sequence of MCP calls.
 
 `.mcpb` packaging, the window's agent badge and `ui_context`, MCP Apps, elicitation, and any change to the
 product's apply path.
+
+## Amendment, 2026-10-09: after the advanced-AI review
+
+**In plain terms:** an assistant now checks its own change against the parser before handing it over, can
+work across several of a person's projects, and installs together with five skills when a person turns on
+Advanced AI mode in Motif's window. Our measurements of what helps an assistant now count only the
+assistant's own failures and are checked against versioned, attacked answer keys.
+
+This amendment replaces the parts of this design listed below. [ADR 0058](../../adr/0058-the-agent-edit-loop.md)
+records the edit loop and [ADR 0059](../../adr/0059-measuring-agents-fairly.md) the measurement rules.
+
+**Review findings reversed.**
+
+| Finding | Was | Now |
+|---|---|---|
+| F1 | `motif_trial` returned only an Assessment reference | A short Trial summary inline, plus a paged Difference read tool (ADR 0058) |
+| F2 | Dry Run only on a finalized Proposal; no reopen | Dry Run and Trial on a Draft, evidence bound to content and Baseline (ADR 0058) |
+| F3 | A grader crash counted as an infrastructure failure | Agent failure, Cloud failure, Harness defect (ADR 0059) |
+| F4 | Lexicon grading by text search and transcript lookup | Control-side read-back; operation count reported apart (ADR 0059) |
+| F5 | Inconsistent Parsimony evidence hashes | A versioned evidence preimage per measure (ADR 0058) |
+| F6 | Profile verbosity default never reached handlers; tool grouping | Verbosity fixed; grouping dropped (ADR 0058) |
+| F7 | Developer-surface commands mapped to tools by hand | Tool iff `AdvancedAi` or `Released` and not `HumanOnly` (ADR 0058) |
+| F8 | Handwritten tool descriptions | Generated from catalog, Help and request records (ADR 0058) |
+| F9 | Validity fingerprint omitted binaries and profiles; Arms shared binaries | Full-input fingerprint; each Arm builds its own (ADR 0059) |
+| F10 | Cost per success excluded failures | Price to solve, with cost per Episode beside it (ADR 0059) |
+
+Live comparisons stay paused until F1–F4 and F10 are fixed.
+
+**Decision 2 is amended.** `motif mcp` starts without a project; every project tool takes a `project`
+argument naming a Known project, and `--project` is removed. The `.mcpb` packaging is dropped: everyone who
+connects has installed Motif, so the server is registered from the installed copy.
+
+**Lanes.** The judge is the Opus and Sol pair, never Luna alone. Haiku 5.5 on the owner's subscription is
+the default cheap-tier model, Luna the fallback; the big tier runs 21 × 1 per release.
+
+### Packaging the skills with the server
+
+- **One plugin, `motif`, five skills:** `linguistic-consultant`, `fieldworks-expert`,
+  `fieldworks-parsing-expert`, `motif-workflow` and `parsimony-review`. `fieldworks-grammar-authoring` and
+  the Oracle and Judge instructions stay internal. The plugin lives in `plugin/` (moved from
+  `fieldworks/`): `.claude-plugin/plugin.json`, the Codex manifest, `.mcp.json`, `skills/<name>/SKILL.md`
+  and shared `references/`. Each skill exists once in the repository; packages copy it. The standard layout
+  also lets `npx skills add sillsdev/motif` install the skills, unadvertised.
+- **The skills assume Motif.** Only `motif-workflow` and `parsimony-review` name tools, and only tools that
+  exist; a test checks every tool name a skill mentions against the catalog. When the tools are missing, a
+  skill explains how to turn on Advanced AI mode.
+- **The installer carries, the window connects.** Velopack builds (Windows `Setup.exe`, Linux AppImage,
+  macOS `.app`) include the plugin as a folder and a ZIP and touch no assistant. Turning on Advanced AI mode
+  lists the assistants found and, for each one ticked: Claude Desktop gets `motif mcp` added to its MCP
+  configuration and the plugin ZIP offered for upload (or an organization provisions it); Claude Code and
+  Codex install the plugin from the bundled local marketplace with their own plugin commands. The
+  registered path survives updates; on Linux it is a launcher Motif rewrites at each start.
+- **Lifecycle.** Skills and server release at one version; a mismatch warns. Velopack's update hook
+  refreshes installed copies and its uninstall hook removes what Motif wrote. With Advanced AI mode off,
+  the server offers no tools.
+- **Supported clients:** Claude Desktop on Windows, Codex or ChatGPT desktop on Windows, and Claude Code on
+  Windows, Linux and macOS. Each release passes a smoke test on each: clean install, skills appear,
+  connect, tool names, one workflow, update, uninstall.
+- **Not now:** skills served over MCP (SEP-2640), and a Motif-owned `npx` installer.

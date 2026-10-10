@@ -33,7 +33,7 @@ class BoundaryTests(unittest.TestCase):
         self.assertEqual(['/session/agent'], writable)
         self.assertIn('--clearenv', args)
 
-    def test_missing_or_wrong_client_tool_list_is_infrastructure_failure(self):
+    def test_missing_or_wrong_client_tool_list_is_a_harness_failure(self):
         with tempfile.TemporaryDirectory() as root:
             session = Path(root)
             output = session / 'output'

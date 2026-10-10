@@ -1,0 +1,55 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             x:Class="SIL.Motif.App.Views.AssistantConnectionsPage"
+             x:DataType="vm:AssistantConnectionsPageModel">
+  <Grid RowDefinitions="Auto,*">
+    <Border Classes="handoffHeader">
+      <views:CopyableTextBlock Classes="section-title" Text="AI assistants" />
+    </Border>
+    <ScrollViewer Grid.Row="1">
+      <StackPanel>
+        <Border Classes="card">
+          <StackPanel>
+            <views:CopyableTextBlock Classes="section-title" Text="Advanced AI mode" />
+            <views:CopyableTextBlock Text="When this is on, connected assistants can read Known projects and draft Proposals through Motif. They cannot Apply a Proposal. Restart open assistant sessions after changing this setting."
+                                      TextWrapping="Wrap" />
+            <CheckBox Content="Turn on Advanced AI mode" IsChecked="{Binding IsEnabled}" />
+          </StackPanel>
+        </Border>
+
+        <Border Classes="notice" IsVisible="{Binding HasVersionWarning}">
+          <views:CopyableTextBlock Text="{Binding VersionWarning}" TextWrapping="Wrap" />
+        </Border>
+
+        <Border Classes="card" IsVisible="{Binding ShowsAssistantList}">
+          <StackPanel>
+            <views:CopyableTextBlock Classes="section-title" Text="Choose assistants" />
+            <views:CopyableTextBlock Text="Motif found these supported assistants. Check each one you want to connect." />
+            <views:CopyableTextBlock Text="{Binding EmptyAssistantText}" IsVisible="{Binding HasNoAssistants}" />
+            <ItemsControl x:Name="AssistantConnectionsItems" ItemsSource="{Binding Assistants}" IsVisible="{Binding HasAssistants}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:AssistantChoiceViewModel">
+                  <CheckBox Content="{Binding Name}" IsChecked="{Binding IsSelected}" />
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Button Content="Connect selected assistants"
+                    Classes="Primary" Theme="{DynamicResource SolidButton}"
+                    Command="{Binding ConnectSelectedCommand}"
+                    IsEnabled="{Binding CanConnectSelected}" />
+            <views:CopyableTextBlock Text="{Binding StatusMessage}" IsVisible="{Binding HasStatusMessage}" TextWrapping="Wrap" />
+            <StackPanel Orientation="Horizontal" IsVisible="{Binding ShowsDesktopUpload}">
+              <Button Content="Open plugin folder" Command="{Binding OpenPluginZipCommand}"
+                      Theme="{DynamicResource OutlineButton}" Classes="Tertiary" />
+              <Button Content="Open Claude Plugins" Command="{Binding OpenClaudePluginsCommand}"
+                      Theme="{DynamicResource OutlineButton}" Classes="Tertiary" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</UserControl>

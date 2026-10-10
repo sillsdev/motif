@@ -6,7 +6,7 @@ function Get-ABProductPayload([string] $BuildRoot, [string] $ParserPath) {
         if ($file.Name -match 'Tests|EvalSets|SampleProjects|SIL\.Motif\.App|\.pdb$|\.xml$') { continue }
         @{ source = $file.FullName; relative = $file.Name }
     }
-    foreach ($directory in @('runtimes', 'IcuData')) {
+    foreach ($directory in @('runtimes', 'IcuData', 'profiles')) {
         $tree = Join-Path $BuildRoot $directory
         if (-not (Test-Path -LiteralPath $tree -PathType Container)) { continue }
         foreach ($file in Get-ChildItem -LiteralPath $tree -File -Recurse) {
@@ -91,4 +91,4 @@ function Get-ABHostLayer([string] $HostPath, [string] $LayerRoot) {
     return Get-ABCachedLayer $LayerRoot $entries
 }
 
-Export-ModuleMember -Function Copy-ABProductRuntime, Get-ABRuntimeLayers, Get-ABHostLayer
+Export-ModuleMember -Function Get-ABProductPayload, Copy-ABProductRuntime, Get-ABRuntimeLayers, Get-ABHostLayer

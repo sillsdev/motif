@@ -29,13 +29,13 @@ public sealed class UsageRecordingTests
             using var error = new StringWriter();
 
             var exitCode = global::SIL.Motif.Cli.Program.Run(
-                ["new"], output, error, environment, static (_, _) => { });
+                ["add-delete-lexeme-form"], output, error, environment, static (_, _) => { });
 
             Assert.Equal(1, exitCode);
-            Assert.Contains("Usage: motif new", error.ToString(), StringComparison.Ordinal);
+            Assert.Contains("Usage: motif add-delete-lexeme-form", error.ToString(), StringComparison.Ordinal);
             using var machine = MachineDatabase.Open(workerRoot);
             var entry = Assert.Single(new MachineUsageLog(machine).ReadAll());
-            Assert.Equal("new", entry.Command);
+            Assert.Equal("add-delete-lexeme-form", entry.Command);
             Assert.Empty(entry.ArgumentShape);
         }
         finally

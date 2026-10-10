@@ -32,7 +32,7 @@ class RegradeTests(unittest.TestCase):
         (profiles / 'test.json').write_text(json.dumps({'tools': [], 'hiddenTools': []}))
         builder = repo / 'bin/Debug/SIL.Motif.EvalSets'
         builder.parent.mkdir(parents=True)
-        builder.write_text('#!' + sys.executable + '\nimport json\nprint(json.dumps({"proposal":{"operations":[]},"parserRows":[]}))\n')
+        builder.write_text('#!' + sys.executable + '\nimport json\nprint(json.dumps({"proposal":{"operations":[]},"parserRows":[],"lexiconBefore":None,"lexiconAfter":None,"proposalFailure":None}))\n')
         builder.chmod(0o755)
         grammar = root / 'grammars'
         task = grammar / 'set/tasks/diagnose'
@@ -58,19 +58,20 @@ class RegradeTests(unittest.TestCase):
                          'bundleHashes': {n: hashlib.sha256(c.encode()).hexdigest() for n, c in files.items()}}
             grade = {'grade': 0, 'primaryScore': 0 if arm == 'left' else None,
                      'success': False if arm == 'left' else None, 'operationCount': 0, 'graders': []}
-            manifest = {'integrity': integrity, 'status': 'failed' if arm == 'left' else 'invalid', 'infrastructureReason': ''}
+            manifest = {'integrity': integrity, 'status': 'failed' if arm == 'left' else 'invalid'}
             (trial / 'grade.json').write_text(json.dumps(grade))
             (trial / 'integrity.json').write_text(json.dumps(integrity))
             (trial / 'manifest.json').write_text(json.dumps(manifest))
             (trial / 'server.client-tools.json').write_text('[]')
             (trial / 'proposals.json').write_text('{"proposal":{"operations":[]}}')
             trials.append({'task': 'diagnose', 'set': 'set', 'arm': arm, 'trial': 1, 'authMode': 'none',
-                'status': manifest['status'], 'integrity': integrity, 'infrastructureInvalid': False,
+                'status': manifest['status'], 'integrity': integrity,
                 'grade': grade['grade'], 'primaryScore': grade['primaryScore'], 'success': grade['success'],
                 'operationCount': 0, 'wallMs': 1, 'turns': 1, 'toolCalls': 0, 'toolErrors': 0,
                 'timeToFirstProposalMs': None, 'inputTokens': None, 'outputTokens': None, 'costUsd': None,
                 'files': {'grade': str(trial / 'grade.json')}})
         summary = {'runId': 'original', 'questionId': 'question', 'question': 'Does right do better?',
+            'measurementFingerprint': 'a' * 64,
             'primaryMetric': 'task-success', 'tasks': [{'id': 'diagnose', 'set': 'set'}], 'trials': trials,
             'arms': [{'id': a, 'host': 'fake', 'model': None, 'effort': None, 'authMode': 'none', 'requestedTrials': 1}
                      for a in ('left', 'right')]}
@@ -81,11 +82,14 @@ class RegradeTests(unittest.TestCase):
     def test_regrade_writes_sibling_report_preserving_originals_and_integrity(self):
         self.regrade('pass', 1)
 
-    def test_regrade_infrastructure_failure_keeps_original_clean_integrity_unscored(self):
+    def test_regrade_harness_defect_keeps_original_clean_integrity_unscored(self):
         self.regrade('malformed', None)
 
     def test_clean_pairs_and_judge_splits_reach_shared_report(self):
-        self.regrade('split', 1, right_clean=True)
+        self.regrade('pass', 1, right_clean=True)
+
+    def test_judge_disagreement_remains_unscored_after_regrade(self):
+        self.regrade('split', None, right_clean=True)
 
     def test_changed_frozen_bundle_is_unscored_without_redeciding_integrity(self):
         self.regrade('pass', None, tamper=True)
@@ -115,31 +119,36 @@ class RegradeTests(unittest.TestCase):
             self.assertEqual(1, len(outputs))
             result = json.loads((outputs[0] / 'summary.json').read_text(encoding='utf-8-sig'))
             for path, data in original.items(): self.assertEqual(data, path.read_bytes(), str(path))
-            self.assertEqual(expected, result['trials'][0]['primaryScore'])
+            self.assertEqual(expected, result['trials'][0]['primaryScore'], json.dumps(result['trials'][0], indent=2))
             self.assertEqual('clean', result['trials'][0]['integrity']['state'])
             self.assertEqual('clean' if right_clean else 'invalid', result['trials'][1]['integrity']['state'])
             if right_clean:
-                self.assertEqual(1, result['trials'][1]['primaryScore'])
-                self.assertEqual(1, len(result['pairs']))
-                self.assertEqual(0, result['meanPairedDifferenceBMinusA'])
-                self.assertEqual(0, result['confidenceInterval95']['lower'])
-                self.assertEqual(2, result['grading']['trialsWithJudgeDisagreement'])
+                if mode == 'split':
+                    self.assertIsNone(result['trials'][1]['primaryScore'])
+                    self.assertEqual(0, len(result['pairs']))
+                    self.assertIsNone(result['confidenceInterval95'])
+                    self.assertEqual(2, result['grading']['trialsWithJudgeDisagreement'])
+                else:
+                    self.assertEqual(1, result['trials'][1]['primaryScore'])
+                    self.assertEqual(1, len(result['pairs']))
+                    self.assertEqual(0, result['meanPairedDifferenceBMinusA'])
+                    self.assertEqual(0, result['confidenceInterval95']['lower'])
             else:
                 self.assertIsNone(result['trials'][1]['primaryScore'])
             self.assertEqual(2, result['integrity']['attempted'])
             self.assertTrue(result['integrityReused'])
             self.assertEqual(str(source), result['sourceRun'])
-            self.assertEqual(int(mode == 'malformed' or tamper), result['grading']['infrastructureFailures'])
+            self.assertEqual(int(mode == 'malformed' or tamper), result['grading']['harnessDefects'])
             for row in result['trials']:
                 self.assertTrue(all(Path(p).exists() for p in row['files'].values()))
             if expected is None:
                 self.assertIsNone(result['arms'][0]['passAt1'])
                 self.assertIsNone(result['arms'][0]['meanPrimaryScore'])
 
-    def test_calibration_runs_three_samples_on_stored_and_known_controls(self):
+    def test_calibration_runs_the_judge_pair_on_stored_and_known_controls(self):
         from unittest.mock import patch
         from SemanticJudge import strict_json
-        def command(request):
+        def command(request, family=None):
             context = strict_json('{' + request['prompt'].split('\n{', 1)[1])
             answer = context['finalMessage']
             met = 'plural before locative' in answer
@@ -156,5 +165,5 @@ class RegradeTests(unittest.TestCase):
             result = json.loads((output / 'calibration.json').read_text())
             self.assertEqual(4, len(result['results']))
             self.assertEqual(1, len(result['skipped']))
-            self.assertTrue(all(len(r['judge']['samples']) == 3 for r in result['results']))
+            self.assertTrue(all(len(r['judge']['judges']) == 2 for r in result['results']))
             self.assertEqual([1, 1, 0, 0], [r['judge']['score'] for r in result['results']])
