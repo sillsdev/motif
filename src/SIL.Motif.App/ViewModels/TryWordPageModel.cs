@@ -34,6 +34,8 @@ public sealed class TryWordPageModel : PageModel
         Diagnostics = new DiagnosticToolsViewModel(Trace, context.Clipboard, context.DiagnosticFiles,
             context.DiagnosticDialogs);
         Trace.PropertyChanged += OnTracePropertyChanged;
+        Trace.ProposalIdSource = () => Context.Lens?.ProposalId;
+        TryProposalAgainCommand = new AsyncRelayCommand(TryProposalAgainAsync);
         OpenInTextsCommand = new RelayCommand(() =>
         {
             if (Trace.Result is { } result) Context.OpenWord(result.Word);
@@ -49,6 +51,22 @@ public sealed class TryWordPageModel : PageModel
         });
         Context.Assess.Words.PropertyChanged += OnWordsPropertyChanged;
         RefreshExpected(Trace.WordToTry);
+    }
+
+    /// <summary>Tries the open Proposal again after its copy was cleaned up, then traces the word once more.</summary>
+    public IAsyncRelayCommand TryProposalAgainCommand { get; }
+
+    private async Task TryProposalAgainAsync()
+    {
+        if (Context.Lens?.ProposalId is not { } proposalId) return;
+        var outcome = await Context.TryAgainAsync(proposalId, CancellationToken.None).ConfigureAwait(true);
+        if (!outcome.Succeeded)
+        {
+            Trace.Refusal = outcome.Refusal;
+            return;
+        }
+        Trace.Refusal = null;
+        await Trace.TryCommand.ExecuteAsync(null).ConfigureAwait(true);
     }
 
     /// <summary>The shared trace the Texts page also primes when a Results word is chosen.</summary>

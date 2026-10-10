@@ -700,10 +700,36 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
 
     internal static bool CanStageMarkingChoice(ResultsTokenViewModel token, AnalysisMarkingChoice? choice) =>
         token.IsWord && choice is not null && token.AllowsMarkingAction(choice.Kind, choice.StoredAnalysisId, choice.Reading) &&
-        (token.Marking.FixChoices.Contains(choice) ||
+        (token.Marking.FixChoices.Contains(choice) || token.Marking.ProposalBlock?.Choices.Contains(choice) == true ||
             choice.StoredAnalysisId is { } analysisId && token.Marking.FieldWorksAnalyses
                 .FirstOrDefault(analysis => analysis.StoredAnalysisId == analysisId) is { } analysis &&
             AnalysisMarkingState.OpinionChoicesFor(analysis).Contains(choice));
+
+    private EvidenceLens? _lens;
+
+    /// <summary>The window's standing for the open Proposal's Trial, which counts a Try again still running.</summary>
+    public Func<TrialStanding>? ProposalStanding { get; set; }
+
+    /// <summary>Shows the cards again with the current standing, after a Try again started or finished.</summary>
+    internal void RefreshProposalStanding()
+    {
+        if (_lens is { } lens) ApplyLens(lens);
+    }
+
+    /// <summary>Shows what the open Proposal's Trial built on every word card, or clears it on leaving.</summary>
+    internal void ApplyLens(EvidenceLens lens)
+    {
+        ArgumentNullException.ThrowIfNull(lens);
+        _lens = lens;
+        foreach (var token in NativeRealizedTokens()) ShowProposalOn(token);
+    }
+
+    private void ShowProposalOn(ResultsTokenViewModel token)
+    {
+        if (_lens is not { } lens) return;
+        token.ShowProposal(lens, lens.Proposal is { } trial ? reading => ProposalBuiltBy.For(trial, reading) : null,
+            ProposalStanding?.Invoke());
+    }
 
     private async Task StagePrimaryMarkingActionAsync()
     {

@@ -16,6 +16,10 @@ namespace SIL.Motif.Worker.Store;
 internal static class ExpectedContextRepository
 {
     public static bool IsCurrentContext(MotifDatabase database, SqliteConnection connection,
+        SqliteTransaction transaction, string projectKey, ExpectedContext expected) =>
+        expected.Trial is null && IsAcceptableWriteContext(database, connection, transaction, projectKey, expected);
+
+    public static bool IsAcceptableWriteContext(MotifDatabase database, SqliteConnection connection,
         SqliteTransaction transaction, string projectKey, ExpectedContext expected)
     {
         using var command = connection.CreateCommand();
@@ -38,11 +42,24 @@ internal static class ExpectedContextRepository
             transaction, projectKey, expected);
     }
 
+    private static bool IsNamedTrial(MotifDatabase database, SqliteConnection connection,
+        SqliteTransaction transaction, ExpectedContext expected)
+    {
+        if (expected.Trial is not { } trial) return true;
+        var root = new AssessmentRepository(database).GetHeader(connection, transaction, trial.RootAssessmentId);
+        return root is not null && MatchesTrialRoot(root, trial.ProposalId, trial.IntentDigest,
+            BaselineTokenJson(expected));
+    }
+
     public static bool IsCurrentSelectionEvidence(MotifDatabase database, SqliteConnection connection,
         SqliteTransaction transaction, string projectKey, ExpectedContext expected)
     {
+        if (!IsNamedTrial(database, connection, transaction, expected)) return false;
         var evidence = expected.SelectionEvidence;
         if (evidence is null) return true;
+        // A Trial descriptor is bound by its root, which must belong to the target Proposal; companions are not reread.
+        if (evidence.Origin == "trial")
+            return expected.Trial is { } trial && evidence.RootAssessmentId == trial.RootAssessmentId;
         if (evidence.Origin is not ("default" or "explicit")) return false;
 
         if (evidence.Origin == "default")

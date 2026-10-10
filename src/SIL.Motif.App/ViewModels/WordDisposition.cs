@@ -69,8 +69,10 @@ public sealed record WordDispositionRow(
 public sealed class WordDisposition
 {
     private WordDisposition(IReadOnlyList<WordDispositionRow> stored, IReadOnlyList<WordDispositionRow> readings,
-        AnalysisMarkingChoice? keep, AnalysisMarkingChoice? addAll, bool spellingStaged, Func<AnalysisMarkingChoice, WordMarkingChoice>? bind)
+        AnalysisMarkingChoice? keep, AnalysisMarkingChoice? addAll, bool spellingStaged, Func<AnalysisMarkingChoice, WordMarkingChoice>? bind,
+        IReadOnlyList<WordMarkingChoice> proposalActions)
     {
+        ProposalActions = proposalActions;
         StoredRows = stored;
         Readings = readings;
         KeepFieldWorks = keep;
@@ -100,6 +102,20 @@ public sealed class WordDisposition
 
     /// <summary>Whether a pending change marks the word as an incorrect spelling.</summary>
     public bool IsSpellingStaged { get; }
+
+    /// <summary>Approve a Trial reading, or add an expected parse, inside the open Proposal.</summary>
+    public IReadOnlyList<WordMarkingChoice> ProposalActions { get; }
+
+    /// <summary>The choices that approve a reading the Proposal builds, one per such reading.</summary>
+    public IReadOnlyList<WordMarkingChoice> ApproveInProposal => ProposalActions
+        .Where(action => action.Choice.Kind == AnalysisMarkingActionKind.ApproveInProposal).ToArray();
+
+    /// <summary>The choices that add a reading only the Proposal builds, one per such reading.</summary>
+    public IReadOnlyList<WordMarkingChoice> AddExpectedParse => ProposalActions
+        .Where(action => action.Choice.Kind == AnalysisMarkingActionKind.AddExpectedParse).ToArray();
+
+    /// <summary>Whether Fix offers anything inside the open Proposal.</summary>
+    public bool HasProposalActions => ProposalActions.Count > 0;
 
     /// <summary>What the opinion mark shows: the first stored analysis after any pending change, or a dash.</summary>
     public WordDispositionKind Mark => StoredRows.Count == 0
@@ -158,7 +174,8 @@ public sealed class WordDisposition
         : "Change what FieldWorks holds";
 
     /// <summary>Builds both buttons from a word's marking.</summary>
-    public static WordDisposition From(AnalysisMarkingState marking, Func<AnalysisMarkingChoice, WordMarkingChoice>? bind = null)
+    public static WordDisposition From(AnalysisMarkingState marking, Func<AnalysisMarkingChoice, WordMarkingChoice>? bind = null,
+        IReadOnlyList<WordMarkingChoice>? proposalActions = null)
     {
         ArgumentNullException.ThrowIfNull(marking);
         var staged = marking.StagedTransitions;
@@ -190,7 +207,7 @@ public sealed class WordDisposition
         var keep = marking.FixChoices.FirstOrDefault(choice => choice.Kind == AnalysisMarkingActionKind.KeepFieldWorks);
         var addAll = marking.FixChoices.FirstOrDefault(choice => choice.Kind == AnalysisMarkingActionKind.AcceptNewSet);
         var spelling = staged.Any(change => change.AfterApply == "Incorrect");
-        return new WordDisposition(stored, readings, keep, addAll, spelling, bind);
+        return new WordDisposition(stored, readings, keep, addAll, spelling, bind, proposalActions ?? []);
     }
 
     private static WordDispositionRow StoredRow(FieldWorksAnalysisMarking analysis, int index,

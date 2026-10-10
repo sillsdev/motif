@@ -668,6 +668,13 @@
   },
   {
     "view": "WordCard",
+    "name": "WordCardProposalReadingsItems",
+    "source": "ProposalReadings",
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
+  },
+  {
+    "view": "WordCard",
     "name": "WordCardReadingsItems",
     "source": "Readings",
     "mode": "paged",
@@ -728,6 +735,13 @@
     "source": "DisplaySource",
     "mode": "paged",
     "control": "ProgressiveItemsControl"
+  },
+  {
+    "view": "WordDispositionButtons",
+    "name": "WordDispositionProposalActionsItems",
+    "source": "Disposition.ProposalActions",
+    "mode": "finite",
+    "control": "ItemsControl"
   },
   {
     "view": "WordDispositionButtons",

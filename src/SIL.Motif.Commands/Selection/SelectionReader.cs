@@ -76,12 +76,16 @@ public sealed record SelectionReadContext(
     public IReadOnlyList<string> ReplacementAssessmentIds { get; init; } = [];
     public SelectionEvidenceExpectation? Evidence { get; init; }
 
+    /// <summary>The Proposal Trial this reader reads, or null when it reads the project's own evidence.</summary>
+    public TrialEvidenceExpectation? Trial { get; init; }
+
     /// <summary>Builds the portable expected evidence sent with a Read or pending Draft write.</summary>
     public ExpectedContext ExpectedWriteContext() => new(Baseline)
     {
         TextIds = TextIds,
         AddedWords = AddedWords,
         SelectionEvidence = Evidence,
+        Trial = Trial,
     };
 }
 
@@ -746,6 +750,7 @@ public sealed class SelectionReader : IDisposable, IAsyncDisposable
                         AssessmentRootId = evidence?.Root?.AssessmentId,
                         ReplacementAssessmentIds = evidence?.ReplacementIds ?? [],
                         Evidence = evidence?.Descriptor,
+                        Trial = TrialOf(request.ShownAssessment),
                     };
                     return new SelectionOpenSnapshot(source, evidence, context, addedFactsRead);
                 }, cancellationToken);
@@ -874,6 +879,11 @@ public sealed class SelectionReader : IDisposable, IAsyncDisposable
             evidence.Components.SelectMany(run => run.Invocation?.GrammarWarningLines ?? [])
                 .Distinct(StringComparer.Ordinal).ToArray(), evidence.Components.Count, wordRows, descriptor);
     }
+
+    private static TrialEvidenceExpectation? TrialOf(EvidenceSet? shown) =>
+        shown is { Origin: { Kind: EvidenceOriginKind.Trial, ProposalId: { } proposalId, IntentDigest: { } digest },
+            RootAssessmentId: { } rootId }
+            ? new TrialEvidenceExpectation(proposalId, digest, rootId) : null;
 
     private static SelectionReadEvidence ResolveShownAssessment(MotifDatabase database, SqliteConnection connection,
         SqliteTransaction transaction, EvidenceSet shown, CurrentBaselineSelectionIndexRead source,

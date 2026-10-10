@@ -106,7 +106,7 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
             UsageArgumentShape.Text("fwDataPath"), UsageArgumentShape.Text("changeId"));
         var generation = _projectGeneration;
         var outcome = await _client.ReconfirmPendingChangeAsync(new ReconfirmPendingChangeRequest(
-            path, MotifProductVersion.CurrentText, Snapshot.Revision, change.ChangeId), cancellationToken)
+            path, MotifProductVersion.CurrentText, Snapshot.Revision, change.ChangeId, TargetProposalId), cancellationToken)
             .ConfigureAwait(true);
         if (!IsCurrentProject(path, generation)) return;
         Accept(outcome, path, generation);
@@ -135,6 +135,18 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
 
     public string? AssessmentId { get; set; }
 
+    /// <summary>The Proposal whose Draft receives staged changes, or null for the pending Draft.</summary>
+    public string? TargetProposalId { get; private set; }
+
+    /// <summary>Points staging at a Proposal's Draft, or back at the pending Draft, and loads it.</summary>
+    public async Task TargetAsync(string? proposalId, CancellationToken cancellationToken = default)
+    {
+        if (string.Equals(TargetProposalId, proposalId, StringComparison.Ordinal)) return;
+        TargetProposalId = proposalId;
+        ClearStagingHistory();
+        await ReloadAsync(cancellationToken).ConfigureAwait(true);
+    }
+
     public async Task ReloadAsync(CancellationToken cancellationToken = default)
     {
         if (ProjectPath is not { } path) return;
@@ -155,7 +167,8 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
     {
         var before = Snapshot;
         var outcome = await _client.PutPendingChangeAsync(new PutPendingChangeRequest(
-            path, MotifProductVersion.CurrentText, Snapshot.Revision, change) { ExpectedContext = expectedContext },
+            path, MotifProductVersion.CurrentText, Snapshot.Revision, change, TargetProposalId)
+            { ExpectedContext = expectedContext },
             cancellationToken).ConfigureAwait(true);
         if (!IsCurrentProject(path, generation)) return false;
         Accept(outcome, path, generation);
@@ -171,7 +184,7 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
         using var usageAction = _client.BeginUsageAction("recheck-pending-changes", UsageArgumentShape.Text("fwDataPath"));
         var generation = _projectGeneration;
         var outcome = await _client.RecheckPendingChangesAsync(new RecheckPendingChangesRequest(
-            path, MotifProductVersion.CurrentText, Snapshot.Revision), cancellationToken)
+            path, MotifProductVersion.CurrentText, Snapshot.Revision, TargetProposalId), cancellationToken)
             .ConfigureAwait(true);
         if (!IsCurrentProject(path, generation)) return;
         Accept(outcome, path, generation);
@@ -192,7 +205,7 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
             UsageArgumentShape.List("analyses", 1));
         var generation = _projectGeneration;
         var request = new RemoveAnalysisRequest(path, MotifProductVersion.CurrentText, Snapshot.Revision,
-            CanonicalId.Mint().Value, wordformId, word, analysisId);
+            CanonicalId.Mint().Value, wordformId, word, analysisId, ProposalId: TargetProposalId);
         var outcome = await _client.RemoveAnalysisAsync(request, cancellationToken).ConfigureAwait(true);
         return await AcceptStagingOutcomeAsync(outcome, path, generation, cancellationToken).ConfigureAwait(true);
     }
@@ -218,7 +231,7 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
             UsageArgumentShape.List("analyses", analysisIds.Count));
         var generation = _projectGeneration;
         var request = new RemoveAnalysisRequest(path, MotifProductVersion.CurrentText, Snapshot.Revision,
-            AnalysisIds: analysisIds);
+            AnalysisIds: analysisIds, ProposalId: TargetProposalId);
         var outcome = await _client.RemoveAnalysisAsync(request, cancellationToken).ConfigureAwait(true);
         return await AcceptStagingOutcomeAsync(outcome, path, generation, cancellationToken).ConfigureAwait(true);
     }
@@ -232,7 +245,7 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
             UsageArgumentShape.Text("textId"));
         var generation = _projectGeneration;
         var request = new RemoveAnalysisRequest(path, MotifProductVersion.CurrentText, Snapshot.Revision,
-            TextId: textId);
+            TextId: textId, ProposalId: TargetProposalId);
         var outcome = await _client.RemoveAnalysisAsync(request, cancellationToken).ConfigureAwait(true);
         return await AcceptStagingOutcomeAsync(outcome, path, generation, cancellationToken).ConfigureAwait(true);
     }
@@ -252,7 +265,7 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
             UsageArgumentShape.Text("assessmentId"), targetShape);
         var generation = _projectGeneration;
         var request = new AcceptNewSetRequest(path, MotifProductVersion.CurrentText, Snapshot.Revision,
-            assessmentId, wordformId, textId, selection);
+            assessmentId, wordformId, textId, selection, TargetProposalId);
         var outcome = await _client.AcceptNewSetAsync(request, cancellationToken).ConfigureAwait(true);
         return await AcceptStagingOutcomeAsync(outcome, path, generation, cancellationToken).ConfigureAwait(true);
     }
@@ -466,7 +479,7 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
         var before = Snapshot;
         var outcome = await _client.RemovePendingChangeAsync(new RemovePendingChangeRequest(
             path, MotifProductVersion.CurrentText, Snapshot.Revision,
-            wholeGroup ? change.GroupId ?? change.ChangeId : change.ChangeId),
+            wholeGroup ? change.GroupId ?? change.ChangeId : change.ChangeId, TargetProposalId),
             CancellationToken.None).ConfigureAwait(true);
         if (!IsCurrentProject(path, generation)) return;
         Accept(outcome, path, generation);
@@ -525,7 +538,7 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
         try
         {
             var loaded = await _client.LoadPendingChangesAsync(
-                new PendingChangesRequest(path, MotifProductVersion.CurrentText), CancellationToken.None)
+                new PendingChangesRequest(path, MotifProductVersion.CurrentText, TargetProposalId), CancellationToken.None)
                 .ConfigureAwait(true);
             if (!IsCurrentProject(path, generation)) return "The open project changed before the action could be undone.";
             if (!loaded.Succeeded || loaded.Value is not { } current)
@@ -558,7 +571,8 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
             foreach (var change in removals)
             {
                 var outcome = await _client.RemovePendingChangeAsync(new RemovePendingChangeRequest(
-                    path, MotifProductVersion.CurrentText, Snapshot.Revision, change.ChangeId), CancellationToken.None)
+                    path, MotifProductVersion.CurrentText, Snapshot.Revision, change.ChangeId, TargetProposalId),
+                    CancellationToken.None)
                     .ConfigureAwait(true);
                 if (!IsCurrentProject(path, generation)) return "The open project changed before the action could be undone.";
                 if (!outcome.Succeeded)
@@ -576,7 +590,7 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
                 using var usageAction = _client.BeginUsageAction("put-pending-change",
                     UsageArgumentShape.Text("fwDataPath"), UsageArgumentShape.List("changes", 1));
                 var outcome = await _client.PutPendingChangeAsync(new PutPendingChangeRequest(
-                    path, MotifProductVersion.CurrentText, Snapshot.Revision, change.StagingIntent!),
+                    path, MotifProductVersion.CurrentText, Snapshot.Revision, change.StagingIntent!, TargetProposalId),
                     CancellationToken.None).ConfigureAwait(true);
                 if (!IsCurrentProject(path, generation)) return "The open project changed before the action could be undone.";
                 if (!outcome.Succeeded)
@@ -666,6 +680,7 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
     public void Reset()
     {
         ClearStagingHistory();
+        TargetProposalId = null;
         _projectGeneration++;
         ReplaceItems([]);
         Snapshot = new PendingChangesSnapshot(null, "none", [], []);
@@ -690,7 +705,7 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
     private async Task ReloadAsync(string path, int generation, CancellationToken cancellationToken)
     {
         var outcome = await _client.LoadPendingChangesAsync(new PendingChangesRequest(
-            path, MotifProductVersion.CurrentText), cancellationToken).ConfigureAwait(true);
+            path, MotifProductVersion.CurrentText, TargetProposalId), cancellationToken).ConfigureAwait(true);
         Accept(outcome, path, generation);
     }
 
@@ -872,6 +887,7 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
             ChangeFitReasonKind.MorphReferenceMissing => $"a morpheme in {analysis} was deleted or changed in FieldWorks",
             ChangeFitReasonKind.ReadingAlreadyExists => "FieldWorks already has this analysis",
             ChangeFitReasonKind.BaselineNotCurrent => "FieldWorks saved the project since you decided; check again",
+            ChangeFitReasonKind.TrialScratchGone => "the Proposal's copy is gone; try it again",
             ChangeFitReasonKind.CannotCheck => "Motif can no longer check this change; undo it and make it again",
             _ => "FieldWorks changed this word since you decided",
         };
@@ -884,6 +900,7 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
     public string UncertaintyReason => Fit?.Uncertainty?.Reason switch
     {
         null => string.Empty,
+        ChangeFitReasons.TrialScratchGone => "The Proposal's copy is gone. Try it again to check this change.",
         "The source Segment is gone or no longer resolves uniquely." =>
             "The sentence this decision refers to is no longer available.",
         "The source occurrence no longer resolves uniquely." =>

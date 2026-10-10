@@ -66,6 +66,21 @@
                       AutomationProperties.Name="Mark this spelling Incorrect" ToolTip.Tip="Incorrect spelling: FieldWorks stops treating it as a word (S)">
                 <TextBlock Classes="menuTitle" Text="Incorrect spelling" />
               </Button>
+              <ItemsControl x:Name="WordDispositionProposalActionsItems" ItemsSource="{Binding Disposition.ProposalActions}"
+                            IsVisible="{Binding Disposition.HasProposalActions}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:WordMarkingChoice">
+                    <Button Classes="menuEntry withProposal" Theme="{DynamicResource BorderlessButton}"
+                            Command="{Binding #DispositionMenu.((vm:ResultsTokenViewModel)DataContext).StageMarkingChoiceForTokenCommand}"
+                            CommandParameter="{Binding}" AutomationProperties.Name="{Binding Label}">
+                      <StackPanel>
+                        <TextBlock Classes="menuTitle" Text="{Binding Label}" />
+                        <TextBlock Classes="menuDetail" Text="{Binding Subtitle}" />
+                      </StackPanel>
+                    </Button>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
               <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
                       IsVisible="{Binding Disposition.KeepFieldWorks, Converter={x:Static ObjectConverters.IsNotNull}}"
                       Command="{Binding StageMarkingChoiceForTokenCommand}" CommandParameter="{Binding Disposition.KeepFieldWorksAction}"

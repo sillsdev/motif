@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.Globalization;
+using System.Text;
 using SIL.Motif.App.Controls;
 using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.Commands.Queries;
@@ -256,7 +257,7 @@ public sealed partial class ResultsTokenViewModel : ObservableObject, IDisposabl
     private WordDisposition? _disposition;
 
     /// <summary>The word's two buttons, what FieldWorks holds and the PanGloss readings to add, from <see cref="Marking"/>.</summary>
-    public WordDisposition Disposition => _disposition ??= WordDisposition.From(Marking, BindMarkingChoice);
+    public WordDisposition Disposition => _disposition ??= WordDisposition.From(Marking, BindMarkingChoice, BoundProposalChoices);
 
     /// <summary>The common word comparison, independent of this occurrence's action selection.</summary>
     public WordComparison Comparison => _comparison ??= BuildComparison();
@@ -681,6 +682,91 @@ public sealed partial class ResultsTokenViewModel : ObservableObject, IDisposabl
     public bool IsNew => Verdict == OccurrenceVerdict.New;
     public bool IsNoParse => Verdict is OccurrenceVerdict.NoParse or OccurrenceVerdict.Limit;
 
+    /// <summary>The Proposal's own reading for this word: nothing before a Trial, the Trial's block after.</summary>
+    public Paired<ProposalReadingBlock?> ProposalReading { get; private set; }
+
+    /// <summary>Whether the card shows its "with this Proposal" block, which only Proposal mode has.</summary>
+    public bool ShowsProposalBlock { get; private set; }
+
+    /// <summary>
+    /// Why the Proposal's block has no fresh reading, in <see cref="TrialStandingWords"/>' status: "Not tried yet",
+    /// "Trying…", "Needs another try", or empty while the Trial is current.
+    /// </summary>
+    public string ProposalStatus { get; private set; } = string.Empty;
+
+    /// <summary>The readings the Trial built for this word, empty when it built none.</summary>
+    public IReadOnlyList<ProposalReadingMarking> ProposalReadings => ProposalReading.After?.Readings ?? [];
+
+    /// <summary>Whether the Trial built at least one reading for this word.</summary>
+    public bool HasProposalReadings => ProposalReadings.Count > 0;
+
+    /// <summary>Whether the Trial ran and built nothing for this word.</summary>
+    public bool ProposalBuiltNothing => ProposalReading.HasAfter && !HasProposalReadings;
+
+    /// <summary>The block's choices bound to the Trial that produced them, never to today's evidence.</summary>
+    public IReadOnlyList<WordMarkingChoice> BoundProposalChoices { get; private set; } = [];
+
+    /// <summary>The Trial's own approve choice, offered beside the Fix menu, when the word has one.</summary>
+    public WordMarkingChoice? ApproveInProposal => BoundProposalChoices.FirstOrDefault(choice =>
+        choice.Choice.Kind == AnalysisMarkingActionKind.ApproveInProposal);
+
+    /// <summary>The Trial's expected-parse choice, offered beside the Fix menu, when the word has one.</summary>
+    public WordMarkingChoice? AddExpectedParse => BoundProposalChoices.FirstOrDefault(choice =>
+        choice.Choice.Kind == AnalysisMarkingActionKind.AddExpectedParse);
+
+    private ProposalReadingBlock? _proposalBlock;
+
+    /// <summary>Shows what the open Proposal's Trial built for this word, or says why there is nothing to show.</summary>
+    /// <param name="lens">The evidence the window currently reads.</param>
+    /// <param name="builtBy">Names the Proposal's changes that create entities a reading uses.</param>
+    /// <param name="standing">The window's view of the Trial, which includes a Try again still running.</param>
+    internal void ShowProposal(EvidenceLens lens, Func<ParseAnalysis, IReadOnlyList<BuiltByEntry>>? builtBy = null,
+        TrialStanding? standing = null)
+    {
+        ArgumentNullException.ThrowIfNull(lens);
+        ShowsProposalBlock = lens.InProposalMode && IsWord;
+        _proposalBlock = null;
+        BoundProposalChoices = [];
+        ProposalStatus = string.Empty;
+        ProposalReading = new Paired<ProposalReadingBlock?>(null, null, false, false, false, null);
+        if (ShowsProposalBlock)
+        {
+            var shown = standing ?? TrialStanding.Of(lens.Proposal?.Trial);
+            if (shown.Kind is not TrialStandingKind.Current) ProposalStatus = TrialStandingWords.For(shown).Status;
+            if (lens.Proposal is { } trial)
+            {
+                var result = trial.Words.FirstOrDefault(word => string.Equals(
+                    word.Word.Normalize(NormalizationForm.FormD), Form.Normalize(NormalizationForm.FormD),
+                    StringComparison.Ordinal));
+                _proposalBlock = result is null
+                    ? new ProposalReadingBlock([], [])
+                    : AnalysisMarkingState.BuildProposalBlock(AnalysisMarkingState.Create(_source, result),
+                        reading => ReadingText(reading.Display), builtBy ?? (_ => []),
+                        trial.Trial.Label ?? ProposalReadingBlock.ThisProposal);
+                ProposalReading = new Paired<ProposalReadingBlock?>(null, _proposalBlock, false, true, false, null);
+                var target = ProposalActionTarget(trial.Set);
+                BoundProposalChoices = target is null ? [] : _proposalBlock.Choices
+                    .Select(choice => new WordMarkingChoice(target, choice, IsWord)).ToArray();
+            }
+        }
+        Marking = Marking.WithProposalReading(_proposalBlock);
+        _disposition = null;
+        foreach (var name in new[]
+                 {
+                     nameof(ProposalReading), nameof(ShowsProposalBlock), nameof(ProposalStatus),
+                     nameof(ProposalReadings), nameof(HasProposalReadings), nameof(ProposalBuiltNothing),
+                     nameof(BoundProposalChoices), nameof(ApproveInProposal), nameof(AddExpectedParse),
+                     nameof(Marking), nameof(Disposition),
+                 })
+            OnPropertyChanged(name);
+    }
+
+    private WordActionTarget? ProposalActionTarget(EvidenceSet set) =>
+        set is { RootAssessmentId: { } rootId, Origin: { ProposalId: { } proposalId, IntentDigest: { } digest } }
+            ? new WordActionTarget(Form, WordformId, Occurrence, rootId,
+                new ExpectedContext(set.Baseline) { Trial = new TrialEvidenceExpectation(proposalId, digest, rootId) })
+            : null;
+
     internal void SetReadState(bool isRead)
     {
         _isUnread = !isRead;
@@ -691,7 +777,7 @@ public sealed partial class ResultsTokenViewModel : ObservableObject, IDisposabl
     internal void SetStagedMarkings(IReadOnlyList<ChangeViewModel> changes)
     {
         StagedChanges = changes.Select(change => new StagedMarkingDisplayViewModel(change)).ToArray();
-        Marking = AnalysisMarkingState.Create(_source, _assessment, _isUnread);
+        Marking = AnalysisMarkingState.Create(_source, _assessment, _isUnread).WithProposalReading(_proposalBlock);
         Marking = Marking.WithStagedTransitions(changes.Select(change => change.StagedTransition with
         {
             StoredAnalysisId = change.StoredAnalysisId,

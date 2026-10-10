@@ -25,6 +25,12 @@
   <Style Selector="Button.wordPresentationCardAction">
     <Setter Property="Margin" Value="{DynamicResource Intent.Gap.CompactItem}" />
   </Style>
+  <Style Selector="Border.wordPresentationCardSection.withProposal">
+    <Setter Property="Background" Value="{DynamicResource Intent.Proposal.Fill}" />
+  </Style>
+  <Style Selector="Border.wordPresentationCardSection.withProposal :is(TextBlock).wordPresentationCardHeading">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Proposal.Text}" />
+  </Style>
   <Style Selector="Border.wordPresentationCardHeader">
     <Setter Property="Background" Value="{DynamicResource Intent.Selected.Fill}" />
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />

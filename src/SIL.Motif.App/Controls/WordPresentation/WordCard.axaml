@@ -141,6 +141,32 @@
                     </Border>
                   </StackPanel>
                 </Border>
+                <Border Classes="wordPresentationCardSection withProposal" IsVisible="{Binding ShowsProposalBlock}"
+                        AutomationProperties.AutomationId="word-card-with-proposal">
+                  <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
+                    <views:CopyableTextBlock Classes="wordPresentationCardHeading" Text="In PanGloss · with this Proposal" />
+                    <views:CopyableTextBlock Classes="muted" Text="{Binding ProposalStatus}"
+                                             IsVisible="{Binding ProposalStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                    <views:CopyableTextBlock Classes="muted" Text="The Proposal builds no analysis for this word."
+                                             IsVisible="{Binding ProposalBuiltNothing}" />
+                    <views:ProgressiveItemsControl x:Name="WordCardProposalReadingsItems"
+                                                   FullItemsSource="{Binding ProposalReadings}"
+                                                   IsVisible="{Binding HasProposalReadings}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ProposalReadingMarking">
+                          <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+                            <views:CopyableTextBlock Text="{Binding Text}" IsVisible="{Binding !HasMorphs}" />
+                            <word:MorphemePanel Morphs="{Binding Morphs}" ShowCategory="False" RevealLinks="True"
+                                                IsVisible="{Binding HasMorphs}" />
+                            <views:CopyableTextBlock Classes="muted" Text="Not in FieldWorks" IsVisible="{Binding !InFieldWorks}" />
+                            <views:CopyableTextBlock Classes="muted" Text="{Binding BuiltByText}"
+                                                     IsVisible="{Binding BuiltByText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                          </StackPanel>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </views:ProgressiveItemsControl>
+                  </StackPanel>
+                </Border>
                 <Border Classes="wordPresentationCardSection hoverReveal" IsVisible="{Binding HasWhySection}">
                   <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
                     <views:CopyableTextBlock Classes="wordPresentationCardHeading" Text="{Binding WarningSectionHeading}" />

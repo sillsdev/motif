@@ -316,6 +316,7 @@ public sealed partial class ResultsInTextViewModel
         token.PendingState = PendingChangeStates.FromChanges(relevant);
         token.IsPending = relevant.Length > 0;
         token.SetStagedMarkings(relevant);
+        ShowProposalOn(token);
         token.IsUncertainChanged = token.Occurrence is { } changed && _uncertainHighlights.Contains(changed);
         token.SetWarningEvidence(ResultsTokenViewModel.WarningEvidenceFor(token.Form,
             _nativePresentation is { } presentation ? new GrammarCheckResponse(presentation.Warnings, true) : null,

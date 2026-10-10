@@ -1543,13 +1543,39 @@ public sealed class WorkspaceContextTests
 
         var todayGeneration = todayOwner.Generation;
         var proposalGeneration = proposalOwner.Generation;
-        context.LeaveProposal();
+        await context.LeaveProposalAsync();
         await context.EvidencePublication;
 
         Assert.Null(context.Lens);
         Assert.False(context.EvidenceLens.InProposalMode);
         Assert.Equal(todayGeneration, todayOwner.Generation);
         Assert.True(proposalOwner.Generation > proposalGeneration);
+    }
+
+    [Fact]
+    public async Task OpeningAProposalPointsStagingAtItsDraftBeforeTheLensShows()
+    {
+        var fake = new FakeCommandClient();
+        var context = NewContext(fake);
+        await context.OpenProjectAsync(ProjectPath);
+        fake.ReadTrialCompletesWith(Trial());
+        string? targetWhenLensShown = null;
+        context.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(WorkspaceContext.Lens) && context.Lens is not null)
+                targetWhenLensShown = context.Changes.TargetProposalId;
+        };
+
+        await context.OpenProposalAsync("proposal/one", CancellationToken.None);
+
+        Assert.Equal("proposal/one", targetWhenLensShown);
+        Assert.Equal("proposal/one", fake.PendingLoadRequests.Last().ProposalId);
+
+        await context.LeaveProposalAsync();
+
+        Assert.Null(context.Lens);
+        Assert.Null(context.Changes.TargetProposalId);
+        Assert.Null(fake.PendingLoadRequests.Last().ProposalId);
     }
 
     [Fact]

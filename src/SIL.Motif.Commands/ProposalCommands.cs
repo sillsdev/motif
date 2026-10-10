@@ -688,6 +688,19 @@ public static partial class ProposalCommands
         });
     }
 
+    /// <summary>Loads a finalized revision's content into a Draft with the SAME proposal id, so finalize amends.</summary>
+    internal static DraftDocument DraftOf(string id, ManifestDocument manifest, SIL.Motif.Contract.Model.Proposal envelope) => new()
+    {
+        ProposalId = id,
+        ContractVersions = new Dictionary<string, string>(envelope.ContractVersions),
+        Requires = envelope.Requires.Select(r => r.Value).ToList(),
+        Label = manifest.Label,
+        Comment = manifest.Comment,
+        Operations = envelope.Operations.Select(ToDraftOperation).ToList(),
+        ComposerProvenance = ExtractComposerProvenance(envelope.Extensions),
+        PromotionProvenance = ExtractPromotionProvenance(envelope.Extensions),
+    };
+
     public static CommandOutcome<ReopenedResponse> Reopen(ReopenRequest request)
     {
         return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
@@ -712,18 +725,7 @@ public static partial class ProposalCommands
                         "An applied Proposal cannot be amended under the same ID. Create a new Proposal.",
                         Fact(("proposalId", id))));
 
-                // Loads the envelope's content into a new draft with the SAME proposalId; finalize then produces an amend.
-                var draft = new DraftDocument
-                {
-                    ProposalId = id,
-                    ContractVersions = new Dictionary<string, string>(envelope.ContractVersions),
-                    Requires = envelope.Requires.Select(r => r.Value).ToList(),
-                    Label = manifest.Label,
-                    Comment = manifest.Comment,
-                    Operations = envelope.Operations.Select(ToDraftOperation).ToList(),
-                    ComposerProvenance = ExtractComposerProvenance(envelope.Extensions),
-                    PromotionProvenance = ExtractPromotionProvenance(envelope.Extensions),
-                };
+                var draft = DraftOf(id, manifest, envelope);
 
                 repository.ReopenAsDraft(canonicalId, request.DraftName, SerializeDraft(draft));
 

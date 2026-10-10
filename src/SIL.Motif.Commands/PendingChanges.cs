@@ -19,8 +19,10 @@ using SIL.Motif.Host.Parser;
 using SIL.Motif.Host.Texts;
 using SIL.Motif.Host.Store;
 using SIL.Motif.LiveHost.Baselines;
+using SIL.Motif.Projection.Store;
 using SIL.Motif.Runner.Operations;
 using SIL.Motif.Worker.Baselines;
+using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker.Store;
 
@@ -41,8 +43,10 @@ public static class PendingChanges
         ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
         {
             var repository = new ProposalRepository(database);
+            if (!TryResolve(repository, request.ProposalId, out _, out var targetRefusal))
+                return CommandOutcome<PendingChangesSnapshot>.Refused(targetRefusal);
             return CommandOutcome<PendingChangesSnapshot>.Success(
-                Snapshot(database, project, repository));
+                Snapshot(database, project, repository, proposalId: request.ProposalId));
         });
 
     internal static PendingChangesSnapshot ReadForSelection(MotifDatabase database, ProjectLocator project) =>
@@ -52,7 +56,9 @@ public static class PendingChanges
         ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
         {
             var repository = new ProposalRepository(database);
-            var current = Current(repository);
+            if (!TryResolve(repository, request.ProposalId, out var target, out var targetRefusal))
+                return CommandOutcome<PendingChangesSnapshot>.Refused(targetRefusal);
+            var current = target.Current;
             if (Revision(current?.ProposalJson) != request.ExpectedRevision)
                 return Refuse("change.revision-conflict", "The pending Draft changed. Reload it and try again.",
                     ("changeId", request.Change.ChangeId), ("expectedRevision", request.ExpectedRevision));
@@ -83,6 +89,10 @@ public static class PendingChanges
             if (baseline is null)
                 return Refuse("change.baseline-missing", "Capture a Baseline before collecting changes.",
                     ("changeId", change.ChangeId));
+            if (request.ExpectedContext?.Trial is { } trial &&
+                (request.ProposalId is null || !IsTrialOf(trial, target)))
+                return Refuse("texts.evidence-changed", "The Trial belongs to another Proposal. Reload it and try again.",
+                    ("changeId", change.ChangeId));
             if (request.ExpectedContext is { } expectedContext &&
                 !repository.IsCurrentExpectedContext(ProjectWorkspaceKey.Compute(project), expectedContext))
                 return Refuse("texts.evidence-changed", "The saved Selection evidence changed. Reload it and try again.",
@@ -90,13 +100,14 @@ public static class PendingChanges
 
             var draft = LoadDraft(current);
             using var cache = LoadBaselineCache(baseline.FwDataPath);
-            var saved = ComposeAndSave(cache, database, repository, current, draft, change, baseline, project,
+            var saved = ComposeAndSave(cache, database, repository, target, draft, change, baseline, project,
                 request.ExpectedRevision, request.ExpectedContext);
             if (!saved.Succeeded)
                 return CommandOutcome<PendingChangesSnapshot>.Refused(saved.Refusal!);
             var details = saved.Value!;
             return CommandOutcome<PendingChangesSnapshot>.Success(
-                Snapshot(database, project, repository, fitCache: cache, fitCacheBaseline: baseline) with
+                Snapshot(database, project, repository, fitCache: cache, fitCacheBaseline: baseline,
+                    proposalId: request.ProposalId) with
                 {
                     SkippedWord = details.SkippedWord,
                     ReplacedChangeId = details.ReplacedChangeId,
@@ -112,13 +123,15 @@ public static class PendingChanges
                 return Refuse("change.analysis-identity-required", "A change id, wordform, word, and analysis are required.");
             return Put(new PutPendingChangeRequest(request.FwDataPath, request.ProductVersion, request.ExpectedRevision,
                 new ChangeIntent(request.ChangeId, AnalysisChangeKinds.RemoveAnalysis, request.WordformId,
-                    request.Word, StoredAnalysisId: analysisId)));
+                    request.Word, StoredAnalysisId: analysisId), request.ProposalId));
         }
 
         return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
         {
             var repository = new ProposalRepository(database);
-            var current = Current(repository);
+            if (!TryResolve(repository, request.ProposalId, out var target, out var targetRefusal))
+                return CommandOutcome<PendingChangesSnapshot>.Refused(targetRefusal);
+            var current = target.Current;
             if (Revision(current?.ProposalJson) != request.ExpectedRevision)
                 return Refuse("change.revision-conflict", "The pending Draft changed. Reload it and try again.",
                     ("expectedRevision", request.ExpectedRevision));
@@ -230,11 +243,11 @@ public static class PendingChanges
                     operationIds = new[] { addition.Operation.OperationId.Value },
                 });
             }
-            var saved = SaveDraft(repository, current, draft);
+            var saved = SaveDraft(repository, target, draft);
             if (!saved)
                 return Refuse("change.revision-conflict", "The pending Draft changed. Reload it and try again.",
                     ("expectedRevision", request.ExpectedRevision));
-            return CommandOutcome<PendingChangesSnapshot>.Success(Snapshot(database, project, repository));
+            return CommandOutcome<PendingChangesSnapshot>.Success(Snapshot(database, project, repository, proposalId: request.ProposalId));
         });
     }
 
@@ -242,7 +255,9 @@ public static class PendingChanges
         ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
         {
             var repository = new ProposalRepository(database);
-            var current = Current(repository);
+            if (!TryResolve(repository, request.ProposalId, out var target, out var targetRefusal))
+                return CommandOutcome<PendingChangesSnapshot>.Refused(targetRefusal);
+            var current = target.Current;
             if (Revision(current?.ProposalJson) != request.ExpectedRevision)
                 return Refuse("change.revision-conflict", "The pending Draft changed. Reload it and try again.",
                     ("assessmentId", request.AssessmentId), ("expectedRevision", request.ExpectedRevision));
@@ -381,7 +396,7 @@ public static class PendingChanges
                         Reading: reading), changeId, wordform, form, reading));
             }
             if (additions.Count == 0)
-                return CommandOutcome<PendingChangesSnapshot>.Success(Snapshot(database, project, repository));
+                return CommandOutcome<PendingChangesSnapshot>.Success(Snapshot(database, project, repository, proposalId: request.ProposalId));
             if (ProposalOperationSlotValidator.FindConflict(existing.Concat(additions.Select(item => item.Operation)))
                 is { } collision)
                 return Refuse("change.slot-occupied", "Another change already addresses one of these readings.",
@@ -410,15 +425,15 @@ public static class PendingChanges
                     operationIds = group.Select(item => item.Operation.OperationId.Value).ToArray(),
                 });
             }
-            var saved = SaveDraft(repository, current, draft);
+            var saved = SaveDraft(repository, target, draft);
             if (!saved)
                 return Refuse("change.revision-conflict", "The pending Draft changed. Reload it and try again.",
                     ("assessmentId", request.AssessmentId), ("expectedRevision", request.ExpectedRevision));
-            return CommandOutcome<PendingChangesSnapshot>.Success(Snapshot(database, project, repository));
+            return CommandOutcome<PendingChangesSnapshot>.Success(Snapshot(database, project, repository, proposalId: request.ProposalId));
         });
 
     private static CommandOutcome<PutDetails> ComposeAndSave(LcmCache cache, MotifDatabase database,
-        ProposalRepository repository, ProposalRecord? current, DraftDocument draft,
+        ProposalRepository repository, DraftTarget target, DraftDocument draft,
         ChangeIntent change, BaselineRecord baseline, ProjectLocator project, string expectedRevision,
         ExpectedContext? expectedContext)
     {
@@ -577,7 +592,7 @@ public static class PendingChanges
             operations = cancelUnstoredChoice ? [] : AnalysisChangeComposer.Build(cache,
                 new AnalysisChangeIntent(change.Kind, CanonicalId.Parse(change.WordformId), reading,
                     change.StoredAnalysisId is null ? null : CanonicalId.Parse(change.StoredAnalysisId),
-                    change.ChangeId));
+                    change.ChangeId, CreatedInProposal(draft)));
         }
         catch (Exception exception) when (exception is InvalidOperationException or FormatException)
         {
@@ -607,8 +622,8 @@ public static class PendingChanges
         var token = JsonSerializer.Serialize(baseline.Token, JsonOptions);
         foreach (var operation in operations)
         {
-            var analysis = operation.Target is { } target
-                ? wordform.AnalysesOC.FirstOrDefault(item => item.Guid == target.ToGuid()) : null;
+            var analysis = operation.Target is { } entity
+                ? wordform.AnalysesOC.FirstOrDefault(item => item.Guid == entity.ToGuid()) : null;
             var fingerprint = new ChangeFitFingerprint(change.WordformId,
                 analysis is null ? null : CanonicalId.FromGuid(analysis.Guid).Value,
                 form.Normalize(NormalizationForm.FormD), token,
@@ -630,7 +645,7 @@ public static class PendingChanges
                     baseline.FwDataPath), wordform, change, reading),
                 operationIds = operations.Select(operation => operation.OperationId.Value).ToArray(),
             });
-        var saved = SaveDraft(repository, current, draft, expectedContext,
+        var saved = SaveDraft(repository, target, draft, expectedContext,
             expectedContext is null ? null : ProjectWorkspaceKey.Compute(project));
         if (!saved)
         {
@@ -648,13 +663,20 @@ public static class PendingChanges
             new PutDetails(null, replacedChangeId, cancelledChangeId));
     }
 
+    private static IReadOnlyDictionary<CanonicalId, CanonicalId> CreatedInProposal(DraftDocument draft) =>
+        draft.Operations.Where(operation => operation.EntityId is not null)
+            .GroupBy(operation => CanonicalId.Parse(operation.EntityId!))
+            .ToDictionary(group => group.Key, group => CanonicalId.Parse(group.First().OperationId));
+
     private sealed record PutDetails(string? SkippedWord, string? ReplacedChangeId, string? CancelledChangeId);
 
     public static CommandOutcome<PendingChangesSnapshot> Remove(RemovePendingChangeRequest request) =>
         ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
         {
             var repository = new ProposalRepository(database);
-            var current = Current(repository);
+            if (!TryResolve(repository, request.ProposalId, out var target, out var targetRefusal))
+                return CommandOutcome<PendingChangesSnapshot>.Refused(targetRefusal);
+            var current = target.Current;
             if (Revision(current?.ProposalJson) != request.ExpectedRevision)
                 return Refuse("change.revision-conflict", "The pending Draft changed. Reload it and try again.",
                     ("changeId", request.ChangeId), ("expectedRevision", request.ExpectedRevision));
@@ -666,17 +688,16 @@ public static class PendingChanges
             if (removed == 0)
                 return Refuse("change.not-found", "The change is not in the pending Draft.",
                     ("changeId", request.ChangeId));
-            if (!repository.TrySaveDraft(DraftName, current.ProposalJson!,
-                JsonSerializer.Serialize(draft, JsonOptions)))
+            if (!TrySave(repository, target, JsonSerializer.Serialize(draft, JsonOptions)))
                 return Refuse("change.revision-conflict", "The pending Draft changed. Reload it and try again.",
                     ("changeId", request.ChangeId), ("expectedRevision", request.ExpectedRevision));
             return CommandOutcome<PendingChangesSnapshot>.Success(
-                Snapshot(database, project, repository));
+                Snapshot(database, project, repository, proposalId: request.ProposalId));
         });
 
     public static CommandOutcome<PendingChangesSnapshot> Recheck(RecheckPendingChangesRequest request) =>
-        RunCheckedDraft(request.FwDataPath, request.ProductVersion, request.ExpectedRevision, null,
-            (database, project, repository, current, baseline, liveLastWriteTicks, draft, proposal) =>
+        RunCheckedDraft(request.FwDataPath, request.ProductVersion, request.ExpectedRevision, null, request.ProposalId,
+            (database, project, repository, target, baseline, liveLastWriteTicks, draft, proposal) =>
             WithFitCache(project, baseline, liveLastWriteTicks, (cache, cacheLastWriteTicks) =>
             {
                 var fits = ChangeFitPreflight.Check(cache, proposal, baseline.Token, requireSameBaseline: false)
@@ -692,16 +713,16 @@ public static class PendingChanges
                     ReplaceChangeFit(operation, fingerprint with { BaselineToken = token });
                     changed = true;
                 }
-                if (changed && !repository.TrySaveDraft(DraftName, current.ProposalJson!,
-                    JsonSerializer.Serialize(draft, JsonOptions)))
+                if (changed && !TrySave(repository, target, JsonSerializer.Serialize(draft, JsonOptions)))
                     return Refuse("change.revision-conflict", "The pending Draft changed. Reload it and try again.");
                 return CommandOutcome<PendingChangesSnapshot>.Success(
-                    Snapshot(database, project, repository, cache, cacheLastWriteTicks, baseline));
+                    Snapshot(database, project, repository, cache, cacheLastWriteTicks, baseline,
+                        proposalId: request.ProposalId));
             }));
 
     public static CommandOutcome<PendingChangesSnapshot> Reconfirm(ReconfirmPendingChangeRequest request) =>
-        RunCheckedDraft(request.FwDataPath, request.ProductVersion, request.ExpectedRevision, request.ChangeId,
-            (database, project, repository, current, baseline, liveLastWriteTicks, draft, proposal) =>
+        RunCheckedDraft(request.FwDataPath, request.ProductVersion, request.ExpectedRevision, request.ChangeId, request.ProposalId,
+            (database, project, repository, target, baseline, liveLastWriteTicks, draft, proposal) =>
             {
             var operations = draft.Operations.Where(operation => ChangeIdOf(operation) == request.ChangeId).ToArray();
             if (operations.Length == 0)
@@ -760,12 +781,12 @@ public static class PendingChanges
                     ReplaceChangeFit(operation,
                         fingerprint with { BaselineToken = token, Occurrence = currentEvidence });
                 }
-                if (!repository.TrySaveDraft(DraftName, current.ProposalJson!,
-                    JsonSerializer.Serialize(draft, JsonOptions)))
+                if (!TrySave(repository, target, JsonSerializer.Serialize(draft, JsonOptions)))
                     return Refuse("change.revision-conflict", "The pending Draft changed. Reload it and try again.",
                         ("changeId", request.ChangeId), ("expectedRevision", request.ExpectedRevision));
                 return CommandOutcome<PendingChangesSnapshot>.Success(
-                    Snapshot(database, project, repository, cache, cacheLastWriteTicks, baseline));
+                    Snapshot(database, project, repository, cache, cacheLastWriteTicks, baseline,
+                        proposalId: request.ProposalId));
             });
         });
 
@@ -789,13 +810,15 @@ public static class PendingChanges
     }
 
     private static CommandOutcome<PendingChangesSnapshot> RunCheckedDraft(string fwDataPath,
-        string productVersion, string expectedRevision, string? changeId,
-        Func<MotifDatabase, ProjectLocator, ProposalRepository, ProposalRecord, BaselineRecord, long,
+        string productVersion, string expectedRevision, string? changeId, string? proposalId,
+        Func<MotifDatabase, ProjectLocator, ProposalRepository, DraftTarget, BaselineRecord, long,
             DraftDocument, Proposal, CommandOutcome<PendingChangesSnapshot>> action) =>
         ProjectStoreCommand.Run(fwDataPath, productVersion, (database, project) =>
         {
             var repository = new ProposalRepository(database);
-            var current = Current(repository);
+            if (!TryResolve(repository, proposalId, out var target, out var targetRefusal))
+                return CommandOutcome<PendingChangesSnapshot>.Refused(targetRefusal);
+            var current = target.Current;
             if (Revision(current?.ProposalJson) != expectedRevision)
                 return Refuse("change.revision-conflict", "The pending Draft changed. Reload it and try again.",
                     ("changeId", changeId), ("expectedRevision", expectedRevision));
@@ -810,11 +833,79 @@ public static class PendingChanges
                     ("changeId", changeId));
             var draft = ParseDraft(current.ProposalJson!);
             var proposal = ProposalJsonParser.Parse(ProposalCommands.BuildProposalJson(draft));
-            return action(database, project, repository, current, baseline, liveLastWriteTicks, draft, proposal);
+            return action(database, project, repository, target, baseline, liveLastWriteTicks, draft, proposal);
         });
 
-    private static ProposalRecord? Current(ProposalRepository repository) =>
-        repository.DraftNameExists(DraftName) ? repository.GetDraft(DraftName) : null;
+    private const string ReviewDraftPrefix = "review/";
+
+    /// <summary>The Draft one command edits, and the finalized Proposal it must reopen on first write.</summary>
+    private sealed record DraftTarget(string Name, ProposalRecord? Current, CanonicalId? ReopenFrom);
+
+    private static bool TryResolve(ProposalRepository repository, string? proposalId, out DraftTarget target,
+        out Refusal refusal)
+    {
+        refusal = null!;
+        if (proposalId is null)
+        {
+            target = new DraftTarget(DraftName,
+                repository.DraftNameExists(DraftName) ? repository.GetDraft(DraftName) : null, null);
+            return true;
+        }
+        target = null!;
+        CanonicalId id;
+        ProposalRecord record;
+        try
+        {
+            id = CanonicalId.Parse(proposalId);
+            record = repository.Get(id);
+        }
+        catch (Exception ex) when (ex is KeyNotFoundException or ArgumentException or FormatException)
+        {
+            refusal = new Refusal("proposal.not-found", FailureReason.Refused,
+                $"Proposal '{proposalId}' was not found.", new Dictionary<string, string> { ["proposalId"] = proposalId });
+            return false;
+        }
+        if (record.DraftName is { } name)
+        {
+            target = new DraftTarget(name, repository.GetDraft(name), null);
+            return true;
+        }
+        if (record.Status == ManifestStatus.Applied)
+        {
+            refusal = new Refusal("proposal.already-applied", FailureReason.Refused,
+                "This Proposal was already applied. Start a new Proposal.",
+                new Dictionary<string, string> { ["proposalId"] = proposalId });
+            return false;
+        }
+        // Only a proposed or deferred Proposal is still wanted; a rejected or superseded one is not edited.
+        if (record.IntentDigest is null || record.Status is not (ManifestStatus.Proposed or ManifestStatus.Deferred))
+        {
+            refusal = new Refusal("proposal.not-editable", FailureReason.Refused,
+                $"A {record.Status} Proposal cannot be changed. Start a new Proposal.",
+                new Dictionary<string, string> { ["proposalId"] = proposalId, ["status"] = record.Status });
+            return false;
+        }
+        var (finalized, envelope) = repository.GetFinalized(id);
+        var draft = ProposalCommands.DraftOf(id.Value, ProposalRecordMapping.ToManifest(finalized), envelope);
+        var json = JsonSerializer.Serialize(draft, JsonOptions);
+        target = new DraftTarget(ReviewDraftPrefix + id.Value, record with { ProposalJson = json }, id);
+        return true;
+    }
+
+    // An older Trial still seeds further approvals; the store compares its Baseline, not the Draft revision.
+    private static bool IsTrialOf(TrialEvidenceExpectation trial, DraftTarget target) =>
+        target.Current?.ProposalJson is { } json && CanonicalId.TryParse(trial.ProposalId, out var trialId) &&
+        CanonicalId.TryParse(ParseDraft(json).ProposalId, out var targetId) && trialId == targetId;
+
+    private static DraftTarget Reopened(ProposalRepository repository, DraftTarget target)
+    {
+        if (target.ReopenFrom is { } id)
+            repository.ReopenAsDraft(id, target.Name, target.Current!.ProposalJson!);
+        return target with { ReopenFrom = null };
+    }
+
+    private static bool TrySave(ProposalRepository repository, DraftTarget target, string json) =>
+        WithReopen(repository, target, name => repository.TrySaveDraft(name, target.Current!.ProposalJson!, json));
 
     private static DraftDocument LoadDraft(ProposalRecord? current) => current is null
         ? new DraftDocument
@@ -825,22 +916,37 @@ public static class PendingChanges
         }
         : ParseDraft(current.ProposalJson!);
 
-    private static bool SaveDraft(ProposalRepository repository, ProposalRecord? current, DraftDocument draft,
+    private static bool SaveDraft(ProposalRepository repository, DraftTarget target, DraftDocument draft,
         ExpectedContext? expectedContext = null, string? projectKey = null)
     {
+        var current = target.Current;
         var json = JsonSerializer.Serialize(draft, JsonOptions);
-        if (expectedContext is not null)
+        return WithReopen(repository, target, name =>
         {
-            ArgumentException.ThrowIfNullOrWhiteSpace(projectKey);
+            if (expectedContext is not null)
+            {
+                ArgumentException.ThrowIfNullOrWhiteSpace(projectKey);
+                return current is null
+                    ? repository.TryCreateDraftForExpectedContext(name, CanonicalId.Parse(draft.ProposalId), json,
+                        projectKey, expectedContext)
+                    : repository.TrySaveDraftForExpectedContext(name, current.ProposalJson!, json,
+                        projectKey, expectedContext);
+            }
             return current is null
-                ? repository.TryCreateDraftForExpectedContext(DraftName, CanonicalId.Parse(draft.ProposalId), json,
-                    projectKey, expectedContext)
-                : repository.TrySaveDraftForExpectedContext(DraftName, current.ProposalJson!, json,
-                    projectKey, expectedContext);
-        }
-        return current is null
-            ? repository.TryCreateDraft(DraftName, CanonicalId.Parse(draft.ProposalId), json)
-            : repository.TrySaveDraft(DraftName, current.ProposalJson!, json);
+                ? repository.TryCreateDraft(name, CanonicalId.Parse(draft.ProposalId), json)
+                : repository.TrySaveDraft(name, current.ProposalJson!, json);
+        });
+    }
+
+    // A refused write leaves a finalized Proposal finalized; a racing reopen is a conflict.
+    private static bool WithReopen(ProposalRepository repository, DraftTarget target, Func<string, bool> save)
+    {
+        var reopened = target.ReopenFrom is not null;
+        try { Reopened(repository, target); }
+        catch (InvalidOperationException) { return false; }
+        var saved = save(target.Name);
+        if (!saved && reopened) repository.DiscardDraft(target.Name);
+        return saved;
     }
 
     private static void AddComposerProvenance(DraftDocument draft, object provenance) =>
@@ -854,9 +960,12 @@ public static class PendingChanges
 
     private static PendingChangesSnapshot Snapshot(MotifDatabase database, ProjectLocator project,
         ProposalRepository repository, LcmCache? fitCache = null, long? observedLastWriteTicks = null,
-        BaselineRecord? currentBaseline = null, bool persistFitState = true, BaselineRecord? fitCacheBaseline = null)
+        BaselineRecord? currentBaseline = null, bool persistFitState = true, BaselineRecord? fitCacheBaseline = null,
+        string? proposalId = null)
     {
-        var current = Current(repository);
+        var current = TryResolve(repository, proposalId, out var snapshotTarget, out _)
+            ? snapshotTarget.Current : null;
+        persistFitState &= proposalId is null;
         var fitRepository = new PendingChangeFitRepository(database);
         if (current is null)
         {
@@ -932,9 +1041,12 @@ public static class PendingChanges
         var fits = fitRepository.Get(revision, lastWriteTicks, baselineIdentity);
         if (fits is null)
         {
-            fits = fitCache is null
-                ? WithFitCache(project, currentBaseline, lastWriteTicks, ComputeFit)
-                : ComputeFit(fitCache, lastWriteTicks);
+            var trialSet = proposalId is null ? null : TrialSetFor(database, project, proposalId);
+            fits = trialSet is not null
+                ? ComputeTrialFit(trialSet)
+                : fitCache is null
+                    ? WithFitCache(project, currentBaseline, lastWriteTicks, ComputeFit)
+                    : ComputeFit(fitCache, lastWriteTicks);
 
             if (persistFitState) fitRepository.Save(revision, lastWriteTicks, baselineIdentity, fits);
         }
@@ -943,6 +1055,19 @@ public static class PendingChanges
 
         IReadOnlyList<ChangeFit> ComputeFit(LcmCache cache, long _) =>
             ComputeFitSummary(cache, draft, changes, provenance, currentBaseline?.Token);
+
+        IReadOnlyList<ChangeFit> ComputeTrialFit(EvidenceSet set) => TrialFitMemo.GetOrCompute(proposalId!, revision,
+            set.Origin.JobId, set.Origin.JobId is { } job && TrialScratchPath.ProjectFile(TrialScratchPath.ForJob(job)) is not null,
+            () => ComputeFitSummary(draft, changes, provenance, ChangeFitPreflight.Check(
+                ProposalJsonParser.Parse(ProposalCommands.BuildProposalJson(draft)), set, null)));
+    }
+
+    private static EvidenceSet? TrialSetFor(MotifDatabase database, ProjectLocator project, string proposalId)
+    {
+        var trial = Trials.LatestFor(database, project, proposalId);
+        if (trial is null) return null;
+        var set = EvidenceSets.ForTrial(database, project, trial);
+        return set.Succeeded ? set.Value : null;
     }
 
     private static IReadOnlyList<ChangeFit> ComputeFitSummary(LcmCache cache, DraftDocument draft,
@@ -950,8 +1075,14 @@ public static class PendingChanges
         BaselineToken? baseline)
     {
         var proposal = ProposalJsonParser.Parse(ProposalCommands.BuildProposalJson(draft));
-        var operationFits = ChangeFitPreflight.Check(cache, proposal, baseline)
-            .ToDictionary(item => item.OperationId, StringComparer.Ordinal);
+        return ComputeFitSummary(draft, changes, provenance, ChangeFitPreflight.Check(cache, proposal, baseline));
+    }
+
+    private static IReadOnlyList<ChangeFit> ComputeFitSummary(DraftDocument draft,
+        IReadOnlyList<PendingChange> changes, IReadOnlyDictionary<string, JsonElement> provenance,
+        IReadOnlyList<ChangeFitResult> results)
+    {
+        var operationFits = results.ToDictionary(item => item.OperationId, StringComparer.Ordinal);
         return changes.Select(change =>
         {
             var operationResults = new List<ChangeFitResult>();

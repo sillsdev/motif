@@ -27,6 +27,7 @@ public sealed class ChangeFitReasonsTests
         { ChangeFitReasons.MorphReferenceMissing("morph/x"), ChangeFitReasonKind.MorphReferenceMissing },
         { ChangeFitReasons.ReadingAlreadyExists("wordform/x"), ChangeFitReasonKind.ReadingAlreadyExists },
         { ChangeFitReasons.BaselineNotCurrent, ChangeFitReasonKind.BaselineNotCurrent },
+        { ChangeFitReasons.TrialScratchGone, ChangeFitReasonKind.TrialScratchGone },
     };
 
     [Theory]

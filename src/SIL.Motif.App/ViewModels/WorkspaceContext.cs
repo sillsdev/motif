@@ -612,6 +612,9 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
                 IncludeWordResults: true), cancellationToken)
             .ConfigureAwait(true);
         if (!IsCurrentProposalRead(openGeneration, proposalReadGeneration, projectPath)) return;
+        // Changes is the Draft the window stages into: it follows the lens, and is loaded before the lens shows.
+        await Changes.TargetAsync(proposalId, cancellationToken).ConfigureAwait(true);
+        if (!IsCurrentProposalRead(openGeneration, proposalReadGeneration, projectPath)) return;
         var trial = read.Value;
         Lens = new ProposalLens(proposalId, trial?.Label ?? proposalId, trial?.IntentDigest ?? string.Empty,
             trial, MarkupView.TodayToProposal) { ReadRefusal = read.Refusal };
@@ -619,12 +622,16 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     }
 
     /// <summary>Returns the pages to today's evidence and releases only the Proposal Selection reader.</summary>
-    public void LeaveProposal()
+    public async Task LeaveProposalAsync(CancellationToken cancellationToken = default)
     {
-        Interlocked.Increment(ref _proposalReadGeneration);
+        var openGeneration = Volatile.Read(ref _openGeneration);
+        var proposalReadGeneration = Interlocked.Increment(ref _proposalReadGeneration);
+        await Changes.TargetAsync(null, cancellationToken).ConfigureAwait(true);
+        if (!IsCurrentOpen(openGeneration) || proposalReadGeneration != Volatile.Read(ref _proposalReadGeneration))
+            return;
         Lens = null;
         ProposalSelectionReads.Clear();
-        _ = PublishToPagesAsync(CancellationToken.None);
+        await PublishToPagesAsync(cancellationToken).ConfigureAwait(true);
     }
 
     /// <summary>

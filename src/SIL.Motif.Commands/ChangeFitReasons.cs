@@ -20,6 +20,9 @@ public enum ChangeFitReasonKind
     MorphReferenceMissing,
     ReadingAlreadyExists,
     BaselineNotCurrent,
+
+    /// <summary>The Proposal's Trial copy was cleaned up, so the change cannot be checked until it is tried again.</summary>
+    TrialScratchGone,
 }
 
 /// <summary>
@@ -38,6 +41,7 @@ public static partial class ChangeFitReasons
         "The collected change has no spelling status evidence. Remove it and collect it again.";
     public const string MappingMissing = "Change mapping or fingerprint is missing.";
     public const string BaselineNotCurrent = "The collected change's Baseline is no longer current.";
+    public const string TrialScratchGone = "trial-scratch-gone";
 
     public static string WordformDeleted(string wordformId) => $"Wordform {wordformId} was deleted.";
     public static string WordformChangedForm(string wordformId) => $"Wordform {wordformId} changed form.";
@@ -58,6 +62,7 @@ public static partial class ChangeFitReasons
         FingerprintMissing or FingerprintMalformed or FingerprintIncomplete or AnalysisIdentityInvalid
             or SpellingEvidenceMissing or MappingMissing => ChangeFitReasonKind.CannotCheck,
         BaselineNotCurrent => ChangeFitReasonKind.BaselineNotCurrent,
+        TrialScratchGone => ChangeFitReasonKind.TrialScratchGone,
         _ when WordformDeletedPattern().IsMatch(reason) => ChangeFitReasonKind.WordformDeleted,
         _ when WordformChangedFormPattern().IsMatch(reason) => ChangeFitReasonKind.WordformChangedForm,
         _ when WordformSpellingChangedPattern().IsMatch(reason) => ChangeFitReasonKind.WordformSpellingChanged,

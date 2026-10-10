@@ -87,9 +87,16 @@ public sealed partial class TraceWordViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShownRefusal))]
+    [NotifyPropertyChangedFor(nameof(OffersTryAgain))]
     private Refusal? _refusal;
 
     /// <summary>The current refusal in the window's words, with the command's own account under Details.</summary>
+    /// <summary>The Proposal a trace reads the copy of, or null to trace against the project.</summary>
+    public Func<string?>? ProposalIdSource { get; set; }
+
+    /// <summary>Whether the trace was refused because the Proposal's copy was cleaned up, so Try again helps.</summary>
+    public bool OffersTryAgain => Refusal?.Code == "trial.scratch-gone";
+
     public WindowRefusal? ShownRefusal => Refusal is null ? null : WindowRefusal.From(Refusal);
 
     [ObservableProperty]
@@ -730,7 +737,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
             if (generation == _generation && IsLoading) ParseProgress.Report(value);
         });
         var outcome = await ParseProgress.TrackAsync(() =>
-            _commandClient.TraceWordAsync(new WordTraceRequest(path, word), running.Token, progress))
+            _commandClient.TraceWordAsync(new WordTraceRequest(path, word, ProposalIdSource?.Invoke()), running.Token, progress))
             .ConfigureAwait(true);
         if (ReferenceEquals(_running, running)) _running = null;
         if (generation != _generation) return;

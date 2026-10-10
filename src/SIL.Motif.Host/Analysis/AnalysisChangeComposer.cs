@@ -14,8 +14,13 @@ namespace SIL.Motif.Host.Analysis;
 /// <param name="Reading">The selected parser reading, when the action uses one.</param>
 /// <param name="StoredAnalysisId">The exact stored analysis selected by the person.</param>
 /// <param name="ChangeId">The pending change identity carried into operation metadata.</param>
+/// <param name="CreatedInProposal">
+/// Entities the same Proposal creates, each mapped to its creating operation. A reading morph that names one is not
+/// looked up in the project, and the composed analysis declares a dependency on the creating operation.
+/// </param>
 public sealed record AnalysisChangeIntent(string Kind, CanonicalId WordformId, ParseAnalysis? Reading,
-    CanonicalId? StoredAnalysisId = null, string? ChangeId = null);
+    CanonicalId? StoredAnalysisId = null, string? ChangeId = null,
+    IReadOnlyDictionary<CanonicalId, CanonicalId>? CreatedInProposal = null);
 
 /// <summary>Actions that a collected word change can request.</summary>
 public static class AnalysisChangeKinds
@@ -92,20 +97,30 @@ public static class AnalysisChangeComposer
         CanonicalId? creationId = null;
         if (existing.Length == 0)
         {
+            var prerequisites = new List<OperationDependency>();
             foreach (var morph in reading.Morphs)
             {
-                if (morph.Form is { } form)
+                if (morph.Form is { } form && !Created(FromGuid(form)))
                     Resolve<IMoForm>(cache, FromGuid(form));
-                if (morph.Msa is { } msa)
+                if (morph.Msa is { } msa && !Created(FromGuid(msa)))
                     Resolve<IMoMorphSynAnalysis>(cache, FromGuid(msa));
-                if (morph.InflType is { } infl)
+                if (morph.InflType is { } infl && !Created(FromGuid(infl)))
                     Resolve<ILexEntryInflType>(cache, FromGuid(infl));
             }
             creationId = CanonicalId.Mint();
             analysisId = CanonicalId.Mint();
             operations.Add(new OperationEnvelope(creationId.Value, WfiAnalysisOperationKinds.CreateAnalysis,
                 entityId: analysisId, target: intent.WordformId, after: MorphPayload(reading),
-                extensions: ChangeExtension(intent.ChangeId)));
+                dependsOn: prerequisites, extensions: ChangeExtension(intent.ChangeId)));
+
+            bool Created(CanonicalId id)
+            {
+                if (intent.CreatedInProposal is null || !intent.CreatedInProposal.TryGetValue(id, out var creator))
+                    return false;
+                if (!prerequisites.Any(item => item.OperationId == creator))
+                    prerequisites.Add(new OperationDependency(creator));
+                return true;
+            }
         }
         else
             analysisId = CanonicalId.FromGuid(existing[0].Guid);

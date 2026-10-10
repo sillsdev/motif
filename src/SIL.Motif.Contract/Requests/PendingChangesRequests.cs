@@ -3,8 +3,8 @@ using System.Text.Json.Serialization;
 
 namespace SIL.Motif.Contract.Requests;
 
-/// <summary>Reads the one pending-changes Draft for a project.</summary>
-public sealed record PendingChangesRequest(string FwDataPath, string ProductVersion);
+/// <summary>Reads the one pending-changes Draft for a project, or the Draft of the Proposal named.</summary>
+public sealed record PendingChangesRequest(string FwDataPath, string ProductVersion, string? ProposalId = null);
 
 /// <summary>A change to one wordform, with a stored analysis id or an Assessment reading and its index.</summary>
 public sealed record ChangeIntent(
@@ -27,7 +27,8 @@ public sealed record OccurrenceAnchor(Guid TextId, Guid ParagraphId, Guid Segmen
 
 /// <summary>Writes one change only if the Draft still has the revision the caller read.</summary>
 public sealed record PutPendingChangeRequest(
-    string FwDataPath, string ProductVersion, string ExpectedRevision, ChangeIntent Change)
+    string FwDataPath, string ProductVersion, string ExpectedRevision, ChangeIntent Change,
+    string? ProposalId = null)
 {
     /// <summary>The evidence identity that must still be current when the change is saved.</summary>
     public ExpectedContext? ExpectedContext { get; init; }
@@ -41,24 +42,25 @@ public sealed record PutPendingChangeRequest(
 /// <param name="WordformId">The one wordform to accept, or <see langword="null"/> for another scope.</param>
 /// <param name="TextId">The Text to accept, or <see langword="null"/> for another scope.</param>
 /// <param name="Selection">Whether to use every word in the named Assessment's Selection.</param>
+/// <param name="ProposalId">The Proposal whose Draft receives the readings, or <see langword="null"/> for pending changes.</param>
 public sealed record AcceptNewSetRequest(
     string FwDataPath, string ProductVersion, string ExpectedRevision, string AssessmentId,
-    string? WordformId = null, Guid? TextId = null, bool Selection = false);
+    string? WordformId = null, Guid? TextId = null, bool Selection = false, string? ProposalId = null);
 
 /// <summary>Stages removal of one stored analysis from its wordform.</summary>
 public sealed record RemoveAnalysisRequest(
     string FwDataPath, string ProductVersion, string ExpectedRevision,
     string? ChangeId = null, string? WordformId = null, string? Word = null, string? AnalysisId = null,
-    IReadOnlyList<string>? AnalysisIds = null, Guid? TextId = null);
+    IReadOnlyList<string>? AnalysisIds = null, Guid? TextId = null, string? ProposalId = null);
 
 /// <summary>Removes one change only if the Draft still has the revision the caller read.</summary>
 public sealed record RemovePendingChangeRequest(
-    string FwDataPath, string ProductVersion, string ExpectedRevision, string ChangeId);
+    string FwDataPath, string ProductVersion, string ExpectedRevision, string ChangeId, string? ProposalId = null);
 
 /// <summary>Checks pending changes against the current Baseline and renews only fingerprints that still fit.</summary>
 public sealed record RecheckPendingChangesRequest(
-    string FwDataPath, string ProductVersion, string ExpectedRevision);
+    string FwDataPath, string ProductVersion, string ExpectedRevision, string? ProposalId = null);
 
 /// <summary>Refreshes one pending change's occurrence evidence when its semantic fit still holds.</summary>
 public sealed record ReconfirmPendingChangeRequest(
-    string FwDataPath, string ProductVersion, string ExpectedRevision, string ChangeId);
+    string FwDataPath, string ProductVersion, string ExpectedRevision, string ChangeId, string? ProposalId = null);

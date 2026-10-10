@@ -188,6 +188,8 @@ public sealed partial record WindowRefusal
         [RefusalCodes.SelectionReaderCancelled] = "Reading these texts was cancelled.",
         [RefusalCodes.SelectionReaderDisposed] = "This text view is no longer open. Reopen it and try again.",
         [RefusalCodes.SelectionReaderInvalid] = "Motif could not read this text view. Reopen it and try again.",
+        ["trial.scratch-gone"] = "The Proposal's copy is gone. Try it again.",
+        ["trial.none"] = "This Proposal has not been tried yet. Try it first.",
         [RefusalCodes.SelectionReaderNoBaseline] = "Refresh this project before reading its saved texts.",
         [RefusalCodes.SelectionReaderRangeInvalid] = "Choose a valid range of words to read.",
         [RefusalCodes.SelectionReaderOwnershipLimit] = "Too much text is open at once. Close a card or choose a smaller range.",

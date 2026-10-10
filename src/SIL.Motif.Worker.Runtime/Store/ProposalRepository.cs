@@ -380,7 +380,7 @@ public sealed class ProposalRepository : IProposalRepository
     {
         using var connection = _database.OpenConnection();
         using var transaction = connection.BeginTransaction(deferred: true);
-        var current = ExpectedContextRepository.IsCurrentContext(_database, connection, transaction,
+        var current = ExpectedContextRepository.IsAcceptableWriteContext(_database, connection, transaction,
             projectKey, expectedContext);
         transaction.Commit();
         return current;

@@ -44,6 +44,12 @@ public sealed partial class TextsPageModel : PageModel
         {
             OpenTexts = () => context.OpenTexts(TextsTab.AnalyzeTexts),
             OpenWarnings = () => context.OpenPage(WorkspacePage.Warnings),
+            ProposalStanding = () => context.ProposalStanding,
+        };
+        context.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(WorkspaceContext.EvidenceLens)) ResultsInText.ApplyLens(context.EvidenceLens);
+            else if (args.PropertyName == nameof(WorkspaceContext.ProposalStanding)) ResultsInText.RefreshProposalStanding();
         };
         Words.WordCardActions = ResultsInText;
         Assess.Compare.WordCardTokenFactory = ResultsInText.GetCardToken;

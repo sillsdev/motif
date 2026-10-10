@@ -59,6 +59,55 @@ public enum AnalysisMarkingActionKind
 
     /// <summary>Add every missing analysis from the completed Assessment.</summary>
     AcceptNewSet,
+
+    /// <summary>Approve a stored analysis that the Proposal's Trial builds, inside the open Proposal.</summary>
+    ApproveInProposal,
+
+    /// <summary>Add a reading only the Proposal's Trial builds, as Approved, inside the open Proposal.</summary>
+    AddExpectedParse,
+}
+
+/// <summary>A change in the open Proposal that builds part of a Trial reading.</summary>
+/// <param name="OperationId">The Proposal operation that creates an entity the reading names.</param>
+/// <param name="Title">The change's title as the person reads it.</param>
+public sealed record BuiltByEntry(string OperationId, string Title);
+
+/// <summary>One reading the Proposal's Trial built for a word, and what in the Proposal built it.</summary>
+/// <param name="Text">The reading as the card writes it.</param>
+/// <param name="ReadingIndex">The reading's position in the Trial's Assessment result for the word.</param>
+/// <param name="Reading">The semantic reading, to stage into the Proposal.</param>
+/// <param name="StoredAnalysisIds">FieldWorks analyses with the same morphology, empty when FieldWorks has none.</param>
+/// <param name="BuiltBy">The Proposal's changes that create entities this reading uses.</param>
+/// <param name="Morphs">The reading's morphs, laid out as the card lays out every other reading.</param>
+public sealed record ProposalReadingMarking(
+    string Text, int ReadingIndex, ParseAnalysis Reading, IReadOnlyList<string> StoredAnalysisIds,
+    IReadOnlyList<BuiltByEntry> BuiltBy, IReadOnlyList<ParserReadingMorphViewModel> Morphs)
+{
+    /// <summary>Whether the reading has morphs to lay out.</summary>
+    public bool HasMorphs => Morphs.Count > 0;
+
+    /// <summary>Whether FieldWorks holds an analysis with this morphology.</summary>
+    public bool InFieldWorks => StoredAnalysisIds.Count > 0;
+
+    /// <summary>The changes that build this reading as one line, or empty when none of them does.</summary>
+    public string BuiltByText => BuiltBy.Count == 0 ? string.Empty
+        : "Built by: " + string.Join(", ", BuiltBy.Select(entry => entry.Title));
+}
+
+/// <summary>What the Proposal's Trial built for one word and the two ways to stage it into the Proposal.</summary>
+/// <param name="Readings">Every reading the Trial built for the word.</param>
+/// <param name="Choices">The approve and add-an-expected-parse choices the card offers.</param>
+public sealed record ProposalReadingBlock(
+    IReadOnlyList<ProposalReadingMarking> Readings, IReadOnlyList<AnalysisMarkingChoice> Choices)
+{
+    /// <summary>The line under the block's heading when the Trial built nothing for the word.</summary>
+    public const string NothingBuilt = "The Proposal builds no analysis for this word.";
+
+    /// <summary>What the Fix choices call the open Proposal when its Trial carries no label.</summary>
+    public const string ThisProposal = "this Proposal";
+
+    /// <summary>The window's name for a reading FieldWorks does not hold yet.</summary>
+    public const string WillAddAsApproved = "Will add as Approved";
 }
 
 /// <summary>A stored analysis and the human opinion that FieldWorks records for it.</summary>
@@ -152,6 +201,53 @@ public sealed record AnalysisMarkingState(
     bool NoLongerFits,
     bool IsUnread)
 {
+    /// <summary>What the open Proposal's Trial built for this word, or null outside Proposal mode.</summary>
+    public ProposalReadingBlock? ProposalBlock { get; init; }
+
+    /// <summary>Attaches what the open Proposal's Trial built for this word.</summary>
+    public AnalysisMarkingState WithProposalReading(ProposalReadingBlock? block) => this with { ProposalBlock = block };
+
+    /// <summary>
+    /// Builds the block for the Proposal's Trial: an approve choice for each reading that matches a stored
+    /// analysis held as Unknown, and an expected-parse choice for each reading FieldWorks does not hold.
+    /// </summary>
+    /// <param name="trial">The comparison of FieldWorks with the Trial's result for the word.</param>
+    /// <param name="text">Writes a reading the way the card does.</param>
+    /// <param name="builtBy">Names the Proposal's changes that create entities a reading uses.</param>
+    /// <param name="proposalLabel">The open Proposal's name, which the Fix choices put in their wording.</param>
+    /// <returns>The block, with no readings when the Trial built nothing.</returns>
+    public static ProposalReadingBlock BuildProposalBlock(AnalysisMarkingState trial,
+        Func<PanGlossReadingMarking, string> text, Func<ParseAnalysis, IReadOnlyList<BuiltByEntry>> builtBy,
+        string proposalLabel = ProposalReadingBlock.ThisProposal)
+    {
+        ArgumentNullException.ThrowIfNull(trial);
+        var readings = new List<ProposalReadingMarking>();
+        var choices = new List<AnalysisMarkingChoice>();
+        for (var index = 0; index < trial.PanGlossReadings.Count; index++)
+        {
+            var reading = trial.PanGlossReadings[index];
+            var label = text(reading);
+            readings.Add(new ProposalReadingMarking(label, index, reading.Analysis, reading.MatchingAnalysisIds,
+                builtBy(reading.Analysis),
+                reading.Display?.Morphs.Select(morph => new ParserReadingMorphViewModel(morph)).ToArray() ?? []));
+            if (reading.IsParserOnly)
+            {
+                choices.Add(Choice(AnalysisMarkingActionKind.AddExpectedParse, $"Add an expected parse to {proposalLabel}…",
+                    $"Not in FieldWorks → {ProposalReadingBlock.WillAddAsApproved}", null, reading.Analysis, index,
+                    "Not in FieldWorks", "Approved", ChangeKinds.Approve));
+                continue;
+            }
+            var unknown = trial.FieldWorksAnalyses.FirstOrDefault(analysis =>
+                analysis.Opinion != ReadingGrade.Approved &&
+                reading.MatchingAnalysisIds.Contains(analysis.StoredAnalysisId, StringComparer.Ordinal));
+            if (unknown is not null)
+                choices.Add(Choice(AnalysisMarkingActionKind.ApproveInProposal, $"Approve {label} in {proposalLabel}",
+                    $"{ReadingGradeLabels.Of(unknown.Opinion)} → Approved", unknown.StoredAnalysisId,
+                    reading.Analysis, index, ReadingGradeLabels.Of(unknown.Opinion), "Approved", ChangeKinds.Approve));
+        }
+        return new ProposalReadingBlock(readings, choices);
+    }
+
     /// <summary>Whether an available action or Fix choice remains unstaged.</summary>
     public bool NeedsALook => StagedTransitions.Count == 0 &&
         (CountsTowardNeedsALook(PrimaryAction?.Kind) || PanGlossClass != AnalysisMarkingClass.Same &&

@@ -8,7 +8,11 @@ using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Texts;
 using SIL.Motif.Host.Analysis;
 using SIL.Motif.Runner.Operations;
+using SIL.Motif.Commands.Queries;
+using SIL.Motif.Contract;
+using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Worker.Baselines;
+using SIL.Motif.Worker.Jobs;
 using SIL.LCModel;
 
 namespace SIL.Motif.Commands;
@@ -197,6 +201,44 @@ public static class ChangeFitPreflight
         }
         return result;
     }
+
+    /// <summary>
+    /// Checks the collected changes against what <paramref name="set"/> measured. A Trial set reads the Trial job's
+    /// scratch project, because an analysis the Proposal builds exists only there; when that copy has been cleaned
+    /// up, every collected change is <see cref="ChangeFitStatus.Uncertain"/> with
+    /// <see cref="ChangeFitReasons.TrialScratchGone"/> rather than being read against the Baseline.
+    /// </summary>
+    /// <param name="proposal">The Proposal whose collected changes are checked.</param>
+    /// <param name="set">The evidence set the changes were made against.</param>
+    /// <param name="projectCache">The saved project, read for a project set.</param>
+    /// <param name="requireSameBaseline">Whether a change made against an older Baseline stops fitting.</param>
+    /// <returns>One result per collected change operation.</returns>
+    public static IReadOnlyList<ChangeFitResult> Check(Proposal proposal, EvidenceSet set, LcmCache? projectCache,
+        bool requireSameBaseline = true)
+    {
+        if (set.Origin.Kind != EvidenceOriginKind.Trial)
+            return Check(projectCache ?? throw new ArgumentNullException(nameof(projectCache)), proposal,
+                set.Baseline, requireSameBaseline);
+        var scratch = set.Origin.JobId is { } jobId
+            ? TrialScratchPath.ProjectFile(TrialScratchPath.ForJob(jobId)) : null;
+        if (scratch is null)
+        {
+            var token = JsonSerializer.Serialize(set.Baseline, MotifJson.CreateOptions());
+            return proposal.Operations.Where(HasChangeFit).Select(operation =>
+                new ChangeFitResult(operation.OperationId.Value, ChangeFitStatus.Uncertain,
+                    ChangeFitReasons.TrialScratchGone, token)
+                {
+                    ChangeId = PendingChanges.Property(operation.Extensions!.Value, "changeId"),
+                    Uncertainty = new ChangeUncertainty(ChangeFitReasons.TrialScratchGone, [], []),
+                }).ToArray();
+        }
+        using var cache = new FwDataProjectLoader().LoadScratchCache(scratch);
+        return Check(cache, proposal, set.Baseline, requireSameBaseline: false);
+    }
+
+    private static bool HasChangeFit(OperationEnvelope operation) =>
+        operation.Extensions is { ValueKind: JsonValueKind.Object } extensions &&
+        extensions.TryGetProperty("changeFit", out _);
 
     private static HashSet<string> AuthoredChangeOperationIds(Proposal proposal)
     {

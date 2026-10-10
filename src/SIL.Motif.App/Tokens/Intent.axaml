@@ -54,6 +54,8 @@
     Intent.Danger.Text            small text saying something differs, on Intent.Danger.Fill
     Intent.Unread.Text            readable label for an Unread occurrence
     Intent.Unread.Fill            background behind the Unread label
+    Intent.Proposal.Fill          the tint behind a "with this Proposal" block or row
+    Intent.Proposal.Text          readable text on Intent.Proposal.Fill
     Intent.Marking.Text           text on compact analysis marks and lines
     Intent.Marking.Border         edges of compact analysis marks and controls
     Intent.Marking.Surface        the surface of compact analysis controls
@@ -279,6 +281,8 @@
       <SolidColorBrush x:Key="Intent.Warning.Text" Color="{StaticResource Primitive.Color.Amber800}" />
       <SolidColorBrush x:Key="Intent.Unread.Text" Color="{StaticResource Primitive.Color.Violet800}" />
       <SolidColorBrush x:Key="Intent.Unread.Fill" Color="{StaticResource Primitive.Color.Violet25}" />
+      <SolidColorBrush x:Key="Intent.Proposal.Text" Color="{StaticResource Primitive.Color.Purple800}" />
+      <SolidColorBrush x:Key="Intent.Proposal.Fill" Color="{StaticResource Primitive.Color.Purple25}" />
       <StaticResource x:Key="Intent.Danger" ResourceKey="SemiColorDanger" />
       <StaticResource x:Key="Intent.Danger.Fill" ResourceKey="SemiColorDangerLight" />
       <SolidColorBrush x:Key="Intent.Danger.Text" Color="{StaticResource Primitive.Color.Rose950}" />
@@ -372,6 +376,8 @@
       <SolidColorBrush x:Key="Intent.Warning.Text" Color="{StaticResource Primitive.Color.Amber300}" />
       <SolidColorBrush x:Key="Intent.Unread.Text" Color="{StaticResource Primitive.Color.Violet200}" />
       <SolidColorBrush x:Key="Intent.Unread.Fill" Color="{StaticResource Primitive.Color.Violet975}" />
+      <SolidColorBrush x:Key="Intent.Proposal.Text" Color="{StaticResource Primitive.Color.Purple200}" />
+      <SolidColorBrush x:Key="Intent.Proposal.Fill" Color="{StaticResource Primitive.Color.Purple975}" />
       <StaticResource x:Key="Intent.Danger" ResourceKey="SemiColorDanger" />
       <StaticResource x:Key="Intent.Danger.Fill" ResourceKey="SemiColorDangerLight" />
       <SolidColorBrush x:Key="Intent.Danger.Text" Color="{StaticResource Primitive.Color.Rose200}" />

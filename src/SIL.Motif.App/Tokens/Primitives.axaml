@@ -69,6 +69,10 @@
   <Color x:Key="Primitive.Color.Violet600">#7A4FD1</Color>
   <Color x:Key="Primitive.Color.Violet800">#54278F</Color>
   <Color x:Key="Primitive.Color.Violet975">#2B1C3B</Color>
+  <Color x:Key="Primitive.Color.Purple25">#FAF0FC</Color>
+  <Color x:Key="Primitive.Color.Purple200">#E9C4F0</Color>
+  <Color x:Key="Primitive.Color.Purple800">#5C1A6A</Color>
+  <Color x:Key="Primitive.Color.Purple975">#2D1236</Color>
 
   <Color x:Key="Primitive.Color.Blue10">#F1F5FF</Color>
   <Color x:Key="Primitive.Color.Blue650">#215CC7</Color>
