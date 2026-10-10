@@ -89,6 +89,7 @@ public sealed class WarningsPageModel : PageModel
     protected override async Task OnBaselineCapturedAsync(CancellationToken cancellationToken)
     {
         if (Context.ProjectPath is not { } path) return;
+        _readGeneration++;
         await Grammar.SetProjectAsync(path, cancellationToken).ConfigureAwait(true);
         await Context.PublishGrammarCheckedAsync(cancellationToken).ConfigureAwait(true);
     }
@@ -96,6 +97,8 @@ public sealed class WarningsPageModel : PageModel
     private async Task CheckGrammarAsync()
     {
         if (Context.ProjectPath is not { } path) return;
+        // A stored read still in flight would otherwise replace this check with the older stored one.
+        _readGeneration++;
         await Grammar.SetProjectAsync(path).ConfigureAwait(true);
         await Context.PublishGrammarCheckedAsync().ConfigureAwait(true);
     }

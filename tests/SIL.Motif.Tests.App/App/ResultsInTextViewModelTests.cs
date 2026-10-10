@@ -748,6 +748,30 @@ public sealed class ResultsInTextViewModelTests : IAsyncLifetime
     }
 
     [Fact]
+    public void StoppingTheReaderWaitsForTheReadStateAWordCardIsStillSaving()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (inText, _, fake) = await Loaded();
+            var token = SelectionModelFixture.VisibleLines(inText)[0].Tokens[1];
+            var write = new TaskCompletionSource<CommandOutcome<WordReadStateResponse>>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            fake.OnReadWordState((request, _) => request.IsRead is null
+                ? Task.FromResult(CommandOutcome<WordReadStateResponse>.Success(new WordReadStateResponse([], true)))
+                : write.Task);
+
+            var opening = inText.OpenTokenCardAsync(token);
+            var stopping = inText.StopAsync();
+            await Task.Delay(50);
+
+            Assert.False(stopping.IsCompleted, "the reader stopped while its read-state write was still running");
+            write.SetResult(CommandOutcome<WordReadStateResponse>.Success(new WordReadStateResponse([], true)));
+            await stopping;
+            await opening;
+        }, TimeSpan.FromSeconds(180));
+    }
+
+    [Fact]
     public void WordCardTimingSelectsTheParseTimeMeasurementAndKeepsItsReplacements()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>

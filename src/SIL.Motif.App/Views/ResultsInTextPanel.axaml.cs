@@ -25,6 +25,7 @@ public sealed partial class ResultsInTextPanel : UserControl
         AvaloniaXamlLoader.Load(this);
         _lineItems = this.FindControl<ItemsControl>("TextLineItems")!;
         _textScrollViewer = this.FindControl<ScrollViewer>("TextScrollViewer")!;
+        ScrollEndAnchor.Attach(_textScrollViewer);
         WordHost = new ResultsTextWordPresentationHost(InText, this);
         var readerToolbar = this.FindControl<Grid>("ReaderToolbar")!;
         var filterChips = this.FindControl<WrapPanel>("ResultsInTextFilterChips")!;
