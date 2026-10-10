@@ -288,7 +288,7 @@ function Stop-InstallProcesses {
     }
     $lingering = @(Get-InstallProcesses)
     if ($lingering.Count -gt 0) {
-        Write-Host "Stopping Motif processes the smoke left running before $Reason: $(Format-InstallProcesses $lingering)"
+        Write-Host "Stopping Motif processes the smoke left running before ${Reason}: $(Format-InstallProcesses $lingering)"
         foreach ($lingerer in $lingering) {
             Stop-Process -Id $lingerer.ProcessId -Force -ErrorAction SilentlyContinue
         }
