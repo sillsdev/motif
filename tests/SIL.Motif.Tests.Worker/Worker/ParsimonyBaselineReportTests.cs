@@ -442,7 +442,12 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
 
         var renamedFacts = Path.Combine(_root, "renamed-statements.sqlite");
         File.Copy(bundle.GrammarFactsPath, renamedFacts);
-        using (var renamed = new SqliteConnection("Data Source=" + renamedFacts))
+        using (var renamed = new SqliteConnection(new SqliteConnectionStringBuilder
+               {
+                   DataSource = Path.GetFullPath(renamedFacts),
+                   Mode = SqliteOpenMode.ReadWrite,
+                   Pooling = false,
+               }.ToString()))
         {
             renamed.Open();
             using var change = renamed.CreateCommand();
