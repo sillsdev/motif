@@ -135,6 +135,9 @@ public sealed class UnparsedLargeProjectScaleTests(ITestOutputHelper output)
             PageScreenshots.Settle(window.Window);
             var reader = Assert.Single(panel.GetVisualDescendants().OfType<ScrollViewer>(),
                 viewer => viewer.IsEffectivelyVisible && viewer.Content is ItemsControl);
+            var scrolls = new List<string>();
+            reader.ScrollChanged += (_, e) => scrolls.Add(
+                $"offset {reader.Offset.Y:F0} ({e.OffsetDelta.Y:+0;-0;0}) extent {reader.Extent.Height:F0} ({e.ExtentDelta.Y:+0;-0;0})");
             Assert.IsType<ItemsControl>(reader.Content).ScrollIntoView(longest.Summary.LineCount - 1);
             reader.ScrollToEnd();
             reader.UpdateLayout();
@@ -158,7 +161,7 @@ public sealed class UnparsedLargeProjectScaleTests(ITestOutputHelper output)
             Assert.NotNull(origin);
             Assert.True(new Rect(reader.Viewport).Intersects(new Rect(origin!.Value, strip.Bounds.Size)),
                 $"the last strip at {origin.Value} size {strip.Bounds.Size} is outside the reader viewport " +
-                $"{reader.Viewport} at offset {reader.Offset} in extent {reader.Extent}");
+                $"{reader.Viewport} at offset {reader.Offset} in extent {reader.Extent}; scrolls: {string.Join("; ", scrolls)}");
         });
         measurements.AssertReadCounts("Unparsed: read and scroll 224-line Text", 1, 128, 1, 4096);
         Assert.Null(window.Workspace.Assess.Result);
