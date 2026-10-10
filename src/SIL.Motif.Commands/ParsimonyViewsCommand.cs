@@ -176,9 +176,10 @@ public static class ParsimonyViewsCommand
             ReportNotBoundException => Refused<ParsimonyNamedViewResponse>("parsimony.report-bundle-mismatch",
                 FailureReason.Refused, exception.Message),
             InvalidDataException => Refused<ParsimonyNamedViewResponse>("parsimony.report-damaged",
-                FailureReason.StoreInconsistent, exception.Message),
+                FailureReason.StoreInconsistent, $"{exception.Message} {ParsimonyCommands.DamagedReportGuidance}"),
             _ => Refused<ParsimonyNamedViewResponse>("parsimony.report-damaged", FailureReason.StoreInconsistent,
-                $"Parsimony Report '{reportId}' is damaged: {exception.Message}"),
+                $"Parsimony Report '{reportId}' is damaged: {exception.Message} " +
+                ParsimonyCommands.DamagedReportGuidance),
         };
 
     private sealed class ReportNotBoundException(string message) : Exception(message);

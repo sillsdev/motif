@@ -317,6 +317,47 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
     }
 
     [Fact]
+    public async Task FactsOfAnOlderSchemaAreRefusedWithRebuildGuidanceLikeOlderEvidence()
+    {
+        await PublishBaselineAsync(_pristine);
+        var parserPath = FactsParser(_pristine.Seed);
+        using var invoker = new SIL.Motif.Host.PanGloss.PanGlossInvoker(parserPath);
+        var scopeBinding = new ParsimonyScopeBinding(ParsimonyEvidenceScopeKind.ProjectApproved, null);
+        var job = CreateJob("P-allo-duplicate-form", scopeBinding);
+        var handler = new ParsimonyJobHandler(_database, _baselines, _projectKey, _project,
+            new RunnerOptions { Root = Path.Combine(_root, "older-facts-worker"), ParserPath = parserPath }, invoker);
+        var outcome = await handler.RunAsync(Claim(job.JobId), CancellationToken.None);
+        Assert.True(outcome!.Status == JobStatus.Completed, outcome.ResultJson);
+        using var result = JsonDocument.Parse(outcome.ResultJson!);
+        var bundle = new ParsimonyBundleRepository(_database).Get(
+            result.RootElement.GetProperty("bundleId").GetString()!)!;
+        using (var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+               {
+                   DataSource = Path.GetFullPath(bundle.GrammarFactsPath),
+                   Pooling = false,
+               }.ToString()))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = $"PRAGMA user_version={PanGlossInterfaceVersions.FactsSchemaVersion - 1};";
+            command.ExecuteNonQuery();
+        }
+        var inputs = new ParsimonyReportInputs(bundle.BundleId, _token, "baseline", null,
+            bundle.ModelFingerprint,
+            new ParsimonyArtifactDigest(bundle.GrammarFactsSchemaVersion, Sha256Of(bundle.GrammarFactsPath)),
+            new ParsimonyArtifactDigest(bundle.EvidenceSchemaVersion, bundle.EvidenceSha256),
+            null, null, [], ParsimonyEvidenceScopeKind.ProjectApproved);
+
+        var exception = Assert.Throws<InvalidDataException>(() =>
+            new ParsimonyQuerySession(bundle.GrammarFactsPath, bundle.EvidencePath, inputs));
+
+        Assert.EndsWith("Delete this Parsimony evidence and run the measure again; Motif rebuilds it.",
+            exception.Message, StringComparison.Ordinal);
+        Assert.Equal(ParsimonyBundleFault.Corrupt, ParsimonyBundleFaults.Classify(exception,
+            [bundle.EvidenceDirectory, bundle.GrammarFactsPath, bundle.EvidencePath]));
+    }
+
+    [Fact]
     public async Task RegisteredStaticMeasuresUseExactFactsAndFullEligibilityCounts()
     {
         var publishedRoot = await PublishBaselineAsync(_pristine);
@@ -854,8 +895,27 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
                 Assert.Equal(ParsimonyMeasureStatus.Computed, result.Run.Status);
                 var finding = Assert.Single(result.Findings, finding => finding.AttachesTo.Identity.Contains(
                     naturalClass, StringComparison.Ordinal));
-                Assert.Contains(finding.Limitations, limitation => limitation.Contains(
-                    $"allomorph {segmentedAllomorph} (owner_not_loaded)", StringComparison.Ordinal));
+                Assert.Contains($"Referenced only by allomorph {segmentedAllomorph} (not loaded by the parser); " +
+                    "none of these applies it to parsing.", finding.Limitations);
+            });
+    }
+
+    [Fact]
+    public async Task AnUnusedStatementNamesItsReferrersInWords()
+    {
+        const string naturalClass = "10000000-0000-0000-0000-000000000073";
+        const string environment = "10000000-0000-0000-0000-000000000074";
+        await RunStatementUsageAsync(factsPath => AddStatementUsageFacts(factsPath,
+            "INSERT INTO natural_class(guid, kind, name) VALUES ('" + naturalClass + "', 'segments', 'nasals');",
+            "INSERT INTO environment(guid, name, representation, parse_status) VALUES ('" + environment +
+            "', 'before nasal', '/ _ [N]', 'valid');",
+            StatementReference("naturalClass", naturalClass, "environment", environment, "env_token", "ignored")),
+            result =>
+            {
+                var finding = Assert.Single(result.Findings, finding => finding.AttachesTo.Identity.Contains(
+                    naturalClass, StringComparison.Ordinal));
+                Assert.Contains("Referenced only by environment \"before nasal\" (ignored by the parser); " +
+                    "none of these applies it to parsing.", finding.Limitations);
             });
     }
 

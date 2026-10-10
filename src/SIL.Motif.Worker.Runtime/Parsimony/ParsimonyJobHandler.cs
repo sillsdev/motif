@@ -257,8 +257,14 @@ public sealed class ParsimonyJobHandler
         }
     }
 
-    private string? ParserIdentity() =>
-        _options.ParserPath is { } parserPath && File.Exists(parserPath)
+    private string? ParserIdentity() => ParserIdentity(_options);
+
+    /// <summary>
+    /// The streamed digest of the configured parser executable, or null when it is absent. Taken before and after
+    /// a build so evidence names one parser, pinned by `ReplacingTheParserBetweenImportAndFactsRefuses`.
+    /// </summary>
+    internal static string? ParserIdentity(RunnerOptions options) =>
+        options.ParserPath is { } parserPath && File.Exists(parserPath)
             ? BatchInvocationEvidence.DigestFile(parserPath) : null;
 
     private static string CopyBaseline(string baselineRoot, string fwDataPath, string destination)
@@ -306,7 +312,7 @@ public sealed class ParsimonyJobHandler
         return projection with { ParserOverlay = overlay, Capabilities = capabilities };
     }
 
-    private static string RemoveDigestPrefix(string digest) => digest.StartsWith("sha256:", StringComparison.Ordinal)
+    internal static string RemoveDigestPrefix(string digest) => digest.StartsWith("sha256:", StringComparison.Ordinal)
         ? digest[7..] : digest;
 
     private static string Hash(string value) => Hash(Encoding.UTF8.GetBytes(value));

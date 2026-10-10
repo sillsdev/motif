@@ -341,12 +341,16 @@ public sealed class ProjectInitializationRecoveryTests : IDisposable
     [InlineData("definition-incompatible")]
     [InlineData("definition-ambiguous")]
     [InlineData("copy-no-longer-matches")]
-    [InlineData("not-saved-with-retained-copy")]
-    public void EveryRefusalNamingTheRecoveryCopyGivesTheRestoreStep(string scenario)
-    {
-        // Cleanup keeps the copy only when its directory is read-only, which Windows does not model here.
-        if (scenario == "not-saved-with-retained-copy" && OperatingSystem.IsWindows()) return;
+    public void EveryRefusalNamingTheRecoveryCopyGivesTheRestoreStep(string scenario) =>
+        AssertRefusalGivesTheRestoreStep(scenario);
 
+    // Cleanup keeps the copy only when its directory is read-only to this process.
+    [ReadOnlyDirectoryFact]
+    public void ARefusalAfterAnUnsavedRunThatKeptTheCopyGivesTheRestoreStep() =>
+        AssertRefusalGivesTheRestoreStep("not-saved-with-retained-copy");
+
+    private void AssertRefusalGivesTheRestoreStep(string scenario)
+    {
         var (project, outcome, before) = RunRefusalScenario(scenario);
         var copy = ProjectInitializationRecovery.GetRecoveryCopyPath(project, _workerRoot);
         var fullProject = Path.GetFullPath(project);
@@ -358,12 +362,13 @@ public sealed class ProjectInitializationRecoveryTests : IDisposable
         Assert.Equal(before, File.ReadAllBytes(project));
     }
 
-    [Theory]
+    // Cleanup keeps the copy only when its directory is read-only to this process.
+    [ReadOnlyDirectoryTheory]
     [InlineData("initialized")]
     [InlineData("already-initialized")]
     public void SuccessKeepingACopyNamesItWithoutTheRestoreStep(string status)
     {
-        // Cleanup keeps the copy only when its directory is read-only, which Windows does not model here.
+        // The attribute already skips Windows; this guard is what the platform analyzer can see.
         if (OperatingSystem.IsWindows()) return;
 
         string project;
@@ -640,7 +645,8 @@ public sealed class ProjectInitializationRecoveryTests : IDisposable
         {
             base.Save(cache);
             // Keeps the recovery copy in place after a successful save because its deletion lacks write permission.
-            File.SetUnixFileMode(recoveryDirectory, UnixFileMode.UserRead | UnixFileMode.UserExecute);
+            if (!OperatingSystem.IsWindows())
+                File.SetUnixFileMode(recoveryDirectory, UnixFileMode.UserRead | UnixFileMode.UserExecute);
         }
     }
 

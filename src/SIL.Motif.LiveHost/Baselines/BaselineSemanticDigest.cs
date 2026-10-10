@@ -48,6 +48,7 @@ public static class BaselineSemanticDigest
         cancellationToken.ThrowIfCancellationRequested();
 
         using var sha = SHA256.Create();
+        using var pass = SnapshotPass.Begin(cache);
         using (var crypto = new CryptoStream(Stream.Null, sha, CryptoStreamMode.Write))
         {
             crypto.WriteByte((byte)'{');

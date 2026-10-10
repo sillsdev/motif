@@ -686,7 +686,7 @@ public sealed class PanGlossInvokerTests : IDisposable
 
     [Theory]
     [InlineData("wrongFactsSchema", "schema")]
-    [InlineData("wrongFactsSource", "source")]
+    [InlineData("wrongFactsSource", "different grammar input")]
     public async Task FactsWrongSchemaOrSourceIsRefused(string mode, string expectedDetail)
     {
         var snapshot = Snapshot("facts-invalid-" + mode);
@@ -730,7 +730,9 @@ public sealed class PanGlossInvokerTests : IDisposable
             "test:facts-v7", CancellationToken.None);
 
         var incomplete = Assert.IsType<PanGlossOutcome.Incomplete>(outcome);
-        Assert.Contains("rebuild the facts", incomplete.Detail, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains($"use PanGloss {PanGlossInterfaceVersions.SourceTag}, the version Motif pins",
+            incomplete.Detail, StringComparison.Ordinal);
+        Assert.DoesNotContain("Snapshot", incomplete.Detail, StringComparison.Ordinal);
         Assert.False(Directory.Exists(outputDirectory));
     }
 

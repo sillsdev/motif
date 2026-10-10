@@ -127,7 +127,11 @@ public sealed class ParsimonyCandidateEvidenceBuilder
         {
             var assessmentIds = input.AssessmentIds ?? [];
             var assessmentSource = ParserAssessmentMaterial.ReadSourceArtifact(_database, assessmentIds);
-            var parserIdentity = Hash(File.ReadAllBytes(_options.ParserPath));
+            var parserBefore = ParsimonyJobHandler.ParserIdentity(_options);
+            if (parserBefore is null)
+                return Failure(JobFailureCategory.Infrastructure,
+                    "The configured PanGloss executable is unavailable for grammar facts.");
+            var parserIdentity = ParsimonyJobHandler.RemoveDigestPrefix(parserBefore);
             _publisher.CreateWorkingDirectory(beforeBundleId);
             _publisher.CreateWorkingDirectory(afterBundleId);
             var prepared = await PrepareProjectStatesAsync(dryRunInput, dryRun.DryRunJson!, source,
@@ -139,8 +143,7 @@ public sealed class ParsimonyCandidateEvidenceBuilder
             var candidateFacts = await BuildFactsAsync(prepared.CandidateProjectPath, source.Token, true,
                 prepared.DryRun.EffectDigest, Path.Combine(afterWorking, "facts"), cancellationToken)
                 .ConfigureAwait(false);
-            var parserAfter = Hash(File.ReadAllBytes(_options.ParserPath));
-            if (parserIdentity != parserAfter || baselineFacts.SchemaVersion != candidateFacts.SchemaVersion)
+            if (ParsimonyJobHandler.ParserIdentity(_options) != parserBefore || baselineFacts.SchemaVersion != candidateFacts.SchemaVersion)
                 return Failure(JobFailureCategory.Semantic,
                     "PanGloss changed during the comparison; rerun the candidate evidence job.");
 

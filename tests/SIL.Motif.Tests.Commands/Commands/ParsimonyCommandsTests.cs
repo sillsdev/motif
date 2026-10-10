@@ -194,6 +194,21 @@ public sealed class ParsimonyCommandsTests : IDisposable
         AssertDamagedReportRefused(node => node["notes"] = null);
     }
 
+    [Fact]
+    public void AStoredReportFromBeforeNotesIsRefusedWithRerunGuidance()
+    {
+        var fwDataPath = CreateProject();
+        var reportId = "report/damaged-parsimony";
+        SaveReport(fwDataPath, reportId, ReportJson(node => node.Remove("notes"), null));
+
+        var shown = ParsimonyCommands.Show(new ShowParsimonyReportRequest(fwDataPath, "1.0", reportId));
+
+        Assert.False(shown.Succeeded);
+        Assert.Equal("parsimony.report-damaged", shown.Refusal!.Code);
+        Assert.EndsWith("Run the measure again for a new Report; this one cannot be read.", shown.Refusal.Message,
+            StringComparison.Ordinal);
+    }
+
     private void AssertDamagedReportRefused(Action<JsonObject> damage, ParsimonyFinding[]? findings = null)
     {
         var fwDataPath = CreateProject();

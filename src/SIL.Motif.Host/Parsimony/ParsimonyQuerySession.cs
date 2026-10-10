@@ -333,9 +333,12 @@ public sealed partial class ParsimonyQuerySession : IDisposable
         if (inputs.InputKind is not ("baseline" or "candidate") ||
             (inputs.InputKind == "candidate") != (inputs.Candidate is not null))
             throw new InvalidDataException("The Parsimony input kind and candidate identity do not agree.");
-        if (ReadPragma("facts.application_id") != GrammarFactsReader.ApplicationId ||
-            ReadPragma("facts.user_version") != GrammarFactsReader.SchemaVersion)
+        if (ReadPragma("facts.application_id") != GrammarFactsReader.ApplicationId)
             throw new InvalidDataException("The grammar-facts artifact has an unsupported schema identity.");
+        if (ReadPragma("facts.user_version") != GrammarFactsReader.SchemaVersion)
+            throw new InvalidDataException(
+                $"The grammar-facts artifact is not schema version {GrammarFactsReader.SchemaVersion}. " +
+                "Delete this Parsimony evidence and run the measure again; Motif rebuilds it.");
         using (var command = NewCommand())
         {
             command.CommandText = "SELECT model_fingerprint, complete, compile_status, baseline_token_json, baseline_key, " +

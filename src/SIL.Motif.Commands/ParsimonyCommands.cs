@@ -621,9 +621,15 @@ public static class ParsimonyCommands
         {
             return CommandOutcome<ParsimonyReportResponse>.Refused(new Refusal(
                 "parsimony.report-damaged", FailureReason.StoreInconsistent,
-                $"Parsimony Report '{reportId}' is damaged: {exception.Message}"));
+                $"Parsimony Report '{reportId}' is damaged: {exception.Message} {DamagedReportGuidance}"));
         }
     }
+
+    /// <summary>
+    /// What to do about a stored Report this version cannot read. A Report from an earlier version is refused
+    /// rather than read through a compatibility path, and a fresh run of its measure writes a new one.
+    /// </summary>
+    internal const string DamagedReportGuidance = "Run the measure again for a new Report; this one cannot be read.";
 
     /// <summary>
     /// Whether a deserialized Report has every required member. JSON can hold an explicit null where the

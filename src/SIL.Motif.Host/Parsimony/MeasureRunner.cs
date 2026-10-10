@@ -412,10 +412,36 @@ public static partial class MeasureRunner
     {
         var referrers = session.ReadStatementReferrers(item.StatementKind, item.StatementGuid);
         if (referrers.Count == 0) return ["No grammar object references this statement."];
-        var named = referrers.Select(referrer => $"{referrer.ReferrerKind} {referrer.ReferrerGuid} " +
-            $"({referrer.ParserEffect})");
+        var named = referrers.Select(referrer =>
+        {
+            var kind = ReferrerKindWords(referrer.ReferrerKind);
+            var name = session.DescribeObject(referrer.ReferrerGuid) is { } words
+                ? $"{kind} \"{words}\""
+                : $"{kind} {referrer.ReferrerGuid}";
+            return $"{name} ({ParserEffectWords(referrer.ParserEffect)})";
+        });
         return [$"Referenced only by {string.Join(", ", named)}; none of these applies it to parsing."];
     }
+
+    private static string ReferrerKindWords(string kind) => kind switch
+    {
+        "msa" => "grammatical info",
+        "adhocProhibition" => "ad hoc prohibition",
+        "inflType" => "inflection type",
+        "featureConstraint" => "feature constraint",
+        _ => string.Concat(kind.Select(letter => char.IsUpper(letter) ? " " + char.ToLowerInvariant(letter)
+            : letter.ToString())),
+    };
+
+    private static string ParserEffectWords(string effect) => effect switch
+    {
+        "applied" => "applied by the parser",
+        "ignored" => "ignored by the parser",
+        "unresolved" => "its reference could not be resolved",
+        "owner_not_loaded" => "not loaded by the parser",
+        "not_attempted" => "not read by the parser",
+        _ => effect.Replace('_', ' '),
+    };
 
     private static ParsimonyMeasureResult RunDisapprovedProduced(MeasureDefinition measure,
         ParsimonyQuerySession session, string bundleId)

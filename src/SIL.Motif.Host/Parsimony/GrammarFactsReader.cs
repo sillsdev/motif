@@ -11,6 +11,10 @@ internal static class GrammarFactsReader
     internal const int SchemaVersion = PanGloss.PanGlossInterfaceVersions.FactsSchemaVersion;
     internal const string Format = "pangloss-grammar-facts";
 
+    // Facts are read only straight after PanGloss writes them, so a version mismatch means the wrong PanGloss.
+    private const string UnsupportedPanGlossGuidance = "The PanGloss in use is not the version Motif supports; " +
+        "use PanGloss " + PanGloss.PanGlossInterfaceVersions.SourceTag + ", the version Motif pins.";
+
     private static readonly ImmutableHashSet<string> SectionNames = new[]
     {
         "project", "source_census", "conversion_inventory", "categories", "entries", "msas",
@@ -51,7 +55,7 @@ internal static class GrammarFactsReader
             if (artifact.OutputSha256 != Digest(bytes))
                 throw new InvalidDataException("The facts response digest does not match the output database.");
             if (artifact.SourceSha256 != Digest(File.ReadAllBytes(snapshotPath)))
-                throw new InvalidDataException("The facts database was built from a different Snapshot source.");
+                throw new InvalidDataException("The facts database was built from a different grammar input than the one PanGloss was given.");
 
             using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
             {
@@ -64,7 +68,7 @@ internal static class GrammarFactsReader
                 throw new InvalidDataException("The facts database has an unsupported SQLite application id.");
             if (ReadPragma(connection, "user_version") != SchemaVersion)
                 throw new InvalidDataException(
-                    $"The facts database is not schema version {SchemaVersion}; rebuild the facts from the Snapshot.");
+                    $"The facts database is not schema version {SchemaVersion}. " + UnsupportedPanGlossGuidance);
             ReadMetadata(connection, artifact);
             ReadSections(connection, artifact.Sections);
             return artifact;
@@ -91,7 +95,8 @@ internal static class GrammarFactsReader
             throw new InvalidDataException("The facts response has an unsupported format or application id.");
         if (schemaVersion != SchemaVersion)
             throw new InvalidDataException(
-                $"The facts response is schema version {schemaVersion}, not {SchemaVersion}; rebuild the facts from the Snapshot.");
+                $"The facts response is schema version {schemaVersion}, not {SchemaVersion}. " +
+                UnsupportedPanGlossGuidance);
 
         var sourceSha256 = RequiredString(response, "sourceSha256");
         var modelFingerprint = RequiredString(response, "modelFingerprint");

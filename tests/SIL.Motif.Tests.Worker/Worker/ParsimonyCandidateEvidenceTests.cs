@@ -182,6 +182,59 @@ public sealed class ParsimonyCandidateEvidenceTests : IDisposable
     {
         var sourceDigest = DigestDirectory(_publishedRoot);
         var liveDigest = DigestFile(_project.FullFwDataPath);
+        var (outcome, candidateClaim, parserPath) = await RunCandidateAsync((invoker, _) => invoker);
+
+        var completed = Assert.IsType<JobOutcome>(outcome);
+        Assert.True(completed.Status == JobStatus.Completed, completed.ResultJson);
+        candidateClaim.Transition(completed.Status, completed.Category, completed.ResultJson);
+        var response = JsonSerializer.Deserialize<ParsimonyCandidateEvidenceResponse>(completed.ResultJson!,
+            SIL.Motif.Contract.MotifJson.CreateOptions())!;
+        Assert.Equal("baseline", response.Before.Inputs.InputKind);
+        Assert.Equal("candidate", response.After.Inputs.InputKind);
+        Assert.NotEqual(response.Before.Inputs.ModelFingerprint, response.After.Inputs.ModelFingerprint);
+        Assert.NotEqual(response.Before.Inputs.Evidence.Sha256, response.After.Inputs.Evidence.Sha256);
+        Assert.Contains(response.FindingChanges, item => item.Change is "evidence-changed" or "removed");
+        Assert.Equal("preserved", response.ApprovedAnalysisPreservation.Status);
+
+        var artifacts = new EvidenceArtifactRepository(_database);
+        var before = artifacts.Get(response.Before.Inputs.BundleId)!;
+        var after = artifacts.Get(response.After.Inputs.BundleId)!;
+        Assert.Equal("0", ReadText(before.GrammarFactsPath,
+            $"SELECT disabled FROM adhoc_prohibition WHERE prohibition_guid='{_prohibitionGuid:D}';"));
+        Assert.Equal("1", ReadText(after.GrammarFactsPath,
+            $"SELECT disabled FROM adhoc_prohibition WHERE prohibition_guid='{_prohibitionGuid:D}';"));
+        Assert.Equal("complete", ReadText(before.GrammarFactsPath,
+            "SELECT status FROM artifact_section WHERE section='adhoc_groups';"));
+        Assert.Equal("complete", ReadText(after.GrammarFactsPath,
+            "SELECT status FROM artifact_section WHERE section='adhoc_groups';"));
+        Assert.Equal("one authored group rationale", ReadText(before.GrammarFactsPath,
+            "SELECT text FROM adhoc_group_text WHERE group_guid=" +
+            "'40000000-0000-0000-0000-000000000001' AND field='description' AND writing_system='qaa';"));
+        Assert.Equal("3", ReadText(before.GrammarFactsPath, "SELECT COUNT(*) FROM adhoc_group_member;"));
+        Assert.Equal("baseline", ReadText(before.EvidencePath,
+            "SELECT input_kind FROM artifact_metadata WHERE singleton=1;"));
+        Assert.Equal("candidate", ReadText(after.EvidencePath,
+            "SELECT input_kind FROM artifact_metadata WHERE singleton=1;"));
+        Assert.Equal(sourceDigest, DigestDirectory(_publishedRoot));
+        Assert.Equal(liveDigest, DigestFile(_project.FullFwDataPath));
+        Assert.DoesNotContain("batch", FakeParser.Invocations(parserPath));
+    }
+
+    [Fact]
+    public async Task ReplacingTheParserDuringTheComparisonRefuses()
+    {
+        var (outcome, _, parserPath) = await RunCandidateAsync((invoker, path) =>
+            new ParserReplacingInvoker(invoker, path));
+
+        var failed = Assert.IsType<JobOutcome>(outcome);
+        Assert.Equal(JobStatus.Failed, failed.Status);
+        Assert.Contains("PanGloss changed during the comparison", failed.ResultJson, StringComparison.Ordinal);
+        Assert.Contains("facts", FakeParser.Invocations(parserPath));
+    }
+
+    private async Task<(JobOutcome? Outcome, ClaimedJob Claim, string ParserPath)> RunCandidateAsync(
+        Func<PanGlossInvoker, string, IPanGlossInvoker> wrapInvoker)
+    {
         var proposalJson = DisableProhibitionProposal(_prohibitionGuid);
         var source = new DryRunSourceBinding(_token, _publishedRoot, _publishedFwDataPath,
             "sha256:" + DigestFile(_publishedFwDataPath));
@@ -190,81 +243,58 @@ public sealed class ParsimonyCandidateEvidenceTests : IDisposable
         var dryRunJob = _jobs.Create(CanonicalId.Mint("job/").Value, _projectKey,
             ProjectJobHandlers.DryRunKind, JsonSerializer.Serialize(dryRunInput,
                 SIL.Motif.Contract.MotifJson.CreateOptions()), "2026-10-07T00:00:00Z");
-        var lanes = new ProjectLaneRegistry(_ => _token);
-        try
+        using var lanes = new ProjectLaneRegistry(_ => _token);
+        var loader = new FwDataProjectLoader();
+        var scratchFactory = new BaselineScratchFactory(loader);
+        var dryRunHandler = new DryRunJobHandler(_baselines, new ProposalRepository(_database), lanes,
+            _ => null,
+            (path, _) =>
+            {
+                var scratch = scratchFactory.OpenSingleUse(path);
+                var applied = ProjectAppliedLog.ReadAll(scratch.PeekCache())
+                    .Select(entry => entry.ProposalId).ToArray();
+                return Task.FromResult<(IReadOnlyCollection<Guid>, DryRunScratch?)>((applied, scratch));
+            },
+            (scratch, plan, _) => Task.FromResult(ProposalDryRunner.Run(scratch!, plan)));
+        var dryRunClaim = DryRunJobTestHarness.Claim(_jobs, dryRunJob.JobId);
+        var completedDryRun = await DryRunJobTestHarness.RunAndFinishAsync(_jobs, dryRunHandler,
+            dryRunClaim, _project);
+        Assert.Equal(JobStatus.CompletedDryRunOnly, completedDryRun.Status);
+
+        var parserPath = FakeParser.CopyRecordingInvocations(Path.Combine(_root, "parser"));
+        FakeParser.WriteFactsFixture(parserPath, FactsFixture(disableChangedRule: false));
+        FakeParser.WriteCandidateFactsFixture(parserPath, FactsFixture(disableChangedRule: true));
+        using var invoker = new PanGlossInvoker(parserPath);
+        var scope = new ParsimonyScopeBinding(ParsimonyEvidenceScopeKind.ProjectApproved, null);
+        var candidateInput = new ParsimonyCandidateJobInput(ParsimonyCandidateJobInput.CurrentSchemaVersion,
+            dryRunJob.JobId, "P-adhoc-duplicate", scope);
+        var candidateJob = _jobs.Create(CanonicalId.Mint("job/").Value, _projectKey,
+            ParsimonyCandidateEvidenceBuilder.JobKind,
+            JsonSerializer.Serialize(candidateInput, SIL.Motif.Contract.MotifJson.CreateOptions()),
+            "2026-10-07T00:01:00Z");
+        var candidateClaim = Claim(candidateJob.JobId);
+        var handler = new ParsimonyCandidateEvidenceBuilder(_database, _projectKey, _project,
+            new RunnerOptions { Root = Path.Combine(_root, "worker"), ParserPath = parserPath },
+            wrapInvoker(invoker, parserPath), lanes);
+
+        var outcome = await handler.RunAsync(candidateClaim, CancellationToken.None);
+        return (outcome, candidateClaim, parserPath);
+    }
+
+    /// <summary>Appends a byte to the parser before the candidate facts run, as a replacement would.</summary>
+    private sealed class ParserReplacingInvoker(PanGlossInvoker inner, string parserPath) : IPanGlossInvoker
+    {
+        private int _factsRuns;
+
+        public Task<PanGlossOutcome> RunAsync(PanGlossRequest request, string label,
+            CancellationToken cancellationToken, TimeSpan? wallClockCap = null)
         {
-            var loader = new FwDataProjectLoader();
-            var scratchFactory = new BaselineScratchFactory(loader);
-            var dryRunHandler = new DryRunJobHandler(_baselines, new ProposalRepository(_database), lanes,
-                _ => null,
-                (path, _) =>
-                {
-                    var scratch = scratchFactory.OpenSingleUse(path);
-                    var applied = ProjectAppliedLog.ReadAll(scratch.PeekCache())
-                        .Select(entry => entry.ProposalId).ToArray();
-                    return Task.FromResult<(IReadOnlyCollection<Guid>, DryRunScratch?)>((applied, scratch));
-                },
-                (scratch, plan, _) => Task.FromResult(ProposalDryRunner.Run(scratch!, plan)));
-            var dryRunClaim = DryRunJobTestHarness.Claim(_jobs, dryRunJob.JobId);
-            var completedDryRun = await DryRunJobTestHarness.RunAndFinishAsync(_jobs, dryRunHandler,
-                dryRunClaim, _project);
-            Assert.Equal(JobStatus.CompletedDryRunOnly, completedDryRun.Status);
-
-            var parserPath = FakeParser.CopyRecordingInvocations(Path.Combine(_root, "parser"));
-            FakeParser.WriteFactsFixture(parserPath, FactsFixture(disableChangedRule: false));
-            FakeParser.WriteCandidateFactsFixture(parserPath, FactsFixture(disableChangedRule: true));
-            using var invoker = new PanGlossInvoker(parserPath);
-            var scope = new ParsimonyScopeBinding(ParsimonyEvidenceScopeKind.ProjectApproved, null);
-            var candidateInput = new ParsimonyCandidateJobInput(ParsimonyCandidateJobInput.CurrentSchemaVersion,
-                dryRunJob.JobId, "P-adhoc-duplicate", scope);
-            var candidateJob = _jobs.Create(CanonicalId.Mint("job/").Value, _projectKey,
-                ParsimonyCandidateEvidenceBuilder.JobKind,
-                JsonSerializer.Serialize(candidateInput, SIL.Motif.Contract.MotifJson.CreateOptions()),
-                "2026-10-07T00:01:00Z");
-            var candidateClaim = Claim(candidateJob.JobId);
-            var handler = new ParsimonyCandidateEvidenceBuilder(_database, _projectKey, _project,
-                new RunnerOptions { Root = Path.Combine(_root, "worker"), ParserPath = parserPath }, invoker, lanes);
-
-            var outcome = await handler.RunAsync(candidateClaim, CancellationToken.None);
-
-            var completed = Assert.IsType<JobOutcome>(outcome);
-            Assert.True(completed.Status == JobStatus.Completed, completed.ResultJson);
-            candidateClaim.Transition(completed.Status, completed.Category, completed.ResultJson);
-            var response = JsonSerializer.Deserialize<ParsimonyCandidateEvidenceResponse>(completed.ResultJson!,
-                SIL.Motif.Contract.MotifJson.CreateOptions())!;
-            Assert.Equal("baseline", response.Before.Inputs.InputKind);
-            Assert.Equal("candidate", response.After.Inputs.InputKind);
-            Assert.NotEqual(response.Before.Inputs.ModelFingerprint, response.After.Inputs.ModelFingerprint);
-            Assert.NotEqual(response.Before.Inputs.Evidence.Sha256, response.After.Inputs.Evidence.Sha256);
-            Assert.Contains(response.FindingChanges, item => item.Change is "evidence-changed" or "removed");
-            Assert.Equal("preserved", response.ApprovedAnalysisPreservation.Status);
-
-            var artifacts = new EvidenceArtifactRepository(_database);
-            var before = artifacts.Get(response.Before.Inputs.BundleId)!;
-            var after = artifacts.Get(response.After.Inputs.BundleId)!;
-            Assert.Equal("0", ReadText(before.GrammarFactsPath,
-                $"SELECT disabled FROM adhoc_prohibition WHERE prohibition_guid='{_prohibitionGuid:D}';"));
-            Assert.Equal("1", ReadText(after.GrammarFactsPath,
-                $"SELECT disabled FROM adhoc_prohibition WHERE prohibition_guid='{_prohibitionGuid:D}';"));
-            Assert.Equal("complete", ReadText(before.GrammarFactsPath,
-                "SELECT status FROM artifact_section WHERE section='adhoc_groups';"));
-            Assert.Equal("complete", ReadText(after.GrammarFactsPath,
-                "SELECT status FROM artifact_section WHERE section='adhoc_groups';"));
-            Assert.Equal("one authored group rationale", ReadText(before.GrammarFactsPath,
-                "SELECT text FROM adhoc_group_text WHERE group_guid=" +
-                "'40000000-0000-0000-0000-000000000001' AND field='description' AND writing_system='qaa';"));
-            Assert.Equal("3", ReadText(before.GrammarFactsPath, "SELECT COUNT(*) FROM adhoc_group_member;"));
-            Assert.Equal("baseline", ReadText(before.EvidencePath,
-                "SELECT input_kind FROM artifact_metadata WHERE singleton=1;"));
-            Assert.Equal("candidate", ReadText(after.EvidencePath,
-                "SELECT input_kind FROM artifact_metadata WHERE singleton=1;"));
-            Assert.Equal(sourceDigest, DigestDirectory(_publishedRoot));
-            Assert.Equal(liveDigest, DigestFile(_project.FullFwDataPath));
-            Assert.DoesNotContain("batch", FakeParser.Invocations(parserPath));
-        }
-        finally
-        {
-            lanes.Dispose();
+            if (request is PanGlossRequest.Facts && ++_factsRuns == 2)
+            {
+                using var stream = new FileStream(parserPath, FileMode.Append, FileAccess.Write);
+                stream.WriteByte(0);
+            }
+            return inner.RunAsync(request, label, cancellationToken, wallClockCap);
         }
     }
 
