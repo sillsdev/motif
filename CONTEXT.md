@@ -219,7 +219,7 @@ _Avoid_: application receipt, success result, audit log
 **Parsimony review**:
 An advisory Report that offers specific grammar recommendations along two named axes: parsimony and
 restrictiveness. Each recommendation states its evidence tier, scope, and limitations; it does not decide
-whether a grammar is good or a change may be applied ([ADR 0052](docs/adr/0052-parsimony-evidence-and-advisory-dispositions.md)).
+whether a grammar is good or a change may be applied ([ADR 0060](docs/adr/0060-parsimony-evidence-and-advisory-dispositions.md)).
 _Avoid_: grammar fitness, grammar score, health check
 
 **Parsimony recommendation**:

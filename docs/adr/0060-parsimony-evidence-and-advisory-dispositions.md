@@ -1,4 +1,4 @@
-# ADR 0052 — Parsimony evidence and advisory dispositions
+# ADR 0060 — Parsimony evidence and advisory dispositions
 
 Motif offers specific grammar recommendations with the examples and questions needed to assess them, and remembers why a person kept a particular statement. Stronger evidence comes before elegance, a narrower statement is preferred only when known valid readings survive, and relevant new evidence brings a recommendation back for another look.
 
