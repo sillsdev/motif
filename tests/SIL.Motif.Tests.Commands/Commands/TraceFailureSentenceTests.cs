@@ -11,7 +11,7 @@ public sealed class TraceFailureSentenceTests
     public void EveryPinnedPanGlossReasonHasOneWindowSentence()
     {
         using var catalog = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory,
-            "TestFixtures", "pangloss-0.8.1-trace-reasons.json")));
+            "TestFixtures", "pangloss-0.8.2-trace-reasons.json")));
         var repository = new DirectoryInfo(AppContext.BaseDirectory);
         while (repository is not null && !File.Exists(Path.Combine(repository.FullName, "pangloss-release.json")))
             repository = repository.Parent;

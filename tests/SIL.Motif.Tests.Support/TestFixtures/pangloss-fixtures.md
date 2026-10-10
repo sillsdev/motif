@@ -74,6 +74,6 @@ cp bin/Release/tests/seeded-advice-raw.json \
 
 `GrammarHealth/schema-v4-producer.json` comes from the sample snapshot above, with the first root's stem MSA `part_of_speech` set to null and `11111111-1111-1111-1111-111111111111` appended to the template's suffix slots. Run `pangloss grammar-health <modified.snapshot.json> --fw-project Synthetic`; exit code 1 accompanies the valid error report. Its missing slot subject deliberately has no live navigation. `schema-v4-error.json` is a hand-authored error-level diagnostic test fixture, not a producer capture.
 
-`GrammarHealth/schema-v4-stored-analysis-no-longer-parses.json` is a synthetic schema-4 information finding based on the PanGloss 0.8.1 metadata. It keeps the wordform, stored analysis, morph, MSA and rule subjects together so the Warnings test covers the finding's full subject list.
+`GrammarHealth/schema-v4-stored-analysis-no-longer-parses.json` is a synthetic schema-4 information finding based on the PanGloss 0.8.2 metadata. It keeps the wordform, stored analysis, morph, MSA and rule subjects together so the Warnings test covers the finding's full subject list.
 
-`pangloss-0.8.1-trace-reasons.json` records the reason codes in `rust/crates/pg-rules/src/trace.rs` at the pinned release.
+`pangloss-0.8.2-trace-reasons.json` records the reason codes in `rust/crates/pg-rules/src/trace.rs` at the pinned release.

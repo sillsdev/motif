@@ -6,7 +6,7 @@ namespace SIL.Motif.Host.PanGloss;
 public static class PanGlossInterfaceVersions
 {
     /// <summary>The PanGloss source tag that defines the formats Motif reads.</summary>
-    public const string SourceTag = "v0.8.1";
+    public const string SourceTag = "v0.8.2";
     /// <summary>The version of the object returned by <c>pangloss --describe</c>.</summary>
     public const int DescribeSchemaVersion = 1;
     /// <summary>The version of reports returned by <c>pangloss grammar-health</c>.</summary>

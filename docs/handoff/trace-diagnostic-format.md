@@ -8,7 +8,7 @@ pangloss parse grammar.json word --trace=word.trace.json --trace-format=json --t
 
 Use the trace file when running through a build or process wrapper: the wrapper's console messages are not JSON. Ordinary parsing and ordinary trace output remain separate interfaces.
 
-The producer contract is documented in [PanGloss trace details v3](https://github.com/sillsdev/PanGloss/blob/v0.8.1/docs/formats/trace-details-v2.md). The schema version, rather than the installed app version, selects the reader. Unknown major schemas are refused. Unknown fields within supported schemas must survive load and export.
+The producer contract is documented in [PanGloss trace details v3](https://github.com/sillsdev/PanGloss/blob/v0.8.2/docs/formats/trace-details-v2.md). The schema version, rather than the installed app version, selects the reader. Unknown major schemas are refused. Unknown fields within supported schemas must survive load and export.
 
 ## How to interpret a diagnostic
 
@@ -51,7 +51,7 @@ The original node fields remain: `type`, `source`, `subrule`, `inputShape`, `out
 
 `failureContext` is a sibling of `outcome`. Its `required`, `actual`, and `environment` values come from the rejection owner when recorded. An unavailable context is explicitly marked and must not be filled by guessing from the failure enum or rerunning a predicate. Surface mismatch values are input text and the reconstructed surface display. Some feature/environment gate values are producer diagnostic representations of compiled structures, not authored labels or a stable expression language.
 
-A Blocked event is intermediate, not a terminal attempt. PanGloss v0.8.1 records the replacement output, `blockReason` and `blockedByEntry`, identifying the compatible lexical-family entry that replaced the rule result. It does not mean a self-feeding guard. A green descendant does not establish that every ancestor successfully applied. Preserve parser traversal order; do not describe the first failed node as the most likely cause.
+A Blocked event is intermediate, not a terminal attempt. PanGloss v0.8.2 records the replacement output, `blockReason` and `blockedByEntry`, identifying the compatible lexical-family entry that replaced the rule result. It does not mean a self-feeding guard. A green descendant does not establish that every ancestor successfully applied. Preserve parser traversal order; do not describe the first failed node as the most likely cause.
 
 ### Evidence added by trace v3
 
