@@ -164,12 +164,20 @@ public sealed class SelectionAnalyzeTests
             var uncheckedAnchor = first.Tokens[0].Occurrence!;
             first.Tokens[0].IsSelectedForActions = false;
             Assert.Equal(expectedCount - 1, owner.CheckedWordCount);
+            var viewer = panel.FindControl<ScrollViewer>("TextScrollViewer")!;
             for (var index = 1; index < lineCount; index++)
             {
                 await owner.LinePages!.ReadLinePageAsync(index + 1, 0);
-                lines.ScrollIntoView(index);
-                if (index == lineCount - 1) panel.FindControl<ScrollViewer>("TextScrollViewer")!.ScrollToEnd();
+                // Scrolled as a reader scrolls: a jump to an unrealized line rebuilds every visible line's strips.
+                while (lines.ContainerFromIndex(index) is null &&
+                       viewer.Offset.Y < viewer.Extent.Height - viewer.Viewport.Height)
+                {
+                    viewer.Offset = viewer.Offset.WithY(viewer.Offset.Y + viewer.Viewport.Height / 2);
+                    PageScreenshots.Settle(window);
+                }
+                if (index == lineCount - 1) viewer.ScrollToEnd();
                 await LayoutAsync(window, owner);
+                Assert.NotNull(lines.ContainerFromIndex(index));
                 Assert.InRange(reads.Reader.Diagnostics.LiveLineModels, 1, 48);
                 Assert.InRange(reads.Reader.Diagnostics.LiveTokenModels, 1, 512);
                 Assert.InRange(lines.GetRealizedContainers().Count(), 1, 48);
