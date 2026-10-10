@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -177,10 +178,20 @@ internal static class WalkthroughArtifacts
             var annotated = Annotate(repositoryRoot, capture.Png, capture.Callouts, capture.Scale);
             var baselineRoot = Path.Combine(repositoryRoot, "tests", "SIL.Motif.Tests.App", "Assets",
                 "WalkthroughBaselines", script.Id);
-            CheckBaseline(Path.Combine(baselineRoot, $"{capture.Id}.png"), capture.Png, updateBaselines,
-                capture.Callouts, reportBaselineMismatch, strictBaselineComparison);
+            // A plain mismatch must not hide the annotated actual: both land in walkthrough-diffs before it fails.
+            Exception? plainMismatch = null;
+            try
+            {
+                CheckBaseline(Path.Combine(baselineRoot, $"{capture.Id}.png"), capture.Png, updateBaselines,
+                    capture.Callouts, reportBaselineMismatch, strictBaselineComparison);
+            }
+            catch (Xunit.Sdk.XunitException mismatch)
+            {
+                plainMismatch = mismatch;
+            }
             CheckBaseline(Path.Combine(baselineRoot, $"{capture.Id}-annotated.png"), annotated, updateBaselines,
                 capture.Callouts, reportBaselineMismatch, strictBaselineComparison);
+            if (plainMismatch is not null) ExceptionDispatchInfo.Capture(plainMismatch).Throw();
             using var screenshot = SKBitmap.Decode(capture.Png)
                 ?? throw new InvalidDataException("Could not read rendered walkthrough PNG.");
             using var annotatedImage = SKBitmap.Decode(annotated)
