@@ -2789,15 +2789,130 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         transaction.Commit();
     }
 
-    private async Task<string> PublishBaselineAsync(PristineProjectFixture fixture)
+    private async Task<(string ReportId, ParsimonyReportResponse Response)> RunReportAsync(
+        ParsimonyJobHandler handler, string measureId, ParsimonyScopeBinding? scopeBinding = null)
+    {
+        var job = CreateJob(measureId, scopeBinding);
+        var claim = Claim(job.JobId);
+        var outcome = await handler.RunAsync(claim, CancellationToken.None);
+        Assert.True(outcome!.Status == JobStatus.Completed, outcome.ResultJson);
+        claim.Transition(outcome.Status, outcome.Category, outcome.ResultJson);
+        using var result = JsonDocument.Parse(outcome.ResultJson!);
+        var reportId = result.RootElement.GetProperty("reportId").GetString()!;
+        var stored = new ReportRepository(_database).Get(reportId)!;
+        return (reportId, JsonSerializer.Deserialize<ParsimonyReportResponse>(stored.ReportJson,
+            new JsonSerializerOptions(JsonSerializerDefaults.Web))!);
+    }
+
+    private int BundleCount() => new EvidenceArtifactRepository(_database).ListForRetention(_projectKey).Count;
+
+    private static string WithoutReportId((string ReportId, ParsimonyReportResponse Response) report) =>
+        JsonSerializer.Serialize(report.Response, new JsonSerializerOptions(JsonSerializerDefaults.Web))
+            .Replace(report.ReportId, "report/NORMALISED", StringComparison.Ordinal);
+
+    [Fact]
+    public async Task ASecondIdenticalRequestReusesTheBundleAndSkipsImportAndFacts()
+    {
+        await PublishBaselineAsync(_pristine);
+        var parserPath = FactsParser(_pristine.Seed);
+        using var invoker = new SIL.Motif.Host.PanGloss.PanGlossInvoker(parserPath);
+        var handler = new ParsimonyJobHandler(_database, _baselines, _projectKey, _project,
+            new RunnerOptions { Root = Path.Combine(_root, "worker"), ParserPath = parserPath }, invoker);
+
+        var first = await RunReportAsync(handler, "P-adhoc-duplicate");
+        var invocationsAfterFirst = FakeParser.Invocations(parserPath);
+        var second = await RunReportAsync(handler, "P-adhoc-duplicate");
+
+        Assert.Equal(1, BundleCount());
+        Assert.Equal(invocationsAfterFirst, FakeParser.Invocations(parserPath));
+        Assert.Equal(first.Response.Inputs.BundleId, second.Response.Inputs.BundleId);
+        Assert.NotEqual(first.ReportId, second.ReportId);
+        Assert.Equal(second.ReportId, new ReportRepository(_database).GetLatest("parsimony")!.ReportId);
+        Assert.Contains("report:" + second.ReportId,
+            new EvidenceArtifactRepository(_database).GetPinReasons(first.Response.Inputs.BundleId));
+    }
+
+    [Fact]
+    public async Task AReportFromAReusedBundleEqualsTheReportFromAFreshBuild()
+    {
+        await PublishBaselineAsync(_pristine);
+        var parserPath = FactsParser(_pristine.Seed);
+        using var invoker = new SIL.Motif.Host.PanGloss.PanGlossInvoker(parserPath);
+        var handler = new ParsimonyJobHandler(_database, _baselines, _projectKey, _project,
+            new RunnerOptions { Root = Path.Combine(_root, "worker"), ParserPath = parserPath }, invoker);
+
+        var fresh = await RunReportAsync(handler, "P-adhoc-duplicate");
+        var reused = await RunReportAsync(handler, "P-adhoc-duplicate");
+
+        Assert.Equal(WithoutReportId(fresh), WithoutReportId(reused));
+        Assert.Equal(new ReportRepository(_database).Get(fresh.ReportId)!.RenderedText,
+            new ReportRepository(_database).Get(reused.ReportId)!.RenderedText);
+    }
+
+    [Fact]
+    public async Task AnotherMeasureOnTheSameBaselineReusesTheBundle()
+    {
+        await PublishBaselineAsync(_pristine);
+        var parserPath = FactsParser(_pristine.Seed);
+        using var invoker = new SIL.Motif.Host.PanGloss.PanGlossInvoker(parserPath);
+        var handler = new ParsimonyJobHandler(_database, _baselines, _projectKey, _project,
+            new RunnerOptions { Root = Path.Combine(_root, "worker"), ParserPath = parserPath }, invoker);
+
+        var first = await RunReportAsync(handler, "P-adhoc-duplicate");
+        var other = await RunReportAsync(handler, "P-allo-alternation-family");
+
+        Assert.Equal(1, BundleCount());
+        Assert.Equal(first.Response.Inputs.BundleId, other.Response.Inputs.BundleId);
+        Assert.Equal("P-allo-alternation-family", Assert.Single(other.Response.MeasureRuns).MeasureId);
+    }
+
+    [Fact]
+    public async Task AChangedEvidenceScopeBuildsAFreshBundle()
+    {
+        await PublishBaselineAsync(_pristine);
+        var parserPath = FactsParser(_pristine.Seed);
+        using var invoker = new SIL.Motif.Host.PanGloss.PanGlossInvoker(parserPath);
+        var handler = new ParsimonyJobHandler(_database, _baselines, _projectKey, _project,
+            new RunnerOptions { Root = Path.Combine(_root, "worker"), ParserPath = parserPath }, invoker);
+
+        var first = await RunReportAsync(handler, "P-adhoc-duplicate");
+        var invocationsAfterFirst = FakeParser.Invocations(parserPath).Count;
+        var approved = await RunReportAsync(handler, "P-adhoc-duplicate",
+            new ParsimonyScopeBinding(ParsimonyEvidenceScopeKind.ProjectApproved, null));
+
+        Assert.Equal(2, BundleCount());
+        Assert.NotEqual(first.Response.Inputs.BundleId, approved.Response.Inputs.BundleId);
+        Assert.True(FakeParser.Invocations(parserPath).Count > invocationsAfterFirst);
+    }
+
+    [Fact]
+    public async Task AChangedBaselineBuildsAFreshBundle()
+    {
+        await PublishBaselineAsync(_pristine);
+        var parserPath = FactsParser(_pristine.Seed);
+        using var invoker = new SIL.Motif.Host.PanGloss.PanGlossInvoker(parserPath);
+        var handler = new ParsimonyJobHandler(_database, _baselines, _projectKey, _project,
+            new RunnerOptions { Root = Path.Combine(_root, "worker"), ParserPath = parserPath }, invoker);
+        var first = await RunReportAsync(handler, "P-adhoc-duplicate");
+
+        await PublishBaselineAsync(_pristine, new BaselineToken(_token.ProjectIdentity, _token.SemanticSnapshotDigest,
+            _token.ProjectionVersion, "2026-10-06T00:00:00Z", "sha256:" + new string('3', 64)), "second-baseline");
+        var second = await RunReportAsync(handler, "P-adhoc-duplicate");
+
+        Assert.NotEqual(first.Response.Inputs.BundleId, second.Response.Inputs.BundleId);
+        Assert.Equal(2, BundleCount());
+    }
+
+    private async Task<string> PublishBaselineAsync(PristineProjectFixture fixture, BaselineToken? token = null,
+        string directory = "published-baseline")
     {
         using var cache = fixture.NewScratch();
         _seededText = SeededProject.SeedText(cache, fixture.Seed);
         new FwDataProjectLoader().Save(cache);
-        var publishedRoot = Path.Combine(_root, "published-baseline");
+        var publishedRoot = Path.Combine(_root, directory);
         var fwDataPath = await PublishedBaselineFixture.PublishAsync(cache, publishedRoot);
         _baselines.Record(_projectKey,
-            new BaselinePublication(publishedRoot, fwDataPath, _token),
+            new BaselinePublication(publishedRoot, fwDataPath, token ?? _token),
             DateTimeOffset.Parse("2026-10-05T00:00:00Z"), DateTimeOffset.Parse("2026-10-05T00:00:00Z"),
             TextWordsProjectionBuilder.Build(cache, CancellationToken.None), ProjectSummaryReader.Read(cache));
         return publishedRoot;

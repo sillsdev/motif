@@ -82,10 +82,12 @@ public sealed class ParsimonyJobHandler
             return Failure(JobFailureCategory.Infrastructure,
                 "The recorded Baseline bundle is missing; refresh the Baseline before requesting a Parsimony report.");
 
-        var bundleId = "parsimony-bundle-" + Guid.NewGuid().ToString("N");
         var claimToken = claimed.Job.ClaimToken;
         if (string.IsNullOrWhiteSpace(claimToken))
             return Failure(JobFailureCategory.Infrastructure, "The Parsimony job has no active writer claim.");
+        var reused = TryReuseBundle(claimed, claimToken, input, current, assessmentIds, cancellationToken);
+        if (reused is not null) return reused;
+        var bundleId = "parsimony-bundle-" + Guid.NewGuid().ToString("N");
         var working = _publisher.WorkingDirectory(bundleId);
         _artifacts.RegisterBuildClaim(new ParsimonyBuildClaim(bundleId, _projectKey, claimed.JobId, claimToken,
             root, working));
@@ -154,17 +156,8 @@ public sealed class ParsimonyJobHandler
             var evidenceDigest = EvidenceWriter.Write(workingEvidencePath, projection, tokenJson,
                 baseline.Token.BundleDigest, facts.ModelFingerprint);
 
-            var materialKey = Hash(JsonSerializer.Serialize(new
-            {
-                baselineToken = baseline.Token,
-                inputKind = "baseline",
-                modelFingerprint = facts.ModelFingerprint,
-                parserDigest,
-                factsSchemaVersion = facts.SchemaVersion,
-                evidenceSchemaVersion = evidenceDigest.SchemaVersion,
-                scope = input.ScopeBinding,
-                assessmentIds,
-            }));
+            var materialKey = MaterialKey(baseline.Token, facts.ModelFingerprint, parserDigest, facts.SchemaVersion,
+                evidenceDigest.SchemaVersion, input.ScopeBinding, assessmentIds);
             staging = _publisher.StagingDirectory(bundleId, baseline.Token, facts.ModelFingerprint, materialKey);
             finalDirectory = _publisher.FinalDirectory(bundleId, baseline.Token, facts.ModelFingerprint, materialKey);
             _artifacts.SetBuildClaimPaths(bundleId, staging, finalDirectory);
@@ -192,37 +185,9 @@ public sealed class ParsimonyJobHandler
             using (var verified = new ParsimonyQuerySession(Path.Combine(staging, "grammar-facts.sqlite"),
                        stagedEvidencePath, inputs))
                 _ = verified.ReadJoinQuality(input.ScopeBinding.Kind);
-            var reportInput = ReportInput.FromParsimonyFiles(inputs, Path.Combine(staging, "grammar-facts.sqlite"),
-                stagedEvidencePath, reportableAssessments, input.MeasureId);
-            var rendered = new ParsimonyReportProducer().Produce(reportInput, new ReportQuery(), AssessorCatalog.Empty);
-            var reportId = SIL.Motif.Contract.Ids.CanonicalId.Mint("report/").Value;
-            var dispositionProjection = rendered.ParsimonyDispositionProjection;
-            if (dispositionProjection is not null)
-                dispositionProjection = dispositionProjection with
-                {
-                    ReportId = reportId,
-                    Findings = Array.AsReadOnly(dispositionProjection.Findings
-                        .Select(item => item with { ReportId = reportId }).ToArray()),
-                };
-            var response = new ParsimonyReportResponse(reportId, inputs,
-                rendered.ParsimonyFindings ?? [], rendered.Text)
-            {
-                AssessmentIds = assessmentIds,
-                MeasureRuns = rendered.ParsimonyMeasureRuns ?? [],
-                JoinQuality = rendered.ParsimonyJoinQuality,
-                DispositionProjection = dispositionProjection,
-                Notes = rendered.ParsimonyNotes ?? [],
-            };
-            var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
-            var reportJson = JsonSerializer.Serialize(response, options);
-            var evidenceJson = JsonSerializer.Serialize(new
-            {
-                inputs,
-                grammarFactsPath = "grammar-facts.sqlite",
-                evidencePath = "evidence.sqlite",
-                findings = response.Findings.Select(item => new { item.FindingId, item.EvidenceDigest }),
-                joinQuality = response.JoinQuality,
-            }, options);
+            var (reportId, reportJson, evidenceJson, rendered) = RenderReport(inputs,
+                Path.Combine(staging, "grammar-facts.sqlite"), stagedEvidencePath, reportableAssessments,
+                input.MeasureId, assessmentIds);
             finalDirectory = _publisher.Publish(staging, bundleId);
             staging = null;
             var finalFacts = Path.Combine(finalDirectory, "grammar-facts.sqlite");
@@ -242,7 +207,7 @@ public sealed class ParsimonyJobHandler
                 reportId,
                 bundleId,
                 assessmentIds,
-            }, options));
+            }, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
         }
         finally
         {
@@ -256,6 +221,111 @@ public sealed class ParsimonyJobHandler
             if (!registered) _artifacts.RemoveBuildClaim(bundleId);
         }
     }
+
+    // An unchanged Baseline reuses its bundle: no copy, parser run or evidence rebuild; null means build fresh.
+    private JobOutcome? TryReuseBundle(ClaimedJob claimed, string claimToken, ParsimonyJobInput input,
+        CurrentBaselineEvidence current, IReadOnlyList<string> assessmentIds, CancellationToken cancellationToken)
+    {
+        var parserIdentity = ParserIdentity();
+        if (parserIdentity is null) return null;
+        var parserDigest = RemoveDigestPrefix(parserIdentity);
+        var baseline = current.Baseline;
+        foreach (var bundle in _artifacts.ListAvailableBaselineBundles(_projectKey,
+                     RemoveDigestPrefix(baseline.Token.BundleDigest)))
+        {
+            if (bundle.GrammarFactsSchemaVersion != PanGlossInterfaceVersions.FactsSchemaVersion ||
+                bundle.EvidenceSchemaVersion != EvidenceSchema.Version ||
+                !StringComparer.Ordinal.Equals(bundle.MaterialKey, MaterialKey(baseline.Token,
+                    bundle.ModelFingerprint, parserDigest, bundle.GrammarFactsSchemaVersion,
+                    bundle.EvidenceSchemaVersion, input.ScopeBinding!, assessmentIds)) ||
+                !File.Exists(bundle.GrammarFactsPath) || !File.Exists(bundle.EvidencePath))
+                continue;
+            try
+            {
+                using var lease = _artifacts.AcquireReaderLease(bundle.BundleId, "job-" + claimed.JobId);
+                var sourceDigest = BatchInvocationEvidence.DigestFile(baseline.FwDataPath);
+                _ = ParserAssessmentMaterial.Read(_database, assessmentIds, baseline.Token, sourceDigest,
+                    parserDigest, out var reportableAssessments);
+                var inputs = new ParsimonyReportInputs(bundle.BundleId, baseline.Token, "baseline", null,
+                    bundle.ModelFingerprint, new ParsimonyArtifactDigest(bundle.GrammarFactsSchemaVersion,
+                        bundle.GrammarFactsSha256), new ParsimonyArtifactDigest(bundle.EvidenceSchemaVersion,
+                        bundle.EvidenceSha256),
+                    input.ScopeBinding!.Selection is null
+                        ? null : RemoveDigestPrefix(input.ScopeBinding.Selection.SelectionSha256),
+                    null, assessmentIds, input.ScopeBinding.Kind);
+                _factsIntegrityCheck(bundle.GrammarFactsPath);
+                var (reportId, reportJson, evidenceJson, rendered) = RenderReport(inputs, bundle.GrammarFactsPath,
+                    bundle.EvidencePath, reportableAssessments, input.MeasureId, assessmentIds);
+                _artifacts.PublishReportOnExistingBundle(bundle.BundleId,
+                    new ReportRecord(reportId, null, null, reportJson, evidenceJson, "parsimony", rendered.Text),
+                    claimed.JobId, claimToken, cancellationToken);
+                return new JobOutcome(JobStatus.Completed, ResultJson: JsonSerializer.Serialize(new
+                {
+                    reportId,
+                    bundleId = bundle.BundleId,
+                    assessmentIds,
+                }, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+            }
+            catch (Exception exception) when (exception is InvalidDataException or IOException or
+                Microsoft.Data.Sqlite.SqliteException or KeyNotFoundException)
+            {
+                // A damaged or vanished bundle is not reused; the fresh build below replaces it.
+            }
+        }
+        return null;
+    }
+
+    private static (string ReportId, string ReportJson, string EvidenceJson, RenderedReport Rendered) RenderReport(
+        ParsimonyReportInputs inputs, string factsPath, string evidencePath,
+        IReadOnlyList<ReportableAssessment> reportableAssessments, string measureId,
+        IReadOnlyList<string> assessmentIds)
+    {
+        var reportInput = ReportInput.FromParsimonyFiles(inputs, factsPath, evidencePath, reportableAssessments,
+            measureId);
+        var rendered = new ParsimonyReportProducer().Produce(reportInput, new ReportQuery(), AssessorCatalog.Empty);
+        var reportId = SIL.Motif.Contract.Ids.CanonicalId.Mint("report/").Value;
+        var dispositionProjection = rendered.ParsimonyDispositionProjection;
+        if (dispositionProjection is not null)
+            dispositionProjection = dispositionProjection with
+            {
+                ReportId = reportId,
+                Findings = Array.AsReadOnly(dispositionProjection.Findings
+                    .Select(item => item with { ReportId = reportId }).ToArray()),
+            };
+        var response = new ParsimonyReportResponse(reportId, inputs, rendered.ParsimonyFindings ?? [], rendered.Text)
+        {
+            AssessmentIds = assessmentIds,
+            MeasureRuns = rendered.ParsimonyMeasureRuns ?? [],
+            JoinQuality = rendered.ParsimonyJoinQuality,
+            DispositionProjection = dispositionProjection,
+            Notes = rendered.ParsimonyNotes ?? [],
+        };
+        var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        var reportJson = JsonSerializer.Serialize(response, options);
+        var evidenceJson = JsonSerializer.Serialize(new
+        {
+            inputs,
+            grammarFactsPath = "grammar-facts.sqlite",
+            evidencePath = "evidence.sqlite",
+            findings = response.Findings.Select(item => new { item.FindingId, item.EvidenceDigest }),
+            joinQuality = response.JoinQuality,
+        }, options);
+        return (reportId, reportJson, evidenceJson, rendered);
+    }
+
+    private static string MaterialKey(BaselineToken token, string modelFingerprint, string parserDigest,
+        int factsSchemaVersion, int evidenceSchemaVersion, ParsimonyScopeBinding scope,
+        IReadOnlyList<string> assessmentIds) => Hash(JsonSerializer.Serialize(new
+    {
+        baselineToken = token,
+        inputKind = "baseline",
+        modelFingerprint,
+        parserDigest,
+        factsSchemaVersion,
+        evidenceSchemaVersion,
+        scope,
+        assessmentIds,
+    }));
 
     private string? ParserIdentity() => ParserIdentity(_options);
 

@@ -239,6 +239,91 @@ public class EvidenceArtifactRepository : IBaselinePinQuery
         afterCommit?.Invoke();
     }
 
+    /// <summary>Lists the available Baseline-input bundles built from one Baseline, newest first.</summary>
+    public IReadOnlyList<ParsimonyBundleRecord> ListAvailableBaselineBundles(string projectKey, string baselineDigest)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(projectKey);
+        ArgumentException.ThrowIfNullOrWhiteSpace(baselineDigest);
+        using var connection = _database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = BundleSelect + " WHERE ProjectKey=$project AND BaselineDigest=$baseline " +
+            "AND InputKind='baseline' AND State='available' ORDER BY CreatedUtc DESC, BundleId DESC;";
+        command.Parameters.AddWithValue("$project", projectKey);
+        command.Parameters.AddWithValue("$baseline", baselineDigest);
+        var records = new List<ParsimonyBundleRecord>();
+        using var reader = command.ExecuteReader();
+        while (reader.Read()) records.Add(ReadBundle(reader));
+        return records;
+    }
+
+    /// <summary>
+    /// Publishes a Report over a bundle that is already registered, under the job's live claim. The bundle is not
+    /// rewritten; the Report pins it and it stays the current Baseline bundle.
+    /// </summary>
+    public void PublishReportOnExistingBundle(string bundleId, ReportRecord report, string jobId, string claimToken,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(bundleId);
+        ArgumentNullException.ThrowIfNull(report);
+        ArgumentException.ThrowIfNullOrWhiteSpace(jobId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(claimToken);
+        if (!StringComparer.Ordinal.Equals(bundleId, report.BundleIdFromJson()))
+            throw new ArgumentException("The Report must name the bundle it is published on.", nameof(report));
+        using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction();
+        ParsimonyBundleRecord bundle;
+        using (var select = connection.CreateCommand())
+        {
+            select.Transaction = transaction;
+            select.CommandText = BundleSelect + " WHERE BundleId=$id;";
+            select.Parameters.AddWithValue("$id", bundleId);
+            using var reader = select.ExecuteReader();
+            if (!reader.Read()) throw new KeyNotFoundException($"Parsimony bundle '{bundleId}' was not found.");
+            bundle = ReadBundle(reader);
+        }
+        if (bundle.State != "available" || bundle.InputKind != "baseline")
+            throw new InvalidDataException("A Report can only be published on an available Baseline bundle.");
+        EnsureBaselineStillCurrent(connection, transaction, bundle);
+        var now = Stamp(_clock.UtcNow);
+        using (var job = connection.CreateCommand())
+        {
+            job.Transaction = transaction;
+            job.CommandText = "SELECT ClaimToken, Status, LeaseUntilUtc FROM Jobs WHERE JobId=$job;";
+            job.Parameters.AddWithValue("$job", jobId);
+            using var reader = job.ExecuteReader();
+            if (!reader.Read() || reader.IsDBNull(0) || reader.GetString(0) != claimToken ||
+                reader.GetString(1) != "running" || reader.IsDBNull(2) || reader.GetString(2).CompareTo(now) <= 0)
+                throw new InvalidOperationException("The Parsimony job no longer holds its writer claim.");
+        }
+        ReportRepository.SaveImmutable(connection, transaction, report);
+        foreach (var (kind, id) in new[] { ("report", report.ReportId), ("job", jobId) })
+        {
+            using var reference = connection.CreateCommand();
+            reference.Transaction = transaction;
+            reference.CommandText = "INSERT INTO ParsimonyBundleReferences " +
+                "(BundleId, ReferenceKind, ReferenceId, CreatedUtc) VALUES ($bundle, $kind, $id, $created);";
+            reference.Parameters.AddWithValue("$bundle", bundleId);
+            reference.Parameters.AddWithValue("$kind", kind);
+            reference.Parameters.AddWithValue("$id", id);
+            reference.Parameters.AddWithValue("$created", now);
+            reference.ExecuteNonQuery();
+        }
+        using (var current = connection.CreateCommand())
+        {
+            current.Transaction = transaction;
+            current.CommandText = """
+                INSERT INTO CurrentParsimonyBundles(ProjectKey, InputKind, BundleId)
+                VALUES ($project, 'baseline', $bundle)
+                ON CONFLICT(ProjectKey, InputKind) DO UPDATE SET BundleId=excluded.BundleId;
+                """;
+            current.Parameters.AddWithValue("$project", bundle.ProjectKey);
+            current.Parameters.AddWithValue("$bundle", bundleId);
+            current.ExecuteNonQuery();
+        }
+        cancellationToken.ThrowIfCancellationRequested();
+        transaction.Commit();
+    }
+
     /// <summary>Acquires a short lease before a reader opens either published file.</summary>
     public ParsimonyReaderLease AcquireReaderLease(string bundleId, string ownerId)
     {
