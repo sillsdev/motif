@@ -165,6 +165,59 @@ public sealed class WordListSlotTests(AvaloniaHeadlessFixture avalonia)
         });
     }
 
+    [Fact]
+    public void NarrowSlotScrollsItsColumnsInsteadOfClippingThem()
+    {
+        avalonia.Invoke(() =>
+        {
+            var (slot, _, _, window) = Show(width: 420);
+            try
+            {
+                var content = Assert.IsType<Grid>(slot.Content);
+                Assert.True(Assert.IsType<WordListLayout>(slot.CurrentLayout).UsesHorizontalViewport);
+                Assert.Equal(420, slot.Viewport.Width, precision: 6);
+                Assert.True(slot.Extent.Width > slot.Viewport.Width,
+                    $"Extent {slot.Extent.Width:0.###} px does not exceed viewport {slot.Viewport.Width:0.###} px.");
+                Assert.Equal(0, content.TranslatePoint(default, slot)!.Value.X, precision: 6);
+
+                slot.Offset = new Vector(slot.Extent.Width - slot.Viewport.Width, 0);
+                window.UpdateLayout();
+
+                Assert.Equal(slot.Extent.Width - slot.Viewport.Width, slot.Offset.X, precision: 6);
+                Assert.Equal(-slot.Offset.X, content.TranslatePoint(default, slot)!.Value.X, precision: 6);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void SizingHintsThatArriveAfterTheFirstLayoutResizeTheirTrack()
+    {
+        avalonia.Invoke(() =>
+        {
+            var (slot, header, _, window) = Show(width: 1280);
+            try
+            {
+                Assert.True(Assert.IsType<WordListLayout>(slot.CurrentLayout).WidthOf(WordListColumn.Next) < 260);
+                var next = header.HeadingFor(WordListColumn.Next);
+                WordListSizingHints.SetMaximum(next, 260);
+                WordListSizingHints.SetPreferred(next, 260);
+                WordListSizingHints.SetMinimum(next, 260);
+                window.UpdateLayout();
+
+                Assert.Equal(260, slot.CurrentLayout!.WidthOf(WordListColumn.Next), precision: 6);
+                Assert.Same(slot.CurrentLayout, WordListLayoutScope.GetLayout(header));
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
     private static (WordListSlot Slot, WordRowHeader Header, ListBox Rows, Window Window) Show(
         double width,
         WordListSchema? schema = null,

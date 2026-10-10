@@ -383,7 +383,7 @@ public sealed class WalkthroughWindow : IDisposable
                 : string.Empty;
             throw new InvalidOperationException($"AutomationId '{automationId}' has no visible bounds.{state}");
         }
-        // A word-list slot measures like a scroll viewer but has no scrolling presenter, so it never clips.
+        // Word-list slots are skipped, so a target past a slot's horizontal viewport is not reported as clipped.
         var clippedBy = control.GetVisualAncestors().OfType<ScrollViewer>()
             .Where(viewer => viewer is not WordListSlot)
             .FirstOrDefault(viewer =>

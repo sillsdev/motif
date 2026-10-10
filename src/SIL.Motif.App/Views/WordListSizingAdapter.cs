@@ -18,6 +18,7 @@ internal sealed class WordListSizingAdapter
     private long _lastStyleRevision = -1;
     private string? _lastUiLocale;
     private WordListSizing? _lastSizing;
+    private double[]? _lastHints;
 
     internal int HeadingMeasurementCount { get; private set; }
 
@@ -34,9 +35,11 @@ internal sealed class WordListSizingAdapter
         styleRevision = textStyles?.Revision ?? 0;
         uiLocale = interfaceStyle?.UiLocale ?? System.Globalization.CultureInfo.CurrentUICulture.Name;
         var meaningHeader = MeaningHeaderOf(header);
+        var hints = HintsOf(header, schema.OrderedColumns(showsMeaning));
         if (ReferenceEquals(_lastHeader, header) && Equals(_lastSchema, schema) &&
             _lastShowsMeaning == showsMeaning && _lastMeaningHeader == meaningHeader &&
-            _lastStyleRevision == styleRevision && _lastUiLocale == uiLocale && _lastSizing is not null)
+            _lastStyleRevision == styleRevision && _lastUiLocale == uiLocale && _lastSizing is not null &&
+            hints.AsSpan().SequenceEqual(_lastHints))
             return _lastSizing;
 
         var theme = header.ActualThemeVariant;
@@ -72,7 +75,25 @@ internal sealed class WordListSizingAdapter
         _lastStyleRevision = styleRevision;
         _lastUiLocale = uiLocale;
         _lastSizing = sizing;
+        _lastHints = hints;
         return sizing;
+    }
+
+    // Styles may set hints after the first measure; a sizing cached without them pins every track to its heading.
+    private static double[] HintsOf(Control header, IReadOnlyList<WordListColumn> columns)
+    {
+        var hints = new double[columns.Count * 3 + 3];
+        for (var index = 0; index < columns.Count; index++)
+        {
+            if (HeadingFor(header, columns[index]) is not { } heading) continue;
+            hints[index * 3] = WordListSizingHints.GetMinimum(heading);
+            hints[index * 3 + 1] = WordListSizingHints.GetPreferred(heading);
+            hints[index * 3 + 2] = WordListSizingHints.GetMaximum(heading);
+        }
+        hints[^3] = WordListSizingHints.GetScrollbarGutter(header);
+        hints[^2] = WordListSizingHints.GetColumnGap(header);
+        hints[^1] = WordListSizingHints.GetMinimumViewportWidth(header);
+        return hints;
     }
 
     private double HeadingWidth(Control control, WordListColumn column, WordListSchema schema, bool showsMeaning)

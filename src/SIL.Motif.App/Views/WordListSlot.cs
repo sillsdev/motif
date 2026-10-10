@@ -27,6 +27,13 @@ public sealed class WordListSlot : ScrollViewer
     static WordListSlot()
     {
         WritingSystemText.ResolverProperty.Changed.AddClassHandler<WordListSlot>((slot, _) => slot.RefreshTextStyles());
+        foreach (var hint in new[] { WordListSizingHints.MinimumProperty, WordListSizingHints.PreferredProperty,
+                     WordListSizingHints.MaximumProperty })
+            hint.Changed.AddClassHandler<Control>((heading, _) =>
+                heading.GetVisualAncestors().OfType<WordListSlot>().FirstOrDefault()?.InvalidateMeasure());
+        foreach (var hint in new[] { WordListSizingHints.ColumnGapProperty, WordListSizingHints.ScrollbarGutterProperty,
+                     WordListSizingHints.MinimumViewportWidthProperty })
+            hint.Changed.AddClassHandler<WordListSlot>((slot, _) => slot.InvalidateMeasure());
     }
 
     public WordListSlot()

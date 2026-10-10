@@ -55,6 +55,7 @@
     <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
   </Style>
   <Style Selector="views|WordListSlot">
+    <Setter Property="Theme" Value="{StaticResource {x:Type ScrollViewer}}" />
     <Setter Property="(views:WordListSizingHints.ColumnGap)" Value="{StaticResource Component.WordListSlot.ColumnGap}" />
     <Setter Property="(views:WordListSizingHints.ScrollbarGutter)" Value="{StaticResource Component.WordListSlot.ScrollbarGutter}" />
     <Setter Property="(views:WordListSizingHints.MinimumViewportWidth)" Value="{StaticResource Component.WordListSlot.MinimumViewportWidth}" />
