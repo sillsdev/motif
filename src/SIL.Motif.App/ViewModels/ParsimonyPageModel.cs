@@ -59,8 +59,8 @@ public sealed record ParsimonyMeasureGroup(string Title, string AxisLabel, IRead
     /// <summary>The group's count in words, such as "2 findings", shown on its header.</summary>
     public string CountLabel => FindingCount(Items.Count);
 
-    /// <summary>The axis and what it means, such as "Parsimony: a simpler grammar".</summary>
-    public string AxisText => ParsimonyPageModel.AxisWithMeaning(AxisLabel);
+    /// <summary>The axis by name, such as "Parsimony"; the page's legend says once what each axis means.</summary>
+    public string AxisText => ParsimonyPageModel.AxisName(AxisLabel);
 
     internal static string FindingCount(int count) =>
         count.ToString(System.Globalization.CultureInfo.CurrentCulture) + (count == 1 ? " finding" : " findings");
@@ -755,7 +755,7 @@ public sealed partial class ParsimonyPageModel : PageModel
     {
         var recipe = RecipeCatalog.Find(measureId);
         return recipe is { Metadata.UpdateIntents.Count: > 0 }
-            ? $"The check's supported update is in its Guide page, {recipe.Title}. Applying a fix still happens in FieldWorks."
+            ? $"The Guide page \u201c{recipe.Title}\u201d describes the update Motif supports for this check. You make the fix itself in FieldWorks."
             : "This check has no supported update in Motif yet, so there is nothing to link to. Ask about it or defer it instead.";
     }
 
@@ -796,6 +796,13 @@ public sealed partial class ParsimonyPageModel : PageModel
             .Where(axis => findings.Any(finding => finding.Axis == axis || finding.Axis == ParsimonyAxis.Both));
         return string.Join(" ", axes.Select(axis => AxisWithMeaning(AxisLabel(axis)) + "."));
     }
+
+    /// <summary>An axis as a group header names it, with "Both" spelled out.</summary>
+    internal static string AxisName(string axisLabel) => axisLabel switch
+    {
+        "Parsimony" or "Restrictiveness" => axisLabel,
+        _ => "Parsimony and restrictiveness",
+    };
 
     /// <summary>An axis name with what it means in a few words; the two axes are never combined into one score.</summary>
     internal static string AxisWithMeaning(string axisLabel) => axisLabel switch

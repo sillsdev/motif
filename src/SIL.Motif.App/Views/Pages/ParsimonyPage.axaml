@@ -136,6 +136,8 @@
 
         <Border Classes="card parsimonyDetail" IsVisible="{Binding ShowActiveActions}" AutomationProperties.Name="Decide this finding">
           <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+            <views:CopyableTextBlock Classes="muted" Text="Notebook record type for this decision" TextWrapping="Wrap"
+                                     IsVisible="{Binding HasRecordTypes}" />
             <ComboBox x:Name="ParsimonyRecordTypes" ItemsSource="{Binding RecordTypes}" SelectedItem="{Binding SelectedRecordType}"
                       IsVisible="{Binding HasRecordTypes}" AutomationProperties.Name="Notebook record type"
                       AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParsimonyRecordType}">

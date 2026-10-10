@@ -168,8 +168,8 @@ public sealed class ParsimonyPageModelTests
         Assert.Equal("Parsimony: a simpler grammar. Restrictiveness: a grammar that accepts fewer wrong forms.", page.AxisLegend);
         var headers = page.Rows.Where(row => row.IsHeader).ToArray();
         Assert.Equal("2 findings", headers.Single(row => row.Title == Title(ParsimonyMeasure)).Count);
-        Assert.Equal("Restrictiveness: a grammar that accepts fewer wrong forms",
-            headers.Single(row => row.Title == Title(RestrictivenessMeasure)).Detail);
+        Assert.Equal("Restrictiveness", headers.Single(row => row.Title == Title(RestrictivenessMeasure)).Detail);
+        Assert.Equal("Parsimony", headers.Single(row => row.Title == Title(ParsimonyMeasure)).Detail);
         Assert.Equal("1 finding", headers.Single(row => row.Title == Title(RestrictivenessMeasure)).Count);
         Assert.Equal("3", page.Badge);
     }
@@ -613,7 +613,7 @@ public sealed class ParsimonyPageModelTests
         Assert.Empty(fake.RetractDispositionRequests);
         var recipe = ParsimonyRecipeCatalog.Load().Find(ParsimonyMeasure)!;
         Assert.StartsWith(recipe.Metadata.UpdateIntents.Count > 0
-            ? "The check's supported update is in its Guide page"
+            ? "The Guide page \u201c" + recipe.Title + "\u201d describes the update Motif supports"
             : "This check has no supported update in Motif yet", page.FixNote, StringComparison.Ordinal);
     }
 
