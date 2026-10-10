@@ -278,11 +278,38 @@ function Format-InstallProcesses {
     }))
 }
 
+# Everything under the install directory was started by this smoke, so each one is ours to stop.
+function Stop-InstallProcesses {
+    param([Parameter(Mandatory = $true)] [string] $Reason)
+
+    $deadline = [DateTime]::UtcNow.AddSeconds(30)
+    while ([DateTime]::UtcNow -lt $deadline -and @(Get-InstallProcesses).Count -gt 0) {
+        Start-Sleep -Milliseconds 500
+    }
+    $lingering = @(Get-InstallProcesses)
+    if ($lingering.Count -gt 0) {
+        Write-Host "Stopping Motif processes the smoke left running before $Reason: $(Format-InstallProcesses $lingering)"
+        foreach ($lingerer in $lingering) {
+            Stop-Process -Id $lingerer.ProcessId -Force -ErrorAction SilentlyContinue
+        }
+        $deadline = [DateTime]::UtcNow.AddSeconds(30)
+        while ([DateTime]::UtcNow -lt $deadline -and @(Get-InstallProcesses).Count -gt 0) {
+            Start-Sleep -Milliseconds 250
+        }
+    }
+    $stillRunning = @(Get-InstallProcesses)
+    if ($stillRunning.Count -gt 0) {
+        throw "Processes from the install directory are still running before ${Reason}: $(Format-InstallProcesses $stillRunning)"
+    }
+    Write-Host "No process runs from the install directory before $Reason."
+}
+
 if (-not $SkipUpdate) {
     if ([string]::IsNullOrWhiteSpace($NextProductVersion)) {
         throw 'NextProductVersion is required unless SkipUpdate is selected.'
     }
 
+    Stop-InstallProcesses -Reason 'the update'
     & $cliPath --update-smoke $feed 'win-x64' $NextProductVersion
     if ($LASTEXITCODE -ne 0) {
         throw "The installed update smoke exited with code $LASTEXITCODE."
@@ -315,6 +342,7 @@ foreach ($candidatePath in Get-VelopackLogCandidates) {
         $velopackLogsBeforeUninstall[$candidatePath] = Read-SharedFileText $candidatePath
     }
 }
+Stop-InstallProcesses -Reason 'the uninstall'
 $env:MOTIF_PACKAGE_UNINSTALL_TRACE = $uninstallTracePath
 $uninstallOutput = & $updateExecutable --verbose --log $velopackUninstallLogPath --rootDir $install uninstall --silent 2>&1
 $uninstallExitCode = $LASTEXITCODE
