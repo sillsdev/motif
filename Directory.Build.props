@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <VersionPrefix>0.2.0-beta001</VersionPrefix>
+    <VersionPrefix>0.2.0-beta002</VersionPrefix>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RestorePackagesPath Condition="'$(RestorePackagesPath)' == '' and '$(NUGET_PACKAGES)' == '' and '$(USERPROFILE)' != ''">$(USERPROFILE)/.nuget/packages</RestorePackagesPath>
     <ImplicitUsings>enable</ImplicitUsings>
