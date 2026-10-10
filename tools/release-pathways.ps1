@@ -83,7 +83,8 @@ function Seed-IncorrectSpelling {
             '--change-id', 'release-check-review', '--kind', 'incorrect-spelling', '--word', 'geldi'))
         # Apply needs the change measured; testers press Check these changes, which runs this trial.
         $staged = Invoke-CliJson @('pending-changes', '--project', $Project)
-        [void] (Invoke-CliJson @('trial', '--project', $Project, [string] $staged.draftId, '--wait'))
+        [void] (Invoke-CliJson @('trial', '--pending', '--project', $Project, '--draft', [string] $staged.draftId,
+            '--revision', [string] $staged.revision, '--words', 'geldi', '--wait'))
     }
     finally { $env:MOTIF_DEVELOPER_COMMANDS = $previous }
 }
