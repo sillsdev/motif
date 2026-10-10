@@ -329,7 +329,7 @@ public sealed partial class GrammarWarningRowViewModel : ObservableObject
         GroupName = panGloss.Title;
         FindingIdentity = WarningFindingIdentity.ForGrouping(warning);
         YourWords = warning.YourWords;
-        var namedFindings = warnings.Where(HasNamedItem).ToArray();
+        var namedFindings = warnings.Where(item => item.NamesItem).ToArray();
         var touched = WarningWordsQuery.Touched(namedFindings);
         var evidence = namedFindings.Select(item => item.YourWords).OfType<WarningWords>().ToArray();
         var exactWords = evidence.Where(item => item.Match == WarningWordsMatch.Identity).SelectMany(item => item.Words);
@@ -456,9 +456,6 @@ public sealed partial class GrammarWarningRowViewModel : ObservableObject
             .Concat(warning.Problem.Select(part => $"{part.Role}:{part.Text}"));
         return string.Concat(fields.Select(field => $"{field.Length}:{field}"));
     }
-
-    private static bool HasNamedItem(GrammarWarning warning) => warning.Subject.Any(part =>
-        part.Role is GrammarWarningPartRole.Object or GrammarWarningPartRole.Missing);
 
     private static string SummaryFor(IReadOnlyList<GrammarWarning> namedFindings, WarningWordsTouched? touched)
     {

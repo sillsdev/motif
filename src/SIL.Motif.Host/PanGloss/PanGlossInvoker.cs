@@ -237,7 +237,8 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                 {
                     return new PanGlossOutcome.Refused(process.ExitCode, StandardError: standardError,
                         StandardOutput: standardOutput,
-                        Detail: $"pangloss {request.Subcommand} exited {process.ExitCode}:" + Environment.NewLine +
+                        Detail: PanGlossCompileError.TryRead(standardError)?.Describe(request.Subcommand, process.ExitCode) ??
+                            $"pangloss {request.Subcommand} exited {process.ExitCode}:" + Environment.NewLine +
                             standardError.Trim());
                 }
                 var outcome = request.Finish(scratch, standardOutput, standardError, clock.Elapsed,

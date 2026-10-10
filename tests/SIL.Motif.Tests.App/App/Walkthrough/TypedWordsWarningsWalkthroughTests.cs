@@ -16,7 +16,7 @@ namespace SIL.Motif.Tests.App.Walkthrough;
 public sealed class TypedWordsWarningsWalkthroughTests(PristineProjectFixture pristine)
 {
     [RealParserFact]
-    public void TypedWordsWithoutTextsKeepAllParserAllomorphsAndHonestWordCounts()
+    public void TypedWordsWithoutTextsKeepEveryProvisionalLetterAndHonestWordCounts()
     {
         using var project = new NoTextsWarningProject(pristine);
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
@@ -32,16 +32,18 @@ public sealed class TypedWordsWarningsWalkthroughTests(PristineProjectFixture pr
             walkthrough.WaitUntil(() => walkthrough.Workspace.Assess.State is RunState.Completed or RunState.Refused,
                 TimeSpan.FromMinutes(2), "the typed Selection did not finish parsing");
             Assert.Equal(RunState.Completed, walkthrough.Workspace.Assess.State);
+            Assert.Contains("0 refused", walkthrough.Workspace.Assess.Result!.CompletionSummary);
             walkthrough.WaitUntilProjectIsQuiet(TimeSpan.FromMinutes(1), "parse results did not finish publishing");
             walkthrough.ShowPage(WorkspacePage.Warnings);
             var warnings = walkthrough.Workspace.PageModel<WarningsPageModel>().Grammar.Warnings;
-            var parseFindings = warnings.Findings.Where(finding => finding.Code == GrammarFindingCodes.ParseAllomorphUnsegmentable).ToArray();
-            Assert.Equal(project.Allomorphs.Select(item => item.AllomorphId).Order(),
-                parseFindings.Select(finding => Guid.Parse(Assert.Single(finding.Subject).SubjectGuid!)).Order());
+            Assert.DoesNotContain(warnings.Findings, finding => finding.Code == GrammarFindingCodes.ParseAllomorphUnsegmentable);
+            var letterFindings = warnings.Findings.Where(finding => finding.Code == ProvisionalLetter).ToArray();
+            Assert.All(letterFindings, finding => Assert.Equal(GrammarDiagnosticLevel.Information, finding.Severity));
+            Assert.Equal(NoTextsWarningProject.UndeclaredLetters.Order(StringComparer.Ordinal),
+                letterFindings.Select(Letter).Order(StringComparer.Ordinal));
             var row = Assert.Single(warnings.Rows.Cast<GrammarWarningRowViewModel>(),
-                item => item.GroupCode == GrammarFindingCodes.ParseAllomorphUnsegmentable);
-            Assert.Equal(project.Allomorphs.Count, parseFindings.Length);
-            Assert.Equal(parseFindings.Length, row.RepeatCount);
+                item => item.GroupCode == ProvisionalLetter);
+            Assert.Equal(letterFindings.Length, row.RepeatCount);
             Assert.Equal(row.RepeatCount, row.Details.Count);
             Assert.Equal(warnings.Findings.Count, warnings.TotalCount);
             Assert.Equal(WarningDisplayState.SpellingCandidates, row.AttributionState);
@@ -58,15 +60,15 @@ public sealed class TypedWordsWarningsWalkthroughTests(PristineProjectFixture pr
             var groups = Assert.Single(walkthrough.Window.GetVisualDescendants().OfType<ItemsControl>(),
                 control => control.Name == "GrammarPanelRowsItems");
             var scroll = groups.GetVisualAncestors().OfType<ScrollViewer>().First();
-            var descriptions = parseFindings.Select(finding => finding.Description).ToHashSet(StringComparer.Ordinal);
-            var expectedAllomorphs = project.Allomorphs.Select(item => item.AllomorphId).ToHashSet();
+            var descriptions = letterFindings.Select(finding => finding.Description).ToHashSet(StringComparer.Ordinal);
+            var expectedLetters = NoTextsWarningProject.UndeclaredLetters.ToHashSet(StringComparer.Ordinal);
             foreach (var height in new[] { walkthrough.Window.Height, walkthrough.Window.MinHeight })
             {
                 walkthrough.Window.Height = height;
                 scroll.Offset = default;
                 PageScreenshots.Settle(walkthrough.Window);
                 var readableDescriptions = new HashSet<string>(StringComparer.Ordinal);
-                var reachedAllomorphs = new HashSet<Guid>();
+                var reachedLetters = new HashSet<string>(StringComparer.Ordinal);
                 var direction = 1;
                 walkthrough.WaitUntil(() =>
                 {
@@ -80,36 +82,40 @@ public sealed class TypedWordsWarningsWalkthroughTests(PristineProjectFixture pr
                         Assert.True(origin.X >= 0 && origin.X + text.Bounds.Width <= scroll.Viewport.Width + 1,
                             $"Warning description extends past the viewport: {text.Text}");
                         var detail = Assert.IsType<GrammarWarningDetailViewModel>(text.DataContext);
-                        var allomorph = Guid.Parse(Assert.Single(detail.Warning.Subject).SubjectGuid!);
-                        Assert.Contains(allomorph, expectedAllomorphs);
-                        reachedAllomorphs.Add(allomorph);
+                        var letter = Letter(detail.Warning);
+                        Assert.Contains(letter, expectedLetters);
+                        reachedLetters.Add(letter);
                         readableDescriptions.Add(text.Text!);
                     }
-                    if (reachedAllomorphs.SetEquals(expectedAllomorphs) &&
+                    if (reachedLetters.SetEquals(expectedLetters) &&
                         readableDescriptions.SetEquals(descriptions)) return true;
                     if (scroll.Offset.Y >= scroll.Extent.Height - scroll.Viewport.Height) direction = -1;
                     if (scroll.Offset.Y <= 0) direction = 1;
                     scroll.Offset = scroll.Offset.WithY(scroll.Offset.Y + direction * scroll.Viewport.Height / 4);
                     PageScreenshots.Settle(walkthrough.Window);
                     return false;
-                }, TimeSpan.FromMinutes(1), "not every allomorph warning became readable by scrolling",
-                    () => $"Reached {reachedAllomorphs.Count}/{row.RepeatCount} at height {height}; " +
+                }, TimeSpan.FromMinutes(1), "not every provisional letter became readable by scrolling",
+                    () => $"Reached {reachedLetters.Count}/{row.RepeatCount} at height {height}; " +
                         $"missing '{string.Join("; ", descriptions.Except(readableDescriptions))}'; " +
                         $"scroll offset={scroll.Offset.Y}, extent={scroll.Extent.Height}, viewport={scroll.Viewport.Height}");
-                Assert.Equal(row.RepeatCount, reachedAllomorphs.Count);
-                foreach (var finding in parseFindings)
+                Assert.Equal(row.RepeatCount, reachedLetters.Count);
+                foreach (var finding in letterFindings)
                 {
                     Assert.Contains(finding.Description, readableDescriptions);
-                    Assert.Contains("no character definition matches at position", finding.Description);
+                    Assert.Contains($"The letter '{finding.Subject[0].Title}' isn't defined", finding.Description);
                 }
             }
-            foreach (var form in new[] { "chat", "très", "fenêtre" })
+            foreach (var (letter, spelled) in new[]
+                { ("c", "chat chats"), ("h", "chat chats"), ("è", "très"), ("ê", "fenêtre fenêtres") })
             {
-                var finding = Assert.Single(parseFindings, item => Assert.Single(item.Subject).Title?.Normalize(System.Text.NormalizationForm.FormC) == form);
+                var finding = Assert.Single(letterFindings, item => Letter(item) == letter);
                 Assert.Equal(WarningAttributionState.SpellingCandidates, finding.AttributionState);
-                Assert.Empty(finding.YourWords!.Words);
-                Assert.NotEmpty(finding.YourWords.SpellingCandidates);
+                Assert.Equal(WarningWordsMatch.Spelling, finding.YourWords!.Match);
+                Assert.Equal(spelled.Split(' '), finding.YourWords.Words.Select(word => Nfc(word.Row.Word)).Order(StringComparer.Ordinal));
             }
+            foreach (var letter in new[] { "d", "é", "-" })
+                Assert.Equal(WarningAttributionState.NoneInSelection,
+                    Assert.Single(letterFindings, item => Letter(item) == letter).AttributionState);
             row.ToggleOpenCommand.Execute(null);
             var trois = Assert.Single(warnings.Findings, finding => finding.Code == "hc-stem-no-grammatical-category" &&
                 finding.Subject.Any(subject => subject.SubjectGuid == project.TroisEntryId.ToString("D")));
@@ -129,4 +135,10 @@ public sealed class TypedWordsWarningsWalkthroughTests(PristineProjectFixture pr
             Assert.Equal(warnings.Findings.Count, stored.Value!.Check!.Findings.Count);
         }, TimeSpan.FromMinutes(4));
     }
+
+    private const string ProvisionalLetter = "provisional.letter";
+
+    private static string Letter(GrammarWarning finding) => Nfc(Assert.Single(finding.Subject).Title!);
+
+    private static string Nfc(string text) => text.Normalize(System.Text.NormalizationForm.FormC);
 }

@@ -125,10 +125,10 @@ public static class GrammarCheckQuery
                 return CommandOutcome<GrammarCheckResponse>.Refused(new Refusal(
                     "grammarcheck.unsupported-schema", FailureReason.Refused,
                     $"PanGloss grammar-health schema version {exception.Version} is unsupported; this Motif build " +
-                    "expects version 4. Update PanGloss and Motif together.",
+                        $"expects version {PanGlossInterfaceVersions.GrammarHealthSchemaVersion}. Update PanGloss and Motif together.",
                     Fact(("projectPath", request.ProjectPath),
                         ("actualSchemaVersion", exception.Version.ToString(CultureInfo.InvariantCulture)),
-                        ("expectedSchemaVersion", "4"))));
+                        ("expectedSchemaVersion", PanGlossInterfaceVersions.GrammarHealthSchemaVersion.ToString(CultureInfo.InvariantCulture)))));
             }
             catch (JsonException exception)
             {
@@ -198,7 +198,8 @@ public static class GrammarCheckQuery
         if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty("schema_version", out var version) ||
             !version.TryGetInt32(out var schemaVersion))
             throw new JsonException("The grammar-health report must be an object with an integer schema_version.");
-        if (schemaVersion != 4) throw new UnsupportedGrammarHealthSchemaException(schemaVersion);
+        if (schemaVersion != PanGlossInterfaceVersions.GrammarHealthSchemaVersion)
+            throw new UnsupportedGrammarHealthSchemaException(schemaVersion);
         var report = root.Deserialize<GrammarHealthReportJson>(JsonOptions)
             ?? throw new JsonException("Missing grammar-health report.");
         if (string.IsNullOrWhiteSpace(report.Locale)) throw new JsonException("The report locale is missing.");

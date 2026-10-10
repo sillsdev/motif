@@ -9,6 +9,7 @@ using SIL.LCModel;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Texts;
 
 namespace SIL.Motif.Commands.Handoff;
@@ -41,12 +42,10 @@ public static class HandoffWriter
     internal const string MotifRef = "main";
 
     /// <summary>
-    /// The PanGloss release tag its documents are linked at, which moves on PanGloss's release schedule
-    /// and not motif's. A tag rather than a branch, so a Handoff's links keep describing the formats it
-    /// was written in after PanGloss moves on. It must equal the tag in <c>pangloss-release.json</c>, whose
-    /// runtime-specific asset the package bundles, so the documents describe the parser that wrote the files.
+    /// The PanGloss source tag whose documents define the formats Motif reads. Later releases can keep those
+    /// schemas while using a different runtime asset version.
     /// </summary>
-    internal const string PanGlossRef = "v0.6.2";
+    internal const string PanGlossRef = PanGlossInterfaceVersions.SourceTag;
 
     private static readonly string[] AlwaysRequiredTopLevelFiles =
         [GrammarFileName, TextsFileName, PythonHelperFileName, HandoffMarkdownFileName];

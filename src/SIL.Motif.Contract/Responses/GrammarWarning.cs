@@ -76,6 +76,14 @@ public sealed record GrammarWarning(
         .OfType<WarningReach>().SelectMany(reach => reach.AttributionLimits.Concat(
             !reach.IsRoute && reach.Reason is { } reason ? [reason] : [])).Distinct().ToArray();
 
+    /// <summary>
+    /// Whether PanGloss names an item here: an object or missing reference, or a subject with no project GUID that
+    /// still leads to words, such as a provisional letter matched by its spelling.
+    /// </summary>
+    [JsonIgnore]
+    public bool NamesItem => Subject.Any(part =>
+        part.Role is GrammarWarningPartRole.Object or GrammarWarningPartRole.Missing || part.Reach is { IsRoute: true });
+
     private WarningReach? Unattributed() =>
         WarningReach.Unattributed(Subject.Select(part => part.Reach).OfType<WarningReach>().ToArray());
 }

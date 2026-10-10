@@ -7,6 +7,8 @@ namespace SIL.Motif.Host.PanGloss;
 /// <summary>Reads fatal conversion issues from structured parser output or the PanGloss 0.6 Debug format.</summary>
 public static partial class ParserCompileDiagnosticReader
 {
+    public const int SchemaVersion = PanGlossInterfaceVersions.CompileErrorSchemaVersion;
+
     public static ParserCompileDiagnostic? Read(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
@@ -64,7 +66,7 @@ public static partial class ParserCompileDiagnosticReader
             if (root.ValueKind != JsonValueKind.Object) return null;
             if (String(root, "status") != "compile_error") return null;
             if (!root.TryGetProperty("schema_version", out var version) || version.ValueKind != JsonValueKind.Number ||
-                !version.TryGetInt32(out var number) || number != 1) return [];
+                !version.TryGetInt32(out var number) || number != SchemaVersion) return [];
             if (!root.TryGetProperty("issues", out var rows) || rows.ValueKind != JsonValueKind.Array) return [];
             var issues = new List<ParserCompileIssue>();
             foreach (var row in rows.EnumerateArray())

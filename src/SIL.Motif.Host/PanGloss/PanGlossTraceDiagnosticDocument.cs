@@ -99,7 +99,7 @@ public sealed class PanGlossTraceDiagnosticFormatException : FormatException
 
 public static class PanGlossTraceDiagnosticReader
 {
-    public const string SchemaV3 = "pangloss.trace-details.v3";
+    public const string SchemaV3 = PanGlossInterfaceVersions.TraceDetailsSchemaId;
 
     public static PanGlossTraceDiagnosticDocument Read(string json)
     {

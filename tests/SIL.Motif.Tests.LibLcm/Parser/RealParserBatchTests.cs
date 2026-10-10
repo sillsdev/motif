@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.Data.Sqlite;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Parser;
 using SIL.LCModel;
@@ -209,6 +210,102 @@ public sealed class RealParserBatchTests(PristineProjectFixture pristine)
             first => Assert.Equal(WordOutcome.Analysed, first.Outcome),
             second => Assert.Equal(WordOutcome.Analysed, second.Outcome),
             unknown => Assert.Equal(WordOutcome.NoAnalysis, unknown.Outcome));
+    }
+
+    [RealParserFact]
+    public async Task BatchStatisticsRecreatesVersionSevenCacheWithCompiledOutputKeys()
+    {
+        using var cache = pristine.NewScratch();
+        RealParserProject.PrepareForParsing(cache, "m", "o", "t", "i", "f", "a", "b");
+        var root = Path.Combine(Path.GetTempPath(), "motif-pangloss-stats-v8-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        var cachePath = Path.Combine(root, "stats.sqlite");
+        var word = SeededProject.FirstForm;
+        using var invoker = new PanGlossInvoker();
+
+        try
+        {
+            var first = await invoker.RunAsync(
+                new PanGlossRequest.Batch(cache.ProjectId.Path, [word], TimeSpan.FromSeconds(5), cachePath)
+                    { ThreadCount = 1 },
+                "test:stats-v8-prime", CancellationToken.None);
+            Assert.IsType<PanGlossOutcome.Completed>(first);
+            SetCacheSchemaVersion(cachePath, 7);
+
+            var second = await invoker.RunAsync(
+                new PanGlossRequest.Batch(cache.ProjectId.Path, [word], TimeSpan.FromSeconds(5), cachePath)
+                    { ThreadCount = 1 },
+                "test:stats-v8-recreate", CancellationToken.None);
+
+            Assert.IsType<PanGlossOutcome.Completed>(second);
+            Assert.Equal(8, ReadInt64(cachePath,
+                "SELECT schema_version FROM cache_identity WHERE cache_id = 1;"));
+            var objectKeys = ReadStrings(cachePath, "SELECT key FROM object ORDER BY object_id;");
+            Assert.Contains(objectKeys, key => key.StartsWith("lex_entry:", StringComparison.Ordinal));
+            var allomorphKeys = ReadStrings(cachePath,
+                "SELECT key FROM allomorph WHERE allomorph_id > 0 ORDER BY allomorph_id;");
+            Assert.Contains(allomorphKeys, key => key.StartsWith("lex_entry:", StringComparison.Ordinal) &&
+                key.Contains("#allo", StringComparison.Ordinal));
+
+            var statistics = PanGlossBatchStatisticsReader.Read(cachePath, [word]);
+            Assert.Contains(statistics.ObjectTimings,
+                row => row.Key.StartsWith("lex_entry:", StringComparison.Ordinal));
+
+            var query = await invoker.RunAsync(new PanGlossRequest.Stats(cache.ProjectId.Path, cachePath,
+                    ["--group", "word", "--format", "jsonl"]),
+                "test:stats-v8-query", CancellationToken.None);
+            var statsOutput = Assert.IsType<PanGlossOutcome.Completed>(query).Output;
+            var rows = statsOutput.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            Assert.Equal(2, rows.Length);
+            using var metadata = JsonDocument.Parse(rows[0]);
+            Assert.Equal("word", metadata.RootElement.GetProperty("orientation").GetString());
+            using var wordStatistics = JsonDocument.Parse(rows[1]);
+            Assert.Equal(word, wordStatistics.RootElement.GetProperty("form").GetString());
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    private static void SetCacheSchemaVersion(string path, int version)
+    {
+        using var connection = OpenCache(path);
+        using var command = connection.CreateCommand();
+        command.CommandText = "UPDATE cache_identity SET schema_version = $version WHERE cache_id = 1;";
+        command.Parameters.AddWithValue("$version", version);
+        Assert.Equal(1, command.ExecuteNonQuery());
+    }
+
+    private static long ReadInt64(string path, string query)
+    {
+        using var connection = OpenCache(path);
+        using var command = connection.CreateCommand();
+        command.CommandText = query;
+        return (long)command.ExecuteScalar()!;
+    }
+
+    private static string[] ReadStrings(string path, string query)
+    {
+        using var connection = OpenCache(path);
+        using var command = connection.CreateCommand();
+        command.CommandText = query;
+        using var reader = command.ExecuteReader();
+        var values = new List<string>();
+        while (reader.Read()) values.Add(reader.GetString(0));
+        return [.. values];
+    }
+
+    private static SqliteConnection OpenCache(string path)
+    {
+        var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+        {
+            DataSource = path,
+            Mode = SqliteOpenMode.ReadWrite,
+            Pooling = false,
+        }.ToString());
+        connection.Open();
+        return connection;
     }
 
     [RealParserFact]

@@ -656,6 +656,27 @@ public sealed class PanGlossInvokerTests : IDisposable
     }
 
     [Fact]
+    public async Task Import_FatalSourceProblemsAreReturnedAsCompileErrorRefusal()
+    {
+        const string compileError = """
+            {"schema_version":1,"status":"compile_error","path":"project.fwdata","message":"A source environment cannot be resolved.","issues":[{"code":"grammar.environment.unresolved","kind":"source","object_guid":"00000000-0000-4000-8000-000000000001","object_kind":"MoForm","field":"PhoneEnv","text":"The authored environment does not resolve.","advice":"Repair the environment in FieldWorks.","fatal":true}]}
+            """;
+        var fwdata = Project("import-compile-error");
+        FakeParser.Behave(_root, new { mode = "fail", exitCode = 1, standardError = compileError });
+        using var invoker = Invoker();
+
+        var outcome = await invoker.RunAsync(
+            new PanGlossRequest.Import(fwdata, Path.Combine(_root, "grammar.json")),
+            "test:import-compile-error", CancellationToken.None);
+
+        var refused = Assert.IsType<PanGlossOutcome.Refused>(outcome);
+        Assert.Contains("could not load the grammar", refused.Detail, StringComparison.Ordinal);
+        Assert.Contains("The authored environment does not resolve.", refused.Detail, StringComparison.Ordinal);
+        Assert.Contains("Repair the environment in FieldWorks.", refused.Detail, StringComparison.Ordinal);
+        Assert.Contains(compileError, refused.StandardError, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Import_AZeroExitThatWroteNoGrammarIsIncomplete_NotCompleted()
     {
         var fwdata = Project("import-empty");

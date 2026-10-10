@@ -170,8 +170,7 @@ public static class WarningWordsQuery
     public static WarningWordsTouched? TouchedNamed(IReadOnlyList<GrammarWarning> findings)
     {
         ArgumentNullException.ThrowIfNull(findings);
-        var named = findings.Where(finding => finding.Subject.Any(part =>
-            part.Role is GrammarWarningPartRole.Object or GrammarWarningPartRole.Missing)).ToArray();
+        var named = findings.Where(finding => finding.NamesItem).ToArray();
         return named.Length == 0 ? null : Touched(named);
     }
 

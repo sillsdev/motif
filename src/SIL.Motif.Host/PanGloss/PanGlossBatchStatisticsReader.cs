@@ -27,6 +27,12 @@ public static class PanGlossBatchStatisticsReader
         }.ToString());
         connection.Open();
 
+        var schemaVersion = ReadSchemaVersion(connection);
+        if (schemaVersion != PanGlossInterfaceVersions.StatsCacheVersion)
+            throw new InvalidDataException(
+                $"The PanGloss batch statistics cache has schema version {schemaVersion}; " +
+                $"Motif requires version {PanGlossInterfaceVersions.StatsCacheVersion}.");
+
         var words = ReadWords(connection);
         var unexpected = words.Keys.FirstOrDefault(word => !expected.Contains(word));
         if (unexpected is not null)
@@ -36,6 +42,20 @@ public static class PanGlossBatchStatisticsReader
             throw new InvalidDataException($"The batch statistics cache has no per-word row for selected word '{missing}'.");
 
         return new PanGlossBatchStatistics(words, ReadObjectTimings(connection, words));
+    }
+
+    private static int ReadSchemaVersion(SqliteConnection connection)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT schema_version FROM cache_identity WHERE cache_id = 1";
+        object? value;
+        try { value = command.ExecuteScalar(); }
+        catch (SqliteException exception)
+        {
+            throw new InvalidDataException("The PanGloss batch statistics cache has no valid cache identity.", exception);
+        }
+        if (value is long version && version is >= 0 and <= int.MaxValue) return (int)version;
+        throw new InvalidDataException("The PanGloss batch statistics cache has no valid cache identity.");
     }
 
     private static Dictionary<string, PanGlossWordStatistics> ReadWords(SqliteConnection connection)

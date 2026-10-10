@@ -164,8 +164,10 @@ internal static class PanGlossSurface
     {
         if (root.ValueKind != JsonValueKind.Object)
             return InvalidDescription("the description is not a JSON object.", out detail);
-        if (!root.TryGetProperty("schema_version", out var version) || version.GetInt32() != 1)
-            return InvalidDescription("the description does not declare schema version 1.", out detail);
+        if (!root.TryGetProperty("schema_version", out var version) ||
+            version.GetInt32() != PanGlossInterfaceVersions.DescribeSchemaVersion)
+            return InvalidDescription(
+                $"the description does not declare schema version {PanGlossInterfaceVersions.DescribeSchemaVersion}.", out detail);
         if (!root.TryGetProperty("binary", out var binary) || binary.GetString() != "pangloss")
             return InvalidDescription("the description does not identify pangloss.", out detail);
         if (!root.TryGetProperty("commands", out var commands) || commands.ValueKind != JsonValueKind.Array)

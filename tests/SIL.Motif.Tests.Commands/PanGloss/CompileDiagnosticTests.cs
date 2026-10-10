@@ -12,7 +12,7 @@ public sealed class CompileDiagnosticTests
     public void ConfiguredParserIdentityNamesItsFileAndReportedVersion()
     {
         var identity = ParserExecutableIdentity.Read(FakeParser.ExecutablePath);
-        Assert.Equal(Path.GetFileName(FakeParser.ExecutablePath) + " 0.6.0", identity);
+        Assert.Equal(Path.GetFileName(FakeParser.ExecutablePath) + " 0.8.1", identity);
         Assert.DoesNotContain(Path.GetDirectoryName(FakeParser.ExecutablePath)!, identity);
     }
 

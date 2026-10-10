@@ -26,7 +26,8 @@ public sealed class PinnedGrammarAdviceTests(PristineProjectFixture pristine)
         File.WriteAllText(Path.Combine(AppContext.BaseDirectory, "seeded-advice-raw.json"), completed.Output);
         using var raw = JsonDocument.Parse(completed.Output);
         var diagnostics = raw.RootElement.GetProperty("diagnostics").EnumerateArray().ToArray();
-        Assert.True(diagnostics.Select(item => item.GetProperty("code").GetString()).Distinct().Count() >= 3);
+        Assert.True(diagnostics.Length >= 3);
+        Assert.Contains(diagnostics, item => item.GetProperty("code").GetString() == "provisional.letter");
         Assert.All(diagnostics, item =>
         {
             Assert.False(string.IsNullOrWhiteSpace(item.GetProperty("explanation").GetString()));

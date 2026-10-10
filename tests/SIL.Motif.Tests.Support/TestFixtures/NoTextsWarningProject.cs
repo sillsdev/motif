@@ -19,7 +19,7 @@ public sealed class NoTextsWarningProject : IDisposable
             ((IMoStemMsa)first.MorphoSyntaxAnalysesOC.Single()).PartOfSpeechRA = null;
             TroisEntryId = first.Guid;
             TroisAllomorphId = first.LexemeFormOA.Guid;
-            foreach (var spelling in RefusedForms)
+            foreach (var spelling in UndeclaredLetterForms)
             {
                 var entry = services.GetInstance<ILexEntryFactory>().Create();
                 var form = services.GetInstance<IMoStemAllomorphFactory>().Create();
@@ -43,9 +43,11 @@ public sealed class NoTextsWarningProject : IDisposable
         Directory.CreateDirectory(ManagedRoot);
     }
 
-    public static IReadOnlyList<string> RefusedForms { get; } =
+    public static IReadOnlyList<string> UndeclaredLetterForms { get; } =
         ["chassis", "échauffer", "ciel", "courir", "chat", "très", "fenêtre", "chien", "lionceaux",
          "arc-en-ciel", "chaton", "cuisiner", "chaud", "chassis", "chauffer"];
+    /// <summary>The letters <see cref="UndeclaredLetterForms"/> spell that no phoneme declares, composed.</summary>
+    public static IReadOnlyList<string> UndeclaredLetters { get; } = ["c", "h", "d", "é", "è", "ê", "-"];
     public string FwDataPath { get; }
     public string ManagedRoot { get; }
     public Guid TroisEntryId { get; private set; }

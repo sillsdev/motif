@@ -143,10 +143,11 @@ if (-not $IsWindows) {
 
 # A development build finds its parser beside itself, as a shipped one does, so it runs the pinned PanGloss.
 Write-Step 'Pinned PanGloss beside the product'
+$parserTarget = Join-Path $repoRoot "bin/$Configuration/$(if ($IsWindows) { 'pangloss.exe' } else { 'pangloss' })"
+$pinnedParser = $null
 try {
     Import-Module (Join-Path $repoRoot 'tools/PanGlossRelease.psm1') -Force
     $pinnedParser = Get-PinnedPanGlossArtifact -RepositoryRoot $repoRoot
-    $parserTarget = Join-Path $repoRoot "bin/$Configuration/$(if ($IsWindows) { 'pangloss.exe' } else { 'pangloss' })"
     Copy-Item -LiteralPath $pinnedParser.Path -Destination $parserTarget -Force
     if (-not $IsWindows) { & chmod +x $parserTarget }
     Write-Host "PanGloss $($pinnedParser.Version) at $parserTarget"
@@ -154,6 +155,24 @@ try {
 catch {
     Write-Host "PanGloss was not staged beside the product: $($_.Exception.Message)" -ForegroundColor Yellow
     Write-Host 'The window and CLI from this build need MOTIF_PANGLOSS_EXE until it is.' -ForegroundColor Yellow
+}
+
+Write-Step 'PanGloss interface gate'
+$interfaceGateArguments = @{
+    RepositoryRoot = $repoRoot
+    PinnedParserPath = $parserTarget
+    Configuration = $Configuration
+}
+if (-not [string]::IsNullOrWhiteSpace($env:MOTIF_PANGLOSS_EXE)) {
+    $interfaceGateArguments.ParserPath = $env:MOTIF_PANGLOSS_EXE
+}
+if ($Configuration -eq 'Release' -or $env:CI -match '^(?i:true|1|yes)$') {
+    $interfaceGateArguments.RequireParser = $true
+}
+& (Join-Path $repoRoot 'tools/Test-PanGlossInterfaces.ps1') @interfaceGateArguments
+if ($LASTEXITCODE -ne 0) {
+    Write-Host 'PanGloss interface gate failed.' -ForegroundColor Red
+    exit 1
 }
 
 Write-Host ''

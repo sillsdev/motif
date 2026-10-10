@@ -1,0 +1,120 @@
+{
+  "schema_version": 4,
+  "locale": "en",
+  "fieldworks_project": {
+    "name": "Synthetic",
+    "source": "argument"
+  },
+  "summary": [
+    {
+      "code": "grammar.stored-analysis.no-longer-parses",
+      "group_name": "Stored analysis changed",
+      "level": "info",
+      "count": 1
+    }
+  ],
+  "diagnostics": [
+    {
+      "level": "info",
+      "code": "grammar.stored-analysis.no-longer-parses",
+      "group_name": "Stored analysis changed",
+      "origin": "check",
+      "description": "A FieldWorks stored analysis is absent from PanGloss's confirmed analyses for its wordform. The reported forward-synthesis trace shows authored phonological rules that changed the surface, or explains why the loss could not be attributed to a rule.",
+      "guidance": "Check whether the named rule is meant to apply to these morphs. If so, update or remove the stored analysis in Lexicon > Lexicon Edit. If not, restrict the rule's environment in Grammar > Phonological Rules.",
+      "title": "Stored analysis changed",
+      "explanation": "A stored analysis is no longer confirmed after forward synthesis.",
+      "help_path": "docs/diagnostics/grammar.stored-analysis.no-longer-parses.md",
+      "help_body": null,
+      "fieldworks_places": [
+        {
+          "tool": "PhonologicalRuleEdit",
+          "field": "Environment"
+        },
+        {
+          "tool": "lexiconEdit",
+          "field": "Analysis"
+        }
+      ],
+      "scope": "object",
+      "subjects": [
+        {
+          "kind": "WfiWordform",
+          "status": "object",
+          "field": "AnalysesOC",
+          "source_class": "WfiWordform",
+          "title": "muma",
+          "subtitle": null,
+          "guid": "00000000-0000-4000-8000-000000000001",
+          "internal_id": null,
+          "fieldworks": {
+            "status": "unavailable",
+            "reason": "unsupported_kind",
+            "guid": "00000000-0000-4000-8000-000000000001"
+          }
+        },
+        {
+          "kind": "WfiAnalysis",
+          "status": "object",
+          "field": null,
+          "source_class": "WfiAnalysis",
+          "title": "Stored analysis",
+          "subtitle": null,
+          "guid": "00000000-0000-4000-8000-000000000002",
+          "internal_id": null,
+          "fieldworks": {
+            "status": "unavailable",
+            "reason": "unsupported_kind",
+            "guid": "00000000-0000-4000-8000-000000000002"
+          }
+        },
+        {
+          "kind": "MoForm",
+          "status": "object",
+          "field": null,
+          "source_class": "MoForm",
+          "title": "mu",
+          "subtitle": null,
+          "guid": "00000000-0000-4000-8000-000000000003",
+          "internal_id": null,
+          "fieldworks": {
+            "status": "available",
+            "guid": "00000000-0000-4000-8000-000000000003",
+            "tool": "lexiconEdit",
+            "url": "silfw://localhost/link?database%3DSynthetic%26tool%3DlexiconEdit%26guid%3D00000000-0000-4000-8000-000000000003%26tag%3D"
+          }
+        },
+        {
+          "kind": "Unknown",
+          "status": "object",
+          "field": null,
+          "source_class": "MSA",
+          "title": "Stored MSA",
+          "subtitle": null,
+          "guid": "00000000-0000-4000-8000-000000000004",
+          "internal_id": null,
+          "fieldworks": {
+            "status": "unavailable",
+            "reason": "unsupported_kind",
+            "guid": "00000000-0000-4000-8000-000000000004"
+          }
+        },
+        {
+          "kind": "PhRegularRule",
+          "status": "object",
+          "field": "RulesOS",
+          "source_class": null,
+          "title": "probe-rewrite",
+          "subtitle": null,
+          "guid": "00000000-0000-4000-8000-000000000005",
+          "internal_id": null,
+          "fieldworks": {
+            "status": "available",
+            "guid": "00000000-0000-4000-8000-000000000005",
+            "tool": "PhonologicalRuleEdit",
+            "url": "silfw://localhost/link?database%3DSynthetic%26tool%3DPhonologicalRuleEdit%26guid%3D00000000-0000-4000-8000-000000000005%26tag%3D"
+          }
+        }
+      ]
+    }
+  ]
+}

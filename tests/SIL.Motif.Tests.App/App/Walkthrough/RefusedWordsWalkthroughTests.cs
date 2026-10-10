@@ -27,8 +27,9 @@ public sealed class RefusedWordsWalkthroughTests(PristineProjectFixture pristine
             NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
             {
                 var services = cache.ServiceLocator;
+                // Spelt only in defined phonemes, so the c and h of the typed words occur nowhere in the grammar.
                 services.GetInstance<IMoFormRepository>().GetObject(pristine.Seed.FirstLexemeFormId)
-                    .Form.set_String(cache.DefaultVernWs, "chat");
+                    .Form.set_String(cache.DefaultVernWs, "lait");
                 services.GetInstance<IMoFormRepository>().GetObject(pristine.Seed.SecondLexemeFormId)
                     .Form.set_String(cache.DefaultVernWs, "lion");
                 var entry = services.GetInstance<ILexEntryRepository>().GetObject(pristine.Seed.SecondEntryId);

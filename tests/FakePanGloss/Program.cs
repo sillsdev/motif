@@ -77,7 +77,7 @@ internal static class Program
         }
         if (args is ["--version"])
         {
-            Console.WriteLine("pangloss 0.6.0");
+            Console.WriteLine("pangloss 0.8.1");
             return 0;
         }
         if (args is ["--allocate-memory", var requestedBytes])
@@ -161,6 +161,12 @@ internal static class Program
         {
             schema_version = 1,
             binary = "pangloss",
+            facts = new
+            {
+                schemaVersion = 8,
+                contextVersion = 1,
+                statsManifestVersion = 1,
+            },
             commands = Dispatch.Where(command => !omissions.Contains(command.Name)).Select(command => new
             {
                 name = command.Name,

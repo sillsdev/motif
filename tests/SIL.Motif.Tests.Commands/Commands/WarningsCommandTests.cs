@@ -58,6 +58,43 @@ public sealed class WarningsCommandTests(PristineProjectFixture pristine) : IDis
         Assert.Equal(ProjectionJson.Serialize(warnings.Value.ByKind), ProjectionJson.Serialize(overview.Value.Warnings.ByKind));
     }
 
+    [Fact]
+    public void StoredAnalysisNoLongerParsesFindingIsShownAsInformation()
+    {
+        Directory.CreateDirectory(_root);
+        var project = pristine.CopyProjectFile();
+        var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(project), _root);
+        Assert.True(captured.Succeeded, captured.Refusal?.Message);
+        var reportPath = Path.Combine(AppContext.BaseDirectory, "TestFixtures", "GrammarHealth",
+            "schema-v4-stored-analysis-no-longer-parses.json");
+        var report = File.ReadAllText(reportPath);
+
+        var checkedNow = GrammarCheckQuery.Query(new GrammarCheckRequest(project), new FakeInvoker
+        {
+            Respond = _ => new PanGlossOutcome.Completed(report, string.Empty, TimeSpan.Zero),
+        }, CancellationToken.None, parserStamp: "build-1");
+
+        Assert.True(checkedNow.Succeeded, checkedNow.Refusal?.Message);
+        var finding = Assert.Single(checkedNow.Value!.Findings);
+        Assert.Equal("grammar.stored-analysis.no-longer-parses", finding.Code);
+        Assert.Equal("Stored analysis changed", finding.Title);
+        Assert.Equal(SIL.Motif.Contract.Responses.GrammarDiagnosticLevel.Information, finding.Severity);
+        Assert.Contains("forward-synthesis trace", finding.Description, StringComparison.Ordinal);
+        Assert.Contains("Check whether the named rule is meant to apply", finding.Guidance, StringComparison.Ordinal);
+        Assert.Contains(finding.Subject, subject => subject.Title == "muma");
+        Assert.Contains(finding.Subject, subject => subject.Title == "mu");
+        Assert.Contains(finding.Subject, subject => subject.Title == "probe-rewrite");
+
+        var warnings = WarningsCommand.Warnings(new WarningsRequest(project));
+
+        Assert.True(warnings.Succeeded, warnings.Refusal?.Message);
+        Assert.Equal(1, warnings.Value!.TotalCount);
+        Assert.Equal(1, warnings.Value.InformationCount);
+        Assert.Equal(0, warnings.Value.WarningCount);
+        Assert.Equal(0, warnings.Value.ErrorCount);
+        Assert.Equal("grammar.stored-analysis.no-longer-parses", Assert.Single(warnings.Value.Findings).Code);
+    }
+
     private string CheckedProject()
     {
         Directory.CreateDirectory(_root);

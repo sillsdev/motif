@@ -18,6 +18,9 @@ public sealed class PanGlossSurfaceTests
         var commands = SurfaceContract.Commands(realDescription);
         SurfaceContract.AssertRequestsMatch(commands);
         SurfaceContract.AssertTraceCommandIsDeclared(commands);
+        Assert.DoesNotContain("compare", commands.Keys);
+        Assert.DoesNotContain("golden-diff", commands.Keys);
+        Assert.DoesNotContain("investigate", commands.Keys);
         var fakeCommands = SurfaceContract.Commands(fakeDescription);
         SurfaceContract.AssertRequestsMatch(fakeCommands);
         SurfaceContract.AssertTraceCommandIsDeclared(fakeCommands);

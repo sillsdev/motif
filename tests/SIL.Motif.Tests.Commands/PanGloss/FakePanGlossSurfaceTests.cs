@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Parser;
+using SIL.Motif.Generator;
 using SIL.Motif.Tests.Parser;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
@@ -148,12 +149,20 @@ public sealed class FakePanGlossSurfaceTests
             new PanGlossRequest.Stats("project.fwdata", "cache.sqlite", ["--group", "word", "--format", "jsonl"]),
             new PanGlossRequest.Import("project.fwdata", "grammar.json"),
             new PanGlossRequest.GrammarHealth("project.fwdata", "project"),
+            new PanGlossRequest.Trace("project.fwdata", "motifa")
+                { StepLimit = SIL.Motif.Contract.Assess.StepCap.Default },
         ];
         // Trace is checked by AssertTraceCommandIsDeclared; this walker cannot express an "=file" flag.
         var requestTypes = typeof(PanGlossRequest).GetNestedTypes()
             .Where(type => typeof(PanGlossRequest).IsAssignableFrom(type) && type != typeof(PanGlossRequest.Trace))
             .OrderBy(type => type.Name);
-        Assert.Equal(requestTypes, requests.Select(request => request.GetType()).OrderBy(type => type.Name));
+        Assert.Equal(requestTypes, requests.Where(request => request is not PanGlossRequest.Trace)
+            .Select(request => request.GetType()).OrderBy(type => type.Name));
+        using var pin = JsonDocument.Parse(File.ReadAllText(
+            Path.Combine(RepoPaths.FindRepoRoot(), "pangloss-release.json")));
+        var pinnedRequests = pin.RootElement.GetProperty("interfaces").GetProperty("requests");
+        Assert.Equal(requests.Select(request => request.Subcommand).OrderBy(name => name, StringComparer.Ordinal),
+            pinnedRequests.EnumerateObject().Select(command => command.Name).OrderBy(name => name, StringComparer.Ordinal));
         foreach (var request in requests)
         {
             var start = new ProcessStartInfo();
@@ -163,6 +172,23 @@ public sealed class FakePanGlossSurfaceTests
             Assert.False(command.GetProperty("hidden").GetBoolean());
             var flags = command.GetProperty("flags").EnumerateArray()
                 .ToDictionary(flag => flag.GetProperty("name").GetString()!, flag => flag);
+            var pinnedFlags = pinnedRequests.GetProperty(request.Subcommand);
+            Assert.Equal(flags.Keys.Where(name => request.Subcommand == "stats"
+                        ? name is "--cache" or "--group" or "--format"
+                        : request.Subcommand == "batch"
+                            ? name is "--word-timeout-ms" or "--step-cap" or "--threads" or "--analyses" or "--stats" or "--cache"
+                            : request.Subcommand == "parse"
+                                ? name is "--trace" or "--trace-format" or "--trace-details" or "--step-cap"
+                                : request.Subcommand == "grammar-health" && name == "--fw-project")
+                    .OrderBy(name => name, StringComparer.Ordinal),
+                pinnedFlags.EnumerateObject().Select(flag => flag.Name).OrderBy(name => name, StringComparer.Ordinal));
+            foreach (var pinnedFlag in pinnedFlags.EnumerateObject())
+            {
+                Assert.True(flags.TryGetValue(pinnedFlag.Name, out var declaredFlag),
+                    $"'{request.Subcommand}' does not declare pinned flag '{pinnedFlag.Name}'.");
+                Assert.Equal(pinnedFlag.Value.GetBoolean(), declaredFlag.GetProperty("takes_value").GetBoolean());
+            }
+            if (request is PanGlossRequest.Trace) continue;
             var positionals = 0;
             for (var index = 1; index < start.ArgumentList.Count; index++)
             {

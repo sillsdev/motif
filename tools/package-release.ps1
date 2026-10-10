@@ -294,6 +294,12 @@ try {
                 [System.IO.UnixFileMode]::OtherExecute)
     }
 
+    $stagedParserPath = Join-Path $stage $parserFileName
+    & (Join-Path $PSScriptRoot 'Test-PanGlossInterfaces.ps1') `
+        -RepositoryRoot $repoRoot -ParserPath $stagedParserPath `
+        -PinnedParserPath $stagedParserPath -Configuration Release -RequireParser
+    if ($LASTEXITCODE -ne 0) { throw 'The bundled PanGloss interface gate failed; no package was published.' }
+
     $icuRecords = @()
     foreach ($icuLibrary in $icuLibraries) {
         $sourcePath = Join-Path $icuBuildOutputDirectory $icuLibrary

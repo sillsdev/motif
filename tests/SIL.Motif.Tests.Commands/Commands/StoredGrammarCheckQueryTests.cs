@@ -290,6 +290,8 @@ public sealed class StoredGrammarCheckQueryTests : IDisposable
         connection.Open();
         using var command = connection.CreateCommand();
         command.CommandText = """
+            CREATE TABLE cache_identity (cache_id INTEGER PRIMARY KEY, schema_version INTEGER NOT NULL);
+            INSERT INTO cache_identity VALUES (1, 8);
             CREATE TABLE word (
                 word_id INTEGER PRIMARY KEY, form TEXT NOT NULL, elapsed_ns INTEGER NOT NULL,
                 attempts INTEGER NOT NULL, passes INTEGER NOT NULL, capped INTEGER NOT NULL,

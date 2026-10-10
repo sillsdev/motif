@@ -138,6 +138,30 @@ public sealed class GrammarWarningsViewModelTests
     }
 
     [Fact]
+    public void ALetterWithoutAProjectGuidStillCountsItsSpellingMatches()
+    {
+        var letter = WithWords(PhonemeWarning with
+        {
+            Code = "provisional.letter",
+            Subject = [new GrammarWarningPart("c", GrammarWarningPartRole.Text, null, "PhPhoneme")
+            {
+                Title = "c",
+                Status = GrammarSubjectStatus.Object,
+                Reach = new WarningReach(WarningWordsPath.Spelling) { Spellings = ["c"] },
+            }],
+        }, WarningWordsMatch.Spelling, "chat", "chats");
+        var table = new GrammarWarningsViewModel();
+
+        table.Load([letter]);
+
+        var row = Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(table.Rows));
+        Assert.Equal(WarningDisplayState.SpellingCandidates, row.AttributionState);
+        Assert.Equal("None of your words", row.ReachSummaryText);
+        Assert.Equal("2 spelling matches", row.SpellingCandidatesText);
+        Assert.Equal(2, WarningWordsQuery.TouchedNamed([letter])!.BySpellingOnly);
+    }
+
+    [Fact]
     public void RepeatedUnattributedDiagnosticsOfOneKindShareARowAndKeepTheirCount()
     {
         var warning = EntryWarning with

@@ -75,11 +75,12 @@ internal sealed class BatchProgressReader(IReadOnlyList<string> words)
     private void ProcessLine(ReadOnlySpan<byte> bytes)
     {
         var cells = Encoding.UTF8.GetString(bytes).TrimEnd('\r').Split('\t');
-        if (cells.Length < 3 || !int.TryParse(cells[0], out var index) ||
+        if (cells.Length < 3 ||
+            !int.TryParse(cells[PanGlossInterfaceVersions.BatchTsvIndexColumn], out var index) ||
             index < 0 || index >= words.Count ||
-            !string.Equals(cells[1], words[index].Trim(), StringComparison.Ordinal))
+            !string.Equals(cells[PanGlossInterfaceVersions.BatchTsvWordColumn], words[index].Trim(), StringComparison.Ordinal))
             return;
-        if (cells.Length == 3 && cells[2] == "STARTED")
+        if (cells.Length == 3 && cells[PanGlossInterfaceVersions.BatchTsvElapsedMsColumn] == "STARTED")
         {
             if (!_completedIndexes.Contains(index))
             {
@@ -87,9 +88,11 @@ internal sealed class BatchProgressReader(IReadOnlyList<string> words)
                 _sawRow = true;
             }
         }
-        else if (cells.Length >= 5 && !_completedIndexes.Contains(index))
+        else if (cells.Length == PanGlossInterfaceVersions.BatchTsvCompletionColumnCount &&
+                 !_completedIndexes.Contains(index))
         {
-            if (double.TryParse(cells[2], NumberStyles.Float, CultureInfo.InvariantCulture, out var elapsed) &&
+            if (double.TryParse(cells[PanGlossInterfaceVersions.BatchTsvElapsedMsColumn], NumberStyles.Float,
+                    CultureInfo.InvariantCulture, out var elapsed) &&
                 double.IsFinite(elapsed) && elapsed >= 0)
             {
                 _completedIndexes.Add(index);
@@ -101,8 +104,9 @@ internal sealed class BatchProgressReader(IReadOnlyList<string> words)
                     _slowest = new ParseWordTiming(words[index], elapsed);
                     _slowestIndex = index;
                 }
-                if (cells[3] is "TIMEOUT" or "CAP")
-                    _stoppedWords[index] = new StoppedParseWord(words[index], cells[3], elapsed);
+                var status = cells[PanGlossInterfaceVersions.BatchTsvStatusColumn];
+                if (status is "TIMEOUT" or "CAP")
+                    _stoppedWords[index] = new StoppedParseWord(words[index], status, elapsed);
                 _sawRow = true;
             }
         }
