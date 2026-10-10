@@ -243,20 +243,51 @@ internal static class ParsimonyFindingDispositionComposer
         return new JudgmentObject(item.ClassName, CanonicalId.FromGuid(item.Guid).Value, owningEntryId);
     }
 
-    private static string Caption(LcmCache cache, ICmObject item)
+    internal static string Caption(LcmCache cache, ICmObject item)
     {
         var caption = item switch
         {
             IMoForm form => WritingSystemTextReader.First(cache, form.Form).Text,
             ILexEntry entry => entry.HeadWord?.Text ?? string.Empty,
             ILexSense sense => sense.Gloss.BestAnalysisAlternative?.Text ?? string.Empty,
+            IMoMorphSynAnalysis msa => msa.Owner is ILexEntry owner ? owner.HeadWord?.Text ?? string.Empty : string.Empty,
+            IPhEnvironment environment => environment.StringRepresentation?.Text ?? string.Empty,
+            IPhNaturalClass naturalClass => FirstNonEmpty(WritingSystemTextReader.BestAnalysis(cache, naturalClass.Name).Text,
+                WritingSystemTextReader.BestAnalysis(cache, naturalClass.Abbreviation).Text),
+            IMoInflAffixSlot slot => WritingSystemTextReader.BestAnalysis(cache, slot.Name).Text,
+            IMoInflAffixTemplate template => WritingSystemTextReader.BestAnalysis(cache, template.Name).Text,
+            IPhSegmentRule rule => WritingSystemTextReader.BestAnalysis(cache, rule.Name).Text,
+            IMoAlloAdhocProhib prohibition => MemberNames(cache,
+                prohibition.FirstAllomorphRA is { } first ? [first, .. prohibition.RestOfAllosRS] : prohibition.RestOfAllosRS),
+            IMoMorphAdhocProhib prohibition => MemberNames(cache,
+                prohibition.FirstMorphemeRA is { } first ? [first, .. prohibition.RestOfMorphsRS] : prohibition.RestOfMorphsRS),
+            IMoAdhocProhibGr group => MemberNames(cache, group.MembersOC),
             ICmPossibility possibility => WritingSystemTextReader.BestAnalysis(cache, possibility.Name).Text,
             _ => string.Empty,
         };
-        return string.IsNullOrWhiteSpace(caption) || caption == "***"
-            ? $"{item.ClassName} {CanonicalId.FromGuid(item.Guid).Suffix[..8]}"
-            : caption;
+        return string.IsNullOrWhiteSpace(caption) || caption == "***" ? UnnamedPhrase(item) : caption;
     }
+
+    private static string FirstNonEmpty(string first, string second) => string.IsNullOrWhiteSpace(first) ? second : first;
+
+    private static string MemberNames(LcmCache cache, IEnumerable<ICmObject> members) =>
+        string.Join(", ", members.Select(member => Caption(cache, member)));
+
+    // A kind phrase a linguist can read; never a class name or an id.
+    private static string UnnamedPhrase(ICmObject item) => item switch
+    {
+        IMoForm => "an unnamed form",
+        ILexEntry => "an unnamed entry",
+        ILexSense => "a sense with no gloss",
+        IMoMorphSynAnalysis => "an affix with no headword",
+        IPhEnvironment => "an environment with no text",
+        IPhNaturalClass => "an unnamed natural class",
+        IMoInflAffixSlot => "an unnamed affix slot",
+        IMoInflAffixTemplate => "an unnamed affix template",
+        IPhSegmentRule => "an unnamed sound rule",
+        IMoAlloAdhocProhib or IMoMorphAdhocProhib or IMoAdhocProhibGr => "an ad hoc prohibition with no named members",
+        _ => "an unnamed item",
+    };
 
     private static bool MatchesAuthoredKind(ICmObject item, ParsimonyAuthoredObjectKind? kind) => kind switch
     {

@@ -412,10 +412,14 @@ public sealed partial class AllomorphRuleRetirementAcceptanceTests(
         Assert.True(result.Applicable);
         Assert.Equal("review-ready", result.State);
         Assert.Empty(result.Unavailable);
+        var (storedReview, liveReview) = StoredRetirementReview.Compare(result);
+        Assert.Equal(storedReview, liveReview);
         var review = Assert.IsType<RetirementProposalReviewProjection>(result.Review);
         Assert.Empty(review.Unavailable);
         Assert.Empty(review.UnlinkedEffects);
         Assert.Empty(review.UnlinkedOperationIds);
+        Assert.Empty(review.UnresolvedReferences.Rows);
+        Assert.Equal(0, review.UnresolvedReferences.UnresolvedApprovedAnalyses);
         Assert.NotEmpty(review.Finding.BindingOperationIds);
         Assert.NotEmpty(review.Finding.BindingEffects);
 

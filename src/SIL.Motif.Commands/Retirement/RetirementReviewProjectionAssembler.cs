@@ -306,20 +306,22 @@ internal static class RetirementReviewProjectionAssembler
         return new RetirementOpinionCounts(counts[0], counts[1], counts[2], counts[3]);
     }
 
-    private static AllomorphReferenceDestinationDiagnostics CombineDiagnostics(
+    internal static AllomorphReferenceDestinationDiagnostics CombineDiagnostics(
         AllomorphReferenceFootprint footprint, ReplaceListedAllomorphsWithRuleIntent retirement)
     {
         var parts = retirement.Retirements.Select(item => AllomorphReferenceFootprintReader.Diagnose(footprint, item))
             .ToArray();
-        var rows = parts.SelectMany(item => item.UnresolvedReferences).Distinct().ToArray();
+        // Each component sees the whole census, so a reference is unresolved only if none accounts for it.
+        var rows = parts.SelectMany(item => item.UnresolvedReferences).Distinct()
+            .Where(row => parts.All(item => item.UnresolvedReferences.Contains(row))).ToArray();
         return new AllomorphReferenceDestinationDiagnostics(rows,
             rows.Where(item => item.Kind == "bundle-morph" && item.Opinion == "approved")
                 .Select(item => item.Analysis).OfType<Guid>().Distinct().Count(),
             rows.Where(item => item.Kind.StartsWith("adhoc-", StringComparison.Ordinal))
                 .Select(item => item.SourceObject).Distinct().Count(),
             rows.Count(item => item.IsCustom), rows.Count(item => !item.IsCustom && item.Kind == "other-native"),
-            string.Join(" ", parts.Select(item => item.Message).Where(item => !string.IsNullOrWhiteSpace(item))
-                .Distinct(StringComparer.Ordinal)))
+            rows.Length == 0 ? string.Empty : string.Join(" ", parts.Select(item => item.Message)
+                .Where(item => !string.IsNullOrWhiteSpace(item)).Distinct(StringComparer.Ordinal)))
         {
             Unavailable = Array.AsReadOnly(parts.SelectMany(item => item.Unavailable)
                 .Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray()),

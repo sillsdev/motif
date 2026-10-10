@@ -264,18 +264,19 @@ public sealed class ReviewScreenshots
         var folder = Environment.GetEnvironmentVariable(ScreenshotFactAttribute.FolderVariable)!;
         Directory.CreateDirectory(folder);
 
+        var stored = StoredRetirementReview.Load().Review!;
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
             var fake = new FakeCommandClient();
-            fake.PendingChangesIs(Blocked());
+            fake.PendingChangesIs(Blocked() with { DraftId = stored.ProposalId });
             var (workspace, window) = await OpenAsync(fake);
             try
             {
                 workspace.CurrentPage = WorkspacePage.Review;
                 var review = workspace.PageModel<ReviewPageModel>();
                 PageScreenshots.Settle(window);
-                review.ShowRetirementReview(RetirementProjection(includeUnresolved: false));
+                review.ShowRetirementReview(stored);
                 PageScreenshots.Settle(window);
                 var panel = Assert.Single(window.GetVisualDescendants().OfType<RetirementProposalReviewPanel>());
                 Assert.Same(review.RetirementReview, panel.DataContext);
@@ -291,6 +292,7 @@ public sealed class ReviewScreenshots
                 PageScreenshots.Settle(window);
                 var visibleTexts = window.GetVisualDescendants().OfType<CopyableTextBlock>()
                     .Where(control => control.IsEffectivelyVisible).Select(control => control.Text).ToArray();
+                Assert.DoesNotContain("Destination needed", visibleTexts);
                 Assert.Contains("1 word affected", visibleTexts);
                 Assert.Contains("Sound changes", visibleTexts);
                 Assert.Contains("Analysis of ata now uses form ra instead of ta", visibleTexts);
@@ -305,11 +307,12 @@ public sealed class ReviewScreenshots
                 PageScreenshots.Settle(window);
                 visibleTexts = window.GetVisualDescendants().OfType<CopyableTextBlock>()
                     .Where(control => control.IsEffectivelyVisible).Select(control => control.Text).ToArray();
-                Assert.Contains("The sound rule was traced for this reading", visibleTexts);
+                Assert.Contains("The sound rule could not be traced for this reading", visibleTexts);
                 Assert.Contains("Resolved", visibleTexts);
                 SaveAll(window, folder, "retirement-review-reading-evidence");
 
-                review.ShowRetirementReview(RetirementProjection(includeUnresolved: true));
+                // A refusal, not the stored path, so it stays a hand-built state.
+                review.ShowRetirementReview(RetirementProjection(includeUnresolved: true) with { ProposalId = stored.ProposalId });
                 PageScreenshots.Settle(window);
                 panel = Assert.Single(window.GetVisualDescendants().OfType<RetirementProposalReviewPanel>());
                 scroll = panel.FindAncestorOfType<ScrollViewer>()!;

@@ -322,7 +322,7 @@ public sealed partial class ParsimonyPageModel : PageModel
     /// <summary>The Active list as one flat list: each measure's header, then its findings.</summary>
     public IReadOnlyList<ParsimonyListRow> Rows =>
     [
-        .. Groups.SelectMany(group => new[] { new ParsimonyListRow(true, group.Title, group.AxisText, group.CountLabel,
+        .. Groups.SelectMany(group => new[] { new ParsimonyListRow(true, group.Title, group.AxisLabel, group.CountLabel,
                 string.Empty, string.Empty, string.Empty, null, false, null, string.Empty) }
             .Concat(group.Items.Select(item => new ParsimonyListRow(false, string.Empty, string.Empty, string.Empty, item.Description,
                 item.Items, item.Disposition, item.Link, item.IsSelected, item.SelectCommand,
