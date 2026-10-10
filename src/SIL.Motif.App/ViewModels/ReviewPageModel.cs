@@ -521,7 +521,7 @@ public sealed class ReviewPageModel : PageModel
         try
         {
             result = await Context.Commands.ApplyPendingAsync(new ApplyPendingRequest(
-                project, draft, Changes.Snapshot.Revision, Environment.UserName),
+                project, draft, Changes.Snapshot.Revision),
                 _applyCancellation.Token).ConfigureAwait(true);
         }
         finally

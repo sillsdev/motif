@@ -4,10 +4,13 @@ using SIL.LCModel;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Baselines;
+using SIL.Motif.Contract.Canonicalization;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Contract.Projects;
+using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host.Analysis;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Config;
 using SIL.Motif.Host.Corpus;
@@ -84,6 +87,7 @@ internal sealed class TrialJobHandler
         Task<(IReadOnlyCollection<Guid> AppliedProposalIds, DryRunScratch? Scratch)>> _openScratch;
     private readonly Func<DryRunScratch?, PrerequisiteExecutionPlan, CancellationToken, Task<DryRunModel>> _runDryRun;
     private readonly Func<LcmCache?, CancellationToken, Task<string>> _prepareForAssessment;
+    private readonly Func<string, string, CancellationToken, Task<GrammarCheckResponse?>>? _grammarHealth;
 
     /// <param name="baselines">This project's published-Baseline store.</param>
     /// <param name="proposals">
@@ -109,7 +113,8 @@ internal sealed class TrialJobHandler
         Func<string, string, CancellationToken,
             Task<(IReadOnlyCollection<Guid> AppliedProposalIds, DryRunScratch? Scratch)>> openScratch,
         Func<DryRunScratch?, PrerequisiteExecutionPlan, CancellationToken, Task<DryRunModel>> runDryRun,
-        Func<LcmCache?, CancellationToken, Task<string>> prepareForAssessment, string workerRoot)
+        Func<LcmCache?, CancellationToken, Task<string>> prepareForAssessment, string workerRoot,
+        Func<string, string, CancellationToken, Task<GrammarCheckResponse?>>? grammarHealth = null)
     {
         _baselines = baselines ?? throw new ArgumentNullException(nameof(baselines));
         ArgumentNullException.ThrowIfNull(proposals);
@@ -122,6 +127,7 @@ internal sealed class TrialJobHandler
         _openScratch = openScratch ?? throw new ArgumentNullException(nameof(openScratch));
         _runDryRun = runDryRun ?? throw new ArgumentNullException(nameof(runDryRun));
         _prepareForAssessment = prepareForAssessment ?? throw new ArgumentNullException(nameof(prepareForAssessment));
+        _grammarHealth = grammarHealth;
     }
 
     /// <summary>Runs one claimed Trial job through to a terminal outcome, or parks it waiting for a Baseline.</summary>
@@ -157,8 +163,9 @@ internal sealed class TrialJobHandler
         // Reported while queued behind the lane; the lane's own dispatch resumes this directly into Running.
         claim.Transition(JobStatus.WaitingForBaseline);
 
-        var scratchRoot = AllocateScratchRoot();
+        var scratchRoot = AllocateScratchRoot(claim.Job.JobId);
         CandidateRun candidate;
+        var preserveScratch = false;
         try
         {
             candidate = await RunCandidateAsync(claim, lane, proposal, input.Prerequisites ?? [],
@@ -184,6 +191,29 @@ internal sealed class TrialJobHandler
 
         try
         {
+            string? grammarCheckWarning = null;
+            if (_grammarHealth is not null)
+            {
+                try
+                {
+                    var grammarCheck = await _grammarHealth(candidate.GrammarPath,
+                        project.FieldWorksProjectIdentity, cancellationToken).ConfigureAwait(false);
+                    if (grammarCheck is null)
+                    {
+                        grammarCheckWarning = "The grammar check did not return a report.";
+                    }
+                    else
+                    {
+                        new TrialGrammarCheckRepository(claim.Database).Save(baseline.Token,
+                            proposal.ProposalId, IntentDigest.Compute(proposal), candidate.Selection.Sha256,
+                            grammarCheck);
+                    }
+                }
+                catch (Exception exception) when (exception is not OperationCanceledException)
+                {
+                    grammarCheckWarning = exception.Message;
+                }
+            }
             var limitMs = candidate.Scope.PerWordLimit is { } limit ? (int?)limit.TotalMilliseconds : null;
             claim.PublishTrialProgress(new TrialWordProgress(0, candidate.Scope.Words.Count, null)
                 { PerWordLimitMs = limitMs });
@@ -205,10 +235,15 @@ internal sealed class TrialJobHandler
                     }
                     : item).ToArray();
                 var assessmentIds = RecordAll(durableAssessments, proposal, candidate.DryRun,
-                    candidate.Selection, candidate.Scope, scopeConfiguration, assessor.Name, baseline.Token);
+                    candidate.Selection, candidate.Scope, scopeConfiguration, assessor.Name, baseline.Token,
+                    candidate.ProjectStandings);
                 foreach (var lease in artifactLeases) lease.Retain();
                 var completionJson = JsonSerializer.Serialize(
-                    new TrialCompletion(baseline.Token, assessmentIds), MotifJson.CreateOptions());
+                    new TrialCompletion(baseline.Token, assessmentIds, input.AllWords, grammarCheckWarning),
+                    MotifJson.CreateOptions());
+                TrialScratchRetention.DeleteEarlier(claim.Database, workspaceKey,
+                    proposal.ProposalId.Value, claim.Job.JobId);
+                preserveScratch = true;
                 return new JobOutcome(JobStatus.Completed, JobFailureCategory.None, completionJson);
             }
             finally
@@ -227,13 +262,13 @@ internal sealed class TrialJobHandler
         }
         finally
         {
-            TryDeleteDirectory(scratchRoot);
+            if (!preserveScratch) TryDeleteDirectory(scratchRoot);
         }
     }
 
     // What one attempt on a throwaway copy produces; assembled on the lane, read off it.
     private sealed record CandidateRun(DryRunModel DryRun, AssessmentScope Scope, Selection Selection,
-        string ExportedDirectory);
+        string ExportedDirectory, string GrammarPath, IReadOnlyDictionary<string, string> ProjectStandings);
 
     private async Task<CandidateRun> RunCandidateAsync(ClaimedJob claim, ProjectLane lane,
         Contract.Model.Proposal proposal, IReadOnlyList<FrozenProposalRevision> frozenPrerequisites,
@@ -262,8 +297,12 @@ internal sealed class TrialJobHandler
                 var scope = new AssessmentScope(words, ParseCollect(scopeConfiguration.Collect),
                     limits is { } selectedLimits ? selectedLimits.PerWordLimit : scopeConfiguration.PerWordLimit,
                     limits?.PerWordStepLimit ?? scopeConfiguration.PerWordStepLimit);
+                var projectStandings = ReadProjectStandings(cache, words);
+                var exportedDirectory = await _prepareForAssessment(cache, laneToken).ConfigureAwait(false);
                 candidate = new CandidateRun(dryRun, scope, Selection.Create(scopeConfiguration.Name, words),
-                    await _prepareForAssessment(cache, laneToken).ConfigureAwait(false));
+                    exportedDirectory, Path.GetFullPath(cache?.ProjectId.Path
+                        ?? throw new InvalidOperationException("A Trial requires a scratch project for grammar health.")),
+                    projectStandings);
             }
             finally
             {
@@ -277,7 +316,8 @@ internal sealed class TrialJobHandler
 
     private IReadOnlyList<string> RecordAll(IReadOnlyList<ProducedAssessment> produced, Contract.Model.Proposal proposal,
         DryRunModel dryRun, Selection selection, AssessmentScope scope,
-        AssessmentScopeConfiguration scopeConfiguration, string assessorName, BaselineToken baselineToken)
+        AssessmentScopeConfiguration scopeConfiguration, string assessorName, BaselineToken baselineToken,
+        IReadOnlyDictionary<string, string> projectStandings)
     {
         // The query is what the scope was told to do; the words are only what it resolved to on this run.
         var scopeJson = ScopeCodec.Write(new StoredScope.Trial(
@@ -290,12 +330,42 @@ internal sealed class TrialJobHandler
         foreach (var item in produced)
         {
             var assessmentId = CanonicalId.Mint("assessment/").Value;
-            records.Add(AssessmentMaterial.ToRecord(item, assessmentId, proposal.ProposalId,
-                dryRun.IntentDigest, assessorName, scopeJson, scopeDigest, "none", "1", baselineTokenJson, selection));
+            var record = AssessmentMaterial.ToRecord(item, assessmentId, proposal.ProposalId,
+                dryRun.IntentDigest, assessorName, scopeJson, scopeDigest, "none", "1", baselineTokenJson, selection);
+            records.Add(record with
+            {
+                Words = record.Words.Select(word => projectStandings.TryGetValue(
+                    word.Word.Normalize(System.Text.NormalizationForm.FormD), out var standing)
+                    ? word with { ProjectStanding = standing }
+                    : word).ToArray(),
+            });
             ids.Add(assessmentId);
         }
         _assessments.RecordBatch(records);
         return ids;
+    }
+
+    private static IReadOnlyDictionary<string, string> ReadProjectStandings(LcmCache? cache,
+        IReadOnlyList<string> words)
+    {
+        if (cache is null) throw new InvalidOperationException("A Trial requires its scratch project to be open.");
+        var approved = ApprovedMorphologyReader.Read(cache);
+        var candidates = ApprovedMorphologyReader.ReadCandidates(cache);
+        var rejected = ApprovedMorphologyReader.ReadDisapproved(cache);
+        var incorrect = ApprovedMorphologyReader.ReadIncorrectSpellings(cache)
+            .Select(word => word.Normalize(System.Text.NormalizationForm.FormD)).ToHashSet(StringComparer.Ordinal);
+        return words.Select(word => word.Normalize(System.Text.NormalizationForm.FormD))
+            .Distinct(StringComparer.Ordinal).ToDictionary(word => word,
+            word => incorrect.Contains(word)
+                ? ProjectStanding.IncorrectSpelling
+                : approved.GetValueOrDefault(word)?.Count > 0
+                    ? ProjectStanding.Approved
+                    : candidates.GetValueOrDefault(word)?.Count > 0
+                        ? ProjectStanding.Candidate
+                        : rejected.GetValueOrDefault(word)?.Count > 0
+                            ? ProjectStanding.Rejected
+                            : ProjectStanding.NotPresent,
+            StringComparer.Ordinal);
     }
 
     private static AssessmentScopeConfiguration ResolveScope(ProjectConfiguration configuration, string? requestedName)
@@ -330,9 +400,10 @@ internal sealed class TrialJobHandler
         return kinds;
     }
 
-    private static string AllocateScratchRoot()
+    private static string AllocateScratchRoot(string jobId)
     {
-        var path = Path.Combine(Path.GetTempPath(), "SIL.Motif.Trial", Guid.NewGuid().ToString("N"));
+        var path = TrialScratchPath.ForJob(jobId);
+        TryDeleteDirectory(path);
         Directory.CreateDirectory(path);
         return path;
     }
@@ -347,5 +418,7 @@ internal sealed class TrialJobHandler
 
     private sealed record TrialCompletion(
         [property: JsonPropertyName("baselineToken")] BaselineToken BaselineToken,
-        [property: JsonPropertyName("assessmentIds")] IReadOnlyList<string> AssessmentIds);
+        [property: JsonPropertyName("assessmentIds")] IReadOnlyList<string> AssessmentIds,
+        [property: JsonPropertyName("allWords")] bool AllWords,
+        [property: JsonPropertyName("grammarCheckWarning")] string? GrammarCheckWarning = null);
 }

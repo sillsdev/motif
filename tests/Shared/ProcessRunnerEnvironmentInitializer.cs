@@ -4,8 +4,8 @@ using SIL.Motif.Worker;
 namespace SIL.Motif.Tests.TestFixtures;
 
 /// <summary>
-/// Gives this test process, and every CLI and runner process it starts, a runner owner lock and a worker root
-/// of its own.
+/// Gives this test process, and every CLI and runner process it starts, a runner owner lock, a worker root and
+/// a Trial scratch root of its own.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -34,5 +34,7 @@ internal static class ProcessRunnerEnvironmentInitializer
     {
         Environment.SetEnvironmentVariable(RunnerOptions.NamespaceVariable, Namespace);
         Environment.SetEnvironmentVariable(RunnerOptions.RootVariable, Root);
+        Environment.SetEnvironmentVariable(SIL.Motif.Worker.Jobs.TrialScratchPath.RootVariable,
+            Path.Combine(Root, "TrialScratch"));
     }
 }

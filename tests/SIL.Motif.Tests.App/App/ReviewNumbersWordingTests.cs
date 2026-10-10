@@ -60,7 +60,7 @@ public sealed class ReviewNumbersWordingTests
         fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
             [new PendingChange("change", "wordform", "first", "incorrect-spelling", null, "first", ["change"])],
             [new ChangeFit("change", true, [])]));
-        fake.MeasurePendingCompletesWith(new MeasurePendingResult("job/one", "revision/one", numbers));
+        fake.MeasurePendingCompletesWith(SIL.Motif.Tests.Support.TestFixtures.PendingMeasureResponseFactory.Create("job/one", "revision/one", numbers));
         fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(null, null, false));
         var selection = new SelectionViewModel(fake);
         var context = new WorkspaceContext(selection, new AssessViewModel(fake, selection),

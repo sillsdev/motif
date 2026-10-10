@@ -42,6 +42,9 @@ public sealed partial record WindowRefusal
     /// <summary>The code of a diagnostic that could not be saved or copied.</summary>
     public const string DiagnosticNotWrittenCode = "window.diagnostic-not-written";
 
+    /// <summary>The code of an action that needs an open project when none is open.</summary>
+    public const string NoProjectCode = "window.no-project";
+
     private const string WindowCheckCode = "window.check";
 
     private const string ParserMissing =
@@ -214,6 +217,7 @@ public sealed partial record WindowRefusal
 
         [C.TrialChangesChanged] = "The changes were updated while they were being checked. Check them again.",
         [C.TrialMeasurementIncomplete] = "The check did not finish. Try it again.",
+        [NoProjectCode] = "Open a project first.",
         [C.TrialNothingPending] = "There are no changes to check.",
 
         [C.WordTraceCancelled] = "Trying the word was cancelled.",

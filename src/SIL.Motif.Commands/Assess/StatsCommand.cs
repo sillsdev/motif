@@ -8,12 +8,14 @@ using System.Text.Json;
 using System.Threading;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
+using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker.Store;
+using SIL.Motif.Commands.Queries;
 
 namespace SIL.Motif.Commands.Assess;
 
@@ -77,6 +79,21 @@ public static class StatsCommand
             var workspaceKey = ProjectWorkspaceKey.Compute(project);
             var assessments = new AssessmentRepository(database);
             var kind = AssessmentKind.ObjectTiming.ToStoredKind();
+            EvidenceSet? trialSet = null;
+            HashSet<string>? trialAssessmentIds = null;
+            if (request.ProposalId is { } proposalId)
+            {
+                var trial = Trials.LatestFor(database, project, proposalId);
+                if (trial is null)
+                    return CommandOutcome<StatsCommandResponse>.Refused(new Refusal("trial.none",
+                        FailureReason.NotFound, "No Trial is recorded for this Proposal."));
+                var selected = EvidenceSets.ForTrial(database, project, trial);
+                if (!selected.Succeeded) return CommandOutcome<StatsCommandResponse>.Refused(selected.Refusal!);
+                trialSet = selected.Value;
+                trialAssessmentIds = new HashSet<string>(new[] { trialSet!.RootAssessmentId }
+                    .Concat(trialSet.ReplacementAssessmentIds).Concat(trialSet.MeasurementIds.Values)
+                    .Where(id => id is not null).Select(id => id!), StringComparer.Ordinal);
+            }
             AssessmentRecord? assessment;
             if (request.AssessmentId is not null)
             {
@@ -92,7 +109,18 @@ public static class StatsCommand
                     return CommandOutcome<StatsCommandResponse>.Refused(new Refusal(
                         "stats.wrong-kind", FailureReason.InvalidArgument,
                         "The named Assessment did not collect per-object statistics."));
+                if (trialAssessmentIds is not null && !trialAssessmentIds.Contains(request.AssessmentId))
+                    return CommandOutcome<StatsCommandResponse>.Refused(new Refusal(
+                        "stats.wrong-assessment", FailureReason.InvalidArgument,
+                        "The named Assessment is not part of this Proposal's Trial."));
             }
+            else if (trialSet is not null &&
+                trialSet.MeasurementIds.TryGetValue(AssessmentKinds.ObjectTiming, out var trialTimingId))
+            {
+                try { assessment = assessments.Get(trialTimingId); }
+                catch (KeyNotFoundException) { assessment = null; }
+            }
+            else if (trialSet is not null) assessment = null;
             else
             {
                 var candidates = assessments.ListBaselineAssessments(kind);

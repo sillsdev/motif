@@ -1,6 +1,6 @@
 # Read grammar warnings
 
-`warnings` reads grammar-check findings and allomorph refusals already recorded by parsing for a project. It can filter by diagnostic code or show only findings at warning level.
+`warnings` reads grammar-check findings and allomorph refusals already recorded by parsing for a project. It can filter by diagnostic code or show only findings at warning level. Add `--proposal <id>` to read the check stored with that Proposal's latest Trial.
 
 PanGloss reports an unreadable phonological environment as a warning. Roots ignore that restriction but keep valid ones; ordinary affixes add an unrestricted pass beside valid passes; an infix with no valid position is skipped.
 

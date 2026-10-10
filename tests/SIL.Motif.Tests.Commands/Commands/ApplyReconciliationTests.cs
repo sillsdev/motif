@@ -33,7 +33,7 @@ public sealed class ApplyReconciliationTests(PristineProjectFixture pristine)
         {
             Environment.SetEnvironmentVariable("MOTIF_TEST_FAIL_RECEIPT_WRITE_FOR", projectPath);
             var outcome = ProposalCommands.Apply(new ApplyRequest(
-                projectPath, "1.0", proposalId, "test-user", Force: true));
+                projectPath, "1.0", proposalId, Force: true));
 
             Assert.False(outcome.Succeeded);
             Assert.Equal("apply.reconciliation-needed", outcome.Refusal!.Code);

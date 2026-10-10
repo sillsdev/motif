@@ -1332,7 +1332,7 @@ public static partial class ProposalCommands
     /// </remarks>
     public static CommandOutcome<ApplyProjection> Apply(ApplyRequest request) =>
         ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
-            BuildApplyProjection(database, project, request.ProposalId, request.User, request.Force));
+            BuildApplyProjection(database, project, request.ProposalId, request.Force));
 
     /// <summary>The latest <c>Correctness</c> Assessment recorded against this exact revision, if any.</summary>
     private static AssessmentRecord? FindCandidateAssessment(
@@ -1460,7 +1460,7 @@ public static partial class ProposalCommands
             .Distinct(StringComparer.Ordinal).ToArray();
 
     private static CommandOutcome<ApplyProjection> BuildApplyProjection(
-        MotifDatabase database, ProjectLocator project, string proposalId, string user, bool force = false)
+        MotifDatabase database, ProjectLocator project, string proposalId, bool force = false)
     {
         LcmCache? cache = null;
         try
@@ -1555,7 +1555,7 @@ public static partial class ProposalCommands
                     }
                 }
                 var description = manifest.Label ?? "";
-                var receipt = ProposalApplier.Apply(cache, envelope, manifest.Anchor, user, description);
+                var receipt = ProposalApplier.Apply(cache, envelope, manifest.Anchor, string.Empty, description);
 
                 // The core never saves; the host does, only after the unit of work has closed.
                 if (!receipt.AlreadyApplied)

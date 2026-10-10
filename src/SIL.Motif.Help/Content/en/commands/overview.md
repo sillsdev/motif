@@ -1,6 +1,6 @@
 # Read the project Overview
 
-`overview` presents the latest evidence Motif has already stored for a project: counts, Text Coverage, agreement with manual analyses, timing, and warnings.
+`overview` presents the latest evidence Motif has already stored for a project: counts, Text Coverage, agreement with manual analyses, timing, and warnings. Add `--proposal <id>` to read the latest Trial recorded for that Proposal.
 
 ## When to use it
 
@@ -10,6 +10,7 @@ Use it for a quick read of where the project stands. The Overview is a projectio
 
 ```powershell
 motif overview --project "C:\FieldWorks\Projects\Koro\Koro.fwdata" --json
+motif overview --project "C:\FieldWorks\Projects\Koro\Koro.fwdata" --proposal <proposalId> --json
 ```
 
 ## What it prints

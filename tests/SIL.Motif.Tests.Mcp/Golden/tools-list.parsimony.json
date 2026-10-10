@@ -1,7 +1,7 @@
 [
   {
     "name": "motif_overview",
-    "description": "Read the project Overview. Displays the latest saved counts, Text Coverage, manual-analysis agreement, timing, and warnings. It reads stored evidence and does not start a new run.\nCommand: overview. Agent class: Read.\n",
+    "description": "Read the project Overview. Displays the latest saved counts, Text Coverage, manual-analysis agreement, timing, and warnings. It reads stored evidence and does not start a new run.\nCommand: overview. Agent class: Read.\nProposalId: The Proposal whose latest Trial supplies the evidence, or null for the project.",
     "inputSchema": {
       "type": "object",
       "properties": {

@@ -26,6 +26,23 @@ public partial interface ICommandClient
     Task<CommandOutcome<CurrentEvidenceSnapshot>> ReadCurrentEvidenceAsync(
         string projectPath, CancellationToken cancellationToken);
 
+    /// <summary>Reads one Proposal's latest Trial and its named stored results.</summary>
+    Task<CommandOutcome<TrialRecord?>> ReadTrialAsync(
+        ReadTrialRequest request, CancellationToken cancellationToken);
+
+    /// <summary>Queues a new Trial for a Proposal and starts the worker that will run it.</summary>
+    Task<CommandOutcome<JobEnqueuedResponse>> EnqueueTrialAsync(
+        SIL.Motif.Commands.Requests.EnqueueTrialRequest request, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Follows one queued job until it ends, reporting each status it sees. An infinite
+    /// <see cref="SIL.Motif.Commands.Requests.WaitForJobRequest.Timeout"/> waits without a deadline; cancelling
+    /// cancels the job.
+    /// </summary>
+    Task<CommandOutcome<SIL.Motif.Contract.Jobs.JobStatusResponse>> WaitForJobAsync(
+        SIL.Motif.Commands.Requests.WaitForJobRequest request,
+        IProgress<SIL.Motif.Contract.Jobs.JobStatusResponse>? progress, CancellationToken cancellationToken);
+
     /// <summary>Reads what Motif has done with a project: Baselines captured, Assessments run, Handoffs written.</summary>
     Task<CommandOutcome<ProjectHistoryResponse>> GetProjectHistoryAsync(
         ProjectHistoryRequest request, CancellationToken cancellationToken);

@@ -529,11 +529,11 @@ public sealed partial class OverviewPageModel : PageModel
             await RefreshOverviewAsync(path, cancellationToken).ConfigureAwait(true);
     }
 
-    protected override async Task OnEvidencePublishedAsync(ProjectEvidence evidence, CancellationToken cancellationToken)
+    protected override async Task OnEvidencePublishedAsync(EvidenceLens lens, CancellationToken cancellationToken)
     {
         OnPropertyChanged(nameof(LastParseRefusal));
         OnPropertyChanged(nameof(HasLastParseRefusal));
-        if (evidence.Assessment is null) return;
+        if (lens.Today.Assessment is null) return;
         await History.LoadAsync(cancellationToken).ConfigureAwait(true);
         if (Context.ProjectPath is { } path) await RefreshOverviewAsync(path, cancellationToken).ConfigureAwait(true);
     }

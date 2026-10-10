@@ -2246,7 +2246,9 @@ public sealed class SelectionReaderTests(PristineProjectFixture pristine) : IDis
         Assert.True(original.Succeeded, original.Refusal?.Message);
         using var originalReader = original.Value!;
         var named = originalReader.Context.ExpectedWriteContext();
-        var shown = new SelectionAssessmentEvidence(named.Baseline, root.AssessmentId, [], []);
+        var shown = new EvidenceSet(named.Baseline, root.AssessmentId, [],
+            new Dictionary<string, string>(StringComparer.Ordinal), null, root.Selection.Words,
+            new EvidenceOrigin(EvidenceOriginKind.Project, null, null, null));
         var opened = await SelectionReader.OpenAsync(database, new SelectionReadRequest(key, [other.TextId], [])
         {
             ProjectPath = projectPath,

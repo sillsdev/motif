@@ -2,6 +2,7 @@ using System.Text.Json;
 using SIL.Motif.Commands.Store;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Contract.Projects;
@@ -12,6 +13,7 @@ using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Projection;
 using SIL.Motif.Worker.Baselines;
+using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker.Store;
 
@@ -42,9 +44,25 @@ public static class InspectQuery
             var current = CurrentEvidenceQuery.ReadCurrentEvidence(database, project, includeResolvedReadings: true);
             if (!current.Succeeded) return CommandOutcome<InspectResponse>.Refused(current.Refusal!);
             var snapshot = current.Value!;
+            if (request.ProposalId is { } proposalId)
+            {
+                var trial = Trials.LatestFor(database, project, proposalId);
+                if (trial is null)
+                    return CommandOutcome<InspectResponse>.Refused(new Refusal("trial.none", FailureReason.NotFound,
+                        "No Trial is recorded for this Proposal."));
+                var selected = EvidenceSets.ForTrial(database, project, trial);
+                if (!selected.Succeeded) return CommandOutcome<InspectResponse>.Refused(selected.Refusal!);
+                var scratchRoot = TrialScratchPath.ForJob(trial.JobId);
+                var scratchProject = TrialScratchPath.ProjectFile(scratchRoot);
+                if (scratchProject is null)
+                    return CommandOutcome<InspectResponse>.Refused(new Refusal("trial.scratch-gone",
+                        FailureReason.NotFound, "The Proposal's copy is gone. Try it again."));
+                snapshot = ForTrial(database, project, snapshot, selected.Value!, scratchRoot, scratchProject);
+            }
 
             var (resolution, facts) = snapshot.Baseline is { } baseline
-                ? FactsOf(subject, baseline, snapshot.Navigation!)
+                ? FactsOf(subject, baseline, snapshot.Navigation ??
+                    SavedProjectNavigation.Read(baseline.FwDataPath, baseline.Token.ProjectIdentity))
                 : (InspectorResolution.NoBaseline, null);
             var timingKey = subject.Kind switch
             {
@@ -77,6 +95,53 @@ public static class InspectQuery
                 RanIn = RanInSection(subject, timingKey, assessment.Words, timings),
             });
         });
+    }
+
+    private static CurrentEvidenceSnapshot ForTrial(MotifDatabase database, ProjectLocator project,
+        CurrentEvidenceSnapshot current, EvidenceSet set, string scratchRoot, string scratchProject)
+    {
+        var assessments = new AssessmentRepository(database);
+        AssessmentRecord? Read(string id)
+        {
+            try { return assessments.Get(id); }
+            catch (KeyNotFoundException) { return null; }
+        }
+        var root = set.RootAssessmentId is null ? null : Read(set.RootAssessmentId);
+        if (root is null) return current with
+        {
+            Baseline = current.Baseline is null ? null : current.Baseline with
+            {
+                Token = set.Baseline,
+                RootDirectory = scratchRoot,
+                FwDataPath = scratchProject,
+            },
+            Freshness = EvidenceFreshness.Stale,
+            Set = set,
+            Navigation = SavedProjectNavigation.Read(scratchProject, set.Baseline.ProjectIdentity),
+        };
+        var replacements = set.ReplacementAssessmentIds.Select(Read).Where(record => record is not null)
+            .Cast<AssessmentRecord>().ToArray();
+        var selected = AssessmentEvidenceSet.Create(root, replacements);
+        var source = current.Baseline;
+        var baseline = source is null
+            ? new BaselineRecord(ProjectWorkspaceKey.Compute(project), set.Baseline, scratchRoot, scratchProject,
+                DateTimeOffset.MinValue, DateTimeOffset.MinValue)
+            : source with { Token = set.Baseline, RootDirectory = scratchRoot, FwDataPath = scratchProject };
+        return current with
+        {
+            Baseline = baseline,
+            Freshness = current.Baseline?.Token == set.Baseline && current.Freshness == EvidenceFreshness.Current
+                ? EvidenceFreshness.Current : EvidenceFreshness.Stale,
+            Selection = new ResolvedSelectionSnapshot(root.Selection,
+                new Dictionary<string, int>(StringComparer.Ordinal), 0, 0),
+            MatchingAssessment = root,
+            RerunAssessments = replacements,
+            MatchingCorrectnessAssessmentId = set.MeasurementIds.GetValueOrDefault(AssessmentKinds.Correctness),
+            MatchingObjectTimingAssessmentId = set.MeasurementIds.GetValueOrDefault(AssessmentKinds.ObjectTiming),
+            EvidenceSet = selected,
+            Set = set,
+            Navigation = SavedProjectNavigation.Read(scratchProject, set.Baseline.ProjectIdentity),
+        };
     }
 
     /// <summary>
@@ -170,7 +235,12 @@ public static class InspectQuery
             return InspectorSection<IReadOnlyList<GrammarWarning>>.Not(InspectorSectionStatus.Absent,
                 "No Baseline yet, so no grammar check.");
         var token = JsonSerializer.Serialize(baseline.Token, MotifJson.CreateOptions());
-        var check = new GrammarCheckRepository(database).GetLatest(token);
+        var check = snapshot.Set is
+            { Origin: { Kind: EvidenceOriginKind.Trial, ProposalId: { } proposalId, IntentDigest: { } intentDigest } }
+            ? new GrammarCheckRepository(database).GetLatest(token, proposalId, intentDigest)
+            : snapshot.Set?.Origin.Kind == EvidenceOriginKind.Trial
+                ? null
+                : new GrammarCheckRepository(database).GetLatest(token);
         if (check is not null)
             check = snapshot.Navigation!.Verify(StoredParseWarnings.Merge(check, snapshot));
         return check is null

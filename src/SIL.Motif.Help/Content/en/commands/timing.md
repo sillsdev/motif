@@ -1,6 +1,6 @@
 # Inspect parse timing
 
-`timing` reads timing measurements recorded in an Assessment. It can narrow the result to words and group costs by kind or rule.
+`timing` reads timing measurements recorded in an Assessment. It can narrow the result to words and group costs by kind or rule. Add `--proposal <id>` to use the latest Trial's measurements.
 
 ## When to use it
 
@@ -11,7 +11,7 @@ Without `--assessment`, Timing reads the Default Selection's current results, in
 ## Example
 
 ```powershell
-motif timing --project "C:\FieldWorks\Projects\Koro\Koro.fwdata" --assessment <assessmentId> --by rule --top 10
+motif timing --project "C:\FieldWorks\Projects\Koro\Koro.fwdata" --proposal <proposalId> --by rule --top 10
 ```
 
 ## What it prints

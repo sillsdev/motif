@@ -21,7 +21,7 @@ public sealed class ReviewApplyBlockersTests
     {
         var fake = new FakeCommandClient();
         fake.PendingChangesIs(Snapshot(Fits("kept"), Gone("gone"), Unsure("unsure")));
-        fake.MeasurePendingCompletesWith(new MeasurePendingResult("job/one", "revision/one",
+        fake.MeasurePendingCompletesWith(SIL.Motif.Tests.Support.TestFixtures.PendingMeasureResponseFactory.Create("job/one", "revision/one",
             FakeCommandClient.CompleteNumbers with { WordsLosingApprovedAnalysis = ["kept"] }));
         var context = NewContext(fake);
         var page = new ReviewPageModel(context);
@@ -59,7 +59,7 @@ public sealed class ReviewApplyBlockersTests
     {
         var fake = new FakeCommandClient();
         fake.PendingChangesIs(Snapshot(Fits("kept")));
-        fake.MeasurePendingCompletesWith(new MeasurePendingResult("job/one", "revision/one",
+        fake.MeasurePendingCompletesWith(SIL.Motif.Tests.Support.TestFixtures.PendingMeasureResponseFactory.Create("job/one", "revision/one",
             FakeCommandClient.CompleteNumbers));
         var context = NewContext(fake);
         var page = new ReviewPageModel(context);
@@ -94,7 +94,7 @@ public sealed class ReviewApplyBlockersTests
     {
         var fake = new FakeCommandClient();
         fake.PendingChangesIs(Snapshot(Fits("kept"), Gone("gone"), Unsure("unsure")));
-        fake.MeasurePendingCompletesWith(new MeasurePendingResult("job/one", "revision/one",
+        fake.MeasurePendingCompletesWith(SIL.Motif.Tests.Support.TestFixtures.PendingMeasureResponseFactory.Create("job/one", "revision/one",
             FakeCommandClient.CompleteNumbers));
         var context = NewContext(fake);
         var page = new ReviewPageModel(context);
@@ -132,7 +132,7 @@ public sealed class ReviewApplyBlockersTests
     {
         var fake = new FakeCommandClient();
         fake.PendingChangesIs(Snapshot(Fits("kept")));
-        fake.MeasurePendingCompletesWith(new MeasurePendingResult("job/one", "revision/one",
+        fake.MeasurePendingCompletesWith(SIL.Motif.Tests.Support.TestFixtures.PendingMeasureResponseFactory.Create("job/one", "revision/one",
             FakeCommandClient.CompleteNumbers));
         var context = NewContext(fake);
         var page = new ReviewPageModel(context);
@@ -153,7 +153,7 @@ public sealed class ReviewApplyBlockersTests
         var refresh = new AsyncRelayCommand(() => Task.CompletedTask);
         var fake = new FakeCommandClient();
         fake.PendingChangesIs(Snapshot(Fits("kept")));
-        fake.MeasurePendingCompletesWith(new MeasurePendingResult("job/one", "revision/one",
+        fake.MeasurePendingCompletesWith(SIL.Motif.Tests.Support.TestFixtures.PendingMeasureResponseFactory.Create("job/one", "revision/one",
             FakeCommandClient.CompleteNumbers));
         var context = NewContext(fake, refresh);
         var page = new ReviewPageModel(context);
@@ -178,7 +178,7 @@ public sealed class ReviewApplyBlockersTests
         var refresh = new AsyncRelayCommand(() => Task.CompletedTask);
         var fake = new FakeCommandClient();
         fake.PendingChangesIs(Snapshot(Fits("first"), Fits("second")));
-        fake.MeasurePendingCompletesWith(new MeasurePendingResult("job/one", "revision/one",
+        fake.MeasurePendingCompletesWith(SIL.Motif.Tests.Support.TestFixtures.PendingMeasureResponseFactory.Create("job/one", "revision/one",
             FakeCommandClient.CompleteNumbers));
         var context = NewContext(fake, refresh);
         var page = new ReviewPageModel(context);

@@ -33,10 +33,13 @@ public sealed class CommandOutcomeTests
     }
 
     [Fact]
-    public void ASuccessOutcomeCannotCarryANullValue()
+    public void NullableSuccessCanCarryANullValue()
     {
-        // A null "success" would read as a refusal, since the carrier discriminates on `value is null`.
-        Assert.Throws<System.ArgumentException>(() => CommandOutcome<string>.Success(null!));
+        var outcome = CommandOutcome<string?>.Success(null);
+
+        Assert.True(outcome.Succeeded);
+        Assert.Null(outcome.Value);
+        Assert.Null(outcome.Refusal);
     }
 
     [Fact]

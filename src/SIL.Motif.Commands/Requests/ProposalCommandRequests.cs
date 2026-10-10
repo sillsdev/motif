@@ -300,10 +300,9 @@ public sealed record ShowProposalRequest(string FwDataPath, string ProductVersio
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
 /// <param name="ProposalId">The exact canonical Proposal identity.</param>
-/// <param name="User">The explicitly authored user value.</param>
 /// <param name="Force">Whether to override the requested command constraint.</param>
 public sealed record ApplyRequest(
-    string FwDataPath, string ProductVersion, string ProposalId, string User, bool Force = false);
+    string FwDataPath, string ProductVersion, string ProposalId, bool Force = false);
 
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>

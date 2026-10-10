@@ -107,25 +107,12 @@ public static class GrammarCheckQuery
             string locale;
             try
             {
-                var report = ReadReport(output);
-                locale = report.Locale!;
-                findings = (report.Diagnostics ?? throw new JsonException(
-                        "The grammar-health report is incomplete."))
-                    .Select(diagnostic => ToGrammarWarning(diagnostic ?? throw new JsonException(
-                        "A diagnostic is incomplete."), locale))
-                    .ToArray();
-                summary = (report.Summary ?? throw new JsonException(
-                        "The grammar-health report is incomplete."))
-                    .Select(row =>
-                    {
-                        var item = row ?? throw new JsonException("A summary row is incomplete or invalid.");
-                        return new GrammarWarningSummary(
-                            item.Code ?? throw new JsonException("A summary row is incomplete or invalid."),
-                            item.GroupName, item.Level, item.Count);
-                    })
-                    .ToArray();
+                var parsed = GrammarHealthReportReader.ReadResponse(output);
+                findings = parsed.Findings.ToArray();
+                summary = parsed.Summary.ToArray();
+                locale = parsed.Locale!;
             }
-            catch (UnsupportedGrammarHealthSchemaException exception)
+            catch (GrammarHealthReportReader.UnsupportedGrammarHealthSchemaException exception)
             {
                 return CommandOutcome<GrammarCheckResponse>.Refused(new Refusal(
                     "grammarcheck.unsupported-schema", FailureReason.Refused,

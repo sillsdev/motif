@@ -229,9 +229,9 @@ public sealed class TryWordPageModel : PageModel
         RecentWords.Clear();
     }
 
-    protected override Task OnEvidencePublishedAsync(ProjectEvidence evidence, CancellationToken cancellationToken)
+    protected override Task OnEvidencePublishedAsync(EvidenceLens lens, CancellationToken cancellationToken)
     {
-        SetStoredAssessmentId(evidence.ParseTimeAssessmentId, evidence.TimingOverrideAssessmentIds);
+        SetStoredAssessmentId(lens.Today.ParseTimeAssessmentId, lens.Today.TimingOverrideAssessmentIds);
         return Task.WhenAll(RefreshExpectedAsync(Trace.WordToTry, cancellationToken), RefreshResultContextAsync());
     }
 

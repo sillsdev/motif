@@ -64,7 +64,7 @@ public sealed class FieldWorksAnalysisDriftRealClientTests(PristineProjectFixtur
 
         var beforeApply = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(project.FwDataPath)));
         var applied = await client.ApplyPendingAsync(new ApplyPendingRequest(
-            project.FwDataPath, changed.Value.DraftId!, changed.Value.Revision, "test-user"),
+            project.FwDataPath, changed.Value.DraftId!, changed.Value.Revision),
             CancellationToken.None);
 
         Assert.False(applied.Succeeded);

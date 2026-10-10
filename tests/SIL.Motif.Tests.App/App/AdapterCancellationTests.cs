@@ -192,7 +192,7 @@ public sealed class AdapterCancellationTests(PristineProjectFixture pristine)
             new HandoffRequest(path, outputDirectory, words, Assess: true),
             new Progress<AssessmentProgress>(), token)));
         yield return new("ApplyPending", Observe(token => client.ApplyPendingAsync(
-            new ApplyPendingRequest(path, "draft/absent", revision, "test-user"), token)));
+            new ApplyPendingRequest(path, "draft/absent", revision), token)));
         yield return new("LoadPendingChanges", Observe(token => client.LoadPendingChangesAsync(
             new PendingChangesRequest(path, ProductVersion), token)));
         yield return new("PutPendingChange", Observe(token => client.PutPendingChangeAsync(

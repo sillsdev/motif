@@ -12,6 +12,7 @@ using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Scheduling;
 using SIL.Motif.Worker.Store;
 using SIL.Motif.Worker.Parsimony;
+using SIL.Motif.Worker.Projects;
 
 namespace SIL.Motif.Worker.Jobs;
 
@@ -78,7 +79,7 @@ public static class ProjectJobHandlers
                     .RunAsync(job, token),
         };
 
-        if (TryBuildTrialHandler(database, baselines, proposals, lanes, options, invoker) is { } trial)
+        if (TryBuildTrialHandler(database, baselines, proposals, lanes, project, options, invoker) is { } trial)
             handlers[TrialJobHandler.TrialKind] = (job, token) => trial.RunAsync(job, project, token);
 
         return new JobRunnerLoop(new JobClaims(database), workspaceKey, ownerId: ownerId,
@@ -87,7 +88,8 @@ public static class ProjectJobHandlers
 
     /// <summary>Builds a Trial handler, or null when the parser or root is not usable.</summary>
     private static TrialJobHandler? TryBuildTrialHandler(MotifDatabase database, BaselineRepository baselines,
-        ProposalRepository proposals, ProjectLaneRegistry lanes, RunnerOptions options, IPanGlossInvoker invoker)
+        ProposalRepository proposals, ProjectLaneRegistry lanes, ProjectLocator project, RunnerOptions options,
+        IPanGlossInvoker invoker)
     {
         // No executable, no Trial handler: a Trial job would otherwise fail on every attempt.
         if (options.ParserPath is null) return null;
@@ -128,6 +130,18 @@ public static class ProjectJobHandlers
                 loader.Save(cache);
                 var directory = Path.GetDirectoryName(Path.GetFullPath(cache.ProjectId.Path))!;
                 return Task.FromResult(directory);
-            }, options.Root);
+            }, options.Root, async (grammarPath, projectName, cancellationToken) =>
+            {
+                var outcome = await invoker.RunAsync(new PanGlossRequest.GrammarHealth(grammarPath, projectName),
+                    "trial-grammar:" + ProjectWorkspaceKey.Compute(project), cancellationToken).ConfigureAwait(false);
+                var output = outcome switch
+                {
+                    PanGlossOutcome.Completed completed => completed.Output,
+                    PanGlossOutcome.Refused refused when !string.IsNullOrWhiteSpace(refused.StandardOutput) =>
+                        refused.StandardOutput,
+                    _ => throw new InvalidOperationException(outcome.Message),
+                };
+                return GrammarHealthReportReader.ReadResponse(output);
+            });
     }
 }

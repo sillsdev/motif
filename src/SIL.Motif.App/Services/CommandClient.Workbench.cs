@@ -24,6 +24,27 @@ public sealed partial class CommandClient
         string projectPath, CancellationToken cancellationToken) =>
         Task.Run(() => CurrentEvidenceQuery.ReadCurrentEvidence(projectPath));
 
+    public Task<CommandOutcome<TrialRecord?>> ReadTrialAsync(
+        ReadTrialRequest request, CancellationToken cancellationToken) =>
+        cancellationToken.IsCancellationRequested
+            ? Task.FromResult(WaitCancelled<TrialRecord?>())
+            : Task.Run(() => Trials.Read(request));
+
+    public async Task<CommandOutcome<JobEnqueuedResponse>> EnqueueTrialAsync(
+        SIL.Motif.Commands.Requests.EnqueueTrialRequest request, CancellationToken cancellationToken)
+    {
+        var queued = await OneAtATime(() => JobCommands.EnqueueTrial(request), cancellationToken)
+            .ConfigureAwait(false);
+        if (queued.Succeeded) _options.RunnerLauncher.Start(request.FwDataPath);
+        return queued;
+    }
+
+    public Task<CommandOutcome<SIL.Motif.Contract.Jobs.JobStatusResponse>> WaitForJobAsync(
+        WaitForJobRequest request, IProgress<SIL.Motif.Contract.Jobs.JobStatusResponse>? progress,
+        CancellationToken cancellationToken) =>
+        JobWait.WaitAsync(request.FwDataPath, request.JobId, progress, cancellationToken,
+            request.Timeout == Timeout.InfiniteTimeSpan ? null : request.Timeout, request.ProductVersion);
+
     public Task<CommandOutcome<TimingResponse>> TimingAsync(
         TimingRequest request, CancellationToken cancellationToken) =>
         Task.Run(() => TimingCommand.Timing(request));

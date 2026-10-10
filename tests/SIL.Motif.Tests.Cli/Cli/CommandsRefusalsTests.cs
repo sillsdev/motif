@@ -616,7 +616,7 @@ public sealed class CommandsRefusalsTests : IDisposable
     [Fact]
     public void Apply_ProposalNotFound_Refuses()
     {
-        var result = Apply(CanonicalId.Mint().Value, "tester");
+        var result = Apply(CanonicalId.Mint().Value);
 
         Assert.False(result.Succeeded);
         Assert.Contains("not found in store", result.Refusal!.Message);
@@ -628,7 +628,7 @@ public sealed class CommandsRefusalsTests : IDisposable
         var proposalId = CommitOneOperationProposal("src");
         DeleteCommittedRevision(proposalId);
 
-        var result = Apply(proposalId, "tester");
+        var result = Apply(proposalId);
 
         Assert.False(result.Succeeded);
         Assert.Contains("store inconsistency", result.Refusal!.Message);
@@ -639,7 +639,7 @@ public sealed class CommandsRefusalsTests : IDisposable
     {
         var proposalId = CommitOneOperationProposal("src");
 
-        var result = Apply(proposalId, "tester");
+        var result = Apply(proposalId);
 
         Assert.False(result.Succeeded);
         var refusal = result.Refusal!;
@@ -653,7 +653,7 @@ public sealed class CommandsRefusalsTests : IDisposable
     [Fact]
     public void Apply_InvalidProposalId_IsAnInvalidArgument()
     {
-        var result = Apply("not-a-canonical-id", "tester");
+        var result = Apply("not-a-canonical-id");
 
         Assert.False(result.Succeeded);
         var refusal = result.Refusal!;
@@ -723,8 +723,8 @@ public sealed class CommandsRefusalsTests : IDisposable
     private CommandOutcome<ReopenedResponse> Reopen(string draftName, string proposalId) =>
         ProposalCommands.Reopen(new ReopenRequest(_fwDataPath, ProductVersion, draftName, proposalId));
 
-    private CommandOutcome<ApplyProjection> Apply(string proposalId, string user) =>
-        ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, proposalId, user));
+    private CommandOutcome<ApplyProjection> Apply(string proposalId) =>
+        ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, proposalId));
 
     // --- Helpers ---
 

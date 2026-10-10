@@ -373,14 +373,12 @@ public static partial class ProposalCommands
                 draft.ComposerProvenance.RemoveAll(provenance => ReplacesComposerIntent(provenance, composer,
                     replacementTarget.GetString()));
             if (operations.Count > 0)
-                draft.ComposerProvenance.Add(composer == "RecordParsimonyDisposition"
-                    ? JsonSerializer.SerializeToElement(new
-                    {
-                        composer,
-                        input,
-                        operationIds = added.Select(operation => operation.OperationId.Value).ToArray(),
-                    })
-                    : JsonSerializer.SerializeToElement(new { composer, input }));
+                draft.ComposerProvenance.Add(JsonSerializer.SerializeToElement(new
+                {
+                    composer,
+                    input,
+                    operationIds = added.Select(operation => operation.OperationId.Value).ToArray(),
+                }));
             _ = ProposalJsonParser.Parse(BuildProposalJson(draft));
             repository.SaveDraft(draftName, SerializeDraft(draft));
             return CommandOutcome<ComposedOperationsResponse>.Success(new(draftName, composer,

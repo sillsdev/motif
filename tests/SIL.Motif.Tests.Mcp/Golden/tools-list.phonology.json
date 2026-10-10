@@ -1,7 +1,7 @@
 [
   {
     "name": "motif_overview",
-    "description": "Read the project Overview. Displays the latest saved counts, Text Coverage, manual-analysis agreement, timing, and warnings. It reads stored evidence and does not start a new run.\nCommand: overview. Agent class: Read.\n",
+    "description": "Read the project Overview. Displays the latest saved counts, Text Coverage, manual-analysis agreement, timing, and warnings. It reads stored evidence and does not start a new run.\nCommand: overview. Agent class: Read.\nProposalId: The Proposal whose latest Trial supplies the evidence, or null for the project.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -901,7 +901,7 @@
   },
   {
     "name": "motif_try_word",
-    "description": "Trace a word. Runs PanGloss for one word against the project\u0027s current Baseline and returns its diagnostic. Use it to inspect recorded analyses and trace events.\nCommand: trace. Agent class: Evaluate.\nWord: The exact word form to trace.",
+    "description": "Trace a word. Runs PanGloss for one word against the project\u0027s current Baseline and returns its diagnostic. Use it to inspect recorded analyses and trace events.\nCommand: trace. Agent class: Evaluate.\nWord: The exact word form to trace.\nProposalId: The Proposal whose latest Trial to trace; omitted traces the project evidence.",
     "inputSchema": {
       "type": "object",
       "properties": {

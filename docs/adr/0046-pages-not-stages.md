@@ -97,3 +97,11 @@ never part of the project (ADR 0036) — and is not renamed.
 - `preflight` becomes a CLI command that returns each change's fit.
 - A later redesign that wants a recorded human sign-off would need its own ADR, and would have to say what
   the CLI's version of it is.
+
+## Amendments
+
+The window can open a Proposal on the pages people already use, while Apply still depends on measured evidence.
+The later decision adds that mode and review marks without making a mark permission to apply.
+
+[ADR 0061](0061-proposal-mode-is-a-lens-over-one-set-of-pages.md) amends decision 2 by defining stored Looked at
+marks without a Decisions table, and decision 3 by defining Proposal mode and the CLI names for its Trial evidence.

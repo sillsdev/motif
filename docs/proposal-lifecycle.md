@@ -8,6 +8,8 @@ A Proposal records a group of language-project changes from its first editable D
 
 `reopen` copies a finalized Proposal into a new Draft with the same Proposal ID. Editing that Draft does not rewrite the old revision. Finalizing it writes a new revision and returns the Proposal to `proposed`. Discarding a reopened Draft restores the previously finalized content; discarding a new Draft removes it.
 
+In the window, Undo or a staged parse on a `proposed` Proposal reopens it as a Draft under the same id; finalizing happens at Apply.
+
 ## The five Proposal statuses
 
 | Status | Meaning |

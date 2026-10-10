@@ -76,7 +76,6 @@ public sealed class ProposalWorkflowTests : IDisposable
         const string label = "Stage E end-to-end demo";
         const string shortDescription = "Clarify the first sense gloss";
         const string extendedExplanation = "Replace the ambiguous gloss with the intended analysis.";
-        const string applier = "motif-cli-tests";
 
         // --- new ---
         var newResult = ProposalCommands.New(new NewDraftRequest(_fwDataPath, ProductVersion, draftName, label));
@@ -144,11 +143,11 @@ public sealed class ProposalWorkflowTests : IDisposable
 
         // --- apply: real commit + save ---
         var applyResult = ProposalCommands.Apply(
-            new ApplyRequest(_fwDataPath, ProductVersion, proposalId, applier, Force: true));
+            new ApplyRequest(_fwDataPath, ProductVersion, proposalId, Force: true));
         Assert.True(applyResult.Succeeded);
         Assert.False(applyResult.Value!.AlreadyApplied);
         Assert.Equal(proposalId, applyResult.Value.ProposalId);
-        Assert.Equal(applier, applyResult.Value.AppliedLogEntry.User);
+        Assert.Empty(applyResult.Value.AppliedLogEntry.User);
         var appliedEffect = Assert.Single(applyResult.Value.Effects);
         Assert.Equal(canonicalId.Value, appliedEffect.CanonicalId);
         var appliedChange = Assert.Single(appliedEffect.Changes);
@@ -169,11 +168,11 @@ public sealed class ProposalWorkflowTests : IDisposable
         var logResult = ProposalCommands.Log(new LogRequest(_fwDataPath));
         Assert.True(logResult.Succeeded);
         Assert.Equal(1, logResult.Value!.EntryCount);
-        Assert.Equal(applier, Assert.Single(logResult.Value.Entries).User);
+        Assert.Empty(Assert.Single(logResult.Value.Entries).User);
 
         // --- apply again: idempotent, no duplicate log entry, no re-mutation ---
         var secondApplyResult = ProposalCommands.Apply(
-            new ApplyRequest(_fwDataPath, ProductVersion, proposalId, applier, Force: true));
+            new ApplyRequest(_fwDataPath, ProductVersion, proposalId, Force: true));
         Assert.True(secondApplyResult.Succeeded);
         Assert.True(secondApplyResult.Value!.AlreadyApplied);
 
@@ -209,7 +208,6 @@ public sealed class ProposalWorkflowTests : IDisposable
         var canonicalId = SIL.Motif.Contract.Ids.CanonicalId.FromGuid(senseGuid);
         var newGloss = originalGloss + " (receipt boundary test)";
         const string draftName = "receipt-boundary-demo";
-        const string applier = "motif-cli-tests";
 
         Assert.True(ProposalCommands.New(new NewDraftRequest(_fwDataPath, ProductVersion, draftName, null)).Succeeded);
         Assert.True(ProposalCommands.AddSetGloss(new AddSetGlossRequest(
@@ -229,7 +227,7 @@ public sealed class ProposalWorkflowTests : IDisposable
             RedirectStandardError = true,
         };
         foreach (var argument in new[]
-                 { "apply", proposalId, "--project", _fwDataPath, "--user", applier, "--force", "--json" })
+                 { "apply", proposalId, "--project", _fwDataPath, "--force", "--json" })
             start.ArgumentList.Add(argument);
         var runner = IsolatedRunner.Options(Path.Combine(Path.GetTempPath(),
             "motif-reconciliation-worker-" + Guid.NewGuid().ToString("N")));
@@ -412,7 +410,7 @@ public sealed class ProposalWorkflowTests : IDisposable
         Assert.False(fit.StillFits);
         Assert.Contains("fingerprint", fit.Reason, StringComparison.OrdinalIgnoreCase);
         var apply = ProposalCommands.Apply(new ApplyRequest(
-            _fwDataPath, ProductVersion, created.Value.ProposalId, "tester", Force: true));
+            _fwDataPath, ProductVersion, created.Value.ProposalId, Force: true));
         Assert.Equal("apply.change-no-longer-fits", apply.Refusal?.Code);
     }
 
@@ -477,7 +475,7 @@ public sealed class ProposalWorkflowTests : IDisposable
         var jsonPreflight = JsonNode.Parse(RunPreflightCli(created.Value.ProposalId, true))!;
         Assert.False(jsonPreflight["changes"]![0]!["stillFits"]!.GetValue<bool>());
         var apply = ProposalCommands.Apply(new ApplyRequest(
-            _fwDataPath, ProductVersion, created.Value.ProposalId, "tester", Force: true));
+            _fwDataPath, ProductVersion, created.Value.ProposalId, Force: true));
         Assert.False(apply.Succeeded);
         Assert.Equal("apply.change-no-longer-fits", apply.Refusal!.Code);
     }
@@ -493,7 +491,7 @@ public sealed class ProposalWorkflowTests : IDisposable
             FileAccess.ReadWrite, FileShare.None))
         {
             var refused = ProposalCommands.Apply(new ApplyRequest(
-                _fwDataPath, ProductVersion, proposalId, "tester", Force: true));
+                _fwDataPath, ProductVersion, proposalId, Force: true));
             Assert.False(refused.Succeeded);
             Assert.Equal("apply.project-in-use", refused.Refusal!.Code);
             Assert.Equal(FailureReason.Busy, refused.Refusal.Reason);
@@ -501,7 +499,7 @@ public sealed class ProposalWorkflowTests : IDisposable
         }
 
         var retried = ProposalCommands.Apply(new ApplyRequest(
-            _fwDataPath, ProductVersion, proposalId, "tester", Force: true));
+            _fwDataPath, ProductVersion, proposalId, Force: true));
         Assert.True(retried.Succeeded);
         Assert.Equal("applied", GetRecord(proposalId).Status);
     }
@@ -523,7 +521,7 @@ public sealed class ProposalWorkflowTests : IDisposable
         }
 
         var refused = ProposalCommands.Apply(new ApplyRequest(
-            _fwDataPath, ProductVersion, proposalId, "tester", Force: true));
+            _fwDataPath, ProductVersion, proposalId, Force: true));
 
         Assert.False(refused.Succeeded);
         Assert.Equal("apply.applied-content-mismatch", refused.Refusal!.Code);
@@ -542,7 +540,7 @@ public sealed class ProposalWorkflowTests : IDisposable
             CreateNoWindow = true,
         };
         foreach (var argument in new[] { "apply", proposalId, "--project", _fwDataPath,
-                     "--user", "tester", "--force", "--json" })
+                     "--force", "--json" })
             start.ArgumentList.Add(argument);
         start.Environment["MOTIF_DEVELOPER_COMMANDS"] = "1";
         start.Environment[RunnerOptions.RootVariable] = _workerRoot;

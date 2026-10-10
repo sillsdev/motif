@@ -45,12 +45,8 @@ public sealed record OpenSelectionReaderRequest(
     /// <summary>The exact displayed evidence to retain when opening a different Text scope.</summary>
     public ExpectedContext? DisplayedEvidence { get; init; }
     /// <summary>The Assessment actually shown by the window, before a reader has stamped its context.</summary>
-    public SelectionAssessmentEvidence? ShownAssessment { get; init; }
+    public EvidenceSet? ShownAssessment { get; init; }
 }
-
-/// <summary>Names displayed Assessment components without retaining their word or morphology results.</summary>
-public sealed record SelectionAssessmentEvidence(BaselineToken Baseline, string AssessmentId,
-    IReadOnlyList<string> ReplacementAssessmentIds, IReadOnlyList<string> MeasurementAssessmentIds);
 
 /// <summary>The chosen Texts and added forms a reader session describes.</summary>
 public sealed record SelectionReadRequest(
@@ -62,7 +58,7 @@ public sealed record SelectionReadRequest(
     public CurrentEvidenceSnapshot? EvidenceSnapshot { get; init; }
     /// <summary>The exact displayed evidence to retain when opening a different Text scope.</summary>
     public ExpectedContext? DisplayedEvidence { get; init; }
-    public SelectionAssessmentEvidence? ShownAssessment { get; init; }
+    public EvidenceSet? ShownAssessment { get; init; }
     internal Action<SelectionReaderPausePoint>? PauseAt { get; init; }
 }
 
@@ -880,18 +876,65 @@ public sealed class SelectionReader : IDisposable, IAsyncDisposable
     }
 
     private static SelectionReadEvidence ResolveShownAssessment(MotifDatabase database, SqliteConnection connection,
-        SqliteTransaction transaction, SelectionAssessmentEvidence shown, CurrentBaselineSelectionIndexRead source,
+        SqliteTransaction transaction, EvidenceSet shown, CurrentBaselineSelectionIndexRead source,
         IReadOnlyList<string> addedWords)
     {
-        if (shown.Baseline != source.Baseline.Token) throw new EvidenceContextChangedException();
-        var root = new AssessmentRepository(database).GetHeader(connection, transaction, shown.AssessmentId);
+        if (shown.Baseline != source.Baseline.Token || shown.RootAssessmentId is null)
+            throw new EvidenceContextChangedException();
+        var repository = new AssessmentRepository(database);
+        var root = repository.GetHeader(connection, transaction, shown.RootAssessmentId);
         if (root is null) throw new EvidenceContextChangedException();
+        if (shown.Origin.Kind == EvidenceOriginKind.Trial)
+            return ResolveTrialEvidence(database, connection, transaction, shown, source, addedWords, root);
         var named = new SelectionEvidenceExpectation("explicit", root.Selection.Name, [], [], root.Selection.Sha256,
             root.AssessmentId, Array.AsReadOnly(shown.ReplacementAssessmentIds.ToArray()),
-            Array.AsReadOnly(shown.MeasurementAssessmentIds.ToArray()), []);
+            Array.AsReadOnly(shown.MeasurementIds.OrderBy(pair => pair.Key, StringComparer.Ordinal)
+                .Select(pair => pair.Value).ToArray()), []);
         return ResolveDisplayedEvidence(database, connection, transaction,
             new ExpectedContext(shown.Baseline) { SelectionEvidence = named }, source, addedWords, root,
             stampWarnings: true);
+    }
+
+    private static SelectionReadEvidence ResolveTrialEvidence(MotifDatabase database, SqliteConnection connection,
+        SqliteTransaction transaction, EvidenceSet shown, CurrentBaselineSelectionIndexRead source,
+        IReadOnlyList<string> addedWords, AssessmentRecord root)
+    {
+        if (shown.Origin.ProposalId is not { } proposalId || shown.Origin.IntentDigest is not { } digest ||
+            !ExpectedContextRepository.MatchesTrialRoot(root, proposalId, digest,
+                JsonSerializer.Serialize(shown.Baseline, MotifJson.CreateOptions())))
+            throw new EvidenceContextChangedException();
+        var repository = new AssessmentRepository(database);
+        var replacements = shown.ReplacementAssessmentIds.Select(id =>
+            repository.GetHeader(connection, transaction, id)).ToArray();
+        if (replacements.Any(record => record is null || record.ProposalId?.Value != proposalId ||
+            record.ProposalIntentDigest != digest || record.BaselineToken != root.BaselineToken))
+            throw new EvidenceContextChangedException();
+        var measurementIds = shown.MeasurementIds.OrderBy(pair => pair.Key, StringComparer.Ordinal).ToArray();
+        var measurements = measurementIds.Select(pair => repository.GetHeader(connection, transaction, pair.Value)).ToArray();
+        if (measurements.Any(record => record is null || record.ProposalId?.Value != proposalId ||
+                record.ProposalIntentDigest != digest || record.BaselineToken != root.BaselineToken) ||
+            measurements.Select((record, index) => record!.Kind == measurementIds[index].Key).Any(matches => !matches))
+            throw new EvidenceContextChangedException();
+        var warnings = root.Invocation?.GrammarWarnings is { Length: > 0 } grammarWarnings
+            ? new[] { "grammar:" + ExpectedContextRepository.Digest(grammarWarnings) }
+            : [];
+        var descriptor = new SelectionEvidenceExpectation("trial", null, [], [], root.Selection.Sha256,
+            root.AssessmentId, Array.AsReadOnly(shown.ReplacementAssessmentIds.ToArray()),
+            Array.AsReadOnly(measurementIds.Select(pair => pair.Value).ToArray()), warnings);
+        var forms = source.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens)
+            .SelectMany(token => token.Forms).Select(form => Normalize(form.Text)).Concat(addedWords)
+            .Where(form => form.Length > 0).Distinct(StringComparer.Ordinal).ToArray();
+        var components = repository.ReadSelectedWords(connection, transaction,
+            new[] { root }.Concat(replacements.Cast<AssessmentRecord>()).ToArray(), forms);
+        if (!components.Select(record => record.AssessmentId)
+                .SequenceEqual(new[] { root.AssessmentId }.Concat(shown.ReplacementAssessmentIds), StringComparer.Ordinal))
+            throw new EvidenceContextChangedException();
+        var evidence = AssessmentEvidenceSet.Create(components[0], components.Skip(1).ToArray());
+        return new SelectionReadEvidence("trial", components[0], shown.ReplacementAssessmentIds,
+            evidence.Words, evidence.ObjectTimings,
+            evidence.Components.SelectMany(run => run.Invocation?.GrammarWarningLines ?? [])
+                .Distinct(StringComparer.Ordinal).ToArray(), evidence.Components.Count,
+            evidence.Components.Sum(component => component.Words?.Count ?? 0), descriptor);
     }
 
     private static SelectionReadEvidence ResolveDisplayedEvidence(MotifDatabase database, SqliteConnection connection,

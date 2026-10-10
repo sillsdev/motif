@@ -39,17 +39,17 @@ public static class ProjectStoreCommand
     /// <param name="timeProvider">The clock used when creating the store, or <see langword="null"/> for system time.</param>
     public static CommandOutcome<T> Run<T>(string fwDataPath, string productVersion,
         Func<MotifDatabase, ProjectLocator, CommandOutcome<T>> act,
-        TimeSpan? ownershipPatience = null, TimeProvider? timeProvider = null) where T : class =>
+        TimeSpan? ownershipPatience = null, TimeProvider? timeProvider = null) where T : class? =>
         RunCore(fwDataPath, productVersion, act, ownershipPatience, timeProvider, retainDatabase: false);
 
     /// <summary>A successful result owns the database lease and must release it when its session is disposed.</summary>
     internal static CommandOutcome<T> OpenSession<T>(string fwDataPath, string productVersion,
-        Func<MotifDatabase, ProjectLocator, CommandOutcome<T>> act) where T : class =>
+        Func<MotifDatabase, ProjectLocator, CommandOutcome<T>> act) where T : class? =>
         RunCore(fwDataPath, productVersion, act, null, null, retainDatabase: true);
 
     private static CommandOutcome<T> RunCore<T>(string fwDataPath, string productVersion,
         Func<MotifDatabase, ProjectLocator, CommandOutcome<T>> act,
-        TimeSpan? ownershipPatience, TimeProvider? timeProvider, bool retainDatabase) where T : class
+        TimeSpan? ownershipPatience, TimeProvider? timeProvider, bool retainDatabase) where T : class?
     {
         ArgumentNullException.ThrowIfNull(act);
 
@@ -116,7 +116,7 @@ public static class ProjectStoreCommand
     }
 
     internal static CommandOutcome<T> RunOperation<T>(string fwDataPath,
-        Func<CommandOutcome<T>> operation) where T : class
+        Func<CommandOutcome<T>> operation) where T : class?
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(fwDataPath);
         ArgumentNullException.ThrowIfNull(operation);

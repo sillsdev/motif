@@ -81,7 +81,7 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine,
         Assert.True(measured.Succeeded, "the opinion vocabulary Trial: " + measured.Refusal?.Message);
 
         var applied = await ApplyStepAsync("the opinion vocabulary Apply", new ApplyPendingRequest(path,
-            makeUnknown.Value.DraftId!, makeUnknown.Value.Revision, "test-user"), runner);
+            makeUnknown.Value.DraftId!, makeUnknown.Value.Revision), runner);
 
         Assert.True(applied.Succeeded, "the opinion vocabulary Apply: " + applied.Refusal?.Message);
         using var response = JsonDocument.Parse(ProjectionJson.Serialize(applied.Value!));
@@ -129,6 +129,8 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine,
 
         Assert.True(measured.Succeeded, "the first Trial: " + measured.Refusal?.Message + " " + LastJob(path));
         Assert.True(measured.Value!.EvidenceComplete);
+        Assert.Equal(measured.Value.JobId, measured.Value.Trial.JobId);
+        Assert.Equal(TrialFreshness.Current, measured.Value.Trial.Freshness);
         Assert.Equal(pending.Revision, measured.Value.Revision);
         Assert.Equal(JobStatus.Completed, JobCommands.Show(new ShowJobRequest(path,
             measured.Value.JobId, ProductVersion)).Value!.Status);
@@ -142,7 +144,7 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine,
         }
         Assert.Equal(pending.Revision, LoadPending(path).Revision);
         var applied = await ApplyStepAsync("the first Apply", new ApplyPendingRequest(path, pending.DraftId!,
-            pending.Revision, "test-user"), runner);
+            pending.Revision), runner);
 
         Assert.True(applied.Succeeded, "the first Apply: " + applied.Refusal?.Message);
         Assert.True(applied.Value!.Applied);
@@ -163,10 +165,10 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine,
         var empty = LoadPending(path);
         var second = PutChange(path, empty.Revision, secondWordformId, "review-second");
         var stale = await ApplyStepAsync("the stale Apply", new ApplyPendingRequest(path, second.DraftId!,
-            "stale-revision", "test-user"), runner);
+            "stale-revision"), runner);
         Assert.Equal("apply.changes-changed", stale.Refusal?.Code);
         var withoutTrial = await ApplyStepAsync("the Apply without a Trial", new ApplyPendingRequest(path,
-            second.DraftId!, second.Revision, "test-user"), runner);
+            second.DraftId!, second.Revision), runner);
         ReportUnexpectedApplyRefusal("apply.not-ready", withoutTrial, path, runner);
         Assert.Equal("apply.not-ready", withoutTrial.Refusal?.Code);
         var reopened = LoadPending(path);
@@ -188,7 +190,7 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine,
         Assert.Equal(JobStatus.Completed, JobCommands.Show(new ShowJobRequest(path,
             secondTrial.Value.JobId, ProductVersion)).Value!.Status);
         var secondApply = await ApplyStepAsync("the second Apply", new ApplyPendingRequest(path,
-            reopened.DraftId!, reopened.Revision, "test-user"), runner);
+            reopened.DraftId!, reopened.Revision), runner);
         Assert.True(secondApply.Succeeded, "the second Apply: " + secondApply.Refusal?.Message);
         var secondProposal = new ProposalRepository(database).Get(CanonicalId.Parse(reopened.DraftId!));
         Assert.Equal("Changes to word analyses", secondProposal.Label);
@@ -211,7 +213,7 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine,
         var pending = PutChange(path, LoadPending(path).Revision, wordformId, "unmeasured-word");
 
         var outcome = await ApplyStepAsync("the Apply without a Trial", new ApplyPendingRequest(path,
-            pending.DraftId!, pending.Revision, "test-user"), runner);
+            pending.DraftId!, pending.Revision), runner);
 
         Assert.Equal("apply.not-ready", outcome.Refusal?.Code);
         var reopened = LoadPending(path);
@@ -239,7 +241,7 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine,
 
         CommandOutcome<ApplyPendingResult> outcome;
         using (new FileStream(path + ".lock", FileMode.Create, FileAccess.ReadWrite, FileShare.None))
-            outcome = PendingChangesWorkflow.Apply(new ApplyPendingRequest(path, null, null, "test-user"),
+            outcome = PendingChangesWorkflow.Apply(new ApplyPendingRequest(path, null, null),
                 runnerLauncher: runner);
 
         Assert.Equal(FailureReason.Busy, outcome.Refusal?.Reason);
@@ -264,7 +266,7 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine,
             PendingChanges.DraftName, CanonicalId.Mint().Value, "en", "a gloss without a change id"));
         Assert.True(added.Succeeded, added.Refusal?.Message);
 
-        var outcome = PendingChangesWorkflow.Apply(new ApplyPendingRequest(path, null, null, "test-user"),
+        var outcome = PendingChangesWorkflow.Apply(new ApplyPendingRequest(path, null, null),
             runnerLauncher: runner);
 
         Assert.False(outcome.Succeeded && !outcome.Value!.Applied,
@@ -279,7 +281,7 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine,
         var root = NewManagedRoot(path);
         Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root).Succeeded);
 
-        var outcome = PendingChangesWorkflow.Apply(new ApplyPendingRequest(path, null, null, "test-user"));
+        var outcome = PendingChangesWorkflow.Apply(new ApplyPendingRequest(path, null, null));
 
         Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
         Assert.False(outcome.Value!.Applied);
@@ -414,7 +416,7 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine,
         var pending = PutChange(path, LoadPending(path).Revision, wordformId, "timed-out-dry-run");
 
         var applying = Task.Run(() => PendingChangesWorkflow.Apply(new ApplyPendingRequest(path,
-            pending.DraftId!, pending.Revision, "test-user"), dryRunTimeout: TimeSpan.FromMilliseconds(1),
+            pending.DraftId!, pending.Revision), dryRunTimeout: TimeSpan.FromMilliseconds(1),
                 runnerLauncher: runner));
         var jobId = await WaitForLatestJobAsync(path, JobCommands.DryRunKind);
         var outcome = await applying.WaitAsync(TimeSpan.FromSeconds(10));
@@ -553,7 +555,7 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine,
         var pending = PutChange(path, LoadPending(path).Revision, wordformId, "cancelled-word");
         using var cancellation = new CancellationTokenSource();
         var applying = Task.Run(() => PendingChangesWorkflow.Apply(new ApplyPendingRequest(path,
-            pending.DraftId!, pending.Revision, "test-user"), cancellation.Token, runnerLauncher: runner));
+            pending.DraftId!, pending.Revision), cancellation.Token, runnerLauncher: runner));
         var jobId = await WaitForLatestJobAsync(path, JobCommands.DryRunKind);
         cancellation.Cancel();
         var outcome = await applying.WaitAsync(TimeSpan.FromSeconds(10));

@@ -206,10 +206,10 @@ public static class CliVerbCatalog
             }),
         new CliVerbDescriptor(
             "Commands", "apply", "apply",
-            new[] { "apply <proposalId> --project <fwdata> --user <name> [--force] [--json]" }),
+            new[] { "apply <proposalId> --project <fwdata> [--force] [--json]" }),
         new CliVerbDescriptor(
             "Commands", "apply", "apply --all-pending",
-            new[] { "apply --all-pending --project <fwdata> [--revision <r>] [--user <name>] [--json]" }),
+            new[] { "apply --all-pending --project <fwdata> [--revision <r>] [--json]" }),
         new CliVerbDescriptor("Commands", "log", "log", new[] { "log --project <fwdata> [--json]" }),
 
         new CliVerbDescriptor(
@@ -295,7 +295,7 @@ public static class CliVerbCatalog
 
         new CliVerbDescriptor(
             "Assess", "stats", "stats",
-            new[] { "stats <project> [--assessment <id>] [--json] [-- <pangloss stats options>]" }),
+            new[] { "stats <project> [--assessment <id>] [--proposal <id>] [--json] [-- <pangloss stats options>]" }),
 
         new CliVerbDescriptor(
             "Project", "selection", "selection show",
@@ -335,10 +335,12 @@ public static class CliVerbCatalog
             }),
         new CliVerbDescriptor(
             "Project", "overview", "overview",
-            new[] { "overview --project <fwdata> [--json]" }),
+            new[] { "overview --project <fwdata> [--proposal <id>] [--json]" }),
+        new CliVerbDescriptor("Commands", "proposal trial", "proposal trial",
+            new[] { "proposal trial --project <fwdata> <proposalId> [--json]" }),
         new CliVerbDescriptor(
             "Project", "warnings", "warnings",
-            new[] { "warnings --project <fwdata> [--kind <code>] [--left-out] [--json]" }),
+            new[] { "warnings --project <fwdata> [--proposal <id>] [--kind <code>] [--left-out] [--json]" }),
         new CliVerbDescriptor(
             "Project", "grammar", "grammar check",
             new[] { "grammar check --project <fwdata> [--json]" }),
@@ -346,7 +348,7 @@ public static class CliVerbCatalog
             "Project", "timing", "timing",
             new[]
             {
-                "timing --project <fwdata> [--assessment <id>] [--words <set>] [--word <word,word>] " +
+                "timing --project <fwdata> [--assessment <id>] [--proposal <id>] [--words <set>] [--word <word,word>] " +
                 "[--by kind|rule] [--rule <kind>:<key>] [--structural | --local --scope <scope>] [--top N] [--json]",
             }),
         new CliVerbDescriptor(
@@ -363,7 +365,7 @@ public static class CliVerbCatalog
             "Project", "inspect", "inspect",
             new[]
             {
-                "inspect --project <fwdata> (--allomorph <guid> [--grammatical-info <guid>] | --grammatical-info <guid> | " +
+                "inspect --project <fwdata> [--proposal <id>] (--allomorph <guid> [--grammatical-info <guid>] | --grammatical-info <guid> | " +
                 "--rule <kind>:<key> [--structural] | --slot <guid> | --environment <guid> | --feature <guid> | " +
                 "--warning <code>[:<guid>]) [--json]",
                 "One subject, by identity: FieldWorks' facts from the Baseline, its words and times from the stored Parse all words,",
@@ -372,7 +374,7 @@ public static class CliVerbCatalog
 
         new CliVerbDescriptor(
             "Trace", "trace", "trace",
-            new[] { "trace --project <fwdata> --word <word> [--json]" }),
+            new[] { "trace --project <fwdata> --word <word> [--proposal <id>] [--json]" }),
         new CliVerbDescriptor(
             "Trace", "trace", "trace --load",
             new[] { "trace --load <file> [--json]" }),

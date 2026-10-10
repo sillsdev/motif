@@ -400,7 +400,7 @@ public sealed class PendingChangesTests
                 [CorrectnessFixture.Word("review-word", true)]));
         }
 
-        var applied = ProposalCommands.Apply(new ApplyRequest(_path, "1.0", proposalId, "reviewer"));
+        var applied = ProposalCommands.Apply(new ApplyRequest(_path, "1.0", proposalId));
 
         Assert.True(applied.Succeeded, applied.Refusal?.Message);
         Assert.Empty(PendingChanges.Load(new PendingChangesRequest(_path, "1.0")).Value!.Changes);
@@ -557,7 +557,7 @@ public sealed class PendingChangesTests
                 [CorrectnessFixture.Word("other-word", true)]));
         }
 
-        var applied = ProposalCommands.Apply(new ApplyRequest(_path, "1.0", proposalId, "reviewer"));
+        var applied = ProposalCommands.Apply(new ApplyRequest(_path, "1.0", proposalId));
 
         Assert.Equal("apply.not-ready", applied.Refusal?.Code);
         Assert.Contains("changed-word", applied.Refusal!.Message, StringComparison.Ordinal);

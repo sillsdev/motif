@@ -44,13 +44,18 @@ public sealed record ApplyPendingResult
 }
 
 /// <summary>The outcome of measuring one pending revision.</summary>
-/// <param name="JobId">The Trial job that produced this outcome.</param>
-/// <param name="Revision">The pending revision used for the Trial.</param>
+/// <param name="Trial">The Trial that measured this revision.</param>
 /// <param name="Numbers">What the Trial did to the touched words' approved analyses.</param>
-public sealed record MeasurePendingResult(string JobId, string Revision, ReviewNumbersResponse Numbers)
+public sealed record MeasurePendingResult(TrialRecord Trial, ReviewNumbersResponse Numbers)
 {
     /// <summary>Whether every requested word produced complete correctness evidence.</summary>
     public bool EvidenceComplete => Numbers.EvidenceComplete;
+
+    /// <summary>The pending Draft revision used by this Trial.</summary>
+    public string Revision { get; init; } = string.Empty;
+
+    /// <summary>The job that produced this outcome.</summary>
+    public string JobId => Trial.JobId;
 }
 
 /// <summary>

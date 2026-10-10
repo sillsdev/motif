@@ -259,7 +259,7 @@ public sealed class ReviewPageModelTests
         var fake = new FakeCommandClient();
         fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
             [Change("kept", "first")], [new ChangeFit("kept", true, [])]));
-        fake.MeasurePendingCompletesWith(new MeasurePendingResult("job/one", "revision/one", FakeCommandClient.CompleteNumbers));
+        fake.MeasurePendingCompletesWith(SIL.Motif.Tests.Support.TestFixtures.PendingMeasureResponseFactory.Create("job/one", "revision/one", FakeCommandClient.CompleteNumbers));
         var context = NewContext(fake);
         var page = new ReviewPageModel(context);
         await context.OpenProjectAsync(ProjectPath);
@@ -297,7 +297,7 @@ public sealed class ReviewPageModelTests
         var fake = new FakeCommandClient();
         fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
             [Change("kept", "first")], [new ChangeFit("kept", true, [])]));
-        fake.MeasurePendingCompletesWith(new MeasurePendingResult(
+        fake.MeasurePendingCompletesWith(SIL.Motif.Tests.Support.TestFixtures.PendingMeasureResponseFactory.Create(
             "job/one", "revision/one", FakeCommandClient.CompleteNumbers));
         var context = NewContext(fake);
         var page = new ReviewPageModel(context);
@@ -324,7 +324,7 @@ public sealed class ReviewPageModelTests
         fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
             [Change("kept", "first"), Change("other", "second")],
             [new ChangeFit("kept", true, []), new ChangeFit("other", true, [])]));
-        fake.MeasurePendingCompletesWith(new MeasurePendingResult("job/one", "revision/one",
+        fake.MeasurePendingCompletesWith(SIL.Motif.Tests.Support.TestFixtures.PendingMeasureResponseFactory.Create("job/one", "revision/one",
             FakeCommandClient.CompleteNumbers with { WordsLosingApprovedAnalysis = lost }));
         var context = NewContext(fake);
         var page = new ReviewPageModel(context);
@@ -343,7 +343,7 @@ public sealed class ReviewPageModelTests
         var fake = new FakeCommandClient();
         fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
             [Change("kept", "first")], [new ChangeFit("kept", true, [])]));
-        fake.MeasurePendingCompletesWith(new MeasurePendingResult("job/one", "revision/one",
+        fake.MeasurePendingCompletesWith(SIL.Motif.Tests.Support.TestFixtures.PendingMeasureResponseFactory.Create("job/one", "revision/one",
             FakeCommandClient.CompleteNumbers with { WordsLosingApprovedAnalysis = ["first"] }));
         var context = NewContext(fake);
         var page = new ReviewPageModel(context);
@@ -412,7 +412,7 @@ public sealed class ReviewPageModelTests
         var fake = new FakeCommandClient();
         fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
             [Change("kept", "first")], [new ChangeFit("kept", true, [])]));
-        fake.MeasurePendingCompletesWith(new MeasurePendingResult(
+        fake.MeasurePendingCompletesWith(SIL.Motif.Tests.Support.TestFixtures.PendingMeasureResponseFactory.Create(
             "job/one", "revision/one", FakeCommandClient.CompleteNumbers));
         fake.ApplyPendingRefusal = new Refusal("job.wait-timeout", FailureReason.Busy,
             "The wait expired.");
@@ -433,7 +433,7 @@ public sealed class ReviewPageModelTests
         var fake = new FakeCommandClient();
         fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
             [Change("kept", "first")], [new ChangeFit("kept", true, [])]));
-        fake.MeasurePendingCompletesWith(new MeasurePendingResult("job/one", "revision/one", FakeCommandClient.CompleteNumbers));
+        fake.MeasurePendingCompletesWith(SIL.Motif.Tests.Support.TestFixtures.PendingMeasureResponseFactory.Create("job/one", "revision/one", FakeCommandClient.CompleteNumbers));
         var started = new TaskCompletionSource<CancellationToken>(TaskCreationOptions.RunContinuationsAsynchronously);
         var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         fake.ApplyPendingHandler = async (_, cancellationToken) =>
@@ -481,7 +481,7 @@ public sealed class ReviewPageModelTests
         await context.OpenProjectAsync(ProjectPath);
         await context.Changes.PutAsync(new ChangeIntent("added", ChangeKinds.Approve, "wordform/added", "second"));
         var stagedRevision = context.Changes.Snapshot.Revision;
-        fake.MeasurePendingCompletesWith(new MeasurePendingResult(
+        fake.MeasurePendingCompletesWith(SIL.Motif.Tests.Support.TestFixtures.PendingMeasureResponseFactory.Create(
             "job/one", stagedRevision, FakeCommandClient.CompleteNumbers));
         await page.MeasureCommand.ExecuteAsync(null);
 
@@ -505,7 +505,7 @@ public sealed class ReviewPageModelTests
         var fake = new FakeCommandClient();
         fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
             [Change("kept", "first")], [new ChangeFit("kept", true, [])]));
-        fake.MeasurePendingCompletesWith(new MeasurePendingResult(
+        fake.MeasurePendingCompletesWith(SIL.Motif.Tests.Support.TestFixtures.PendingMeasureResponseFactory.Create(
             "job/one", "revision/one", FakeCommandClient.CompleteNumbers));
         fake.ApplyPendingHandler = (_, _) =>
             Task.FromResult(CommandOutcome<ApplyPendingResult>.Success(ApplyPendingResult.NothingPending));
@@ -528,7 +528,7 @@ public sealed class ReviewPageModelTests
         var fake = new FakeCommandClient();
         fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
             [Change("kept", "first")], [new ChangeFit("kept", true, [])]));
-        fake.MeasurePendingCompletesWith(new MeasurePendingResult(
+        fake.MeasurePendingCompletesWith(SIL.Motif.Tests.Support.TestFixtures.PendingMeasureResponseFactory.Create(
             "job/one", "revision/one", FakeCommandClient.CompleteNumbers));
         fake.ApplyPendingRefusal = new Refusal("apply.regression", FailureReason.Refused,
             "Approved readings matched less often.");
@@ -549,7 +549,7 @@ public sealed class ReviewPageModelTests
         fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
             [Change("kept", "first") with { OriginPage = "Warnings" }],
             [new ChangeFit("kept", true, [])]));
-        fake.MeasurePendingCompletesWith(new MeasurePendingResult(
+        fake.MeasurePendingCompletesWith(SIL.Motif.Tests.Support.TestFixtures.PendingMeasureResponseFactory.Create(
             "job/one", "revision/one", FakeCommandClient.CompleteNumbers));
         var context = NewContext(fake);
         var page = new ReviewPageModel(context);

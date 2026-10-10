@@ -1,6 +1,6 @@
 # Query parse statistics
 
-`stats` forwards a PanGloss statistics query using the grammar and cache recorded for an Assessment. Motif preserves the PanGloss options after `--` instead of interpreting them.
+`stats` forwards a PanGloss statistics query using the grammar and cache recorded for an Assessment. Motif preserves the PanGloss options after `--` instead of interpreting them. Add `--proposal <id>` to use the per-object statistics recorded by that Proposal's latest Trial.
 
 ## When to use it
 

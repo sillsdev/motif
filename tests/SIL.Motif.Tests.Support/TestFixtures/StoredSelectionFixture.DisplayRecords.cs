@@ -118,9 +118,10 @@ public sealed partial class StoredSelectionFixture
     {
         var root = response.Measurements.LastOrDefault(item => item.Kind == AssessmentKinds.ParseTime)?.AssessmentId ??
             response.AssessmentIds.FirstOrDefault() ?? "fixture/assessment";
+        var selection = Selection.Create("Fixture", response.Words.Select(word => word.Word));
         var record = new NewAssessmentRecord(root, null, null, "test", AssessmentKinds.ParseTime, "{}",
-            "sha256:fixture-selection", "whitespace", "1", JsonSerializer.Serialize(response.Baseline.Token, MotifJson.CreateOptions()),
-            Selection.Create("Fixture", response.Words.Select(word => word.Word)),
+            selection.Sha256, "whitespace", "1", JsonSerializer.Serialize(response.Baseline.Token, MotifJson.CreateOptions()),
+            selection,
             "sha256:fixture-outcome", "sha256:fixture-semantic", "sha256:fixture-grammar", "model", "pipeline", 0,
             response.Words.Select(word => new AssessedWord(word.Word, word.Outcome, [], word.ElapsedMs)
             {

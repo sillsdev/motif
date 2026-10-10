@@ -11,6 +11,7 @@ namespace SIL.Motif.Contract.Requests;
 /// <param name="Top">The maximum number of timing rows.</param>
 /// <param name="ExplicitWords">The exact word forms to select, when supplied.</param>
 /// <param name="OverrideAssessmentIds">The retained Assessments to use instead of the default, when supplied.</param>
+/// <param name="ProposalId">The Proposal whose Trial supplies stored evidence, or null for the project.</param>
 public sealed record TimingRequest(
     string ProjectPath,
     string? AssessmentId = null,
@@ -19,4 +20,5 @@ public sealed record TimingRequest(
     TraceTimingKey? Rule = null,
     int Top = 10,
     IReadOnlyList<string>? ExplicitWords = null,
-    IReadOnlyList<string>? OverrideAssessmentIds = null);
+    IReadOnlyList<string>? OverrideAssessmentIds = null,
+    string? ProposalId = null);

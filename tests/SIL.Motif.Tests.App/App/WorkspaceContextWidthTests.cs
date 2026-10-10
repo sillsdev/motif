@@ -5,23 +5,25 @@ using SIL.Motif.App.ViewModels;
 using SIL.Motif.Commands.Assistants;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands.Preferences;
+using SIL.Motif.Contract.Responses;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
 
 /// <summary>
-/// Pins what a <see cref="WorkspaceContext"/> may carry: snapshots, the project's evidence, the clock, the one shared
-/// Assessment run and its Selection, the pending changes, the shell setup dialog, desktop services and shell
+/// Pins what a <see cref="WorkspaceContext"/> may carry: snapshots, the shared evidence lens, the one shared
+/// Assessment run and its Selection, the one Try again run, the pending changes, the shell setup dialog, desktop services and shell
 /// actions; never a model one page owns.
 /// </summary>
 public sealed class WorkspaceContextWidthTests
 {
     [Fact]
-    public void TheContextCarriesSnapshotsTheSharedRunAndShellActionsButNoPageOwnedModel()
+    public void TheContextCarriesSnapshotsTheSharedRunAndEvidenceLensButNoPageOwnedModel()
     {
         Type[] allowed =
         [
             typeof(string), typeof(bool), typeof(WorkspacePage), typeof(ProjectEvidence), typeof(WorkspaceBaseline),
+            typeof(EvidenceLens), typeof(ProposalLens), typeof(TrialStanding), typeof(TrialRunViewModel),
             typeof(TimeProvider), typeof(WorkspaceSelection),
             typeof(GrammarSummary), typeof(OpenInspectorRequest), typeof(ChangesViewModel), typeof(AssessViewModel), typeof(SelectionViewModel),
             typeof(SetupViewModel), typeof(TextStyles),

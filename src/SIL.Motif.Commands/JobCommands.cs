@@ -114,7 +114,8 @@ public static class JobCommands
     /// <summary>
     /// Loads one Proposal — a committed revision or an uncommitted Draft, either resolves — through
     /// <see cref="ProposalRepository.Get"/>, refusing before any row is queued when it is absent, then
-    /// queues a Trial job and returns the job id that names it.
+    /// queues a Trial job and returns the job id that names it. A request with neither words nor all words
+    /// measures <see cref="DerivedTrialWords"/>, so every front end tries a Proposal the same way.
     /// </summary>
     public static CommandOutcome<JobEnqueuedResponse> EnqueueTrial(EnqueueTrialRequest request)
     {
@@ -159,8 +160,7 @@ public static class JobCommands
             {
                 return CommandOutcome<JobEnqueuedResponse>.Refused(ProposalCommands.ProposalLoadRefusal(exception));
             }
-            var words = request.Words ?? (request.AllWords ? null :
-                ProposalCommands.ChangedWords(proposal).ToArray());
+            var words = request.Words ?? (request.AllWords ? null : DerivedTrialWords(proposal));
             var inputJson = JsonSerializer.Serialize(
                 new TrialJobInput(proposalJson, request.Scope, words, request.AllWords, prerequisites, request.Limits,
                     request.BaselineAssessmentIds, request.NegativeWords),
@@ -169,6 +169,19 @@ public static class JobCommands
             return CommandOutcome<JobEnqueuedResponse>.Success(
                 new JobEnqueuedResponse(created.JobId, TrialKind, workspaceKey));
         });
+    }
+
+    /// <summary>
+    /// The words a Trial measures when its caller names none: the Default Selection (<see langword="null"/>) for a
+    /// Proposal with a grammar change, since that can move any word; the touched words for a word-only Proposal,
+    /// or the Default Selection when it names no word.
+    /// </summary>
+    public static IReadOnlyList<string>? DerivedTrialWords(SIL.Motif.Contract.Model.Proposal proposal)
+    {
+        ArgumentNullException.ThrowIfNull(proposal);
+        if (ChangeVocabulary.ChangesGrammar(proposal)) return null;
+        var touched = ProposalCommands.ChangedWords(proposal).ToArray();
+        return touched.Length == 0 ? null : touched;
     }
 
     /// <summary>
@@ -524,6 +537,7 @@ public static class JobCommands
         using var source = File.OpenRead(path);
         return "sha256:" + Convert.ToHexStringLower(SHA256.HashData(source));
     }
+
 
     private static Refusal JobNotFound(string jobId) =>
         new("job.not-found", FailureReason.NotFound,

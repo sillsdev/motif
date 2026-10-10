@@ -6,9 +6,11 @@ using SIL.Motif.Contract;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Parser;
+using SIL.Motif.Host.Store;
 using SIL.Motif.Host.Texts;
 using SIL.Motif.Worker.Store;
 
@@ -21,11 +23,90 @@ public static class OverviewCommand
     public static CommandOutcome<OverviewResponse> Overview(OverviewRequest request) =>
         ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, project) =>
         {
-            var current = CurrentEvidenceQuery.ReadCurrentEvidence(database, project,
-                includeResolvedReadings: false, includeWordContext: false);
-            if (!current.Succeeded)
-                return CommandOutcome<OverviewResponse>.Refused(current.Refusal!);
-            var evidence = current.Value!;
+            if (request.ProposalId is null)
+                return OverviewCurrent(database, project);
+            var trial = Trials.LatestFor(database, project, request.ProposalId);
+            if (trial is null)
+                return CommandOutcome<OverviewResponse>.Refused(new Refusal("trial.none", FailureReason.NotFound,
+                    "No Trial is recorded for this Proposal."));
+            var selected = EvidenceSets.ForTrial(database, project, trial);
+            return selected.Succeeded
+                ? Overview(database, project, selected.Value!)
+                : CommandOutcome<OverviewResponse>.Refused(selected.Refusal!);
+        });
+
+    /// <summary>Reads an Overview from the named Baseline, Assessment and measurements.</summary>
+    public static CommandOutcome<OverviewResponse> Overview(MotifDatabase database, ProjectLocator project,
+        EvidenceSet set)
+    {
+        ArgumentNullException.ThrowIfNull(database);
+        ArgumentNullException.ThrowIfNull(project);
+        ArgumentNullException.ThrowIfNull(set);
+        var current = CurrentEvidenceQuery.ReadCurrentEvidence(database, project,
+            includeResolvedReadings: false, includeWordContext: false);
+        if (!current.Succeeded)
+            return CommandOutcome<OverviewResponse>.Refused(current.Refusal!);
+        var evidence = current.Value!;
+        if (set.Origin.Kind == EvidenceOriginKind.Trial)
+        {
+            var assessments = new AssessmentRepository(database);
+            var root = set.RootAssessmentId is null ? null : TryRead(assessments, set.RootAssessmentId);
+            if (root is null || root.ProposalId?.Value != set.Origin.ProposalId ||
+                root.ProposalIntentDigest != set.Origin.IntentDigest || root.BaselineToken !=
+                System.Text.Json.JsonSerializer.Serialize(set.Baseline, MotifJson.CreateOptions()))
+                return CommandOutcome<OverviewResponse>.Refused(new Refusal("assessment.invalid-evidence",
+                    FailureReason.Refused, "The Trial's Assessment does not match its evidence set."));
+            var replacements = set.ReplacementAssessmentIds.Select(id => TryRead(assessments, id)).ToArray();
+            if (replacements.Any(record => record is null || record.ProposalId != root.ProposalId ||
+                record.ProposalIntentDigest != root.ProposalIntentDigest || record.BaselineToken != root.BaselineToken))
+                return CommandOutcome<OverviewResponse>.Refused(new Refusal("assessment.invalid-evidence",
+                    FailureReason.Refused, "A Trial replacement does not match its evidence set."));
+            var replacementRecords = replacements.Cast<AssessmentRecord>().ToArray();
+            var trialEvidence = AssessmentEvidenceSet.Create(root, replacementRecords);
+            var todayWords = evidence.EffectiveWords.ToDictionary(word => word.Word, StringComparer.Ordinal);
+            var trialWords = trialEvidence.Words.ToDictionary(word => word.Word, StringComparer.Ordinal);
+            var selection = evidence.Selection ?? new ResolvedSelectionSnapshot(root.Selection,
+                trialEvidence.Words.Where(word => word.OccurrenceCount is not null).ToDictionary(
+                    word => word.Word, word => word.OccurrenceCount!.Value, StringComparer.Ordinal), 0, 0);
+            var effectiveWords = selection.Selection.Words
+                .Select(word => trialWords.GetValueOrDefault(word) ?? todayWords.GetValueOrDefault(word))
+                .Where(word => word is not null)
+                .Cast<AssessedWord>()
+                .ToArray();
+            evidence = evidence with
+            {
+                Freshness = evidence.Baseline?.Token == set.Baseline ? evidence.Freshness : EvidenceFreshness.Stale,
+                Selection = selection,
+                MatchingAssessment = root,
+                RerunAssessments = replacementRecords,
+                MatchingCorrectnessAssessmentId = set.MeasurementIds.GetValueOrDefault(AssessmentKinds.Correctness),
+                MatchingObjectTimingAssessmentId = set.MeasurementIds.GetValueOrDefault(AssessmentKinds.ObjectTiming),
+                EvidenceSet = trialEvidence,
+                EffectiveWordsOverride = effectiveWords,
+                Set = set,
+            };
+        }
+        return BuildOverview(database, project, evidence);
+
+        static AssessmentRecord? TryRead(AssessmentRepository repository, string id)
+        {
+            try { return repository.Get(id); }
+            catch (KeyNotFoundException) { return null; }
+        }
+    }
+
+    private static CommandOutcome<OverviewResponse> OverviewCurrent(MotifDatabase database, ProjectLocator project)
+    {
+        var current = CurrentEvidenceQuery.ReadCurrentEvidence(database, project,
+            includeResolvedReadings: false, includeWordContext: false);
+        return current.Succeeded
+            ? BuildOverview(database, project, current.Value!)
+            : CommandOutcome<OverviewResponse>.Refused(current.Refusal!);
+    }
+
+    private static CommandOutcome<OverviewResponse> BuildOverview(MotifDatabase database, ProjectLocator project,
+        CurrentEvidenceSnapshot evidence)
+    {
             var summary = evidence.ProjectSummary;
             var selection = evidence.Selection;
             TextOccurrenceSnapshot? occurrenceSnapshot = selection is null ? null :
@@ -36,14 +117,22 @@ public static class OverviewCommand
             var assessedWords = evidence.EffectiveWords;
             var metrics = OverviewMetrics.Build(words, occurrenceSnapshot, assessedWords);
             var timing = TimingAggregation.SummarizeWords(assessedWords, evidence.EffectiveObjectTimings);
-            var storedCheck = evidence.Baseline is null ? null : new GrammarCheckRepository(database).GetLatest(
-                System.Text.Json.JsonSerializer.Serialize(evidence.Baseline.Token, MotifJson.CreateOptions()));
+            var storedCheck = evidence.Baseline is null ? null : evidence.Set is
+                { GrammarCheckId: not null, Origin: { Kind: EvidenceOriginKind.Trial, ProposalId: { } proposalId,
+                    IntentDigest: { } intentDigest } } trialEvidence
+                ? new GrammarCheckRepository(database).GetLatest(
+                    System.Text.Json.JsonSerializer.Serialize(trialEvidence.Baseline, MotifJson.CreateOptions()),
+                    proposalId, intentDigest)
+                : evidence.Set?.Origin.Kind == EvidenceOriginKind.Trial ? null
+                : new GrammarCheckRepository(database).GetLatest(
+                    System.Text.Json.JsonSerializer.Serialize(evidence.Baseline.Token, MotifJson.CreateOptions()));
             var needsAssociations = assessedWords.Count(word => word.ProjectStanding == ProjectStanding.Approved &&
                 word.Outcome == "no-analysis" && !word.IsIncomplete) >= 2 || storedCheck is { Findings.Count: > 0 };
             var needsEntryComparisons = assessedWords.Any(word => CompareSemantics.PlacementOf(
                 CompareSemantics.Compare(AssessmentWordRows.FromRecorded(word))) is
                 { Standing: ProjectStanding.Approved, Column: CompareColumnKind.NoMatch });
-            var context = needsAssociations || needsEntryComparisons
+            var context = evidence.Set?.Origin.Kind != EvidenceOriginKind.Trial &&
+                (needsAssociations || needsEntryComparisons)
                 ? CurrentEvidenceQuery.ReadWordContext(evidence, project.FullFwDataPath,
                     includeResolvedReadings: needsEntryComparisons)
                 : CommandOutcome<CurrentEvidenceSnapshot>.Success(evidence);
@@ -104,7 +193,7 @@ public static class OverviewCommand
                 BaselineToken = evidence.Baseline?.Token,
                 LookFirst = lookFirst,
             });
-        });
+    }
 }
 
 internal static class OverviewMetrics

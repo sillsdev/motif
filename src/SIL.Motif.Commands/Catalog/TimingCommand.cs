@@ -38,6 +38,22 @@ public static class TimingCommand
             if (!current.Succeeded)
                 return CommandOutcome<TimingResponse>.Refused(current.Refusal!);
             var currentEvidence = current.Value!;
+            EvidenceSet? trialSet = null;
+            IReadOnlyList<string> trialAssessmentIds = [];
+            if (request.ProposalId is { } proposalId)
+            {
+                var trial = Trials.LatestFor(database, project, proposalId);
+                if (trial is null)
+                    return CommandOutcome<TimingResponse>.Refused(new Refusal("trial.none", FailureReason.NotFound,
+                        "No Trial is recorded for this Proposal."));
+                var trialEvidence = EvidenceSets.ForTrial(database, project, trial);
+                if (!trialEvidence.Succeeded) return CommandOutcome<TimingResponse>.Refused(trialEvidence.Refusal!);
+                trialSet = trialEvidence.Value;
+                trialAssessmentIds = new[] { trialSet!.RootAssessmentId }.Concat(trialSet.ReplacementAssessmentIds)
+                    .Where(id => id is not null).Select(id => id!).ToArray();
+                if (currentEvidence.Baseline?.Token != trialSet.Baseline)
+                    currentEvidence = currentEvidence with { Freshness = EvidenceFreshness.Stale };
+            }
             AssessmentRecord? assessment = null;
             if (request.AssessmentId is not null)
             {
@@ -45,17 +61,26 @@ public static class TimingCommand
                 catch (KeyNotFoundException) { }
                 if (assessment is not null && !assessment.Kind.IsStoredKind(AssessmentKind.ParseTime))
                     return RefusedTiming("timing.wrong-kind", "The named Assessment did not collect parse-time results.");
+                if (trialSet is not null && !trialAssessmentIds.Contains(request.AssessmentId, StringComparer.Ordinal))
+                    return RefusedTiming("timing.wrong-assessment",
+                        "The named Assessment is not part of this Proposal's Trial.");
             }
             else
             {
-                assessment = currentEvidence.MatchingAssessment;
+                if (trialSet?.RootAssessmentId is { } trialRoot)
+                {
+                    try { assessment = assessments.Get(trialRoot); }
+                    catch (KeyNotFoundException) { }
+                }
+                else assessment = currentEvidence.MatchingAssessment;
             }
 
             if (assessment is null || !assessment.Kind.IsStoredKind(AssessmentKind.ParseTime))
                 return RefusedTiming("timing.no-assessment", "No matching stored ParseTime Assessment is available.");
 
-            var evidenceSet = request.AssessmentId is null
-                ? currentEvidence.EvidenceSet! : AssessmentEvidenceSet.Create(assessment, []);
+            var evidenceSet = trialSet is not null
+                ? AssessmentEvidenceSet.Create(assessment, trialSet.ReplacementAssessmentIds.Select(assessments.Get).ToArray())
+                : request.AssessmentId is null ? currentEvidence.EvidenceSet! : AssessmentEvidenceSet.Create(assessment, []);
             var replacements = evidenceSet.Components.Skip(1).ToList();
             foreach (var overrideId in request.OverrideAssessmentIds ?? [])
             {
@@ -64,6 +89,9 @@ public static class TimingCommand
                 catch (KeyNotFoundException) { replacement = null; }
                 if (replacement is null)
                     return RefusedTiming("timing.override-not-found", "A stored re-run Assessment was not found.");
+                if (trialSet is not null && !trialAssessmentIds.Contains(overrideId, StringComparer.Ordinal))
+                    return RefusedTiming("timing.invalid-override",
+                        "A re-run is not part of this Proposal's Trial.");
                 if (!replacement.Kind.IsStoredKind(AssessmentKind.ParseTime) ||
                     replacement.BaselineToken != assessment.BaselineToken)
                     return RefusedTiming("timing.invalid-override", "A re-run must be a ParseTime Assessment of the same Baseline.");

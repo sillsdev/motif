@@ -140,7 +140,8 @@ public sealed class JobVerbArgvTests : IDisposable
         var jobs = new JobRepository(database);
         using var defaultInput = JsonDocument.Parse(jobs.Get(defaultRun.Output.Trim())!.InputJson);
         using var allInput = JsonDocument.Parse(jobs.Get(allRun.Output.Trim())!.InputJson);
-        Assert.Empty(defaultInput.RootElement.GetProperty("words").EnumerateArray());
+        Assert.Equal(JsonValueKind.Null, defaultInput.RootElement.GetProperty("words").ValueKind);
+        Assert.False(defaultInput.RootElement.GetProperty("allWords").GetBoolean());
         Assert.True(allInput.RootElement.GetProperty("allWords").GetBoolean());
         Assert.Equal(JsonValueKind.Null, allInput.RootElement.GetProperty("words").ValueKind);
     }

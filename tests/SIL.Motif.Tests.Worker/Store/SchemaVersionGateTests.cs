@@ -39,7 +39,6 @@ public sealed class SchemaVersionGateTests : IDisposable
     [Fact]
     public void StoresWithLabelBasedNaturalClassReachAreRefusedWithoutRewrite()
     {
-        Assert.Equal(43, MotifSchema.CurrentSchema);
         var path = Path.Combine(_root, "natural-class-reach.motif.db");
         var locator = new ProjectLocator(Path.Combine(_root, "project.fwdata"), "project");
         using (MotifDatabase.OpenOwned(path, locator, MotifSchema.CurrentSchema, new Version(1, 0))) { }
@@ -101,7 +100,6 @@ public sealed class SchemaVersionGateTests : IDisposable
     [Fact]
     public void AnOlderBuildIsRefusedWithSomethingTheUserCanActOn()
     {
-        Assert.Equal(43, MotifSchema.CurrentSchema);
         var path = Path.Combine(_root, "project.motif.db");
         var locator = new ProjectLocator(Path.Combine(_root, "project.fwdata"), "project");
         using (MotifDatabase.OpenOwned(path, locator, MotifSchema.CurrentSchema, new Version(1, 0))) { }

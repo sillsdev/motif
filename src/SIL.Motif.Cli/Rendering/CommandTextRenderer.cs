@@ -30,16 +30,19 @@ public static class CommandTextRenderer
     /// follows <paramref name="asJson"/> regardless.
     /// </param>
     public static CommandResult Render<T>(CommandOutcome<T> outcome, bool asJson, bool successAsJson = true)
-        where T : class =>
+        where T : class? =>
         outcome.Succeeded
             ? RenderSuccess(outcome.Value!, asJson && successAsJson)
             : RenderRefusal(outcome.Refusal!, asJson);
 
-    private static CommandResult RenderSuccess<T>(T value, bool asJson) where T : class
+    private static CommandResult RenderSuccess<T>(T value, bool asJson) where T : class?
     {
         if (asJson)
             return new CommandResult(0, (value is WordTraceResponse trace ? TraceJson(trace) : ProjectionJson.Serialize(value)) +
                 Environment.NewLine);
+
+        if (value is null)
+            return new CommandResult(0, "No Trial is recorded for this Proposal." + Environment.NewLine);
 
         var text = value switch
         {

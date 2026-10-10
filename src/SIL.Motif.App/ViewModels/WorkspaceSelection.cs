@@ -85,7 +85,7 @@ public sealed class WorkspaceSelection : ObservableObject
     /// <summary>Replaces the reader with exactly the requested Selection and named evidence.</summary>
     public Task ReloadAsync(string projectPath, IReadOnlyList<Guid> textIds, IReadOnlyList<string> addedWords,
         CurrentEvidenceSnapshot? evidence = null, CancellationToken cancellationToken = default,
-        SelectionAssessmentEvidence? shownAssessment = null)
+        EvidenceSet? shownAssessment = null)
     {
         var generation = ++_generation;
         _isLoading = true;
@@ -99,7 +99,8 @@ public sealed class WorkspaceSelection : ObservableObject
             ShownAssessment = shownAssessment is null ? null : shownAssessment with
             {
                 ReplacementAssessmentIds = Array.AsReadOnly(shownAssessment.ReplacementAssessmentIds.ToArray()),
-                MeasurementAssessmentIds = Array.AsReadOnly(shownAssessment.MeasurementAssessmentIds.ToArray()),
+                MeasurementIds = new Dictionary<string, string>(shownAssessment.MeasurementIds, StringComparer.Ordinal),
+                MeasuredWords = Array.AsReadOnly(shownAssessment.MeasuredWords.ToArray()),
             },
         };
         var previous = _pending;

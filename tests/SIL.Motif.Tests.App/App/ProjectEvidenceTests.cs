@@ -76,7 +76,7 @@ public sealed class ProjectEvidenceTests
         fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
             [new PendingChange("kept", "wordform/kept", "dogs", "approve", "assessment/one", "reading", ["op/kept"])],
             [new ChangeFit("kept", true, [])]));
-        fake.MeasurePendingCompletesWith(new MeasurePendingResult(
+        fake.MeasurePendingCompletesWith(SIL.Motif.Tests.Support.TestFixtures.PendingMeasureResponseFactory.Create(
             "job/one", "revision/one", FakeCommandClient.CompleteNumbers));
         await workspace.SetProjectAsync(ProjectPath);
         var overview = workspace.PageModel<OverviewPageModel>();
@@ -131,10 +131,11 @@ public sealed class ProjectEvidenceTests
         context.Selection.PastedWords = "another";
         await context.EvidencePublication;
         var request = fake.OpenSelectionReaderRequests.Last();
-        Assert.Equal("shown-root", request.ShownAssessment!.AssessmentId);
+        Assert.Equal("shown-root", request.ShownAssessment!.RootAssessmentId);
         Assert.Equal(Token, request.ShownAssessment.Baseline);
         Assert.Equal(["shown-subset"], request.ShownAssessment.ReplacementAssessmentIds);
-        Assert.Equal(["shown-correctness", "shown-timing"], request.ShownAssessment.MeasurementAssessmentIds);
+        Assert.Equal(["shown-correctness", "shown-timing"], request.ShownAssessment.MeasurementIds
+            .OrderBy(pair => pair.Key, StringComparer.Ordinal).Select(pair => pair.Value));
         Assert.Contains("another", request.AddedWords);
         await context.SelectionReads.StopAsync();
     }
@@ -343,9 +344,9 @@ public sealed class ProjectEvidenceTests
         public Task? Hold { get; set; }
 
         protected override async Task OnEvidencePublishedAsync(
-            ProjectEvidence evidence, CancellationToken cancellationToken)
+            EvidenceLens lens, CancellationToken cancellationToken)
         {
-            if (evidence.Assessment is not { } shown) return;
+            if (lens.Today.Assessment is not { } shown) return;
             Seen.Add(shown.Assessment.InvocationId);
             if (Hold is { } hold) await hold;
         }

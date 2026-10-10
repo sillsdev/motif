@@ -49,11 +49,11 @@ public sealed class AiHandoffPageModel : PageModel
         return Task.CompletedTask;
     }
 
-    protected override Task OnEvidencePublishedAsync(ProjectEvidence evidence, CancellationToken cancellationToken)
+    protected override Task OnEvidencePublishedAsync(EvidenceLens lens, CancellationToken cancellationToken)
     {
         UpdateAvailability();
         if (Handoff.SelectedTrace is not null) return Task.CompletedTask;
-        if (evidence.Assessment is not { } shown)
+        if (lens.Today.Assessment is not { } shown)
         {
             Handoff.InvocationId = null;
             return Task.CompletedTask;

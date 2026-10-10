@@ -75,7 +75,7 @@ public sealed class WarningsPageModel : PageModel
         if (stored.Succeeded) Grammar.LoadStored(projectPath, stored.Value?.Check, stored.Value?.LastParserRefusal);
     }
 
-    protected override async Task OnEvidencePublishedAsync(ProjectEvidence evidence, CancellationToken cancellationToken)
+    protected override async Task OnEvidencePublishedAsync(EvidenceLens lens, CancellationToken cancellationToken)
     {
         if (Grammar.IsLoading || Context.ProjectPath is not { } path) return;
         var generation = ++_readGeneration;

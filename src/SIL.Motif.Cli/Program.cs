@@ -145,7 +145,7 @@ try
         return ProposalCommandRenderer.Render(outcome, asJson, successAsJson);
     }
 
-    CommandResult RenderCommand<T>(CommandOutcome<T> outcome, bool successAsJson = true) where T : class
+    CommandResult RenderCommand<T>(CommandOutcome<T> outcome, bool successAsJson = true) where T : class?
     {
         alreadyRendered = true;
         return CommandTextRenderer.Render(outcome, asJson, successAsJson);
@@ -797,29 +797,29 @@ try
         case "apply":
             if (flags.ContainsKey("all-pending"))
             {
-                if (positionals.Count != 0 || !flags.TryGetValue("project", out var pendingApplyProject))
+                if (positionals.Count != 0 || flags.ContainsKey("user") ||
+                    !flags.TryGetValue("project", out var pendingApplyProject))
                     return Usage(
                         "Usage: motif apply --all-pending --project <fwdata> [--revision <r>] " +
-                        "[--user <name>] [--json]", asJson);
+                        "[--json]", asJson);
                 var pendingRequest = new ApplyPendingRequest(pendingApplyProject,
-                    DraftId: null, Revision: flags.GetValueOrDefault("revision"),
-                    User: flags.GetValueOrDefault("user") ?? Environment.UserName);
+                    DraftId: null, Revision: flags.GetValueOrDefault("revision"));
                 result = RunWithConsoleCancellation(cancellationToken => RenderProposal(
                     PendingChangesWorkflow.Apply(pendingRequest, cancellationToken)));
                 break;
             }
             if (positionals.Count != 1 ||
-                !flags.TryGetValue("project", out var applyProject) ||
-                !flags.TryGetValue("user", out var applyUser))
+                flags.ContainsKey("user") ||
+                !flags.TryGetValue("project", out var applyProject))
             {
                 return Usage(
-                    "Usage: motif apply <proposalId> --project <fwdata> --user <name> " +
+                    "Usage: motif apply <proposalId> --project <fwdata> " +
                     "[--force] [--json]", asJson);
             }
             var applyForce = flags.ContainsKey("force");
             result = RenderProposal(
                 ProposalCommands.Apply(
-                    new ApplyRequest(applyProject, CliProductVersion(), positionals[0], applyUser, applyForce)));
+                    new ApplyRequest(applyProject, CliProductVersion(), positionals[0], applyForce)));
             break;
 
         case "log":
@@ -1205,7 +1205,15 @@ try
         case "overview":
             if (!flags.TryGetValue("project", out var overviewProject))
                 return Usage(UsageLineFor("overview"), asJson);
-            result = RenderCommand(OverviewCommand.Overview(new OverviewRequest(overviewProject)));
+            result = RenderCommand(OverviewCommand.Overview(new OverviewRequest(
+                overviewProject, flags.GetValueOrDefault("proposal"))));
+            break;
+
+        case "proposal":
+            if (positionals.Count != 2 || positionals[0] != "trial" ||
+                !flags.TryGetValue("project", out var trialReadProject))
+                return Usage("Usage: motif proposal trial --project <fwdata> <proposalId> [--json]", asJson);
+            result = RenderCommand(Trials.Read(new ReadTrialRequest(trialReadProject, positionals[1])));
             break;
 
         case "writing-systems":
@@ -1226,7 +1234,8 @@ try
                 (flags.TryGetValue("kind", out var warningKind) && string.IsNullOrWhiteSpace(warningKind)))
                 return Usage(UsageLineFor("warnings"), asJson);
             result = RenderCommand(WarningsCommand.Warnings(new WarningsRequest(
-                warningsProject, flags.GetValueOrDefault("kind"), flags.ContainsKey("left-out"))));
+                warningsProject, flags.GetValueOrDefault("kind"), flags.ContainsKey("left-out"),
+                flags.GetValueOrDefault("proposal"))));
             break;
 
         case "grammar":
@@ -1256,7 +1265,8 @@ try
                 timingBy, TraceTimingKey.Parse(flags.GetValueOrDefault("rule")) is { } timingKey
                     ? timingKey with { IdentityQuality = flags.ContainsKey("local") ? "grammar-local"
                         : flags.ContainsKey("structural") ? "structural" : "authored",
-                        Scope = flags.GetValueOrDefault("scope") } : null, timingTop, explicitTimingWords)));
+                        Scope = flags.GetValueOrDefault("scope") } : null, timingTop, explicitTimingWords,
+                ProposalId: flags.GetValueOrDefault("proposal"))));
             break;
 
         case "uses":
@@ -1287,7 +1297,8 @@ try
             if (!flags.TryGetValue("project", out var inspectProject) || positionals.Count != 0 ||
                 InspectSubjectFrom(flags) is not { } inspectSubject)
                 return Usage("Usage: motif " + UsageLineFor("inspect"), asJson);
-            result = RenderCommand(InspectQuery.Query(new InspectRequest(inspectProject, inspectSubject)));
+            result = RenderCommand(InspectQuery.Query(new InspectRequest(inspectProject, inspectSubject,
+                flags.GetValueOrDefault("proposal"))));
             break;
 
         case "trace":
@@ -1303,7 +1314,7 @@ try
                 string.IsNullOrWhiteSpace(traceWord) || traceWord == "true" || positionals.Count != 0)
                 return Usage("Usage: motif " + UsageLineFor("trace") + " OR motif " + UsageLineFor("trace --load"), asJson);
             result = RunWithConsoleCancellation(token => RenderCommand(
-                WordTraceQuery.Query(new WordTraceRequest(traceProject, traceWord), token)));
+                WordTraceQuery.Query(new WordTraceRequest(traceProject, traceWord, flags.GetValueOrDefault("proposal")), token)));
             break;
 
         case "selection":
@@ -1460,9 +1471,9 @@ try
         case "stats":
             if (positionals.Count != 1) return Usage(StatsUsage(), asJson);
             var statsOutput = asJson ? StatsOutputKind.JsonRows : StatsOutputKind.Text;
-            if (flags.ContainsKey("proposal")) return Usage(StatsUsage(), asJson);
             result = RunWithConsoleCancellation(cancellationToken => RenderCommand(StatsCommand.Stats(
-                new StatsRequest(positionals[0], flags.GetValueOrDefault("assessment"), statsOutput, forwardedArguments),
+                new StatsRequest(positionals[0], flags.GetValueOrDefault("assessment"), statsOutput, forwardedArguments,
+                    flags.GetValueOrDefault("proposal")),
                 cancellationToken)));
             break;
 
@@ -1746,6 +1757,7 @@ static InspectorSubject? InspectSubjectFrom(IReadOnlyDictionary<string, string> 
 static string ResolveCommandName(string verb, IReadOnlyDictionary<string, string> flags,
     IReadOnlyList<string> positionals)
 {
+    if (verb == "proposal" && positionals.FirstOrDefault() == "trial") return "proposal trial";
     if (verb == "parsimony")
     {
         if (positionals.SequenceEqual(new[] { "expectations" })) return "parsimony expectations";

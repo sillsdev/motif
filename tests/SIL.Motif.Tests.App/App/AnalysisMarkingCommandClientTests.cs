@@ -263,11 +263,13 @@ public sealed class AnalysisMarkingCommandClientTests(PristineProjectFixture pri
         await assess.RunCommand.ExecuteAsync(null);
         changes.AssessmentId = assessmentId;
         await reads.ReloadAsync(project.Project.FwDataPath, [project.Project.Text.TextId], [],
-            shownAssessment: assessmentId is null ? null : new SelectionAssessmentEvidence(
-                assessment.Baseline.Token, assessmentId, assessment.TimingOverrideAssessmentIds,
-                assessment.Measurements.Where(item => item.Kind is AssessmentKinds.Correctness or AssessmentKinds.ObjectTiming)
-                    .GroupBy(item => item.Kind, StringComparer.Ordinal).OrderBy(group => group.Key, StringComparer.Ordinal)
-                    .Select(group => group.Last().AssessmentId).ToArray()));
+            shownAssessment: assessmentId is null ? null : new EvidenceSet(assessment.Baseline.Token, assessmentId,
+                assessment.TimingOverrideAssessmentIds, assessment.Measurements
+                    .Where(item => item.Kind is AssessmentKinds.Correctness or AssessmentKinds.ObjectTiming)
+                    .GroupBy(item => item.Kind, StringComparer.Ordinal)
+                    .ToDictionary(group => group.Key, group => group.Last().AssessmentId, StringComparer.Ordinal),
+                null, assessment.Words.Select(word => word.Word).ToArray(),
+                new EvidenceOrigin(EvidenceOriginKind.Project, null, null, null)));
         Assert.Null(reads.Refusal);
         Assert.NotNull(reads.Summary);
         await SelectionModelFixture.RealizeAsync(inText);

@@ -39,6 +39,9 @@ public interface IAssessmentRepository
     /// </summary>
     IReadOnlyList<AssessmentRecord> ListByProposal(CanonicalId proposalId);
 
+    /// <summary>Lists Assessment headers for one Proposal revision, oldest first.</summary>
+    IReadOnlyList<AssessmentRecord> ListByProposalAndDigest(CanonicalId proposalId, string intentDigest);
+
     /// <summary>
     /// Lists Assessment headers of one kind, oldest first. Word and analysis detail is omitted — call
     /// <see cref="Get"/> for one Assessment's full content.
@@ -285,6 +288,23 @@ public sealed class AssessmentRepository : IAssessmentRepository
         using var command = connection.CreateCommand();
         command.CommandText = HeaderSelectSql + " WHERE ProposalId = $proposalId ORDER BY SavedUtc, AssessmentId;";
         command.Parameters.AddWithValue("$proposalId", proposalId.Value);
+        RepositoryReadCounters.QueryExecuted();
+        using var reader = command.ExecuteReader();
+        var records = new List<AssessmentRecord>();
+        while (reader.Read()) records.Add(ReadHeader(reader));
+        return records;
+    }
+
+    /// <inheritdoc />
+    public IReadOnlyList<AssessmentRecord> ListByProposalAndDigest(CanonicalId proposalId, string intentDigest)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(intentDigest);
+        using var connection = _database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = HeaderSelectSql +
+            " WHERE ProposalId = $proposalId AND ProposalIntentDigest = $digest ORDER BY SavedUtc, AssessmentId;";
+        command.Parameters.AddWithValue("$proposalId", proposalId.Value);
+        command.Parameters.AddWithValue("$digest", intentDigest);
         RepositoryReadCounters.QueryExecuted();
         using var reader = command.ExecuteReader();
         var records = new List<AssessmentRecord>();

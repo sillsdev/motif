@@ -198,7 +198,7 @@ public sealed class ParseLeaseAdmissionRealClientTests(PristineProjectFixture pr
         };
 
     private static void SetHeldBatch(string parser, string started, string release) =>
-        FakeParser.BehaveBesideExecutable(parser, new
+        FakeParser.BehaveInPhasesBesideExecutable(parser, "batch", new
         {
             streamProgress = true,
             startedPath = started,

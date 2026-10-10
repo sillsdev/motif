@@ -46,6 +46,7 @@ internal static class WorkerRuntime
     // Only needs to outlast an exiting owner's own teardown (sub-second); the idle timeout is minutes.
     private static readonly TimeSpan OwnershipRetryWindow = TimeSpan.FromSeconds(2);
     private static readonly TimeSpan OwnershipRetryPoll = TimeSpan.FromMilliseconds(50);
+    private static int _trialScratchSweepComplete;
 
     internal static async Task<int> RunAsync(string[] args)
     {
@@ -321,6 +322,7 @@ internal static class WorkerRuntime
     {
         var opened = new List<(Projects.ProjectRuntime Runtime, JobRunnerLoop Loop)>();
         var hasActiveWork = false;
+        var allKnownProjectsOpened = true;
         foreach (var known in FromMachineDatabase(() => knownProjects.List()))
         {
             if (!File.Exists(known.FullFwDataPath))
@@ -342,6 +344,7 @@ internal static class WorkerRuntime
                 // Not forgotten: an operator watching this log must still see the project, not lose it silently.
                 Console.Error.WriteLine("warning: Known project '" + known.FullFwDataPath +
                     "' could not be opened for sweeping (" + exception.Message + "). It will be retried later.");
+                allKnownProjectsOpened = false;
                 continue;
             }
 
@@ -359,6 +362,22 @@ internal static class WorkerRuntime
 
             opened.Add((runtime, ProjectJobHandlers.CreateLoop(runtime.Database, runtime.Baselines, runtime.WorkspaceKey,
                 project, options, invoker, ownerId, lanes)));
+        }
+
+        if (allKnownProjectsOpened && Interlocked.CompareExchange(ref _trialScratchSweepComplete, 1, 0) == 0)
+        {
+            try
+            {
+                TrialScratchRetention.Sweep(opened.Select(entry =>
+                    (entry.Runtime.Database, entry.Runtime.WorkspaceKey)));
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or
+                Microsoft.Data.Sqlite.SqliteException or InvalidDataException)
+            {
+                Volatile.Write(ref _trialScratchSweepComplete, 0);
+                Console.Error.WriteLine("warning: Trial scratch cleanup could not read every known project (" +
+                    exception.Message + "). It will be retried later.");
+            }
         }
 
         if (scannedAsync is not null) await scannedAsync().ConfigureAwait(false);

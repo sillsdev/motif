@@ -11,6 +11,7 @@ using SIL.Motif.Commands.Store;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Worker.Baselines;
+using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Worker.Projects;
 
 namespace SIL.Motif.Commands.Queries;
@@ -70,7 +71,23 @@ public static class WordTraceQuery
             if (parseLease is null)
                 return CommandOutcome<WordTraceResponse>.Refused(ProjectParseLease.BusyRefusal());
             var workspaceKey = ProjectWorkspaceKey.Compute(project);
-            var baseline = new BaselineRepository(database).GetCurrent(workspaceKey);
+            var currentBaseline = new BaselineRepository(database).GetCurrent(workspaceKey);
+            var baseline = currentBaseline;
+            if (request.ProposalId is { } proposalId)
+            {
+                var trial = Trials.LatestFor(database, project, proposalId);
+                if (trial is null)
+                    return CommandOutcome<WordTraceResponse>.Refused(new Refusal("trial.none", FailureReason.NotFound,
+                        "No Trial is recorded for this Proposal."));
+                var scratchRoot = TrialScratchPath.ForJob(trial.JobId);
+                var scratchProject = TrialScratchPath.ProjectFile(scratchRoot);
+                if (scratchProject is null)
+                    return CommandOutcome<WordTraceResponse>.Refused(new Refusal("trial.scratch-gone",
+                        FailureReason.NotFound, "The Proposal's copy is gone. Try it again."));
+                baseline = new BaselineRecord(workspaceKey, trial.Baseline, scratchRoot, scratchProject,
+                    currentBaseline?.SourceLastWriteUtc ?? DateTimeOffset.MinValue,
+                    currentBaseline?.PublishedUtc ?? DateTimeOffset.MinValue);
+            }
             if (baseline is null)
             {
                 return CommandOutcome<WordTraceResponse>.Refused(new Refusal(

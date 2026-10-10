@@ -44,10 +44,10 @@ public abstract partial class PageModel : ObservableObject, IProjectStatePartici
     protected virtual Task OnStopWorkAsync() => Task.CompletedTask;
 
     /// <summary>
-    /// Shows <paramref name="evidence"/>, just published because a run completed or the stored evidence was read.
+    /// Shows <paramref name="lens"/>, just published because a run completed or the stored evidence was read.
     /// A burst of publications reaches a page as one more call with the latest evidence, never one per arrival.
     /// </summary>
-    protected virtual Task OnEvidencePublishedAsync(ProjectEvidence evidence, CancellationToken cancellationToken) =>
+    protected virtual Task OnEvidencePublishedAsync(EvidenceLens lens, CancellationToken cancellationToken) =>
         Task.CompletedTask;
 
     /// <summary>Reloads this page's stored summary after a person checked the grammar.</summary>
@@ -67,8 +67,8 @@ public abstract partial class PageModel : ObservableObject, IProjectStatePartici
 
     internal Task StopWorkAsync() => OnStopWorkAsync();
 
-    internal Task EvidencePublishedAsync(ProjectEvidence evidence, CancellationToken cancellationToken) =>
-        OnEvidencePublishedAsync(evidence, cancellationToken);
+    internal Task EvidencePublishedAsync(EvidenceLens lens, CancellationToken cancellationToken) =>
+        OnEvidencePublishedAsync(lens, cancellationToken);
 
     internal Task GrammarCheckedAsync(CancellationToken cancellationToken) => OnGrammarCheckedAsync(cancellationToken);
 

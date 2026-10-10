@@ -5,6 +5,7 @@ using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Commands.SelectionReading;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Projects;
@@ -74,7 +75,9 @@ public sealed partial class ReviewUndoRealClientTests
             {
                 var form = SeededProject.AnalysedWordForm;
                 await reads.ReloadAsync(project.FwDataPath, unrelatedText ? [unrelatedId] : [], [form],
-                    shownAssessment: new SelectionAssessmentEvidence(baseline, root, [], []));
+                    shownAssessment: new EvidenceSet(baseline, root, [],
+                        new Dictionary<string, string>(StringComparer.Ordinal), null, [],
+                        new EvidenceOrigin(EvidenceOriginKind.Project, null, null, null)));
                 Assert.Null(reads.Refusal);
                 var summary = Assert.Single(reads.Summary!.Words);
                 Assert.Equal(ambiguous ? 2 : 1, summary.Actions.CandidateWordformIds.Count);
@@ -189,7 +192,9 @@ public sealed partial class ReviewUndoRealClientTests
             {
                 await changes.OpenProjectAsync(project.FwDataPath);
                 await reads.ReloadAsync(project.FwDataPath, [], [form],
-                    shownAssessment: new SelectionAssessmentEvidence(baseline, root, [], []));
+                    shownAssessment: new EvidenceSet(baseline, root, [],
+                        new Dictionary<string, string>(StringComparer.Ordinal), null, [],
+                        new EvidenceOrigin(EvidenceOriginKind.Project, null, null, null)));
                 Assert.Null(reads.Refusal);
                 var summary = Assert.Single(reads.Summary!.Words);
                 Assert.Equal([selectedId], summary.Actions.CandidateWordformIds);

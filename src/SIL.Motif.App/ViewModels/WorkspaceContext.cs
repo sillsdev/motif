@@ -8,8 +8,13 @@ using SIL.Motif.Commands.Handoff;
 using SIL.Motif.Commands.Preferences;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands.SelectionReading;
+using SIL.Motif.Contract.Assess;
+using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract;
+using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host;
 
 namespace SIL.Motif.App.ViewModels;
 
@@ -141,6 +146,13 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         Changes = changes;
         Commands = commands;
         SelectionReads = new WorkspaceSelection(commands);
+        ProposalSelectionReads = new WorkspaceSelection(commands);
+        TrialRun = new TrialRunViewModel(commands);
+        TrialRun.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(TrialRunViewModel.States)) OnPropertyChanged(nameof(ProposalStanding));
+        };
+        EvidenceLens = new EvidenceLens(Evidence, null, MarkupView.Today);
         FolderPicker = folderPicker;
         DragSource = dragSource;
         Clipboard = clipboard ?? NoDesktopServices.Instance;
@@ -248,6 +260,9 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     /// <summary>The one Selection reader shared by the window's word views and expanded Review context.</summary>
     public WorkspaceSelection SelectionReads { get; }
 
+    /// <summary>The separate Selection reader that keeps a Proposal Trial beside today's live reader.</summary>
+    public WorkspaceSelection ProposalSelectionReads { get; }
+
     /// <summary>The clock every page reads: when a run completed, a check's elapsed time, what "today" is.</summary>
     public TimeProvider Clock { get; }
 
@@ -256,6 +271,21 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
 
     /// <summary>The evidence every page shows, and whether its numbers are still current.</summary>
     public ProjectEvidence Evidence { get; } = new();
+
+    /// <summary>The evidence pair every page receives on publication.</summary>
+    [ObservableProperty]
+    private EvidenceLens _evidenceLens = null!;
+
+    /// <summary>The Proposal open in the window, or null while the pages show today's evidence alone.</summary>
+    [ObservableProperty]
+    private ProposalLens? _lens;
+
+    partial void OnLensChanged(ProposalLens? value)
+    {
+        OnPropertyChanged(nameof(ProposalStanding));
+        UpdateEvidenceLens();
+        Changes.AssessmentId = AssessmentIdForLens();
+    }
 
     /// <summary>The project setup dialog displayed over the current page.</summary>
     public SetupViewModel? Setup { get; private set; }
@@ -310,6 +340,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     private readonly List<IProjectStateParticipant> _projectParticipants = [];
     private CancellationTokenSource? _openCancellation;
     private int _openGeneration;
+    private long _proposalReadGeneration;
     private bool _publishing;
     private bool _republish;
     private CurrentEvidenceSnapshot? _readerEvidence;
@@ -354,6 +385,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         Interlocked.Increment(ref _openGeneration);
         Interlocked.Exchange(ref _openCancellation, null)?.Cancel();
         SelectionReads.Clear();
+        ProposalSelectionReads.Clear();
         ClearOwnProjectState();
         foreach (var participant in _projectParticipants.Where(participant => !ReferenceEquals(participant, this))
                      .Reverse().ToArray())
@@ -366,8 +398,11 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         _selectionReaderRequested = false;
         _readerEvidence = null;
         Assess.Reset();
+        Lens = null;
         Baseline = null;
         Evidence.Clear();
+        UpdateEvidenceLens();
+        Changes.AssessmentId = null;
         GrammarSummary = null;
         CurrentPage = WorkspacePage.Overview;
         Inspector = null;
@@ -441,6 +476,8 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
             await Changes.RecheckAsync(cancellationToken).ConfigureAwait(true);
         if (ProjectPath is { } projectPath)
             await LoadStoredEvidenceAsync(projectPath, cancellationToken).ConfigureAwait(true);
+        await RefreshProposalTrialAsync(cancellationToken).ConfigureAwait(true);
+        if (Lens is not null) await PublishToPagesAsync(cancellationToken).ConfigureAwait(true);
         foreach (var page in _pages.ToArray())
             await page.BaselineCapturedAsync(cancellationToken).ConfigureAwait(true);
     }
@@ -455,10 +492,12 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     internal async Task StopProjectWorkAsync()
     {
         ++_pageRequestVersion;
+        TrialRun.CancelAll();
         await Assess.DisposeAsync().ConfigureAwait(true);
         await Assess.Trace.StopAsync().ConfigureAwait(true);
         await StopPageWorkAsync().ConfigureAwait(true);
         await SelectionReads.StopAsync().ConfigureAwait(true);
+        await ProposalSelectionReads.StopAsync().ConfigureAwait(true);
         await _requestDelivery.ConfigureAwait(true);
     }
 
@@ -470,7 +509,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         ArgumentNullException.ThrowIfNull(evidence);
         _readerEvidence = null;
         Evidence.ShowRun(evidence);
-        Changes.AssessmentId = Evidence.ParseTimeAssessmentId;
+        Changes.AssessmentId = AssessmentIdForLens();
         _ = PublishToPagesAsync(CancellationToken.None);
     }
 
@@ -479,7 +518,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     {
         _readerEvidence = null;
         Evidence.ClearForNewBaseline();
-        Changes.AssessmentId = null;
+        Changes.AssessmentId = AssessmentIdForLens();
         _ = PublishToPagesAsync(CancellationToken.None);
     }
 
@@ -504,7 +543,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         if (Evidence.Assessment is { IsStored: true } restored && !ReferenceEquals(restored, shown))
             Assess.Restore(restored);
         Assess.RestoreRefusal(evidence.LastParserRefusal);
-        Changes.AssessmentId = Evidence.ParseTimeAssessmentId;
+        Changes.AssessmentId = AssessmentIdForLens();
         return PublishToPagesAsync(cancellationToken);
     }
 
@@ -536,12 +575,19 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
             do
             {
                 _republish = false;
+                UpdateEvidenceLens();
                 if (ProjectPath is { } path && (_selectionReaderRequested || Evidence.HasAssessment))
                     await SelectionReads.ReloadAsync(path, Selection.ChosenTextIds, Selection.PastedWordEntries,
                         _readerEvidence, cancellationToken, ShownSelectionAssessment()).ConfigureAwait(true);
+                if (ProjectPath is { } proposalPath && EvidenceLens.Proposal is { Set.RootAssessmentId: not null } trial)
+                    await ProposalSelectionReads.ReloadAsync(proposalPath, Selection.ChosenTextIds,
+                        Selection.PastedWordEntries, _readerEvidence, cancellationToken, trial.Set)
+                        .ConfigureAwait(true);
+                else
+                    ProposalSelectionReads.Clear();
                 if (!IsCurrentOpen(generation)) return;
                 await Task.WhenAll(_pages.ToArray()
-                    .Select(page => page.EvidencePublishedAsync(Evidence, cancellationToken))).ConfigureAwait(true);
+                    .Select(page => page.EvidencePublishedAsync(EvidenceLens, cancellationToken))).ConfigureAwait(true);
             }
             while (_republish && IsCurrentOpen(generation));
         }
@@ -552,17 +598,139 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         }
     }
 
-    private SelectionAssessmentEvidence? ShownSelectionAssessment()
+    private EvidenceSet? ShownSelectionAssessment() => Evidence.Set;
+
+    /// <summary>Opens one Proposal and publishes its latest Trial beside the current project evidence.</summary>
+    public async Task OpenProposalAsync(string proposalId, CancellationToken cancellationToken)
     {
-        if (Evidence.Assessment?.Assessment is not { } shown ||
-            ProjectEvidence.ParseTimeMeasurementOf(shown) is not { } root) return null;
-        return new SelectionAssessmentEvidence(shown.Baseline.Token, root,
-            shown.TimingOverrideAssessmentIds.ToArray(), shown.Measurements
-                .Where(measurement => measurement.Kind is AssessmentKinds.Correctness or AssessmentKinds.ObjectTiming)
-                .GroupBy(measurement => measurement.Kind, StringComparer.Ordinal)
-                .OrderBy(group => group.Key, StringComparer.Ordinal)
-                .Select(group => group.Last().AssessmentId).ToArray());
+        ArgumentException.ThrowIfNullOrWhiteSpace(proposalId);
+        if (ProjectPath is not { } projectPath)
+            throw new InvalidOperationException("Open a project before opening a Proposal.");
+        var openGeneration = Volatile.Read(ref _openGeneration);
+        var proposalReadGeneration = Interlocked.Increment(ref _proposalReadGeneration);
+        var read = await Commands.ReadTrialAsync(new ReadTrialRequest(projectPath, proposalId,
+                IncludeWordResults: true), cancellationToken)
+            .ConfigureAwait(true);
+        if (!IsCurrentProposalRead(openGeneration, proposalReadGeneration, projectPath)) return;
+        var trial = read.Value;
+        Lens = new ProposalLens(proposalId, trial?.Label ?? proposalId, trial?.IntentDigest ?? string.Empty,
+            trial, MarkupView.TodayToProposal) { ReadRefusal = read.Refusal };
+        await PublishToPagesAsync(cancellationToken).ConfigureAwait(true);
     }
+
+    /// <summary>Returns the pages to today's evidence and releases only the Proposal Selection reader.</summary>
+    public void LeaveProposal()
+    {
+        Interlocked.Increment(ref _proposalReadGeneration);
+        Lens = null;
+        ProposalSelectionReads.Clear();
+        _ = PublishToPagesAsync(CancellationToken.None);
+    }
+
+    /// <summary>
+    /// The window's one Try again, for the open Proposal or any other: queues the Proposal's Trial with the words
+    /// its content calls for, follows it to the end, then refreshes the open Proposal's Trial and publishes, so
+    /// every page shows the result the person asked for.
+    /// </summary>
+    /// <returns>The Trial it produced, or a refusal to show through <see cref="WindowRefusal"/>.</returns>
+    public async Task<CommandOutcome<TrialRecord?>> TryAgainAsync(string proposalId, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(proposalId);
+        if (ProjectPath is not { } projectPath)
+            return CommandOutcome<TrialRecord?>.Refused(new Refusal(WindowRefusal.NoProjectCode,
+                FailureReason.Refused, "Open a project before trying a Proposal."));
+        var openGeneration = Volatile.Read(ref _openGeneration);
+        var outcome = await TrialRun.RunAsync(projectPath, proposalId, cancellationToken).ConfigureAwait(true);
+        if (!IsCurrentOpen(openGeneration) || !string.Equals(projectPath, ProjectPath, StringComparison.Ordinal))
+            return outcome;
+        if (Lens is { } lens && lens.ProposalId == proposalId)
+        {
+            if (!outcome.Succeeded && TrialRun.StateFor(proposalId).JobId is null)
+                Lens = lens with { Trial = null, ReadRefusal = outcome.Refusal };
+            else
+                await RefreshProposalTrialAsync(cancellationToken, outcome.Succeeded ? outcome : null)
+                    .ConfigureAwait(true);
+        }
+        await PublishToPagesAsync(cancellationToken).ConfigureAwait(true);
+        return outcome;
+    }
+
+    /// <summary>The window's Try again, which the bar, the Proposals cards and Try a Word bind to.</summary>
+    public TrialRunViewModel TrialRun { get; }
+
+    /// <summary>
+    /// What the window says about a Proposal's Trial: trying while the window's own Try again runs, else the
+    /// standing of the Trial the store chose.
+    /// </summary>
+    public TrialStanding StandingOf(string proposalId, TrialRecord? trial) =>
+        TrialRun.IsRunning(proposalId) ? TrialStanding.Trying : TrialStanding.Of(trial);
+
+    /// <summary>The open Proposal's standing, or not tried while no Proposal is open.</summary>
+    public TrialStanding ProposalStanding => Lens is { } lens
+        ? StandingOf(lens.ProposalId, lens.Trial)
+        : TrialStanding.NotTried;
+
+    private async Task RefreshProposalTrialAsync(CancellationToken cancellationToken,
+        CommandOutcome<TrialRecord?>? alreadyRead = null)
+    {
+        if (ProjectPath is not { } projectPath || Lens is not { } lens) return;
+        var openGeneration = Volatile.Read(ref _openGeneration);
+        var proposalReadGeneration = Interlocked.Increment(ref _proposalReadGeneration);
+        var read = alreadyRead ?? await Commands.ReadTrialAsync(new ReadTrialRequest(projectPath, lens.ProposalId),
+            cancellationToken).ConfigureAwait(true);
+        if (!IsCurrentProposalRead(openGeneration, proposalReadGeneration, projectPath, lens.ProposalId)) return;
+        if (!read.Succeeded)
+        {
+            Lens = lens with { Trial = null, ReadRefusal = read.Refusal };
+            return;
+        }
+        var trial = read.Value;
+        if (trial is { Status: JobStatus.Completed } && trial.JobId == lens.Trial?.JobId &&
+            lens.Trial is { } existing)
+        {
+            trial = trial with { WordResults = existing.WordResults };
+        }
+        else if (trial is { Status: JobStatus.Completed })
+        {
+            var detailed = await Commands.ReadTrialAsync(new ReadTrialRequest(projectPath, lens.ProposalId,
+                IncludeWordResults: true), cancellationToken).ConfigureAwait(true);
+            if (!IsCurrentProposalRead(openGeneration, proposalReadGeneration, projectPath, lens.ProposalId)) return;
+            if (!detailed.Succeeded)
+            {
+                Lens = lens with { Trial = null, ReadRefusal = detailed.Refusal };
+                return;
+            }
+            trial = detailed.Value;
+        }
+        if (!IsCurrentProposalRead(openGeneration, proposalReadGeneration, projectPath, lens.ProposalId)) return;
+        var currentLens = Lens!;
+        Lens = lens with
+        {
+            Label = trial?.Label ?? lens.Label,
+            IntentDigest = trial?.IntentDigest ?? lens.IntentDigest,
+            Trial = trial,
+            ReadRefusal = null,
+            View = currentLens.View,
+        };
+    }
+
+    private bool IsCurrentProposalRead(int openGeneration, long proposalReadGeneration, string projectPath,
+        string? proposalId = null) =>
+        IsCurrentOpen(openGeneration) &&
+        string.Equals(projectPath, ProjectPath, StringComparison.Ordinal) &&
+        proposalReadGeneration == Volatile.Read(ref _proposalReadGeneration) &&
+        (proposalId is null || Lens?.ProposalId == proposalId);
+
+    private void UpdateEvidenceLens()
+    {
+        var proposal = Lens?.Trial is { } trial &&
+            trial.AssessmentIds.GetValueOrDefault(AssessmentKinds.ParseTime) is not null
+            ? new TrialEvidence(EvidenceSet.FromTrial(trial), trial, trial.WordResults)
+            : null;
+        EvidenceLens = new EvidenceLens(Evidence, proposal, Lens?.View ?? MarkupView.Today, Lens is not null);
+    }
+
+    private string? AssessmentIdForLens() => EvidenceLens.Proposal?.Set.RootAssessmentId ?? Evidence.ParseTimeAssessmentId;
 
     /// <summary>Notifies pages after a grammar check has updated the stored warning summary.</summary>
     public async Task PublishGrammarCheckedAsync(CancellationToken cancellationToken = default)
@@ -709,6 +877,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
 
     private void OnEvidencePropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(ProjectEvidence.Set)) UpdateEvidenceLens();
         if (e.PropertyName == nameof(ProjectEvidence.HasAssessment))
         {
             OnPropertyChanged(nameof(HasEvidence));

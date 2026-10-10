@@ -39,6 +39,25 @@ public sealed class PendingChangeOccurrenceTests(PristineProjectFixture pristine
         "SIL.Motif.PendingChangeOccurrenceTests", Guid.NewGuid().ToString("N"));
 
     [Fact]
+    public void EnqueueDryRunAcceptsADraftAndFreezesItsContent()
+    {
+        var project = CreateProject();
+        var pending = Collect(project);
+        using var database = ProjectMotifDatabase.Open(project.Path);
+        var draft = new ProposalRepository(database).GetDraft(PendingChanges.DraftName);
+        var draftContent = JsonSerializer.Deserialize<DraftDocument>(draft.ProposalJson!,
+            new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
+        var expected = ProposalCommands.BuildProposalJson(draftContent);
+
+        var queued = JobCommands.EnqueueDryRun(new EnqueueDryRunRequest(
+            project.Path, ProductVersion, pending.DraftId!));
+
+        Assert.True(queued.Succeeded, queued.Refusal?.Message);
+        var job = new JobRepository(database).Get(queued.Value!.JobId)!;
+        Assert.Equal(expected, DryRunJobInput.Parse(job.InputJson).Proposal.ProposalJson);
+    }
+
+    [Fact]
     public async Task AChangedWordInTheSameSegmentBecomesUncertainAndCanBeReconfirmedAndApplied()
     {
         var project = CreateProject();
@@ -70,7 +89,7 @@ public sealed class PendingChangeOccurrenceTests(PristineProjectFixture pristine
         Assert.Equal("motifanalysed", Assert.Single(uncertain.Uncertainty.BeforeTokens,
             token => token.Index == 0).Form);
         var refusedApply = PendingChangesWorkflow.Apply(new ApplyPendingRequest(
-            project.Path, checkedChanges.Value.DraftId, checkedChanges.Value.Revision, "test-user"));
+            project.Path, checkedChanges.Value.DraftId, checkedChanges.Value.Revision));
         Assert.Equal("apply.change-uncertain", refusedApply.Refusal?.Code);
         Assert.Contains(uncertain.ChangeId, refusedApply.Refusal!.Message, StringComparison.Ordinal);
         Assert.Contains("check again", refusedApply.Refusal.Message, StringComparison.OrdinalIgnoreCase);
@@ -146,7 +165,7 @@ public sealed class PendingChangeOccurrenceTests(PristineProjectFixture pristine
         Assert.Contains("Rerun its Dry Run", candidate.Refusal!.Message, StringComparison.Ordinal);
 
         var applied = ProposalCommands.Apply(new ApplyRequest(
-            project.Path, ProductVersion, finalized.Value.ProposalId, "test-user", Force: true));
+            project.Path, ProductVersion, finalized.Value.ProposalId, Force: true));
         Assert.True(applied.Succeeded, applied.Refusal?.Message);
     }
 
@@ -427,7 +446,7 @@ public sealed class PendingChangeOccurrenceTests(PristineProjectFixture pristine
         }
 
         var applied = ProposalCommands.Apply(new ApplyRequest(
-            project.Path, ProductVersion, finalized.Value!.ProposalId, "test-user", Force: true));
+            project.Path, ProductVersion, finalized.Value!.ProposalId, Force: true));
 
         Assert.Equal("apply.change-uncertain", applied.Refusal?.Code);
         Assert.Contains(Assert.Single(checkedChanges.Value.FitSummary).ChangeId,

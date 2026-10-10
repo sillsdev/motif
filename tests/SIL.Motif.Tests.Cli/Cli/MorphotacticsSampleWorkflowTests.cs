@@ -134,7 +134,7 @@ public sealed class MorphotacticsSampleWorkflowTests(ITestOutputHelper output)
             }
 
             var applied = await RunAsync(runner, preferencePath, "apply", proposalId, "--project", projectPath,
-                "--user", "Motif sample verification", "--force", "--json");
+                "--force", "--json");
             Assert.True(applied.ExitCode == 0, applied.Error + Environment.NewLine + applied.Output);
             using var reopened = new FwDataProjectLoader().LoadCache(projectPath);
             var objects = reopened.ServiceLocator.GetInstance<ICmObjectRepository>();
@@ -268,7 +268,7 @@ public sealed class MorphotacticsSampleWorkflowTests(ITestOutputHelper output)
             }
 
             var applied = await RunAsync(runner, preferencePath, "apply", proposalId,
-                "--project", projectPath, "--user", "Motif sample verification", "--force", "--json");
+                "--project", projectPath, "--force", "--json");
             Assert.True(applied.ExitCode == 0, applied.Error + Environment.NewLine + applied.Output);
             using var reopened = new FwDataProjectLoader().LoadCache(projectPath);
             var objects = reopened.ServiceLocator.GetInstance<ICmObjectRepository>();
@@ -418,7 +418,7 @@ public sealed class MorphotacticsSampleWorkflowTests(ITestOutputHelper output)
             }
 
             var applied = await RunAsync(runner, preferencePath, "apply", proposalId,
-                "--project", projectPath, "--user", "Motif sample verification", "--force", "--json");
+                "--project", projectPath, "--force", "--json");
             Assert.True(applied.ExitCode == 0, applied.Error + Environment.NewLine + applied.Output);
             using var reopened = new FwDataProjectLoader().LoadCache(projectPath);
             var objects = reopened.ServiceLocator.GetInstance<ICmObjectRepository>();

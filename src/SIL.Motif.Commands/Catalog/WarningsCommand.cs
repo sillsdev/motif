@@ -12,7 +12,7 @@ public static class WarningsCommand
     public static CommandOutcome<WarningsResponse> Warnings(WarningsRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        var stored = StoredGrammarCheckQuery.Query(new GrammarCheckRequest(request.ProjectPath));
+        var stored = StoredGrammarCheckQuery.Query(new GrammarCheckRequest(request.ProjectPath, request.ProposalId));
         return stored.Succeeded
             ? CommandOutcome<WarningsResponse>.Success(FromCheck(stored.Value!.Check, request.Kind, request.LeftOut) with
             { LastParserRefusal = stored.Value.LastParserRefusal })

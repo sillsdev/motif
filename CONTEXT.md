@@ -184,6 +184,30 @@ Proposal may have many at different points in its life. What a Trial measured is
 content it ran against, so two Trials either side of an edit are distinguishable and comparable.
 _Avoid_: run, attempt, test, experiment, evaluation
 
+**Evidence set**:
+One named body of measured evidence a page or command reads: the Baseline it was measured against, its
+root ParseTime Assessment, the later re-runs that replace some of its words, its Correctness and per-rule
+timing measurements, its grammar check, and where it came from, the project or a Trial. The project's
+current evidence set and a Trial's have the same shape, so a page cannot tell them apart.
+_Avoid_: context, source, data context, snapshot
+
+**Proposal mode**:
+The window's state while a Proposal is open: a context bar names it, and every page shows today's
+evidence set beside the Proposal's Trial evidence set. Leave returns to today.
+_Avoid_: compare mode, diff view, Proposal page, branch
+
+**Looked at**:
+A review mark a person puts on one change in a Proposal with Keep, or by stepping past it with Next.
+Kept in the Motif store, never in the Proposal; it clears when the change's content or the Trial evidence
+it was judged against changes. Nothing records who looked.
+_Avoid_: reviewed, accepted, approved, seen
+
+**Keep** and **Undo** (of a change in a Proposal):
+Keep marks a change looked at and leaves the Proposal as it is; Undo removes the change and every change
+that declared it depended on, which makes a new revision. Neither is Accept or Reject: nothing is
+approved, and an undone change is gone rather than refused.
+_Avoid_: accept, reject, approve, discard
+
 **Preflight**:
 The final non-mutating comparison against the live model immediately before Apply. It proves that the
 measured evidence still matches the project; it is not the earlier, reusable Dry Run.

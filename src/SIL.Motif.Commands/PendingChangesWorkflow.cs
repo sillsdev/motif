@@ -93,7 +93,7 @@ public static class PendingChangesWorkflow
         if (!dryRun.Succeeded) return ReopenAfterRefusal(resolvedRequest, dryRun.Refusal!);
 
         var applied = ProposalCommands.Apply(new ApplyRequest(
-            request.ProjectPath, version, proposalId, request.User));
+            request.ProjectPath, version, proposalId));
         if (applied.Succeeded)
             return CommandOutcome<ApplyPendingResult>.Success(ApplyPendingResult.AppliedWith(
                 applied.Value!, SummaryOf(snapshot.Changes)));
@@ -179,9 +179,20 @@ public static class PendingChangesWorkflow
             request.ProjectPath, request.BeforeCorrectnessAssessmentId, correctness.AssessmentId,
             request.Words.Count))).ConfigureAwait(false);
         if (!numbers.Succeeded) return CommandOutcome<MeasurePendingResult>.Refused(numbers.Refusal!);
+        var trial = await Task.Run(() => ProjectStoreCommand.Run(request.ProjectPath, version, (database, project) =>
+        {
+            var record = Trials.LatestFor(database, project, current.DraftId);
+            return record is null
+                ? CommandOutcome<TrialRecord>.Refused(new Refusal("trial.measurement-incomplete",
+                    FailureReason.Refused, "The Trial record could not be read. Try it again."))
+                : CommandOutcome<TrialRecord>.Success(record);
+        })).ConfigureAwait(false);
+        if (!trial.Succeeded) return CommandOutcome<MeasurePendingResult>.Refused(trial.Refusal!);
+        if (trial.Value!.JobId != jobId)
+            return RefuseMeasure("trial.measurement-incomplete", "The Trial record could not be read. Try it again.");
         progress.Report(new MeasureProgress(request.Words.Count, request.Words.Count));
         return CommandOutcome<MeasurePendingResult>.Success(new MeasurePendingResult(
-            jobId, current.Revision, numbers.Value!));
+            trial.Value, numbers.Value!) { Revision = current.Revision });
     }
 
     // The one definition of "nothing pending" for both workflows: no Draft, or a Draft with no operations.

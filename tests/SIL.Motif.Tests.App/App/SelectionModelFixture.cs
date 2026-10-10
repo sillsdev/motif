@@ -56,11 +56,13 @@ internal sealed class SelectionModelFixture(FakeCommandClient client) : IAsyncDi
         var root = assessment?.Measurements.LastOrDefault(item => item.Kind == AssessmentKinds.ParseTime)?.AssessmentId
             ?? assessment?.AssessmentIds.FirstOrDefault();
         await Reads.ReloadAsync(_store.ProjectPath, textIds ?? source.Texts.Select(text => text.TextId).ToArray(),
-            addedWords ?? [], shownAssessment: root is null ? null : new SelectionAssessmentEvidence(
-                assessment!.Baseline.Token, root, assessment.TimingOverrideAssessmentIds,
-                assessment.Measurements.Where(item => item.Kind is AssessmentKinds.Correctness or AssessmentKinds.ObjectTiming)
-                    .GroupBy(item => item.Kind, StringComparer.Ordinal).OrderBy(group => group.Key, StringComparer.Ordinal)
-                    .Select(group => group.Last().AssessmentId).ToArray()));
+            addedWords ?? [], shownAssessment: root is null ? null : new EvidenceSet(assessment!.Baseline.Token, root,
+                assessment.TimingOverrideAssessmentIds, assessment.Measurements
+                    .Where(item => item.Kind is AssessmentKinds.Correctness or AssessmentKinds.ObjectTiming)
+                    .GroupBy(item => item.Kind, StringComparer.Ordinal)
+                    .ToDictionary(group => group.Key, group => group.Last().AssessmentId, StringComparer.Ordinal),
+                null, assessment.Words.Select(word => word.Word).ToArray(),
+                new EvidenceOrigin(EvidenceOriginKind.Project, null, null, null)));
         Xunit.Assert.Null(Reads.Refusal);
         Xunit.Assert.NotNull(Reads.Summary);
     }

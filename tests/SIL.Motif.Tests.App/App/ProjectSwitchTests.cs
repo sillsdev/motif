@@ -61,7 +61,7 @@ public sealed class ProjectSwitchTests
         parts.Fake.PendingChangesIs(PendingWithChange("apply-in-a"));
         await OpenProjectAsync(parts.Workspace, ProjectA);
         var review = parts.Workspace.PageModel<ReviewPageModel>();
-        parts.Fake.MeasurePendingCompletesWith(new MeasurePendingResult(
+        parts.Fake.MeasurePendingCompletesWith(SIL.Motif.Tests.Support.TestFixtures.PendingMeasureResponseFactory.Create(
             "job/one", "revision/one", FakeCommandClient.CompleteNumbers));
         parts.Fake.ApplyPendingCompletesWith(new ApplyProjection("draft/one", false, "Applied", [], "sha256:effect",
             new AppliedLogEntrySummary("draft/one", "2026-01-01", "Motif", "sha256:intent")),
@@ -488,7 +488,7 @@ public sealed class ProjectSwitchTests
         parts.Fake.PendingChangesIs(PendingWithChange("second"));
         await parts.Workspace.Context.Changes.ReloadAsync();
         parts.Fake.MeasurePendingRefusal = null;
-        parts.Fake.MeasurePendingCompletesWith(new MeasurePendingResult("job/two", "revision/one", FakeCommandClient.CompleteNumbers));
+        parts.Fake.MeasurePendingCompletesWith(SIL.Motif.Tests.Support.TestFixtures.PendingMeasureResponseFactory.Create("job/two", "revision/one", FakeCommandClient.CompleteNumbers));
         parts.Fake.ApplyPendingRefusal = new Refusal("apply.regression", FailureReason.Refused, "regression");
         await review.MeasureCommand.ExecuteAsync(null);
         await review.ApplyCommand.ExecuteAsync(null);

@@ -9,11 +9,13 @@ using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Contract.Projects;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Baselines;
 using SIL.Motif.Host.Config;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.LcmUtils;
+using SIL.Motif.Host.Parser;
 using SIL.Motif.Host.Store;
 using SIL.Motif.LiveHost.Baselines;
 using SIL.Motif.Runner.AppliedLog;
@@ -45,8 +47,10 @@ public sealed class TrialJobHandlerTests : IDisposable
     private readonly BaselineRepository _baselines;
     private readonly ProposalRepository _proposals;
     private readonly AssessmentRepository _assessments;
+    private readonly List<string> _trialScratchPaths = [];
     private readonly BaselineToken _token;
     private readonly SeededProject _seed;
+    private readonly Guid _opinionAnalysisId;
 
     public TrialJobHandlerTests(PristineProjectFixture pristine)
     {
@@ -54,7 +58,7 @@ public sealed class TrialJobHandlerTests : IDisposable
 
         using var master = pristine.NewScratch();
         _seed = pristine.Seed;
-        SeedWordformsForSelectionTests(master);
+        _opinionAnalysisId = SeedWordformsForSelectionTests(master);
         _loader.Save(master);
 
         _publishedRoot = Path.Combine(_root, "published");
@@ -79,6 +83,11 @@ public sealed class TrialJobHandlerTests : IDisposable
 
     public void Dispose()
     {
+        foreach (var path in _trialScratchPaths)
+        {
+            try { Directory.Delete(path, recursive: true); } catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
         _database.Dispose();
         try { Directory.Delete(_root, recursive: true); } catch { /* best-effort */ }
     }
@@ -101,6 +110,58 @@ public sealed class TrialJobHandlerTests : IDisposable
     }
 
     [Fact]
+    public void ATrialStoresAGrammarCheckOfTheScratchUnderItsProposalId()
+    {
+        using var lanes = new ProjectLaneRegistry(_ => _token);
+        string? checkedPath = null;
+        var handler = BuildHandler(lanes, new FakeAssessor("pangloss", [AssessmentKind.Correctness]),
+            grammarHealth: (path, _, _) =>
+            {
+                checkedPath = path;
+                return Task.FromResult<GrammarCheckResponse?>(new GrammarCheckResponse([], HasBaseline: true));
+            });
+        var proposalId = CanonicalId.Mint("proposal/");
+        var proposalJson = BuildSetGlossProposalJson(proposalId, _seed.FirstSenseId, "grammar checked");
+        SaveCommittedProposal(proposalId, proposalJson);
+        var job = CreateTrialJob(proposalJson);
+
+        var completed = RunAndFinish(handler, job.JobId);
+
+        Assert.Equal(JobStatus.Completed, completed.Status);
+        Assert.NotNull(checkedPath);
+        Assert.True(File.Exists(checkedPath));
+        using var connection = _database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT ProposalId, IntentDigest, SelectionSha256, ResponseJson FROM GrammarChecks WHERE BaselineToken = $token;";
+        command.Parameters.AddWithValue("$token", JsonSerializer.Serialize(_token,
+            SIL.Motif.Contract.MotifJson.CreateOptions()));
+        using var reader = command.ExecuteReader();
+        Assert.True(reader.Read());
+        Assert.Equal(proposalId.Value, reader.GetString(0));
+        Assert.Equal(IntentDigest.Compute(ProposalJsonParser.Parse(proposalJson)), reader.GetString(1));
+        Assert.False(string.IsNullOrWhiteSpace(reader.GetString(2)));
+        using var response = JsonDocument.Parse(reader.GetString(3));
+        Assert.True(response.RootElement.GetProperty("HasBaseline").GetBoolean());
+    }
+
+    [Fact]
+    public void GrammarCheckFailureIsRecordedAsATrialWarning()
+    {
+        using var lanes = new ProjectLaneRegistry(_ => _token);
+        var handler = BuildHandler(lanes, new FakeAssessor("pangloss", [AssessmentKind.Correctness]),
+            grammarHealth: (_, _, _) => throw new IOException("grammar-health unavailable"));
+        var proposalId = CanonicalId.Mint("proposal/");
+        var proposalJson = BuildSetGlossProposalJson(proposalId, _seed.FirstSenseId, "grammar warning");
+        SaveCommittedProposal(proposalId, proposalJson);
+        var job = CreateTrialJob(proposalJson);
+
+        var completed = RunAndFinish(handler, job.JobId);
+
+        Assert.Equal(JobStatus.Completed, completed.Status);
+        Assert.Contains("grammar-health unavailable", completed.ResultJson, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ATrialCanMeasureOnlyTheWordsTouchedByAChange()
     {
         using var lanes = new ProjectLaneRegistry(_ => _token);
@@ -116,6 +177,27 @@ public sealed class TrialJobHandlerTests : IDisposable
         var assessmentId = JsonDocument.Parse(completed.ResultJson!).RootElement
             .GetProperty("assessmentIds")[0].GetString()!;
         Assert.Equal([UnanalysedWordform], _assessments.Get(assessmentId).Selection.Words);
+    }
+
+    [Fact]
+    public void ATrialRecordsProjectStandingAfterTheProposalOpinionIsApplied()
+    {
+        using var lanes = new ProjectLaneRegistry(_ => _token);
+        var proposalId = CanonicalId.Mint("proposal/");
+        var proposalJson = BuildApproveAnalysisProposalJson(proposalId, _opinionAnalysisId);
+        SaveCommittedProposal(proposalId, proposalJson);
+        var assessor = new FakeAssessor("pangloss", [AssessmentKind.Correctness],
+            rawFor: _ => new AssessmentRaw.WordMeasurements(
+                [new AssessedWord(OpinionWordform, "analysed", [])]));
+        var handler = BuildHandler(lanes, assessor);
+        var job = CreateTrialJob(proposalJson, [OpinionWordform]);
+
+        var completed = RunAndFinish(handler, job.JobId);
+
+        Assert.Equal(JobStatus.Completed, completed.Status);
+        var assessmentId = JsonDocument.Parse(completed.ResultJson!).RootElement
+            .GetProperty("assessmentIds")[0].GetString()!;
+        Assert.Equal(ProjectStanding.Approved, Assert.Single(_assessments.Get(assessmentId).Words!).ProjectStanding);
     }
 
     [Fact]
@@ -235,17 +317,81 @@ public sealed class TrialJobHandlerTests : IDisposable
         Assert.Single(afterFirst);
         var firstAssessmentId = afterFirst[0].AssessmentId;
 
-        var secondJob = CreateTrialJob(proposalJson);
+        var secondJob = CreateTrialJob(proposalJson, createdUtc: "2026-08-29T00:00:01Z");
         RunAndFinish(handler, secondJob.JobId);
         var afterSecond = _assessments.ListByProposal(proposalId);
 
         Assert.Equal(2, afterSecond.Count);
         Assert.Contains(afterSecond, a => a.AssessmentId == firstAssessmentId);
         Assert.Equal(2, afterSecond.Select(a => a.AssessmentId).Distinct().Count());
+        Assert.False(Directory.Exists(TrialScratchPath.ForJob(firstJob.JobId)));
+        Assert.True(Directory.Exists(TrialScratchPath.ForJob(secondJob.JobId)));
 
         // The first is still readable, byte-for-byte the same header it was recorded with.
         var firstStillThere = _assessments.Get(firstAssessmentId);
         Assert.Equal(proposalId, firstStillThere.ProposalId);
+    }
+
+    [Fact]
+    public void StartupSweepKeepsTheLatestTrialScratchRemovesOlderCopiesAndLeavesUnattributedFolders()
+    {
+        using var lanes = new ProjectLaneRegistry(_ => _token);
+        var handler = BuildHandler(lanes, new FakeAssessor("pangloss", [AssessmentKind.Correctness]));
+        var proposalId = CanonicalId.Mint("proposal/");
+        var proposalJson = BuildSetGlossProposalJson(proposalId, _seed.FirstSenseId, "scratch retention");
+        SaveCommittedProposal(proposalId, proposalJson);
+        var firstJob = CreateTrialJob(proposalJson, createdUtc: "2026-08-29T11:00:00Z");
+        RunAndFinish(handler, firstJob.JobId);
+        var latestJob = CreateTrialJob(proposalJson, createdUtc: "2026-08-29T12:00:00Z");
+        RunAndFinish(handler, latestJob.JobId);
+
+        var scratchRoot = Path.Combine(_root, "startup-trial-scratch");
+        var olderPath = Path.Combine(scratchRoot, Path.GetFileName(TrialScratchPath.ForJob(firstJob.JobId))!);
+        var latestPath = Path.Combine(scratchRoot, Path.GetFileName(TrialScratchPath.ForJob(latestJob.JobId))!);
+        var orphanPath = Path.Combine(scratchRoot, Path.GetFileName(TrialScratchPath.ForJob("orphan-job"))!);
+        Directory.CreateDirectory(olderPath);
+        Directory.CreateDirectory(latestPath);
+        Directory.CreateDirectory(orphanPath);
+
+        TrialScratchRetention.Sweep([(_database, ProjectWorkspaceKey.Compute(_project))], scratchRoot);
+
+        Assert.False(Directory.Exists(olderPath));
+        Assert.True(Directory.Exists(latestPath));
+        Assert.True(Directory.Exists(orphanPath));
+    }
+
+    [Fact]
+    public void TrialScratchRootIsThisProcessesPrivateTestRoot()
+    {
+        Assert.StartsWith(ProcessRunnerEnvironmentInitializer.Root, TrialScratchPath.Root, StringComparison.Ordinal);
+        Assert.StartsWith(TrialScratchPath.Root, TrialScratchPath.ForJob("any-job"), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void StartupSweepKeepsTheLastCompletedScratchWhileANewerTrialIsActive()
+    {
+        using var lanes = new ProjectLaneRegistry(_ => _token);
+        var handler = BuildHandler(lanes, new FakeAssessor("pangloss", [AssessmentKind.Correctness]));
+        var proposalId = CanonicalId.Mint("proposal/");
+        var proposalJson = BuildSetGlossProposalJson(proposalId, _seed.FirstSenseId, "active scratch retention");
+        SaveCommittedProposal(proposalId, proposalJson);
+        var completedJob = CreateTrialJob(proposalJson, createdUtc: "2026-08-29T11:00:00Z");
+        RunAndFinish(handler, completedJob.JobId);
+        var activeJob = CreateTrialJob(proposalJson, createdUtc: "2026-08-29T12:00:00Z", startRunning: false);
+
+        var scratchRoot = Path.Combine(_root, "active-trial-scratch");
+        var completedPath = Path.Combine(scratchRoot, Path.GetFileName(TrialScratchPath.ForJob(completedJob.JobId))!);
+        var activePath = Path.Combine(scratchRoot, Path.GetFileName(TrialScratchPath.ForJob(activeJob.JobId))!);
+        var orphanPath = Path.Combine(scratchRoot, Path.GetFileName(TrialScratchPath.ForJob("orphan-job"))!);
+        Directory.CreateDirectory(completedPath);
+        Directory.CreateDirectory(activePath);
+        Directory.CreateDirectory(orphanPath);
+
+        TrialScratchRetention.Sweep([(_database, ProjectWorkspaceKey.Compute(_project))], scratchRoot);
+
+        Assert.True(Directory.Exists(completedPath));
+        Assert.True(Directory.Exists(activePath));
+        Assert.True(Directory.Exists(orphanPath));
     }
 
     [Fact]
@@ -288,6 +434,8 @@ public sealed class TrialJobHandlerTests : IDisposable
         var completed = RunAndFinish(handler, job.JobId);
 
         Assert.Equal(JobStatus.Completed, completed.Status);
+        using var result = JsonDocument.Parse(completed.ResultJson!);
+        Assert.True(result.RootElement.GetProperty("allWords").GetBoolean());
         var assessment = Assert.Single(_assessments.ListByProposal(proposalId));
         Assert.Contains(AnalysedWordform, assessment.Selection.Words);
         Assert.Contains(UnanalysedWordform, assessment.Selection.Words);
@@ -415,16 +563,18 @@ public sealed class TrialJobHandlerTests : IDisposable
         Assert.Equal(JobStatus.Completed, completed.Status);
         Assert.Equal(digestBefore, Sha256Of(fwDataPath));
         Assert.NotNull(preparedDirectory);
-        Assert.False(Directory.Exists(preparedDirectory),
-            "the scratch directory used for Assessment must not survive a completed Trial.");
+        Assert.True(Directory.Exists(preparedDirectory),
+            "the scratch directory remains available for reads of this Trial's evidence.");
     }
 
     // One wordform carries a human-approved analysis; the other has none, and a resolved Selection excludes it.
     private const string AnalysedWordform = "zzmotiftrialanalysed";
     private const string UnanalysedWordform = "zzmotiftrialunanalysed";
+    private const string OpinionWordform = "zzmotiftrialopinion";
 
-    private static void SeedWordformsForSelectionTests(LcmCache cache)
+    private static Guid SeedWordformsForSelectionTests(LcmCache cache)
     {
+        IWfiAnalysis opinionAnalysis = null!;
         NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
         {
             var analysed = cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
@@ -435,7 +585,13 @@ public sealed class TrialJobHandlerTests : IDisposable
 
             cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
                 .Create(TsStringUtils.MakeString(UnanalysedWordform, cache.DefaultVernWs));
+
+            var opinionWord = cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                .Create(TsStringUtils.MakeString(OpinionWordform, cache.DefaultVernWs));
+            opinionAnalysis = cache.ServiceLocator.GetInstance<IWfiAnalysisFactory>().Create();
+            opinionWord.AnalysesOC.Add(opinionAnalysis);
         });
+        return opinionAnalysis.Guid;
     }
 
     private void SaveCommittedProposal(CanonicalId proposalId, string proposalJson)
@@ -445,13 +601,15 @@ public sealed class TrialJobHandlerTests : IDisposable
             null, null, null));
     }
 
-    private JobRecord CreateTrialJob(string proposalJson, IReadOnlyList<string>? words = null, bool allWords = false)
+    private JobRecord CreateTrialJob(string proposalJson, IReadOnlyList<string>? words = null, bool allWords = false,
+        string? createdUtc = null, bool startRunning = true)
     {
         var inputJson = JsonSerializer.Serialize(new { proposalJson, scope = (string?)null, words, allWords },
             SIL.Motif.Contract.MotifJson.CreateOptions());
         var job = _jobs.Create(Guid.NewGuid().ToString("N"), ProjectWorkspaceKey.Compute(_project),
-            TrialJobHandler.TrialKind, inputJson, "2026-08-29T00:00:00Z");
-        _jobs.Transition(_jobs.Get(job.JobId)!, JobStatus.Running);
+            TrialJobHandler.TrialKind, inputJson, createdUtc ?? "2026-08-29T00:00:00Z");
+        if (startRunning) _jobs.Transition(_jobs.Get(job.JobId)!, JobStatus.Running);
+        _trialScratchPaths.Add(TrialScratchPath.ForJob(job.JobId));
         return job;
     }
 
@@ -465,7 +623,8 @@ public sealed class TrialJobHandlerTests : IDisposable
 
     private TrialJobHandler BuildHandler(ProjectLaneRegistry lanes, IAssessor assessor,
         Func<LcmCache?, CancellationToken, Task<string>>? prepareForAssessment = null,
-        IProjectConfigurationReader? configuration = null)
+        IProjectConfigurationReader? configuration = null,
+        Func<string, string, CancellationToken, Task<GrammarCheckResponse?>>? grammarHealth = null)
     {
         var catalog = new AssessorCatalog(new[] { assessor });
         var factory = new ScratchCacheFactory(_loader);
@@ -480,7 +639,7 @@ public sealed class TrialJobHandlerTests : IDisposable
                 return Task.FromResult<(IReadOnlyCollection<Guid>, DryRunScratch?)>((appliedProposalIds, scratch));
             },
             (scratch, plan, _) => Task.FromResult(ProposalDryRunner.Run(scratch!, plan)),
-            prepareForAssessment ?? DefaultPrepareForAssessment, _root);
+            prepareForAssessment ?? DefaultPrepareForAssessment, _root, grammarHealth);
     }
 
     private Task<string> DefaultPrepareForAssessment(LcmCache? cache, CancellationToken _)
@@ -505,6 +664,26 @@ public sealed class TrialJobHandlerTests : IDisposable
                   "kind": "lexical/lexSense/setGloss",
                   "target": "{{target}}",
                   "after": {{afterJson}}
+                }
+              ]
+            }
+            """;
+    }
+
+    private static string BuildApproveAnalysisProposalJson(CanonicalId proposalId, Guid analysisId)
+    {
+        var operationId = CanonicalId.Mint("operation/").Value;
+        var target = CanonicalId.FromGuid(analysisId).Value;
+        return $$"""
+            {
+              "contractVersions": {"analysis": "1.0"},
+              "proposalId": "{{proposalId.Value}}",
+              "operations": [
+                {
+                  "operationId": "{{operationId}}",
+                  "kind": "analysis/wfiAnalysis/addRefEvaluations",
+                  "target": "{{target}}",
+                  "after": {"member": "defaultUserApproves"}
                 }
               ]
             }

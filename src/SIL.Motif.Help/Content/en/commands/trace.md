@@ -1,6 +1,6 @@
 # Trace a word
 
-`trace` runs PanGloss for one word against the project's current Baseline and reads the diagnostic used by Try a Word. It does not change the project or store a new Assessment.
+`trace` runs PanGloss for one word against the project's current Baseline and reads the diagnostic used by Try a Word. Add `--proposal <id>` to trace against that Proposal's Trial copy. It does not change the project or store a new Assessment.
 
 ## Trace a word now
 

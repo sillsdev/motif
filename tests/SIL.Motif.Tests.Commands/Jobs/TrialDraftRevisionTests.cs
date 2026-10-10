@@ -68,6 +68,34 @@ public sealed class TrialDraftRevisionTests
             new ProposalRepository(database).GetDraft("frozen"))).Operations.Count);
     }
 
+    [Fact]
+    public void ATrialWithNoWordsNamedOfAGrammarChangeMeasuresTheDefaultSelection()
+    {
+        var id = NewDraftWithOneGloss("grammar-scope");
+
+        var queued = JobCommands.EnqueueTrial(new EnqueueTrialRequest(_fwDataPath, ProductVersion, id));
+
+        Assert.True(queued.Succeeded, queued.Refusal?.Message);
+        using var database = ProjectMotifDatabase.Open(_fwDataPath);
+        var input = TrialJobInput.Parse(new JobRepository(database).Get(queued.Value!.JobId)!.InputJson);
+        Assert.Null(input.Words);
+        Assert.False(input.AllWords);
+    }
+
+    [Fact]
+    public void ATrialKeepsTheWordsItsCallerNamedEvenForAGrammarChange()
+    {
+        var id = NewDraftWithOneGloss("named-scope");
+
+        var queued = JobCommands.EnqueueTrial(new EnqueueTrialRequest(_fwDataPath, ProductVersion, id,
+            Words: ["word"]));
+
+        Assert.True(queued.Succeeded, queued.Refusal?.Message);
+        using var database = ProjectMotifDatabase.Open(_fwDataPath);
+        Assert.Equal(["word"],
+            TrialJobInput.Parse(new JobRepository(database).Get(queued.Value!.JobId)!.InputJson).Words);
+    }
+
     private string NewDraftWithOneGloss(string draftName)
     {
         var created = ProposalCommands.New(new NewDraftRequest(_fwDataPath, ProductVersion, draftName, null));

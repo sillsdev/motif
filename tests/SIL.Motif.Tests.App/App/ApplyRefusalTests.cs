@@ -22,7 +22,7 @@ public sealed class ApplyRefusalTests
                 "reading", ["operation/kept"])],
             [new ChangeFit("kept", true, [])]));
         fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(null, null, false));
-        fake.MeasurePendingCompletesWith(new MeasurePendingResult(
+        fake.MeasurePendingCompletesWith(SIL.Motif.Tests.Support.TestFixtures.PendingMeasureResponseFactory.Create(
             "job/one", "revision/one", FakeCommandClient.CompleteNumbers));
         fake.ApplyPendingRefusal = new Refusal("apply.project-in-use", FailureReason.Busy,
             "The FieldWorks project is already open.");

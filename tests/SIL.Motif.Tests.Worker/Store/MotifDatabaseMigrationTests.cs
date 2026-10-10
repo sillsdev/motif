@@ -198,7 +198,6 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
     [Theory]
     [InlineData("Proposals")]
     [InlineData("ProposalRevisions")]
-    [InlineData("Decisions")]
     [InlineData("Receipts")]
     [InlineData("Reports")]
     [InlineData("AppliedIndex")]
@@ -230,7 +229,7 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
         using (MotifDatabase.OpenOwned(fkPath, Locator("malformed-workflow-fk.fwdata"), MotifSchema.CurrentSchema, new Version(1, 0))) { }
         using (var connection = NewConnection(fkPath))
         {
-            Execute(connection, "DROP TABLE Decisions; CREATE TABLE Decisions (ProposalId TEXT NOT NULL REFERENCES Reports(ReportId), " +
+            Execute(connection, "CREATE TABLE Decisions (ProposalId TEXT NOT NULL REFERENCES Reports(ReportId), " +
                 "IntentDigest TEXT NOT NULL, Outcome TEXT NOT NULL, ActorType TEXT NOT NULL, ActorId TEXT NOT NULL, " +
                 "Comment TEXT NULL, TimestampUtc TEXT NOT NULL, PRIMARY KEY (ProposalId, IntentDigest));");
         }
@@ -260,6 +259,9 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
                 "CreatedUtc|TEXT|1|0|", "UpdatedUtc|TEXT|1|0|", "TimeLimitMode|TEXT|1|0|",
                 "ExplicitPerWordLimitMs|INTEGER|0|0|", "PerWordStepLimit|INTEGER|0|0|", "Revision|INTEGER|1|0|"],
             ["DefaultSelection"] = ["Id|INTEGER|0|1|", "SelectionName|TEXT|1|0|"],
+            ["GrammarChecks"] = ["BaselineToken|TEXT|1|0|", "ProposalId|TEXT|0|0|", "IntentDigest|TEXT|0|0|",
+                "SelectionSha256|TEXT|1|0|", "ParserStamp|TEXT|0|0|", "ResponseJson|TEXT|1|0|",
+                "CheckedUtc|TEXT|1|0|"],
             ["Assessments"] = ["AssessmentId|TEXT|0|1|", "SelectionName|TEXT|1|0|", "SelectionWordsJson|TEXT|1|0|",
                 "SelectionSha256|TEXT|1|0|", "SelectionProvenanceJson|TEXT|0|0|", "OutcomeDigest|TEXT|0|0|",
                 "SemanticDigest|TEXT|0|0|", "GrammarSourceSha256|TEXT|1|0|", "ModelFingerprint|TEXT|0|0|",
@@ -287,8 +289,6 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
                 "ArchivedUtc|TEXT|0|0|", "DraftName|TEXT|0|0|", "DraftJson|TEXT|0|0|"],
             ["ProposalRevisions"] = ["ProposalId|TEXT|1|1|", "IntentDigest|TEXT|1|2|", "ProposalJson|BLOB|1|0|",
                 "CreatedUtc|TEXT|1|0|"],
-            ["Decisions"] = ["ProposalId|TEXT|1|1|", "IntentDigest|TEXT|1|2|", "Outcome|TEXT|1|0|",
-                "ActorType|TEXT|1|0|", "ActorId|TEXT|1|0|", "Comment|TEXT|0|0|", "TimestampUtc|TEXT|1|0|"],
             ["Receipts"] = ["ReceiptId|TEXT|0|1|", "ProposalId|TEXT|1|0|", "IntentDigest|TEXT|1|0|",
                 "ReceiptJson|TEXT|1|0|", "RecordedUtc|TEXT|1|0|"],
             ["Reports"] = ["ReportId|TEXT|0|1|", "ProposalId|TEXT|0|0|", "AssessmentId|TEXT|0|0|",
@@ -325,7 +325,6 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
             ["ParsedAnalyses"] = ["AssessedWords|AssessedWordId|AssessedWordId|NO ACTION|NO ACTION|NONE"],
             ["AssessmentPins"] = ["Assessments|AssessmentId|AssessmentId|NO ACTION|NO ACTION|NONE"],
             ["ProposalRevisions"] = ["Proposals|ProposalId|ProposalId|NO ACTION|NO ACTION|NONE"],
-            ["Decisions"] = ["Proposals|ProposalId|ProposalId|NO ACTION|NO ACTION|NONE"],
             ["Receipts"] = ["Proposals|ProposalId|ProposalId|NO ACTION|NO ACTION|NONE"],
             ["Reports"] = ["Assessments|AssessmentId|AssessmentId|NO ACTION|NO ACTION|NONE", "Proposals|ProposalId|ProposalId|NO ACTION|NO ACTION|NONE"],
             ["AppliedIndex"] = []
@@ -508,17 +507,16 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
     [Fact]
     public void PreviousSchemaIsRefusedWithoutMigration()
     {
-        const int previousSchema = 42;
-        var path = DatabasePath("schema-38.fwdata");
+        var previousSchema = MotifSchema.CurrentSchema - 1;
+        var path = DatabasePath("previous-schema.fwdata");
         using (var connection = NewConnection(path))
             Execute(connection, $"PRAGMA application_id = {MotifSchema.ApplicationId}; PRAGMA user_version = {previousSchema};");
 
-        Assert.Equal(43, MotifSchema.CurrentSchema);
         var refusal = Assert.Throws<MotifStoreVersionException>(() => MotifDatabase.OpenOwned(
             path, Locator("schema-40.fwdata"), MotifSchema.CurrentSchema, new Version(1, 0)));
 
-        Assert.Contains("schema 42", refusal.Message);
-        Assert.Contains("schema 43", refusal.Message);
+        Assert.Contains($"schema {previousSchema}", refusal.Message);
+        Assert.Contains($"schema {MotifSchema.CurrentSchema}", refusal.Message);
         Assert.Contains("recreate", refusal.Message);
         using var check = NewConnection(path);
         Assert.Equal(previousSchema, PragmaInt(check, "user_version"));

@@ -143,7 +143,7 @@ public sealed class ReviewCommandClientTests(PristineProjectFixture pristine)
         Assert.True(measured.Succeeded, measured.Refusal?.Message);
         Assert.True(measured.Value!.EvidenceComplete);
         var applied = await client.ApplyPendingAsync(new ApplyPendingRequest(
-            project.FwDataPath, put.Value.DraftId!, put.Value.Revision, "test-user"), CancellationToken.None);
+            project.FwDataPath, put.Value.DraftId!, put.Value.Revision), CancellationToken.None);
 
         Assert.True(applied.Succeeded, applied.Refusal?.Message);
         Assert.True(applied.Value!.Applied);
@@ -190,7 +190,7 @@ public sealed class ReviewCommandClientTests(PristineProjectFixture pristine)
             await WaitForHeartbeatAsync(heartbeat);
             using var applyCancellation = new CancellationTokenSource();
             var applying = client.ApplyPendingAsync(new ApplyPendingRequest(
-                project.FwDataPath, "draft/absent", "revision/absent", "test-user"), applyCancellation.Token);
+                project.FwDataPath, "draft/absent", "revision/absent"), applyCancellation.Token);
             await Task.Delay(100);
             Assert.False(applying.IsCompleted);
             applyCancellation.Cancel();

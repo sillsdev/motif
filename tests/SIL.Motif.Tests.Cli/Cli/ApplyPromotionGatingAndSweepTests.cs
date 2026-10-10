@@ -51,7 +51,7 @@ public sealed class ApplyPromotionGatingAndSweepTests
         var candidateId = RecordAssessment(proposalId, intentDigest, "Correctness", ("alpha", true));
         var scratchId = RecordAssessment(proposalId, intentDigest, "ParseTime", ("alpha", true));
 
-        var result = ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, proposalId, "tester"));
+        var result = ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, proposalId));
         Assert.True(result.Succeeded);
 
         using var database = ProjectMotifDatabase.Open(_fwDataPath);
@@ -73,7 +73,7 @@ public sealed class ApplyPromotionGatingAndSweepTests
         var candidateId = RecordAssessment(proposalId, intentDigest, "Correctness", ("alpha", true));
         var scratchId = RecordAssessment(proposalId, intentDigest, "ParseTime", ("alpha", true));
 
-        var result = ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, proposalId, "tester"));
+        var result = ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, proposalId));
         Assert.True(result.Succeeded);
 
         using var database = ProjectMotifDatabase.Open(_fwDataPath);
@@ -92,7 +92,7 @@ public sealed class ApplyPromotionGatingAndSweepTests
         PromotePrevious(("alpha", true));
         RecordAssessment(proposalId, intentDigest, "Correctness", ("alpha", false));
 
-        var result = ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, proposalId, "tester"));
+        var result = ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, proposalId));
 
         Assert.False(result.Succeeded);
         Assert.Equal("apply.regression", result.Refusal!.Code);
@@ -110,7 +110,7 @@ public sealed class ApplyPromotionGatingAndSweepTests
         RecordAssessment(proposalId, intentDigest, "Correctness", ("alpha", false));
         Assert.Null(GetCurrentAssessmentId());
 
-        var result = ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, proposalId, "tester"));
+        var result = ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, proposalId));
 
         Assert.False(result.Succeeded);
         Assert.Equal("apply.regression", result.Refusal!.Code);
@@ -133,7 +133,7 @@ public sealed class ApplyPromotionGatingAndSweepTests
         var after = new BaselineRepository(database).GetCurrent(projectKey)!.Token;
         Assert.Equal(before.SemanticIdentity, after.SemanticIdentity);
 
-        var result = ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, proposalId, "tester"));
+        var result = ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, proposalId));
 
         Assert.True(result.Succeeded, result.Refusal?.Message);
     }
@@ -143,7 +143,7 @@ public sealed class ApplyPromotionGatingAndSweepTests
     {
         var proposalId = FinalizeAndTrial("unmeasured", "unmeasured gloss");
 
-        var refused = ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, proposalId, "tester"));
+        var refused = ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, proposalId));
 
         Assert.False(refused.Succeeded);
         Assert.Equal("apply.not-ready", refused.Refusal!.Code);
@@ -151,7 +151,7 @@ public sealed class ApplyPromotionGatingAndSweepTests
         Assert.Equal("proposed", GetRecord(proposalId).Status);
 
         Assert.True(ProposalCommands.Apply(new ApplyRequest(
-            _fwDataPath, ProductVersion, proposalId, "tester", Force: true)).Succeeded);
+            _fwDataPath, ProductVersion, proposalId, Force: true)).Succeeded);
         Assert.Equal("applied", GetRecord(proposalId).Status);
     }
 
@@ -163,7 +163,7 @@ public sealed class ApplyPromotionGatingAndSweepTests
         RecordAssessment(proposalId, intentDigest, "ParseTime", ("alpha", true));
         RecordAssessment(proposalId, intentDigest, "ObjectTiming", ("alpha", true));
 
-        var result = ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, proposalId, "tester"));
+        var result = ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, proposalId));
 
         Assert.False(result.Succeeded);
         Assert.Equal("apply.not-ready", result.Refusal!.Code);
@@ -184,7 +184,7 @@ public sealed class ApplyPromotionGatingAndSweepTests
         RecordAssessment(proposalId, intentDigest, "Correctness", baselineToken: """{"snapshot":"moved"}""",
             words: ("alpha", true));
 
-        var result = ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, proposalId, "tester"));
+        var result = ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, proposalId));
 
         Assert.False(result.Succeeded);
         Assert.Equal("apply.not-ready", result.Refusal!.Code);
@@ -201,7 +201,7 @@ public sealed class ApplyPromotionGatingAndSweepTests
         var previousId = PromotePrevious(("alpha", true));
         RecordAssessment(proposalId, intentDigest, "Correctness", ("alpha", false));
 
-        var result = ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, proposalId, "tester"));
+        var result = ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, proposalId));
 
         Assert.False(result.Succeeded);
         Assert.Equal("apply.regression", result.Refusal!.Code);
@@ -222,7 +222,7 @@ public sealed class ApplyPromotionGatingAndSweepTests
         var candidateId = RecordAssessment(proposalId, intentDigest, "Correctness", ("alpha", false));
 
         var result = ProposalCommands.Apply(new ApplyRequest(
-            _fwDataPath, ProductVersion, proposalId, "tester", Force: true));
+            _fwDataPath, ProductVersion, proposalId, Force: true));
 
         Assert.True(result.Succeeded);
         Assert.Equal("applied", GetRecord(proposalId).Status);

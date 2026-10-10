@@ -78,13 +78,25 @@ public sealed class SelectionTextViewportTests(PristineProjectFixture pristine) 
     }
 
     [Fact]
-    public async Task HidingARangeReleasesTheActualModelsEvenAfterReaderLeaseInvalidation()
+    public void HidingARangeReleasesTheActualModelsEvenAfterReaderLeaseInvalidation()
+    {
+        var references = CaptureReleasedModels(pristine, _root);
+        ScaleCountHarness.AssertLiveViewModelBudget(references, typeof(ResultsLineViewModel), 0, 0);
+        ScaleCountHarness.AssertLiveViewModelBudget(references, typeof(ResultsTokenViewModel), 0, 0);
+    }
+
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+    private static IReadOnlyList<WeakReference<object>> CaptureReleasedModels(PristineProjectFixture pristine,
+        string root) => CaptureReleasedModelsAsync(pristine, root).GetAwaiter().GetResult();
+
+    private static async Task<IReadOnlyList<WeakReference<object>>> CaptureReleasedModelsAsync(
+        PristineProjectFixture pristine, string root)
     {
         using var cache = pristine.NewScratch();
         var text = SeededProject.SeedText(cache, pristine.Seed);
         new FwDataProjectLoader().Save(cache);
         var path = cache.ProjectId.Path;
-        var capture = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), Path.Combine(_root, "managed"));
+        var capture = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), Path.Combine(root, "managed"));
         Assert.True(capture.Succeeded, capture.Refusal?.Message);
         var opened = await SelectionReader.OpenAsync(new OpenSelectionReaderRequest(path, [text.TextId], []));
         Assert.True(opened.Succeeded, opened.Refusal?.Message);
@@ -109,13 +121,12 @@ public sealed class SelectionTextViewportTests(PristineProjectFixture pristine) 
             Assert.Equal(0, reader.Diagnostics.LiveTokenModels);
             Assert.Equal(0, reader.Diagnostics.CachedEntries);
             Assert.Equal(0, reader.Diagnostics.LeasedResults);
-            ScaleCountHarness.AssertLiveViewModelBudget(references, typeof(ResultsLineViewModel), 0, 0);
-            ScaleCountHarness.AssertLiveViewModelBudget(references, typeof(ResultsTokenViewModel), 0, 0);
+            return references;
         }
         finally
         {
-            await viewport.StopAsync();
-            await reader.DisposeAsync();
+            if (viewport is not null) await viewport.StopAsync();
+            if (reader is not null) await reader.DisposeAsync();
         }
     }
 

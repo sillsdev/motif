@@ -9,6 +9,7 @@ using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Commands.Preferences;
 using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Host.Store;
@@ -1520,6 +1521,296 @@ public sealed class WorkspaceContextTests
         new OverviewTextCoverage(0, 0, 0, 0, 0, 0), new OverviewAccuracy(0, 0, 0, 0, 0, 0, 0, 0),
         new OverviewTiming(null, null, [], 0), null);
 
+    [Fact]
+    public async Task OpenProposalPublishesItsTrialThroughASeparateSelectionOwner()
+    {
+        var fake = new FakeCommandClient();
+        var context = NewContext(fake);
+        await context.OpenProjectAsync(ProjectPath);
+        fake.ReadTrialCompletesWith(Trial());
+        var todayOwner = context.SelectionReads;
+        var proposalOwner = context.ProposalSelectionReads;
+
+        await context.OpenProposalAsync("proposal/one", CancellationToken.None);
+
+        Assert.True(context.EvidenceLens.InProposalMode);
+        Assert.Same(context.Evidence, context.EvidenceLens.Today);
+        Assert.Equal(EvidenceOriginKind.Trial, Assert.Single(context.EvidenceLens.Sets).Origin.Kind);
+        Assert.Same(todayOwner, context.SelectionReads);
+        Assert.Same(proposalOwner, context.ProposalSelectionReads);
+        Assert.Equal(EvidenceOriginKind.Trial,
+            Assert.Single(fake.OpenSelectionReaderRequests).ShownAssessment!.Origin.Kind);
+
+        var todayGeneration = todayOwner.Generation;
+        var proposalGeneration = proposalOwner.Generation;
+        context.LeaveProposal();
+        await context.EvidencePublication;
+
+        Assert.Null(context.Lens);
+        Assert.False(context.EvidenceLens.InProposalMode);
+        Assert.Equal(todayGeneration, todayOwner.Generation);
+        Assert.True(proposalOwner.Generation > proposalGeneration);
+    }
+
+    [Fact]
+    public async Task ProposalWithoutRootAssessmentStaysOnTheLensButPublishesNoAfterEvidence()
+    {
+        var fake = new FakeCommandClient();
+        var context = NewContext(fake);
+        await context.OpenProjectAsync(ProjectPath);
+        var incomplete = Trial() with
+        {
+            AssessmentIds = new Dictionary<string, string>(),
+            Status = JobStatus.Running,
+            CompletedUtc = null,
+            Freshness = TrialFreshness.Incomplete,
+        };
+        fake.ReadTrialCompletesWith(incomplete);
+
+        await context.OpenProposalAsync("proposal/one", CancellationToken.None);
+
+        Assert.True(context.EvidenceLens.InProposalMode);
+        Assert.Same(incomplete, context.Lens?.Trial);
+        Assert.Null(context.EvidenceLens.Proposal);
+        Assert.Empty(context.EvidenceLens.Sets);
+    }
+
+    [Fact]
+    public async Task OpenProposalSurfacesAReadRefusalWithoutThrowing()
+    {
+        var fake = new FakeCommandClient();
+        var context = NewContext(fake);
+        await context.OpenProjectAsync(ProjectPath);
+        fake.ReadTrialRefusesWith(new Refusal("trial.scratch-gone", FailureReason.NotFound,
+            "The Trial scratch is gone."));
+
+        await context.OpenProposalAsync("proposal/one", CancellationToken.None);
+
+        Assert.True(context.EvidenceLens.InProposalMode);
+        Assert.Null(context.Lens?.Trial);
+        Assert.Equal("trial.scratch-gone", context.Lens?.ReadRefusal?.Code);
+    }
+
+    [Fact]
+    public async Task ATrialReadThatFinishesAfterAProjectSwitchDoesNotReplaceTheNewLens()
+    {
+        var fake = new FakeCommandClient();
+        var context = NewContext(fake);
+        await context.OpenProjectAsync(ProjectPath);
+        var pending = new TaskCompletionSource<CommandOutcome<TrialRecord?>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        fake.OnReadTrial((_, _) => pending.Task);
+
+        var opening = context.OpenProposalAsync("proposal/one", CancellationToken.None);
+        var secondProject = Path.Combine(Path.GetTempPath(), "motif-other-project.fwdata");
+        await context.OpenProjectAsync(secondProject);
+        pending.SetResult(CommandOutcome<TrialRecord?>.Success(Trial()));
+        await opening;
+
+        Assert.Equal(secondProject, context.ProjectPath);
+        Assert.Null(context.Lens);
+        Assert.False(context.EvidenceLens.InProposalMode);
+    }
+
+    [Fact]
+    public async Task ARefusedTrialRefreshClearsStaleEvidenceAndSurfacesTheRefusal()
+    {
+        var fake = new FakeCommandClient();
+        var context = NewContext(fake);
+        await context.OpenProjectAsync(ProjectPath);
+        fake.ReadTrialCompletesWith(Trial());
+        await context.OpenProposalAsync("proposal/one", CancellationToken.None);
+        fake.ReadTrialRefusesWith(new Refusal("trial.scratch-gone", FailureReason.NotFound,
+            "The Trial scratch is gone."));
+
+        await context.PublishBaselineCapturedAsync(openFirstRunSetup: false);
+
+        Assert.Null(context.Lens?.Trial);
+        Assert.Equal("trial.scratch-gone", context.Lens?.ReadRefusal?.Code);
+        Assert.Null(context.EvidenceLens.Proposal);
+    }
+
+    [Fact]
+    public async Task ARefusedTryAgainQueueIsShownWithoutKeepingTheOldTrialAsCurrent()
+    {
+        var fake = new FakeCommandClient();
+        var context = NewContext(fake);
+        await context.OpenProjectAsync(ProjectPath);
+        fake.ReadTrialCompletesWith(Trial());
+        await context.OpenProposalAsync("proposal/one", CancellationToken.None);
+        fake.EnqueueTrialRefusesWith(new Refusal("trial.queue-busy", FailureReason.Refused,
+            "The Trial could not be queued."));
+
+        var outcome = await context.TryAgainAsync("proposal/one", CancellationToken.None);
+
+        Assert.Equal("trial.queue-busy", outcome.Refusal?.Code);
+        Assert.Null(context.Lens?.Trial);
+        Assert.Equal("trial.queue-busy", context.Lens?.ReadRefusal?.Code);
+        Assert.Null(context.EvidenceLens.Proposal);
+        Assert.Equal("trial.queue-busy", context.TrialRun.StateFor("proposal/one").ShownRefusal?.Code);
+        Assert.Empty(fake.WaitForJobRequests);
+    }
+
+    [Fact]
+    public async Task RefreshInProposalModeRefreshesFreshnessWithoutQueueingAnotherTrial()
+    {
+        var fake = new FakeCommandClient();
+        var context = NewContext(fake);
+        await context.OpenProjectAsync(ProjectPath);
+        fake.ReadTrialCompletesWith(Trial());
+        await context.OpenProposalAsync("proposal/one", CancellationToken.None);
+        fake.ReadTrialCompletesWith(Trial() with { Freshness = TrialFreshness.BaselineMoved });
+
+        await context.PublishBaselineCapturedAsync(openFirstRunSetup: false);
+
+        Assert.Equal(TrialFreshness.BaselineMoved, context.Lens?.Trial?.Freshness);
+        Assert.Empty(fake.EnqueueTrialRequests);
+        Assert.Equal(2, fake.ReadTrialRequests.Count);
+    }
+
+    [Fact]
+    public async Task TryAgainQueuesOnlyWhenExplicitlyRequested()
+    {
+        var fake = new FakeCommandClient();
+        var context = NewContext(fake);
+        await context.OpenProjectAsync(ProjectPath);
+        fake.ReadTrialCompletesWith(Trial());
+        await context.OpenProposalAsync("proposal/one", CancellationToken.None);
+
+        await context.TryAgainAsync("proposal/one", CancellationToken.None);
+
+        var queued = Assert.Single(fake.EnqueueTrialRequests);
+        Assert.Equal("proposal/one", queued.ProposalId);
+        Assert.Null(queued.Words);
+        Assert.False(queued.AllWords);
+        Assert.Equal(2, fake.ReadTrialRequests.Count);
+    }
+
+    [Fact]
+    public async Task TryAgainWithoutAProjectIsARefusalNotAnException()
+    {
+        var fake = new FakeCommandClient();
+        var context = NewContext(fake);
+
+        var outcome = await context.TryAgainAsync("proposal/one", CancellationToken.None);
+
+        Assert.Equal(WindowRefusal.NoProjectCode, outcome.Refusal?.Code);
+        Assert.Equal("Open a project first.", WindowRefusal.From(outcome.Refusal!).Sentence);
+        Assert.Empty(fake.EnqueueTrialRequests);
+    }
+
+    [Fact]
+    public async Task TryAgainSaysTryingUntilTheTrialEndsThenShowsItsResult()
+    {
+        var fake = new FakeCommandClient();
+        var context = NewContext(fake);
+        await context.OpenProjectAsync(ProjectPath);
+        fake.ReadTrialCompletesWith(Trial() with { Freshness = TrialFreshness.ProposalChanged });
+        await context.OpenProposalAsync("proposal/one", CancellationToken.None);
+        Assert.Equal(TrialStanding.NeedsAnotherTry(TrialStaleReason.ProposalChanged), context.ProposalStanding);
+        var waiting = new TaskCompletionSource<CommandOutcome<JobStatusResponse>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        IProgress<JobStatusResponse>? reported = null;
+        fake.OnWaitForJob((_, progress, _) =>
+        {
+            reported = progress;
+            return waiting.Task;
+        });
+
+        var trying = context.TryAgainAsync("proposal/one", CancellationToken.None);
+        reported!.Report(Status(JobStatus.Running) with { TrialProgress = new TrialWordProgress(1, 4, "dogs") });
+
+        Assert.Equal(TrialStanding.Trying, context.ProposalStanding);
+        Assert.True(context.TrialRun.IsActive);
+        Assert.Equal(1, context.TrialRun.StateFor("proposal/one").Progress?.Completed);
+        Assert.Equal(Timeout.InfiniteTimeSpan, Assert.Single(fake.WaitForJobRequests).Timeout);
+        fake.ReadTrialCompletesWith(Trial() with { JobId = "job/new" });
+        waiting.SetResult(CommandOutcome<JobStatusResponse>.Success(Status(JobStatus.Completed)));
+        var outcome = await trying;
+
+        Assert.Equal("job/new", outcome.Value?.JobId);
+        Assert.Equal("job/new", context.Lens?.Trial?.JobId);
+        Assert.Equal("job/new", context.EvidenceLens.Proposal?.Trial.JobId);
+        Assert.Equal(TrialStanding.Current, context.ProposalStanding);
+        Assert.False(context.TrialRun.IsActive);
+        Assert.Null(context.TrialRun.StateFor("proposal/one").Refusal);
+    }
+
+    [Fact]
+    public async Task AFailedRetryAfterAGoodTrialIsRefusedAndKeepsTheGoodTrial()
+    {
+        var fake = new FakeCommandClient();
+        var context = NewContext(fake);
+        await context.OpenProjectAsync(ProjectPath);
+        fake.ReadTrialCompletesWith(Trial());
+        await context.OpenProposalAsync("proposal/one", CancellationToken.None);
+        fake.OnWaitForJob((_, _, _) =>
+            Task.FromResult(CommandOutcome<JobStatusResponse>.Success(Status(JobStatus.Failed))));
+
+        var outcome = await context.TryAgainAsync("proposal/one", CancellationToken.None);
+
+        Assert.Equal(RefusalCodes.TrialMeasurementIncomplete, outcome.Refusal?.Code);
+        Assert.Equal("job/trial", context.Lens?.Trial?.JobId);
+        Assert.Equal(TrialStanding.Current, context.ProposalStanding);
+        Assert.Equal("The check did not finish. Try it again.",
+            context.TrialRun.StateFor("proposal/one").ShownRefusal?.Sentence);
+    }
+
+    [Fact]
+    public async Task ASecondTryAgainOfARunningProposalJoinsItAndAnotherProposalLeavesTheOpenOneAlone()
+    {
+        var fake = new FakeCommandClient();
+        var context = NewContext(fake);
+        await context.OpenProjectAsync(ProjectPath);
+        fake.ReadTrialCompletesWith(null);
+        await context.OpenProposalAsync("proposal/one", CancellationToken.None);
+        Assert.Equal(TrialStanding.NotTried, context.ProposalStanding);
+        var waiting = new TaskCompletionSource<CommandOutcome<JobStatusResponse>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        fake.OnWaitForJob((request, _, _) => request.JobId == "job/test"
+            ? waiting.Task
+            : Task.FromResult(CommandOutcome<JobStatusResponse>.Success(Status(JobStatus.Completed))));
+
+        var first = context.TryAgainAsync("proposal/two", CancellationToken.None);
+        var second = context.TryAgainAsync("proposal/two", CancellationToken.None);
+
+        Assert.Single(fake.EnqueueTrialRequests);
+        Assert.True(context.TrialRun.IsRunning("proposal/two"));
+        Assert.Equal(TrialStanding.NotTried, context.ProposalStanding);
+        Assert.Equal(TrialStanding.Trying, context.StandingOf("proposal/two", null));
+        waiting.SetResult(CommandOutcome<JobStatusResponse>.Success(Status(JobStatus.Completed)));
+        Assert.Same(await first, await second);
+        Assert.Equal("proposal/one", context.Lens?.ProposalId);
+    }
+
+    [Fact]
+    public async Task LeavingTheProjectStopsFollowingItsTrials()
+    {
+        var fake = new FakeCommandClient();
+        var context = NewContext(fake);
+        await context.OpenProjectAsync(ProjectPath);
+        CancellationToken waited = default;
+        fake.OnWaitForJob((_, _, cancellationToken) =>
+        {
+            waited = cancellationToken;
+            return new TaskCompletionSource<CommandOutcome<JobStatusResponse>>().Task;
+        });
+
+        _ = context.TryAgainAsync("proposal/one", CancellationToken.None);
+        await context.OpenProjectAsync(OtherProjectPath);
+
+        Assert.True(waited.IsCancellationRequested);
+        Assert.False(context.TrialRun.IsActive);
+        Assert.False(context.TrialRun.IsRunning("proposal/one"));
+    }
+
+    private static JobStatusResponse Status(JobStatus status) =>
+        new("job/test", "project/test", true, "trial", status, 1, null, false, null, 1);
+
+    private static TrialRecord Trial() => new("job/trial", "proposal/one", "sha256:intent", Token, null,
+        new Dictionary<string, string> { [AssessmentKinds.ParseTime] = "assessment/trial" }, ["dogs"], false, null,
+        SIL.Motif.Contract.Jobs.JobStatus.Completed, DateTimeOffset.UtcNow, TrialFreshness.Current);
+
     internal static WorkspaceContext NewContext() => NewContextWithFake().Context;
 
     internal static WorkspaceContext NewContext(
@@ -1564,9 +1855,9 @@ public sealed class WorkspaceContextTests
             Queried = (await Context.Commands.ListKnownProjectsAsync(cancellationToken)).Count;
 
         protected override Task OnEvidencePublishedAsync(
-            ProjectEvidence evidence, CancellationToken cancellationToken)
+            EvidenceLens lens, CancellationToken cancellationToken)
         {
-            Shown = evidence.Assessment?.Assessment.InvocationId;
+            Shown = lens.Today.Assessment?.Assessment.InvocationId;
             return Task.CompletedTask;
         }
 

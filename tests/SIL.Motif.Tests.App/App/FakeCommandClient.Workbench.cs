@@ -37,6 +37,12 @@ public sealed partial class FakeCommandClient
         (_, _) => Refused<CurrentEvidenceSnapshot>(
             new Refusal("evidence.not-configured", FailureReason.Refused, "No current evidence configured."));
 
+    private Func<ReadTrialRequest, CancellationToken, Task<CommandOutcome<TrialRecord?>>> _readTrial =
+        (_, _) => Completed<TrialRecord?>(null);
+    private Func<SIL.Motif.Commands.Requests.EnqueueTrialRequest, CancellationToken,
+        Task<CommandOutcome<JobEnqueuedResponse>>> _enqueueTrial =
+        (_, _) => Completed(new JobEnqueuedResponse("job/test", "trial", "project/test"));
+
     private Func<ProjectHistoryRequest, CancellationToken, Task<CommandOutcome<ProjectHistoryResponse>>>
         _projectHistory = (_, _) => Completed(new ProjectHistoryResponse([]));
 
@@ -61,6 +67,8 @@ public sealed partial class FakeCommandClient
     public List<WordTraceRequest> TraceWordRequests { get; } = [];
     public List<TimingRequest> TimingRequests { get; } = [];
     public List<string> CurrentEvidenceRequests { get; } = [];
+    public List<ReadTrialRequest> ReadTrialRequests { get; } = [];
+    public List<SIL.Motif.Commands.Requests.EnqueueTrialRequest> EnqueueTrialRequests { get; } = [];
     public Func<string, CancellationToken, Task<CommandOutcome<CurrentEvidenceSnapshot>>>? CurrentEvidenceHandler
         { get; set; }
 
@@ -82,6 +90,53 @@ public sealed partial class FakeCommandClient
 
     public void ReadCurrentEvidenceCompletesWith(CurrentEvidenceSnapshot snapshot) =>
         _currentEvidence = (_, _) => Completed(snapshot);
+
+    public void ReadTrialCompletesWith(TrialRecord? trial) => _readTrial = (_, _) => Completed(trial);
+
+    public void ReadTrialRefusesWith(Refusal refusal) =>
+        _readTrial = (_, _) => Task.FromResult(CommandOutcome<TrialRecord?>.Refused(refusal));
+
+    public void OnReadTrial(Func<ReadTrialRequest, CancellationToken, Task<CommandOutcome<TrialRecord?>>> behavior) =>
+        _readTrial = behavior;
+
+    public Task<CommandOutcome<TrialRecord?>> ReadTrialAsync(
+        ReadTrialRequest request, CancellationToken cancellationToken)
+    {
+        ReadTrialRequests.Add(request);
+        return _readTrial(request, cancellationToken);
+    }
+
+    public void EnqueueTrialCompletesWith(JobEnqueuedResponse response) =>
+        _enqueueTrial = (_, _) => Completed(response);
+
+    public void EnqueueTrialRefusesWith(Refusal refusal) =>
+        _enqueueTrial = (_, _) => Refused<JobEnqueuedResponse>(refusal);
+
+    public Task<CommandOutcome<JobEnqueuedResponse>> EnqueueTrialAsync(
+        SIL.Motif.Commands.Requests.EnqueueTrialRequest request, CancellationToken cancellationToken)
+    {
+        EnqueueTrialRequests.Add(request);
+        return _enqueueTrial(request, cancellationToken);
+    }
+
+    private Func<WaitForJobRequest, IProgress<SIL.Motif.Contract.Jobs.JobStatusResponse>?, CancellationToken,
+        Task<CommandOutcome<SIL.Motif.Contract.Jobs.JobStatusResponse>>> _waitForJob =
+        (request, _, _) => Completed(new SIL.Motif.Contract.Jobs.JobStatusResponse(request.JobId, "project/test",
+            true, "trial", SIL.Motif.Contract.Jobs.JobStatus.Completed, 1, null, false, null, 1));
+
+    public List<WaitForJobRequest> WaitForJobRequests { get; } = [];
+
+    public void OnWaitForJob(Func<WaitForJobRequest, IProgress<SIL.Motif.Contract.Jobs.JobStatusResponse>?,
+        CancellationToken, Task<CommandOutcome<SIL.Motif.Contract.Jobs.JobStatusResponse>>> behavior) =>
+        _waitForJob = behavior;
+
+    public Task<CommandOutcome<SIL.Motif.Contract.Jobs.JobStatusResponse>> WaitForJobAsync(
+        WaitForJobRequest request, IProgress<SIL.Motif.Contract.Jobs.JobStatusResponse>? progress,
+        CancellationToken cancellationToken)
+    {
+        WaitForJobRequests.Add(request);
+        return _waitForJob(request, progress, cancellationToken);
+    }
 
     public void OnReadCurrentEvidence(
         Func<string, CancellationToken, Task<CommandOutcome<CurrentEvidenceSnapshot>>> behavior) =>

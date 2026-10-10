@@ -439,7 +439,7 @@ public sealed class ComposeRecordParsimonyDispositionTests : IDisposable
         Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
         Assert.True(DryRunJobRunner.Run(_projectPath, ProductVersion, finalized.Value!.ProposalId).Succeeded);
         var applied = ProposalCommands.Apply(new ApplyRequest(_projectPath, ProductVersion,
-            finalized.Value.ProposalId, "reviewer"));
+            finalized.Value.ProposalId));
         Assert.True(applied.Succeeded, applied.Refusal?.Message);
 
         Assert.True(ProposalCommands.New(new NewDraftRequest(_projectPath, ProductVersion, "applied-again",
@@ -466,7 +466,7 @@ public sealed class ComposeRecordParsimonyDispositionTests : IDisposable
         Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
         Assert.True(DryRunJobRunner.Run(_projectPath, ProductVersion, finalized.Value!.ProposalId).Succeeded);
         Assert.True(ProposalCommands.Apply(new ApplyRequest(_projectPath, ProductVersion,
-            finalized.Value.ProposalId, "reviewer")).Succeeded);
+            finalized.Value.ProposalId)).Succeeded);
         Assert.True(ProposalCommands.New(new NewDraftRequest(_projectPath, ProductVersion, "stale-change",
             "Change the decision from the old Report")).Succeeded);
 
@@ -500,7 +500,7 @@ public sealed class ComposeRecordParsimonyDispositionTests : IDisposable
         Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
         Assert.True(DryRunJobRunner.Run(_projectPath, ProductVersion, finalized.Value!.ProposalId).Succeeded);
         var applied = ProposalCommands.Apply(new ApplyRequest(_projectPath, ProductVersion,
-            finalized.Value.ProposalId, "reviewer"));
+            finalized.Value.ProposalId));
         Assert.True(applied.Succeeded, applied.Refusal?.Message);
 
         var refreshed = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(_projectPath), _workerRoot);
@@ -625,7 +625,7 @@ public sealed class ComposeRecordParsimonyDispositionTests : IDisposable
         });
 
         var result = ProposalCommands.Apply(new ApplyRequest(_projectPath, ProductVersion,
-            proposal.ProposalId.Value, "reviewer", Force: true));
+            proposal.ProposalId.Value, Force: true));
 
         Assert.False(result.Succeeded);
         Assert.Equal("apply.drift", result.Refusal!.Code);
@@ -711,7 +711,7 @@ public sealed class ComposeRecordParsimonyDispositionTests : IDisposable
             JudgmentOnlyProposalReadiness.ExemptionFor(proposal, publishedDryRun.ExpectedEffects));
 
         var result = ProposalCommands.Apply(new ApplyRequest(
-            _projectPath, ProductVersion, proposal.ProposalId.Value, "reviewer"));
+            _projectPath, ProductVersion, proposal.ProposalId.Value));
 
         Assert.True(result.Succeeded, result.Refusal?.Message);
         var readiness = Assert.IsType<ReadinessProjection>(result.Value!.Readiness);
@@ -731,7 +731,7 @@ public sealed class ComposeRecordParsimonyDispositionTests : IDisposable
         Assert.Contains(dryRun.Value!.Effects, effect => effect.Field.StartsWith("grammar/", StringComparison.Ordinal));
 
         var result = ProposalCommands.Apply(new ApplyRequest(
-            _projectPath, ProductVersion, proposal.ProposalId.Value, "reviewer"));
+            _projectPath, ProductVersion, proposal.ProposalId.Value));
 
         Assert.False(result.Succeeded);
         Assert.Equal("apply.not-ready", result.Refusal!.Code);
@@ -769,7 +769,7 @@ public sealed class ComposeRecordParsimonyDispositionTests : IDisposable
         }
 
         var result = ProposalCommands.Apply(new ApplyRequest(
-            _projectPath, ProductVersion, proposal.ProposalId.Value, "reviewer"));
+            _projectPath, ProductVersion, proposal.ProposalId.Value));
 
         Assert.False(result.Succeeded);
         Assert.Equal("apply.not-ready", result.Refusal!.Code);
@@ -796,7 +796,7 @@ public sealed class ComposeRecordParsimonyDispositionTests : IDisposable
         }
 
         var result = ProposalCommands.Apply(new ApplyRequest(
-            _projectPath, ProductVersion, proposal.ProposalId.Value, "reviewer"));
+            _projectPath, ProductVersion, proposal.ProposalId.Value));
 
         Assert.False(result.Succeeded);
         Assert.Equal("apply.not-ready", result.Refusal!.Code);
@@ -821,7 +821,7 @@ public sealed class ComposeRecordParsimonyDispositionTests : IDisposable
         Assert.True(refreshed.Succeeded, refreshed.Refusal?.Message);
 
         var result = ProposalCommands.Apply(new ApplyRequest(
-            _projectPath, ProductVersion, proposal.ProposalId.Value, "reviewer"));
+            _projectPath, ProductVersion, proposal.ProposalId.Value));
 
         Assert.False(result.Succeeded);
         Assert.Equal("apply.not-ready", result.Refusal!.Code);
@@ -834,7 +834,7 @@ public sealed class ComposeRecordParsimonyDispositionTests : IDisposable
         var proposal = CreateFinalizedDispositionProposal("missing-judgment-dry-run");
 
         var result = ProposalCommands.Apply(new ApplyRequest(
-            _projectPath, ProductVersion, proposal.ProposalId.Value, "reviewer"));
+            _projectPath, ProductVersion, proposal.ProposalId.Value));
 
         Assert.False(result.Succeeded);
         Assert.Equal("apply.dry-run-missing", result.Refusal!.Code);
@@ -854,7 +854,7 @@ public sealed class ComposeRecordParsimonyDispositionTests : IDisposable
         using var owner = new FieldWorksSimulator(_projectPath).Hold();
         var cli = await CliProcess.RunAsync(CliProcess.CreateStartInfoWithAdvancedAiModePath(
             _workerRoot, null, developerCommands: true, _preferencePath,
-            "apply", "--project", _projectPath, proposal.ProposalId.Value, "--user", "reviewer", "--force", "--json"));
+            "apply", "--project", _projectPath, proposal.ProposalId.Value, "--force", "--json"));
 
         Assert.NotEqual(0, cli.ExitCode);
         Assert.Contains("apply.project-in-use", cli.Output + cli.Error, StringComparison.Ordinal);

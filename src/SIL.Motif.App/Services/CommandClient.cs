@@ -181,7 +181,7 @@ public sealed partial class CommandClient : ICommandClient
             }
         });
 
-    private static CommandOutcome<T> WaitCancelled<T>() where T : class =>
+    private static CommandOutcome<T> WaitCancelled<T>() where T : class? =>
         CommandOutcome<T>.Refused(new Refusal(
             "project.wait-cancelled", FailureReason.Cancelled, "Waiting to use the project was cancelled."));
 }

@@ -487,8 +487,9 @@ public sealed partial class TimingPageModel : PageModel
         return Task.CompletedTask;
     }
 
-    protected override async Task OnEvidencePublishedAsync(ProjectEvidence evidence, CancellationToken cancellationToken)
+    protected override async Task OnEvidencePublishedAsync(EvidenceLens lens, CancellationToken cancellationToken)
     {
+        var evidence = lens.Today;
         if (evidence.Assessment is { } shown)
         {
             Statistics.Reset();

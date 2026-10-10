@@ -465,7 +465,6 @@ public sealed class ReportProjectionIntegrationTests
         var newGloss = originalGloss + " (revised, report projection test)";
         const string draftName = "report-projection-demo";
         const string label = "report-projection-1";
-        const string applier = "report-projection-tests";
 
         var created = ProposalCommands.New(new NewDraftRequest(_fwDataPath, ProductVersion, draftName, label));
         Assert.True(created.Succeeded);
@@ -506,12 +505,12 @@ public sealed class ReportProjectionIntegrationTests
 
         // Apply mutates once, so its effect and Receipt are checked against project state.
         var applyJson = ProposalCommands.Apply(
-            new ApplyRequest(_fwDataPath, ProductVersion, proposalId, applier, Force: true));
+            new ApplyRequest(_fwDataPath, ProductVersion, proposalId, Force: true));
         Assert.True(applyJson.Succeeded);
         var appliedChange = Assert.Single(Assert.Single(applyJson.Value!.Effects).Changes);
         Assert.Equal(originalGloss, appliedChange.Before);
         Assert.Equal(newGloss, appliedChange.After);
-        Assert.Equal(applier, applyJson.Value.AppliedLogEntry.User);
+        Assert.Empty(applyJson.Value.AppliedLogEntry.User);
         Assert.Equal(proposalId, applyJson.Value.ProposalId);
 
         // log
@@ -519,7 +518,7 @@ public sealed class ReportProjectionIntegrationTests
         var logJson = ProposalCommands.Log(new LogRequest(_fwDataPath));
         Assert.True(logText.Succeeded);
         Assert.True(logJson.Succeeded);
-        Assert.Equal(applier, Assert.Single(logJson.Value!.Entries).User);
+        Assert.Empty(Assert.Single(logJson.Value!.Entries).User);
 
     }
 

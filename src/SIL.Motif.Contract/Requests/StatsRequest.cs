@@ -25,8 +25,10 @@ public enum StatsOutputKind
 /// Everything the caller wrote after a standalone <c>--</c>, in order and unchanged. Motif never tokenizes,
 /// reorders, or otherwise interprets these; they reach PanGloss exactly as supplied.
 /// </param>
+/// <param name="ProposalId">The Proposal whose Trial supplies stored evidence, or null for the project.</param>
 public sealed record StatsRequest(
     string ProjectPath,
     string? AssessmentId,
     StatsOutputKind Output,
-    IReadOnlyList<string> ForwardedArguments);
+    IReadOnlyList<string> ForwardedArguments,
+    string? ProposalId = null);

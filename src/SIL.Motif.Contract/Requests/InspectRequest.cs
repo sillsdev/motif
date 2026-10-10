@@ -9,4 +9,5 @@ namespace SIL.Motif.Contract.Requests;
 /// </summary>
 /// <param name="ProjectPath">The project whose current Baseline, default Selection and stored check to read.</param>
 /// <param name="Subject">The subject, by identity.</param>
-public sealed record InspectRequest(string ProjectPath, InspectorSubject Subject);
+/// <param name="ProposalId">The Proposal whose Trial supplies stored evidence, or null for the project.</param>
+public sealed record InspectRequest(string ProjectPath, InspectorSubject Subject, string? ProposalId = null);

@@ -46,6 +46,7 @@ public sealed class ProjectEvidence : ObservableObject
 
     private WorkspaceEvidence? _assessment;
     private CurrentEvidenceSnapshot? _stored;
+    private EvidenceSet? _set;
     private WorkspaceBaseline? _baseline;
     private bool _appliedSinceRefresh;
     private bool _wordContextIsStale;
@@ -58,14 +59,21 @@ public sealed class ProjectEvidence : ObservableObject
     public WorkspaceEvidence? Assessment
     {
         get => _assessment;
-        private set => Set(ref _assessment, value);
+        private set => SetValue(ref _assessment, value);
     }
 
     /// <summary>The stored read model last loaded for the open project, or <see langword="null"/> before one.</summary>
     public CurrentEvidenceSnapshot? Stored
     {
         get => _stored;
-        private set => Set(ref _stored, value);
+        private set => SetValue(ref _stored, value);
+    }
+
+    /// <summary>The named evidence components used to produce the words currently shown.</summary>
+    public EvidenceSet? Set
+    {
+        get => _set;
+        private set => SetValue(ref _set, value);
     }
 
     /// <summary>The open project's Baseline, whose saves the freshness is measured against.</summary>
@@ -75,7 +83,7 @@ public sealed class ProjectEvidence : ObservableObject
         internal set
         {
             var priorToken = _baseline?.Token;
-            Set(ref _baseline, value);
+            SetValue(ref _baseline, value);
             if (priorToken != value?.Token) WordContextIsStale = false;
         }
     }
@@ -84,14 +92,14 @@ public sealed class ProjectEvidence : ObservableObject
     internal bool WordContextIsStale
     {
         get => _wordContextIsStale;
-        private set => Set(ref _wordContextIsStale, value);
+        private set => SetValue(ref _wordContextIsStale, value);
     }
 
     /// <summary>Whether changes were applied to the FieldWorks project since the numbers were measured.</summary>
     public bool AppliedSinceRefresh
     {
         get => _appliedSinceRefresh;
-        internal set => Set(ref _appliedSinceRefresh, value);
+        internal set => SetValue(ref _appliedSinceRefresh, value);
     }
 
     /// <summary>Whether an Assessment is on screen.</summary>
@@ -148,17 +156,23 @@ public sealed class ProjectEvidence : ObservableObject
         Stored = stored;
         if (stored.Assessment is not { } assessment)
         {
-            if (Assessment?.IsStored == true) Assessment = null;
+            if (Assessment?.IsStored == true)
+            {
+                Assessment = null;
+                Set = stored.Set;
+            }
             return;
         }
         if (Assessment is { } shown && !IsNewer(shown, assessment, stored.AssessedUtc)) return;
         Assessment = new WorkspaceEvidence(assessment, stored.AssessedUtc, WasRerun: false) { IsStored = true };
+        Set = stored.Set ?? EvidenceSet.FromProjectAssessment(assessment);
     }
 
     internal void ClearForNewBaseline()
     {
         Assessment = null;
         Stored = null;
+        Set = null;
         AppliedSinceRefresh = false;
         WordContextIsStale = false;
     }
@@ -188,6 +202,7 @@ public sealed class ProjectEvidence : ObservableObject
     internal void ShowRun(WorkspaceEvidence run)
     {
         Assessment = run;
+        Set = EvidenceSet.FromProjectAssessment(run.Assessment);
         AppliedSinceRefresh = false;
     }
 
@@ -195,12 +210,13 @@ public sealed class ProjectEvidence : ObservableObject
     {
         Assessment = null;
         Stored = null;
+        Set = null;
         Baseline = null;
         AppliedSinceRefresh = false;
         WordContextIsStale = false;
     }
 
-    private void Set<T>(ref T field, T value, [System.Runtime.CompilerServices.CallerMemberName] string? name = null)
+    private void SetValue<T>(ref T field, T value, [System.Runtime.CompilerServices.CallerMemberName] string? name = null)
     {
         if (!SetProperty(ref field, value, name)) return;
         foreach (var derived in Derived) OnPropertyChanged(derived);

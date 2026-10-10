@@ -73,8 +73,14 @@ public sealed record CurrentEvidenceSnapshot(
     /// <summary>The selected component runs and their effective measurements, projected once.</summary>
     public AssessmentEvidenceSet? EvidenceSet { get; init; }
 
+    /// <summary>Effective word results when one view overlays a measured subset on today's values.</summary>
+    public IReadOnlyList<AssessedWord>? EffectiveWordsOverride { get; init; }
+
+    /// <summary>The named set from which this snapshot's stored measurements were selected.</summary>
+    public EvidenceSet? Set { get; init; }
+
     /// <summary>The current word outcomes after explicit reparses replace their earlier answers.</summary>
-    public IReadOnlyList<AssessedWord> EffectiveWords => EvidenceSet?.Words ??
+    public IReadOnlyList<AssessedWord> EffectiveWords => EffectiveWordsOverride ?? EvidenceSet?.Words ??
         (MatchingAssessment is { } assessment ? AssessmentEvidenceSet.Create(assessment, RerunAssessments).Words : []);
 
     /// <summary>The object times recorded for <see cref="EffectiveWords"/>, each from the run that timed its word.</summary>
@@ -123,53 +129,18 @@ public static class CurrentEvidenceQuery
         var storeCreated = ReadStoreCreatedUtc(database);
         DateTimeOffset? lastSave = File.Exists(project.FullFwDataPath)
             ? new DateTimeOffset(File.GetLastWriteTimeUtc(project.FullFwDataPath), TimeSpan.Zero) : null;
-        var current = new BaselineRepository(database)
-            .GetCurrentEvidence(ProjectWorkspaceKey.Compute(project));
-        var saved = includeDefaultSelection ? new NamedSelectionRepository(database).GetDefault() : null;
+        var resolved = EvidenceSets.ResolveCurrent(database, project, includeDefaultSelection);
+        if (!resolved.Succeeded)
+            return CommandOutcome<CurrentEvidenceSnapshot>.Refused(resolved.Refusal!);
+        var current = resolved.Value!.Current;
+        var saved = resolved.Value.DefaultSelection;
         // The matching Assessment measures the current Baseline, so its numbers were measured against its save.
         var baselineSave = current?.Baseline.SourceLastWriteUtc;
         var freshness = EvidenceFreshnessRule.Of(baselineSave, baselineSave,
             EvidenceFreshnessRule.LatestSave(lastSave, baselineSave));
-        ResolvedSelectionSnapshot? selection = null;
-        AssessmentRecord? assessment = null;
-        IReadOnlyList<AssessmentRecord> reruns = [];
-        string? correctnessAssessmentId = null;
-        string? objectTimingAssessmentId = null;
-        if (current is not null && saved is not null)
-        {
-            var resolved = ResolveSelection(current.Summary, saved);
-            if (!resolved.Succeeded)
-                return CommandOutcome<CurrentEvidenceSnapshot>.Refused(resolved.Refusal!);
-            var resolvedSelection = resolved.Value!;
-            var tokenJson = JsonSerializer.Serialize(current.Baseline.Token, MotifJson.CreateOptions());
-            assessment = new AssessmentRepository(database).FindLatestBaselineAssessment(
-                AssessmentKind.ParseTime.ToStoredKind(), tokenJson, resolvedSelection.Selection.Sha256,
-                resolvedSelection.Selection.Words);
-            if (assessment is not null)
-            {
-                if (assessment.Invocation?.InvocationId is { } invocationId)
-                {
-                    string? SameInvocation(AssessmentKind kind) => new AssessmentRepository(database)
-                        .ListBaselineAssessments(kind.ToStoredKind())
-                        .LastOrDefault(candidate => candidate.BaselineToken == tokenJson &&
-                            candidate.Invocation?.InvocationId == invocationId)?.AssessmentId;
-                    correctnessAssessmentId = SameInvocation(AssessmentKind.Correctness);
-                    objectTimingAssessmentId = SameInvocation(AssessmentKind.ObjectTiming);
-                }
-                reruns = AssessmentWordOverlay.ReplacementsFor(assessment,
-                    new AssessmentRepository(database).ListBaselineAssessments(AssessmentKind.ParseTime.ToStoredKind()));
-                resolvedSelection = resolvedSelection with
-                {
-                    Selection = resolvedSelection.Selection with { Provenance = assessment.Selection.Provenance },
-                    OccurrencesByWord = MergeRecordedOccurrences(
-                        resolvedSelection.OccurrencesByWord,
-                        AssessmentWordOverlay.Apply(assessment.Words ?? [], reruns)),
-                };
-            }
-            selection = resolvedSelection;
-        }
-
-        var evidenceSet = assessment is null ? null : AssessmentEvidenceSet.Create(assessment, reruns);
+        var selection = resolved.Value.Selection;
+        var assessment = resolved.Value.MatchingAssessment;
+        var reruns = resolved.Value.Reruns;
         var navigation = includeWordContext && current is not null
             ? SavedProjectNavigation.Read(project.FullFwDataPath, current.Baseline.Token.ProjectIdentity) : null;
         var snapshot = new CurrentEvidenceSnapshot(
@@ -179,9 +150,12 @@ public static class CurrentEvidenceQuery
             LastParserRefusal = current is null ? null : new ParserRefusalRepository(database).Get(current.Baseline.Token),
             Navigation = navigation,
             RerunAssessments = reruns,
-            EvidenceSet = evidenceSet,
-            MatchingCorrectnessAssessmentId = correctnessAssessmentId,
-            MatchingObjectTimingAssessmentId = objectTimingAssessmentId,
+            EvidenceSet = assessment is null ? null : AssessmentEvidenceSet.Create(assessment, reruns),
+            Set = resolved.Value.Set,
+            MatchingCorrectnessAssessmentId = resolved.Value.Set?.MeasurementIds
+                .GetValueOrDefault(AssessmentKinds.Correctness),
+            MatchingObjectTimingAssessmentId = resolved.Value.Set?.MeasurementIds
+                .GetValueOrDefault(AssessmentKinds.ObjectTiming),
         };
         return includeWordContext ? ReadWordContext(snapshot, project.FullFwDataPath, includeResolvedReadings) :
             CommandOutcome<CurrentEvidenceSnapshot>.Success(snapshot);
@@ -262,16 +236,6 @@ public static class CurrentEvidenceQuery
             word => occurrences.GetValueOrDefault(word), StringComparer.Ordinal);
         return CommandOutcome<ResolvedSelectionSnapshot>.Success(new ResolvedSelectionSnapshot(
             selection, resolvedOccurrences, saved.TextIds.Count, saved.AddedWords.Count));
-    }
-
-    private static IReadOnlyDictionary<string, int> MergeRecordedOccurrences(
-        IReadOnlyDictionary<string, int> resolved, IReadOnlyList<AssessedWord>? words)
-    {
-        if (words is null) return resolved;
-        var merged = resolved.ToDictionary(entry => entry.Key, entry => entry.Value, StringComparer.Ordinal);
-        foreach (var word in words)
-            if (word.OccurrenceCount is { } count) merged[word.Word] = count;
-        return merged;
     }
 
     private static DateTimeOffset ReadStoreCreatedUtc(MotifDatabase database)

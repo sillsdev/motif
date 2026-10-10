@@ -16,7 +16,7 @@ public static class MotifSchema
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 43;
+    public const int CurrentSchema = 44;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
@@ -60,7 +60,7 @@ public static class MotifSchema
         {
             "MotifMetadata", "Corpora", "CorpusDocuments", "Assessments", "AssessedWords", "AssessmentInvocations",
             "ParsedAnalyses", "AssessmentPins", "Proposals", "ProposalRevisions",
-            "Decisions", "Receipts", "Reports", "AppliedIndex", "Jobs", "Baselines", "RetainedInvocations",
+            "Receipts", "Reports", "AppliedIndex", "Jobs", "Baselines", "RetainedInvocations",
             "RetainedInvocationMembers", "NamedSelections", "DefaultSelection", "AssessmentObjectTimings",
             "BaselineSummaries", "BaselineTextWords", "BaselineTextWordforms", "BaselineTextReadIndex", "GrammarChecks", "PendingChangeFits",
             "ReadOccurrences", "ActiveParse", "ParserRefusals", "ParsimonyBundles", "ParsimonyBundleReferences",
@@ -73,7 +73,7 @@ public static class MotifSchema
             "IX_Proposals_DraftName", "IX_Assessments_Proposal", "IX_Assessments_Kind",
             "IX_RetainedInvocations_Project", "IX_RetainedInvocationMembers_Assessment",
             "IX_ParsimonyBundles_ProjectCreated", "IX_ParsimonyReaderLeases_BundleExpiry",
-            "IX_ParsimonyBuildClaims_Project"
+            "IX_ParsimonyBuildClaims_Project", "IX_GrammarChecks_Project", "IX_GrammarChecks_Proposal"
         };
 
         using (var objects = connection.CreateCommand())
@@ -241,7 +241,7 @@ public static class MotifSchema
         details.Parameters.AddWithValue("$index", index);
         using var detailReader = details.ExecuteReader();
         if (!detailReader.Read() || !StringComparer.Ordinal.Equals(detailReader.GetString(0), "c") ||
-            detailReader.GetInt32(1) != 0)
+            (detailReader.GetInt32(1) != 0) != IsPartialIndex(index))
             throw new InvalidDataException($"Motif index {index} has unexpected registration details.");
     }
 
@@ -278,10 +278,15 @@ public static class MotifSchema
         "IX_ParsimonyBundles_ProjectCreated" => "ParsimonyBundles",
         "IX_ParsimonyReaderLeases_BundleExpiry" => "ParsimonyReaderLeases",
         "IX_ParsimonyBuildClaims_Project" => "ParsimonyBuildClaims",
+        "IX_GrammarChecks_Project" or "IX_GrammarChecks_Proposal" => "GrammarChecks",
         _ => throw new InvalidDataException($"Motif index {index} is not registered.")
     };
 
-    private static bool IsUniqueIndex(string index) => index is "IX_Jobs_Lineage_Attempt" or "IX_Proposals_DraftName";
+    private static bool IsUniqueIndex(string index) => index is "IX_Jobs_Lineage_Attempt" or
+        "IX_Proposals_DraftName" or "IX_GrammarChecks_Project" or "IX_GrammarChecks_Proposal";
+
+    private static bool IsPartialIndex(string index) => index is "IX_GrammarChecks_Project" or
+        "IX_GrammarChecks_Proposal";
 
     private static IReadOnlyList<string> IndexColumnsFor(string index) => index switch
     {
@@ -300,6 +305,8 @@ public static class MotifSchema
         "IX_ParsimonyBundles_ProjectCreated" => ["ProjectKey", "CreatedUtc"],
         "IX_ParsimonyReaderLeases_BundleExpiry" => ["BundleId", "ExpiresUtc"],
         "IX_ParsimonyBuildClaims_Project" => ["ProjectKey"],
+        "IX_GrammarChecks_Project" => ["BaselineToken"],
+        "IX_GrammarChecks_Proposal" => ["BaselineToken", "ProposalId", "IntentDigest"],
         _ => throw new InvalidDataException($"Motif index {index} is not registered.")
     };
 
@@ -325,7 +332,6 @@ public static class MotifSchema
         "ParsimonyReaderLeases" => [new("ParsimonyBundles", "BundleId", "BundleId", "NO ACTION", "CASCADE", "NONE")],
         "CurrentParsimonyBundles" => [new("ParsimonyBundles", "BundleId", "BundleId", "NO ACTION", "CASCADE", "NONE")],
         "ProposalRevisions" => [new("Proposals", "ProposalId", "ProposalId", "NO ACTION", "NO ACTION", "NONE")],
-        "Decisions" => [new("Proposals", "ProposalId", "ProposalId", "NO ACTION", "NO ACTION", "NONE")],
         "Receipts" => [new("Proposals", "ProposalId", "ProposalId", "NO ACTION", "NO ACTION", "NONE")],
         "Reports" => [new("Assessments", "AssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE"),
             new("Proposals", "ProposalId", "ProposalId", "NO ACTION", "NO ACTION", "NONE")],
@@ -346,8 +352,9 @@ public static class MotifSchema
         "DefaultSelection" => [C("Id", "INTEGER", false, 1), C("SelectionName", "TEXT", true)],
         "ParserRefusals" => [C("BaselineToken", "TEXT", false, 1), C("RefusalJson", "TEXT", true)],
         "GrammarChecks" =>
-        [C("BaselineToken", "TEXT", false, 1), C("SelectionSha256", "TEXT", true),
-            C("ParserStamp", "TEXT"), C("ResponseJson", "TEXT", true), C("CheckedUtc", "TEXT", true)],
+        [C("BaselineToken", "TEXT", true), C("ProposalId", "TEXT"), C("IntentDigest", "TEXT"),
+            C("SelectionSha256", "TEXT", true), C("ParserStamp", "TEXT"), C("ResponseJson", "TEXT", true),
+            C("CheckedUtc", "TEXT", true)],
         "PendingChangeFits" =>
         [C("DraftRevision", "TEXT", true, 1), C("ProjectLastWriteUtcTicks", "INTEGER", true, 2),
             C("BaselineIdentity", "TEXT", true, 3), C("FitSummaryJson", "TEXT", true)],
@@ -425,10 +432,6 @@ public static class MotifSchema
         "ProposalRevisions" =>
         [C("ProposalId", "TEXT", true, 1), C("IntentDigest", "TEXT", true, 2),
             C("ProposalJson", "BLOB", true), C("CreatedUtc", "TEXT", true)],
-        "Decisions" =>
-        [C("ProposalId", "TEXT", true, 1), C("IntentDigest", "TEXT", true, 2),
-            C("Outcome", "TEXT", true), C("ActorType", "TEXT", true), C("ActorId", "TEXT", true),
-            C("Comment", "TEXT"), C("TimestampUtc", "TEXT", true)],
         "Receipts" =>
         [C("ReceiptId", "TEXT", false, 1), C("ProposalId", "TEXT", true),
             C("IntentDigest", "TEXT", true), C("ReceiptJson", "TEXT", true), C("RecordedUtc", "TEXT", true)],
@@ -569,17 +572,6 @@ public static class MotifSchema
             IntentDigest TEXT NOT NULL,
             ProposalJson BLOB NOT NULL,
             CreatedUtc TEXT NOT NULL,
-            PRIMARY KEY (ProposalId, IntentDigest)
-        );
-
-        CREATE TABLE Decisions (
-            ProposalId TEXT NOT NULL REFERENCES Proposals(ProposalId),
-            IntentDigest TEXT NOT NULL,
-            Outcome TEXT NOT NULL,
-            ActorType TEXT NOT NULL,
-            ActorId TEXT NOT NULL,
-            Comment TEXT NULL,
-            TimestampUtc TEXT NOT NULL,
             PRIMARY KEY (ProposalId, IntentDigest)
         );
 
@@ -841,12 +833,17 @@ public static class MotifSchema
 
     private const string GrammarCheckDdl = """
         CREATE TABLE GrammarChecks (
-            BaselineToken TEXT PRIMARY KEY,
+            BaselineToken TEXT NOT NULL,
+            ProposalId TEXT NULL,
+            IntentDigest TEXT NULL,
             SelectionSha256 TEXT NOT NULL,
             ParserStamp TEXT NULL,
             ResponseJson TEXT NOT NULL,
             CheckedUtc TEXT NOT NULL
         );
+        CREATE UNIQUE INDEX IX_GrammarChecks_Project ON GrammarChecks(BaselineToken) WHERE ProposalId IS NULL;
+        CREATE UNIQUE INDEX IX_GrammarChecks_Proposal
+            ON GrammarChecks(BaselineToken, ProposalId, IntentDigest) WHERE ProposalId IS NOT NULL;
         """;
 
     private const string PendingChangeFitDdl = """

@@ -30,7 +30,7 @@ public sealed class ReviewNumbersTextRenderingTests
     [Fact]
     public void AMeasuredPendingRevisionRendersItsNumbersSentence()
     {
-        var measured = new MeasurePendingResult("job/one", "revision/one",
+        var measured = SIL.Motif.Tests.Support.TestFixtures.PendingMeasureResponseFactory.Create("job/one", "revision/one",
             new ReviewNumbersResponse(ReviewComparability.Compared, 1, 0, 1, 1, 1, true));
 
         var rendered = CommandTextRenderer.Render(CommandOutcome<MeasurePendingResult>.Success(measured),

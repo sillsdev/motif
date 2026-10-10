@@ -442,7 +442,7 @@ public sealed partial class FakeCommandClient : ICommandClient
         return Refused<T>(refusal);
     }
 
-    private static Task<CommandOutcome<T>> Completed<T>(T response) where T : class =>
+    private static Task<CommandOutcome<T>> Completed<T>(T response) where T : class? =>
         Task.FromResult(CommandOutcome<T>.Success(response));
 
     private static Task<CommandOutcome<T>> Refused<T>(Refusal refusal) where T : class =>

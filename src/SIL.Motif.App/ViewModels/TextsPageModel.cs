@@ -154,9 +154,9 @@ public sealed partial class TextsPageModel : PageModel
 
     protected override Task OnStopWorkAsync() => Task.WhenAll(Words.StopAsync(), ResultsInText.StopAsync());
 
-    protected override Task OnEvidencePublishedAsync(ProjectEvidence evidence, CancellationToken cancellationToken)
+    protected override Task OnEvidencePublishedAsync(EvidenceLens lens, CancellationToken cancellationToken)
     {
-        if (evidence.Assessment is not { } shown) return Task.CompletedTask;
+        if (lens.Today.Assessment is not { } shown) return Task.CompletedTask;
         Assess.Words.UpdateOccurrences(Words.OccurrenceCountOf);
         Assess.Compare.UpdateOccurrences(Words.OccurrenceCountOf);
         var expected = Context.SelectionReads.Reader?.Context.ExpectedWriteContext();

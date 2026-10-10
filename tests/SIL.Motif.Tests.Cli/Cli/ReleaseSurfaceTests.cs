@@ -35,7 +35,7 @@ public sealed class ReleaseSurfaceTests : IDisposable
     [Fact]
     public void AllPendingAfterTheOptionTerminatorIsRefusedAsDeveloperOnly()
     {
-        var result = Run("apply P --project p --user u --force --json -- --all-pending", developerCommands: false);
+        var result = Run("apply P --project p --force --json -- --all-pending", developerCommands: false);
 
         Assert.Equal(FailureEnvelope.ExitCodeFor(FailureReason.Refused), result.ExitCode);
         Assert.Empty(result.Output);
