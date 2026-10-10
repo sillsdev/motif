@@ -1063,7 +1063,7 @@ public sealed partial class AllomorphRuleRetirementAcceptanceTests(
             Assert.Empty(analyses.EnumerateArray());
             output.WriteLine("R5 literal-hash snapshot keeps the stored marker literal and ta has no analysis.");
         }
-        output.WriteLine($"Parser={parser}; version=0.8.2; scratch={retainedProject}; rule={ruleId.Value}; context={boundaryId.Value}.");
+        output.WriteLine($"Parser={parser}; version=0.8.3; scratch={retainedProject}; rule={ruleId.Value}; context={boundaryId.Value}.");
     }
 
     private static ReplaceListedAllomorphsWithRuleIntent PrefixRetirementIntent(CanonicalId classId,

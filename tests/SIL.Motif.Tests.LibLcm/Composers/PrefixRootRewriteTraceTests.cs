@@ -62,7 +62,7 @@ public sealed class PrefixRootRewriteTraceTests(PristineProjectFixture pristine,
             pristine.Seed.FirstEntryId.ToString("D"));
         Assert.Contains("\"outputShape\":\"ata\"", trace, StringComparison.Ordinal);
         output.WriteLine($"Scratch={retainedProject}");
-        output.WriteLine($"Parser={executable}; version=0.8.2");
+        output.WriteLine($"Parser={executable}; version=0.8.3");
         output.WriteLine("Segment context a_r_Vowel applies across prefix+root as ara→ata.");
         output.WriteLine(diagnostic);
     }
@@ -99,7 +99,7 @@ public sealed class PrefixRootRewriteTraceTests(PristineProjectFixture pristine,
         Assert.NotEmpty(analyses.EnumerateArray());
         Assert.Contains("\"outputShape\":\"ata\"", trace, StringComparison.Ordinal);
         output.WriteLine($"Scratch={retainedProject}");
-        output.WriteLine($"Parser={executable}; version=0.8.2");
+        output.WriteLine($"Parser={executable}; version=0.8.3");
         output.WriteLine("Segment context a_r_Vowel applies across root+suffix as ara→ata.");
         output.WriteLine(diagnostic);
     }
@@ -193,7 +193,7 @@ public sealed class PrefixRootRewriteTraceTests(PristineProjectFixture pristine,
         using var controlDocument = JsonDocument.Parse(controlTrace);
         Assert.Empty(controlDocument.RootElement.GetProperty("result").GetProperty("analyses").EnumerateArray());
         output.WriteLine($"Scratch={retainedProject}");
-        output.WriteLine($"Parser={executable}; version=0.8.2");
+        output.WriteLine($"Parser={executable}; version=0.8.3");
         output.WriteLine($"Imported rule={ruleId.Value}; FWData context uses word-boundary GUID {prefix.WordBoundary.Value}.");
         output.WriteLine("Imported snapshot context is wordBoundary; PhonologicalRuleSynthesis produces ta through prefix r + root a.");
         output.WriteLine("Control: removing the rule leaves ta without an analysis.");
@@ -265,7 +265,7 @@ public sealed class PrefixRootRewriteTraceTests(PristineProjectFixture pristine,
         using var result = JsonDocument.Parse(trace);
         Assert.Empty(result.RootElement.GetProperty("result").GetProperty("analyses").EnumerateArray());
         output.WriteLine($"Scratch={retainedProject}");
-        output.WriteLine($"Parser={executable}; version=0.8.2");
+        output.WriteLine($"Parser={executable}; version=0.8.3");
         output.WriteLine($"Literal marker={literalHash.Value}; word boundary={prefix.WordBoundary.Value}.");
         output.WriteLine("The imported snapshot keeps literal # as a marker apart from the word edge; it does not license ta.");
     }
