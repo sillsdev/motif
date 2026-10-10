@@ -1,3 +1,4 @@
+using SIL.LCModel.Core.WritingSystems;
 using SIL.Motif.Host.LcmUtils;
 using System.Diagnostics;
 using System.Security.Cryptography;
@@ -35,6 +36,29 @@ public sealed class ProcessWritingSystemRepositoryTests
         });
 
         Assert.Same(installed, ProcessWritingSystemRepository.CurrentOutsideScratchLoads());
+    }
+
+    [Fact]
+    public void ConcurrentCacheDisposalsNeverCollideInTheSharedWritingSystemRepository()
+    {
+        FwDataProjectLoader.Init();
+        var repository = Assert.IsType<SerializedGlobalWritingSystemRepository>(
+            ProcessWritingSystemRepository.CurrentOutsideScratchLoads());
+        const string tag = "qaa-x-race";
+        try
+        {
+            for (var round = 0; round < 20; round++)
+            {
+                var definitions = Enumerable.Range(0, 8).Select(_ => new CoreWritingSystemDefinition(tag)).ToArray();
+                Parallel.ForEach(definitions, new ParallelOptions { MaxDegreeOfParallelism = definitions.Length },
+                    definition => repository.Set(definition));
+                repository.Remove(tag);
+            }
+        }
+        finally
+        {
+            if (repository.Contains(tag)) repository.Remove(tag);
+        }
     }
 
     [Fact]

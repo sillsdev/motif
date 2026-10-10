@@ -236,25 +236,19 @@ public class FwDataProjectLoader
 
     private const string WritingSystemRepositoryPathEnvironmentVariable = "MOTIF_WRITING_SYSTEM_REPOSITORY_PATH";
 
-    // The path constructor is internal; InitInstallsTheRepositorySelectedByTheEnvironment pins this route.
+    // Installs the serialized repository over the one selected by the environment, or the default.
     private static void InstallConfiguredGlobalWritingSystemRepository()
     {
         var configuredPath = Environment.GetEnvironmentVariable(WritingSystemRepositoryPathEnvironmentVariable);
-        if (string.IsNullOrWhiteSpace(configuredPath)) return;
-
-        var repositoryPath = Path.GetFullPath(configuredPath);
-        Directory.CreateDirectory(repositoryPath);
-        RedirectDefaultWritingSystemRepository(repositoryPath);
-        var repository = (CoreGlobalWritingSystemRepository?)Activator.CreateInstance(
-            typeof(CoreGlobalWritingSystemRepository),
-            BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public,
-            binder: null, args: [repositoryPath], culture: null);
-        if (repository is null)
+        if (!string.IsNullOrWhiteSpace(configuredPath))
         {
-            throw new InvalidOperationException(
-                "LibLCM did not create a writing-system repository for " +
-                $"'{WritingSystemRepositoryPathEnvironmentVariable}'.");
+            var repositoryPath = Path.GetFullPath(configuredPath);
+            Directory.CreateDirectory(repositoryPath);
+            RedirectDefaultWritingSystemRepository(repositoryPath);
         }
+
+        // The parameterless constructor reads the default path, which the redirect above has just set.
+        var repository = new SerializedGlobalWritingSystemRepository();
 
         var key = typeof(CoreGlobalWritingSystemRepository).FullName!;
         if (SingletonsContainer.Item(key) is not null) SingletonsContainer.Remove(key);
