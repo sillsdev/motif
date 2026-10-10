@@ -272,6 +272,36 @@ public sealed class WorkspaceContextTests
     }
 
     [Fact]
+    public async Task AStoredGrammarReadThatFinishesAfterACheckStartsLeavesTheCheckRunning()
+    {
+        var (fake, context) = NewContextWithFake();
+        var warningsPage = new WarningsPageModel(context);
+        fake.ReadCurrentEvidenceCompletesWith(new CurrentEvidenceSnapshot("one", DateTimeOffset.UtcNow,
+            null, EvidenceFreshness.NoBaseline, null, null, null, null, null));
+        await context.OpenProjectAsync(ProjectPath);
+        var storedRead = new TaskCompletionSource<CommandOutcome<StoredGrammarCheckResponse>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var storedReads = fake.StoredGrammarCheckRequests.Count;
+        fake.StoredGrammarCheckHandler = (_, _) => storedRead.Task;
+        var check = new TaskCompletionSource<CommandOutcome<GrammarCheckResponse>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        fake.OnCheckGrammar((_, _) => check.Task);
+
+        var publication = context.ReadStoredEvidenceAsync();
+        Assert.Equal(storedReads + 1, fake.StoredGrammarCheckRequests.Count);
+        var checking = warningsPage.CheckGrammarCommand.ExecuteAsync(null);
+        Assert.True(warningsPage.Grammar.IsLoading);
+        storedRead.SetResult(CommandOutcome<StoredGrammarCheckResponse>.Success(new StoredGrammarCheckResponse(null)));
+        await publication;
+
+        Assert.True(warningsPage.Grammar.IsLoading);
+        check.SetResult(CommandOutcome<GrammarCheckResponse>.Success(new GrammarCheckResponse([], true)));
+        await checking;
+        Assert.False(warningsPage.Grammar.IsLoading);
+        Assert.True(warningsPage.Grammar.HasChecked);
+    }
+
+    [Fact]
     public async Task OpeningAProjectReadsItsStoredTimingThroughThePageContext()
     {
         var (fake, context) = NewContextWithFake();

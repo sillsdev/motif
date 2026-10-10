@@ -100,6 +100,9 @@ public sealed partial class FakeCommandClient
     /// <summary>What the stored grammar check read answers; nothing stored until a test says otherwise.</summary>
     public void StoredGrammarCheckIs(GrammarCheckResponse? response) => _storedGrammarCheck = response;
 
+    public Func<GrammarCheckRequest, CancellationToken, Task<CommandOutcome<StoredGrammarCheckResponse>>>?
+        StoredGrammarCheckHandler { get; set; }
+
     public void OnTraceWord(
         Func<WordTraceRequest, CancellationToken, Task<CommandOutcome<WordTraceResponse>>> behavior) =>
         _traceWord = behavior;
@@ -155,6 +158,7 @@ public sealed partial class FakeCommandClient
         GrammarCheckRequest request, CancellationToken cancellationToken)
     {
         StoredGrammarCheckRequests.Add(request);
+        if (StoredGrammarCheckHandler is { } handler) return handler(request, cancellationToken);
         return Completed(new StoredGrammarCheckResponse(_storedGrammarCheck));
     }
 
