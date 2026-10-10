@@ -27,7 +27,7 @@ Each action is staged in pending changes, which the Review changes page shows. N
 
 A Suppressed decision stays in its own tab with its reason. Select it to read its details; that only shows them. **Return to Active** stages the withdrawal of the decision, so the finding comes back to the Active tab once Apply and Refresh have run.
 
-A decision returns to Active on its own when the evidence it was made on changes. It then shows "Changed since it was kept" or "Changed since it was deferred" with the reason you gave before, so you can decide again.
+A decision returns to Active on its own when the evidence it was made on changes. It then shows "Changed since it was kept" or "Changed since it was deferred" with the reason you gave before, so you can decide again. A Motif update that changes how a check reads its evidence can bring a kept or deferred finding back once in the same way, even though nothing in the grammar changed; the release notes say when an update does this.
 
 A decision that conflicts with another, or that no longer matches any finding, stays visible and is not hidden. A conflict stays in Active and says what conflicts. A stale decision in Suppressed says that no current finding matches it.
 
