@@ -47,6 +47,44 @@ public sealed class ScrollEndAnchorTests
     }
 
     [Fact]
+    public void AViewerAtItsEndReturnsThereWhenLayoutShiftsItUpAsTheContentGrows()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(() =>
+        {
+            var (window, viewer, content) = Open();
+            viewer.ScrollToEnd();
+            Settle(window);
+
+            content.Height = 1115;
+            viewer.Offset = viewer.Offset.WithY(viewer.Offset.Y - 115);
+            Settle(window);
+
+            Assert.Equal(viewer.Extent.Height - viewer.Viewport.Height, viewer.Offset.Y, 3);
+            window.Close();
+            return Task.CompletedTask;
+        }, TimeSpan.FromSeconds(60));
+    }
+
+    [Fact]
+    public void AViewerMovedFarFromItsEndAsTheContentChangesStaysWhereItWasMoved()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(() =>
+        {
+            var (window, viewer, content) = Open();
+            viewer.ScrollToEnd();
+            Settle(window);
+
+            content.Height = 1100;
+            viewer.Offset = viewer.Offset.WithY(0);
+            Settle(window);
+
+            Assert.Equal(0, viewer.Offset.Y, 3);
+            window.Close();
+            return Task.CompletedTask;
+        }, TimeSpan.FromSeconds(60));
+    }
+
+    [Fact]
     public void AViewerScrolledUpFromItsEndKeepsItsPlaceWhenTheContentGrows()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
