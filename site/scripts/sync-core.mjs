@@ -1,6 +1,13 @@
 import { access, copyFile, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { convertXmlDocsToMarkdown } from '../../tools/xml-docs-to-markdown.mjs';
+
+// Every Parsimony recipe page follows Parsimony findings, in the order the recipe manifest lists them.
+function parsimonyRecipeCodes() {
+	const manifest = JSON.parse(readFileSync(new URL('../../src/SIL.Motif.Help/Content/en/guide/parsimony/parsimony-recipes.json', import.meta.url), 'utf8'));
+	return manifest.recipes.map((recipe) => recipe.helpPath.replace(/^guide\//, '').replace(/\.md$/, ''));
+}
 
 const guideSections = [
 	{
@@ -17,7 +24,11 @@ const guideSections = [
 	},
 	{
 		title: 'Concepts',
-		pages: ['baseline', 'assessment', 'pangloss', 'text-coverage', 'default-selection', 'drift', 'pending-changes'],
+		pages: ['baseline', 'assessment', 'pangloss', 'text-coverage', 'default-selection', 'drift', 'pending-changes', 'writing-systems'],
+	},
+	{
+		title: 'Advanced AI mode',
+		pages: ['ai-assistants', 'parsimony-findings', ...parsimonyRecipeCodes()],
 	},
 	{
 		title: 'For AI agents and scripts',

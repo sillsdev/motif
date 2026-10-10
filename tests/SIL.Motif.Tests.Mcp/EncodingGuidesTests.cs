@@ -58,7 +58,7 @@ public sealed class EncodingGuidesTests
                 Assert.Single(EncodingGuides.ReadResource(uri).Contents));
             Assert.Equal(recipe.Page, content.Text);
             Assert.Equal(recipe.Page,
-                help.GetHelpPage(HelpEntryKind.Guide, $"parsimony/recipes/{recipe.MeasureId}"));
+                help.GetHelpPage(HelpEntryKind.Guide, $"parsimony/recipes/{recipe.MeasureId.ToLowerInvariant()}"));
         }
     }
 

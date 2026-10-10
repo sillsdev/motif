@@ -26,7 +26,7 @@
       "updateIntents": [
         "EditAdhocProhibition"
       ],
-      "helpPath": "guide/parsimony/recipes/P-adhoc-duplicate.md",
+      "helpPath": "guide/parsimony/recipes/p-adhoc-duplicate.md",
       "sources": [
         "Black §2.4",
         "Black §3.10",
@@ -60,7 +60,7 @@
       "updateIntents": [
         "EditAffixTemplate"
       ],
-      "helpPath": "guide/parsimony/recipes/R-word-negative-accepted.md",
+      "helpPath": "guide/parsimony/recipes/r-word-negative-accepted.md",
       "sources": [
         "Subset Principle",
         "ADR 0027",
@@ -97,7 +97,7 @@
       "updateIntents": [
         "EditAllomorphCondition"
       ],
-      "helpPath": "guide/parsimony/recipes/R-word-disapproved-produced.md",
+      "helpPath": "guide/parsimony/recipes/r-word-disapproved-produced.md",
       "sources": [
         "ADR 0027",
         "ADR 0049",
@@ -139,7 +139,7 @@
         "AuthorAffixTemplate",
         "EditInflectionalAffix"
       ],
-      "helpPath": "guide/parsimony/recipes/B-affix-unslotted.md",
+      "helpPath": "guide/parsimony/recipes/b-affix-unslotted.md",
       "sources": [
         "Black §2.1.2",
         "Black §2.1.2.9",
@@ -180,7 +180,7 @@
         "AuthorAffixTemplate",
         "EditAffixTemplate"
       ],
-      "helpPath": "guide/parsimony/recipes/R-tmpl-precedence.md",
+      "helpPath": "guide/parsimony/recipes/r-tmpl-precedence.md",
       "sources": [
         "Black §2.1.2",
         "position-class morphology",
@@ -220,7 +220,7 @@
       "updateIntents": [
         "EditAffixSlot"
       ],
-      "helpPath": "guide/parsimony/recipes/R-slot-blocking.md",
+      "helpPath": "guide/parsimony/recipes/r-slot-blocking.md",
       "sources": [
         "Black §2.1.2.2",
         "ADR 0027",
@@ -257,7 +257,7 @@
         "EditAllomorphCondition",
         "OrderAllomorphs"
       ],
-      "helpPath": "guide/parsimony/recipes/R-allo-unconditioned.md",
+      "helpPath": "guide/parsimony/recipes/r-allo-unconditioned.md",
       "sources": [
         "Black §3.1.3",
         "Black §3.1.4",
@@ -296,7 +296,7 @@
         "AuthorEnvironment",
         "EditAllomorphCondition"
       ],
-      "helpPath": "guide/parsimony/recipes/R-env-broad.md",
+      "helpPath": "guide/parsimony/recipes/r-env-broad.md",
       "sources": [
         "Subset Principle",
         "finite context universe",
@@ -339,7 +339,7 @@
         "EditNaturalClass",
         "RelinkNaturalClass"
       ],
-      "helpPath": "guide/parsimony/recipes/R-nc-excess.md",
+      "helpPath": "guide/parsimony/recipes/r-nc-excess.md",
       "sources": [
         "Black §6.2.6",
         "feature intersection",
@@ -378,7 +378,7 @@
         "AuthorPhonologicalRule",
         "RetireAllomorph"
       ],
-      "helpPath": "guide/parsimony/recipes/P-allo-alternation-family.md",
+      "helpPath": "guide/parsimony/recipes/p-allo-alternation-family.md",
       "sources": [
         "Black §6.1",
         "SPE evaluation metric",
@@ -424,7 +424,7 @@
         "EditAffixTemplate",
         "EditInflectionalAffix"
       ],
-      "helpPath": "guide/parsimony/recipes/B-adhoc-is-slot-order.md",
+      "helpPath": "guide/parsimony/recipes/b-adhoc-is-slot-order.md",
       "sources": [
         "Black §2.4.2",
         "Black §3.10",
@@ -467,7 +467,7 @@
       "updateIntents": [
         "RetireRedundantZeroAffix"
       ],
-      "helpPath": "guide/parsimony/recipes/B-affix-null-vs-optional.md",
+      "helpPath": "guide/parsimony/recipes/b-affix-null-vs-optional.md",
       "sources": [
         "Black §2.1.2.2",
         "loaded zero realization",
@@ -504,7 +504,7 @@
       "updateIntents": [
         "RetireAllomorph"
       ],
-      "helpPath": "guide/parsimony/recipes/P-allo-duplicate-form.md",
+      "helpPath": "guide/parsimony/recipes/p-allo-duplicate-form.md",
       "sources": [
         "Engineering check",
         "Black, A Conceptual Introduction to Morphological Parsing for FieldWorks Language Explorer §§3.1.3–3.1.4"
@@ -533,7 +533,7 @@
         "statement-reference"
       ],
       "updateIntents": [],
-      "helpPath": "guide/parsimony/recipes/P-statement-unused.md",
+      "helpPath": "guide/parsimony/recipes/p-statement-unused.md",
       "sources": [
         "Engineering check"
       ],

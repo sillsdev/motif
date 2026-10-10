@@ -75,7 +75,7 @@ public sealed class MeasureCatalogTests
             Assert.NotEmpty(measure.CitationKeys);
             Assert.Equal(measure.CitationKeys.Count,
                 measure.CitationKeys.Distinct(StringComparer.Ordinal).Count());
-            Assert.Equal($"guide:parsimony/recipes/{measure.Id}", measure.RecipeLink);
+            Assert.Equal($"guide:parsimony/recipes/{measure.Id.ToLowerInvariant()}", measure.RecipeLink);
         });
     }
 
@@ -106,7 +106,7 @@ public sealed class MeasureCatalogTests
             new ParsimonyMeasureThreshold(ParsimonyThresholdOperator.GreaterThan, 1, "1"),
             new string('a', 64),
             [new ParsimonyEvidenceReference("bundle/one", "adhoc-context", argumentsDocument.RootElement.Clone())],
-            "guide:parsimony/recipes/P-adhoc-duplicate",
+            "guide:parsimony/recipes/p-adhoc-duplicate",
             [],
             ParsimonyVerification.NotRun);
         var disposition = new ParsimonyDispositionRecord(

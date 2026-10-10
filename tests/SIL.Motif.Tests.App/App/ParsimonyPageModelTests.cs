@@ -692,7 +692,7 @@ public sealed class ParsimonyPageModelTests
             new ParsimonyMeasureThreshold(ParsimonyThresholdOperator.GreaterThan, 0, "v1"),
             "sha256:" + new string('7', 64),
             [new ParsimonyEvidenceReference(BundleId, "adhoc-context", JsonDocument.Parse("{}").RootElement)],
-            "guide:parsimony/recipes/" + measureId, limitations ?? ["The count is a suggestion, not a verdict."],
+            "guide:parsimony/recipes/" + measureId.ToLowerInvariant(), limitations ?? ["The count is a suggestion, not a verdict."],
             ParsimonyVerification.NotRun) with { ItemNames = items ?? [] });
 
     private static ParsimonySuppressionHistoryViewRow History(ParsimonyFinding finding, string disposition, string state,

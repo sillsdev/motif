@@ -61,7 +61,7 @@ public sealed class ParsimonyRecipeCatalogTests
         new ParsimonyMeasureThreshold(ParsimonyThresholdOperator.GreaterThan, 0, "v1"), "sha256:" + new string('a', 64),
         [.. guids.Select(guid => new ParsimonyEvidenceReference("bundle/x", "adhoc-context",
             JsonDocument.Parse("{\"objectGuid\":\"" + guid + "\"}").RootElement))],
-        "guide:parsimony/recipes/P-adhoc-duplicate", [], ParsimonyVerification.NotRun);
+        "guide:parsimony/recipes/p-adhoc-duplicate", [], ParsimonyVerification.NotRun);
 
     [Fact]
     public void ManifestResourceLookupMatchesWindowsSeparatorNames()
@@ -87,8 +87,8 @@ public sealed class ParsimonyRecipeCatalogTests
         {
             var measure = MeasureCatalog.Find(recipe.MeasureId)!;
             Assert.InRange(recipe.Title.Length, 1, 30);
-            Assert.Equal($"guide/parsimony/recipes/{recipe.MeasureId}.md", recipe.HelpPath);
-            Assert.Equal($"guide:parsimony/recipes/{recipe.MeasureId}", recipe.RecipeLink);
+            Assert.Equal($"guide/parsimony/recipes/{recipe.MeasureId.ToLowerInvariant()}.md", recipe.HelpPath);
+            Assert.Equal($"guide:parsimony/recipes/{recipe.MeasureId.ToLowerInvariant()}", recipe.RecipeLink);
             Assert.Equal(measure.RequiredCapabilities, recipe.RequiredCapabilities);
             Assert.Equal(measure.Axis == ParsimonyAxis.Both
                     ? ["parsimony", "restrictiveness"]
@@ -101,7 +101,7 @@ public sealed class ParsimonyRecipeCatalogTests
                 recipe.Metadata.GroupKind);
             Assert.Contains($"# {recipe.Title}\n", recipe.Page, StringComparison.Ordinal);
             Assert.Equal(recipe.Page,
-                help.GetHelpPage(HelpEntryKind.Guide, $"parsimony/recipes/{recipe.MeasureId}"));
+                help.GetHelpPage(HelpEntryKind.Guide, $"parsimony/recipes/{recipe.MeasureId.ToLowerInvariant()}"));
             Assert.Equal(recipe.Sources.Count, recipe.Sources.Distinct(StringComparer.Ordinal).Count());
             Assert.Equal(measure.CitationKeys, recipe.Metadata.CitationKeys);
             AssertRecipeHeadings(recipe.Page);

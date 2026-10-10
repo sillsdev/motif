@@ -61,6 +61,6 @@ internal static class ParsimonySampleReports
         new ParsimonyMeasureThreshold(ParsimonyThresholdOperator.GreaterThan, 0, "v1"),
         "sha256:" + new string('7', 64),
         [new ParsimonyEvidenceReference(BundleId, "adhoc-context", JsonDocument.Parse("{}").RootElement)],
-        "guide:parsimony/recipes/" + ParsimonyMeasure, limitations,
+        "guide:parsimony/recipes/" + ParsimonyMeasure.ToLowerInvariant(), limitations,
         ParsimonyVerification.NotRun) with { ItemNames = items });
 }

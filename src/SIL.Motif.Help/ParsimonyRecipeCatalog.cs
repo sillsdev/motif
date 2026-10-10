@@ -39,8 +39,11 @@ public sealed record ParsimonyRecipeMetadata(
     IReadOnlyList<string> Sources,
     IReadOnlyList<string> CitationKeys)
 {
-    /// <summary>The stable Guide code used by Help and Parsimony findings.</summary>
-    public string RecipeLink => $"guide:parsimony/recipes/{MeasureId}";
+    /// <summary>
+    /// The stable Guide code used by Help and Parsimony findings: the measure id in lowercase, because the site
+    /// publishes Guide pages at lowercase routes.
+    /// </summary>
+    public string RecipeLink => $"guide:parsimony/recipes/{MeasureId.ToLowerInvariant()}";
 }
 
 /// <summary>A recipe's versioned metadata and its exact embedded CommonMark page.</summary>
@@ -172,7 +175,7 @@ public sealed class ParsimonyRecipeCatalog
         if (metadata.GroupKind is not null && !IsGroupKind(metadata.GroupKind))
             throw new InvalidDataException($"Recipe '{metadata.MeasureId}' has an unsupported group type.");
 
-        var expectedPath = $"guide/parsimony/recipes/{metadata.MeasureId}.md";
+        var expectedPath = $"guide/parsimony/recipes/{metadata.MeasureId.ToLowerInvariant()}.md";
         if (!string.Equals(metadata.HelpPath, expectedPath, StringComparison.Ordinal) || !paths.Add(metadata.HelpPath))
             throw new InvalidDataException($"Recipe '{metadata.MeasureId}' has an invalid or duplicate Help path.");
     }
