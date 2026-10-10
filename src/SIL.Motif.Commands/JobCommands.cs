@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Security.Cryptography;
 using System.Threading;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Commands.Store;
@@ -20,6 +21,7 @@ using SIL.Motif.Model.Effects;
 using SIL.Motif.Projection;
 using SIL.Motif.Worker;
 using SIL.Motif.Worker.Jobs;
+using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker.Store;
 using DryRunModel = SIL.Motif.Model.DryRun.DryRun;
@@ -83,10 +85,27 @@ public static class JobCommands
                 return CommandOutcome<JobEnqueuedResponse>.Refused(ProposalCommands.ProposalLoadRefusal(exception));
             }
 
+            var proposal = ProposalJsonParser.Parse(record.ProposalJson!);
+            IReadOnlyList<FrozenProposalRevision> prerequisites;
+            try
+            {
+                prerequisites = repository.FreezePrerequisites(proposal);
+            }
+            catch (Exception exception)
+            {
+                return CommandOutcome<JobEnqueuedResponse>.Refused(ProposalCommands.ProposalLoadRefusal(exception));
+            }
+
+            var workspaceKey = ProjectWorkspaceKey.Compute(project);
+            var baseline = new BaselineRepository(database).GetCurrent(workspaceKey);
+            var source = baseline is null ? null : new DryRunSourceBinding(baseline.Token, baseline.RootDirectory,
+                baseline.FwDataPath, SourceDigest(baseline.FwDataPath));
+            var input = new DryRunJobInput(DryRunJobInput.CurrentSchemaVersion,
+                FrozenProposalRevision.Create(record.ProposalJson!), prerequisites, source);
             var jobs = new JobRepository(database);
             var jobId = CanonicalId.Mint("job/").Value;
-            var workspaceKey = ProjectWorkspaceKey.Compute(project);
-            var created = jobs.Create(jobId, workspaceKey, DryRunKind, record.ProposalJson!, NowStamp());
+            var inputJson = JsonSerializer.Serialize(input, MotifJson.CreateOptions());
+            var created = jobs.Create(jobId, workspaceKey, DryRunKind, inputJson, NowStamp());
             return CommandOutcome<JobEnqueuedResponse>.Success(
                 new JobEnqueuedResponse(created.JobId, DryRunKind, workspaceKey));
         });
@@ -131,10 +150,21 @@ public static class JobCommands
                 ProposalCommands.BuildProposalJson(JsonSerializer.Deserialize<DraftDocument>(
                     record.ProposalJson!, new JsonSerializerOptions(JsonSerializerDefaults.Web))
                     ?? throw new InvalidDataException("The Draft has no content."));
+            var proposal = ProposalJsonParser.Parse(proposalJson);
+            IReadOnlyList<FrozenProposalRevision> prerequisites;
+            try
+            {
+                prerequisites = repository.FreezePrerequisites(proposal);
+            }
+            catch (Exception exception)
+            {
+                return CommandOutcome<JobEnqueuedResponse>.Refused(ProposalCommands.ProposalLoadRefusal(exception));
+            }
             var words = request.Words ?? (request.AllWords ? null :
-                ProposalCommands.ChangedWords(ProposalJsonParser.Parse(proposalJson)).ToArray());
+                ProposalCommands.ChangedWords(proposal).ToArray());
             var inputJson = JsonSerializer.Serialize(
-                new TrialJobInput(proposalJson, request.Scope, words, request.AllWords), MotifJson.CreateOptions());
+                new TrialJobInput(proposalJson, request.Scope, words, request.AllWords, prerequisites, request.Limits),
+                MotifJson.CreateOptions());
             var created = jobs.Create(jobId, workspaceKey, TrialKind, inputJson, NowStamp());
             return CommandOutcome<JobEnqueuedResponse>.Success(
                 new JobEnqueuedResponse(created.JobId, TrialKind, workspaceKey));
@@ -173,14 +203,18 @@ public static class JobCommands
                 var repository = new ProposalRepository(database);
                 var id = ProposalCommands.NormalizeId(request.ProposalId);
                 var canonicalId = CanonicalId.Parse(id);
+                var dryRunInput = DryRunJobInput.Parse(job.InputJson);
+                var proposal = dryRunInput.Proposal.Validate();
+                if (proposal.ProposalId != canonicalId)
+                    throw new InvalidDataException("The Dry Run job belongs to another Proposal.");
                 var dryRun = ParsePublishedDryRun(job.DryRunJson);
 
                 // Persist the bound-DryRun anchor: apply requires it present and unmoved.
                 repository.SetAnchor(canonicalId, JsonSerializer.Serialize(dryRun.Anchor));
 
-                return CommandOutcome<DryRunProjection>.Success(DryRunProjectionBuilder.Build(id, dryRun));
+                return CommandOutcome<DryRunProjection>.Success(DryRunProjectionBuilder.Build(id, dryRun, proposal));
             }
-            catch (Exception exception) when (exception is ArgumentException or KeyNotFoundException)
+            catch (Exception exception) when (exception is ArgumentException or KeyNotFoundException or InvalidDataException)
             {
                 return CommandOutcome<DryRunProjection>.Refused(ProposalCommands.ProposalLoadRefusal(exception));
             }
@@ -467,6 +501,12 @@ public static class JobCommands
 
     private static string NowStamp() => JobTimestamp.FormatUtc(DateTimeOffset.UtcNow);
 
+    private static string SourceDigest(string path)
+    {
+        using var source = File.OpenRead(path);
+        return "sha256:" + Convert.ToHexStringLower(SHA256.HashData(source));
+    }
+
     private static Refusal JobNotFound(string jobId) =>
         new("job.not-found", FailureReason.NotFound,
             "No job '" + jobId + "' is recorded for this project.", Fact(("jobId", jobId)));
@@ -488,7 +528,7 @@ public static class JobCommands
     private readonly record struct GlobalQueueEntry(KnownProjectRecord Project, JobRecord Job, double QueueOrder);
 
     // Reads a published Dry Run's JSON back into the model the renderer takes.
-    private static DryRunModel ParsePublishedDryRun(string dryRunJson)
+    internal static DryRunModel ParsePublishedDryRun(string dryRunJson)
     {
         using var document = JsonDocument.Parse(dryRunJson);
         var root = document.RootElement;

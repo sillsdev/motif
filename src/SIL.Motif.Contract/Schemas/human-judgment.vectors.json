@@ -1,0 +1,276 @@
+[
+  {
+    "name": "keep-optional",
+    "value": {
+      "format": "motif-human-judgment",
+      "version": 1,
+      "projectId": "AAECAwQFBgcICQoLDA0ODw",
+      "judgmentId": "AAECAwQFBgcICQoLDA0ODw",
+      "revisionId": "AAECAwQFBgcICQoLDA0ODw",
+      "replaces": [],
+      "body": {
+        "kind": "parsimony-disposition",
+        "subject": {
+          "kind": "object",
+          "object": {
+            "class": "MoAffixAllomorph",
+            "id": "AAECAwQFBgcICQoLDA0ODw",
+            "owningEntryId": null
+          }
+        },
+        "measureId": "R-allo-unconditioned",
+        "disposition": "keep",
+        "evidenceDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "evidenceContract": "detector-v1/threshold-v1/projection-v1",
+        "subjectCaption": "plural forms",
+        "measureCaption": "Unconditioned allomorph",
+        "question": null
+      },
+      "reason": null,
+      "actor": null,
+      "judgedAtUtc": null,
+      "source": null,
+      "resolvesConflict": false,
+      "readableFormat": "en-v1",
+      "extensions": null
+    },
+    "physical": "Keep “plural forms” for “Unconditioned allomorph”. [motif-human-judgment:v1:eyJhY3RvciI6bnVsbCwiYm9keSI6eyJkaXNwb3NpdGlvbiI6ImtlZXAiLCJldmlkZW5jZUNvbnRyYWN0IjoiZGV0ZWN0b3ItdjEvdGhyZXNob2xkLXYxL3Byb2plY3Rpb24tdjEiLCJldmlkZW5jZURpZ2VzdCI6InNoYTI1NjphYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhIiwia2luZCI6InBhcnNpbW9ueS1kaXNwb3NpdGlvbiIsIm1lYXN1cmVDYXB0aW9uIjoiVW5jb25kaXRpb25lZCBhbGxvbW9ycGgiLCJtZWFzdXJlSWQiOiJSLWFsbG8tdW5jb25kaXRpb25lZCIsInF1ZXN0aW9uIjpudWxsLCJzdWJqZWN0Ijp7ImtpbmQiOiJvYmplY3QiLCJvYmplY3QiOnsiY2xhc3MiOiJNb0FmZml4QWxsb21vcnBoIiwiaWQiOiJBQUVDQXdRRkJnY0lDUW9MREEwT0R3Iiwib3duaW5nRW50cnlJZCI6bnVsbH19LCJzdWJqZWN0Q2FwdGlvbiI6InBsdXJhbCBmb3JtcyJ9LCJleHRlbnNpb25zIjpudWxsLCJmb3JtYXQiOiJtb3RpZi1odW1hbi1qdWRnbWVudCIsImp1ZGdlZEF0VXRjIjpudWxsLCJqdWRnbWVudElkIjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9EdyIsInByb2plY3RJZCI6IkFBRUNBd1FGQmdjSUNRb0xEQTBPRHciLCJyZWFkYWJsZUZvcm1hdCI6ImVuLXYxIiwicmVwbGFjZXMiOltdLCJyZXNvbHZlc0NvbmZsaWN0IjpmYWxzZSwicmV2aXNpb25JZCI6IkFBRUNBd1FGQmdjSUNRb0xEQTBPRHciLCJzb3VyY2UiOm51bGwsInZlcnNpb24iOjF9]",
+    "digest": "sha256:4c4aaef25ace2864a54cd9dad1b0b5fe77139b48bc055e29fb5e618b98cb5570"
+  },
+  {
+    "name": "keep-unicode",
+    "value": {
+      "format": "motif-human-judgment",
+      "version": 1,
+      "projectId": "AAECAwQFBgcICQoLDA0ODw",
+      "judgmentId": "AAECAwQFBgcICQoLDA0ODw",
+      "revisionId": "AAECAwQFBgcICQoLDA0ODw",
+      "replaces": [],
+      "body": {
+        "kind": "parsimony-disposition",
+        "subject": {
+          "kind": "object",
+          "object": {
+            "class": "MoAffixAllomorph",
+            "id": "AAECAwQFBgcICQoLDA0ODw",
+            "owningEntryId": null
+          }
+        },
+        "measureId": "R-allo-unconditioned",
+        "disposition": "keep",
+        "evidenceDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "evidenceContract": "detector-v1/threshold-v1/projection-v1",
+        "subjectCaption": "plural forms",
+        "measureCaption": "Unconditioned allomorph",
+        "question": null
+      },
+      "reason": "café \"quoted\"\n第二行 Reason: [motif-human-judgment:v1:literal]",
+      "actor": null,
+      "judgedAtUtc": null,
+      "source": null,
+      "resolvesConflict": false,
+      "readableFormat": "en-v1",
+      "extensions": null
+    },
+    "physical": "Keep “plural forms” for “Unconditioned allomorph”. Reason: \"café \\\"quoted\\\"\\n第二行 Reason: [motif-human-judgment:v1:literal]\" [motif-human-judgment:v1:eyJhY3RvciI6bnVsbCwiYm9keSI6eyJkaXNwb3NpdGlvbiI6ImtlZXAiLCJldmlkZW5jZUNvbnRyYWN0IjoiZGV0ZWN0b3ItdjEvdGhyZXNob2xkLXYxL3Byb2plY3Rpb24tdjEiLCJldmlkZW5jZURpZ2VzdCI6InNoYTI1NjphYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhIiwia2luZCI6InBhcnNpbW9ueS1kaXNwb3NpdGlvbiIsIm1lYXN1cmVDYXB0aW9uIjoiVW5jb25kaXRpb25lZCBhbGxvbW9ycGgiLCJtZWFzdXJlSWQiOiJSLWFsbG8tdW5jb25kaXRpb25lZCIsInF1ZXN0aW9uIjpudWxsLCJzdWJqZWN0Ijp7ImtpbmQiOiJvYmplY3QiLCJvYmplY3QiOnsiY2xhc3MiOiJNb0FmZml4QWxsb21vcnBoIiwiaWQiOiJBQUVDQXdRRkJnY0lDUW9MREEwT0R3Iiwib3duaW5nRW50cnlJZCI6bnVsbH19LCJzdWJqZWN0Q2FwdGlvbiI6InBsdXJhbCBmb3JtcyJ9LCJleHRlbnNpb25zIjpudWxsLCJmb3JtYXQiOiJtb3RpZi1odW1hbi1qdWRnbWVudCIsImp1ZGdlZEF0VXRjIjpudWxsLCJqdWRnbWVudElkIjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9EdyIsInByb2plY3RJZCI6IkFBRUNBd1FGQmdjSUNRb0xEQTBPRHciLCJyZWFkYWJsZUZvcm1hdCI6ImVuLXYxIiwicmVwbGFjZXMiOltdLCJyZXNvbHZlc0NvbmZsaWN0IjpmYWxzZSwicmV2aXNpb25JZCI6IkFBRUNBd1FGQmdjSUNRb0xEQTBPRHciLCJzb3VyY2UiOm51bGwsInZlcnNpb24iOjF9]",
+    "digest": "sha256:d162290a2083235cedd296f90e13e685e96cf9a1c487cc0ecc1fb21fe650ebf6"
+  },
+  {
+    "name": "ask",
+    "value": {
+      "format": "motif-human-judgment",
+      "version": 1,
+      "projectId": "AAECAwQFBgcICQoLDA0ODw",
+      "judgmentId": "AAECAwQFBgcICQoLDA0ODw",
+      "revisionId": "AAECAwQFBgcICQoLDA0ODw",
+      "replaces": [],
+      "body": {
+        "kind": "parsimony-disposition",
+        "subject": {
+          "kind": "object",
+          "object": {
+            "class": "MoAffixAllomorph",
+            "id": "AAECAwQFBgcICQoLDA0ODw",
+            "owningEntryId": null
+          }
+        },
+        "measureId": "R-allo-unconditioned",
+        "disposition": "ask",
+        "evidenceDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "evidenceContract": "detector-v1/threshold-v1/projection-v1",
+        "subjectCaption": "plural forms",
+        "measureCaption": "Unconditioned allomorph",
+        "question": "Which dialect?"
+      },
+      "reason": null,
+      "actor": null,
+      "judgedAtUtc": null,
+      "source": null,
+      "resolvesConflict": false,
+      "readableFormat": "en-v1",
+      "extensions": null
+    },
+    "physical": "Ask “plural forms” for “Unconditioned allomorph”. Question: “Which dialect?”. [motif-human-judgment:v1:eyJhY3RvciI6bnVsbCwiYm9keSI6eyJkaXNwb3NpdGlvbiI6ImFzayIsImV2aWRlbmNlQ29udHJhY3QiOiJkZXRlY3Rvci12MS90aHJlc2hvbGQtdjEvcHJvamVjdGlvbi12MSIsImV2aWRlbmNlRGlnZXN0Ijoic2hhMjU2OmFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWEiLCJraW5kIjoicGFyc2ltb255LWRpc3Bvc2l0aW9uIiwibWVhc3VyZUNhcHRpb24iOiJVbmNvbmRpdGlvbmVkIGFsbG9tb3JwaCIsIm1lYXN1cmVJZCI6IlItYWxsby11bmNvbmRpdGlvbmVkIiwicXVlc3Rpb24iOiJXaGljaCBkaWFsZWN0PyIsInN1YmplY3QiOnsia2luZCI6Im9iamVjdCIsIm9iamVjdCI6eyJjbGFzcyI6Ik1vQWZmaXhBbGxvbW9ycGgiLCJpZCI6IkFBRUNBd1FGQmdjSUNRb0xEQTBPRHciLCJvd25pbmdFbnRyeUlkIjpudWxsfX0sInN1YmplY3RDYXB0aW9uIjoicGx1cmFsIGZvcm1zIn0sImV4dGVuc2lvbnMiOm51bGwsImZvcm1hdCI6Im1vdGlmLWh1bWFuLWp1ZGdtZW50IiwianVkZ2VkQXRVdGMiOm51bGwsImp1ZGdtZW50SWQiOiJBQUVDQXdRRkJnY0lDUW9MREEwT0R3IiwicHJvamVjdElkIjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9EdyIsInJlYWRhYmxlRm9ybWF0IjoiZW4tdjEiLCJyZXBsYWNlcyI6W10sInJlc29sdmVzQ29uZmxpY3QiOmZhbHNlLCJyZXZpc2lvbklkIjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9EdyIsInNvdXJjZSI6bnVsbCwidmVyc2lvbiI6MX0]",
+    "digest": "sha256:863f3326805da311df60510443d47ea829b9c41c09571f258fb41b8e4476dc49"
+  },
+  {
+    "name": "surface-no-owner",
+    "value": {
+      "format": "motif-human-judgment",
+      "version": 1,
+      "projectId": "AAECAwQFBgcICQoLDA0ODw",
+      "judgmentId": "AAECAwQFBgcICQoLDA0ODw",
+      "revisionId": "AAECAwQFBgcICQoLDA0ODw",
+      "replaces": [],
+      "body": {
+        "kind": "reviewed-negative",
+        "caseId": "AAECAwQFBgcICQoLDA0ODw",
+        "writingSystem": "qaa",
+        "form": "tará",
+        "context": "standard dialect",
+        "target": {
+          "kind": "surface"
+        },
+        "wordformId": null,
+        "analysisId": null
+      },
+      "reason": null,
+      "actor": {
+        "kind": "human",
+        "id": null,
+        "name": null
+      },
+      "judgedAtUtc": null,
+      "source": null,
+      "resolvesConflict": false,
+      "readableFormat": "en-v1",
+      "extensions": null
+    },
+    "physical": "This word form “tará” has no acceptable reading in context “standard dialect”. [motif-human-judgment:v1:eyJhY3RvciI6eyJpZCI6bnVsbCwia2luZCI6Imh1bWFuIiwibmFtZSI6bnVsbH0sImJvZHkiOnsiYW5hbHlzaXNJZCI6bnVsbCwiY2FzZUlkIjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9EdyIsImNvbnRleHQiOiJzdGFuZGFyZCBkaWFsZWN0IiwiZm9ybSI6InRhcmHMgSIsImtpbmQiOiJyZXZpZXdlZC1uZWdhdGl2ZSIsInRhcmdldCI6eyJraW5kIjoic3VyZmFjZSJ9LCJ3b3JkZm9ybUlkIjpudWxsLCJ3cml0aW5nU3lzdGVtIjoicWFhIn0sImV4dGVuc2lvbnMiOm51bGwsImZvcm1hdCI6Im1vdGlmLWh1bWFuLWp1ZGdtZW50IiwianVkZ2VkQXRVdGMiOm51bGwsImp1ZGdtZW50SWQiOiJBQUVDQXdRRkJnY0lDUW9MREEwT0R3IiwicHJvamVjdElkIjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9EdyIsInJlYWRhYmxlRm9ybWF0IjoiZW4tdjEiLCJyZXBsYWNlcyI6W10sInJlc29sdmVzQ29uZmxpY3QiOmZhbHNlLCJyZXZpc2lvbklkIjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9EdyIsInNvdXJjZSI6bnVsbCwidmVyc2lvbiI6MX0]",
+    "digest": "sha256:e7490efd45bfbd8092dc30dfb3829a7060b88a5e548c76081c9f71a1671b6a15"
+  },
+  {
+    "name": "reading",
+    "value": {
+      "format": "motif-human-judgment",
+      "version": 1,
+      "projectId": "AAECAwQFBgcICQoLDA0ODw",
+      "judgmentId": "AAECAwQFBgcICQoLDA0ODw",
+      "revisionId": "AAECAwQFBgcICQoLDA0ODw",
+      "replaces": [],
+      "body": {
+        "kind": "reviewed-negative",
+        "caseId": "AAECAwQFBgcICQoLDA0ODw",
+        "writingSystem": "qaa",
+        "form": "tará",
+        "context": "standard dialect",
+        "target": {
+          "kind": "reading",
+          "morphs": [
+            {
+              "identity": {
+                "form": "AAECAwQFBgcICQoLDA0ODw",
+                "msa": "AAECAwQFBgcICQoLDA0ODw",
+                "inflType": null,
+                "guessedString": null
+              },
+              "guessedWritingSystem": null,
+              "formCaption": "-ra",
+              "msaCaption": "plural"
+            }
+          ]
+        },
+        "wordformId": null,
+        "analysisId": null
+      },
+      "reason": null,
+      "actor": {
+        "kind": "human",
+        "id": null,
+        "name": null
+      },
+      "judgedAtUtc": null,
+      "source": null,
+      "resolvesConflict": false,
+      "readableFormat": "en-v1",
+      "extensions": null
+    },
+    "physical": "This reading of “tará” is forbidden in context “standard dialect”: “-ra” (plural). [motif-human-judgment:v1:eyJhY3RvciI6eyJpZCI6bnVsbCwia2luZCI6Imh1bWFuIiwibmFtZSI6bnVsbH0sImJvZHkiOnsiYW5hbHlzaXNJZCI6bnVsbCwiY2FzZUlkIjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9EdyIsImNvbnRleHQiOiJzdGFuZGFyZCBkaWFsZWN0IiwiZm9ybSI6InRhcmHMgSIsImtpbmQiOiJyZXZpZXdlZC1uZWdhdGl2ZSIsInRhcmdldCI6eyJraW5kIjoicmVhZGluZyIsIm1vcnBocyI6W3siZm9ybUNhcHRpb24iOiItcmEiLCJndWVzc2VkV3JpdGluZ1N5c3RlbSI6bnVsbCwiaWRlbnRpdHkiOnsiZm9ybSI6IkFBRUNBd1FGQmdjSUNRb0xEQTBPRHciLCJndWVzc2VkU3RyaW5nIjpudWxsLCJpbmZsVHlwZSI6bnVsbCwibXNhIjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9EdyJ9LCJtc2FDYXB0aW9uIjoicGx1cmFsIn1dfSwid29yZGZvcm1JZCI6bnVsbCwid3JpdGluZ1N5c3RlbSI6InFhYSJ9LCJleHRlbnNpb25zIjpudWxsLCJmb3JtYXQiOiJtb3RpZi1odW1hbi1qdWRnbWVudCIsImp1ZGdlZEF0VXRjIjpudWxsLCJqdWRnbWVudElkIjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9EdyIsInByb2plY3RJZCI6IkFBRUNBd1FGQmdjSUNRb0xEQTBPRHciLCJyZWFkYWJsZUZvcm1hdCI6ImVuLXYxIiwicmVwbGFjZXMiOltdLCJyZXNvbHZlc0NvbmZsaWN0IjpmYWxzZSwicmV2aXNpb25JZCI6IkFBRUNBd1FGQmdjSUNRb0xEQTBPRHciLCJzb3VyY2UiOm51bGwsInZlcnNpb24iOjF9]",
+    "digest": "sha256:4a1bcd553dbf1890953b9d65c6994b6b97c9cddf1396f22d75e676eeba51da9b"
+  },
+  {
+    "name": "retraction",
+    "value": {
+      "format": "motif-human-judgment",
+      "version": 1,
+      "projectId": "AAECAwQFBgcICQoLDA0ODw",
+      "judgmentId": "AAECAwQFBgcICQoLDA0ODw",
+      "revisionId": "AAECAwQFBgcICQoLDA0ODw",
+      "replaces": [
+        {
+          "revisionId": "EBESExQVFhcYGRobHB0eHw",
+          "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "body": {
+        "kind": "retraction"
+      },
+      "reason": null,
+      "actor": null,
+      "judgedAtUtc": null,
+      "source": null,
+      "resolvesConflict": false,
+      "readableFormat": "en-v1",
+      "extensions": null
+    },
+    "physical": "Withdraw judgment “AAECAwQFBgcICQoLDA0ODw”. [motif-human-judgment:v1:eyJhY3RvciI6bnVsbCwiYm9keSI6eyJraW5kIjoicmV0cmFjdGlvbiJ9LCJleHRlbnNpb25zIjpudWxsLCJmb3JtYXQiOiJtb3RpZi1odW1hbi1qdWRnbWVudCIsImp1ZGdlZEF0VXRjIjpudWxsLCJqdWRnbWVudElkIjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9EdyIsInByb2plY3RJZCI6IkFBRUNBd1FGQmdjSUNRb0xEQTBPRHciLCJyZWFkYWJsZUZvcm1hdCI6ImVuLXYxIiwicmVwbGFjZXMiOlt7ImNvbnRlbnREaWdlc3QiOiJzaGEyNTY6YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYSIsInJldmlzaW9uSWQiOiJFQkVTRXhRVkZoY1lHUm9iSEIwZUh3In1dLCJyZXNvbHZlc0NvbmZsaWN0IjpmYWxzZSwicmV2aXNpb25JZCI6IkFBRUNBd1FGQmdjSUNRb0xEQTBPRHciLCJzb3VyY2UiOm51bGwsInZlcnNpb24iOjF9]",
+    "digest": "sha256:af370c69011fe1ff53a39c58fddd656a23243be9064729339220c1e9c79e8c91"
+  },
+  {
+    "name": "group",
+    "value": {
+      "format": "motif-human-judgment",
+      "version": 1,
+      "projectId": "AAECAwQFBgcICQoLDA0ODw",
+      "judgmentId": "AAECAwQFBgcICQoLDA0ODw",
+      "revisionId": "AAECAwQFBgcICQoLDA0ODw",
+      "replaces": [],
+      "body": {
+        "kind": "parsimony-disposition",
+        "subject": {
+          "kind": "computed-group",
+          "measureId": "R-allo-unconditioned",
+          "role": "alternation-family",
+          "members": [
+            {
+              "class": "MoAffixAllomorph",
+              "id": "AAECAwQFBgcICQoLDA0ODw",
+              "owningEntryId": null
+            },
+            {
+              "class": "MoAffixAllomorph",
+              "id": "EBESExQVFhcYGRobHB0eHw",
+              "owningEntryId": null
+            }
+          ]
+        },
+        "measureId": "R-allo-unconditioned",
+        "disposition": "keep",
+        "evidenceDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "evidenceContract": "detector-v1/threshold-v1/projection-v1",
+        "subjectCaption": "plural forms",
+        "measureCaption": "Unconditioned allomorph",
+        "question": null
+      },
+      "reason": null,
+      "actor": null,
+      "judgedAtUtc": null,
+      "source": null,
+      "resolvesConflict": false,
+      "readableFormat": "en-v1",
+      "extensions": null
+    },
+    "physical": "Keep “plural forms” for “Unconditioned allomorph”. [motif-human-judgment:v1:eyJhY3RvciI6bnVsbCwiYm9keSI6eyJkaXNwb3NpdGlvbiI6ImtlZXAiLCJldmlkZW5jZUNvbnRyYWN0IjoiZGV0ZWN0b3ItdjEvdGhyZXNob2xkLXYxL3Byb2plY3Rpb24tdjEiLCJldmlkZW5jZURpZ2VzdCI6InNoYTI1NjphYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhIiwia2luZCI6InBhcnNpbW9ueS1kaXNwb3NpdGlvbiIsIm1lYXN1cmVDYXB0aW9uIjoiVW5jb25kaXRpb25lZCBhbGxvbW9ycGgiLCJtZWFzdXJlSWQiOiJSLWFsbG8tdW5jb25kaXRpb25lZCIsInF1ZXN0aW9uIjpudWxsLCJzdWJqZWN0Ijp7ImtpbmQiOiJjb21wdXRlZC1ncm91cCIsIm1lYXN1cmVJZCI6IlItYWxsby11bmNvbmRpdGlvbmVkIiwibWVtYmVycyI6W3siY2xhc3MiOiJNb0FmZml4QWxsb21vcnBoIiwiaWQiOiJBQUVDQXdRRkJnY0lDUW9MREEwT0R3Iiwib3duaW5nRW50cnlJZCI6bnVsbH0seyJjbGFzcyI6Ik1vQWZmaXhBbGxvbW9ycGgiLCJpZCI6IkVCRVNFeFFWRmhjWUdSb2JIQjBlSHciLCJvd25pbmdFbnRyeUlkIjpudWxsfV0sInJvbGUiOiJhbHRlcm5hdGlvbi1mYW1pbHkifSwic3ViamVjdENhcHRpb24iOiJwbHVyYWwgZm9ybXMifSwiZXh0ZW5zaW9ucyI6bnVsbCwiZm9ybWF0IjoibW90aWYtaHVtYW4tanVkZ21lbnQiLCJqdWRnZWRBdFV0YyI6bnVsbCwianVkZ21lbnRJZCI6IkFBRUNBd1FGQmdjSUNRb0xEQTBPRHciLCJwcm9qZWN0SWQiOiJBQUVDQXdRRkJnY0lDUW9MREEwT0R3IiwicmVhZGFibGVGb3JtYXQiOiJlbi12MSIsInJlcGxhY2VzIjpbXSwicmVzb2x2ZXNDb25mbGljdCI6ZmFsc2UsInJldmlzaW9uSWQiOiJBQUVDQXdRRkJnY0lDUW9MREEwT0R3Iiwic291cmNlIjpudWxsLCJ2ZXJzaW9uIjoxfQ]",
+    "digest": "sha256:26f8308fe590927e41def52f743e7c976786f388a22af65c5aa6831275c2627a"
+  }
+]

@@ -4,8 +4,9 @@
 //   manifest or MasterLCModel.xml change, and check in the result.
 //
 //   Source: PhSequenceContext.Members (rel/seq PhPhonContext, addRef|removeRef emitted;
-//   `move` deferred -- see ReferenceCollectionFieldEmitter.cs (SIL.Motif.Generator) remarks).
+//   `move` emitted with identity-relative placement).
 // </auto-generated>
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
@@ -20,11 +21,12 @@ using SIL.LCModel;
 
 namespace SIL.Motif.Runner.Operations;
 
-/// <summary>Names the two <c>PhSequenceContext.Members</c> operation kinds.</summary>
+/// <summary>Names the generated ordered sequence <c>PhSequenceContext.Members</c> operation kinds.</summary>
 public static class PhSequenceContextMembersOperationKinds
 {
     public const string AddRefMembers = "grammar/phSequenceContext/addRefMembers";
     public const string RemoveRefMembers = "grammar/phSequenceContext/removeRefMembers";
+    public const string MoveMembers = "grammar/phSequenceContext/moveMembers";
 
     [ModuleInitializer]
     internal static void Register()
@@ -33,6 +35,8 @@ public static class PhSequenceContextMembersOperationKinds
         OperationKindRegistry.Register(RemoveRefMembers);
         OperationHandlerRegistry.Register(AddRefMembers, PhSequenceContextMembersAddRefHandler.Instance);
         OperationHandlerRegistry.Register(RemoveRefMembers, PhSequenceContextMembersRemoveRefHandler.Instance);
+        OperationKindRegistry.Register(MoveMembers);
+        OperationHandlerRegistry.Register(MoveMembers, PhSequenceContextMembersMoveHandler.Instance);
     }
 }
 
@@ -52,14 +56,15 @@ public static class PhSequenceContextMembersMemberPayload
     }
 }
 
-/// <summary>Lowers <see cref="PhSequenceContextMembersOperationKinds.AddRefMembers"/>: resolves the
-/// referenced IPhPhonContext and adds it to <c>phSequenceContext.MembersRS</c> (a no-op if already
-/// present).</summary>
+/// <summary>Lowers <see cref="PhSequenceContextMembersOperationKinds.AddRefMembers"/> by inserting the
+/// referenced member at its declared identity-relative placement.</summary>
 public static class PhSequenceContextMembersAddRefLowering
 {
-    public static void Apply(LcmCache cache, IPhSequenceContext phSequenceContext, CanonicalId memberId) =>
-        ReferenceCollectionFieldLowering.ApplyAddRef<IPhPhonContext>(
-            cache, phSequenceContext.MembersRS, memberId, PhSequenceContextMembersOperationKinds.AddRefMembers);
+    public static void Apply(LcmCache cache, IPhSequenceContext phSequenceContext, CanonicalId memberId,
+        Placement? placement) =>
+        ReferenceSequenceFieldLowering.ApplyAddRef<IPhPhonContext>(
+            cache, phSequenceContext.MembersRS, memberId, placement,
+            PhSequenceContextMembersOperationKinds.AddRefMembers);
 }
 
 /// <summary>Lowers <see cref="PhSequenceContextMembersOperationKinds.RemoveRefMembers"/>: resolves the
@@ -98,9 +103,9 @@ internal sealed class PhSequenceContextMembersAddRefHandler : IOperationHandler
         var (id, phSequenceContext) = TargetResolution.Resolve<IPhSequenceContext>(cache, operation, PhSequenceContextMembersOperationKinds.AddRefMembers);
         touchedTargets.Add(id);
 
-        var before = ReferenceCollectionFieldSnapshotting.ReadAlternatives(phSequenceContext.MembersRS);
-        PhSequenceContextMembersAddRefLowering.Apply(cache, phSequenceContext, memberId);
-        var afterValue = ReferenceCollectionFieldSnapshotting.ReadAlternatives(phSequenceContext.MembersRS);
+        var before = ReferenceSequenceFieldSnapshotting.ReadAlternatives(phSequenceContext.MembersRS);
+        PhSequenceContextMembersAddRefLowering.Apply(cache, phSequenceContext, memberId, operation.Placement);
+        var afterValue = ReferenceSequenceFieldSnapshotting.ReadAlternatives(phSequenceContext.MembersRS);
 
         return new ExpectedEffect(id, SnapshotFields.PhSequenceContextMembers, before, afterValue);
     }
@@ -108,7 +113,7 @@ internal sealed class PhSequenceContextMembersAddRefHandler : IOperationHandler
     public ExpectedEffect ReadCurrentFootprint(LcmCache cache, OperationEnvelope operation)
     {
         var (id, phSequenceContext) = TargetResolution.Resolve<IPhSequenceContext>(cache, operation, PhSequenceContextMembersOperationKinds.AddRefMembers);
-        var current = ReferenceCollectionFieldSnapshotting.ReadAlternatives(phSequenceContext.MembersRS);
+        var current = ReferenceSequenceFieldSnapshotting.ReadAlternatives(phSequenceContext.MembersRS);
         return new ExpectedEffect(id, SnapshotFields.PhSequenceContextMembers, current, current);
     }
 }
@@ -135,13 +140,15 @@ internal sealed class PhSequenceContextMembersRemoveRefHandler : IOperationHandl
         }
 
         var memberId = PhSequenceContextMembersMemberPayload.Parse(after, PhSequenceContextMembersOperationKinds.RemoveRefMembers);
+        if (operation.Placement is not null)
+            throw new InvalidOperationException($"Operation '{operation.OperationId.Value}' of kind '{PhSequenceContextMembersOperationKinds.RemoveRefMembers}' cannot carry placement; use its move kind.");
 
         var (id, phSequenceContext) = TargetResolution.Resolve<IPhSequenceContext>(cache, operation, PhSequenceContextMembersOperationKinds.RemoveRefMembers);
         touchedTargets.Add(id);
 
-        var before = ReferenceCollectionFieldSnapshotting.ReadAlternatives(phSequenceContext.MembersRS);
+        var before = ReferenceSequenceFieldSnapshotting.ReadAlternatives(phSequenceContext.MembersRS);
         PhSequenceContextMembersRemoveRefLowering.Apply(cache, phSequenceContext, memberId);
-        var afterValue = ReferenceCollectionFieldSnapshotting.ReadAlternatives(phSequenceContext.MembersRS);
+        var afterValue = ReferenceSequenceFieldSnapshotting.ReadAlternatives(phSequenceContext.MembersRS);
 
         return new ExpectedEffect(id, SnapshotFields.PhSequenceContextMembers, before, afterValue);
     }
@@ -149,7 +156,48 @@ internal sealed class PhSequenceContextMembersRemoveRefHandler : IOperationHandl
     public ExpectedEffect ReadCurrentFootprint(LcmCache cache, OperationEnvelope operation)
     {
         var (id, phSequenceContext) = TargetResolution.Resolve<IPhSequenceContext>(cache, operation, PhSequenceContextMembersOperationKinds.RemoveRefMembers);
-        var current = ReferenceCollectionFieldSnapshotting.ReadAlternatives(phSequenceContext.MembersRS);
+        var current = ReferenceSequenceFieldSnapshotting.ReadAlternatives(phSequenceContext.MembersRS);
+        return new ExpectedEffect(id, SnapshotFields.PhSequenceContextMembers, current, current);
+    }
+}
+
+/// <summary>Lowers the ordered sequence move by resolving the member id within the target sequence.</summary>
+public static class PhSequenceContextMembersMoveLowering
+{
+    public static void Apply(IPhSequenceContext phSequenceContext, CanonicalId memberId, Placement placement) =>
+        ReferenceSequenceFieldLowering.ApplyMove(
+            phSequenceContext.MembersRS, memberId, placement, PhSequenceContextMembersOperationKinds.MoveMembers);
+}
+
+/// <summary>Resolves, snapshots, lowers, and re-snapshots one
+/// <see cref="PhSequenceContextMembersOperationKinds.MoveMembers"/> operation.</summary>
+internal sealed class PhSequenceContextMembersMoveHandler : IOperationHandler
+{
+    internal static readonly PhSequenceContextMembersMoveHandler Instance = new();
+    private PhSequenceContextMembersMoveHandler() { }
+
+    public ExpectedEffect ApplyAndCaptureEffect(LcmCache cache, OperationEnvelope operation, List<CanonicalId> touchedTargets)
+    {
+        if (operation.Target is not { })
+            throw new InvalidOperationException($"Operation '{operation.OperationId.Value}' of kind '{PhSequenceContextMembersOperationKinds.MoveMembers}' requires 'target'.");
+        if (operation.After is not { } after)
+            throw new InvalidOperationException($"Operation '{operation.OperationId.Value}' of kind '{PhSequenceContextMembersOperationKinds.MoveMembers}' requires 'after'.");
+        if (operation.Placement is not { } placement)
+            throw new InvalidOperationException($"Operation '{operation.OperationId.Value}' of kind '{PhSequenceContextMembersOperationKinds.MoveMembers}' requires 'placement'.");
+
+        var memberId = PhSequenceContextMembersMemberPayload.Parse(after, PhSequenceContextMembersOperationKinds.MoveMembers);
+        var (id, phSequenceContext) = TargetResolution.Resolve<IPhSequenceContext>(cache, operation, PhSequenceContextMembersOperationKinds.MoveMembers);
+        touchedTargets.Add(id);
+        var before = ReferenceSequenceFieldSnapshotting.ReadAlternatives(phSequenceContext.MembersRS);
+        PhSequenceContextMembersMoveLowering.Apply(phSequenceContext, memberId, placement);
+        var afterValue = ReferenceSequenceFieldSnapshotting.ReadAlternatives(phSequenceContext.MembersRS);
+        return new ExpectedEffect(id, SnapshotFields.PhSequenceContextMembers, before, afterValue);
+    }
+
+    public ExpectedEffect ReadCurrentFootprint(LcmCache cache, OperationEnvelope operation)
+    {
+        var (id, phSequenceContext) = TargetResolution.Resolve<IPhSequenceContext>(cache, operation, PhSequenceContextMembersOperationKinds.MoveMembers);
+        var current = ReferenceSequenceFieldSnapshotting.ReadAlternatives(phSequenceContext.MembersRS);
         return new ExpectedEffect(id, SnapshotFields.PhSequenceContextMembers, current, current);
     }
 }

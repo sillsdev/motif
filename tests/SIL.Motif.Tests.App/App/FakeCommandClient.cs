@@ -69,6 +69,15 @@ public sealed partial class FakeCommandClient : ICommandClient
         return Task.FromResult(_restoreBackup(backupPath));
     }
 
+    // A project with no stored Parsimony Report answers this refusal, so a default fake is a project with none.
+    private Func<ReadLatestParsimonyReportRequest, CancellationToken,
+        Task<CommandOutcome<ParsimonyLatestReportResponse>>> _readLatestParsimony = (_, _) =>
+            Refused<ParsimonyLatestReportResponse>(new Refusal("parsimony.no-report", FailureReason.NotFound,
+                "No Parsimony Report yet."));
+
+    private Func<ShowParsimonyReportRequest, CancellationToken, Task<CommandOutcome<ParsimonyReportResponse>>>
+        _readParsimonyReport = (_, _) => throw NotConfigured(nameof(ReadParsimonyReportAsync));
+
     private Func<TextInventoryRequest, CancellationToken, Task<CommandOutcome<TextInventoryResponse>>>
         _listTexts = (_, _) => Completed(new TextInventoryResponse([], HasBaseline: true));
 
@@ -203,6 +212,18 @@ public sealed partial class FakeCommandClient : ICommandClient
     public void CurrentBaselineRefusesWith(Refusal refusal) =>
         OnGetCurrentBaseline((_, _) => Refused<CurrentBaselineResponse>(refusal));
 
+    public void OnReadLatestParsimony(
+        Func<ReadLatestParsimonyReportRequest, CancellationToken, Task<CommandOutcome<ParsimonyLatestReportResponse>>>
+            behavior) => _readLatestParsimony = behavior;
+
+    public void OnReadParsimonyReport(
+        Func<ShowParsimonyReportRequest, CancellationToken, Task<CommandOutcome<ParsimonyReportResponse>>> behavior) =>
+        _readParsimonyReport = behavior;
+
+    public List<ReadLatestParsimonyReportRequest> ReadLatestParsimonyRequests { get; } = [];
+
+    public List<ShowParsimonyReportRequest> ShowParsimonyReportRequests { get; } = [];
+
     public void OnListTexts(
         Func<TextInventoryRequest, CancellationToken, Task<CommandOutcome<TextInventoryResponse>>> behavior) =>
         _listTexts = behavior;
@@ -259,6 +280,20 @@ public sealed partial class FakeCommandClient : ICommandClient
 
     public Task<IReadOnlyList<KnownProjectSummary>> ListKnownProjectsAsync(CancellationToken cancellationToken) =>
         _listKnownProjects(cancellationToken);
+
+    public Task<CommandOutcome<ParsimonyLatestReportResponse>> ReadLatestParsimonyReportAsync(
+        ReadLatestParsimonyReportRequest request, CancellationToken cancellationToken)
+    {
+        ReadLatestParsimonyRequests.Add(request);
+        return _readLatestParsimony(request, cancellationToken);
+    }
+
+    public Task<CommandOutcome<ParsimonyReportResponse>> ReadParsimonyReportAsync(
+        ShowParsimonyReportRequest request, CancellationToken cancellationToken)
+    {
+        ShowParsimonyReportRequests.Add(request);
+        return _readParsimonyReport(request, cancellationToken);
+    }
 
     public Task<CommandOutcome<CurrentBaselineResponse>> GetCurrentBaselineAsync(
         CurrentBaselineRequest request, CancellationToken cancellationToken)

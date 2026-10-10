@@ -4,8 +4,9 @@
 //   manifest or MasterLCModel.xml change, and check in the result.
 //
 //   Source: MoInflAffixTemplate.SuffixSlots (rel/seq MoInflAffixSlot, addRef|removeRef emitted;
-//   `move` deferred -- see ReferenceCollectionFieldEmitter.cs (SIL.Motif.Generator) remarks).
+//   `move` emitted with identity-relative placement).
 // </auto-generated>
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
@@ -20,11 +21,12 @@ using SIL.LCModel;
 
 namespace SIL.Motif.Runner.Operations;
 
-/// <summary>Names the two <c>MoInflAffixTemplate.SuffixSlots</c> operation kinds.</summary>
+/// <summary>Names the generated ordered sequence <c>MoInflAffixTemplate.SuffixSlots</c> operation kinds.</summary>
 public static class MoInflAffixTemplateSuffixSlotsOperationKinds
 {
     public const string AddRefSuffixSlots = "grammar/moInflAffixTemplate/addRefSuffixSlots";
     public const string RemoveRefSuffixSlots = "grammar/moInflAffixTemplate/removeRefSuffixSlots";
+    public const string MoveSuffixSlots = "grammar/moInflAffixTemplate/moveSuffixSlots";
 
     [ModuleInitializer]
     internal static void Register()
@@ -33,6 +35,8 @@ public static class MoInflAffixTemplateSuffixSlotsOperationKinds
         OperationKindRegistry.Register(RemoveRefSuffixSlots);
         OperationHandlerRegistry.Register(AddRefSuffixSlots, MoInflAffixTemplateSuffixSlotsAddRefHandler.Instance);
         OperationHandlerRegistry.Register(RemoveRefSuffixSlots, MoInflAffixTemplateSuffixSlotsRemoveRefHandler.Instance);
+        OperationKindRegistry.Register(MoveSuffixSlots);
+        OperationHandlerRegistry.Register(MoveSuffixSlots, MoInflAffixTemplateSuffixSlotsMoveHandler.Instance);
     }
 }
 
@@ -52,14 +56,15 @@ public static class MoInflAffixTemplateSuffixSlotsMemberPayload
     }
 }
 
-/// <summary>Lowers <see cref="MoInflAffixTemplateSuffixSlotsOperationKinds.AddRefSuffixSlots"/>: resolves the
-/// referenced IMoInflAffixSlot and adds it to <c>moInflAffixTemplate.SuffixSlotsRS</c> (a no-op if already
-/// present).</summary>
+/// <summary>Lowers <see cref="MoInflAffixTemplateSuffixSlotsOperationKinds.AddRefSuffixSlots"/> by inserting the
+/// referenced member at its declared identity-relative placement.</summary>
 public static class MoInflAffixTemplateSuffixSlotsAddRefLowering
 {
-    public static void Apply(LcmCache cache, IMoInflAffixTemplate moInflAffixTemplate, CanonicalId memberId) =>
-        ReferenceCollectionFieldLowering.ApplyAddRef<IMoInflAffixSlot>(
-            cache, moInflAffixTemplate.SuffixSlotsRS, memberId, MoInflAffixTemplateSuffixSlotsOperationKinds.AddRefSuffixSlots);
+    public static void Apply(LcmCache cache, IMoInflAffixTemplate moInflAffixTemplate, CanonicalId memberId,
+        Placement? placement) =>
+        ReferenceSequenceFieldLowering.ApplyAddRef<IMoInflAffixSlot>(
+            cache, moInflAffixTemplate.SuffixSlotsRS, memberId, placement,
+            MoInflAffixTemplateSuffixSlotsOperationKinds.AddRefSuffixSlots);
 }
 
 /// <summary>Lowers <see cref="MoInflAffixTemplateSuffixSlotsOperationKinds.RemoveRefSuffixSlots"/>: resolves the
@@ -98,9 +103,9 @@ internal sealed class MoInflAffixTemplateSuffixSlotsAddRefHandler : IOperationHa
         var (id, moInflAffixTemplate) = TargetResolution.Resolve<IMoInflAffixTemplate>(cache, operation, MoInflAffixTemplateSuffixSlotsOperationKinds.AddRefSuffixSlots);
         touchedTargets.Add(id);
 
-        var before = ReferenceCollectionFieldSnapshotting.ReadAlternatives(moInflAffixTemplate.SuffixSlotsRS);
-        MoInflAffixTemplateSuffixSlotsAddRefLowering.Apply(cache, moInflAffixTemplate, memberId);
-        var afterValue = ReferenceCollectionFieldSnapshotting.ReadAlternatives(moInflAffixTemplate.SuffixSlotsRS);
+        var before = ReferenceSequenceFieldSnapshotting.ReadAlternatives(moInflAffixTemplate.SuffixSlotsRS);
+        MoInflAffixTemplateSuffixSlotsAddRefLowering.Apply(cache, moInflAffixTemplate, memberId, operation.Placement);
+        var afterValue = ReferenceSequenceFieldSnapshotting.ReadAlternatives(moInflAffixTemplate.SuffixSlotsRS);
 
         return new ExpectedEffect(id, SnapshotFields.MoInflAffixTemplateSuffixSlots, before, afterValue);
     }
@@ -108,7 +113,7 @@ internal sealed class MoInflAffixTemplateSuffixSlotsAddRefHandler : IOperationHa
     public ExpectedEffect ReadCurrentFootprint(LcmCache cache, OperationEnvelope operation)
     {
         var (id, moInflAffixTemplate) = TargetResolution.Resolve<IMoInflAffixTemplate>(cache, operation, MoInflAffixTemplateSuffixSlotsOperationKinds.AddRefSuffixSlots);
-        var current = ReferenceCollectionFieldSnapshotting.ReadAlternatives(moInflAffixTemplate.SuffixSlotsRS);
+        var current = ReferenceSequenceFieldSnapshotting.ReadAlternatives(moInflAffixTemplate.SuffixSlotsRS);
         return new ExpectedEffect(id, SnapshotFields.MoInflAffixTemplateSuffixSlots, current, current);
     }
 }
@@ -135,13 +140,15 @@ internal sealed class MoInflAffixTemplateSuffixSlotsRemoveRefHandler : IOperatio
         }
 
         var memberId = MoInflAffixTemplateSuffixSlotsMemberPayload.Parse(after, MoInflAffixTemplateSuffixSlotsOperationKinds.RemoveRefSuffixSlots);
+        if (operation.Placement is not null)
+            throw new InvalidOperationException($"Operation '{operation.OperationId.Value}' of kind '{MoInflAffixTemplateSuffixSlotsOperationKinds.RemoveRefSuffixSlots}' cannot carry placement; use its move kind.");
 
         var (id, moInflAffixTemplate) = TargetResolution.Resolve<IMoInflAffixTemplate>(cache, operation, MoInflAffixTemplateSuffixSlotsOperationKinds.RemoveRefSuffixSlots);
         touchedTargets.Add(id);
 
-        var before = ReferenceCollectionFieldSnapshotting.ReadAlternatives(moInflAffixTemplate.SuffixSlotsRS);
+        var before = ReferenceSequenceFieldSnapshotting.ReadAlternatives(moInflAffixTemplate.SuffixSlotsRS);
         MoInflAffixTemplateSuffixSlotsRemoveRefLowering.Apply(cache, moInflAffixTemplate, memberId);
-        var afterValue = ReferenceCollectionFieldSnapshotting.ReadAlternatives(moInflAffixTemplate.SuffixSlotsRS);
+        var afterValue = ReferenceSequenceFieldSnapshotting.ReadAlternatives(moInflAffixTemplate.SuffixSlotsRS);
 
         return new ExpectedEffect(id, SnapshotFields.MoInflAffixTemplateSuffixSlots, before, afterValue);
     }
@@ -149,7 +156,48 @@ internal sealed class MoInflAffixTemplateSuffixSlotsRemoveRefHandler : IOperatio
     public ExpectedEffect ReadCurrentFootprint(LcmCache cache, OperationEnvelope operation)
     {
         var (id, moInflAffixTemplate) = TargetResolution.Resolve<IMoInflAffixTemplate>(cache, operation, MoInflAffixTemplateSuffixSlotsOperationKinds.RemoveRefSuffixSlots);
-        var current = ReferenceCollectionFieldSnapshotting.ReadAlternatives(moInflAffixTemplate.SuffixSlotsRS);
+        var current = ReferenceSequenceFieldSnapshotting.ReadAlternatives(moInflAffixTemplate.SuffixSlotsRS);
+        return new ExpectedEffect(id, SnapshotFields.MoInflAffixTemplateSuffixSlots, current, current);
+    }
+}
+
+/// <summary>Lowers the ordered sequence move by resolving the member id within the target sequence.</summary>
+public static class MoInflAffixTemplateSuffixSlotsMoveLowering
+{
+    public static void Apply(IMoInflAffixTemplate moInflAffixTemplate, CanonicalId memberId, Placement placement) =>
+        ReferenceSequenceFieldLowering.ApplyMove(
+            moInflAffixTemplate.SuffixSlotsRS, memberId, placement, MoInflAffixTemplateSuffixSlotsOperationKinds.MoveSuffixSlots);
+}
+
+/// <summary>Resolves, snapshots, lowers, and re-snapshots one
+/// <see cref="MoInflAffixTemplateSuffixSlotsOperationKinds.MoveSuffixSlots"/> operation.</summary>
+internal sealed class MoInflAffixTemplateSuffixSlotsMoveHandler : IOperationHandler
+{
+    internal static readonly MoInflAffixTemplateSuffixSlotsMoveHandler Instance = new();
+    private MoInflAffixTemplateSuffixSlotsMoveHandler() { }
+
+    public ExpectedEffect ApplyAndCaptureEffect(LcmCache cache, OperationEnvelope operation, List<CanonicalId> touchedTargets)
+    {
+        if (operation.Target is not { })
+            throw new InvalidOperationException($"Operation '{operation.OperationId.Value}' of kind '{MoInflAffixTemplateSuffixSlotsOperationKinds.MoveSuffixSlots}' requires 'target'.");
+        if (operation.After is not { } after)
+            throw new InvalidOperationException($"Operation '{operation.OperationId.Value}' of kind '{MoInflAffixTemplateSuffixSlotsOperationKinds.MoveSuffixSlots}' requires 'after'.");
+        if (operation.Placement is not { } placement)
+            throw new InvalidOperationException($"Operation '{operation.OperationId.Value}' of kind '{MoInflAffixTemplateSuffixSlotsOperationKinds.MoveSuffixSlots}' requires 'placement'.");
+
+        var memberId = MoInflAffixTemplateSuffixSlotsMemberPayload.Parse(after, MoInflAffixTemplateSuffixSlotsOperationKinds.MoveSuffixSlots);
+        var (id, moInflAffixTemplate) = TargetResolution.Resolve<IMoInflAffixTemplate>(cache, operation, MoInflAffixTemplateSuffixSlotsOperationKinds.MoveSuffixSlots);
+        touchedTargets.Add(id);
+        var before = ReferenceSequenceFieldSnapshotting.ReadAlternatives(moInflAffixTemplate.SuffixSlotsRS);
+        MoInflAffixTemplateSuffixSlotsMoveLowering.Apply(moInflAffixTemplate, memberId, placement);
+        var afterValue = ReferenceSequenceFieldSnapshotting.ReadAlternatives(moInflAffixTemplate.SuffixSlotsRS);
+        return new ExpectedEffect(id, SnapshotFields.MoInflAffixTemplateSuffixSlots, before, afterValue);
+    }
+
+    public ExpectedEffect ReadCurrentFootprint(LcmCache cache, OperationEnvelope operation)
+    {
+        var (id, moInflAffixTemplate) = TargetResolution.Resolve<IMoInflAffixTemplate>(cache, operation, MoInflAffixTemplateSuffixSlotsOperationKinds.MoveSuffixSlots);
+        var current = ReferenceSequenceFieldSnapshotting.ReadAlternatives(moInflAffixTemplate.SuffixSlotsRS);
         return new ExpectedEffect(id, SnapshotFields.MoInflAffixTemplateSuffixSlots, current, current);
     }
 }

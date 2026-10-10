@@ -174,7 +174,7 @@ public sealed class WorkflowShellTests
                 var entries = SidebarEntries(window);
                 Assert.Equal(
                     ["Overview page", "Texts page", "Try a Word page", "Timing page", "Warnings page",
-                        "Review changes page", "AI Handoff page"],
+                        "Parsimony page", "Review changes page", "AI Handoff page"],
                     entries.Select(AutomationProperties.GetName));
 
                 foreach (var page in Enum.GetValues<WorkspacePage>().Reverse())
@@ -838,7 +838,7 @@ public sealed class WorkflowShellTests
             selection,
             new AssessViewModel(fake, selection),
             new NoFolderPicker(), DragSource,
-            fake);
+            fake, advancedAiModeEnabled: true);
     }
 
     private static (WorkspaceShellViewModel Workspace, MainWindow Window) NewComposedWindow() =>
@@ -854,7 +854,7 @@ public sealed class WorkflowShellTests
             selection,
             new AssessViewModel(fake, selection),
             new NoFolderPicker(), DragSource,
-            fake, clipboard: new AvaloniaClipboard(window));
+            fake, clipboard: new AvaloniaClipboard(window), advancedAiModeEnabled: true);
 
         window.Compose(workspace);
         return (workspace, window);

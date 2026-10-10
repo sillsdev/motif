@@ -1,0 +1,2 @@
+{"tool":"motif_grammar","arguments":{"kind":"templates","detail":"detailed"}}
+{"finalMessage": "The noun template places locative Case before plural Number, but the data requires plural Number before locative Case."}

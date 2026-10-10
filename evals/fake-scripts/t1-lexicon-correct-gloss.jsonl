@@ -1,0 +1,5 @@
+{"tool": "motif_lexicon", "arguments": {"query": "qaje"}, "capture": {"sense": "entries[0].senses[0].id", "glossWs": "entries[0].senses[0].glossWs"}}
+{"tool": "motif_start_proposal", "arguments": {"draft": "correct-basket-gloss", "label": "Correct the basket gloss", "comment": "The entry is glossed pebble, but the task evidence identifies it as basket."}, "capture": {"proposal": "proposalId"}}
+{"tool": "motif_set_gloss", "arguments": {"draft": "correct-basket-gloss", "sense": "${sense}", "ws": "${glossWs}", "text": "basket"}}
+{"tool": "motif_finish_proposal", "arguments": {"draft": "correct-basket-gloss"}}
+{"finalMessage": "I finalized a Proposal correcting the existing sense gloss to basket."}

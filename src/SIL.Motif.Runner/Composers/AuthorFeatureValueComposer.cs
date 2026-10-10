@@ -40,12 +40,8 @@ namespace SIL.Motif.Runner.Composers;
 /// create operation's <c>entityId</c> proposes -- the same reasoning
 /// <see cref="AuthorLexemeFormComposer"/>'s remarks give for its own <c>setIsAbstract</c> step.
 /// </para>
-/// <para>
-/// <b>Scope.</b> This construct authors which feature a specification is for, not the chosen value:
-/// <c>FsClosedValue.Value</c> has no generated <c>set</c>/<c>clear</c> kind yet (see
-/// <see cref="FsFeatStrucFeatureSpecsOperationKinds"/>), so choosing e.g. Number=Singular over
-/// Number=Plural is not yet authorable through Motif.
-/// </para>
+/// <para>A supplied symbolic value must belong to the named closed feature. Omitting it authors only
+/// the specification's feature reference, allowing a value to be chosen separately.</para>
 /// </remarks>
 public static class AuthorFeatureValueComposer
 {
@@ -68,6 +64,9 @@ public static class AuthorFeatureValueComposer
         var featStruc = ReferenceFieldLowering.Resolve<IFsFeatStruc>(cache, intent.FeatStruc, ConstructName);
         var feature = ReferenceFieldLowering.Resolve<IFsFeatDefn>(cache, intent.Feature, ConstructName);
 
+        if (feature is not IFsClosedFeature closedFeature)
+            throw new InvalidOperationException("AuthorFeatureValue requires a closed feature for its closed-value specification.");
+
         if (featStruc.FeatureSpecsOC.Any(spec => spec.FeatureRA is { } existing && existing.Guid == feature.Guid))
         {
             throw new InvalidOperationException(
@@ -83,10 +82,17 @@ public static class AuthorFeatureValueComposer
                 $"'{intent.FeatStruc.Value}''s type ('{type.Guid}').");
         }
 
+        if (intent.Value is { } valueId)
+        {
+            var value = ReferenceFieldLowering.Resolve<IFsSymFeatVal>(cache, valueId, ConstructName);
+            if (!closedFeature.ValuesOC.Contains(value))
+                throw new InvalidOperationException("AuthorFeatureValue: value must belong to the named closed feature.");
+        }
+
         var createOpId = mint();
         var newSpecId = mint();
 
-        return new[]
+        var operations = new List<OperationEnvelope>
         {
             new OperationEnvelope(
                 operationId: createOpId,
@@ -103,6 +109,11 @@ public static class AuthorFeatureValueComposer
                 dependsOn: new[] { new OperationDependency(createOpId) },
                 rationale: Rationale),
         };
+        if (intent.Value is { } chosenValue)
+            operations.Add(new OperationEnvelope(mint(), FsClosedValueValueOperationKinds.SetValue,
+                target: newSpecId, after: BuildSetFeatureAfter(chosenValue),
+                dependsOn: new[] { new OperationDependency(createOpId) }, rationale: Rationale));
+        return operations;
     }
 
     private const string Rationale = "Authored by the AuthorFeatureValue composer.";

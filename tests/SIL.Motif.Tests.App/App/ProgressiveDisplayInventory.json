@@ -312,7 +312,7 @@
   {
     "view": "MainWindow",
     "name": "PageList",
-    "source": "Pages",
+    "source": "VisiblePages",
     "mode": "finite",
     "control": "ListBox"
   },
@@ -446,6 +446,34 @@
     "view": "ResultsInTextPanel",
     "name": "ResultsInTextPanelStagedChangesItems",
     "source": "StagedChanges",
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
+  },
+  {
+    "view": "RetirementProposalReviewPanel",
+    "name": "RetirementReviewStatisticsRows",
+    "source": "StatisticsRows",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "RetirementProposalReviewPanel",
+    "name": "RetirementReviewParts",
+    "source": "Parts",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "RetirementProposalReviewPanel",
+    "name": "RetirementReviewPartSummaries",
+    "source": "Summaries",
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
+  },
+  {
+    "view": "RetirementProposalReviewPanel",
+    "name": "RetirementAffectedReadings",
+    "source": "AffectedReadings",
     "mode": "paged",
     "control": "ProgressiveItemsControl"
   },
@@ -719,6 +747,27 @@
     "view": "WordDispositionButtons",
     "name": "WordDispositionReadingTilesItems",
     "source": "Tiles",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "Pages/ParsimonyPage",
+    "name": "ParsimonyRowsItems",
+    "source": "Rows",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "Pages/ParsimonyPage",
+    "name": "ParsimonyEvidenceDetailsItems",
+    "source": "Evidence.Details",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "Pages/ParsimonyPage",
+    "name": "ParsimonyEvidenceLimitationsItems",
+    "source": "Evidence.Limitations",
     "mode": "finite",
     "control": "ItemsControl"
   }

@@ -5,6 +5,7 @@ using Microsoft.Data.Sqlite;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
+using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Contract.Canonicalization;
 using SIL.Motif.Contract.Baselines;
@@ -659,6 +660,33 @@ public sealed class ProposalRepository : IProposalRepository
             id => GetFinalized(CanonicalId.Parse(id)).Envelope,
             appliedProposalIds);
         return PrerequisiteExecutionPlan.Create(requested, candidates, appliedProposalIds);
+    }
+
+    /// <summary>Captures the exact finalized revisions reachable from a Proposal's declared dependencies.</summary>
+    public IReadOnlyList<FrozenProposalRevision> FreezePrerequisites(Proposal requested)
+    {
+        ArgumentNullException.ThrowIfNull(requested);
+        var frozen = new Dictionary<string, FrozenProposalRevision>(StringComparer.Ordinal);
+        var visited = new HashSet<string>(StringComparer.Ordinal) { requested.ProposalId.Value };
+        Visit(requested);
+        return Array.AsReadOnly(frozen.Values.OrderBy(item => item.ProposalId, StringComparer.Ordinal).ToArray());
+
+        void Visit(Proposal proposal)
+        {
+            foreach (var required in proposal.Requires)
+            {
+                if (!visited.Add(required.Value) || required.Value == requested.ProposalId.Value) continue;
+                var (record, envelope) = GetFinalized(required);
+                if (record.ProposalJson is null || record.IntentDigest is null ||
+                    record.IntentDigest != IntentDigest.Compute(envelope))
+                    throw new InvalidDataException("A prerequisite revision has no consistent frozen content.");
+                var revision = FrozenProposalRevision.Create(record.ProposalJson);
+                if (revision.ProposalId != required.Value || revision.IntentDigest != record.IntentDigest)
+                    throw new InvalidDataException("A prerequisite revision does not match its declared identity.");
+                frozen.Add(required.Value, revision);
+                Visit(envelope);
+            }
+        }
     }
 
     /// <inheritdoc />

@@ -26,7 +26,7 @@ public static class MoAffixAllomorphRelationsSnapshotter
         var fields = new Dictionary<string, IReadOnlyDictionary<string, string>>();
 
         AddIfPopulated(fields, SnapshotFields.MoAffixAllomorphPhoneEnv, ReferenceCollectionFieldSnapshotting.ReadAlternatives(moAffixAllomorph.PhoneEnvRC));
-        AddIfPopulated(fields, SnapshotFields.MoAffixAllomorphPosition, ReferenceCollectionFieldSnapshotting.ReadAlternatives(moAffixAllomorph.PositionRS));
+        AddIfPopulated(fields, SnapshotFields.MoAffixAllomorphPosition, ReferenceSequenceFieldSnapshotting.ReadAlternatives(moAffixAllomorph.PositionRS));
 
         return new ObjectSnapshot(canonicalId, fields);
     }

@@ -98,9 +98,9 @@ internal sealed class MoInsertPhonesContentAddRefHandler : IOperationHandler
         var (id, moInsertPhones) = TargetResolution.Resolve<IMoInsertPhones>(cache, operation, MoInsertPhonesContentOperationKinds.AddRefContent);
         touchedTargets.Add(id);
 
-        var before = ReferenceCollectionFieldSnapshotting.ReadAlternatives(moInsertPhones.ContentRS);
+        var before = ReferenceSequenceFieldSnapshotting.ReadAlternatives(moInsertPhones.ContentRS);
         MoInsertPhonesContentAddRefLowering.Apply(cache, moInsertPhones, memberId);
-        var afterValue = ReferenceCollectionFieldSnapshotting.ReadAlternatives(moInsertPhones.ContentRS);
+        var afterValue = ReferenceSequenceFieldSnapshotting.ReadAlternatives(moInsertPhones.ContentRS);
 
         return new ExpectedEffect(id, SnapshotFields.MoInsertPhonesContent, before, afterValue);
     }
@@ -108,7 +108,7 @@ internal sealed class MoInsertPhonesContentAddRefHandler : IOperationHandler
     public ExpectedEffect ReadCurrentFootprint(LcmCache cache, OperationEnvelope operation)
     {
         var (id, moInsertPhones) = TargetResolution.Resolve<IMoInsertPhones>(cache, operation, MoInsertPhonesContentOperationKinds.AddRefContent);
-        var current = ReferenceCollectionFieldSnapshotting.ReadAlternatives(moInsertPhones.ContentRS);
+        var current = ReferenceSequenceFieldSnapshotting.ReadAlternatives(moInsertPhones.ContentRS);
         return new ExpectedEffect(id, SnapshotFields.MoInsertPhonesContent, current, current);
     }
 }
@@ -139,9 +139,9 @@ internal sealed class MoInsertPhonesContentRemoveRefHandler : IOperationHandler
         var (id, moInsertPhones) = TargetResolution.Resolve<IMoInsertPhones>(cache, operation, MoInsertPhonesContentOperationKinds.RemoveRefContent);
         touchedTargets.Add(id);
 
-        var before = ReferenceCollectionFieldSnapshotting.ReadAlternatives(moInsertPhones.ContentRS);
+        var before = ReferenceSequenceFieldSnapshotting.ReadAlternatives(moInsertPhones.ContentRS);
         MoInsertPhonesContentRemoveRefLowering.Apply(cache, moInsertPhones, memberId);
-        var afterValue = ReferenceCollectionFieldSnapshotting.ReadAlternatives(moInsertPhones.ContentRS);
+        var afterValue = ReferenceSequenceFieldSnapshotting.ReadAlternatives(moInsertPhones.ContentRS);
 
         return new ExpectedEffect(id, SnapshotFields.MoInsertPhonesContent, before, afterValue);
     }
@@ -149,7 +149,7 @@ internal sealed class MoInsertPhonesContentRemoveRefHandler : IOperationHandler
     public ExpectedEffect ReadCurrentFootprint(LcmCache cache, OperationEnvelope operation)
     {
         var (id, moInsertPhones) = TargetResolution.Resolve<IMoInsertPhones>(cache, operation, MoInsertPhonesContentOperationKinds.RemoveRefContent);
-        var current = ReferenceCollectionFieldSnapshotting.ReadAlternatives(moInsertPhones.ContentRS);
+        var current = ReferenceSequenceFieldSnapshotting.ReadAlternatives(moInsertPhones.ContentRS);
         return new ExpectedEffect(id, SnapshotFields.MoInsertPhonesContent, current, current);
     }
 }

@@ -41,6 +41,12 @@
                                          Text="Choose a word in Analyze texts, then choose what should happen to its analysis." />
                 <HyperlinkButton Classes="reviewLink" Content="Go to Analyze texts" Command="{Binding OpenAnalyzeTextsCommand}" />
               </StackPanel>
+              <Border IsVisible="{Binding HasRetirementReview}">
+                <ScrollViewer MaxHeight="{Binding $parent[views:ReviewPanel].Bounds.Height}"
+                              HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                <views:RetirementProposalReviewPanel DataContext="{Binding RetirementReview}" />
+                </ScrollViewer>
+              </Border>
             </StackPanel>
                 </DataTemplate>
               </ContentControl.ContentTemplate>

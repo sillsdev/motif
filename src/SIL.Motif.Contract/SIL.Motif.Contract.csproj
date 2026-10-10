@@ -22,6 +22,8 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Schemas/*.schema.json" />
+    <EmbeddedResource Include="Schemas/*.vectors.json" />
+    <EmbeddedResource Include="HumanJudgments/ReadableFormats/*.json" />
   </ItemGroup>
 
 </Project>

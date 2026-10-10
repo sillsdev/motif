@@ -34,9 +34,8 @@ namespace SIL.Motif.Runner.Operations;
 /// carries a closed, empty payload here too. Populating <c>Feature</c> is a separate operation against
 /// the new spec's own identity, reusing the already-generated
 /// <see cref="FsFeatureSpecificationFeatureOperationKinds"/> rather than folding it into this
-/// <c>create</c>. Populating the chosen <c>FsClosedValue.Value</c> needs that field's own generated
-/// <c>set</c>/<c>clear</c> kind, which does not exist yet -- a later generator slice, not this
-/// hand-written one.</description></item>
+/// <c>create</c>. A chosen value is a separate <c>grammar/fsClosedValue/setValue</c> operation against
+/// the created specification's identity.</description></item>
 /// </list>
 /// </summary>
 /// <remarks>

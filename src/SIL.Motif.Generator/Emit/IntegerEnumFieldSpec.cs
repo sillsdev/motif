@@ -22,6 +22,7 @@ namespace SIL.Motif.Generator.Emit;
 /// member: <c>clear</c> would otherwise have to write a value outside the field's own confirmed set,
 /// which is exactly what this shape's range check exists to stop.
 /// </param>
+/// <param name="SnapshotterTypeName">Optional generated snapshotter name when another field emitter already owns the default class name.</param>
 public sealed record IntegerEnumFieldSpec(
     string DeclaringClass,
     string FieldName,
@@ -33,4 +34,5 @@ public sealed record IntegerEnumFieldSpec(
     string TargetInterface,
     string SnapshotFieldConstant,
     IReadOnlyList<(int Value, string Name)> EnumMembers,
-    string ZeroMemberName);
+    string ZeroMemberName,
+    string? SnapshotterTypeName = null);

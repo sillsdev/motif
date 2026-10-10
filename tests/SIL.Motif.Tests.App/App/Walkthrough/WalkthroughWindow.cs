@@ -15,6 +15,7 @@ using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Commands;
+using SIL.Motif.Commands.Preferences;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
@@ -44,7 +45,8 @@ public sealed class WalkthroughWindow : IDisposable
     public WalkthroughWindow(
         string managedRoot, string projectPath, string? folderPath = null,
         ICommandStartGate? startGate = null, TimeProvider? timeProvider = null,
-        string? parserPath = null, IJobRunnerLauncher? runnerLauncher = null, IClipboard? clipboard = null)
+        string? parserPath = null, IJobRunnerLauncher? runnerLauncher = null, IClipboard? clipboard = null,
+        IAdvancedAiModePreferenceStore? advancedAiModePreferences = null)
     {
         _managedRoot = managedRoot;
         _projectPicker = new ScriptedProjectPicker(projectPath);
@@ -68,7 +70,10 @@ public sealed class WalkthroughWindow : IDisposable
             _folderPicker,
             _dragSource,
             clipboard,
-            _diagnosticFiles), startGate);
+            _diagnosticFiles)
+        {
+            AdvancedAiModePreferences = advancedAiModePreferences,
+        }, startGate);
         Window = composition.Window;
         Workspace = composition.Workspace;
     }

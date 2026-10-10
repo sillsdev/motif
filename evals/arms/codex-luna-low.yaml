@@ -1,0 +1,7 @@
+{
+  "id": "codex-luna-low",
+  "host": "codex",
+  "model": "gpt-6-luna",
+  "effort": "low",
+  "server": { "ref": "HEAD", "profile": "default", "grade_profile": "profiles/mcp-default-grade.json" }
+}

@@ -68,13 +68,24 @@ public static class ProposalApplier
         Proposal proposal,
         BoundDryRunAnchor anchor,
         string applierIdentity,
-        string description = "")
+        string description = "") =>
+        Apply(cache, proposal, anchor, applierIdentity, description, null);
+
+    /// <summary>Observes each completed operation inside Apply's unit of work, pinned by <c>FailureAfterEachDispositionWriteRollsBackTheWholeNotebookRevision</c>.</summary>
+    internal static Receipt Apply(
+        LcmCache cache,
+        Proposal proposal,
+        BoundDryRunAnchor anchor,
+        string applierIdentity,
+        string description,
+        Action<int, OperationEnvelope>? afterOperation)
     {
         if (cache is null) throw new ArgumentNullException(nameof(cache));
         if (proposal is null) throw new ArgumentNullException(nameof(proposal));
         if (applierIdentity is null) throw new ArgumentNullException(nameof(applierIdentity));
         if (description is null) throw new ArgumentNullException(nameof(description));
-        AnalysisOpinionSlotValidator.Validate(proposal);
+        ProposalOperationSlotValidator.Validate(proposal);
+        var operationOrder = OperationExecutionOrder.Sort(proposal.Operations);
 
         if (anchor is null)
         {
@@ -157,11 +168,15 @@ public static class ProposalApplier
         // One outer unit of work for the whole Proposal; see the remarks above for the failure-recovery contract.
         using (var undoHelper = new UndoableUnitOfWorkHelper(actionHandler, "Motif apply", "Motif apply"))
         {
-            foreach (var operation in proposal.Operations)
+            var operationIndex = 0;
+            foreach (var operation in operationOrder)
             {
                 var handler = OperationHandlerRegistry.Resolve(operation.Kind, "Stage D apply");
-                effects.Add(handler.ApplyAndCaptureEffect(cache, operation, touchedTargets));
+                effects.AddRange(OperationEffectCapture.Apply(handler, cache, operation, touchedTargets));
+                afterOperation?.Invoke(++operationIndex, operation);
             }
+
+            RuleContextSemanticValidator.ValidateProposal(cache, proposal.Operations);
 
             // Exactly one applied-log entry, written inside this same unit of work, so a rollback leaves none.
             ProjectAppliedLog.WriteEntry(cache, logEntry);

@@ -8,6 +8,13 @@ public static class AutomationIds
     public const string ProjectMenu = "motif-project-menu";
     public const string HelpButton = "motif-help-button";
     public const string SettingsButton = "motif-settings-button";
+    /// <summary>The automation identifier of one finding's row on the Parsimony page.</summary>
+    public static string ForParsimonyFinding(string findingId) => "motif-parsimony-finding-" + findingId;
+
+    /// <summary>The Parsimony page's axis counts, shown once its findings are listed.</summary>
+    public const string ParsimonySummary = "motif-parsimony-summary";
+    /// <summary>The evidence column, shown while a finding is selected.</summary>
+    public const string ParsimonyEvidence = "motif-parsimony-evidence";
     public const string SelectNewProject = "motif-select-new-project";
     public const string RefreshProject = "motif-refresh-project";
     public const string AnalyzeTextsTab = "motif-analyze-texts-tab";
@@ -62,6 +69,7 @@ public static class AutomationIds
         WorkspacePage.TryAWord => "motif-page-try-a-word",
         WorkspacePage.Timing => "motif-page-timing",
         WorkspacePage.Warnings => "motif-page-warnings",
+        WorkspacePage.Parsimony => "motif-page-parsimony",
         WorkspacePage.Review => "motif-page-review",
         WorkspacePage.AiHandoff => "motif-page-ai-handoff",
         _ => throw new ArgumentOutOfRangeException(nameof(page), page, "Unknown workspace page."),

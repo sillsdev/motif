@@ -1,9 +1,10 @@
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace SIL.Motif.Contract.Responses;
 
 /// <summary>One operation an authoring or composing verb added, as it is echoed back to the caller.</summary>
-public sealed record OperationSummary(string OperationId, string Kind);
+public sealed record OperationSummary(string OperationId, string Kind, string? EntityId = null);
 
 /// <summary>A freshly created Draft, not yet finalized.</summary>
 public sealed record DraftCreatedResponse(string DraftName, string ProposalId, string? Label);
@@ -23,9 +24,19 @@ public sealed record SetGlossAddedResponse(
 public sealed record DeleteLexemeFormAddedResponse(
     string DraftName, string OperationId, string Target, int OperationCount);
 
-/// <summary>The operations one composer resolved and appended to a Draft.</summary>
+/// <summary>One existing grammar object affected by a composed slot change.</summary>
+public sealed record ComposedRelatedObject(string Kind, string Id, string Name);
+
+/// <summary>
+/// The operations one composer resolved and appended to a Draft. <c>Outcome</c> is written only when
+/// nothing was staged because the request was already recorded (<c>already-recorded</c>).
+/// </summary>
 public sealed record ComposedOperationsResponse(
-    string DraftName, string ComposerName, IReadOnlyList<OperationSummary> Operations, int OperationCount);
+    string DraftName, string ComposerName, IReadOnlyList<OperationSummary> Operations, int OperationCount,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    IReadOnlyList<ComposedRelatedObject>? RelatedObjects = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    string? Outcome = null);
 
 /// <summary>
 /// A <c>lexical/lexSense/setGloss</c> operation appended by <c>promote-gloss</c>, evidenced by a

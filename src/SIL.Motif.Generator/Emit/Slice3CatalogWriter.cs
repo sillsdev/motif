@@ -1,3 +1,5 @@
+using SIL.Motif.Generator.Model;
+
 namespace SIL.Motif.Generator.Emit;
 
 /// <summary>
@@ -43,10 +45,14 @@ public static class Slice3CatalogWriter
         var basicRows = Slice3FieldSelector.SelectBasicSetClear(model.Rows);
         var atomicRows = Slice3FieldSelector.SelectAtomicSetClear(model.Rows);
         var collectionRows = Slice3FieldSelector.SelectCollectionAddRemove(model.Rows);
+        var placementFields = Slice3FieldSelector.SelectOrderedTemplateSlotSequences(model.Rows)
+            .Concat(Slice3FieldSelector.SelectOrderedRuleContextSequences(model.Rows))
+            .Concat(Slice3FieldSelector.SelectOrderedAllomorphPositionSequences(model.Rows))
+            .Select(row => row.Key).ToHashSet();
 
         var basicSpecs = BasicFieldSpecBuilder.BuildAll(basicRows);
         var atomicSpecs = RelationFieldSpecBuilder.BuildAllAtomic(atomicRows);
-        var collectionSpecs = RelationFieldSpecBuilder.BuildAllCollection(collectionRows);
+        var collectionSpecs = RelationFieldSpecBuilder.BuildAllCollection(collectionRows, placementFields);
 
         var written = new List<GeneratedCatalogWriter.WrittenFile>();
 
@@ -118,9 +124,12 @@ public static class Slice3CatalogWriter
 
         foreach (var spec in collectionSpecs.Where(s => s.DeclaringClass == declaringClass))
         {
+            var reader = spec.Card == FieldCard.Seq
+                ? "ReferenceSequenceFieldSnapshotting.ReadAlternatives"
+                : "ReferenceCollectionFieldSnapshotting.ReadAlternatives";
             lines.Add(new RelationsSnapshotterEmitter.PopulationLine(
                 $"{spec.DeclaringClass}.{spec.FieldName} ({spec.Sig}, rel/{spec.Card.ToString().ToLowerInvariant()})",
-                $"AddIfPopulated(fields, SnapshotFields.{spec.SnapshotFieldConstant}, ReferenceCollectionFieldSnapshotting.ReadAlternatives({varName}.{spec.AccessorPropertyName}));"));
+                $"AddIfPopulated(fields, SnapshotFields.{spec.SnapshotFieldConstant}, {reader}({varName}.{spec.AccessorPropertyName}));"));
         }
 
         return lines;

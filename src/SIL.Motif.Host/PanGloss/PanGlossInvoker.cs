@@ -132,7 +132,7 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
         CancellationToken cancellationToken, Action<PanGlossChildProcess>? onStarted = null)
     {
         var scratch = Path.Combine(Path.GetTempPath(), "SIL.Motif.PanGloss", Guid.NewGuid().ToString("N"));
-        var retained = request is PanGlossRequest.Batch { ArtifactDirectory: not null };
+        var retained = request is PanGlossRequest.Batch { ArtifactDirectory: not null } or PanGlossRequest.Facts;
         var created = false;
         var published = false;
         string? sourceDigest = null;
@@ -140,6 +140,8 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
         string? wordsDigest = null;
         if (request is PanGlossRequest.Batch { ArtifactDirectory: { } artifactDirectory })
             scratch = Path.GetFullPath(artifactDirectory);
+        if (request is PanGlossRequest.Facts { ArtifactDirectory: { } factsArtifactDirectory })
+            scratch = Path.GetFullPath(factsArtifactDirectory);
         try
         {
             try
@@ -156,8 +158,10 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                     sourceDigest = BatchInvocationEvidence.DigestFile(stagedSource);
                     executableDigest = BatchInvocationEvidence.DigestFile(executable);
                 }
+                if (retained && request is PanGlossRequest.Facts facts)
+                    sourceDigest = BatchInvocationEvidence.DigestFile(facts.SnapshotPath);
                 await request.PrepareAsync(scratch, cancellationToken).ConfigureAwait(false);
-                if (retained)
+                if (retained && request is PanGlossRequest.Batch)
                     wordsDigest = BatchInvocationEvidence.DigestFile(Path.Combine(scratch, "words.txt"));
             }
             catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
@@ -249,6 +253,17 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                         (string.IsNullOrWhiteSpace(standardError) ? string.Empty : Environment.NewLine + standardError.Trim()));
                 if (!retained || outcome is not PanGlossOutcome.Completed completed)
                     return outcome;
+                if (request is PanGlossRequest.Facts factsRequest)
+                {
+                    var factsArtifact = completed.FactsArtifact;
+                    if (factsArtifact is null || sourceDigest != BatchInvocationEvidence.DigestFile(factsRequest.SnapshotPath) ||
+                        factsArtifact.SourceSha256 != sourceDigest)
+                        return new PanGlossOutcome.Incomplete(
+                            "The Snapshot source changed while the facts artifact was being built.", standardError);
+                    published = true;
+                    var lease = new Assess.AssessmentArtifactLease(scratch);
+                    return completed with { ArtifactLease = lease, FactsArtifactLease = lease };
+                }
                 var capturedBatch = (PanGlossRequest.Batch)request;
                 if (sourceDigest != BatchInvocationEvidence.DigestFile(capturedBatch.ProjectFilePath) ||
                     executableDigest != BatchInvocationEvidence.DigestFile(executable) ||

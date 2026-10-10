@@ -1,0 +1,7 @@
+{
+  "id": "fake-lean",
+  "host": "fake",
+  "model": null,
+  "effort": null,
+  "server": { "ref": "HEAD", "profile": "lean", "grade_profile": "profiles/mcp-lean-grade.json" }
+}

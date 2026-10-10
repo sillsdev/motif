@@ -1,0 +1,7 @@
+{
+  "id": "codex-luna-xhigh",
+  "host": "codex",
+  "model": "gpt-6-luna",
+  "effort": "xhigh",
+  "server": { "ref": "HEAD", "profile": "default", "grade_profile": "profiles/mcp-default-grade.json" }
+}

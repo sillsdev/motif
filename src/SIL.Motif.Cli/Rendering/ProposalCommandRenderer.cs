@@ -137,11 +137,19 @@ public static class ProposalCommandRenderer
 
     private static string RenderComposedOperations(ComposedOperationsResponse r)
     {
+        if (r.Outcome == "already-recorded")
+            return $"This decision is already recorded; nothing was staged in draft '{r.DraftName}'.{Environment.NewLine}";
         var sb = new StringBuilder();
         sb.AppendLine(
             $"Composed '{r.ComposerName}' against draft '{r.DraftName}': {r.Operations.Count} operation(s) added.");
         foreach (var op in r.Operations)
             sb.AppendLine($"  {op.OperationId}  ({op.Kind})");
+        if (r.RelatedObjects is { Count: > 0 } related)
+        {
+            sb.AppendLine("The changed slot is used by:");
+            foreach (var item in related)
+                sb.AppendLine($"  {item.Kind}: {item.Name} ({item.Id})");
+        }
         sb.AppendLine($"Draft now has {r.OperationCount} operation(s).");
         return sb.ToString();
     }

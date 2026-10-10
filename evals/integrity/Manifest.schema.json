@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:motif:controlled-trial:v1",
+  "type": "object",
+  "required": ["schema", "runId", "taskId", "armId", "trial", "integrity", "status"],
+  "properties": {
+    "schema": { "const": "motif-controlled-trial/v1" },
+    "runId": { "type": "string" },
+    "questionId": { "type": "string" },
+    "caseId": { "type": "string", "pattern": "^[0-9a-f]{32}$" },
+    "taskId": { "type": "string" },
+    "setId": { "type": "string" },
+    "armId": { "type": "string" },
+    "host": { "enum": ["fake", "codex", "claude"] },
+    "authMode": { "enum": ["none", "api-key", "chatgpt-plan"] },
+    "trial": { "type": "integer", "minimum": 1 },
+    "status": { "enum": ["passed", "failed", "inconclusive", "review", "invalid", "isolation_failure", "infrastructure_failure"] },
+    "integrity": {
+      "type": "object",
+      "required": ["state", "reasons"],
+      "properties": {
+        "state": { "enum": ["clean", "review", "invalid", "isolation_failure", "infrastructure_failure"] },
+        "reasons": { "type": "array", "items": { "type": "object", "required": ["reason"] } },
+        "processTree": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["pid", "parent", "role", "image", "source"],
+            "properties": {
+              "pid": { "type": "string" },
+              "parent": { "type": ["string", "null"] },
+              "role": { "enum": ["setup", "server", "agent"] },
+              "image": { "type": "string" },
+              "source": { "type": "string" }
+            }
+          }
+        },
+        "closedUtc": { "type": "number" },
+        "exportedUtc": { "type": "number" },
+        "evaluationAwareness": { "type": "boolean" },
+        "toolsHash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "network": { "type": "object", "required": ["policy", "limitation"] },
+        "bundleHashes": { "type": "object", "additionalProperties": { "type": "string", "pattern": "^[0-9a-f]{64}$" } },
+        "inputHashes": { "type": "object", "additionalProperties": { "type": "string", "pattern": "^[0-9a-f]{64}$" } }
+      }
+    }
+  }
+}

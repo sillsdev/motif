@@ -1,3 +1,5 @@
+using SIL.Motif.Host.Parsimony;
+
 namespace SIL.Motif.Host.PanGloss;
 
 /// <summary>
@@ -24,6 +26,14 @@ public abstract record PanGlossOutcome
         /// <summary>Retained batch evidence when the caller requested an artifact directory.</summary>
         public BatchInvocationEvidence? BatchEvidence { get; init; }
         public string? MorphologyOutput { get; init; }
+        internal GrammarFactsArtifact? FactsArtifact { get; init; }
+
+        /// <summary>The validated facts database written by a <c>facts</c> request.</summary>
+        public PanGlossFactsArtifact? Facts { get; init; }
+
+        /// <summary>Owns retained facts output until the caller copies it into a published evidence bundle.</summary>
+        [System.Text.Json.Serialization.JsonIgnore]
+        public Assess.AssessmentArtifactLease? FactsArtifactLease { get; init; }
 
         [System.Text.Json.Serialization.JsonIgnore]
         internal Assess.AssessmentArtifactLease? ArtifactLease { get; init; }
@@ -65,3 +75,13 @@ public abstract record PanGlossOutcome
         public override string Message => "The parser run was cancelled.";
     }
 }
+
+/// <summary>Validated identity and digest details for one PanGloss grammar-facts database.</summary>
+/// <param name="Path">The retained SQLite file path.</param>
+/// <param name="SchemaVersion">The exact facts schema generation in the file.</param>
+/// <param name="SourceSha256">The digest of the Snapshot bytes consumed by PanGloss.</param>
+/// <param name="ModelFingerprint">PanGloss's fingerprint of the compiled model.</param>
+/// <param name="OutputBytes">The closed file's byte count.</param>
+/// <param name="OutputSha256">The closed file's SHA-256 digest.</param>
+public sealed record PanGlossFactsArtifact(string Path, int SchemaVersion, string SourceSha256,
+    string ModelFingerprint, long OutputBytes, string OutputSha256);

@@ -2,6 +2,8 @@ using System.Globalization;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.Parser;
+using SIL.Motif.Contract.Baselines;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
@@ -52,6 +54,48 @@ public sealed class ReportCatalogTests
 
         Assert.Contains("coverage", duplicate.Message, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void RegistryProducerAcceptsFrozenParsimonyBundleWithoutAnAssessment()
+    {
+        var producer = new BundleOnlyReportProducer();
+        var catalog = new ReportCatalog([producer]);
+        var input = ReportInput.FromParsimony(MakeInputs(), []);
+
+        var rendered = catalog.Resolve("evidence-only").Produce(
+            input, new ReportQuery(), new AssessorCatalog(Array.Empty<IAssessor>()));
+
+        Assert.Equal("evidence-only", rendered.Kind);
+        Assert.Contains("bundle/1", rendered.Text, StringComparison.Ordinal);
+    }
+
+    private static ParsimonyReportInputs MakeInputs() => new(
+        "bundle/1",
+        new BaselineToken("project/1", Hash('a'), "1", "2026-10-05T00:00:00Z", Hash('b')),
+        "baseline",
+        null,
+        "model/1",
+        new ParsimonyArtifactDigest(1, new string('c', 64)),
+        new ParsimonyArtifactDigest(1, new string('d', 64)),
+        null,
+        null,
+        []);
+
+    private static string Hash(char digit) => "sha256:" + new string(digit, 64);
+
+    private sealed class BundleOnlyReportProducer : IReportProducer
+    {
+        public string Kind => "evidence-only";
+        public string Description => "Reads frozen grammar evidence.";
+
+        public RenderedReport Produce(ReportInput input, ReportQuery query, IAssessorCatalog assessors)
+        {
+            if (input is not ReportInput.Parsimony parsimony || parsimony.Assessments.Count != 0)
+                throw new ReportRefusalException(Kind, "This report needs only a frozen evidence bundle.");
+
+            return new RenderedReport(Kind, parsimony.Inputs.BundleId);
+        }
+    }
 }
 
 /// <summary>
@@ -93,6 +137,17 @@ public sealed class ReportProducerTests
         Assert.Equal("correctness", failure.Kind);
         Assert.Contains("ParseTime", failure.Message, StringComparison.Ordinal);
         Assert.Contains("Correctness", failure.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Correctness_RefusesMissingAssessmentNamingTheMissingCapability()
+    {
+        var failure = Assert.Throws<ReportRefusalException>(() =>
+            new CorrectnessReportProducer().Produce(
+                ReportInput.MissingCapability("Assessment"), new ReportQuery(), NoAssessorRegistered));
+
+        Assert.Equal("correctness", failure.Kind);
+        Assert.Contains("Assessment", failure.Message, StringComparison.Ordinal);
     }
 
     [Fact]

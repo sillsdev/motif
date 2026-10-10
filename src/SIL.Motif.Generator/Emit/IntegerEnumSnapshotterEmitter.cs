@@ -17,7 +17,14 @@ namespace SIL.Motif.Generator.Emit;
 /// </remarks>
 public static class IntegerEnumSnapshotterEmitter
 {
-    public static string Render(string declaringClass, IReadOnlyList<IntegerEnumFieldSpec> fieldsForClass)
+    /// <summary>Emits snapshots for fields on one LibLCM interface.</summary>
+    /// <param name="declaringClass">The LibLCM interface name without its <c>I</c> prefix.</param>
+    /// <param name="fieldsForClass">The enum fields emitted for that interface.</param>
+    /// <param name="snapshotterTypeName">An alternate class name when a sibling field emitter owns the default name.</param>
+    public static string Render(
+        string declaringClass,
+        IReadOnlyList<IntegerEnumFieldSpec> fieldsForClass,
+        string? snapshotterTypeName = null)
     {
         var targetInterface = "I" + declaringClass;
         var varName = fieldsForClass[0].Construct;
@@ -34,6 +41,7 @@ public static class IntegerEnumSnapshotterEmitter
 
         return Template
             .Replace("__DECLARINGCLASS__", declaringClass)
+            .Replace("__SNAPSHOTTER__", snapshotterTypeName ?? declaringClass + "Snapshotter")
             .Replace("__TARGETIFACE__", targetInterface)
             .Replace("__VAR__", varName)
             .Replace("__SOURCEROWS__", sourceRowsComment)
@@ -60,7 +68,7 @@ public static class IntegerEnumSnapshotterEmitter
         /// Reads a real <c>__TARGETIFACE__</c>'s basic-Integer-enum fields into the
         /// LibLCM-free <see cref="ObjectSnapshot"/> projection.
         /// </summary>
-        public static class __DECLARINGCLASS__Snapshotter
+        public static class __SNAPSHOTTER__
         {
             public static ObjectSnapshot Snapshot(LcmCache cache, __TARGETIFACE__ __VAR__)
             {

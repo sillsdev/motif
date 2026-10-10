@@ -1,0 +1,3 @@
+{"tool":"motif_grammar","arguments":{"kind":"environments","detail":"detailed"}}
+{"tool":"motif_lexicon","arguments":{"query":"qaje","detail":"detailed"}}
+{"finalMessage": "The plural -ra allomorph is wrongly restricted to after consonants; -ra belongs after vowel-final stems."}

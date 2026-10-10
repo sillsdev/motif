@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://motif.sil.org/contracts/retire-allomorph/v1",
+  "title": "Retire one duplicate allomorph",
+  "description": "Closed affix alternate retirement input. Live reference and semantic checks remain authoritative.",
+  "$ref": "#/$defs/RetireAllomorphIntent",
+  "$defs": {
+    "Retirement": {
+      "$ref": "https://motif.sil.org/contracts/allomorph-retirement/v2#/$defs/Retirement"
+    },
+    "AllomorphIdentity": {
+      "$ref": "https://motif.sil.org/contracts/allomorph-retirement/v2#/$defs/AllomorphIdentity"
+    },
+    "RetireAllomorphIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "const": "motif-retire-allomorph"
+        },
+        "version": {
+          "const": 1
+        },
+        "retirement": {
+          "$ref": "#/$defs/Retirement"
+        },
+        "duplicateSurvivors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AllomorphIdentity"
+          },
+          "minItems": 1,
+          "maxItems": 4096
+        }
+      },
+      "required": [
+        "format",
+        "version",
+        "retirement",
+        "duplicateSurvivors"
+      ]
+    }
+  }
+}

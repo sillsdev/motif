@@ -24,11 +24,21 @@ public enum WorkspacePage
     /// <summary>The grammar's own findings, which do not depend on which texts are chosen.</summary>
     Warnings,
 
+    /// <summary>The newest stored Parsimony Report's findings, read without starting a check.</summary>
+    Parsimony,
+
     /// <summary>The changes collected on any page, before any is written to FieldWorks.</summary>
     Review,
 
     /// <summary>Writing the AI Handoff files and passing them to a chat model.</summary>
     AiHandoff,
+}
+
+/// <summary>Which pages exist only while Advanced AI mode is on; the sidebar omits them and opening one does nothing.</summary>
+public static class WorkspacePages
+{
+    /// <summary>Whether <paramref name="page"/> is shown only for a person who has turned Advanced AI mode on.</summary>
+    public static bool RequiresAdvancedAi(WorkspacePage page) => page == WorkspacePage.Parsimony;
 }
 
 /// <summary>The views of the Texts page, each one a tab.</summary>
@@ -92,6 +102,9 @@ public sealed partial class PageViewModel : ObservableObject
 
     /// <summary>Whether <see cref="Badge"/> has anything to show.</summary>
     public bool HasBadge => Badge.Length > 0;
+
+    /// <summary>Whether the window offers this page; a page it does not offer is left out of the sidebar.</summary>
+    public bool IsAvailable { get; init; } = true;
 
     /// <summary>Whether this is the page the window is showing.</summary>
     [ObservableProperty]

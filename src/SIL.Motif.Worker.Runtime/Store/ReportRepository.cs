@@ -46,6 +46,24 @@ public sealed class ReportRepository
         return reader.Read() ? Read(reader) : null;
     }
 
+    /// <summary>
+    /// Reads the newest Report of one kind. Stored timestamps are the same fixed-width UTC text, so ordering the text
+    /// orders the times; a tie is broken by the greater id, which keeps the answer stable across reads.
+    /// </summary>
+    public ReportRecord? GetLatest(string kind)
+    {
+        if (string.IsNullOrWhiteSpace(kind)) throw new ArgumentException("A report kind is required.", nameof(kind));
+        using var connection = _database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT ReportId, ProposalId, AssessmentId, ReportJson, EvidenceJson, Kind, RenderedText, CreatedUtc
+            FROM Reports WHERE Kind = $kind ORDER BY CreatedUtc DESC, ReportId DESC LIMIT 1;
+            """;
+        command.Parameters.AddWithValue("$kind", kind);
+        using var reader = command.ExecuteReader();
+        return reader.Read() ? Read(reader) : null;
+    }
+
     /// <summary>Stores a Report and keeps its report/evidence JSON bytes, kind and rendering unchanged.</summary>
     public void Save(ReportRecord report)
     {
@@ -53,9 +71,28 @@ public sealed class ReportRepository
             throw new ArgumentException("Report id and report JSON are required.", nameof(report));
         using var connection = _database.OpenConnection();
         using var transaction = connection.BeginTransaction();
+        Write(connection, transaction, report, immutable: false);
+        transaction.Commit();
+    }
+
+    internal static void SaveImmutable(SqliteConnection connection, SqliteTransaction transaction, ReportRecord report)
+    {
+        ArgumentNullException.ThrowIfNull(connection);
+        ArgumentNullException.ThrowIfNull(transaction);
+        Write(connection, transaction, report, immutable: true);
+    }
+
+    private static void Write(SqliteConnection connection, SqliteTransaction transaction, ReportRecord report,
+        bool immutable)
+    {
+        if (string.IsNullOrWhiteSpace(report.ReportId) || report.ReportJson is null)
+            throw new ArgumentException("Report id and report JSON are required.", nameof(report));
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
-        command.CommandText = """
+        command.CommandText = immutable ? """
+            INSERT INTO Reports (ReportId, ProposalId, AssessmentId, ReportJson, EvidenceJson, Kind, RenderedText, CreatedUtc)
+            VALUES ($id, $proposal, $assessment, $report, $evidence, $kind, $renderedText, $created);
+            """ : """
             INSERT INTO Reports (ReportId, ProposalId, AssessmentId, ReportJson, EvidenceJson, Kind, RenderedText, CreatedUtc)
             VALUES ($id, $proposal, $assessment, $report, $evidence, $kind, $renderedText, $created)
             ON CONFLICT(ReportId) DO UPDATE SET
@@ -72,7 +109,6 @@ public sealed class ReportRepository
         command.Parameters.AddWithValue("$renderedText", (object?)report.RenderedText ?? DBNull.Value);
         command.Parameters.AddWithValue("$created", report.CreatedUtc ?? DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture));
         command.ExecuteNonQuery();
-        transaction.Commit();
     }
 
     private static ReportRecord Read(SqliteDataReader reader)

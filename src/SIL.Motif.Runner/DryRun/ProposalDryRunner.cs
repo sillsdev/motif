@@ -8,6 +8,7 @@ using SIL.Motif.Model.DryRun;
 using SIL.Motif.Model.Effects;
 using SIL.Motif.Model.Snapshot;
 using SIL.Motif.Runner.Operations;
+using SIL.Motif.Runner.Apply;
 using SIL.LCModel;
 using SIL.LCModel.Core.KernelInterfaces;
 using SIL.LCModel.Infrastructure;
@@ -63,16 +64,17 @@ public static class ProposalDryRunner
         if (plan is null) throw new ArgumentNullException(nameof(plan));
 
         var proposal = plan.Requested;
-        AnalysisOpinionSlotValidator.Validate(proposal);
+        ProposalOperationSlotValidator.Validate(proposal);
+        var operationOrder = OperationExecutionOrder.Sort(proposal.Operations);
 
         var cache = scratch.ConsumeForOneRun();
 
         var intentDigest = ContractIntentDigest.Compute(proposal);
         var effects = new List<ExpectedEffect>();
         var touchedTargets = new List<CanonicalId>();
-        var mintedTargets = FootprintPlan.TargetsMintedWithinProposal(proposal);
 
         var actionHandler = cache.ServiceLocator.GetInstance<IActionHandler>();
+        string footprintDigest;
 
         // Non-undoable; RollBack cleared before the first mutation, not after: rollback would leave the cache stale.
         using (var unitOfWork = new NonUndoableUnitOfWorkHelper(actionHandler))
@@ -82,18 +84,22 @@ public static class ProposalDryRunner
             foreach (var prerequisite in plan.Prerequisites)
             {
                 var prerequisiteTargets = new List<CanonicalId>();
-                foreach (var operation in prerequisite.Operations)
+                foreach (var operation in OperationExecutionOrder.Sort(prerequisite.Operations))
                 {
                     var handler = OperationHandlerRegistry.Resolve(operation.Kind, "prerequisite Dry Run preparation");
-                    handler.ApplyAndCaptureEffect(cache, operation, prerequisiteTargets);
+                    _ = OperationEffectCapture.Apply(handler, cache, operation, prerequisiteTargets);
                 }
             }
 
-            foreach (var operation in proposal.Operations)
+            footprintDigest = FootprintProbe.ComputeCurrentFootprintDigest(cache, proposal);
+
+            foreach (var operation in operationOrder)
             {
                 var handler = OperationHandlerRegistry.Resolve(operation.Kind, "Stage C dryRun");
-                effects.Add(handler.ApplyAndCaptureEffect(cache, operation, touchedTargets));
+                effects.AddRange(OperationEffectCapture.Apply(handler, cache, operation, touchedTargets));
             }
+
+            RuleContextSemanticValidator.ValidateProposal(cache, proposal.Operations);
         }
 
         var effectDigest = ExpectedEffectSetDigest.Compute(effects);
@@ -106,8 +112,7 @@ public static class ProposalDryRunner
         // Binds a subsequent Apply to exactly this evaluated baseline (docs/adr/0004, decision 3).
         var anchor = new BoundDryRunAnchor(
             IntentDigest: intentDigest,
-            FootprintDigest: FootprintDigest.Compute(
-                effects.Where(e => !mintedTargets.Contains(e.CanonicalId))),
+            FootprintDigest: footprintDigest,
             EffectDigest: effectDigest,
             RunnerVersion: typeof(ProposalDryRunner).Assembly.GetName().Version?.ToString() ?? "0.0.0.0",
             LibLcmVersion: typeof(LcmCache).Assembly.GetName().Version?.ToString() ?? "unknown",

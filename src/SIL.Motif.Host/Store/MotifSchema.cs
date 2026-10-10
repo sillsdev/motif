@@ -16,7 +16,7 @@ public static class MotifSchema
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 41;
+    public const int CurrentSchema = 43;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
@@ -32,7 +32,8 @@ public static class MotifSchema
         {
             command.Transaction = transaction;
             command.CommandText = MetadataDdl + CorpusDdl + ProposalWorkflowDdl + SelectionDdl + AssessmentDdl + JobDdl +
-                BaselineDdl + BaselineTextWordsDdl + BaselineTextReadIndexDdl + RetainedInvocationDdl + GrammarCheckDdl + PendingChangeFitDdl +
+                BaselineDdl + BaselineTextWordsDdl + BaselineTextReadIndexDdl + RetainedInvocationDdl + ParsimonyBundleDdl + ParsimonyBundleLifetimeDdl +
+                GrammarCheckDdl + PendingChangeFitDdl +
                 ReadOccurrenceDdl + ActiveParseDdl + ParserRefusalDdl;
             command.ExecuteNonQuery();
         }
@@ -62,14 +63,17 @@ public static class MotifSchema
             "Decisions", "Receipts", "Reports", "AppliedIndex", "Jobs", "Baselines", "RetainedInvocations",
             "RetainedInvocationMembers", "NamedSelections", "DefaultSelection", "AssessmentObjectTimings",
             "BaselineSummaries", "BaselineTextWords", "BaselineTextWordforms", "BaselineTextReadIndex", "GrammarChecks", "PendingChangeFits",
-            "ReadOccurrences", "ActiveParse", "ParserRefusals"
+            "ReadOccurrences", "ActiveParse", "ParserRefusals", "ParsimonyBundles", "ParsimonyBundleReferences",
+            "ParsimonyReaderLeases", "ParsimonyBuildClaims", "CurrentParsimonyBundles"
         };
         var expectedIndexes = new HashSet<string>(StringComparer.Ordinal)
         {
             "IX_AssessedWords_Assessment", "IX_AssessedWords_Word", "IX_ParsedAnalyses_Word",
             "IX_Jobs_Lineage_Attempt", "IX_Jobs_Status_Updated", "IX_Jobs_Lease", "IX_Jobs_QueueOrder",
             "IX_Proposals_DraftName", "IX_Assessments_Proposal", "IX_Assessments_Kind",
-            "IX_RetainedInvocations_Project", "IX_RetainedInvocationMembers_Assessment"
+            "IX_RetainedInvocations_Project", "IX_RetainedInvocationMembers_Assessment",
+            "IX_ParsimonyBundles_ProjectCreated", "IX_ParsimonyReaderLeases_BundleExpiry",
+            "IX_ParsimonyBuildClaims_Project"
         };
 
         using (var objects = connection.CreateCommand())
@@ -271,6 +275,9 @@ public static class MotifSchema
         "IX_Assessments_Proposal" or "IX_Assessments_Kind" => "Assessments",
         "IX_RetainedInvocations_Project" => "RetainedInvocations",
         "IX_RetainedInvocationMembers_Assessment" => "RetainedInvocationMembers",
+        "IX_ParsimonyBundles_ProjectCreated" => "ParsimonyBundles",
+        "IX_ParsimonyReaderLeases_BundleExpiry" => "ParsimonyReaderLeases",
+        "IX_ParsimonyBuildClaims_Project" => "ParsimonyBuildClaims",
         _ => throw new InvalidDataException($"Motif index {index} is not registered.")
     };
 
@@ -290,6 +297,9 @@ public static class MotifSchema
         "IX_Assessments_Kind" => ["Kind"],
         "IX_RetainedInvocations_Project" => ["ProjectKey"],
         "IX_RetainedInvocationMembers_Assessment" => ["AssessmentId"],
+        "IX_ParsimonyBundles_ProjectCreated" => ["ProjectKey", "CreatedUtc"],
+        "IX_ParsimonyReaderLeases_BundleExpiry" => ["BundleId", "ExpiresUtc"],
+        "IX_ParsimonyBuildClaims_Project" => ["ProjectKey"],
         _ => throw new InvalidDataException($"Motif index {index} is not registered.")
     };
 
@@ -311,6 +321,9 @@ public static class MotifSchema
         "AssessedWords" => [new("Assessments", "AssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE")],
         "ParsedAnalyses" => [new("AssessedWords", "AssessedWordId", "AssessedWordId", "NO ACTION", "NO ACTION", "NONE")],
         "AssessmentPins" => [new("Assessments", "AssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE")],
+        "ParsimonyBundleReferences" => [new("ParsimonyBundles", "BundleId", "BundleId", "NO ACTION", "CASCADE", "NONE")],
+        "ParsimonyReaderLeases" => [new("ParsimonyBundles", "BundleId", "BundleId", "NO ACTION", "CASCADE", "NONE")],
+        "CurrentParsimonyBundles" => [new("ParsimonyBundles", "BundleId", "BundleId", "NO ACTION", "CASCADE", "NONE")],
         "ProposalRevisions" => [new("Proposals", "ProposalId", "ProposalId", "NO ACTION", "NO ACTION", "NONE")],
         "Decisions" => [new("Proposals", "ProposalId", "ProposalId", "NO ACTION", "NO ACTION", "NONE")],
         "Receipts" => [new("Proposals", "ProposalId", "ProposalId", "NO ACTION", "NO ACTION", "NONE")],
@@ -381,6 +394,25 @@ public static class MotifSchema
             C("BundleDigest", "TEXT", true), C("WordformJson", "TEXT", true)],
         "BaselineTextReadIndex" => [C("ProjectKey", "TEXT", true, 1), C("TextId", "TEXT", true, 2),
             C("BundleDigest", "TEXT", true), C("IndexJson", "TEXT", true)],
+        "ParsimonyBundles" => [C("BundleId", "TEXT", false, 1), C("BaselineTokenJson", "TEXT", true),
+            C("ProjectKey", "TEXT", true), C("BaselineDigest", "TEXT", true), C("MaterialKey", "TEXT", true),
+            C("EvidenceDirectory", "TEXT", true), C("GrammarFactsPath", "TEXT", true), C("EvidencePath", "TEXT", true),
+            C("BaselineRootDirectory", "TEXT", true), C("InputKind", "TEXT", true), C("CandidateIdentity", "TEXT"),
+            C("ModelFingerprint", "TEXT", true), C("GrammarFactsSchemaVersion", "INTEGER", true),
+            C("GrammarFactsSha256", "TEXT", true), C("EvidenceSchemaVersion", "INTEGER", true),
+            C("EvidenceSha256", "TEXT", true), C("CreatedUtc", "TEXT", true),
+            C("State", "TEXT", true, defaultValue: "'available'"), C("UnavailableReason", "TEXT")],
+        "ParsimonyBundleReferences" => [C("BundleId", "TEXT", true, 1), C("ReferenceKind", "TEXT", true, 2),
+            C("ReferenceId", "TEXT", true, 3), C("CreatedUtc", "TEXT", true)],
+        "ParsimonyReaderLeases" => [C("LeaseId", "TEXT", false, 1), C("BundleId", "TEXT", true),
+            C("OwnerId", "TEXT", true), C("CreatedUtc", "TEXT", true), C("HeartbeatUtc", "TEXT", true),
+            C("ExpiresUtc", "TEXT", true)],
+        "ParsimonyBuildClaims" => [C("BundleId", "TEXT", false, 1), C("ProjectKey", "TEXT", true),
+            C("JobId", "TEXT", true), C("ClaimToken", "TEXT", true), C("BaselineRootDirectory", "TEXT", true),
+            C("WorkingDirectory", "TEXT", true), C("StagingDirectory", "TEXT"), C("FinalDirectory", "TEXT"),
+            C("CreatedUtc", "TEXT", true)],
+        "CurrentParsimonyBundles" => [C("ProjectKey", "TEXT", true, 1), C("InputKind", "TEXT", true, 2),
+            C("BundleId", "TEXT", true)],
         "ParsedAnalyses" =>
         [C("AssessedWordId", "INTEGER", true), C("OrdinalIndex", "INTEGER", true), C("CategoryGuid", "TEXT"),
             C("MorphemeGuidsJson", "TEXT", true), C("RootIndex", "INTEGER", true), C("IdentityDigest", "TEXT", true)],
@@ -835,6 +867,72 @@ public static class MotifSchema
             WordIndex INTEGER NOT NULL CHECK (WordIndex >= 0),
             FingerprintJson TEXT NOT NULL,
             PRIMARY KEY (TextId, ParagraphId, SegmentId, WordIndex)
+        );
+        """;
+
+    private const string ParsimonyBundleDdl = """
+        CREATE TABLE ParsimonyBundles (
+            BundleId TEXT PRIMARY KEY,
+            BaselineTokenJson TEXT NOT NULL,
+            ProjectKey TEXT NOT NULL,
+            BaselineDigest TEXT NOT NULL,
+            MaterialKey TEXT NOT NULL,
+            EvidenceDirectory TEXT NOT NULL,
+            GrammarFactsPath TEXT NOT NULL,
+            EvidencePath TEXT NOT NULL,
+            BaselineRootDirectory TEXT NOT NULL,
+            InputKind TEXT NOT NULL CHECK (InputKind IN ('baseline','candidate')),
+            CandidateIdentity TEXT NULL,
+            ModelFingerprint TEXT NOT NULL,
+            GrammarFactsSchemaVersion INTEGER NOT NULL CHECK (GrammarFactsSchemaVersion > 0),
+            GrammarFactsSha256 TEXT NOT NULL,
+            EvidenceSchemaVersion INTEGER NOT NULL CHECK (EvidenceSchemaVersion > 0),
+            EvidenceSha256 TEXT NOT NULL,
+            CreatedUtc TEXT NOT NULL,
+            State TEXT NOT NULL CHECK (State IN ('available','deleting','missing','corrupt')) DEFAULT 'available',
+            UnavailableReason TEXT NULL,
+            CHECK ((InputKind = 'candidate') = (CandidateIdentity IS NOT NULL))
+        );
+        CREATE INDEX IX_ParsimonyBundles_ProjectCreated ON ParsimonyBundles(ProjectKey, CreatedUtc);
+        """;
+
+    private const string ParsimonyBundleLifetimeDdl = """
+        CREATE TABLE ParsimonyBundleReferences (
+            BundleId TEXT NOT NULL REFERENCES ParsimonyBundles(BundleId) ON DELETE CASCADE,
+            ReferenceKind TEXT NOT NULL,
+            ReferenceId TEXT NOT NULL,
+            CreatedUtc TEXT NOT NULL,
+            PRIMARY KEY (BundleId, ReferenceKind, ReferenceId)
+        );
+
+        CREATE TABLE ParsimonyReaderLeases (
+            LeaseId TEXT PRIMARY KEY,
+            BundleId TEXT NOT NULL REFERENCES ParsimonyBundles(BundleId) ON DELETE CASCADE,
+            OwnerId TEXT NOT NULL,
+            CreatedUtc TEXT NOT NULL,
+            HeartbeatUtc TEXT NOT NULL,
+            ExpiresUtc TEXT NOT NULL
+        );
+        CREATE INDEX IX_ParsimonyReaderLeases_BundleExpiry ON ParsimonyReaderLeases(BundleId, ExpiresUtc);
+
+        CREATE TABLE ParsimonyBuildClaims (
+            BundleId TEXT PRIMARY KEY,
+            ProjectKey TEXT NOT NULL,
+            JobId TEXT NOT NULL,
+            ClaimToken TEXT NOT NULL,
+            BaselineRootDirectory TEXT NOT NULL,
+            WorkingDirectory TEXT NOT NULL,
+            StagingDirectory TEXT NULL,
+            FinalDirectory TEXT NULL,
+            CreatedUtc TEXT NOT NULL
+        );
+        CREATE INDEX IX_ParsimonyBuildClaims_Project ON ParsimonyBuildClaims(ProjectKey);
+
+        CREATE TABLE CurrentParsimonyBundles (
+            ProjectKey TEXT NOT NULL,
+            InputKind TEXT NOT NULL CHECK (InputKind IN ('baseline','candidate')),
+            BundleId TEXT NOT NULL REFERENCES ParsimonyBundles(BundleId) ON DELETE CASCADE,
+            PRIMARY KEY (ProjectKey, InputKind)
         );
         """;
 }

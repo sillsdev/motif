@@ -480,7 +480,7 @@ public sealed class TrialJobHandlerTests : IDisposable
                 return Task.FromResult<(IReadOnlyCollection<Guid>, DryRunScratch?)>((appliedProposalIds, scratch));
             },
             (scratch, plan, _) => Task.FromResult(ProposalDryRunner.Run(scratch!, plan)),
-            prepareForAssessment ?? DefaultPrepareForAssessment);
+            prepareForAssessment ?? DefaultPrepareForAssessment, _root);
     }
 
     private Task<string> DefaultPrepareForAssessment(LcmCache? cache, CancellationToken _)

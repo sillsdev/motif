@@ -37,9 +37,7 @@ public sealed record ReferenceAtomicFieldSpec(
 /// <c>rel/seq</c> field. The two cardinalities share one emitter because both LibLCM accessor shapes
 /// (<c>ILcmReferenceCollection&lt;T&gt;</c>, <c>ILcmReferenceSequence&lt;T&gt;</c>) implement the
 /// ordinary <c>ICollection&lt;T&gt;</c> — verified by reflection against the pinned <c>SIL.LCModel</c>
-/// package — so <c>addRef</c>/<c>removeRef</c> lower identically regardless of which one a field uses.
-/// <c>move</c> is deliberately not represented here for <c>rel/seq</c> fields
-/// (see <see cref="ReferenceCollectionFieldEmitter"/>'s remarks for why).
+/// package. Selected ordered fields also carry a <c>move</c> kind and use identity-relative placement.
 /// </summary>
 /// <param name="AccessorPropertyName">LibLCM's own suffix convention for a reference accessor property:
 /// <c>{FieldName}RC</c> for <c>rel/col</c>, <c>{FieldName}RS</c> for <c>rel/seq</c> — e.g.
@@ -57,4 +55,5 @@ public sealed record ReferenceCollectionFieldSpec(
     string TargetInterface,
     string RefInterface,
     string AccessorPropertyName,
-    string SnapshotFieldConstant);
+    string SnapshotFieldConstant,
+    string? MoveKind);

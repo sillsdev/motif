@@ -3,9 +3,12 @@ using System.Globalization;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App.Services;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Commands.Requests;
+using SIL.Motif.Contract;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host;
 using SIL.Motif.Projection.Usage;
 
 namespace SIL.Motif.App.ViewModels;
@@ -23,6 +26,9 @@ public sealed class ReviewPageModel : PageModel
     private ReviewSentenceContext? _sentenceContext;
     private ChangeViewModel? _contextChange;
     private Task _contextStop = Task.CompletedTask;
+    private CancellationTokenSource? _retirementReviewCancellation;
+    private Task? _retirementReviewTask;
+    private int _retirementReviewGeneration;
 
     public ReviewPageModel(WorkspaceContext context) : base(context)
     {
@@ -103,6 +109,12 @@ public sealed class ReviewPageModel : PageModel
 
     /// <summary>The result recorded when Apply wrote the changes.</summary>
     public ApplyProjection? Receipt { get; private set; }
+
+    /// <summary>The exact linked review data for one rule-retirement Proposal, when opened here.</summary>
+    public RetirementProposalReviewViewModel? RetirementReview { get; private set; }
+
+    /// <summary>Whether the page has a linked rule-retirement review to show.</summary>
+    public bool HasRetirementReview => RetirementReview is not null;
 
     public bool HasReceipt => Receipt is not null;
 
@@ -284,6 +296,73 @@ public sealed class ReviewPageModel : PageModel
     /// button shows no tooltip of its own, so the reason has to be written where the button is.
     /// </summary>
     public string? ApplyDisabledReason => CanApply ? null : ApplyBlockReason;
+
+    /// <summary>Shows the response already bound to the exact Proposal and Dry Run being reviewed.</summary>
+    public void ShowRetirementReview(RetirementProposalReviewProjection projection)
+    {
+        ArgumentNullException.ThrowIfNull(projection);
+        if (Changes.Snapshot.DraftId is { } draftId && draftId != projection.ProposalId)
+            throw new InvalidOperationException("The review response belongs to another Proposal.");
+        RetirementReview = new RetirementProposalReviewViewModel(projection);
+        OnPropertyChanged(nameof(RetirementReview));
+        OnPropertyChanged(nameof(HasRetirementReview));
+    }
+
+    private void ShowRetirementReview(RetirementReviewQueryResponse response)
+    {
+        if (!response.Applicable) return;
+        if (Changes.Snapshot.DraftId is { } draftId && draftId != response.DraftId)
+            throw new InvalidOperationException("The review response belongs to another Proposal.");
+        RetirementReview = new RetirementProposalReviewViewModel(response);
+        OnPropertyChanged(nameof(RetirementReview));
+        OnPropertyChanged(nameof(HasRetirementReview));
+    }
+
+    /// <summary>Clears the rule-retirement review when its source snapshot changes.</summary>
+    public void ClearRetirementReview()
+    {
+        RetirementReview = null;
+        OnPropertyChanged(nameof(RetirementReview));
+        OnPropertyChanged(nameof(HasRetirementReview));
+    }
+
+    private async Task LoadRetirementReviewAsync()
+    {
+        _retirementReviewCancellation?.Cancel();
+        _retirementReviewCancellation?.Dispose();
+        _retirementReviewCancellation = null;
+        var generation = ++_retirementReviewGeneration;
+        if (Context.ProjectPath is not { } project || Changes.Snapshot.DraftId is not { } draftId) return;
+
+        var cancellation = new CancellationTokenSource();
+        _retirementReviewCancellation = cancellation;
+        try
+        {
+            var outcome = await Context.Commands.ReadRetirementReviewAsync(new ReadRetirementReviewRequest(
+                project, MotifProductVersion.CurrentText, draftId), cancellation.Token).ConfigureAwait(true);
+            if (cancellation.IsCancellationRequested || generation != _retirementReviewGeneration ||
+                !string.Equals(Context.ProjectPath, project, StringComparison.Ordinal) ||
+                Changes.Snapshot.DraftId != draftId)
+                return;
+            if (outcome.Value is { Applicable: true } response) ShowRetirementReview(response);
+            else ClearRetirementReview();
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+        }
+        catch (Exception)
+        {
+            if (generation == _retirementReviewGeneration) ClearRetirementReview();
+        }
+        finally
+        {
+            if (ReferenceEquals(_retirementReviewCancellation, cancellation))
+            {
+                _retirementReviewCancellation = null;
+                cancellation.Dispose();
+            }
+        }
+    }
 
     /// <summary>Shows that a saved project change could not be matched to its recorded Receipt.</summary>
     internal void ShowReconciliationNeeded()
@@ -490,6 +569,8 @@ public sealed class ReviewPageModel : PageModel
     {
         if (e.PropertyName == nameof(ChangesViewModel.Snapshot))
         {
+            ClearRetirementReview();
+            _retirementReviewTask = LoadRetirementReviewAsync();
             EvidenceComplete = false;
             WordsLosingApprovedAnalysis = [];
             NumbersText = NumbersPrompt;
@@ -680,6 +761,11 @@ public sealed class ReviewPageModel : PageModel
     protected override void OnProjectCleared()
     {
         ReleaseContext();
+        _retirementReviewGeneration++;
+        _retirementReviewCancellation?.Cancel();
+        _retirementReviewCancellation?.Dispose();
+        _retirementReviewCancellation = null;
+        ClearRetirementReview();
         _measurementCancellation?.Cancel();
         _applyCancellation?.Cancel();
         Receipt = null;
@@ -701,8 +787,10 @@ public sealed class ReviewPageModel : PageModel
     {
         ReleaseContext();
         await _contextStop.ConfigureAwait(true);
+        _retirementReviewCancellation?.Cancel();
         _measurementCancellation?.Cancel();
         _applyCancellation?.Cancel();
+        if (_retirementReviewTask is { } retirementReview) await retirementReview.ConfigureAwait(true);
         if (MeasureCommand.ExecutionTask is { } running) await running.ConfigureAwait(true);
         if (ApplyCommand.ExecutionTask is { } applying) await applying.ConfigureAwait(true);
     }

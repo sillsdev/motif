@@ -100,7 +100,8 @@ public sealed class BaselineDryRunIntegrationTests : IDisposable
         for (var iteration = 0; iteration < 20; iteration++)
         {
             var job = _jobs.Create(Guid.NewGuid().ToString("N"), ProjectWorkspaceKey.Compute(_project),
-                "dry-run", _proposalJson, "2026-08-24T00:00:00Z");
+                "dry-run", DryRunTestSupport.CreateDryRunInput(_baselines, ProjectWorkspaceKey.Compute(_project), _proposalJson),
+                "2026-08-24T00:00:00Z");
             var claim = DryRunJobTestHarness.Claim(_jobs, job.JobId);
 
             var completed = await DryRunJobTestHarness.RunAndFinishAsync(_jobs, handler, claim, _project);
@@ -142,7 +143,8 @@ public sealed class BaselineDryRunIntegrationTests : IDisposable
             (scratch, plan, _) => Task.FromResult(ProposalDryRunner.Run(scratch!, plan)));
 
         var job = _jobs.Create(Guid.NewGuid().ToString("N"), ProjectWorkspaceKey.Compute(_project),
-            "dry-run", _proposalJson, "2026-08-24T00:00:00Z");
+            "dry-run", DryRunTestSupport.CreateDryRunInput(_baselines, ProjectWorkspaceKey.Compute(_project), _proposalJson),
+            "2026-08-24T00:00:00Z");
         var claim = DryRunJobTestHarness.Claim(_jobs, job.JobId);
 
         var completed = await DryRunJobTestHarness.RunAndFinishAsync(_jobs, handler, claim, _project);
@@ -455,7 +457,9 @@ public sealed class BaselineDryRunSchedulingTests : IDisposable
             (_, _) => throw new Xunit.Sdk.XunitException("Applied ids must never be read."),
             (_, _, _) => throw new Xunit.Sdk.XunitException("The scratch must never open."));
         var job = jobs.Create(Guid.NewGuid().ToString("N"), ProjectWorkspaceKey.Compute(project),
-            "dry-run", DryRunTestSupport.BuildSetGlossProposalJson(Guid.NewGuid(), "text"), "2026-08-24T00:00:00Z");
+            "dry-run", DryRunTestSupport.CreateDryRunInput(null, string.Empty,
+                DryRunTestSupport.BuildSetGlossProposalJson(Guid.NewGuid(), "text")),
+            "2026-08-24T00:00:00Z");
         var claim = DryRunJobTestHarness.Claim(jobs, job.JobId);
 
         var outcome = await handler.RunAsync(claim, project, CancellationToken.None);
@@ -502,8 +506,10 @@ public sealed class BaselineDryRunSchedulingTests : IDisposable
             "2026-08-24T00:00:00Z", "sha256:" + new string('b', 64), "session-a", 5);
         var publishedRoot = Path.Combine(_root, name + "-published");
         Directory.CreateDirectory(publishedRoot);
+        var baselinePath = Path.Combine(publishedRoot, "project.fwdata");
+        File.WriteAllText(baselinePath, "baseline fixture bytes");
         baselines.Record(workspaceKey,
-            new BaselinePublication(publishedRoot, Path.Combine(publishedRoot, "project.fwdata"), token),
+            new BaselinePublication(publishedRoot, baselinePath, token),
             DateTimeOffset.Parse("2026-08-24T00:00:00Z"), DateTimeOffset.Parse("2026-08-24T00:00:00Z"), TestTextWords.Empty);
         return new TestContext(project, database, jobs, baselines, token, workspaceKey);
     }
@@ -514,7 +520,8 @@ public sealed class BaselineDryRunSchedulingTests : IDisposable
         BaselineRepository Baselines, BaselineToken Token, string WorkspaceKey) : IDisposable
     {
         public JobRecord CreateJob(string label) => Jobs.Create(Guid.NewGuid().ToString("N"), WorkspaceKey,
-            "dry-run", DryRunTestSupport.BuildSetGlossProposalJson(Guid.NewGuid(), label), "2026-08-24T00:00:00Z");
+            "dry-run", DryRunTestSupport.CreateDryRunInput(null, WorkspaceKey,
+                DryRunTestSupport.BuildSetGlossProposalJson(Guid.NewGuid(), label)), "2026-08-24T00:00:00Z");
 
         public void Dispose() => Database.Dispose();
     }
@@ -522,6 +529,18 @@ public sealed class BaselineDryRunSchedulingTests : IDisposable
 
 internal static class DryRunTestSupport
 {
+    public static string CreateDryRunInput(BaselineRepository? baselines, string workspaceKey, string proposalJson)
+    {
+        DryRunSourceBinding? source = null;
+        var current = baselines?.GetCurrent(workspaceKey);
+        if (current is not null && File.Exists(current.FwDataPath))
+            source = new DryRunSourceBinding(current.Token, current.RootDirectory, current.FwDataPath,
+                "sha256:" + Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(current.FwDataPath))));
+        return JsonSerializer.Serialize(new DryRunJobInput(DryRunJobInput.CurrentSchemaVersion,
+            FrozenProposalRevision.Create(proposalJson), [], source),
+            SIL.Motif.Contract.MotifJson.CreateOptions());
+    }
+
     public static string BuildSetGlossProposalJson(Guid targetId, string text)
     {
         var afterJson = JsonSerializer.Serialize(new { ws = "en", text });

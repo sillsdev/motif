@@ -98,10 +98,11 @@ public static class PanGlossBatchStatisticsReader
             var kind = reader.GetString(3);
             var label = reader.GetString(4);
             var direction = reader.GetString(5);
-            if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(label) ||
+            if (string.IsNullOrWhiteSpace(key) ||
                 !IsKnownIdentityQuality(identityQuality) || !IsKnownKind(kind) || !IsKnownDirection(direction) ||
                 !words.ContainsKey(word))
                 throw new InvalidDataException("The batch statistics cache contains an invalid object fact row.");
+            if (string.IsNullOrWhiteSpace(label)) label = key;
             int? attempts = SupportsCounter(kind, "attempts") ? ReadCounter(reader, 6, "object attempts", word) : null;
             long? nanoseconds = SupportsTimer(kind, direction)
                 ? ReadElapsedNs(reader, 7, "object", word) : null;

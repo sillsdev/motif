@@ -112,6 +112,17 @@ public sealed class ReleaseSurfaceTests : IDisposable
     }
 
     [Fact]
+    public void AdvancedAiCommandsRequireThatPreferenceAndDoNotFollowDeveloperOptIn()
+    {
+        var command = new CommandDescriptor(
+            "future-composer", typeof(string), typeof(string), CommandSurface.AdvancedAi, AgentClass.Draft);
+
+        Assert.False(CommandSurfacePolicy.FromEnvironment("1").IsAvailable(command));
+        Assert.False(CommandSurfacePolicy.FromEnvironment(null, advancedAiModeEnabled: false).IsAvailable(command));
+        Assert.True(CommandSurfacePolicy.FromEnvironment(null, advancedAiModeEnabled: true).IsAvailable(command));
+    }
+
+    [Fact]
     public void ReleasedHelpContainsOnlyReleasedCommandsAndNoEmptySections()
     {
         var result = Run(string.Empty, developerCommands: false);

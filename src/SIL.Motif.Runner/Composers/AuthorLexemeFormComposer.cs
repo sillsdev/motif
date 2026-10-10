@@ -63,6 +63,14 @@ public static class AuthorLexemeFormComposer
         if (intent is null) throw new ArgumentNullException(nameof(intent));
         RequireConsistentGloss(intent);
 
+        if (intent.Environments is { } environments)
+        {
+            if (environments.Distinct().Count() != environments.Count)
+                throw new InvalidOperationException("Lexeme form environments must be distinct.");
+            foreach (var environment in environments)
+                ReferenceFieldLowering.Resolve<IPhEnvironment>(cache, environment, ConstructName);
+        }
+
         var mint = mintId ?? (() => CanonicalId.Mint());
 
         var entry = ReferenceFieldLowering.Resolve<ILexEntry>(cache, intent.Entry, ConstructName);
@@ -112,6 +120,17 @@ public static class AuthorLexemeFormComposer
                 rationale: Rationale));
         }
 
+        if (intent.Environments is { } environmentIds)
+        {
+            var morphType = ReferenceFieldLowering.Resolve<IMoMorphType>(cache, intent.MorphType, ConstructName);
+            var concrete = MoFormConcreteClassSelection.ClassFor(morphType, ConstructName);
+            var kind = concrete == MoFormConcreteClass.StemAllomorph ?
+                MoStemAllomorphPhoneEnvOperationKinds.AddRefPhoneEnv : MoAffixAllomorphPhoneEnvOperationKinds.AddRefPhoneEnv;
+            foreach (var environment in environmentIds)
+                operations.Add(new OperationEnvelope(mint(), kind, target: newFormId,
+                    after: JsonSerializer.SerializeToElement(new { member = environment.Value }),
+                    dependsOn: new[] { new OperationDependency(createOpId) }, rationale: Rationale));
+        }
         return operations;
     }
 

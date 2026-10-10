@@ -10,7 +10,11 @@ namespace SIL.Motif.Host.Assess;
 public static class Readiness
 {
     /// <summary>Readiness reasons and the separate regression refusal signal.</summary>
-    public sealed record Decision(IReadOnlyList<string> Reasons, bool IsRegression);
+    public sealed record Decision(
+        IReadOnlyList<string> Reasons,
+        bool IsRegression,
+        bool CorrectnessAssessmentRequired = true,
+        string? CorrectnessAssessmentExemptionReason = null);
 
     /// <summary>
     /// The reasons a Proposal is not ready to apply, in the same wording a refusal message quotes verbatim.
@@ -39,8 +43,12 @@ public static class Readiness
         string? currentBaselineToken,
         string candidateBaselineToken,
         bool gateOnRegression,
-        IReadOnlyCollection<string>? changedWords = null)
+        IReadOnlyCollection<string>? changedWords = null,
+        string? correctnessAssessmentExemptionReason = null)
     {
+        if (!string.IsNullOrWhiteSpace(correctnessAssessmentExemptionReason))
+            return new Decision([], false, false, correctnessAssessmentExemptionReason);
+
         if (candidate is null)
             return new Decision(["no Assessment covers its current content, so nothing has measured what it would do"], false);
 

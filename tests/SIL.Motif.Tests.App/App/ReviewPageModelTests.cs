@@ -15,6 +15,24 @@ public sealed class ReviewPageModelTests
     private const string InternalId = "12345678-1234-1234-1234-123456789abc";
 
     [Fact]
+    public async Task OpeningAStagedRetirementDraftLoadsItsReviewStatus()
+    {
+        var fake = new FakeCommandClient();
+        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one", [], []));
+        fake.RetirementReviewCompletesWith(new RetirementReviewQueryResponse(true, "draft/one",
+            "waiting-for-dry-run", null, null, null, ["A Dry Run is not available yet."]));
+        var context = NewContext(fake);
+        var page = new ReviewPageModel(context);
+
+        await context.OpenProjectAsync(ProjectPath);
+
+        Assert.Equal("draft/one", Assert.Single(fake.RetirementReviewRequests).DraftId);
+        Assert.True(page.HasRetirementReview);
+        Assert.Contains("A Dry Run is not available yet.", page.RetirementReview!.PendingEvidenceText,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task ADeletedWordformBlocksApplyAndRemovingItKeepsTheOtherChange()
     {
         var fake = new FakeCommandClient();

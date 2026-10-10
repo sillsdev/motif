@@ -166,3 +166,13 @@ visible in a file a human can read and diff.
 The reason for the change is that a regression is worth stopping on even when it turns out to be wrong: an
 approved analysis that no longer parses is as often a wrong manual analysis as a bad grammar change, and
 surfacing it is how that gets found. Advisory-only could not express "stop, look at this, then decide".
+
+### 2026-10-05 — Parsimony Reports accept frozen evidence
+
+A linguist can inspect a grammar's structure and attested uses before asking the parser to assess words. The resulting advice records exactly which captured evidence it used.
+
+A Report may be produced from either its existing Assessment material or a validated frozen Parsimony evidence bundle with zero or more explicitly referenced Assessments. Static and text-grounded Parsimony findings need no Assessment; parser-in-the-loop findings cite the actual Assessment that supplied their cases. Existing coverage, correctness, and difference Reports keep their existing Assessment requirements. No placeholder Assessment is created.
+
+Derived SQLite analysis artifacts are disposable and rebuildable. Reviewed negatives and Parsimony dispositions live in durable FieldWorks project data; their concrete representation is deferred to a forthcoming ADR. No negative or disposition tables are added to `Project.motif.db`.
+
+Parsimony Reports remain advisory even where another Report kind participates in a configured regression policy under [ADR 0042](0042-a-job-produces-assessments-an-assessor-makes-them.md). A Parsimony threshold or disposition does not grant Readiness or Apply Authorization and does not gate Apply.

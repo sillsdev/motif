@@ -31,9 +31,12 @@ public sealed class CoverageReportProducer : IReportProducer
     public string Description => "Grammar coverage: the share of a scope's words the parser analysed.";
 
     /// <inheritdoc />
-    public RenderedReport Produce(ReportableAssessment assessment, ReportQuery query, IAssessorCatalog assessors)
+    public RenderedReport Produce(ReportableAssessment assessment, ReportQuery query, IAssessorCatalog assessors) =>
+        Produce(ReportInput.FromAssessment(assessment), query, assessors);
+
+    public RenderedReport Produce(ReportInput input, ReportQuery query, IAssessorCatalog assessors)
     {
-        ArgumentNullException.ThrowIfNull(assessment);
+        var assessment = input.RequireAssessment(KindName);
         if (!assessment.Kind.IsStoredKind(AssessmentKind.ParseTime))
         {
             throw new ReportRefusalException(KindName,
@@ -88,9 +91,12 @@ public sealed class CorrectnessReportProducer : IReportProducer
     public string Kind => KindName;
     public string Description => "Approved morphology matches, with incomplete and unavailable searches explicit.";
 
-    public RenderedReport Produce(ReportableAssessment assessment, ReportQuery query, IAssessorCatalog assessors)
+    public RenderedReport Produce(ReportableAssessment assessment, ReportQuery query, IAssessorCatalog assessors) =>
+        Produce(ReportInput.FromAssessment(assessment), query, assessors);
+
+    public RenderedReport Produce(ReportInput input, ReportQuery query, IAssessorCatalog assessors)
     {
-        ArgumentNullException.ThrowIfNull(assessment);
+        var assessment = input.RequireAssessment(KindName);
         if (!assessment.Kind.IsStoredKind(AssessmentKind.Correctness))
             throw new ReportRefusalException(KindName,
                 $"This Assessment is '{assessment.Kind}'; a correctness report requires 'Correctness'.");
@@ -141,9 +147,12 @@ public sealed class DifferenceReportProducer : IReportProducer
     public string Description => "A comparison between two Assessments, joined on the word.";
 
     /// <inheritdoc />
-    public RenderedReport Produce(ReportableAssessment assessment, ReportQuery query, IAssessorCatalog assessors)
+    public RenderedReport Produce(ReportableAssessment assessment, ReportQuery query, IAssessorCatalog assessors) =>
+        Produce(ReportInput.FromAssessment(assessment), query, assessors);
+
+    public RenderedReport Produce(ReportInput input, ReportQuery query, IAssessorCatalog assessors)
     {
-        ArgumentNullException.ThrowIfNull(assessment);
+        var assessment = input.RequireAssessment(KindName);
         if (!assessment.Kind.IsStoredKind(AssessmentKind.Difference))
         {
             throw new ReportRefusalException(KindName,

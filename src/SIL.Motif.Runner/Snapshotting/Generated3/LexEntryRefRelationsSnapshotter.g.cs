@@ -25,8 +25,8 @@ public static class LexEntryRefRelationsSnapshotter
         var canonicalId = CanonicalId.FromGuid(lexEntryRef.Guid);
         var fields = new Dictionary<string, IReadOnlyDictionary<string, string>>();
 
-        AddIfPopulated(fields, SnapshotFields.LexEntryRefVariantEntryTypes, ReferenceCollectionFieldSnapshotting.ReadAlternatives(lexEntryRef.VariantEntryTypesRS));
-        AddIfPopulated(fields, SnapshotFields.LexEntryRefComponentLexemes, ReferenceCollectionFieldSnapshotting.ReadAlternatives(lexEntryRef.ComponentLexemesRS));
+        AddIfPopulated(fields, SnapshotFields.LexEntryRefVariantEntryTypes, ReferenceSequenceFieldSnapshotting.ReadAlternatives(lexEntryRef.VariantEntryTypesRS));
+        AddIfPopulated(fields, SnapshotFields.LexEntryRefComponentLexemes, ReferenceSequenceFieldSnapshotting.ReadAlternatives(lexEntryRef.ComponentLexemesRS));
 
         return new ObjectSnapshot(canonicalId, fields);
     }

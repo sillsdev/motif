@@ -1,13 +1,19 @@
 using System.IO.Compression;
 using System.Reflection;
 using System.Security.Cryptography;
+using System.Text;
 using SIL.LCModel;
+using SIL.LCModel.Core.Text;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Contract.Canonicalization;
+using SIL.Motif.Contract.HumanJudgments;
 using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Parsimony;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.LiveHost.Baselines;
+using SIL.Motif.LiveHost.HumanJudgments;
 using SIL.Motif.Model.Snapshot;
+using SIL.Motif.Projection.HumanJudgments;
 using SIL.Motif.Runner.Snapshotting;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.WritingSystems;
@@ -164,11 +170,11 @@ public sealed class BaselineBundleTests : IDisposable
 
         Assert.Equal(firstToken.SemanticSnapshotDigest, secondToken.SemanticSnapshotDigest);
         Assert.NotEqual(firstToken.BundleDigest, secondToken.BundleDigest);
-        Assert.Equal(BaselineSemanticDigest.ProjectionVersion, firstToken.ProjectionVersion);
+        Assert.Equal(SnapshotFields.ProjectionVersion, firstToken.ProjectionVersion);
     }
 
     [Fact]
-    public void SemanticDigest_HashesTheRfc8785CanonicalAggregate()
+    public void SemanticDigestWithoutJudgmentsMatchesTheCanonicalModelAggregate()
     {
         NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
         {
@@ -179,9 +185,32 @@ public sealed class BaselineBundleTests : IDisposable
         var snapshots = ProjectSnapshots(_cache);
         var expectedJson = ObjectSnapshotJsonWriter.WriteJson(snapshots);
         var expectedCanonical = CanonicalJson.CanonicalizeToUtf8(expectedJson);
-        var expectedDigest = Digest(expectedCanonical);
+        var modelDigest = Digest(expectedCanonical);
+        Assert.Equal(modelDigest, BaselineSemanticDigest.Compute(_cache));
+    }
 
-        Assert.Equal(expectedDigest, BaselineSemanticDigest.Compute(_cache));
+    [Fact]
+    public void SemanticDigestChangesWhenAProjectJudgmentIsAddedOrItsReasonChanges()
+    {
+        var before = BaselineSemanticDigest.Compute(_cache);
+        var fieldId = NotebookJudgmentFixture.InitializeReservedField(_cache);
+        Assert.Equal(before, BaselineSemanticDigest.Compute(_cache));
+        var recordGuid = Guid.NewGuid();
+        var projectId = CanonicalId.FromGuid(_cache.LangProject.Guid).Value;
+        var judgment = new HumanJudgment(projectId, CanonicalId.FromGuid(Guid.NewGuid()).Value,
+            CanonicalId.FromGuid(recordGuid).Value, [], new DispositionJudgment(
+                new ProjectJudgmentSubject(projectId), "P-test", ParsimonyDispositionKind.Keep,
+                "sha256:" + new string('1', 64), "contract-v1", "sample subject", "Sample measure"));
+        var record = NotebookJudgmentFixture.AddRecord(_cache, recordGuid, fieldId,
+            TsStringUtils.MakeString(HumanJudgmentCodec.Format(judgment), _cache.DefaultAnalWs));
+        var afterAdd = BaselineSemanticDigest.Compute(_cache);
+
+        NotebookJudgmentFixture.SetValue(_cache, record,
+            TsStringUtils.MakeString(HumanJudgmentCodec.Format(judgment with { Reason = "reviewed" }),
+                _cache.DefaultAnalWs));
+
+        Assert.NotEqual(before, afterAdd);
+        Assert.NotEqual(afterAdd, BaselineSemanticDigest.Compute(_cache));
     }
 
     [Fact]

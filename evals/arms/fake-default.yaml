@@ -1,0 +1,7 @@
+{
+  "id": "fake-default",
+  "host": "fake",
+  "model": null,
+  "effort": null,
+  "server": { "ref": "HEAD", "profile": "default", "grade_profile": "profiles/mcp-default-grade.json" }
+}

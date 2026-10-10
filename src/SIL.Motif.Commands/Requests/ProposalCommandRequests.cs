@@ -33,6 +33,60 @@ public sealed record ComposeAuthorLexemeFormRequest(
 public sealed record ComposeAuthorFeatureStructureRequest(
     string FwDataPath, string ProductVersion, string DraftName, string IntentJson);
 
+public sealed record ComposeAuthorFeatureValueRequest(
+    string FwDataPath, string ProductVersion, string DraftName, string IntentJson);
+
+public sealed record ComposeAuthorPhonemeRequest(
+    string FwDataPath, string ProductVersion, string DraftName, string IntentJson);
+
+public sealed record ComposeAuthorNaturalClassRequest(
+    string FwDataPath, string ProductVersion, string DraftName, string IntentJson);
+
+public sealed record ComposeEditNaturalClassRequest(
+    string FwDataPath, string ProductVersion, string DraftName, string IntentJson);
+
+public sealed record ComposeRelinkNaturalClassRequest(
+    string FwDataPath, string ProductVersion, string DraftName, string IntentJson);
+
+public sealed record ComposeAuthorEnvironmentRequest(
+    string FwDataPath, string ProductVersion, string DraftName, string IntentJson);
+
+public sealed record ComposeAuthorPhonologicalRuleRequest(
+    string FwDataPath, string ProductVersion, string DraftName, string IntentJson);
+
+public sealed record ComposeAuthorAffixSlotRequest(
+    string FwDataPath, string ProductVersion, string DraftName, string IntentJson);
+
+public sealed record ComposeAuthorAffixTemplateRequest(
+    string FwDataPath, string ProductVersion, string DraftName, string IntentJson);
+
+public sealed record ComposeRetireAllomorphRequest(
+    string FwDataPath, string ProductVersion, string DraftName, string IntentJson);
+
+public sealed record ComposeRetireRedundantZeroAffixRequest(
+    string FwDataPath, string ProductVersion, string DraftName, string IntentJson);
+
+public sealed record ComposeEditAdhocProhibitionRequest(
+    string FwDataPath, string ProductVersion, string DraftName, string IntentJson);
+
+public sealed record ComposeEditAffixSlotRequest(
+    string FwDataPath, string ProductVersion, string DraftName, string IntentJson);
+
+public sealed record ComposeEditAffixTemplateRequest(
+    string FwDataPath, string ProductVersion, string DraftName, string IntentJson);
+
+public sealed record ComposeEditInflectionalAffixRequest(
+    string FwDataPath, string ProductVersion, string DraftName, string IntentJson);
+
+public sealed record ComposeEditAllomorphConditionRequest(
+    string FwDataPath, string ProductVersion, string DraftName, string IntentJson);
+
+public sealed record ComposeOrderAllomorphsRequest(
+    string FwDataPath, string ProductVersion, string DraftName, string IntentJson);
+
+public sealed record ComposeRecordParsimonyDispositionRequest(
+    string FwDataPath, string ProductVersion, string DraftName, string IntentJson);
+
 public sealed record PromoteGlossRequest(
     string FwDataPath,
     string ProductVersion,

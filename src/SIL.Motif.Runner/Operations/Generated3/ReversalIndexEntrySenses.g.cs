@@ -98,9 +98,9 @@ internal sealed class ReversalIndexEntrySensesAddRefHandler : IOperationHandler
         var (id, reversalIndexEntry) = TargetResolution.Resolve<IReversalIndexEntry>(cache, operation, ReversalIndexEntrySensesOperationKinds.AddRefSenses);
         touchedTargets.Add(id);
 
-        var before = ReferenceCollectionFieldSnapshotting.ReadAlternatives(reversalIndexEntry.SensesRS);
+        var before = ReferenceSequenceFieldSnapshotting.ReadAlternatives(reversalIndexEntry.SensesRS);
         ReversalIndexEntrySensesAddRefLowering.Apply(cache, reversalIndexEntry, memberId);
-        var afterValue = ReferenceCollectionFieldSnapshotting.ReadAlternatives(reversalIndexEntry.SensesRS);
+        var afterValue = ReferenceSequenceFieldSnapshotting.ReadAlternatives(reversalIndexEntry.SensesRS);
 
         return new ExpectedEffect(id, SnapshotFields.ReversalIndexEntrySenses, before, afterValue);
     }
@@ -108,7 +108,7 @@ internal sealed class ReversalIndexEntrySensesAddRefHandler : IOperationHandler
     public ExpectedEffect ReadCurrentFootprint(LcmCache cache, OperationEnvelope operation)
     {
         var (id, reversalIndexEntry) = TargetResolution.Resolve<IReversalIndexEntry>(cache, operation, ReversalIndexEntrySensesOperationKinds.AddRefSenses);
-        var current = ReferenceCollectionFieldSnapshotting.ReadAlternatives(reversalIndexEntry.SensesRS);
+        var current = ReferenceSequenceFieldSnapshotting.ReadAlternatives(reversalIndexEntry.SensesRS);
         return new ExpectedEffect(id, SnapshotFields.ReversalIndexEntrySenses, current, current);
     }
 }
@@ -139,9 +139,9 @@ internal sealed class ReversalIndexEntrySensesRemoveRefHandler : IOperationHandl
         var (id, reversalIndexEntry) = TargetResolution.Resolve<IReversalIndexEntry>(cache, operation, ReversalIndexEntrySensesOperationKinds.RemoveRefSenses);
         touchedTargets.Add(id);
 
-        var before = ReferenceCollectionFieldSnapshotting.ReadAlternatives(reversalIndexEntry.SensesRS);
+        var before = ReferenceSequenceFieldSnapshotting.ReadAlternatives(reversalIndexEntry.SensesRS);
         ReversalIndexEntrySensesRemoveRefLowering.Apply(cache, reversalIndexEntry, memberId);
-        var afterValue = ReferenceCollectionFieldSnapshotting.ReadAlternatives(reversalIndexEntry.SensesRS);
+        var afterValue = ReferenceSequenceFieldSnapshotting.ReadAlternatives(reversalIndexEntry.SensesRS);
 
         return new ExpectedEffect(id, SnapshotFields.ReversalIndexEntrySenses, before, afterValue);
     }
@@ -149,7 +149,7 @@ internal sealed class ReversalIndexEntrySensesRemoveRefHandler : IOperationHandl
     public ExpectedEffect ReadCurrentFootprint(LcmCache cache, OperationEnvelope operation)
     {
         var (id, reversalIndexEntry) = TargetResolution.Resolve<IReversalIndexEntry>(cache, operation, ReversalIndexEntrySensesOperationKinds.RemoveRefSenses);
-        var current = ReferenceCollectionFieldSnapshotting.ReadAlternatives(reversalIndexEntry.SensesRS);
+        var current = ReferenceSequenceFieldSnapshotting.ReadAlternatives(reversalIndexEntry.SensesRS);
         return new ExpectedEffect(id, SnapshotFields.ReversalIndexEntrySenses, current, current);
     }
 }

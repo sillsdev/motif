@@ -60,6 +60,8 @@ public sealed class DraftOperation
     /// </summary>
     public string? EntityId { get; set; }
 
+    public DraftPlacement? Placement { get; set; }
+
     /// <summary>
     /// Explicit intra-Proposal ordering dependencies: operation ids (within this same draft) this
     /// operation requires to have already run. See <see cref="SIL.Motif.Contract.Model.OperationDependency"/>
@@ -78,3 +80,6 @@ public sealed class DraftOperation
     /// <summary>Non-semantic metadata carried with the operation across finalize and reopen.</summary>
     public JsonElement? Extensions { get; set; }
 }
+
+/// <summary>Identity-relative neighbours preserved across Draft serialization and finalization.</summary>
+public sealed record DraftPlacement(string? After, string? Before);

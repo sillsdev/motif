@@ -3,26 +3,27 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Commands.Store;
 using SIL.Motif.Contract.Canonicalization;
+using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host.Analysis;
 using SIL.Motif.Host.Baselines;
-using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Config;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Host.Store;
+using SIL.Motif.Model.Effects;
 using SIL.Motif.Projection;
 using SIL.Motif.Projection.Store;
 using SIL.Motif.Runner.Apply;
@@ -32,6 +33,7 @@ using SIL.Motif.Runner.DryRun;
 using SIL.Motif.Runner.Operations;
 using SIL.Motif.Worker.Store;
 using SIL.Motif.Worker.Baselines;
+using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Worker.Projects;
 using SIL.LCModel;
 
@@ -65,8 +67,7 @@ public static partial class ProposalCommands
 {
     static ProposalCommands()
     {
-        // Force the Runner assembly's module initializers to run now; see the class remarks for why.
-        RuntimeHelpers.RunModuleConstructor(typeof(LexicalSenseOperationKinds).Module.ModuleHandle);
+        OperationRegistryBootstrap.Initialize();
     }
 
     private static readonly JsonSerializerOptions DraftJsonOptions = new()
@@ -405,44 +406,8 @@ public static partial class ProposalCommands
     public static CommandOutcome<ComposedOperationsResponse> ComposeAuthorLexemeForm(
         ComposeAuthorLexemeFormRequest request)
     {
-        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
-        {
-            try
-            {
-                var repository = new ProposalRepository(database);
-                if (!TryLoadDraft(repository, request.DraftName, out var draft))
-                    return CommandOutcome<ComposedOperationsResponse>.Refused(DraftNotFound(request.DraftName));
-
-                using var intentDocument = JsonDocument.Parse(request.IntentJson);
-                var intent = AuthorLexemeFormIntentParser.Parse(intentDocument.RootElement);
-
-                var operations = ProjectReadCache.ReadSaved(project, (_, cache) =>
-                    AuthorLexemeFormComposer.Build(cache, intent));
-
-                foreach (var operation in operations)
-                {
-                    draft.Operations.Add(ToDraftOperation(operation));
-                    EnsureContractVersion(draft, operation.Kind);
-                }
-
-                var provenanceJson = JsonSerializer.Serialize(
-                    new { composer = "AuthorLexemeForm", input = intentDocument.RootElement });
-                using var provenanceDocument = JsonDocument.Parse(provenanceJson);
-                draft.ComposerProvenance.Add(provenanceDocument.RootElement.Clone());
-
-                repository.SaveDraft(request.DraftName, SerializeDraft(draft));
-
-                return CommandOutcome<ComposedOperationsResponse>.Success(new ComposedOperationsResponse(
-                    request.DraftName, "AuthorLexemeForm",
-                    operations.Select(o => new OperationSummary(o.OperationId.Value, o.Kind)).ToList(),
-                    draft.Operations.Count));
-            }
-            catch (Exception ex)
-            {
-                return CommandOutcome<ComposedOperationsResponse>.Refused(
-                    DraftInvalid(ex.Message, ("draftName", request.DraftName)));
-            }
-        });
+        return ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
+            "AuthorLexemeForm", (cache, input, _) => AuthorLexemeFormComposer.Build(cache, AuthorLexemeFormIntentParser.Parse(input)));
     }
 
     /// <summary>
@@ -457,44 +422,8 @@ public static partial class ProposalCommands
     public static CommandOutcome<ComposedOperationsResponse> ComposeAuthorFeatureStructure(
         ComposeAuthorFeatureStructureRequest request)
     {
-        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
-        {
-            try
-            {
-                var repository = new ProposalRepository(database);
-                if (!TryLoadDraft(repository, request.DraftName, out var draft))
-                    return CommandOutcome<ComposedOperationsResponse>.Refused(DraftNotFound(request.DraftName));
-
-                using var intentDocument = JsonDocument.Parse(request.IntentJson);
-                var intent = AuthorFeatureStructureIntentParser.Parse(intentDocument.RootElement);
-
-                var operations = ProjectReadCache.ReadSaved(project, (_, cache) =>
-                    AuthorFeatureStructureComposer.Build(cache, intent));
-
-                foreach (var operation in operations)
-                {
-                    draft.Operations.Add(ToDraftOperation(operation));
-                    EnsureContractVersion(draft, operation.Kind);
-                }
-
-                var provenanceJson = JsonSerializer.Serialize(
-                    new { composer = "AuthorFeatureStructure", input = intentDocument.RootElement });
-                using var provenanceDocument = JsonDocument.Parse(provenanceJson);
-                draft.ComposerProvenance.Add(provenanceDocument.RootElement.Clone());
-
-                repository.SaveDraft(request.DraftName, SerializeDraft(draft));
-
-                return CommandOutcome<ComposedOperationsResponse>.Success(new ComposedOperationsResponse(
-                    request.DraftName, "AuthorFeatureStructure",
-                    operations.Select(o => new OperationSummary(o.OperationId.Value, o.Kind)).ToList(),
-                    draft.Operations.Count));
-            }
-            catch (Exception ex)
-            {
-                return CommandOutcome<ComposedOperationsResponse>.Refused(
-                    DraftInvalid(ex.Message, ("draftName", request.DraftName)));
-            }
-        });
+        return ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
+            "AuthorFeatureStructure", (cache, input, _) => AuthorFeatureStructureComposer.Build(cache, AuthorFeatureStructureIntentParser.Parse(input)));
     }
 
     /// <summary>
@@ -701,7 +630,7 @@ public static partial class ProposalCommands
                         Fact(("draftName", request.DraftName))));
                 }
 
-                SIL.Motif.Runner.Operations.AnalysisOpinionSlotValidator.Validate(envelope);
+                SIL.Motif.Runner.Operations.ProposalOperationSlotValidator.Validate(envelope);
 
                 var intentDigest = IntentDigest.Compute(envelope);
 
@@ -972,6 +901,7 @@ public static partial class ProposalCommands
             Kind = operation.Kind,
             Target = target.Value,
             EntityId = operation.EntityId?.Value,
+            Placement = operation.Placement is { } p ? new DraftPlacement(p.After?.Value, p.Before?.Value) : null,
             DependsOn = operation.DependsOn.Select(d => d.OperationId.Value).ToList(),
             After = afterDict,
             Extensions = operation.Extensions,
@@ -1414,6 +1344,90 @@ public static partial class ProposalCommands
         return candidateId is null ? null : assessments.Get(candidateId);
     }
 
+    private static SIL.Motif.Model.DryRun.DryRun? FindCurrentBoundDryRun(
+        MotifDatabase database,
+        ProjectLocator project,
+        string proposalJson,
+        ManifestDocument manifest,
+        SIL.Motif.Contract.Model.Proposal proposal)
+    {
+        if (manifest.CurrentIntentDigest is not { } currentIntentDigest || manifest.Anchor is not { } boundAnchor ||
+            !string.Equals(IntentDigest.Compute(proposal), currentIntentDigest, StringComparison.Ordinal))
+            return null;
+
+        var workspaceKey = ProjectWorkspaceKey.Compute(project);
+        var currentBaseline = new BaselineRepository(database).GetCurrent(workspaceKey);
+        if (currentBaseline is null)
+            return null;
+
+        var matches = new List<SIL.Motif.Model.DryRun.DryRun>();
+        foreach (var job in new JobRepository(database).ListByProjectAndKind(workspaceKey, JobCommands.DryRunKind))
+        {
+            if (job.Status != JobStatus.CompletedDryRunOnly || !job.DryRunPublished ||
+                job.DryRunJson is null || job.ResultJson is null)
+                continue;
+
+            try
+            {
+                if (!DryRunInputContainsProposal(job.InputJson, proposalJson))
+                    continue;
+
+                var input = DryRunJobInput.Parse(job.InputJson);
+                if (!string.Equals(input.Proposal.ProposalId, proposal.ProposalId.Value, StringComparison.Ordinal) ||
+                    !string.Equals(input.Proposal.IntentDigest, currentIntentDigest, StringComparison.Ordinal))
+                    continue;
+
+                var completion = DryRunJobCompletion.Parse(job.ResultJson);
+                if (input.SourceBaseline is { } queuedSource && queuedSource != completion.SourceBaseline)
+                    continue;
+
+                var dryRun = JobCommands.ParsePublishedDryRun(job.DryRunJson);
+                if (!string.Equals(dryRun.IntentDigest, currentIntentDigest, StringComparison.Ordinal) ||
+                    dryRun.Anchor != boundAnchor ||
+                    !string.Equals(dryRun.Anchor.IntentDigest, currentIntentDigest, StringComparison.Ordinal) ||
+                    !string.Equals(dryRun.EffectDigest, boundAnchor.EffectDigest, StringComparison.Ordinal) ||
+                    !string.Equals(ExpectedEffectSetDigest.Compute(dryRun.ExpectedEffects), dryRun.EffectDigest,
+                        StringComparison.Ordinal))
+                    continue;
+
+                if (!DryRunUsesCurrentBaseline(completion, currentBaseline.Token))
+                    continue;
+
+                matches.Add(dryRun);
+            }
+            catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or
+                                               KeyNotFoundException or JsonException or ContractParseException or
+                                               InvalidDataException or IOException or UnauthorizedAccessException or
+                                               NotSupportedException)
+            {
+                return null;
+            }
+        }
+
+        return matches.Count == 1 ? matches[0] : null;
+    }
+
+    private static bool DryRunInputContainsProposal(string inputJson, string proposalJson)
+    {
+        using var document = JsonDocument.Parse(inputJson);
+        var root = document.RootElement;
+        if (root.ValueKind != JsonValueKind.Object ||
+            !root.TryGetProperty("proposal", out var frozenProposal) ||
+            frozenProposal.ValueKind != JsonValueKind.Object ||
+            !frozenProposal.TryGetProperty(nameof(FrozenProposalRevision.ProposalJson), out var frozenProposalJson) ||
+            frozenProposalJson.ValueKind != JsonValueKind.String)
+            return false;
+
+        return string.Equals(frozenProposalJson.GetString(), proposalJson, StringComparison.Ordinal);
+    }
+
+    private static bool DryRunUsesCurrentBaseline(DryRunJobCompletion completion, BaselineToken currentBaseline)
+    {
+        if (completion.Freshness is not ("current" or "currentness-not-checked"))
+            return false;
+        return currentBaseline.HasSameSemanticIdentity(completion.BaselineToken);
+    }
+
     internal static IReadOnlyCollection<string> ChangedWords(SIL.Motif.Contract.Model.Proposal proposal) =>
         proposal.Operations.Select(operation => operation.Extensions)
             .Where(extension => extension is { ValueKind: JsonValueKind.Object } &&
@@ -1459,11 +1473,16 @@ public static partial class ProposalCommands
                     ? current.ToCorrectness()
                     : null;
 
+            var boundDryRun = FindCurrentBoundDryRun(database, project, record.ProposalJson!, manifest, envelope);
+            var exemptionReason = boundDryRun is null
+                ? null
+                : JudgmentOnlyProposalReadiness.ExemptionFor(envelope, boundDryRun.ExpectedEffects);
+
             // Checked before loading the project, same as the anchor check above.
             var readiness = Readiness.Evaluate(
                 candidate?.ToCorrectness(), currentCorrectness, current?.BaselineToken,
                 candidate?.BaselineToken ?? "", configuration.GateOnRegression,
-                ChangedWords(envelope));
+                ChangedWords(envelope), exemptionReason);
             if (readiness.Reasons.Count > 0 && !force)
             {
                 var guidance = candidate is null
@@ -1543,7 +1562,20 @@ public static partial class ProposalCommands
                 if (candidate is not null) assessments.PromoteToCurrent(candidate.AssessmentId);
                 if (configuration.PurgeOnApply) assessments.DeleteByProposal(canonicalId, candidate?.AssessmentId);
 
-                return CommandOutcome<ApplyProjection>.Success(ApplyProjectionBuilder.Build(id, receipt));
+                var readinessProjection = new ReadinessProjection(
+                    IsReady: readiness.Reasons.Count == 0,
+                    CorrectnessAssessmentRequired: readiness.CorrectnessAssessmentRequired,
+                    CorrectnessAssessmentExempt: !readiness.CorrectnessAssessmentRequired,
+                    CorrectnessAssessmentExemptionReason: readiness.CorrectnessAssessmentExemptionReason,
+                    Reasons: readiness.Reasons,
+                    Forced: force && readiness.Reasons.Count > 0);
+                var projection = ApplyProjectionBuilder.Build(id, receipt, readinessProjection);
+                if (readiness.CorrectnessAssessmentExemptionReason is { } reason)
+                    projection = projection with
+                    {
+                        ResultNote = projection.ResultNote + " Correctness Assessment not required: " + reason,
+                    };
+                return CommandOutcome<ApplyProjection>.Success(projection);
             }
             finally
             {
@@ -1647,6 +1679,7 @@ public static partial class ProposalCommands
                 kind = op.Kind,
                 entityId = op.EntityId,
                 target = op.Target,
+                placement = op.Placement is { } p ? new { after = p.After, before = p.Before } : null,
                 dependsOn = op.DependsOn,
                 after = op.After,
                 extensions = op.Extensions,

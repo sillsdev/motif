@@ -80,6 +80,47 @@ public class Slice3FieldSelectorTests
     }
 
     [Fact]
+    public void SelectOrderedTemplateSlotSequences_RealModel_ContainsOnlyPrefixAndSuffixSlots()
+    {
+        var model = MotifModelLoader.Load();
+
+        var selected = Slice3FieldSelector.SelectOrderedTemplateSlotSequences(model.Rows);
+
+        Assert.Equal(
+            new[] { ("MoInflAffixTemplate", "PrefixSlots"), ("MoInflAffixTemplate", "SuffixSlots") },
+            selected.Select(row => (row.DeclaringClass, row.FieldName)).OrderBy(key => key.FieldName, StringComparer.Ordinal));
+        Assert.All(selected, row => Assert.Equal(FieldCard.Seq, row.Card));
+        Assert.All(selected, row => Assert.Equal("addRef|removeRef|move", row.Manifest.Verbs));
+    }
+
+    [Fact]
+    public void SelectOrderedRuleContextSequences_RealModel_ContainsSequenceContextMembers()
+    {
+        var model = MotifModelLoader.Load();
+
+        var selected = Slice3FieldSelector.SelectOrderedRuleContextSequences(model.Rows);
+
+        var row = Assert.Single(selected);
+        Assert.Equal("PhSequenceContext", row.DeclaringClass);
+        Assert.Equal("Members", row.FieldName);
+        Assert.Equal(FieldCard.Seq, row.Card);
+        Assert.Equal("addRef|removeRef|move", row.Manifest.Verbs);
+    }
+
+    [Fact]
+    public void SelectOrderedAllomorphPositionSequences_RealModel_SelectsOnlyAffixPosition()
+    {
+        var model = MotifModelLoader.Load();
+
+        var selected = Slice3FieldSelector.SelectOrderedAllomorphPositionSequences(model.Rows);
+
+        var row = Assert.Single(selected);
+        Assert.Equal("MoAffixAllomorph", row.DeclaringClass);
+        Assert.Equal("Position", row.FieldName);
+        Assert.Equal("addRef|removeRef|move", row.Manifest.Verbs);
+    }
+
+    [Fact]
     public void AllThreeSelectors_RealModel_TogetherYieldSeventyEightRows()
     {
         var model = MotifModelLoader.Load();

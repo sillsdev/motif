@@ -10,6 +10,7 @@
   <ItemGroup>
     <InternalsVisibleTo Include="SIL.Motif.Worker" />
     <InternalsVisibleTo Include="SIL.Motif.Commands" />
+    <InternalsVisibleTo Include="SIL.Motif.Tests.Worker" />
     <InternalsVisibleTo Include="SIL.Motif.Tests.Support" />
   </ItemGroup>
 </Project>

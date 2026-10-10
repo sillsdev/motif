@@ -1,0 +1,4 @@
+{"tool": "motif_grammar", "arguments": {"kind": "templates", "detail": "detailed"}}
+{"tool": "motif_lexicon", "arguments": {"query": "NCL", "detail": "detailed"}}
+{"tool": "motif_try_word", "arguments": {"word": "bituna", "detail": "detailed"}, "skipProfiles": ["lean"]}
+{"finalMessage": "The class A ending -na is incorrectly restricted to consonant-final stems. bitu ends in u and belongs to class A, so this restriction blocks bituna. Class membership, rather than the final sound, chooses -na versus -ta; remove the added sound environment while preserving the class requirement."}

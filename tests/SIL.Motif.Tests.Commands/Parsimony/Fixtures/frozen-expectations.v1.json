@@ -1,0 +1,48 @@
+{
+  "contract": "frozen-expectations/v1",
+  "baseline": {
+    "projectIdentity": "project-fixture",
+    "semanticSnapshotDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "projectionVersion": "projection/v1",
+    "capturedUtc": "2026-10-07T12:00:00Z",
+    "bundleDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "capturedHostSessionId": null,
+    "capturedEditGeneration": null
+  },
+  "humanInputDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "manifestDigest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "expectationRevision": "expectation-fixture/v1",
+  "cases": [
+    {
+      "caseId": "AAAAAAAAAAAAAAAAAAAAAQ",
+      "wordform": "AAAAAAAAAAAAAAAAAAAAAg",
+      "writingSystem": "seh",
+      "surface": "ara",
+      "inSelection": true,
+      "heldOut": false,
+      "readings": [
+        {
+          "readingId": "AAAAAAAAAAAAAAAAAAAAAw",
+          "analysis": "AAAAAAAAAAAAAAAAAAAABA",
+          "opinion": "approved",
+          "provenanceDigest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "evaluations": [],
+          "morphs": [
+            {
+              "bundle": "AAAAAAAAAAAAAAAAAAAABQ",
+              "form": "AAAAAAAAAAAAAAAAAAAABg",
+              "msa": "AAAAAAAAAAAAAAAAAAAABw",
+              "inflType": null,
+              "expansionRole": "whole",
+              "guessedString": null,
+              "guessedWritingSystem": null,
+              "bundleText": []
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "reviewedNegatives": [],
+  "unavailable": []
+}

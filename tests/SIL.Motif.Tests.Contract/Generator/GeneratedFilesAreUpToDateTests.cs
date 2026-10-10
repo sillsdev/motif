@@ -37,7 +37,8 @@ public class GeneratedFilesAreUpToDateTests
         try
         {
             var model = MotifModelLoader.Load();
-            var written = GeneratedCatalogWriter.WriteAll(model, tempRoot);
+            var written = GeneratedCatalogWriter.WriteAll(model, tempRoot)
+                .Concat(RedundantZeroAffixDeleteCatalogWriter.WriteAll(tempRoot)).ToArray();
 
             Assert.NotEmpty(written);
 

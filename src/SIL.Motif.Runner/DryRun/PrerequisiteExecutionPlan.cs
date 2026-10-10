@@ -64,6 +64,44 @@ public sealed class PrerequisiteExecutionPlan
         return new PrerequisiteExecutionPlan(requested, TopologicalOrder(requested, proposals, applied));
     }
 
+    /// <summary>Builds an execution plan from Proposal revisions frozen before the job was queued.</summary>
+    public static PrerequisiteExecutionPlan CreateFromFrozen(
+        Proposal requested,
+        IReadOnlyCollection<Proposal> frozenClosure,
+        IReadOnlyCollection<Guid> appliedProposalIds)
+    {
+        ArgumentNullException.ThrowIfNull(requested);
+        ArgumentNullException.ThrowIfNull(frozenClosure);
+        ArgumentNullException.ThrowIfNull(appliedProposalIds);
+        var byId = new Dictionary<string, Proposal>(StringComparer.Ordinal);
+        foreach (var proposal in frozenClosure)
+        {
+            ArgumentNullException.ThrowIfNull(proposal);
+            if (proposal.ProposalId.Value == requested.ProposalId.Value ||
+                !byId.TryAdd(proposal.ProposalId.Value, proposal))
+                throw new InvalidOperationException("The frozen prerequisite closure contains a repeated Proposal.");
+        }
+
+        var applied = new HashSet<Guid>(appliedProposalIds);
+        var reachable = new Dictionary<string, Proposal>(StringComparer.Ordinal);
+        Collect(requested, byId, applied, reachable);
+        return Create(requested, reachable.Values.ToArray(), appliedProposalIds);
+    }
+
+    private static void Collect(Proposal proposal, IReadOnlyDictionary<string, Proposal> frozen,
+        ISet<Guid> applied, IDictionary<string, Proposal> reachable)
+    {
+        foreach (var required in proposal.Requires.Distinct())
+        {
+            if (applied.Contains(required.ToGuid())) continue;
+            if (!frozen.TryGetValue(required.Value, out var prerequisite))
+                throw new InvalidOperationException(
+                    "Frozen prerequisite evidence is incomplete; rerun the Dry Run to capture the current revisions.");
+            if (!reachable.TryAdd(required.Value, prerequisite)) continue;
+            Collect(prerequisite, frozen, applied, reachable);
+        }
+    }
+
     private static void ValidateClosure(
         Proposal requested,
         IReadOnlyDictionary<string, Proposal> proposals,

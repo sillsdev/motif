@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json;
+using SIL.Motif.Host.Parsimony;
 
 namespace SIL.Motif.Host.PanGloss;
 
@@ -10,10 +11,13 @@ internal sealed record PanGlossSurfaceCheck(
     bool IsValid, string Message, PanGlossCapabilities? Capabilities = null);
 
 internal sealed record PanGlossCapabilities(
-    ImmutableDictionary<string, PanGlossCommandCapabilities> Commands)
+    ImmutableDictionary<string, PanGlossCommandCapabilities> Commands,
+    bool FactsContractSupported)
 {
     internal string? ValidateRequest(PanGlossRequest request)
     {
+        if (request is PanGlossRequest.Facts && !FactsContractSupported)
+            return "the description does not declare the supported grammar-facts and context identity.";
         var startInfo = new ProcessStartInfo();
         request.AddArguments(startInfo, "scratch");
         if (startInfo.ArgumentList.Count == 0 ||
@@ -217,7 +221,28 @@ internal static class PanGlossSurface
         }
 
         detail = null;
-        return new PanGlossCapabilities(byName.ToImmutable());
+        return new PanGlossCapabilities(byName.ToImmutable(), HasFactsIdentity(root));
+    }
+
+    private static bool HasFactsIdentity(JsonElement root)
+    {
+        if (!root.TryGetProperty("facts", out var facts) || facts.ValueKind != JsonValueKind.Object ||
+            !facts.TryGetProperty("format", out var format) || format.ValueKind != JsonValueKind.String ||
+            !facts.TryGetProperty("schemaVersion", out var schemaVersion) ||
+            schemaVersion.ValueKind != JsonValueKind.Number ||
+            !facts.TryGetProperty("applicationId", out var applicationId) ||
+            applicationId.ValueKind != JsonValueKind.Number ||
+            !facts.TryGetProperty("contextFormat", out var contextFormat) ||
+            contextFormat.ValueKind != JsonValueKind.String ||
+            !facts.TryGetProperty("contextVersion", out var contextVersion) ||
+            contextVersion.ValueKind != JsonValueKind.Number)
+            return false;
+
+        return format.GetString() == GrammarFactsReader.Format &&
+            schemaVersion.TryGetInt32(out var schema) && schema == GrammarFactsReader.SchemaVersion &&
+            applicationId.TryGetInt64(out var appId) && appId == GrammarFactsReader.ApplicationId &&
+            contextFormat.GetString() == "pangloss-facts-context" &&
+            contextVersion.TryGetInt32(out var context) && context == 1;
     }
 
     private static PanGlossCapabilities? InvalidDescription(string message, out string? detail)

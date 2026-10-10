@@ -146,6 +146,24 @@ public sealed class JobVerbArgvTests : IDisposable
     }
 
     [Fact]
+    public void TrialWordsFileRetainsTheExactBoundedSelection()
+    {
+        var proposalId = FinalizeOneOperationProposal();
+        var wordsPath = Path.Combine(_root, "verification-words.txt");
+        File.WriteAllLines(wordsPath, ["motifa", "sipu"]);
+
+        var result = Run($"trial --project \"{Project}\" {proposalId} --words \"{wordsPath}\"");
+
+        Assert.Equal(0, result.ExitCode);
+        using var database = ProjectMotifDatabase.Open(Project);
+        var inputJson = new JobRepository(database).Get(result.Output.Trim())!.InputJson;
+        using var input = JsonDocument.Parse(inputJson);
+        Assert.Equal(new[] { "motifa", "sipu" },
+            input.RootElement.GetProperty("words").EnumerateArray().Select(item => item.GetString()));
+        Assert.False(input.RootElement.GetProperty("allWords").GetBoolean());
+    }
+
+    [Fact]
     public void EnqueueingATrialOfAnUncommittedDraftPrintsAJobIdAndSucceeds()
     {
         var created = Run($"new --project \"{Project}\" --draft d2");

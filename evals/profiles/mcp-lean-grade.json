@@ -1,0 +1,18 @@
+{
+  "id": "mcp-lean",
+  "instructions": "",
+  "tools": [
+    { "name": "motif_overview", "class": "Read" },
+    { "name": "motif_grammar", "class": "Read" },
+    { "name": "motif_lexicon", "class": "Read" },
+    { "name": "motif_word", "class": "Read" },
+    { "name": "motif_new_proposal", "class": "Draft" },
+    { "name": "motif_add_lexeme_form", "class": "Draft" },
+    { "name": "motif_set_gloss", "class": "Draft" },
+    { "name": "motif_trial", "class": "Evaluate" },
+    { "name": "motif_finish_proposal", "class": "Draft" },
+    { "name": "motif_proposals", "class": "Read" }
+  ],
+  "canonicalTools": ["motif_start_proposal"],
+  "hiddenTools": ["motif_apply", "motif_discard_draft", "motif_discard_proposal", "motif_store_delete"]
+}

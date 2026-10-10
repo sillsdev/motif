@@ -1,0 +1,8 @@
+{
+  "question": "Does luna at extra-high reasoning effort solve more of the active tasks than at high effort, and at what cost?",
+  "arm_a": "codex-default",
+  "arm_b": "codex-luna-xhigh",
+  "tasks": "t*",
+  "trials": 3,
+  "primary_metric": "task-success"
+}

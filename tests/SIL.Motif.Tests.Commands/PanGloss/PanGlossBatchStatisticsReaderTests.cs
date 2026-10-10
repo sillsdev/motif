@@ -31,6 +31,7 @@ public sealed class PanGlossBatchStatisticsReaderTests : IDisposable
         Assert.Null(unsupported.Passes);
         Assert.Null(unsupported.ElapsedNs);
         Assert.Equal(6, unsupported.Attempts);
+        Assert.Equal("endo#", Assert.Single(result.ObjectTimings, row => row.Key == "endo#").Object);
     }
 
     public void Dispose() => Directory.Delete(_root, recursive: true);
@@ -81,11 +82,13 @@ public sealed class PanGlossBatchStatisticsReaderTests : IDisposable
             INSERT INTO word VALUES (1, 'word', 725001, 11, 2);
             INSERT INTO object VALUES
                 (1, 'lex_entry:entry-a#00000000-0000-4000-8000-000000000001@Main', 'lex_entry', 'Shared label', 'authored'),
-                (2, 'lex_entry:entry-b#00000000-0000-4000-8000-000000000002@Main', 'lex_entry', 'Shared label', 'authored');
+                (2, 'lex_entry:entry-b#00000000-0000-4000-8000-000000000002@Main', 'lex_entry', 'Shared label', 'authored'),
+                (3, 'endo#', 'morph_rule', '', 'authored');
             INSERT INTO fact VALUES
                 (1, 1, 'analysis', 4, 180000),
                 (1, 2, 'analysis', 5, 220000),
-                (1, 1, 'synthesis', 6, NULL);
+                (1, 1, 'synthesis', 6, NULL),
+                (1, 3, 'analysis', 2, 1000);
             """;
         command.Parameters.AddWithValue("$version", version);
         command.ExecuteNonQuery();

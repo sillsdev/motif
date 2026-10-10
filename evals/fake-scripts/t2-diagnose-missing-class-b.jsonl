@@ -1,0 +1,4 @@
+{"tool": "motif_grammar", "arguments": {"kind": "templates", "detail": "detailed"}}
+{"tool": "motif_lexicon", "arguments": {"query": "NCL", "detail": "detailed"}}
+{"tool": "motif_try_word", "arguments": {"word": "daputa", "detail": "detailed"}, "skipProfiles": ["lean"]}
+{"finalMessage": "The obligatory class-marker slot lacks its class B allomorph -ta. dapu is class B; -na requires class A and cannot fill the slot for it. Restore -ta with its class B requirement while keeping the slot obligatory. Making the slot optional would license bare dapu and mask the defect."}

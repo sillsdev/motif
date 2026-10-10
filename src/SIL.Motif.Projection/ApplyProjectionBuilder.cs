@@ -7,7 +7,7 @@ namespace SIL.Motif.Projection;
 /// <summary>Shapes a Runner <see cref="Receipt"/> into an <see cref="ApplyProjection"/>.</summary>
 public static class ApplyProjectionBuilder
 {
-    public static ApplyProjection Build(string proposalId, Receipt receipt) => new(
+    public static ApplyProjection Build(string proposalId, Receipt receipt, ReadinessProjection? readiness = null) => new(
         proposalId,
         receipt.AlreadyApplied,
         receipt.ResultNote,
@@ -17,5 +17,6 @@ public static class ApplyProjectionBuilder
             receipt.AppliedLogEntry.ProposalId.ToString("D"),
             receipt.AppliedLogEntry.TimestampUtc,
             receipt.AppliedLogEntry.User,
-            receipt.AppliedLogEntry.IntentDigest));
+            receipt.AppliedLogEntry.IntentDigest),
+        readiness);
 }

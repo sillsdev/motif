@@ -1,0 +1,127 @@
+# ADR 0057 — Explicit allomorph retirement
+
+Replacing listed word parts with a sound rule must preserve the analyses people have already checked. Motif requires exact replacement destinations for every affected use before it removes a listed form.
+
+**Status:** accepted design. This decision defines the authoring contract; it does not enable a retirement command or claim completed LibLCM/parser acceptance.
+
+## Context
+
+ADR 0027 compares ordered morphology by Form/MSA/InflType and conditional guessed text. A deleted MoForm cannot be treated as equivalent to another merely because its MSA, spelling, entry or gloss looks similar. LibLCM deletion clears native incoming references; a cascade would erase the very identity needed to verify an Approved reading.
+
+Static Parsimony findings supply a reason to investigate, not authority to change a project. The sample-grammar investigation found Sena `l → r` after non-front vowels across fourteen stems in a grammar with no phonological rules, and Awetí `m ~ p` across thirty-two stems. These observations motivate explicit rule replacement. They do not establish an automatic retirement mapping, a phonological context for another pair, or eligibility of stems under the bounded affix contract below.
+
+## Decision
+
+### One coherent Proposal
+
+An author reviews and applies the new sound rule and the removal of listed alternatives together. The checked analyses and restrictions move with the replacement in that same change.
+
+`ReplaceListedAllomorphsWithRuleIntent` composes typed natural-class creation/reuse, complete rule authoring and placement, and `RetireAllomorphIntent` components into one Draft Proposal. Its review has four linked groups: the class/rule, analysis-bundle retargets with retained Opinions, other references, and owned alternate-form deletion. These are groups over actual operation ids and scratch read-back effects, never independently applied stages.
+
+The author supplies normalized model forms and exact identities; a hyphen in a displayed suffix is notation. No absent or unfinished rule, guessed replacement, implicit class, or hidden property script completes this Intent. The generated LibLCM Mutation Plan remains output-only. Existing sound-system authoring seams are reused by the composer; this contract adds no second execution engine.
+
+### Bounded form and reference meanings
+
+The affix scope admits ordinary `MoAffixAllomorph` alternatives for simple prefixes/suffixes. The stem amendment below admits ordinary `MoStemAllomorph` root/stem alternatives through a separate declared scope. A retired form is a member of `LexEntry.AlternateForms`; its compatible surviving replacement belongs to the same entry and is not retired. Primary LexemeForm deletion, last valid realization deletion, processes, circumfixes, variants requiring expansion, cross-entry moves, chains/cycles and identity collisions are refused. Broader support requires an explicit capability and complete conformance fixtures.
+
+The role key is `(retiredForm, msa, inflType-or-null, expansionRole)`; the value is an exact replacement Form identity. Ordinary retirement accepts `whole` only. InflType null is explicit; an absent property does not mean null. A bundle is identified by its actual bundle, analysis and wordform identities and exact role. Ad hoc occurrences have no MSA role: each `(rule, field, ordinal-or-null)` therefore has a separately authored replacement identity. Different bundle roles can name different surviving forms, but neither order nor a role lookup selects an ad hoc destination. Contradictory role keys are refused.
+
+All bundle/analysis identities, MSA/InflType, bundle count/order, Sense, Category, word-level features/glosses, complete human `EvaluationsRC` membership, Text uses and wordform surface spellings remain intact. Retargeting does not recreate an analysis, re-approve it, or turn parser evaluation into a human Opinion.
+
+Ad hoc order and conjunction remain authoritative. FirstAllomorph, RestOfAllos and legacy Allomorphs are all inventoried, including flat/grouped and disabled records. Compose all changed sources into one final write per affected sequence. Repeated targets, First/Rest self-targets and collapsed conjunctive members are refused rather than deduplicated, including on disabled records. Active allomorph-specific prohibitions require a supported exact-denotation check; finite parser witnesses do not prove universal equivalence. An unproved or broadened constraint blocks retirement and names its rule/context. No side effect drops, splits, disables or redesigns it.
+
+### Native bundle text is a visible secondary effect
+
+Ordinary `WfiMorphBundle.MorphRA` retargeting uses the native setter. Its `MorphRASideEffects` copies the replacement MoForm alternatives to bundle Form and clears alternatives absent on the replacement (LibLCM `OverridesLing_Wfi.cs`, `MorphRASideEffects`/`SetMorphBundleFormAlternatives`). This is copied underlying lexical text, not the wordform's surface realization. Do not restore the retired spelling in the bundle or copy it onto the surviving form as an identity workaround.
+
+Declare every changed/cleared WS alternative in the compound footprint, semantic snapshot, diff, Dry Run and read-back. Ordinary unformatted copies and empty/default alternatives are eligible. Pattern/guessed cases, independently authored or rich bundle content, missing authoritative Morph identity and populated source alternatives absent on the replacement are refused until their preservation is supported. Package-pin proof of these effects is required before enabling retargeting; source inspection alone is not that proof.
+
+### Census, retarget, delete in one atomic unit
+
+The authoritative census covers the entire project, not a Selection or generated snapshot alone: every bundle Opinion, all ad hoc routes, custom native references, references from otherwise unprojected classes and owned dependents. An author-supplied reference list is a destination declaration, never proof of completeness. Historical GUIDs in Notebook judgments are historical semantic identity references; deletion does not silently transfer them to the survivor.
+
+Before mutation, compare the full frozen census with declared destinations. A refusal includes retired identity, unresolved rows and exact distinct counts, such as “This form is still used by N Approved analyses and M ad hoc rules; declare their replacement destinations before deleting it.” Also expose bundle, other-Opinion, custom/other-reference and sequence-occurrence counts. Unsupported reference capabilities and unsafe prohibition meanings have separate reasons.
+
+Declared `dependsOn` edges order actual operation ids: class construction precedes the rule fields using it; complete rule construction/placement precedes retargets; deletion follows every relevant retarget and rule operation. No fictitious completion barrier or JSON array position supplies an edge. Missing edges/cycles and multiple writers to a finalized slot are refused. One atomic LibLCM unit of work contains all class/rule/context writes, retargets with text effects, authored judgment revisions where necessary, and owned deletion. Immediately before deletion, recheck that every native reference reached its authored destination and no unmanaged incoming reference remains. Automatic reference clearing is never validation.
+
+### Translate frozen evidence, preserve ordinary comparison
+
+`FrozenExpectationSet` (`frozen-expectations/v1`) is the independent before input. It binds the source Baseline, human-input digest, full case-manifest digest and expectation revision. It includes every populated vernacular form/WS case for every wordform with an Approved analysis referring to a retiring form, including words outside Text Selection, and **all** Approved readings of those wordforms, including unchanged ones. Held-out cases and project-backed reviewed negatives extend this minimum. Original analysis/bundle identities, ordered morphology, original text and human evaluation provenance are frozen before mutation.
+
+A Proposal-scoped verification adapter changes only named Form identities at exact mapped roles. It records native text-copy effects separately, then uses the unchanged ADR 0027 comparison against after parser results. It does not read the mutated scratch as its own oracle, rewrite historical Reports, match an unrelated allomorph by MSA plus spelling, or change global guessed-text comparison. Guessed/pattern retargets remain unsupported. Distinct same-word morphologies collapsing to one translated signature, or contradictory positive/negative translations, refuse ordinary retirement. Separate surface/WS cases remain separate even when their underlying replacement is shared.
+
+Reviewed-reading meaning changes require explicitly authored new Notebook revisions retaining the originals. A keep on the retired object remains historical. Reasons and negatives never transfer or reconfirm automatically.
+
+### Evidence and drift
+
+A successful replacement verification binds exact Proposal intent, source Baseline, census/mapping digests, immutable before/translated expectations, complete affected-case manifest, actual Dry Run effects, paired Assessments and rebuilt Parsimony artifacts. Completed before and after searches must produce every required Approved/held-out reading with no newly produced reviewed negative. A before reading already missing is a failed before condition; incomplete jobs, missing identities/WS support and unavailable capabilities remain incomplete. Large mandatory sets use bounded jobs with a complete aggregate manifest, never a silently reduced sample. The absence of reviewed negatives is an explicit evidence gap.
+
+For each changed realization, “now via the rule” requires source-identified derivation/Trace evidence bound to the exact after signature and authored rule, or a completed controlled comparison of the same candidate with only that rule disabled that loses that exact reading. Mere parse success, disappearance of a GUID, global attempts or an unimplemented rule-use count is insufficient. An unchanged realization outside the context need not fire the rule. A changed reading surviving the disabled-rule comparison requires direct attribution or stays unproved.
+
+Rebuild grammar facts and project evidence from the complete scratch candidate and rerun the original detector. Bind the finding identity, before/after n/N, relevant evidence digests and explicit resolved result. The finding must disappear because the redundant statement was removed and the rule is represented, never because it was suppressed, filtered or dropped by a loader. Finding resolution and parse preservation are separate results; unrelated/new findings remain visible. These Reports are advisory and do not replace ordinary Readiness or Preflight.
+
+New references, sequence changes, changed source/replacement meaning, MSA/InflType/Opinion edits and relevant human judgment/schema revisions invalidate Preflight. Rebase refreshes baseline-relative evidence or unambiguous anchors only; it cannot change mappings, targets, values, operation intent/order or add a destination for a new reference. Re-authoring is explicit.
+
+## Sena-shaped worked case
+
+A grammar can express a repeated sound alternation once while retaining the word analyses supplied by a person. The example below uses an explicitly authored environment rather than deducing a rule from two spellings.
+
+Use a **synthetic ordinary suffix** with surviving `la` and alternate `ra`, shaped after the Sena `l → r` observation. This is not a claim that the sample stems are eligible ordinary affixes. Create/reuse the exact non-front-vowel segment class and author `l → r / [non-front-vowels] _` with explicit rule placement. Map each `(raForm, msa, null-or-exact-inflType, whole)` to its same-entry `laForm`, name every bundle and separately eligible ad hoc occurrence, and delete only the alternate `raForm` after the declared retarget dependencies.
+
+Freeze each affected wordform's surface/WS cases and all Approved readings, including an unchanged reading on the same word and a word outside the Selection. The native bundle text becomes `la`; surface `…ra` and human evaluation membership stay unchanged. Before parses match original `raForm` expectations; after parses match only the explicitly translated `laForm` expectations. The `…ra` path needs rule attribution, the rebuilt alternation finding needs actual resolution, and an unsafe active prohibition or any unresolved reference refuses the whole change.
+
+The owner's `-ra`/`-ta` case follows the same contract: surviving `ra`, retiring `ta`, and a fully authored rule/context producing the `ta` realization. Its context is an author decision, not inferred from the notation.
+
+## Amendment — ordinary stem alternate forms
+
+A repeated sound alternation in roots can be stated once while keeping the word analyses people have checked. The primary dictionary form stays in place; only explicitly named alternate forms can be removed after their uses and restrictions have been accounted for.
+
+Amend this ADR rather than introduce ADR 0055: the authoring, exact identity translation, complete census, atomic unit of work and independent verification decisions are unchanged. Stems add a capability boundary and selection gates, not another kind of retirement or permission to bypass the affix acceptance work. Affix delivery remains first. This amendment delivers contract declarations only; both scopes retain `CanApply: false` until their operation-family proofs are complete.
+
+### Scope and protected primary
+
+Each same-entry component declares `scope: affix|stem` (`AllomorphRetirementScope.Affix|Stem`). Stem sources and destinations are concrete, non-abstract `MoStemAllomorph` objects with the same exact morph type: ordinary unbound `root` or `stem`. Bound roots/stems, clitics, phrases, particles, processes, circumfixes, cross-class substitutions and differing root/stem types are refused. `position` records that closed morph-type assertion, not a string-matching inference. Mixing affix and stem components across entries is allowed when one authored rule and its complete evidence justify the coherent Proposal; one entry has one scope.
+
+The source must be an owned `AlternateForms` member; the survivor may be the same entry's LexemeForm or another surviving alternate. LexemeForm retirement, promotion, replacement or deletion stays refused. Removing the last loadable realization stays refused even if a nominal survivor exists but the parser omits it. MSA, senses, entry identity and retained relative allomorph order remain unchanged. Stem role translation requires the exact entry-owned `MoStemMsa`, explicit null InflType and `whole`; an affix MSA, borrowed variant MSA or compound expansion role does not become eligible by claiming `whole`.
+
+### Stem names and environments are selection meaning
+
+`MoStemAllomorph.StemName` is a morphological gate, not a phonological environment or display name. HC interpretation requires a named allomorph's feature region to match the resulting stem's features and excludes regions supplied by siblings, with shared-region exemptions. Even an unnamed allomorph can therefore have an implicit exclusion gate. `MoDerivAffMsa.FromStemName` also selects hosts. PanGloss's `pg-rules/src/validity.rs`, `stem_name_gate_reason`, implements these required/excluded matches; `pg-grammar/src/compile/lexicon.rs`, `build_root_allomorph`, loads the name and environments. These source observations must receive conformance tests on the pinned parser before enabling the capability.
+
+Every form assertion includes explicit `stemName: id|null`; affixes require null. Stem source and survivor must name the same exact StemName identity, including null. Different names, named→unnamed and unnamed→named mappings are closed refusals; a sound rule cannot stand in for morphological suppletion. Equal ids alone do not prove equal effective gates: freeze the name's owner/category, full normalized Regions and feature definitions, sibling name graph, MSA features/classes/restrictions, relevant FromStemName consumers, and allomorph order. Refuse any changed or unavailable effective required/excluded gate. Do not edit names, Regions, MSAs or siblings as an implicit retirement effect.
+
+Stem `PhoneEnv` is a collection of phonological restrictions around the whole root allomorph. It is not affix `Position`, and its left edge is not automatically the location of an arbitrary internal segment. The form semantic assertions and census context must bind environment identities and resolved meanings, natural-class extensions, phoneme representations and boundary interpretation. Different source/survivor phone environments can be intentionally replaced by the authored rule, but require exact conditioning correspondence and the full before/after verification. Never copy an environment to the survivor by default, treat unresolved environments as empty, or use finite witnesses to prove universal gate equivalence. Required/excluded morphological gates and active ad hoc denotation remain independent blockers.
+
+### Compounds, variants and stored text
+
+A whole ordinary root may occur as one unchanged bundle in a compound word analysis; those wordforms and all their readings belong in the mandatory affected set. Preserve compound member order and every other bundle. This is different from retargeting stored derivation traces or synthesizing a compound/variant reading. The census must include `MoDeriv.StemForm` and `MoCompoundRuleApp.LeftForm/RightForm`, although ordinary semantic projection classifies them outside its authoring surface. They remain unmanaged references with exact unresolved rows, not references a deletion may clear. No compound trace writer is introduced here.
+
+Inventory both directions of `LexEntryRef.ComponentLexemes` entry/sense links, variant types, complex-form components and applicable compound-rule/MSA context. Such links are semantic dependencies even when they do not point directly to a MoForm. Refuse a form belonging to an entry whose parser realization borrows or expands through those routes until an explicit capability preserves that expansion. A descriptive complex-form link with independently loadable whole-entry morphology may remain unchanged only with pinned proof; unavailable expansion classification refuses. Non-null stem InflType and all non-whole roles refuse structurally. No cross-entry retarget, compound decomposition or variant-resolution heuristic is authorized.
+
+The same native `WfiMorphBundle.MorphRA` setter accepts `IMoForm` and copies replacement text for stems (`LibLCM DomainImpl/OverridesLing_Wfi.cs`, `MorphRASideEffects` and `SetMorphBundleFormAlternatives`). Thus a linked `rekerer` bundle retargeted to `lekerer` stores underlying `lekerer`, while its wordform's surface spelling and Text occurrences stay unchanged. This is a source-backed design requirement, not an affix test repurposed as package-pin proof for stems. Stem fixtures must pin every populated/empty/cleared WS alternative, preserved rich-text refusals, evaluation membership, analysis/bundle identities, Segment analysis/gloss uses, save/open and rollback. Guessed/pattern/customized/rich bundle text, missing replacement WS with populated data, and missing authoritative Morph identities retain the existing refusals. Never restore surface `rekerer` by a Form write.
+
+### Sena worked case and evidence boundary
+
+The [copied Sena inspection](../research/sena-stem-retirement.md) records exact entry/Form ids and the fourteen uniquely tokenized root pairs sharing the verbal MSA gate. All fourteen `r` forms are alternates; their surviving `l` forms are LexemeForm objects, both have no StemName. The shared PhoneEnv is `3be33482-38ee-4bee-a13b-7a0589942af3`, `/ [V-front] _`. Its misleading Name says “After a front vowel”; its referenced segment class `11b7ddde-8bc5-4e45-8fc3-6fc1087825ba` actually names non-front vowels and contains the exact `o`, `a`, `u` phonemes. The copied project contains no phonological rules. Forty raw written pairs are not forty verified members of the fourteen-root finding; ambiguous/unmapped spellings and the separately gated `li/ri` stem remain distinct.
+
+For entry `03db04bc-1143-4170-ab2d-ef3176203966`, explicitly retain `lekerer` Form `964fc5f0-ced8-4677-8394-eb303c9347e6`, retire alternate `rekerer` Form `9e21d8bc-0554-45c4-b1b1-30b83c2ec584`, and name MSA `cba89e7d-441c-4c76-8afd-714fa9ed64c4`, null InflType and `whole`. Reuse the checked `a/o/u` class by exact identity and meaning; author input `l` phoneme `937234ce-012f-4143-9130-c80cce3d8ace` and output `r` phoneme `82b13fe1-552a-4065-9f16-28c91f09a789` with explicit placement and conditioning. Map each additional entry separately, never by spelling similarity.
+
+The environment is attached to the beginning of the allomorph, whereas an unrestricted `l → r / [a,o,u] _` segment rule can also change an internal `l`: the listed `lulup → rulup` pair retains its second `l`, although that `l` follows `u`. The author must establish the intended stem-edge/boundary and rule stratum semantics and check internal-position and outside-context controls. If the bounded typed rule cannot express that restriction, recipe verification stays unavailable; this amendment does not invent a context atom or claim the spelling pairs prove productivity. Awetí's unstated `m ~ p` conditioning likewise remains a recommendation requiring an authored context, never an inferred replacement recipe.
+
+The copied fourteen pairs have no direct WfiMorphBundle uses. That absence is not evidence of preservation: use independently authored held-out surface/WS cases and real seeded Approved stem/compound/Text fixtures for acceptance. The complete project census remains mandatory, and text counts must report zero honestly rather than inventing attestation.
+
+### Census and frozen expectations required for stems
+
+Extend the class-aware complete census with stem-only incoming native/custom routes and their owned dependents; distinguish outgoing gate/context dependencies from incoming destinations. Bind resolved phone environments, name/region/sibling/FromStemName meanings, exact morph type/abstractness, primary and alternate ownership/order, entry/sense expansion links and compound context. Editing content behind an unchanged GUID must drift. Unsupported trace, custom and expansion routes carry separate capability reasons and exact counts; zero Approved analyses is never proof of a safe deletion.
+
+Frozen expectations retain the existing shape and ADR 0027 comparison. Their producer must freeze all affected whole-stem/compound wordforms, every populated vernacular WS surface case and every Approved reading, including unchanged readings and cases outside Selection; record original ordered Form/MSA/InflType roles, bundle text and human provenance. Add held-out combinations across each conditioning side, unchanged internal positions, affected named/unnamed feature regions and applicable compound contexts. Variant-expanded and compound-trace readings remain explicit unavailable cases. A Verification record binds the new gate/context census digest, original and translated expectations, rule attribution and rebuilt finding result. Scope, stemName assertions and exact roles are semantic authoring input; they are hashed. Reading collapse and positive/negative contradiction still refuse rather than merge.
+
+The current authoring shape is `allomorph-retirement/v2`: required scope and stemName assertions replace the pre-1.0 v1 shape. There is no v1 reader, default scope, upgrade path or alias; regenerate old authoring artifacts. Frozen expectation and review shapes keep their existing versions because their fields and meanings have not changed. `stem-selection-gate-equivalence`, `stem-environment-rule-correspondence`, `stem-expansion-context-census`, `stem-bundle-form-effects` and `frozen-stem-reading-verification` are additional required proofs for Stem. No requirement is satisfied merely by publishing these names.
+
+## Consequences and rejected alternatives
+
+This is an explicitly authored linguistic change, not a pre-1.0 storage migration. It preserves known valid readings under scoped identity translation; it is not a proof of global grammar equivalence or sense agreement. Runner remains storage-agnostic and receives an already-loaded caller-owned cache. Scratch ownership, live Apply/save and Receipts continue under ADRs 0016, 0030, 0040 and 0041. Project-backed judgments remain under ADR 0056; derived SQLite artifacts never own unique human input.
+
+Reject generic cascade deletion, `SwapReferences` as a complete census/algorithm, `ReplaceMoForm` form merging, surface-copy workarounds, automatic replacement inference, MSA-plus-spelling joins, merging translated analyses, silently remapped negatives/reasons, and unique replacement evidence kept only in disposable files.
+
+The [allomorph retirement contract](../allomorph-retirement-contract.md) defines the closed portable values, capability boundaries, review statistics and remaining operation-family acceptance gates. ADR 0027 is amended only to permit this explicit Proposal-scoped translation adapter; its ordinary comparison is unchanged. ADR 0026 continues to govern dependencies and one writer per slot.

@@ -11,13 +11,12 @@ using SIL.Motif.Worker.Assess;
 using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Scheduling;
 using SIL.Motif.Worker.Store;
+using SIL.Motif.Worker.Parsimony;
 
 namespace SIL.Motif.Worker.Jobs;
 
 /// <summary>
-/// The handlers one project's claimed jobs are dispatched to: a Baseline refresh, a Dry Run, and, when the
-/// runner has a parser, a Trial. The runner process and a runner drained inside a test build them here, so
-/// the two cannot dispatch the same job differently.
+/// The handlers one project's claimed jobs are dispatched to, including Baseline, Dry Run, Trial, and Parsimony work.
 /// </summary>
 public static class ProjectJobHandlers
 {
@@ -26,6 +25,9 @@ public static class ProjectJobHandlers
 
     /// <summary>The job kind that evaluates a finalized Proposal against the Baseline.</summary>
     public const string DryRunKind = "dry-run";
+
+    /// <summary>The job kind that measures a Parsimony Report from the current Baseline.</summary>
+    public const string ParsimonyKind = ParsimonyJobHandler.JobKind;
 
     /// <summary>Builds the loop that claims and runs one project's queued jobs.</summary>
     /// <param name="database">The project's opened Motif store.</param>
@@ -69,6 +71,11 @@ public static class ProjectJobHandlers
         {
             [BaselineRefreshKind] = (_, token) => refresh.RunAsync(project, token),
             [DryRunKind] = (job, token) => dryRun.RunAsync(job, project, token),
+            [ParsimonyKind] = (job, token) => new ParsimonyJobHandler(database, baselines, workspaceKey,
+                project, options, invoker).RunAsync(job, token),
+            [ParsimonyCandidateEvidenceBuilder.JobKind] = (job, token) =>
+                new ParsimonyCandidateEvidenceBuilder(database, workspaceKey, project, options, invoker, lanes)
+                    .RunAsync(job, token),
         };
 
         if (TryBuildTrialHandler(database, baselines, proposals, lanes, options, invoker) is { } trial)
@@ -121,6 +128,6 @@ public static class ProjectJobHandlers
                 loader.Save(cache);
                 var directory = Path.GetDirectoryName(Path.GetFullPath(cache.ProjectId.Path))!;
                 return Task.FromResult(directory);
-            });
+            }, options.Root);
     }
 }

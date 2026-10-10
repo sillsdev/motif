@@ -98,9 +98,9 @@ internal sealed class MoAlloAdhocProhibRestOfAllosAddRefHandler : IOperationHand
         var (id, moAlloAdhocProhib) = TargetResolution.Resolve<IMoAlloAdhocProhib>(cache, operation, MoAlloAdhocProhibRestOfAllosOperationKinds.AddRefRestOfAllos);
         touchedTargets.Add(id);
 
-        var before = ReferenceCollectionFieldSnapshotting.ReadAlternatives(moAlloAdhocProhib.RestOfAllosRS);
+        var before = ReferenceSequenceFieldSnapshotting.ReadAlternatives(moAlloAdhocProhib.RestOfAllosRS);
         MoAlloAdhocProhibRestOfAllosAddRefLowering.Apply(cache, moAlloAdhocProhib, memberId);
-        var afterValue = ReferenceCollectionFieldSnapshotting.ReadAlternatives(moAlloAdhocProhib.RestOfAllosRS);
+        var afterValue = ReferenceSequenceFieldSnapshotting.ReadAlternatives(moAlloAdhocProhib.RestOfAllosRS);
 
         return new ExpectedEffect(id, SnapshotFields.MoAlloAdhocProhibRestOfAllos, before, afterValue);
     }
@@ -108,7 +108,7 @@ internal sealed class MoAlloAdhocProhibRestOfAllosAddRefHandler : IOperationHand
     public ExpectedEffect ReadCurrentFootprint(LcmCache cache, OperationEnvelope operation)
     {
         var (id, moAlloAdhocProhib) = TargetResolution.Resolve<IMoAlloAdhocProhib>(cache, operation, MoAlloAdhocProhibRestOfAllosOperationKinds.AddRefRestOfAllos);
-        var current = ReferenceCollectionFieldSnapshotting.ReadAlternatives(moAlloAdhocProhib.RestOfAllosRS);
+        var current = ReferenceSequenceFieldSnapshotting.ReadAlternatives(moAlloAdhocProhib.RestOfAllosRS);
         return new ExpectedEffect(id, SnapshotFields.MoAlloAdhocProhibRestOfAllos, current, current);
     }
 }
@@ -139,9 +139,9 @@ internal sealed class MoAlloAdhocProhibRestOfAllosRemoveRefHandler : IOperationH
         var (id, moAlloAdhocProhib) = TargetResolution.Resolve<IMoAlloAdhocProhib>(cache, operation, MoAlloAdhocProhibRestOfAllosOperationKinds.RemoveRefRestOfAllos);
         touchedTargets.Add(id);
 
-        var before = ReferenceCollectionFieldSnapshotting.ReadAlternatives(moAlloAdhocProhib.RestOfAllosRS);
+        var before = ReferenceSequenceFieldSnapshotting.ReadAlternatives(moAlloAdhocProhib.RestOfAllosRS);
         MoAlloAdhocProhibRestOfAllosRemoveRefLowering.Apply(cache, moAlloAdhocProhib, memberId);
-        var afterValue = ReferenceCollectionFieldSnapshotting.ReadAlternatives(moAlloAdhocProhib.RestOfAllosRS);
+        var afterValue = ReferenceSequenceFieldSnapshotting.ReadAlternatives(moAlloAdhocProhib.RestOfAllosRS);
 
         return new ExpectedEffect(id, SnapshotFields.MoAlloAdhocProhibRestOfAllos, before, afterValue);
     }
@@ -149,7 +149,7 @@ internal sealed class MoAlloAdhocProhibRestOfAllosRemoveRefHandler : IOperationH
     public ExpectedEffect ReadCurrentFootprint(LcmCache cache, OperationEnvelope operation)
     {
         var (id, moAlloAdhocProhib) = TargetResolution.Resolve<IMoAlloAdhocProhib>(cache, operation, MoAlloAdhocProhibRestOfAllosOperationKinds.RemoveRefRestOfAllos);
-        var current = ReferenceCollectionFieldSnapshotting.ReadAlternatives(moAlloAdhocProhib.RestOfAllosRS);
+        var current = ReferenceSequenceFieldSnapshotting.ReadAlternatives(moAlloAdhocProhib.RestOfAllosRS);
         return new ExpectedEffect(id, SnapshotFields.MoAlloAdhocProhibRestOfAllos, current, current);
     }
 }

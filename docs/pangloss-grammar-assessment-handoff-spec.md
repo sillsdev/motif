@@ -66,7 +66,7 @@ The new work composes these capabilities into stable assessment artifacts and co
 - whether an expectation is linguistically correct;
 - review, approval, rejection, and supersession;
 - human, AI, and native-speaker identity;
-- storage and synchronization of review history;
+- storage and synchronization of review history with the owning FieldWorks project;
 - applying accepted changes to FieldWorks;
 - the final judgment “better,” “worse,” or “accept.”
 
@@ -83,6 +83,14 @@ The new work composes these capabilities into stable assessment artifacts and co
 - treat parser output as gold policy;
 - launch or control FieldWorks;
 - call an AI provider.
+
+### 3.4 Motif Parsimony Reports consume facts and evidence
+
+A grammar review can describe saved structure and attested uses before a parser Assessment is available.
+
+PanGloss's `grammar-facts.sqlite` records parser-owned authored and loader facts. Motif joins it with its separate, frozen FieldWorks evidence artifact and owns Parsimony measures, recommendations, recipes, and Reports. Static and text-grounded findings need no Assessment; parser-in-the-loop findings cite the exact stored Assessment that supplied their cases. A PanGloss facts invocation is not promoted to an Assessment.
+
+Reviewed negatives and Parsimony dispositions are durable FieldWorks project data. Their concrete project representation and editing surface are defined separately; they do not belong in PanGloss artifacts or Motif's paired workflow database. Motif Reports preserve their frozen input bindings and are advisory. A Parsimony threshold or disposition never authorizes an Apply.
 
 ## 4. Terminology
 

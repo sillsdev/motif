@@ -257,3 +257,9 @@ widened to carry it.
 - **Expose a thin FieldWorks-only IPC alongside the CLI, designed later.** Rejected because "later,
   against a real consumer" is how the first wire was justified, and the consumer it was designed against
   never arrived. If FieldWorks needs something the CLI cannot express, the answer is to fix the CLI.
+
+## Amendment — deliberate project initialization at an owned save boundary
+
+A person prepares the project's judgment field explicitly before recording any decisions. That preparation uses the same ownership checks from either Motif front end.
+
+[ADR 0056](0056-human-judgments-belong-to-the-fieldworks-project.md) adds a narrow live-write exception for the future HumanOnly project-initialization command. It acquires the original project just as Apply does, refuses a FieldWorks lock, changes only the reserved definition and proves XML save/recovery before shipping. It has one typed implementation and one CLI verb under ADR 0043's shared catalog. It does not permit opening, judgment authoring, Apply or agent tools to create schema as a side effect.

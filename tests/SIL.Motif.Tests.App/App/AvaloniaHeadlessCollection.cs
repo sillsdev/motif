@@ -11,7 +11,7 @@ namespace SIL.Motif.Tests.App;
 
 /// <summary>
 /// Groups every test class that needs a headless Avalonia application into one xUnit collection, so the
-/// process-wide Avalonia platform is stood up exactly once.
+/// process-wide Avalonia platform is stood up exactly once on first use.
 /// </summary>
 [CollectionDefinition(Name, DisableParallelization = true)]
 public sealed class AvaloniaHeadlessCollection : ICollectionFixture<AvaloniaHeadlessFixture>
@@ -44,8 +44,6 @@ public sealed class AvaloniaHeadlessCollection : ICollectionFixture<AvaloniaHead
 /// </remarks>
 public sealed class AvaloniaHeadlessFixture : IDisposable
 {
-    public AvaloniaHeadlessFixture() => AvaloniaHeadlessPlatform.Initialize();
-
     /// <summary>Runs <paramref name="work"/> on the Avalonia thread and rethrows whatever it threw.</summary>
     public void Invoke(Action work)
         => AvaloniaHeadlessPlatform.Invoke(work);

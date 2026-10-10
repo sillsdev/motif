@@ -67,3 +67,9 @@ phase. This decision is specifically the custom-field metadata family.
 - Conformance asserts the mirrored pattern: no save while a task is open, schema in its own
   non-undoable unit of work, a metadata-only change still persists, and a failed data phase leaves a
   defined-but-empty field, never orphaned data referencing an unpersisted field.
+
+## Amendment — reserved judgment schema is separate project initialization
+
+Preparing the place for a person's judgment must not leave a partially applied Proposal. Initialization is deliberate and its result must be verifiable after a failed save or retry.
+
+[ADR 0056](0056-human-judgments-belong-to-the-fieldworks-project.md) moves creation of the reserved `RnGenericRec.MotifHumanJudgment` definition to a separate confirmed project-initialization command. Its definition-only non-undoable unit and XML save/recovery gate preserve this ADR's metadata findings without invoking the two-phase Proposal behavior for this field. Judgment Proposals change data only in one atomic unit and refuse a missing/incompatible/ambiguous definition. The future initialization slice must prove recovery and idempotence on the package pin; ordinary data rollback is not evidence of metadata rollback.

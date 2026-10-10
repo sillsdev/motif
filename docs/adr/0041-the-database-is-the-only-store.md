@@ -253,3 +253,19 @@ and passes one directory to both, so the two agree in the test and disagree only
 The window opens when decision 2 lands for the Proposal verbs and closes when the corpus verbs follow. It
 is recorded rather than patched because the patch — restoring a separate corpus-store flag — would add back
 the flag this ADR deletes, for one intermediate commit.
+
+### 2026-10-05 — derived analysis artifacts and FieldWorks judgments
+
+Motif can rebuild the files used to analyse a captured grammar without losing a person's work. Human judgments live in durable FieldWorks project data; Motif's paired store keeps the Reports that cite them.
+
+Decision 9 continues to distinguish files from Motif's durable workflow records. `grammar-facts.sqlite` and `evidence.sqlite` are separate, versioned, derived analysis artifacts. They are bound to the full Baseline token and model fingerprint; candidate scratch artifacts have their own identity. Their byte digests are recorded in the Motif-store bundle descriptor, not inside the file they hash. Either artifact may be deleted and rebuilt without losing a human judgment.
+
+Derived SQLite analysis artifacts are disposable and rebuildable. Reviewed negatives and Parsimony dispositions are durable data in the FieldWorks project, not rows in `Project.motif.db` or in an analysis artifact. Their concrete Notebook representation and editing surface are defined by [ADR 0056](0056-human-judgments-belong-to-the-fieldworks-project.md). The Motif store retains Reports and their frozen input bindings; it is not the authority for those judgments.
+
+### Durable judgments and deliberate initialization
+
+A person's applied grammar-review choices remain with the FieldWorks project even if every Motif file is deleted. Proposed changes and the Reports that cite them still belong to Motif's paired database.
+
+[ADR 0056](0056-human-judgments-belong-to-the-fieldworks-project.md) settles the formerly deferred representation: one `RnGenericRec` per revision, with a reserved `MotifHumanJudgment` String containing readable text, optional reason and a strict marker. Project initialization creates that definition through a separate confirmed HumanOnly catalog command with pinned XML recovery proof; opening/authoring/Apply never creates schema implicitly. Neither `Project.motif.db` nor `grammar-facts.sqlite` nor `evidence.sqlite` is a canonical home for dispositions or reviewed negatives. Derived files may contain exact captured projections. The database-only coordination rule remains intact; the FieldWorks project is canonical linguistic/human input, not a second Motif process mailbox.
+
+S2 M6/M9's proposed direct-store disposition and negative writers are replaced by Notebook-backed semantic Intents staged in Draft Proposals and written through Apply. Rebuilding recovers current applied input from the saved project, not lost Drafts, Reports or historical captures. Suppressed membership is a query over captured revisions and item-relevant finding evidence, never a durable dismissal row or deletion from a frozen Report.

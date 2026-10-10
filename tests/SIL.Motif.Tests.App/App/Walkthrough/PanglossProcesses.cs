@@ -63,6 +63,10 @@ internal static class PanglossProcesses
             catch (UnauthorizedAccessException)
             {
             }
+            catch (IOException)
+            {
+                // Another process's image path can name a directory that no longer resolves.
+            }
             finally
             {
                 process.Dispose();

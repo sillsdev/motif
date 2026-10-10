@@ -5,6 +5,8 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading;
 using System.Text.RegularExpressions;
 using SIL.Motif.Cli;
@@ -16,11 +18,13 @@ using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Commands.Handoff;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Commands.Preferences;
 using SIL.Motif.Contract.Canonicalization;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Parsimony;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Host.Store;
@@ -42,6 +46,12 @@ public static int Main(string[] args)
     if (args.Length > 0 && args[0] == "--update-smoke")
         return PackageUpdateSmoke.RunAsync(args).GetAwaiter().GetResult();
 
+    if (args.Length > 0 && args[0] == "mcp")
+        return McpCommand.Run(args[1..], Console.Error);
+
+    if (args.Length > 0 && args[0] == "settings")
+        return AdvancedAiModeCommand.Run(args[1..], Console.Out, Console.Error);
+
     if (args.Length > 0 && args[0] == "uninstall")
     {
         Console.WriteLine(MotifInstallLifecycle.RemoveRegistration());
@@ -57,6 +67,10 @@ public static int Main(string[] args)
     var environment = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
     foreach (System.Collections.DictionaryEntry entry in Environment.GetEnvironmentVariables())
         environment[(string)entry.Key] = entry.Value?.ToString();
+    if (!environment.TryGetValue(FileAdvancedAiModePreferenceStore.PathEnvironmentVariable, out var preferencePath) ||
+        string.IsNullOrWhiteSpace(preferencePath))
+        environment[FileAdvancedAiModePreferenceStore.PathEnvironmentVariable] =
+            FileAdvancedAiModePreferenceStore.DefaultPath;
     return Run(args, Console.Out, Console.Error, environment,
         static (project, reportWarning) => ProcessRunnerLauncher.FromEnvironment().Start(project, reportWarning));
 }
@@ -89,8 +103,11 @@ using var usageAction = usageRecorder.BeginAction(
     CliUsageArgumentShapes(usageCommand, usageVerb, usageArguments.Item1,
         usageArguments.Item2, usageArguments.Item3));
 
+var advancedAiModeEnabled = environment.TryGetValue(
+        FileAdvancedAiModePreferenceStore.PathEnvironmentVariable, out var preferencePath) &&
+    new FileAdvancedAiModePreferenceStore(preferencePath!).IsEnabled;
 var commandPolicy = CommandSurfacePolicy.FromEnvironment(
-    environment.GetValueOrDefault(CommandSurfacePolicy.DeveloperCommandsEnvironmentVariable));
+    environment.GetValueOrDefault(CommandSurfacePolicy.DeveloperCommandsEnvironmentVariable), advancedAiModeEnabled);
 
 if (args.Length > 0 && args[0] == "help")
     return HelpCommand.Run(args[1..], commandPolicy, output, error);
@@ -110,10 +127,10 @@ try
     var commandName = ResolveCommandName(verb, flags, positionals);
     var command = CommandCatalog.All.FirstOrDefault(item => item.Name == commandName);
     if (command is not null && !commandPolicy.IsAvailable(command))
-        return RefuseUnavailableCommand(commandName, flags.ContainsKey("json"), error, commandPolicy);
+        return RefuseUnavailableCommand(commandName, flags.ContainsKey("json"), error, command);
 
     // Every invocation naming a project upserts it into the machine store (ADR 0041 decision 4).
-    if (flags.TryGetValue("project", out var projectForRegistry))
+    if (flags.TryGetValue("project", out var projectForRegistry) && commandName != "project initialize")
         RecordKnownProject(projectForRegistry, ResolveRoot(), error);
 
     // Every migrated read surface renders both ways from one projection (ADR 0021 decision 2).
@@ -228,6 +245,58 @@ try
                 successAsJson: false);
             break;
 
+        case "compose-author-feature-value":
+        case "compose-author-phoneme":
+        case "compose-author-natural-class":
+        case "compose-author-environment":
+        case "compose-author-phonological-rule":
+        case "compose-author-affix-slot":
+        case "compose-author-affix-template":
+        case "compose-edit-natural-class":
+        case "compose-relink-natural-class":
+            if (!flags.TryGetValue("draft", out var soundDraft) ||
+                !flags.TryGetValue("project", out var soundProject) ||
+                !flags.TryGetValue("intent", out var soundIntent))
+                return Usage("Usage: motif " + verb + " --draft <name> --project <fwdata> --intent '<closed intent JSON>'", asJson);
+            var soundOutcome = verb switch
+            {
+                "compose-author-feature-value" => ProposalCommands.ComposeAuthorFeatureValue(new(soundProject, CliProductVersion(), soundDraft, soundIntent)),
+                "compose-author-phoneme" => ProposalCommands.ComposeAuthorPhoneme(new(soundProject, CliProductVersion(), soundDraft, soundIntent)),
+                "compose-author-natural-class" => ProposalCommands.ComposeAuthorNaturalClass(new(soundProject, CliProductVersion(), soundDraft, soundIntent)),
+                "compose-author-phonological-rule" => ProposalCommands.ComposeAuthorPhonologicalRule(
+                    new(soundProject, CliProductVersion(), soundDraft, soundIntent)),
+                "compose-author-affix-slot" => ProposalCommands.ComposeAuthorAffixSlot(
+                    new(soundProject, CliProductVersion(), soundDraft, soundIntent)),
+                "compose-author-affix-template" => ProposalCommands.ComposeAuthorAffixTemplate(
+                    new(soundProject, CliProductVersion(), soundDraft, soundIntent)),
+                "compose-edit-natural-class" => ProposalCommands.ComposeEditNaturalClass(
+                    new(soundProject, CliProductVersion(), soundDraft, soundIntent)),
+                "compose-relink-natural-class" => ProposalCommands.ComposeRelinkNaturalClass(
+                    new(soundProject, CliProductVersion(), soundDraft, soundIntent)),
+                _ => ProposalCommands.ComposeAuthorEnvironment(new(soundProject, CliProductVersion(), soundDraft, soundIntent)),
+            };
+            result = RenderProposal(soundOutcome, successAsJson: false);
+            break;
+
+        case "retire-allomorph":
+            if (!flags.TryGetValue("draft", out var retireDraft) ||
+                !flags.TryGetValue("project", out var retireProject) ||
+                !flags.TryGetValue("intent", out var retireIntent))
+                return Usage("Usage: motif retire-allomorph --draft <name> --project <fwdata> --intent '<closed intent JSON>'", asJson);
+            result = RenderProposal(ProposalCommands.ComposeRetireAllomorph(new ComposeRetireAllomorphRequest(
+                retireProject, CliProductVersion(), retireDraft, retireIntent)), successAsJson: false);
+            break;
+
+        case "retire-redundant-zero-affix":
+            if (!flags.TryGetValue("draft", out var zeroDraft) ||
+                !flags.TryGetValue("project", out var zeroProject) ||
+                !flags.TryGetValue("intent", out var zeroIntent))
+                return Usage("Usage: motif retire-redundant-zero-affix --draft <name> --project <fwdata> --intent '<closed intent JSON>'", asJson);
+            result = RenderProposal(ProposalCommands.ComposeRetireRedundantZeroAffix(
+                new ComposeRetireRedundantZeroAffixRequest(zeroProject, CliProductVersion(), zeroDraft, zeroIntent)),
+                successAsJson: false);
+            break;
+
         case "compose-author-feature-structure":
             if (!flags.TryGetValue("draft", out var composeFsDraftName) ||
                 !flags.TryGetValue("project", out var composeFsProject) ||
@@ -241,6 +310,81 @@ try
                 ProposalCommands.ComposeAuthorFeatureStructure(new ComposeAuthorFeatureStructureRequest(
                     composeFsProject, CliProductVersion(), composeFsDraftName, composeFsIntent)),
                 successAsJson: false);
+            break;
+
+        case "compose-record-parsimony-disposition":
+            if (!flags.TryGetValue("draft", out var dispositionDraft) ||
+                !flags.TryGetValue("project", out var dispositionProject) ||
+                !flags.TryGetValue("intent", out var dispositionIntent))
+                return Usage("Usage: motif compose-record-parsimony-disposition --draft <name> " +
+                    "--project <fwdata> --intent '<closed intent JSON>'", asJson);
+            result = RenderProposal(ProposalCommands.ComposeRecordParsimonyDisposition(
+                new ComposeRecordParsimonyDispositionRequest(
+                    dispositionProject, CliProductVersion(), dispositionDraft, dispositionIntent)), successAsJson: false);
+            break;
+
+        case "compose-edit-adhoc-prohibition":
+            if (!flags.TryGetValue("draft", out var adhocDraft) ||
+                !flags.TryGetValue("project", out var adhocProject) ||
+                !flags.TryGetValue("intent", out var adhocIntent))
+                return Usage("Usage: motif compose-edit-adhoc-prohibition --draft <name> " +
+                    "--project <fwdata> --intent '<closed intent JSON>'", asJson);
+            result = RenderProposal(ProposalCommands.ComposeEditAdhocProhibition(
+                new ComposeEditAdhocProhibitionRequest(
+                    adhocProject, CliProductVersion(), adhocDraft, adhocIntent)), successAsJson: false);
+            break;
+
+        case "compose-edit-affix-slot":
+            if (!flags.TryGetValue("draft", out var affixSlotDraft) ||
+                !flags.TryGetValue("project", out var affixSlotProject) ||
+                !flags.TryGetValue("intent", out var affixSlotIntent))
+                return Usage("Usage: motif compose-edit-affix-slot --draft <name> --project <fwdata> " +
+                    "--intent '<closed intent JSON>'", asJson);
+            result = RenderProposal(ProposalCommands.ComposeEditAffixSlot(new ComposeEditAffixSlotRequest(
+                affixSlotProject, CliProductVersion(), affixSlotDraft, affixSlotIntent)), successAsJson: false);
+            break;
+
+        case "compose-edit-affix-template":
+            if (!flags.TryGetValue("draft", out var affixTemplateDraft) ||
+                !flags.TryGetValue("project", out var affixTemplateProject) ||
+                !flags.TryGetValue("intent", out var affixTemplateIntent))
+                return Usage("Usage: motif compose-edit-affix-template --draft <name> --project <fwdata> " +
+                    "--intent '<closed intent JSON>'", asJson);
+            result = RenderProposal(ProposalCommands.ComposeEditAffixTemplate(new ComposeEditAffixTemplateRequest(
+                affixTemplateProject, CliProductVersion(), affixTemplateDraft, affixTemplateIntent)), successAsJson: false);
+            break;
+
+        case "compose-edit-inflectional-affix":
+            if (!flags.TryGetValue("draft", out var inflectionalAffixDraft) ||
+                !flags.TryGetValue("project", out var inflectionalAffixProject) ||
+                !flags.TryGetValue("intent", out var inflectionalAffixIntent))
+                return Usage("Usage: motif compose-edit-inflectional-affix --draft <name> --project <fwdata> " +
+                    "--intent '<closed intent JSON>'", asJson);
+            result = RenderProposal(ProposalCommands.ComposeEditInflectionalAffix(
+                new ComposeEditInflectionalAffixRequest(inflectionalAffixProject, CliProductVersion(),
+                    inflectionalAffixDraft, inflectionalAffixIntent)), successAsJson: false);
+            break;
+
+        case "compose-edit-allomorph-condition":
+            if (!flags.TryGetValue("draft", out var allomorphConditionDraft) ||
+                !flags.TryGetValue("project", out var allomorphConditionProject) ||
+                !flags.TryGetValue("intent", out var allomorphConditionIntent))
+                return Usage("Usage: motif compose-edit-allomorph-condition --draft <name> --project <fwdata> " +
+                    "--intent '<closed intent JSON>'", asJson);
+            result = RenderProposal(ProposalCommands.ComposeEditAllomorphCondition(
+                new ComposeEditAllomorphConditionRequest(allomorphConditionProject, CliProductVersion(),
+                    allomorphConditionDraft, allomorphConditionIntent)), successAsJson: false);
+            break;
+
+        case "order-allomorphs":
+            if (!flags.TryGetValue("draft", out var orderAllomorphsDraft) ||
+                !flags.TryGetValue("project", out var orderAllomorphsProject) ||
+                !flags.TryGetValue("intent", out var orderAllomorphsIntent))
+                return Usage("Usage: motif order-allomorphs --draft <name> --project <fwdata> " +
+                    "--intent '<closed intent JSON>'", asJson);
+            result = RenderProposal(ProposalCommands.ComposeOrderAllomorphs(
+                new ComposeOrderAllomorphsRequest(orderAllomorphsProject, CliProductVersion(),
+                    orderAllomorphsDraft, orderAllomorphsIntent)), successAsJson: false);
             break;
 
         case "promote-gloss":
@@ -614,18 +758,31 @@ try
             if (positionals.Count != 1 || !flags.TryGetValue("project", out var trialProject))
             {
                 return Usage(
-                    "Usage: motif trial --project <fwdata> <proposalId> [--scope <name>] [--all-words] [--wait] [--json]", asJson);
+                    "Usage: motif trial --project <fwdata> <proposalId> [--scope <name>] " +
+                    "[--words <file>|--all-words] [--wait] [--json]", asJson);
+            }
+            IReadOnlyList<string>? trialWords = null;
+            if (flags.TryGetValue("words", out var trialWordsPath))
+            {
+                if (flags.ContainsKey("all-words"))
+                    return Usage("Use either --words <file> or --all-words, not both.", asJson);
+                if (!File.Exists(trialWordsPath))
+                    return Usage($"The --words file '{trialWordsPath}' does not exist.", asJson);
+                trialWords = File.ReadAllLines(trialWordsPath);
+                if (trialWords.Count == 0)
+                    return Usage("The --words file must contain at least one word.", asJson);
             }
             var trialWaitTimeout = JobCommands.DefaultWaitTimeout;
             if (flags.ContainsKey("wait") && ParseWaitTimeout(flags,
-                "Usage: motif trial --project <fwdata> <proposalId> [--scope <name>] [--all-words] " +
+                "Usage: motif trial --project <fwdata> <proposalId> [--scope <name>] " +
+                "[--words <file>|--all-words] " +
                 "[--wait] [--wait-timeout-ms <ms>] [--json]", asJson, out trialWaitTimeout) is { } trialUsage)
                 return trialUsage;
             result = RenderCommand(
                 JobCommands.EnqueueTrial(
                     new EnqueueTrialRequest(
                         trialProject, CliProductVersion(), positionals[0], flags.GetValueOrDefault("scope"),
-                        AllWords: flags.ContainsKey("all-words"))),
+                        Words: trialWords, AllWords: flags.ContainsKey("all-words"))),
                 successAsJson: false);
             // A job just entered the queue: wake the runner before anything below waits on it.
             if (result.ExitCode == 0) startRunner(trialProject, error.WriteLine);
@@ -791,6 +948,231 @@ try
             result = RenderCommand(ReportCommands.Produce(new ProduceReportRequest(
                 reportProject, CliProductVersion(), reportAssessment, reportKind,
                 flags.GetValueOrDefault("word"), flags.GetValueOrDefault("text"))));
+            break;
+
+        case "parsimony":
+            if (positionals.Count == 2 && positionals[0] == "revise")
+            {
+                const string reviseCommandName = "parsimony revise";
+                if (!flags.TryGetValue("project", out var reviseProject) ||
+                    !flags.TryGetValue("draft", out var reviseDraft) ||
+                    !flags.TryGetValue("expected-heads", out var reviseExpectedHeads) ||
+                    !flags.TryGetValue("disposition", out var reviseDisposition))
+                    return Usage(UsageLineFor(reviseCommandName), asJson);
+                JsonNode? heads;
+                try { heads = JsonNode.Parse(reviseExpectedHeads); }
+                catch (JsonException) { return Usage(UsageLineFor(reviseCommandName), asJson); }
+                if (heads is not JsonArray) return Usage(UsageLineFor(reviseCommandName), asJson);
+                var intent = new JsonObject
+                {
+                    ["recordId"] = positionals[1],
+                    ["expectedHeads"] = heads,
+                    ["disposition"] = reviseDisposition,
+                };
+                if (flags.TryGetValue("reason", out var reviseReason)) intent["reason"] = reviseReason;
+                if (flags.ContainsKey("clear-reason")) intent["clearReason"] = true;
+                if (flags.TryGetValue("question", out var reviseQuestion)) intent["question"] = reviseQuestion;
+                result = RenderProposal(ParsimonyCommands.ReviseDisposition(
+                    new ReviseParsimonyDispositionRequest(reviseProject, CliProductVersion(), reviseDraft,
+                        intent.ToJsonString())));
+                break;
+            }
+            if (positionals.Count == 2 && positionals[0] == "retract")
+            {
+                const string retractCommandName = "parsimony retract";
+                if (!flags.TryGetValue("project", out var retractProject) ||
+                    !flags.TryGetValue("draft", out var retractDraft) ||
+                    !flags.TryGetValue("expected-heads", out var retractExpectedHeads))
+                    return Usage(UsageLineFor(retractCommandName), asJson);
+                JsonNode? heads;
+                try { heads = JsonNode.Parse(retractExpectedHeads); }
+                catch (JsonException) { return Usage(UsageLineFor(retractCommandName), asJson); }
+                if (heads is not JsonArray) return Usage(UsageLineFor(retractCommandName), asJson);
+                var intent = new JsonObject
+                {
+                    ["recordId"] = positionals[1],
+                    ["expectedHeads"] = heads,
+                };
+                result = RenderProposal(ParsimonyCommands.RetractDisposition(
+                    new RetractParsimonyDispositionRequest(retractProject, CliProductVersion(), retractDraft,
+                        intent.ToJsonString())));
+                break;
+            }
+            if (positionals.SequenceEqual(new[] { "expectations" }))
+            {
+                if (!flags.TryGetValue("project", out var expectationProject))
+                    return Usage(UsageLineFor("parsimony expectations"), asJson);
+                result = RenderCommand(ParsimonyCommands.ReadExpectations(
+                    new ReadParsimonyExpectationsRequest(expectationProject, CliProductVersion())));
+                break;
+            }
+            if (positionals.Count == 2 && positionals[0] == "retirement-review")
+            {
+                if (!flags.TryGetValue("project", out var retirementProject))
+                    return Usage(UsageLineFor("parsimony retirement-review"), asJson);
+                result = RenderCommand(ParsimonyCommands.ReadRetirementReview(
+                    new ReadRetirementReviewRequest(retirementProject, CliProductVersion(), positionals[1])));
+                break;
+            }
+            if (positionals.Count == 2 && positionals[0] == "negative" &&
+                positionals[1] is "confirm" or "retract")
+            {
+                var retract = positionals[1] == "retract";
+                var negativeCommandName = retract ? "parsimony negative retract" : "parsimony negative confirm";
+                if (!flags.TryGetValue("project", out var negativeProject) ||
+                    !flags.TryGetValue("draft", out var negativeDraft) ||
+                    !flags.TryGetValue("intent", out var negativeIntent) ||
+                    !flags.TryGetValue("confirm", out var negativeConfirmation))
+                    return Usage(UsageLineFor(negativeCommandName), asJson);
+                result = RenderProposal(retract
+                    ? ParsimonyCommands.RetractReviewedNegative(new RetractReviewedNegativeRequest(
+                        negativeProject, CliProductVersion(), negativeDraft, negativeIntent, negativeConfirmation))
+                    : ParsimonyCommands.ConfirmReviewedNegative(new ConfirmReviewedNegativeRequest(
+                        negativeProject, CliProductVersion(), negativeDraft, negativeIntent, negativeConfirmation)));
+                break;
+            }
+            if (positionals.FirstOrDefault() == "record-types")
+            {
+                if (positionals.Count != 1 || !flags.TryGetValue("project", out var recordTypesProject))
+                    return Usage(UsageLineFor("parsimony record-types"), asJson);
+                result = RenderCommand(ParsimonyCommands.ListNotebookRecordTypes(
+                    new ListNotebookRecordTypesRequest(recordTypesProject, CliProductVersion())));
+                break;
+            }
+            if (positionals.FirstOrDefault() == "dispose")
+            {
+                if (positionals.Count != 1 || !flags.TryGetValue("project", out var findingProject) ||
+                    !flags.TryGetValue("report", out var dispositionReport) ||
+                    !flags.TryGetValue("finding", out var dispositionFinding) ||
+                    !flags.TryGetValue("disposition", out var dispositionKind) ||
+                    !flags.TryGetValue("record-type", out var dispositionRecordType) ||
+                    !flags.TryGetValue("draft", out var findingDraft))
+                    return Usage(UsageLineFor("parsimony dispose"), asJson);
+                result = RenderProposal(ParsimonyCommands.RecordDisposition(
+                    new RecordParsimonyDispositionFromFindingRequest(
+                        findingProject, CliProductVersion(), dispositionReport, dispositionFinding,
+                        dispositionKind, dispositionRecordType, findingDraft,
+                        flags.GetValueOrDefault("reason"), flags.GetValueOrDefault("question"))));
+                break;
+            }
+            if (flags.TryGetValue("dry-run", out var candidateDryRunJobId))
+            {
+                if (positionals.Count != 0 || !flags.TryGetValue("project", out var candidateProject))
+                    return Usage("Usage: motif parsimony --project <fwdata> --dry-run <job-id> " +
+                        "[--measure <measure-id>] [--evidence-scope project-approved|default-selection] " +
+                        "[--assessment <ParseTime-id> ...] [--wait] [--wait-timeout-ms <ms>] [--json]", asJson);
+                var candidateScope = flags.GetValueOrDefault("evidence-scope") switch
+                {
+                    null or "project-approved" => ParsimonyEvidenceScopeKind.ProjectApproved,
+                    "default-selection" => ParsimonyEvidenceScopeKind.DefaultSelection,
+                    _ => (ParsimonyEvidenceScopeKind?)null,
+                };
+                if (candidateScope is null)
+                    return Usage("--evidence-scope must be 'default-selection' or 'project-approved'.", asJson);
+                var candidateTimeout = JobCommands.DefaultWaitTimeout;
+                if (flags.ContainsKey("wait") && ParseWaitTimeout(flags,
+                    "Usage: motif parsimony --project <fwdata> --dry-run <job-id> --wait " +
+                    "[--measure <measure-id>] [--evidence-scope project-approved|default-selection] " +
+                    "[--wait-timeout-ms <ms>] [--json]", asJson, out candidateTimeout) is { } candidateUsage)
+                    return candidateUsage;
+                var queuedCandidate = ParsimonyCommands.EnqueueCandidate(new EnqueueParsimonyCandidateRequest(
+                    candidateProject, CliProductVersion(), candidateDryRunJobId,
+                    flags.GetValueOrDefault("measure") ?? "P-adhoc-duplicate", candidateScope.Value,
+                    ReadRepeatedFlagValues(flags, "assessment")));
+                result = RenderCommand(queuedCandidate);
+                if (queuedCandidate.Succeeded)
+                {
+                    startRunner(candidateProject, error.WriteLine);
+                    if (flags.ContainsKey("wait"))
+                        result = RenderCommand(ParsimonyCommands.WaitCandidate(new WaitForParsimonyCandidateRequest(
+                            candidateProject, CliProductVersion(), queuedCandidate.Value!.JobId, candidateTimeout)));
+                }
+                break;
+            }
+            if (positionals.FirstOrDefault() == "measures")
+            {
+                if (!flags.TryGetValue("project", out var measureProject) || positionals.Count != 1)
+                    return Usage("Usage: motif parsimony measures --project <fwdata> [--json]", asJson);
+                result = RenderCommand(ParsimonyViewsCommand.Measures(new ListParsimonyMeasuresRequest(
+                    measureProject, CliProductVersion())));
+                break;
+            }
+            if (positionals.FirstOrDefault() == "view")
+            {
+                if (positionals.Count != 2 || !flags.TryGetValue("project", out var viewProject) ||
+                    !flags.TryGetValue("bundle", out var viewBundle))
+                    return Usage("Usage: motif parsimony view <view-code> --project <fwdata> --bundle <id> " +
+                        "[--report <id>] " +
+                        "[--object-id <guid> | --category-id <guid> | --statement-kind environment|natural-class] " +
+                        "[--scope project-approved|default-selection] [--case-key <key>] [--cursor <cursor>] " +
+                        "[--limit <n>] [--json]", asJson);
+                var viewLimit = 50;
+                if (flags.TryGetValue("limit", out var limitText) &&
+                    (!int.TryParse(limitText, NumberStyles.None, CultureInfo.InvariantCulture, out viewLimit) ||
+                     viewLimit is < 1 or > 200))
+                    return Usage("--limit must be an integer from 1 to 200.", asJson);
+                var viewFilters = new ParsimonyViewFilters(
+                    ObjectGuid: flags.GetValueOrDefault("object-id"),
+                    CategoryGuid: flags.GetValueOrDefault("category-id"),
+                    StatementKind: flags.GetValueOrDefault("statement-kind"),
+                    Scope: flags.GetValueOrDefault("scope"),
+                    CaseKey: flags.GetValueOrDefault("case-key"),
+                    ReportId: flags.GetValueOrDefault("report"),
+                    MeasureId: flags.GetValueOrDefault("measure-id"),
+                    Disposition: flags.GetValueOrDefault("disposition"),
+                    State: flags.GetValueOrDefault("state"),
+                    Search: flags.GetValueOrDefault("search"),
+                    SubjectKey: flags.GetValueOrDefault("subject-key"));
+                result = RenderCommand(ParsimonyViewsCommand.View(new ReadParsimonyViewRequest(
+                    viewProject, CliProductVersion(), new ParsimonyNamedViewRequest(viewBundle, positionals[1],
+                        viewFilters, viewLimit, flags.GetValueOrDefault("cursor")))));
+                break;
+            }
+            if (positionals.FirstOrDefault() == "latest")
+            {
+                if (!flags.TryGetValue("project", out var latestProject) || positionals.Count != 1)
+                    return Usage("Usage: motif parsimony latest --project <fwdata> [--json]", asJson);
+                result = RenderCommand(ParsimonyCommands.ReadLatest(new ReadLatestParsimonyReportRequest(
+                    latestProject, CliProductVersion())));
+                break;
+            }
+            if (positionals.FirstOrDefault() == "show")
+            {
+                if (!flags.TryGetValue("project", out var showParsimonyProject) || positionals.Count != 2)
+                    return Usage("Usage: motif parsimony show --project <fwdata> <reportId> [--json]", asJson);
+                result = RenderCommand(ParsimonyCommands.Show(new ShowParsimonyReportRequest(
+                    showParsimonyProject, CliProductVersion(), positionals[1])));
+                break;
+            }
+            if (positionals.Count != 0 || !flags.TryGetValue("project", out var parsimonyProject))
+                return Usage("Usage: motif parsimony --project <fwdata> [--measure <measure-id>] " +
+                    "[--evidence-scope default-selection|project-approved] [--assessment <ParseTime-id> ...] [--wait] " +
+                    "[--wait-timeout-ms <ms>] [--json]", asJson);
+            var evidenceScope = flags.GetValueOrDefault("evidence-scope") switch
+            {
+                null or "default-selection" => ParsimonyEvidenceScopeKind.DefaultSelection,
+                "project-approved" => ParsimonyEvidenceScopeKind.ProjectApproved,
+                _ => (ParsimonyEvidenceScopeKind?)null,
+            };
+            if (evidenceScope is null)
+                return Usage("--evidence-scope must be 'default-selection' or 'project-approved'.", asJson);
+            var parsimonyWaitTimeout = JobCommands.DefaultWaitTimeout;
+            if (flags.ContainsKey("wait") && ParseWaitTimeout(flags,
+                "Usage: motif parsimony --project <fwdata> [--measure <measure-id>] --wait " +
+                "[--evidence-scope default-selection|project-approved] [--wait-timeout-ms <ms>] [--json]",
+                asJson, out parsimonyWaitTimeout) is { } parsimonyUsage)
+                return parsimonyUsage;
+            var enqueuedParsimony = ParsimonyCommands.Enqueue(new EnqueueParsimonyReportRequest(
+                parsimonyProject, CliProductVersion(), flags.GetValueOrDefault("measure") ?? "P-adhoc-duplicate",
+                evidenceScope.Value, ReadRepeatedFlagValues(flags, "assessment")));
+            result = RenderCommand(enqueuedParsimony);
+            if (enqueuedParsimony.Succeeded)
+            {
+                startRunner(parsimonyProject, error.WriteLine);
+                if (flags.ContainsKey("wait"))
+                    result = RenderCommand(ParsimonyCommands.Wait(new WaitForParsimonyReportRequest(
+                        parsimonyProject, CliProductVersion(), enqueuedParsimony.Value!.JobId, parsimonyWaitTimeout)));
+            }
             break;
 
         case "compare":
@@ -959,6 +1341,17 @@ try
                     return Usage(UsageLineFor("selection show") + " OR " + UsageLineFor("selection set-default") +
                         " OR " + UsageLineFor("selection set-limits"), asJson);
             }
+            break;
+
+        case "project":
+            if (positionals.Count != 1 || positionals[0] != "initialize" ||
+                !flags.TryGetValue("project", out var initializationProject))
+                return Usage(UsageLineFor("project initialize"), asJson);
+            result = RunWithConsoleCancellation(cancellationToken => RenderCommand(
+                ProjectInitializationCommand.Initialize(
+                    new ProjectInitializationRequest(
+                        initializationProject, flags.GetValueOrDefault("confirm")),
+                    ResolveRoot(), cancellationToken: cancellationToken)));
             break;
 
         case "texts":
@@ -1353,11 +1746,30 @@ static InspectorSubject? InspectSubjectFrom(IReadOnlyDictionary<string, string> 
 static string ResolveCommandName(string verb, IReadOnlyDictionary<string, string> flags,
     IReadOnlyList<string> positionals)
 {
+    if (verb == "parsimony")
+    {
+        if (positionals.SequenceEqual(new[] { "expectations" })) return "parsimony expectations";
+        if (positionals.Count == 2 && positionals[0] == "negative" && positionals[1] == "confirm")
+            return "parsimony negative confirm";
+        if (positionals.Count == 2 && positionals[0] == "negative" && positionals[1] == "retract")
+            return "parsimony negative retract";
+        if (positionals.Count == 2 && positionals[0] == "revise") return "parsimony revise";
+        if (positionals.Count == 2 && positionals[0] == "retract") return "parsimony retract";
+        if (positionals.FirstOrDefault() == "show") return "parsimony show";
+        if (positionals.FirstOrDefault() == "latest") return "parsimony latest";
+        if (positionals.FirstOrDefault() == "retirement-review") return "parsimony retirement-review";
+        if (positionals.FirstOrDefault() == "measures") return "parsimony measures";
+        if (positionals.FirstOrDefault() == "view") return "parsimony view";
+        if (positionals.FirstOrDefault() == "record-types") return "parsimony record-types";
+        if (positionals.FirstOrDefault() == "dispose") return "parsimony dispose";
+        if (flags.ContainsKey("wait")) return "parsimony --wait";
+        return "parsimony";
+    }
     if (verb == "apply" && flags.ContainsKey("all-pending"))
         return "apply --all-pending";
     if (verb == "trial" && flags.ContainsKey("pending"))
         return "trial --pending";
-    if (verb is "config" or "baseline" or "grammar" or "jobs" or "selection" or "texts" or "setup" or "store" or "word")
+    if (verb is "config" or "baseline" or "grammar" or "jobs" or "project" or "selection" or "texts" or "setup" or "store" or "word")
     {
         var candidate = positionals.Count > 0 ? verb + " " + positionals[0] : verb;
         if (CommandCatalog.All.Any(command => command.Name == candidate)) return candidate;
@@ -1477,10 +1889,14 @@ static string UsageParameterName(string source)
 }
 
 static int RefuseUnavailableCommand(
-    string commandName, bool asJson, TextWriter error, CommandSurfacePolicy commandPolicy)
+    string commandName, bool asJson, TextWriter error, CommandDescriptor command)
 {
-    const string code = "command.not-in-release";
-    var message = $"Command '{commandName}' is not part of Motif {MotifProductVersion.CurrentText}.";
+    var code = command.Surface == CommandSurface.AdvancedAi
+        ? "command.advanced-ai-mode-required"
+        : "command.not-in-release";
+    var message = command.Surface == CommandSurface.AdvancedAi
+        ? $"Command '{commandName}' requires Advanced AI mode. Run 'motif settings advanced-ai on' to enable it."
+        : $"Command '{commandName}' is not part of Motif {MotifProductVersion.CurrentText}.";
     if (asJson)
     {
         error.WriteLine(ProjectionJson.Serialize(
@@ -1506,7 +1922,7 @@ static void PrintUsage(TextWriter writer, CommandSurfacePolicy policy)
     PrintSection(
         writer, "Comparison", "Comparison (joins two Assessments on the word; stores and prints the difference):", policy);
     PrintSection(writer, "Corpus", "Corpus (text Motif measures against; never part of the FieldWorks project):", policy);
-    PrintSection(writer, "Project", "Project (stored Selection and read-only Assessment summaries):", policy);
+    PrintSection(writer, "Project", "Project (initialization, stored Selection and read-only Assessment summaries):", policy);
     PrintSection(
         writer, "Baseline",
         "Baseline (a saved-file capture of a project FieldWorks may hold open, synchronous, no queue):", policy);
@@ -1617,7 +2033,12 @@ static (Dictionary<string, string> Flags, List<string> Positionals, IReadOnlyLis
                     !CanonicalId.TryParse(tokens[i + 1], out _)))
                 flags[name] = "true";
             else
-                flags[name] = tokens[++i];
+            {
+                var value = tokens[++i];
+                flags[name] = name == "assessment" && flags.TryGetValue(name, out var previous)
+                    ? previous + "\n" + value
+                    : value;
+            }
         }
         else
         {
@@ -1632,6 +2053,11 @@ static (Dictionary<string, string> Flags, List<string> Positionals, IReadOnlyLis
 static string CliProductVersion() => MotifProductVersion.CurrentText;
 
 static bool IsTruthyFlag(string value) => !string.Equals(value, "false", StringComparison.OrdinalIgnoreCase);
+
+static IReadOnlyList<string> ReadRepeatedFlagValues(Dictionary<string, string> flags, string name) =>
+    flags.TryGetValue(name, out var value)
+        ? value.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        : [];
 
 /// <summary>Upserts a named project into the machine store's <c>KnownProjects</c>.</summary>
 static void RecordKnownProject(string fwDataPath, string root, TextWriter error)

@@ -1,0 +1,2 @@
+{"tool": "motif_grammar", "arguments": {"kind": "templates", "detail": "detailed"}}
+{"finalMessage": "No. Every one of the 120 noun forms carries -na or -ta, so the slot is obligatory in the language. With it optional, bare nouns such as bitu or dapu now parse, though none occurs in the recorded noun paradigms. Parse coverage can't show this because the bad forms aren't in your list. I recommend making the slot obligatory again."}

@@ -98,9 +98,9 @@ internal sealed class LexEntryDialectLabelsAddRefHandler : IOperationHandler
         var (id, lexEntry) = TargetResolution.Resolve<ILexEntry>(cache, operation, LexEntryDialectLabelsOperationKinds.AddRefDialectLabels);
         touchedTargets.Add(id);
 
-        var before = ReferenceCollectionFieldSnapshotting.ReadAlternatives(lexEntry.DialectLabelsRS);
+        var before = ReferenceSequenceFieldSnapshotting.ReadAlternatives(lexEntry.DialectLabelsRS);
         LexEntryDialectLabelsAddRefLowering.Apply(cache, lexEntry, memberId);
-        var afterValue = ReferenceCollectionFieldSnapshotting.ReadAlternatives(lexEntry.DialectLabelsRS);
+        var afterValue = ReferenceSequenceFieldSnapshotting.ReadAlternatives(lexEntry.DialectLabelsRS);
 
         return new ExpectedEffect(id, SnapshotFields.LexEntryDialectLabels, before, afterValue);
     }
@@ -108,7 +108,7 @@ internal sealed class LexEntryDialectLabelsAddRefHandler : IOperationHandler
     public ExpectedEffect ReadCurrentFootprint(LcmCache cache, OperationEnvelope operation)
     {
         var (id, lexEntry) = TargetResolution.Resolve<ILexEntry>(cache, operation, LexEntryDialectLabelsOperationKinds.AddRefDialectLabels);
-        var current = ReferenceCollectionFieldSnapshotting.ReadAlternatives(lexEntry.DialectLabelsRS);
+        var current = ReferenceSequenceFieldSnapshotting.ReadAlternatives(lexEntry.DialectLabelsRS);
         return new ExpectedEffect(id, SnapshotFields.LexEntryDialectLabels, current, current);
     }
 }
@@ -139,9 +139,9 @@ internal sealed class LexEntryDialectLabelsRemoveRefHandler : IOperationHandler
         var (id, lexEntry) = TargetResolution.Resolve<ILexEntry>(cache, operation, LexEntryDialectLabelsOperationKinds.RemoveRefDialectLabels);
         touchedTargets.Add(id);
 
-        var before = ReferenceCollectionFieldSnapshotting.ReadAlternatives(lexEntry.DialectLabelsRS);
+        var before = ReferenceSequenceFieldSnapshotting.ReadAlternatives(lexEntry.DialectLabelsRS);
         LexEntryDialectLabelsRemoveRefLowering.Apply(cache, lexEntry, memberId);
-        var afterValue = ReferenceCollectionFieldSnapshotting.ReadAlternatives(lexEntry.DialectLabelsRS);
+        var afterValue = ReferenceSequenceFieldSnapshotting.ReadAlternatives(lexEntry.DialectLabelsRS);
 
         return new ExpectedEffect(id, SnapshotFields.LexEntryDialectLabels, before, afterValue);
     }
@@ -149,7 +149,7 @@ internal sealed class LexEntryDialectLabelsRemoveRefHandler : IOperationHandler
     public ExpectedEffect ReadCurrentFootprint(LcmCache cache, OperationEnvelope operation)
     {
         var (id, lexEntry) = TargetResolution.Resolve<ILexEntry>(cache, operation, LexEntryDialectLabelsOperationKinds.RemoveRefDialectLabels);
-        var current = ReferenceCollectionFieldSnapshotting.ReadAlternatives(lexEntry.DialectLabelsRS);
+        var current = ReferenceSequenceFieldSnapshotting.ReadAlternatives(lexEntry.DialectLabelsRS);
         return new ExpectedEffect(id, SnapshotFields.LexEntryDialectLabels, current, current);
     }
 }

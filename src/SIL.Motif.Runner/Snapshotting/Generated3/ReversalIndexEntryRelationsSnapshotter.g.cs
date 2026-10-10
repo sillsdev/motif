@@ -26,7 +26,7 @@ public static class ReversalIndexEntryRelationsSnapshotter
         var fields = new Dictionary<string, IReadOnlyDictionary<string, string>>();
 
         AddIfPopulated(fields, SnapshotFields.ReversalIndexEntryPartOfSpeech, ReferenceFieldSnapshotting.ReadAlternatives(reversalIndexEntry.PartOfSpeechRA));
-        AddIfPopulated(fields, SnapshotFields.ReversalIndexEntrySenses, ReferenceCollectionFieldSnapshotting.ReadAlternatives(reversalIndexEntry.SensesRS));
+        AddIfPopulated(fields, SnapshotFields.ReversalIndexEntrySenses, ReferenceSequenceFieldSnapshotting.ReadAlternatives(reversalIndexEntry.SensesRS));
 
         return new ObjectSnapshot(canonicalId, fields);
     }

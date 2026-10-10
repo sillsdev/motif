@@ -4,8 +4,9 @@
 //   manifest or MasterLCModel.xml change, and check in the result.
 //
 //   Source: MoAffixAllomorph.Position (rel/seq PhEnvironment, addRef|removeRef emitted;
-//   `move` deferred -- see ReferenceCollectionFieldEmitter.cs (SIL.Motif.Generator) remarks).
+//   `move` emitted with identity-relative placement).
 // </auto-generated>
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
@@ -20,11 +21,12 @@ using SIL.LCModel;
 
 namespace SIL.Motif.Runner.Operations;
 
-/// <summary>Names the two <c>MoAffixAllomorph.Position</c> operation kinds.</summary>
+/// <summary>Names the generated ordered sequence <c>MoAffixAllomorph.Position</c> operation kinds.</summary>
 public static class MoAffixAllomorphPositionOperationKinds
 {
     public const string AddRefPosition = "grammar/moAffixAllomorph/addRefPosition";
     public const string RemoveRefPosition = "grammar/moAffixAllomorph/removeRefPosition";
+    public const string MovePosition = "grammar/moAffixAllomorph/movePosition";
 
     [ModuleInitializer]
     internal static void Register()
@@ -33,6 +35,8 @@ public static class MoAffixAllomorphPositionOperationKinds
         OperationKindRegistry.Register(RemoveRefPosition);
         OperationHandlerRegistry.Register(AddRefPosition, MoAffixAllomorphPositionAddRefHandler.Instance);
         OperationHandlerRegistry.Register(RemoveRefPosition, MoAffixAllomorphPositionRemoveRefHandler.Instance);
+        OperationKindRegistry.Register(MovePosition);
+        OperationHandlerRegistry.Register(MovePosition, MoAffixAllomorphPositionMoveHandler.Instance);
     }
 }
 
@@ -52,14 +56,15 @@ public static class MoAffixAllomorphPositionMemberPayload
     }
 }
 
-/// <summary>Lowers <see cref="MoAffixAllomorphPositionOperationKinds.AddRefPosition"/>: resolves the
-/// referenced IPhEnvironment and adds it to <c>moAffixAllomorph.PositionRS</c> (a no-op if already
-/// present).</summary>
+/// <summary>Lowers <see cref="MoAffixAllomorphPositionOperationKinds.AddRefPosition"/> by inserting the
+/// referenced member at its declared identity-relative placement.</summary>
 public static class MoAffixAllomorphPositionAddRefLowering
 {
-    public static void Apply(LcmCache cache, IMoAffixAllomorph moAffixAllomorph, CanonicalId memberId) =>
-        ReferenceCollectionFieldLowering.ApplyAddRef<IPhEnvironment>(
-            cache, moAffixAllomorph.PositionRS, memberId, MoAffixAllomorphPositionOperationKinds.AddRefPosition);
+    public static void Apply(LcmCache cache, IMoAffixAllomorph moAffixAllomorph, CanonicalId memberId,
+        Placement? placement) =>
+        ReferenceSequenceFieldLowering.ApplyAddRef<IPhEnvironment>(
+            cache, moAffixAllomorph.PositionRS, memberId, placement,
+            MoAffixAllomorphPositionOperationKinds.AddRefPosition);
 }
 
 /// <summary>Lowers <see cref="MoAffixAllomorphPositionOperationKinds.RemoveRefPosition"/>: resolves the
@@ -98,9 +103,9 @@ internal sealed class MoAffixAllomorphPositionAddRefHandler : IOperationHandler
         var (id, moAffixAllomorph) = TargetResolution.Resolve<IMoAffixAllomorph>(cache, operation, MoAffixAllomorphPositionOperationKinds.AddRefPosition);
         touchedTargets.Add(id);
 
-        var before = ReferenceCollectionFieldSnapshotting.ReadAlternatives(moAffixAllomorph.PositionRS);
-        MoAffixAllomorphPositionAddRefLowering.Apply(cache, moAffixAllomorph, memberId);
-        var afterValue = ReferenceCollectionFieldSnapshotting.ReadAlternatives(moAffixAllomorph.PositionRS);
+        var before = ReferenceSequenceFieldSnapshotting.ReadAlternatives(moAffixAllomorph.PositionRS);
+        MoAffixAllomorphPositionAddRefLowering.Apply(cache, moAffixAllomorph, memberId, operation.Placement);
+        var afterValue = ReferenceSequenceFieldSnapshotting.ReadAlternatives(moAffixAllomorph.PositionRS);
 
         return new ExpectedEffect(id, SnapshotFields.MoAffixAllomorphPosition, before, afterValue);
     }
@@ -108,7 +113,7 @@ internal sealed class MoAffixAllomorphPositionAddRefHandler : IOperationHandler
     public ExpectedEffect ReadCurrentFootprint(LcmCache cache, OperationEnvelope operation)
     {
         var (id, moAffixAllomorph) = TargetResolution.Resolve<IMoAffixAllomorph>(cache, operation, MoAffixAllomorphPositionOperationKinds.AddRefPosition);
-        var current = ReferenceCollectionFieldSnapshotting.ReadAlternatives(moAffixAllomorph.PositionRS);
+        var current = ReferenceSequenceFieldSnapshotting.ReadAlternatives(moAffixAllomorph.PositionRS);
         return new ExpectedEffect(id, SnapshotFields.MoAffixAllomorphPosition, current, current);
     }
 }
@@ -135,13 +140,15 @@ internal sealed class MoAffixAllomorphPositionRemoveRefHandler : IOperationHandl
         }
 
         var memberId = MoAffixAllomorphPositionMemberPayload.Parse(after, MoAffixAllomorphPositionOperationKinds.RemoveRefPosition);
+        if (operation.Placement is not null)
+            throw new InvalidOperationException($"Operation '{operation.OperationId.Value}' of kind '{MoAffixAllomorphPositionOperationKinds.RemoveRefPosition}' cannot carry placement; use its move kind.");
 
         var (id, moAffixAllomorph) = TargetResolution.Resolve<IMoAffixAllomorph>(cache, operation, MoAffixAllomorphPositionOperationKinds.RemoveRefPosition);
         touchedTargets.Add(id);
 
-        var before = ReferenceCollectionFieldSnapshotting.ReadAlternatives(moAffixAllomorph.PositionRS);
+        var before = ReferenceSequenceFieldSnapshotting.ReadAlternatives(moAffixAllomorph.PositionRS);
         MoAffixAllomorphPositionRemoveRefLowering.Apply(cache, moAffixAllomorph, memberId);
-        var afterValue = ReferenceCollectionFieldSnapshotting.ReadAlternatives(moAffixAllomorph.PositionRS);
+        var afterValue = ReferenceSequenceFieldSnapshotting.ReadAlternatives(moAffixAllomorph.PositionRS);
 
         return new ExpectedEffect(id, SnapshotFields.MoAffixAllomorphPosition, before, afterValue);
     }
@@ -149,7 +156,48 @@ internal sealed class MoAffixAllomorphPositionRemoveRefHandler : IOperationHandl
     public ExpectedEffect ReadCurrentFootprint(LcmCache cache, OperationEnvelope operation)
     {
         var (id, moAffixAllomorph) = TargetResolution.Resolve<IMoAffixAllomorph>(cache, operation, MoAffixAllomorphPositionOperationKinds.RemoveRefPosition);
-        var current = ReferenceCollectionFieldSnapshotting.ReadAlternatives(moAffixAllomorph.PositionRS);
+        var current = ReferenceSequenceFieldSnapshotting.ReadAlternatives(moAffixAllomorph.PositionRS);
+        return new ExpectedEffect(id, SnapshotFields.MoAffixAllomorphPosition, current, current);
+    }
+}
+
+/// <summary>Lowers the ordered sequence move by resolving the member id within the target sequence.</summary>
+public static class MoAffixAllomorphPositionMoveLowering
+{
+    public static void Apply(IMoAffixAllomorph moAffixAllomorph, CanonicalId memberId, Placement placement) =>
+        ReferenceSequenceFieldLowering.ApplyMove(
+            moAffixAllomorph.PositionRS, memberId, placement, MoAffixAllomorphPositionOperationKinds.MovePosition);
+}
+
+/// <summary>Resolves, snapshots, lowers, and re-snapshots one
+/// <see cref="MoAffixAllomorphPositionOperationKinds.MovePosition"/> operation.</summary>
+internal sealed class MoAffixAllomorphPositionMoveHandler : IOperationHandler
+{
+    internal static readonly MoAffixAllomorphPositionMoveHandler Instance = new();
+    private MoAffixAllomorphPositionMoveHandler() { }
+
+    public ExpectedEffect ApplyAndCaptureEffect(LcmCache cache, OperationEnvelope operation, List<CanonicalId> touchedTargets)
+    {
+        if (operation.Target is not { })
+            throw new InvalidOperationException($"Operation '{operation.OperationId.Value}' of kind '{MoAffixAllomorphPositionOperationKinds.MovePosition}' requires 'target'.");
+        if (operation.After is not { } after)
+            throw new InvalidOperationException($"Operation '{operation.OperationId.Value}' of kind '{MoAffixAllomorphPositionOperationKinds.MovePosition}' requires 'after'.");
+        if (operation.Placement is not { } placement)
+            throw new InvalidOperationException($"Operation '{operation.OperationId.Value}' of kind '{MoAffixAllomorphPositionOperationKinds.MovePosition}' requires 'placement'.");
+
+        var memberId = MoAffixAllomorphPositionMemberPayload.Parse(after, MoAffixAllomorphPositionOperationKinds.MovePosition);
+        var (id, moAffixAllomorph) = TargetResolution.Resolve<IMoAffixAllomorph>(cache, operation, MoAffixAllomorphPositionOperationKinds.MovePosition);
+        touchedTargets.Add(id);
+        var before = ReferenceSequenceFieldSnapshotting.ReadAlternatives(moAffixAllomorph.PositionRS);
+        MoAffixAllomorphPositionMoveLowering.Apply(moAffixAllomorph, memberId, placement);
+        var afterValue = ReferenceSequenceFieldSnapshotting.ReadAlternatives(moAffixAllomorph.PositionRS);
+        return new ExpectedEffect(id, SnapshotFields.MoAffixAllomorphPosition, before, afterValue);
+    }
+
+    public ExpectedEffect ReadCurrentFootprint(LcmCache cache, OperationEnvelope operation)
+    {
+        var (id, moAffixAllomorph) = TargetResolution.Resolve<IMoAffixAllomorph>(cache, operation, MoAffixAllomorphPositionOperationKinds.MovePosition);
+        var current = ReferenceSequenceFieldSnapshotting.ReadAlternatives(moAffixAllomorph.PositionRS);
         return new ExpectedEffect(id, SnapshotFields.MoAffixAllomorphPosition, current, current);
     }
 }

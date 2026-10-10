@@ -1,0 +1,17 @@
+[
+  {
+    "parent": "3723874",
+    "child": "3723878",
+    "syscall": "1791240042.567787 clone(child_stack=NULL, flags=CLONE_CHILD_CLEARTID|CLONE_CHILD_SETTID|SIGCHLD, child_tidptr=0x7bf4bb6f1590) = 2"
+  },
+  {
+    "parent": "3723947",
+    "child": "3723948",
+    "syscall": "1791240046.637273 clone(child_stack=NULL, flags=CLONE_CHILD_CLEARTID|CLONE_CHILD_SETTID|SIGCHLD, child_tidptr=0x728699a26590) = 2"
+  },
+  {
+    "parent": "3723906",
+    "child": "3723907",
+    "syscall": "1791240043.638256 clone3({flags=CLONE_VM|CLONE_FS|CLONE_FILES|CLONE_SIGHAND|CLONE_THREAD|CLONE_SYSVSEM|CLONE_SETTLS|CLONE_PARENT_SETTID|CLONE_CHILD_CLEARTID, child_tid=0x7c8b1140fce8, parent_tid=0x7c8b1140f990, exit_signal=0, stack=0x7c8b10c0f000, stack_size=0x7fff40, tls=0x7c8b1140f6c0} => {parent_tid=[24]}, 88) = 24"
+  }
+]

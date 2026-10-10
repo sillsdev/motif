@@ -47,6 +47,14 @@ internal static class FakeParser
     internal static void BehaveBesideExecutable(string copiedExecutable, object behaviour) =>
         Behave(Path.GetDirectoryName(copiedExecutable)!, behaviour);
 
+    internal static void WriteFactsFixture(string copiedExecutable, object fixture) =>
+        File.WriteAllText(Path.Combine(Path.GetDirectoryName(copiedExecutable)!, "_fake-pangloss-facts.json"),
+            JsonSerializer.Serialize(fixture));
+
+    internal static void WriteCandidateFactsFixture(string copiedExecutable, object fixture) =>
+        File.WriteAllText(Path.Combine(Path.GetDirectoryName(copiedExecutable)!, "_fake-pangloss-candidate-facts.json"),
+            JsonSerializer.Serialize(fixture));
+
     internal static void OmitDescribeEntries(string copiedExecutable, params string[] entries) =>
         File.WriteAllText(Path.Combine(Path.GetDirectoryName(copiedExecutable)!,
             "_fake-pangloss-describe-omissions.json"), JsonSerializer.Serialize(entries));

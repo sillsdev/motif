@@ -32,7 +32,7 @@ public static class FootprintProbe
             if (!FootprintPlan.ParticipatesInFootprint(operation, mintedTargets)) continue;
 
             var handler = OperationHandlerRegistry.Resolve(operation.Kind, "Apply's footprint pre-flight");
-            entries.Add(handler.ReadCurrentFootprint(cache, operation));
+            entries.AddRange(OperationEffectCapture.ReadFootprint(handler, cache, operation));
         }
 
         return FootprintDigest.Compute(entries);

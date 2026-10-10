@@ -14,7 +14,12 @@
     <ProjectReference Include="..\SIL.Motif.Projection\SIL.Motif.Projection.csproj" />
     <ProjectReference Include="..\SIL.Motif.Runner\SIL.Motif.Runner.csproj" />
     <ProjectReference Include="..\SIL.Motif.LiveHost\SIL.Motif.LiveHost.csproj" />
+    <ProjectReference Include="..\SIL.Motif.Help\SIL.Motif.Help.csproj" />
     <ProjectReference Include="..\SIL.Motif.Worker.Runtime\SIL.Motif.Worker.Runtime.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="SIL.Motif.Tests.Commands" />
   </ItemGroup>
 
   <!-- The pasted-header template (ADR 0045 decision 5): the only Handoff asset left once reference/ is gone. -->

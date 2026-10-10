@@ -1,4 +1,5 @@
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Commands.Requests;
 using SIL.Motif.Commands.SelectionReading;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
@@ -49,5 +50,17 @@ public partial interface ICommandClient
     /// the stored Parse all words' words and times, and the stored grammar check's findings.
     /// </summary>
     Task<CommandOutcome<InspectResponse>> InspectAsync(InspectRequest request, CancellationToken cancellationToken);
+
+    /// <summary>Reads the staged allomorph-retirement Draft's Dry Run and stored review evidence.</summary>
+    Task<CommandOutcome<RetirementReviewQueryResponse>> ReadRetirementReviewAsync(
+        ReadRetirementReviewRequest request, CancellationToken cancellationToken);
+
+    /// <summary>Names the newest stored Parsimony Report and its bundle, reading the store and never a parser.</summary>
+    Task<CommandOutcome<ParsimonyLatestReportResponse>> ReadLatestParsimonyReportAsync(
+        ReadLatestParsimonyReportRequest request, CancellationToken cancellationToken);
+
+    /// <summary>Reads one stored Parsimony Report by its id, without starting a parser run.</summary>
+    Task<CommandOutcome<ParsimonyReportResponse>> ReadParsimonyReportAsync(
+        ShowParsimonyReportRequest request, CancellationToken cancellationToken);
 
 }

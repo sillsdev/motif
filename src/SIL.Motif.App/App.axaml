@@ -35,6 +35,7 @@
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Badge.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/TabStrip.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Warnings.axaml" />
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Parsimony.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/TryWord.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Timing.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Statistics.axaml" />

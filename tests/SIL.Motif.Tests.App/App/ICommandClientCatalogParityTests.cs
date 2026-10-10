@@ -21,6 +21,7 @@ public sealed class ICommandClientCatalogParityTests
             [nameof(ICommandClient.TimingAsync)] = "timing",
             [nameof(ICommandClient.CheckGrammarAsync)] = "grammar check",
             [nameof(ICommandClient.ReadDefaultSelectionAsync)] = "selection show",
+            [nameof(ICommandClient.ReadRetirementReviewAsync)] = "parsimony retirement-review",
             [nameof(ICommandClient.SetDefaultSelectionAsync)] = "selection set-default",
             [nameof(ICommandClient.SetSelectionLimitsAsync)] = "selection set-limits",
             [nameof(ICommandClient.SkipSetupAsync)] = "setup skip",
@@ -52,6 +53,8 @@ public sealed class ICommandClientCatalogParityTests
         nameof(ICommandClient.OpenSelectionReaderAsync),
         nameof(ICommandClient.ReadParserStepRateAsync),
         nameof(ICommandClient.RestoreBackupAsync),
+        nameof(ICommandClient.ReadLatestParsimonyReportAsync),
+        nameof(ICommandClient.ReadParsimonyReportAsync),
     };
 
     [Fact]

@@ -25,8 +25,8 @@ public static class MoInflAffixTemplateRelationsSnapshotter
         var canonicalId = CanonicalId.FromGuid(moInflAffixTemplate.Guid);
         var fields = new Dictionary<string, IReadOnlyDictionary<string, string>>();
 
-        AddIfPopulated(fields, SnapshotFields.MoInflAffixTemplatePrefixSlots, ReferenceCollectionFieldSnapshotting.ReadAlternatives(moInflAffixTemplate.PrefixSlotsRS));
-        AddIfPopulated(fields, SnapshotFields.MoInflAffixTemplateSuffixSlots, ReferenceCollectionFieldSnapshotting.ReadAlternatives(moInflAffixTemplate.SuffixSlotsRS));
+        AddIfPopulated(fields, SnapshotFields.MoInflAffixTemplatePrefixSlots, ReferenceSequenceFieldSnapshotting.ReadAlternatives(moInflAffixTemplate.PrefixSlotsRS));
+        AddIfPopulated(fields, SnapshotFields.MoInflAffixTemplateSuffixSlots, ReferenceSequenceFieldSnapshotting.ReadAlternatives(moInflAffixTemplate.SuffixSlotsRS));
 
         return new ObjectSnapshot(canonicalId, fields);
     }

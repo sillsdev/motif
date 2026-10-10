@@ -5,19 +5,18 @@ using Xunit;
 namespace SIL.Motif.Tests.Commands;
 
 /// <summary>
-/// Pins the one-way dependency direction between the command catalog and its front ends (ADR 0043):
-/// <c>SIL.Motif.Commands</c> may reach every domain project it needs, but nothing may reach it back
-/// into a UI project.
+/// Pins the command catalog's dependencies (ADR 0043), including Help's Parsimony recipe metadata
+/// used to caption finding-based dispositions.
 /// </summary>
 public sealed class CommandsProjectReferenceTests
 {
     [Fact]
-    public void CommandsReferencesExactlyItsDomainProjects()
+    public void CommandsReferencesItsDomainProjectsAndHelpMetadata()
     {
         Assert.Equal(
             new[]
             {
-                "SIL.Motif.Contract", "SIL.Motif.Host", "SIL.Motif.LiveHost", "SIL.Motif.Model",
+                "SIL.Motif.Contract", "SIL.Motif.Help", "SIL.Motif.Host", "SIL.Motif.LiveHost", "SIL.Motif.Model",
                 "SIL.Motif.Projection", "SIL.Motif.Runner", "SIL.Motif.Worker.Runtime",
             },
             ReferencedProjectNames("SIL.Motif.Commands").Order(StringComparer.Ordinal));

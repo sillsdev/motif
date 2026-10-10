@@ -26,7 +26,7 @@ public sealed class ParseMorphEvidenceTests
     }
 
     [Fact]
-    public void CompleteCoverageCannotCompleteAnInterruptedSearch()
+    public void IncompleteCasesCannotProveApprovedPreservation()
     {
         var analysis = Analysis(Form, Msa);
         var first = Row(analysis) with { Capped = true, TimedOut = true };

@@ -98,9 +98,9 @@ internal sealed class MoMorphAdhocProhibRestOfMorphsAddRefHandler : IOperationHa
         var (id, moMorphAdhocProhib) = TargetResolution.Resolve<IMoMorphAdhocProhib>(cache, operation, MoMorphAdhocProhibRestOfMorphsOperationKinds.AddRefRestOfMorphs);
         touchedTargets.Add(id);
 
-        var before = ReferenceCollectionFieldSnapshotting.ReadAlternatives(moMorphAdhocProhib.RestOfMorphsRS);
+        var before = ReferenceSequenceFieldSnapshotting.ReadAlternatives(moMorphAdhocProhib.RestOfMorphsRS);
         MoMorphAdhocProhibRestOfMorphsAddRefLowering.Apply(cache, moMorphAdhocProhib, memberId);
-        var afterValue = ReferenceCollectionFieldSnapshotting.ReadAlternatives(moMorphAdhocProhib.RestOfMorphsRS);
+        var afterValue = ReferenceSequenceFieldSnapshotting.ReadAlternatives(moMorphAdhocProhib.RestOfMorphsRS);
 
         return new ExpectedEffect(id, SnapshotFields.MoMorphAdhocProhibRestOfMorphs, before, afterValue);
     }
@@ -108,7 +108,7 @@ internal sealed class MoMorphAdhocProhibRestOfMorphsAddRefHandler : IOperationHa
     public ExpectedEffect ReadCurrentFootprint(LcmCache cache, OperationEnvelope operation)
     {
         var (id, moMorphAdhocProhib) = TargetResolution.Resolve<IMoMorphAdhocProhib>(cache, operation, MoMorphAdhocProhibRestOfMorphsOperationKinds.AddRefRestOfMorphs);
-        var current = ReferenceCollectionFieldSnapshotting.ReadAlternatives(moMorphAdhocProhib.RestOfMorphsRS);
+        var current = ReferenceSequenceFieldSnapshotting.ReadAlternatives(moMorphAdhocProhib.RestOfMorphsRS);
         return new ExpectedEffect(id, SnapshotFields.MoMorphAdhocProhibRestOfMorphs, current, current);
     }
 }
@@ -139,9 +139,9 @@ internal sealed class MoMorphAdhocProhibRestOfMorphsRemoveRefHandler : IOperatio
         var (id, moMorphAdhocProhib) = TargetResolution.Resolve<IMoMorphAdhocProhib>(cache, operation, MoMorphAdhocProhibRestOfMorphsOperationKinds.RemoveRefRestOfMorphs);
         touchedTargets.Add(id);
 
-        var before = ReferenceCollectionFieldSnapshotting.ReadAlternatives(moMorphAdhocProhib.RestOfMorphsRS);
+        var before = ReferenceSequenceFieldSnapshotting.ReadAlternatives(moMorphAdhocProhib.RestOfMorphsRS);
         MoMorphAdhocProhibRestOfMorphsRemoveRefLowering.Apply(cache, moMorphAdhocProhib, memberId);
-        var afterValue = ReferenceCollectionFieldSnapshotting.ReadAlternatives(moMorphAdhocProhib.RestOfMorphsRS);
+        var afterValue = ReferenceSequenceFieldSnapshotting.ReadAlternatives(moMorphAdhocProhib.RestOfMorphsRS);
 
         return new ExpectedEffect(id, SnapshotFields.MoMorphAdhocProhibRestOfMorphs, before, afterValue);
     }
@@ -149,7 +149,7 @@ internal sealed class MoMorphAdhocProhibRestOfMorphsRemoveRefHandler : IOperatio
     public ExpectedEffect ReadCurrentFootprint(LcmCache cache, OperationEnvelope operation)
     {
         var (id, moMorphAdhocProhib) = TargetResolution.Resolve<IMoMorphAdhocProhib>(cache, operation, MoMorphAdhocProhibRestOfMorphsOperationKinds.RemoveRefRestOfMorphs);
-        var current = ReferenceCollectionFieldSnapshotting.ReadAlternatives(moMorphAdhocProhib.RestOfMorphsRS);
+        var current = ReferenceSequenceFieldSnapshotting.ReadAlternatives(moMorphAdhocProhib.RestOfMorphsRS);
         return new ExpectedEffect(id, SnapshotFields.MoMorphAdhocProhibRestOfMorphs, current, current);
     }
 }

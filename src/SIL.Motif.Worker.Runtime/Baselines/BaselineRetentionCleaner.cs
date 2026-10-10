@@ -18,7 +18,10 @@ public enum BaselinePinSources
     ActiveJob = 1,
     DryRun = 2,
     Decision = 4,
-    Receipt = 8
+    Receipt = 8,
+    ParsimonyJob = 16,
+    ParsimonyReport = 32,
+    ParsimonyCheckRun = 64
 }
 
 /// <summary>Provides the durable source categories that pin a Baseline.</summary>

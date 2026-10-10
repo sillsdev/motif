@@ -57,8 +57,8 @@ public sealed class LexEntryReferenceCollectionOperationsTests : IDisposable
         var addProposal = BuildProposal(addKind, target, memberId);
         var addDryRun = ScratchDryRun.Of(_cache, addProposal);
         var addEffect = Assert.Single(addDryRun.ExpectedEffects);
-        Assert.DoesNotContain(memberId.Value, addEffect.Before.Keys);
-        Assert.Contains(memberId.Value, addEffect.After.Keys);
+        Assert.DoesNotContain(memberId.Value, addEffect.Before.Values);
+        Assert.Contains(memberId.Value, addEffect.After.Values);
 
         var addReceipt = ProposalApplier.Apply(_cache, addProposal, addDryRun.Anchor, "motif-tests");
         Assert.False(addReceipt.AlreadyApplied);
@@ -68,8 +68,8 @@ public sealed class LexEntryReferenceCollectionOperationsTests : IDisposable
         var removeProposal = BuildProposal(removeKind, target, memberId);
         var removeDryRun = ScratchDryRun.Of(_cache, removeProposal);
         var removeEffect = Assert.Single(removeDryRun.ExpectedEffects);
-        Assert.Contains(memberId.Value, removeEffect.Before.Keys);
-        Assert.DoesNotContain(memberId.Value, removeEffect.After.Keys);
+        Assert.Contains(memberId.Value, removeEffect.Before.Values);
+        Assert.DoesNotContain(memberId.Value, removeEffect.After.Values);
 
         var removeReceipt = ProposalApplier.Apply(_cache, removeProposal, removeDryRun.Anchor, "motif-tests");
         Assert.False(removeReceipt.AlreadyApplied);

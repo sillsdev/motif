@@ -228,3 +228,13 @@ project's measurement and the baseline every future Trial compares against. A pu
 the applied Proposal's artifacts destroys the reference point for every later comparison, and the damage is
 invisible until the next Trial fails to produce a delta. Promotion must therefore happen before the sweep,
 and the promoted Assessment must be excluded from it by identity rather than by hoping the ordering holds.
+
+### 2026-10-05 — Report inputs include frozen evidence
+
+Motif keeps an explanation separate from the measurements and captured facts that support it. Some explanations need a completed parser measurement; others need only the saved grammar and language-project evidence.
+
+The registered Report producer interface accepts a closed input family: stored Assessment material, or a validated frozen Parsimony evidence bundle with optional references to stored Assessments. Existing producers name the missing Assessment kind or capability when they cannot answer from the supplied material. The `parsimony` verb orchestrates the registered `parsimony` Report producer; it does not add a second producer registry.
+
+Derived SQLite analysis artifacts are disposable and rebuildable. Reviewed negatives and Parsimony dispositions live in durable FieldWorks project data; their concrete representation is deferred to a forthcoming ADR. No negative or disposition tables are added to `Project.motif.db`.
+
+The Assessor remains responsible for interpreting its raw parser format. Motif joins that evidence to the frozen project evidence and presents the finding. A Parsimony Report is always advisory, and its threshold or disposition never changes Readiness or Apply. This narrows nothing in the configured regression policy that ADR 0042 decision 5 records for other Report kinds.

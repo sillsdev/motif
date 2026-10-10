@@ -1,0 +1,3 @@
+{"tool": "motif_grammar", "arguments": {"kind": "phonological_rules", "detail": "detailed"}}
+{"tool": "motif_try_word", "arguments": {"word": "kogumpa", "detail": "detailed"}, "skipProfiles": ["lean"]}
+{"finalMessage": "The grammar is missing nasal place assimilation across the stem–suffix boundary. Underlying kogun plus locative -pa must change n to m before the bilabial p, yielding kogumpa. Restore the general n to m rule before bilabials, preserving kogun and -pa rather than adding stem-specific allomorphs."}

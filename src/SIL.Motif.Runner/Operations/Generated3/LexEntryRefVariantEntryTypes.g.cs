@@ -98,9 +98,9 @@ internal sealed class LexEntryRefVariantEntryTypesAddRefHandler : IOperationHand
         var (id, lexEntryRef) = TargetResolution.Resolve<ILexEntryRef>(cache, operation, LexEntryRefVariantEntryTypesOperationKinds.AddRefVariantEntryTypes);
         touchedTargets.Add(id);
 
-        var before = ReferenceCollectionFieldSnapshotting.ReadAlternatives(lexEntryRef.VariantEntryTypesRS);
+        var before = ReferenceSequenceFieldSnapshotting.ReadAlternatives(lexEntryRef.VariantEntryTypesRS);
         LexEntryRefVariantEntryTypesAddRefLowering.Apply(cache, lexEntryRef, memberId);
-        var afterValue = ReferenceCollectionFieldSnapshotting.ReadAlternatives(lexEntryRef.VariantEntryTypesRS);
+        var afterValue = ReferenceSequenceFieldSnapshotting.ReadAlternatives(lexEntryRef.VariantEntryTypesRS);
 
         return new ExpectedEffect(id, SnapshotFields.LexEntryRefVariantEntryTypes, before, afterValue);
     }
@@ -108,7 +108,7 @@ internal sealed class LexEntryRefVariantEntryTypesAddRefHandler : IOperationHand
     public ExpectedEffect ReadCurrentFootprint(LcmCache cache, OperationEnvelope operation)
     {
         var (id, lexEntryRef) = TargetResolution.Resolve<ILexEntryRef>(cache, operation, LexEntryRefVariantEntryTypesOperationKinds.AddRefVariantEntryTypes);
-        var current = ReferenceCollectionFieldSnapshotting.ReadAlternatives(lexEntryRef.VariantEntryTypesRS);
+        var current = ReferenceSequenceFieldSnapshotting.ReadAlternatives(lexEntryRef.VariantEntryTypesRS);
         return new ExpectedEffect(id, SnapshotFields.LexEntryRefVariantEntryTypes, current, current);
     }
 }
@@ -139,9 +139,9 @@ internal sealed class LexEntryRefVariantEntryTypesRemoveRefHandler : IOperationH
         var (id, lexEntryRef) = TargetResolution.Resolve<ILexEntryRef>(cache, operation, LexEntryRefVariantEntryTypesOperationKinds.RemoveRefVariantEntryTypes);
         touchedTargets.Add(id);
 
-        var before = ReferenceCollectionFieldSnapshotting.ReadAlternatives(lexEntryRef.VariantEntryTypesRS);
+        var before = ReferenceSequenceFieldSnapshotting.ReadAlternatives(lexEntryRef.VariantEntryTypesRS);
         LexEntryRefVariantEntryTypesRemoveRefLowering.Apply(cache, lexEntryRef, memberId);
-        var afterValue = ReferenceCollectionFieldSnapshotting.ReadAlternatives(lexEntryRef.VariantEntryTypesRS);
+        var afterValue = ReferenceSequenceFieldSnapshotting.ReadAlternatives(lexEntryRef.VariantEntryTypesRS);
 
         return new ExpectedEffect(id, SnapshotFields.LexEntryRefVariantEntryTypes, before, afterValue);
     }
@@ -149,7 +149,7 @@ internal sealed class LexEntryRefVariantEntryTypesRemoveRefHandler : IOperationH
     public ExpectedEffect ReadCurrentFootprint(LcmCache cache, OperationEnvelope operation)
     {
         var (id, lexEntryRef) = TargetResolution.Resolve<ILexEntryRef>(cache, operation, LexEntryRefVariantEntryTypesOperationKinds.RemoveRefVariantEntryTypes);
-        var current = ReferenceCollectionFieldSnapshotting.ReadAlternatives(lexEntryRef.VariantEntryTypesRS);
+        var current = ReferenceSequenceFieldSnapshotting.ReadAlternatives(lexEntryRef.VariantEntryTypesRS);
         return new ExpectedEffect(id, SnapshotFields.LexEntryRefVariantEntryTypes, current, current);
     }
 }

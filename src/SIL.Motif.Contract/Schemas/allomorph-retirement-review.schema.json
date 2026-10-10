@@ -1,0 +1,190 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://motif.sil.org/contracts/allomorph-retirement-review/v1",
+  "title": "Allomorph retirement review statistics",
+  "description": "Closed nonnegative counts. Distinct partitions, n/N and detail-manifest reconciliation require semantic validation.",
+  "$ref": "#/$defs/ReviewStatistics",
+  "$defs": {
+    "Digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "OpinionCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "approved": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "disapproved": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "unknown": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "mixed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        }
+      },
+      "required": [
+        "approved",
+        "disapproved",
+        "unknown",
+        "mixed"
+      ]
+    },
+    "AdhocCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "grouped": {
+          "type": "boolean"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "rules": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "targetOccurrences": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        }
+      },
+      "required": [
+        "grouped",
+        "enabled",
+        "rules",
+        "targetOccurrences"
+      ]
+    },
+    "DetectorCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "findingId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "beforeNumerator": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "beforeDenominator": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "afterNumerator": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "afterDenominator": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "beforeEvidenceDigest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "afterEvidenceDigest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "resolved": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "findingId",
+        "beforeNumerator",
+        "beforeDenominator",
+        "afterNumerator",
+        "afterDenominator",
+        "beforeEvidenceDigest",
+        "afterEvidenceDigest",
+        "resolved"
+      ]
+    },
+    "ReviewStatistics": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "bundlesRepointed": {
+          "$ref": "#/$defs/OpinionCounts"
+        },
+        "analysesRepointed": {
+          "$ref": "#/$defs/OpinionCounts"
+        },
+        "wordformsRepointed": {
+          "$ref": "#/$defs/OpinionCounts"
+        },
+        "assessedFormCases": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "adhoc": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AdhocCounts"
+          },
+          "minItems": 4,
+          "maxItems": 4
+        },
+        "otherReferences": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "ownedObjectsDeleted": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "bundleTextAlternativesChanged": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "bundleTextAlternativesCleared": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "detector": {
+          "$ref": "#/$defs/DetectorCounts"
+        },
+        "detailManifestDigest": {
+          "$ref": "#/$defs/Digest"
+        }
+      },
+      "required": [
+        "bundlesRepointed",
+        "analysesRepointed",
+        "wordformsRepointed",
+        "assessedFormCases",
+        "adhoc",
+        "otherReferences",
+        "ownedObjectsDeleted",
+        "bundleTextAlternativesChanged",
+        "bundleTextAlternativesCleared",
+        "detector",
+        "detailManifestDigest"
+      ]
+    }
+  }
+}

@@ -1,0 +1,345 @@
+{
+  "sourceCommit": "4f593745",
+  "grammarCommit": "8585028ca1b8263f866a69bec2e4759c11adc8fb",
+  "tracedSource": "evals/results/default-vs-lean-fake/20261005-233437-3c6ec5d9/trials",
+  "untracedSource": "bin/.cache/host8-calibration/799605c452104094b2528ad679f9fa55/measurement.json",
+  "untracedMethod": "Fresh seeded project and Baseline per case; real Motif MCP and pinned PanGloss 0.6.0; the same four lexicon scripts and two profiles, without strace or grading.",
+  "limits": {
+    "scriptedWaitMs": 180000,
+    "maximumCompletedUntracedMs": 18520,
+    "maximumCompletedTracedMs": 17121,
+    "roundedMeasuredHeadroomMs": 20000,
+    "recommendedToolTimeoutMs": 200000
+  },
+  "pairedCalls": [
+    {
+      "task": "t1-lexicon-correct-gloss",
+      "profile": "default",
+      "tool": "motif_lexicon",
+      "untracedMs": 777,
+      "tracedMs": 2465
+    },
+    {
+      "task": "t1-lexicon-correct-gloss",
+      "profile": "default",
+      "tool": "motif_start_proposal",
+      "untracedMs": 1732,
+      "tracedMs": 9316
+    },
+    {
+      "task": "t1-lexicon-correct-gloss",
+      "profile": "default",
+      "tool": "motif_set_gloss",
+      "untracedMs": 608,
+      "tracedMs": 642
+    },
+    {
+      "task": "t1-lexicon-correct-gloss",
+      "profile": "default",
+      "tool": "motif_finish_proposal",
+      "untracedMs": 830,
+      "tracedMs": 852
+    },
+    {
+      "task": "t1-lexicon-correct-gloss",
+      "profile": "default",
+      "tool": "motif_dry_run",
+      "untracedMs": 16135,
+      "tracedMs": 11392
+    },
+    {
+      "task": "t1-lexicon-correct-gloss",
+      "profile": "default",
+      "tool": "motif_trial",
+      "untracedMs": 18520,
+      "tracedMs": 10852
+    },
+    {
+      "task": "t1-lexicon-correct-gloss",
+      "profile": "lean",
+      "tool": "motif_lexicon",
+      "untracedMs": 726,
+      "tracedMs": 2484
+    },
+    {
+      "task": "t1-lexicon-correct-gloss",
+      "profile": "lean",
+      "tool": "motif_new_proposal",
+      "untracedMs": 3889,
+      "tracedMs": 9625
+    },
+    {
+      "task": "t1-lexicon-correct-gloss",
+      "profile": "lean",
+      "tool": "motif_set_gloss",
+      "untracedMs": 342,
+      "tracedMs": 633
+    },
+    {
+      "task": "t1-lexicon-correct-gloss",
+      "profile": "lean",
+      "tool": "motif_finish_proposal",
+      "untracedMs": 221,
+      "tracedMs": 860
+    },
+    {
+      "task": "t1-lexicon-correct-gloss",
+      "profile": "lean",
+      "tool": "motif_trial",
+      "untracedMs": 8658,
+      "tracedMs": null,
+      "lowerBoundMs": 20000
+    },
+    {
+      "task": "t1-lexicon-restore-missing-form",
+      "profile": "default",
+      "tool": "motif_lexicon",
+      "untracedMs": 702,
+      "tracedMs": 2524
+    },
+    {
+      "task": "t1-lexicon-restore-missing-form",
+      "profile": "default",
+      "tool": "motif_grammar",
+      "untracedMs": 72,
+      "tracedMs": 216
+    },
+    {
+      "task": "t1-lexicon-restore-missing-form",
+      "profile": "default",
+      "tool": "motif_start_proposal",
+      "untracedMs": 523,
+      "tracedMs": 12293
+    },
+    {
+      "task": "t1-lexicon-restore-missing-form",
+      "profile": "default",
+      "tool": "motif_add_lexeme_form",
+      "untracedMs": 288,
+      "tracedMs": 7035
+    },
+    {
+      "task": "t1-lexicon-restore-missing-form",
+      "profile": "default",
+      "tool": "motif_finish_proposal",
+      "untracedMs": 255,
+      "tracedMs": 14933
+    },
+    {
+      "task": "t1-lexicon-restore-missing-form",
+      "profile": "default",
+      "tool": "motif_dry_run",
+      "untracedMs": 2750,
+      "tracedMs": null,
+      "lowerBoundMs": 20000
+    },
+    {
+      "task": "t1-lexicon-restore-missing-form",
+      "profile": "lean",
+      "tool": "motif_lexicon",
+      "untracedMs": 771,
+      "tracedMs": 2606
+    },
+    {
+      "task": "t1-lexicon-restore-missing-form",
+      "profile": "lean",
+      "tool": "motif_grammar",
+      "untracedMs": 71,
+      "tracedMs": 447
+    },
+    {
+      "task": "t1-lexicon-restore-missing-form",
+      "profile": "lean",
+      "tool": "motif_new_proposal",
+      "untracedMs": 1796,
+      "tracedMs": 13531
+    },
+    {
+      "task": "t1-lexicon-restore-missing-form",
+      "profile": "lean",
+      "tool": "motif_add_lexeme_form",
+      "untracedMs": 463,
+      "tracedMs": 8429
+    },
+    {
+      "task": "t1-lexicon-restore-missing-form",
+      "profile": "lean",
+      "tool": "motif_finish_proposal",
+      "untracedMs": 535,
+      "tracedMs": 12436
+    },
+    {
+      "task": "t1-lexicon-restore-missing-form",
+      "profile": "lean",
+      "tool": "motif_trial",
+      "untracedMs": 9512,
+      "tracedMs": null,
+      "lowerBoundMs": 20000
+    },
+    {
+      "task": "t0-lexicon-correct-gloss",
+      "profile": "default",
+      "tool": "motif_lexicon",
+      "untracedMs": 714,
+      "tracedMs": 2914
+    },
+    {
+      "task": "t0-lexicon-correct-gloss",
+      "profile": "default",
+      "tool": "motif_start_proposal",
+      "untracedMs": 1619,
+      "tracedMs": 2003
+    },
+    {
+      "task": "t0-lexicon-correct-gloss",
+      "profile": "default",
+      "tool": "motif_set_gloss",
+      "untracedMs": 286,
+      "tracedMs": 408
+    },
+    {
+      "task": "t0-lexicon-correct-gloss",
+      "profile": "default",
+      "tool": "motif_finish_proposal",
+      "untracedMs": 498,
+      "tracedMs": 878
+    },
+    {
+      "task": "t0-lexicon-correct-gloss",
+      "profile": "default",
+      "tool": "motif_dry_run",
+      "untracedMs": 8740,
+      "tracedMs": null,
+      "lowerBoundMs": 20000
+    },
+    {
+      "task": "t0-lexicon-correct-gloss",
+      "profile": "lean",
+      "tool": "motif_lexicon",
+      "untracedMs": 851,
+      "tracedMs": 9558
+    },
+    {
+      "task": "t0-lexicon-correct-gloss",
+      "profile": "lean",
+      "tool": "motif_new_proposal",
+      "untracedMs": 695,
+      "tracedMs": 5854
+    },
+    {
+      "task": "t0-lexicon-correct-gloss",
+      "profile": "lean",
+      "tool": "motif_set_gloss",
+      "untracedMs": 432,
+      "tracedMs": 1657
+    },
+    {
+      "task": "t0-lexicon-correct-gloss",
+      "profile": "lean",
+      "tool": "motif_finish_proposal",
+      "untracedMs": 389,
+      "tracedMs": 7061
+    },
+    {
+      "task": "t0-lexicon-correct-gloss",
+      "profile": "lean",
+      "tool": "motif_trial",
+      "untracedMs": 7110,
+      "tracedMs": null,
+      "lowerBoundMs": 20000
+    },
+    {
+      "task": "t0-lexicon-restore-missing-form",
+      "profile": "default",
+      "tool": "motif_lexicon",
+      "untracedMs": 799,
+      "tracedMs": 2585
+    },
+    {
+      "task": "t0-lexicon-restore-missing-form",
+      "profile": "default",
+      "tool": "motif_grammar",
+      "untracedMs": 78,
+      "tracedMs": 167
+    },
+    {
+      "task": "t0-lexicon-restore-missing-form",
+      "profile": "default",
+      "tool": "motif_start_proposal",
+      "untracedMs": 1298,
+      "tracedMs": 3618
+    },
+    {
+      "task": "t0-lexicon-restore-missing-form",
+      "profile": "default",
+      "tool": "motif_add_lexeme_form",
+      "untracedMs": 385,
+      "tracedMs": 1778
+    },
+    {
+      "task": "t0-lexicon-restore-missing-form",
+      "profile": "default",
+      "tool": "motif_finish_proposal",
+      "untracedMs": 320,
+      "tracedMs": 3038
+    },
+    {
+      "task": "t0-lexicon-restore-missing-form",
+      "profile": "default",
+      "tool": "motif_dry_run",
+      "untracedMs": 5094,
+      "tracedMs": 17121
+    },
+    {
+      "task": "t0-lexicon-restore-missing-form",
+      "profile": "default",
+      "tool": "motif_trial",
+      "untracedMs": 6095,
+      "tracedMs": null,
+      "lowerBoundMs": 20000
+    },
+    {
+      "task": "t0-lexicon-restore-missing-form",
+      "profile": "lean",
+      "tool": "motif_lexicon",
+      "untracedMs": 1034,
+      "tracedMs": 3793
+    },
+    {
+      "task": "t0-lexicon-restore-missing-form",
+      "profile": "lean",
+      "tool": "motif_grammar",
+      "untracedMs": 86,
+      "tracedMs": 227
+    },
+    {
+      "task": "t0-lexicon-restore-missing-form",
+      "profile": "lean",
+      "tool": "motif_new_proposal",
+      "untracedMs": 522,
+      "tracedMs": 3946
+    },
+    {
+      "task": "t0-lexicon-restore-missing-form",
+      "profile": "lean",
+      "tool": "motif_add_lexeme_form",
+      "untracedMs": 276,
+      "tracedMs": 3328
+    },
+    {
+      "task": "t0-lexicon-restore-missing-form",
+      "profile": "lean",
+      "tool": "motif_finish_proposal",
+      "untracedMs": 286,
+      "tracedMs": 2081
+    },
+    {
+      "task": "t0-lexicon-restore-missing-form",
+      "profile": "lean",
+      "tool": "motif_trial",
+      "untracedMs": 12377,
+      "tracedMs": null,
+      "lowerBoundMs": 20000
+    }
+  ]
+}

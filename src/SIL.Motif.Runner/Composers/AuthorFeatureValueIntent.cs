@@ -17,7 +17,7 @@ namespace SIL.Motif.Runner.Composers;
 /// The existing <c>FsFeatDefn</c> the new specification is for. Must not already have a specification
 /// on <paramref name="FeatStruc"/> -- this construct adds one, never replaces one.
 /// </param>
-public sealed record AuthorFeatureValueIntent(CanonicalId FeatStruc, CanonicalId Feature);
+public sealed record AuthorFeatureValueIntent(CanonicalId FeatStruc, CanonicalId Feature, CanonicalId? Value = null);
 
 /// <summary>
 /// Parses the JSON shape an agent authors for <see cref="AuthorFeatureValueComposer"/>:
@@ -27,22 +27,16 @@ public sealed record AuthorFeatureValueIntent(CanonicalId FeatStruc, CanonicalId
 public static class AuthorFeatureValueIntentParser
 {
     private const string ConstructName = "AuthorFeatureValue";
-    private static readonly string[] AllowedProperties = { "featStruc", "feature" };
+    private static readonly string[] AllowedProperties = { "featStruc", "feature", "value" };
 
     public static AuthorFeatureValueIntent Parse(JsonElement authored)
     {
-        if (authored.ValueKind != JsonValueKind.Object)
-            throw new ContractParseException($"'{ConstructName}': the authored construct must be a JSON object.");
-
-        foreach (var property in authored.EnumerateObject())
-        {
-            if (property.Name != AllowedProperties[0] && property.Name != AllowedProperties[1])
-                throw new ContractParseException($"'{ConstructName}': unknown property '{property.Name}'.");
-        }
+        SoundSystemIntentParsing.Object(authored, ConstructName, AllowedProperties);
 
         return new AuthorFeatureValueIntent(
             RequireCanonicalId(authored, "featStruc"),
-            RequireCanonicalId(authored, "feature"));
+            RequireCanonicalId(authored, "feature"),
+            authored.TryGetProperty("value", out _) ? RequireCanonicalId(authored, "value") : null);
     }
 
     private static CanonicalId RequireCanonicalId(JsonElement authored, string propertyName)

@@ -98,9 +98,9 @@ internal sealed class LexEntryRefComponentLexemesAddRefHandler : IOperationHandl
         var (id, lexEntryRef) = TargetResolution.Resolve<ILexEntryRef>(cache, operation, LexEntryRefComponentLexemesOperationKinds.AddRefComponentLexemes);
         touchedTargets.Add(id);
 
-        var before = ReferenceCollectionFieldSnapshotting.ReadAlternatives(lexEntryRef.ComponentLexemesRS);
+        var before = ReferenceSequenceFieldSnapshotting.ReadAlternatives(lexEntryRef.ComponentLexemesRS);
         LexEntryRefComponentLexemesAddRefLowering.Apply(cache, lexEntryRef, memberId);
-        var afterValue = ReferenceCollectionFieldSnapshotting.ReadAlternatives(lexEntryRef.ComponentLexemesRS);
+        var afterValue = ReferenceSequenceFieldSnapshotting.ReadAlternatives(lexEntryRef.ComponentLexemesRS);
 
         return new ExpectedEffect(id, SnapshotFields.LexEntryRefComponentLexemes, before, afterValue);
     }
@@ -108,7 +108,7 @@ internal sealed class LexEntryRefComponentLexemesAddRefHandler : IOperationHandl
     public ExpectedEffect ReadCurrentFootprint(LcmCache cache, OperationEnvelope operation)
     {
         var (id, lexEntryRef) = TargetResolution.Resolve<ILexEntryRef>(cache, operation, LexEntryRefComponentLexemesOperationKinds.AddRefComponentLexemes);
-        var current = ReferenceCollectionFieldSnapshotting.ReadAlternatives(lexEntryRef.ComponentLexemesRS);
+        var current = ReferenceSequenceFieldSnapshotting.ReadAlternatives(lexEntryRef.ComponentLexemesRS);
         return new ExpectedEffect(id, SnapshotFields.LexEntryRefComponentLexemes, current, current);
     }
 }
@@ -139,9 +139,9 @@ internal sealed class LexEntryRefComponentLexemesRemoveRefHandler : IOperationHa
         var (id, lexEntryRef) = TargetResolution.Resolve<ILexEntryRef>(cache, operation, LexEntryRefComponentLexemesOperationKinds.RemoveRefComponentLexemes);
         touchedTargets.Add(id);
 
-        var before = ReferenceCollectionFieldSnapshotting.ReadAlternatives(lexEntryRef.ComponentLexemesRS);
+        var before = ReferenceSequenceFieldSnapshotting.ReadAlternatives(lexEntryRef.ComponentLexemesRS);
         LexEntryRefComponentLexemesRemoveRefLowering.Apply(cache, lexEntryRef, memberId);
-        var afterValue = ReferenceCollectionFieldSnapshotting.ReadAlternatives(lexEntryRef.ComponentLexemesRS);
+        var afterValue = ReferenceSequenceFieldSnapshotting.ReadAlternatives(lexEntryRef.ComponentLexemesRS);
 
         return new ExpectedEffect(id, SnapshotFields.LexEntryRefComponentLexemes, before, afterValue);
     }
@@ -149,7 +149,7 @@ internal sealed class LexEntryRefComponentLexemesRemoveRefHandler : IOperationHa
     public ExpectedEffect ReadCurrentFootprint(LcmCache cache, OperationEnvelope operation)
     {
         var (id, lexEntryRef) = TargetResolution.Resolve<ILexEntryRef>(cache, operation, LexEntryRefComponentLexemesOperationKinds.RemoveRefComponentLexemes);
-        var current = ReferenceCollectionFieldSnapshotting.ReadAlternatives(lexEntryRef.ComponentLexemesRS);
+        var current = ReferenceSequenceFieldSnapshotting.ReadAlternatives(lexEntryRef.ComponentLexemesRS);
         return new ExpectedEffect(id, SnapshotFields.LexEntryRefComponentLexemes, current, current);
     }
 }

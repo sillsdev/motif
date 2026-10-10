@@ -185,9 +185,10 @@ never shows the word.
 _Avoid_: dry run, assessment, validation pass
 
 **Readiness**:
-Whether a Proposal has been measured well enough to apply: an Assessment covers its current content, that
-Assessment measured the project state the Apply would land on, and it shows no regression. Readiness is
-computed from evidence, never granted by a person, and `--force` applies in spite of it.
+Whether a Proposal has enough evidence to apply. Normally a Correctness Assessment covers its current
+content and project state and shows no regression; a judgment-only Proposal needs no Correctness when its
+current bound Dry Run confirms that its effects are limited to the bounded Notebook judgment writes. Readiness
+is computed from evidence, never granted by a person, and `--force` applies in spite of it.
 _Avoid_: approval, sign-off, review, gate
 
 **Drift**:
@@ -215,9 +216,67 @@ durable edge in a project's history. It carries the short message the person gav
 is pre-filled with a summary of the changes, so they can later recognise what they did.
 _Avoid_: application receipt, success result, audit log
 
+**Parsimony review**:
+An advisory Report that offers specific grammar recommendations along two named axes: parsimony and
+restrictiveness. Each recommendation states its evidence tier, scope, and limitations; it does not decide
+whether a grammar is good or a change may be applied ([ADR 0052](docs/adr/0052-parsimony-evidence-and-advisory-dispositions.md)).
+_Avoid_: grammar fitness, grammar score, health check
+
+**Parsimony recommendation**:
+A specific Parsimony finding about one grammar object or group, tied to its exact identity, evidence, and
+recipe or stated limitation. Its evidence digest is separate from its stable finding identity.
+_Avoid_: lint, warning, verdict
+
+**Parsimony note**:
+An information line in a Parsimony review that is never a recommendation: either a check that could not look
+(for example, no Approved words in the Default Selection) or an authored statement that has no effect on parsing.
+It never reads as clean and never asks for a decision.
+_Avoid_: warning, issue, skipped
+
+**parsimony**:
+The axis that favors fewer or less-duplicated grammar statements while preserving the known valid readings.
+It is distinct from restrictiveness, which concerns how narrowly a statement licenses forms.
+_Avoid_: simplicity score, rule count alone
+
+**restrictiveness**:
+The axis that favors the narrowest grammar statement that still accounts for known valid forms and excludes
+explicitly forbidden readings. An unattested form is not a negative without a declared universe and suitable
+negative evidence.
+_Avoid_: over-generation score, missing-text form
+
+**Reviewed negative**:
+A human-confirmed forbidden form or reading used as negative evidence. A FieldWorks Disapproved analysis is
+a negative for that reading only, not for the whole word.
+_Avoid_: rejected word, parser failure, absence
+
+**Disposition**:
+A person's durable choice for one Parsimony recommendation: fix, keep, ask, or defer. It is tied to the
+recommendation's exact identity and relevant evidence; new relevant evidence brings the item back for review.
+Disposition data belongs to the FieldWorks project as Notebook judgment revisions
+([ADR 0056](docs/adr/0056-human-judgments-belong-to-the-fieldworks-project.md)).
+_Avoid_: approval, Apply authorization, dismissal
+
+**Human judgment**:
+A durable choice about a Parsimony recommendation, a human-confirmed forbidden example, or a withdrawal of
+an earlier choice. Each revision stays with the FieldWorks project; its reason is optional. A changed reason
+does not silently change the decision or its evidence.
+_Avoid_: annotation row, suppression flag, approval
+
+**Project initialization**:
+The deliberate, confirmed preparation of a FieldWorks project for Motif Proposals. It establishes the place
+for durable human judgments once, before any are recorded; opening a project or applying a Proposal does
+not perform it implicitly.
+_Avoid_: automatic setup, migration, field repair
+
+**Suppressed set**:
+The always-inspectable Parsimony recommendations kept or deferred under their exact relevant evidence.
+Relevant new evidence returns a recommendation to the active list with its earlier reason.
+_Avoid_: deleted findings, dismissed warnings, hidden items
+
 **Report**:
-A query over an Assessment and the project's own data, producing statistics and findings. **Advisory
-always** — a Report never gates anything.
+A query over stored evidence that produces statistics and findings. A Report can use an Assessment, frozen
+Parsimony evidence, or both; a Parsimony Report may have no Assessment and is always advisory. Configured
+regression behavior for other Report kinds follows [ADR 0042](docs/adr/0042-a-job-produces-assessments-an-assessor-makes-them.md).
 _Avoid_: score, verdict, metric, dashboard, health check
 
 **Check Run**:
@@ -298,8 +357,9 @@ _Avoid_: cache, session, connection
 
 **Motif store**:
 Project workflow records — Proposals, Drafts, jobs, Assessments, Reports, Receipts, Corpora, and the
-applied index — live in the project's paired sibling database. File-backed Baselines and parser
-artifacts live separately under the Motif worker root, which defaults on Windows to
+applied index — live in the project's paired sibling database. Parsimony Report bindings are stored here,
+but reviewed negatives and dispositions remain durable data in the FieldWorks project. File-backed
+Baselines and disposable parser and grammar-analysis artifacts live separately under the Motif worker root, which defaults on Windows to
 `%LOCALAPPDATA%\SIL\Motif` and can be changed with `MOTIF_WORKER_ROOT`. Content digests identify
 immutable intent and evidence, but neither storage location is content-addressed. There is no merge
 engine and no replication. The Machine store holds what belongs to the installation rather than to a

@@ -1,5 +1,7 @@
 # Motif
 
+> **Evaluation data:** Motif and its synthetic language sets are MIT-licensed. Future real-language data may carry share-alike or non-commercial terms recorded in each set's `LICENSES` file. See the [external evaluation-data licence notice](https://github.com/sillsdev/motif-test-grammars/blob/v0.3.0/evals/DATA-LICENSES.md).
+
 Motif shows you how well a FieldWorks parser handles your language. It shows which of your words parse, which of your approved analyses the grammar still builds, which words are slow, and what the grammar check found. It reads your saved FieldWorks project and writes nothing to it until you review your changes and press **Apply to FieldWorks project**.
 
 **To use Motif:** download the Windows beta from the [Releases page](https://github.com/sillsdev/motif/releases) and follow the [install guide](src/SIL.Motif.Help/Content/en/guide/install.md). Motif is a tech demo: keep a FieldWorks backup and try it on a copy of your project first.
@@ -20,6 +22,8 @@ Install the .NET 10 SDK, then build and check the repository from its root:
 ```
 
 `build.ps1` runs the comment and design-token checks before compiling. The default `test.ps1` run selects Unit and Integration tests for the developer loop; use `./test.ps1 -All` for every test level, including System and the merge gate. CI and release validation use `-All`. See [AGENTS.md](AGENTS.md) for the levels and test setup. All Motif projects target `net10.0`.
+
+The evaluation-set verification tests use the pinned [`motif-test-grammars`](https://github.com/sillsdev/motif-test-grammars) repository. Fetch its locked revision with `pwsh ./evals/Get-TestGrammars.ps1` or set `MOTIF_TEST_GRAMMARS` to a local checkout; those tests skip with a reason when the sets are absent. CI fetches the locked revision before testing.
 
 On Linux, stage the pinned SIL ICU packages with `bash tools/stage-sil-icu.sh` and export the folder it prints as `MOTIF_SIL_ICU_STAGE` before building. macOS builds also use a staged SIL ICU folder named by `MOTIF_SIL_ICU_STAGE`. Windows development uses the bundled SIL ICU dependencies. See [AGENTS.md](AGENTS.md#linux-and-macos-need-sil-icu-staged-once) and the [Linux](.github/workflows/linux-debug.yml) and [macOS](.github/workflows/mac-debug.yml) workflows.
 

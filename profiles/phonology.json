@@ -1,0 +1,66 @@
+{
+  "name": "phonology",
+  "description": "Draft a sound system through semantic composers; Advanced AI mode integration required.",
+  "tools": [
+    {
+      "tool": "motif_overview"
+    },
+    {
+      "tool": "motif_capture_baseline"
+    },
+    {
+      "tool": "motif_grammar"
+    },
+    {
+      "tool": "motif_lexicon"
+    },
+    {
+      "tool": "motif_word"
+    },
+    {
+      "tool": "motif_start_proposal"
+    },
+    {
+      "tool": "motif_add_lexeme_form"
+    },
+    {
+      "tool": "motif_set_gloss"
+    },
+    {
+      "tool": "motif_dry_run"
+    },
+    {
+      "tool": "motif_trial"
+    },
+    {
+      "tool": "motif_try_word"
+    },
+    {
+      "tool": "motif_finish_proposal"
+    },
+    {
+      "tool": "motif_proposals"
+    },
+    {
+      "tool": "motif_activity"
+    },
+    {
+      "tool": "motif_add_feature_structure"
+    },
+    {
+      "tool": "motif_add_feature_value"
+    },
+    {
+      "tool": "motif_add_phoneme"
+    },
+    {
+      "tool": "motif_add_natural_class"
+    },
+    {
+      "tool": "motif_add_environment"
+    },
+    {
+      "tool": "motif_add_phonological_rule"
+    }
+  ]
+}

@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Globalization;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Jobs;
+using SIL.Motif.Host.Parsimony;
 
 namespace SIL.Motif.Host.PanGloss;
 
@@ -295,6 +296,81 @@ public abstract record PanGlossRequest
                 ? new PanGlossOutcome.Completed(string.Empty, standardError, elapsed)
                 : new PanGlossOutcome.Incomplete(
                     $"pangloss import exited 0 but wrote no grammar to '{GrammarJsonPath}'.", standardError);
+        }
+    }
+
+    /// <summary>Builds a retained grammar-facts database from one Snapshot and its frozen evidence context.</summary>
+    /// <param name="SnapshotPath">The exact current pg-snapshot JSON input.</param>
+    /// <param name="ContextJson">The versioned facts context passed to PanGloss.</param>
+    /// <param name="ArtifactDirectory">An optional new directory to own the database and its invocation inputs.</param>
+    public sealed record Facts(string SnapshotPath, string ContextJson, string? ArtifactDirectory = null,
+        string? StatsCachePath = null, string? StatsManifestPath = null)
+        : PanGlossRequest
+    {
+        public override string Subcommand => "facts";
+
+        internal override bool AcceptsNonzeroExit(string standardOutput) =>
+            GrammarFactsReader.ReportsCompileRefusal(standardOutput);
+
+        internal override void Validate()
+        {
+            if (string.IsNullOrWhiteSpace(SnapshotPath)) throw new ArgumentException("Required.", nameof(SnapshotPath));
+            ArgumentNullException.ThrowIfNull(ContextJson);
+            if (Path.GetExtension(SnapshotPath) != ".json")
+                throw new ArgumentException("Facts input must be a pg-snapshot JSON file.", nameof(SnapshotPath));
+            if (!File.Exists(SnapshotPath))
+                throw new FileNotFoundException("The Snapshot the parser must read does not exist.", SnapshotPath);
+            if (ArtifactDirectory is not null && string.IsNullOrWhiteSpace(ArtifactDirectory))
+                throw new ArgumentException("A supplied artifact directory must not be empty.", nameof(ArtifactDirectory));
+            if ((StatsCachePath is null) != (StatsManifestPath is null))
+                throw new ArgumentException("A statistics cache and manifest must be supplied together.");
+            if (StatsCachePath is not null && (!File.Exists(StatsCachePath) || !File.Exists(StatsManifestPath)))
+                throw new FileNotFoundException("The statistics cache and its provenance manifest must both exist.");
+        }
+
+        internal override Task PrepareAsync(string scratch, CancellationToken cancellationToken) =>
+            File.WriteAllTextAsync(Path.Combine(scratch, "facts-context.json"), ContextJson, cancellationToken);
+
+        internal override void AddArguments(ProcessStartInfo startInfo, string scratch)
+        {
+            startInfo.ArgumentList.Add("facts");
+            startInfo.ArgumentList.Add(Path.GetFullPath(SnapshotPath));
+            startInfo.ArgumentList.Add("--out");
+            startInfo.ArgumentList.Add(Path.Combine(scratch, "grammar-facts.sqlite"));
+            startInfo.ArgumentList.Add("--context");
+            startInfo.ArgumentList.Add(Path.Combine(scratch, "facts-context.json"));
+            if (StatsCachePath is not null)
+            {
+                startInfo.ArgumentList.Add("--stats");
+                startInfo.ArgumentList.Add(Path.GetFullPath(StatsCachePath));
+                startInfo.ArgumentList.Add("--stats-manifest");
+                startInfo.ArgumentList.Add(Path.GetFullPath(StatsManifestPath!));
+            }
+            startInfo.ArgumentList.Add("--json");
+        }
+
+        internal override PanGlossOutcome Finish(string scratch, string standardOutput, string standardError,
+            TimeSpan elapsed, out BatchInvocationEvidence.BatchFileDigests? batchFileDigests)
+        {
+            batchFileDigests = null;
+            var path = Path.Combine(scratch, "grammar-facts.sqlite");
+            if (!File.Exists(path))
+                return new PanGlossOutcome.Incomplete("pangloss facts exited 0 but wrote no facts database.", standardError);
+            try
+            {
+                var artifact = GrammarFactsReader.Read(path, standardOutput, SnapshotPath);
+                return new PanGlossOutcome.Completed(standardOutput, standardError, elapsed)
+                {
+                    FactsArtifact = artifact,
+                    Facts = new PanGlossFactsArtifact(artifact.Path, artifact.SchemaVersion,
+                        artifact.SourceSha256, artifact.ModelFingerprint, artifact.OutputBytes, artifact.OutputSha256),
+                };
+            }
+            catch (InvalidDataException exception)
+            {
+                return new PanGlossOutcome.Incomplete(
+                    $"pangloss facts wrote an invalid facts artifact: {exception.Message}", standardError);
+            }
         }
     }
 }

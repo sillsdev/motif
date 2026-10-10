@@ -32,7 +32,7 @@ public static class IntegerEnumFieldEmitter
             .Replace("__CLEARKIND__", spec.ClearKind)
             .Replace("__TARGETIFACE__", spec.TargetInterface)
             .Replace("__VAR__", varName)
-            .Replace("__SNAPSHOTTER__", spec.DeclaringClass + "Snapshotter")
+            .Replace("__SNAPSHOTTER__", spec.SnapshotterTypeName ?? spec.DeclaringClass + "Snapshotter")
             .Replace("__SNAPSHOTFIELD__", "SnapshotFields." + prefix)
             .Replace("__ALLOWEDVALUESLITERAL__", allowedValuesLiteral)
             .Replace("__ALLOWEDVALUESDESCRIPTION__", allowedValuesDescription)

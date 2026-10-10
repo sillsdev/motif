@@ -117,14 +117,37 @@ public sealed class CommandCatalogParityTests
         "job.wait-cancelled", "job.wait-timeout",
         "operation.cascading-delete", "operation.invalid-dependency", "operation.invalid-id",
         "operation.invalid-target", "operation.invalid-writing-system",
+        "initialization.analysis-writing-system-required", "initialization.cancelled", "initialization.confirmation-required", "initialization.not-saved",
+        "initialization.outcome-unknown", "initialization.recovery-copy-failed",
+        "judgment.field-ambiguous", "judgment.field-incompatible",
+        "parsimony.assessment-baseline-mismatch", "parsimony.bundle-busy", "parsimony.bundle-invalid",
+        "parsimony.bundle-not-found",
+        "parsimony.candidate-failed",
+        "parsimony.candidate-result-invalid", "parsimony.candidate-result-missing",
+        "parsimony.decision-already-staged", "parsimony.disposition-request-invalid",
+        "parsimony.disposition-retraction-request-invalid", "parsimony.disposition-revision-request-invalid",
+        "parsimony.dry-run-evidence-missing", "parsimony.dry-run-required",
+        "parsimony.finding-ambiguous", "parsimony.finding-not-in-report", "parsimony.invalid-assessment",
+        "parsimony.invalid-catalog-request", "parsimony.invalid-latest-request",
+        "parsimony.invalid-measure",
+        "parsimony.invalid-scope", "parsimony.invalid-view-request", "parsimony.job-failed",
+        "parsimony.lease-lost", "parsimony.measure-unavailable", "parsimony.negative-confirmation-required", "parsimony.negative-request-invalid",
+        "parsimony.no-report", "parsimony.record-type-id-invalid", "parsimony.report-baseline-mismatch",
+        "parsimony.report-bundle-mismatch",
+        "parsimony.report-damaged", "parsimony.report-id-required", "parsimony.report-not-found",
+        "parsimony.result-invalid", "parsimony.result-missing",
+        "parsimony.retirement-expectations-unavailable", "parsimony.selection-unavailable",
+        "parsimony.view-item-not-found",
         "project.busy", "project.in-use", "project.invalid", "project.not-found", "project.operation-io", "project.refused",
-        "project.unloadable",
+        "project.saving", "project.unloadable", "project.unreadable",
         "project.store-io",
         "preflight.unavailable",
         "proposal.already-applied", "proposal.inconsistent", "proposal.invalid-id", "proposal.invalid-status",
         "proposal.not-found",
         "proposal.split-duplicate-operation",
         "report.assessment-not-found", "report.invalid-kind", "report.refused",
+        "retirement-review.draft-ambiguous", "retirement-review.draft-not-found",
+        "retirement-review.evidence-inconsistent", "retirement-review.invalid-draft", "retirement-review.stale-dry-run",
         "selection.empty", "selection.invalid-limits", "selection.revision-conflict", "selection.text-not-found",
         "stats.invalid-evidence", "stats.no-evidence", "stats.wrong-kind",
         "stats.cancelled", "stats.format-conflict", "stats.no-assessment",
@@ -174,10 +197,12 @@ public sealed class CommandCatalogParityTests
         "bak", "db", "fwdata", "json", "jsonl", "ldml", "lock", "md", "py", "sqlite", "txt", "xml", "zip",
     };
 
-    // Every dotted, lower-case, hyphenated code literal (e.g. "draft.not-found") in a project's source.
+    // Dotted command codes and the reserved initialization codes in a project's source.
     private static HashSet<string> RefusalCodeLiteralsIn(string projectName)
     {
-        var codePattern = new Regex(@"""([a-z][a-z-]*(?:\.[a-z][a-z-]*)+)""", RegexOptions.None);
+        var codePattern = new Regex(
+            "\"((?:[a-z][a-z-]*\\.)+[a-z][a-z-]*)\"",
+            RegexOptions.None);
         var root = Path.Combine(RepoPaths.FindRepoRoot(), "src", projectName);
         var codes = new HashSet<string>(StringComparer.Ordinal);
         foreach (var file in Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories))

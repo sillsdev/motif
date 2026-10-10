@@ -79,6 +79,28 @@ public sealed class ReportCommandsTests : IDisposable
     }
 
     [Fact]
+    public void ACorrectnessReportWithoutMaterial_RefusesNamingTheMissingAssessmentCapability()
+    {
+        var result = ReportCommands.Produce(
+            new ProduceReportRequest(_project, ProductVersion, null, "correctness", null, null));
+
+        Assert.False(result.Succeeded);
+        Assert.Equal("report.refused", result.Refusal!.Code);
+        Assert.Contains("Assessment", result.Refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void GenericReportCommandCannotProduceParsimonyWithoutFrozenInputs()
+    {
+        var result = ReportCommands.Produce(
+            new ProduceReportRequest(_project, ProductVersion, null, "parsimony", null, null));
+
+        Assert.False(result.Succeeded);
+        Assert.Equal("report.refused", result.Refusal!.Code);
+        Assert.Contains("frozen Baseline evidence bundle", result.Refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ACoverageReport_IsComputedStoredAndReadableWithNoAssessorAnywhereInTheProcess()
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));

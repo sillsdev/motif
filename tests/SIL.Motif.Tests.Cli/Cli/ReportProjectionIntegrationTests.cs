@@ -156,6 +156,35 @@ public sealed class ReportProjectionIntegrationTests
     }
 
     [Fact]
+    public void StoredAssessmentReportRetainsItsAssessmentLink()
+    {
+        var word = CorrectnessFixture.Word("reported", matched: true);
+        var assessmentId = CanonicalId.Mint("assessment/").Value;
+        var selection = Selection.Create("reported", [word.Word]);
+        using (var seedDatabase = MotifDatabase.OpenOwned(AssessmentDatabasePath(),
+            new ProjectLocator(_fwDataPath, Path.GetFileNameWithoutExtension(_fwDataPath)),
+            MotifSchema.CurrentSchema, new Version(1, 0)))
+        {
+            new AssessmentRepository(seedDatabase).Record(new NewAssessmentRecord(
+                assessmentId, null, null, "pangloss", "Correctness", "{}", "sha256:scope",
+                "whitespace-and-punctuation", "1", "{}", selection, null, null, Hash('a'), null, null, null, [word]));
+        }
+
+        var result = ReportCommands.Produce(new ProduceReportRequest(
+            _fwDataPath, ProductVersion, assessmentId, "correctness", null, null));
+
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        var report = result.Value!;
+        Assert.Equal(assessmentId, report.AssessmentId);
+        using var database = MotifDatabase.OpenOwned(AssessmentDatabasePath(),
+            new ProjectLocator(_fwDataPath, Path.GetFileNameWithoutExtension(_fwDataPath)),
+            MotifSchema.CurrentSchema, new Version(1, 0));
+        var stored = new ReportRepository(database).Get(report.ReportId);
+        Assert.NotNull(stored);
+        Assert.Equal(assessmentId, stored!.AssessmentId);
+    }
+
+    [Fact]
     public void AggregatePreservesRepeatedCasesAndRecomputesIncompleteMatchesFromFrozenEvidence()
     {
         var first = CorrectnessFixture.Word("same", matched: true);

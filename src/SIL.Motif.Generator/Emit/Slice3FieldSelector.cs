@@ -55,6 +55,22 @@ public static class Slice3FieldSelector
 
     private static readonly string[] BasicOkSigs = { "MultiUnicode", "MultiString", "Boolean" };
 
+    private static readonly HashSet<FieldKey> OrderedTemplateSlotFields = new()
+    {
+        new FieldKey("MoInflAffixTemplate", "PrefixSlots"),
+        new FieldKey("MoInflAffixTemplate", "SuffixSlots"),
+    };
+
+    private static readonly HashSet<FieldKey> OrderedRuleContextFields = new()
+    {
+        new FieldKey("PhSequenceContext", "Members"),
+    };
+
+    private static readonly HashSet<FieldKey> OrderedAllomorphPositionFields = new()
+    {
+        new FieldKey("MoAffixAllomorph", "Position"),
+    };
+
     public static IReadOnlyList<JoinedRow> SelectBasicSetClear(IReadOnlyList<JoinedRow> rows) =>
         Filter(rows, row =>
             row.Kind == FieldKind.Basic &&
@@ -72,6 +88,27 @@ public static class Slice3FieldSelector
             row.Kind == FieldKind.Rel &&
             (row.Card == FieldCard.Col || row.Card == FieldCard.Seq) &&
             (row.Manifest.Verbs == "addRef|removeRef" || row.Manifest.Verbs == "addRef|removeRef|move"));
+
+    public static IReadOnlyList<JoinedRow> SelectOrderedTemplateSlotSequences(IReadOnlyList<JoinedRow> rows) =>
+        Filter(rows, row =>
+            OrderedTemplateSlotFields.Contains(row.Key) &&
+            row.Kind == FieldKind.Rel &&
+            row.Card == FieldCard.Seq &&
+            row.Manifest.Verbs == "addRef|removeRef|move");
+
+    public static IReadOnlyList<JoinedRow> SelectOrderedRuleContextSequences(IReadOnlyList<JoinedRow> rows) =>
+        Filter(rows, row =>
+            OrderedRuleContextFields.Contains(row.Key) &&
+            row.Kind == FieldKind.Rel &&
+            row.Card == FieldCard.Seq &&
+            row.Manifest.Verbs == "addRef|removeRef|move");
+
+    public static IReadOnlyList<JoinedRow> SelectOrderedAllomorphPositionSequences(IReadOnlyList<JoinedRow> rows) =>
+        Filter(rows, row =>
+            OrderedAllomorphPositionFields.Contains(row.Key) &&
+            row.Kind == FieldKind.Rel &&
+            row.Card == FieldCard.Seq &&
+            row.Manifest.Verbs == "addRef|removeRef|move");
 
     private static IReadOnlyList<JoinedRow> Filter(IReadOnlyList<JoinedRow> rows, Func<JoinedRow, bool> shapeFilter)
     {

@@ -2,6 +2,8 @@ using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Commands;
+using SIL.Motif.Commands.Catalog;
+using SIL.Motif.Commands.Preferences;
 
 namespace SIL.Motif.App.Composition;
 
@@ -30,6 +32,7 @@ namespace SIL.Motif.App.Composition;
 /// so a composed test window never writes the person's settings.
 /// </param>
 /// <param name="UserPreferencesStore">The shared per-user App preferences, or process-local defaults when omitted.</param>
+/// <param name="AdvancedAiModePreferences">Where the user's Advanced AI mode choice is read and saved.</param>
 public sealed record MotifAppOptions(
     string ManagedRoot,
     string? ParserPath,
@@ -42,8 +45,13 @@ public sealed record MotifAppOptions(
     IDiagnosticWindowDialogs? DiagnosticDialogs = null,
     CrashWindowServices? CrashWindow = null,
     bool RememberBounds = false,
-    IUserPreferencesStore? UserPreferencesStore = null)
+    IUserPreferencesStore? UserPreferencesStore = null,
+    IAdvancedAiModePreferenceStore? AdvancedAiModePreferences = null)
 {
+    /// <summary>The command surface the window may show for the current preference choice.</summary>
+    public CommandSurfacePolicy SurfacePolicy =>
+        new(developerCommandsEnabled: false, advancedAiModeEnabled: AdvancedAiModePreferences?.IsEnabled ?? false);
+
     /// <summary>
     /// The installed window's inputs: the root, parser and runner the command line would use
     /// (<see cref="CommandClientOptions.ForInstallation"/>), the system clock, and native desktop adapters.
@@ -53,7 +61,8 @@ public sealed record MotifAppOptions(
         var commands = CommandClientOptions.ForInstallation();
         return new MotifAppOptions(commands.ManagedRoot, commands.ParserPath, commands.RunnerLauncher,
             TimeProvider.System, RememberBounds: true,
-            UserPreferencesStore: new FileUserPreferencesStore(FileUserPreferencesStore.DefaultPath));
+            UserPreferencesStore: new FileUserPreferencesStore(FileUserPreferencesStore.DefaultPath),
+            AdvancedAiModePreferences: FileAdvancedAiModePreferenceStore.ForInstallation());
     }
 }
 
@@ -74,6 +83,7 @@ public static class MotifAppComposition
         ArgumentNullException.ThrowIfNull(options.RunnerLauncher);
         ArgumentNullException.ThrowIfNull(options.TimeProvider);
 
+        var surfacePolicy = options.SurfacePolicy;
         var preferences = options.UserPreferencesStore ?? new MemoryUserPreferencesStore();
         var applicationFacts = ApplicationFacts.ForApp(options.ManagedRoot, options.ParserPath);
         var window = new MainWindow(options.RememberBounds, uriLauncher: null,
@@ -99,12 +109,17 @@ public static class MotifAppComposition
             options.Clipboard ?? new AvaloniaClipboard(window),
             diagnosticDialogs.For(window),
             diagnosticDialogs,
-            techDemoNotice);
+            techDemoNotice,
+            advancedAiModeEnabled: surfacePolicy.AdvancedAiModeEnabled);
         window.Compose(workspace);
         var crashes = new CrashReporter(options.TimeProvider, options.CrashWindow ?? new CrashWindowServices());
-        return new MotifAppCompositionResult(window, workspace, crashes);
+        return new MotifAppCompositionResult(window, workspace, crashes, surfacePolicy);
     }
 }
 
 /// <summary>The window, workspace and error reporting composed together for one Motif desktop lifetime.</summary>
-public sealed record MotifAppCompositionResult(MainWindow Window, WorkspaceShellViewModel Workspace, CrashReporter Crashes);
+public sealed record MotifAppCompositionResult(
+    MainWindow Window,
+    WorkspaceShellViewModel Workspace,
+    CrashReporter Crashes,
+    CommandSurfacePolicy SurfacePolicy);

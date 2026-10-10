@@ -98,9 +98,9 @@ internal sealed class FsFeatStrucTypeFeaturesAddRefHandler : IOperationHandler
         var (id, fsFeatStrucType) = TargetResolution.Resolve<IFsFeatStrucType>(cache, operation, FsFeatStrucTypeFeaturesOperationKinds.AddRefFeatures);
         touchedTargets.Add(id);
 
-        var before = ReferenceCollectionFieldSnapshotting.ReadAlternatives(fsFeatStrucType.FeaturesRS);
+        var before = ReferenceSequenceFieldSnapshotting.ReadAlternatives(fsFeatStrucType.FeaturesRS);
         FsFeatStrucTypeFeaturesAddRefLowering.Apply(cache, fsFeatStrucType, memberId);
-        var afterValue = ReferenceCollectionFieldSnapshotting.ReadAlternatives(fsFeatStrucType.FeaturesRS);
+        var afterValue = ReferenceSequenceFieldSnapshotting.ReadAlternatives(fsFeatStrucType.FeaturesRS);
 
         return new ExpectedEffect(id, SnapshotFields.FsFeatStrucTypeFeatures, before, afterValue);
     }
@@ -108,7 +108,7 @@ internal sealed class FsFeatStrucTypeFeaturesAddRefHandler : IOperationHandler
     public ExpectedEffect ReadCurrentFootprint(LcmCache cache, OperationEnvelope operation)
     {
         var (id, fsFeatStrucType) = TargetResolution.Resolve<IFsFeatStrucType>(cache, operation, FsFeatStrucTypeFeaturesOperationKinds.AddRefFeatures);
-        var current = ReferenceCollectionFieldSnapshotting.ReadAlternatives(fsFeatStrucType.FeaturesRS);
+        var current = ReferenceSequenceFieldSnapshotting.ReadAlternatives(fsFeatStrucType.FeaturesRS);
         return new ExpectedEffect(id, SnapshotFields.FsFeatStrucTypeFeatures, current, current);
     }
 }
@@ -139,9 +139,9 @@ internal sealed class FsFeatStrucTypeFeaturesRemoveRefHandler : IOperationHandle
         var (id, fsFeatStrucType) = TargetResolution.Resolve<IFsFeatStrucType>(cache, operation, FsFeatStrucTypeFeaturesOperationKinds.RemoveRefFeatures);
         touchedTargets.Add(id);
 
-        var before = ReferenceCollectionFieldSnapshotting.ReadAlternatives(fsFeatStrucType.FeaturesRS);
+        var before = ReferenceSequenceFieldSnapshotting.ReadAlternatives(fsFeatStrucType.FeaturesRS);
         FsFeatStrucTypeFeaturesRemoveRefLowering.Apply(cache, fsFeatStrucType, memberId);
-        var afterValue = ReferenceCollectionFieldSnapshotting.ReadAlternatives(fsFeatStrucType.FeaturesRS);
+        var afterValue = ReferenceSequenceFieldSnapshotting.ReadAlternatives(fsFeatStrucType.FeaturesRS);
 
         return new ExpectedEffect(id, SnapshotFields.FsFeatStrucTypeFeatures, before, afterValue);
     }
@@ -149,7 +149,7 @@ internal sealed class FsFeatStrucTypeFeaturesRemoveRefHandler : IOperationHandle
     public ExpectedEffect ReadCurrentFootprint(LcmCache cache, OperationEnvelope operation)
     {
         var (id, fsFeatStrucType) = TargetResolution.Resolve<IFsFeatStrucType>(cache, operation, FsFeatStrucTypeFeaturesOperationKinds.RemoveRefFeatures);
-        var current = ReferenceCollectionFieldSnapshotting.ReadAlternatives(fsFeatStrucType.FeaturesRS);
+        var current = ReferenceSequenceFieldSnapshotting.ReadAlternatives(fsFeatStrucType.FeaturesRS);
         return new ExpectedEffect(id, SnapshotFields.FsFeatStrucTypeFeatures, current, current);
     }
 }

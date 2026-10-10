@@ -2,7 +2,14 @@
 
 ## Companion files
 
-Five files sit alongside `liblcm-inventory.tsv`, in the same dialect (tab-separated, double-quoted, CRLF).
+Six files sit alongside `liblcm-inventory.tsv`, in the same dialect (tab-separated, double-quoted, CRLF).
+
+**`human-judgment-custom-fields.tsv` — the reserved project schema.** It records the one custom field
+project initialization creates, including its exact declaring class, internal name, String type, writing
+system selector, Notebook storage owner, operation kind and snapshot field. The field is resolved by
+`(declaring class, internal name)`; its label and cache-local field id are not identity. The write boundary
+names the semantic composer that is allowed to stage its fixed value operation. Judgment subjects remain
+typed logical references in the Notebook value, rather than direct custom fields on grammar objects.
 
 **`fieldworks-labels.tsv` — harvested, not authored.** What FieldWorks already shows a linguist for a given
 `(class, field)`, scraped from `strings-en.xml`, the `.fwlayout` slice system and the Lists tool config by

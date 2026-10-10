@@ -24,6 +24,7 @@ using SIL.Motif.Runner.DryRun;
 using SIL.Motif.Worker.Assess;
 using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Jobs;
+using SIL.Motif.Worker.Parsimony;
 using SIL.Motif.Worker.Store;
 
 namespace SIL.Motif.Worker;
@@ -71,8 +72,13 @@ internal static class WorkerRuntime
         var ownerId = "runner-" + Environment.ProcessId.ToString();
         var catalog = new ProjectDatabaseCatalog(MotifSchema.CurrentSchema, MotifProductVersion.Current);
         var runtimes = host.CreateRuntimeRegistry(catalog,
-            (jobs, key) => new WorkerRecoveryCoordinator(
-                new WorkerRecovery(jobs, ownerId: ownerId), new WorkspaceCleaner(ownership)));
+            (jobs, key) =>
+            {
+                var artifacts = new EvidenceArtifactRepository(jobs.Database);
+                return new WorkerRecoveryCoordinator(new WorkerRecovery(jobs, ownerId: ownerId),
+                    new WorkspaceCleaner(ownership), new EvidenceRetentionCleaner(artifacts, ownership),
+                    new EvidenceArtifactPublisher(options.Root, key));
+            });
         if (!await TryAcquireOwnershipWithRetryAsync(host, wakeProjectPath: options.WakeProjectPath,
             extraWaitLimit: options.Lease, reportWarning: Console.Error.WriteLine)
             .ConfigureAwait(false))

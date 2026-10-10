@@ -41,6 +41,7 @@ internal sealed record WarningGrammar(
         {
             if (phonology.PhonemeSetsOS.Count == 0)
                 phonology.PhonemeSetsOS.Add(services.GetInstance<IPhPhonemeSetFactory>().Create());
+            OwnedBoundaryMarkerFixture.EnsureReservedMarkers(cache, phonology.PhonemeSetsOS[0]);
             u = services.GetInstance<IPhPhonemeFactory>().Create();
             phonology.PhonemeSetsOS[0].PhonemesOC.Add(u);
             u.Name.set_String(vern, "u");

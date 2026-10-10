@@ -2,8 +2,11 @@ using System.Text.Json;
 using System.Collections.Concurrent;
 using System.Globalization;
 using System.Text;
+using Microsoft.Data.Sqlite;
 using SIL.Motif.Contract.Jobs;
+using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Host.Parsimony;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
@@ -572,6 +575,278 @@ public sealed class PanGlossInvokerTests : IDisposable
     }
 
     [Fact]
+    public async Task FactsRequestEmitsDeclaredArguments()
+    {
+        var snapshot = Snapshot("facts arguments");
+        var outputDirectory = Path.Combine(_root, "facts output # ñ's");
+        using var invoker = Invoker();
+
+        var outcome = await invoker.RunAsync(FactsRequest(snapshot, outputDirectory),
+            "test:facts-arguments", CancellationToken.None);
+
+        Assert.True(outcome is PanGlossOutcome.Completed, outcome.Message);
+        var arguments = Argv(snapshot);
+        Assert.Equal("facts", arguments[0]);
+        Assert.Equal(snapshot, arguments[1]);
+        Assert.Equal("--out", arguments[2]);
+        Assert.Equal(Path.Combine(outputDirectory, "grammar-facts.sqlite"), arguments[3]);
+        Assert.Equal("--context", arguments[4]);
+        Assert.Equal(Path.Combine(outputDirectory, "facts-context.json"), arguments[5]);
+        Assert.Equal("--json", arguments[6]);
+        Assert.Equal(7, arguments.Length);
+        Assert.Equal(FactsContextJson, File.ReadAllText(arguments[5]));
+    }
+
+    [Fact]
+    public async Task FactsRequestWithoutArtifactDirectoryUsesAnOutputPathUnderTheWindowsLimit()
+    {
+        var snapshot = Snapshot("facts short scratch");
+        using var invoker = Invoker();
+
+        var outcome = await invoker.RunAsync(new PanGlossRequest.Facts(snapshot, FactsContextJson),
+            "test:facts-short-scratch", CancellationToken.None);
+
+        var completed = Assert.IsType<PanGlossOutcome.Completed>(outcome);
+        using var lease = completed.FactsArtifactLease;
+        Assert.NotNull(completed.Facts);
+        Assert.InRange(completed.Facts!.Path.Length, 1, 259);
+    }
+
+    [Fact]
+    public async Task FactsRequestImportsOnlyAnExplicitCacheAndManifestPair()
+    {
+        var snapshot = Snapshot("facts statistics");
+        var cache = Path.Combine(_root, "statistics.sqlite");
+        var manifest = Path.Combine(_root, "statistics-manifest.json");
+        File.WriteAllText(cache, "cache");
+        File.WriteAllText(manifest, "manifest");
+        using var invoker = Invoker();
+
+        var outcome = await invoker.RunAsync(new PanGlossRequest.Facts(snapshot, FactsContextJson,
+                Path.Combine(_root, "facts statistics"), cache, manifest),
+            "test:facts-statistics", CancellationToken.None);
+
+        Assert.True(outcome is PanGlossOutcome.Completed, outcome.Message);
+        Assert.Equal(["--stats", Path.GetFullPath(cache), "--stats-manifest", Path.GetFullPath(manifest)],
+            Argv(snapshot)[6..10]);
+        Assert.Equal("--json", Argv(snapshot)[10]);
+    }
+
+    [Fact]
+    public async Task FactsRequestDoesNotRequireBatch()
+    {
+        var snapshot = Snapshot("facts-without-batch");
+        var executable = FakeParser.CopyRecordingInvocations(Path.Combine(_root, "facts-only-parser"));
+        using var queue = NewQueue();
+        using var invoker = new PanGlossInvoker(executable, queue);
+
+        var outcome = await invoker.RunAsync(FactsRequest(snapshot, Path.Combine(_root, "facts-only")),
+            "test:facts-without-batch", CancellationToken.None);
+
+        Assert.IsType<PanGlossOutcome.Completed>(outcome);
+        Assert.Equal(["describe", "facts"], FakeParser.Invocations(executable));
+    }
+
+    [Fact]
+    public async Task MissingFactsCapabilityRefusesOnlyFacts()
+    {
+        var snapshot = Snapshot("facts-missing-capability");
+        var project = Project("facts-missing-capability");
+        var executable = FakeParser.CopyRecordingInvocations(Path.Combine(_root, "facts-missing-parser"));
+        FakeParser.OmitDescribeEntries(executable, "facts");
+        using var queue = NewQueue();
+        using var invoker = new PanGlossInvoker(executable, queue);
+
+        var facts = await invoker.RunAsync(FactsRequest(snapshot, Path.Combine(_root, "facts-missing")),
+            "test:facts-missing-capability", CancellationToken.None);
+        var batch = await invoker.RunAsync(new PanGlossRequest.Batch(project, ["motifa"], TimeSpan.FromSeconds(1)),
+            "test:facts-capability-keeps-batch", CancellationToken.None);
+
+        var unavailable = Assert.IsType<PanGlossOutcome.Unavailable>(facts);
+        Assert.Contains("facts", unavailable.Message, StringComparison.Ordinal);
+        Assert.IsType<PanGlossOutcome.Completed>(batch);
+        Assert.Equal(["describe", "batch"], FakeParser.Invocations(executable));
+    }
+
+    [Fact]
+    public async Task FactsExitZeroWithoutOutputIsIncomplete()
+    {
+        var snapshot = Snapshot("facts-no-output");
+        var outputDirectory = Path.Combine(_root, "facts-no-output-artifacts");
+        FakeParser.Behave(_root, new { Mode = "noReport" });
+        using var invoker = Invoker();
+
+        var outcome = await invoker.RunAsync(FactsRequest(snapshot, outputDirectory),
+            "test:facts-no-output", CancellationToken.None);
+
+        var incomplete = Assert.IsType<PanGlossOutcome.Incomplete>(outcome);
+        Assert.Contains("no facts", incomplete.Detail, StringComparison.OrdinalIgnoreCase);
+        Assert.False(Directory.Exists(outputDirectory));
+    }
+
+    [Theory]
+    [InlineData("wrongFactsSchema", "schema")]
+    [InlineData("wrongFactsSource", "source")]
+    public async Task FactsWrongSchemaOrSourceIsRefused(string mode, string expectedDetail)
+    {
+        var snapshot = Snapshot("facts-invalid-" + mode);
+        var outputDirectory = Path.Combine(_root, "facts-invalid-artifacts-" + mode);
+        FakeParser.Behave(_root, new { Mode = mode });
+        using var invoker = Invoker();
+
+        var outcome = await invoker.RunAsync(FactsRequest(snapshot, outputDirectory),
+            "test:facts-invalid-artifact", CancellationToken.None);
+
+        var incomplete = Assert.IsType<PanGlossOutcome.Incomplete>(outcome);
+        Assert.Contains(expectedDetail, incomplete.Detail, StringComparison.OrdinalIgnoreCase);
+        Assert.False(Directory.Exists(outputDirectory));
+    }
+
+    [Fact]
+    public async Task FactsResponseMissingARequiredPropertyIsIncomplete()
+    {
+        var snapshot = Snapshot("facts-missing-application-id");
+        var outputDirectory = Path.Combine(_root, "facts-missing-application-id-artifacts");
+        FakeParser.Behave(_root, new { Mode = "missingApplicationId" });
+        using var invoker = Invoker();
+
+        var outcome = await invoker.RunAsync(FactsRequest(snapshot, outputDirectory),
+            "test:facts-missing-property", CancellationToken.None);
+
+        var incomplete = Assert.IsType<PanGlossOutcome.Incomplete>(outcome);
+        Assert.Contains("applicationId", incomplete.Detail, StringComparison.Ordinal);
+        Assert.False(Directory.Exists(outputDirectory));
+    }
+
+    [Fact]
+    public async Task FactsV7IsRefused()
+    {
+        var snapshot = Snapshot("facts-v7");
+        var outputDirectory = Path.Combine(_root, "facts-v7-artifacts");
+        FakeParser.Behave(_root, new { Mode = "v7Facts" });
+        using var invoker = Invoker();
+
+        var outcome = await invoker.RunAsync(FactsRequest(snapshot, outputDirectory),
+            "test:facts-v7", CancellationToken.None);
+
+        var incomplete = Assert.IsType<PanGlossOutcome.Incomplete>(outcome);
+        Assert.Contains("rebuild the facts", incomplete.Detail, StringComparison.OrdinalIgnoreCase);
+        Assert.False(Directory.Exists(outputDirectory));
+    }
+
+    [RequiresPanGlossFactsSchemaFact]
+    public void FakeFactsSchemaEqualsTheRealV8Schema()
+    {
+        var realPath = Environment.GetEnvironmentVariable(RequiresPanGlossFactsSchemaFactAttribute.Variable)!;
+        var fakePath = Path.Combine(FindRepositoryRoot(), "tests", "FakePanGloss", "facts-schema.sql");
+        var fake = File.ReadAllText(fakePath).Replace("\r\n", "\n", StringComparison.Ordinal);
+        var real = File.ReadAllText(realPath).Replace("\r\n", "\n", StringComparison.Ordinal);
+        Assert.Equal(real, fake);
+    }
+
+    private static string FindRepositoryRoot()
+    {
+        for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null;
+             directory = directory.Parent)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "Motif.sln"))) return directory.FullName;
+        }
+        throw new DirectoryNotFoundException("Could not find Motif.sln above the test output directory.");
+    }
+
+    [Fact]
+    public async Task FactsCompileRefusalPublishesItsStructuredArtifactWithANonzeroExit()
+    {
+        var snapshot = Snapshot("facts-compile-refused");
+        var outputDirectory = Path.Combine(_root, "facts-compile-refused-artifacts");
+        FakeParser.Behave(_root, new { Mode = "compileRefused" });
+        using var invoker = Invoker();
+
+        var outcome = await invoker.RunAsync(FactsRequest(snapshot, outputDirectory),
+            "test:facts-compile-refusal", CancellationToken.None);
+
+        var completed = Assert.IsType<PanGlossOutcome.Completed>(outcome);
+        Assert.Equal("refused", Assert.IsType<GrammarFactsArtifact>(completed.FactsArtifact).CompileStatus);
+        Assert.Contains("compile_refused", completed.StandardError, StringComparison.Ordinal);
+        Assert.True(File.Exists(completed.FactsArtifact.Path));
+        completed.ArtifactLease?.Dispose();
+    }
+
+    [Fact]
+    public async Task FactsOutputSurvivesUntilItsLeaseIsAdopted()
+    {
+        var snapshot = Snapshot("facts-retained");
+        var outputDirectory = Path.Combine(_root, "facts-retained-artifacts");
+        using var invoker = Invoker();
+
+        var outcome = await invoker.RunAsync(FactsRequest(snapshot, outputDirectory),
+            "test:facts-retained", CancellationToken.None);
+
+        var completed = Assert.IsType<PanGlossOutcome.Completed>(outcome);
+        var artifact = Assert.IsType<GrammarFactsArtifact>(completed.FactsArtifact);
+        var lease = Assert.IsType<AssessmentArtifactLease>(completed.ArtifactLease);
+        Assert.Equal(Path.Combine(outputDirectory, "grammar-facts.sqlite"), artifact.Path);
+        Assert.True(File.Exists(artifact.Path));
+        using (var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+        {
+            DataSource = artifact.Path,
+            Mode = SqliteOpenMode.ReadOnly,
+            Pooling = false,
+        }.ToString()))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT subject_kind, subject_key, subject_guid FROM load_fact";
+            using var reader = command.ExecuteReader();
+            Assert.True(reader.Read());
+            Assert.Equal("featureDefinition", reader.GetString(0));
+            Assert.True(reader.IsDBNull(2));
+            using var key = JsonDocument.Parse(reader.GetString(1));
+            Assert.Equal("featureDefinition", key.RootElement.GetProperty("kind").GetString());
+            Assert.Equal("synthetic", key.RootElement.GetProperty("identity").GetProperty("kind").GetString());
+            Assert.Equal("__pos__", key.RootElement.GetProperty("identity").GetProperty("key").GetString());
+        }
+        lease.Retain();
+        lease.Dispose();
+        Assert.True(File.Exists(artifact.Path));
+    }
+
+    [Fact]
+    public async Task CancellingFactsRemovesUnpublishedArtifacts()
+    {
+        var snapshot = Snapshot("facts-cancel");
+        var outputDirectory = Path.Combine(_root, "facts-cancel-artifacts");
+        var heartbeat = Path.Combine(_root, "facts-cancel-heartbeat");
+        FakeParser.Behave(_root, new { HeartbeatPath = heartbeat });
+        using var invoker = Invoker();
+        using var cancellation = new CancellationTokenSource();
+        var run = invoker.RunAsync(FactsRequest(snapshot, outputDirectory), "test:facts-cancel", cancellation.Token);
+        await WaitForFile(heartbeat);
+
+        await cancellation.CancelAsync();
+
+        Assert.IsType<PanGlossOutcome.Cancelled>(await run);
+        Assert.False(Directory.Exists(outputDirectory));
+    }
+
+    [Fact]
+    public async Task TimingOutFactsRemovesUnpublishedArtifacts()
+    {
+        var snapshot = Snapshot("facts-timeout");
+        var outputDirectory = Path.Combine(_root, "facts-timeout-artifacts");
+        var heartbeat = Path.Combine(_root, "facts-timeout-heartbeat");
+        FakeParser.Behave(_root, new { HeartbeatPath = heartbeat });
+        using var invoker = Invoker();
+
+        var outcome = await invoker.RunAsync(FactsRequest(snapshot, outputDirectory), "test:facts-timeout",
+            CancellationToken.None, wallClockCap: TimeSpan.FromMilliseconds(500));
+
+        Assert.True(File.Exists(heartbeat));
+        Assert.IsType<PanGlossOutcome.TimedOut>(outcome);
+        Assert.False(Directory.Exists(outputDirectory));
+    }
+
+    [Fact]
     public async Task AMalformedDescriptionRefusesAnImportBeforeTheRequestedCommand()
     {
         var project = Project("import-malformed-description");
@@ -1057,6 +1332,29 @@ public sealed class PanGlossInvokerTests : IDisposable
         var path = Path.Combine(_root, name + ".fwdata");
         File.WriteAllText(path, "the fake parser never reads this.");
         return path;
+    }
+
+    private string Snapshot(string name)
+    {
+        var path = Path.Combine(_root, name + ".json");
+        File.WriteAllText(path,
+            "{\"format\":\"pangloss-project\",\"version\":1,\"project\":{\"name\":\"Fake project\"}}");
+        return path;
+    }
+
+    private static PanGlossRequest.Facts FactsRequest(string snapshot, string artifactDirectory) =>
+        new(snapshot, FactsContextJson, artifactDirectory);
+
+    private static readonly string FactsContextJson =
+        "{\"format\":\"pangloss-facts-context\",\"version\":1,\"baselineToken\":{\"token\":\"test\"}," +
+        "\"inputKind\":\"baseline\",\"dryRunDigest\":null}";
+
+    private static async Task WaitForFile(string path)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        while (!File.Exists(path) && DateTime.UtcNow < deadline)
+            await Task.Delay(20);
+        Assert.True(File.Exists(path), $"The fake parser did not create '{path}'.");
     }
 
     private static string[] Argv(string besidePath) =>

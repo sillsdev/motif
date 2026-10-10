@@ -1724,7 +1724,8 @@ public sealed class MainWindowSmokeTests
             try
             {
                 Assert.True(workspace.IsSidebarCollapsed);
-                foreach (var page in Enum.GetValues<WorkspacePage>().Reverse())
+                // The Parsimony page is absent from a window without Advanced AI mode, so only the offered pages are walked.
+                foreach (var page in Enum.GetValues<WorkspacePage>().Where(workspace.Context.CanOpenPage).Reverse())
                 {
                     var entry = window.GetLogicalDescendants().OfType<ListBoxItem>()
                         .Single(item => item.DataContext is PageViewModel model && model.Page == page);

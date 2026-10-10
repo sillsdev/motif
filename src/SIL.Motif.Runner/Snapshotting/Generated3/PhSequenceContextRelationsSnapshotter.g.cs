@@ -25,7 +25,7 @@ public static class PhSequenceContextRelationsSnapshotter
         var canonicalId = CanonicalId.FromGuid(phSequenceContext.Guid);
         var fields = new Dictionary<string, IReadOnlyDictionary<string, string>>();
 
-        AddIfPopulated(fields, SnapshotFields.PhSequenceContextMembers, ReferenceCollectionFieldSnapshotting.ReadAlternatives(phSequenceContext.MembersRS));
+        AddIfPopulated(fields, SnapshotFields.PhSequenceContextMembers, ReferenceSequenceFieldSnapshotting.ReadAlternatives(phSequenceContext.MembersRS));
 
         return new ObjectSnapshot(canonicalId, fields);
     }

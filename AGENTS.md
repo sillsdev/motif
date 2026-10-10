@@ -17,15 +17,18 @@ The default `./test.ps1` run is not a merge gate: it selects Unit and Integratio
 developer loop. Pass `-All` to run every level. CI and release validation use `-All`; the workflow runs
 on Windows, Ubuntu 22.04, and macOS.
 
-**`./test.ps1` needs no project or checkout from outside this repo.** Every LibLCM project the suite
+**`./test.ps1` needs no FieldWorks project or sibling FieldWorks checkout.** Every LibLCM project the suite
 exercises is a real, blank `LcmCache` built at run time by `NewLangProjFixture` and seeded by
-`SeededProject` (`tests/SIL.Motif.Tests.Support/TestFixtures/`) — no vendored sample project, no sibling
-FieldWorks checkout. Motif owns its seeded integration and lifecycle fixtures; PanGloss owns grammar
-conformance and parser-scale benchmarks. The external dependency is the released `pangloss`
-executable, pinned by version, runtime identifier and SHA-256 in `pangloss-release.json`.
+`SeededProject` (`tests/SIL.Motif.Tests.Support/TestFixtures/`). Synthetic evaluation sets live in the
+separate `sillsdev/motif-test-grammars` repository and are pinned by tag and commit in
+`evals/test-grammars.lock.json`. Fetch them into this checkout with `pwsh ./evals/Get-TestGrammars.ps1`,
+or set `MOTIF_TEST_GRAMMARS` to a local checkout at that pin; no evaluation set is kept in Motif.
+`EvaluationSetVerificationTests` skips with a clear reason when the sets are absent, and CI fetches them
+before testing. PanGloss owns grammar conformance and parser-scale benchmarks. The released `pangloss`
+executable is also pinned by version, runtime identifier and SHA-256 in `pangloss-release.json`.
 Tests needing it use `RealParserFactAttribute`, which skips when the parser is absent on an ordinary
-developer machine. Release integration validation requires the pinned executable and reports any
-parser-dependent skips as incomplete validation.
+developer machine. Release integration validation requires both pinned dependencies and treats any
+parser- or evaluation-set-dependent skips as incomplete validation.
 
 **`./test.ps1` gives each test class exactly one level from its project's `MotifTestDefaultLevel`, with
 System overrides for walkthroughs and real-parser tests. With no switch it selects Unit and Integration;
@@ -173,6 +176,9 @@ For PR review, PR copy, review-comment responses, or Jira bug work, read
 [`respond-to-review-comments`](.claude/skills/respond-to-review-comments/SKILL.md), or
 [`jira-bugfix`](.claude/skills/jira-bugfix/SKILL.md). These are software-development workflows;
 they do not replace Motif's Proposal, Dry Run, or Assessment contracts.
+
+To interpret a Parsimony finding for a linguist, or to stage its fix, keep, ask or defer, read the
+[`parsimony-review`](.claude/skills/parsimony-review/SKILL.md) skill first.
 
 **Linux and macOS:** before changing code that touches child processes, environment variables, file
 locks, paths, native libraries, stored timestamps or the Avalonia dispatcher, or when a test fails only on
@@ -383,3 +389,7 @@ An operation family is incomplete until it has:
 - semantic snapshot and diff support;
 - positive, negative, rollback, round-trip, and conformance fixtures;
 - a coverage-manifest mapping to the relevant LibLCM surface.
+
+For a whole-graph owning delete, also enumerate and bind every owned object, inspect all live incoming
+references, remove explicitly allowed external links before deletion, and verify that Apply removed every
+bound member. Generated delete kinds name one domain scope; they do not authorize generic cascade deletion.

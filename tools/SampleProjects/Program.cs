@@ -16,6 +16,7 @@ using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Parser;
+using SIL.Motif.Tests.TestFixtures;
 
 namespace SIL.Motif.SampleProjects;
 
@@ -178,6 +179,8 @@ internal sealed record SampleSpec
     public string[] Phonemes { get; init; } = [];
     public NaturalClassSpec[] NaturalClasses { get; init; } = [];
     public FeatureDefinitionSpec[] FeatureDefinitions { get; init; } = [];
+    public FeatureDefinitionSpec[] PhonologicalFeatureDefinitions { get; init; } = [];
+    public Dictionary<string, FeatureAssignmentSpec[]> PhonemeFeatures { get; init; } = new(StringComparer.Ordinal);
     public InflectionClassSpec[] InflectionClasses { get; init; } = [];
     public EnvironmentSpec[] Environments { get; init; } = [];
     public PartOfSpeechSpec[] PartsOfSpeech { get; init; } = [];
@@ -186,7 +189,12 @@ internal sealed record SampleSpec
     public AffixSlotSpec[] AffixSlots { get; init; } = [];
     public AffixTemplateSpec[] AffixTemplates { get; init; } = [];
     public PhonologicalRuleSpec[] PhonologicalRules { get; init; } = [];
+    public ReduplicationSpec[] Reduplication { get; init; } = [];
     public TextSpec[] Texts { get; init; } = [];
+    public string Tier { get; init; } = "";
+    public int Seed { get; init; }
+    public GenerationPatternSpec[] Patterns { get; init; } = [];
+    public DefectSpec[] Defects { get; init; } = [];
 }
 
 internal sealed record LanguageSpec(string Name, string Tag);
@@ -202,7 +210,7 @@ internal sealed record EnvironmentSpec(string Id, string Name, string Representa
 internal sealed record PartOfSpeechSpec(string Id, string Name);
 internal sealed record StemSpec(
     string Id, string Form, string PartOfSpeech, string Gloss, string? InflectionClass = null,
-    FeatureAssignmentSpec[]? Features = null);
+    FeatureAssignmentSpec[]? Features = null, bool OmitLexemeForm = false);
 internal sealed record AffixSpec(
     string Id, string PartOfSpeech, string[] Slots, string Gloss, AllomorphSpec[] Allomorphs,
     FeatureAssignmentSpec[]? Features = null);
@@ -217,7 +225,10 @@ internal sealed record AffixSlotSpec(string Id, string Name, string PartOfSpeech
 internal sealed record AffixTemplateSpec(
     string Id, string Name, string PartOfSpeech, string[] PrefixSlots, string[] SuffixSlots, bool Final);
 internal sealed record PhonologicalRuleSpec(string Id, string Name, string Input, string Output, string Environment);
+internal sealed record ReduplicationSpec(string Id, string Input, string Output);
 internal sealed record TextSpec(string Id, string Title, string[] Sentences);
+internal sealed record GenerationPatternSpec(string Id, string PartOfSpeech, string[] Affixes, string Partition);
+internal sealed record DefectSpec(string Id, PatchOperation[] Patch);
 internal sealed record BugSpec(
     string Id, string Title, string Disclaimer, BugSymptom? Symptom, string[] Fix, PatchOperation[] Patch);
 internal sealed record BugSymptom(string Kind, string[] Words, string Reason);
@@ -225,6 +236,7 @@ internal sealed record PatchOperation(
     string Op,
     string? AllomorphId = null,
     string? Form = null,
+    string? FeatureId = null,
     string? EnvironmentId = null,
     string? AffixId = null,
     string? StemId = null,
@@ -236,8 +248,11 @@ internal sealed record PatchOperation(
     int? Count = null,
     string[]? Slots = null,
     string? Side = null,
+    string? Gloss = null,
     AffixPatchSpec? Affix = null,
-    AllomorphSpec? Allomorph = null);
+    AllomorphSpec? Allomorph = null,
+    string? RuleId = null,
+    string? Environment = null);
 internal sealed record BuildResult(string ProjectPath, string BackupPath, BuiltText[] Texts, string[] AppliedBugs);
 internal sealed record BuiltText(string Id, string Guid);
 internal sealed record BuildMatrixResult(NamedBuildResult[] Variants);
@@ -303,7 +318,12 @@ internal static class SampleBuilder
     private static SampleSpec ApplyPatch(SampleSpec spec, PatchOperation patch) => patch.Op switch
     {
         "setEnvironment" => SetEnvironment(spec, patch),
+        "removePhonologicalRule" => PatchPhonologicalRule(spec, patch, remove: true),
+        "setPhonologicalRuleEnvironment" => PatchPhonologicalRule(spec, patch, remove: false),
         "setAllomorphForm" => SetAllomorphForm(spec, patch),
+        "setStemGloss" => SetStemGloss(spec, patch),
+        "omitLexemeForm" => OmitLexemeForm(spec, patch),
+        "removeAffixFeature" => RemoveAffixFeature(spec, patch),
         "removeStem" => spec with
         {
             Stems = spec.Stems.Where(stem => stem.Id != Required(patch.StemId, "stemId")).ToArray(),
@@ -323,6 +343,21 @@ internal static class SampleBuilder
         "duplicateTemplate" => DuplicateTemplate(spec, patch),
         _ => throw new InvalidDataException($"Unknown patch operation '{patch.Op}'."),
     };
+
+    private static SampleSpec PatchPhonologicalRule(SampleSpec spec, PatchOperation patch, bool remove)
+    {
+        var ruleId = Required(patch.RuleId, "ruleId");
+        if (spec.PhonologicalRules.Count(rule => rule.Id == ruleId) != 1)
+            throw new InvalidDataException($"Phonological rule '{ruleId}' does not exist exactly once.");
+        return spec with
+        {
+            PhonologicalRules = remove
+                ? spec.PhonologicalRules.Where(rule => rule.Id != ruleId).ToArray()
+                : spec.PhonologicalRules.Select(rule => rule.Id == ruleId
+                    ? rule with { Environment = Required(patch.Environment, "environment") }
+                    : rule).ToArray(),
+        };
+    }
 
     private static SampleSpec SwapSlots(SampleSpec spec, PatchOperation patch)
     {
@@ -390,6 +425,49 @@ internal static class SampleBuilder
                     ? allomorph with { Form = form }
                     : allomorph).ToArray(),
             }).ToArray(),
+        };
+    }
+
+    private static SampleSpec SetStemGloss(SampleSpec spec, PatchOperation patch)
+    {
+        var stemId = Required(patch.StemId, "stemId");
+        var gloss = Required(patch.Gloss, "gloss");
+        if (spec.Stems.Count(stem => stem.Id == stemId) != 1)
+            throw new InvalidDataException($"Stem '{stemId}' does not exist exactly once.");
+        return spec with
+        {
+            Stems = spec.Stems.Select(stem => stem.Id == stemId ? stem with { Gloss = gloss } : stem).ToArray(),
+        };
+    }
+
+    private static SampleSpec OmitLexemeForm(SampleSpec spec, PatchOperation patch)
+    {
+        var stemId = Required(patch.StemId, "stemId");
+        if (spec.Stems.Count(stem => stem.Id == stemId) != 1)
+            throw new InvalidDataException($"Stem '{stemId}' does not exist exactly once.");
+        return spec with
+        {
+            Stems = spec.Stems.Select(stem => stem.Id == stemId
+                ? stem with { OmitLexemeForm = true }
+                : stem).ToArray(),
+        };
+    }
+
+    private static SampleSpec RemoveAffixFeature(SampleSpec spec, PatchOperation patch)
+    {
+        var affixId = Required(patch.AffixId, "affixId");
+        var featureId = Required(patch.FeatureId, "featureId");
+        if (spec.Affixes.Count(affix => affix.Id == affixId) != 1)
+            throw new InvalidDataException($"Affix '{affixId}' does not exist exactly once.");
+        var source = spec.Affixes.Single(affix => affix.Id == affixId);
+        var features = source.Features ?? [];
+        if (!features.Any(feature => feature.FeatureId == featureId))
+            throw new InvalidDataException($"Affix '{affixId}' has no feature '{featureId}'.");
+        return spec with
+        {
+            Affixes = spec.Affixes.Select(affix => affix.Id == affixId
+                ? affix with { Features = features.Where(feature => feature.FeatureId != featureId).ToArray() }
+                : affix).ToArray(),
         };
     }
 
@@ -505,16 +583,18 @@ internal static class SampleBuilder
     private static string Required(string? value, string name) =>
         string.IsNullOrWhiteSpace(value) ? throw new InvalidDataException($"Patch operation needs {name}.") : value;
 
-    private static void Validate(SampleSpec spec, IReadOnlyList<BugSpec> bugs)
+    private static void Validate(
+        SampleSpec spec, IReadOnlyList<BugSpec> bugs, bool requireSampleMetadata = true, bool requireTexts = true)
     {
-        if (string.IsNullOrWhiteSpace(spec.Id) || string.IsNullOrWhiteSpace(spec.Title) ||
-            spec.Teaches.Length == 0 || string.IsNullOrWhiteSpace(spec.Summary) ||
-            string.IsNullOrWhiteSpace(spec.Language.Tag) || string.IsNullOrWhiteSpace(spec.Disclaimer) ||
-            string.IsNullOrWhiteSpace(spec.Description))
+        if (string.IsNullOrWhiteSpace(spec.Id) ||
+            string.IsNullOrWhiteSpace(spec.Language.Tag) ||
+            (requireSampleMetadata && (string.IsNullOrWhiteSpace(spec.Title) || spec.Teaches.Length == 0 ||
+             string.IsNullOrWhiteSpace(spec.Summary) || string.IsNullOrWhiteSpace(spec.Disclaimer) ||
+             string.IsNullOrWhiteSpace(spec.Description))))
             throw new InvalidDataException("Sample id, title, description, disclaimer, and writing-system tag are required.");
         if (spec.Phonemes.Length == 0 || spec.PartsOfSpeech.Length == 0)
             throw new InvalidDataException("At least one phoneme and part of speech are required.");
-        if (spec.Stems.Length == 0 || spec.Texts.Length == 0)
+        if (spec.Stems.Length == 0 || (requireTexts && spec.Texts.Length == 0))
             throw new InvalidDataException("At least one stem and Text are required.");
         var declaredCharacters = spec.Phonemes
             .SelectMany(TextElements)
@@ -528,6 +608,35 @@ internal static class SampleBuilder
         var featureDefinitions = UniqueById(spec.FeatureDefinitions, feature => feature.Id, "feature definition");
         foreach (var feature in featureDefinitions.Values)
             UniqueById(feature.Values, value => value.Id, $"value in feature '{feature.Id}'");
+        var phonologicalFeatureDefinitions = UniqueById(
+            spec.PhonologicalFeatureDefinitions, feature => feature.Id, "phonological feature definition");
+        foreach (var feature in phonologicalFeatureDefinitions.Values)
+        {
+            UniqueById(feature.Values, value => value.Id, $"value in phonological feature '{feature.Id}'");
+            if (string.IsNullOrWhiteSpace(feature.Name) || string.IsNullOrWhiteSpace(feature.Abbreviation) ||
+                feature.Values.Length == 0)
+                throw new InvalidDataException(
+                    $"Phonological feature '{feature.Id}' needs a name, abbreviation, and value.");
+            foreach (var value in feature.Values)
+                if (string.IsNullOrWhiteSpace(value.Name) || string.IsNullOrWhiteSpace(value.Abbreviation))
+                    throw new InvalidDataException(
+                        $"Value '{value.Id}' in phonological feature '{feature.Id}' needs a name and abbreviation.");
+        }
+        var phonemeIds = spec.Phonemes.ToHashSet(StringComparer.Ordinal);
+        var phonemeFeatures = spec.PhonemeFeatures;
+        if (phonologicalFeatureDefinitions.Count == 0 && phonemeFeatures.Count > 0)
+            throw new InvalidDataException("Phoneme feature assignments need phonological feature definitions.");
+        if (phonologicalFeatureDefinitions.Count > 0 && phonemeFeatures.Keys.Any(id => !phonemeIds.Contains(id)))
+            throw new InvalidDataException("A phonological feature assignment names an unknown phoneme.");
+        if (phonologicalFeatureDefinitions.Count > 0 && phonemeIds.Any(id => !phonemeFeatures.ContainsKey(id)))
+            throw new InvalidDataException("Every phoneme needs explicit values for the declared phonological features.");
+        foreach (var (phoneme, assignments) in phonemeFeatures)
+        {
+            ValidateFeatureAssignments(assignments, phonologicalFeatureDefinitions, $"Phoneme '{phoneme}'");
+            if (assignments.Length != phonologicalFeatureDefinitions.Count)
+                throw new InvalidDataException(
+                    $"Phoneme '{phoneme}' needs one value for each declared phonological feature.");
+        }
         var inflectionClasses = UniqueById(spec.InflectionClasses, item => item.Id, "inflection class");
         UniqueById(spec.Phonemes, phoneme => phoneme, "phoneme");
         UniqueById(spec.Texts, text => text.Id, "Text");
@@ -672,27 +781,136 @@ internal static class SampleBuilder
             yield return enumerator.GetTextElement();
     }
 
-    private static void Seed(LcmCache cache, SampleSpec spec)
+    private static void Seed(LcmCache cache, SampleSpec spec, bool includeGrammar = true, bool includeTexts = true)
     {
-        var services = cache.ServiceLocator;
         NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
         {
             SetVernacularWritingSystem(cache, spec.Language.Tag);
             cache.LangProject.Description.set_String(cache.DefaultAnalWs,
                 string.IsNullOrWhiteSpace(spec.Description) ? spec.Disclaimer : spec.Description);
             cache.LangProject.MorphologicalDataOA.ParserParameters = ParserParametersXml;
-            var positions = AddPartsOfSpeech(cache, spec);
-            var inflectionClasses = AddInflectionClasses(cache, spec, positions);
-            var features = AddFeatureDefinitions(cache, spec);
-            AddStems(cache, spec, positions, inflectionClasses, features);
             var phonemes = AddPhonemes(cache, spec);
-            AddNaturalClasses(cache, spec, phonemes);
-            var environments = AddEnvironments(cache, spec);
+            var features = includeGrammar
+                ? AddFeatureDefinitions(cache, spec.FeatureDefinitions, cache.LangProject.MsFeatureSystemOA, spec.Id,
+                    "feature/")
+                : [];
+            if (includeGrammar) AddPhonologicalFeatures(cache, spec, phonemes);
+            var naturalClasses = includeGrammar
+                ? AddNaturalClasses(cache, spec, phonemes)
+                : new Dictionary<string, IPhNCSegments>(StringComparer.Ordinal);
+            var environments = includeGrammar ? AddEnvironments(cache, spec) : [];
+            var positions = AddPartsOfSpeech(cache, spec);
+            var inflectionClasses = includeGrammar ? AddInflectionClasses(cache, spec, positions) : [];
+            AddStems(cache, spec, positions, inflectionClasses, features);
+            if (!includeGrammar) return;
             var slots = AddAffixSlots(cache, spec, positions);
             AddAffixTemplates(cache, spec, positions, slots);
             AddAffixes(cache, spec, positions, slots, environments, inflectionClasses, features);
-            AddTexts(cache, spec);
+            AddPhonologicalRules(cache, spec, phonemes, naturalClasses);
+            if (includeTexts) AddTexts(cache, spec);
         });
+    }
+
+    private static void AddPhonologicalRules(
+        LcmCache cache,
+        SampleSpec spec,
+        IReadOnlyDictionary<string, IPhPhoneme> phonemes,
+        IReadOnlyDictionary<string, IPhNCSegments> naturalClasses)
+    {
+        var services = cache.ServiceLocator;
+        foreach (var source in spec.PhonologicalRules)
+        {
+            if (!phonemes.TryGetValue(source.Input, out var input) ||
+                !phonemes.TryGetValue(source.Output, out var output))
+                throw new InvalidDataException($"Rule '{source.Id}' names an unknown input or output phoneme.");
+            var environment = source.Environment.Trim();
+            var followsInput = environment.StartsWith("/ _ [", StringComparison.Ordinal);
+            var precedesInput = environment.StartsWith("/ [", StringComparison.Ordinal) &&
+                                environment.EndsWith(" _", StringComparison.Ordinal);
+            if (!followsInput && !precedesInput)
+                throw new InvalidDataException($"Rule '{source.Id}' environment is outside the one-class context subset.");
+            var open = environment.IndexOf('[', StringComparison.Ordinal);
+            var close = environment.IndexOf(']', open + 1);
+            if (open < 0 || close < 0 || environment[(close + 1)..].Trim() is not ("" or "_"))
+                throw new InvalidDataException($"Rule '{source.Id}' environment needs one natural-class context.");
+            var abbreviation = environment[(open + 1)..close];
+            var naturalClassSpec = spec.NaturalClasses.SingleOrDefault(candidate =>
+                candidate.Abbreviation == abbreviation);
+            if (naturalClassSpec is null || !naturalClasses.TryGetValue(naturalClassSpec.Id, out var naturalClass))
+                throw new InvalidDataException($"Rule '{source.Id}' environment names unknown class '{abbreviation}'.");
+
+            var rule = services.GetInstance<IPhRegularRuleFactory>().Create(
+                Ids.Create(spec.Id, "phonological-rule/" + source.Id));
+            cache.LangProject.PhonologicalDataOA.PhonRulesOS.Add(rule);
+            rule.Name.set_String(cache.DefaultAnalWs, source.Name);
+            var inputContext = services.GetInstance<IPhSimpleContextSegFactory>().Create();
+            rule.StrucDescOS.Add(inputContext);
+            inputContext.FeatureStructureRA = input;
+            var rhs = services.GetInstance<IPhSegRuleRHSFactory>().Create();
+            rule.RightHandSidesOS.Add(rhs);
+            var outputContext = services.GetInstance<IPhSimpleContextSegFactory>().Create();
+            rhs.StrucChangeOS.Add(outputContext);
+            outputContext.FeatureStructureRA = output;
+            var condition = services.GetInstance<IPhSimpleContextNCFactory>().Create();
+            if (followsInput)
+                rhs.RightContextOA = condition;
+            else
+                rhs.LeftContextOA = condition;
+            condition.FeatureStructureRA = naturalClass;
+        }
+    }
+
+    internal static EvaluationBuildResult BuildForEvaluation(SampleSpec source, string outputRoot, string start)
+    {
+        var spec = source;
+        var includeGrammar = start != "empty-grammar";
+        if (start.StartsWith("gold-minus:", StringComparison.Ordinal))
+        {
+            var defectId = start["gold-minus:".Length..];
+            var defect = source.Defects.SingleOrDefault(candidate => candidate.Id == defectId)
+                ?? throw new InvalidDataException($"Defect '{defectId}' is not declared in the language spec.");
+            foreach (var patch in defect.Patch)
+                spec = ApplyPatch(spec, patch);
+        }
+        else if (start is not ("empty-grammar" or "gold-grammar"))
+        {
+            throw new InvalidDataException($"Unknown project start '{start}'.");
+        }
+
+        Validate(spec, [], requireSampleMetadata: false, requireTexts: false);
+        Directory.CreateDirectory(outputRoot);
+        var projectRoot = Path.Combine(outputRoot, "project");
+        if (Directory.Exists(projectRoot)) Directory.Delete(projectRoot, recursive: true);
+        Directory.CreateDirectory(projectRoot);
+        SetPrivateWritingSystemPaths(outputRoot);
+        using (var cache = NewLangProjFixture.CreateCache(projectRoot))
+        {
+            Seed(cache, spec, includeGrammar, includeTexts: false);
+            cache.ServiceLocator.WritingSystemManager.Save();
+            new FwDataProjectLoader().Save(cache);
+        }
+
+        var formIds = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var stem in source.Stems)
+            formIds.Add("stem/" + stem.Id, Ids.Create(source.Id, "stem/" + stem.Id + "/form").ToString("D"));
+        foreach (var affix in source.Affixes)
+        foreach (var allomorph in affix.Allomorphs)
+            formIds.Add("affix/" + affix.Id + "/" + allomorph.Id,
+                Ids.Create(source.Id, "affix/" + affix.Id + "/allomorph/" + allomorph.Id).ToString("D"));
+        return new EvaluationBuildResult(NewLangProjFixture.FwDataPath(projectRoot), formIds);
+    }
+
+    private static void SetPrivateWritingSystemPaths(string outputRoot)
+    {
+        SetIfMissing("MOTIF_WRITING_SYSTEM_REPOSITORY_PATH", Path.Combine(outputRoot, ".writing-systems"));
+        SetIfMissing("MOTIF_TEST_SLDR_OFFLINE", "1");
+        SetIfMissing("MOTIF_TEST_SLDR_CACHE_PATH", Path.Combine(outputRoot, ".sldr-cache"));
+    }
+
+    private static void SetIfMissing(string name, string value)
+    {
+        if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable(name)))
+            Environment.SetEnvironmentVariable(name, value);
     }
 
     private static Dictionary<string, IPartOfSpeech> AddPartsOfSpeech(LcmCache cache, SampleSpec spec)
@@ -727,21 +945,26 @@ internal static class SampleBuilder
         return result;
     }
 
-    private static Dictionary<string, FeatureDefinitionHandle> AddFeatureDefinitions(LcmCache cache, SampleSpec spec)
+    private static Dictionary<string, FeatureDefinitionHandle> AddFeatureDefinitions(
+        LcmCache cache,
+        IReadOnlyList<FeatureDefinitionSpec> definitions,
+        IFsFeatureSystem featureSystem,
+        string sampleId,
+        string identityPrefix)
     {
         var result = new Dictionary<string, FeatureDefinitionHandle>(StringComparer.Ordinal);
-        foreach (var source in spec.FeatureDefinitions)
+        foreach (var source in definitions)
         {
             var feature = cache.ServiceLocator.GetInstance<IFsClosedFeatureFactory>().Create(
-                Ids.Create(spec.Id, "feature/" + source.Id));
-            cache.LangProject.MsFeatureSystemOA.FeaturesOC.Add(feature);
+                Ids.Create(sampleId, identityPrefix + source.Id));
+            featureSystem.FeaturesOC.Add(feature);
             feature.Name.set_String(cache.DefaultAnalWs, source.Name);
             feature.Abbreviation.set_String(cache.DefaultAnalWs, source.Abbreviation);
             var values = new Dictionary<string, IFsSymFeatVal>(StringComparer.Ordinal);
             foreach (var valueSource in source.Values)
             {
                 var value = cache.ServiceLocator.GetInstance<IFsSymFeatValFactory>().Create(
-                    Ids.Create(spec.Id, "feature/" + source.Id + "/value/" + valueSource.Id));
+                    Ids.Create(sampleId, identityPrefix + source.Id + "/value/" + valueSource.Id));
                 feature.ValuesOC.Add(value);
                 value.Name.set_String(cache.DefaultAnalWs, valueSource.Name);
                 value.Abbreviation.set_String(cache.DefaultAnalWs, valueSource.Abbreviation);
@@ -750,6 +973,27 @@ internal static class SampleBuilder
             result.Add(source.Id, new FeatureDefinitionHandle(feature, values));
         }
         return result;
+    }
+
+    private static void AddPhonologicalFeatures(
+        LcmCache cache, SampleSpec spec, IReadOnlyDictionary<string, IPhPhoneme> phonemes)
+    {
+        if (spec.PhonologicalFeatureDefinitions.Length == 0) return;
+        var system = cache.LangProject.PhFeatureSystemOA;
+        if (system is null)
+        {
+            system = cache.ServiceLocator.GetInstance<IFsFeatureSystemFactory>().Create(
+                Ids.Create(spec.Id, "phonology/feature-system"));
+            cache.LangProject.PhFeatureSystemOA = system;
+        }
+        var features = AddFeatureDefinitions(cache, spec.PhonologicalFeatureDefinitions, system, spec.Id,
+            "phonological-feature/");
+        foreach (var (phonemeId, assignments) in spec.PhonemeFeatures)
+        {
+            var structure = CreateFeatureStructure(cache, spec.Id,
+                "phoneme/" + phonemeId + "/features", assignments, features);
+            phonemes[phonemeId].FeaturesOA = structure;
+        }
     }
 
     private static IFsFeatStruc? CreateFeatureStructure(
@@ -812,11 +1056,14 @@ internal static class SampleBuilder
         var services = cache.ServiceLocator;
         var entry = services.GetInstance<ILexEntryFactory>().Create(
             Ids.Create(sampleId, "stem/" + stem.Id + "/entry"), cache.LangProject.LexDbOA);
-        var form = services.GetInstance<IMoStemAllomorphFactory>().Create(
-            Ids.Create(sampleId, "stem/" + stem.Id + "/form"));
-        entry.LexemeFormOA = form;
-        form.MorphTypeRA = services.GetInstance<IMoMorphTypeRepository>().GetObject(MoMorphTypeTags.kguidMorphStem);
-        form.Form.set_String(cache.DefaultVernWs, stem.Form);
+        if (!stem.OmitLexemeForm)
+        {
+            var form = services.GetInstance<IMoStemAllomorphFactory>().Create(
+                Ids.Create(sampleId, "stem/" + stem.Id + "/form"));
+            entry.LexemeFormOA = form;
+            form.MorphTypeRA = services.GetInstance<IMoMorphTypeRepository>().GetObject(MoMorphTypeTags.kguidMorphStem);
+            form.Form.set_String(cache.DefaultVernWs, stem.Form);
+        }
 
         var msa = services.GetInstance<IMoStemMsaFactory>().Create(
             Ids.Create(sampleId, "stem/" + stem.Id + "/msa"));

@@ -1,0 +1,7 @@
+{
+  "id": "codex-no-invent-guidance",
+  "host": "codex",
+  "model": "gpt-6-luna",
+  "effort": "high",
+  "server": { "ref": "HEAD", "profile": "default", "grade_profile": "profiles/mcp-default-grade.json" }
+}

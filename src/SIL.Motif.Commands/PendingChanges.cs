@@ -207,7 +207,7 @@ public static class PendingChanges
                     analysis.GetAgentOpinion(cache.LangProject.DefaultUserAgent).ToString());
                 additions.Add((operations[0], fingerprint, changeId, analysis, wordform, form, reading));
             }
-            if (AnalysisOpinionSlotValidator.FindConflict(existingOperations.Concat(additions.Select(item => item.Operation)))
+            if (ProposalOperationSlotValidator.FindConflict(existingOperations.Concat(additions.Select(item => item.Operation)))
                 is { } collision)
                 return Refuse("change.slot-occupied", "Another change already addresses one of these analyses.",
                     ("operationId", collision.Existing.OperationId.Value));
@@ -382,7 +382,7 @@ public static class PendingChanges
             }
             if (additions.Count == 0)
                 return CommandOutcome<PendingChangesSnapshot>.Success(Snapshot(database, project, repository));
-            if (AnalysisOpinionSlotValidator.FindConflict(existing.Concat(additions.Select(item => item.Operation)))
+            if (ProposalOperationSlotValidator.FindConflict(existing.Concat(additions.Select(item => item.Operation)))
                 is { } collision)
                 return Refuse("change.slot-occupied", "Another change already addresses one of these readings.",
                     ("assessmentId", request.AssessmentId), ("operationId", collision.Existing.OperationId.Value));
@@ -596,7 +596,7 @@ public static class PendingChanges
         var existingOperations = draft.Operations.Count == 0
             ? Array.Empty<OperationEnvelope>()
             : ProposalJsonParser.Parse(ProposalCommands.BuildProposalJson(draft)).Operations;
-        if (AnalysisOpinionSlotValidator.FindConflict(existingOperations.Concat(operations)) is { } collision)
+        if (ProposalOperationSlotValidator.FindConflict(existingOperations.Concat(operations)) is { } collision)
         {
             var existingChangeId = collision.Existing.Extensions is { ValueKind: JsonValueKind.Object } extension &&
                 extension.TryGetProperty("changeId", out var id) ? id.GetString() : null;

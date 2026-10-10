@@ -10,8 +10,8 @@ namespace SIL.Motif.FakePanGloss;
 /// </summary>
 /// <remarks>
 /// <para>
-/// The fake answers the three subcommands Motif sends the shipped binary — <c>batch</c>, <c>import</c>,
-/// <c>stats</c> — plus their <c>describe</c> declaration, exercising the real process
+/// The fake answers each subcommand used by Motif, including <c>facts</c>, and its <c>describe</c>
+/// declaration, exercising the real process
 /// boundary without a Rust build.
 /// </para>
 /// <para>
@@ -52,6 +52,9 @@ internal static class Program
         new("batch", ["grammar", "words.txt", "out.tsv"],
             [new("--word-timeout-ms", true), new("--step-cap", true), new("--threads", true), new("--stats", false),
                 new("--cache", true), new("--analyses", true)], RunBatch),
+        new("facts", ["snapshot.json"],
+            [new("--out", true), new("--context", true), new("--stats", true),
+                new("--stats-manifest", true), new("--json", false)], RunFacts),
         new("import", ["project.fwdata", "out.json"], [], RunImport),
         new("describe", [], [], RunDescription),
         new("stats", ["project-or-grammar"],
@@ -195,8 +198,11 @@ internal static class Program
             binary = "pangloss",
             facts = new
             {
-                schemaVersion = 8,
-                contextVersion = 1,
+                format = FactsArtifact.Format,
+                schemaVersion = FactsArtifact.SchemaVersion,
+                applicationId = FactsArtifact.ApplicationId,
+                contextFormat = FactsArtifact.ContextFormat,
+                contextVersion = FactsArtifact.ContextVersion,
                 statsManifestVersion = 1,
             },
             commands = Dispatch.Where(command => !omissions.Contains(command.Name)).Select(command => new
@@ -358,7 +364,10 @@ internal static class Program
                 Console.Error.WriteLine(behaviour.StandardError ?? "the fake parser was told to fail");
                 return behaviour.ExitCode == 0 ? 1 : behaviour.ExitCode;
             default:
-                File.WriteAllText(grammarJsonPath, GrammarJson(behaviour));
+                var factsFixturePath = Path.Combine(AppContext.BaseDirectory, "_fake-pangloss-facts.json");
+                File.WriteAllText(grammarJsonPath, File.Exists(factsFixturePath)
+                    ? FactsSnapshotJson()
+                    : GrammarJson(behaviour));
                 return behaviour.ExitCode;
         }
     }
@@ -398,6 +407,106 @@ internal static class Program
 
         Console.Out.Write(wordGroup && jsonl ? StatsWordJsonl(behaviour) : jsonl ? StatsJsonl(behaviour) : StatsText(behaviour));
         return behaviour.ExitCode;
+    }
+
+    private static int RunFacts(string[] args)
+    {
+        if (args.Length < 2)
+            return FailFacts("invalid_context", "usage: facts <snapshot.json> --out <facts.sqlite> --context <context.json> [--json]");
+
+        var snapshotPath = args[1];
+        var directory = Path.GetDirectoryName(Path.GetFullPath(snapshotPath));
+        RecordArgv(directory, args);
+        var outputPath = default(string);
+        var contextPath = default(string);
+        var statsPath = default(string);
+        var statsManifestPath = default(string);
+        var json = false;
+        for (var index = 2; index < args.Length; index++)
+        {
+            switch (args[index])
+            {
+                case "--out":
+                    if (++index == args.Length) return FailFacts("invalid_context", "--out requires a path");
+                    outputPath = args[index];
+                    break;
+                case "--context":
+                    if (++index == args.Length) return FailFacts("invalid_context", "--context requires a path");
+                    contextPath = args[index];
+                    break;
+                case "--stats":
+                    if (++index == args.Length) return FailFacts("invalid_context", "--stats requires a path");
+                    statsPath = args[index];
+                    break;
+                case "--stats-manifest":
+                    if (++index == args.Length) return FailFacts("invalid_context", "--stats-manifest requires a path");
+                    statsManifestPath = args[index];
+                    break;
+                case "--json":
+                    json = true;
+                    break;
+                default:
+                    return FailFacts("invalid_context", $"unknown facts argument {args[index]}");
+            }
+        }
+        if (outputPath is null) return FailFacts("invalid_context", "--out is required");
+        if (contextPath is null) return FailFacts("invalid_context", "--context is required");
+        if ((statsPath is null) != (statsManifestPath is null))
+            return FailFacts("invalid_context", "--stats and --stats-manifest must be supplied together");
+        if (Path.GetExtension(snapshotPath) != ".json")
+            return FailFacts("unsupported_facts_source", "facts accepts only current pg-snapshot JSON input");
+        if (SamePath(snapshotPath, outputPath) || SamePath(contextPath, outputPath))
+            return FailFacts("input_output_collision", "the output path resolves to an input file");
+        if (File.Exists(outputPath)) return FailFacts("output_exists", "the output path already exists");
+
+        var behaviour = Behaviour.Read(directory, "facts");
+        if (behaviour.HeartbeatPath is { } heartbeat) return Tick(heartbeat, behaviour.ProcessIdPath);
+        if (behaviour.DelayMilliseconds > 0) Thread.Sleep(behaviour.DelayMilliseconds);
+        if (behaviour.Mode == "noReport") return behaviour.ExitCode;
+        if (behaviour.Mode == "fail")
+            return FailFacts("facts_write_failed", behaviour.StandardError ?? "the fake facts command was told to fail");
+
+        try
+        {
+            var result = FactsArtifact.Write(snapshotPath, contextPath, outputPath, behaviour.Mode,
+                Path.Combine(AppContext.BaseDirectory, "_fake-pangloss-facts.json"));
+            if (json && behaviour.Mode == "missingApplicationId")
+            {
+                var document = JsonSerializer.SerializeToNode(result)!.AsObject();
+                document.Remove("applicationId");
+                Console.WriteLine(document.ToJsonString());
+            }
+            else if (json) Console.WriteLine(JsonSerializer.Serialize(result));
+            else
+                Console.WriteLine($"wrote {outputPath} ({result.outputBytes} bytes, {result.outputSha256}, " +
+                    $"schema {result.schemaVersion}, compile {result.compileStatus})");
+            if (result.compileStatus == "refused")
+            {
+                Console.Error.WriteLine(
+                    "pangloss facts: compile_refused: authored and diagnostic facts were published; effective grammar is unavailable");
+                return behaviour.ExitCode == 0 ? 1 : behaviour.ExitCode;
+            }
+            return behaviour.ExitCode;
+        }
+        catch (FactsArtifactException exception)
+        {
+            return FailFacts(exception.Code, exception.Message);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or
+                                          JsonException or Microsoft.Data.Sqlite.SqliteException)
+        {
+            return FailFacts("facts_write_failed", exception.Message);
+        }
+    }
+
+    private static bool SamePath(string input, string output) =>
+        string.Equals(Path.GetFullPath(input), Path.GetFullPath(output),
+            OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+
+    private static int FailFacts(string code, string message)
+    {
+        Console.Error.WriteLine($"pangloss facts: {code}: {message}");
+        return 1;
     }
 
     // parse <grammar> <word> --trace --trace-format json --trace-details
@@ -624,6 +733,14 @@ internal static class Program
             modelFingerprint = behaviour.ModelFingerprint,
             rules = Array.Empty<object>(),
         }, new JsonSerializerOptions { WriteIndented = true });
+
+    private static string FactsSnapshotJson() => JsonSerializer.Serialize(new
+    {
+        format = "pangloss-project",
+        version = 1,
+        project = new { name = "Fake project" },
+        conversionProvenance = new { schemaVersion = 1, sourceInventoryStatus = "synthetic" },
+    });
 
     private static string StatsText(Behaviour behaviour) =>
         "group    key             count" + Environment.NewLine +

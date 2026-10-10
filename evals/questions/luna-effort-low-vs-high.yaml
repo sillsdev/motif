@@ -1,0 +1,8 @@
+{
+  "question": "Does luna at low reasoning effort solve the active tasks as well as at high effort, and for how much less?",
+  "arm_a": "codex-luna-low",
+  "arm_b": "codex-default",
+  "tasks": "t*",
+  "trials": 3,
+  "primary_metric": "task-success"
+}

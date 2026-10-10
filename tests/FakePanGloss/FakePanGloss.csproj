@@ -17,4 +17,8 @@
     <!-- The batch statistics cache is SQLite, in the tables Motif's statistics reader queries. -->
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.11" />
   </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="facts-schema.sql" />
+  </ItemGroup>
 </Project>

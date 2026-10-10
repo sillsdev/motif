@@ -12,6 +12,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="$(NuGetPackageRoot)/sil.lcmodel/$(SilLCModelPackageVersion)/contentFiles/MasterLCModel.xml">
+      <LogicalName>SIL.Motif.Projection.LibLcm.MasterLCModel.xml</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Every reader here takes an already-open LcmCache; this project never loads or saves one. -->
     <PackageReference Include="SIL.LCModel" Version="$(SilLCModelPackageVersion)" />
     <PackageReference Include="Microsoft.ICU.ICU4C.Runtime" Version="72.1.0.3" Condition="$([MSBuild]::IsOSPlatform('Windows')) and '$(MotifPortablePackage)' != 'true'" />

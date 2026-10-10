@@ -51,6 +51,14 @@ public class Slice3CatalogWriterTests
             // move is deliberately deferred, matching slice 2's rel/col|seq emitter.
             Assert.DoesNotContain("\"grammar/phNCSegments/moveSegments\"", collectionFile);
 
+            var contextMembers = Read(tempRoot, written, "PhSequenceContextMembers.g.cs");
+            Assert.Contains("\"grammar/phSequenceContext/moveMembers\"", contextMembers);
+            Assert.Contains("ReferenceSequenceFieldLowering.ApplyAddRef", contextMembers);
+
+            var affixPosition = Read(tempRoot, written, "MoAffixAllomorphPosition.g.cs");
+            Assert.Contains("\"grammar/moAffixAllomorph/movePosition\"", affixPosition);
+            Assert.Contains("ReferenceSequenceFieldLowering.ApplyMove", affixPosition);
+
             // A class that needs both sibling snapshotter files (a basic field and a rel field).
             var moCompoundRuleSnapshotter = Read(tempRoot, written, "MoCompoundRuleSnapshotter.g.cs");
             Assert.Contains("class MoCompoundRuleSnapshotter", moCompoundRuleSnapshotter);

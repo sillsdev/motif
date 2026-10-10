@@ -246,7 +246,7 @@
         <Grid RowDefinitions="*,Auto">
           <ListBox x:Name="PageList"
                    Classes="sidebar" Classes.collapsed="{Binding IsSidebarCollapsed}"
-                   ItemsSource="{Binding Pages}"
+                   ItemsSource="{Binding VisiblePages}"
                    SelectedItem="{Binding SelectedPage}"
                    ScrollViewer.VerticalScrollBarVisibility="Visible"
                    ScrollViewer.HorizontalScrollBarVisibility="Disabled"

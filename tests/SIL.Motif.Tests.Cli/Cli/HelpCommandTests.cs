@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using SIL.Motif.Cli;
 using SIL.Motif.Commands.Catalog;
+using SIL.Motif.Commands.Preferences;
 using SIL.Motif.Help;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
@@ -232,6 +233,26 @@ public sealed class HelpCommandTests
             && entry.GetProperty("url").GetString() == "https://motif-docs.pages.dev/learn/");
     }
 
+    [Fact]
+    public void OffModeHelpAndReleasedCatalogMatchCurrentGolden()
+    {
+        var result = Run("help", "--all", "--json");
+        var repositoryRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", ".."));
+        var goldenPath = Path.Combine(repositoryRoot, "tests", "SIL.Motif.Tests.Cli", "Golden",
+            "help-all-current.json");
+        var expected = File.ReadAllText(goldenPath);
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal(NormalizeNewlines(expected), NormalizeNewlines(result.Output));
+        using var golden = JsonDocument.Parse(expected);
+        var releasedNames = golden.RootElement.GetProperty("entries").EnumerateArray()
+            .Where(entry => entry.GetProperty("kind").GetString() == "command")
+            .Select(entry => entry.GetProperty("code").GetString()!)
+            .Order(StringComparer.Ordinal);
+        Assert.Equal(releasedNames, CommandCatalog.All.Where(command => command.Surface == CommandSurface.Released)
+            .Select(command => command.Name).Order(StringComparer.Ordinal));
+    }
+
     private static CliRun Run(params string[] arguments)
     {
         var start = new ProcessStartInfo(BuildOutput.Cli)
@@ -244,13 +265,27 @@ public sealed class HelpCommandTests
         foreach (var argument in arguments)
             start.ArgumentList.Add(argument);
         start.Environment.Remove(CommandSurfacePolicy.DeveloperCommandsEnvironmentVariable);
+        var preferencePath = Path.Combine(Path.GetTempPath(), "motif-help-preferences", Guid.NewGuid().ToString("N"),
+            "advanced-ai-mode.json");
+        new FileAdvancedAiModePreferenceStore(preferencePath).SetEnabled(false);
+        start.Environment[FileAdvancedAiModePreferenceStore.PathEnvironmentVariable] = preferencePath;
 
-        using var process = Process.Start(start)!;
-        var outputTask = process.StandardOutput.ReadToEndAsync();
-        var errorTask = process.StandardError.ReadToEndAsync();
-        Assert.True(process.WaitForExit(30000), "The CLI did not exit within its bound.");
-        return new CliRun(process.ExitCode, outputTask.GetAwaiter().GetResult(), errorTask.GetAwaiter().GetResult());
+        try
+        {
+            using var process = Process.Start(start)!;
+            var outputTask = process.StandardOutput.ReadToEndAsync();
+            var errorTask = process.StandardError.ReadToEndAsync();
+            Assert.True(process.WaitForExit(30000), "The CLI did not exit within its bound.");
+            return new CliRun(process.ExitCode, outputTask.GetAwaiter().GetResult(), errorTask.GetAwaiter().GetResult());
+        }
+        finally
+        {
+            var directory = Path.GetDirectoryName(preferencePath)!;
+            if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true);
+        }
     }
 
     private sealed record CliRun(int ExitCode, string Output, string Error);
+
+    private static string NormalizeNewlines(string value) => value.Replace("\r\n", "\n", StringComparison.Ordinal);
 }

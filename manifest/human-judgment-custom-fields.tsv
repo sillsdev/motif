@@ -1,0 +1,2 @@
+"DeclaringClass"	"InternalName"	"Type"	"Custom"	"WritingSystemSelector"	"DestinationClass"	"ListRoot"	"ResolverKey"	"RecordOwner"	"ValueStorage"	"OperationKind"	"SnapshotField"	"WriteBoundary"
+"RnGenericRec"	"MotifHumanJudgment"	"String"	"true"	"analysis"	"none"	"none"	"declaring-class+internal-name"	"ResearchNotebook.Records"	"one-readable-value-per-revision"	"system/rnGenericRec/setMotifHumanJudgment"	"system/rnGenericRec/motifHumanJudgment"	"semantic-composer-only"

@@ -240,6 +240,16 @@ public static class CommandTextRenderer
         sb.AppendLine($"DryRun of Proposal {projection.ProposalId}");
         sb.AppendLine($"  intentDigest: {projection.IntentDigest}");
         sb.AppendLine($"  baseline:     {projection.BaselineNote}");
+        if (projection.Operations.Count > 0)
+        {
+            sb.AppendLine($"  operations ({projection.Operations.Count}):");
+            foreach (var operation in projection.Operations)
+            {
+                sb.AppendLine($"    {operation.OperationId}  ({operation.Kind})");
+                if (operation.DependsOn.Count > 0)
+                    sb.AppendLine($"      dependsOn: {string.Join(", ", operation.DependsOn)}");
+            }
+        }
         sb.AppendLine($"  effects ({projection.Effects.Count}):");
         AppendEffects(sb, projection.Effects);
         sb.AppendLine($"  effectDigest: {projection.EffectDigest}");
@@ -247,6 +257,87 @@ public static class CommandTextRenderer
         sb.AppendLine("  (bound-DryRun anchor recorded on the manifest; 'apply' will require it)");
         return sb.ToString();
     }
+
+    public static string Render(RetirementProposalReviewProjection projection)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine($"One Proposal: {projection.ProposalId}");
+        sb.AppendLine($"  intentDigest: {projection.IntentDigest}");
+        sb.AppendLine("  This is one connected change; the displayed parts cannot be applied separately.");
+        var statistics = projection.Statistics;
+        sb.AppendLine($"  bundles repointed: {Counts(statistics.BundlesRepointed)}");
+        sb.AppendLine($"  analyses repointed: {Counts(statistics.AnalysesRepointed)}");
+        sb.AppendLine($"  words affected: {Counts(statistics.WordformsRepointed)}");
+        sb.AppendLine($"  affected form cases checked: {statistics.AssessedFormCases}");
+        sb.AppendLine($"  other references moved: {statistics.OtherReferences}");
+        sb.AppendLine($"  objects deleted: {statistics.OwnedObjectsDeleted}");
+        sb.AppendLine($"  bundle Form alternatives changed: {statistics.BundleTextAlternativesChanged}; " +
+            $"cleared: {statistics.BundleTextAlternativesCleared}");
+        foreach (var counts in statistics.Adhoc.OrderBy(item => item.Grouped).ThenBy(item => item.Enabled))
+            sb.AppendLine($"  ad hoc ({(counts.Grouped ? "grouped" : "single")}, " +
+                $"{(counts.Enabled ? "enabled" : "disabled")}): {counts.Rules} rules, " +
+                $"{counts.TargetOccurrences} occurrences");
+
+        foreach (var part in projection.Parts)
+        {
+            sb.AppendLine($"  {part.Title}:");
+            foreach (var id in part.OperationIds)
+            {
+                var operation = projection.DryRun.Operations.Single(item => item.OperationId == id);
+                sb.AppendLine($"    {id} ({operation.Kind})");
+                if (operation.DependsOn.Count > 0)
+                    sb.AppendLine($"      dependsOn: {string.Join(", ", operation.DependsOn)}");
+            }
+            AppendEffects(sb, part.Effects);
+            foreach (var detail in part.Details)
+            {
+                sb.AppendLine($"    {detail.Kind}: {detail.Id}  {detail.Label}");
+                if (detail.Opinion is not null) sb.AppendLine($"      Opinion: {detail.Opinion}");
+                if (detail.BeforeText is not null || detail.AfterText is not null)
+                    sb.AppendLine($"      bundle Form: {detail.BeforeText ?? "(absent)"} → {detail.AfterText ?? "(absent)"}");
+            }
+        }
+
+        sb.AppendLine($"  tested readings ({projection.AffectedReadings.Count}):");
+        foreach (var reading in projection.AffectedReadings)
+        {
+            sb.AppendLine($"    {reading.OpinionGlyph} {reading.Opinion}  {reading.Word}: " +
+                $"{reading.VerificationStatus}; surface {reading.SurfaceBefore} → " +
+                $"{reading.SurfaceAfter ?? "unavailable"}");
+            sb.AppendLine($"      rule attribution: {reading.RuleAttributionStatus}" +
+                (reading.RuleId is null ? string.Empty : $" ({reading.RuleId})") +
+                (reading.AttributionDigest is null ? string.Empty : $" · {reading.AttributionDigest}"));
+        }
+        sb.AppendLine($"  finding: {(projection.Finding.Resolved ? "resolved" : "still present")}; " +
+            $"{projection.Finding.BeforeNumerator}/{projection.Finding.BeforeDenominator} before, " +
+            $"{projection.Finding.AfterNumerator}/{projection.Finding.AfterDenominator} after");
+        sb.AppendLine($"  disposition: {projection.Finding.Suppressed switch
+        {
+            true => "Suppressed",
+            false => "Not suppressed",
+            null => "Unavailable",
+        }}");
+        if (projection.UnresolvedReferences.UnresolvedApprovedAnalyses > 0 ||
+            projection.UnresolvedReferences.UnresolvedAdhocRules > 0 ||
+            projection.UnresolvedReferences.OtherReferences > 0 ||
+            projection.UnresolvedReferences.CustomReferences > 0)
+        {
+            sb.AppendLine("  destination needed:");
+            sb.AppendLine($"    {projection.UnresolvedReferences.UnresolvedApprovedAnalyses} distinct unresolved Approved analyses; " +
+                $"{projection.UnresolvedReferences.UnresolvedAdhocRules} unresolved ad hoc rules; " +
+                $"{projection.UnresolvedReferences.OtherReferences + projection.UnresolvedReferences.CustomReferences} other references");
+            if (projection.UnresolvedReferences.Message.Length > 0)
+                sb.AppendLine($"    {projection.UnresolvedReferences.Message}");
+        }
+        foreach (var unavailable in projection.Unavailable)
+            sb.AppendLine($"  unavailable: {unavailable}");
+        sb.AppendLine("  observed Dry Run effects:");
+        AppendEffects(sb, projection.DryRun.Effects);
+        return sb.ToString();
+    }
+
+    private static string Counts(SIL.Motif.Contract.Retirement.RetirementOpinionCounts counts) =>
+        $"{counts.Approved} Approved, {counts.Disapproved} Disapproved, {counts.Unknown} Unknown, {counts.Mixed} Mixed";
 
     public static string Render(ApplyProjection projection)
     {
@@ -263,6 +354,23 @@ public static class CommandTextRenderer
             sb.AppendLine($"  effects ({projection.Effects.Count}):");
             AppendEffects(sb, projection.Effects);
             sb.AppendLine($"  effectDigest: {projection.EffectDigest}");
+        }
+
+        if (projection.Readiness is { } readiness)
+        {
+            sb.AppendLine($"  Readiness: {(readiness.IsReady ? "ready" : readiness.Forced ? "not ready; --force used" : "not ready")}");
+            if (readiness.CorrectnessAssessmentExempt)
+            {
+                sb.AppendLine("    Correctness Assessment not required.");
+                if (readiness.CorrectnessAssessmentExemptionReason is { } reason)
+                    sb.AppendLine($"    reason: {reason}");
+            }
+            else
+            {
+                sb.AppendLine($"    Correctness Assessment required: {(readiness.CorrectnessAssessmentRequired ? "yes" : "no")}");
+                foreach (var reason in readiness.Reasons)
+                    sb.AppendLine($"    reason: {reason}");
+            }
         }
 
         var logEntry = projection.AppliedLogEntry;
@@ -296,6 +404,10 @@ public static class CommandTextRenderer
         foreach (var effect in effects)
         {
             sb.AppendLine($"    {effect.CanonicalId}  field={effect.Field}");
+            if (effect.OperationIds.Count > 0)
+                sb.AppendLine($"      operations: {string.Join(", ", effect.OperationIds)}");
+            else
+                sb.AppendLine("      operations: (no direct operation link)");
 
             if (effect.Changes.Count == 0)
             {

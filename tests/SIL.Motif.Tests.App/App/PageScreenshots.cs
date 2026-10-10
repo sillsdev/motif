@@ -601,7 +601,7 @@ public sealed class PageScreenshots
     internal static async Task<(WorkspaceShellViewModel Workspace, MainWindow Window)> OpenOverSampleData(
         bool parse = true, Action<FakeCommandClient, AssessCommandResponse>? configure = null, bool leaveSetupOpen = false,
         string? settingsFilePath = null, TextWordsResponse? capturedWords = null,
-        AssessCommandResponse? capturedAssessment = null)
+        AssessCommandResponse? capturedAssessment = null, bool advancedAiModeEnabled = false)
     {
         var fake = new FakeCommandClient();
         var clock = NewCaptureClock();
@@ -672,7 +672,7 @@ public sealed class PageScreenshots
             new ProjectViewModel(fake, new Picker()), new BaselineViewModel(fake),
             selection, new AssessViewModel(fake, selection),
             new Folder(), new Drag(),
-            fake, clock, techDemoNotice: FirstRunNotice());
+            fake, clock, techDemoNotice: FirstRunNotice(), advancedAiModeEnabled: advancedAiModeEnabled);
         IUserPreferencesStore preferences = settingsFilePath is null
             ? new MemoryUserPreferencesStore()
             : new FileUserPreferencesStore(settingsFilePath);
@@ -1134,7 +1134,7 @@ public sealed class PageScreenshots
     private static string TraceFixture() =>
         File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-hawajafika.json"));
 
-    private static BaselineToken Token() =>
+    internal static BaselineToken Token() =>
         new("11111111-1111-1111-1111-111111111111", "sha256:" + new string('a', 64), "1", "2026-09-22T10:00:00Z", "sha256:" + new string('b', 64));
 
     private static BaselineCaptureResponse Capture() =>

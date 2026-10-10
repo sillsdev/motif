@@ -37,6 +37,13 @@
       },
       "grammar-health": {
         "--fw-project": true
+      },
+      "facts": {
+        "--out": true,
+        "--context": true,
+        "--stats": true,
+        "--stats-manifest": true,
+        "--json": false
       }
     }
   },

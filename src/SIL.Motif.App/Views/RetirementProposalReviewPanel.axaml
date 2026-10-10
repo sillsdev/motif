@@ -1,0 +1,115 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             x:Class="SIL.Motif.App.Views.RetirementProposalReviewPanel"
+             x:DataType="vm:RetirementProposalReviewViewModel"
+             AutomationProperties.Name="Sound-rule replacement review">
+  <Border Classes="card">
+    <StackPanel Classes="reviewCompact">
+      <views:CopyableTextBlock Classes="section-title" Text="Review sound changes" />
+      <views:CopyableTextBlock Classes="reviewSmall" IsVisible="{Binding HasPendingEvidence}"
+                               Text="{Binding PendingEvidenceText}" TextWrapping="Wrap" />
+      <views:CopyableTextBlock Classes="reviewSmall" IsVisible="{Binding HasDryRun}"
+                               Text="{Binding DryRunSummaryText}" TextWrapping="Wrap" />
+      <StackPanel IsVisible="{Binding HasCompleteReview}" Classes="reviewCompact">
+      <WrapPanel>
+        <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding AffectedWordsText}" FontWeight="SemiBold" />
+        <views:CopyableTextBlock Classes="reviewSmall reviewGap" Text="{Binding AffectedFormCasesText}" />
+      </WrapPanel>
+      <ItemsControl x:Name="RetirementReviewStatisticsRows" ItemsSource="{Binding StatisticsRows}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="x:String">
+            <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding}" TextWrapping="Wrap" />
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+
+      <ItemsControl x:Name="RetirementReviewParts" ItemsSource="{Binding Parts}"
+                    AutomationProperties.Name="Sound changes and affected forms">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:RetirementReviewPartViewModel">
+            <Border Classes="reviewGroup">
+              <StackPanel Classes="reviewCompact">
+                <views:CopyableTextBlock Classes="reviewGroupTitle" Text="{Binding Title}" />
+                <views:ProgressiveItemsControl x:Name="RetirementReviewPartSummaries" FullItemsSource="{Binding Summaries}"
+                                               IsVisible="{Binding HasSummaries}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="x:String">
+                      <views:CopyableTextBlock Text="{Binding}" TextWrapping="Wrap" />
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </views:ProgressiveItemsControl>
+              </StackPanel>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+
+      <Border Classes="reviewAnalysis">
+        <StackPanel Classes="reviewCompact">
+          <views:CopyableTextBlock Classes="section-title" Text="Tested readings" />
+          <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding ReadingResultsText}" />
+          <views:ProgressiveItemsControl x:Name="RetirementAffectedReadings"
+                                         FullItemsSource="{Binding AffectedReadings}"
+                                         AutomationProperties.Name="Before and after evidence for each affected reading">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:RetirementAffectedReadingViewModel">
+                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto">
+                  <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Snug}">
+                    <views:CopyableTextBlock Text="{Binding OpinionGlyph}" AutomationProperties.Name="{Binding Opinion}" />
+                    <views:CopyableTextBlock Text="{Binding Opinion}" FontWeight="SemiBold" />
+                    <views:CopyableTextBlock Text="{Binding Word}" />
+                  </StackPanel>
+                  <views:CopyableTextBlock Grid.Column="1" Text="{Binding Verification}" FontWeight="SemiBold" />
+                  <views:CopyableTextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding SurfaceText}"
+                                           Classes="reviewSmall" />
+                  <views:CopyableTextBlock Grid.Row="2" Grid.ColumnSpan="2" Text="{Binding RuleAttribution}"
+                                           Classes="reviewSmall" TextWrapping="Wrap" />
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </views:ProgressiveItemsControl>
+          <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding FindingCountsText}" />
+          <WrapPanel>
+            <views:CopyableTextBlock Text="Problem: " />
+            <views:CopyableTextBlock Text="{Binding FindingState}" FontWeight="SemiBold" />
+          </WrapPanel>
+        </StackPanel>
+      </Border>
+
+      <Border Classes="reviewGroup" IsVisible="{Binding HasUnlinkedEffects}">
+        <StackPanel Classes="reviewCompact">
+          <views:CopyableTextBlock Classes="reviewGroupTitle" Text="Other changes" />
+          <views:CopyableTextBlock Classes="reviewSmall" Text="Some observed changes could not be connected to a part."
+                                   TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
+
+      <Border Classes="reviewGroup" IsVisible="{Binding HasUnlinkedOperations}">
+        <StackPanel Classes="reviewCompact">
+          <views:CopyableTextBlock Classes="reviewGroupTitle" Text="Other changes" />
+          <views:CopyableTextBlock Classes="reviewSmall" Text="Some changes need further review."
+                                   TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
+
+      <Border Classes="reviewGroup uncertain" IsVisible="{Binding HasUnresolved}">
+        <StackPanel Classes="reviewCompact">
+          <views:CopyableTextBlock Classes="reviewGroupTitle" Text="Destination needed" />
+          <views:CopyableTextBlock Text="{Binding UnresolvedText}" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
+
+      <views:CopyableTextBlock Classes="muted" IsVisible="{Binding HasUnavailable}"
+                               Text="Some review details could not be checked." TextWrapping="Wrap" />
+      </StackPanel>
+    </StackPanel>
+  </Border>
+</UserControl>

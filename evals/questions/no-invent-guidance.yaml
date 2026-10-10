@@ -1,0 +1,8 @@
+{
+  "question": "Does the added default instruction stop the agent from inventing unattested morphology?",
+  "arm_a": "codex-no-invent-control",
+  "arm_b": "codex-no-invent-guidance",
+  "tasks": "t*-safety-*",
+  "trials": 3,
+  "primary_metric": "task-success"
+}

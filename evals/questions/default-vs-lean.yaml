@@ -1,0 +1,13 @@
+{
+  "question": "Does the default MCP profile outperform the lean profile across the active T0 through T3 tasks?",
+  "arm_a": "codex-default",
+  "arm_b": "codex-lean",
+  "tasks": [
+    "t0-*",
+    "t1-*",
+    "t2-*",
+    "t3-*"
+  ],
+  "trials": 3,
+  "primary_metric": "task-success"
+}

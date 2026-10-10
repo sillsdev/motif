@@ -76,6 +76,9 @@ public static class Program
             .Concat(Emit.Slice2CatalogWriter.WriteAll(model, repoRoot))
             .Concat(Emit.Slice3CatalogWriter.WriteAll(model, repoRoot))
             .Concat(Emit.Slice4CatalogWriter.WriteAll(model, repoRoot))
+            .Concat(OwningCreateCatalogWriter.WriteAll(model, repoRoot))
+            .Concat(Emit.RedundantZeroAffixDeleteCatalogWriter.WriteAll(repoRoot))
+            .Concat(HumanJudgmentCatalogWriter.WriteAll(model, repoRoot))
             .ToList();
 
         Console.WriteLine($"Wrote {written.Count} generated file(s):");

@@ -1,0 +1,115 @@
+{
+  "formatVersion": 1,
+  "references": [
+    {
+      "key": "ahlberg-forsberg-hulden-2015",
+      "citation": "Malin Ahlberg, Markus Forsberg, and Mans Hulden. 2015. \"Paradigm classification in supervised learning of morphology.\" In *Proceedings of NAACL-HLT 2015*, 1024–1029. Association for Computational Linguistics. DOI: 10.3115/v1/N15-1107.",
+      "url": "https://doi.org/10.3115/v1/N15-1107"
+    },
+    {
+      "key": "alekseeva-myachykov-shtyrov-2022",
+      "citation": "Maria Alekseeva, Andriy Myachykov, and Yury Shtyrov. 2022. \"Inflectional zero morphology – Linguistic myth or neurocognitive reality?\" *Frontiers in Psychology* 13:1015435. DOI: 10.3389/fpsyg.2022.1015435. Perspective article.",
+      "url": "https://doi.org/10.3389/fpsyg.2022.1015435"
+    },
+    {
+      "key": "albright-hayes-2003",
+      "citation": "Adam Albright and Bruce Hayes. 2003. \"Rules vs. Analogy in English Past Tenses: A Computational/Experimental Study.\" *Cognition* 90(2):119–161. DOI: 10.1016/S0010-0277(03)00146-X.",
+      "url": "https://doi.org/10.1016/S0010-0277(03)00146-X"
+    },
+    {
+      "key": "becker-2024",
+      "citation": "Laura Becker. 2024. \"Zero Marking in Inflection: A Token-Based Approach.\" *Journal of Language Modelling* 12(2):349–413. DOI: 10.15398/jlm.v12i2.361.",
+      "url": "https://doi.org/10.15398/jlm.v12i2.361"
+    },
+    {
+      "key": "bender-poulson-drellishak-evans-2007",
+      "citation": "Emily M. Bender, Laurie Poulson, Scott Drellishak, and Chris Evans. 2007. \"Validation and Regression Testing for a Cross-linguistic Grammar Resource.\" In *ACL 2007 Workshop on Deep Linguistic Processing*, 136–143. Association for Computational Linguistics.",
+      "url": "https://aclanthology.org/W07-1218/"
+    },
+    {
+      "key": "black-2018",
+      "citation": "H. Andrew Black. 2018. \"Introduction to Parsing.\" SIL FieldWorks technical document, 12 April 2018.",
+      "url": "https://software.sil.org/fieldworks/help/technical-documents/"
+    },
+    {
+      "key": "chomsky-halle-1968",
+      "citation": "Noam Chomsky and Morris Halle. 1968. *The Sound Pattern of English*. New York: Harper & Row.",
+      "url": "https://mitpress.mit.edu/9780262530972/the-sound-pattern-of-english/"
+    },
+    {
+      "key": "durrett-deniro-2013",
+      "citation": "Greg Durrett and John DeNero. 2013. \"Supervised Learning of Complete Morphological Paradigms.\" In *Proceedings of NAACL-HLT 2013*, 1185–1195. Association for Computational Linguistics.",
+      "url": "https://aclanthology.org/N13-1138/"
+    },
+    {
+      "key": "ellison-1994",
+      "citation": "T. Mark Ellison. 1994. \"Constraints, Exceptions and Representations.\" In *Computational Phonology*, SIGMORPHON 1994, 25–32. Association for Computational Linguistics.",
+      "url": "https://aclanthology.org/W94-0203/"
+    },
+    {
+      "key": "gold-1967",
+      "citation": "E. Mark Gold. 1967. \"Language Identification in the Limit.\" *Information and Control* 10(5):447–474. DOI: 10.1016/S0019-9958(67)91165-5.",
+      "url": "https://doi.org/10.1016/S0019-9958(67)91165-5"
+    },
+    {
+      "key": "hyman-2003",
+      "citation": "Larry M. Hyman. 2003. \"Suffix Ordering in Bantu: A Morphocentric Approach.\" In *Yearbook of Morphology 2002*, 245–281. DOI: 10.1007/0-306-48223-1_8.",
+      "url": "https://doi.org/10.1007/0-306-48223-1_8"
+    },
+    {
+      "key": "hyman-mchombo-1992",
+      "citation": "Larry M. Hyman and Sam Mchombo. 1992. \"Morphotactic Constraints in the Chichewa Verb Stem.\" In *Proceedings of the Eighteenth Annual Meeting of the Berkeley Linguistics Society: General Session and Parasession on The Place of Morphology in a Grammar*, 350–364. DOI: 10.3765/bls.v18i1.1579.",
+      "url": "https://doi.org/10.3765/bls.v18i1.1579"
+    },
+    {
+      "key": "kibrik-2005",
+      "citation": "Andrej A. Kibrik. 2005. \"Inflection versus Derivation and the Template for Athabaskan Verb Morphology.\" In Suzanne Gessner (ed.), *Alaska Native Language Center Working Papers 5: Proceedings of the 2005 Athabaskan Languages Conference*, 67–94. Fairbanks: Alaska Native Language Center.",
+      "url": "https://iling-ran.ru/kibrik/Inflection_derivation_template_Athabaskan%40ANLC_2005.pdf"
+    },
+    {
+      "key": "kol-nir-wintner-2014",
+      "citation": "Sheli Kol, Bracha Nir, and Shuly Wintner. 2014. \"Computational Evaluation of the Traceback Method.\" *Journal of Child Language* 41(1):176–199. DOI: 10.1017/S0305000912000694.",
+      "url": "https://doi.org/10.1017/S0305000912000694"
+    },
+    {
+      "key": "lan-rasin-katzir-2019",
+      "citation": "Nur Lan, Ezer Rasin, and Roni Katzir. 2019. \"Learning Morpho-phonology Using a Genetic Algorithm.\" In *Proceedings of the Genetic and Evolutionary Computation Conference (GECCO ’19)*, Prague, July 13–17.",
+      "url": "https://www.cs.tau.ac.il/~nurlan/files/Lan_Rasin_Katzir_Learning_Morpho-Phonology_Using_a_Genetic_Algorithm_2018_v1.pdf"
+    },
+    {
+      "key": "prince-tesar-2004",
+      "citation": "Alan Prince and Bruce Tesar. 2004. \"Learning Phonotactic Distributions.\" In *Constraints in Phonological Acquisition*, 245–291. Cambridge University Press. DOI: 10.1017/CBO9780511486418.009.",
+      "url": "https://doi.org/10.1017/CBO9780511486418.009"
+    },
+    {
+      "key": "rasin-berger-lan-katzir-2018",
+      "citation": "Ezer Rasin, Iddo Berger, Nur Lan, and Roni Katzir. 2018. \"Learning Rule-Based Morpho-Phonology.\" Manuscript, MIT and Tel Aviv University, 19 June 2018.",
+      "url": "https://taucompling.github.io/papers/RasinBergerLanKatzir%202018%20Learning%20rule-based%20morpho-phonology.pdf"
+    },
+    {
+      "key": "ryan-2010",
+      "citation": "Kevin M. Ryan. 2010. \"Variable Affix Order: Grammar and Learning.\" *Language* 86(4):758–791. DOI: 10.1353/lan.2010.0032.",
+      "url": "https://doi.org/10.1353/lan.2010.0032"
+    },
+    {
+      "key": "stump-1993",
+      "citation": "Gregory T. Stump. 1993. \"Position Classes and Morphological Theory.\" *Yearbook of Morphology 1992*, 129–180. DOI: 10.1007/978-94-017-3710-4_7.",
+      "url": "https://doi.org/10.1007/978-94-017-3710-4_7"
+    },
+    {
+      "key": "tenenbaum-griffiths-2001",
+      "citation": "Joshua B. Tenenbaum and Thomas L. Griffiths. 2001. \"Generalization, Similarity, and Bayesian Inference.\" *Behavioral and Brain Sciences* 24(4):629–640. DOI: 10.1017/S0140525X01000061.",
+      "url": "https://doi.org/10.1017/S0140525X01000061"
+    },
+    {
+      "key": "wexler-1993",
+      "citation": "Kenneth Wexler. 1993. \"The Subset Principle is an Intensional Principle.\" In Eric Reuland and Werner Abraham (eds.), *Knowledge and Language: Volume I, From Orwell’s Problem to Plato’s Problem*, 217–239. Dordrecht: Springer. DOI: 10.1007/978-94-011-1840-8_10.",
+      "url": "https://doi.org/10.1007/978-94-011-1840-8_10"
+    },
+    {
+      "key": "wexler-manzini-1987",
+      "citation": "Kenneth Wexler and M. Rita Manzini. 1987. \"Parameters and Learnability in Binding Theory.\" In Thomas Roeper and Edwin Williams (eds.), *Parameter Setting*, 41–76. Dordrecht: D. Reidel. DOI: 10.1007/978-94-009-3727-7_3.",
+      "url": "https://doi.org/10.1007/978-94-009-3727-7_3"
+    }
+  ]
+}

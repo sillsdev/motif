@@ -569,14 +569,23 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
             _ = PublishToPagesAsync(CancellationToken.None);
     }
 
-    /// <summary>Opens <paramref name="page"/> as it stands.</summary>
-    public void OpenPage(WorkspacePage page) => CurrentPage = page;
+    /// <summary>Whether Advanced AI mode is on for this window, which the Parsimony page needs to exist at all.</summary>
+    public bool AdvancedAiModeEnabled { get; init; }
+
+    /// <summary>Whether <paramref name="page"/> is shown and can be opened in this window.</summary>
+    public bool CanOpenPage(WorkspacePage page) => !WorkspacePages.RequiresAdvancedAi(page) || AdvancedAiModeEnabled;
+
+    /// <summary>Opens <paramref name="page"/> as it stands; a page this window does not offer stays closed.</summary>
+    public void OpenPage(WorkspacePage page)
+    {
+        if (CanOpenPage(page)) CurrentPage = page;
+    }
 
     /// <summary>Opens the page named by <paramref name="request"/>, then sends each page its request.</summary>
     public void Open(PageRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        CurrentPage = request.Page;
+        if (CanOpenPage(request.Page)) CurrentPage = request.Page;
         var version = ++_pageRequestVersion;
         var publication = EvidencePublication;
         var delivery = DeliverRequestAsync(request, publication, version, Volatile.Read(ref _openGeneration));

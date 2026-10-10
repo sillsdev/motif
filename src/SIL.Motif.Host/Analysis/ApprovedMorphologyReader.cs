@@ -1,5 +1,6 @@
 using SIL.LCModel;
 using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Parsimony;
 using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.Host.Analysis;
@@ -17,6 +18,14 @@ public static class ApprovedMorphologyReader
     /// </summary>
     public static IReadOnlyDictionary<string, IReadOnlyList<ApprovedMorphology>> ReadDisapproved(LcmCache cache) =>
         ReadFrom(cache, word => word.HumanDisapprovedParses);
+
+    /// <summary>Reads every native default-human Approved morphology with its surface and writing-system tag.</summary>
+    public static IReadOnlyList<NativeReadingExpectation> ReadApprovedExpectations(LcmCache cache) =>
+        ReadExpectations(cache, word => word.HumanApprovedAnalyses, "approved");
+
+    /// <summary>Reads every native default-human Disapproved morphology with its surface and writing-system tag.</summary>
+    public static IReadOnlyList<NativeReadingExpectation> ReadDisapprovedExpectations(LcmCache cache) =>
+        ReadExpectations(cache, word => word.HumanDisapprovedParses, "disapproved");
 
     /// <summary>
     /// Every candidate analysis — one no person has approved or rejected, whoever produced it — keyed the same way as
@@ -66,4 +75,61 @@ public static class ApprovedMorphologyReader
         }
         return result.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<ApprovedMorphology>)pair.Value, StringComparer.Ordinal);
     }
+
+    private static IReadOnlyList<NativeReadingExpectation> ReadExpectations(
+        LcmCache cache, Func<IWfiWordform, IEnumerable<IWfiAnalysis>> select, string opinion)
+    {
+        ArgumentNullException.ThrowIfNull(cache);
+        var captured = new List<NativeReadingExpectation>();
+        foreach (var wordform in cache.ServiceLocator.GetInstance<IWfiWordformRepository>().AllInstances())
+        {
+            var wordformId = CanonicalId.FromGuid(wordform.Guid).Value;
+            foreach (var writingSystem in wordform.Form.AvailableWritingSystemIds.Order())
+            {
+                var form = wordform.Form.get_String(writingSystem)?.Text?.Normalize(
+                    System.Text.NormalizationForm.FormD);
+                if (string.IsNullOrEmpty(form)) continue;
+                var tag = cache.WritingSystemFactory.GetStrFromWs(writingSystem);
+                foreach (var analysis in select(wordform))
+                {
+                    var morphs = analysis.MorphBundlesOS.Select(bundle => new ParseMorph(
+                        bundle.MorphRA is null ? null : CanonicalId.FromGuid(bundle.MorphRA.Guid).Value,
+                        bundle.MsaRA is null ? null : CanonicalId.FromGuid(bundle.MsaRA.Guid).Value,
+                        bundle.InflTypeRA is null ? null : CanonicalId.FromGuid(bundle.InflTypeRA.Guid).Value,
+                        null)).ToArray();
+                    var unavailable = morphs.Any(morph => morph.Form is null || morph.Msa is null)
+                        ? "At least one stored morph lacks an exact Form or MSA identity."
+                        : null;
+                    captured.Add(new NativeReadingExpectation(opinion, tag, form, morphs,
+                        [wordformId], [CanonicalId.FromGuid(analysis.Guid).Value], unavailable));
+                }
+            }
+        }
+
+        return captured.GroupBy(SignatureKey, StringComparer.Ordinal)
+            .Select(group =>
+            {
+                var first = group.First();
+                return first with
+                {
+                    SourceWordformIds = group.SelectMany(item => item.SourceWordformIds)
+                        .Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray(),
+                    SourceAnalysisIds = group.SelectMany(item => item.SourceAnalysisIds)
+                        .Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray(),
+                };
+            })
+            .OrderBy(item => item.WritingSystem, StringComparer.Ordinal)
+            .ThenBy(item => item.Form, StringComparer.Ordinal)
+            .ThenBy(item => SignatureKey(item), StringComparer.Ordinal)
+            .ToArray();
+    }
+
+    private static string SignatureKey(NativeReadingExpectation item) =>
+        System.Text.Json.JsonSerializer.Serialize(new
+        {
+            item.WritingSystem,
+            item.Form,
+            item.Morphs,
+            item.UnavailableReason,
+        });
 }

@@ -12,6 +12,7 @@ TestLangProj/
 ## .NET build output
 bin/
 obj/
+/evals/results/
 
 ## IDE
 .vs/
@@ -39,6 +40,7 @@ __pycache__/
 *.pyc
 
 ## Generated documentation site content and build output
+/evals/results/
 /site/node_modules/
 /site/dist/
 /site/.astro/

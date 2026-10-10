@@ -45,7 +45,8 @@ public sealed record AuthorLexemeFormIntent(
     bool IsAbstract = false,
     CanonicalId? Sense = null,
     string? GlossWritingSystem = null,
-    string? GlossText = null);
+    string? GlossText = null,
+    System.Collections.Generic.IReadOnlyList<CanonicalId>? Environments = null);
 
 /// <summary>
 /// Parses the JSON shape an agent actually authors for <see cref="AuthorLexemeFormComposer"/>:
@@ -62,7 +63,7 @@ public static class AuthorLexemeFormIntentParser
 
     private static readonly string[] AllowedProperties =
     {
-        "entry", "morphType", "ws", "text", "isAbstract", "sense", "glossWs", "glossText",
+        "entry", "morphType", "ws", "text", "isAbstract", "sense", "glossWs", "glossText", "environments",
     };
 
     public static AuthorLexemeFormIntent Parse(JsonElement authored)
@@ -86,14 +87,16 @@ public static class AuthorLexemeFormIntentParser
                 $"'{ConstructName}': 'sense', 'glossWs', and 'glossText' must be authored together or not at all.");
         }
 
+        var environments = authored.TryGetProperty("environments", out _) ?
+            SoundSystemIntentParsing.Array(authored, "environments").Select(e => CanonicalId.Parse(e.GetString()!)).ToArray() : null;
         if (!hasSense)
-            return new AuthorLexemeFormIntent(entry, morphType, ws, text, isAbstract);
+            return new AuthorLexemeFormIntent(entry, morphType, ws, text, isAbstract, Environments: environments);
 
         var sense = GetRequiredCanonicalId(authored, "sense");
         var glossWs = GetRequiredString(authored, "glossWs");
         var glossText = GetRequiredString(authored, "glossText");
 
-        return new AuthorLexemeFormIntent(entry, morphType, ws, text, isAbstract, sense, glossWs, glossText);
+        return new AuthorLexemeFormIntent(entry, morphType, ws, text, isAbstract, sense, glossWs, glossText, environments);
     }
 
     private static bool GetOptionalBoolean(JsonElement authored, string propertyName)

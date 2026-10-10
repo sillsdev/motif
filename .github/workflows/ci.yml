@@ -113,6 +113,12 @@ jobs:
         shell: pwsh
         run: ./build.ps1 -Configuration Release
 
+      - name: Fetch pinned test grammars
+        shell: pwsh
+        run: |
+          $path = ./evals/Get-TestGrammars.ps1
+          "MOTIF_TEST_GRAMMARS=$path" >> $env:GITHUB_ENV
+
       - name: Stage pinned PanGloss release
         shell: pwsh
         run: |

@@ -1,0 +1,43 @@
+{
+  "contractVersions": { "grammar": "1.0" },
+  "proposalId": "agent_EBESExQVFhcYGRobHB0eHw",
+  "operations": [
+    {
+      "operationId": "agent_AAECAwQFBgcICQoLDA0ODw",
+      "kind": "grammar/phPhonData/createPhonRules",
+      "entityId": "agent_AQIDBAUGBwgJCgsMDQ4PEA",
+      "target": "agent_AgMEBQYHCAkKCwwNDg8QEQ",
+      "after": { "class": "PhRegularRule" },
+      "placement": { "after": "agent_AwQFBgcICQoLDA0ODxAREg" }
+    },
+    {
+      "operationId": "agent_BAUGBwgJCgsMDQ4PEBESEw",
+      "kind": "grammar/phSegmentRule/setName",
+      "target": "agent_AQIDBAUGBwgJCgsMDQ4PEA",
+      "after": { "ws": "en", "text": "rewrite rule" },
+      "dependsOn": ["agent_AAECAwQFBgcICQoLDA0ODw"]
+    },
+    {
+      "operationId": "agent_BQYHCAkKCwwNDg8QERITFA",
+      "kind": "grammar/phSegmentRule/setDirection",
+      "target": "agent_AQIDBAUGBwgJCgsMDQ4PEA",
+      "after": { "value": 2 },
+      "dependsOn": ["agent_AAECAwQFBgcICQoLDA0ODw"]
+    },
+    {
+      "operationId": "agent_BgcICQoLDA0ODxAREhMUFQ",
+      "kind": "grammar/phSegmentRule/setDisabled",
+      "target": "agent_AQIDBAUGBwgJCgsMDQ4PEA",
+      "after": { "value": true },
+      "dependsOn": ["agent_AAECAwQFBgcICQoLDA0ODw"]
+    },
+    {
+      "operationId": "agent_BwgJCgsMDQ4PEBESExQVFg",
+      "kind": "grammar/phRegularRule/createRightHandSides",
+      "entityId": "agent_CAkKCwwNDg8QERITFBUWFw",
+      "target": "agent_AQIDBAUGBwgJCgsMDQ4PEA",
+      "after": {},
+      "dependsOn": ["agent_AAECAwQFBgcICQoLDA0ODw"]
+    }
+  ]
+}

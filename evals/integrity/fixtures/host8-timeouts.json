@@ -1,0 +1,70 @@
+[
+  {
+    "source": "evals/results/default-vs-lean-fake/20261005-233437-3c6ec5d9/trials/t0-lexicon-correct-gloss/fake-default/trial-1",
+    "failure": "MCP server did not answer within 20000 ms.",
+    "exitCode": 1,
+    "finalMessage": "MCP server did not answer within 20000 ms.",
+    "pendingTool": "motif_dry_run",
+    "bridgeErrors": [
+      "Tool server did not close",
+      "Tool server exited with -9"
+    ]
+  },
+  {
+    "source": "evals/results/default-vs-lean-fake/20261005-233437-3c6ec5d9/trials/t0-lexicon-correct-gloss/fake-lean/trial-1",
+    "failure": "MCP server did not answer within 20000 ms.",
+    "exitCode": 1,
+    "finalMessage": "MCP server did not answer within 20000 ms.",
+    "pendingTool": "motif_trial",
+    "bridgeErrors": [
+      "Tool server did not close",
+      "Tool server exited with -9"
+    ]
+  },
+  {
+    "source": "evals/results/default-vs-lean-fake/20261005-233437-3c6ec5d9/trials/t0-lexicon-restore-missing-form/fake-default/trial-1",
+    "failure": "MCP server did not answer within 20000 ms.",
+    "exitCode": 1,
+    "finalMessage": "MCP server did not answer within 20000 ms.",
+    "pendingTool": "motif_trial",
+    "bridgeErrors": []
+  },
+  {
+    "source": "evals/results/default-vs-lean-fake/20261005-233437-3c6ec5d9/trials/t0-lexicon-restore-missing-form/fake-lean/trial-1",
+    "failure": "MCP server did not answer within 20000 ms.",
+    "exitCode": 1,
+    "finalMessage": "MCP server did not answer within 20000 ms.",
+    "pendingTool": "motif_trial",
+    "bridgeErrors": [
+      "Tool server did not close",
+      "Tool server exited with -9"
+    ]
+  },
+  {
+    "source": "evals/results/default-vs-lean-fake/20261005-233437-3c6ec5d9/trials/t1-lexicon-correct-gloss/fake-lean/trial-1",
+    "failure": "MCP server did not answer within 20000 ms.",
+    "exitCode": 1,
+    "finalMessage": "MCP server did not answer within 20000 ms.",
+    "pendingTool": "motif_trial",
+    "bridgeErrors": []
+  },
+  {
+    "source": "evals/results/default-vs-lean-fake/20261005-233437-3c6ec5d9/trials/t1-lexicon-restore-missing-form/fake-default/trial-1",
+    "failure": "MCP server did not answer within 20000 ms.",
+    "exitCode": 1,
+    "finalMessage": "MCP server did not answer within 20000 ms.",
+    "pendingTool": "motif_dry_run",
+    "bridgeErrors": []
+  },
+  {
+    "source": "evals/results/default-vs-lean-fake/20261005-233437-3c6ec5d9/trials/t1-lexicon-restore-missing-form/fake-lean/trial-1",
+    "failure": "MCP server did not answer within 20000 ms.",
+    "exitCode": 1,
+    "finalMessage": "MCP server did not answer within 20000 ms.",
+    "pendingTool": "motif_trial",
+    "bridgeErrors": [
+      "Tool server did not close",
+      "Tool server exited with -9"
+    ]
+  }
+]

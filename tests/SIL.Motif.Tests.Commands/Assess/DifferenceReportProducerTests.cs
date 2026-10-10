@@ -36,6 +36,17 @@ public sealed class DifferenceReportProducerTests
     }
 
     [Fact]
+    public void RefusesMissingAssessment_NamingTheMissingCapability()
+    {
+        var failure = Assert.Throws<ReportRefusalException>(() =>
+            new DifferenceReportProducer().Produce(
+                ReportInput.MissingCapability("Assessment"), new ReportQuery(), NoAssessorsRegistered));
+
+        Assert.Equal("difference", failure.Kind);
+        Assert.Contains("Assessment", failure.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void RendersTheStoredChanges_AndTheCounts_FromScopeJsonAlone()
     {
         var selection = Selection.Create("difference:from..to", new[] { "alpha", "beta" });

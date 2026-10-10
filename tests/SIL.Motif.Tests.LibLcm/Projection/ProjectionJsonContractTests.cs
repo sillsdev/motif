@@ -41,7 +41,7 @@ public sealed class ProjectionJsonContractTests
     public void EffectView_KeysAreTheContract() =>
         AssertKeys(
             new EffectView("id", "Gloss", new[] { new EffectChange("en", "was", "now") }),
-            "canonicalId", "field", "changes", "ws", "before", "after");
+            "canonicalId", "field", "changes", "operationIds", "ws", "before", "after");
 
     [Fact]
     public void AppliedLogEntrySummary_KeysAreTheContract() =>

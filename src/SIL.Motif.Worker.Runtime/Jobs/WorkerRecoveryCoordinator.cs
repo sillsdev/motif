@@ -1,5 +1,6 @@
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Worker.Projects;
+using SIL.Motif.Worker.Parsimony;
 using SIL.Motif.Worker.Store;
 
 namespace SIL.Motif.Worker.Jobs;
@@ -10,18 +11,26 @@ public sealed class WorkerRecoveryCoordinator
     private const int MaximumReportedFailures = 32;
     private readonly WorkerRecovery _recovery;
     private readonly WorkspaceCleaner _cleaner;
+    private readonly EvidenceRetentionCleaner? _artifactCleaner;
+    private readonly EvidenceArtifactPublisher? _artifactPublisher;
 
-    public WorkerRecoveryCoordinator(WorkerRecovery recovery, WorkspaceCleaner cleaner)
+    public WorkerRecoveryCoordinator(WorkerRecovery recovery, WorkspaceCleaner cleaner,
+        EvidenceRetentionCleaner? artifactCleaner = null, EvidenceArtifactPublisher? artifactPublisher = null)
     {
         _recovery = recovery ?? throw new ArgumentNullException(nameof(recovery));
         _cleaner = cleaner ?? throw new ArgumentNullException(nameof(cleaner));
+        _artifactCleaner = artifactCleaner;
+        _artifactPublisher = artifactPublisher;
     }
 
     public StartupRecoveryResult RecoverStartup(string projectKey, DateTimeOffset now)
     {
         var cleanup = _cleaner.CleanupStartup(ProjectWorkspaceKey.StorageSegment(projectKey));
         var recovery = _recovery.RecoverInterruptedJobs(now);
-        return new StartupRecoveryResult(recovery, Limit(cleanup));
+        var artifactCleanup = _artifactCleaner is null || _artifactPublisher is null
+            ? null : _artifactCleaner.RecoverExpiredBuilds(projectKey, _artifactPublisher);
+        var retention = _artifactCleaner?.Clean(projectKey);
+        return new StartupRecoveryResult(recovery, Limit(cleanup), artifactCleanup, retention);
     }
 
     public WorkspaceCleanupResult CleanupTerminal(string projectKey, string jobId) =>
@@ -34,4 +43,5 @@ public sealed class WorkerRecoveryCoordinator
 }
 
 /// <summary>Reports the cleanup diagnostics and durable recovery for one project startup.</summary>
-public sealed record StartupRecoveryResult(RecoveryResult Recovery, WorkspaceCleanupResult Cleanup);
+public sealed record StartupRecoveryResult(RecoveryResult Recovery, WorkspaceCleanupResult Cleanup,
+    WorkspaceCleanupResult? ArtifactCleanup = null, EvidenceRetentionResult? EvidenceRetention = null);

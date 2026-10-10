@@ -1,0 +1,3 @@
+{"tool": "motif_grammar", "arguments": {"kind": "phonological_rules", "detail": "detailed"}}
+{"tool": "motif_try_word", "arguments": {"word": "isemmo", "detail": "detailed"}, "skipProfiles": ["lean"]}
+{"finalMessage": "The nasal assimilation rule has the wrong right-hand environment: it applies before vowels rather than bilabials. Underlying isen plus -mo needs n to become m before the bilabial m across the boundary, yielding isemmo. Restore the bilabial environment; retain isen and the single -mo ending."}

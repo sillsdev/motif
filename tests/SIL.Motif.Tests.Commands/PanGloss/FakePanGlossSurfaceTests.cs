@@ -117,8 +117,9 @@ public sealed class FakePanGlossSurfaceTests
         using var description = await Describe(FakeParser.ExecutablePath);
         Assert.Equal(1, description.RootElement.GetProperty("schema_version").GetInt32());
         Assert.Equal("pangloss", description.RootElement.GetProperty("binary").GetString());
+        AssertFactsIdentity(description.RootElement.GetProperty("facts"));
         var commands = Commands(description);
-        Assert.Equal(new[] { "batch", "describe", "grammar-health", "import", "parse", "stats" },
+        Assert.Equal(new[] { "batch", "describe", "facts", "grammar-health", "import", "parse", "stats" },
             commands.Keys.OrderBy(name => name));
         AssertRequestsMatch(commands);
         AssertTraceCommandIsDeclared(commands);
@@ -141,20 +142,24 @@ public sealed class FakePanGlossSurfaceTests
         document.RootElement.GetProperty("commands").EnumerateArray()
             .ToDictionary(command => command.GetProperty("name").GetString()!, command => command);
 
-    internal static void AssertRequestsMatch(IReadOnlyDictionary<string, JsonElement> commands)
+    internal static void AssertRequestsMatch(
+        IReadOnlyDictionary<string, JsonElement> commands, bool includeFacts = true)
     {
         PanGlossRequest[] requests =
         [
             new PanGlossRequest.Batch("project.fwdata", ["motifa"], TimeSpan.FromSeconds(1), "cache.sqlite"),
             new PanGlossRequest.Stats("project.fwdata", "cache.sqlite", ["--group", "word", "--format", "jsonl"]),
+            new PanGlossRequest.Facts("snapshot.json", "{}", "facts-artifact"),
             new PanGlossRequest.Import("project.fwdata", "grammar.json"),
             new PanGlossRequest.GrammarHealth("project.fwdata", "project"),
             new PanGlossRequest.Trace("project.fwdata", "motifa")
                 { StepLimit = SIL.Motif.Contract.Assess.StepCap.Default },
         ];
+        if (!includeFacts) requests = requests.Where(request => request is not PanGlossRequest.Facts).ToArray();
         // Trace is checked by AssertTraceCommandIsDeclared; this walker cannot express an "=file" flag.
         var requestTypes = typeof(PanGlossRequest).GetNestedTypes()
             .Where(type => typeof(PanGlossRequest).IsAssignableFrom(type) && type != typeof(PanGlossRequest.Trace))
+            .Where(type => includeFacts || type != typeof(PanGlossRequest.Facts))
             .OrderBy(type => type.Name);
         Assert.Equal(requestTypes, requests.Where(request => request is not PanGlossRequest.Trace)
             .Select(request => request.GetType()).OrderBy(type => type.Name));
@@ -162,7 +167,8 @@ public sealed class FakePanGlossSurfaceTests
             Path.Combine(RepoPaths.FindRepoRoot(), "pangloss-release.json")));
         var pinnedRequests = pin.RootElement.GetProperty("interfaces").GetProperty("requests");
         Assert.Equal(requests.Select(request => request.Subcommand).OrderBy(name => name, StringComparer.Ordinal),
-            pinnedRequests.EnumerateObject().Select(command => command.Name).OrderBy(name => name, StringComparer.Ordinal));
+            pinnedRequests.EnumerateObject().Select(command => command.Name)
+                .Where(name => includeFacts || name != "facts").OrderBy(name => name, StringComparer.Ordinal));
         foreach (var request in requests)
         {
             var start = new ProcessStartInfo();
@@ -179,7 +185,9 @@ public sealed class FakePanGlossSurfaceTests
                             ? name is "--word-timeout-ms" or "--step-cap" or "--threads" or "--analyses" or "--stats" or "--cache"
                             : request.Subcommand == "parse"
                                 ? name is "--trace" or "--trace-format" or "--trace-details" or "--step-cap"
-                                : request.Subcommand == "grammar-health" && name == "--fw-project")
+                                : request.Subcommand == "facts"
+                                    ? name is "--out" or "--context" or "--stats" or "--stats-manifest" or "--json"
+                                    : request.Subcommand == "grammar-health" && name == "--fw-project")
                     .OrderBy(name => name, StringComparer.Ordinal),
                 pinnedFlags.EnumerateObject().Select(flag => flag.Name).OrderBy(name => name, StringComparer.Ordinal));
             foreach (var pinnedFlag in pinnedFlags.EnumerateObject())
@@ -211,6 +219,24 @@ public sealed class FakePanGlossSurfaceTests
                 !positional.EndsWith("?", StringComparison.Ordinal));
             Assert.InRange(positionals, requiredPositionals, declaredPositionals.Length);
         }
+    }
+
+    internal static bool HasFactsIdentity(JsonElement root) =>
+        root.TryGetProperty("facts", out var facts) &&
+        facts.ValueKind == JsonValueKind.Object &&
+        facts.TryGetProperty("format", out var format) && format.GetString() == "pangloss-grammar-facts" &&
+        facts.TryGetProperty("schemaVersion", out var schemaVersion) && schemaVersion.GetInt32() == 8 &&
+        facts.TryGetProperty("applicationId", out var applicationId) && applicationId.GetInt64() == 1346848321 &&
+        facts.TryGetProperty("contextFormat", out var contextFormat) && contextFormat.GetString() == "pangloss-facts-context" &&
+        facts.TryGetProperty("contextVersion", out var contextVersion) && contextVersion.GetInt32() == 1;
+
+    private static void AssertFactsIdentity(JsonElement facts)
+    {
+        Assert.Equal("pangloss-grammar-facts", facts.GetProperty("format").GetString());
+        Assert.Equal(8, facts.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(1346848321, facts.GetProperty("applicationId").GetInt64());
+        Assert.Equal("pangloss-facts-context", facts.GetProperty("contextFormat").GetString());
+        Assert.Equal(1, facts.GetProperty("contextVersion").GetInt32());
     }
 
     /// A narrower check for `parse`, skipping AssertRequestsMatch's value-adjacency walk (see its comment).

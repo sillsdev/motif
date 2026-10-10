@@ -2,7 +2,9 @@ using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using SIL.Motif.Cli.Rendering;
+using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Parsimony;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
@@ -11,6 +13,30 @@ namespace SIL.Motif.Tests.Cli;
 
 public sealed class CatalogTextRenderingTests
 {
+    [Fact]
+    public void AParsimonyNoteShowsAsAnInformationLineNotAFinding()
+    {
+        var token = new BaselineToken("project", "sha256:" + new string('a', 64), "1",
+            "2026-10-05T00:00:00Z", "sha256:" + new string('b', 64));
+        var inputs = new ParsimonyReportInputs("bundle-1", token, "baseline", null, "fingerprint-1",
+            new ParsimonyArtifactDigest(4, new string('c', 64)),
+            new ParsimonyArtifactDigest(1, new string('d', 64)), null, null, []);
+        var note = new ParsimonyNote("not-checked", "R-slot-blocking",
+            "Not checked: A required slot blocks a form — the Default Selection has no Approved words.", null);
+        var response = new ParsimonyReportResponse("report/note", inputs, [], "Parsimony advisory report\n" + note.Text)
+        {
+            Notes = [note],
+        };
+
+        var rendered = CommandTextRenderer.Render(CommandOutcome<ParsimonyReportResponse>.Success(response),
+            asJson: false);
+
+        Assert.Contains(note.Text, rendered.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("Finding", rendered.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("Recommendation", rendered.Output, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("0/", rendered.Output, StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData(0, "No known word matches")]
     [InlineData(2, "At least 2 of your words")]

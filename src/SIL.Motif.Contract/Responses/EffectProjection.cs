@@ -16,4 +16,8 @@ public sealed record EffectChange(string Ws, string? Before, string? After);
 /// that actually differ, in place of <c>ExpectedEffect</c>'s full before/after maps.
 /// </summary>
 public sealed record EffectView(string CanonicalId, string Field, IReadOnlyList<EffectChange> Changes,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] JsonElement? Preview = null);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] JsonElement? Preview = null)
+{
+    /// <summary>The Proposal operations whose targets or created entities match this observed effect.</summary>
+    public IReadOnlyList<string> OperationIds { get; init; } = [];
+}

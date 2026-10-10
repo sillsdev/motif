@@ -121,6 +121,7 @@ public sealed class FeatureOwnerWarningTests(PristineProjectFixture pristine)
             {
                 var set = services.GetInstance<IPhPhonemeSetFactory>().Create();
                 cache.LangProject.PhonologicalDataOA.PhonemeSetsOS.Add(set);
+                OwnedBoundaryMarkerFixture.EnsureReservedMarkers(cache, set);
                 phoneme = services.GetInstance<IPhPhonemeFactory>().Create();
                 set.PhonemesOC.Add(phoneme);
                 SetStructure(cache, feature, value, structure => phoneme.FeaturesOA = structure);

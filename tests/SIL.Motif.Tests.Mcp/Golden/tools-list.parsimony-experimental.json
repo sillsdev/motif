@@ -1,0 +1,1278 @@
+[
+  {
+    "name": "motif_start_proposal",
+    "description": "Starts a new Draft Proposal: a named container for one small, related set of changes. Give it a short draft name (letters, digits and hyphens), a one-line label a person reads in Motif\u0027s window, such as \u0027Add the plural suffix -s\u0027, and a comment explaining why the change is right, which the linguist reads while deciding. Keep each Proposal to one concept. Returns the draft name and the proposal id; use the draft name with the motif_add_* tools and the proposal id with motif_trial.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Short draft name, for example \u0027plural-s\u0027."
+        },
+        "label": {
+          "type": "string",
+          "description": "A one-line description a reviewer reads in Motif\u0027s window."
+        },
+        "comment": {
+          "type": "string",
+          "description": "Why this change is right: the evidence, in a few sentences."
+        }
+      },
+      "required": [
+        "draft",
+        "label",
+        "comment"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_add_natural_class",
+    "description": "Authors a natural class in a Draft. Supply exactly one nonempty list: members (phoneme ids) or features (closed phonological feature/value pairs). Its abbreviation must be unique and use letters, digits or hyphens. References may name objects authored earlier in this Draft. Returns the class entityId. Next: author its context with motif_add_environment using this class id.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "name": {
+          "type": "string",
+          "description": "Natural class name."
+        },
+        "abbreviation": {
+          "type": "string",
+          "description": "Unique environment abbreviation, such as V."
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Phoneme ids in the first set."
+        },
+        "features": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "feature": {
+                "type": "string",
+                "description": "Closed feature id in the phonological feature system."
+              },
+              "value": {
+                "type": "string",
+                "description": "Symbolic value belonging to that feature."
+              }
+            },
+            "required": [
+              "feature",
+              "value"
+            ],
+            "additionalProperties": false
+          },
+          "description": "Closed phonological feature/value pairs; copy ids from motif_grammar."
+        }
+      },
+      "required": [
+        "draft",
+        "name",
+        "abbreviation"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_edit_natural_class",
+    "description": "Adds or removes members of one existing segment natural class after comparing its exact current phoneme identities. The desired class must remain nonempty, and feature classes cannot change subtype in place. The result lists environments, rewrite rules and insertions that still use the class. This only stages a Draft; only a person can Apply it.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name from motif_start_proposal."
+        },
+        "target": {
+          "type": "string",
+          "description": "Canonical id of the existing segment natural class."
+        },
+        "expectedMembers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Exact current phoneme ids in the class."
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Requested distinct phoneme ids; the class must remain nonempty."
+        }
+      },
+      "required": [
+        "draft",
+        "target",
+        "expectedMembers",
+        "members"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_relink_natural_class",
+    "description": "Moves only the named environment and rewrite-rule context users from one natural class to another class created earlier in this Draft. Supply each environment\u0027s exact typed left and right contexts; each relink depends on the replacement class creation. RelatedObjects lists the source class\u0027s current users for scope review. This only stages a Draft; only a person can Apply it.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name from motif_start_proposal."
+        },
+        "source": {
+          "type": "string",
+          "description": "Canonical id of the class users currently reference."
+        },
+        "replacement": {
+          "type": "string",
+          "description": "Canonical id of the replacement class."
+        },
+        "replacementCreationOperation": {
+          "type": "string",
+          "description": "Operation id returned by the class create earlier in this Draft."
+        },
+        "environments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "target": {
+                "type": "string",
+                "description": "Environment id."
+              },
+              "expectedLeft": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "phoneme": {
+                      "type": "string",
+                      "description": "Phoneme id in the first phoneme set."
+                    },
+                    "naturalClass": {
+                      "type": "string",
+                      "description": "Natural class id with a unique abbreviation."
+                    },
+                    "boundary": {
+                      "type": "string",
+                      "description": "Word edge or declared morpheme boundary.",
+                      "enum": [
+                        "word",
+                        "morpheme"
+                      ]
+                    },
+                    "boundaryMarker": {
+                      "type": "string",
+                      "description": "Declared morpheme-boundary marker id."
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "description": "Context items in linguistic order, from the outer left to outer right. Each names exactly one reference."
+              },
+              "expectedRight": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "phoneme": {
+                      "type": "string",
+                      "description": "Phoneme id in the first phoneme set."
+                    },
+                    "naturalClass": {
+                      "type": "string",
+                      "description": "Natural class id with a unique abbreviation."
+                    },
+                    "boundary": {
+                      "type": "string",
+                      "description": "Word edge or declared morpheme boundary.",
+                      "enum": [
+                        "word",
+                        "morpheme"
+                      ]
+                    },
+                    "boundaryMarker": {
+                      "type": "string",
+                      "description": "Declared morpheme-boundary marker id."
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "description": "Context items in linguistic order, from the outer left to outer right. Each names exactly one reference."
+              }
+            },
+            "required": [
+              "target",
+              "expectedLeft",
+              "expectedRight"
+            ],
+            "additionalProperties": false
+          },
+          "description": "Explicit environment users and their exact current typed contexts."
+        },
+        "ruleContexts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Explicit rewrite-rule context object ids using the source class."
+        }
+      },
+      "required": [
+        "draft",
+        "source",
+        "replacement",
+        "replacementCreationOperation",
+        "environments",
+        "ruleContexts"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_add_phonological_rule",
+    "description": "Stages one simple regular rewrite rule in a Draft. Input and output each contain at most one phoneme or natural class; an empty side means insertion or deletion. left and right are ordered lists of one to eight phoneme, class, boundary, or boundaryMarker contexts. A boundaryMarker id stays literal even when its code is #; use boundary=\u0027word\u0027 for the word edge. placement names the adjacent existing rule or rules. Alpha variables, metathesis and allomorph environments are unsupported. Returns created rule identities and operation details. Next: finish the Proposal, inspect motif_dry_run, and test parse and generate behavior with motif_trial.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "name": {
+          "type": "string",
+          "description": "Rule name."
+        },
+        "direction": {
+          "type": "string",
+          "description": "Rule scan direction or application mode.",
+          "enum": [
+            "left-to-right",
+            "right-to-left",
+            "simultaneous"
+          ]
+        },
+        "input": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "phoneme": {
+                "type": "string",
+                "description": "Phoneme id in the first phoneme set."
+              },
+              "naturalClass": {
+                "type": "string",
+                "description": "Natural class id owned by this project\u0027s phonological data."
+              }
+            },
+            "additionalProperties": false
+          },
+          "description": "Zero or one explicit phoneme or natural-class items.",
+          "maxItems": 1
+        },
+        "output": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "phoneme": {
+                "type": "string",
+                "description": "Phoneme id in the first phoneme set."
+              },
+              "naturalClass": {
+                "type": "string",
+                "description": "Natural class id owned by this project\u0027s phonological data."
+              }
+            },
+            "additionalProperties": false
+          },
+          "description": "Zero or one explicit phoneme or natural-class items.",
+          "maxItems": 1
+        },
+        "left": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "phoneme": {
+                "type": "string",
+                "description": "Phoneme id in the first phoneme set."
+              },
+              "naturalClass": {
+                "type": "string",
+                "description": "Natural class id with a unique abbreviation."
+              },
+              "boundary": {
+                "type": "string",
+                "description": "Word edge or declared morpheme boundary.",
+                "enum": [
+                  "word",
+                  "morpheme"
+                ]
+              },
+              "boundaryMarker": {
+                "type": "string",
+                "description": "Stored boundary-marker id. Rule contexts preserve its literal identity, even when its code is #."
+              }
+            },
+            "additionalProperties": false
+          },
+          "description": "Context items in linguistic order, from the outer left to outer right. Each names exactly one reference.",
+          "maxItems": 8
+        },
+        "right": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "phoneme": {
+                "type": "string",
+                "description": "Phoneme id in the first phoneme set."
+              },
+              "naturalClass": {
+                "type": "string",
+                "description": "Natural class id with a unique abbreviation."
+              },
+              "boundary": {
+                "type": "string",
+                "description": "Word edge or declared morpheme boundary.",
+                "enum": [
+                  "word",
+                  "morpheme"
+                ]
+              },
+              "boundaryMarker": {
+                "type": "string",
+                "description": "Stored boundary-marker id. Rule contexts preserve its literal identity, even when its code is #."
+              }
+            },
+            "additionalProperties": false
+          },
+          "description": "Context items in linguistic order, from the outer left to outer right. Each names exactly one reference.",
+          "maxItems": 8
+        },
+        "placement": {
+          "type": "object",
+          "properties": {
+            "after": {
+              "type": "string",
+              "description": "Adjacent existing rule before the insertion gap."
+            },
+            "before": {
+              "type": "string",
+              "description": "Adjacent existing rule after the insertion gap."
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "draft",
+        "name",
+        "direction",
+        "input",
+        "output",
+        "left",
+        "right"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_add_affix_slot",
+    "description": "Stages a new inflectional affix slot owned by an existing category, gives it a name and optionality, and can assign existing inflectional affixes to it in the same Draft. Assignments must fit the slot category. This only stages a Proposal, and only a person can Apply it. Next: finish the Draft, inspect motif_dry_run, and run a bounded motif_trial on affected words.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "The draft name from motif_start_proposal."
+        },
+        "category": {
+          "type": "string",
+          "description": "Canonical id of the existing category that owns the new slot."
+        },
+        "name": {
+          "type": "string",
+          "description": "Slot name in the project\u0027s writing system."
+        },
+        "ws": {
+          "type": "string",
+          "description": "Writing system tag for the slot name."
+        },
+        "optional": {
+          "type": "boolean",
+          "description": "Whether forms may omit this slot."
+        },
+        "assignments": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Optional canonical ids of existing inflectional affix MSAs to assign."
+        }
+      },
+      "required": [
+        "draft",
+        "category",
+        "name",
+        "ws",
+        "optional"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_add_affix_template",
+    "description": "Stages an active alternative affix template in a Draft, preserving the category\u0027s existing template order. prefix_slots and suffix_slots are ordered canonical ids for existing slots or slots created earlier in this Draft; each must belong to the template category or an ancestor, and no slot may be repeated. final records whether the template requires further derivation. This only stages a Proposal, and only a person can Apply it. Next: finish the Draft, inspect motif_dry_run, and run a bounded motif_trial on affected words.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "The draft name from motif_start_proposal."
+        },
+        "category": {
+          "type": "string",
+          "description": "Canonical id of the existing category that owns the template."
+        },
+        "name": {
+          "type": "string",
+          "description": "Template name in the project\u0027s writing system."
+        },
+        "ws": {
+          "type": "string",
+          "description": "Writing system tag for the template name."
+        },
+        "prefix_slots": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Ordered canonical ids of prefix slots."
+        },
+        "suffix_slots": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Ordered canonical ids of suffix slots."
+        },
+        "final": {
+          "type": "boolean",
+          "description": "Whether the template requires further derivation."
+        }
+      },
+      "required": [
+        "draft",
+        "category",
+        "name",
+        "ws",
+        "prefix_slots",
+        "suffix_slots",
+        "final"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_retire_allomorph",
+    "description": "Stages removal of an ordinary prefix or suffix alternate after every live use has an exact destination among the entry\u0027s duplicate forms. It refuses changed forms, unsupported references and owned dependents; the Draft can be checked with motif_dry_run before a person Applies it.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name from motif_start_proposal."
+        },
+        "intent_json": {
+          "type": "string",
+          "description": "Closed motif-retire-allomorph/v1 JSON with exact source, destination and reference identities."
+        }
+      },
+      "required": [
+        "draft",
+        "intent_json"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_edit_adhoc_prohibition",
+    "description": "Stages one explicit Disabled value for a flat allomorph or morpheme prohibition in a Draft. expected_disabled must match the target\u0027s current value; grouped prohibitions are refused. This only stages a Proposal, and only a person can Apply it. Next: finish the Draft, inspect motif_dry_run, and compare bounded before and after Trials with the same words.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "The draft name from motif_start_proposal."
+        },
+        "target": {
+          "type": "string",
+          "description": "Canonical id of one flat allomorph or morpheme prohibition."
+        },
+        "expected_disabled": {
+          "type": "boolean",
+          "description": "The value the target must currently have."
+        },
+        "disabled": {
+          "type": "boolean",
+          "description": "The explicit Disabled value to write."
+        }
+      },
+      "required": [
+        "draft",
+        "target",
+        "expected_disabled",
+        "disabled"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_edit_affix_slot",
+    "description": "Changes whether one existing affix slot is optional. The response lists every inflectional affix and template using that shared slot; this only stages a Draft, and only a person can Apply it.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "The draft name from motif_start_proposal."
+        },
+        "target": {
+          "type": "string",
+          "description": "Canonical id of the existing affix slot."
+        },
+        "expected_optional": {
+          "type": "boolean",
+          "description": "The optionality the project must currently have."
+        },
+        "optional": {
+          "type": "boolean",
+          "description": "The requested optionality."
+        }
+      },
+      "required": [
+        "draft",
+        "target",
+        "expected_optional",
+        "optional"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_edit_affix_template",
+    "description": "Reorders the existing prefix and suffix slots of one affix template using explicit slot identities. It cannot add or remove slots or create a template; this only stages a Draft, and only a person can Apply it.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "The draft name from motif_start_proposal."
+        },
+        "target": {
+          "type": "string",
+          "description": "Canonical id of the existing affix template."
+        },
+        "expected_prefix_slots": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Current prefix slot ids in project order."
+        },
+        "prefix_slots": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Requested prefix slot ids in explicit order."
+        },
+        "expected_suffix_slots": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Current suffix slot ids in project order."
+        },
+        "suffix_slots": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Requested suffix slot ids in explicit order."
+        }
+      },
+      "required": [
+        "draft",
+        "target",
+        "expected_prefix_slots",
+        "prefix_slots",
+        "expected_suffix_slots",
+        "suffix_slots"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_edit_inflectional_affix",
+    "description": "Changes the slot membership of one existing inflectional affix MSA. Slots must belong to its category or an ancestor; other MSA subtypes are refused. This only stages a Draft, and only a person can Apply it.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "The draft name from motif_start_proposal."
+        },
+        "target": {
+          "type": "string",
+          "description": "Canonical id of the existing inflectional affix MSA."
+        },
+        "expected_slots": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Current slot ids assigned to the MSA."
+        },
+        "slots": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Requested slot ids; order has no meaning."
+        }
+      },
+      "required": [
+        "draft",
+        "target",
+        "expected_slots",
+        "slots"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_edit_allomorph_condition",
+    "description": "Replaces one existing allomorph\u0027s environment references after checking the exact current list. Use field=phoneEnv for a stem or affix OR-list, and field=position for an affix\u0027s ordered position choices. The edit changes only this allomorph, so other users of a shared environment keep their references. This only stages a Draft; only a person can Apply it.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "The draft name from motif_start_proposal."
+        },
+        "target": {
+          "type": "string",
+          "description": "Canonical id of the existing stem or affix allomorph."
+        },
+        "field": {
+          "type": "string",
+          "description": "LibLCM condition field.",
+          "enum": [
+            "phoneEnv",
+            "position"
+          ]
+        },
+        "expected_environments": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Current environment ids; order matters only for position."
+        },
+        "environments": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Requested environment ids; order matters only for position."
+        }
+      },
+      "required": [
+        "draft",
+        "target",
+        "field",
+        "expected_environments",
+        "environments"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_order_allomorphs",
+    "description": "Reorders the existing alternate forms within one entry using explicit neighboring anchors. The lexeme form is outside that sequence and cannot be moved. Earlier forms have selection precedence; a final unrestricted form may serve as an elsewhere fallback. This only stages a Draft; only a person can Apply it.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "The draft name from motif_start_proposal."
+        },
+        "target": {
+          "type": "string",
+          "description": "Canonical id of the owning lexical entry."
+        },
+        "expected_alternates": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Current alternate-form ids in project order."
+        },
+        "alternates": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Requested order of those same alternate forms."
+        }
+      },
+      "required": [
+        "draft",
+        "target",
+        "expected_alternates",
+        "alternates"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_parsimony_record_types",
+    "description": "Lists the saved Notebook record types and their portable ids. Choose a type by its id, never by its English name. Use the selected id with motif_dispose_parsimony_finding.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true
+  },
+  {
+    "name": "motif_dispose_parsimony_finding",
+    "description": "Stages a keep, fix, ask or defer decision from one exact finding in a stored Parsimony Report. Motif derives the subject, evidence digest, evidence contract and captions from that finding. Choose record_type_id from motif_parsimony_record_types. A reason is optional; ask requires a question. This only stages a Draft Proposal: only a person can Apply it, and a pending keep does not suppress findings.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "report_id": {
+          "type": "string",
+          "description": "Id of a stored Parsimony Report from this project."
+        },
+        "finding_id": {
+          "type": "string",
+          "description": "Exact finding id returned by that Report."
+        },
+        "disposition": {
+          "type": "string",
+          "description": "The proposed decision.",
+          "enum": [
+            "fix",
+            "keep",
+            "ask",
+            "defer"
+          ]
+        },
+        "record_type_id": {
+          "type": "string",
+          "description": "Portable id from motif_parsimony_record_types."
+        },
+        "draft": {
+          "type": "string",
+          "description": "Draft name from motif_start_proposal."
+        },
+        "reason": {
+          "type": "string",
+          "description": "Optional explanation, stored with the readable record."
+        },
+        "question": {
+          "type": "string",
+          "description": "Required only when disposition is ask."
+        }
+      },
+      "required": [
+        "report_id",
+        "finding_id",
+        "disposition",
+        "record_type_id",
+        "draft"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_dry_run",
+    "description": "Checks that a finished Proposal\u0027s changes fit the project by applying them to a throwaway copy, and reports what each change did. It does not touch the real project. The Proposal must be finished with motif_finish_proposal first. If it takes longer than wait_seconds you get status \u0027running\u0027 and a job id: call again with that job to keep waiting.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "proposal": {
+          "type": "string",
+          "description": "The proposal id."
+        },
+        "job": {
+          "type": "string",
+          "description": "A job id from an earlier \u0027running\u0027 result, to keep waiting for it."
+        },
+        "wait_seconds": {
+          "type": "integer",
+          "description": "How long to wait for the result. Default 40.",
+          "minimum": 1,
+          "maximum": 300
+        },
+        "detail": {
+          "type": "string",
+          "description": "\u0027concise\u0027 (default) drops empty fields and long lists; \u0027detailed\u0027 returns everything.",
+          "enum": [
+            "concise",
+            "detailed"
+          ]
+        },
+        "limit": {
+          "type": "integer",
+          "description": "The most list items to return in concise mode. Default 25.",
+          "minimum": 1,
+          "maximum": 200
+        }
+      },
+      "required": [
+        "proposal"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_finish_proposal",
+    "description": "Finishes a Draft so it becomes a Proposal the linguist can review in Motif\u0027s window. Do this before a dry run or trial, which require a finished Proposal. Finishing does not change the project; the linguist decides whether to apply it. After finishing, the draft is closed: further edits start from a copy.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "The draft name."
+        },
+        "expected_revision": {
+          "type": "string",
+          "description": "The revision you last read, to refuse if the draft changed."
+        }
+      },
+      "required": [
+        "draft"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_parsimony_measures",
+    "description": "Lists the supported Parsimony measures and their fixed evidence views, capabilities, evidence tiers, citations and recipe links. This reads the same catalog as motif parsimony measures; it does not run a measure or launch a job.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true
+  },
+  {
+    "name": "motif_run_parsimony_measure",
+    "description": "Runs one registered Parsimony measure and returns its stored Report, using the same command handlers and Report shape as the CLI. It may take a while; if it returns running, repeat with the job id. This is advisory evidence only. A Proposal still needs Dry Run and only a person can Apply it.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "measure_id": {
+          "type": "string",
+          "description": "Exact registered measure id.",
+          "enum": [
+            "B-adhoc-is-slot-order",
+            "B-affix-null-vs-optional",
+            "B-affix-unslotted",
+            "P-adhoc-duplicate",
+            "P-allo-alternation-family",
+            "P-allo-duplicate-form",
+            "P-statement-unused",
+            "R-allo-unconditioned",
+            "R-env-broad",
+            "R-nc-excess",
+            "R-slot-blocking",
+            "R-tmpl-precedence",
+            "R-word-disapproved-produced",
+            "R-word-negative-accepted"
+          ]
+        },
+        "evidence_scope": {
+          "type": "string",
+          "description": "Which approved-word evidence to use.",
+          "enum": [
+            "default-selection",
+            "project-approved"
+          ]
+        },
+        "job": {
+          "type": "string",
+          "description": "Job id from a previous running result; omit to start a new measure."
+        },
+        "wait_seconds": {
+          "type": "integer",
+          "description": "How long to wait for a result. Default 40.",
+          "minimum": 1,
+          "maximum": 300
+        }
+      },
+      "required": [
+        "measure_id"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_parsimony_report",
+    "description": "Reads one stored Parsimony Report by its exact id. The Report payload is the same serialized response returned by motif parsimony show; reading it does not start a parser run.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "report_id": {
+          "type": "string",
+          "description": "Stored Parsimony Report id."
+        }
+      },
+      "required": [
+        "report_id"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true
+  },
+  {
+    "name": "motif_retirement_review",
+    "description": "Reads the review state for one staged rule-based allomorph retirement Draft. It returns its latest matching Dry Run and names evidence that is not available yet; it never invents a finding or parser result.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft_id": {
+          "type": "string",
+          "description": "Exact staged Draft Proposal id."
+        }
+      },
+      "required": [
+        "draft_id"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true
+  },
+  {
+    "name": "motif_parsimony_view",
+    "description": "Reads one page from a fixed Parsimony evidence or Active/Suppressed view. Filters are typed, bounded fields; arbitrary SQL or query text is not accepted. Missing evidence is reported with its status and detail, while saved judgments remain visible as unavailable. This read never launches a job; rerun a measure explicitly when new evidence is needed.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "bundle_id": {
+          "type": "string",
+          "description": "Exact Parsimony bundle id."
+        },
+        "view": {
+          "type": "string",
+          "description": "Exact fixed view code.",
+          "enum": [
+            "adhoc-context",
+            "affix-context",
+            "allomorph-context",
+            "alternation-families",
+            "approved-morph-sequences",
+            "environment-excess",
+            "join-quality",
+            "natural-class-context",
+            "natural-class-excess",
+            "null-optional",
+            "parser-cases",
+            "parsimony-active-findings",
+            "parsimony-suppressed",
+            "parsimony-suppression-history",
+            "slot-context",
+            "statement-usage",
+            "template-order",
+            "unslotted-affixes"
+          ]
+        },
+        "report_id": {
+          "type": "string",
+          "description": "Stored Report id for finding views."
+        },
+        "object_id": {
+          "type": "string",
+          "description": "Exact object GUID filter where the view accepts one."
+        },
+        "category_id": {
+          "type": "string",
+          "description": "Exact category GUID filter for template-order views."
+        },
+        "statement_kind": {
+          "type": "string",
+          "description": "Statement kind for statement-usage.",
+          "enum": [
+            "environment",
+            "natural-class"
+          ]
+        },
+        "scope": {
+          "type": "string",
+          "description": "Evidence scope for join-quality.",
+          "enum": [
+            "project-approved",
+            "default-selection"
+          ]
+        },
+        "case_key": {
+          "type": "string",
+          "description": "Exact parser case key."
+        },
+        "measure_id": {
+          "type": "string",
+          "description": "Exact Parsimony measure id filter."
+        },
+        "subject_key": {
+          "type": "string",
+          "description": "Exact finding or judgment subject key."
+        },
+        "disposition": {
+          "type": "string",
+          "description": "Disposition filter.",
+          "enum": [
+            "keep",
+            "defer",
+            "fix",
+            "ask"
+          ]
+        },
+        "state": {
+          "type": "string",
+          "description": "Current or historical finding state.",
+          "enum": [
+            "active",
+            "suppressed",
+            "resurfaced",
+            "no-current-finding",
+            "evidence-unavailable",
+            "conflict",
+            "unavailable",
+            "retracted",
+            "superseded"
+          ]
+        },
+        "search": {
+          "type": "string",
+          "description": "Bounded search over returned captions and reasons."
+        },
+        "limit": {
+          "type": "integer",
+          "description": "Rows in this page. Default 50, maximum 200.",
+          "minimum": 1,
+          "maximum": 200
+        },
+        "cursor": {
+          "type": "string",
+          "description": "Next cursor from the same bundle, view and filters."
+        }
+      },
+      "required": [
+        "bundle_id",
+        "view"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true
+  },
+  {
+    "name": "motif_revise_parsimony_disposition",
+    "description": "Stages a revision of one saved Parsimony disposition in a Draft. Name the exact current head set and content digests; a conflict can be resolved only by naming every head. The revised choice keeps the same finding subject and evidence, and only a person can Apply it.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name from motif_start_proposal."
+        },
+        "recordId": {
+          "type": "string",
+          "description": "Notebook record id of a current disposition head."
+        },
+        "expectedHeads": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "revisionId": {
+                "type": "string",
+                "description": "Portable id of the current revision."
+              },
+              "contentDigest": {
+                "type": "string",
+                "description": "Canonical sha256 digest read with the revision."
+              }
+            },
+            "required": [
+              "revisionId",
+              "contentDigest"
+            ],
+            "additionalProperties": false
+          },
+          "description": "Every current head with its exact content digest."
+        },
+        "disposition": {
+          "type": "string",
+          "description": "The revised choice.",
+          "enum": [
+            "fix",
+            "keep",
+            "ask",
+            "defer"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "description": "Replacement reason; omit to preserve the current reason."
+        },
+        "clearReason": {
+          "type": "boolean",
+          "description": "Clear the current optional reason."
+        },
+        "question": {
+          "type": "string",
+          "description": "Required when disposition is ask."
+        }
+      },
+      "required": [
+        "draft",
+        "recordId",
+        "expectedHeads",
+        "disposition"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_retract_parsimony_disposition",
+    "description": "Stages a withdrawal of one saved Parsimony disposition in a Draft. Name the exact current head set and content digests; a conflict can be resolved only by naming every head. The Notebook history stays intact, and the finding returns to Active only after a person Applies the current retraction; only a person can Apply it.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name from motif_start_proposal."
+        },
+        "recordId": {
+          "type": "string",
+          "description": "Notebook record id of a current disposition head."
+        },
+        "expectedHeads": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "revisionId": {
+                "type": "string",
+                "description": "Portable id of the current revision."
+              },
+              "contentDigest": {
+                "type": "string",
+                "description": "Canonical sha256 digest read with the revision."
+              }
+            },
+            "required": [
+              "revisionId",
+              "contentDigest"
+            ],
+            "additionalProperties": false
+          },
+          "description": "Every current head with its exact content digest."
+        }
+      },
+      "required": [
+        "draft",
+        "recordId",
+        "expectedHeads"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  }
+]

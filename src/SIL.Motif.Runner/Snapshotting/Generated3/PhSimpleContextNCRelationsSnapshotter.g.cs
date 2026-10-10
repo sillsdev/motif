@@ -26,8 +26,8 @@ public static class PhSimpleContextNCRelationsSnapshotter
         var fields = new Dictionary<string, IReadOnlyDictionary<string, string>>();
 
         AddIfPopulated(fields, SnapshotFields.PhSimpleContextNCFeatureStructure, ReferenceFieldSnapshotting.ReadAlternatives(phSimpleContextNC.FeatureStructureRA));
-        AddIfPopulated(fields, SnapshotFields.PhSimpleContextNCPlusConstr, ReferenceCollectionFieldSnapshotting.ReadAlternatives(phSimpleContextNC.PlusConstrRS));
-        AddIfPopulated(fields, SnapshotFields.PhSimpleContextNCMinusConstr, ReferenceCollectionFieldSnapshotting.ReadAlternatives(phSimpleContextNC.MinusConstrRS));
+        AddIfPopulated(fields, SnapshotFields.PhSimpleContextNCPlusConstr, ReferenceSequenceFieldSnapshotting.ReadAlternatives(phSimpleContextNC.PlusConstrRS));
+        AddIfPopulated(fields, SnapshotFields.PhSimpleContextNCMinusConstr, ReferenceSequenceFieldSnapshotting.ReadAlternatives(phSimpleContextNC.MinusConstrRS));
 
         return new ObjectSnapshot(canonicalId, fields);
     }

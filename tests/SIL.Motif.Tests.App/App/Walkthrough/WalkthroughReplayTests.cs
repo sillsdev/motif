@@ -21,9 +21,13 @@ using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.Views;
 using SIL.Motif.App.Walkthroughs;
+using SIL.Motif.Commands;
+using SIL.Motif.Commands.Preferences;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Host.Store;
 using SIL.Motif.Host.Analysis;
 using SIL.Motif.Tests.TestFixtures;
+using SIL.Motif.Worker.Store;
 using SkiaSharp;
 using Xunit;
 using Xunit.Abstractions;
@@ -252,6 +256,16 @@ public sealed class NoLongerFitsWalkthroughReplayTests(
 }
 
 [Collection(LcmCacheTestCollection.Name)]
+[AuthoredWalkthroughId("parsimony-findings")]
+public sealed class ParsimonyFindingsWalkthroughReplayTests(
+    PristineProjectFixture pristine, ITestOutputHelper output)
+{
+    [Fact]
+    public Task ReplaysAuthoredWalkthrough() =>
+        WalkthroughReplayTestRunner.RunAsync(GetType(), pristine, output);
+}
+
+[Collection(LcmCacheTestCollection.Name)]
 [AuthoredWalkthroughId("warnings-filter")]
 public sealed class WarningsFilterWalkthroughReplayTests(
     PristineProjectFixture pristine, ITestOutputHelper output)
@@ -312,7 +326,8 @@ internal static class WalkthroughReplayTestRunner
                     WalkthroughFonts.Register();
                     using var walkthrough = new WalkthroughWindow(
                         project.ManagedRoot, project.FwDataPath, Path.Combine(project.ManagedRoot, "handoff-output"),
-                        parserPath: parserPath, timeProvider: clock);
+                        parserPath: parserPath, timeProvider: clock,
+                        advancedAiModePreferences: WalkthroughFixtureSeeder.AdvancedAiModeFor(script, project));
                     if (script.Id == "right-to-left-text")
                         walkthrough.Workspace.Context.TextStyles.SetFallbackFamilies(
                             ["fonts:MotifWalkthrough#DejaVu Sans"]);
@@ -823,6 +838,11 @@ internal static class WalkthroughReplay
                 Assert.Equal(3, FakeParser.Invocations(parserPath).Count(command => command == "batch"));
                 Assert.False(window.Workspace.Context.NeedsAssessment);
                 break;
+            case "parsimony-findings":
+                var parsimony = window.Workspace.PageModel<ParsimonyPageModel>();
+                Assert.Equal(ParsimonyPageState.Listed, parsimony.State);
+                Assert.NotNull(parsimony.Evidence);
+                break;
             case "no-longer-fits":
                 var review = window.Workspace.PageModel<ReviewPageModel>();
                 window.WaitUntil(() => review.ReviewGroups.Any(group => group.IsNoLongerFits),
@@ -862,6 +882,7 @@ internal static class WalkthroughFixtureSeeder
             ["handoff-cancel-ready"] = SeedHandoffCancelReadyAsync,
             ["no-longer-fits-ready"] = SeedNoLongerFitsReadyAsync,
             ["warnings-ready"] = SeedWarningsReadyAsync,
+            ["parsimony-report-ready"] = SeedParsimonyReportReadyAsync,
         };
 
     public static Task<WalkthroughFixturePreparation> SeedAsync(
@@ -893,6 +914,30 @@ internal static class WalkthroughFixtureSeeder
         Assert.Equal(CaptureTime, DateTimeOffset.Parse(baseline.Value!.Token.CapturedUtc, CultureInfo.InvariantCulture));
         await SeedSelectionAndSkipSetupAsync(project, client);
         return WalkthroughFixturePreparation.Empty;
+    }
+
+    private static async Task<WalkthroughFixturePreparation> SeedParsimonyReportReadyAsync(
+        WalkthroughProjectContext project, FixedClock clock, string parserPath)
+    {
+        await SeedOverviewReadyAsync(project, clock, parserPath);
+        var current = CurrentBaselineQuery.Query(new CurrentBaselineRequest(project.FwDataPath));
+        Assert.True(current.Succeeded, current.Refusal?.Message);
+        var report = ParsimonySampleReports.Listed(current.Value!.Token!);
+        var locator = ProjectStoreCommand.Locate(project.FwDataPath);
+        using var database = MotifDatabase.OpenOwned(ProjectDatabaseCatalog.DatabasePathFor(locator), locator,
+            MotifSchema.CurrentSchema, new Version(1, 0));
+        new ReportRepository(database).Save(new ReportRecord(report.ReportId, null, null,
+            ParsimonySampleReports.Json(report), "{}", "parsimony", report.Text, "2026-10-05T09:00:00.0000000+00:00"));
+        return WalkthroughFixturePreparation.Empty;
+    }
+
+    // The Parsimony walkthrough is the one script that shows Advanced AI mode on; its fixture stores the Report.
+    internal static IAdvancedAiModePreferenceStore? AdvancedAiModeFor(WalkthroughScript script, WalkthroughProjectContext project)
+    {
+        if (script.Fixture != "parsimony-report-ready") return null;
+        var store = new FileAdvancedAiModePreferenceStore(Path.Combine(project.ManagedRoot, "advanced-ai-mode.json"));
+        store.SetEnabled(true);
+        return store;
     }
 
     private static async Task<WalkthroughFixturePreparation> SeedWarningsReadyAsync(

@@ -27,6 +27,7 @@
 
   <ItemGroup>
     <AssemblyMetadata Include="SilLCModelPackageVersion" Value="$(SilLCModelPackageVersion)" />
+    <InternalsVisibleTo Include="SIL.Motif.Tests.Contract" />
   </ItemGroup>
 
   <!-- Pins LibPalaso above SIL.LCModel's 17.x requests; only Core and WritingSystems use the local override. -->

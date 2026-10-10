@@ -26,7 +26,7 @@ public static class MoMorphAdhocProhibRelationsSnapshotter
         var fields = new Dictionary<string, IReadOnlyDictionary<string, string>>();
 
         AddIfPopulated(fields, SnapshotFields.MoMorphAdhocProhibFirstMorpheme, ReferenceFieldSnapshotting.ReadAlternatives(moMorphAdhocProhib.FirstMorphemeRA));
-        AddIfPopulated(fields, SnapshotFields.MoMorphAdhocProhibRestOfMorphs, ReferenceCollectionFieldSnapshotting.ReadAlternatives(moMorphAdhocProhib.RestOfMorphsRS));
+        AddIfPopulated(fields, SnapshotFields.MoMorphAdhocProhibRestOfMorphs, ReferenceSequenceFieldSnapshotting.ReadAlternatives(moMorphAdhocProhib.RestOfMorphsRS));
 
         return new ObjectSnapshot(canonicalId, fields);
     }

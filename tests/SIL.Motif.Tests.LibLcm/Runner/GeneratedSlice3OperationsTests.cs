@@ -166,6 +166,174 @@ public sealed class GeneratedSlice3OperationsTests : IDisposable
         Assert.DoesNotContain(slot, template.PrefixSlotsRS);
     }
 
+    [Fact]
+    public void AddRef_MoInflAffixTemplatePrefixSlots_UsesDeclaredPlacementInDryRunAndApply()
+    {
+        var pos = CreatePartOfSpeech();
+        var first = CreateInflAffixSlot(pos);
+        var inserted = CreateInflAffixSlot(pos);
+        var last = CreateInflAffixSlot(pos);
+        IMoInflAffixTemplate template = null!;
+        UndoableUnitOfWorkHelper.Do("test setup", "test setup", _cache.ServiceLocator.GetInstance<IActionHandler>(), () =>
+        {
+            template = _cache.ServiceLocator.GetInstance<IMoInflAffixTemplateFactory>().Create();
+            pos.AffixTemplatesOS.Add(template);
+            template.PrefixSlotsRS.Add(first);
+            template.PrefixSlotsRS.Add(last);
+        });
+
+        var proposal = BuildProposal(
+            MoInflAffixTemplatePrefixSlotsOperationKinds.AddRefPrefixSlots,
+            CanonicalId.FromGuid(template.Guid),
+            new { member = CanonicalId.FromGuid(inserted.Guid).Value },
+            new Placement(CanonicalId.FromGuid(first.Guid), CanonicalId.FromGuid(last.Guid)));
+
+        var dryRun = ScratchDryRun.Of(_cache, proposal);
+        var expectedEffect = Assert.Single(dryRun.ExpectedEffects);
+        Assert.Equal(
+            new[] { first.Guid, inserted.Guid, last.Guid }.Select(guid => CanonicalId.FromGuid(guid).Value),
+            expectedEffect.After.OrderBy(item => item.Key, StringComparer.Ordinal).Select(item => item.Value));
+
+        var receipt = ProposalApplier.Apply(_cache, proposal, dryRun.Anchor, "motif-tests");
+
+        Assert.False(receipt.AlreadyApplied);
+        Assert.Equal(new[] { first.Guid, inserted.Guid, last.Guid }, template.PrefixSlotsRS.Select(slot => slot.Guid));
+    }
+
+    [Fact]
+    public void Move_MoInflAffixTemplatePrefixSlots_UsesDeclaredPlacementInDryRunAndApply()
+    {
+        var pos = CreatePartOfSpeech();
+        var first = CreateInflAffixSlot(pos);
+        var moved = CreateInflAffixSlot(pos);
+        var last = CreateInflAffixSlot(pos);
+        IMoInflAffixTemplate template = null!;
+        UndoableUnitOfWorkHelper.Do("test setup", "test setup", _cache.ServiceLocator.GetInstance<IActionHandler>(), () =>
+        {
+            template = _cache.ServiceLocator.GetInstance<IMoInflAffixTemplateFactory>().Create();
+            pos.AffixTemplatesOS.Add(template);
+            template.PrefixSlotsRS.Add(first);
+            template.PrefixSlotsRS.Add(moved);
+            template.PrefixSlotsRS.Add(last);
+        });
+
+        var proposal = BuildProposal(
+            "grammar/moInflAffixTemplate/movePrefixSlots",
+            CanonicalId.FromGuid(template.Guid),
+            new { member = CanonicalId.FromGuid(moved.Guid).Value },
+            new Placement(CanonicalId.FromGuid(last.Guid), null));
+
+        var dryRun = ScratchDryRun.Of(_cache, proposal);
+        var expectedEffect = Assert.Single(dryRun.ExpectedEffects);
+        Assert.Equal(
+            new[] { first.Guid, last.Guid, moved.Guid }.Select(guid => CanonicalId.FromGuid(guid).Value),
+            expectedEffect.After.OrderBy(item => item.Key, StringComparer.Ordinal).Select(item => item.Value));
+
+        var receipt = ProposalApplier.Apply(_cache, proposal, dryRun.Anchor, "motif-tests");
+
+        Assert.False(receipt.AlreadyApplied);
+        Assert.Equal(new[] { first.Guid, last.Guid, moved.Guid }, template.PrefixSlotsRS.Select(slot => slot.Guid));
+    }
+
+    [Fact]
+    public void Move_MoInflAffixTemplateSuffixSlots_UsesDeclaredPlacementInDryRunAndApply()
+    {
+        var pos = CreatePartOfSpeech();
+        var first = CreateInflAffixSlot(pos);
+        var moved = CreateInflAffixSlot(pos);
+        var last = CreateInflAffixSlot(pos);
+        IMoInflAffixTemplate template = null!;
+        UndoableUnitOfWorkHelper.Do("test setup", "test setup", _cache.ServiceLocator.GetInstance<IActionHandler>(), () =>
+        {
+            template = _cache.ServiceLocator.GetInstance<IMoInflAffixTemplateFactory>().Create();
+            pos.AffixTemplatesOS.Add(template);
+            template.SuffixSlotsRS.Add(first);
+            template.SuffixSlotsRS.Add(moved);
+            template.SuffixSlotsRS.Add(last);
+        });
+
+        var proposal = BuildProposal(
+            MoInflAffixTemplateSuffixSlotsOperationKinds.MoveSuffixSlots,
+            CanonicalId.FromGuid(template.Guid),
+            new { member = CanonicalId.FromGuid(moved.Guid).Value },
+            new Placement(CanonicalId.FromGuid(last.Guid), null));
+
+        var dryRun = ScratchDryRun.Of(_cache, proposal);
+        var expectedEffect = Assert.Single(dryRun.ExpectedEffects);
+        Assert.Equal(
+            new[] { first.Guid, last.Guid, moved.Guid }.Select(guid => CanonicalId.FromGuid(guid).Value),
+            expectedEffect.After.OrderBy(item => item.Key, StringComparer.Ordinal).Select(item => item.Value));
+
+        var receipt = ProposalApplier.Apply(_cache, proposal, dryRun.Anchor, "motif-tests");
+
+        Assert.False(receipt.AlreadyApplied);
+        Assert.Equal(new[] { first.Guid, last.Guid, moved.Guid }, template.SuffixSlotsRS.Select(slot => slot.Guid));
+    }
+
+    [Fact]
+    public void Move_MoInflAffixTemplatePrefixSlots_RefusesStaleNonAdjacentAnchors()
+    {
+        var pos = CreatePartOfSpeech();
+        var first = CreateInflAffixSlot(pos);
+        var intervening = CreateInflAffixSlot(pos);
+        var moved = CreateInflAffixSlot(pos);
+        var last = CreateInflAffixSlot(pos);
+        IMoInflAffixTemplate template = null!;
+        UndoableUnitOfWorkHelper.Do("test setup", "test setup", _cache.ServiceLocator.GetInstance<IActionHandler>(), () =>
+        {
+            template = _cache.ServiceLocator.GetInstance<IMoInflAffixTemplateFactory>().Create();
+            pos.AffixTemplatesOS.Add(template);
+            template.PrefixSlotsRS.Add(first);
+            template.PrefixSlotsRS.Add(intervening);
+            template.PrefixSlotsRS.Add(moved);
+            template.PrefixSlotsRS.Add(last);
+        });
+
+        var proposal = BuildProposal(
+            MoInflAffixTemplatePrefixSlotsOperationKinds.MovePrefixSlots,
+            CanonicalId.FromGuid(template.Guid),
+            new { member = CanonicalId.FromGuid(moved.Guid).Value },
+            new Placement(CanonicalId.FromGuid(first.Guid), CanonicalId.FromGuid(last.Guid)));
+
+        var exception = Assert.Throws<InvalidOperationException>(() => ScratchDryRun.Of(_cache, proposal));
+
+        Assert.Contains("stale or ambiguous", exception.Message, StringComparison.Ordinal);
+        Assert.Equal(new[] { first.Guid, intervening.Guid, moved.Guid, last.Guid },
+            template.PrefixSlotsRS.Select(slot => slot.Guid));
+    }
+
+    [Fact]
+    public void Move_MoInflAffixTemplatePrefixSlots_FailureAfterWriteRollsBackTheSequence()
+    {
+        var pos = CreatePartOfSpeech();
+        var first = CreateInflAffixSlot(pos);
+        var moved = CreateInflAffixSlot(pos);
+        var last = CreateInflAffixSlot(pos);
+        IMoInflAffixTemplate template = null!;
+        UndoableUnitOfWorkHelper.Do("test setup", "test setup", _cache.ServiceLocator.GetInstance<IActionHandler>(), () =>
+        {
+            template = _cache.ServiceLocator.GetInstance<IMoInflAffixTemplateFactory>().Create();
+            pos.AffixTemplatesOS.Add(template);
+            template.PrefixSlotsRS.Add(first);
+            template.PrefixSlotsRS.Add(moved);
+            template.PrefixSlotsRS.Add(last);
+        });
+
+        var proposal = BuildProposal(
+            MoInflAffixTemplatePrefixSlotsOperationKinds.MovePrefixSlots,
+            CanonicalId.FromGuid(template.Guid),
+            new { member = CanonicalId.FromGuid(moved.Guid).Value },
+            new Placement(CanonicalId.FromGuid(last.Guid), null));
+        var dryRun = ScratchDryRun.Of(_cache, proposal);
+
+        var exception = Assert.Throws<InvalidOperationException>(() => ProposalApplier.Apply(
+            _cache, proposal, dryRun.Anchor, "motif-tests", string.Empty,
+            afterOperation: (_, _) => throw new InvalidOperationException("injected after sequence move")));
+
+        Assert.Equal("injected after sequence move", exception.Message);
+        Assert.Equal(new[] { first.Guid, moved.Guid, last.Guid }, template.PrefixSlotsRS.Select(slot => slot.Guid));
+    }
+
     private IPartOfSpeech FindAnyPartOfSpeech() =>
         (IPartOfSpeech)_cache.ServiceLocator.GetInstance<ICmObjectRepository>().GetObject(_seed.PartOfSpeechId);
 
@@ -196,7 +364,7 @@ public sealed class GeneratedSlice3OperationsTests : IDisposable
         (IMoStemMsa)_cache.ServiceLocator.GetInstance<ILexSenseRepository>()
             .GetObject(_seed.FirstSenseId).MorphoSyntaxAnalysisRA!;
 
-    private static Proposal BuildProposal(string kind, CanonicalId target, object after)
+    private static Proposal BuildProposal(string kind, CanonicalId target, object after, Placement? placement = null)
     {
         var afterJson = JsonSerializer.Serialize(after);
         using var afterDocument = JsonDocument.Parse(afterJson);
@@ -206,7 +374,8 @@ public sealed class GeneratedSlice3OperationsTests : IDisposable
             operationId: CanonicalId.Mint(),
             kind: kind,
             target: target,
-            after: afterDocument.RootElement.Clone());
+            after: afterDocument.RootElement.Clone(),
+            placement: placement);
 
         return new Proposal(
             contractVersions: new Dictionary<string, string> { [group] = "1.0" },

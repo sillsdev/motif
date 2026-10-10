@@ -111,7 +111,7 @@ public static class CompareCommands
             // Read back the row just recorded, so this can't disagree with a later report of the same row.
             var stored = repository.Get(assessmentId);
             var rendered = ReportCommands.Catalog.Resolve(DifferenceReportProducer.KindName)
-                .Produce(stored.ToReportable(), new ReportQuery(), AssessorCatalog.Empty);
+                .Produce(ReportInput.FromAssessment(stored.ToReportable()), new ReportQuery(), AssessorCatalog.Empty);
 
             return CommandOutcome<CompareResponse>.Success(new CompareResponse(
                 assessmentId, request.FromAssessmentId, request.ToAssessmentId, from.Assessor,

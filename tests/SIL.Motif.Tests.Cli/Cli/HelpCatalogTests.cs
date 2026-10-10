@@ -13,10 +13,18 @@ namespace SIL.Motif.Tests.Cli;
 public sealed class HelpCatalogTests
 {
     [Fact]
+    public void HelpTextNormalizesWindowsLineEndings()
+    {
+        Assert.Equal("# Title\n\nText\nMore", HelpCatalog.NormalizeLineEndings("# Title\r\n\r\nText\rMore"));
+    }
+
+    [Fact]
     public void EnglishCatalogCoversEveryReleasedCommandAndRequiredTerms()
     {
         var catalog = HelpCatalog.Load(System.Globalization.CultureInfo.GetCultureInfo("en"));
-        var commands = catalog.Entries.Where(entry => entry.Kind == HelpEntryKind.Command).ToList();
+        var commands = catalog.Entries.Where(entry => entry.Kind == HelpEntryKind.Command &&
+            CommandCatalog.All.Any(command => command.Surface == CommandSurface.Released &&
+                command.Name == entry.Code)).ToList();
 
         Assert.Equal("en", catalog.Locale);
         Assert.Equal(
@@ -38,6 +46,45 @@ public sealed class HelpCatalogTests
             "default-selection", "overview", "walkthrough", "text-coverage",
         }, code => Assert.NotNull(catalog.Find(HelpEntryKind.Term, code)));
         Assert.Empty(catalog.ValidateLinks());
+    }
+
+    [Fact]
+    public void AdvancedAiParsimonyCommandsHaveCompleteHelpEntries()
+    {
+        var catalog = HelpCatalog.Load(System.Globalization.CultureInfo.GetCultureInfo("en"));
+
+        foreach (var code in new[]
+                 {
+                     "parsimony", "parsimony --wait", "parsimony show", "parsimony record-types",
+                     "parsimony dispose", "parsimony revise", "parsimony retract",
+                     "compose-record-parsimony-disposition", "retire-allomorph",
+                     "retire-redundant-zero-affix",
+                     "compose-author-phonological-rule",
+                     "compose-author-affix-slot",
+                     "compose-author-affix-template",
+                     "compose-edit-allomorph-condition",
+                     "order-allomorphs",
+                 })
+        {
+            var entry = Assert.IsType<HelpEntry>(catalog.Find(HelpEntryKind.Command, code));
+            Assert.InRange(entry.Title.Length, 1, 30);
+            Assert.False(string.IsNullOrWhiteSpace(entry.Description));
+            Assert.False(string.IsNullOrWhiteSpace(entry.HelpPage));
+        }
+    }
+
+    [Fact]
+    public void AllomorphHelpExplainsSharedReferencesAndElsewhereOrder()
+    {
+        var catalog = HelpCatalog.Load(System.Globalization.CultureInfo.GetCultureInfo("en"));
+
+        var condition = catalog.GetHelpPage(HelpEntryKind.Command, "compose-edit-allomorph-condition")!;
+        Assert.Contains("every other user keeps its reference", condition, StringComparison.Ordinal);
+        Assert.Contains("ordered list", condition, StringComparison.Ordinal);
+        var order = catalog.GetHelpPage(HelpEntryKind.Command, "order-allomorphs")!;
+        Assert.Contains("Earlier matching alternate forms take precedence", order, StringComparison.Ordinal);
+        Assert.Contains("elsewhere fallback", order, StringComparison.Ordinal);
+        Assert.Contains("lexeme form", order, StringComparison.Ordinal);
     }
 
     [Fact]

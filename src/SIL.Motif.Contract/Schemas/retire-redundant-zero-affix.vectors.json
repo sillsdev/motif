@@ -1,0 +1,42 @@
+{
+  "vectors": [
+    {
+      "input": {
+        "format": "motif-retire-redundant-zero-affix",
+        "version": 1,
+        "retirement": { "entry": "K8Q1aZqBR5uSoC9c1Qw9Bw" }
+      }
+    },
+    {
+      "input": {
+        "format": "motif-retire-redundant-zero-affix",
+        "version": 2,
+        "retirement": { "entry": "K8Q1aZqBR5uSoC9c1Qw9Bw" }
+      },
+      "error": "unsupported-version"
+    },
+    {
+      "input": {
+        "format": "motif-retire-redundant-zero-affix",
+        "version": 1,
+        "retirement": { "entry": "not-canonical" }
+      },
+      "error": "invalid-entry"
+    },
+    {
+      "input": {
+        "format": "motif-retire-redundant-zero-affix",
+        "version": 1,
+        "retirement": { "entry": "K8Q1aZqBR5uSoC9c1Qw9Bw", "cascade": true }
+      },
+      "error": "unknown-property"
+    },
+    {
+      "input": {
+        "format": "motif-retire-redundant-zero-affix",
+        "version": 1
+      },
+      "error": "missing-retirement"
+    }
+  ]
+}

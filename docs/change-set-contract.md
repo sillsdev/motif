@@ -111,6 +111,28 @@ via the generated per-field kind namespace, not additional verbs; see
   identity-relative `placement` for sequence-owned targets. LibLCM has no free-floating-then-insert
   state, so there is no separate `insert`. May target an *occupied* `owning/atomic` slot; see
   [owning-atomic replacement](#owning-atomic-replacement).
+
+Rewrite-rule creation is deliberately narrow. `grammar/phPhonData/createPhonRules` creates only a
+`PhRegularRule` in `PhPhonData.PhonRules`, with identity-relative placement when that sequence is
+nonempty; `grammar/phRegularRule/createRightHandSides` creates its owned right-hand sides. A new rule
+starts disabled. Its `Name` is authored per writing system and `Direction` accepts only 0
+(`LeftToRightIterative`), 1 (`RightToLeftIterative`), or 2 (`Simultaneous`). Setting `Disabled` to
+false, including through `clear`, is refused until the rule has at least one right-hand side and every
+right-hand side has both left and right contexts. Context construction is a separate family.
+
+`grammar/phPhonData/movePhonRules` moves one existing rule in the ordered `PhonRules` owning sequence.
+Its closed `after` payload is `{ "member": "<rule-id>" }`; `target` is the owning phonological data
+object, and `placement` names the adjacent rule identities around the new gap. The rule member id is
+the operation-slot discriminator. The move retains the rule's identity and contents, and stale or
+nonadjacent anchors are refused. Multi-move plans declare dependencies in the order their placements
+are evaluated.
+
+The `AuthorPhonologicalRule` composer accepts zero or one explicit phoneme or natural-class item on
+each changed side, and one to eight phoneme, natural-class, or supported boundary items on each
+context side. An empty input is insertion; an empty output is deletion. The composer authors a
+complete regular rule and turns it on only after all right-hand sides pass the typed-context guard.
+Alpha variables, metathesis, empty or foreign natural classes, and allomorph `PhEnvironment` objects
+are outside this operation set.
 - **`ensure`** — tri-state idempotent creation for constructs whose durable identity is not a
   canonical GUID: absent → create; present and structurally compatible → reuse; present and
   incompatible → conflict. See [`ensure`](#ensure) below.
@@ -376,6 +398,28 @@ This matters in two places:
   than the rule — the ownership test alone gives the wrong answer, and a delete closure computed
   purely from ownership edges orphans pool members that were never the delete's target.
 
+### Bounded rewrite-rule contexts
+
+A sound rule can match phonemes, natural classes, and boundaries in a short ordered sequence. This
+lets a Draft say where a change applies while refusing notation whose meaning the runner cannot
+preserve.
+
+`PhPhonData.Contexts` is an unordered pool: its member order carries no meaning. A simple context
+selects exactly one project phoneme, natural class, or boundary marker through its typed
+`FeatureStructure` relation. Natural-class contexts cannot carry `PlusConstr` or `MinusConstr`.
+
+`PhSequenceContext.Members` is ordered and contains one to eight simple contexts; nested sequences,
+cycles, and reuse of the same context identity within or across a rule are refused. The rule's
+`StrucDesc` input and each RHS's `StrucChange` output remain ordered sequences of simple contexts.
+An empty input represents insertion, and an empty output represents deletion. An RHS has one left
+and one right context, each a supported simple context or a sequence context. These field positions
+remain part of identity because LibLCM derives alpha-variable names by walking them, even though this
+slice does not support alpha variables.
+
+Iteration contexts, variables, metathesis, arbitrary process graphs, and `PhEnvironment` references
+are outside this closed shape. A regular rule stays disabled; the activation guard also checks that
+its contexts use this supported shape before any later operation can enable it.
+
 The runner's delete-closure and fill-scope computations therefore attribute a pooled-but-private
 object to its sole in-practice referrer, discovered the same way any
 [discovered-footprint](#declared-vs-discovered-footprint) operation is resolved — read back over the
@@ -399,6 +443,18 @@ Placement uses identity-relative anchors:
 ```
 
 An edge anchor may omit one side. Numeric indices are not canonical intent.
+
+For `MoInflAffixTemplate.PrefixSlots` and `SuffixSlots`, generated kinds are
+`grammar/moInflAffixTemplate/addRefPrefixSlots`, `removeRefPrefixSlots`, and `movePrefixSlots`, with
+the corresponding `SuffixSlots` names. Every operation targets the template and carries the closed
+`{ "member": "<canonicalId>" }` payload. AddRef into a nonempty sequence declares `placement`;
+AddRef into an empty sequence may omit it. Move requires placement and an existing member. RemoveRef
+does not carry placement. Anchors must describe the exact adjacent gap after excluding the moved
+member; a missing or nonadjacent anchor is stale and refuses the operation. The ordered snapshot uses
+the sequence's ordinal positions, so Dry Run effects and Apply read-back preserve the same order.
+
+Within one Proposal, `(target, sequence field, member id)` is one write slot. AddRef, RemoveRef, and
+Move of the same member on the same template cannot be combined as separate operations.
 
 During a Dry Run, resolved execution anchors may be refreshed when exactly one gap satisfies the
 unchanged authored anchors. If the authored anchors themselves must change, explicit rebase emits
@@ -825,13 +881,14 @@ data and is never inserted as a guessed operation.
 
 ### Minimum ordered-sequence edits
 
-For sequences with unique stable identities:
-
-1. Delete source-only IDs.
-2. Insert target-only IDs.
-3. Map common source IDs to their target positions.
-4. Compute a deterministic longest increasing subsequence (LIS).
-5. Keep the chosen LIS and move every other common ID exactly once.
+For sequences with unique stable identities, Motif computes source-only removals and a longest
+increasing subsequence (LIS) of common IDs mapped to their target positions. The LIS visits common
+IDs in source order and uses lower-bound replacement for each target position; that rule selects the
+same retained subsequence when several LIS choices are possible. The plan removes source-only IDs in
+source order, then walks the target from right to left. It emits an Add for each target-only ID and a
+Move for each common ID outside the LIS, placing each directly before its next target neighbor. The
+last target ID is placed at the end. Each anchor records the immediate neighbor on either side when
+present; the empty-sequence Add has no anchor.
 
 Minimum move count is:
 
@@ -845,6 +902,6 @@ Minimum total edit count is:
 deletes + inserts + commonCount - LISLength
 ```
 
-Implement the O(n log n), O(n)-space algorithm directly in C#. Freeze LIS tie-breaking, operation
-emission order, and anchor choice in normative fixtures. Verify minimality exhaustively against a
-small-permutation breadth-first-search oracle and use property tests for larger inputs.
+The implementation uses O(n log n) time and O(n) space. Its deterministic tie-breaking and emitted
+edit order are pinned by tests, and its move count is checked against a breadth-first-search oracle
+for every five-member permutation pair.

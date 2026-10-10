@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://motif.sil.org/contracts/retire-redundant-zero-affix/v1",
+  "title": "Retire redundant zero affix",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "version", "retirement"],
+  "properties": {
+    "format": { "const": "motif-retire-redundant-zero-affix" },
+    "version": { "const": 1 },
+    "retirement": { "$ref": "#/$defs/RetireRedundantZeroAffixIntent" }
+  },
+  "$defs": {
+    "RetireRedundantZeroAffixIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entry"],
+      "properties": {
+        "entry": { "$ref": "#/$defs/CanonicalId" }
+      }
+    },
+    "CanonicalId": {
+      "type": "string",
+      "minLength": 22,
+      "pattern": "^[A-Za-z0-9_-]+$"
+    }
+  }
+}

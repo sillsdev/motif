@@ -20,4 +20,8 @@
     <ProjectReference Include="..\..\src\SIL.Motif.Worker.Runtime\SIL.Motif.Worker.Runtime.csproj" />
     <ProjectReference Include="..\SIL.Motif.Tests.Support\SIL.Motif.Tests.Support.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Parsimony\Fixtures\**\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

@@ -1,0 +1,2 @@
+{"tool": "motif_grammar", "arguments": {"kind": "templates", "detail": "detailed"}}
+{"finalMessage": "No. The number slot is already optional, which says exactly what the forms show: a singular noun simply has nothing there. A zero ending is only worth adding when something else in the grammar needs to see 'singular' as an explicit value, and nothing here does. A zero ending would also make the parser try an empty ending on every noun, which slows it and can add wrong analyses."}

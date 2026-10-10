@@ -1,0 +1,549 @@
+{
+  "formatVersion": 1,
+  "recipes": [
+    {
+      "measureId": "P-adhoc-duplicate",
+      "recipeVersion": 1,
+      "title": "Repeated ad hoc restrictions",
+      "shortTitle": "repeated ad hoc prohibitions",
+      "axes": [
+        "parsimony"
+      ],
+      "attachesTo": "authored-object",
+      "authoredObjectKind": "adhoc-prohibition",
+      "groupKind": null,
+      "evidenceViews": [
+        "adhoc-duplicates",
+        "adhoc-targets",
+        "word-witnesses"
+      ],
+      "requiredCapabilities": [
+        "adhoc-signature",
+        "edit-adhoc-disabled",
+        "grouped-adhoc-load",
+        "load-facts",
+        "ordered-adhoc-targets",
+        "paired-verification"
+      ],
+      "updateIntents": [
+        "EditAdhocProhibition"
+      ],
+      "helpPath": "guide/parsimony/recipes/P-adhoc-duplicate.md",
+      "sources": [
+        "Black §2.4",
+        "Black §3.10",
+        "ADR 0027"
+      ],
+      "citationKeys": [
+        "black-2018",
+        "bender-poulson-drellishak-evans-2007"
+      ]
+    },
+    {
+      "measureId": "R-word-negative-accepted",
+      "recipeVersion": 1,
+      "title": "A reviewed negative parses",
+      "shortTitle": "reviewed negatives that still parse",
+      "axes": [
+        "restrictiveness"
+      ],
+      "attachesTo": "word-case",
+      "authoredObjectKind": null,
+      "groupKind": null,
+      "evidenceViews": [
+        "parser-cases"
+      ],
+      "requiredCapabilities": [
+        "edit-affix-template",
+        "parser-cases",
+        "parser-overlay",
+        "reviewed-negative-expectations"
+      ],
+      "updateIntents": [
+        "EditAffixTemplate"
+      ],
+      "helpPath": "guide/parsimony/recipes/R-word-negative-accepted.md",
+      "sources": [
+        "Subset Principle",
+        "ADR 0027",
+        "ADR 0049"
+      ],
+      "citationKeys": [
+        "gold-1967",
+        "bender-poulson-drellishak-evans-2007",
+        "prince-tesar-2004"
+      ]
+    },
+    {
+      "measureId": "R-word-disapproved-produced",
+      "recipeVersion": 1,
+      "title": "A Disapproved reading parses",
+      "shortTitle": "disapproved readings that still parse",
+      "axes": [
+        "restrictiveness"
+      ],
+      "attachesTo": "word-case",
+      "authoredObjectKind": null,
+      "groupKind": null,
+      "evidenceViews": [
+        "disapproved-produced",
+        "parser-cases",
+        "word-witnesses"
+      ],
+      "requiredCapabilities": [
+        "approved-signatures",
+        "case-outcomes",
+        "disapproved-opinions",
+        "edit-allomorph-condition",
+        "parser-overlay",
+        "parser-signatures"
+      ],
+      "updateIntents": [
+        "EditAllomorphCondition"
+      ],
+      "helpPath": "guide/parsimony/recipes/R-word-disapproved-produced.md",
+      "sources": [
+        "ADR 0027",
+        "ADR 0049",
+        "Black §3.1.3"
+      ],
+      "citationKeys": [
+        "bender-poulson-drellishak-evans-2007",
+        "kol-nir-wintner-2014"
+      ]
+    },
+    {
+      "measureId": "B-affix-unslotted",
+      "recipeVersion": 1,
+      "title": "An affix has no position",
+      "shortTitle": "affixes with no slot",
+      "axes": [
+        "parsimony",
+        "restrictiveness"
+      ],
+      "attachesTo": "authored-object",
+      "authoredObjectKind": "inflectional-msa",
+      "groupKind": null,
+      "evidenceViews": [
+        "unslotted-affixes",
+        "affix-context",
+        "approved-morph-sequences"
+      ],
+      "requiredCapabilities": [
+        "affix-slot-membership",
+        "approved-signatures",
+        "author-affix-slot",
+        "author-affix-template",
+        "edit-inflectional-affix",
+        "effective-objects",
+        "rooted-morph"
+      ],
+      "updateIntents": [
+        "AuthorAffixSlot",
+        "AuthorAffixTemplate",
+        "EditInflectionalAffix"
+      ],
+      "helpPath": "guide/parsimony/recipes/B-affix-unslotted.md",
+      "sources": [
+        "Black §2.1.2",
+        "Black §2.1.2.9",
+        "position-class morphology"
+      ],
+      "citationKeys": [
+        "black-2018",
+        "stump-1993",
+        "durrett-deniro-2013",
+        "kibrik-2005",
+        "ahlberg-forsberg-hulden-2015"
+      ]
+    },
+    {
+      "measureId": "R-tmpl-precedence",
+      "recipeVersion": 1,
+      "title": "Order excludes a valid form",
+      "shortTitle": "template order that excludes a form",
+      "axes": [
+        "restrictiveness"
+      ],
+      "attachesTo": "authored-object",
+      "authoredObjectKind": "affix-template",
+      "groupKind": null,
+      "evidenceViews": [
+        "affix-context",
+        "approved-morph-sequences",
+        "template-order"
+      ],
+      "requiredCapabilities": [
+        "approved-signatures",
+        "author-affix-template",
+        "edit-affix-template",
+        "effective-objects",
+        "template-embeddings"
+      ],
+      "updateIntents": [
+        "AuthorAffixTemplate",
+        "EditAffixTemplate"
+      ],
+      "helpPath": "guide/parsimony/recipes/R-tmpl-precedence.md",
+      "sources": [
+        "Black §2.1.2",
+        "position-class morphology",
+        "ADR 0026"
+      ],
+      "citationKeys": [
+        "black-2018",
+        "hyman-2003",
+        "hyman-mchombo-1992",
+        "stump-1993",
+        "ryan-2010"
+      ]
+    },
+    {
+      "measureId": "R-slot-blocking",
+      "recipeVersion": 1,
+      "title": "A required slot blocks a form",
+      "shortTitle": "slots that block a form",
+      "axes": [
+        "restrictiveness"
+      ],
+      "attachesTo": "authored-object",
+      "authoredObjectKind": "affix-slot",
+      "groupKind": null,
+      "evidenceViews": [
+        "approved-morph-sequences",
+        "slot-context",
+        "template-order"
+      ],
+      "requiredCapabilities": [
+        "approved-signatures",
+        "edit-affix-slot",
+        "slot-users",
+        "template-embeddings",
+        "zero-morphology"
+      ],
+      "updateIntents": [
+        "EditAffixSlot"
+      ],
+      "helpPath": "guide/parsimony/recipes/R-slot-blocking.md",
+      "sources": [
+        "Black §2.1.2.2",
+        "ADR 0027",
+        "paired parser verification"
+      ],
+      "citationKeys": [
+        "black-2018",
+        "bender-poulson-drellishak-evans-2007"
+      ]
+    },
+    {
+      "measureId": "R-allo-unconditioned",
+      "recipeVersion": 1,
+      "title": "A broad variant competes",
+      "shortTitle": "broad allomorph conditions",
+      "axes": [
+        "restrictiveness"
+      ],
+      "attachesTo": "authored-object",
+      "authoredObjectKind": "allomorph",
+      "groupKind": null,
+      "evidenceViews": [
+        "mixed-allomorph-conditions",
+        "allomorph-context",
+        "parser-cases"
+      ],
+      "requiredCapabilities": [
+        "allomorph-environments",
+        "edit-allomorph-condition",
+        "effective-allomorph-order",
+        "effective-context-matches",
+        "effective-objects",
+        "order-allomorphs"
+      ],
+      "updateIntents": [
+        "EditAllomorphCondition",
+        "OrderAllomorphs"
+      ],
+      "helpPath": "guide/parsimony/recipes/R-allo-unconditioned.md",
+      "sources": [
+        "Black §3.1.3",
+        "Black §3.1.4",
+        "effective selection order"
+      ],
+      "citationKeys": [
+        "black-2018",
+        "bender-poulson-drellishak-evans-2007"
+      ]
+    },
+    {
+      "measureId": "R-env-broad",
+      "recipeVersion": 1,
+      "title": "Environment may be too broad",
+      "shortTitle": "broad environments",
+      "axes": [
+        "restrictiveness"
+      ],
+      "attachesTo": "authored-object",
+      "authoredObjectKind": "allomorph",
+      "groupKind": null,
+      "evidenceViews": [
+        "environment-excess",
+        "allomorph-context",
+        "natural-class-context",
+        "approved-morph-sequences"
+      ],
+      "requiredCapabilities": [
+        "author-environment",
+        "context-universe",
+        "edit-allomorph-condition",
+        "effective-context-matches",
+        "observed-context"
+      ],
+      "updateIntents": [
+        "AuthorEnvironment",
+        "EditAllomorphCondition"
+      ],
+      "helpPath": "guide/parsimony/recipes/R-env-broad.md",
+      "sources": [
+        "Subset Principle",
+        "finite context universe",
+        "typed environment authoring"
+      ],
+      "citationKeys": [
+        "prince-tesar-2004",
+        "tenenbaum-griffiths-2001",
+        "gold-1967",
+        "wexler-1993",
+        "wexler-manzini-1987"
+      ]
+    },
+    {
+      "measureId": "R-nc-excess",
+      "recipeVersion": 1,
+      "title": "Class contains extra segments",
+      "shortTitle": "natural classes with extra segments",
+      "axes": [
+        "restrictiveness"
+      ],
+      "attachesTo": "authored-object",
+      "authoredObjectKind": "natural-class",
+      "groupKind": null,
+      "evidenceViews": [
+        "natural-class-excess",
+        "natural-class-context",
+        "approved-morph-sequences"
+      ],
+      "requiredCapabilities": [
+        "author-natural-class",
+        "class-extension",
+        "edit-natural-class",
+        "feature-assignments",
+        "observed-context",
+        "relink-natural-class"
+      ],
+      "updateIntents": [
+        "AuthorNaturalClass",
+        "EditNaturalClass",
+        "RelinkNaturalClass"
+      ],
+      "helpPath": "guide/parsimony/recipes/R-nc-excess.md",
+      "sources": [
+        "Black §6.2.6",
+        "feature intersection",
+        "Subset Principle"
+      ],
+      "citationKeys": [
+        "chomsky-halle-1968",
+        "albright-hayes-2003",
+        "gold-1967"
+      ]
+    },
+    {
+      "measureId": "P-allo-alternation-family",
+      "recipeVersion": 1,
+      "title": "Listed shapes share a rule",
+      "shortTitle": "allomorph alternation families",
+      "axes": [
+        "parsimony"
+      ],
+      "attachesTo": "group",
+      "authoredObjectKind": null,
+      "groupKind": "alternation-family",
+      "evidenceViews": [
+        "alternation-families",
+        "allomorph-context"
+      ],
+      "requiredCapabilities": [
+        "approved-signatures",
+        "author-phonological-rule",
+        "feature-assignments",
+        "observed-context",
+        "phoneme-tokenization",
+        "retire-allomorph-intent"
+      ],
+      "updateIntents": [
+        "AuthorPhonologicalRule",
+        "RetireAllomorph"
+      ],
+      "helpPath": "guide/parsimony/recipes/P-allo-alternation-family.md",
+      "sources": [
+        "Black §6.1",
+        "SPE evaluation metric",
+        "phoneme-level alignment"
+      ],
+      "citationKeys": [
+        "chomsky-halle-1968",
+        "albright-hayes-2003",
+        "ellison-1994",
+        "lan-rasin-katzir-2019",
+        "rasin-berger-lan-katzir-2018"
+      ]
+    },
+    {
+      "measureId": "B-adhoc-is-slot-order",
+      "recipeVersion": 1,
+      "title": "Prohibitions could state order",
+      "shortTitle": "prohibitions that could state slot order",
+      "axes": [
+        "parsimony",
+        "restrictiveness"
+      ],
+      "attachesTo": "group",
+      "authoredObjectKind": null,
+      "groupKind": "adhoc-slot-order",
+      "evidenceViews": [
+        "adhoc-slot-order",
+        "adhoc-context",
+        "template-order"
+      ],
+      "requiredCapabilities": [
+        "author-affix-template",
+        "edit-adhoc-disabled",
+        "edit-affix-template",
+        "ordered-adhoc-targets",
+        "paired-verification",
+        "template-embeddings"
+      ],
+      "updateIntents": [
+        "AuthorAffixSlot",
+        "AuthorAffixTemplate",
+        "EditAdhocProhibition",
+        "EditAffixTemplate",
+        "EditInflectionalAffix"
+      ],
+      "helpPath": "guide/parsimony/recipes/B-adhoc-is-slot-order.md",
+      "sources": [
+        "Black §2.4.2",
+        "Black §3.10",
+        "position-class morphology"
+      ],
+      "citationKeys": [
+        "black-2018",
+        "ryan-2010",
+        "stump-1993",
+        "bender-poulson-drellishak-evans-2007"
+      ]
+    },
+    {
+      "measureId": "B-affix-null-vs-optional",
+      "recipeVersion": 1,
+      "title": "A zero affix may add no value",
+      "shortTitle": "zero affixes that add no value",
+      "axes": [
+        "parsimony",
+        "restrictiveness"
+      ],
+      "attachesTo": "authored-object",
+      "authoredObjectKind": "inflectional-msa",
+      "groupKind": null,
+      "evidenceViews": [
+        "null-optional",
+        "affix-context",
+        "approved-morph-sequences"
+      ],
+      "requiredCapabilities": [
+        "affix-slot-membership",
+        "approved-signatures",
+        "feature-contributions",
+        "incoming-references",
+        "loaded-zero-realizations",
+        "retire-redundant-zero-affix-intent"
+      ],
+      "updateIntents": [
+        "RetireRedundantZeroAffix"
+      ],
+      "helpPath": "guide/parsimony/recipes/B-affix-null-vs-optional.md",
+      "sources": [
+        "Black §2.1.2.2",
+        "loaded zero realization",
+        "same-analysis preservation"
+      ],
+      "citationKeys": [
+        "black-2018",
+        "becker-2024",
+        "alekseeva-myachykov-shtyrov-2022"
+      ]
+    },
+    {
+      "measureId": "P-allo-duplicate-form",
+      "recipeVersion": 1,
+      "title": "Repeated allomorph forms",
+      "shortTitle": "repeated allomorph forms",
+      "axes": [
+        "parsimony"
+      ],
+      "attachesTo": "group",
+      "authoredObjectKind": null,
+      "groupKind": "allomorph-duplicate-forms",
+      "evidenceViews": [
+        "allomorph-context"
+      ],
+      "requiredCapabilities": [
+        "allomorph-context",
+        "allomorph-environments",
+        "allomorph-forms",
+        "entry-identities",
+        "morph-type",
+        "retire-allomorph-intent"
+      ],
+      "updateIntents": [
+        "RetireAllomorph"
+      ],
+      "helpPath": "guide/parsimony/recipes/P-allo-duplicate-form.md",
+      "sources": [
+        "Engineering check",
+        "Black, A Conceptual Introduction to Morphological Parsing for FieldWorks Language Explorer §§3.1.3–3.1.4"
+      ],
+      "citationKeys": [
+        "black-2018"
+      ]
+    },
+    {
+      "measureId": "P-statement-unused",
+      "recipeVersion": 1,
+      "title": "Unused grammar statements",
+      "shortTitle": "unused grammar statements",
+      "axes": [
+        "parsimony"
+      ],
+      "attachesTo": "group",
+      "authoredObjectKind": null,
+      "groupKind": "unused-statement",
+      "evidenceViews": [
+        "statement-usage"
+      ],
+      "requiredCapabilities": [
+        "retire-statement",
+        "statement-load-facts",
+        "statement-reference"
+      ],
+      "updateIntents": [],
+      "helpPath": "guide/parsimony/recipes/P-statement-unused.md",
+      "sources": [
+        "Engineering check"
+      ],
+      "citationKeys": [
+        "bender-poulson-drellishak-evans-2007"
+      ]
+    }
+  ]
+}

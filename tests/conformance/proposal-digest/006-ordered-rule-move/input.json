@@ -1,0 +1,16 @@
+{
+  "contractVersions": { "grammar": "1.0" },
+  "proposalId": "agent_CAkKCwwNDg8QERITFBUWFw",
+  "operations": [
+    {
+      "operationId": "agent_AAECAwQFBgcICQoLDA0ODw",
+      "kind": "grammar/phPhonData/movePhonRules",
+      "target": "agent_AgMEBQYHCAkKCwwNDg8QEQ",
+      "after": { "member": "agent_AwQFBgcICQoLDA0ODxAREg" },
+      "placement": {
+        "after": "agent_BgcICQoLDA0ODxAREhMUFQ",
+        "before": "agent_BwgJCgsMDQ4PEBESExQVFg"
+      }
+    }
+  ]
+}

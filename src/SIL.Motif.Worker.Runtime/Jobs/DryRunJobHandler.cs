@@ -1,4 +1,5 @@
 using SIL.Motif.Contract;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using SIL.Motif.Contract.Baselines;
@@ -19,13 +20,12 @@ using DryRunModel = SIL.Motif.Model.DryRun.DryRun;
 namespace SIL.Motif.Worker.Jobs;
 
 /// <summary>
-/// Runs a Proposal against the current published Baseline on a single-use scratch, opened and disposed
+/// Runs a Proposal against its frozen published Baseline on a single-use scratch, opened and disposed
 /// inside the project's lane, and publishes the resulting Dry Run without ever refreshing the Baseline.
 /// </summary>
 internal sealed class DryRunJobHandler
 {
     private readonly BaselineRepository _baselines;
-    private readonly ProposalRepository _proposals;
     private readonly ProjectLaneRegistry _lanes;
     private readonly Func<string, ProjectFreshnessTracker?> _freshnessTrackers;
     private readonly Func<string, CancellationToken, Task<(IReadOnlyCollection<Guid> AppliedProposalIds, DryRunScratch? Scratch)>> _openScratch;
@@ -55,7 +55,7 @@ internal sealed class DryRunJobHandler
         Func<DryRunScratch?, PrerequisiteExecutionPlan, CancellationToken, Task<DryRunModel>> runDryRun)
     {
         _baselines = baselines ?? throw new ArgumentNullException(nameof(baselines));
-        _proposals = proposals ?? throw new ArgumentNullException(nameof(proposals));
+        ArgumentNullException.ThrowIfNull(proposals);
         _lanes = lanes ?? throw new ArgumentNullException(nameof(lanes));
         _freshnessTrackers = freshnessTrackers ?? throw new ArgumentNullException(nameof(freshnessTrackers));
         _openScratch = openScratch ?? throw new ArgumentNullException(nameof(openScratch));
@@ -79,14 +79,38 @@ internal sealed class DryRunJobHandler
             !StringComparer.Ordinal.Equals(claim.Job.ProjectKey, workspaceKey))
             throw new InvalidOperationException("The job does not address this project's Dry Run.");
 
-        var baseline = _baselines.GetCurrent(workspaceKey);
-        if (baseline is null)
+        DryRunJobInput input;
+        try
+        {
+            input = DryRunJobInput.Parse(claim.Job.InputJson);
+        }
+        catch (Exception exception) when (exception is InvalidDataException or ArgumentException or IOException)
+        {
+            return new JobOutcome(JobStatus.Failed, JobFailureCategory.Semantic,
+                JsonSerializer.Serialize(new { detail = exception.Message }));
+        }
+
+        var currentBaseline = input.SourceBaseline is null ? _baselines.GetCurrent(workspaceKey) : null;
+        if (input.SourceBaseline is null && currentBaseline is null)
         {
             claim.Transition(JobStatus.WaitingForBaseline);
             return null;
         }
-
-        var proposal = ProposalJsonParser.Parse(claim.Job.InputJson);
+        DryRunSourceBinding source;
+        try
+        {
+            source = input.SourceBaseline ?? new DryRunSourceBinding(currentBaseline!.Token,
+                currentBaseline.RootDirectory, currentBaseline.FwDataPath, SourceDigest(currentBaseline.FwDataPath));
+            source.Validate();
+        }
+        catch (Exception exception) when (exception is InvalidDataException or ArgumentException or IOException)
+        {
+            return new JobOutcome(JobStatus.Failed, JobFailureCategory.Semantic,
+                JsonSerializer.Serialize(new { detail = exception.Message }));
+        }
+        var token = source.Token;
+        var fwDataPath = source.FwDataPath;
+        var proposal = input.Proposal.Validate();
         var lane = _lanes.GetOrCreate(workspaceKey);
 
         // Reported while queued behind the lane; the lane's own dispatch resumes this directly into Running.
@@ -96,11 +120,11 @@ internal sealed class DryRunJobHandler
         await lane.EnqueueAsync(ProjectWorkItem.DryRun(async (_, laneToken) =>
         {
             claim.Transition(JobStatus.Running);
-            var (appliedProposalIds, scratch) = await _openScratch(baseline.FwDataPath, laneToken)
+            var (appliedProposalIds, scratch) = await _openScratch(fwDataPath, laneToken)
                 .ConfigureAwait(false);
             try
             {
-                var plan = _proposals.PlanPrerequisites(proposal, appliedProposalIds);
+                var plan = input.BuildExecutionPlan(appliedProposalIds);
                 dryRun = await _runDryRun(scratch, plan, laneToken).ConfigureAwait(false);
             }
             finally
@@ -114,11 +138,11 @@ internal sealed class DryRunJobHandler
         if (cancellationToken.IsCancellationRequested)
             return new JobOutcome(JobStatus.Cancelled, JobFailureCategory.Cancellation);
 
-        var freshness = _freshnessTrackers(workspaceKey)?.Check(baseline.Token) ?? BaselineFreshness.CurrentnessNotChecked;
+        var freshness = _freshnessTrackers(workspaceKey)?.Check(token) ?? BaselineFreshness.CurrentnessNotChecked;
         var publishedJson = BuildPublishedDryRunJson(dryRun!);
         claim.PublishDryRun(publishedJson);
         var completionJson = JsonSerializer.Serialize(
-            new DryRunCompletion(baseline.Token, baseline.Token.CapturedUtc, ToWire(freshness)),
+            new DryRunJobCompletion(token, token.CapturedUtc, ToWire(freshness), source),
             MotifJson.CreateOptions());
         return new JobOutcome(JobStatus.CompletedDryRunOnly, JobFailureCategory.None, completionJson);
     }
@@ -149,8 +173,6 @@ internal sealed class DryRunJobHandler
         [property: JsonPropertyName("effectDigest")] string EffectDigest,
         [property: JsonPropertyName("anchor")] BoundDryRunAnchor Anchor);
 
-    private sealed record DryRunCompletion(
-        [property: JsonPropertyName("baselineToken")] BaselineToken BaselineToken,
-        [property: JsonPropertyName("capturedUtc")] string CapturedUtc,
-        [property: JsonPropertyName("freshness")] string Freshness);
+    private static string SourceDigest(string fwDataPath) =>
+        "sha256:" + Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(fwDataPath)));
 }

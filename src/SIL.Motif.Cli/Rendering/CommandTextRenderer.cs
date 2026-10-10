@@ -3,6 +3,8 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.HumanJudgments;
+using SIL.Motif.Contract.Parsimony;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -45,11 +47,16 @@ public static class CommandTextRenderer
             CorpusDetailProjection p => ProjectionText.Render(p),
             ProjectConfigurationProjection p => ProjectionText.Render(p),
             DryRunProjection p => ProjectionText.Render(p),
+            RetirementProposalReviewProjection p => ProjectionText.Render(p),
+            RetirementReviewQueryResponse r => RenderRetirementReview(r),
             CorpusAddedResponse r => RenderCorpusAdded(r),
             CorpusDocumentAddedResponse r => RenderCorpusDocumentAdded(r),
             CorpusBundleAddedResponse r => RenderCorpusBundleAdded(r),
             ReportKindListResponse r => RenderReportKindList(r),
             ReportResponse r => RenderReport(r),
+            ParsimonyReportResponse r => RenderParsimonyReport(r),
+            ParsimonyLatestReportResponse r => "Latest Parsimony Report " + r.ReportId + "\n  Baseline bundle: " + r.BundleId,
+            ParsimonyExpectationProjection p => RenderParsimonyExpectations(p),
             ReviewNumbersResponse r => RenderReviewNumbers(r),
             MeasurePendingResult r => RenderReviewNumbers(r.Numbers),
             CompareResponse r => RenderCompare(r),
@@ -61,6 +68,7 @@ public static class CommandTextRenderer
             AssessCommandResponse r => RenderAssessed(r),
             StatsCommandResponse r => RenderStats(r),
             DefaultSelectionResponse r => RenderDefaultSelection(r),
+            ProjectInitializationResponse r => RenderProjectInitialization(r),
             NamedSelectionProjection p => RenderDefaultSelection(new DefaultSelectionResponse(p)),
             ProjectSetupResponse r => r.SetupSkipped
                 ? "Setup skipped for this project." + Environment.NewLine
@@ -116,6 +124,16 @@ public static class CommandTextRenderer
         return sb.ToString();
     }
 
+    private static string RenderProjectInitialization(ProjectInitializationResponse response)
+    {
+        var text = response.Status == "already-initialized"
+            ? "This project is already prepared for Motif Proposals."
+            : "Project prepared for Motif Proposals.";
+        if (response.RecoveryCopyPath is not null)
+            text += " Keep the recovery copy at '" + response.RecoveryCopyPath + "'.";
+        return text + Environment.NewLine;
+    }
+
     private static string RenderCorpusDocumentAdded(CorpusDocumentAddedResponse r)
     {
         var sb = new StringBuilder();
@@ -161,6 +179,78 @@ public static class CommandTextRenderer
         text.AppendLine("  Assessment: " + response.AssessmentId);
         text.AppendLine("  Kind:       " + response.Kind);
         text.AppendLine(response.Text);
+        return text.ToString();
+    }
+
+    private static string RenderParsimonyReport(ParsimonyReportResponse response)
+    {
+        var text = new StringBuilder();
+        text.AppendLine("Parsimony Report " + response.ReportId);
+        text.AppendLine("  Baseline bundle: " + response.Inputs.BundleId);
+        text.AppendLine("  Assessments: " + (response.AssessmentIds.Count == 0
+            ? "(none)" : string.Join(", ", response.AssessmentIds)));
+        text.Append(response.Text);
+        return text.ToString();
+    }
+
+    private static string RenderParsimonyExpectations(ParsimonyExpectationProjection projection)
+    {
+        var text = new StringBuilder();
+        text.AppendLine($"Parsimony expectations {projection.Contract}");
+        text.AppendLine($"Project: {projection.ProjectId}");
+        text.AppendLine($"Digest:  {projection.Digest}");
+        text.AppendLine($"Reviewed negatives: {projection.ReviewedNegatives.Count}");
+        foreach (var item in projection.ReviewedNegatives)
+        {
+            var target = item.Target is SurfaceNegativeTarget ? "surface" : "reading";
+            text.AppendLine($"  {item.Status}  {target}  {item.WritingSystem}:{item.Form}  case={item.CaseId}");
+            text.AppendLine($"    context: {item.Context}");
+            if (item.Target is ReadingNegativeTarget reading)
+                foreach (var morph in reading.Morphs)
+                    text.AppendLine($"    morph: form={morph.Identity.Form ?? "(unavailable)"} " +
+                        $"msa={morph.Identity.Msa ?? "(unavailable)"} inflType={morph.Identity.InflType ?? "(none)"}");
+            if (item.Issue is not null) text.AppendLine($"    issue: {item.Issue}");
+        }
+        RenderNative("Approved readings", projection.ApprovedReadings);
+        RenderNative("Disapproved readings", projection.DisapprovedReadings);
+        text.AppendLine($"Issues: {projection.Issues.Count}");
+        foreach (var issue in projection.Issues)
+            text.AppendLine($"  {issue.SourceKind} {issue.SourceId} [{issue.Code}]: {issue.Detail}");
+        return text.ToString();
+
+        void RenderNative(string title, IReadOnlyList<NativeReadingExpectation> readings)
+        {
+            text.AppendLine($"{title}: {readings.Count}");
+            foreach (var reading in readings)
+            {
+                text.AppendLine($"  {reading.WritingSystem}:{reading.Form}  morphs={reading.Morphs.Count} " +
+                    $"wordforms={reading.SourceWordformIds.Count} analyses={reading.SourceAnalysisIds.Count}");
+                foreach (var morph in reading.Morphs)
+                    text.AppendLine($"    morph: form={morph.Form ?? "(unavailable)"} " +
+                        $"msa={morph.Msa ?? "(unavailable)"} inflType={morph.InflType ?? "(none)"}");
+                if (reading.SourceWordformIds.Count > 0)
+                    text.AppendLine($"    wordform ids: {string.Join(", ", reading.SourceWordformIds)}");
+                if (reading.SourceAnalysisIds.Count > 0)
+                    text.AppendLine($"    analysis ids: {string.Join(", ", reading.SourceAnalysisIds)}");
+                if (reading.UnavailableReason is not null)
+                    text.AppendLine($"    unavailable: {reading.UnavailableReason}");
+            }
+        }
+    }
+
+    private static string RenderRetirementReview(RetirementReviewQueryResponse response)
+    {
+        if (!response.Applicable)
+            return "This Draft does not contain a rule-based allomorph retirement.\n";
+
+        var text = new StringBuilder();
+        text.AppendLine("Sound-rule replacement review");
+        if (response.DryRun is { } dryRun)
+            text.Append(ProjectionText.Render(dryRun));
+        foreach (var item in response.Unavailable)
+            text.AppendLine(item);
+        if (response.Review is { } review)
+            text.Append(ProjectionText.Render(review));
         return text.ToString();
     }
 

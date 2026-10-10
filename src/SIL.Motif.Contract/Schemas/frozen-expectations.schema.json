@@ -1,0 +1,418 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://motif.sil.org/contracts/frozen-expectations/v1",
+  "title": "Frozen original expectations",
+  "description": "Closed portable shape. Context identity, model truth, bounds, set uniqueness and dependency/meaning checks also require semantic validation.",
+  "$ref": "#/$defs/FrozenExpectationSet",
+  "$defs": {
+    "Id": {
+      "type": "string",
+      "minLength": 22,
+      "pattern": "[A-Za-z0-9_-]{22}$"
+    },
+    "Digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "Baseline": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "projectIdentity": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "semanticSnapshotDigest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "projectionVersion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "capturedUtc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "bundleDigest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "capturedHostSessionId": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "capturedEditGeneration": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "projectIdentity",
+        "semanticSnapshotDigest",
+        "projectionVersion",
+        "capturedUtc",
+        "bundleDigest"
+      ]
+    },
+    "BundleText": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "writingSystem": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "text": {
+          "type": "string"
+        },
+        "richContentDigest": {
+          "$ref": "#/$defs/Digest"
+        }
+      },
+      "required": [
+        "writingSystem",
+        "text",
+        "richContentDigest"
+      ]
+    },
+    "Morph": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "bundle": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "form": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "msa": {
+          "$ref": "#/$defs/Id"
+        },
+        "inflType": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "expansionRole": {
+          "enum": [
+            "whole",
+            "prefix",
+            "suffix"
+          ]
+        },
+        "guessedString": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "guessedWritingSystem": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "bundleText": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/BundleText"
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "bundle",
+        "form",
+        "msa",
+        "inflType",
+        "expansionRole",
+        "guessedString",
+        "guessedWritingSystem",
+        "bundleText"
+      ]
+    },
+    "Evaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "evaluation": {
+          "$ref": "#/$defs/Id"
+        },
+        "agent": {
+          "$ref": "#/$defs/Id"
+        },
+        "opinion": {
+          "enum": [
+            "approved",
+            "disapproved"
+          ]
+        }
+      },
+      "required": [
+        "evaluation",
+        "agent",
+        "opinion"
+      ]
+    },
+    "Reading": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "readingId": {
+          "$ref": "#/$defs/Id"
+        },
+        "analysis": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "opinion": {
+          "enum": [
+            "approved",
+            "disapproved",
+            "unknown",
+            "mixed"
+          ]
+        },
+        "provenanceDigest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "evaluations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Evaluation"
+          },
+          "minItems": 0
+        },
+        "morphs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Morph"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "readingId",
+        "analysis",
+        "opinion",
+        "provenanceDigest",
+        "evaluations",
+        "morphs"
+      ]
+    },
+    "Case": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "caseId": {
+          "$ref": "#/$defs/Id"
+        },
+        "wordform": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "writingSystem": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "surface": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "inSelection": {
+          "type": "boolean"
+        },
+        "heldOut": {
+          "type": "boolean"
+        },
+        "readings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Reading"
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "caseId",
+        "wordform",
+        "writingSystem",
+        "surface",
+        "inSelection",
+        "heldOut",
+        "readings"
+      ]
+    },
+    "Negative": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "caseId": {
+          "$ref": "#/$defs/Id"
+        },
+        "revision": {
+          "$ref": "#/$defs/Id"
+        },
+        "contentDigest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "writingSystem": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "surface": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "context": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "target": {
+          "enum": [
+            "surface",
+            "reading"
+          ]
+        },
+        "morphs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Morph"
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "caseId",
+        "revision",
+        "contentDigest",
+        "writingSystem",
+        "surface",
+        "context",
+        "target",
+        "morphs"
+      ]
+    },
+    "FrozenExpectationSet": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contract": {
+          "const": "frozen-expectations/v1"
+        },
+        "baseline": {
+          "$ref": "#/$defs/Baseline"
+        },
+        "humanInputDigest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "manifestDigest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "expectationRevision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "cases": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Case"
+          },
+          "minItems": 0
+        },
+        "reviewedNegatives": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Negative"
+          },
+          "minItems": 0
+        },
+        "unavailable": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "contract",
+        "baseline",
+        "humanInputDigest",
+        "manifestDigest",
+        "expectationRevision",
+        "cases",
+        "reviewedNegatives",
+        "unavailable"
+      ]
+    }
+  }
+}

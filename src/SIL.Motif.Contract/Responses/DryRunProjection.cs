@@ -12,4 +12,8 @@ public sealed record DryRunProjection(
     string BaselineNote,
     IReadOnlyList<EffectView> Effects,
     string EffectDigest,
-    string FootprintDigest);
+    string FootprintDigest)
+{
+    /// <summary>The Proposal's operations in declared dependency order, with prerequisites named explicitly.</summary>
+    public IReadOnlyList<ProposalOperationView> Operations { get; init; } = [];
+}

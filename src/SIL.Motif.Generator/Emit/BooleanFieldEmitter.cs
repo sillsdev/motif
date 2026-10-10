@@ -14,6 +14,7 @@ public static class BooleanFieldEmitter
     {
         var prefix = spec.SnapshotFieldConstant;
         var varName = spec.Construct;
+        var activationGuard = spec.DeclaringClass == "PhSegmentRule" && spec.FieldName == "Disabled";
 
         return Template
             .Replace("__PREFIX__", prefix)
@@ -25,7 +26,13 @@ public static class BooleanFieldEmitter
             .Replace("__TARGETIFACE__", spec.TargetInterface)
             .Replace("__VAR__", varName)
             .Replace("__SNAPSHOTTER__", spec.DeclaringClass + "Snapshotter")
-            .Replace("__SNAPSHOTFIELD__", "SnapshotFields." + prefix);
+            .Replace("__SNAPSHOTFIELD__", "SnapshotFields." + prefix)
+            .Replace("__SETGUARD__", activationGuard
+                ? $"if (!desired) RegularRuleActivationGuard.RequireComplete({varName});\n                "
+                : string.Empty)
+            .Replace("__CLEARGUARD__", activationGuard
+                ? $"RegularRuleActivationGuard.RequireComplete({varName});\n                "
+                : string.Empty);
     }
 
     private const string Template = """
@@ -135,7 +142,7 @@ public static class BooleanFieldEmitter
                 touchedTargets.Add(id);
 
                 var before = ReadField(cache, __VAR__);
-                __PREFIX__SetLowering.Apply(__VAR__, desired);
+                __SETGUARD____PREFIX__SetLowering.Apply(__VAR__, desired);
                 var afterValue = ReadField(cache, __VAR__);
 
                 return new ExpectedEffect(id, __SNAPSHOTFIELD__, before, afterValue);
@@ -182,7 +189,7 @@ public static class BooleanFieldEmitter
                 touchedTargets.Add(id);
 
                 var before = ReadField(cache, __VAR__);
-                __PREFIX__ClearLowering.Apply(__VAR__);
+                __CLEARGUARD____PREFIX__ClearLowering.Apply(__VAR__);
                 var afterValue = ReadField(cache, __VAR__);
 
                 return new ExpectedEffect(id, __SNAPSHOTFIELD__, before, afterValue);

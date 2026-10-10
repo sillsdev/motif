@@ -215,7 +215,7 @@ public sealed class HelpCatalog
         var indexed = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var (rawCode, markdown) in pages)
         {
-            var code = rawCode.Replace('\\', '/');
+            var code = ManifestResourceLookup.NormalizeName(rawCode);
             if (string.IsNullOrWhiteSpace(code) || !indexed.TryAdd(code, markdown))
                 throw new InvalidDataException($"Guide code '{code}' is empty or duplicated in locale '{locale}'.");
         }
@@ -228,7 +228,7 @@ public sealed class HelpCatalog
         var assembly = Assembly.GetExecutingAssembly();
         var prefix = $"help/{locale}/guide/";
         return assembly.GetManifestResourceNames()
-            .Select(name => (Name: name, LogicalName: name.Replace('\\', '/')))
+            .Select(name => (Name: name, LogicalName: ManifestResourceLookup.NormalizeName(name)))
             .Where(resource => resource.LogicalName.StartsWith(prefix, StringComparison.Ordinal)
                 && resource.LogicalName.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
             .OrderBy(resource => resource.LogicalName, StringComparer.Ordinal)
@@ -291,9 +291,8 @@ public sealed class HelpCatalog
     private static string? ReadResource(string logicalName)
     {
         var assembly = Assembly.GetExecutingAssembly();
-        var resourceName = assembly.GetManifestResourceNames()
-            .FirstOrDefault(name => string.Equals(
-                name.Replace('\\', '/'), logicalName, StringComparison.Ordinal));
+        var resourceName = ManifestResourceLookup.FindPhysicalName(
+            assembly.GetManifestResourceNames(), logicalName);
         return resourceName is null ? null : ReadResource(assembly, resourceName);
     }
 
@@ -302,8 +301,10 @@ public sealed class HelpCatalog
         using var stream = assembly.GetManifestResourceStream(resourceName)
             ?? throw new InvalidDataException($"The embedded Help resource '{resourceName}' could not be opened.");
         using var reader = new StreamReader(stream);
-        return reader.ReadToEnd();
+        return NormalizeLineEndings(reader.ReadToEnd());
     }
+
+    internal static string NormalizeLineEndings(string text) => ManifestResourceLookup.NormalizeLineEndings(text);
 
     /// <summary>Builds a locale-prefixed documentation route for a Help entry.</summary>
     /// <param name="locale">The two-letter locale code.</param>

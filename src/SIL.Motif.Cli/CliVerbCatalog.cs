@@ -28,6 +28,11 @@ public static class CliVerbCatalog
         new CliVerbDescriptor("Commands", "open", "open", new[] { "open <fwdata> [--json]" }),
         new CliVerbDescriptor("Project", "writing-systems", "writing-systems",
             new[] { "writing-systems --project <fwdata> [--json]" }),
+        new CliVerbDescriptor("Project", "project initialize", "project initialize",
+            new[]
+            {
+                "project initialize --project <fwdata> --confirm \"Initialize this project to work with Motif Proposals?\" [--json]",
+            }),
         new CliVerbDescriptor("Project", "word-context", "word-context",
             new[] { "word-context --project <fwdata> --word <word> [--json]" }),
         new CliVerbDescriptor(
@@ -91,6 +96,42 @@ public static class CliVerbCatalog
             {
                 "compose-author-feature-structure --draft <name> --project <fwdata> --intent '{\"msa\":...}'",
             }),
+        new CliVerbDescriptor("Commands", "compose-author-feature-value", "compose-author-feature-value",
+            new[] { "compose-author-feature-value --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
+        new CliVerbDescriptor("Commands", "compose-author-phoneme", "compose-author-phoneme",
+            new[] { "compose-author-phoneme --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
+        new CliVerbDescriptor("Commands", "compose-author-natural-class", "compose-author-natural-class",
+            new[] { "compose-author-natural-class --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
+        new CliVerbDescriptor("Commands", "compose-author-environment", "compose-author-environment",
+            new[] { "compose-author-environment --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
+        new CliVerbDescriptor("Commands", "compose-author-phonological-rule", "compose-author-phonological-rule",
+            new[] { "compose-author-phonological-rule --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
+        new CliVerbDescriptor("Commands", "compose-author-affix-slot", "compose-author-affix-slot",
+            new[] { "compose-author-affix-slot --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
+        new CliVerbDescriptor("Commands", "compose-author-affix-template", "compose-author-affix-template",
+            new[] { "compose-author-affix-template --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
+        new CliVerbDescriptor("Commands", "compose-edit-adhoc-prohibition", "compose-edit-adhoc-prohibition",
+            new[] { "compose-edit-adhoc-prohibition --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
+        new CliVerbDescriptor("Commands", "compose-edit-affix-slot", "compose-edit-affix-slot",
+            new[] { "compose-edit-affix-slot --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
+        new CliVerbDescriptor("Commands", "compose-edit-affix-template", "compose-edit-affix-template",
+            new[] { "compose-edit-affix-template --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
+        new CliVerbDescriptor("Commands", "compose-edit-inflectional-affix", "compose-edit-inflectional-affix",
+            new[] { "compose-edit-inflectional-affix --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
+        new CliVerbDescriptor("Commands", "compose-edit-allomorph-condition", "compose-edit-allomorph-condition",
+            new[] { "compose-edit-allomorph-condition --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
+        new CliVerbDescriptor("Commands", "compose-edit-natural-class", "compose-edit-natural-class",
+            new[] { "compose-edit-natural-class --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
+        new CliVerbDescriptor("Commands", "compose-relink-natural-class", "compose-relink-natural-class",
+            new[] { "compose-relink-natural-class --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
+        new CliVerbDescriptor("Commands", "order-allomorphs", "order-allomorphs",
+            new[] { "order-allomorphs --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
+        new CliVerbDescriptor("Commands", "compose-record-parsimony-disposition", "compose-record-parsimony-disposition",
+            new[] { "compose-record-parsimony-disposition --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
+        new CliVerbDescriptor("Commands", "retire-allomorph", "retire-allomorph",
+            new[] { "retire-allomorph --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
+        new CliVerbDescriptor("Commands", "retire-redundant-zero-affix", "retire-redundant-zero-affix",
+            new[] { "retire-redundant-zero-affix --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
         new CliVerbDescriptor(
             "Commands", "promote-gloss", "promote-gloss",
             new[]
@@ -148,12 +189,12 @@ public static class CliVerbCatalog
             new[] { "dry-run --project <fwdata> <proposalId> --wait [--wait-timeout-ms <ms>] [--json]" }),
         new CliVerbDescriptor(
             "Commands", "trial", "trial",
-            new[] { "trial --project <fwdata> <proposalId> [--scope <name>] [--all-words] [--wait] [--json]" }),
+            new[] { "trial --project <fwdata> <proposalId> [--scope <name>] [--words <file>|--all-words] [--wait] [--json]" }),
         new CliVerbDescriptor(
             "Commands", "trial", "trial --wait",
             new[]
             {
-                "trial --project <fwdata> <proposalId> [--scope <name>] [--all-words] --wait " +
+                "trial --project <fwdata> <proposalId> [--scope <name>] [--words <file>|--all-words] --wait " +
                 "[--wait-timeout-ms <ms>] [--json]",
             }),
         new CliVerbDescriptor(
@@ -183,6 +224,55 @@ public static class CliVerbCatalog
                 "[--word <w>] [--text <t>] [--json] OR motif report --list-kinds [--json]",
             }),
         new CliVerbDescriptor("Reports", "report", "report --list-kinds", NoUsage),
+        new CliVerbDescriptor("Reports", "parsimony", "parsimony",
+            new[] { "parsimony --project <fwdata> [--measure <measure-id>] " +
+                "[--evidence-scope default-selection|project-approved] [--assessment <ParseTime-id> ...] [--json]" }),
+        new CliVerbDescriptor("Reports", "parsimony", "parsimony --wait",
+            new[] { "parsimony --project <fwdata> [--measure <measure-id>] --wait " +
+                "[--evidence-scope default-selection|project-approved] [--assessment <ParseTime-id> ...] " +
+                "[--wait-timeout-ms <ms>] [--json]" }),
+        new CliVerbDescriptor("Reports", "parsimony", "parsimony --dry-run",
+            new[] { "parsimony --project <fwdata> --dry-run <job-id> [--measure <measure-id>] " +
+                "[--evidence-scope project-approved|default-selection] [--assessment <ParseTime-id> ...] [--json]" }),
+        new CliVerbDescriptor("Reports", "parsimony", "parsimony --dry-run --wait",
+            new[] { "parsimony --project <fwdata> --dry-run <job-id> --wait [--measure <measure-id>] " +
+                "[--evidence-scope project-approved|default-selection] [--assessment <ParseTime-id> ...] " +
+                "[--wait-timeout-ms <ms>] [--json]" }),
+        new CliVerbDescriptor("Reports", "parsimony", "parsimony show",
+            new[] { "parsimony show --project <fwdata> <reportId> [--json]" }),
+        new CliVerbDescriptor("Reports", "parsimony", "parsimony latest",
+            new[] { "parsimony latest --project <fwdata> [--json]" }),
+        new CliVerbDescriptor("Reports", "parsimony", "parsimony measures",
+            new[] { "parsimony measures --project <fwdata> [--json]" }),
+        new CliVerbDescriptor("Reports", "parsimony", "parsimony expectations",
+            new[] { "parsimony expectations --project <fwdata> [--json]" }),
+        new CliVerbDescriptor("Reports", "parsimony", "parsimony record-types",
+            new[] { "parsimony record-types --project <fwdata> [--json]" }),
+        new CliVerbDescriptor("Reports", "parsimony", "parsimony dispose",
+            new[] { "parsimony dispose --project <fwdata> --report <reportId> --finding <findingId> " +
+                "--disposition keep|fix|ask|defer --record-type <portableId> --draft <name> " +
+                "[--reason <text>] [--question <text>] [--json]" }),
+        new CliVerbDescriptor("Reports", "parsimony", "parsimony revise",
+            new[] { "parsimony revise <recordId> --project <fwdata> --draft <name> " +
+                "--expected-heads '<revisionId and contentDigest JSON array>' --disposition keep|fix|ask|defer " +
+                "[--reason <text> | --clear-reason] [--question <text>] [--json]" }),
+        new CliVerbDescriptor("Reports", "parsimony", "parsimony retract",
+            new[] { "parsimony retract <recordId> --project <fwdata> --draft <name> " +
+                "--expected-heads '<revisionId and contentDigest JSON array>' [--json]" }),
+        new CliVerbDescriptor("Reports", "parsimony", "parsimony negative confirm",
+            new[] { "parsimony negative confirm --project <fwdata> --draft <name> --intent '<closed intent JSON>' " +
+                "--confirm \"I confirm this form or reading is forbidden in the stated context.\" [--json]" }),
+        new CliVerbDescriptor("Reports", "parsimony", "parsimony negative retract",
+            new[] { "parsimony negative retract --project <fwdata> --draft <name> --intent '<closed retraction JSON>' " +
+                "--confirm \"I confirm this reviewed negative should be withdrawn.\" [--json]" }),
+        new CliVerbDescriptor("Reports", "parsimony", "parsimony view",
+            new[] { "parsimony view <view-code> --project <fwdata> --bundle <id> " +
+                "[--object-id <guid> | --category-id <guid> | --statement-kind environment|natural-class] " +
+                "[--scope project-approved|default-selection] [--case-key <key>] [--report <id>] " +
+                "[--measure-id <id>] [--disposition keep|defer|fix|ask] [--state <state>] [--search <text>] " +
+                "[--subject-key <key>] [--cursor <cursor>] [--limit <n>] [--json]" }),
+        new CliVerbDescriptor("Reports", "parsimony", "parsimony retirement-review",
+            new[] { "parsimony retirement-review <draft-id> --project <fwdata> [--json]" }),
 
         new CliVerbDescriptor(
             "Comparison", "compare", "compare",

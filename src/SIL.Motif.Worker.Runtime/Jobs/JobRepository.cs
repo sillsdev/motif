@@ -518,9 +518,32 @@ public sealed class JobRepository
             command.Parameters.AddWithValue("$id", candidate.JobId);
             command.Parameters.AddWithValue("$version", candidate.Version);
             count += command.ExecuteNonQuery();
+            ReleaseBundlePin(connection, transaction, candidate.JobId);
         }
         transaction.Commit();
         return count;
+    }
+
+    /// <summary>Removes the bundle pins of jobs that are missing or have ended, such as pins a crash left behind.</summary>
+    /// <returns>The number of pins removed.</returns>
+    public int ReleaseEndedJobBundlePins()
+    {
+        using var connection = _database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "DELETE FROM ParsimonyBundleReferences WHERE ReferenceKind='job' AND NOT EXISTS (" +
+            "SELECT 1 FROM Jobs AS j WHERE j.JobId=ParsimonyBundleReferences.ReferenceId AND j.Status NOT IN " +
+            "('completed','completed-dry-run-only','completed-with-assessment-failure','failed','cancelled','interrupted'));";
+        return command.ExecuteNonQuery();
+    }
+
+    // A pin is released in the transaction that ends the job, so no window exists where a dead job still pins.
+    private static void ReleaseBundlePin(SqliteConnection connection, SqliteTransaction transaction, string jobId)
+    {
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = "DELETE FROM ParsimonyBundleReferences WHERE ReferenceKind='job' AND ReferenceId=$job;";
+        command.Parameters.AddWithValue("$job", jobId);
+        command.ExecuteNonQuery();
     }
 
     private IReadOnlyList<JobRecord> ListAll()
@@ -570,6 +593,7 @@ public sealed class JobRepository
         command.Parameters.AddWithValue("$id", jobId);
         command.Parameters.AddWithValue("$version", current.Version);
         if (command.ExecuteNonQuery() != 1) throw new InvalidOperationException("The job changed concurrently; reload it before deleting.");
+        ReleaseBundlePin(connection, transaction, jobId);
         transaction.Commit();
     }
 
@@ -634,6 +658,7 @@ public sealed class JobRepository
         ExecuteConcurrencyUpdate(connection, transaction, record,
             "Status = $status, ResultJson = $result, FailureCategory = $failure, ArchivedUtc = $archived, " +
             "NotBeforeUtc = $notBefore, UpdatedUtc = $updated, Version = $version");
+        if (JobStateMachine.IsTerminal(record.Status)) ReleaseBundlePin(connection, transaction, record.JobId);
     }
 
     private static void UpdateCancellation(SqliteConnection connection, SqliteTransaction transaction, JobRecord record) =>

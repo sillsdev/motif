@@ -57,7 +57,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         ProjectViewModel project, BaselineViewModel baseline, SelectionViewModel selection, AssessViewModel assess, IHandoffFolderPicker folderPicker, IFileDragSource dragSource,
         ICommandClient commandClient, TimeProvider? clock = null, IClipboard? clipboard = null,
         IDiagnosticFilePicker? diagnosticFiles = null, IDiagnosticWindowDialogs? diagnosticDialogs = null,
-        TechDemoNoticeViewModel? techDemoNotice = null)
+        TechDemoNoticeViewModel? techDemoNotice = null, bool advancedAiModeEnabled = false)
     {
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(baseline);
@@ -74,6 +74,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         Context = new WorkspaceContext(selection, assess, new ChangesViewModel(commandClient), commandClient, folderPicker,
             dragSource, baseline, clock, clipboard, diagnosticFiles, diagnosticDialogs)
         {
+            AdvancedAiModeEnabled = advancedAiModeEnabled,
             KnownProjects = project.KnownProjects,
             BrowseForProjectCommand = project.BrowseCommand,
             OpenProjectCommand = new AsyncRelayCommand<string>(path =>
@@ -83,8 +84,12 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         ParseAllWordsCommand = new AsyncRelayCommand(ParseAllWordsAsync, CanParseAllWords);
         Context.ParseAllWordsCommand = ParseAllWordsCommand;
         Pages = PageRegistry.Entries
-            .Select(entry => new PageViewModel(entry.Page, entry.Title, entry.Icon, entry.CreateModel(Context)))
+            .Select(entry => new PageViewModel(entry.Page, entry.Title, entry.Icon, entry.CreateModel(Context))
+            {
+                IsAvailable = Context.CanOpenPage(entry.Page),
+            })
             .ToArray();
+        VisiblePages = Pages.Where(page => page.IsAvailable).ToArray();
         Inspector = new InspectorViewModel(Context, page => PageOf(page).Title);
         var setup = new SetupViewModel(Context, PageModel<TextsPageModel>().Words);
         Context.AttachSetup(setup);
@@ -178,6 +183,9 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
 
     /// <summary>The sidebar's entries, in the order <see cref="WorkspacePage"/> declares them.</summary>
     public IReadOnlyList<PageViewModel> Pages { get; }
+
+    /// <summary>The pages the sidebar lists: <see cref="Pages"/> less any this window does not offer.</summary>
+    public IReadOnlyList<PageViewModel> VisiblePages { get; }
 
     /// <summary>The model of type <typeparamref name="TModel"/> the page registry built for this window.</summary>
     public TModel PageModel<TModel>() where TModel : PageModel =>

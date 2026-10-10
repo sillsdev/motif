@@ -1,4 +1,6 @@
+using SIL.Motif.Commands;
 using SIL.Motif.Commands.Catalog;
+using SIL.Motif.Commands.Requests;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands.SelectionReading;
 using SIL.Motif.Contract.Commands;
@@ -49,5 +51,17 @@ public sealed partial class CommandClient
     // The facts come from a scratch LibLCM cache of the Baseline, so the read waits its turn like the parser.
     public Task<CommandOutcome<InspectResponse>> InspectAsync(InspectRequest request, CancellationToken cancellationToken) =>
         OneAtATime(() => InspectQuery.Query(request), cancellationToken);
+
+    public Task<CommandOutcome<RetirementReviewQueryResponse>> ReadRetirementReviewAsync(
+        ReadRetirementReviewRequest request, CancellationToken cancellationToken) =>
+        OneAtATime(() => ParsimonyCommands.ReadRetirementReview(request), cancellationToken);
+
+    public Task<CommandOutcome<ParsimonyLatestReportResponse>> ReadLatestParsimonyReportAsync(
+        ReadLatestParsimonyReportRequest request, CancellationToken cancellationToken) =>
+        Task.Run(() => ParsimonyCommands.ReadLatest(request));
+
+    public Task<CommandOutcome<ParsimonyReportResponse>> ReadParsimonyReportAsync(
+        ShowParsimonyReportRequest request, CancellationToken cancellationToken) =>
+        Task.Run(() => ParsimonyCommands.Show(request));
 
 }

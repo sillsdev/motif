@@ -16,6 +16,27 @@ namespace SIL.Motif.Tests.Contract;
 /// </summary>
 public class ConformanceVectorTests
 {
+    static ConformanceVectorTests()
+    {
+        // Contract vectors test hashing without referencing Runner, so register this slice's kinds here.
+        OperationKindRegistry.Register("grammar/phPhonData/createPhonRules");
+        OperationKindRegistry.Register("grammar/phPhonData/movePhonRules");
+        OperationKindRegistry.Register("grammar/phSegmentRule/setName");
+        OperationKindRegistry.Register("grammar/phSegmentRule/setDirection");
+        OperationKindRegistry.Register("grammar/phSegmentRule/setDisabled");
+        OperationKindRegistry.Register("grammar/phRegularRule/createRightHandSides");
+        OperationKindRegistry.Register("grammar/phPhonData/createContexts");
+        OperationKindRegistry.Register("grammar/phSegmentRule/createStrucDesc");
+        OperationKindRegistry.Register("grammar/phSegRuleRHS/createStrucChange");
+        OperationKindRegistry.Register("grammar/phSegRuleRHS/createLeftContext");
+        OperationKindRegistry.Register("grammar/phSegRuleRHS/createRightContext");
+        OperationKindRegistry.Register("grammar/phSequenceContext/addRefMembers");
+        OperationKindRegistry.Register("grammar/phSequenceContext/moveMembers");
+        OperationKindRegistry.Register("grammar/phSimpleContextSeg/setFeatureStructure");
+        OperationKindRegistry.Register("grammar/phSimpleContextNC/setFeatureStructure");
+        OperationKindRegistry.Register("grammar/phSimpleContextBdry/setFeatureStructure");
+    }
+
     public static TheoryData<string> VectorDirectories()
     {
         var data = new TheoryData<string>();

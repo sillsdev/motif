@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace SIL.Motif.Contract.Responses;
 
@@ -15,4 +16,5 @@ public sealed record ApplyProjection(
     string ResultNote,
     IReadOnlyList<EffectView> Effects,
     string EffectDigest,
-    AppliedLogEntrySummary AppliedLogEntry);
+    AppliedLogEntrySummary AppliedLogEntry,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ReadinessProjection? Readiness = null);

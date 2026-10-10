@@ -34,8 +34,12 @@ public sealed partial class WindowWordsTests
 
     // A FieldWorks class name such as PhEnvironment, in any casing; the window names the kind instead.
     [GeneratedRegex(@"\b(?:lex|mo|ph|fs|cm)(?:entry|sense|form|stem|infl|deriv|unclassified|compound|adhoc|phoneme|bdry" +
-        @"|natural|environment|regular|metathesis|feature|complex|closed|sym)\w*", RegexOptions.IgnoreCase)]
+        @"|natural|environment|regular|metathesis|feature|complex|closed|sym)\w*|\bWfi\w*", RegexOptions.IgnoreCase)]
     private static partial Regex FieldWorksClassName();
+
+    [GeneratedRegex(@"\b(?:grammar|analysis|lexical|operation|proposal|intent|finding|wordform|bundle|rule|form|case|reading|source|effects|footprint)/[\w./-]+|sha256:[0-9a-f]{64}|\[[a-z]{3}(?:-[a-z0-9]+)?\]|\b(?:rule-component|bundle-morph|retired-form)\b",
+        RegexOptions.IgnoreCase)]
+    private static partial Regex RetirementImplementationText();
 
     // A file name the CLI writes, and a refusal's code shown to say where a sentence came from, are not prose.
     [GeneratedRegex(@"[\w.-]+\.(json|py|md)\b|⟨[^⟩]*⟩")]
@@ -170,6 +174,69 @@ public sealed partial class WindowWordsTests
         Assert.Equal(
             ["Approve", "Disapprove", "Make Unknown", "Incorrect spelling", "Add as Unknown", "Remove analysis"],
             kinds.Select(ChangeKinds.LabelOf));
+    }
+
+    [Fact]
+    public void RetirementReviewPanelUsesWindowWords()
+    {
+        var shown = new List<string>();
+        AvaloniaHeadlessFixture.RunUntilComplete(() =>
+        {
+            var panel = new RetirementProposalReviewPanel
+            {
+                DataContext = new RetirementProposalReviewViewModel(ReviewScreenshots.RetirementProjection(
+                    includeUnresolved: false)),
+            };
+            var window = new Window { Width = 1000, Height = 1400, Content = panel };
+            window.Show();
+            PageScreenshots.Settle(window);
+            shown.AddRange(Rendered(window));
+            window.Close();
+            return Task.CompletedTask;
+        }, TimeSpan.FromSeconds(30));
+
+        AssertWindowWords(shown);
+        Assert.DoesNotContain(shown, text => RetirementImplementationText().IsMatch(text));
+        Assert.DoesNotContain(shown, text => text.Contains("Ad hoc rules", StringComparison.Ordinal));
+        Assert.Contains("New sound rule: r becomes t before a vowel (enabled)", shown);
+        Assert.Contains("Sound class: Vowels", shown);
+        Assert.Contains("Analysis of ata now uses form ra instead of ta", shown);
+        Assert.Contains("Restriction moved to the remaining form", shown);
+        Assert.Contains("Deleted form: -ta (alternate of -ra)", shown);
+    }
+
+    [Fact]
+    public void PendingRetirementReviewUsesWindowWordsAndShowsItsDryRun()
+    {
+        var shown = new List<string>();
+        AvaloniaHeadlessFixture.RunUntilComplete(() =>
+        {
+            var dryRun = new DryRunProjection("proposal/one", "intent/one", "Baseline", [],
+                "effects/one", "footprint/one")
+            {
+                Operations =
+                [new("operation/rule", "grammar/phSegmentRule/setDisabled", null, null, [], "{\"value\":false}")],
+            };
+            var panel = new RetirementProposalReviewPanel
+            {
+                DataContext = new RetirementProposalReviewViewModel(new RetirementReviewQueryResponse(true,
+                    "proposal/one", "waiting-for-evidence", "job/one", dryRun, null,
+                    ["Before-and-after parser results are not available yet."])),
+            };
+            var window = new Window { Width = 1000, Height = 900, Content = panel };
+            window.Show();
+            PageScreenshots.Settle(window);
+            shown.AddRange(Rendered(window));
+            window.Close();
+            return Task.CompletedTask;
+        }, TimeSpan.FromSeconds(30));
+
+        AssertWindowWords(shown);
+        Assert.Contains(shown, text => text.Contains("latest Dry Run contains", StringComparison.Ordinal));
+        Assert.Contains(shown, text => text.Contains("Sound class and rule changes", StringComparison.Ordinal));
+        Assert.Contains(shown, text => text.Contains("Before-and-after parser results are not available yet.",
+            StringComparison.Ordinal));
+        Assert.DoesNotContain(shown, text => RetirementImplementationText().IsMatch(text));
     }
 
     [Fact]

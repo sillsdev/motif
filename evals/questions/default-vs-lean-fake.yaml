@@ -1,0 +1,13 @@
+{
+  "question": "Does the default MCP profile expose the same successful workflow as the lean profile on every active T0 through T3 task?",
+  "arm_a": "fake-default",
+  "arm_b": "fake-lean",
+  "tasks": [
+    "t0-*",
+    "t1-*",
+    "t2-*",
+    "t3-*"
+  ],
+  "trials": 1,
+  "primary_metric": "task-success"
+}

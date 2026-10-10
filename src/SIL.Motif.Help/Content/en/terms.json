@@ -14,6 +14,11 @@
     "description": "A project's Default Selection is the chosen Texts plus any added words Motif measures when no other Selection is named. Motif resolves it to an exact word list for each run.",
     "source": "Hand-written from CONTEXT.md."
   },
+  "disposition": {
+    "title": "A durable choice about a recommendation",
+    "description": "A Disposition records fix, keep, ask, or defer for one Parsimony recommendation and its relevant evidence. It belongs to durable FieldWorks project data; its storage shape is defined separately.",
+    "source": "Hand-written from CONTEXT.md."
+  },
   "drift": {
     "title": "Evidence no longer matches",
     "description": "Drift means a Dry Run or an individual change no longer matches the project state it was made against. In the window, a change with missing or changed inputs is shown as ‘no longer fits’.",
@@ -22,6 +27,11 @@
   "dry-run": {
     "title": "Effects measured on a copy",
     "description": "A Dry Run applies a Proposal to a throwaway project copy and reads back the effects. It leaves the live model unchanged.",
+    "source": "Hand-written from CONTEXT.md."
+  },
+  "motif-store": {
+    "title": "Motif's project workflow records",
+    "description": "The Motif store keeps project workflow records and frozen Report bindings in the project's paired database. Parsimony judgments remain durable FieldWorks project data, while analysis artifacts are disposable files.",
     "source": "Hand-written from CONTEXT.md."
   },
   "overview": {
@@ -34,6 +44,21 @@
     "description": "Parse all words asks PanGloss to parse the words you chose and saves the result against the Baseline. A search stopped at a limit is saved as not finished, never as a word that cannot parse.",
     "source": "Hand-written from CONTEXT.md."
   },
+  "parsimony": {
+    "title": "Fewer repeated grammar statements",
+    "description": "Parsimony is the axis that favors fewer or less-duplicated grammar statements while preserving known valid readings. It is distinct from restrictiveness, which asks how narrowly a statement licenses forms.",
+    "source": "Hand-written from CONTEXT.md."
+  },
+  "parsimony-recommendation": {
+    "title": "A specific grammar recommendation",
+    "description": "A Parsimony recommendation names one grammar object or group, its evidence, and a recipe or limitation. Its stable finding identity is separate from the digest of evidence supporting it.",
+    "source": "Hand-written from CONTEXT.md."
+  },
+  "parsimony-review": {
+    "title": "Advice about grammar statements",
+    "description": "A Parsimony review offers specific grammar recommendations along the parsimony and restrictiveness axes. It records evidence and limitations, and never decides whether to Apply a change.",
+    "source": "Hand-written from CONTEXT.md."
+  },
   "preflight": {
     "title": "The final fit check",
     "description": "The CLI's preflight command checks changes against the live model before Apply. A change whose required inputs changed or disappeared no longer fits.",
@@ -42,6 +67,21 @@
   "proposal": {
     "title": "A reviewable set of changes",
     "description": "A Proposal groups related Motif operations so a person can inspect, measure, and apply them as one unit.",
+    "source": "Hand-written from CONTEXT.md."
+  },
+  "report": {
+    "title": "A finding from frozen evidence",
+    "description": "A Report presents statistics and findings from stored evidence. A Parsimony Report may use a frozen evidence bundle without an Assessment and is always advisory; other Report kinds retain their configured regression behavior.",
+    "source": "Hand-written from CONTEXT.md."
+  },
+  "restrictiveness": {
+    "title": "The narrowest statement that still fits",
+    "description": "Restrictiveness favors the narrowest grammar statement that covers known valid forms and excludes explicitly forbidden readings. An unattested form is not a negative without suitable evidence.",
+    "source": "Hand-written from CONTEXT.md."
+  },
+  "reviewed-negative": {
+    "title": "A human-confirmed forbidden form or reading",
+    "description": "A reviewed negative is a human-confirmed form or reading the grammar must not accept. A FieldWorks Disapproved analysis is negative for that reading only, not for the whole word.",
     "source": "Hand-written from CONTEXT.md."
   },
   "text-coverage": {

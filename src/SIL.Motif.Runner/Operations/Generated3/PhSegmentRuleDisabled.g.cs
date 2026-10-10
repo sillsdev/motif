@@ -104,7 +104,8 @@ internal sealed class PhSegmentRuleDisabledSetHandler : IOperationHandler
         touchedTargets.Add(id);
 
         var before = ReadField(cache, phSegmentRule);
-        PhSegmentRuleDisabledSetLowering.Apply(phSegmentRule, desired);
+        if (!desired) RegularRuleActivationGuard.RequireComplete(phSegmentRule);
+                PhSegmentRuleDisabledSetLowering.Apply(phSegmentRule, desired);
         var afterValue = ReadField(cache, phSegmentRule);
 
         return new ExpectedEffect(id, SnapshotFields.PhSegmentRuleDisabled, before, afterValue);
@@ -151,7 +152,8 @@ internal sealed class PhSegmentRuleDisabledClearHandler : IOperationHandler
         touchedTargets.Add(id);
 
         var before = ReadField(cache, phSegmentRule);
-        PhSegmentRuleDisabledClearLowering.Apply(phSegmentRule);
+        RegularRuleActivationGuard.RequireComplete(phSegmentRule);
+                PhSegmentRuleDisabledClearLowering.Apply(phSegmentRule);
         var afterValue = ReadField(cache, phSegmentRule);
 
         return new ExpectedEffect(id, SnapshotFields.PhSegmentRuleDisabled, before, afterValue);

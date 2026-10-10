@@ -1,0 +1,13 @@
+{
+  "id": "parsimony-findings",
+  "title": "Read Parsimony findings",
+  "description": "Read the findings from the latest stored Parsimony check and the evidence for one of them.",
+  "steps": {
+    "evidence": "Parsimony lists the findings from the stored check. Select one to read its evidence."
+  },
+  "callouts": {
+    "evidence": {
+      "motif-parsimony-evidence": "Evidence for the selected finding"
+    }
+  }
+}

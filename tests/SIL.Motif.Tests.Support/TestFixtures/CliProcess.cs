@@ -35,6 +35,16 @@ public static class CliProcess
         return start;
     }
 
+    /// <summary>Builds a CLI process with an explicitly isolated Advanced AI mode preference file.</summary>
+    public static ProcessStartInfo CreateStartInfoWithAdvancedAiModePath(
+        string workerRoot, string? parserPath, bool developerCommands, string preferencePath,
+        params string[] arguments)
+    {
+        var start = CreateStartInfo(workerRoot, parserPath, developerCommands, arguments);
+        start.Environment["MOTIF_ADVANCED_AI_MODE_PATH"] = preferencePath;
+        return start;
+    }
+
     public static async Task<CliProcessResult> RunAsync(
         string workerRoot, string? parserPath, bool developerCommands, params string[] arguments)
     {
@@ -96,7 +106,26 @@ public static class CliProcess
         using var process = Process.Start(start)!;
         var outputTask = process.StandardOutput.ReadToEndAsync();
         var errorTask = process.StandardError.ReadToEndAsync();
-        await process.WaitForExitAsync();
+        try
+        {
+            await process.WaitForExitAsync().WaitAsync(Timeout);
+        }
+        catch (TimeoutException exception)
+        {
+            try
+            {
+                if (!process.HasExited) process.Kill(entireProcessTree: true);
+            }
+            catch (InvalidOperationException) { }
+            catch (System.ComponentModel.Win32Exception) { }
+
+            var output = await outputTask;
+            var error = await errorTask;
+            throw new TimeoutException(
+                $"The CLI did not exit within {Timeout}.{Environment.NewLine}" +
+                $"Standard error:{Environment.NewLine}{error}{Environment.NewLine}" +
+                $"Standard output:{Environment.NewLine}{output}", exception);
+        }
         return (process.ExitCode, await outputTask, await errorTask);
     }
 

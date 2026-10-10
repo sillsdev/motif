@@ -6,13 +6,16 @@ using SIL.Motif.Commands;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Commands.Store;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Canonicalization;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Parsing;
+using SIL.Motif.Contract.Parsimony;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host;
 using SIL.Motif.Host.Analysis;
 using SIL.Motif.Host.LcmUtils;
@@ -21,6 +24,8 @@ using SIL.Motif.Model.DryRun;
 using SIL.Motif.Runner.Composers;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker;
+using SIL.Motif.Worker.Jobs;
+using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker.Store;
 using Xunit;
 
@@ -83,14 +88,93 @@ public sealed class PendingChangeOccurrenceTests(PristineProjectFixture pristine
         var queued = JobCommands.EnqueueDryRun(new EnqueueDryRunRequest(
             project.Path, ProductVersion, finalized.Value!.ProposalId));
         Assert.True(queued.Succeeded, queued.Refusal?.Message);
+
+        string frozenProposalJson;
+        string operationId;
+        using (var database = ProjectMotifDatabase.Open(project.Path))
+        {
+            var job = new JobRepository(database).Get(queued.Value!.JobId)!;
+            var frozen = DryRunJobInput.Parse(job.InputJson);
+            frozenProposalJson = frozen.Proposal.ProposalJson;
+            using var proposal = JsonDocument.Parse(frozenProposalJson);
+            operationId = proposal.RootElement.GetProperty("operations")[0].GetProperty("operationId")
+                .GetString()!;
+        }
+
+        var reopened = ProposalCommands.Reopen(new ReopenRequest(project.Path, ProductVersion,
+            "edited-after-enqueue", finalized.Value.ProposalId));
+        Assert.True(reopened.Succeeded, reopened.Refusal?.Message);
+        var removed = ProposalCommands.RemoveOperations(new RemoveOperationsRequest(project.Path,
+            ProductVersion, "edited-after-enqueue", [operationId], Force: true));
+        Assert.True(removed.Succeeded, removed.Refusal?.Message);
+        Assert.Equal(0, removed.Value!.OperationCount);
+        using (var database = ProjectMotifDatabase.Open(project.Path))
+        {
+            var queuedAfterEdit = new JobRepository(database).Get(queued.Value.JobId)!;
+            Assert.Equal(frozenProposalJson, DryRunJobInput.Parse(queuedAfterEdit.InputJson).Proposal.ProposalJson);
+        }
+        var discarded = ProposalCommands.DiscardDraft(new DiscardDraftRequest(project.Path, ProductVersion,
+            "edited-after-enqueue"));
+        Assert.True(discarded.Succeeded, discarded.Refusal?.Message);
+
         runner.Start(project.Path);
         var dryRun = JobCommands.WaitForDryRun(new WaitForDryRunRequest(
             project.Path, ProductVersion, finalized.Value.ProposalId, queued.Value!.JobId,
             TimeSpan.FromMinutes(2)));
         Assert.True(dryRun.Succeeded, dryRun.Refusal?.Message);
+
+        DryRunJobCompletion dryRunCompletion;
+        using (var database = ProjectMotifDatabase.Open(project.Path))
+            dryRunCompletion = DryRunJobCompletion.Parse(
+                new JobRepository(database).Get(queued.Value.JobId)!.ResultJson!);
+        var missingBaselinePath = dryRunCompletion.SourceBaseline.FwDataPath;
+        var movedBaselinePath = missingBaselinePath + ".temporarily-missing";
+        File.Move(missingBaselinePath, movedBaselinePath);
+        CommandOutcome<JobEnqueuedResponse> candidate;
+        try
+        {
+            candidate = ParsimonyCommands.EnqueueCandidate(new EnqueueParsimonyCandidateRequest(
+                project.Path, ProductVersion, queued.Value.JobId, "P-adhoc-duplicate",
+                ParsimonyEvidenceScopeKind.ProjectApproved));
+        }
+        finally
+        {
+            File.Move(movedBaselinePath, missingBaselinePath);
+        }
+        Assert.False(candidate.Succeeded);
+        Assert.Equal("parsimony.dry-run-evidence-missing", candidate.Refusal?.Code);
+        Assert.Contains("Rerun its Dry Run", candidate.Refusal!.Message, StringComparison.Ordinal);
+
         var applied = ProposalCommands.Apply(new ApplyRequest(
             project.Path, ProductVersion, finalized.Value.ProposalId, "test-user", Force: true));
         Assert.True(applied.Succeeded, applied.Refusal?.Message);
+    }
+
+    [Fact]
+    public void CandidateEnqueueRefusesOlderDryRunEvidenceWithRerunInstruction()
+    {
+        var project = CreateProject();
+        using var database = ProjectMotifDatabase.Open(project.Path);
+        var projectKey = ProjectWorkspaceKey.Compute(
+            new ProjectLocator(project.Path, Path.GetFileNameWithoutExtension(project.Path)));
+        var now = JobTimestamp.FormatUtc(DateTimeOffset.UtcNow);
+        var jobs = new JobRepository(database);
+        var oldDryRun = jobs.Create(CanonicalId.Mint("job/").Value, projectKey, JobCommands.DryRunKind,
+            "{}", now);
+        var claims = new JobClaims(database);
+        var claimed = claims.Claim(projectKey, "legacy-dry-run-test", now, TimeSpan.FromMinutes(5));
+        Assert.NotNull(claimed);
+        jobs.PublishDryRun(oldDryRun.JobId, "{}", claimed.Version);
+        Assert.True(claims.Finish(oldDryRun.JobId, claimed.ClaimToken!, JobStatus.CompletedDryRunOnly,
+            JobFailureCategory.None, "{}"));
+
+        var refused = ParsimonyCommands.EnqueueCandidate(new EnqueueParsimonyCandidateRequest(
+            project.Path, ProductVersion, oldDryRun.JobId, "P-adhoc-duplicate",
+            ParsimonyEvidenceScopeKind.ProjectApproved));
+
+        Assert.False(refused.Succeeded);
+        Assert.Equal("parsimony.dry-run-evidence-missing", refused.Refusal?.Code);
+        Assert.Contains("Rerun its Dry Run", refused.Refusal!.Message, StringComparison.Ordinal);
     }
 
     [Fact]

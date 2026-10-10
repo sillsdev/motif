@@ -32,7 +32,7 @@ public static class RelationFieldSpecBuilder
             SnapshotFieldConstant: row.DeclaringClass + row.FieldName);
     }
 
-    public static ReferenceCollectionFieldSpec BuildCollection(JoinedRow row)
+    public static ReferenceCollectionFieldSpec BuildCollection(JoinedRow row, bool supportsPlacement = false)
     {
         var group = GroupDerivation.Derive(row.DeclaringClass);
         var construct = ConstructDerivation.Derive(row.DeclaringClass);
@@ -41,6 +41,11 @@ public static class RelationFieldSpecBuilder
         {
             throw new GeneratorException(
                 $"{row.DeclaringClass}.{row.FieldName}: a rel/col or rel/seq field must carry a Card.");
+        }
+        if (supportsPlacement && card != FieldCard.Seq)
+        {
+            throw new GeneratorException(
+                $"{row.DeclaringClass}.{row.FieldName}: identity-relative placement requires rel/seq.");
         }
 
         // LibLCM's accessor suffixes (SIL.LCModel's ILexEntry): RC reference collection, RS reference sequence.
@@ -58,12 +63,15 @@ public static class RelationFieldSpecBuilder
             TargetInterface: "I" + row.DeclaringClass,
             RefInterface: "I" + row.Sig,
             AccessorPropertyName: row.FieldName + accessorSuffix,
-            SnapshotFieldConstant: row.DeclaringClass + row.FieldName);
+            SnapshotFieldConstant: row.DeclaringClass + row.FieldName,
+            MoveKind: supportsPlacement ? KindNameDerivation.DeriveOne(group, construct, "move", row.FieldName) : null);
     }
 
     public static IReadOnlyList<ReferenceAtomicFieldSpec> BuildAllAtomic(IReadOnlyList<JoinedRow> rows) =>
         rows.Select(BuildAtomic).ToList();
 
-    public static IReadOnlyList<ReferenceCollectionFieldSpec> BuildAllCollection(IReadOnlyList<JoinedRow> rows) =>
-        rows.Select(BuildCollection).ToList();
+    public static IReadOnlyList<ReferenceCollectionFieldSpec> BuildAllCollection(
+        IReadOnlyList<JoinedRow> rows,
+        IReadOnlySet<FieldKey>? placementFields = null) =>
+        rows.Select(row => BuildCollection(row, placementFields?.Contains(row.Key) == true)).ToList();
 }

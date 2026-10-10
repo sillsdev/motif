@@ -26,8 +26,8 @@ public static class MoAlloAdhocProhibRelationsSnapshotter
         var fields = new Dictionary<string, IReadOnlyDictionary<string, string>>();
 
         AddIfPopulated(fields, SnapshotFields.MoAlloAdhocProhibFirstAllomorph, ReferenceFieldSnapshotting.ReadAlternatives(moAlloAdhocProhib.FirstAllomorphRA));
-        AddIfPopulated(fields, SnapshotFields.MoAlloAdhocProhibAllomorphs, ReferenceCollectionFieldSnapshotting.ReadAlternatives(moAlloAdhocProhib.AllomorphsRS));
-        AddIfPopulated(fields, SnapshotFields.MoAlloAdhocProhibRestOfAllos, ReferenceCollectionFieldSnapshotting.ReadAlternatives(moAlloAdhocProhib.RestOfAllosRS));
+        AddIfPopulated(fields, SnapshotFields.MoAlloAdhocProhibAllomorphs, ReferenceSequenceFieldSnapshotting.ReadAlternatives(moAlloAdhocProhib.AllomorphsRS));
+        AddIfPopulated(fields, SnapshotFields.MoAlloAdhocProhibRestOfAllos, ReferenceSequenceFieldSnapshotting.ReadAlternatives(moAlloAdhocProhib.RestOfAllosRS));
 
         return new ObjectSnapshot(canonicalId, fields);
     }

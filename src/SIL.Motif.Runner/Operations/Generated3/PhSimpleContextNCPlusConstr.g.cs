@@ -98,9 +98,9 @@ internal sealed class PhSimpleContextNCPlusConstrAddRefHandler : IOperationHandl
         var (id, phSimpleContextNC) = TargetResolution.Resolve<IPhSimpleContextNC>(cache, operation, PhSimpleContextNCPlusConstrOperationKinds.AddRefPlusConstr);
         touchedTargets.Add(id);
 
-        var before = ReferenceCollectionFieldSnapshotting.ReadAlternatives(phSimpleContextNC.PlusConstrRS);
+        var before = ReferenceSequenceFieldSnapshotting.ReadAlternatives(phSimpleContextNC.PlusConstrRS);
         PhSimpleContextNCPlusConstrAddRefLowering.Apply(cache, phSimpleContextNC, memberId);
-        var afterValue = ReferenceCollectionFieldSnapshotting.ReadAlternatives(phSimpleContextNC.PlusConstrRS);
+        var afterValue = ReferenceSequenceFieldSnapshotting.ReadAlternatives(phSimpleContextNC.PlusConstrRS);
 
         return new ExpectedEffect(id, SnapshotFields.PhSimpleContextNCPlusConstr, before, afterValue);
     }
@@ -108,7 +108,7 @@ internal sealed class PhSimpleContextNCPlusConstrAddRefHandler : IOperationHandl
     public ExpectedEffect ReadCurrentFootprint(LcmCache cache, OperationEnvelope operation)
     {
         var (id, phSimpleContextNC) = TargetResolution.Resolve<IPhSimpleContextNC>(cache, operation, PhSimpleContextNCPlusConstrOperationKinds.AddRefPlusConstr);
-        var current = ReferenceCollectionFieldSnapshotting.ReadAlternatives(phSimpleContextNC.PlusConstrRS);
+        var current = ReferenceSequenceFieldSnapshotting.ReadAlternatives(phSimpleContextNC.PlusConstrRS);
         return new ExpectedEffect(id, SnapshotFields.PhSimpleContextNCPlusConstr, current, current);
     }
 }
@@ -139,9 +139,9 @@ internal sealed class PhSimpleContextNCPlusConstrRemoveRefHandler : IOperationHa
         var (id, phSimpleContextNC) = TargetResolution.Resolve<IPhSimpleContextNC>(cache, operation, PhSimpleContextNCPlusConstrOperationKinds.RemoveRefPlusConstr);
         touchedTargets.Add(id);
 
-        var before = ReferenceCollectionFieldSnapshotting.ReadAlternatives(phSimpleContextNC.PlusConstrRS);
+        var before = ReferenceSequenceFieldSnapshotting.ReadAlternatives(phSimpleContextNC.PlusConstrRS);
         PhSimpleContextNCPlusConstrRemoveRefLowering.Apply(cache, phSimpleContextNC, memberId);
-        var afterValue = ReferenceCollectionFieldSnapshotting.ReadAlternatives(phSimpleContextNC.PlusConstrRS);
+        var afterValue = ReferenceSequenceFieldSnapshotting.ReadAlternatives(phSimpleContextNC.PlusConstrRS);
 
         return new ExpectedEffect(id, SnapshotFields.PhSimpleContextNCPlusConstr, before, afterValue);
     }
@@ -149,7 +149,7 @@ internal sealed class PhSimpleContextNCPlusConstrRemoveRefHandler : IOperationHa
     public ExpectedEffect ReadCurrentFootprint(LcmCache cache, OperationEnvelope operation)
     {
         var (id, phSimpleContextNC) = TargetResolution.Resolve<IPhSimpleContextNC>(cache, operation, PhSimpleContextNCPlusConstrOperationKinds.RemoveRefPlusConstr);
-        var current = ReferenceCollectionFieldSnapshotting.ReadAlternatives(phSimpleContextNC.PlusConstrRS);
+        var current = ReferenceSequenceFieldSnapshotting.ReadAlternatives(phSimpleContextNC.PlusConstrRS);
         return new ExpectedEffect(id, SnapshotFields.PhSimpleContextNCPlusConstr, current, current);
     }
 }

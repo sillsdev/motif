@@ -1,0 +1,14 @@
+{
+  "id": "parsimony-findings",
+  "fixture": "parsimony-report-ready",
+  "steps": [
+    { "id": "open-project-menu", "kind": "click", "automationId": "motif-project-menu" },
+    { "id": "select-project", "kind": "click", "automationId": "motif-select-new-project" },
+    { "id": "wait-for-project", "kind": "waitFor", "automationId": "motif-overview-selection-word-count", "condition": "text", "expectedText": "2", "timeoutMs": 30000 },
+    { "id": "open-parsimony", "kind": "click", "automationId": "motif-page-parsimony" },
+    { "id": "wait-for-findings", "kind": "waitFor", "automationId": "motif-parsimony-summary", "condition": "visible", "timeoutMs": 30000 },
+    { "id": "select-finding", "kind": "click", "automationId": "motif-parsimony-finding-finding-1" },
+    { "id": "highlight-evidence", "kind": "highlight", "automationId": "motif-parsimony-evidence" },
+    { "id": "evidence", "kind": "capture", "durationMs": 1400, "callouts": [ { "automationId": "motif-parsimony-evidence" } ] }
+  ]
+}

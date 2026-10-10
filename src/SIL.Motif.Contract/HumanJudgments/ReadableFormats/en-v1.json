@@ -1,0 +1,14 @@
+{
+  "format": "en-v1",
+  "fix": "Fix",
+  "keep": "Keep",
+  "ask": "Ask",
+  "defer": "Defer",
+  "disposition": "{0} “{1}” for “{2}”.",
+  "question": " Question: “{0}”.",
+  "surface": "This word form “{0}” has no acceptable reading in context “{1}”.",
+  "reading": "This reading of “{0}” is forbidden in context “{1}”: {2}.",
+  "morph": "“{0}” ({1})",
+  "retraction": "Withdraw judgment “{0}”.",
+  "resolution": "Resolve conflicting revisions: "
+}

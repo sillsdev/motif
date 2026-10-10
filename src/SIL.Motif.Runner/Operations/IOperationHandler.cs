@@ -41,3 +41,29 @@ public interface IOperationHandler
     /// </summary>
     ExpectedEffect ReadCurrentFootprint(LcmCache cache, OperationEnvelope operation);
 }
+
+/// <summary>Handles one operation whose engine write produces multiple field effects.</summary>
+public interface ICompoundOperationHandler : IOperationHandler
+{
+    /// <summary>Applies the operation and returns every field effect read back from LibLCM.</summary>
+    IReadOnlyList<ExpectedEffect> ApplyAndCaptureEffects(
+        LcmCache cache, OperationEnvelope operation, List<CanonicalId> touchedTargets);
+
+    /// <summary>Reads every field in the operation's pre-mutation footprint without changing the cache.</summary>
+    IReadOnlyList<ExpectedEffect> ReadCurrentFootprintEffects(LcmCache cache, OperationEnvelope operation);
+}
+
+internal static class OperationEffectCapture
+{
+    public static IReadOnlyList<ExpectedEffect> Apply(
+        IOperationHandler handler, LcmCache cache, OperationEnvelope operation, List<CanonicalId> touchedTargets) =>
+        handler is ICompoundOperationHandler compound
+            ? compound.ApplyAndCaptureEffects(cache, operation, touchedTargets)
+            : [handler.ApplyAndCaptureEffect(cache, operation, touchedTargets)];
+
+    public static IReadOnlyList<ExpectedEffect> ReadFootprint(
+        IOperationHandler handler, LcmCache cache, OperationEnvelope operation) =>
+        handler is ICompoundOperationHandler compound
+            ? compound.ReadCurrentFootprintEffects(cache, operation)
+            : [handler.ReadCurrentFootprint(cache, operation)];
+}

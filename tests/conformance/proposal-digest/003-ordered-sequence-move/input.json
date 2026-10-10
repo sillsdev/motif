@@ -1,0 +1,16 @@
+{
+  "contractVersions": { "sequence": "1.0" },
+  "proposalId": "agent_EBESExQVFhcYGRobHB0eHw",
+  "operations": [
+    {
+      "operationId": "agent_YGFiY2RlZmdoaWprbG1ubw",
+      "kind": "sequence/move",
+      "target": "agent_ICEiIyQlJicoKSorLC0uLw",
+      "after": { "member": "agent_MDEyMzQ1Njc4OTo7PD0-Pw" },
+      "placement": {
+        "after": "agent_QEFCQ0RFRkdISUpLTE1OTw",
+        "before": "agent_UFFSU1RVVldYWVpbXF1eXw"
+      }
+    }
+  ]
+}

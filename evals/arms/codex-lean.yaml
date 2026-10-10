@@ -1,0 +1,7 @@
+{
+  "id": "codex-lean",
+  "host": "codex",
+  "model": "gpt-6-luna",
+  "effort": "high",
+  "server": { "ref": "HEAD", "profile": "lean", "grade_profile": "profiles/mcp-lean-grade.json" }
+}

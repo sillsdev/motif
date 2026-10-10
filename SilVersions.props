@@ -9,5 +9,9 @@
     <!-- One shared LibLCM package pin for every Motif project that consumes the model. -->
     <SilLCModelPackageVersion>11.0.0-beta0182</SilLCModelPackageVersion>
     <IcuDotNetPackageVersion>3.0.2</IcuDotNetPackageVersion>
+    <!-- The official C# MCP SDK; 2.x is still in preview when this is pinned. -->
+    <ModelContextProtocolVersion>1.4.1</ModelContextProtocolVersion>
+    <!-- Product apps share output files; keep the MCP SDK's DI contract at one assembly version. -->
+    <MicrosoftExtensionsDependencyInjectionAbstractionsVersion>10.0.7</MicrosoftExtensionsDependencyInjectionAbstractionsVersion>
   </PropertyGroup>
 </Project>

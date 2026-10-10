@@ -1,0 +1,7 @@
+{
+  "id": "claude-default",
+  "host": "claude",
+  "model": "sonnet",
+  "effort": "high",
+  "server": { "ref": "HEAD", "profile": "default", "grade_profile": "profiles/mcp-default-grade.json" }
+}

@@ -3,6 +3,12 @@
 An approved reading passes when the parser reproduces its ordered morphology. This says nothing about the
 meaning a person chose, and finding a match does not establish that the parser finished searching.
 
+**Scoped amendment — explicit retirement:** [ADR 0057](0057-explicit-allomorph-retirement.md) permits a
+Proposal-bound adapter to translate only frozen, explicitly mapped Form roles before using this same
+comparison. It preserves original evidence, rejects collapsed contrasts, and never changes ordinary
+Baseline comparison or guessed-string handling. No MSA-plus-spelling fallback or implicit allomorph
+equivalence is introduced.
+
 **Status:** accepted, 2026-08-05. Defines the comparison [ADR 0025](0025-parser-first-build-order.md)'s
 acceptance test depends on. Resolves `I35a` and `I35b`.
 Evidence: [what is a proper word analysis](../research/2026-08-05-what-is-a-proper-word-analysis.md).
@@ -110,3 +116,9 @@ is exactly what this ADR exists to pin down.
   checking the grill queue, which already held the answer. Two lessons, and the second is the bigger one:
   a failed grep is weak evidence of absence and should be reported as *“I did not find it”*; and **the
   repo's own open-questions file is a source to read before contradicting it**, not after.
+
+## Reviewed reading negatives
+
+Rejecting one reading must not reject every reading of a word. A saved forbidden morphology retains the same exact identities and order as an approved expectation.
+
+[ADR 0056](0056-human-judgments-belong-to-the-fieldworks-project.md) and the [Human judgment contract](../human-judgment-contract.md) use ordered Form/MSA/InflType identities plus conditional guessed text/WS for reviewed reading negatives. Surface negatives are a separate kind with explicit linguistic context. Captions, MSA plus spelling, word-level category and sense do not replace authoritative morphology. Missing identity is unavailable input, never a broader rejection of a word.

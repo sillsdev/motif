@@ -130,6 +130,7 @@ public sealed class TagalogFeasibilityTests
         if (phonemeSets.Count == 0)
             phonemeSets.Add(services.GetInstance<IPhPhonemeSetFactory>().Create());
         var phonemeSet = phonemeSets[0];
+        OwnedBoundaryMarkerFixture.EnsureReservedMarkers(cache, phonemeSet);
         var phonemes = new Dictionary<char, IPhPhoneme>();
 
         foreach (var symbol in inventory.Distinct())
@@ -143,13 +144,6 @@ public sealed class TagalogFeasibilityTests
             code.Representation.set_String(cache.DefaultVernWs, symbol.ToString());
             phonemes.Add(symbol, phoneme);
         }
-
-        var boundary = services.GetInstance<IPhBdryMarkerFactory>().Create();
-        phonemeSet.BoundaryMarkersOC.Add(boundary);
-        boundary.Name.set_String(cache.DefaultVernWs, "+");
-        var boundaryCode = services.GetInstance<IPhCodeFactory>().Create();
-        boundary.CodesOS.Add(boundaryCode);
-        boundaryCode.Representation.set_String(cache.DefaultVernWs, "+");
 
         return phonemes;
     }

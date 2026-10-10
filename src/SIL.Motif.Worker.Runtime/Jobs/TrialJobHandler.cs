@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using SIL.LCModel;
 using SIL.Motif.Contract;
+using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Jobs;
@@ -30,11 +31,14 @@ namespace SIL.Motif.Worker.Jobs;
 /// <see cref="ProposalRepository.Get"/> returned, verbatim.
 /// </param>
 /// <param name="Scope">The declared Assessment scope to use, or <c>null</c> for the project's default.</param>
+/// <param name="Limits">Optional per-word limits copied from the earlier Assessment being compared.</param>
 public sealed record TrialJobInput(
     [property: JsonPropertyName("proposalJson")] string ProposalJson,
     [property: JsonPropertyName("scope")] string? Scope,
     [property: JsonPropertyName("words")] IReadOnlyList<string>? Words = null,
-    [property: JsonPropertyName("allWords")] bool AllWords = false)
+    [property: JsonPropertyName("allWords")] bool AllWords = false,
+    [property: JsonPropertyName("prerequisites")] IReadOnlyList<FrozenProposalRevision>? Prerequisites = null,
+    [property: JsonPropertyName("limits")] TrialLimits? Limits = null)
 {
     /// <exception cref="InvalidOperationException">The input is not a well-formed Trial job input.</exception>
     public static TrialJobInput Parse(string inputJson) =>
@@ -70,11 +74,11 @@ internal sealed class TrialJobHandler
     internal const string TrialKind = "trial";
 
     private readonly BaselineRepository _baselines;
-    private readonly ProposalRepository _proposals;
     private readonly ProjectLaneRegistry _lanes;
     private readonly IProjectConfigurationReader _configuration;
     private readonly IAssessorCatalog _assessors;
     private readonly IAssessmentRepository _assessments;
+    private readonly string _workerRoot;
     private readonly Func<string, string, CancellationToken,
         Task<(IReadOnlyCollection<Guid> AppliedProposalIds, DryRunScratch? Scratch)>> _openScratch;
     private readonly Func<DryRunScratch?, PrerequisiteExecutionPlan, CancellationToken, Task<DryRunModel>> _runDryRun;
@@ -104,14 +108,16 @@ internal sealed class TrialJobHandler
         Func<string, string, CancellationToken,
             Task<(IReadOnlyCollection<Guid> AppliedProposalIds, DryRunScratch? Scratch)>> openScratch,
         Func<DryRunScratch?, PrerequisiteExecutionPlan, CancellationToken, Task<DryRunModel>> runDryRun,
-        Func<LcmCache?, CancellationToken, Task<string>> prepareForAssessment)
+        Func<LcmCache?, CancellationToken, Task<string>> prepareForAssessment, string workerRoot)
     {
         _baselines = baselines ?? throw new ArgumentNullException(nameof(baselines));
-        _proposals = proposals ?? throw new ArgumentNullException(nameof(proposals));
+        ArgumentNullException.ThrowIfNull(proposals);
         _lanes = lanes ?? throw new ArgumentNullException(nameof(lanes));
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         _assessors = assessors ?? throw new ArgumentNullException(nameof(assessors));
         _assessments = assessments ?? throw new ArgumentNullException(nameof(assessments));
+        ArgumentException.ThrowIfNullOrWhiteSpace(workerRoot);
+        _workerRoot = workerRoot;
         _openScratch = openScratch ?? throw new ArgumentNullException(nameof(openScratch));
         _runDryRun = runDryRun ?? throw new ArgumentNullException(nameof(runDryRun));
         _prepareForAssessment = prepareForAssessment ?? throw new ArgumentNullException(nameof(prepareForAssessment));
@@ -154,8 +160,8 @@ internal sealed class TrialJobHandler
         CandidateRun candidate;
         try
         {
-            candidate = await RunCandidateAsync(claim, lane, proposal, scopeConfiguration, input.Words, input.AllWords,
-                baseline.FwDataPath,
+            candidate = await RunCandidateAsync(claim, lane, proposal, input.Prerequisites ?? [],
+                scopeConfiguration, input.Words, input.AllWords, input.Limits, baseline.FwDataPath,
                 scratchRoot, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
@@ -187,8 +193,18 @@ internal sealed class TrialJobHandler
             try
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var assessmentIds = RecordAll(produced, proposal, candidate.DryRun, candidate.Selection, candidate.Scope,
-                    scopeConfiguration, assessor.Name, baseline.Token);
+                var durableAssessments = produced.Select(item => item.Invocation is { } invocation
+                    ? item with
+                    {
+                        Invocation = invocation with
+                        {
+                            SourcePath = AssessmentSourceArtifactStore.Persist(_workerRoot,
+                                invocation.SourcePath, invocation.SourceBytesSha256),
+                        },
+                    }
+                    : item).ToArray();
+                var assessmentIds = RecordAll(durableAssessments, proposal, candidate.DryRun,
+                    candidate.Selection, candidate.Scope, scopeConfiguration, assessor.Name, baseline.Token);
                 foreach (var lease in artifactLeases) lease.Retain();
                 var completionJson = JsonSerializer.Serialize(
                     new TrialCompletion(baseline.Token, assessmentIds), MotifJson.CreateOptions());
@@ -219,8 +235,9 @@ internal sealed class TrialJobHandler
         string ExportedDirectory);
 
     private async Task<CandidateRun> RunCandidateAsync(ClaimedJob claim, ProjectLane lane,
-        Contract.Model.Proposal proposal, AssessmentScopeConfiguration scopeConfiguration,
-        IReadOnlyList<string>? requestedWords, bool allWords, string baselineFwDataPath,
+        Contract.Model.Proposal proposal, IReadOnlyList<FrozenProposalRevision> frozenPrerequisites,
+        AssessmentScopeConfiguration scopeConfiguration,
+        IReadOnlyList<string>? requestedWords, bool allWords, TrialLimits? limits, string baselineFwDataPath,
         string scratchRoot, CancellationToken cancellationToken)
     {
         CandidateRun? candidate = null;
@@ -231,7 +248,8 @@ internal sealed class TrialJobHandler
                 .ConfigureAwait(false);
             try
             {
-                var plan = _proposals.PlanPrerequisites(proposal, appliedProposalIds);
+                var plan = PrerequisiteExecutionPlan.CreateFromFrozen(proposal,
+                    frozenPrerequisites.Select(item => item.Validate()).ToArray(), appliedProposalIds);
                 var dryRun = await _runDryRun(scratch, plan, laneToken).ConfigureAwait(false);
                 claim.PublishDryRun(DryRunJobHandler.BuildPublishedDryRunJson(dryRun));
 
@@ -240,8 +258,9 @@ internal sealed class TrialJobHandler
                     ? requestedWords.Distinct(StringComparer.Ordinal).ToArray()
                     : cache is null ? [] : WordQueryResolver.Resolve(
                         allWords ? WordQueryResolver.AllWordformsQueryText : scopeConfiguration.Query, cache).ToArray();
-                var scope = new AssessmentScope(words,
-                    ParseCollect(scopeConfiguration.Collect), scopeConfiguration.PerWordLimit, scopeConfiguration.PerWordStepLimit);
+                var scope = new AssessmentScope(words, ParseCollect(scopeConfiguration.Collect),
+                    limits is { } selectedLimits ? selectedLimits.PerWordLimit : scopeConfiguration.PerWordLimit,
+                    limits?.PerWordStepLimit ?? scopeConfiguration.PerWordStepLimit);
                 candidate = new CandidateRun(dryRun, scope, Selection.Create(scopeConfiguration.Name, words),
                     await _prepareForAssessment(cache, laneToken).ConfigureAwait(false));
             }

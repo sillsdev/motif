@@ -1,0 +1,8 @@
+{
+  "question": "Compare the Codex and Claude MCP hosts on the same lexicon and diagnosis tasks.",
+  "arm_a": "codex-default",
+  "arm_b": "claude-default",
+  "tasks": "t0-diagnose-noun-slot-order",
+  "trials": 3,
+  "primary_metric": "task-success"
+}

@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://motif.sil.org/contracts/retirement-expectation-translation/v1",
+  "title": "Retirement expectation translation",
+  "description": "A retained source oracle and a Dry Run-bound candidate oracle for one exact allomorph retirement Proposal.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "contract": {
+      "const": "retirement-expectation-translation/v1"
+    },
+    "original": {
+      "$ref": "https://motif.sil.org/contracts/frozen-expectations/v1"
+    },
+    "translated": {
+      "$ref": "https://motif.sil.org/contracts/frozen-expectations/v1"
+    },
+    "mappings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/Mapping"
+      }
+    },
+    "bundleTextEffects": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/BundleTextEffect"
+      }
+    },
+    "mappingDigest": {
+      "$ref": "#/$defs/Digest"
+    },
+    "proposalIntentDigest": {
+      "$ref": "#/$defs/Digest"
+    },
+    "dryRunFootprintDigest": {
+      "$ref": "#/$defs/Digest"
+    },
+    "dryRunEffectDigest": {
+      "$ref": "#/$defs/Digest"
+    }
+  },
+  "required": [
+    "contract",
+    "original",
+    "translated",
+    "mappings",
+    "bundleTextEffects",
+    "mappingDigest",
+    "proposalIntentDigest",
+    "dryRunFootprintDigest",
+    "dryRunEffectDigest"
+  ],
+  "$defs": {
+    "Id": {
+      "type": "string",
+      "minLength": 22,
+      "pattern": "[A-Za-z0-9_-]{22}$"
+    },
+    "Digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "Mapping": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "retiredForm": {
+          "$ref": "#/$defs/Id"
+        },
+        "msa": {
+          "$ref": "#/$defs/Id"
+        },
+        "inflType": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "expansionRole": {
+          "enum": [
+            "whole",
+            "prefix",
+            "suffix"
+          ]
+        },
+        "replacementForm": {
+          "$ref": "#/$defs/Id"
+        }
+      },
+      "required": [
+        "retiredForm",
+        "msa",
+        "inflType",
+        "expansionRole",
+        "replacementForm"
+      ]
+    },
+    "Alternatives": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "BundleTextEffect": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "bundle": {
+          "$ref": "#/$defs/Id"
+        },
+        "before": {
+          "$ref": "#/$defs/Alternatives"
+        },
+        "after": {
+          "$ref": "#/$defs/Alternatives"
+        }
+      },
+      "required": [
+        "bundle",
+        "before",
+        "after"
+      ]
+    }
+  }
+}

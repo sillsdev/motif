@@ -47,6 +47,7 @@ internal static class RealParserProject
             if (phonemeSets.Count == 0)
                 phonemeSets.Add(services.GetInstance<IPhPhonemeSetFactory>().Create());
             var phonemeSet = phonemeSets[0];
+            OwnedBoundaryMarkerFixture.EnsureReservedMarkers(cache, phonemeSet);
 
             foreach (var letter in vernacularLetters.Distinct())
             {
@@ -54,18 +55,19 @@ internal static class RealParserProject
                 phonemeSet.PhonemesOC.Add(phoneme);
                 phoneme.Name.set_String(cache.DefaultVernWs, letter);
 
-                var code = services.GetInstance<IPhCodeFactory>().Create();
-                phoneme.CodesOS.Add(code);
+                var code = phoneme.CodesOS.FirstOrDefault();
+                if (code is null)
+                {
+                    code = services.GetInstance<IPhCodeFactory>().Create();
+                    phoneme.CodesOS.Add(code);
+                }
+                else
+                {
+                    foreach (var extraCode in phoneme.CodesOS.Skip(1).ToArray()) phoneme.CodesOS.Remove(extraCode);
+                }
                 code.Representation.set_String(cache.DefaultVernWs, letter);
             }
 
-            // Affix forms carry morpheme boundaries ("+i+", "d+"), unsegmentable until "+" is defined.
-            var boundary = services.GetInstance<IPhBdryMarkerFactory>().Create();
-            phonemeSet.BoundaryMarkersOC.Add(boundary);
-            boundary.Name.set_String(cache.DefaultVernWs, "+");
-            var boundaryCode = services.GetInstance<IPhCodeFactory>().Create();
-            boundary.CodesOS.Add(boundaryCode);
-            boundaryCode.Representation.set_String(cache.DefaultVernWs, "+");
         });
 
         new FwDataProjectLoader().Save(cache);

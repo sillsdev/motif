@@ -7,6 +7,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\SIL.Motif.Commands\SIL.Motif.Commands.csproj" />
     <ProjectReference Include="..\..\src\SIL.Motif.Host\SIL.Motif.Host.csproj" />
+    <ProjectReference Include="..\..\tests\SIL.Motif.Tests.Support\SIL.Motif.Tests.Support.csproj" />
     <PackageReference Include="SIL.LCModel" Version="$(SilLCModelPackageVersion)" />
   </ItemGroup>
 </Project>

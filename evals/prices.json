@@ -1,0 +1,7 @@
+{
+  "_source": "https://developers.openai.com/api/docs/pricing, read 2026-10-06; short-context (up to 272K) USD per 1M tokens",
+  "gpt-6-luna":   { "inputUsdPerMTok": 0.10,  "cachedInputUsdPerMTok": 0.01, "cacheWriteUsdPerMTok": 0.125, "outputUsdPerMTok": 0.50 },
+  "gpt-6-sol":    { "inputUsdPerMTok": 2.00,  "cachedInputUsdPerMTok": 0.20, "cacheWriteUsdPerMTok": 2.50,  "outputUsdPerMTok": 10.00 },
+  "gpt-6.1-sol":  { "inputUsdPerMTok": 2.00,  "cachedInputUsdPerMTok": 0.10, "cacheWriteUsdPerMTok": 2.50,  "outputUsdPerMTok": 10.00 },
+  "gpt-6-astra":  { "inputUsdPerMTok": 10.00, "cachedInputUsdPerMTok": 1.00, "cacheWriteUsdPerMTok": 12.50, "outputUsdPerMTok": 50.00 }
+}

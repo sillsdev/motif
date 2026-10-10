@@ -59,6 +59,18 @@ Baseline selects no refusal from an earlier capture. Command refusals and CLI fa
 The diagnostic reader prefers PanGloss's `compile_error` JSON and also reads the PanGloss 0.6 Debug
 conversion format defensively, grouping duplicate fatal issues by authored identity.
 
+## Report inputs and grammar evidence
+
+A Report keeps an explanation beside the frozen measurements and project facts that support it. Some grammar advice can be read before any words have been parsed.
+
+`IReportProducer` accepts a closed `ReportInput`: a stored Assessment, or a validated frozen Parsimony bundle with zero or more explicitly named Assessment references. Existing coverage, correctness, and difference producers still require their existing Assessment material and name the missing capability on refusal. `ReportResponse.AssessmentId` is nullable for Report kinds that have no Assessment link.
+
+Parsimony input bindings identify the Baseline token, source kind, candidate when present, grammar model, derived-file schema and byte digests, optional Selection and expectation revision, and referenced Assessments. `grammar-facts.sqlite` and `evidence.sqlite` are disposable files; Report renderings and their bindings stay in the Motif store. Reviewed negatives and Parsimony dispositions belong to the FieldWorks project as one Data Notebook `RnGenericRec` per judgment revision. The reserved `RnGenericRec.MotifHumanJudgment` String holds a readable sentence, optional quoted reason and strict versioned marker. [ADR 0056](adr/0056-human-judgments-belong-to-the-fieldworks-project.md) and the [Human judgment contract](human-judgment-contract.md) define that boundary. Contract types and the pure value codec are implemented; project initialization, LibLCM readers/writers and Suppressed queries are subsequent slices.
+
+Project initialization is designed as a separate confirmed, HumanOnly command in the shared catalog, with the same original-project ownership requirement as Apply. It creates the definition only; it is never implicit in opening, authoring or Apply. Its pinned XML-backend recovery proof is a prerequisite for judgment reads/writes. Ordinary judgment Intents stage Draft changes and use existing Dry Run, Preflight and Apply. The Runner receives the loaded cache; LiveHost owns lock, save and recovery. Derived projections bind native Opinions and Notebook revisions to the exact Baseline or candidate scratch. A meaningful judgment edit changes the human-input digest independently of parser grammar fingerprints. A Suppressed set is derived from those captured revisions and exact finding evidence, not a canonical SQLite table. Pending choices and invalid/conflicting heads cannot suppress current findings.
+
+The `ReportCommands` catalog continues to register each producer once. The current generic CLI `report` path still accepts an Assessment ID; the Parsimony artifact builder and evidence-bundle command are separate implementation work. A Parsimony Report is always advisory and does not affect Readiness or Apply. Other Report kinds retain their configured regression behavior.
+
 ## Live FieldWorks navigation
 
 Captured facts stay readable when FieldWorks has changed, but links open only destinations the saved project still holds. Replacing a project at the same filename never authorizes links into the replacement.

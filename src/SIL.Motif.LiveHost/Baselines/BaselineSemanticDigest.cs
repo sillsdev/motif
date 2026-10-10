@@ -10,6 +10,7 @@ using SIL.LCModel;
 using SIL.Motif.Contract.Canonicalization;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Model.Snapshot;
+using SIL.Motif.Projection.HumanJudgments;
 using SIL.Motif.Runner.Snapshotting;
 
 namespace SIL.Motif.LiveHost.Baselines;
@@ -69,7 +70,14 @@ public static class BaselineSemanticDigest
             crypto.WriteByte((byte)'}');
         }
 
-        return FormatDigest(sha.Hash!);
+        var modelDigest = FormatDigest(sha.Hash!);
+        var judgmentSnapshot = HumanJudgmentReader.Read(cache);
+        if (judgmentSnapshot.Judgments.Count == 0 && judgmentSnapshot.Unavailable.Count == 0)
+            return modelDigest;
+
+        var judgmentDigest = JudgmentLineageResolver.Resolve(judgmentSnapshot).Digest;
+        var combined = Encoding.UTF8.GetBytes("motif-baseline-semantic-v2\0" + modelDigest + "\0" + judgmentDigest);
+        return FormatDigest(SHA256.HashData(combined));
     }
 
     private static bool IsProjected(ICmObject value, CancellationToken cancellationToken)

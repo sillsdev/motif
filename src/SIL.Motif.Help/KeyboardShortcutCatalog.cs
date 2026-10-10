@@ -340,8 +340,8 @@ public static class KeyboardShortcutCatalog
     private static IReadOnlyList<ShortcutDefinition> ReadCatalog()
     {
         var assembly = Assembly.GetExecutingAssembly();
-        var resourceName = assembly.GetManifestResourceNames().FirstOrDefault(name =>
-            string.Equals(name.Replace('\\', '/'), "help/shortcuts.json", StringComparison.Ordinal));
+        var resourceName = ManifestResourceLookup.FindPhysicalName(
+            assembly.GetManifestResourceNames(), "help/shortcuts.json");
         if (resourceName is null)
             throw new InvalidDataException("The keyboard shortcut catalog is missing.");
         using var stream = assembly.GetManifestResourceStream(resourceName)!;
@@ -449,8 +449,8 @@ public static class KeyboardShortcutCatalog
     private static ShortcutHelpResources ReadShortcutHelpResource(string locale)
     {
         var assembly = Assembly.GetExecutingAssembly();
-        var resourceName = assembly.GetManifestResourceNames().FirstOrDefault(name =>
-            string.Equals(name.Replace('\\', '/'), $"help/{locale}/shortcut-help.json", StringComparison.Ordinal));
+        var resourceName = ManifestResourceLookup.FindPhysicalName(
+            assembly.GetManifestResourceNames(), $"help/{locale}/shortcut-help.json");
         if (resourceName is null)
             return ShortcutHelpResources.Empty;
         using var stream = assembly.GetManifestResourceStream(resourceName)!;
@@ -494,8 +494,8 @@ public static class KeyboardShortcutCatalog
     private static Dictionary<string, string> ReadUiTitlesResource(string locale)
     {
         var assembly = Assembly.GetExecutingAssembly();
-        var resourceName = assembly.GetManifestResourceNames().FirstOrDefault(name =>
-            string.Equals(name.Replace('\\', '/'), $"help/{locale}/ui.json", StringComparison.Ordinal));
+        var resourceName = ManifestResourceLookup.FindPhysicalName(
+            assembly.GetManifestResourceNames(), $"help/{locale}/ui.json");
         if (resourceName is null)
             return new Dictionary<string, string>(StringComparer.Ordinal);
         using var stream = assembly.GetManifestResourceStream(resourceName)!;

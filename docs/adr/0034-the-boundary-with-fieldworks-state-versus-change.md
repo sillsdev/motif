@@ -120,3 +120,11 @@ homework, and precisely the trap the owner's distinction between the two over-ge
 - **Risk accepted:** keeping FieldWorks' field names means Motif's counters can drift from FieldWorks' if either
   changes. A conformance fixture against a real `ParserReport` JSON would catch it and is still not built —
   recorded in [ADR 0033](0033-three-systems-and-who-owns-which-measure.md) and still true.
+
+## Amendment — structural reasons and reviewed examples belong to the project
+
+A reason for keeping a grammar statement and a human-confirmed forbidden example must travel with the language project. Losing Motif's analysis files must not erase that input.
+
+[ADR 0056](0056-human-judgments-belong-to-the-fieldworks-project.md) narrows the historical claim that only Motif owns the reason: Motif provides the staged authoring and evidence binding, while the canonical applied judgment lives in FieldWorks Data Notebook records. This permits a bounded structural grammar-review reason and explicit reviewed surface/reading negative, including examples without wordforms. It does not authorize another general-purpose lexicon editor or a bulk Opinion surface. Native default-human Opinions remain authoritative for existing analyses; a Disapproved analysis rejects that reading only. Later word-review and [ADR 0049](0049-fieldworks-opinions-and-now-after-apply.md) rules remain binding.
+
+Human confirmation is staged through Proposal Apply. Agents cannot turn suggested probes into confirmed negatives or impersonate a linguist. Deliberate project initialization prepares only the reserved Notebook field, independently of judgment/grammar data changes; it never appears as a side effect of Apply.

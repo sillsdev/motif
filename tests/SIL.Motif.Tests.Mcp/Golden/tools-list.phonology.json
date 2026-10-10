@@ -1,0 +1,907 @@
+[
+  {
+    "name": "motif_overview",
+    "description": "Start here. Returns how well the project\u0027s grammar currently analyzes its texts: how many words get an analysis, the accuracy against the words the linguist has approved, and which words to look at first. Call it once at the beginning and again after the linguist applies a Proposal. Returns a refusal with Next: when Motif has not yet measured the project.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "detail": {
+          "type": "string",
+          "description": "\u0027concise\u0027 (default) drops empty fields and long lists; \u0027detailed\u0027 returns everything.",
+          "enum": [
+            "concise",
+            "detailed"
+          ]
+        },
+        "limit": {
+          "type": "integer",
+          "description": "The most list items to return in concise mode. Default 25.",
+          "minimum": 1,
+          "maximum": 200
+        }
+      },
+      "additionalProperties": false
+    },
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true
+  },
+  {
+    "name": "motif_capture_baseline",
+    "description": "Takes a fresh saved copy of the project that every read tool uses. Call it when a read tool reports that Motif has no saved copy, or after the linguist says they saved changes in FieldWorks. It reads the saved file only and never changes the project. It can take a minute on a large project.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": true
+  },
+  {
+    "name": "motif_grammar",
+    "description": "Reads the project\u0027s grammar. With no kind it returns counts of everything the grammar holds. With a kind (categories, phonemes, natural_classes, environments, phonological_rules, features, phonological_features, inflection_classes, templates, strata, morph_types) it lists those objects with their ids, ready to name in a change. Narrow with query (matches the name or abbreviation). Ids are 22 characters; copy them exactly. To read affixes and stems, use motif_lexicon. For encoding help, use motif_guide with the matching topic.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "What to list. Omit for counts of every kind.",
+          "enum": [
+            "categories",
+            "phonemes",
+            "natural_classes",
+            "environments",
+            "phonological_rules",
+            "features",
+            "phonological_features",
+            "inflection_classes",
+            "templates",
+            "strata",
+            "morph_types"
+          ]
+        },
+        "query": {
+          "type": "string",
+          "description": "Only objects whose name or abbreviation contains this text."
+        },
+        "offset": {
+          "type": "integer",
+          "description": "Items to skip, for the next page.",
+          "minimum": 0,
+          "maximum": 100000
+        },
+        "detail": {
+          "type": "string",
+          "description": "\u0027concise\u0027 (default) drops empty fields and long lists; \u0027detailed\u0027 returns everything.",
+          "enum": [
+            "concise",
+            "detailed"
+          ]
+        },
+        "limit": {
+          "type": "integer",
+          "description": "The most list items to return in concise mode. Default 25.",
+          "minimum": 1,
+          "maximum": 200
+        }
+      },
+      "additionalProperties": false
+    },
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true
+  },
+  {
+    "name": "motif_lexicon",
+    "description": "Searches the lexicon. Each entry has its id, headword, morph type (stem, suffix, prefix...), its lexeme form, and its senses with the glosses and the id of each sense\u0027s grammatical info. Use it to find the entry a change is about, and to see what already exists before you add anything. query matches the headword, a gloss, or an allomorph form. detail=detailed adds every allomorph with its environments. Use motif_guide for affix slots, conditioned allomorphs or feature-conditioned slots.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "description": "Text the headword, a gloss or a form contains."
+        },
+        "morph_type": {
+          "type": "string",
+          "description": "Only entries of this morph type, such as \u0027stem\u0027 or \u0027suffix\u0027."
+        },
+        "offset": {
+          "type": "integer",
+          "description": "Entries to skip, for the next page.",
+          "minimum": 0,
+          "maximum": 100000
+        },
+        "detail": {
+          "type": "string",
+          "description": "\u0027concise\u0027 (default) drops empty fields and long lists; \u0027detailed\u0027 returns everything.",
+          "enum": [
+            "concise",
+            "detailed"
+          ]
+        },
+        "limit": {
+          "type": "integer",
+          "description": "The most list items to return in concise mode. Default 25.",
+          "minimum": 1,
+          "maximum": 200
+        }
+      },
+      "additionalProperties": false
+    },
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true
+  },
+  {
+    "name": "motif_word",
+    "description": "Shows what FieldWorks already knows about one exact word: each analysis it holds and the linguist\u0027s opinion of it (approved, disapproved, or not yet judged). Use it to see what the linguist expects a word to mean before you change the grammar to parse it.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "word": {
+          "type": "string",
+          "description": "The word, exactly as written in the project."
+        },
+        "detail": {
+          "type": "string",
+          "description": "\u0027concise\u0027 (default) drops empty fields and long lists; \u0027detailed\u0027 returns everything.",
+          "enum": [
+            "concise",
+            "detailed"
+          ]
+        },
+        "limit": {
+          "type": "integer",
+          "description": "The most list items to return in concise mode. Default 25.",
+          "minimum": 1,
+          "maximum": 200
+        }
+      },
+      "required": [
+        "word"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true
+  },
+  {
+    "name": "motif_start_proposal",
+    "description": "Starts a new Draft Proposal: a named container for one small, related set of changes. Give it a short draft name (letters, digits and hyphens), a one-line label a person reads in Motif\u0027s window, such as \u0027Add the plural suffix -s\u0027, and a comment explaining why the change is right, which the linguist reads while deciding. Keep each Proposal to one concept. Returns the draft name and the proposal id; use the draft name with the motif_add_* tools and the proposal id with motif_trial.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Short draft name, for example \u0027plural-s\u0027."
+        },
+        "label": {
+          "type": "string",
+          "description": "A one-line description a reviewer reads in Motif\u0027s window."
+        },
+        "comment": {
+          "type": "string",
+          "description": "Why this change is right: the evidence, in a few sentences."
+        }
+      },
+      "required": [
+        "draft",
+        "label",
+        "comment"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_add_lexeme_form",
+    "description": "Adds a lexeme form (the written form of an entry, such as the stem or affix text) to an entry that already exists, and optionally a gloss on one of its senses, to a Draft. Find the entry, its morph type id and its sense in motif_lexicon, and the writing system tag shown on existing forms in motif_lexicon. It does not create entries, senses or allomorphs; Motif cannot author those yet, so tell the linguist when a task needs one. See motif_guide for suffix-prefix-slots or conditioned-allomorphs.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "The draft name from motif_start_proposal."
+        },
+        "entry": {
+          "type": "string",
+          "description": "Id of the existing entry."
+        },
+        "morph_type": {
+          "type": "string",
+          "description": "Id of the morph type of the new form."
+        },
+        "ws": {
+          "type": "string",
+          "description": "Writing system tag the form is written in."
+        },
+        "text": {
+          "type": "string",
+          "description": "The form\u0027s written text."
+        },
+        "environments": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Optional environment ids restricting the new form."
+        },
+        "is_abstract": {
+          "type": "boolean",
+          "description": "True for a root-and-pattern form with no fixed segments."
+        },
+        "sense": {
+          "type": "string",
+          "description": "Id of an existing sense of the entry to gloss. Needs gloss_ws and gloss_text."
+        },
+        "gloss_ws": {
+          "type": "string",
+          "description": "Writing system tag of the gloss."
+        },
+        "gloss_text": {
+          "type": "string",
+          "description": "The gloss text."
+        }
+      },
+      "required": [
+        "draft",
+        "entry",
+        "morph_type",
+        "ws",
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_add_feature_structure",
+    "description": "Gives an existing stem\u0027s grammatical info an empty feature structure to record features against. The grammatical info id comes from a sense\u0027s grammaticalInfo in motif_lexicon. It refuses when the stem already has one and cannot add feature values. See motif_guide(topic=feature-conditioned-slots) for the full encoding.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "The draft name from motif_start_proposal."
+        },
+        "msa": {
+          "type": "string",
+          "description": "Id of the stem\u0027s grammatical info."
+        }
+      },
+      "required": [
+        "draft",
+        "msa"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_add_feature_value",
+    "description": "Adds a feature specification to an existing feature structure in a Draft, optionally choosing a closed symbolic value. The value must belong to the named feature; duplicate specifications refuse. Copy ids from motif_grammar or an earlier composer result. Next: add remaining values, then finish the Proposal and run motif_trial.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "featStruc": {
+          "type": "string",
+          "description": "Feature structure id."
+        },
+        "feature": {
+          "type": "string",
+          "description": "Feature id."
+        },
+        "value": {
+          "type": "string",
+          "description": "Optional symbolic value id."
+        }
+      },
+      "required": [
+        "draft",
+        "featStruc",
+        "feature"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_add_phoneme",
+    "description": "Authors a phoneme and its grapheme codes in a Draft, using the first vernacular writing system. Representations must be nonempty, unique and free of environment syntax. No placeholder code remains. Optional feature/value pairs must belong to the phonological feature system. Returns created entityId values. Next: use the phoneme id in motif_add_natural_class or motif_add_environment.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "name": {
+          "type": "string",
+          "description": "Phoneme name."
+        },
+        "representations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Explicit grapheme codes, such as [\u0027a\u0027] or [\u0027sh\u0027, \u0027\u0161\u0027]."
+        },
+        "features": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "feature": {
+                "type": "string",
+                "description": "Closed feature id in the phonological feature system."
+              },
+              "value": {
+                "type": "string",
+                "description": "Symbolic value belonging to that feature."
+              }
+            },
+            "required": [
+              "feature",
+              "value"
+            ],
+            "additionalProperties": false
+          },
+          "description": "Closed phonological feature/value pairs; copy ids from motif_grammar."
+        }
+      },
+      "required": [
+        "draft",
+        "name",
+        "representations"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_add_natural_class",
+    "description": "Authors a natural class in a Draft. Supply exactly one nonempty list: members (phoneme ids) or features (closed phonological feature/value pairs). Its abbreviation must be unique and use letters, digits or hyphens. References may name objects authored earlier in this Draft. Returns the class entityId. Next: author its context with motif_add_environment using this class id.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "name": {
+          "type": "string",
+          "description": "Natural class name."
+        },
+        "abbreviation": {
+          "type": "string",
+          "description": "Unique environment abbreviation, such as V."
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Phoneme ids in the first set."
+        },
+        "features": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "feature": {
+                "type": "string",
+                "description": "Closed feature id in the phonological feature system."
+              },
+              "value": {
+                "type": "string",
+                "description": "Symbolic value belonging to that feature."
+              }
+            },
+            "required": [
+              "feature",
+              "value"
+            ],
+            "additionalProperties": false
+          },
+          "description": "Closed phonological feature/value pairs; copy ids from motif_grammar."
+        }
+      },
+      "required": [
+        "draft",
+        "name",
+        "abbreviation"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_add_environment",
+    "description": "Authors a phonological environment in a Draft from typed left and right contexts. Each item names one phoneme, naturalClass, boundary (\u0027word\u0027 or \u0027morpheme\u0027), or boundaryMarker id; word boundaries belong at the outer edge. A boundaryMarker is emitted as a literal code, and syntax codes such as # or \u002B cannot be emitted literally. Class references use unique abbreviations; phoneme references use explicit vernacular codes. Returns the environment entityId. Allomorph attachment requires a subsequent composer. Next: finish the Proposal, inspect motif_dry_run, and test contrasts with motif_trial.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "name": {
+          "type": "string",
+          "description": "Environment name."
+        },
+        "left": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "phoneme": {
+                "type": "string",
+                "description": "Phoneme id in the first phoneme set."
+              },
+              "naturalClass": {
+                "type": "string",
+                "description": "Natural class id with a unique abbreviation."
+              },
+              "boundary": {
+                "type": "string",
+                "description": "Word edge or declared morpheme boundary.",
+                "enum": [
+                  "word",
+                  "morpheme"
+                ]
+              },
+              "boundaryMarker": {
+                "type": "string",
+                "description": "Stored boundary-marker id. Rule contexts preserve its literal identity, even when its code is #."
+              }
+            },
+            "additionalProperties": false
+          },
+          "description": "Context items in linguistic order, from the outer left to outer right. Each names exactly one reference."
+        },
+        "right": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "phoneme": {
+                "type": "string",
+                "description": "Phoneme id in the first phoneme set."
+              },
+              "naturalClass": {
+                "type": "string",
+                "description": "Natural class id with a unique abbreviation."
+              },
+              "boundary": {
+                "type": "string",
+                "description": "Word edge or declared morpheme boundary.",
+                "enum": [
+                  "word",
+                  "morpheme"
+                ]
+              },
+              "boundaryMarker": {
+                "type": "string",
+                "description": "Stored boundary-marker id. Rule contexts preserve its literal identity, even when its code is #."
+              }
+            },
+            "additionalProperties": false
+          },
+          "description": "Context items in linguistic order, from the outer left to outer right. Each names exactly one reference."
+        }
+      },
+      "required": [
+        "draft",
+        "name",
+        "left",
+        "right"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_add_phonological_rule",
+    "description": "Stages one simple regular rewrite rule in a Draft. Input and output each contain at most one phoneme or natural class; an empty side means insertion or deletion. left and right are ordered lists of one to eight phoneme, class, boundary, or boundaryMarker contexts. A boundaryMarker id stays literal even when its code is #; use boundary=\u0027word\u0027 for the word edge. placement names the adjacent existing rule or rules. Alpha variables, metathesis and allomorph environments are unsupported. Returns created rule identities and operation details. Next: finish the Proposal, inspect motif_dry_run, and test parse and generate behavior with motif_trial.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "name": {
+          "type": "string",
+          "description": "Rule name."
+        },
+        "direction": {
+          "type": "string",
+          "description": "Rule scan direction or application mode.",
+          "enum": [
+            "left-to-right",
+            "right-to-left",
+            "simultaneous"
+          ]
+        },
+        "input": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "phoneme": {
+                "type": "string",
+                "description": "Phoneme id in the first phoneme set."
+              },
+              "naturalClass": {
+                "type": "string",
+                "description": "Natural class id owned by this project\u0027s phonological data."
+              }
+            },
+            "additionalProperties": false
+          },
+          "description": "Zero or one explicit phoneme or natural-class items.",
+          "maxItems": 1
+        },
+        "output": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "phoneme": {
+                "type": "string",
+                "description": "Phoneme id in the first phoneme set."
+              },
+              "naturalClass": {
+                "type": "string",
+                "description": "Natural class id owned by this project\u0027s phonological data."
+              }
+            },
+            "additionalProperties": false
+          },
+          "description": "Zero or one explicit phoneme or natural-class items.",
+          "maxItems": 1
+        },
+        "left": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "phoneme": {
+                "type": "string",
+                "description": "Phoneme id in the first phoneme set."
+              },
+              "naturalClass": {
+                "type": "string",
+                "description": "Natural class id with a unique abbreviation."
+              },
+              "boundary": {
+                "type": "string",
+                "description": "Word edge or declared morpheme boundary.",
+                "enum": [
+                  "word",
+                  "morpheme"
+                ]
+              },
+              "boundaryMarker": {
+                "type": "string",
+                "description": "Stored boundary-marker id. Rule contexts preserve its literal identity, even when its code is #."
+              }
+            },
+            "additionalProperties": false
+          },
+          "description": "Context items in linguistic order, from the outer left to outer right. Each names exactly one reference.",
+          "maxItems": 8
+        },
+        "right": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "phoneme": {
+                "type": "string",
+                "description": "Phoneme id in the first phoneme set."
+              },
+              "naturalClass": {
+                "type": "string",
+                "description": "Natural class id with a unique abbreviation."
+              },
+              "boundary": {
+                "type": "string",
+                "description": "Word edge or declared morpheme boundary.",
+                "enum": [
+                  "word",
+                  "morpheme"
+                ]
+              },
+              "boundaryMarker": {
+                "type": "string",
+                "description": "Stored boundary-marker id. Rule contexts preserve its literal identity, even when its code is #."
+              }
+            },
+            "additionalProperties": false
+          },
+          "description": "Context items in linguistic order, from the outer left to outer right. Each names exactly one reference.",
+          "maxItems": 8
+        },
+        "placement": {
+          "type": "object",
+          "properties": {
+            "after": {
+              "type": "string",
+              "description": "Adjacent existing rule before the insertion gap."
+            },
+            "before": {
+              "type": "string",
+              "description": "Adjacent existing rule after the insertion gap."
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "draft",
+        "name",
+        "direction",
+        "input",
+        "output",
+        "left",
+        "right"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_set_gloss",
+    "description": "Sets the gloss of an existing sense, in one writing system, in a Draft. Find the sense id in motif_lexicon. Setting a gloss that is already in the draft replaces the draft\u0027s earlier value.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "The draft name from motif_start_proposal."
+        },
+        "sense": {
+          "type": "string",
+          "description": "Id of the sense."
+        },
+        "ws": {
+          "type": "string",
+          "description": "Writing system tag of the gloss."
+        },
+        "text": {
+          "type": "string",
+          "description": "The new gloss."
+        }
+      },
+      "required": [
+        "draft",
+        "sense",
+        "ws",
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": true
+  },
+  {
+    "name": "motif_dry_run",
+    "description": "Checks that a finished Proposal\u0027s changes fit the project by applying them to a throwaway copy, and reports what each change did. It does not touch the real project. The Proposal must be finished with motif_finish_proposal first. If it takes longer than wait_seconds you get status \u0027running\u0027 and a job id: call again with that job to keep waiting.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "proposal": {
+          "type": "string",
+          "description": "The proposal id."
+        },
+        "job": {
+          "type": "string",
+          "description": "A job id from an earlier \u0027running\u0027 result, to keep waiting for it."
+        },
+        "wait_seconds": {
+          "type": "integer",
+          "description": "How long to wait for the result. Default 40.",
+          "minimum": 1,
+          "maximum": 300
+        },
+        "detail": {
+          "type": "string",
+          "description": "\u0027concise\u0027 (default) drops empty fields and long lists; \u0027detailed\u0027 returns everything.",
+          "enum": [
+            "concise",
+            "detailed"
+          ]
+        },
+        "limit": {
+          "type": "integer",
+          "description": "The most list items to return in concise mode. Default 25.",
+          "minimum": 1,
+          "maximum": 200
+        }
+      },
+      "required": [
+        "proposal"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_trial",
+    "description": "Tests a Proposal on sample words: Motif applies the draft to a throwaway copy and parses the words you name, with and without the changes, and reports which words now parse, which stopped parsing, and what changed. Works on a draft or a finished Proposal. Always include words that should NOT parse so a rule that is too broad shows up. Omit words to use the words the Proposal changes. If it takes longer than wait_seconds you get \u0027running\u0027 and a job id: call again with that job. See motif_guide(topic=workflow) for choosing positive, contrasting and negative forms.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "proposal": {
+          "type": "string",
+          "description": "The proposal id."
+        },
+        "words": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Words to parse. Omit to use the words the Proposal affects."
+        },
+        "job": {
+          "type": "string",
+          "description": "A job id from an earlier \u0027running\u0027 result, to keep waiting for it."
+        },
+        "wait_seconds": {
+          "type": "integer",
+          "description": "How long to wait for the result. Default 40.",
+          "minimum": 1,
+          "maximum": 300
+        },
+        "detail": {
+          "type": "string",
+          "description": "\u0027concise\u0027 (default) drops empty fields and long lists; \u0027detailed\u0027 returns everything.",
+          "enum": [
+            "concise",
+            "detailed"
+          ]
+        },
+        "limit": {
+          "type": "integer",
+          "description": "The most list items to return in concise mode. Default 25.",
+          "minimum": 1,
+          "maximum": 200
+        }
+      },
+      "required": [
+        "proposal"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_try_word",
+    "description": "Parses one word with the project\u0027s current grammar and shows how the parser handled it: the analyses it found, or where each attempt failed. This is the project as it is now, not a draft. Use it to learn why a word fails before you write a change. Needs the parser installed.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "word": {
+          "type": "string",
+          "description": "The word to parse."
+        },
+        "detail": {
+          "type": "string",
+          "description": "\u0027concise\u0027 (default) drops empty fields and long lists; \u0027detailed\u0027 returns everything.",
+          "enum": [
+            "concise",
+            "detailed"
+          ]
+        },
+        "limit": {
+          "type": "integer",
+          "description": "The most list items to return in concise mode. Default 25.",
+          "minimum": 1,
+          "maximum": 200
+        }
+      },
+      "required": [
+        "word"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": true
+  },
+  {
+    "name": "motif_finish_proposal",
+    "description": "Finishes a Draft so it becomes a Proposal the linguist can review in Motif\u0027s window. Do this before a dry run or trial, which require a finished Proposal. Finishing does not change the project; the linguist decides whether to apply it. After finishing, the draft is closed: further edits start from a copy.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "The draft name."
+        },
+        "expected_revision": {
+          "type": "string",
+          "description": "The revision you last read, to refuse if the draft changed."
+        }
+      },
+      "required": [
+        "draft"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_proposals",
+    "description": "Lists every Proposal in the project with its status (proposed, deferred, rejected, applied, superseded) and label; or, with proposal, shows one Proposal\u0027s operations in full. Use it to see what exists before starting a new one and to see what the linguist did with earlier ones.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "proposal": {
+          "type": "string",
+          "description": "A proposal id to show in full. Omit to list."
+        },
+        "detail": {
+          "type": "string",
+          "description": "\u0027concise\u0027 (default) drops empty fields and long lists; \u0027detailed\u0027 returns everything.",
+          "enum": [
+            "concise",
+            "detailed"
+          ]
+        },
+        "limit": {
+          "type": "integer",
+          "description": "The most list items to return in concise mode. Default 25.",
+          "minimum": 1,
+          "maximum": 200
+        }
+      },
+      "additionalProperties": false
+    },
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true
+  },
+  {
+    "name": "motif_activity",
+    "description": "Tells you what you have already done in this project: your tool calls (counts, errors, the most recent ones), the Proposals that exist and their states, and the jobs you started and how they ended. Call it when you resume work or lose track of where you were.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true
+  }
+]

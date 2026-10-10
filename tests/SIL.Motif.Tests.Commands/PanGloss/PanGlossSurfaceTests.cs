@@ -16,7 +16,8 @@ public sealed class PanGlossSurfaceTests
         using var fakeDescription = await SurfaceContract.Describe(FakeParser.ExecutablePath);
         Assert.Equal(1, realDescription.RootElement.GetProperty("schema_version").GetInt32());
         var commands = SurfaceContract.Commands(realDescription);
-        SurfaceContract.AssertRequestsMatch(commands);
+        var realHasFacts = SurfaceContract.HasFactsIdentity(realDescription.RootElement);
+        SurfaceContract.AssertRequestsMatch(commands, includeFacts: realHasFacts);
         SurfaceContract.AssertTraceCommandIsDeclared(commands);
         Assert.DoesNotContain("compare", commands.Keys);
         Assert.DoesNotContain("golden-diff", commands.Keys);
@@ -26,6 +27,7 @@ public sealed class PanGlossSurfaceTests
         SurfaceContract.AssertTraceCommandIsDeclared(fakeCommands);
         foreach (var fake in fakeCommands)
         {
+            if (fake.Key == "facts" && !realHasFacts) continue;
             Assert.True(commands.TryGetValue(fake.Key, out var real), $"FakePanGloss invented '{fake.Key}'.");
             Assert.False(real.GetProperty("hidden").GetBoolean());
             Assert.Equal(real.GetProperty("positionals").EnumerateArray()

@@ -17,6 +17,7 @@
     <ProjectReference Include="..\SIL.Motif.Model\SIL.Motif.Model.csproj" />
     <ProjectReference Include="..\SIL.Motif.Projection\SIL.Motif.Projection.csproj" />
     <ProjectReference Include="..\SIL.Motif.Help\SIL.Motif.Help.csproj" />
+    <ProjectReference Include="..\SIL.Motif.Mcp\SIL.Motif.Mcp.csproj" />
   </ItemGroup>
 
   <ItemGroup>

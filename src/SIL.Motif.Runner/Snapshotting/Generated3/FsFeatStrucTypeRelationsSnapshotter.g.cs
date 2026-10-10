@@ -25,7 +25,7 @@ public static class FsFeatStrucTypeRelationsSnapshotter
         var canonicalId = CanonicalId.FromGuid(fsFeatStrucType.Guid);
         var fields = new Dictionary<string, IReadOnlyDictionary<string, string>>();
 
-        AddIfPopulated(fields, SnapshotFields.FsFeatStrucTypeFeatures, ReferenceCollectionFieldSnapshotting.ReadAlternatives(fsFeatStrucType.FeaturesRS));
+        AddIfPopulated(fields, SnapshotFields.FsFeatStrucTypeFeatures, ReferenceSequenceFieldSnapshotting.ReadAlternatives(fsFeatStrucType.FeaturesRS));
 
         return new ObjectSnapshot(canonicalId, fields);
     }

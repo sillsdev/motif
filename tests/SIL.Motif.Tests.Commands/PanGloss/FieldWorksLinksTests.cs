@@ -190,6 +190,7 @@ public sealed class FieldWorksLinksTests : IDisposable
                 case "phoneme":
                     if (phonology.PhonemeSetsOS.Count == 0)
                         phonology.PhonemeSetsOS.Add(services.GetInstance<IPhPhonemeSetFactory>().Create());
+                    OwnedBoundaryMarkerFixture.EnsureReservedMarkers(_cache, phonology.PhonemeSetsOS[0]);
                     var phoneme = services.GetInstance<IPhPhonemeFactory>().Create();
                     phonology.PhonemeSetsOS[0].PhonemesOC.Add(phoneme);
                     found = phoneme;

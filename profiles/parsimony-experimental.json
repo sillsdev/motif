@@ -1,0 +1,33 @@
+{
+  "name": "parsimony-experimental",
+  "description": "Experimental Parsimony evidence and Draft actions for morphotactics, review, cleanup, sound rules and natural classes.",
+  "instructions": "This profile exposes experimental Parsimony evidence and Draft actions, including creating category-owned affix slots and alternative templates, editing existing slots, template order, inflectional affix membership, allomorph conditions and alternate-form order. It can disable one confirmed duplicate ad hoc prohibition, retire a duplicate affix alternate form, author a simple ordered sound rule, and create, edit or selectively relink natural classes. It does not provide Apply or human-confirmed negative writes; only a person can Apply a Proposal. A pending keep does not suppress findings; read the Active, Suppressed and history views to see the captured judgment state and evidence freshness.",
+  "defaultDetail": "detailed",
+  "tools": [
+    { "tool": "motif_parsimony_measures" },
+    { "tool": "motif_run_parsimony_measure" },
+    { "tool": "motif_parsimony_report" },
+    { "tool": "motif_retirement_review" },
+    { "tool": "motif_parsimony_view" },
+    { "tool": "motif_parsimony_record_types" },
+    { "tool": "motif_dispose_parsimony_finding" },
+    { "tool": "motif_revise_parsimony_disposition" },
+    { "tool": "motif_retract_parsimony_disposition" },
+    { "tool": "motif_edit_adhoc_prohibition" },
+    { "tool": "motif_edit_affix_slot" },
+    { "tool": "motif_add_affix_slot" },
+    { "tool": "motif_add_affix_template" },
+    { "tool": "motif_edit_affix_template" },
+    { "tool": "motif_edit_inflectional_affix" },
+    { "tool": "motif_edit_allomorph_condition" },
+    { "tool": "motif_order_allomorphs" },
+    { "tool": "motif_start_proposal" },
+    { "tool": "motif_retire_allomorph" },
+    { "tool": "motif_add_phonological_rule" },
+    { "tool": "motif_add_natural_class" },
+    { "tool": "motif_edit_natural_class" },
+    { "tool": "motif_relink_natural_class" },
+    { "tool": "motif_finish_proposal" },
+    { "tool": "motif_dry_run" }
+  ]
+}

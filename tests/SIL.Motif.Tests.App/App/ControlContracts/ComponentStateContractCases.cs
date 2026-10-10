@@ -302,6 +302,12 @@ internal static class ComponentStateContractCases
         yield return new(warningSummaryPressed, "pressed", () => Alone(Press("warningSummary")), StateStimulus.Press,
             StatePart.Face, ContentPresenter.BackgroundProperty, "Intent.Surface.Subtle");
 
+        const string parsimonyRowHover = "Button.parsimonyRow:pointerover" + face;
+        yield return new(parsimonyRowHover, "hover", () => Alone(Press("parsimonyRow")), StateStimulus.Pointer,
+            StatePart.Face, ContentPresenter.BackgroundProperty, "Intent.Surface.Subtle");
+        yield return new("Button.parsimonyRow.selected", "selected", () => Alone(Press("parsimonyRow", "selected")),
+            StateStimulus.None, StatePart.Self, Button.BackgroundProperty, "Intent.Surface.Subtle");
+
         yield return new(":is(Border).wordStrip:pointerover", "hover", () => Alone(Strip()), StateStimulus.Pointer,
             StatePart.Self, Border.BackgroundProperty, "Intent.Surface.Hover");
         yield return new(":is(Border).wordStrip:pointerover", "hover", () => Alone(Strip()), StateStimulus.Pointer,

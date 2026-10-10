@@ -39,11 +39,29 @@ public static partial class SnapshotFields
     /// <summary>A <c>WfiWordform</c>'s owned analyses.</summary>
     public const string WfiWordformAnalyses = "analysis/wfiWordform/analyses";
 
+    /// <summary>A <c>WfiMorphBundle</c>'s authoritative <c>Morph</c> reference.</summary>
+    public const string WfiMorphBundleMorph = "analysis/wfiMorphBundle/morph";
+
+    /// <summary>A <c>WfiMorphBundle</c>'s copied multilingual <c>Form</c> text.</summary>
+    public const string WfiMorphBundleForm = "analysis/wfiMorphBundle/form";
+
+    /// <summary>The full live incoming-reference census bound to allomorph retargeting.</summary>
+    public const string AllomorphRetargetCensus = "retirement/allomorph/referenceCensus";
+
+    /// <summary>The complete owned object graph removed by redundant zero-affix retirement.</summary>
+    public const string RetireRedundantZeroAffixGraph = "retirement/redundantZeroAffix/graph";
+
+    /// <summary>The semantic context read by a retained-form retarget operation.</summary>
+    public const string AllomorphRetargetContext = "retirement/allomorph/retargetContext";
+
+    /// <summary>The ordered alternate forms owned by a lexical entry.</summary>
+    public const string LexEntryAlternateForms = "lexical/lexEntry/alternateForms";
+
     /// <summary>
     /// The Canonical Semantic Snapshot / expected-effect projection shape version, recorded on
     /// <see cref="SIL.Motif.Model.DryRun.BoundDryRunAnchor.ProjectionVersion"/>. Bump this
     /// only when the snapshot/effect shape changes in a way that could alter a digest for otherwise
     /// unchanged content.
     /// </summary>
-    public const string ProjectionVersion = "1";
+    public const string ProjectionVersion = "4";
 }

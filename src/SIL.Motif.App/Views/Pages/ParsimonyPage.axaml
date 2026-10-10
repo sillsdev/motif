@@ -1,0 +1,91 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:sys="clr-namespace:System;assembly=System.Runtime"
+             xmlns:app="clr-namespace:SIL.Motif.App"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             x:Class="SIL.Motif.App.Views.ParsimonyPage"
+             x:DataType="vm:ParsimonyPageModel">
+  <Grid RowDefinitions="Auto,*" Classes="parsimonyPanel">
+    <!-- The page reads the stored Report when the project opens and never starts a check, so it says what it has. -->
+    <StackPanel Grid.Row="0" Spacing="{DynamicResource Intent.Space.Minimal}">
+      <Border Classes="card parsimonyNotice" IsVisible="{Binding HasMessage}" AutomationProperties.Name="Parsimony state">
+        <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+          <views:CopyableTextBlock Classes="parsimonyMessage" Text="{Binding Message}" TextWrapping="Wrap" />
+          <views:CopyableTextBlock Classes="muted" Text="{Binding NextStep}" TextWrapping="Wrap" IsVisible="{Binding HasNextStep}" />
+        </StackPanel>
+      </Border>
+      <Border Classes="parsimonyBanner" IsVisible="{Binding HasHistorical}" AutomationProperties.Name="Measured from an earlier Baseline">
+        <views:CopyableTextBlock TextWrapping="Wrap"
+                                 Text="This Report was measured from an earlier Baseline. Check again to see findings for the current one." />
+      </Border>
+      <Border Classes="parsimonyBanner" IsVisible="{Binding HasIncomplete}" AutomationProperties.Name="Incomplete Report">
+        <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+          <views:CopyableTextBlock TextWrapping="Wrap" FontWeight="SemiBold" Text="{Binding MissingInputsText}" />
+          <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding IncompleteNote}" />
+        </StackPanel>
+      </Border>
+    </StackPanel>
+
+    <Grid Grid.Row="1" ColumnDefinitions="3*,2*" IsVisible="{Binding IsListed}">
+      <ScrollViewer Grid.Column="0">
+        <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+          <views:CopyableTextBlock Classes="muted" Text="{Binding AxisSummary}"
+                                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParsimonySummary}" />
+          <ItemsControl x:Name="ParsimonyRowsItems" ItemsSource="{Binding Rows}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:ParsimonyListRow">
+                <StackPanel>
+                  <StackPanel Classes="parsimonyGroup" IsVisible="{Binding IsHeader}">
+                    <views:CopyableTextBlock Classes="parsimonyGroupTitle" Text="{Binding Title}" TextWrapping="Wrap" />
+                    <views:CopyableTextBlock Classes="muted" Text="{Binding Detail}" />
+                  </StackPanel>
+                  <Button Classes="parsimonyRow" Classes.selected="{Binding IsSelected}" IsVisible="{Binding !IsHeader}"
+                          Command="{Binding SelectCommand}" CommandParameter="{Binding Link}"
+                          AutomationProperties.Name="{Binding Description}"
+                          AutomationProperties.AutomationId="{Binding AutomationId}">
+                    <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+                      <views:CopyableTextBlock Classes="parsimonyGroupTitle" Text="{Binding Items}" TextWrapping="Wrap" />
+                      <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Minimal}">
+                        <views:CopyableTextBlock Text="{Binding Description}" />
+                        <views:CopyableTextBlock Classes="parsimonyDisposition" Text="{Binding Disposition}" />
+                      </StackPanel>
+                    </StackPanel>
+                  </Button>
+                </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </ScrollViewer>
+
+      <StackPanel Grid.Column="1" Classes="parsimonyDetailColumn">
+        <views:CopyableTextBlock Classes="parsimonyMessage" Text="{Binding SelectionMessage}" TextWrapping="Wrap"
+                                 IsVisible="{Binding HasSelectionMessage}" />
+        <Border Classes="card parsimonyDetail" IsVisible="{Binding HasEvidence}" AutomationProperties.Name="Finding evidence"
+                AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParsimonyEvidence}">
+          <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+            <views:CopyableTextBlock Classes="parsimonyGroupTitle" Text="{Binding Evidence.Title}" TextWrapping="Wrap" />
+            <ItemsControl x:Name="ParsimonyEvidenceDetailsItems" ItemsSource="{Binding Evidence.Details}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:InspectorDetail">
+                  <StackPanel>
+                    <views:CopyableTextBlock Classes="muted" Text="{Binding Label}" />
+                    <views:CopyableTextBlock Text="{Binding Value}" TextWrapping="Wrap" />
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <ItemsControl x:Name="ParsimonyEvidenceLimitationsItems" ItemsSource="{Binding Evidence.Limitations}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="sys:String">
+                  <views:CopyableTextBlock Text="{Binding}" TextWrapping="Wrap" />
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </Grid>
+  </Grid>
+</UserControl>

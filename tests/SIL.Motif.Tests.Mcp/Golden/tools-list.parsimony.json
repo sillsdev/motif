@@ -1,0 +1,574 @@
+[
+  {
+    "name": "motif_overview",
+    "description": "Start here. Returns how well the project\u0027s grammar currently analyzes its texts: how many words get an analysis, the accuracy against the words the linguist has approved, and which words to look at first. Call it once at the beginning and again after the linguist applies a Proposal. Returns a refusal with Next: when Motif has not yet measured the project.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "detail": {
+          "type": "string",
+          "description": "\u0027concise\u0027 (default) drops empty fields and long lists; \u0027detailed\u0027 returns everything.",
+          "enum": [
+            "concise",
+            "detailed"
+          ]
+        },
+        "limit": {
+          "type": "integer",
+          "description": "The most list items to return in concise mode. Default 25.",
+          "minimum": 1,
+          "maximum": 200
+        }
+      },
+      "additionalProperties": false
+    },
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true
+  },
+  {
+    "name": "motif_grammar",
+    "description": "Reads the project\u0027s grammar. With no kind it returns counts of everything the grammar holds. With a kind (categories, phonemes, natural_classes, environments, phonological_rules, features, phonological_features, inflection_classes, templates, strata, morph_types) it lists those objects with their ids, ready to name in a change. Narrow with query (matches the name or abbreviation). Ids are 22 characters; copy them exactly. To read affixes and stems, use motif_lexicon. For encoding help, use motif_guide with the matching topic.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "What to list. Omit for counts of every kind.",
+          "enum": [
+            "categories",
+            "phonemes",
+            "natural_classes",
+            "environments",
+            "phonological_rules",
+            "features",
+            "phonological_features",
+            "inflection_classes",
+            "templates",
+            "strata",
+            "morph_types"
+          ]
+        },
+        "query": {
+          "type": "string",
+          "description": "Only objects whose name or abbreviation contains this text."
+        },
+        "offset": {
+          "type": "integer",
+          "description": "Items to skip, for the next page.",
+          "minimum": 0,
+          "maximum": 100000
+        },
+        "detail": {
+          "type": "string",
+          "description": "\u0027concise\u0027 (default) drops empty fields and long lists; \u0027detailed\u0027 returns everything.",
+          "enum": [
+            "concise",
+            "detailed"
+          ]
+        },
+        "limit": {
+          "type": "integer",
+          "description": "The most list items to return in concise mode. Default 25.",
+          "minimum": 1,
+          "maximum": 200
+        }
+      },
+      "additionalProperties": false
+    },
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true
+  },
+  {
+    "name": "motif_start_proposal",
+    "description": "Starts a new Draft Proposal: a named container for one small, related set of changes. Give it a short draft name (letters, digits and hyphens), a one-line label a person reads in Motif\u0027s window, such as \u0027Add the plural suffix -s\u0027, and a comment explaining why the change is right, which the linguist reads while deciding. Keep each Proposal to one concept. Returns the draft name and the proposal id; use the draft name with the motif_add_* tools and the proposal id with motif_trial.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Short draft name, for example \u0027plural-s\u0027."
+        },
+        "label": {
+          "type": "string",
+          "description": "A one-line description a reviewer reads in Motif\u0027s window."
+        },
+        "comment": {
+          "type": "string",
+          "description": "Why this change is right: the evidence, in a few sentences."
+        }
+      },
+      "required": [
+        "draft",
+        "label",
+        "comment"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_record_parsimony_disposition",
+    "description": "Stages an agent-attributed keep, fix, ask or defer decision for one exact Parsimony finding in a Draft. Use its existing Notebook record type and the finding\u0027s typed subject and evidence digest. A reason is optional; ask requires a question. This tool only stages the Proposal; only a person can Apply it, and a pending keep does not suppress findings. Next: finish the Draft and inspect it with motif_dry_run.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "The draft name from motif_start_proposal."
+        },
+        "recordTypeId": {
+          "type": "string",
+          "description": "Id of an existing possibility in the Notebook record type list."
+        },
+        "measureId": {
+          "type": "string",
+          "description": "The registered Parsimony measure id."
+        },
+        "subject": {
+          "description": "One closed project, object, relationship or computed-group identity.",
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "description": "Subject discriminator.",
+                  "enum": [
+                    "object"
+                  ]
+                },
+                "object": {
+                  "type": "object",
+                  "properties": {
+                    "class": {
+                      "type": "string",
+                      "description": "Exact FieldWorks model class."
+                    },
+                    "id": {
+                      "type": "string",
+                      "description": "Portable identity of the model object."
+                    },
+                    "owningEntryId": {
+                      "type": "string",
+                      "description": "Owning entry identity, required for an MSA."
+                    }
+                  },
+                  "required": [
+                    "class",
+                    "id"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "kind",
+                "object"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "description": "Subject discriminator.",
+                  "enum": [
+                    "project"
+                  ]
+                },
+                "id": {
+                  "type": "string",
+                  "description": "Project identity."
+                }
+              },
+              "required": [
+                "kind",
+                "id"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "description": "Subject discriminator.",
+                  "enum": [
+                    "edge"
+                  ]
+                },
+                "role": {
+                  "type": "string",
+                  "description": "Directed relationship role.",
+                  "enum": [
+                    "membership",
+                    "precedence",
+                    "rhs",
+                    "left-context",
+                    "right-context",
+                    "constraint-use"
+                  ]
+                },
+                "owner": {
+                  "type": "object",
+                  "properties": {
+                    "class": {
+                      "type": "string",
+                      "description": "Exact FieldWorks model class."
+                    },
+                    "id": {
+                      "type": "string",
+                      "description": "Portable identity of the model object."
+                    },
+                    "owningEntryId": {
+                      "type": "string",
+                      "description": "Owning entry identity, required for an MSA."
+                    }
+                  },
+                  "required": [
+                    "class",
+                    "id"
+                  ],
+                  "additionalProperties": false
+                },
+                "from": {
+                  "type": "object",
+                  "properties": {
+                    "class": {
+                      "type": "string",
+                      "description": "Exact FieldWorks model class."
+                    },
+                    "id": {
+                      "type": "string",
+                      "description": "Portable identity of the model object."
+                    },
+                    "owningEntryId": {
+                      "type": "string",
+                      "description": "Owning entry identity, required for an MSA."
+                    }
+                  },
+                  "required": [
+                    "class",
+                    "id"
+                  ],
+                  "additionalProperties": false
+                },
+                "to": {
+                  "type": "object",
+                  "properties": {
+                    "class": {
+                      "type": "string",
+                      "description": "Exact FieldWorks model class."
+                    },
+                    "id": {
+                      "type": "string",
+                      "description": "Portable identity of the model object."
+                    },
+                    "owningEntryId": {
+                      "type": "string",
+                      "description": "Owning entry identity, required for an MSA."
+                    }
+                  },
+                  "required": [
+                    "class",
+                    "id"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "kind",
+                "role",
+                "owner",
+                "from",
+                "to"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "description": "Subject discriminator.",
+                  "enum": [
+                    "computed-group"
+                  ]
+                },
+                "measureId": {
+                  "type": "string",
+                  "description": "Measure defining the group."
+                },
+                "role": {
+                  "type": "string",
+                  "description": "Computed group role.",
+                  "enum": [
+                    "alternation-family",
+                    "duplicate-pair",
+                    "adhoc-cluster",
+                    "adhoc-slot-order"
+                  ]
+                },
+                "members": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "class": {
+                        "type": "string",
+                        "description": "Exact FieldWorks model class."
+                      },
+                      "id": {
+                        "type": "string",
+                        "description": "Portable identity of the model object."
+                      },
+                      "owningEntryId": {
+                        "type": "string",
+                        "description": "Owning entry identity, required for an MSA."
+                      }
+                    },
+                    "required": [
+                      "class",
+                      "id"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "description": "Exact typed group members."
+                }
+              },
+              "required": [
+                "kind",
+                "measureId",
+                "role",
+                "members"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "disposition": {
+          "type": "string",
+          "description": "The proposed decision.",
+          "enum": [
+            "fix",
+            "keep",
+            "ask",
+            "defer"
+          ]
+        },
+        "evidenceDigest": {
+          "type": "string",
+          "description": "Canonical sha256 digest from the exact finding."
+        },
+        "evidenceContract": {
+          "type": "string",
+          "description": "Versioned evidence contract for the finding."
+        },
+        "subjectCaption": {
+          "type": "string",
+          "description": "Readable name for the exact finding subject."
+        },
+        "measureCaption": {
+          "type": "string",
+          "description": "Readable name for the Parsimony measure."
+        },
+        "reason": {
+          "type": "string",
+          "description": "Optional explanation, stored with the readable record."
+        },
+        "question": {
+          "type": "string",
+          "description": "Required only when disposition is ask."
+        },
+        "reportId": {
+          "type": "string",
+          "description": "Optional source Parsimony Report id."
+        }
+      },
+      "required": [
+        "draft",
+        "recordTypeId",
+        "measureId",
+        "subject",
+        "disposition",
+        "evidenceDigest",
+        "evidenceContract",
+        "subjectCaption",
+        "measureCaption"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_parsimony_record_types",
+    "description": "Lists the saved Notebook record types and their portable ids. Choose a type by its id, never by its English name. Use the selected id with motif_dispose_parsimony_finding.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true
+  },
+  {
+    "name": "motif_dispose_parsimony_finding",
+    "description": "Stages a keep, fix, ask or defer decision from one exact finding in a stored Parsimony Report. Motif derives the subject, evidence digest, evidence contract and captions from that finding. Choose record_type_id from motif_parsimony_record_types. A reason is optional; ask requires a question. This only stages a Draft Proposal: only a person can Apply it, and a pending keep does not suppress findings.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "report_id": {
+          "type": "string",
+          "description": "Id of a stored Parsimony Report from this project."
+        },
+        "finding_id": {
+          "type": "string",
+          "description": "Exact finding id returned by that Report."
+        },
+        "disposition": {
+          "type": "string",
+          "description": "The proposed decision.",
+          "enum": [
+            "fix",
+            "keep",
+            "ask",
+            "defer"
+          ]
+        },
+        "record_type_id": {
+          "type": "string",
+          "description": "Portable id from motif_parsimony_record_types."
+        },
+        "draft": {
+          "type": "string",
+          "description": "Draft name from motif_start_proposal."
+        },
+        "reason": {
+          "type": "string",
+          "description": "Optional explanation, stored with the readable record."
+        },
+        "question": {
+          "type": "string",
+          "description": "Required only when disposition is ask."
+        }
+      },
+      "required": [
+        "report_id",
+        "finding_id",
+        "disposition",
+        "record_type_id",
+        "draft"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_dry_run",
+    "description": "Checks that a finished Proposal\u0027s changes fit the project by applying them to a throwaway copy, and reports what each change did. It does not touch the real project. The Proposal must be finished with motif_finish_proposal first. If it takes longer than wait_seconds you get status \u0027running\u0027 and a job id: call again with that job to keep waiting.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "proposal": {
+          "type": "string",
+          "description": "The proposal id."
+        },
+        "job": {
+          "type": "string",
+          "description": "A job id from an earlier \u0027running\u0027 result, to keep waiting for it."
+        },
+        "wait_seconds": {
+          "type": "integer",
+          "description": "How long to wait for the result. Default 40.",
+          "minimum": 1,
+          "maximum": 300
+        },
+        "detail": {
+          "type": "string",
+          "description": "\u0027concise\u0027 (default) drops empty fields and long lists; \u0027detailed\u0027 returns everything.",
+          "enum": [
+            "concise",
+            "detailed"
+          ]
+        },
+        "limit": {
+          "type": "integer",
+          "description": "The most list items to return in concise mode. Default 25.",
+          "minimum": 1,
+          "maximum": 200
+        }
+      },
+      "required": [
+        "proposal"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_finish_proposal",
+    "description": "Finishes a Draft so it becomes a Proposal the linguist can review in Motif\u0027s window. Do this before a dry run or trial, which require a finished Proposal. Finishing does not change the project; the linguist decides whether to apply it. After finishing, the draft is closed: further edits start from a copy.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "The draft name."
+        },
+        "expected_revision": {
+          "type": "string",
+          "description": "The revision you last read, to refuse if the draft changed."
+        }
+      },
+      "required": [
+        "draft"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_proposals",
+    "description": "Lists every Proposal in the project with its status (proposed, deferred, rejected, applied, superseded) and label; or, with proposal, shows one Proposal\u0027s operations in full. Use it to see what exists before starting a new one and to see what the linguist did with earlier ones.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "proposal": {
+          "type": "string",
+          "description": "A proposal id to show in full. Omit to list."
+        },
+        "detail": {
+          "type": "string",
+          "description": "\u0027concise\u0027 (default) drops empty fields and long lists; \u0027detailed\u0027 returns everything.",
+          "enum": [
+            "concise",
+            "detailed"
+          ]
+        },
+        "limit": {
+          "type": "integer",
+          "description": "The most list items to return in concise mode. Default 25.",
+          "minimum": 1,
+          "maximum": 200
+        }
+      },
+      "additionalProperties": false
+    },
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true
+  }
+]

@@ -91,10 +91,9 @@ public class ManifestTsvParserTests
     }
 
     [Fact]
-    public void Parse_RealManifest_Has495InScopeRows()
+    public void Parse_RealManifest_Has500InScopeRows()
     {
-        // 495, not 494: WfiWordform.SpellingStatus counts as in-scope in the current manifest.
         var rows = ManifestTsvParser.Parse(RepoPaths.DefaultManifestPath());
-        Assert.Equal(495, rows.Count(r => r.Scope == "in"));
+        Assert.Equal(500, rows.Count(r => r.Scope == "in"));
     }
 }

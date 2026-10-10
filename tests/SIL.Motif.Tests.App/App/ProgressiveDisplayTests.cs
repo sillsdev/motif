@@ -16,6 +16,7 @@ using SIL.Motif.App.Views;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Contract.Retirement;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Tests.App.Walkthrough;
 using PresentationWordRow = SIL.Motif.App.Controls.WordPresentation.WordRow;
@@ -41,9 +42,9 @@ public sealed class ProgressiveDisplayTests
     private static readonly string[] ViewNames =
     [
         "ComparePanel", "DiagnosticPanel", "DifferencePanel", "ExpertTracePanel", "GrammarPanel", "HandoffPanel",
-        "Inspector", "MainWindow", "MiniMatrix", "Pages/OverviewPage", "Pages/TimingPage",
+        "Inspector", "MainWindow", "MiniMatrix", "Pages/OverviewPage", "Pages/ParsimonyPage", "Pages/TimingPage",
         "RefusalBlock", "ResultsInTextPanel", "ReviewWordRow",
-        "ReviewPanel", "SelectionPanel", "SettingsPopupView", "SetupDialog", "StatisticsPanel", "TextWordsPanel", "TextsListsPanel",
+        "RetirementProposalReviewPanel", "ReviewPanel", "SelectionPanel", "SettingsPopupView", "SetupDialog", "StatisticsPanel", "TextWordsPanel", "TextsListsPanel",
         "TraceAnalysesView", "TryWordPanel", "WordCard", "WordDispositionButtons",
     ];
 
@@ -951,6 +952,24 @@ public sealed class ProgressiveDisplayTests
             $"{wordRows.MaximumDepth}");
     }
 
+    private static RetirementProposalReviewProjection EmptyRetirementReview()
+    {
+        const string digest = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        var dryRun = new DryRunProjection("proposal/one", "intent/one", "Baseline", [], "effects/one", "footprint/one");
+        var opinions = new RetirementOpinionCounts(0, 0, 0, 0);
+        var statistics = new RetirementReviewStatistics(opinions, opinions, opinions, 0,
+            [new(true, true, 0, 0), new(true, false, 0, 0),
+                new(false, true, 0, 0), new(false, false, 0, 0)], 0, 0, 0, 0,
+            new("finding/one", 0, 0, 0, 0, digest, digest, false), digest);
+        return new RetirementProposalReviewProjection("proposal/one", "intent/one", dryRun, statistics,
+            [new("rule", "New rule and sound class", [], []),
+                new("bundle", "Analyses and bundle text", [], []),
+                new("other-references", "Other references", [], []),
+                new("retired-form", "Deleted forms", [], [])], [],
+            new("finding/one", 0, 0, 0, 0, digest, digest, false, null),
+            new(0, 0, 0, 0, []), []);
+    }
+
     private static Control Build(string name, WorkspaceShellViewModel workspace, MainWindow sample)
     {
         var texts = workspace.PageModel<TextsPageModel>();
@@ -975,6 +994,7 @@ public sealed class ProgressiveDisplayTests
             "SettingsPopupView" => BuildSettingsPopup(workspace),
             "MiniMatrix" => new MiniMatrix { DataContext = workspace.Assess.Compare },
             "Pages/OverviewPage" => new OverviewPage(workspace.PageModel<OverviewPageModel>()),
+            "Pages/ParsimonyPage" => new ParsimonyPage(workspace.PageModel<ParsimonyPageModel>()),
             "Pages/TimingPage" => new TimingPage(workspace.PageModel<TimingPageModel>()),
             "ReviewWordRow" => new PresentationWordRow
             {
@@ -987,6 +1007,10 @@ public sealed class ProgressiveDisplayTests
             },
             "RefusalBlock" => new RefusalBlock { DataContext = CompileRefusal(1) },
             "ResultsInTextPanel" => new ResultsInTextPanel(texts.ResultsInText),
+            "RetirementProposalReviewPanel" => new RetirementProposalReviewPanel
+            {
+                DataContext = new RetirementProposalReviewViewModel(EmptyRetirementReview()),
+            },
             "ReviewPanel" => new ReviewPanel(workspace.PageModel<ReviewPageModel>()),
             "SelectionPanel" => new SelectionPanel(workspace.Selection, texts.Words),
             "SetupDialog" => new SetupDialog { DataContext = workspace.Context.Setup },

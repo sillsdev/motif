@@ -9,10 +9,11 @@ using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Worker.Store;
+using SIL.Motif.Host.Parsimony;
 
 namespace SIL.Motif.Commands;
 
-/// <summary>The <c>report</c> verb: computing, storing and rendering one report kind over one Assessment.</summary>
+/// <summary>The <c>report</c> verb: computing, storing and rendering one report kind from typed evidence.</summary>
 /// <remarks>
 /// <para>
 /// <see cref="Catalog"/> is the whole registry: adding a kind means registering another
@@ -34,6 +35,7 @@ public static class ReportCommands
         new CoverageReportProducer(),
         new CorrectnessReportProducer(),
         new DifferenceReportProducer(),
+        new ParsimonyReportProducer(),
     });
 
     /// <summary>Every report kind that may be asked for, as <c>report --list-kinds</c> prints it.</summary>
@@ -42,7 +44,7 @@ public static class ReportCommands
             Catalog.All.Select(producer => new ReportKindResponse(producer.Kind, producer.Description)).ToArray()));
 
     /// <summary>
-    /// Computes one report kind over one Assessment, stores the rendering, and returns it. Refuses, naming
+    /// Computes one report kind from its declared input family, stores the rendering, and returns it. Refuses, naming
     /// the reason, when the kind is unregistered (pinned by `AskingForAKindOutsideTheRegistry_Refuses`) or
     /// the Assessment was not collected in a way the kind can report from (pinned by
     /// `ACorrectnessReportOverAParseTimeAssessment_RefusesNamingTheReason`).
@@ -51,24 +53,6 @@ public static class ReportCommands
     {
         return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
         {
-            AssessmentRecord record;
-            try
-            {
-                record = new AssessmentRepository(database).Get(request.AssessmentId);
-            }
-            catch (KeyNotFoundException exception)
-            {
-                return CommandOutcome<ReportResponse>.Refused(new Refusal(
-                    "report.assessment-not-found", FailureReason.NotFound, exception.Message,
-                    Fact(("assessmentId", request.AssessmentId))));
-            }
-            catch (ArgumentException exception)
-            {
-                return CommandOutcome<ReportResponse>.Refused(new Refusal(
-                    "report.assessment-not-found", FailureReason.InvalidArgument, exception.Message,
-                    Fact(("assessmentId", request.AssessmentId))));
-            }
-
             IReportProducer producer;
             try
             {
@@ -81,11 +65,35 @@ public static class ReportCommands
                     Fact(("kind", request.Kind))));
             }
 
+            AssessmentRecord? record = null;
+            if (request.AssessmentId is not null)
+            {
+                try
+                {
+                    record = new AssessmentRepository(database).Get(request.AssessmentId);
+                }
+                catch (KeyNotFoundException exception)
+                {
+                    return CommandOutcome<ReportResponse>.Refused(new Refusal(
+                        "report.assessment-not-found", FailureReason.NotFound, exception.Message,
+                        Fact(("assessmentId", request.AssessmentId))));
+                }
+                catch (ArgumentException exception)
+                {
+                    return CommandOutcome<ReportResponse>.Refused(new Refusal(
+                        "report.assessment-not-found", FailureReason.InvalidArgument, exception.Message,
+                        Fact(("assessmentId", request.AssessmentId))));
+                }
+            }
+
             RenderedReport rendered;
             try
             {
                 rendered = producer.Produce(
-                    record.ToReportable(), new ReportQuery(request.Word, request.Text), AssessorCatalog.Empty);
+                    record is null
+                        ? ReportInput.MissingCapability("Assessment")
+                        : ReportInput.FromAssessment(record.ToReportable()),
+                    new ReportQuery(request.Word, request.Text), AssessorCatalog.Empty);
             }
             catch (ReportRefusalException exception)
             {
@@ -93,6 +101,9 @@ public static class ReportCommands
                     "report.refused", FailureReason.Refused, exception.Message,
                     Fact(("assessmentId", request.AssessmentId), ("kind", request.Kind))));
             }
+
+            if (record is null)
+                throw new InvalidOperationException("A Report producer returned without stored Assessment material.");
 
             var reportId = CanonicalId.Mint("report/").Value;
             var reportJson = JsonSerializer.Serialize(

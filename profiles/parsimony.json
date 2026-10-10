@@ -1,0 +1,15 @@
+{
+  "name": "parsimony",
+  "description": "Stage an exact Parsimony finding as a Draft judgment for a person to review and Apply.",
+  "tools": [
+    { "tool": "motif_overview" },
+    { "tool": "motif_grammar" },
+    { "tool": "motif_start_proposal" },
+    { "tool": "motif_parsimony_record_types" },
+    { "tool": "motif_dispose_parsimony_finding" },
+    { "tool": "motif_record_parsimony_disposition" },
+    { "tool": "motif_dry_run" },
+    { "tool": "motif_finish_proposal" },
+    { "tool": "motif_proposals" }
+  ]
+}

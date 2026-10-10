@@ -52,6 +52,7 @@ public sealed class WorkerRecovery
 
     private RecoveryResult RecoverInterruptedJobsCore(DateTimeOffset now)
     {
+        _ = _jobs.ReleaseEndedJobBundlePins();
         var interrupted = _jobs.MarkRunningInterrupted(now, _ownerId).ToList();
         foreach (var prior in _jobs.ListInterruptedInfrastructure())
         {

@@ -1,0 +1,72 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <StaticResource x:Key="Component.Parsimony.PageMargin" ResourceKey="Primitive.Inset.16_16_16_16" />
+    <StaticResource x:Key="Component.Parsimony.NoticePadding" ResourceKey="Primitive.Inset.14_10_14_10" />
+    <StaticResource x:Key="Component.Parsimony.BannerPadding" ResourceKey="Primitive.Inset.10_8_10_8" />
+    <StaticResource x:Key="Component.Parsimony.GroupMargin" ResourceKey="Intent.Gap.AfterGroup" />
+    <StaticResource x:Key="Component.Parsimony.RowPadding" ResourceKey="Primitive.Inset.6_4_6_4" />
+  </Styles.Resources>
+
+  <Style Selector="Grid.parsimonyPanel">
+    <Setter Property="Margin" Value="{DynamicResource Component.Parsimony.PageMargin}" />
+  </Style>
+
+  <Style Selector="Border.parsimonyNotice">
+    <Setter Property="Padding" Value="{DynamicResource Component.Parsimony.NoticePadding}" />
+  </Style>
+
+  <Style Selector=":is(TextBlock).parsimonyMessage">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Text}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+
+  <Style Selector="Border.parsimonyBanner">
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface.Subtle}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.Control}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.Parsimony.BannerPadding}" />
+  </Style>
+
+  <Style Selector="StackPanel.parsimonyGroup">
+    <Setter Property="Margin" Value="{DynamicResource Component.Parsimony.GroupMargin}" />
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Minimal}" />
+  </Style>
+
+  <Style Selector=":is(TextBlock).parsimonyGroupTitle">
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Text}" />
+  </Style>
+
+  <Style Selector="Button.parsimonyRow">
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.None}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.Parsimony.RowPadding}" />
+  </Style>
+
+  <Style Selector="Button.parsimonyRow.selected">
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface.Subtle}" />
+  </Style>
+
+  <Style Selector="Button.parsimonyRow:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface.Subtle}" />
+  </Style>
+
+  <Style Selector=":is(TextBlock).parsimonyDisposition">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Link}" />
+  </Style>
+
+  <Style Selector="Border.parsimonyDetail">
+    <Setter Property="Padding" Value="{DynamicResource Component.Parsimony.NoticePadding}" />
+  </Style>
+
+  <Style Selector="StackPanel.parsimonyDetailColumn">
+    <Setter Property="Margin" Value="{DynamicResource Intent.Gap.CompactItem}" />
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Minimal}" />
+  </Style>
+</Styles>

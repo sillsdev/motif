@@ -1,0 +1,683 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://motif.sil.org/contracts/allomorph-retirement/v2",
+  "title": "Explicit allomorph retirement",
+  "description": "Closed portable shape. Context identity, model truth, bounds, set uniqueness and dependency/meaning checks also require semantic validation.",
+  "$ref": "#/$defs/ReplacementIntent",
+  "$defs": {
+    "Id": {
+      "type": "string",
+      "minLength": 22,
+      "pattern": "[A-Za-z0-9_-]{22}$"
+    },
+    "Digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "AllomorphIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "entry": {
+          "$ref": "#/$defs/Id"
+        },
+        "class": {
+          "enum": [
+            "MoAffixAllomorph",
+            "MoStemAllomorph"
+          ]
+        },
+        "location": {
+          "enum": [
+            "alternate",
+            "lexeme"
+          ]
+        },
+        "position": {
+          "enum": [
+            "prefix",
+            "suffix",
+            "root",
+            "stem"
+          ]
+        },
+        "semanticDigest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "stemName": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "entry",
+        "class",
+        "location",
+        "position",
+        "semanticDigest",
+        "stemName"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "class": {
+                "const": "MoAffixAllomorph"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "position": {
+                "enum": [
+                  "prefix",
+                  "suffix"
+                ]
+              },
+              "stemName": {
+                "type": "null"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "position": {
+                "enum": [
+                  "root",
+                  "stem"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "NaturalClass": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "enum": [
+            "create",
+            "reuse"
+          ]
+        },
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "abbreviation": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Id"
+          },
+          "minItems": 1,
+          "maxItems": 65536
+        },
+        "semanticDigest": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Digest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "mode",
+        "id",
+        "name",
+        "abbreviation",
+        "members",
+        "semanticDigest"
+      ]
+    },
+    "ContextAtom": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "segment",
+            "natural-class",
+            "boundary"
+          ]
+        },
+        "id": {
+          "$ref": "#/$defs/Id"
+        }
+      },
+      "required": [
+        "kind",
+        "id"
+      ]
+    },
+    "Placement": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "first",
+            "last",
+            "before",
+            "after"
+          ]
+        },
+        "anchor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "anchor"
+      ]
+    },
+    "Rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "input": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Id"
+          },
+          "minItems": 1,
+          "maxItems": 65536
+        },
+        "output": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Id"
+          },
+          "minItems": 1,
+          "maxItems": 65536
+        },
+        "left": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ContextAtom"
+          },
+          "minItems": 0,
+          "maxItems": 256
+        },
+        "right": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ContextAtom"
+          },
+          "minItems": 0,
+          "maxItems": 256
+        },
+        "placement": {
+          "$ref": "#/$defs/Placement"
+        },
+        "enabled": {
+          "const": true
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "input",
+        "output",
+        "left",
+        "right",
+        "placement",
+        "enabled"
+      ]
+    },
+    "RoleReplacement": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "retiredForm": {
+          "$ref": "#/$defs/Id"
+        },
+        "msa": {
+          "$ref": "#/$defs/Id"
+        },
+        "inflType": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "expansionRole": {
+          "const": "whole"
+        },
+        "replacement": {
+          "$ref": "#/$defs/AllomorphIdentity"
+        }
+      },
+      "required": [
+        "retiredForm",
+        "msa",
+        "inflType",
+        "expansionRole",
+        "replacement"
+      ]
+    },
+    "Bundle": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "bundle": {
+          "$ref": "#/$defs/Id"
+        },
+        "analysis": {
+          "$ref": "#/$defs/Id"
+        },
+        "wordform": {
+          "$ref": "#/$defs/Id"
+        },
+        "retiredForm": {
+          "$ref": "#/$defs/Id"
+        },
+        "msa": {
+          "$ref": "#/$defs/Id"
+        },
+        "inflType": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "expansionRole": {
+          "const": "whole"
+        }
+      },
+      "required": [
+        "bundle",
+        "analysis",
+        "wordform",
+        "retiredForm",
+        "msa",
+        "inflType",
+        "expansionRole"
+      ]
+    },
+    "AdhocReplacement": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "rule": {
+          "$ref": "#/$defs/Id"
+        },
+        "field": {
+          "enum": [
+            "FirstAllomorph",
+            "RestOfAllos",
+            "Allomorphs"
+          ]
+        },
+        "ordinal": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "retiredForm": {
+          "$ref": "#/$defs/Id"
+        },
+        "replacement": {
+          "$ref": "#/$defs/AllomorphIdentity"
+        }
+      },
+      "required": [
+        "rule",
+        "field",
+        "ordinal",
+        "retiredForm",
+        "replacement"
+      ]
+    },
+    "OperationBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "operationId": {
+          "$ref": "#/$defs/Id"
+        },
+        "slot": {
+          "enum": [
+            "class-create",
+            "class-members",
+            "rule-create",
+            "rule-input",
+            "rule-output",
+            "rule-left",
+            "rule-right",
+            "rule-placement",
+            "rule-enabled",
+            "bundle-morph",
+            "adhoc-first",
+            "adhoc-rest",
+            "adhoc-legacy",
+            "alternate-delete"
+          ]
+        },
+        "target": {
+          "$ref": "#/$defs/Id"
+        },
+        "member": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "dependsOn": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Id"
+          },
+          "minItems": 0,
+          "maxItems": 65536
+        }
+      },
+      "required": [
+        "operationId",
+        "slot",
+        "target",
+        "member",
+        "dependsOn"
+      ]
+    },
+    "Display": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        }
+      },
+      "required": [
+        "title",
+        "description"
+      ]
+    },
+    "Retirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "entry": {
+          "$ref": "#/$defs/Id"
+        },
+        "retiredForms": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AllomorphIdentity"
+          },
+          "minItems": 1,
+          "maxItems": 4096
+        },
+        "roleReplacements": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RoleReplacement"
+          },
+          "minItems": 1,
+          "maxItems": 65536
+        },
+        "bundles": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Bundle"
+          },
+          "minItems": 0,
+          "maxItems": 65536
+        },
+        "adhocReplacements": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AdhocReplacement"
+          },
+          "minItems": 0,
+          "maxItems": 65536
+        },
+        "scope": {
+          "enum": [
+            "affix",
+            "stem"
+          ]
+        }
+      },
+      "required": [
+        "entry",
+        "scope",
+        "retiredForms",
+        "roleReplacements",
+        "bundles",
+        "adhocReplacements"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "scope": {
+                "const": "affix"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "retiredForms": {
+                "items": {
+                  "properties": {
+                    "class": {
+                      "const": "MoAffixAllomorph"
+                    },
+                    "location": {
+                      "const": "alternate"
+                    }
+                  }
+                }
+              },
+              "roleReplacements": {
+                "items": {
+                  "properties": {
+                    "replacement": {
+                      "properties": {
+                        "class": {
+                          "const": "MoAffixAllomorph"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "adhocReplacements": {
+                "items": {
+                  "properties": {
+                    "replacement": {
+                      "properties": {
+                        "class": {
+                          "const": "MoAffixAllomorph"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "scope": {
+                "const": "stem"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "retiredForms": {
+                "items": {
+                  "properties": {
+                    "class": {
+                      "const": "MoStemAllomorph"
+                    },
+                    "location": {
+                      "const": "alternate"
+                    }
+                  }
+                }
+              },
+              "roleReplacements": {
+                "items": {
+                  "properties": {
+                    "replacement": {
+                      "properties": {
+                        "class": {
+                          "const": "MoStemAllomorph"
+                        }
+                      }
+                    },
+                    "inflType": {
+                      "type": "null"
+                    }
+                  }
+                }
+              },
+              "adhocReplacements": {
+                "items": {
+                  "properties": {
+                    "replacement": {
+                      "properties": {
+                        "class": {
+                          "const": "MoStemAllomorph"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "bundles": {
+                "items": {
+                  "properties": {
+                    "inflType": {
+                      "type": "null"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "ReplacementIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "const": "motif-allomorph-retirement"
+        },
+        "version": {
+          "const": 2
+        },
+        "naturalClass": {
+          "$ref": "#/$defs/NaturalClass"
+        },
+        "rule": {
+          "$ref": "#/$defs/Rule"
+        },
+        "retirements": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Retirement"
+          },
+          "minItems": 1,
+          "maxItems": 256
+        },
+        "operations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/OperationBinding"
+          },
+          "minItems": 1,
+          "maxItems": 65536
+        },
+        "display": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Display"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "format",
+        "version",
+        "naturalClass",
+        "rule",
+        "retirements",
+        "operations"
+      ]
+    }
+  }
+}

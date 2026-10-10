@@ -19,6 +19,11 @@
     "description": "Reads the project's Assessment scopes and settings. Use it to see the limits and options Motif will use for a later Assessment.",
     "source": "Hand-written from docs/cli-api.md and command behavior."
   },
+  "project initialize": {
+    "title": "Prepare a project for Motif",
+    "description": "Creates Motif's reserved human judgment field in a FieldWorks project after explicit confirmation. It does not add a judgment or create a writing system.",
+    "source": "Hand-written from the project initialization contract and command behavior."
+  },
   "report": {
     "title": "Read an Assessment report",
     "description": "Calculates a named report from an Assessment and project data. Use it to answer a focused question about words, Texts, or grammar without rerunning PanGloss.",
@@ -28,6 +33,96 @@
     "title": "List report kinds",
     "description": "Lists the report kinds accepted by report --kind. Run it first when you need to choose a report for stored evidence.",
     "source": "Hand-written from docs/cli-api.md and command behavior."
+  },
+  "parsimony": {
+    "title": "Review grammar parsimony",
+    "description": "Runs a registered Parsimony measure over the current Baseline or compares a completed Proposal Dry Run against that Baseline. Candidate evidence uses a private copy and stores before and after Reports. Use parsimony measures to list checks and their evidence needs.",
+    "source": "Hand-written from command behavior."
+  },
+  "parsimony --wait": {
+    "title": "Wait for a Parsimony Report",
+    "description": "Queues the requested Parsimony measure and waits for its stored Report. It does not capture a Baseline or require an Assessment.",
+    "source": "Hand-written from command behavior."
+  },
+  "parsimony show": {
+    "title": "Read a Parsimony Report",
+    "description": "Reads a stored Parsimony Report by id. It uses the saved Report and does not run PanGloss.",
+    "source": "Hand-written from command behavior."
+  },
+  "parsimony measures": {
+    "title": "List Parsimony measures",
+    "description": "Lists registered grammar checks, their axes, evidence tiers, citations, and fixed views. It reads the catalog without invoking PanGloss.",
+    "source": "Hand-written from command behavior."
+  },
+  "parsimony expectations": {
+    "title": "Read Parsimony expectations",
+    "description": "Reads human-confirmed negatives and native Approved and Disapproved readings from the saved FieldWorks project. The versioned projection keeps surface negatives, exact reading negatives, and native Opinions separate for later Parsimony measures and paired verification.",
+    "source": "Hand-written from the expectation projection contract."
+  },
+  "parsimony view": {
+    "title": "Read a Parsimony view",
+    "description": "Reads a bounded page from a fixed view over one published bundle. Parser views use a Report id to bind the exact Assessment references; filters and cursors are bound to the bundle. Callers cannot submit SQL.",
+    "source": "Hand-written from command behavior."
+  },
+  "parsimony record-types": {
+    "title": "List Notebook record types",
+    "description": "Lists the saved Notebook record types with their portable IDs and readable names. Use the ID when you stage a Parsimony disposition.",
+    "source": "Hand-written from command behavior."
+  },
+  "parsimony dispose": {
+    "title": "Stage a finding disposition",
+    "description": "Stages a keep, fix, ask, or defer decision from one finding in a stored Parsimony Report. It derives the exact subject and evidence from that finding and appends the existing Notebook operations to a Draft Proposal.",
+    "source": "Hand-written from command behavior."
+  },
+  "parsimony revise": {
+    "title": "Revise a disposition",
+    "description": "Stages a revision to a saved Parsimony disposition using its exact current Notebook heads and digests. The revision keeps the same finding subject and evidence, and only a person can Apply it.",
+    "source": "Hand-written from command behavior."
+  },
+  "parsimony retract": {
+    "title": "Retract a disposition",
+    "description": "Stages a withdrawal of a saved Parsimony disposition using its exact current Notebook heads and digests. The history stays in FieldWorks, and the finding returns to Active after a person Applies the current retraction.",
+    "source": "Hand-written from command behavior."
+  },
+  "parsimony negative confirm": {
+    "title": "Confirm a reviewed negative",
+    "description": "Confirms a forbidden surface form or exact reading as a human and stages its Notebook record in a Draft Proposal. A negative may have no grammar owner; only Apply writes it to the FieldWorks project.",
+    "source": "Hand-written from the reviewed-negative authoring contract."
+  },
+  "parsimony negative retract": {
+    "title": "Retract a reviewed negative",
+    "description": "Withdraws a reviewed negative by naming its exact current revision heads and stages a retraction in a Draft Proposal. The Notebook history remains in the FieldWorks project, and only Apply records the withdrawal.",
+    "source": "Hand-written from the reviewed-negative authoring contract."
+  },
+  "compose-record-parsimony-disposition": {
+    "title": "Stage a Parsimony disposition",
+    "description": "Stages a keep, fix, ask, or defer decision for one exact Parsimony finding in a Draft Proposal. Only a human can Apply it, and a pending keep does not suppress current findings.",
+    "source": "Hand-written from command behavior."
+  },
+  "retire-allomorph": {
+    "title": "Retire or replace a form",
+    "description": "Stages one connected Proposal to retire ordinary prefix or suffix alternates after their references move; the sound-rule form also stages its natural class and rule. Dry Run shows bundle Morph and copied Form text changes, other references, and deletion together. Missing destinations are refused with counts for distinct unresolved Approved analyses, ad hoc rules, and other references.",
+    "source": "Hand-written from the allomorph retirement and sound-rule replacement contracts."
+  },
+  "retire-redundant-zero-affix": {
+    "title": "Retire an unused zero affix",
+    "description": "Stages deletion of one whole, unreferenced zero-affix entry when its only loaded realization is a recognized null marker, it adds no feature or class, every assigned slot is optional, and no assigned slot occurs in a template. Optional slot links are removed first and the slots remain; meaningful, referenced, or parser-distinguishing zeros are refused.",
+    "source": "Hand-written from the zero-affix retirement contract and command behavior."
+  },
+  "compose-author-phonological-rule": {
+    "title": "Author a sound rule",
+    "description": "Stages one simple rewrite rule in a Draft, using existing phonemes and natural classes with explicit context and rule placement. Empty input or output means insertion or deletion; unsupported alpha variables and metathesis are refused.",
+    "source": "Hand-written from the regular rewrite-rule composer contract and command behavior."
+  },
+  "compose-author-affix-slot": {
+    "title": "Author an affix slot",
+    "description": "Stages a named inflectional affix slot owned by an existing category and can assign existing inflectional affixes to it in the same Draft. Inspect its Dry Run and Trial before a person Applies the Proposal.",
+    "source": "Hand-written from command behavior."
+  },
+  "compose-author-affix-template": {
+    "title": "Author an affix template",
+    "description": "Stages an active alternative template on an existing category, using ordered prefix and suffix slots that belong to the category or an ancestor. It preserves existing template order and records whether this template requires further derivation.",
+    "source": "Hand-written from command behavior."
   },
   "compare": {
     "title": "Compare two Assessments",
@@ -171,12 +266,52 @@
   },
   "apply --all-pending": {
     "title": "Apply pending changes",
-    "description": "Applies the current pending changes to the FieldWorks project as one unit of work. Use it after FieldWorks releases the project, then reload when Motif reports that changes were applied.",
+    "description": "Applies the current pending changes to the FieldWorks project as one unit of work. A current Dry Run can waive Correctness for a judgment-only Proposal; mixed changes still need normal Readiness evidence.",
     "source": "Hand-written from docs/cli-api.md and command behavior."
   },
   "writing-systems": {
     "title": "Show writing systems",
     "description": "Reads fonts, features, direction and style sizes from the current Baseline, in FieldWorks writing-system order. Change these settings in FieldWorks, then capture a new Baseline to read them here.",
     "source": "Hand-written from the shared writing-systems query."
+  },
+  "compose-edit-adhoc-prohibition": {
+    "title": "Edit an ad hoc prohibition",
+    "description": "Stages one explicit Disabled value for a flat allomorph or morpheme prohibition in a Draft. The expected value guards against stale evidence; Motif never Applies this change automatically.",
+    "source": "Hand-written from command behavior."
+  },
+  "compose-edit-affix-slot": {
+    "title": "Edit an affix slot",
+    "description": "Changes whether an existing inflectional affix slot is optional. The response lists every affix and template using the shared slot; Motif stages a Draft and never Applies it automatically.",
+    "source": "Hand-written from command behavior."
+  },
+  "compose-edit-affix-template": {
+    "title": "Reorder an affix template",
+    "description": "Changes the explicit order of existing prefix or suffix slots in a known affix template. The intent preserves the slot set, and Motif stages a Draft without Applying it automatically.",
+    "source": "Hand-written from command behavior."
+  },
+  "compose-edit-inflectional-affix": {
+    "title": "Edit an inflectional affix",
+    "description": "Changes which existing category slots an inflectional affix MSA uses. Other MSA kinds and slots outside the category hierarchy are refused; Motif stages a Draft and never Applies it automatically.",
+    "source": "Hand-written from command behavior."
+  },
+  "compose-edit-allomorph-condition": {
+    "title": "Edit an allomorph condition",
+    "description": "Changes the environment references on one existing stem or affix allomorph after checking its current list. Shared environments remain unchanged for every other allomorph that uses them.",
+    "source": "Hand-written from command behavior."
+  },
+  "compose-edit-natural-class": {
+    "title": "Edit a natural class",
+    "description": "Adds or removes phonemes from one existing segment natural class after checking its exact current members. The response lists rules, environments and insertions that still use the class.",
+    "source": "Hand-written from command behavior."
+  },
+  "compose-relink-natural-class": {
+    "title": "Relink natural-class users",
+    "description": "Moves explicitly named environments and rewrite-rule contexts to a replacement class created earlier in the Draft. Other users remain on the source class.",
+    "source": "Hand-written from command behavior."
+  },
+  "order-allomorphs": {
+    "title": "Order alternate forms",
+    "description": "Changes the order of existing alternate forms within one entry after checking their current order. The lexeme form cannot be moved, and Motif stages the moves in a Draft for human review.",
+    "source": "Hand-written from command behavior."
   }
 }

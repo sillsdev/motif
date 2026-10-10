@@ -9,6 +9,7 @@
   <ItemGroup>
     <PackageReference Include="xunit" Version="2.9.2" />
     <InternalsVisibleTo Include="SIL.Motif.Tests.App" />
+    <InternalsVisibleTo Include="SIL.Motif.Tests.LibLcm" />
   </ItemGroup>
 
   <ItemGroup>

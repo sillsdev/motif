@@ -52,7 +52,8 @@ public static class HelpCommand
                 return Usage(error);
             output.WriteLine("Motif (tech demo) — report problems at https://github.com/sillsdev/motif/issues");
             output.WriteLine();
-            foreach (var commandEntry in catalog.Entries.Where(entry => entry.Kind == HelpEntryKind.Command))
+            foreach (var commandEntry in catalog.Entries.Where(entry =>
+                         entry.Kind == HelpEntryKind.Command && IsAvailableHelpEntry(entry, policy)))
                 output.WriteLine($"{commandEntry.Title,-30}  {commandEntry.Code}");
             output.WriteLine();
             output.WriteLine("Use 'motif help <command> --full' for examples and related commands.");
@@ -69,7 +70,7 @@ public static class HelpCommand
                 : HelpEntryKind.Term;
         var lookupCode = isGuide ? Uri.UnescapeDataString(code[guidePrefix.Length..]) : code;
         var entry = catalog.Find(entryKind, lookupCode);
-        if (entry is null)
+        if (entry is null || !IsAvailableHelpEntry(entry, policy))
         {
             error.WriteLine($"No released command, glossary term, or Guide named '{code}'. Run 'motif help' for commands.");
             return 2;
@@ -98,12 +99,16 @@ public static class HelpCommand
         locale = catalog.Locale,
         siteRoot = HelpCatalog.SiteRoot,
         entries = catalog.Entries
-            .Where(entry => entry.Kind != HelpEntryKind.Command
-                || CommandCatalog.All.Any(command => command.Name == entry.Code
-                    && policy.IsAvailable(command)
-                    && command.Surface == CommandSurface.Released))
+            .Where(entry => IsAvailableHelpEntry(entry, policy))
             .Select(entry => BuildEntry(entry, entry.Kind == HelpEntryKind.Command)),
     };
+
+    private static bool IsAvailableHelpEntry(HelpEntry entry, CommandSurfacePolicy policy)
+    {
+        if (entry.Kind != HelpEntryKind.Command) return true;
+        var command = CommandCatalog.All.SingleOrDefault(item => item.Name == entry.Code);
+        return command is not null && command.Surface != CommandSurface.Developer && policy.IsAvailable(command);
+    }
 
     private static object BuildEntry(HelpEntry entry, bool command)
     {

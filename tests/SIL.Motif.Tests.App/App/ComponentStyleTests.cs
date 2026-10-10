@@ -719,6 +719,28 @@ public sealed partial class ComponentStyleTests
             TextBlock.MarginProperty, "Intent.Gap.CompactItem");
         yield return new("Warnings", "finding details", host => Add(host, Box("warningDetail")),
             Border.PaddingProperty, "Component.Warnings.DetailPadding");
+        yield return new("Parsimony", "the page", host => Add(host, With(new Grid(), ["parsimonyPanel"])),
+            Grid.MarginProperty, "Component.Parsimony.PageMargin");
+        yield return new("Parsimony", "the state notice", host => Add(host, Box("parsimonyNotice")),
+            Border.PaddingProperty, "Component.Parsimony.NoticePadding");
+        yield return new("Parsimony", "a banner", host => Add(host, Box("parsimonyBanner")),
+            Border.BackgroundProperty, "Intent.Surface.Subtle");
+        yield return new("Parsimony", "a measure group", host => Add(host, Stack("parsimonyGroup")),
+            StackPanel.MarginProperty, "Component.Parsimony.GroupMargin");
+        yield return new("Parsimony", "a measure's title", host => Add(host, Text("parsimonyGroupTitle")),
+            TextBlock.ForegroundProperty, "Intent.Text");
+        yield return new("Parsimony", "a finding row", host => Add(host, Press("parsimonyRow")),
+            Button.BackgroundProperty, "Intent.Clear");
+        yield return new("Parsimony", "the selected finding row", host => Add(host, Press("parsimonyRow", "selected")),
+            Button.BackgroundProperty, "Intent.Surface.Subtle");
+        yield return new("Parsimony", "a finding's decision", host => Add(host, Text("parsimonyDisposition")),
+            TextBlock.ForegroundProperty, "Intent.Link");
+        yield return new("Parsimony", "the evidence", host => Add(host, Box("parsimonyDetail")),
+            Border.PaddingProperty, "Component.Parsimony.NoticePadding");
+        yield return new("Parsimony", "the detail column", host => Add(host, Stack("parsimonyDetailColumn")),
+            StackPanel.MarginProperty, "Intent.Gap.CompactItem");
+        yield return new("Parsimony", "a message", host => Add(host, Text("parsimonyMessage")),
+            TextBlock.ForegroundProperty, "Intent.Text");
         yield return new("Review", "a group of changes", host => Add(host, Box("reviewGroup")),
             Border.BorderBrushProperty, "Intent.Border");
         yield return new("Review", "the no longer fits group", host => Add(host, Box("reviewGroup", "noLongerFits")),

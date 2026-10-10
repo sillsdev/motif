@@ -3,10 +3,12 @@ using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Commands.Store;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Analysis;
+using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host;
 using SIL.Motif.Runner.Composers;
@@ -130,9 +132,18 @@ public static class PendingChangesWorkflow
             request.Revision is { } expectedRevision && expectedRevision != current.Revision)
             return RefuseMeasure("trial.changes-changed", "The changes changed. Reload them before measuring.");
 
+        TrialLimits? limits = null;
+        if (request.BeforeCorrectnessAssessmentId is { } beforeAssessmentId)
+        {
+            var earlier = await Task.Run(() => ReadTrialLimits(request.ProjectPath, beforeAssessmentId))
+                .ConfigureAwait(false);
+            if (!earlier.Succeeded) return CommandOutcome<MeasurePendingResult>.Refused(earlier.Refusal!);
+            limits = earlier.Value;
+        }
+
         var queued = await Task.Run(() => JobCommands.EnqueueTrial(new EnqueueTrialRequest(
             request.ProjectPath, version, current.DraftId, Words: request.Words,
-            ExpectedDraftRevision: current.Revision))).ConfigureAwait(false);
+            ExpectedDraftRevision: current.Revision, Limits: limits))).ConfigureAwait(false);
         if (queued.Refusal?.Code == "draft.revision-conflict")
             return RefuseMeasure("trial.changes-changed", "The changes changed. Reload them before measuring.");
         if (!queued.Succeeded) return CommandOutcome<MeasurePendingResult>.Refused(queued.Refusal!);
@@ -185,6 +196,33 @@ public static class PendingChangesWorkflow
                 return CommandOutcome<PendingDraftRead>.Success(new PendingDraftRead(null));
             return CommandOutcome<PendingDraftRead>.Success(new PendingDraftRead(new PendingDraftIdentity(
                 draft.ProposalId.Value, DraftRevision.Compute(json))));
+        });
+
+    private static CommandOutcome<TrialLimits> ReadTrialLimits(string projectPath, string assessmentId) =>
+        ProjectStoreCommand.Run(projectPath, MotifProductVersion.CurrentText, (database, _) =>
+        {
+            var repository = new AssessmentRepository(database);
+            AssessmentRecord assessment;
+            try { assessment = repository.Get(assessmentId); }
+            catch (KeyNotFoundException)
+            {
+                return CommandOutcome<TrialLimits>.Refused(new Refusal("review.assessment-not-found",
+                    FailureReason.NotFound, $"No Assessment is recorded as '{assessmentId}'."));
+            }
+            if (assessment.Kind != RegressionChecker.RequiredKind)
+                return CommandOutcome<TrialLimits>.Refused(new Refusal("review.wrong-assessment-kind",
+                    FailureReason.InvalidArgument, "Review numbers require Correctness Assessments."));
+            try
+            {
+                var scope = ScopeCodec.ReadTrial(assessment.ScopeJson, RegressionChecker.RequiredKind);
+                return CommandOutcome<TrialLimits>.Success(new TrialLimits(
+                    scope.PerWordLimit, scope.PerWordStepLimit));
+            }
+            catch (ReportRefusalException exception)
+            {
+                return CommandOutcome<TrialLimits>.Refused(new Refusal("review.numbers-unavailable",
+                    FailureReason.Refused, exception.Message));
+            }
         });
 
     private static CommandOutcome<ApplyPendingResult> ReopenAfterRefusal(

@@ -1,0 +1,825 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://motif.sil.org/contracts/human-judgment/v1",
+  "title": "Motif human judgment v1",
+  "description": "Logical envelope. StorageEnvelope forbids reason; runtime also validates UTF-8 bounds, GUID/context identity and lineage-local rules.",
+  "$ref": "#/$defs/HumanJudgment",
+  "$defs": {
+    "Id": {
+      "type": "string",
+      "pattern": "^[\\s\\S]*[A-Za-z0-9_-]{22}$"
+    },
+    "Digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "Object": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "class": {
+          "enum": [
+            "LangProject",
+            "LexEntry",
+            "LexSense",
+            "WfiWordform",
+            "WfiAnalysis",
+            "MoStemAllomorph",
+            "MoAffixAllomorph",
+            "MoAffixProcess",
+            "MoStemMsa",
+            "MoInflAffMsa",
+            "MoDerivAffMsa",
+            "MoDerivStepMsa",
+            "MoUnclassifiedAffixMsa",
+            "MoInflAffixSlot",
+            "MoInflAffixTemplate",
+            "PhEnvironment",
+            "PhNCSegments",
+            "PhNCFeatures",
+            "PhRegularRule",
+            "PhMetathesisRule",
+            "MoAlloAdhocProhib",
+            "MoMorphAdhocProhib",
+            "MoAdhocProhibGr",
+            "PartOfSpeech",
+            "MoInflClass",
+            "MoStemName",
+            "FsClosedFeature",
+            "FsComplexFeature",
+            "FsOpenFeature",
+            "FsSymFeatVal",
+            "FsFeatStruc",
+            "PhPhoneme",
+            "PhBdryMarker"
+          ]
+        },
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "owningEntryId": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "class",
+        "id"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "class": {
+                "pattern": "Msa$"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "owningEntryId"
+            ],
+            "properties": {
+              "owningEntryId": {
+                "$ref": "#/$defs/Id"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "owningEntryId": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "ObjectSubject": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "object"
+        },
+        "object": {
+          "$ref": "#/$defs/Object"
+        }
+      },
+      "required": [
+        "kind",
+        "object"
+      ]
+    },
+    "ProjectSubject": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "project"
+        },
+        "id": {
+          "$ref": "#/$defs/Id"
+        }
+      },
+      "required": [
+        "kind",
+        "id"
+      ]
+    },
+    "EdgeSubject": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "edge"
+        },
+        "role": {
+          "enum": [
+            "membership",
+            "precedence",
+            "rhs",
+            "left-context",
+            "right-context",
+            "constraint-use"
+          ]
+        },
+        "owner": {
+          "$ref": "#/$defs/Object"
+        },
+        "from": {
+          "$ref": "#/$defs/Object"
+        },
+        "to": {
+          "$ref": "#/$defs/Object"
+        }
+      },
+      "required": [
+        "kind",
+        "role",
+        "owner",
+        "from",
+        "to"
+      ]
+    },
+    "GroupSubject": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "computed-group"
+        },
+        "measureId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "role": {
+          "enum": [
+            "alternation-family",
+            "duplicate-pair",
+            "adhoc-cluster",
+            "adhoc-slot-order"
+          ]
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Object"
+          },
+          "minItems": 1,
+          "maxItems": 256
+        }
+      },
+      "required": [
+        "kind",
+        "measureId",
+        "role",
+        "members"
+      ]
+    },
+    "ParsimonyFindingSubject": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "parsimony-finding"
+        },
+        "measureId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "findingId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        }
+      },
+      "required": [
+        "kind",
+        "measureId",
+        "findingId"
+      ]
+    },
+    "Subject": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/ObjectSubject"
+        },
+        {
+          "$ref": "#/$defs/ProjectSubject"
+        },
+        {
+          "$ref": "#/$defs/EdgeSubject"
+        },
+        {
+          "$ref": "#/$defs/GroupSubject"
+        },
+        {
+          "$ref": "#/$defs/ParsimonyFindingSubject"
+        }
+      ]
+    },
+    "Disposition": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "parsimony-disposition"
+        },
+        "subject": {
+          "$ref": "#/$defs/Subject"
+        },
+        "measureId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "disposition": {
+          "enum": [
+            "fix",
+            "keep",
+            "ask",
+            "defer"
+          ]
+        },
+        "evidenceDigest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "evidenceContract": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        },
+        "subjectCaption": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "measureCaption": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "question": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "subject",
+        "measureId",
+        "disposition",
+        "evidenceDigest",
+        "evidenceContract",
+        "subjectCaption",
+        "measureCaption"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "disposition": {
+                "const": "ask"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "question"
+            ],
+            "properties": {
+              "question": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "question": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "MorphIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "form": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "msa": {
+          "$ref": "#/$defs/Id"
+        },
+        "inflType": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "guessedString": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "form",
+        "msa",
+        "inflType",
+        "guessedString"
+      ]
+    },
+    "Morph": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "identity": {
+          "$ref": "#/$defs/MorphIdentity"
+        },
+        "guessedWritingSystem": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "formCaption": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "msaCaption": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        }
+      },
+      "required": [
+        "identity",
+        "guessedWritingSystem",
+        "formCaption",
+        "msaCaption"
+      ]
+    },
+    "SurfaceTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "surface"
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    },
+    "ReadingTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "reading"
+        },
+        "morphs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Morph"
+          },
+          "minItems": 1,
+          "maxItems": 512
+        }
+      },
+      "required": [
+        "kind",
+        "morphs"
+      ]
+    },
+    "Negative": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "reviewed-negative"
+        },
+        "caseId": {
+          "$ref": "#/$defs/Id"
+        },
+        "writingSystem": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "form": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "context": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "target": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/SurfaceTarget"
+            },
+            {
+              "$ref": "#/$defs/ReadingTarget"
+            }
+          ]
+        },
+        "wordformId": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "analysisId": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "caseId",
+        "writingSystem",
+        "form",
+        "context",
+        "target"
+      ]
+    },
+    "Retraction": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "retraction"
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    },
+    "Body": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/Disposition"
+        },
+        {
+          "$ref": "#/$defs/Negative"
+        },
+        {
+          "$ref": "#/$defs/Retraction"
+        }
+      ]
+    },
+    "Actor": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "human",
+            "agent",
+            "unknown"
+          ]
+        },
+        "id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1024
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1024
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    },
+    "Source": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "reportId": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "proposalId": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": []
+    },
+    "Predecessor": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "revisionId": {
+          "$ref": "#/$defs/Id"
+        },
+        "contentDigest": {
+          "$ref": "#/$defs/Digest"
+        }
+      },
+      "required": [
+        "revisionId",
+        "contentDigest"
+      ]
+    },
+    "HumanJudgment": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "const": "motif-human-judgment"
+        },
+        "version": {
+          "const": 1
+        },
+        "projectId": {
+          "$ref": "#/$defs/Id"
+        },
+        "judgmentId": {
+          "$ref": "#/$defs/Id"
+        },
+        "revisionId": {
+          "$ref": "#/$defs/Id"
+        },
+        "replaces": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Predecessor"
+          },
+          "minItems": 0,
+          "maxItems": 256
+        },
+        "body": {
+          "$ref": "#/$defs/Body"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 4096
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "actor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Actor"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "judgedAtUtc": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "(Z|\\+00:00)$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Source"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "resolvesConflict": {
+          "type": "boolean"
+        },
+        "readableFormat": {
+          "const": "en-v1"
+        },
+        "extensions": {
+          "anyOf": [
+            {
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "format",
+        "version",
+        "projectId",
+        "judgmentId",
+        "revisionId",
+        "replaces",
+        "body"
+      ]
+    },
+    "StorageEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "const": "motif-human-judgment"
+        },
+        "version": {
+          "const": 1
+        },
+        "projectId": {
+          "$ref": "#/$defs/Id"
+        },
+        "judgmentId": {
+          "$ref": "#/$defs/Id"
+        },
+        "revisionId": {
+          "$ref": "#/$defs/Id"
+        },
+        "replaces": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Predecessor"
+          },
+          "minItems": 0,
+          "maxItems": 256
+        },
+        "body": {
+          "$ref": "#/$defs/Body"
+        },
+        "actor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Actor"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "judgedAtUtc": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "(Z|\\+00:00)$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Source"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "resolvesConflict": {
+          "type": "boolean"
+        },
+        "readableFormat": {
+          "const": "en-v1"
+        },
+        "extensions": {
+          "anyOf": [
+            {
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "format",
+        "version",
+        "projectId",
+        "judgmentId",
+        "revisionId",
+        "replaces",
+        "body"
+      ]
+    }
+  }
+}

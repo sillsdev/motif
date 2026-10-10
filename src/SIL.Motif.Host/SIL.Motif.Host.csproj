@@ -6,6 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\SIL.Motif.Help\SIL.Motif.Help.csproj" />
     <ProjectReference Include="..\SIL.Motif.Projection\SIL.Motif.Projection.csproj" />
     <!-- Explicit: BaselineScratchFactory wraps a DryRunScratch, reachable transitively via Projection too. -->
     <ProjectReference Include="..\SIL.Motif.Runner\SIL.Motif.Runner.csproj" />

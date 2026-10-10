@@ -6,6 +6,7 @@ using SIL.Motif.Commands;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Commands.Requests;
+using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Jobs;
@@ -13,6 +14,8 @@ using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host;
 using SIL.Motif.Host.Analysis;
+using SIL.Motif.Host.Assess;
+using SIL.Motif.Host.Store;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker;
@@ -332,6 +335,42 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine,
         var input = TrialJobInput.Parse(Assert.IsType<JobRecord>(job).InputJson);
         using var proposal = System.Text.Json.JsonDocument.Parse(input.ProposalJson);
         Assert.Equal(pending.DraftId, proposal.RootElement.GetProperty("proposalId").GetString());
+    }
+
+    [Fact]
+    public async Task MeasureAgainstAnEarlierAssessmentQueuesATrialWithThatAssessmentsLimits()
+    {
+        using var scratch = pristine.NewScratch();
+        var path = scratch.ProjectId.Path;
+        Guid wordformId = Guid.Empty;
+        NonUndoableUnitOfWorkHelper.Do(scratch.ActionHandlerAccessor, () =>
+            wordformId = scratch.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                .Create(TsStringUtils.MakeString("limits-measure", scratch.DefaultVernWs)).Guid);
+        new FwDataProjectLoader().Save(scratch);
+        var root = NewManagedRoot(path);
+        var runner = IsolatedRunner.None(root);
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root).Succeeded);
+        PutChange(path, LoadPending(path).Revision, wordformId, "limits-measure");
+        var earlierLimit = TimeSpan.FromSeconds(5);
+        var earlierSteps = new StepCap(2_000_000);
+        using (var database = ProjectMotifDatabase.Open(path))
+            new AssessmentRepository(database).Record(new NewAssessmentRecord(
+                "assessment-earlier", null, null, "test", RegressionChecker.RequiredKind,
+                ScopeCodec.Write(new StoredScope.Trial("words", ["limits-measure"], [AssessmentKind.Correctness],
+                    earlierLimit, earlierSteps)),
+                "sha256:scope", "whitespace-and-punctuation", "1", "{}",
+                SIL.Motif.Host.Corpus.Selection.Create("words", ["limits-measure"]), "sha256:outcome", "sha256:semantic",
+                "sha256:grammar", "test-model", "test", 0, [], SavedUtc: "2026-09-28T12:00:00Z"));
+
+        var outcome = await PendingChangesWorkflow.Measure(new MeasurePendingRequest(path, null, null,
+            ["limits-measure"], "assessment-earlier"), new Progress<MeasureProgress>(), CancellationToken.None,
+            TimeSpan.FromMilliseconds(1), runnerLauncher: runner).WaitAsync(TimeSpan.FromSeconds(30));
+
+        Assert.Equal("job.wait-timeout", outcome.Refusal?.Code);
+        using var stored = ProjectMotifDatabase.Open(path);
+        var job = new JobRepository(stored).Get(outcome.Refusal!.Facts!["jobId"]);
+        var input = TrialJobInput.Parse(Assert.IsType<JobRecord>(job).InputJson);
+        Assert.Equal(new TrialLimits(earlierLimit, earlierSteps), input.Limits);
     }
 
     [Fact]

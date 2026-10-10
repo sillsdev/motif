@@ -25,7 +25,7 @@ public static class MoInsertPhonesRelationsSnapshotter
         var canonicalId = CanonicalId.FromGuid(moInsertPhones.Guid);
         var fields = new Dictionary<string, IReadOnlyDictionary<string, string>>();
 
-        AddIfPopulated(fields, SnapshotFields.MoInsertPhonesContent, ReferenceCollectionFieldSnapshotting.ReadAlternatives(moInsertPhones.ContentRS));
+        AddIfPopulated(fields, SnapshotFields.MoInsertPhonesContent, ReferenceSequenceFieldSnapshotting.ReadAlternatives(moInsertPhones.ContentRS));
 
         return new ObjectSnapshot(canonicalId, fields);
     }

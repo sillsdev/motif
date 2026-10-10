@@ -27,9 +27,8 @@ public class ModelCoverageReportTests
         Assert.True(File.Exists(coverage.ModelFilePath));
         Assert.Equal("7000072", coverage.ModelVersion);
         Assert.Equal(898, coverage.TotalFieldCount);
-        // 495, not 494: WfiWordform.SpellingStatus is on, same hand-authored ADR 0025 treatment as its siblings.
-        Assert.Equal(495, coverage.InScopeCount);
-        Assert.Equal(898 - 495, coverage.OutOfScopeCount);
+        Assert.Equal(500, coverage.InScopeCount);
+        Assert.Equal(898 - 500, coverage.OutOfScopeCount);
     }
 
     [Fact]

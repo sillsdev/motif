@@ -156,6 +156,7 @@ public sealed class WarningReachReaderTests(PristineProjectFixture pristine)
         {
             set = cache.ServiceLocator.GetInstance<IPhPhonemeSetFactory>().Create();
             cache.LangProject.PhonologicalDataOA.PhonemeSetsOS.Add(set);
+            OwnedBoundaryMarkerFixture.EnsureReservedMarkers(cache, set);
             system = cache.ServiceLocator.GetInstance<IFsFeatureSystemFactory>().Create();
             cache.LangProject.PhFeatureSystemOA = system;
         });
@@ -213,6 +214,41 @@ public sealed class WarningReachReaderTests(PristineProjectFixture pristine)
             Assert.Equal("synthetic", Assert.Single(finding.YourWords!.Words).Row.Word);
             Assert.Equal(1, WarningWordsQuery.Touched([finding])!.Words);
         }
+    }
+
+    [Fact]
+    public void BoundaryReverseReferencesKeepWordEdgeSeparateFromLiteralHash()
+    {
+        using var cache = new FwDataProjectLoader().LoadScratchCache(pristine.CopyProjectFile());
+        var objects = Author(cache);
+        var set = Assert.IsAssignableFrom<IPhPhonemeSet>(objects["phoneme-set"]);
+        var literal = Assert.IsAssignableFrom<IPhBdryMarker>(objects["boundary"]);
+        IPhBdryMarker word = null!;
+        IPhRegularRule wordRule = null!;
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            var literalCode = cache.ServiceLocator.GetInstance<IPhCodeFactory>().Create();
+            literal.CodesOS.Add(literalCode);
+            literalCode.Representation.set_String(cache.DefaultVernWs, "#");
+
+            word = set.BoundaryMarkersOC.Single(marker => marker.Guid == LangProjectTags.kguidPhRuleWordBdry);
+
+            wordRule = cache.ServiceLocator.GetInstance<IPhRegularRuleFactory>().Create();
+            cache.LangProject.PhonologicalDataOA.PhonRulesOS.Add(wordRule);
+            var context = cache.ServiceLocator.GetInstance<IPhSimpleContextBdryFactory>().Create();
+            wordRule.StrucDescOS.Add(context);
+            context.FeatureStructureRA = word;
+        });
+
+        var wordReach = WarningReachReader.Reach(Subject(word), () => cache)!;
+        var literalReach = WarningReachReader.Reach(Subject(literal), () => cache)!;
+        var wordTiming = new TraceTimingKey("phon_rule", wordRule.Guid.ToString("D"));
+        var literalTiming = new TraceTimingKey("phon_rule", ((IPhRegularRule)objects["rule"]).Guid.ToString("D"));
+
+        Assert.Contains(wordTiming, wordReach.TimingKeys);
+        Assert.DoesNotContain(literalTiming, wordReach.TimingKeys);
+        Assert.Contains(literalTiming, literalReach.TimingKeys);
+        Assert.DoesNotContain(wordTiming, literalReach.TimingKeys);
     }
 
     [Fact]
@@ -345,6 +381,7 @@ public sealed class WarningReachReaderTests(PristineProjectFixture pristine)
 
             var set = s.GetInstance<IPhPhonemeSetFactory>().Create();
             cache.LangProject.PhonologicalDataOA.PhonemeSetsOS.Add(set);
+            OwnedBoundaryMarkerFixture.EnsureReservedMarkers(cache, set);
             var boundary = s.GetInstance<IPhBdryMarkerFactory>().Create();
             set.BoundaryMarkersOC.Add(boundary);
             var rule = s.GetInstance<IPhRegularRuleFactory>().Create();

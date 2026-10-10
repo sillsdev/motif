@@ -3,6 +3,7 @@ using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Runner.Operations;
 using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker.Store;
@@ -24,8 +25,21 @@ public static partial class ProposalCommands
                     .GetCurrent(ProjectWorkspaceKey.Compute(project));
                 return ProjectReadCache.ReadCurrent(project, currentBaseline,
                     File.GetLastWriteTimeUtc(project.FullFwDataPath).Ticks, (cache, _) =>
-                        CommandOutcome<PreflightResponse>.Success(new PreflightResponse(id,
-                            ChangeFitPreflight.Check(cache, proposal, currentBaseline?.Token))));
+                    {
+                        // Same drift code as Apply, pinned by `PreflightRefusesWhenTheJudgmentFieldWasRenamed`.
+                        if (proposal.Operations.Any(operation => operation.Kind == HumanJudgmentCustomFieldOperationKinds.Set))
+                        {
+                            try { HumanJudgmentCustomFieldOperationKinds.RequireCompatibleField(cache); }
+                            catch (InvalidOperationException ex)
+                            {
+                                return CommandOutcome<PreflightResponse>.Refused(new Refusal(
+                                    "apply.drift", FailureReason.StoreInconsistent, ex.Message,
+                                    Fact(("proposalId", request.ProposalId))));
+                            }
+                        }
+                        return CommandOutcome<PreflightResponse>.Success(new PreflightResponse(id,
+                            ChangeFitPreflight.Check(cache, proposal, currentBaseline?.Token)));
+                    });
             }
             // A save interrupted while copying remains retryable at the store boundary.
             catch (Exception ex) when (ex is not (LcmFileLockedException or ProjectSavingException
