@@ -84,6 +84,8 @@ internal static class Program
             return ProbeMemoryLimit(requestedBytes);
         if (args is ["--allocate-memory", var delayedRequestedBytes, var holdMilliseconds])
             return ProbeMemoryLimit(delayedRequestedBytes, holdMilliseconds);
+        if (args is ["--reserve-thread-stacks", var threads, var stackBytes])
+            return ReserveThreadStacks(threads, stackBytes);
         // Dies from an unhandled exception on purpose: the suite proves no crash dialog holds such a process.
         if (args is ["--crash-unhandled"]) throw new InvalidOperationException("The fake parser was told to crash.");
         if (args.Length == 0)
@@ -118,6 +120,36 @@ internal static class Program
             Console.Error.WriteLine("allocation-refused");
             return 73;
         }
+    }
+
+    // Runs every thread at once on a stack it reserves and barely touches, as PanGloss's parser threads do.
+    private static int ReserveThreadStacks(string requestedThreads, string requestedStackBytes)
+    {
+        if (!int.TryParse(requestedThreads, NumberStyles.None, CultureInfo.InvariantCulture, out var count) ||
+            count <= 0 ||
+            !int.TryParse(requestedStackBytes, NumberStyles.None, CultureInfo.InvariantCulture, out var stackBytes) ||
+            stackBytes <= 0)
+            return 64;
+        using var allStarted = new Barrier(count + 1);
+        var threads = new List<Thread>();
+        try
+        {
+            for (var index = 0; index < count; index++)
+            {
+                var thread = new Thread(() => allStarted.SignalAndWait(), stackBytes) { IsBackground = true };
+                thread.Start();
+                threads.Add(thread);
+            }
+        }
+        catch (Exception exception) when (exception is OutOfMemoryException or ThreadStartException)
+        {
+            Console.Error.WriteLine($"thread-start-refused after {threads.Count}: {exception.Message}");
+            return 73;
+        }
+        allStarted.SignalAndWait();
+        foreach (var thread in threads) thread.Join();
+        Console.WriteLine($"threads-started {threads.Count}");
+        return 0;
     }
 
     private static int RunDescription(string[] args)

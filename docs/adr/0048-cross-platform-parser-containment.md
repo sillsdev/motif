@@ -22,7 +22,9 @@ Keep `WindowsCpuJob` as the implementation. Its Job Object applies a 5000-basis-
 
 When the current process has a delegated, writable cgroup v2 parent with both `cpu` and `memory` controllers enabled and `cgroup.kill` available, create a child cgroup for the invocation. Set `cpu.max` to `Environment.ProcessorCount * 100000 / 2 100000`, `memory.max` to 10 GiB, and `memory.swap.max` to zero when that control exists. `posix_spawn` creates the shell wrapper directly in a new process group. Before `exec` starts PanGloss, the wrapper moves itself into the child cgroup; close or cancellation writes `1` to `cgroup.kill` and also kills the process group. A descendant permitted to move itself out of both groups can escape termination, and the outcome reports that limitation.
 
-If no such cgroup is available, set a hard and soft `RLIMIT_AS` ceiling of 10 GiB in the wrapper. This is a per-process address-space limit, not an aggregate memory ceiling, and it does not impose a CPU rate. Motif limits batch threads to half of `Environment.ProcessorCount`, with a minimum of one, and admits only one job at a time. `RLIMIT_CPU` is not used as a substitute because it limits total CPU time rather than CPU rate. The process group is still killed on close, but a descendant that deliberately leaves that group can survive.
+If no such cgroup is available, the kernel enforces neither a CPU rate nor a memory ceiling for the run. Motif then samples the parser process group's memory every 50 ms, as on macOS, and kills the group when the sum crosses the 10 GiB ceiling. A full scan of `/proc` finds the group's members by process group id every tenth sample, and sooner when every known member has exited; each sample sums `RssAnon`, `RssShmem` and `VmSwap` from `/proc/<pid>/status`. That counts memory a process has written, not address space it has reserved. It does not impose a CPU rate: Motif limits batch threads to half of `Environment.ProcessorCount`, with a minimum of one, and admits only one job at a time. `RLIMIT_CPU` is not used as a substitute because it limits total CPU time rather than CPU rate. The process group is still killed on close, but a descendant that deliberately leaves that group escapes both measurement and termination.
+
+A per-process `RLIMIT_AS` is not used. PanGloss reserves about 1 GiB of stack for each parser thread and touches little of it, and `RLIMIT_AS` counts the reservation, so a 10 GiB address-space limit refused a ninth thread with `EAGAIN` long before the run used 10 GiB. `RLIMIT_DATA` counts the same writable stack mappings and fails the same way.
 
 ### macOS
 
@@ -47,7 +49,7 @@ For SQLite ownership, `FileShare.None` remains the exclusive-open mechanism on e
 ## Consequences
 
 - `PanGlossInvoker` and `MachinePanGlossQueue` are no longer Windows-only APIs; only platform implementations carry OS support annotations.
-- A Linux cgroup-enabled run applies a CPU quota for half of `Environment.ProcessorCount` CPUs and can match the Windows job's aggregate memory and tree-kill controls. Linux without a delegated cgroup reports its per-process address-space limit and its lack of a hard CPU rate; macOS reports its sampled process-group footprint ceiling, its sampling overshoot, and the lack of a hard CPU rate.
+- A Linux cgroup-enabled run applies a CPU quota for half of `Environment.ProcessorCount` CPUs and can match the Windows job's aggregate memory and tree-kill controls. Linux without a delegated cgroup reports its sampled process-group resident-and-swapped ceiling, its sampling overshoot, and its lack of a hard CPU rate; macOS reports its sampled process-group footprint ceiling, its sampling overshoot, and the lack of a hard CPU rate.
 - Each batch uses at most half of `Environment.ProcessorCount` PanGloss threads, with a minimum of one, and one machine-wide lease admits only one parser job at a time. The 10 GiB per-job memory ceiling remains in place because PanGloss has no safe per-thread memory bound for pathological words.
 - Unix process groups are established by `posix_spawn` before the wrapper can run or spawn a child. Resource limits and cgroup placement happen in that wrapper before it executes PanGloss.
 - Linux machine-slot admission crosses user boundaries through shared lock files instead of relying on `Global\` named-mutex behavior.
@@ -68,3 +70,9 @@ For SQLite ownership, `FileShare.None` remains the exclusive-open mechanism on e
 Larger assessments can now use more of the computer while Motif keeps parser work within half of machine CPU capacity. Motif sets the batch thread count from `Environment.ProcessorCount`, tightens machine-wide admission to one job, and retains the 10 GiB per-job memory ceiling.
 
 PanGloss measurements found that a 20-thread run on a deep-truncation grammar exceeded 30 GiB of resident memory when pathological words ran concurrently; a one-thread run with per-word timeouts completed that sample in about two minutes. There is no safe per-thread memory maximum, so parallel parsing does not justify raising the existing memory ceiling.
+
+## Amendment — reserved stacks are not memory
+
+On Linux machines without a delegated cgroup, a parser run with many threads no longer fails at start. Motif now measures the memory such a run actually uses and stops it at the same 10 GiB ceiling, instead of limiting how much address space it may reserve.
+
+The `RLIMIT_AS` fallback counted the roughly 1 GiB stack PanGloss reserves for each parser thread, so with ten or more threads PanGloss 0.6.2 and 0.7.0 panicked with `ThreadPoolBuildError … WouldBlock` before parsing a word. The Linux section above now describes the sampled process-group ceiling that replaced it. Windows charges a thread stack against the Job Object's committed-memory limit only as it is touched, and the macOS footprint counts only touched pages, so neither needed a change.

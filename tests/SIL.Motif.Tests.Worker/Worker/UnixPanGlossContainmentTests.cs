@@ -103,14 +103,16 @@ public sealed class UnixPanGlossContainmentTests
 
         Assert.True(process.ExitCode is 73 or 137);
         Assert.Equal(MemoryLimitBytes, job.Report.MemoryLimitBytes);
-        if (OperatingSystem.IsMacOS())
+        if (OperatingSystem.IsMacOS()) Assert.Contains("watchdog", job.Report.Memory);
+        if (job.Report.Memory.Contains("watchdog", StringComparison.Ordinal))
         {
             var standardError = await process.ReadStandardErrorAsync();
             Assert.True(job.Report.AggregateMemoryLimit);
-            Assert.Contains("watchdog", job.Report.Memory);
             Assert.Contains(job.Report.Limitations,
                 limitation => limitation.Contains("sampling", StringComparison.OrdinalIgnoreCase));
-            Assert.Contains("exceeded its macOS physical-footprint memory limit", standardError);
+            Assert.Contains(OperatingSystem.IsMacOS()
+                ? "exceeded its macOS physical-footprint memory limit"
+                : "exceeded its Linux resident and swapped memory limit", standardError);
         }
     }
 

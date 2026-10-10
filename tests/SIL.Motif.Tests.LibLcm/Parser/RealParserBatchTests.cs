@@ -349,4 +349,23 @@ public sealed class RealParserBatchTests(PristineProjectFixture pristine)
             .Select(row => JsonSerializer.Serialize(row with { ElapsedMs = 0 }, ParseMorphEvidence.JsonOptions));
         Assert.Equal(singleEvidence, parallelEvidence);
     }
+
+    // Measured with PanGloss 0.6.2 and 0.7.0: 16 parser threads reserve more address space than the ceiling.
+    [RealParserFact]
+    public async Task SixteenThreadBatchStartsUnderTheDefaultMemoryCeiling()
+    {
+        using var cache = pristine.NewScratch();
+        RealParserProject.PrepareForParsing(cache, "m", "o", "t", "i", "f", "a", "b");
+
+        string[] words = [SeededProject.FirstForm, SeededProject.SecondForm, "mofita"];
+        using var invoker = new PanGlossInvoker();
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        var outcome = await invoker.RunAsync(
+            new PanGlossRequest.Batch(cache.ProjectId.Path, words, TimeSpan.FromSeconds(1)) { ThreadCount = 16 },
+            "test:sixteen-thread-batch", cancellation.Token, wallClockCap: TimeSpan.FromSeconds(30));
+
+        Assert.True(outcome is PanGlossOutcome.Completed, outcome.Message);
+        var completed = (PanGlossOutcome.Completed)outcome;
+        Assert.Equal(words, BatchTsvParser.Parse(completed.Output).Select(row => row.Word));
+    }
 }

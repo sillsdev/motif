@@ -29,6 +29,10 @@ internal class UnixPanGlossJob : PanGlossContainmentJob
     {
     }
 
+    /// <summary>A job that takes the no-cgroup path even where a delegated cgroup exists.</summary>
+    internal static UnixPanGlossJob WithoutCgroup(ulong memoryLimitBytes, bool linux) =>
+        new(memoryLimitBytes, linux, cgroup: null, captureDirectory: null);
+
     private UnixPanGlossJob(ulong memoryLimitBytes, bool linux, UnixCgroup? cgroup, string? captureDirectory)
         : base(CreateReport(memoryLimitBytes, linux, cgroup))
     {
@@ -92,7 +96,7 @@ internal class UnixPanGlossJob : PanGlossContainmentJob
                 arguments, environment), "starting the parser");
             _processGroups.Add(processId);
             return new PanGlossChildProcess(new UnixPanGlossChildProcess(processId, stdout, stderr,
-                () => KillProcessGroup(processId), _linux ? null : _memoryLimitBytes));
+                () => KillProcessGroup(processId), _cgroup is null ? GroupMemory() : null, _memoryLimitBytes));
         }
         catch
         {
@@ -133,6 +137,13 @@ internal class UnixPanGlossJob : PanGlossContainmentJob
         foreach (var processGroup in _processGroups) KillProcessGroup(processGroup);
     }
 
+    private IProcessGroupMemory GroupMemory()
+    {
+        if (_linux && OperatingSystem.IsLinux()) return new LinuxProcessGroupMemory();
+        if (!_linux && OperatingSystem.IsMacOS()) return MacProcessGroupMemory.Instance;
+        throw new PlatformNotSupportedException("Parser memory sampling requires Linux or macOS.");
+    }
+
     private void KillProcessGroup(int processGroupId)
     {
         if (UnixNative.Kill(-processGroupId, KillSignal) == 0) return;
@@ -149,25 +160,6 @@ internal class UnixPanGlossJob : PanGlossContainmentJob
         {
             script.Append("printf '%s\\n' \"$$\" > ")
                 .Append(ShellQuote(Path.Combine(_cgroup.Path, "cgroup.procs"))).Append(" || exit 125; ");
-        }
-        if (_cgroup is null && _linux)
-        {
-            var kibibytes = (_memoryLimitBytes + 1023) / 1024;
-            const char resource = 'v';
-            const string resourceName = "RLIMIT_AS";
-            var limit = kibibytes.ToString(System.Globalization.CultureInfo.InvariantCulture);
-            script.Append("resource_hard=$(ulimit -H -").Append(resource).Append(") || exit 125; ")
-                .Append("case \"$resource_hard\" in ")
-                .Append("unlimited) resource_effective=").Append(limit).Append(" ;; ")
-                .Append("''|*[!0-9]*) exit 125 ;; ")
-                .Append("*) if [ \"$resource_hard\" -gt ").Append(limit)
-                .Append(" ]; then resource_effective=").Append(limit)
-                .Append("; else resource_effective=$resource_hard; fi ;; ")
-                .Append("esac; ")
-                .Append("ulimit -S -").Append(resource).Append(" \"$resource_effective\" 2>/dev/null || { printf '%s\\n' 'Could not set soft ")
-                .Append(resourceName).Append(".' >&2; exit 125; }; ")
-                .Append("ulimit -H -").Append(resource).Append(" \"$resource_effective\" 2>/dev/null || { printf '%s\\n' 'Could not set hard ")
-                .Append(resourceName).Append(".' >&2; exit 125; }; ");
         }
         script.Append("exec \"$0\" \"$@\"");
         return script.ToString();
@@ -223,30 +215,23 @@ internal class UnixPanGlossJob : PanGlossContainmentJob
                 "The child joins the cgroup before exec; cgroup.kill stops members still in that subtree.",
                 ["A descendant with permission to leave the delegated cgroup and process group can escape termination."]);
 
-        var limitations = linux
-            ? new[]
-            {
-                "Without a delegated writable cgroup v2, CPU rate is not hard-limited and memory uses RLIMIT_AS per process.",
-                "Motif limits PanGloss batch threads, but this host cannot enforce a hard CPU rate.",
-                "A descendant that deliberately leaves the process group can outlive the job."
-            }
-            : new[]
-            {
-                "Finite RLIMIT_DATA and RLIMIT_AS values are unavailable on macOS; the process-group watchdog samples every 50 ms.",
-                "The 50 ms sampling interval can allow footprint overshoot, and a peak released between samples can be missed.",
-                "A descendant that deliberately leaves the process group can escape measurement and termination."
-            };
-        if (!linux)
-            return new PanGlossContainmentReport(null, memoryLimitBytes, true,
-                "No hard CPU rate limit is available; PanGloss batch threads are limited by Motif.",
-                $"macOS process-group physical-footprint watchdog, sampled every 50 ms, with a {memoryLimitBytes} byte ceiling.",
-                "The child starts in its own process group; members are killed on close or when sampled footprint exceeds the ceiling.",
-                limitations);
-        return new PanGlossContainmentReport(null, memoryLimitBytes, false,
-            linux ? "No hard CPU rate limit; Motif limits batch threads and RLIMIT_CPU is not substituted." : "No hard CPU rate limit is available; PanGloss batch threads are limited by Motif.",
-            "RLIMIT_AS address-space limit per process.",
-            "The child starts in its own process group; members are killed on close, but a detached descendant can escape.",
-            limitations);
+        var sampled = linux
+            ? "Linux process-group resident and swapped memory (RssAnon, RssShmem, VmSwap) watchdog"
+            : "macOS process-group physical-footprint watchdog";
+        var unavailable = linux
+            ? "Without a delegated writable cgroup v2, the kernel enforces no CPU rate or memory limit; the process-group watchdog samples every 50 ms."
+            : "Finite RLIMIT_DATA and RLIMIT_AS values are unavailable on macOS; the process-group watchdog samples every 50 ms.";
+        return new PanGlossContainmentReport(null, memoryLimitBytes, true,
+            linux
+                ? "No hard CPU rate limit; Motif limits batch threads and RLIMIT_CPU is not substituted."
+                : "No hard CPU rate limit is available; PanGloss batch threads are limited by Motif.",
+            $"{sampled}, sampled every 50 ms, with a {memoryLimitBytes} byte ceiling.",
+            "The child starts in its own process group; members are killed on close or when sampled memory exceeds the ceiling.",
+            [
+                unavailable,
+                "The 50 ms sampling interval can allow overshoot, and a peak released between samples can be missed.",
+                "A descendant that deliberately leaves the process group can escape measurement and termination.",
+            ]);
     }
 
     private static UnixCgroup? TryCreateCgroup(ulong memoryLimitBytes, bool linux)
@@ -281,19 +266,19 @@ internal sealed class UnixPanGlossChildProcess : IPanGlossChildProcess
     private readonly FileStream _stderr;
     private readonly Action _kill;
     private readonly Task<int> _exitCode;
-    private readonly MacPanGlossMemoryWatchdog? _memoryWatchdog;
+    private readonly PanGlossMemoryWatchdog? _memoryWatchdog;
     private bool _disposed;
 
     internal UnixPanGlossChildProcess(int processId, FileStream stdout, FileStream stderr, Action kill,
-        ulong? macMemoryLimitBytes = null)
+        IProcessGroupMemory? groupMemory = null, ulong memoryLimitBytes = 0)
     {
         Id = processId;
         _stdout = stdout;
         _stderr = stderr;
         _kill = kill;
         _exitCode = Task.Run(() => WaitForExitCode(processId));
-        if (macMemoryLimitBytes is { } memoryLimitBytes && OperatingSystem.IsMacOS())
-            _memoryWatchdog = new MacPanGlossMemoryWatchdog(processId, memoryLimitBytes, kill);
+        if (groupMemory is not null)
+            _memoryWatchdog = new PanGlossMemoryWatchdog(processId, memoryLimitBytes, groupMemory, kill);
     }
 
     public int Id { get; }
