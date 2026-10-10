@@ -969,7 +969,7 @@
   },
   {
     "name": "motif_proposals",
-    "description": "List Proposals. Lists saved Proposals and Drafts, including each identity, label and status. Read one Proposal to inspect its semantic intent.\nCommand: list. Agent class: Read.\n\nShow. Reads the requested saved project information without changing the FieldWorks project.\nCommand: show. Agent class: Read.\nProposalId: The exact canonical Proposal identity.",
+    "description": "List Proposals. Lists saved Proposals and Drafts, including each identity, label and status. Read one Proposal to inspect its semantic intent.\nCommand: list. Agent class: Read.\n\nShow a Proposal. Reads one saved Proposal or Draft by id, with its status, label, comment and operations. It does not change the FieldWorks project.\nCommand: show. Agent class: Read.\nProposalId: The exact canonical Proposal identity.",
     "inputSchema": {
       "type": "object",
       "properties": {
