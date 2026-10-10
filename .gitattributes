@@ -1,0 +1,9 @@
+# Text is stored and checked out with LF everywhere, so a Windows checkout matches CI and the generators.
+* text=auto eol=lf
+
+*.png binary
+*.ico binary
+*.webp binary
+*.ttf binary
+*.mp4 binary
+*.webm binary
