@@ -20,6 +20,7 @@ public sealed partial class ResultsInTextViewModel
     private SelectionLinePages? _linePages;
     private IDisposable? _lineObservation;
     private Task _selectionWork = Task.CompletedTask;
+    private Task _readStateWrites = Task.CompletedTask;
     private long _selectionVersion;
     private bool _readerVisible = true;
     private Guid? _preferredTextId;
@@ -63,6 +64,13 @@ public sealed partial class ResultsInTextViewModel
 
     private void TrackSelectionWork(Task work) => _selectionWork = _selectionWork.IsCompleted ? work :
         Task.WhenAll(_selectionWork, work);
+
+    // Kept apart from selection work so focus moves never wait on a store write.
+    private Task TrackReadStateWrite(Task write)
+    {
+        _readStateWrites = _readStateWrites.IsCompleted ? write : Task.WhenAll(_readStateWrites, write);
+        return write;
+    }
 
     private void ReleaseLinePages()
     {
@@ -197,6 +205,7 @@ public sealed partial class ResultsInTextViewModel
     {
         HideReader();
         await _selectionWork.ConfigureAwait(true);
+        await _readStateWrites.ConfigureAwait(true);
     }
 
     private void RefreshNativeLines()
