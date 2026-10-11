@@ -101,6 +101,22 @@ public sealed class ParsimonyEvidenceProjectionTests : IDisposable
     }
 
     [Fact]
+    public void WritingTheEvidenceFileCommitsTheSchemaAndTheRowsTogether()
+    {
+        var projection = BuildProjection(ParsimonyEvidenceScopeKind.ProjectApproved);
+        var path = Path.Combine(_root, "commits", "evidence.sqlite");
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+
+        EvidenceWriter.Write(path, projection, "{}", "sha256:" + new string('9', 64), "sha256:" + new string('a', 64));
+
+        // SQLite's file change counter (header bytes 24-27, big-endian) counts every commit that wrote the file.
+        var header = new byte[28];
+        using (var file = File.OpenRead(path)) file.ReadExactly(header);
+        var commits = System.Buffers.Binary.BinaryPrimitives.ReadUInt32BigEndian(header.AsSpan(24, 4));
+        Assert.InRange(commits, 1u, 5u);
+    }
+
+    [Fact]
     public void PreservesWritingSystemsOpinionsAndOneOccurrenceAcrossAlternateForms()
     {
         var projection = BuildProjection(ParsimonyEvidenceScopeKind.ProjectApproved);

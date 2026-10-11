@@ -36,8 +36,9 @@ public static class EvidenceWriter
                 Execute(connection, "PRAGMA page_size=4096; PRAGMA encoding='UTF-8'; PRAGMA journal_mode=DELETE; " +
                     $"PRAGMA synchronous=FULL; PRAGMA application_id={EvidenceSchema.ApplicationId}; " +
                     $"PRAGMA user_version={EvidenceSchema.Version};");
-                Execute(connection, EvidenceSchema.Ddl);
                 using var transaction = connection.BeginTransaction();
+                // Inside the transaction, so the schema costs one journal and one flush, not one per statement.
+                Execute(connection, EvidenceSchema.Ddl, transaction);
                 InsertMetadata(connection, transaction, projection, baselineTokenJson, sourceSha256,
                     modelFingerprint, inputKind, candidateIdentity, complete: false);
                 InsertWordforms(connection, transaction, projection.Wordforms);
@@ -890,9 +891,10 @@ public static class EvidenceWriter
     private static long ReadPragma(SqliteConnection connection, string name) =>
         Convert.ToInt64(Scalar(connection, $"PRAGMA {name};"), System.Globalization.CultureInfo.InvariantCulture);
 
-    private static void Execute(SqliteConnection connection, string sql)
+    private static void Execute(SqliteConnection connection, string sql, SqliteTransaction? transaction = null)
     {
         using var command = connection.CreateCommand();
+        command.Transaction = transaction;
         command.CommandText = sql;
         command.ExecuteNonQuery();
     }
