@@ -81,7 +81,10 @@ yourself is kept. Two things stay outside, by design:
 - NuGet's global packages folder (`NUGET_PACKAGES`, default `$USERPROFILE/.nuget/packages`, an explicit
   value is preserved) is shared. Restore fills it, and a build only reads it, so restore before you hand
   a worktree to a sandboxed agent. It is a cache, not a package source.
-- The system temporary folder, which every sandbox allows.
+- The system temporary folder, which every sandbox allows. On Windows `test.ps1` moves the test process
+  tree's TEMP and TMP to `bin/t` in the checkout (or `MOTIF_TEST_TEMP`), because Windows Defender scans
+  every file the suite churns through the user's Temp folder: the Worker, Commands and LibLcm suites took
+  two to three times as long there as in a checkout excluded from scanning.
 
 `tools/Test-HermeticBuild.ps1` enforces this on CI's Ubuntu job. It runs the build and one test
 project with `HOME` read-only, so a tool that starts writing a new per-user cache fails there and

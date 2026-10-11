@@ -86,6 +86,9 @@ $env:MOTIF_DEVELOPER_COMMANDS = '1'
 # Every per-user tool cache except the shared packages folder lives under bin/.cache in this checkout.
 Import-Module (Join-Path $repoRoot 'tools/MotifToolEnvironment.psm1') -Force
 Initialize-MotifToolEnvironment -RepoRoot $repoRoot
+# Defender scans the user's Temp folder; a developer checkout usually sits where build churn goes unscanned.
+$testTemporaryDirectory = Initialize-MotifTestTemporaryDirectory -RepoRoot $repoRoot
+if ($testTemporaryDirectory) { Write-Host "Test temporary folder: $testTemporaryDirectory" }
 Import-Module (Join-Path $repoRoot 'tools/MotifProcessHygiene.psm1') -Force
 Set-MotifBuildProcessPolicy
 $processLock = Enter-MotifWorktreeLock -RepoRoot $repoRoot -Context 'Motif tests'
@@ -142,6 +145,15 @@ $phaseClocks['offline restore'] = [Diagnostics.Stopwatch]::StartNew()
 Write-Step 'offline restore regression'
 & pwsh -NoProfile -File (Join-Path $repoRoot 'tools/OfflineRestore.Tests.ps1')
 Write-PhaseDuration 'offline restore'
+if ($LASTEXITCODE -ne 0) {
+    Write-PhaseDuration 'whole gate'
+    exit 1
+}
+
+$phaseClocks['tool environment regression'] = [Diagnostics.Stopwatch]::StartNew()
+Write-Step 'tool environment regression'
+& pwsh -NoProfile -File (Join-Path $repoRoot 'tools/MotifToolEnvironment.Tests.ps1')
+Write-PhaseDuration 'tool environment regression'
 if ($LASTEXITCODE -ne 0) {
     Write-PhaseDuration 'whole gate'
     exit 1

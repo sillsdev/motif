@@ -12,8 +12,9 @@ Set-StrictMode -Version Latest
   value the caller already set is kept, so a developer's own choice wins.
 
   NuGet's global packages folder stays shared and per-user (NUGET_PACKAGES): restore fills it once,
-  and builds only read it. Temporary files stay in the system temporary folder, which every sandbox
-  allows. `tools/Test-HermeticBuild.ps1` fails when anything else writes outside the checkout.
+  and builds only read it. Build temporary files stay in the system temporary folder, which every
+  sandbox allows; a Windows test run moves its own with Initialize-MotifTestTemporaryDirectory.
+  `tools/Test-HermeticBuild.ps1` fails when anything else writes outside the checkout.
 #>
 function Initialize-MotifToolEnvironment {
     [CmdletBinding()]
@@ -119,4 +120,36 @@ function Copy-MotifStagedIcu {
     return $true
 }
 
-Export-ModuleMember -Function Initialize-MotifToolEnvironment, Get-MotifToolArtifactsPath, Copy-MotifStagedIcu
+<#
+  .SYNOPSIS
+  On Windows, point TEMP and TMP for the whole test process tree at a folder inside this checkout.
+
+  .DESCRIPTION
+  The suite writes and deletes thousands of small files, SQLite databases and parser copies under the
+  temporary folder, and Windows Defender scans each one as it is opened or closed. With TEMP in the
+  user's Temp folder the Worker, Commands and LibLcm suites took two to three times as long as with TEMP
+  inside a checkout under a folder Defender skips for build churn. A checkout is the place this
+  repository already keeps every other per-run write. MOTIF_TEST_TEMP names another folder instead.
+  Linux and macOS keep the system folder: there is no on-access scanner, and /tmp is often in memory.
+  Returns the folder, or $null when the system folder is kept.
+#>
+function Initialize-MotifTestTemporaryDirectory {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string] $RepoRoot,
+        [bool] $WindowsHost = $IsWindows
+    )
+
+    if (-not $WindowsHost) { return $null }
+    $directory = $env:MOTIF_TEST_TEMP
+    # A short name: tests build deep scratch paths below it and must stay under the Windows path limit.
+    if ([string]::IsNullOrWhiteSpace($directory)) { $directory = Join-Path $RepoRoot 'bin/t' }
+    $directory = [IO.Path]::GetFullPath($directory)
+    [IO.Directory]::CreateDirectory($directory) | Out-Null
+    $env:TEMP = $directory
+    $env:TMP = $directory
+    return $directory
+}
+
+Export-ModuleMember -Function Initialize-MotifToolEnvironment, Get-MotifToolArtifactsPath, Copy-MotifStagedIcu,
+    Initialize-MotifTestTemporaryDirectory
