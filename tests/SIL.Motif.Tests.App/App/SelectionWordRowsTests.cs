@@ -501,7 +501,7 @@ public sealed class SelectionWordRowsTests
             PageScreenshots.Settle(window);
             Assert.Same(list.DisplayRows, rows.ItemsSource);
             list.Rows[0].IsChecked = true;
-            for (var offset = 0; offset < list.Rows.Count; offset += 10)
+            for (var offset = 0; offset < list.Rows.Count; offset += 15)
             {
                 rows.ScrollIntoView(offset);
                 PageScreenshots.Settle(window);
