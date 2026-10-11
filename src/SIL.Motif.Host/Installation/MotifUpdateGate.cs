@@ -94,29 +94,8 @@ public static class MotifUpdateGate
 
     internal readonly record struct WorkerProcessInfo(int ProcessId, string Path);
 
-    private static IReadOnlyList<WorkerProcessInfo> FindInstalledWorkers(string installDirectory)
-    {
-        var root = Path.GetFullPath(installDirectory).TrimEnd(Path.DirectorySeparatorChar,
-            Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
-        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
-        var found = new List<WorkerProcessInfo>();
-        foreach (var process in Process.GetProcessesByName("SIL.Motif.Worker"))
-        {
-            using (process)
-            {
-                string? path;
-                try { path = process.MainModule?.FileName; }
-                catch (Exception exception) when (exception is InvalidOperationException or
-                    System.ComponentModel.Win32Exception or NotSupportedException)
-                {
-                    continue;
-                }
-                if (path is not null && Path.GetFullPath(path).StartsWith(root, comparison))
-                    found.Add(new WorkerProcessInfo(process.Id, path));
-            }
-        }
-        return found;
-    }
+    private static IReadOnlyList<WorkerProcessInfo> FindInstalledWorkers(string installDirectory) =>
+        InstalledWorkerLocator.Find(installDirectory);
 
     private static string GetRetirementMarkerPath(string gateName) =>
         WorkerLockPaths.GetLockPath(gateName + ".RetireIdleWorkers", machineWide: false) + ".request";
