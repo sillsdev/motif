@@ -499,7 +499,11 @@ jobs:
 
       - name: Install, invoke, update, and uninstall the Linux package
         shell: bash
-        run: bash ./tools/package-smoke-unix.sh
+        run: |
+          # GitHub can lose a failed job log, so the smoke also writes its output to the evidence folder.
+          set -o pipefail
+          mkdir -p "$WORK_DIRECTORY/release-pathway-evidence"
+          bash ./tools/package-smoke-unix.sh 2>&1 | tee "$WORK_DIRECTORY/release-pathway-evidence/package-smoke-unix.log"
 
       - name: Gather the release check's folder after a failure
         if: failure()
@@ -682,7 +686,11 @@ jobs:
 
       - name: Install, invoke, update, and uninstall the macOS package
         shell: bash
-        run: bash ./tools/package-smoke-unix.sh
+        run: |
+          # GitHub can lose a failed job log, so the smoke also writes its output to the evidence folder.
+          set -o pipefail
+          mkdir -p "$WORK_DIRECTORY/release-pathway-evidence"
+          bash ./tools/package-smoke-unix.sh 2>&1 | tee "$WORK_DIRECTORY/release-pathway-evidence/package-smoke-unix.log"
 
       - name: Gather the release check's folder after a failure
         if: failure()
