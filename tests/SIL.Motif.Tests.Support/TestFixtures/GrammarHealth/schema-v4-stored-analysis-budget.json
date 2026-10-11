@@ -1,0 +1,545 @@
+{
+  "schema_version": 4,
+  "locale": "en",
+  "fieldworks_project": {
+    "name": "Synthetic",
+    "source": "argument"
+  },
+  "summary": [
+    {
+      "code": "grammar.stored-analysis.incomplete",
+      "group_name": "Stored analysis not checked",
+      "level": "warning",
+      "count": 3
+    },
+    {
+      "code": "grammar.stored-analysis.budget-reached",
+      "group_name": "Analysis check stopped early",
+      "level": "info",
+      "count": 1
+    }
+  ],
+  "diagnostics": [
+    {
+      "level": "warning",
+      "code": "grammar.stored-analysis.incomplete",
+      "group_name": "Stored analysis not checked",
+      "origin": "check",
+      "description": "Stored analysis 08f4906b-41ae-4097-a7b1-5099072a675d for wordform \"ajoocha\" (WfiWordform GUID bf7d503c-6761-44f4-9520-43d0550391f0) was not compared: PanGloss reached its per-word analysis cap (100000 analysis steps or 10000000 work units) after 3185983 work units. Whether it still parses is unknown.",
+      "guidance": "No FieldWorks correction is established: the stored analyses may still parse. If the wordform should analyze quickly, look for rules or affixes that can apply to it many times, such as optional phonological rules or null affixes. If the grammar is correct, report the wordform with its description and PanGloss version.",
+      "title": "Stored analysis not checked",
+      "explanation": "PanGloss could not finish comparing a wordform's FieldWorks stored analyses with its own analyses, usually because analyzing the wordform reached the parser's work cap. The description names the wordform and the reason. Whether those stored analyses still parse is unknown; the other wordforms were still compared.",
+      "help_path": "docs/diagnostics/grammar.stored-analysis.incomplete.md",
+      "help_body": "# How the parser uses a FieldWorks project\n\nThe importer reads FieldWorks project data and builds a grammar the parser can run. A diagnostic identifies a source condition or a construction the parser could not represent. Read its description for the named object, field, and observed cause.\n\nSome findings describe source data that is missing or inconsistent. Others describe a valid construction that the current parser skips, approximates, or handles with a reduced set of constraints. The next step depends on the outcome: repair a demonstrated source defect, and preserve valid linguistic data when the finding describes a parser limitation.\n\nA FieldWorks destination is included only when the relevant tool path is known. A missing destination means the finding is grammar-wide, its source owner varies, or no verified editable field is established. Use the diagnostic description to locate the source data, then report a valid case the parser cannot preserve.\n",
+      "fieldworks_places": [],
+      "scope": "object",
+      "subjects": [
+        {
+          "kind": "Unknown",
+          "status": "object",
+          "field": null,
+          "source_class": "WfiWordform",
+          "title": "ajoocha",
+          "subtitle": null,
+          "guid": "bf7d503c-6761-44f4-9520-43d0550391f0",
+          "internal_id": null,
+          "fieldworks": {
+            "status": "unavailable",
+            "reason": "unsupported_kind",
+            "guid": "bf7d503c-6761-44f4-9520-43d0550391f0"
+          }
+        },
+        {
+          "kind": "Unknown",
+          "status": "object",
+          "field": null,
+          "source_class": "WfiAnalysis",
+          "title": "Stored analysis",
+          "subtitle": null,
+          "guid": "08f4906b-41ae-4097-a7b1-5099072a675d",
+          "internal_id": null,
+          "fieldworks": {
+            "status": "unavailable",
+            "reason": "unsupported_kind",
+            "guid": "08f4906b-41ae-4097-a7b1-5099072a675d"
+          }
+        },
+        {
+          "kind": "MoForm",
+          "status": "object",
+          "field": null,
+          "source_class": "MoForm",
+          "title": "a",
+          "subtitle": null,
+          "guid": "d43d9bfb-ebdc-439a-a2eb-a227debfb62a",
+          "internal_id": null,
+          "fieldworks": {
+            "status": "available",
+            "guid": "d43d9bfb-ebdc-439a-a2eb-a227debfb62a",
+            "tool": "lexiconEdit",
+            "url": "silfw://localhost/link?database%3Dmbugwe%26tool%3DlexiconEdit%26guid%3Dd43d9bfb-ebdc-439a-a2eb-a227debfb62a%26tag%3D"
+          }
+        },
+        {
+          "kind": "MoInflAffMsa",
+          "status": "object",
+          "field": null,
+          "source_class": "MSA",
+          "title": "Stored MSA",
+          "subtitle": null,
+          "guid": "b6858e98-e02f-4f72-9948-7e5796575ba0",
+          "internal_id": null,
+          "fieldworks": {
+            "status": "available",
+            "guid": "b6858e98-e02f-4f72-9948-7e5796575ba0",
+            "tool": "lexiconEdit",
+            "url": "silfw://localhost/link?database%3Dmbugwe%26tool%3DlexiconEdit%26guid%3Db6858e98-e02f-4f72-9948-7e5796575ba0%26tag%3D"
+          }
+        },
+        {
+          "kind": "MoForm",
+          "status": "object",
+          "field": null,
+          "source_class": "MoForm",
+          "title": "je",
+          "subtitle": null,
+          "guid": "ebf5db07-a595-4db3-bb48-e54472191830",
+          "internal_id": null,
+          "fieldworks": {
+            "status": "available",
+            "guid": "ebf5db07-a595-4db3-bb48-e54472191830",
+            "tool": "lexiconEdit",
+            "url": "silfw://localhost/link?database%3Dmbugwe%26tool%3DlexiconEdit%26guid%3Debf5db07-a595-4db3-bb48-e54472191830%26tag%3D"
+          }
+        },
+        {
+          "kind": "MoInflAffMsa",
+          "status": "object",
+          "field": null,
+          "source_class": "MSA",
+          "title": "Stored MSA",
+          "subtitle": null,
+          "guid": "9d4d718b-4167-452e-9374-9dc008352871",
+          "internal_id": null,
+          "fieldworks": {
+            "status": "available",
+            "guid": "9d4d718b-4167-452e-9374-9dc008352871",
+            "tool": "lexiconEdit",
+            "url": "silfw://localhost/link?database%3Dmbugwe%26tool%3DlexiconEdit%26guid%3D9d4d718b-4167-452e-9374-9dc008352871%26tag%3D"
+          }
+        },
+        {
+          "kind": "MoForm",
+          "status": "object",
+          "field": null,
+          "source_class": "MoForm",
+          "title": "och",
+          "subtitle": null,
+          "guid": "50609c23-de7b-431e-9a56-a1fa62c924b8",
+          "internal_id": null,
+          "fieldworks": {
+            "status": "available",
+            "guid": "50609c23-de7b-431e-9a56-a1fa62c924b8",
+            "tool": "lexiconEdit",
+            "url": "silfw://localhost/link?database%3Dmbugwe%26tool%3DlexiconEdit%26guid%3D50609c23-de7b-431e-9a56-a1fa62c924b8%26tag%3D"
+          }
+        },
+        {
+          "kind": "MoStemMsa",
+          "status": "object",
+          "field": null,
+          "source_class": "MSA",
+          "title": "Stored MSA",
+          "subtitle": null,
+          "guid": "9e633ab0-3f16-40b7-baea-2c6f1354763a",
+          "internal_id": null,
+          "fieldworks": {
+            "status": "available",
+            "guid": "9e633ab0-3f16-40b7-baea-2c6f1354763a",
+            "tool": "lexiconEdit",
+            "url": "silfw://localhost/link?database%3Dmbugwe%26tool%3DlexiconEdit%26guid%3D9e633ab0-3f16-40b7-baea-2c6f1354763a%26tag%3D"
+          }
+        },
+        {
+          "kind": "MoForm",
+          "status": "object",
+          "field": null,
+          "source_class": "MoForm",
+          "title": "i",
+          "subtitle": null,
+          "guid": "5a1bd004-e60a-4613-930a-10a5b2178c70",
+          "internal_id": null,
+          "fieldworks": {
+            "status": "available",
+            "guid": "5a1bd004-e60a-4613-930a-10a5b2178c70",
+            "tool": "lexiconEdit",
+            "url": "silfw://localhost/link?database%3Dmbugwe%26tool%3DlexiconEdit%26guid%3D5a1bd004-e60a-4613-930a-10a5b2178c70%26tag%3D"
+          }
+        },
+        {
+          "kind": "MoDerivAffMsa",
+          "status": "object",
+          "field": null,
+          "source_class": "MSA",
+          "title": "Stored MSA",
+          "subtitle": null,
+          "guid": "ed00a204-02f5-44c4-901f-a97e798c364e",
+          "internal_id": null,
+          "fieldworks": {
+            "status": "available",
+            "guid": "ed00a204-02f5-44c4-901f-a97e798c364e",
+            "tool": "lexiconEdit",
+            "url": "silfw://localhost/link?database%3Dmbugwe%26tool%3DlexiconEdit%26guid%3Ded00a204-02f5-44c4-901f-a97e798c364e%26tag%3D"
+          }
+        },
+        {
+          "kind": "MoForm",
+          "status": "object",
+          "field": null,
+          "source_class": "MoForm",
+          "title": "a",
+          "subtitle": null,
+          "guid": "31669908-8a1f-4013-b1aa-eb7c90f02b58",
+          "internal_id": null,
+          "fieldworks": {
+            "status": "available",
+            "guid": "31669908-8a1f-4013-b1aa-eb7c90f02b58",
+            "tool": "lexiconEdit",
+            "url": "silfw://localhost/link?database%3Dmbugwe%26tool%3DlexiconEdit%26guid%3D31669908-8a1f-4013-b1aa-eb7c90f02b58%26tag%3D"
+          }
+        },
+        {
+          "kind": "MoInflAffMsa",
+          "status": "object",
+          "field": null,
+          "source_class": "MSA",
+          "title": "Stored MSA",
+          "subtitle": null,
+          "guid": "acbbae93-4b22-4c4a-a214-17fe2b413410",
+          "internal_id": null,
+          "fieldworks": {
+            "status": "available",
+            "guid": "acbbae93-4b22-4c4a-a214-17fe2b413410",
+            "tool": "lexiconEdit",
+            "url": "silfw://localhost/link?database%3Dmbugwe%26tool%3DlexiconEdit%26guid%3Dacbbae93-4b22-4c4a-a214-17fe2b413410%26tag%3D"
+          }
+        }
+      ]
+    },
+    {
+      "level": "warning",
+      "code": "grammar.stored-analysis.incomplete",
+      "group_name": "Stored analysis not checked",
+      "origin": "check",
+      "description": "Stored analysis 2ae42be6-21f2-421b-9412-eae29ab26434 for wordform \"ajoocha\" (WfiWordform GUID bf7d503c-6761-44f4-9520-43d0550391f0) was not compared: PanGloss reached its per-word analysis cap (100000 analysis steps or 10000000 work units) after 3185983 work units. Whether it still parses is unknown.",
+      "guidance": "No FieldWorks correction is established: the stored analyses may still parse. If the wordform should analyze quickly, look for rules or affixes that can apply to it many times, such as optional phonological rules or null affixes. If the grammar is correct, report the wordform with its description and PanGloss version.",
+      "title": "Stored analysis not checked",
+      "explanation": "PanGloss could not finish comparing a wordform's FieldWorks stored analyses with its own analyses, usually because analyzing the wordform reached the parser's work cap. The description names the wordform and the reason. Whether those stored analyses still parse is unknown; the other wordforms were still compared.",
+      "help_path": "docs/diagnostics/grammar.stored-analysis.incomplete.md",
+      "help_body": "# How the parser uses a FieldWorks project\n\nThe importer reads FieldWorks project data and builds a grammar the parser can run. A diagnostic identifies a source condition or a construction the parser could not represent. Read its description for the named object, field, and observed cause.\n\nSome findings describe source data that is missing or inconsistent. Others describe a valid construction that the current parser skips, approximates, or handles with a reduced set of constraints. The next step depends on the outcome: repair a demonstrated source defect, and preserve valid linguistic data when the finding describes a parser limitation.\n\nA FieldWorks destination is included only when the relevant tool path is known. A missing destination means the finding is grammar-wide, its source owner varies, or no verified editable field is established. Use the diagnostic description to locate the source data, then report a valid case the parser cannot preserve.\n",
+      "fieldworks_places": [],
+      "scope": "object",
+      "subjects": [
+        {
+          "kind": "Unknown",
+          "status": "object",
+          "field": null,
+          "source_class": "WfiWordform",
+          "title": "ajoocha",
+          "subtitle": null,
+          "guid": "bf7d503c-6761-44f4-9520-43d0550391f0",
+          "internal_id": null,
+          "fieldworks": {
+            "status": "unavailable",
+            "reason": "unsupported_kind",
+            "guid": "bf7d503c-6761-44f4-9520-43d0550391f0"
+          }
+        },
+        {
+          "kind": "Unknown",
+          "status": "object",
+          "field": null,
+          "source_class": "WfiAnalysis",
+          "title": "Stored analysis",
+          "subtitle": null,
+          "guid": "2ae42be6-21f2-421b-9412-eae29ab26434",
+          "internal_id": null,
+          "fieldworks": {
+            "status": "unavailable",
+            "reason": "unsupported_kind",
+            "guid": "2ae42be6-21f2-421b-9412-eae29ab26434"
+          }
+        },
+        {
+          "kind": "MoForm",
+          "status": "object",
+          "field": null,
+          "source_class": "MoForm",
+          "title": "a",
+          "subtitle": null,
+          "guid": "d43d9bfb-ebdc-439a-a2eb-a227debfb62a",
+          "internal_id": null,
+          "fieldworks": {
+            "status": "available",
+            "guid": "d43d9bfb-ebdc-439a-a2eb-a227debfb62a",
+            "tool": "lexiconEdit",
+            "url": "silfw://localhost/link?database%3Dmbugwe%26tool%3DlexiconEdit%26guid%3Dd43d9bfb-ebdc-439a-a2eb-a227debfb62a%26tag%3D"
+          }
+        },
+        {
+          "kind": "MoInflAffMsa",
+          "status": "object",
+          "field": null,
+          "source_class": "MSA",
+          "title": "Stored MSA",
+          "subtitle": null,
+          "guid": "b6858e98-e02f-4f72-9948-7e5796575ba0",
+          "internal_id": null,
+          "fieldworks": {
+            "status": "available",
+            "guid": "b6858e98-e02f-4f72-9948-7e5796575ba0",
+            "tool": "lexiconEdit",
+            "url": "silfw://localhost/link?database%3Dmbugwe%26tool%3DlexiconEdit%26guid%3Db6858e98-e02f-4f72-9948-7e5796575ba0%26tag%3D"
+          }
+        },
+        {
+          "kind": "MoForm",
+          "status": "object",
+          "field": null,
+          "source_class": "MoForm",
+          "title": "ja",
+          "subtitle": null,
+          "guid": "c321cbe9-1258-46d8-b031-1e2532779fab",
+          "internal_id": null,
+          "fieldworks": {
+            "status": "available",
+            "guid": "c321cbe9-1258-46d8-b031-1e2532779fab",
+            "tool": "lexiconEdit",
+            "url": "silfw://localhost/link?database%3Dmbugwe%26tool%3DlexiconEdit%26guid%3Dc321cbe9-1258-46d8-b031-1e2532779fab%26tag%3D"
+          }
+        },
+        {
+          "kind": "MoInflAffMsa",
+          "status": "object",
+          "field": null,
+          "source_class": "MSA",
+          "title": "Stored MSA",
+          "subtitle": null,
+          "guid": "3f0776c4-073d-484b-bb68-893bd9072b51",
+          "internal_id": null,
+          "fieldworks": {
+            "status": "available",
+            "guid": "3f0776c4-073d-484b-bb68-893bd9072b51",
+            "tool": "lexiconEdit",
+            "url": "silfw://localhost/link?database%3Dmbugwe%26tool%3DlexiconEdit%26guid%3D3f0776c4-073d-484b-bb68-893bd9072b51%26tag%3D"
+          }
+        },
+        {
+          "kind": "MoForm",
+          "status": "object",
+          "field": null,
+          "source_class": "MoForm",
+          "title": "och",
+          "subtitle": null,
+          "guid": "50609c23-de7b-431e-9a56-a1fa62c924b8",
+          "internal_id": null,
+          "fieldworks": {
+            "status": "available",
+            "guid": "50609c23-de7b-431e-9a56-a1fa62c924b8",
+            "tool": "lexiconEdit",
+            "url": "silfw://localhost/link?database%3Dmbugwe%26tool%3DlexiconEdit%26guid%3D50609c23-de7b-431e-9a56-a1fa62c924b8%26tag%3D"
+          }
+        },
+        {
+          "kind": "MoStemMsa",
+          "status": "object",
+          "field": null,
+          "source_class": "MSA",
+          "title": "Stored MSA",
+          "subtitle": null,
+          "guid": "9e633ab0-3f16-40b7-baea-2c6f1354763a",
+          "internal_id": null,
+          "fieldworks": {
+            "status": "available",
+            "guid": "9e633ab0-3f16-40b7-baea-2c6f1354763a",
+            "tool": "lexiconEdit",
+            "url": "silfw://localhost/link?database%3Dmbugwe%26tool%3DlexiconEdit%26guid%3D9e633ab0-3f16-40b7-baea-2c6f1354763a%26tag%3D"
+          }
+        },
+        {
+          "kind": "MoForm",
+          "status": "object",
+          "field": null,
+          "source_class": "MoForm",
+          "title": "a",
+          "subtitle": null,
+          "guid": "31669908-8a1f-4013-b1aa-eb7c90f02b58",
+          "internal_id": null,
+          "fieldworks": {
+            "status": "available",
+            "guid": "31669908-8a1f-4013-b1aa-eb7c90f02b58",
+            "tool": "lexiconEdit",
+            "url": "silfw://localhost/link?database%3Dmbugwe%26tool%3DlexiconEdit%26guid%3D31669908-8a1f-4013-b1aa-eb7c90f02b58%26tag%3D"
+          }
+        },
+        {
+          "kind": "MoInflAffMsa",
+          "status": "object",
+          "field": null,
+          "source_class": "MSA",
+          "title": "Stored MSA",
+          "subtitle": null,
+          "guid": "acbbae93-4b22-4c4a-a214-17fe2b413410",
+          "internal_id": null,
+          "fieldworks": {
+            "status": "available",
+            "guid": "acbbae93-4b22-4c4a-a214-17fe2b413410",
+            "tool": "lexiconEdit",
+            "url": "silfw://localhost/link?database%3Dmbugwe%26tool%3DlexiconEdit%26guid%3Dacbbae93-4b22-4c4a-a214-17fe2b413410%26tag%3D"
+          }
+        }
+      ]
+    },
+    {
+      "level": "warning",
+      "code": "grammar.stored-analysis.incomplete",
+      "group_name": "Stored analysis not checked",
+      "origin": "check",
+      "description": "Stored analysis 01c25a34-0c20-4632-9193-447fdac14304 for wordform \"aachwɛ\" (WfiWordform GUID 13a8a8b6-c775-4c49-8874-7a6e0c7badba) was not compared: PanGloss reached its per-word analysis cap (100000 analysis steps or 10000000 work units) after 2339137 work units. Whether it still parses is unknown.",
+      "guidance": "No FieldWorks correction is established: the stored analyses may still parse. If the wordform should analyze quickly, look for rules or affixes that can apply to it many times, such as optional phonological rules or null affixes. If the grammar is correct, report the wordform with its description and PanGloss version.",
+      "title": "Stored analysis not checked",
+      "explanation": "PanGloss could not finish comparing a wordform's FieldWorks stored analyses with its own analyses, usually because analyzing the wordform reached the parser's work cap. The description names the wordform and the reason. Whether those stored analyses still parse is unknown; the other wordforms were still compared.",
+      "help_path": "docs/diagnostics/grammar.stored-analysis.incomplete.md",
+      "help_body": "# How the parser uses a FieldWorks project\n\nThe importer reads FieldWorks project data and builds a grammar the parser can run. A diagnostic identifies a source condition or a construction the parser could not represent. Read its description for the named object, field, and observed cause.\n\nSome findings describe source data that is missing or inconsistent. Others describe a valid construction that the current parser skips, approximates, or handles with a reduced set of constraints. The next step depends on the outcome: repair a demonstrated source defect, and preserve valid linguistic data when the finding describes a parser limitation.\n\nA FieldWorks destination is included only when the relevant tool path is known. A missing destination means the finding is grammar-wide, its source owner varies, or no verified editable field is established. Use the diagnostic description to locate the source data, then report a valid case the parser cannot preserve.\n",
+      "fieldworks_places": [],
+      "scope": "object",
+      "subjects": [
+        {
+          "kind": "Unknown",
+          "status": "object",
+          "field": null,
+          "source_class": "WfiWordform",
+          "title": "aachwɛ",
+          "subtitle": null,
+          "guid": "13a8a8b6-c775-4c49-8874-7a6e0c7badba",
+          "internal_id": null,
+          "fieldworks": {
+            "status": "unavailable",
+            "reason": "unsupported_kind",
+            "guid": "13a8a8b6-c775-4c49-8874-7a6e0c7badba"
+          }
+        },
+        {
+          "kind": "Unknown",
+          "status": "object",
+          "field": null,
+          "source_class": "WfiAnalysis",
+          "title": "Stored analysis",
+          "subtitle": null,
+          "guid": "01c25a34-0c20-4632-9193-447fdac14304",
+          "internal_id": null,
+          "fieldworks": {
+            "status": "unavailable",
+            "reason": "unsupported_kind",
+            "guid": "01c25a34-0c20-4632-9193-447fdac14304"
+          }
+        },
+        {
+          "kind": "MoForm",
+          "status": "object",
+          "field": null,
+          "source_class": "MoForm",
+          "title": "a",
+          "subtitle": null,
+          "guid": "4846d20f-09cd-4ef7-938a-28b07afd7fbe",
+          "internal_id": null,
+          "fieldworks": {
+            "status": "available",
+            "guid": "4846d20f-09cd-4ef7-938a-28b07afd7fbe",
+            "tool": "lexiconEdit",
+            "url": "silfw://localhost/link?database%3Dmbugwe%26tool%3DlexiconEdit%26guid%3D4846d20f-09cd-4ef7-938a-28b07afd7fbe%26tag%3D"
+          }
+        },
+        {
+          "kind": "MoInflAffMsa",
+          "status": "object",
+          "field": null,
+          "source_class": "MSA",
+          "title": "Stored MSA",
+          "subtitle": null,
+          "guid": "ff5a1cb3-c317-44d5-95b9-059f1a15d487",
+          "internal_id": null,
+          "fieldworks": {
+            "status": "available",
+            "guid": "ff5a1cb3-c317-44d5-95b9-059f1a15d487",
+            "tool": "lexiconEdit",
+            "url": "silfw://localhost/link?database%3Dmbugwe%26tool%3DlexiconEdit%26guid%3Dff5a1cb3-c317-44d5-95b9-059f1a15d487%26tag%3D"
+          }
+        },
+        {
+          "kind": "MoForm",
+          "status": "object",
+          "field": null,
+          "source_class": "MoForm",
+          "title": "achwɛ",
+          "subtitle": null,
+          "guid": "d53831d5-1f4c-4e8e-8c87-2f3e9f116bf8",
+          "internal_id": null,
+          "fieldworks": {
+            "status": "available",
+            "guid": "d53831d5-1f4c-4e8e-8c87-2f3e9f116bf8",
+            "tool": "lexiconEdit",
+            "url": "silfw://localhost/link?database%3Dmbugwe%26tool%3DlexiconEdit%26guid%3Dd53831d5-1f4c-4e8e-8c87-2f3e9f116bf8%26tag%3D"
+          }
+        },
+        {
+          "kind": "MoStemMsa",
+          "status": "object",
+          "field": null,
+          "source_class": "MSA",
+          "title": "Stored MSA",
+          "subtitle": null,
+          "guid": "29199302-8bf5-4027-b2a9-1e5fd6740a9f",
+          "internal_id": null,
+          "fieldworks": {
+            "status": "available",
+            "guid": "29199302-8bf5-4027-b2a9-1e5fd6740a9f",
+            "tool": "lexiconEdit",
+            "url": "silfw://localhost/link?database%3Dmbugwe%26tool%3DlexiconEdit%26guid%3D29199302-8bf5-4027-b2a9-1e5fd6740a9f%26tag%3D"
+          }
+        }
+      ]
+    },
+    {
+      "level": "info",
+      "code": "grammar.stored-analysis.budget-reached",
+      "group_name": "Analysis check stopped early",
+      "origin": "check",
+      "description": "The stored-analysis comparison stopped at its work budget of 32000000 parse work units (32311980 spent): 1375 of 1473 wordforms, from \"chaakɔ\" onward in wordform order, were not compared (4169 stored analyses). Run grammar-health with --stored-analyses=all to compare them.",
+      "guidance": "No FieldWorks correction is needed. To compare every wordform, run pangloss grammar-health with --stored-analyses=all; on a large project that can take minutes.",
+      "title": "Analysis check stopped early",
+      "explanation": "The default grammar check compares FieldWorks stored analyses with PanGloss's analyses in sorted wordform order, and stops once a fixed total amount of analysis work is spent so that the check stays fast. The description names the first wordform that was not compared and how many remain. Whether their stored analyses still parse is unknown.",
+      "help_path": "docs/diagnostics/grammar.stored-analysis.budget-reached.md",
+      "help_body": "# How the parser uses a FieldWorks project\n\nThe importer reads FieldWorks project data and builds a grammar the parser can run. A diagnostic identifies a source condition or a construction the parser could not represent. Read its description for the named object, field, and observed cause.\n\nSome findings describe source data that is missing or inconsistent. Others describe a valid construction that the current parser skips, approximates, or handles with a reduced set of constraints. The next step depends on the outcome: repair a demonstrated source defect, and preserve valid linguistic data when the finding describes a parser limitation.\n\nA FieldWorks destination is included only when the relevant tool path is known. A missing destination means the finding is grammar-wide, its source owner varies, or no verified editable field is established. Use the diagnostic description to locate the source data, then report a valid case the parser cannot preserve.\n",
+      "fieldworks_places": [],
+      "scope": "project_settings",
+      "subjects": [
+        {
+          "kind": "Project",
+          "status": "project_settings",
+          "field": "Wordforms",
+          "source_class": null,
+          "title": "mbugwe",
+          "subtitle": null,
+          "guid": null,
+          "internal_id": null,
+          "fieldworks": {
+            "status": "unavailable",
+            "reason": "project_settings",
+            "guid": null
+          }
+        }
+      ]
+    }
+  ]
+}

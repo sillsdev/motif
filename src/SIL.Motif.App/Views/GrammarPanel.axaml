@@ -135,6 +135,10 @@
                                 <StackPanel IsVisible="{Binding HasExplanation}" Spacing="{DynamicResource Intent.Space.Minimal}">
                                   <views:CopyableTextBlock Text="{Binding Explanation}" TextWrapping="Wrap" />
                                 </StackPanel>
+                                <StackPanel IsVisible="{Binding HasWordforms}" Spacing="{DynamicResource Intent.Space.Minimal}">
+                                  <views:CopyableTextBlock Text="Wordforms not compared" FontWeight="SemiBold" />
+                                  <views:CopyableTextBlock Text="{Binding WordformsText}" TextWrapping="Wrap" />
+                                </StackPanel>
                                 <StackPanel IsVisible="{Binding HasProblemParts}" Spacing="{DynamicResource Intent.Space.Minimal}">
                                   <Border Classes="hoverReveal warningProblem">
                                     <views:GrammarWarningPartsBlock Parts="{Binding ProblemParts}" />

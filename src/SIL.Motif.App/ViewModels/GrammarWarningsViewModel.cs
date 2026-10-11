@@ -48,17 +48,31 @@ public sealed class GrammarWarningDetailViewModel
             .ToArray();
     }
 
+    /// <summary>One detail for every finding of a kind that repeats once per wordform, listing the wordforms.</summary>
+    internal GrammarWarningDetailViewModel(IReadOnlyList<GrammarWarning> warnings, string wordformsText)
+        : this(warnings[0], warnings.Count)
+    {
+        WordformsText = wordformsText;
+        SubjectParts = [];
+        ProblemParts = [];
+        HasProblemParts = false;
+        EntryLinks = [];
+        Description = string.Empty;
+    }
+
     public GrammarWarning Warning { get; }
     public int RepeatCount { get; }
+    public string WordformsText { get; } = string.Empty;
+    public bool HasWordforms => WordformsText.Length > 0;
     public string Title { get; }
     public string Explanation { get; }
     public string Guidance { get; }
-    public string Description { get; }
+    public string Description { get; private set; }
     public Uri? HelpUrl { get; }
-    public IReadOnlyList<GrammarWarningPart> SubjectParts { get; }
-    public IReadOnlyList<GrammarWarningPart> ProblemParts { get; }
-    public bool HasProblemParts { get; }
-    public IReadOnlyList<GrammarWarningEntryLink> EntryLinks { get; }
+    public IReadOnlyList<GrammarWarningPart> SubjectParts { get; private set; }
+    public IReadOnlyList<GrammarWarningPart> ProblemParts { get; private set; }
+    public bool HasProblemParts { get; private set; }
+    public IReadOnlyList<GrammarWarningEntryLink> EntryLinks { get; private set; }
     public bool HasEntryLinks => EntryLinks.Count > 0;
     public bool HasExplanation => Explanation.Length > 0;
     public bool HasGuidance => Guidance.Length > 0;
@@ -442,8 +456,16 @@ public sealed partial class GrammarWarningRowViewModel : ObservableObject
     public string YourWordsText => ReachSummaryText;
 
     private static IReadOnlyList<GrammarWarningDetailViewModel> DetailsFor(IReadOnlyList<GrammarWarning> warnings) =>
-        warnings.GroupBy(DetailIdentity, StringComparer.Ordinal)
-            .Select(group => new GrammarWarningDetailViewModel(group.First(), group.Count())).ToArray();
+        warnings[0].Code == PanGlossFindingCodes.StoredAnalysisIncomplete
+            ? [new GrammarWarningDetailViewModel(warnings, WordformsText(warnings))]
+            : warnings.GroupBy(DetailIdentity, StringComparer.Ordinal)
+                .Select(group => new GrammarWarningDetailViewModel(group.First(), group.Count())).ToArray();
+
+    private static string WordformsText(IReadOnlyList<GrammarWarning> warnings) => string.Join(", ", warnings
+        .Select(item => item.Subject.FirstOrDefault(part => part.SourceClass == "WfiWordform")?.Title ??
+            item.Subject.FirstOrDefault()?.Text ?? item.Text)
+        .GroupBy(word => word, StringComparer.Ordinal)
+        .Select(word => word.Count() == 1 ? $"{word.Key} (1 stored analysis)" : $"{word.Key} ({word.Count():N0} stored analyses)"));
 
     private static string DetailIdentity(GrammarWarning warning)
     {

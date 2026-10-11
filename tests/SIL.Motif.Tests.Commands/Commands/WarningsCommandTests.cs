@@ -95,6 +95,41 @@ public sealed class WarningsCommandTests(PristineProjectFixture pristine) : IDis
         Assert.Equal("grammar.stored-analysis.no-longer-parses", Assert.Single(warnings.Value.Findings).Code);
     }
 
+    [Fact]
+    public void TheBudgetFindingSpeaksInWindowWordsAndNamesNoParserFlag()
+    {
+        Directory.CreateDirectory(_root);
+        var project = pristine.CopyProjectFile();
+        var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(project), _root);
+        Assert.True(captured.Succeeded, captured.Refusal?.Message);
+        var report = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "TestFixtures", "GrammarHealth",
+            "schema-v4-stored-analysis-budget.json"));
+
+        var checkedNow = GrammarCheckQuery.Query(new GrammarCheckRequest(project), new FakeInvoker
+        {
+            Respond = _ => new PanGlossOutcome.Completed(report, string.Empty, TimeSpan.Zero),
+        }, CancellationToken.None, parserStamp: "build-1");
+
+        Assert.True(checkedNow.Succeeded, checkedNow.Refusal?.Message);
+        var budget = Assert.Single(checkedNow.Value!.Findings,
+            finding => finding.Code == "grammar.stored-analysis.budget-reached");
+        foreach (var text in new[] { budget.Description, budget.Guidance!, budget.Text, budget.Problem[0].Text })
+        {
+            Assert.DoesNotContain("--stored-analyses", text, StringComparison.Ordinal);
+            Assert.DoesNotContain("grammar-health", text, StringComparison.Ordinal);
+            Assert.DoesNotContain("pangloss ", text, StringComparison.Ordinal);
+        }
+        Assert.Contains("1375 of 1473 wordforms", budget.Description, StringComparison.Ordinal);
+        Assert.Contains("chaakɔ", budget.Description, StringComparison.Ordinal);
+        Assert.Contains("fixed amount of work", budget.Guidance, StringComparison.Ordinal);
+        Assert.Contains("checked when they are parsed", budget.Guidance, StringComparison.Ordinal);
+        var incomplete = checkedNow.Value.Findings.Where(
+            finding => finding.Code == "grammar.stored-analysis.incomplete").ToArray();
+        Assert.Equal(3, incomplete.Length);
+        Assert.All(incomplete, finding => Assert.Contains("was not compared", finding.Description,
+            StringComparison.Ordinal));
+    }
+
     private string CheckedProject()
     {
         Directory.CreateDirectory(_root);

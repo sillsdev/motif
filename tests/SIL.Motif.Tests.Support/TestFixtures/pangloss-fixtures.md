@@ -77,3 +77,5 @@ cp bin/Release/tests/seeded-advice-raw.json \
 `GrammarHealth/schema-v4-stored-analysis-no-longer-parses.json` is a synthetic schema-4 information finding based on the PanGloss 0.8.3 metadata. It keeps the wordform, stored analysis, morph, MSA and rule subjects together so the Warnings test covers the finding's full subject list.
 
 `pangloss-0.8.3-trace-reasons.json` records the reason codes in `rust/crates/pg-rules/src/trace.rs` at the pinned release.
+
+`GrammarHealth/schema-v4-stored-analysis-budget.json` is a trimmed PanGloss 0.8.3 `grammar-health` report of the mbugwe sample: three `grammar.stored-analysis.incomplete` warnings (two for one wordform) and the one `grammar.stored-analysis.budget-reached` information finding, as the parser wrote them.

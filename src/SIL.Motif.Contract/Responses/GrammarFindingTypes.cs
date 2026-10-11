@@ -90,3 +90,13 @@ public static class GrammarDiagnosticLevelExtensions
         _ => throw new ArgumentOutOfRangeException(nameof(level), level, null),
     };
 }
+
+/// <summary>The stable PanGloss diagnostic codes that Motif words differently from the parser's own report.</summary>
+public static class PanGlossFindingCodes
+{
+    /// <summary>The info finding that says the stored-analysis comparison stopped at its work budget.</summary>
+    public const string StoredAnalysisBudgetReached = "grammar.stored-analysis.budget-reached";
+
+    /// <summary>The warning raised once per stored analysis the comparison could not finish.</summary>
+    public const string StoredAnalysisIncomplete = "grammar.stored-analysis.incomplete";
+}

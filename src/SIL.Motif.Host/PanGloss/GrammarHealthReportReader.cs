@@ -102,10 +102,22 @@ public static class GrammarHealthReportReader
         return report;
     }
 
+    private const string BudgetReachedGuidance =
+        "Nothing to change in FieldWorks. The check compared stored analyses up to a fixed amount of work, so the " +
+        "words named above were not compared. They are checked when they are parsed.";
+
     private static GrammarWarning ToGrammarWarning(GrammarHealthDiagnosticJson finding, string locale)
     {
         var subjects = finding.Subjects!.Select(subject => SubjectPart(subject!)).ToArray();
         var description = finding.Description!;
+        var guidance = finding.Guidance;
+        if (finding.Code == PanGlossFindingCodes.StoredAnalysisBudgetReached)
+        {
+            // The parser's own sentence and advice name its command-line flag, which neither front end passes.
+            var flag = description.IndexOf(" Run grammar-health", StringComparison.Ordinal);
+            if (flag >= 0) description = description[..flag];
+            guidance = BudgetReachedGuidance;
+        }
         var problem = new[] { new GrammarWarningPart(description, GrammarWarningPartRole.Text) };
         var text = $"{finding.Level.ToWireValue()}: {finding.Code}: {description}";
         return new GrammarWarning(finding.Level, ReadableCode(finding.Code), subjects, problem, text)
@@ -113,7 +125,7 @@ public static class GrammarHealthReportReader
             Group = finding.GroupName,
             Code = finding.Code,
             Description = description,
-            Guidance = finding.Guidance,
+            Guidance = guidance,
             Title = finding.Title,
             Explanation = finding.Explanation,
             HelpPath = finding.HelpPath,

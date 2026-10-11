@@ -56,3 +56,67 @@ public sealed class WarningRowPanGlossTextTests
         Guidance = guidance,
     };
 }
+
+public sealed class StoredAnalysisIncompleteGroupingTests
+{
+    private const string Code = "grammar.stored-analysis.incomplete";
+
+    [Fact]
+    public void ManyIncompleteFindingsShowAsOneRowWithOneDetailListingTheirWordforms()
+    {
+        var row = Assert.Single(Load(
+            Finding("ajoocha", "a1"), Finding("ajoocha", "a2"), Finding("aachwɛ", "a3"), Other()).Rows
+            .Cast<GrammarWarningRowViewModel>().Where(row => row.GroupCode == Code));
+
+        Assert.Equal(3, row.RepeatCount);
+        var detail = Assert.Single(row.Details);
+        Assert.Equal(3, detail.RepeatCount);
+        Assert.True(detail.HasWordforms);
+        Assert.Equal("ajoocha (2 stored analyses), aachwɛ (1 stored analysis)", detail.WordformsText);
+        Assert.False(detail.HasProblemParts);
+        Assert.Empty(detail.SubjectParts);
+    }
+
+    [Fact]
+    public void FindingsOfOtherKindsKeepTheirOwnDetails()
+    {
+        var row = new GrammarWarningRowViewModel([Other("x"), Other("y")]);
+
+        Assert.Equal(2, row.Details.Count);
+        Assert.All(row.Details, detail => Assert.False(detail.HasWordforms));
+    }
+
+    private static GrammarWarningsViewModel Load(params GrammarWarning[] findings)
+    {
+        var model = new GrammarWarningsViewModel();
+        model.Load(findings);
+        return model;
+    }
+
+    private static GrammarWarning Finding(string wordform, string analysis) => new(
+        GrammarDiagnosticLevel.Warning, "Stored analysis not checked",
+        [
+            new GrammarWarningPart(wordform, GrammarWarningPartRole.Object, "w-" + wordform, "Unknown")
+                { Title = wordform, SourceClass = "WfiWordform" },
+            new GrammarWarningPart("Stored analysis", GrammarWarningPartRole.Object, analysis, "Unknown")
+                { Title = "Stored analysis", SourceClass = "WfiAnalysis" },
+        ],
+        [new GrammarWarningPart($"{analysis} of {wordform} was not compared", GrammarWarningPartRole.Text)],
+        $"warning: {Code}: {analysis}")
+    {
+        Code = Code,
+        Group = "Stored analysis not checked",
+        Title = "Stored analysis not checked",
+        Description = $"Stored analysis {analysis} for wordform \"{wordform}\" was not compared.",
+        Guidance = "Report the wordform.",
+    };
+
+    private static GrammarWarning Other(string detail = "x") => new(
+        GrammarDiagnosticLevel.Warning, "Other", [],
+        [new GrammarWarningPart(detail, GrammarWarningPartRole.Text)], detail)
+    {
+        Code = "conversion.other",
+        Group = "Other",
+        Description = detail,
+    };
+}
