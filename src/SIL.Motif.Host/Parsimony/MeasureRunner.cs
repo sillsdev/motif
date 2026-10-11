@@ -10,8 +10,8 @@ namespace SIL.Motif.Host.Parsimony;
 public static partial class MeasureRunner
 {
     private static readonly IReadOnlyDictionary<string, Func<MeasureDefinition, ParsimonyQuerySession, string,
-        ParsimonyMeasureResult>> QueryRunners = new Dictionary<string, Func<MeasureDefinition, ParsimonyQuerySession,
-        string, ParsimonyMeasureResult>>(StringComparer.Ordinal)
+        CancellationToken, ParsimonyMeasureResult>> QueryRunners = new Dictionary<string, Func<MeasureDefinition,
+        ParsimonyQuerySession, string, CancellationToken, ParsimonyMeasureResult>>(StringComparer.Ordinal)
     {
         [ParsimonyQueryIds.AdhocDuplicate] = Query(session => session.ReadDuplicateProhibitionInput(),
             DecideDuplicateProhibitions),
@@ -44,13 +44,15 @@ public static partial class MeasureRunner
     };
 
     // The session reads one plain input; the decision sees that input and a context, never the session.
-    private static Func<MeasureDefinition, ParsimonyQuerySession, string, ParsimonyMeasureResult> Query<TInput>(
-        Func<ParsimonyQuerySession, TInput> read,
+    private static Func<MeasureDefinition, ParsimonyQuerySession, string, CancellationToken,
+        ParsimonyMeasureResult> Query<TInput>(Func<ParsimonyQuerySession, TInput> read,
         Func<MeasureDefinition, TInput, MeasureContext, ParsimonyMeasureResult> decide) =>
-        (measure, session, bundleId) =>
+        (measure, session, bundleId, cancellation) =>
         {
+            cancellation.ThrowIfCancellationRequested();
             var input = read(session);
-            return decide(measure, input, session.ReadMeasureContext(bundleId));
+            cancellation.ThrowIfCancellationRequested();
+            return decide(measure, input, session.ReadMeasureContext(bundleId).Cancelling(cancellation));
         };
 
     /// <summary>The query ids this build can run, which the measure catalog's registered ids must equal.</summary>
@@ -62,7 +64,35 @@ public static partial class MeasureRunner
         QueryRunners.ContainsKey(queryId);
 
     /// <summary>Runs one fixed query and returns its full-input counts with the matching findings.</summary>
-    public static ParsimonyMeasureResult Execute(string measureId, ParsimonyQuerySession session, string bundleId)
+    public static ParsimonyMeasureResult Execute(string measureId, ParsimonyQuerySession session, string bundleId) =>
+        Execute(measureId, session, bundleId, CancellationToken.None);
+
+    /// <summary>
+    /// Runs one fixed query that stops when <paramref name="cancellation"/> does: the running statement is
+    /// interrupted, each new statement is refused, and a decision's loops check between the objects they name.
+    /// </summary>
+    public static ParsimonyMeasureResult Execute(string measureId, ParsimonyQuerySession session, string bundleId,
+        CancellationToken cancellation)
+    {
+        if (!cancellation.CanBeCanceled) return ExecuteCore(measureId, session, bundleId, cancellation);
+        var registration = session.BeginPage(cancellation);
+        try
+        {
+            return ExecuteCore(measureId, session, bundleId, cancellation);
+        }
+        catch (Microsoft.Data.Sqlite.SqliteException) when (cancellation.IsCancellationRequested)
+        {
+            throw new OperationCanceledException(cancellation);
+        }
+        finally
+        {
+            session.EndPage(registration);
+        }
+    }
+
+    /// <summary>Runs one fixed query under a page the caller has already begun on the session.</summary>
+    internal static ParsimonyMeasureResult ExecuteCore(string measureId, ParsimonyQuerySession session,
+        string bundleId, CancellationToken cancellation)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(measureId);
         ArgumentNullException.ThrowIfNull(session);
@@ -76,7 +106,7 @@ public static partial class MeasureRunner
                 "this check is not available in this build of Motif.");
         try
         {
-            return runner(measure, session, bundleId);
+            return runner(measure, session, bundleId, cancellation);
         }
         catch (ParsimonyQueryUnavailableException exception)
         {

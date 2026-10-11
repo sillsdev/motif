@@ -138,6 +138,7 @@ public static class CommandCatalog
         new CommandDescriptor("report --list-kinds", typeof(ListReportKindsRequest), typeof(ReportKindListResponse), CommandSurface.Released, AgentClass.Read),
         new CommandDescriptor("parsimony", typeof(EnqueueParsimonyReportRequest), typeof(JobEnqueuedResponse), CommandSurface.AdvancedAi, AgentClass.Evaluate),
         new CommandDescriptor("parsimony --wait", typeof(WaitForParsimonyReportRequest), typeof(ParsimonyReportResponse), CommandSurface.AdvancedAi, AgentClass.Evaluate),
+        new CommandDescriptor("parsimony --measure all --wait", typeof(WaitForParsimonyReportSetRequest), typeof(ParsimonyReportSetResponse), CommandSurface.AdvancedAi, AgentClass.Evaluate),
         new CommandDescriptor("parsimony --dry-run", typeof(EnqueueParsimonyCandidateRequest), typeof(JobEnqueuedResponse), CommandSurface.AdvancedAi, AgentClass.Evaluate),
         new CommandDescriptor("parsimony --dry-run --wait", typeof(WaitForParsimonyCandidateRequest), typeof(ParsimonyCandidateEvidenceResponse), CommandSurface.AdvancedAi, AgentClass.Evaluate),
         new CommandDescriptor("parsimony show", typeof(ShowParsimonyReportRequest), typeof(ParsimonyReportResponse), CommandSurface.AdvancedAi, AgentClass.Read),

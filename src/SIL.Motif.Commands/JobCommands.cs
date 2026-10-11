@@ -272,6 +272,8 @@ public static class JobCommands
             {
                 TrialProgress = job.Kind == TrialKind && job.ProgressJson is { } progress
                     ? JsonSerializer.Deserialize<TrialWordProgress>(progress, MotifJson.CreateOptions()) : null,
+                StageProgress = job.Kind != TrialKind && job.ProgressJson is { } stage
+                    ? JsonSerializer.Deserialize<JobStageProgress>(stage, MotifJson.CreateOptions()) : null,
             });
         });
     }

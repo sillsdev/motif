@@ -32,8 +32,10 @@ internal static class ParsimonyTools
             string.Empty,
             AgentClass.Evaluate,
             Schema.Object(
-                ("measure_id", Schema.String("Exact registered measure id.", MeasureCatalog.All
-                    .Where(measure => MeasureRunner.Supports(measure.Id)).Select(measure => measure.Id).ToArray()), true),
+                ("measure_id", Schema.String("Exact registered measure id, or 'all' to run every supported measure " +
+                    "in one job and read one Report per measure.", MeasureCatalog.All
+                    .Where(measure => MeasureRunner.Supports(measure.Id)).Select(measure => measure.Id)
+                    .Append(ParsimonyAdmission.AllMeasures).ToArray()), true),
                 ("evidence_scope", Schema.String("Which approved-word evidence to use.",
                     "default-selection", "project-approved"), false),
                 ("job", Schema.String("Job id from a previous running result; omit to start a new measure."), false),
@@ -43,7 +45,8 @@ internal static class ParsimonyTools
             false,
             false,
             false,
-            RunMeasure) { Requests = [typeof(EnqueueParsimonyReportRequest), typeof(WaitForParsimonyReportRequest)] },
+            RunMeasure) { Requests = [typeof(EnqueueParsimonyReportRequest), typeof(WaitForParsimonyReportRequest),
+            typeof(WaitForParsimonyReportSetRequest)] },
 
         new("motif_parsimony_report",
             string.Empty,
@@ -190,18 +193,27 @@ internal static class ParsimonyTools
         }
 
         var timeout = TimeSpan.FromSeconds(Math.Clamp(args.Int("wait_seconds", 40), 1, 300));
-        var waited = await Task.Run(() => ParsimonyCommands.Wait(new WaitForParsimonyReportRequest(
-            context.ProjectPath, context.ProductVersion, jobId, timeout)), cancellation).ConfigureAwait(false);
-        if (waited.Succeeded) return ToolOutcome.From(waited);
-        if (waited.Refusal!.Code is "job.wait-timeout" or "job.wait-cancelled")
-            return ToolOutcome.Ok(new JsonObject
+        // The wait polls without blocking, and a cancelled call cancels the job it started.
+        if (measureId == ParsimonyAdmission.AllMeasures)
+        {
+            var all = await ParsimonyCommands.WaitAllAsync(new WaitForParsimonyReportSetRequest(
+                context.ProjectPath, context.ProductVersion, jobId, timeout), cancellation).ConfigureAwait(false);
+            return all.Succeeded ? ToolOutcome.From(all) : StillRunningOrRefused(all.Refusal!, jobId, measureId);
+        }
+        var waited = await ParsimonyCommands.WaitAsync(new WaitForParsimonyReportRequest(
+            context.ProjectPath, context.ProductVersion, jobId, timeout), cancellation).ConfigureAwait(false);
+        return waited.Succeeded ? ToolOutcome.From(waited) : StillRunningOrRefused(waited.Refusal!, jobId, measureId);
+    }
+
+    private static ToolOutcome StillRunningOrRefused(Refusal refusal, string jobId, string measureId) =>
+        refusal.Code == "job.wait-timeout"
+            ? ToolOutcome.Ok(new JsonObject
             {
                 ["status"] = "running",
                 ["jobId"] = jobId,
                 ["measureId"] = measureId,
-            }, "Repeat this tool with the same measure_id and the returned job id to read the Report.", jobId);
-        return ToolOutcome.Refused(waited.Refusal);
-    }
+            }, "Repeat this tool with the same measure_id and the returned job id to read the Report.", jobId)
+            : ToolOutcome.Refused(refusal);
 
     private static Task<ToolOutcome> ReadView(ServerContext context, ToolArgs args, CancellationToken cancellation)
     {

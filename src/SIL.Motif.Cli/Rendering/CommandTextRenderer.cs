@@ -58,6 +58,7 @@ public static class CommandTextRenderer
             ReportKindListResponse r => RenderReportKindList(r),
             ReportResponse r => RenderReport(r),
             ParsimonyReportResponse r => RenderParsimonyReport(r),
+            ParsimonyReportSetResponse r => RenderParsimonyReportSet(r),
             ParsimonyLatestReportResponse r => "Latest Parsimony Report " + r.ReportId + "\n  Baseline bundle: " + r.BundleId,
             ParsimonyExpectationProjection p => RenderParsimonyExpectations(p),
             ReviewNumbersResponse r => RenderReviewNumbers(r),
@@ -196,6 +197,18 @@ public static class CommandTextRenderer
         return text.ToString();
     }
 
+    private static string RenderParsimonyReportSet(ParsimonyReportSetResponse response)
+    {
+        var text = new StringBuilder();
+        text.AppendLine($"Parsimony job {response.JobId}: {response.Reports.Count} Reports on bundle {response.BundleId}");
+        foreach (var report in response.Reports)
+        {
+            text.AppendLine();
+            text.AppendLine(RenderParsimonyReport(report).TrimEnd());
+        }
+        return text.ToString();
+    }
+
     private static string RenderParsimonyExpectations(ParsimonyExpectationProjection projection)
     {
         var text = new StringBuilder();
@@ -290,6 +303,9 @@ public static class CommandTextRenderer
         text.AppendLine("  Updated: " + response.UpdatedUtc);
         if (response.QueueOrder is { } queueOrder)
             text.AppendLine("  Queue order: " + queueOrder.ToString("R"));
+        if (response.StageProgress is { } stage)
+            text.AppendLine($"  Stage:   {stage.Stage} ({stage.Step} of {stage.Steps})" +
+                (stage.Detail is null ? string.Empty : " " + stage.Detail));
         return text.ToString();
     }
 

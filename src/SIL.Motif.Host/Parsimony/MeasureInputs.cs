@@ -16,6 +16,16 @@ internal sealed record MeasureContext(string BundleId, MeasureDigestContext Dige
     public static MeasureContext For(string bundleId, MeasureDigestContext digest,
         IReadOnlyDictionary<string, string>? names = null) =>
         new(bundleId, digest, guid => names is not null && names.TryGetValue(guid, out var name) ? name : null);
+
+    /// <summary>The same context whose every name lookup first stops when the token has, so a loop that names objects stops.</summary>
+    public MeasureContext Cancelling(CancellationToken cancellation) => !cancellation.CanBeCanceled ? this : this with
+    {
+        Describe = guid =>
+        {
+            cancellation.ThrowIfCancellationRequested();
+            return Describe(guid);
+        },
+    };
 }
 
 /// <summary>The report-level values a finding's evidence digest folds in beside the measure's own evidence.</summary>

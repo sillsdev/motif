@@ -49,6 +49,16 @@ public sealed record ParsimonyReportResponse(
     public required IReadOnlyList<ParsimonyNote> Notes { get; init; }
 }
 
+/// <summary>
+/// The Reports one all-measures Parsimony job stored, one per measure this build supports, in catalog order.
+/// Each is the same stored Report <c>parsimony show</c> reads, all pinning one bundle.
+/// </summary>
+/// <param name="JobId">The job that stored them.</param>
+/// <param name="BundleId">The bundle every Report pins.</param>
+/// <param name="Reports">One stored Report per measure.</param>
+public sealed record ParsimonyReportSetResponse(string JobId, string BundleId,
+    IReadOnlyList<ParsimonyReportResponse> Reports);
+
 /// <summary>The newest stored Parsimony Report, named by its id and the Parsimony bundle its inputs were measured in.</summary>
 public sealed record ParsimonyLatestReportResponse(string ReportId, string BundleId);
 

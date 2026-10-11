@@ -127,3 +127,11 @@ public sealed record ReadParsimonyViewRequest(
     string FwDataPath,
     string ProductVersion,
     ParsimonyNamedViewRequest Query);
+
+/// <summary>Waits for a queued all-measures Parsimony job and reads the Report it stored for each measure.</summary>
+/// <param name="FwDataPath">The recorded project path.</param>
+/// <param name="ProductVersion">The Motif product version writing the store.</param>
+/// <param name="JobId">The queued job whose Reports to read.</param>
+/// <param name="Timeout">The maximum wait for this call; the job continues after the wait ends.</param>
+public sealed record WaitForParsimonyReportSetRequest(
+    string FwDataPath, string ProductVersion, string JobId, TimeSpan Timeout);

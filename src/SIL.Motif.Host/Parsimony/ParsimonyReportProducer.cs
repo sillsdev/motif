@@ -39,15 +39,41 @@ public sealed class ParsimonyReportProducer : IReportProducer
     /// </summary>
     /// <param name="input">The Parsimony input whose bundle the session was opened over.</param>
     /// <param name="session">The verifying session; the caller keeps ownership and disposes it.</param>
-    public RenderedReport Produce(ReportInput input, ParsimonyQuerySession session)
+    public RenderedReport Produce(ReportInput input, ParsimonyQuerySession session) =>
+        Produce(input, session, CancellationToken.None);
+
+    /// <summary>Renders from the caller's verifying session under a cancellation token.</summary>
+    /// <param name="input">The Parsimony input whose bundle the session was opened over.</param>
+    /// <param name="session">The verifying session; the caller keeps ownership and disposes it.</param>
+    /// <param name="cancellation">Interrupts the running statement and stops each later one before it starts.</param>
+    public RenderedReport Produce(ReportInput input, ParsimonyQuerySession session, CancellationToken cancellation)
     {
         ArgumentNullException.ThrowIfNull(input);
         ArgumentNullException.ThrowIfNull(session);
+        if (!cancellation.CanBeCanceled) return ProduceCore(input, session, cancellation);
+        var registration = session.BeginPage(cancellation);
+        try
+        {
+            return ProduceCore(input, session, cancellation);
+        }
+        catch (Microsoft.Data.Sqlite.SqliteException) when (cancellation.IsCancellationRequested)
+        {
+            throw new OperationCanceledException(cancellation);
+        }
+        finally
+        {
+            session.EndPage(registration);
+        }
+    }
+
+    private static RenderedReport ProduceCore(ReportInput input, ParsimonyQuerySession session,
+        CancellationToken cancellation)
+    {
         if (input is not ReportInput.Parsimony parsimony)
             throw new ReportRefusalException(KindName,
                 "A Parsimony report needs a frozen Baseline evidence bundle, not an Assessment input.");
         var joinQuality = session.ReadJoinQuality(parsimony.Inputs.EvidenceScope);
-        var result = MeasureRunner.Execute(parsimony.MeasureId, session, parsimony.Inputs.BundleId);
+        var result = MeasureRunner.ExecuteCore(parsimony.MeasureId, session, parsimony.Inputs.BundleId, cancellation);
         var findings = result.Findings;
         var dispositions = ParsimonyDispositionQuery.Project(session, findings, reportId: null);
         var familyDescriptions = parsimony.MeasureId == "P-allo-alternation-family" && findings.Count > 0

@@ -14,7 +14,7 @@ motif jobs show <jobId> --project "C:\FieldWorks\Projects\Koro\Koro.fwdata" --js
 
 ## What it prints
 
-Human output shows the job kind, status, attempt number, update time, and queue order when available. JSON returns the structured status, cancellation and failure details, queue order, and Trial word progress when available.
+Human output shows the job kind, status, attempt number, update time, queue order, and the stage a Parsimony job is in when available. JSON returns the structured status, cancellation and failure details, queue order, Trial word progress, and the Parsimony stage (`stageProgress`) when available.
 
 ## Related commands
 

@@ -56,8 +56,8 @@ public static class ParsimonyCommands
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(supportsMeasure);
-        var admission = ParsimonyAdmission.Check(request.MeasureId, request.EvidenceScope, request.AssessmentIds,
-            supportsMeasure);
+        var admission = ParsimonyAdmission.CheckReport(request.MeasureId, request.EvidenceScope,
+            request.AssessmentIds, supportsMeasure);
         if (admission is not null) return CommandOutcome<JobEnqueuedResponse>.Refused(admission);
         var assessmentIds = request.AssessmentIds ?? [];
         return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
@@ -263,10 +263,14 @@ public static class ParsimonyCommands
 
     /// <summary>Waits for candidate evidence and returns the stored before and after Reports.</summary>
     public static CommandOutcome<ParsimonyCandidateEvidenceResponse> WaitCandidate(
-        WaitForParsimonyCandidateRequest request)
+        WaitForParsimonyCandidateRequest request) => WaitCandidate(request, CancellationToken.None);
+
+    /// <summary>Waits for candidate evidence; cancelling the token cancels the job and ends the wait.</summary>
+    public static CommandOutcome<ParsimonyCandidateEvidenceResponse> WaitCandidate(
+        WaitForParsimonyCandidateRequest request, CancellationToken cancellation)
     {
         ArgumentNullException.ThrowIfNull(request);
-        var waited = JobWait.WaitAsync(request.FwDataPath, request.JobId, null, CancellationToken.None,
+        var waited = JobWait.WaitAsync(request.FwDataPath, request.JobId, null, cancellation,
             request.Timeout, request.ProductVersion).GetAwaiter().GetResult();
         if (!waited.Succeeded) return CommandOutcome<ParsimonyCandidateEvidenceResponse>.Refused(waited.Refusal!);
         if (waited.Value!.Status != JobStatus.Completed)
@@ -303,43 +307,100 @@ public static class ParsimonyCommands
     }
 
     /// <summary>Waits for one report job and returns the report recorded by that job.</summary>
-    public static CommandOutcome<ParsimonyReportResponse> Wait(WaitForParsimonyReportRequest request)
+    public static CommandOutcome<ParsimonyReportResponse> Wait(WaitForParsimonyReportRequest request) =>
+        Wait(request, CancellationToken.None);
+
+    /// <summary>Waits for one report job; cancelling the token cancels the job and ends the wait.</summary>
+    public static CommandOutcome<ParsimonyReportResponse> Wait(WaitForParsimonyReportRequest request,
+        CancellationToken cancellation) => WaitAsync(request, cancellation).GetAwaiter().GetResult();
+
+    /// <summary>Waits for one report job without holding a thread; cancelling the token cancels the job.</summary>
+    public static async Task<CommandOutcome<ParsimonyReportResponse>> WaitAsync(
+        WaitForParsimonyReportRequest request, CancellationToken cancellation)
     {
         ArgumentNullException.ThrowIfNull(request);
-        var waited = JobWait.WaitAsync(request.FwDataPath, request.JobId, null, CancellationToken.None,
-            request.Timeout, request.ProductVersion).GetAwaiter().GetResult();
+        var waited = await JobWait.WaitAsync(request.FwDataPath, request.JobId, null, cancellation,
+            request.Timeout, request.ProductVersion).ConfigureAwait(false);
         if (!waited.Succeeded) return CommandOutcome<ParsimonyReportResponse>.Refused(waited.Refusal!);
         if (waited.Value!.Status != JobStatus.Completed)
-        {
-            var detail = ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
-                CommandOutcome<string>.Success(ReadJobFailure(database, request.JobId)));
-            var message = detail.Succeeded ? detail.Value! :
-                $"Parsimony job '{request.JobId}' finished as {JobStatusJson.ToWire(waited.Value.Status!.Value)}.";
-            return CommandOutcome<ParsimonyReportResponse>.Refused(new Refusal(
-                ParsimonyRefusalCodes.JobFailed, FailureReason.Refused, message));
-        }
+            return CommandOutcome<ParsimonyReportResponse>.Refused(JobFailed(request.FwDataPath,
+                request.ProductVersion, request.JobId, waited.Value));
 
         return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
         {
-            var job = new JobRepository(database).Get(request.JobId);
-            if (job?.ResultJson is null)
+            var identity = ReadResultIdentity(database, request.JobId);
+            if (identity.Refusal is not null) return CommandOutcome<ParsimonyReportResponse>.Refused(identity.Refusal);
+            if (identity.ReportIds.Count != 1)
                 return CommandOutcome<ParsimonyReportResponse>.Refused(new Refusal(
-                    ParsimonyRefusalCodes.ResultMissing, FailureReason.StoreInconsistent,
-                    "The completed Parsimony job has no stored Report identity."));
-            string reportId;
-            try
-            {
-                using var result = JsonDocument.Parse(job.ResultJson);
-                reportId = result.RootElement.GetProperty("reportId").GetString() ?? string.Empty;
-            }
-            catch (Exception exception) when (exception is JsonException or InvalidOperationException)
-            {
-                return CommandOutcome<ParsimonyReportResponse>.Refused(new Refusal(
-                    ParsimonyRefusalCodes.ResultInvalid, FailureReason.StoreInconsistent,
-                    "The completed Parsimony job has a malformed Report identity."));
-            }
-            return ReadReport(database, reportId);
+                    ParsimonyRefusalCodes.ResultInvalid, FailureReason.Refused,
+                    $"Parsimony job '{request.JobId}' ran several measures; read its Reports as a set."));
+            return ReadReport(database, identity.ReportIds[0]);
         });
+    }
+
+    /// <summary>Waits for an all-measures job and returns the Report it stored for each measure.</summary>
+    public static CommandOutcome<ParsimonyReportSetResponse> WaitAll(WaitForParsimonyReportSetRequest request,
+        CancellationToken cancellation = default) => WaitAllAsync(request, cancellation).GetAwaiter().GetResult();
+
+    /// <summary>As <see cref="WaitAll"/> without holding a thread while the job runs.</summary>
+    public static async Task<CommandOutcome<ParsimonyReportSetResponse>> WaitAllAsync(
+        WaitForParsimonyReportSetRequest request, CancellationToken cancellation)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var waited = await JobWait.WaitAsync(request.FwDataPath, request.JobId, null, cancellation,
+            request.Timeout, request.ProductVersion).ConfigureAwait(false);
+        if (!waited.Succeeded) return CommandOutcome<ParsimonyReportSetResponse>.Refused(waited.Refusal!);
+        if (waited.Value!.Status != JobStatus.Completed)
+            return CommandOutcome<ParsimonyReportSetResponse>.Refused(JobFailed(request.FwDataPath,
+                request.ProductVersion, request.JobId, waited.Value));
+
+        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
+        {
+            var identity = ReadResultIdentity(database, request.JobId);
+            if (identity.Refusal is not null) return CommandOutcome<ParsimonyReportSetResponse>.Refused(identity.Refusal);
+            var reports = new List<ParsimonyReportResponse>();
+            foreach (var reportId in identity.ReportIds)
+            {
+                var stored = ReadReport(database, reportId);
+                if (!stored.Succeeded) return CommandOutcome<ParsimonyReportSetResponse>.Refused(stored.Refusal!);
+                reports.Add(stored.Value!);
+            }
+            return CommandOutcome<ParsimonyReportSetResponse>.Success(new ParsimonyReportSetResponse(
+                request.JobId, reports[0].Inputs.BundleId, reports));
+        });
+    }
+
+    private static Refusal JobFailed(string fwDataPath, string productVersion, string jobId, JobStatusResponse job)
+    {
+        var detail = ProjectStoreCommand.Run(fwDataPath, productVersion, (database, _) =>
+            CommandOutcome<string>.Success(ReadJobFailure(database, jobId)));
+        var message = detail.Succeeded ? detail.Value! :
+            $"Parsimony job '{jobId}' finished as {JobStatusJson.ToWire(job.Status!.Value)}.";
+        return new Refusal(ParsimonyRefusalCodes.JobFailed, FailureReason.Refused, message);
+    }
+
+    // Reads the Report ids a completed job recorded in its result.
+    private static (IReadOnlyList<string> ReportIds, Refusal? Refusal) ReadResultIdentity(MotifDatabase database,
+        string jobId)
+    {
+        var job = new JobRepository(database).Get(jobId);
+        if (job?.ResultJson is null)
+            return ([], new Refusal(ParsimonyRefusalCodes.ResultMissing, FailureReason.StoreInconsistent,
+                "The completed Parsimony job has no stored Report identity."));
+        try
+        {
+            using var result = JsonDocument.Parse(job.ResultJson);
+            var ids = result.RootElement.GetProperty("reportIds").EnumerateArray()
+                .Select(item => item.GetString() ?? string.Empty).ToArray();
+            if (ids.Length == 0 || ids.Any(string.IsNullOrEmpty)) throw new InvalidOperationException();
+            return (ids, null);
+        }
+        catch (Exception exception) when (exception is JsonException or InvalidOperationException or
+                                           KeyNotFoundException)
+        {
+            return ([], new Refusal(ParsimonyRefusalCodes.ResultInvalid, FailureReason.StoreInconsistent,
+                "The completed Parsimony job has a malformed Report identity."));
+        }
     }
 
     /// <summary>Reads a previously stored Parsimony Report without invoking PanGloss.</summary>

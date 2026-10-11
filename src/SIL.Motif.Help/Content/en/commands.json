@@ -36,12 +36,17 @@
   },
   "parsimony": {
     "title": "Review grammar parsimony",
-    "description": "Runs a registered Parsimony measure over the current Baseline or compares a completed Proposal Dry Run against that Baseline. Candidate evidence uses a private copy and stores before and after Reports. Use parsimony measures to list checks and their evidence needs.",
+    "description": "Runs a registered Parsimony measure, or every measure with --measure all, over the current Baseline, or compares a completed Proposal Dry Run against that Baseline. Candidate evidence uses a private copy and stores before and after Reports. Use parsimony measures to list checks and their evidence needs.",
     "source": "Hand-written from command behavior."
   },
   "parsimony --wait": {
     "title": "Wait for a Parsimony Report",
     "description": "Queues the requested Parsimony measure and waits for its stored Report. It does not capture a Baseline or require an Assessment.",
+    "source": "Hand-written from command behavior."
+  },
+  "parsimony --measure all --wait": {
+    "title": "Run every Parsimony measure",
+    "description": "Runs every Parsimony measure this build supports in one job over one verified evidence bundle, then waits and returns one stored Report per measure. It does not capture a Baseline or require an Assessment.",
     "source": "Hand-written from command behavior."
   },
   "parsimony latest": {

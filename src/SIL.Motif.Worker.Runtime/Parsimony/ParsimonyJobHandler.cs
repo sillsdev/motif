@@ -35,6 +35,7 @@ public sealed class ParsimonyJobHandler
     private readonly EvidenceBundlePipeline _pipeline;
     private readonly EvidenceArtifactRepository _artifacts;
     private readonly EvidenceRetentionCleaner _retention;
+    private readonly Action<JobStageProgress>? _stageObserver;
 
     public ParsimonyJobHandler(MotifDatabase database, BaselineRepository baselines, string projectKey,
         ProjectLocator project, RunnerOptions options, IPanGlossInvoker invoker,
@@ -46,8 +47,10 @@ public sealed class ParsimonyJobHandler
 
     internal ParsimonyJobHandler(MotifDatabase database, BaselineRepository baselines, string projectKey,
         ProjectLocator project, RunnerOptions options, IPanGlossInvoker invoker,
-        IEvidencePublicationHooks? publicationHooks, EvidenceBundleChecks checks, FileDigestCache digests)
+        IEvidencePublicationHooks? publicationHooks, EvidenceBundleChecks checks, FileDigestCache digests,
+        Action<JobStageProgress>? stageObserver = null)
     {
+        _stageObserver = stageObserver;
         _database = database ?? throw new ArgumentNullException(nameof(database));
         _baselines = baselines ?? throw new ArgumentNullException(nameof(baselines));
         _projectKey = string.IsNullOrWhiteSpace(projectKey)
@@ -66,9 +69,12 @@ public sealed class ParsimonyJobHandler
         ArgumentNullException.ThrowIfNull(claimed);
         var input = JsonSerializer.Deserialize<ParsimonyJobInput>(claimed.Job.InputJson, MotifJson.CreateOptions())
             ?? throw new InvalidDataException("The Parsimony job has no input.");
-        var admission = ParsimonyAdmission.Check(input.MeasureId, input.ScopeBinding?.Kind, input.AssessmentIds);
+        var admission = ParsimonyAdmission.CheckReport(input.MeasureId, input.ScopeBinding?.Kind, input.AssessmentIds,
+            MeasureRunner.Supports);
         if (admission is not null) return Failure(JobFailureCategory.Semantic, admission.Message);
         var assessmentIds = input.AssessmentIds ?? [];
+        var measureIds = input.MeasureId == ParsimonyAdmission.AllMeasures
+            ? ParsimonyAdmission.SupportedMeasureIds() : [input.MeasureId];
 
         var current = _baselines.GetCurrentEvidence(_projectKey);
         if (current is null)
@@ -84,8 +90,15 @@ public sealed class ParsimonyJobHandler
         if (string.IsNullOrWhiteSpace(claimToken))
             return Failure(JobFailureCategory.Infrastructure, "The Parsimony job has no active writer claim.");
         var reused = _pipeline.TryReuseBaseline(_database, claimed, claimToken, current, input.ScopeBinding,
-            input.MeasureId, assessmentIds, cancellationToken);
-        if (reused is not null) return Completed(reused.ReportId, reused.BundleId, assessmentIds);
+            measureIds, assessmentIds, StagesFor(claimed, ParsimonyStages.ReuseSteps(measureIds.Count)),
+            cancellationToken);
+        if (reused is not null) return Completed(reused.ReportIds, reused.BundleId, assessmentIds);
+        var stages = StagesFor(claimed, ParsimonyStages.FreshSteps(measureIds.Count));
+        void Enter(string stage)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            stages.Enter(stage);
+        }
         var bundleId = "parsimony-bundle-" + Guid.NewGuid().ToString("N");
         var working = _publisher.WorkingDirectory(bundleId);
         _artifacts.RegisterBuildClaim(new ParsimonyBuildClaim(bundleId, _projectKey, claimed.JobId, claimToken,
@@ -95,7 +108,9 @@ public sealed class ParsimonyJobHandler
         try
         {
             _publisher.CreateWorkingDirectory(bundleId);
-            var privateProjectPath = CopyBaseline(root, baseline.FwDataPath, Path.Combine(working, "source"));
+            Enter("copy");
+            var privateProjectPath = CopyBaseline(root, baseline.FwDataPath, Path.Combine(working, "source"),
+                cancellationToken);
             var textWords = _baselines.GetCurrentTextWords(_projectKey,
                 current.Summary.Texts.Select(text => text.TextId).ToArray(), cancellationToken);
             if (textWords is null || textWords.Baseline.Token != baseline.Token)
@@ -104,6 +119,7 @@ public sealed class ParsimonyJobHandler
 
             var snapshotPath = Path.Combine(working, "grammar-snapshot.json");
             var parserIdentity = _pipeline.ParserIdentity();
+            Enter("import");
             var imported = await _invoker.RunAsync(new PanGlossRequest.Import(privateProjectPath, snapshotPath),
                 "parsimony-import", cancellationToken).ConfigureAwait(false);
             if (imported is not PanGlossOutcome.Completed)
@@ -118,6 +134,7 @@ public sealed class ParsimonyJobHandler
                 inputKind = "baseline",
                 dryRunDigest = (string?)null,
             }, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+            Enter("facts");
             var factsOutcome = await _invoker.RunAsync(
                 new PanGlossRequest.Facts(snapshotPath, contextJson),
                 "parsimony-facts", cancellationToken).ConfigureAwait(false);
@@ -132,6 +149,7 @@ public sealed class ParsimonyJobHandler
 
             var factsPath = Path.Combine(working, "grammar-facts.sqlite");
             File.Copy(facts.Path, factsPath, overwrite: false);
+            Enter("evidence");
             using var cache = new FwDataProjectLoader().LoadScratchCache(privateProjectPath);
             var projection = EvidenceProjectionBuilder.Build(cache, textWords.Projection, input.ScopeBinding,
                 cancellationToken);
@@ -160,16 +178,20 @@ public sealed class ParsimonyJobHandler
                 evidenceDigest.SchemaVersion, input.ScopeBinding, assessmentIds, null);
             var prepared = _pipeline.Prepare(new EvidenceBundleBuild(bundleId, baseline.Token, "baseline", null,
                 materialKey, factsPath, EvidenceBundlePipeline.RemoveDigestPrefix(facts.OutputSha256), facts.SchemaVersion,
-                facts.ModelFingerprint, workingEvidencePath, evidenceDigest, input.ScopeBinding, input.MeasureId,
-                assessmentIds, reportableAssessments, null, root, IncludeDispositionProjection: true),
-                (stagingDirectory, finalPlan) => (staging, finalDirectory) = (stagingDirectory, finalPlan));
+                facts.ModelFingerprint, workingEvidencePath, evidenceDigest, input.ScopeBinding, measureIds[0],
+                assessmentIds, reportableAssessments, null, root, IncludeDispositionProjection: true,
+                MoreMeasureIds: [.. measureIds.Skip(1)]),
+                (stagingDirectory, finalPlan) => (staging, finalDirectory) = (stagingDirectory, finalPlan), stages,
+                cancellationToken);
+            Enter("publish");
             finalDirectory = _publisher.Publish(prepared.StagingDirectory, bundleId);
             staging = null;
             _artifacts.Publish(prepared.Bundle, prepared.Report, cancellationToken,
                 () => _publisher.BeforeStoreCommit(finalDirectory),
-                () => _publisher.AfterStoreCommit(finalDirectory));
+                () => _publisher.AfterStoreCommit(finalDirectory), moreReports: prepared.MoreReports);
             _ = _retention.Clean(_projectKey);
-            return Completed(prepared.Report.ReportId, bundleId, assessmentIds);
+            return Completed([prepared.Report.ReportId, .. (prepared.MoreReports ?? []).Select(item => item.ReportId)],
+                bundleId, assessmentIds);
         }
         finally
         {
@@ -184,38 +206,49 @@ public sealed class ParsimonyJobHandler
         }
     }
 
-    private static JobOutcome Completed(string reportId, string bundleId, IReadOnlyList<string> assessmentIds) =>
+    private ParsimonyStages StagesFor(ClaimedJob claimed, int steps) => new(progress =>
+    {
+        claimed.PublishStageProgress(progress);
+        _stageObserver?.Invoke(progress);
+    }, steps);
+
+    // A single-measure job names its Report as reportId; a job that ran several names only reportIds.
+    private static JobOutcome Completed(IReadOnlyList<string> reportIds, string bundleId,
+        IReadOnlyList<string> assessmentIds) =>
         new(JobStatus.Completed, ResultJson: JsonSerializer.Serialize(new
         {
-            reportId,
+            reportId = reportIds.Count == 1 ? reportIds[0] : null,
+            reportIds,
             bundleId,
             assessmentIds,
-        }, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+        }, new JsonSerializerOptions(JsonSerializerDefaults.Web) { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull }));
 
-    private static string CopyBaseline(string baselineRoot, string fwDataPath, string destination)
+    private static string CopyBaseline(string baselineRoot, string fwDataPath, string destination,
+        CancellationToken cancellationToken)
     {
         var source = Path.GetFullPath(fwDataPath);
         var relative = Path.GetRelativePath(baselineRoot, source);
         if (Path.IsPathRooted(relative) || relative == ".." || relative.StartsWith(".." + Path.DirectorySeparatorChar) ||
             !File.Exists(source))
             throw new InvalidDataException("The recorded Baseline project path is outside its bundle or missing.");
-        CopyDirectory(baselineRoot, destination);
+        CopyDirectory(baselineRoot, destination, cancellationToken);
         return Path.Combine(destination, relative);
     }
 
-    private static void CopyDirectory(string source, string destination)
+    private static void CopyDirectory(string source, string destination, CancellationToken cancellationToken)
     {
         if ((File.GetAttributes(source) & FileAttributes.ReparsePoint) != 0)
             throw new InvalidDataException("The Baseline bundle contains a reparse point.");
         Directory.CreateDirectory(destination);
         foreach (var entry in Directory.EnumerateFileSystemEntries(source))
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var attributes = File.GetAttributes(entry);
             if ((attributes & FileAttributes.ReparsePoint) != 0)
                 throw new InvalidDataException("The Baseline bundle contains a reparse point.");
             var target = Path.Combine(destination, Path.GetFileName(entry));
             if ((attributes & FileAttributes.Directory) != 0)
-                CopyDirectory(entry, target);
+                CopyDirectory(entry, target, cancellationToken);
             else
                 File.Copy(entry, target, overwrite: false);
         }

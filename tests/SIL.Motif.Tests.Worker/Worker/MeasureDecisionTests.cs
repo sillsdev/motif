@@ -17,6 +17,18 @@ public sealed class MeasureDecisionTests
         MeasureContext.For(Bundle, new MeasureDigestContext(1, 1, ParsimonyEvidenceScopeKind.ProjectApproved, null, null),
             names);
 
+    [Fact]
+    public void ACancellingContextStopsTheNextNameLookupAndLeavesLookupsAloneUntilThen()
+    {
+        using var source = new CancellationTokenSource();
+        var context = Context(new Dictionary<string, string> { ["guid-1"] = "name one" }).Cancelling(source.Token);
+
+        Assert.Equal("name one", context.Describe("guid-1"));
+        source.Cancel();
+
+        Assert.Throws<OperationCanceledException>(() => context.Describe("guid-1"));
+    }
+
     private static AdhocProhibitionFact Prohibition(string guid, bool? loaded = true, bool disabled = false,
         string primary = "msa-p", string other = "msa-q", string adjacency = "anywhere") =>
         new(guid, "morpheme", disabled, adjacency, primary, "msa", [new AdhocTargetFact(other, "msa")], loaded);

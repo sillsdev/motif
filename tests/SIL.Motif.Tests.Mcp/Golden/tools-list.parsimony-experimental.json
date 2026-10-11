@@ -1041,13 +1041,13 @@
   },
   {
     "name": "motif_run_parsimony_measure",
-    "description": "Review grammar parsimony. Runs a registered Parsimony measure over the current Baseline or compares a completed Proposal Dry Run against that Baseline. Candidate evidence uses a private copy and stores before and after Reports. Use parsimony measures to list checks and their evidence needs.\nCommand: parsimony. Agent class: Evaluate.\nMeasureId: The registered Parsimony measure to run.\nEvidenceScope: The declared source of word evidence for the measure.\nAssessmentIds: The exact retained Assessments supplying evidence, when supplied.\nWait for a Parsimony Report. Queues the requested Parsimony measure and waits for its stored Report. It does not capture a Baseline or require an Assessment.\nCommand: parsimony --wait. Agent class: Evaluate.\nJobId: The queued job whose result to read.\nTimeout: The maximum wait for this call; the job continues after the wait ends.",
+    "description": "Review grammar parsimony. Runs a registered Parsimony measure, or every measure with --measure all, over the current Baseline, or compares a completed Proposal Dry Run against that Baseline. Candidate evidence uses a private copy and stores before and after Reports. Use parsimony measures to list checks and their evidence needs.\nCommand: parsimony. Agent class: Evaluate.\nMeasureId: The registered Parsimony measure to run.\nEvidenceScope: The declared source of word evidence for the measure.\nAssessmentIds: The exact retained Assessments supplying evidence, when supplied.\nWait for a Parsimony Report. Queues the requested Parsimony measure and waits for its stored Report. It does not capture a Baseline or require an Assessment.\nCommand: parsimony --wait. Agent class: Evaluate.\nJobId: The queued job whose result to read.\nTimeout: The maximum wait for this call; the job continues after the wait ends.\nRun every Parsimony measure. Runs every Parsimony measure this build supports in one job over one verified evidence bundle, then waits and returns one stored Report per measure. It does not capture a Baseline or require an Assessment.\nCommand: parsimony --measure all --wait. Agent class: Evaluate.\nJobId: The queued job whose Reports to read.\nTimeout: The maximum wait for this call; the job continues after the wait ends.",
     "inputSchema": {
       "type": "object",
       "properties": {
         "measure_id": {
           "type": "string",
-          "description": "Exact registered measure id.",
+          "description": "Exact registered measure id, or \u0027all\u0027 to run every supported measure in one job and read one Report per measure.",
           "enum": [
             "B-adhoc-is-slot-order",
             "B-affix-null-vs-optional",
@@ -1062,7 +1062,8 @@
             "R-slot-blocking",
             "R-tmpl-precedence",
             "R-word-disapproved-produced",
-            "R-word-negative-accepted"
+            "R-word-negative-accepted",
+            "all"
           ]
         },
         "evidence_scope": {

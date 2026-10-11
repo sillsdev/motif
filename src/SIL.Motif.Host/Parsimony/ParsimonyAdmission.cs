@@ -15,6 +15,13 @@ public static class ParsimonyAdmission
     public const string DryRunRequiredMessage =
         "Candidate evidence requires a completed Dry Run job with published effects.";
 
+    /// <summary>The measure value that asks for every measure this build supports, in one job.</summary>
+    public const string AllMeasures = "all";
+
+    /// <summary>The measure ids this build runs, in catalog order; what <see cref="AllMeasures"/> expands to.</summary>
+    public static IReadOnlyList<string> SupportedMeasureIds() =>
+        [.. MeasureCatalog.All.Where(measure => MeasureRunner.Supports(measure.Id)).Select(measure => measure.Id)];
+
     /// <summary>Checks the request fields common to the report and candidate measures; null means admissible.</summary>
     /// <param name="measureId">The requested measure id.</param>
     /// <param name="evidenceScope">The requested evidence scope, or null when the request names none.</param>
@@ -35,6 +42,24 @@ public static class ParsimonyAdmission
         if (!supportsMeasure(measureId))
             return new Refusal(ParsimonyRefusalCodes.MeasureUnavailable, FailureReason.Refused,
                 $"Parsimony measure '{measureId}' is catalogued but not supported by this build.");
+        if (evidenceScope is not { } scope || !Enum.IsDefined(scope))
+            return new Refusal(ParsimonyRefusalCodes.InvalidScope, FailureReason.InvalidArgument,
+                "Evidence scope must be 'default-selection' or 'project-approved'.");
+        return CheckAssessmentIds(assessmentIds);
+    }
+
+    /// <summary>
+    /// As the four-argument check for a Baseline report request, which may also name <see cref="AllMeasures"/>.
+    /// A candidate request never does: its comparison is built for one named measure.
+    /// </summary>
+    public static Refusal? CheckReport(string? measureId, ParsimonyEvidenceScopeKind? evidenceScope,
+        IReadOnlyList<string>? assessmentIds, Func<string, bool> supportsMeasure)
+    {
+        ArgumentNullException.ThrowIfNull(supportsMeasure);
+        if (measureId != AllMeasures) return Check(measureId, evidenceScope, assessmentIds, supportsMeasure);
+        if (!MeasureCatalog.All.Any(measure => supportsMeasure(measure.Id)))
+            return new Refusal(ParsimonyRefusalCodes.MeasureUnavailable, FailureReason.Refused,
+                "This build supports no Parsimony measure.");
         if (evidenceScope is not { } scope || !Enum.IsDefined(scope))
             return new Refusal(ParsimonyRefusalCodes.InvalidScope, FailureReason.InvalidArgument,
                 "Evidence scope must be 'default-selection' or 'project-approved'.");

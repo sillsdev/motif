@@ -138,6 +138,93 @@ public sealed class ParsimonyCommandsTests : IDisposable
         Assert.Equal("parsimony.report-damaged", latest.Refusal!.Code);
     }
 
+    [Fact]
+    public void EnqueueAcceptsAllMeasuresForABaselineReportAndRefusesItForACandidate()
+    {
+        var fwDataPath = CreateProject("enqueue-all");
+
+        var queued = ParsimonyCommands.Enqueue(new EnqueueParsimonyReportRequest(fwDataPath, "1.0",
+            ParsimonyAdmission.AllMeasures));
+        var candidate = ParsimonyCommands.EnqueueCandidate(new EnqueueParsimonyCandidateRequest(fwDataPath, "1.0",
+            "job/dry-run", ParsimonyAdmission.AllMeasures));
+
+        Assert.True(queued.Succeeded, queued.Refusal?.Message);
+        Assert.False(candidate.Succeeded);
+        Assert.Equal("parsimony.invalid-measure", candidate.Refusal!.Code);
+    }
+
+    [Fact]
+    public async Task CancellingAReportWaitCancelsTheJobInsteadOfWaitingOutTheTimeout()
+    {
+        var fwDataPath = CreateProject("cancel-wait");
+        var queued = ParsimonyCommands.Enqueue(new EnqueueParsimonyReportRequest(fwDataPath, "1.0",
+            "P-adhoc-duplicate"));
+        Assert.True(queued.Succeeded, queued.Refusal?.Message);
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        var started = System.Diagnostics.Stopwatch.StartNew();
+        var waited = await ParsimonyCommands.WaitAsync(new WaitForParsimonyReportRequest(fwDataPath, "1.0",
+            queued.Value!.JobId, TimeSpan.FromMinutes(5)), cancellation.Token);
+
+        Assert.True(started.Elapsed < TimeSpan.FromSeconds(30), "the wait took " + started.Elapsed);
+        Assert.False(waited.Succeeded);
+        Assert.Equal("job.wait-cancelled", waited.Refusal!.Code);
+        var job = SIL.Motif.Commands.JobCommands.Show(new ShowJobRequest(fwDataPath, queued.Value.JobId, "1.0"));
+        Assert.Equal(SIL.Motif.Contract.Jobs.JobStatus.Cancelled, job.Value!.Status);
+    }
+
+    [Fact]
+    public async Task CancellingAnAllMeasuresWaitCancelsTheJob()
+    {
+        var fwDataPath = CreateProject("cancel-all-wait");
+        var queued = ParsimonyCommands.Enqueue(new EnqueueParsimonyReportRequest(fwDataPath, "1.0",
+            ParsimonyAdmission.AllMeasures));
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        var waited = await ParsimonyCommands.WaitAllAsync(new WaitForParsimonyReportSetRequest(fwDataPath, "1.0",
+            queued.Value!.JobId, TimeSpan.FromMinutes(5)), cancellation.Token);
+
+        Assert.Equal("job.wait-cancelled", waited.Refusal!.Code);
+    }
+
+    [Fact]
+    public void WaitAllReadsTheReportEachMeasureStoredAndASingleWaitRefusesTheSet()
+    {
+        var fwDataPath = CreateProject("wait-all");
+        var project = new SIL.Motif.Contract.Projects.ProjectLocator(fwDataPath, "project");
+        string jobId;
+        using (var database = MotifDatabase.OpenOwned(ProjectDatabaseCatalog.DatabasePathFor(project), project,
+                   MotifSchema.CurrentSchema, new Version(1, 0)))
+        {
+            var repository = new ReportRepository(database);
+            SaveParsimonyReport(repository, "report/first", "bundle/shared", "2026-10-01T09:00:00.0000000+00:00");
+            SaveParsimonyReport(repository, "report/second", "bundle/shared", "2026-10-01T09:00:01.0000000+00:00");
+            var projectKey = ProjectWorkspaceKey.Compute(project);
+            var now = SIL.Motif.Worker.Jobs.JobTimestamp.FormatUtc(DateTimeOffset.UtcNow);
+            var jobs = new SIL.Motif.Worker.Jobs.JobRepository(database);
+            jobId = jobs.Create(SIL.Motif.Contract.Ids.CanonicalId.Mint("job/").Value, projectKey,
+                ParsimonyJobHandler.JobKind, "{}", now).JobId;
+            var claims = new SIL.Motif.Worker.Jobs.JobClaims(database);
+            var claimed = claims.Claim(projectKey, "wait-all-test", now, TimeSpan.FromMinutes(5))!;
+            Assert.True(claims.Finish(jobId, claimed.ClaimToken!, SIL.Motif.Contract.Jobs.JobStatus.Completed,
+                SIL.Motif.Contract.Jobs.JobFailureCategory.None,
+                "{\"reportIds\":[\"report/first\",\"report/second\"],\"bundleId\":\"bundle/shared\"}"));
+        }
+
+        var set = ParsimonyCommands.WaitAll(new WaitForParsimonyReportSetRequest(fwDataPath, "1.0", jobId,
+            TimeSpan.FromSeconds(5)));
+        var single = ParsimonyCommands.Wait(new WaitForParsimonyReportRequest(fwDataPath, "1.0", jobId,
+            TimeSpan.FromSeconds(5)));
+
+        Assert.True(set.Succeeded, set.Refusal?.Message);
+        Assert.Equal(["report/first", "report/second"], set.Value!.Reports.Select(report => report.ReportId));
+        Assert.Equal("bundle/shared", set.Value.BundleId);
+        Assert.False(single.Succeeded);
+        Assert.Equal("parsimony.result-invalid", single.Refusal!.Code);
+    }
+
     private string CreateProject(string name)
     {
         var directory = Path.Combine(_root, name);

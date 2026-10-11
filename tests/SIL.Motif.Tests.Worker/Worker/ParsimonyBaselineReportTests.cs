@@ -2952,6 +2952,154 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         Assert.Equal(2, BundleCount());
     }
 
+    private ParsimonyJobHandler ObservedHandler(string parserPath, SIL.Motif.Host.PanGloss.IPanGlossInvoker invoker,
+        Action<JobStageProgress> observer, EvidenceBundleChecks? checks = null) =>
+        new(_database, _baselines, _projectKey, _project,
+            new RunnerOptions { Root = Path.Combine(_root, "worker"), ParserPath = parserPath }, invoker, null,
+            checks ?? EvidenceBundleChecks.Create(), FileDigestCache.Shared, observer);
+
+    [Fact]
+    public async Task AFreshJobPublishesEachStageInOrderAndTheJobRowHoldsTheLast()
+    {
+        await PublishBaselineAsync(_pristine);
+        var parserPath = FactsParser(_pristine.Seed);
+        using var invoker = new SIL.Motif.Host.PanGloss.PanGlossInvoker(parserPath);
+        var seen = new List<JobStageProgress>();
+        var handler = ObservedHandler(parserPath, invoker, seen.Add);
+        var job = CreateJob("P-adhoc-duplicate");
+        var claim = Claim(job.JobId);
+
+        var outcome = await handler.RunAsync(claim, CancellationToken.None);
+
+        Assert.Equal(JobStatus.Completed, outcome!.Status);
+        Assert.Equal(["copy", "import", "facts", "evidence", "validate", "measure", "render", "publish"],
+            seen.Select(item => item.Stage));
+        Assert.Equal(Enumerable.Range(1, 8), seen.Select(item => item.Step));
+        Assert.All(seen, item => Assert.Equal(8, item.Steps));
+        Assert.Equal("P-adhoc-duplicate", seen.Single(item => item.Stage == "measure").Detail);
+        var stored = JsonSerializer.Deserialize<JobStageProgress>(_jobs.Get(job.JobId)!.ProgressJson!,
+            SIL.Motif.Contract.MotifJson.CreateOptions());
+        Assert.Equal("publish", stored!.Stage);
+    }
+
+    [Fact]
+    public async Task AReusingJobPublishesOnlyTheStagesItRuns()
+    {
+        await PublishBaselineAsync(_pristine);
+        var parserPath = FactsParser(_pristine.Seed);
+        using var invoker = new SIL.Motif.Host.PanGloss.PanGlossInvoker(parserPath);
+        var seen = new List<JobStageProgress>();
+        var handler = ObservedHandler(parserPath, invoker, seen.Add);
+        _ = await RunReportAsync(handler, "P-adhoc-duplicate");
+        seen.Clear();
+
+        _ = await RunReportAsync(handler, "P-allo-alternation-family");
+
+        Assert.Equal(["validate", "measure", "render", "publish"], seen.Select(item => item.Stage));
+        Assert.All(seen, item => Assert.Equal(4, item.Steps));
+    }
+
+    [Fact]
+    public async Task CancellingDuringTheMeasurePhaseStopsTheJobBeforeAnyReportIsStored()
+    {
+        await PublishBaselineAsync(_pristine);
+        var parserPath = FactsParser(_pristine.Seed);
+        using var invoker = new SIL.Motif.Host.PanGloss.PanGlossInvoker(parserPath);
+        using var cancellation = new CancellationTokenSource();
+        var handler = ObservedHandler(parserPath, invoker, progress =>
+        {
+            if (progress.Stage == "measure") cancellation.Cancel();
+        });
+        var job = CreateJob("P-adhoc-duplicate");
+        var claim = Claim(job.JobId);
+
+        var started = System.Diagnostics.Stopwatch.StartNew();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => handler.RunAsync(claim, cancellation.Token));
+
+        Assert.True(started.Elapsed < TimeSpan.FromSeconds(30), "cancellation took " + started.Elapsed);
+        Assert.Equal(0, BundleCount());
+        Assert.Null(new ReportRepository(_database).GetLatest("parsimony"));
+    }
+
+    [Fact]
+    public async Task CancellingBeforeTheMeasurePhaseStopsTheCopyAndTheParser()
+    {
+        await PublishBaselineAsync(_pristine);
+        var parserPath = FactsParser(_pristine.Seed);
+        using var invoker = new SIL.Motif.Host.PanGloss.PanGlossInvoker(parserPath);
+        using var cancellation = new CancellationTokenSource();
+        var handler = ObservedHandler(parserPath, invoker, progress =>
+        {
+            if (progress.Stage == "copy") cancellation.Cancel();
+        });
+        var job = CreateJob("P-adhoc-duplicate");
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            handler.RunAsync(Claim(job.JobId), cancellation.Token));
+
+        Assert.Empty(FakeParser.Invocations(parserPath));
+        Assert.Equal(0, BundleCount());
+    }
+
+    [Fact]
+    public async Task AllMeasuresRunInOneJobOnOneSessionAndStoreOneReportPerMeasure()
+    {
+        await PublishBaselineAsync(_pristine);
+        var parserPath = FactsParser(_pristine.Seed);
+        using var invoker = new SIL.Motif.Host.PanGloss.PanGlossInvoker(parserPath);
+        var sessions = 0;
+        var checks = new EvidenceBundleChecks(_ => { }, (facts, evidence, inputs) =>
+        {
+            sessions++;
+            return new ParsimonyQuerySession(facts, evidence, inputs);
+        });
+        var seen = new List<JobStageProgress>();
+        var handler = ObservedHandler(parserPath, invoker, seen.Add, checks);
+        var supported = ParsimonyAdmission.SupportedMeasureIds();
+        var job = CreateJob(ParsimonyAdmission.AllMeasures);
+        var claim = Claim(job.JobId);
+
+        var outcome = await handler.RunAsync(claim, CancellationToken.None);
+
+        Assert.True(outcome!.Status == JobStatus.Completed, outcome.ResultJson);
+        using var result = JsonDocument.Parse(outcome.ResultJson!);
+        Assert.False(result.RootElement.TryGetProperty("reportId", out _));
+        var reportIds = result.RootElement.GetProperty("reportIds").EnumerateArray()
+            .Select(item => item.GetString()!).ToArray();
+        Assert.Equal(supported.Count, reportIds.Length);
+        Assert.Equal(1, sessions);
+        Assert.Equal(1, BundleCount());
+        var stored = reportIds.Select(id => JsonSerializer.Deserialize<ParsimonyReportResponse>(
+            new ReportRepository(_database).Get(id)!.ReportJson, new JsonSerializerOptions(JsonSerializerDefaults.Web))!)
+            .ToArray();
+        Assert.Equal(supported, stored.Select(report => Assert.Single(report.MeasureRuns).MeasureId));
+        Assert.Single(stored.Select(report => report.Inputs.BundleId).Distinct());
+        Assert.Equal(supported.Count, seen.Count(item => item.Stage == "measure"));
+        Assert.Equal(7 + supported.Count, seen.Count);
+        Assert.All(seen, item => Assert.Equal(7 + supported.Count, item.Steps));
+    }
+
+    [Fact]
+    public async Task AllMeasuresReuseAnExistingBundleForEveryReport()
+    {
+        await PublishBaselineAsync(_pristine);
+        var parserPath = FactsParser(_pristine.Seed);
+        using var invoker = new SIL.Motif.Host.PanGloss.PanGlossInvoker(parserPath);
+        var handler = ObservedHandler(parserPath, invoker, _ => { });
+        _ = await RunReportAsync(handler, "P-adhoc-duplicate");
+        var invocations = FakeParser.Invocations(parserPath).Count;
+        var job = CreateJob(ParsimonyAdmission.AllMeasures);
+
+        var outcome = await handler.RunAsync(Claim(job.JobId), CancellationToken.None);
+
+        Assert.True(outcome!.Status == JobStatus.Completed, outcome.ResultJson);
+        using var result = JsonDocument.Parse(outcome.ResultJson!);
+        Assert.Equal(ParsimonyAdmission.SupportedMeasureIds().Count,
+            result.RootElement.GetProperty("reportIds").GetArrayLength());
+        Assert.Equal(1, BundleCount());
+        Assert.Equal(invocations, FakeParser.Invocations(parserPath).Count);
+    }
+
     private async Task<string> PublishBaselineAsync(PristineProjectFixture fixture, BaselineToken? token = null,
         string directory = "published-baseline")
     {

@@ -263,6 +263,14 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         Assert.Equal(JsonNode.Parse(ProjectionJson.Serialize(cliReport.Value!))!.ToJsonString(),
             JsonNode.Parse(report.GetRawText())!.ToJsonString());
 
+        var all = await session.CallAsync("motif_run_parsimony_measure", ("measure_id", "all"),
+            ("evidence_scope", "project-approved"), ("wait_seconds", 120));
+        Assert.True(all.GetProperty("ok").GetBoolean(), all.ToString());
+        var allReports = all.GetProperty("result").GetProperty("reports").EnumerateArray().ToArray();
+        Assert.Equal(SIL.Motif.Host.Parsimony.ParsimonyAdmission.SupportedMeasureIds().Count, allReports.Length);
+        Assert.Single(allReports.Select(item => item.GetProperty("inputs").GetProperty("bundleId").GetString())
+            .Distinct());
+
         var bundleId = report.GetProperty("inputs").GetProperty("bundleId").GetString()!;
         var viewRequest = new ReadParsimonyViewRequest(project.FwDataPath, MotifProductVersion.CurrentText,
             new ParsimonyNamedViewRequest(bundleId, "parsimony-active-findings",

@@ -196,11 +196,11 @@ public sealed class ParsimonyCandidateEvidenceBuilder
             var before = PrepareReport(beforeBundleId, beforeMaterial, source, baselineFacts, beforeEvidence,
                 beforeEvidencePath, input.ScopeBinding!, input.MeasureId, "baseline", null, [], [],
                 input.RetirementExpectationTranslation,
-                (staging, final) => (beforeStaging, beforeFinal) = (staging, final));
+                (staging, final) => (beforeStaging, beforeFinal) = (staging, final), cancellationToken);
             var after = PrepareReport(afterBundleId, afterMaterial, source, candidateFacts, afterEvidence,
                 afterEvidencePath, input.ScopeBinding!, input.MeasureId, "candidate", candidateIdentity,
                 assessmentIds, reportableAssessments, input.RetirementExpectationTranslation,
-                (staging, final) => (afterStaging, afterFinal) = (staging, final));
+                (staging, final) => (afterStaging, afterFinal) = (staging, final), cancellationToken);
             beforeFinal = _publisher.Publish(before.StagingDirectory, before.Bundle.BundleId);
             beforeStaging = null;
             afterFinal = _publisher.Publish(after.StagingDirectory, after.Bundle.BundleId);
@@ -431,11 +431,11 @@ public sealed class ParsimonyCandidateEvidenceBuilder
         string evidencePath, ParsimonyScopeBinding scope, string measureId, string inputKind,
         string? candidateIdentity, IReadOnlyList<string> assessmentIds, IReadOnlyList<ReportableAssessment> assessments,
         SIL.Motif.Contract.Retirement.RetirementExpectationTranslation? retirementTranslation,
-        Action<string, string> located) =>
+        Action<string, string> located, CancellationToken cancellation) =>
         _pipeline.Prepare(new EvidenceBundleBuild(bundleId, source.Token, inputKind, candidateIdentity, materialKey,
             facts.Path, facts.Sha256, facts.SchemaVersion, facts.ModelFingerprint, evidencePath, evidenceDigest,
             scope, measureId, assessmentIds, assessments, retirementTranslation, source.RootDirectory,
-            IncludeDispositionProjection: false), located);
+            IncludeDispositionProjection: false), located, cancellation: cancellation);
 
     private static IReadOnlyList<ParsimonyCandidateFindingChange> CompareFindings(
         ParsimonyReportResponse before, ParsimonyReportResponse after)

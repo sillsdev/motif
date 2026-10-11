@@ -1,6 +1,7 @@
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host;
 using SIL.Motif.Host.Installation;
+using SIL.Motif.Host.Parsimony;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -1084,8 +1085,10 @@ try
                 {
                     startRunner(candidateProject, error.WriteLine);
                     if (flags.ContainsKey("wait"))
-                        result = RenderCommand(ParsimonyCommands.WaitCandidate(new WaitForParsimonyCandidateRequest(
-                            candidateProject, CliProductVersion(), queuedCandidate.Value!.JobId, candidateTimeout)));
+                        result = RunWithConsoleCancellation(cancellationToken => RenderCommand(
+                            ParsimonyCommands.WaitCandidate(new WaitForParsimonyCandidateRequest(candidateProject,
+                                CliProductVersion(), queuedCandidate.Value!.JobId, candidateTimeout),
+                                cancellationToken)));
                 }
                 break;
             }
@@ -1170,8 +1173,16 @@ try
             {
                 startRunner(parsimonyProject, error.WriteLine);
                 if (flags.ContainsKey("wait"))
-                    result = RenderCommand(ParsimonyCommands.Wait(new WaitForParsimonyReportRequest(
-                        parsimonyProject, CliProductVersion(), enqueuedParsimony.Value!.JobId, parsimonyWaitTimeout)));
+                {
+                    var parsimonyJobId = enqueuedParsimony.Value!.JobId;
+                    result = flags.GetValueOrDefault("measure") == ParsimonyAdmission.AllMeasures
+                        ? RunWithConsoleCancellation(cancellationToken => RenderCommand(ParsimonyCommands.WaitAll(
+                            new WaitForParsimonyReportSetRequest(parsimonyProject, CliProductVersion(),
+                                parsimonyJobId, parsimonyWaitTimeout), cancellationToken)))
+                        : RunWithConsoleCancellation(cancellationToken => RenderCommand(ParsimonyCommands.Wait(
+                            new WaitForParsimonyReportRequest(parsimonyProject, CliProductVersion(),
+                                parsimonyJobId, parsimonyWaitTimeout), cancellationToken)));
+                }
             }
             break;
 
@@ -1774,7 +1785,9 @@ static string ResolveCommandName(string verb, IReadOnlyDictionary<string, string
         if (positionals.FirstOrDefault() == "view") return "parsimony view";
         if (positionals.FirstOrDefault() == "record-types") return "parsimony record-types";
         if (positionals.FirstOrDefault() == "dispose") return "parsimony dispose";
-        if (flags.ContainsKey("wait")) return "parsimony --wait";
+        if (flags.ContainsKey("wait"))
+            return flags.GetValueOrDefault("measure") == ParsimonyAdmission.AllMeasures && !flags.ContainsKey("dry-run")
+                ? "parsimony --measure all --wait" : "parsimony --wait";
         return "parsimony";
     }
     if (verb == "apply" && flags.ContainsKey("all-pending"))

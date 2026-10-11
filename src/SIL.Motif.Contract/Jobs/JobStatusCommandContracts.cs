@@ -69,6 +69,10 @@ public sealed record JobStatusResponse
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyOrder(11)] public TrialWordProgress? TrialProgress { get; init; }
 
+    /// <summary>The stage a Parsimony job last published, if available.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [JsonPropertyOrder(12)] public JobStageProgress? StageProgress { get; init; }
+
     private static string RequireNonBlank(string? value, string parameterName) =>
         string.IsNullOrWhiteSpace(value)
             ? throw new ArgumentException("A nonblank value is required.", parameterName)

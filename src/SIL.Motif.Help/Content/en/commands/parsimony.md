@@ -1,6 +1,6 @@
 # Review grammar parsimony
 
-`parsimony` queues an advisory review of the project's current Baseline. Select a registered check with `--measure` (it defaults to `P-adhoc-duplicate`); each Report records the measure's findings and full eligibility counts. Pass a completed Dry Run job id with `--dry-run` to compare the same measure before and after an exact Proposal on a private project copy.
+`parsimony` queues an advisory review of the project's current Baseline. Select a registered check with `--measure` (it defaults to `P-adhoc-duplicate`), or pass `--measure all` to run every check this build supports in one job, which stores one Report per measure; each Report records the measure's findings and full eligibility counts. Pass a completed Dry Run job id with `--dry-run` to compare the same measure before and after an exact Proposal on a private project copy.
 
 ## When to use it
 
@@ -36,6 +36,7 @@ Each finding is advisory and remains tied to its exact evidence. Use `parsimony 
 
 ## Related commands
 
+- [Run every Parsimony measure](cmd:parsimony%20--measure%20all%20--wait) waits for one Report per measure.
 - [Read a Parsimony Report](cmd:parsimony%20show) opens a stored result.
 - [List Parsimony measures](cmd:parsimony%20measures) shows registered checks and views.
 - [Read a Parsimony view](cmd:parsimony%20view) reads captured evidence without rebuilding it.

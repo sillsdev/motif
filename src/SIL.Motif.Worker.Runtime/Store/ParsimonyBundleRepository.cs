@@ -133,13 +133,17 @@ public class EvidenceArtifactRepository : IBaselinePinQuery
     /// <summary>Publishes the descriptor and Report in one visibility transaction.</summary>
     public void Publish(ParsimonyBundleRecord bundle, ReportRecord report,
         CancellationToken cancellationToken = default, Action? beforeCommit = null, Action? afterCommit = null,
-        bool requireCurrentBaseline = true, bool setCurrentBaseline = true)
+        bool requireCurrentBaseline = true, bool setCurrentBaseline = true,
+        IReadOnlyList<ReportRecord>? moreReports = null)
     {
         ArgumentNullException.ThrowIfNull(bundle);
         ArgumentNullException.ThrowIfNull(report);
         ValidateDescriptor(bundle);
         if (!StringComparer.Ordinal.Equals(bundle.BundleId, report.BundleIdFromJson()))
             throw new ArgumentException("The Report must name the bundle being published.", nameof(report));
+        foreach (var more in moreReports ?? [])
+            if (!StringComparer.Ordinal.Equals(bundle.BundleId, more.BundleIdFromJson()))
+                throw new ArgumentException("Every Report must name the bundle being published.", nameof(moreReports));
         ValidateFileDigest(bundle.GrammarFactsPath, bundle.GrammarFactsSha256);
         ValidateFileDigest(bundle.EvidencePath, bundle.EvidenceSha256);
 
@@ -190,14 +194,15 @@ public class EvidenceArtifactRepository : IBaselinePinQuery
             BindBundle(command, bundle);
             command.ExecuteNonQuery();
         }
-        ReportRepository.SaveImmutable(connection, transaction, report);
-        using (var reference = connection.CreateCommand())
+        foreach (var saved in new[] { report }.Concat(moreReports ?? []))
         {
+            ReportRepository.SaveImmutable(connection, transaction, saved);
+            using var reference = connection.CreateCommand();
             reference.Transaction = transaction;
             reference.CommandText = "INSERT INTO ParsimonyBundleReferences " +
                 "(BundleId, ReferenceKind, ReferenceId, CreatedUtc) VALUES ($bundle, 'report', $report, $created);";
             reference.Parameters.AddWithValue("$bundle", bundle.BundleId);
-            reference.Parameters.AddWithValue("$report", report.ReportId);
+            reference.Parameters.AddWithValue("$report", saved.ReportId);
             reference.Parameters.AddWithValue("$created", bundle.CreatedUtc);
             reference.ExecuteNonQuery();
         }
@@ -261,7 +266,7 @@ public class EvidenceArtifactRepository : IBaselinePinQuery
     /// rewritten; the Report pins it and it stays the current Baseline bundle.
     /// </summary>
     public void PublishReportOnExistingBundle(string bundleId, ReportRecord report, string jobId, string claimToken,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default, IReadOnlyList<ReportRecord>? moreReports = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleId);
         ArgumentNullException.ThrowIfNull(report);
@@ -269,6 +274,10 @@ public class EvidenceArtifactRepository : IBaselinePinQuery
         ArgumentException.ThrowIfNullOrWhiteSpace(claimToken);
         if (!StringComparer.Ordinal.Equals(bundleId, report.BundleIdFromJson()))
             throw new ArgumentException("The Report must name the bundle it is published on.", nameof(report));
+        foreach (var more in moreReports ?? [])
+            if (!StringComparer.Ordinal.Equals(bundleId, more.BundleIdFromJson()))
+                throw new ArgumentException("Every Report must name the bundle it is published on.",
+                    nameof(moreReports));
         using var connection = _database.OpenConnection();
         using var transaction = connection.BeginTransaction();
         ParsimonyBundleRecord bundle;
@@ -295,8 +304,9 @@ public class EvidenceArtifactRepository : IBaselinePinQuery
                 reader.GetString(1) != "running" || reader.IsDBNull(2) || reader.GetString(2).CompareTo(now) <= 0)
                 throw new InvalidOperationException("The Parsimony job no longer holds its writer claim.");
         }
-        ReportRepository.SaveImmutable(connection, transaction, report);
-        foreach (var (kind, id) in new[] { ("report", report.ReportId), ("job", jobId) })
+        var reports = new[] { report }.Concat(moreReports ?? []).ToArray();
+        foreach (var saved in reports) ReportRepository.SaveImmutable(connection, transaction, saved);
+        foreach (var (kind, id) in reports.Select(item => ("report", item.ReportId)).Append(("job", jobId)))
         {
             using var reference = connection.CreateCommand();
             reference.Transaction = transaction;

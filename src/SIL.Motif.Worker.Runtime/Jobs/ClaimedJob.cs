@@ -66,6 +66,21 @@ public sealed class ClaimedJob
         return Job;
     }
 
+    /// <summary>Records the stage this job is in; a write lost to a concurrent row change is dropped, not fatal.</summary>
+    public void PublishStageProgress(JobStageProgress progress)
+    {
+        try
+        {
+            var before = _jobs.Get(JobId) ?? throw new InvalidOperationException("The claimed job no longer exists.");
+            Job = _jobs.UpdateProgress(JobId, JsonSerializer.Serialize(progress, MotifJson.CreateOptions()),
+                before.Version);
+        }
+        catch (InvalidOperationException)
+        {
+            // Progress is advisory: the next stage publishes again, and a terminal row accepts no progress.
+        }
+    }
+
     /// <summary>Wraps the job named by <paramref name="jobId"/> as it reads right now.</summary>
     /// <remarks>For a caller that only has an id, not an already-read row — a real claim always has the row.</remarks>
     internal static ClaimedJob Of(JobRepository jobs, string jobId) =>

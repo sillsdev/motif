@@ -231,6 +231,10 @@ public static class CliVerbCatalog
             new[] { "parsimony --project <fwdata> [--measure <measure-id>] --wait " +
                 "[--evidence-scope default-selection|project-approved] [--assessment <ParseTime-id> ...] " +
                 "[--wait-timeout-ms <ms>] [--json]" }),
+        new CliVerbDescriptor("Reports", "parsimony", "parsimony --measure all --wait",
+            new[] { "parsimony --project <fwdata> --measure all --wait " +
+                "[--evidence-scope default-selection|project-approved] [--assessment <ParseTime-id> ...] " +
+                "[--wait-timeout-ms <ms>] [--json]" }),
         new CliVerbDescriptor("Reports", "parsimony", "parsimony --dry-run",
             new[] { "parsimony --project <fwdata> --dry-run <job-id> [--measure <measure-id>] " +
                 "[--evidence-scope project-approved|default-selection] [--assessment <ParseTime-id> ...] [--json]" }),

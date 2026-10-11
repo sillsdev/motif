@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Security.Cryptography;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Baselines;
+using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Parsimony;
 using SIL.Motif.Contract.Responses;
@@ -16,6 +17,25 @@ using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Worker.Store;
 
 namespace SIL.Motif.Worker.Parsimony;
+
+/// <summary>
+/// Publishes the stage a job enters, once per stage, so a waiting caller sees where a long job is. The step
+/// count is fixed when the job learns how many measures it runs; the observer lets a test read every stage.
+/// </summary>
+internal sealed class ParsimonyStages(Action<JobStageProgress> publish, int steps)
+{
+    private int _step;
+
+    /// <summary>Records that the job has entered <paramref name="stage"/>.</summary>
+    public void Enter(string stage, string? detail = null) =>
+        publish(new JobStageProgress(stage, ++_step, Math.Max(steps, _step), detail));
+
+    /// <summary>Steps of a fresh Baseline build that runs <paramref name="measures"/> measures.</summary>
+    public static int FreshSteps(int measures) => 7 + measures;
+
+    /// <summary>Steps of a Report written onto an existing bundle that runs <paramref name="measures"/> measures.</summary>
+    public static int ReuseSteps(int measures) => 3 + measures;
+}
 
 /// <summary>The checks a build runs on what it stages; tests replace them to count how often each one runs.</summary>
 /// <param name="FactsIntegrity">The whole-file SQLite check of the staged grammar facts, run once per bundle.</param>
@@ -53,14 +73,30 @@ internal sealed record EvidenceBundleBuild(string BundleId, BaselineToken Token,
     string ModelFingerprint, string EvidencePath, ParsimonyArtifactDigest Evidence, ParsimonyScopeBinding Scope,
     string MeasureId, IReadOnlyList<string> AssessmentIds, IReadOnlyList<ReportableAssessment> Assessments,
     RetirementExpectationTranslation? RetirementTranslation, string BaselineRootDirectory,
-    bool IncludeDispositionProjection);
+    bool IncludeDispositionProjection, IReadOnlyList<string>? MoreMeasureIds = null)
+{
+    /// <summary>Every measure the bundle's Reports evaluate, <see cref="MeasureId"/> first.</summary>
+    public IReadOnlyList<string> MeasureIds => [MeasureId, .. MoreMeasureIds ?? []];
+}
 
 /// <summary>A staged, verified bundle and its rendered Report, ready to be moved and recorded.</summary>
+/// <param name="MoreReports">The Reports for the measures after the first, when the build ran several.</param>
 internal sealed record PreparedEvidenceBundle(ParsimonyBundleRecord Bundle, ReportRecord Report,
-    ParsimonyReportResponse Response, RenderedReport Rendered, string StagingDirectory, string FinalDirectory);
+    ParsimonyReportResponse Response, RenderedReport Rendered, string StagingDirectory, string FinalDirectory,
+    IReadOnlyList<ReportRecord>? MoreReports = null);
 
-/// <summary>A Report written onto an existing Baseline bundle instead of a new one.</summary>
-internal sealed record ReusedEvidenceBundle(string ReportId, string BundleId);
+/// <summary>Reports written onto an existing Baseline bundle instead of a new one.</summary>
+/// <param name="ReportIds">One Report id per measure, in the order the measures ran.</param>
+/// <param name="BundleId">The bundle the Reports pin.</param>
+internal sealed record ReusedEvidenceBundle(IReadOnlyList<string> ReportIds, string BundleId);
+
+/// <summary>One measure's rendered Report and the strings stored with it.</summary>
+internal sealed record RenderedMeasure(string ReportId, ParsimonyReportResponse Response, RenderedReport Rendered,
+    string ReportJson, string EvidenceJson)
+{
+    /// <summary>The record the store keeps for this Report.</summary>
+    public ReportRecord Record => new(ReportId, null, null, ReportJson, EvidenceJson, "parsimony", Rendered.Text);
+}
 
 /// <summary>
 /// The one sequence that turns written facts and evidence files into a publishable bundle: stage, compare digests,
@@ -147,8 +183,12 @@ internal sealed class EvidenceBundlePipeline
     /// <summary>Stages, verifies and renders one bundle; the caller moves it into place and records it.</summary>
     /// <param name="build">The files and identity of the bundle.</param>
     /// <param name="located">Told the staging and final directories before any file is copied into them.</param>
-    public PreparedEvidenceBundle Prepare(EvidenceBundleBuild build, Action<string, string> located)
+    /// <param name="stages">Told each stage after staging, or null to publish none.</param>
+    /// <param name="cancellation">Stops the measures and the rendering between statements and measures.</param>
+    public PreparedEvidenceBundle Prepare(EvidenceBundleBuild build, Action<string, string> located,
+        ParsimonyStages? stages = null, CancellationToken cancellation = default)
     {
+        cancellation.ThrowIfCancellationRequested();
         var staging = _publisher.StagingDirectory(build.BundleId, build.Token, build.ModelFingerprint,
             build.MaterialKey, build.InputKind, build.CandidateIdentity);
         var final = _publisher.FinalDirectory(build.BundleId, build.Token, build.ModelFingerprint,
@@ -174,17 +214,19 @@ internal sealed class EvidenceBundlePipeline
             new ParsimonyArtifactDigest(build.Evidence.SchemaVersion, evidenceSha),
             build.Scope.Selection is null ? null : RemoveDigestPrefix(build.Scope.Selection.SelectionSha256), null,
             build.AssessmentIds, build.Scope.Kind, build.RetirementTranslation);
+        stages?.Enter("validate");
         _checks.FactsIntegrity(stagedFacts);
-        var (reportId, response, rendered, reportJson, evidenceJson) = Render(inputs, stagedFacts, stagedEvidence,
-            build.Assessments, build.MeasureId, build.AssessmentIds, build.IncludeDispositionProjection);
+        var measures = Render(inputs, stagedFacts, stagedEvidence, build.Assessments, build.MeasureIds,
+            build.AssessmentIds, build.IncludeDispositionProjection, stages, cancellation);
+        var first = measures[0];
         var bundle = new ParsimonyBundleRecord(build.BundleId, TokenJson(build.Token), final,
             Path.Combine(final, "grammar-facts.sqlite"), Path.Combine(final, "evidence.sqlite"),
             build.ModelFingerprint, build.FactsSchemaVersion, factsSha, build.Evidence.SchemaVersion, evidenceSha,
             JobTimestamp.FormatUtc(DateTimeOffset.UtcNow), _projectKey, RemoveDigestPrefix(build.Token.BundleDigest),
             build.MaterialKey, "available", null, build.BaselineRootDirectory, build.InputKind,
             build.CandidateIdentity);
-        var report = new ReportRecord(reportId, null, null, reportJson, evidenceJson, "parsimony", rendered.Text);
-        return new PreparedEvidenceBundle(bundle, report, response, rendered, staging, final);
+        return new PreparedEvidenceBundle(bundle, first.Record, first.Response, first.Rendered, staging, final,
+            [.. measures.Skip(1).Select(item => item.Record)]);
     }
 
     /// <summary>
@@ -194,8 +236,8 @@ internal sealed class EvidenceBundlePipeline
     /// Assessment contents, so the same key would not prove the same evidence (ADR 0060).
     /// </summary>
     public ReusedEvidenceBundle? TryReuseBaseline(MotifDatabase database, ClaimedJob claimed, string claimToken,
-        CurrentBaselineEvidence current, ParsimonyScopeBinding scope, string measureId,
-        IReadOnlyList<string> assessmentIds, CancellationToken cancellationToken)
+        CurrentBaselineEvidence current, ParsimonyScopeBinding scope, IReadOnlyList<string> measureIds,
+        IReadOnlyList<string> assessmentIds, ParsimonyStages? stages, CancellationToken cancellationToken)
     {
         var parserIdentity = ParserIdentity();
         if (parserIdentity is null) return null;
@@ -223,13 +265,14 @@ internal sealed class EvidenceBundlePipeline
                         bundle.EvidenceSha256),
                     scope.Selection is null ? null : RemoveDigestPrefix(scope.Selection.SelectionSha256),
                     null, assessmentIds, scope.Kind);
+                stages?.Enter("validate");
                 _checks.FactsIntegrity(bundle.GrammarFactsPath);
-                var (reportId, _, rendered, reportJson, evidenceJson) = Render(inputs, bundle.GrammarFactsPath,
-                    bundle.EvidencePath, reportableAssessments, measureId, assessmentIds, true);
-                _artifacts.PublishReportOnExistingBundle(bundle.BundleId,
-                    new ReportRecord(reportId, null, null, reportJson, evidenceJson, "parsimony", rendered.Text),
-                    claimed.JobId, claimToken, cancellationToken);
-                return new ReusedEvidenceBundle(reportId, bundle.BundleId);
+                var measures = Render(inputs, bundle.GrammarFactsPath, bundle.EvidencePath, reportableAssessments,
+                    measureIds, assessmentIds, true, stages, cancellationToken);
+                stages?.Enter("publish");
+                _artifacts.PublishReportOnExistingBundle(bundle.BundleId, measures[0].Record, claimed.JobId,
+                    claimToken, cancellationToken, [.. measures.Skip(1).Select(item => item.Record)]);
+                return new ReusedEvidenceBundle([.. measures.Select(item => item.ReportId)], bundle.BundleId);
             }
             catch (Exception exception) when (exception is InvalidDataException or IOException or
                 Microsoft.Data.Sqlite.SqliteException or KeyNotFoundException)
@@ -240,44 +283,61 @@ internal sealed class EvidenceBundlePipeline
         return null;
     }
 
-    private (string ReportId, ParsimonyReportResponse Response, RenderedReport Rendered, string ReportJson,
-        string EvidenceJson) Render(ParsimonyReportInputs inputs, string factsPath, string evidencePath,
-        IReadOnlyList<ReportableAssessment> assessments, string measureId, IReadOnlyList<string> assessmentIds,
-        bool includeDispositionProjection)
+    private IReadOnlyList<RenderedMeasure> Render(ParsimonyReportInputs inputs, string factsPath,
+        string evidencePath, IReadOnlyList<ReportableAssessment> assessments, IReadOnlyList<string> measureIds,
+        IReadOnlyList<string> assessmentIds, bool includeDispositionProjection, ParsimonyStages? stages,
+        CancellationToken cancellation)
     {
-        var reportInput = ReportInput.FromParsimonyFiles(inputs, factsPath, evidencePath, assessments, measureId);
         // One session verifies the files and serves the join-quality read and every measure of the render.
-        RenderedReport rendered;
+        var produced = new List<(string MeasureId, RenderedReport Rendered)>();
         using (var session = _checks.OpenSession(factsPath, evidencePath, inputs))
-            rendered = new ParsimonyReportProducer().Produce(reportInput, session);
-        var reportId = CanonicalId.Mint("report/").Value;
-        var dispositionProjection = includeDispositionProjection ? rendered.ParsimonyDispositionProjection : null;
-        if (dispositionProjection is not null)
-            dispositionProjection = dispositionProjection with
+        {
+            var producer = new ParsimonyReportProducer();
+            for (var index = 0; index < measureIds.Count; index++)
             {
-                ReportId = reportId,
-                Findings = Array.AsReadOnly(dispositionProjection.Findings
-                    .Select(item => item with { ReportId = reportId }).ToArray()),
-            };
-        var response = new ParsimonyReportResponse(reportId, inputs, rendered.ParsimonyFindings ?? [], rendered.Text)
-        {
-            AssessmentIds = assessmentIds,
-            MeasureRuns = rendered.ParsimonyMeasureRuns ?? [],
-            JoinQuality = rendered.ParsimonyJoinQuality,
-            DispositionProjection = dispositionProjection,
-            Notes = rendered.ParsimonyNotes ?? [],
-        };
+                cancellation.ThrowIfCancellationRequested();
+                var measureId = measureIds[index];
+                stages?.Enter("measure", measureIds.Count == 1 ? measureId : $"{measureId} ({index + 1} of {measureIds.Count})");
+                var reportInput = ReportInput.FromParsimonyFiles(inputs, factsPath, evidencePath, assessments, measureId);
+                produced.Add((measureId, producer.Produce(reportInput, session, cancellation)));
+            }
+        }
+        stages?.Enter("render");
         var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
-        var reportJson = JsonSerializer.Serialize(response, options);
-        var evidenceJson = JsonSerializer.Serialize(new
+        var measures = new List<RenderedMeasure>();
+        foreach (var (_, rendered) in produced)
         {
-            inputs,
-            grammarFactsPath = "grammar-facts.sqlite",
-            evidencePath = "evidence.sqlite",
-            findings = response.Findings.Select(item => new { item.FindingId, item.EvidenceDigest }),
-            joinQuality = response.JoinQuality,
-        }, options);
-        return (reportId, response, rendered, reportJson, evidenceJson);
+            cancellation.ThrowIfCancellationRequested();
+            var reportId = CanonicalId.Mint("report/").Value;
+            var dispositionProjection = includeDispositionProjection ? rendered.ParsimonyDispositionProjection : null;
+            if (dispositionProjection is not null)
+                dispositionProjection = dispositionProjection with
+                {
+                    ReportId = reportId,
+                    Findings = Array.AsReadOnly(dispositionProjection.Findings
+                        .Select(item => item with { ReportId = reportId }).ToArray()),
+                };
+            var response = new ParsimonyReportResponse(reportId, inputs, rendered.ParsimonyFindings ?? [],
+                rendered.Text)
+            {
+                AssessmentIds = assessmentIds,
+                MeasureRuns = rendered.ParsimonyMeasureRuns ?? [],
+                JoinQuality = rendered.ParsimonyJoinQuality,
+                DispositionProjection = dispositionProjection,
+                Notes = rendered.ParsimonyNotes ?? [],
+            };
+            var reportJson = JsonSerializer.Serialize(response, options);
+            var evidenceJson = JsonSerializer.Serialize(new
+            {
+                inputs,
+                grammarFactsPath = "grammar-facts.sqlite",
+                evidencePath = "evidence.sqlite",
+                findings = response.Findings.Select(item => new { item.FindingId, item.EvidenceDigest }),
+                joinQuality = response.JoinQuality,
+            }, options);
+            measures.Add(new RenderedMeasure(reportId, response, rendered, reportJson, evidenceJson));
+        }
+        return measures;
     }
 
     private static string Hash(string value) =>

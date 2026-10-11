@@ -43,6 +43,46 @@ public sealed class ParsimonyArgvTests : IDisposable
     }
 
     [Fact]
+    public async Task MeasureAllWaitStoresOneReportPerMeasureOnOneBundleAndReturnsThemAsJson()
+    {
+        new FileAdvancedAiModePreferenceStore(_preferencePath).SetEnabled(true);
+        var project = _pristine.CopyProjectFile();
+        var captured = await CliProcess.RunAsync(StartWithParser(_preferencePath, null,
+            "baseline", "capture", project, "--json"));
+        Assert.Equal(0, captured.ExitCode);
+        var parserPath = FactsParser();
+
+        var result = await CliProcess.RunAsync(StartWithParser(_preferencePath, parserPath,
+            "parsimony", "--project", project, "--measure", "all", "--evidence-scope", "project-approved",
+            "--wait", "--json"));
+
+        Assert.True(result.ExitCode == 0, result.Error + result.Output);
+        Assert.Empty(result.Error);
+        var set = JsonSerializer.Deserialize<ParsimonyReportSetResponse>(result.Output,
+            new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        Assert.NotNull(set);
+        var supported = SIL.Motif.Host.Parsimony.ParsimonyAdmission.SupportedMeasureIds();
+        Assert.Equal(supported, set!.Reports.Select(report => Assert.Single(report.MeasureRuns).MeasureId));
+        Assert.All(set.Reports, report => Assert.Equal(set.BundleId, report.Inputs.BundleId));
+        Assert.Equal(new[] { "describe", "import", "facts" }, FakeParser.Invocations(parserPath));
+        var shown = await CliProcess.RunAsync(StartWithParser(_preferencePath, null,
+            "parsimony", "show", "--project", project, set.Reports[^1].ReportId, "--json"));
+        Assert.Equal(0, shown.ExitCode);
+    }
+
+    [Fact]
+    public async Task MeasureAllIsRefusedForACandidateComparison()
+    {
+        new FileAdvancedAiModePreferenceStore(_preferencePath).SetEnabled(true);
+
+        var result = await CliProcess.RunAsync(StartWithParser(_preferencePath, null,
+            "parsimony", "--project", _project, "--dry-run", "job/none", "--measure", "all", "--json"));
+
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.Contains("parsimony.invalid-measure", result.Output + result.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task WaitStoresAndReturnsTheBaselineReportAsJson()
     {
         new FileAdvancedAiModePreferenceStore(_preferencePath).SetEnabled(true);
