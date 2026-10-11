@@ -14,6 +14,15 @@ public sealed class UnixFactAttribute : FactAttribute
     }
 }
 
+/// <summary>Runs only on Linux, where the locator reads a process's executable through /proc.</summary>
+public sealed class LinuxFactAttribute : FactAttribute
+{
+    public LinuxFactAttribute()
+    {
+        if (!OperatingSystem.IsLinux()) Skip = "Reads /proc, which only Linux has.";
+    }
+}
+
 public sealed class InstalledWorkerLocatorTests : IDisposable
 {
     private readonly string _scratch =
@@ -66,7 +75,7 @@ public sealed class InstalledWorkerLocatorTests : IDisposable
         Assert.DoesNotContain(InstalledWorkerLocator.Find(install), info => info.ProcessId == worker.Id);
     }
 
-    [UnixFact]
+    [LinuxFact]
     public async Task AWorkerStartedThroughASymlinkIsFoundByItsExecutablePath()
     {
         var link = Path.Combine(_scratch, "w");
@@ -79,10 +88,9 @@ public sealed class InstalledWorkerLocatorTests : IDisposable
             info => info.ProcessId == worker.Id);
     }
 
-    [UnixFact]
+    [LinuxFact]
     public async Task AWorkerOfTheSameAppImageIsFoundFromAnotherMount()
     {
-        if (!OperatingSystem.IsLinux()) return;
         var image = Path.Combine(_scratch, "Motif.AppImage");
         var worker = await StartWorkerAsync(BuildOutput.Worker,
             "SIL.Motif.UpdateActivity.Test." + Guid.NewGuid().ToString("N"), appImage: image);
