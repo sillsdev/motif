@@ -428,7 +428,7 @@ public static class ParsimonyCommands
             if (latest is null)
                 return Refused<ParsimonyLatestReportResponse>(ParsimonyRefusalCodes.NoReport, FailureReason.NotFound,
                     "No Parsimony Report yet.");
-            var stored = ReadReport(database, latest.ReportId);
+            var stored = ReadReport(latest);
             if (!stored.Succeeded) return CommandOutcome<ParsimonyLatestReportResponse>.Refused(stored.Refusal!);
             return CommandOutcome<ParsimonyLatestReportResponse>.Success(
                 new ParsimonyLatestReportResponse(stored.Value!.ReportId, stored.Value.Inputs.BundleId));
@@ -640,6 +640,13 @@ public static class ParsimonyCommands
             return CommandOutcome<ParsimonyReportResponse>.Refused(new Refusal(
                 ParsimonyRefusalCodes.ReportNotFound, FailureReason.NotFound,
                 $"Parsimony Report '{reportId}' was not found."));
+        return ReadReport(report);
+    }
+
+    // Parses and checks one already-read row, so a caller that holds the row reads and parses it once.
+    private static CommandOutcome<ParsimonyReportResponse> ReadReport(ReportRecord report)
+    {
+        var reportId = report.ReportId;
         try
         {
             var stored = JsonSerializer.Deserialize<ParsimonyReportResponse>(report.ReportJson,

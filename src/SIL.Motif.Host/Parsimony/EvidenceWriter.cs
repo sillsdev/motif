@@ -83,6 +83,33 @@ public static class EvidenceWriter
         RequireIdentity(connection);
     }
 
+    /// <summary>
+    /// Checks file identity, the Baseline source and the artifact's bindings to its input on one read-only
+    /// connection. It skips the row counts and the SQLite integrity check, which ran when the artifact was
+    /// written; the caller's byte digest proves nothing changed since.
+    /// </summary>
+    public static void ValidateBinding(string path, string baselineTokenJson, string expectedSourceSha256,
+        string modelFingerprint, string inputKind = "baseline", string? candidateIdentity = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        ValidateInputBinding(inputKind, candidateIdentity);
+        using var connection = OpenReadOnly(path);
+        RequireIdentity(connection);
+        using var metadata = connection.CreateCommand();
+        metadata.CommandText = "SELECT baseline_token_json, baseline_key, input_kind, candidate_identity, " +
+            "source_sha256, model_fingerprint, complete FROM artifact_metadata WHERE singleton=1;";
+        using var reader = metadata.ExecuteReader();
+        if (!reader.Read()) throw new InvalidDataException("The evidence artifact has no metadata row.");
+        if (!StringComparer.Ordinal.Equals(reader.GetString(4), expectedSourceSha256))
+            throw new InvalidDataException("The evidence artifact names a different Baseline source.");
+        var token = reader.GetString(0);
+        if (token != baselineTokenJson || reader.GetString(1) != Digest(Encoding.UTF8.GetBytes(token)) ||
+            reader.GetString(2) != inputKind ||
+            (reader.IsDBNull(3) ? null : reader.GetString(3)) != candidateIdentity ||
+            reader.GetString(5) != modelFingerprint || reader.GetInt32(6) != 1 || reader.Read())
+            throw new InvalidDataException("The evidence metadata does not match the published rows or input.");
+    }
+
     /// <summary>Checks the artifact schema, Baseline binding, row counts, and SQLite integrity.</summary>
     public static void Validate(string path, string baselineTokenJson, string sourceSha256,
         string modelFingerprint, string inputKind = "baseline", string? candidateIdentity = null)

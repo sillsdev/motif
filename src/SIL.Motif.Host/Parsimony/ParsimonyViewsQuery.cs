@@ -82,10 +82,14 @@ public static class ParsimonyViewsQuery
         if (request.View == ParsimonyViews.ParserCases && !session.HasParserOverlay)
             return Unavailable(request, definition, "No parser Assessment overlay is attached to this bundle.");
 
-        IReadOnlyList<ParsimonyViewRow> allRows;
-        ParsimonyDispositionProjection? dispositionProjection = null;
-        ParsimonyMeasureStatus? computedStatus = null;
-        string? computedDetail = null;
+        var cacheKey = new ParsimonyViewCacheKey(session.ProofKey, request.View, definition.Version, filterDigest,
+            report?.ReportId);
+        var cached = ParsimonyViewResultCache.Shared.Find(cacheKey);
+        IReadOnlyList<ParsimonyViewRow> allRows = cached?.Rows ?? [];
+        ParsimonyDispositionProjection? dispositionProjection = cached?.DispositionProjection;
+        ParsimonyMeasureStatus? computedStatus = cached?.ComputedStatus;
+        string? computedDetail = cached?.ComputedDetail;
+        if (cached is null)
         try
         {
             if (request.View is ParsimonyViews.ParsimonyActiveFindings or ParsimonyViews.ParsimonySuppressed or
@@ -203,7 +207,10 @@ public static class ParsimonyViewsQuery
             if (allRows.Count == 0)
                 throw new KeyNotFoundException($"The requested '{request.View}' identity was not found.");
         }
-        var digest = Digest(JsonSerializer.Serialize(allRows, MotifJson.CreateOptions()));
+        var digest = cached?.ItemsDigest ?? ItemsDigest(allRows);
+        if (cached is null)
+            ParsimonyViewResultCache.Shared.Store(cacheKey, new ParsimonyViewResult(allRows, digest, dispositionProjection,
+                computedStatus, computedDetail));
         var page = allRows.Skip(offset).Take(limit).ToArray();
         var nextOffset = offset + page.Length;
         var truncated = nextOffset < allRows.Count;
@@ -246,7 +253,7 @@ public static class ParsimonyViewsQuery
         var allRows = ReadDispositionRows(request, projection);
         if (offset > allRows.Count)
             throw new ArgumentException("The view cursor is beyond the end of this result.", nameof(request));
-        var digest = Digest(JsonSerializer.Serialize(allRows, MotifJson.CreateOptions()));
+        var digest = ItemsDigest(allRows);
         var page = allRows.Skip(offset).Take(limit).ToArray();
         var nextOffset = offset + page.Length;
         var truncated = nextOffset < allRows.Count;
@@ -600,6 +607,43 @@ public static class ParsimonyViewsQuery
 
     private static string EncodeCursor(ParsimonyViewCursor cursor) => Base64UrlEncode(
         JsonSerializer.SerializeToUtf8Bytes(cursor, MotifJson.CreateOptions()));
+
+    /// <summary>
+    /// Hashes the complete ordered rows as the JSON array a response would carry, streaming each row so the
+    /// whole document is never held as one string. The value equals the digest of the serialized array.
+    /// </summary>
+    internal static string ItemsDigest(IReadOnlyList<ParsimonyViewRow> rows)
+    {
+        var options = MotifJson.CreateOptions();
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        using var sink = new HashingStream(hash);
+        using (var writer = new Utf8JsonWriter(sink, new JsonWriterOptions
+        {
+            Indented = options.WriteIndented,
+            Encoder = options.Encoder,
+        }))
+        {
+            writer.WriteStartArray();
+            foreach (var row in rows) JsonSerializer.Serialize(writer, row, options);
+            writer.WriteEndArray();
+        }
+        return Convert.ToHexString(hash.GetHashAndReset()).ToLowerInvariant();
+    }
+
+    private sealed class HashingStream(IncrementalHash hash) : Stream
+    {
+        public override bool CanRead => false;
+        public override bool CanSeek => false;
+        public override bool CanWrite => true;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+        public override void Flush() { }
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => hash.AppendData(buffer, offset, count);
+        public override void Write(ReadOnlySpan<byte> buffer) => hash.AppendData(buffer);
+    }
 
     private static string Digest(string value) => Convert.ToHexString(
         SHA256.HashData(Encoding.UTF8.GetBytes(value))).ToLowerInvariant();

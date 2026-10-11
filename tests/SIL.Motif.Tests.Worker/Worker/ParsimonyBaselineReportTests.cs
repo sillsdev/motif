@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Reflection;
+using System.Text;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using SIL.LCModel;
@@ -464,6 +465,8 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
                 MeasureRunner.Execute("P-statement-unused", renamedSession, bundleId).Findings
                     .Select(finding => finding.EvidenceDigest));
 
+        AssertAProvedBundleIsProvedAgainWhenAFileChanges(bundle, inputs);
+
         var firstPage = ParsimonyViewsQuery.Execute(session, new ParsimonyNamedViewRequest(bundleId,
             "statement-usage", new ParsimonyViewFilters(StatementKind: "environment"), 1));
         Assert.Equal(2, firstPage.Total);
@@ -485,6 +488,15 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         Assert.Throws<ArgumentException>(() => ParsimonyViewsQuery.Execute(session,
             new ParsimonyNamedViewRequest(bundleId + "-other", "statement-usage",
                 new ParsimonyViewFilters(StatementKind: "environment"), 1, firstPage.NextCursor)));
+        var hitsBeforeSlices = ParsimonyViewResultCache.Shared.Hits;
+        var fullPage = ParsimonyViewsQuery.Execute(session, new ParsimonyNamedViewRequest(bundleId,
+            "statement-usage", new ParsimonyViewFilters(StatementKind: "environment"), 200));
+        Assert.Equal(firstPage.Rows.Concat(nextPage.Rows).Select(JsonRow), fullPage.Rows.Select(JsonRow));
+        Assert.Equal(firstPage.ItemsDigest, fullPage.ItemsDigest);
+        Assert.Equal(Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(
+            JsonSerializer.Serialize(fullPage.Rows, MotifJson.CreateOptions())))).ToLowerInvariant(),
+            fullPage.ItemsDigest);
+        Assert.True(ParsimonyViewResultCache.Shared.Hits > hitsBeforeSlices);
         Assert.Throws<ArgumentException>(() => ParsimonyViewsQuery.Execute(session,
             new ParsimonyNamedViewRequest(bundleId, "unknown-view", new ParsimonyViewFilters())));
         Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<ParsimonyViewFilters>(
@@ -3171,6 +3183,35 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         Assert.Equal(jobId, claimed.JobId);
         return new ClaimedJob(_jobs, claimed);
     }
+
+    private void AssertAProvedBundleIsProvedAgainWhenAFileChanges(ParsimonyBundleRecord bundle,
+        ParsimonyReportInputs inputs)
+    {
+        var facts = Path.Combine(_root, "proved-facts.sqlite");
+        var evidence = Path.Combine(_root, "proved-evidence.sqlite");
+        File.Copy(bundle.GrammarFactsPath, facts);
+        File.Copy(bundle.EvidencePath, evidence);
+        string provedKey;
+        using (var first = new ParsimonyQuerySession(facts, evidence, inputs)) provedKey = first.ProofKey;
+        using (var second = new ParsimonyQuerySession(facts, evidence, inputs))
+            Assert.Equal(provedKey, second.ProofKey);
+
+        var written = File.GetLastWriteTimeUtc(evidence);
+        File.SetLastWriteTimeUtc(evidence, written.AddSeconds(7));
+        using (var touched = new ParsimonyQuerySession(facts, evidence, inputs))
+            Assert.NotEqual(provedKey, touched.ProofKey);
+
+        var bytes = File.ReadAllBytes(evidence);
+        bytes[^1] ^= 0xFF;
+        File.WriteAllBytes(evidence, bytes);
+        File.SetLastWriteTimeUtc(evidence, written.AddSeconds(14));
+        Assert.Throws<InvalidDataException>(() => new ParsimonyQuerySession(facts, evidence, inputs));
+
+        File.AppendAllText(facts, "tampered after the first open");
+        Assert.Throws<InvalidDataException>(() => new ParsimonyQuerySession(facts, evidence, inputs));
+    }
+
+    private static string JsonRow(ParsimonyViewRow row) => JsonSerializer.Serialize(row, MotifJson.CreateOptions());
 
     private static string Sha256Of(string path) =>
         Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path))).ToLowerInvariant();

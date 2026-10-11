@@ -19,6 +19,10 @@ public sealed partial class ParsimonyQuerySession : IDisposable
     private readonly Action<SqliteConnection>? _beforeCommand;
     private CancellationToken? _page;
 
+    private const int MaximumProvedBundles = 256;
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> ProvedBundles =
+        new(StringComparer.Ordinal);
+
     /// <summary>Validates and attaches the two frozen files for one Report input.</summary>
     public ParsimonyQuerySession(string grammarFactsPath, string evidencePath, ParsimonyReportInputs inputs,
         CancellationToken leaseCancellationToken = default)
@@ -36,16 +40,7 @@ public sealed partial class ParsimonyQuerySession : IDisposable
         _leaseCancellationToken = leaseCancellationToken;
         _beforeCommand = beforeCommand;
         if (_leaseCancellationToken.IsCancellationRequested) throw new ParsimonyLeaseLostException();
-        ValidateDigest(grammarFactsPath, inputs.GrammarFacts);
-        ValidateDigest(evidencePath, inputs.Evidence);
-        var tokenJson = JsonSerializer.Serialize(inputs.BaselineToken,
-            new JsonSerializerOptions(JsonSerializerDefaults.Web));
-        EvidenceWriter.ValidateIdentity(evidencePath);
-        var sourceDigest = ReadEvidenceSourceDigest(evidencePath);
-        if (sourceDigest != inputs.BaselineToken.BundleDigest)
-            throw new InvalidDataException("The evidence artifact names a different Baseline source.");
-        EvidenceWriter.Validate(evidencePath, tokenJson, sourceDigest, inputs.ModelFingerprint,
-            inputs.InputKind, inputs.Candidate);
+        ProofKey = ProveBundle(grammarFactsPath, evidencePath, inputs);
         _connection = new SqliteConnection(new SqliteConnectionStringBuilder
         {
             DataSource = ":memory:",
@@ -448,28 +443,43 @@ public sealed partial class ParsimonyQuerySession : IDisposable
     /// <summary>Hashes a stream in bounded reads, so a large facts file is never held in memory whole.</summary>
     internal static string Sha256Hex(Stream stream) => Convert.ToHexString(SHA256.HashData(stream)).ToLowerInvariant();
 
+    /// <summary>Identifies the proved file pair, so a cached result never outlives a changed file.</summary>
+    internal string ProofKey { get; }
+
+    private static string ProveBundle(string grammarFactsPath, string evidencePath, ParsimonyReportInputs inputs)
+    {
+        var proofKey = ProofKeyOf(grammarFactsPath, evidencePath, inputs);
+        if (proofKey is not null && ProvedBundles.ContainsKey(proofKey)) return proofKey;
+        ValidateDigest(grammarFactsPath, inputs.GrammarFacts);
+        ValidateDigest(evidencePath, inputs.Evidence);
+        var tokenJson = JsonSerializer.Serialize(inputs.BaselineToken,
+            new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        EvidenceWriter.ValidateBinding(evidencePath, tokenJson, inputs.BaselineToken.BundleDigest,
+            inputs.ModelFingerprint, inputs.InputKind, inputs.Candidate);
+        if (proofKey is null) return Guid.NewGuid().ToString("N");
+        if (ProvedBundles.Count >= MaximumProvedBundles) ProvedBundles.Clear();
+        ProvedBundles[proofKey] = 0;
+        return proofKey;
+    }
+
+    // Size and write time stand in for the bytes, so a file changed after proof is hashed and refused again.
+    private static string? ProofKeyOf(string grammarFactsPath, string evidencePath, ParsimonyReportInputs inputs)
+    {
+        var facts = new FileInfo(grammarFactsPath);
+        var evidence = new FileInfo(evidencePath);
+        if (!facts.Exists || !evidence.Exists) return null;
+        return string.Join('|', inputs.BundleId, facts.FullName, facts.Length, facts.LastWriteTimeUtc.Ticks,
+            inputs.GrammarFacts.Sha256, evidence.FullName, evidence.Length, evidence.LastWriteTimeUtc.Ticks,
+            inputs.Evidence.Sha256, inputs.BaselineToken.BundleDigest, inputs.ModelFingerprint,
+            inputs.InputKind, inputs.Candidate);
+    }
+
     private static void ValidateDigest(string path, ParsimonyArtifactDigest expected)
     {
         // The SQLite checks ran once at publication; the digest alone catches any later byte change.
         using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
         if (!StringComparer.Ordinal.Equals(Sha256Hex(stream), expected.Sha256))
             throw new InvalidDataException("A Parsimony input file no longer matches its stored byte digest.");
-    }
-
-    private static string ReadEvidenceSourceDigest(string path)
-    {
-        using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
-        {
-            DataSource = ParsimonySqlitePath.DataSource(path),
-            Mode = SqliteOpenMode.ReadOnly,
-            ForeignKeys = true,
-            Pooling = false,
-        }.ToString());
-        connection.Open();
-        using var command = connection.CreateCommand();
-        command.CommandText = "SELECT source_sha256 FROM artifact_metadata WHERE singleton=1;";
-        return command.ExecuteScalar() as string
-            ?? throw new InvalidDataException("The evidence artifact has no source identity.");
     }
 
     private static string CanonicalTokenJson(SIL.Motif.Contract.Baselines.BaselineToken token) =>
