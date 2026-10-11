@@ -398,6 +398,14 @@ jobs:
       RUNTIME_IDENTIFIER: linux-x64
 
     steps:
+      - name: Free runner disk
+        shell: bash
+        run: |
+          # Two staged payloads and two AppImages fill the runner disk, which kills the job and loses its log.
+          df -h /
+          sudo rm -rf /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+          df -h /
+
       - name: Set package directories
         shell: bash
         run: |
