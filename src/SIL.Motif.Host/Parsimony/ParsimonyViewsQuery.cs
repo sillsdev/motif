@@ -79,7 +79,7 @@ public static class ParsimonyViewsQuery
         if (report is not null && (report.ReportId != request.Filters.ReportId ||
             report.Inputs.BundleId != request.BundleId))
             throw new ArgumentException("The stored Report does not match the named-view Report and bundle.", nameof(report));
-        if (request.View == "parser-cases" && !session.HasParserOverlay)
+        if (request.View == ParsimonyViews.ParserCases && !session.HasParserOverlay)
             return Unavailable(request, definition, "No parser Assessment overlay is attached to this bundle.");
 
         IReadOnlyList<ParsimonyViewRow> allRows;
@@ -88,14 +88,14 @@ public static class ParsimonyViewsQuery
         string? computedDetail = null;
         try
         {
-            if (request.View is "parsimony-active-findings" or "parsimony-suppressed" or
-                "parsimony-suppression-history")
+            if (request.View is ParsimonyViews.ParsimonyActiveFindings or ParsimonyViews.ParsimonySuppressed or
+                ParsimonyViews.ParsimonySuppressionHistory)
             {
                 dispositionProjection = ParsimonyDispositionQuery.Project(session, report?.Findings ?? [],
                     request.Filters.ReportId, report is not null);
                 allRows = ReadDispositionRows(request, dispositionProjection, session);
             }
-            else if (request.View == "parser-cases")
+            else if (request.View == ParsimonyViews.ParserCases)
             {
                 var parserCases = session.ReadParserCases(request.Filters.CaseKey);
                 allRows = parserCases.Cast<ParsimonyViewRow>().ToArray();
@@ -110,7 +110,7 @@ public static class ParsimonyViewsQuery
                     computedDetail = "Some parser cases are incomplete or lack an exact wordform identity.";
                 }
             }
-            else if (request.View == "alternation-families")
+            else if (request.View == ParsimonyViews.AlternationFamilies)
             {
                 var discovery = session.ReadAlternationFamilies();
                 var limitations = discovery.Limitations.Concat(
@@ -135,7 +135,7 @@ public static class ParsimonyViewsQuery
                     ? string.Join(" ", discovery.Limitations)
                     : null;
             }
-            else if (request.View == "environment-excess")
+            else if (request.View == ParsimonyViews.EnvironmentExcess)
             {
                 var discovery = session.ReadEnvironmentExcess();
                 allRows = discovery.Sites.Where(site => request.Filters.ObjectGuid is null ||
@@ -160,7 +160,7 @@ public static class ParsimonyViewsQuery
                     : $"Abstained on {discovery.UnsupportedSites} unsupported site(s) and " +
                       $"{discovery.AmbiguousAlignments} ambiguous alignment(s); {missingSites} site(s) miss attested triggers.";
             }
-            else if (request.View == "natural-class-excess")
+            else if (request.View == ParsimonyViews.NaturalClassExcess)
             {
                 var discovery = session.ReadNaturalClassExcess();
                 allRows = discovery.Sites.Where(site => request.Filters.ObjectGuid is null ||
@@ -195,9 +195,9 @@ public static class ParsimonyViewsQuery
         }
         if (offset > allRows.Count)
             throw new ArgumentException("The view cursor is beyond the end of this result.", nameof(request));
-        if ((request.View is "allomorph-context" or "affix-context" or "adhoc-context" or
-                "natural-class-context" or "slot-context") ||
-            (request.View is "approved-morph-sequences" or "unslotted-affixes" or "null-optional" &&
+        if ((request.View is ParsimonyViews.AllomorphContext or ParsimonyViews.AffixContext or ParsimonyViews.AdhocContext or
+                ParsimonyViews.NaturalClassContext or ParsimonyViews.SlotContext) ||
+            (request.View is ParsimonyViews.ApprovedMorphSequences or ParsimonyViews.UnslottedAffixes or ParsimonyViews.NullOptional &&
              request.Filters.ObjectGuid is not null))
         {
             if (allRows.Count == 0)
@@ -232,7 +232,7 @@ public static class ParsimonyViewsQuery
         ArgumentNullException.ThrowIfNull(request.Filters);
         var definition = ParsimonyViewCatalog.Find(request.View)
             ?? throw new ArgumentException($"Unknown Parsimony view '{request.View}'.", nameof(request));
-        if (request.View is not ("parsimony-suppressed" or "parsimony-suppression-history"))
+        if (request.View is not (ParsimonyViews.ParsimonySuppressed or ParsimonyViews.ParsimonySuppressionHistory))
             throw new ArgumentException("Saved decisions can be read without artifacts only in suppression views.",
                 nameof(request));
         var limit = request.Limit is 0 ? DefaultLimit : request.Limit;
@@ -268,11 +268,11 @@ public static class ParsimonyViewsQuery
         var filters = request.Filters;
         IEnumerable<ParsimonyViewRow> rows = request.View switch
         {
-            "parsimony-active-findings" => projection.Findings
+            ParsimonyViews.ParsimonyActiveFindings => projection.Findings
                 .Where(item => item.State is "active" or "resurfaced"),
-            "parsimony-suppressed" => projection.History
+            ParsimonyViews.ParsimonySuppressed => projection.History
                 .Where(item => item.State is not ("superseded" or "retracted")),
-            "parsimony-suppression-history" => projection.History.Cast<ParsimonyViewRow>()
+            ParsimonyViews.ParsimonySuppressionHistory => projection.History.Cast<ParsimonyViewRow>()
                 .Concat(projection.Unresolved),
             _ => throw new ArgumentException($"Unknown disposition view '{request.View}'.", nameof(request)),
         };
@@ -330,30 +330,54 @@ public static class ParsimonyViewsQuery
         _ => string.Empty,
     };
 
-    private static IReadOnlyList<ParsimonyViewRow> ReadRows(ParsimonyQuerySession session,
-        ParsimonyNamedViewRequest request)
+    private static readonly IReadOnlyDictionary<string, Func<ParsimonyQuerySession, ParsimonyNamedViewRequest,
+        IReadOnlyList<ParsimonyViewRow>>> RowReaders = new Dictionary<string, Func<ParsimonyQuerySession,
+        ParsimonyNamedViewRequest, IReadOnlyList<ParsimonyViewRow>>>(StringComparer.Ordinal)
     {
-        var filters = request.Filters;
-        return request.View switch
-        {
-            "join-quality" => ReadJoinQuality(session, filters),
-            "allomorph-context" => [RequireRow(session.ReadAllomorphContext(filters.ObjectGuid!), request.View)],
-            "approved-morph-sequences" => session.ReadApprovedMorphSequences(filters.ObjectGuid)
+        [ParsimonyViews.JoinQuality] = (session, request) => ReadJoinQuality(session, request.Filters),
+        [ParsimonyViews.AllomorphContext] = (session, request) =>
+            [RequireRow(session.ReadAllomorphContext(request.Filters.ObjectGuid!), request.View)],
+        [ParsimonyViews.ApprovedMorphSequences] = (session, request) =>
+            session.ReadApprovedMorphSequences(request.Filters.ObjectGuid).Cast<ParsimonyViewRow>().ToArray(),
+        [ParsimonyViews.UnslottedAffixes] = (session, request) =>
+            session.ReadUnslottedAffixes(request.Filters.ObjectGuid).Cast<ParsimonyViewRow>().ToArray(),
+        [ParsimonyViews.NullOptional] = (session, request) =>
+            session.ReadNullOptionalAffixes(request.Filters.ObjectGuid).Cast<ParsimonyViewRow>().ToArray(),
+        [ParsimonyViews.StatementUsage] = (session, request) => FilterStatementUsage(session, request.Filters),
+        [ParsimonyViews.AdhocContext] = (session, request) =>
+            [RequireRow(session.ReadAdhocContext(request.Filters.ObjectGuid!), request.View)],
+        [ParsimonyViews.AffixContext] = (session, request) =>
+            [RequireRow(session.ReadAffixContext(request.Filters.ObjectGuid!), request.View)],
+        [ParsimonyViews.SlotContext] = (session, request) =>
+            [RequireRow(session.ReadSlotContext(request.Filters.ObjectGuid!), request.View)],
+        [ParsimonyViews.TemplateOrder] = (session, request) =>
+            session.ReadTemplateOrder(request.Filters.ObjectGuid, request.Filters.CategoryGuid)
                 .Cast<ParsimonyViewRow>().ToArray(),
-            "unslotted-affixes" => session.ReadUnslottedAffixes(filters.ObjectGuid)
-                .Cast<ParsimonyViewRow>().ToArray(),
-            "null-optional" => session.ReadNullOptionalAffixes(filters.ObjectGuid)
-                .Cast<ParsimonyViewRow>().ToArray(),
-            "statement-usage" => FilterStatementUsage(session, filters),
-            "adhoc-context" => [RequireRow(session.ReadAdhocContext(filters.ObjectGuid!), request.View)],
-            "affix-context" => [RequireRow(session.ReadAffixContext(filters.ObjectGuid!), request.View)],
-            "slot-context" => [RequireRow(session.ReadSlotContext(filters.ObjectGuid!), request.View)],
-            "template-order" => session.ReadTemplateOrder(filters.ObjectGuid, filters.CategoryGuid)
-                .Cast<ParsimonyViewRow>().ToArray(),
-            "natural-class-context" => [RequireRow(session.ReadNaturalClassContext(filters.ObjectGuid!), request.View)],
-            _ => throw new ArgumentException($"Unknown Parsimony view '{request.View}'.", nameof(request)),
-        };
-    }
+        [ParsimonyViews.NaturalClassContext] = (session, request) =>
+            [RequireRow(session.ReadNaturalClassContext(request.Filters.ObjectGuid!), request.View)],
+    };
+
+    // Views whose rows ExecuteCore builds itself, because they also decide the status or detail of the response.
+    private static readonly string[] ComputedViews =
+    [
+        ParsimonyViews.ParsimonyActiveFindings,
+        ParsimonyViews.ParsimonySuppressed,
+        ParsimonyViews.ParsimonySuppressionHistory,
+        ParsimonyViews.ParserCases,
+        ParsimonyViews.AlternationFamilies,
+        ParsimonyViews.EnvironmentExcess,
+        ParsimonyViews.NaturalClassExcess,
+    ];
+
+    /// <summary>The view codes this build can execute, which the view catalog must equal.</summary>
+    public static IReadOnlySet<string> ImplementedViews { get; } =
+        RowReaders.Keys.Concat(ComputedViews).ToHashSet(StringComparer.Ordinal);
+
+    private static IReadOnlyList<ParsimonyViewRow> ReadRows(ParsimonyQuerySession session,
+        ParsimonyNamedViewRequest request) =>
+        RowReaders.TryGetValue(request.View, out var reader)
+            ? reader(session, request)
+            : throw new ArgumentException($"Unknown Parsimony view '{request.View}'.", nameof(request));
 
     private static T RequireRow<T>(T? row, string view) where T : ParsimonyViewRow =>
         row ?? throw new KeyNotFoundException($"The requested '{view}' identity was not found.");
@@ -381,18 +405,18 @@ public static class ParsimonyViewsQuery
 
     private static ParsimonyMeasureStatus Status(string view, IReadOnlyList<ParsimonyViewRow> rows) => view switch
     {
-        "join-quality" when rows.Single() is ParsimonyJoinQualityViewRow { Quality.ScopeAvailable: false } =>
+        ParsimonyViews.JoinQuality when rows.Single() is ParsimonyJoinQualityViewRow { Quality.ScopeAvailable: false } =>
             ParsimonyMeasureStatus.Inconclusive,
-        "allomorph-context" when rows.Cast<ParsimonyAllomorphViewRow>()
+        ParsimonyViews.AllomorphContext when rows.Cast<ParsimonyAllomorphViewRow>()
             .Any(row => row.Environments.Any(environment => environment.Compiled is null)) =>
             ParsimonyMeasureStatus.Inconclusive,
-        "approved-morph-sequences" when rows.Cast<ParsimonyApprovedMorphSequenceViewRow>()
+        ParsimonyViews.ApprovedMorphSequences when rows.Cast<ParsimonyApprovedMorphSequenceViewRow>()
             .Any(row => row.Morphs.Any(morph => morph.MorphGuid is null || morph.MsaGuid is null ||
                 morph.MorphType is null || morph.MsaKind is null)) => ParsimonyMeasureStatus.Inconclusive,
-        "adhoc-context" when rows.Cast<ParsimonyAdhocViewRow>()
+        ParsimonyViews.AdhocContext when rows.Cast<ParsimonyAdhocViewRow>()
             .Any(row => row.Prohibition.Loaded is null || !row.GroupedFactsAvailable) =>
             ParsimonyMeasureStatus.Inconclusive,
-        "natural-class-context" when rows.Cast<ParsimonyNaturalClassViewRow>().Any(row => row.Loaded is null) =>
+        ParsimonyViews.NaturalClassContext when rows.Cast<ParsimonyNaturalClassViewRow>().Any(row => row.Loaded is null) =>
             ParsimonyMeasureStatus.Inconclusive,
         _ => ParsimonyMeasureStatus.Computed,
     };
@@ -423,43 +447,43 @@ public static class ParsimonyViewsQuery
 
         switch (view)
         {
-            case "join-quality":
+            case ParsimonyViews.JoinQuality:
                 RequireOnly(filters, nameof(filters.Scope));
                 break;
-            case "allomorph-context":
-            case "adhoc-context":
-            case "affix-context":
-            case "natural-class-context":
-            case "environment-excess":
-            case "natural-class-excess":
-            case "slot-context":
+            case ParsimonyViews.AllomorphContext:
+            case ParsimonyViews.AdhocContext:
+            case ParsimonyViews.AffixContext:
+            case ParsimonyViews.NaturalClassContext:
+            case ParsimonyViews.EnvironmentExcess:
+            case ParsimonyViews.NaturalClassExcess:
+            case ParsimonyViews.SlotContext:
                 RequireOnly(filters, nameof(filters.ObjectGuid));
-                if (view is "environment-excess" or "natural-class-excess")
+                if (view is ParsimonyViews.EnvironmentExcess or ParsimonyViews.NaturalClassExcess)
                 {
                     if (filters.ObjectGuid is not null) RequireId(filters.ObjectGuid);
                 }
                 else RequireId(filters.ObjectGuid);
                 break;
-            case "unslotted-affixes":
-            case "null-optional":
+            case ParsimonyViews.UnslottedAffixes:
+            case ParsimonyViews.NullOptional:
                 RequireOnly(filters, nameof(filters.ObjectGuid));
                 if (filters.ObjectGuid is not null) RequireId(filters.ObjectGuid);
                 break;
-            case "approved-morph-sequences":
+            case ParsimonyViews.ApprovedMorphSequences:
                 RequireOnly(filters, nameof(filters.ObjectGuid));
                 if (filters.ObjectGuid is not null) RequireId(filters.ObjectGuid);
                 break;
-            case "template-order":
+            case ParsimonyViews.TemplateOrder:
                 RequireOnlyTemplateFilter(filters);
                 break;
-            case "statement-usage":
+            case ParsimonyViews.StatementUsage:
                 if (filters.StatementKind is not (null or "environment" or "natural-class"))
                     throw new ArgumentException("Statement kind must be 'environment' or 'natural-class'.");
                 if (filters.ObjectGuid is not null)
                     RequireId(filters.ObjectGuid);
                 RequireNoFilters(filters, nameof(filters.StatementKind), nameof(filters.ObjectGuid));
                 break;
-            case "parser-cases":
+            case ParsimonyViews.ParserCases:
                 RequireNoFilters(filters, nameof(filters.CaseKey), nameof(filters.ReportId));
                 if (filters.CaseKey is { Length: > 256 })
                     throw new ArgumentException("Parser case keys are limited to 256 characters.");
@@ -467,16 +491,18 @@ public static class ParsimonyViewsQuery
                     !SIL.Motif.Contract.Ids.CanonicalId.TryParse(filters.ReportId, out _)))
                     throw new ArgumentException("Report id must be a canonical id of at most 128 characters.", nameof(filters));
                 break;
-            case "parsimony-active-findings":
+            case ParsimonyViews.ParsimonyActiveFindings:
                 RequireDispositionFilters(filters, requireReport: true, allowDisposition: false);
                 break;
-            case "parsimony-suppressed":
-            case "parsimony-suppression-history":
+            case ParsimonyViews.ParsimonySuppressed:
+            case ParsimonyViews.ParsimonySuppressionHistory:
                 RequireDispositionFilters(filters, requireReport: false, allowDisposition: true);
                 break;
-            case "alternation-families":
+            case ParsimonyViews.AlternationFamilies:
                 RequireNoFilters(filters);
                 break;
+            default:
+                throw new InvalidOperationException($"View '{view}' has no filter rule.");
         }
     }
 

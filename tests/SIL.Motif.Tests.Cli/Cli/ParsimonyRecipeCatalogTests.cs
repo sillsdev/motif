@@ -85,25 +85,13 @@ public sealed class ParsimonyRecipeCatalogTests
             catalog.Recipes.Select(recipe => recipe.MeasureId).Distinct(StringComparer.Ordinal).Count());
         Assert.All(catalog.Recipes, recipe =>
         {
-            var measure = MeasureCatalog.Find(recipe.MeasureId)!;
             Assert.InRange(recipe.Title.Length, 1, 30);
             Assert.Equal($"guide/parsimony/recipes/{recipe.MeasureId.ToLowerInvariant()}.md", recipe.HelpPath);
             Assert.Equal($"guide:parsimony/recipes/{recipe.MeasureId.ToLowerInvariant()}", recipe.RecipeLink);
-            Assert.Equal(measure.RequiredCapabilities, recipe.RequiredCapabilities);
-            Assert.Equal(measure.Axis == ParsimonyAxis.Both
-                    ? ["parsimony", "restrictiveness"]
-                    : [JsonSerializer.Serialize(measure.Axis).Trim('"')],
-                recipe.Metadata.Axes);
-            Assert.Equal(JsonSerializer.Serialize(measure.AttachesTo).Trim('"'), recipe.Metadata.AttachesTo);
-            Assert.Equal(measure.AuthoredObjectKind is null ? null : JsonSerializer.Serialize(measure.AuthoredObjectKind).Trim('"'),
-                recipe.Metadata.AuthoredObjectKind);
-            Assert.Equal(measure.GroupKind is null ? null : JsonSerializer.Serialize(measure.GroupKind).Trim('"'),
-                recipe.Metadata.GroupKind);
             Assert.Contains($"# {recipe.Title}\n", recipe.Page, StringComparison.Ordinal);
             Assert.Equal(recipe.Page,
                 help.GetHelpPage(HelpEntryKind.Guide, $"parsimony/recipes/{recipe.MeasureId.ToLowerInvariant()}"));
             Assert.Equal(recipe.Sources.Count, recipe.Sources.Distinct(StringComparer.Ordinal).Count());
-            Assert.Equal(measure.CitationKeys, recipe.Metadata.CitationKeys);
             AssertRecipeHeadings(recipe.Page);
             if (recipe.MeasureId is "P-allo-duplicate-form" or "P-statement-unused")
             {

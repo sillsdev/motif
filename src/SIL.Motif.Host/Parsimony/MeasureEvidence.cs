@@ -33,7 +33,7 @@ public static class MeasureEvidence
     }
 
     internal static readonly IReadOnlyList<string> ScopedViews =
-        ["approved-morph-sequences", "environment-excess", "natural-class-excess"];
+        [ParsimonyViews.ApprovedMorphSequences, ParsimonyViews.EnvironmentExcess, ParsimonyViews.NaturalClassExcess];
 
     internal static string Compute(MeasureDefinition measure, ParsimonyQuerySession session, string evidence)
     {

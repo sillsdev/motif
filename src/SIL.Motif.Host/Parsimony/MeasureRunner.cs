@@ -13,21 +13,25 @@ public static partial class MeasureRunner
         ParsimonyMeasureResult>> QueryRunners = new Dictionary<string, Func<MeasureDefinition, ParsimonyQuerySession,
         string, ParsimonyMeasureResult>>(StringComparer.Ordinal)
     {
-        ["adhoc-duplicate/v1"] = RunDuplicateProhibitions,
-        ["allomorph-duplicate-form/v1"] = RunDuplicateAllomorphs,
-        ["allo-alternation-family/v1"] = RunAlternationFamilies,
-        ["statement-unused/v1"] = RunUnusedStatements,
-        ["template-precedence/v1"] = RunTemplatePrecedence,
-        ["slot-blocking/v1"] = RunSlotBlocking,
-        ["adhoc-slot-order/v1"] = RunAdhocSlotOrder,
-        ["allo-unconditioned/v1"] = RunUnconditionedAllomorphs,
-        ["negative-accepted/v1"] = RunReviewedNegativeAccepted,
-        ["disapproved-produced/v1"] = RunDisapprovedProduced,
-        ["unslotted-affix/v1"] = RunUnslottedAffixes,
-        ["null-optional/v1"] = RunNullOptionalAffixes,
-        ["environment-excess/v1"] = RunEnvironmentExcess,
-        ["natural-class-excess/v1"] = RunNaturalClassExcess,
+        [ParsimonyQueryIds.AdhocDuplicate] = RunDuplicateProhibitions,
+        [ParsimonyQueryIds.AllomorphDuplicateForm] = RunDuplicateAllomorphs,
+        [ParsimonyQueryIds.AlloAlternationFamily] = RunAlternationFamilies,
+        [ParsimonyQueryIds.StatementUnused] = RunUnusedStatements,
+        [ParsimonyQueryIds.TemplatePrecedence] = RunTemplatePrecedence,
+        [ParsimonyQueryIds.SlotBlocking] = RunSlotBlocking,
+        [ParsimonyQueryIds.AdhocSlotOrder] = RunAdhocSlotOrder,
+        [ParsimonyQueryIds.AlloUnconditioned] = RunUnconditionedAllomorphs,
+        [ParsimonyQueryIds.NegativeAccepted] = RunReviewedNegativeAccepted,
+        [ParsimonyQueryIds.DisapprovedProduced] = RunDisapprovedProduced,
+        [ParsimonyQueryIds.UnslottedAffix] = RunUnslottedAffixes,
+        [ParsimonyQueryIds.NullOptional] = RunNullOptionalAffixes,
+        [ParsimonyQueryIds.EnvironmentExcess] = RunEnvironmentExcess,
+        [ParsimonyQueryIds.NaturalClassExcess] = RunNaturalClassExcess,
     };
+
+    /// <summary>The query ids this build can run, which the measure catalog's registered ids must equal.</summary>
+    public static IReadOnlySet<string> RegisteredQueryIds { get; } =
+        QueryRunners.Keys.ToHashSet(StringComparer.Ordinal);
 
     /// <summary>Whether a measure has a fixed query implementation in this build.</summary>
     public static bool Supports(string measureId) => MeasureCatalog.Find(measureId)?.QueryId is { } queryId &&
@@ -100,8 +104,8 @@ public static partial class MeasureRunner
                     groupKey, new ParsimonyMeasureNumber(members.Length - 1, members.Length, measure.Unit),
                     measure.Threshold!,
                     MeasureEvidence.Compute(measure, session, evidence),
-                    [EvidenceReference(bundleId, "adhoc-context", new { objectGuid = duplicate.Guid }),
-                     EvidenceReference(bundleId, "adhoc-context", new { objectGuid = retained.Guid })],
+                    [EvidenceReference(bundleId, ParsimonyViews.AdhocContext, new { objectGuid = duplicate.Guid }),
+                     EvidenceReference(bundleId, ParsimonyViews.AdhocContext, new { objectGuid = retained.Guid })],
                     measure.RecipeLink, limitations, ParsimonyVerification.NotRun));
             }
         }
@@ -145,7 +149,7 @@ public static partial class MeasureRunner
                 environments = group.Key.Environments,
                 members = memberIds,
             });
-            var references = members.Select(item => EvidenceReference(bundleId, "allomorph-context",
+            var references = members.Select(item => EvidenceReference(bundleId, ParsimonyViews.AllomorphContext,
                 new { objectGuid = item.Guid })).ToArray();
             findings.Add(new ParsimonyFinding(
                 ParsimonyFindingIdentity.GroupFindingId(measure.Id, groupKey), measure.Id, measure.Axis, measure.Tier,
@@ -199,7 +203,7 @@ public static partial class MeasureRunner
                     }),
                 });
                 var references = family.Siblings.Select(item => EvidenceReference(bundleId,
-                    "allomorph-context", new { objectGuid = item.Allomorph.Guid })).ToArray();
+                    ParsimonyViews.AllomorphContext, new { objectGuid = item.Allomorph.Guid })).ToArray();
                 var limitations = new List<string>
                 {
                     familyDescription,
@@ -254,11 +258,11 @@ public static partial class MeasureRunner
             });
             var references = new List<ParsimonyEvidenceReference>
             {
-                EvidenceReference(bundleId, "unslotted-affixes", new { objectGuid = row.MsaGuid }),
-                EvidenceReference(bundleId, "affix-context", new { objectGuid = row.MsaGuid }),
+                EvidenceReference(bundleId, ParsimonyViews.UnslottedAffixes, new { objectGuid = row.MsaGuid }),
+                EvidenceReference(bundleId, ParsimonyViews.AffixContext, new { objectGuid = row.MsaGuid }),
             };
             references.AddRange(row.ApprovedAnalysisGuids.Select(analysisGuid =>
-                EvidenceReference(bundleId, "approved-morph-sequences", new { objectGuid = analysisGuid })));
+                EvidenceReference(bundleId, ParsimonyViews.ApprovedMorphSequences, new { objectGuid = analysisGuid })));
             var limitations = new List<string>
             {
                 DescribeUnslottedEvidence(row),
@@ -309,16 +313,16 @@ public static partial class MeasureRunner
             });
             var references = new List<ParsimonyEvidenceReference>
             {
-                EvidenceReference(bundleId, "null-optional", new { objectGuid = row.MsaGuid }),
-                EvidenceReference(bundleId, "affix-context", new { objectGuid = row.MsaGuid }),
+                EvidenceReference(bundleId, ParsimonyViews.NullOptional, new { objectGuid = row.MsaGuid }),
+                EvidenceReference(bundleId, ParsimonyViews.AffixContext, new { objectGuid = row.MsaGuid }),
             };
             references.AddRange(row.Slots.Select(slot =>
-                EvidenceReference(bundleId, "slot-context", new { objectGuid = slot.SlotGuid })));
+                EvidenceReference(bundleId, ParsimonyViews.SlotContext, new { objectGuid = slot.SlotGuid })));
             references.AddRange(row.Realizations.Where(item => item.AllomorphGuid is not null)
-                .Select(item => EvidenceReference(bundleId, "allomorph-context",
+                .Select(item => EvidenceReference(bundleId, ParsimonyViews.AllomorphContext,
                     new { objectGuid = item.AllomorphGuid })));
             references.AddRange(row.ApprovedAnalysisGuids.Select(analysisGuid =>
-                EvidenceReference(bundleId, "approved-morph-sequences", new { objectGuid = analysisGuid })));
+                EvidenceReference(bundleId, ParsimonyViews.ApprovedMorphSequences, new { objectGuid = analysisGuid })));
             var limitations = new List<string>
             {
                 row.Classification switch
@@ -395,7 +399,7 @@ public static partial class MeasureRunner
                 item.StatementKind, item.StatementGuid, item.ReferenceCount, item.CompiledReferenceCount,
                 item.Loaded, item.LoadDisposition, item.Classification,
             })),
-            [EvidenceReference(bundleId, "statement-usage", new
+            [EvidenceReference(bundleId, ParsimonyViews.StatementUsage, new
             {
                 statementKind = item.StatementKind,
                 objectGuid = item.StatementGuid,
@@ -470,7 +474,7 @@ public static partial class MeasureRunner
                 ParsimonyFindingIdentity.WordformGroupKey(item.WordformGuid),
                 new ParsimonyMeasureNumber(1, facts.EligibleMorphologies, measure.Unit), measure.Threshold!,
                 MeasureEvidence.Compute(measure, session, evidence),
-                [EvidenceReference(bundleId, "parser-cases", new { caseKey = item.CaseKey })],
+                [EvidenceReference(bundleId, ParsimonyViews.ParserCases, new { caseKey = item.CaseKey })],
                 measure.RecipeLink,
                 ["A completed parser search produced the same morphology as a Disapproved analysis.",
                  "Other readings, including Approved and Unknown readings, remain separate.",
@@ -513,7 +517,7 @@ public static partial class MeasureRunner
                 ParsimonyFindingIdentity.ReviewedNegativeGroupKey(item.CaseId),
                 new ParsimonyMeasureNumber(1, facts.EligibleNegatives, measure.Unit), measure.Threshold!,
                 MeasureEvidence.Compute(measure, session, evidence),
-                [EvidenceReference(bundleId, "parser-cases", new { caseKey = item.CaseKey })],
+                [EvidenceReference(bundleId, ParsimonyViews.ParserCases, new { caseKey = item.CaseKey })],
                 measure.RecipeLink,
                 ["A completed parser search accepted this human-confirmed negative case.",
                  "The finding is attributed to the exact Notebook revision and parser case."],
@@ -554,11 +558,11 @@ public static partial class MeasureRunner
             });
             var evidenceRefs = new List<ParsimonyEvidenceReference>
             {
-                EvidenceReference(bundleId, "alternation-families", new { }),
+                EvidenceReference(bundleId, ParsimonyViews.AlternationFamilies, new { }),
             };
             evidenceRefs.AddRange(family.Members.SelectMany(member => member.AllomorphGuids)
                 .Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)
-                .Select(guid => EvidenceReference(bundleId, "allomorph-context", new { objectGuid = guid })));
+                .Select(guid => EvidenceReference(bundleId, ParsimonyViews.AllomorphContext, new { objectGuid = guid })));
             return new ParsimonyFinding(
                 ParsimonyFindingIdentity.GroupFindingId(measure.Id, family.Key), measure.Id, measure.Axis, measure.Tier,
                 new ParsimonyFindingAttachment(ParsimonyAttachmentKind.Group, family.Key,
@@ -663,13 +667,13 @@ public static partial class MeasureRunner
                 });
                 var references = new List<ParsimonyEvidenceReference>
                 {
-                    EvidenceReference(bundleId, "template-order", new { objectGuid = itemWithPairs.Template.Guid }),
-                    EvidenceReference(bundleId, "approved-morph-sequences",
+                    EvidenceReference(bundleId, ParsimonyViews.TemplateOrder, new { objectGuid = itemWithPairs.Template.Guid }),
+                    EvidenceReference(bundleId, ParsimonyViews.ApprovedMorphSequences,
                         new { objectGuid = item.Evidence.AnalysisGuid }),
                 };
                 foreach (var msaGuid in itemWithPairs.Pairs.SelectMany(pair =>
                              new[] { pair.First.MsaGuid, pair.Second.MsaGuid }).Distinct(StringComparer.Ordinal))
-                    references.Add(EvidenceReference(bundleId, "affix-context", new { objectGuid = msaGuid }));
+                    references.Add(EvidenceReference(bundleId, ParsimonyViews.AffixContext, new { objectGuid = msaGuid }));
                 findings.Add(new ParsimonyFinding(
                     $"{measure.Id}:{itemWithPairs.Template.Guid}:{item.Evidence.AnalysisGuid}", measure.Id,
                     measure.Axis, measure.Tier,
@@ -823,14 +827,14 @@ public static partial class MeasureRunner
             });
             var refs = new List<ParsimonyEvidenceReference>();
             foreach (var slotGuid in allCauseSlots)
-                refs.Add(EvidenceReference(bundleId, "slot-context", new { objectGuid = slotGuid }));
+                refs.Add(EvidenceReference(bundleId, ParsimonyViews.SlotContext, new { objectGuid = slotGuid }));
             var templateFailures = witnessRows.SelectMany(value => value.Failures.Values)
                 .GroupBy(failure => failure.TemplateGuid, StringComparer.Ordinal).Select(group => group.First())
                 .OrderBy(failure => failure.TemplateGuid, StringComparer.Ordinal).ToArray();
             foreach (var failure in templateFailures)
-                refs.Add(EvidenceReference(bundleId, "template-order", new { objectGuid = failure.TemplateGuid }));
+                refs.Add(EvidenceReference(bundleId, ParsimonyViews.TemplateOrder, new { objectGuid = failure.TemplateGuid }));
             foreach (var witness in witnessRows)
-                refs.Add(EvidenceReference(bundleId, "approved-morph-sequences",
+                refs.Add(EvidenceReference(bundleId, ParsimonyViews.ApprovedMorphSequences,
                     new { objectGuid = witness.Evidence.AnalysisGuid }));
 
             var causeDescriptions = witnessRows.SelectMany(value => value.Failures.Values.Select(failure =>

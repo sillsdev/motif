@@ -85,12 +85,12 @@ public static partial class MeasureRunner
                 limitations.Add("The current condition and feature-intersection candidate are incomparable by set inclusion.");
             var references = new List<ParsimonyEvidenceReference>
             {
-                EvidenceReference(bundleId, "environment-excess", new { objectGuid = site.AllomorphGuid }),
-                EvidenceReference(bundleId, "allomorph-context", new { objectGuid = site.AllomorphGuid }),
-                EvidenceReference(bundleId, "approved-morph-sequences", new { objectGuid = (string?)null }),
+                EvidenceReference(bundleId, ParsimonyViews.EnvironmentExcess, new { objectGuid = site.AllomorphGuid }),
+                EvidenceReference(bundleId, ParsimonyViews.AllomorphContext, new { objectGuid = site.AllomorphGuid }),
+                EvidenceReference(bundleId, ParsimonyViews.ApprovedMorphSequences, new { objectGuid = (string?)null }),
             };
             references.AddRange(site.EnvironmentGuids.Select(environmentGuid =>
-                EvidenceReference(bundleId, "environment-excess", new { objectGuid = environmentGuid })));
+                EvidenceReference(bundleId, ParsimonyViews.EnvironmentExcess, new { objectGuid = environmentGuid })));
             findings.Add(new ParsimonyFinding(
                 ParsimonyFindingIdentity.SiteFindingId(measure.Id, site.AllomorphGuid, site.Bucket + "/" + site.Side), measure.Id,
                 measure.Axis, measure.Tier,
@@ -172,9 +172,9 @@ public static partial class MeasureRunner
                 ParsimonyFindingIdentity.ClassSiteGroupKey(site.ClassGuid, site.UsageSite),
                 new ParsimonyMeasureNumber(site.Extras.Count, site.Denominator, "phoneme-types"),
                 measure.Threshold!, MeasureEvidence.Compute(measure, session, detail),
-                [EvidenceReference(bundleId, "natural-class-excess", new { objectGuid = site.ClassGuid }),
-                 EvidenceReference(bundleId, "natural-class-context", new { objectGuid = site.ClassGuid }),
-                 EvidenceReference(bundleId, "approved-morph-sequences", new { objectGuid = (string?)null })],
+                [EvidenceReference(bundleId, ParsimonyViews.NaturalClassExcess, new { objectGuid = site.ClassGuid }),
+                 EvidenceReference(bundleId, ParsimonyViews.NaturalClassContext, new { objectGuid = site.ClassGuid }),
+                 EvidenceReference(bundleId, ParsimonyViews.ApprovedMorphSequences, new { objectGuid = (string?)null })],
                 measure.RecipeLink, limitations, ParsimonyVerification.NotRun));
         }
         var result = findings.OrderBy(item => item.FindingId, StringComparer.Ordinal).ToArray();

@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using SIL.Motif.Contract.Parsimony;
 
 namespace SIL.Motif.Help;
 
@@ -73,7 +74,10 @@ public sealed record ParsimonyRecipe(ParsimonyRecipeMetadata Metadata, string Pa
     public IReadOnlyList<string> Sources => Metadata.Sources;
 }
 
-/// <summary>Loads the closed metadata manifest and embedded pages for the recipes.</summary>
+/// <summary>
+/// Loads the recipes: Help owns each recipe's prose (titles, sources, update intents) and its page, and every
+/// other field comes from the measure catalog, so a measure's metadata is edited in one place.
+/// </summary>
 public sealed class ParsimonyRecipeCatalog
 {
     private const string ManifestResourceName = "help/en/guide/parsimony/parsimony-recipes.json";
@@ -106,8 +110,9 @@ public sealed class ParsimonyRecipeCatalog
         var names = new HashSet<string>(StringComparer.Ordinal);
         var paths = new HashSet<string>(StringComparer.Ordinal);
         var recipes = new List<ParsimonyRecipe>(manifest.Recipes.Count);
-        foreach (var metadata in manifest.Recipes)
+        foreach (var prose in manifest.Recipes)
         {
+            var metadata = Combine(prose);
             ValidateMetadata(metadata, names, paths);
             var page = ReadResource(assembly, "help/en/" + metadata.HelpPath);
             ValidatePage(metadata, page);
@@ -115,6 +120,9 @@ public sealed class ParsimonyRecipeCatalog
         }
 
         ValidateRecipePages(assembly, paths);
+        var missing = MeasureCatalog.All.Select(measure => measure.Id).Except(names, StringComparer.Ordinal).ToArray();
+        if (missing.Length != 0)
+            throw new InvalidDataException($"The recipe manifest has no recipe for measure(s): {string.Join(", ", missing)}.");
         return new ParsimonyRecipeCatalog(
             manifest.FormatVersion,
             Array.AsReadOnly(recipes.OrderBy(recipe => recipe.MeasureId, StringComparer.Ordinal).ToArray()));
@@ -153,27 +161,10 @@ public sealed class ParsimonyRecipeCatalog
             throw new InvalidDataException($"Recipe '{metadata.MeasureId}' needs a positive recipe version.");
         if (string.IsNullOrWhiteSpace(metadata.Title) || metadata.Title.Length > 30)
             throw new InvalidDataException($"Recipe '{metadata.MeasureId}' needs a title of at most 30 characters.");
-        ValidateDistinctNames(metadata.MeasureId, "axis", metadata.Axes, IsAxis);
-        ValidateDistinctNames(metadata.MeasureId, "evidence view", metadata.EvidenceViews, IsCode);
-        ValidateDistinctNames(metadata.MeasureId, "capability", metadata.RequiredCapabilities, IsCode);
         ValidateDistinctNames(metadata.MeasureId, "update intent", metadata.UpdateIntents, IsCode);
         ValidateDistinctNames(metadata.MeasureId, "source", metadata.Sources, value => !string.IsNullOrWhiteSpace(value));
-        ValidateDistinctNames(metadata.MeasureId, "citation key", metadata.CitationKeys, IsCode);
-        if (metadata.Axes.Count == 0 || metadata.EvidenceViews.Count == 0 ||
-            metadata.RequiredCapabilities.Count == 0 || metadata.Sources.Count == 0 ||
-            metadata.CitationKeys is null)
+        if (metadata.Sources.Count == 0)
             throw new InvalidDataException($"Recipe '{metadata.MeasureId}' has an empty required metadata list.");
-        if (!IsAttachment(metadata.AttachesTo))
-            throw new InvalidDataException($"Recipe '{metadata.MeasureId}' has an unsupported attachment kind '{metadata.AttachesTo}'.");
-        var isAuthoredObject = metadata.AttachesTo == "authored-object";
-        var isGroup = metadata.AttachesTo == "group";
-        if (isAuthoredObject != (metadata.AuthoredObjectKind is not null) ||
-            isGroup != (metadata.GroupKind is not null))
-            throw new InvalidDataException($"Recipe '{metadata.MeasureId}' has an inconsistent attachment type.");
-        if (metadata.AuthoredObjectKind is not null && !IsAuthoredObjectKind(metadata.AuthoredObjectKind))
-            throw new InvalidDataException($"Recipe '{metadata.MeasureId}' has an unsupported authored object type.");
-        if (metadata.GroupKind is not null && !IsGroupKind(metadata.GroupKind))
-            throw new InvalidDataException($"Recipe '{metadata.MeasureId}' has an unsupported group type.");
 
         var expectedPath = $"guide/parsimony/recipes/{metadata.MeasureId.ToLowerInvariant()}.md";
         if (!string.Equals(metadata.HelpPath, expectedPath, StringComparison.Ordinal) || !paths.Add(metadata.HelpPath))
@@ -227,19 +218,6 @@ public sealed class ParsimonyRecipeCatalog
             throw new InvalidDataException($"Recipe '{measureId}' has an invalid or duplicate {kind}.");
     }
 
-    private static bool IsAxis(string value) =>
-        value is "parsimony" or "restrictiveness" or "both";
-
-    private static bool IsAttachment(string value) =>
-        value is "project" or "group" or "authored-object" or "word-case";
-
-    private static bool IsAuthoredObjectKind(string value) =>
-        value is "adhoc-prohibition" or "inflectional-msa" or "affix-template" or "affix-slot" or
-            "allomorph" or "natural-class";
-
-    private static bool IsGroupKind(string value) =>
-        value is "alternation-family" or "adhoc-slot-order" or "allomorph-duplicate-forms" or "unused-statement";
-
     private static bool IsCode(string value) =>
         !string.IsNullOrWhiteSpace(value) && value.All(character =>
             character is >= 'a' and <= 'z' or >= 'A' and <= 'Z' or >= '0' and <= '9' or '-');
@@ -247,6 +225,41 @@ public sealed class ParsimonyRecipeCatalog
     private sealed class RecipeManifest
     {
         public required int FormatVersion { get; init; }
-        public required IReadOnlyList<ParsimonyRecipeMetadata> Recipes { get; init; }
+        public required IReadOnlyList<RecipeProse> Recipes { get; init; }
     }
+
+    // The fields only Help owns; the catalog supplies the rest, so the manifest never repeats it.
+    private sealed record RecipeProse(
+        string MeasureId,
+        int RecipeVersion,
+        string Title,
+        string ShortTitle,
+        IReadOnlyList<string> UpdateIntents,
+        IReadOnlyList<string> Sources);
+
+    private static ParsimonyRecipeMetadata Combine(RecipeProse prose)
+    {
+        var measure = MeasureCatalog.Find(prose.MeasureId)
+            ?? throw new InvalidDataException($"Recipe '{prose.MeasureId}' names no catalog measure.");
+        return new ParsimonyRecipeMetadata(
+            measure.Id,
+            prose.RecipeVersion,
+            prose.Title,
+            prose.ShortTitle,
+            measure.Axis == ParsimonyAxis.Both
+                ? ["parsimony", "restrictiveness"]
+                : [WireName(measure.Axis)],
+            WireName(measure.AttachesTo),
+            measure.AuthoredObjectKind is { } objectKind ? WireName(objectKind) : null,
+            measure.GroupKind is { } groupKind ? WireName(groupKind) : null,
+            measure.EvidenceViews,
+            measure.RequiredCapabilities,
+            prose.UpdateIntents,
+            $"guide/parsimony/recipes/{measure.Id.ToLowerInvariant()}.md",
+            prose.Sources,
+            measure.CitationKeys);
+    }
+
+    private static string WireName<T>(T value) where T : struct, Enum =>
+        JsonSerializer.Serialize(value).Trim('"');
 }

@@ -11,6 +11,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\SIL.Motif.Contract\SIL.Motif.Contract.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <EmbeddedResource Include="Content\**\*">
       <LogicalName>help/%(RecursiveDir)%(Filename)%(Extension)</LogicalName>
     </EmbeddedResource>

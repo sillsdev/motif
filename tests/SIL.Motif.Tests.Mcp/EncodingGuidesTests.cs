@@ -2,6 +2,7 @@ using System.IO.Pipelines;
 using System.Text.Json;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
+using SIL.Motif.Contract.Parsimony;
 using SIL.Motif.Help;
 using SIL.Motif.Commands;
 using SIL.Motif.Mcp;
@@ -39,17 +40,9 @@ public sealed class EncodingGuidesTests
         var resources = EncodingGuides.ListResources().Resources;
         var help = HelpCatalog.Load(System.Globalization.CultureInfo.GetCultureInfo("en"));
 
-        Assert.Equal(12, recipes.Count(recipe => recipe.MeasureId is
-            "P-adhoc-duplicate" or "R-word-negative-accepted" or "R-word-disapproved-produced" or
-            "B-affix-unslotted" or "R-tmpl-precedence" or "R-slot-blocking" or "R-allo-unconditioned" or
-            "R-env-broad" or "R-nc-excess" or "P-allo-alternation-family" or "B-adhoc-is-slot-order" or
-            "B-affix-null-vs-optional"));
+        Assert.Equal(MeasureCatalog.All.Count, recipes.Count);
 
-        foreach (var recipe in recipes.Where(recipe => recipe.MeasureId is
-                     "P-adhoc-duplicate" or "R-word-negative-accepted" or "R-word-disapproved-produced" or
-                     "B-affix-unslotted" or "R-tmpl-precedence" or "R-slot-blocking" or "R-allo-unconditioned" or
-                     "R-env-broad" or "R-nc-excess" or "P-allo-alternation-family" or "B-adhoc-is-slot-order" or
-                     "B-affix-null-vs-optional"))
+        foreach (var recipe in recipes)
         {
             var uri = "motif://parsimony/recipes/" + recipe.MeasureId;
             Assert.Contains(resources, resource => resource.Uri == uri);

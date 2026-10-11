@@ -290,12 +290,12 @@ public static partial class MeasureRunner
             approvedSequences = analyses.Select(item => item.AnalysisGuid),
             policy = "adhoc-slot-order/v1",
         });
-        var references = rules.Select(item => EvidenceReference(bundleId, "adhoc-context",
+        var references = rules.Select(item => EvidenceReference(bundleId, ParsimonyViews.AdhocContext,
                 new { objectGuid = item.Guid })).ToList();
         foreach (var templateGuid in placements.Select(item => item.TemplateGuid).Distinct(StringComparer.Ordinal))
-            references.Add(EvidenceReference(bundleId, "template-order", new { objectGuid = templateGuid }));
+            references.Add(EvidenceReference(bundleId, ParsimonyViews.TemplateOrder, new { objectGuid = templateGuid }));
         foreach (var analysis in analyses)
-            references.Add(EvidenceReference(bundleId, "approved-morph-sequences",
+            references.Add(EvidenceReference(bundleId, ParsimonyViews.ApprovedMorphSequences,
                 new { objectGuid = analysis.AnalysisGuid }));
 
         var limitations = new List<string>();
