@@ -145,16 +145,7 @@ public static class ParsimonyViewsQuery
                 allRows = discovery.Sites.Where(site => request.Filters.ObjectGuid is null ||
                         site.AllomorphGuid == request.Filters.ObjectGuid ||
                         site.EnvironmentGuids.Contains(request.Filters.ObjectGuid, StringComparer.Ordinal))
-                    .Select(site => (ParsimonyViewRow)new ParsimonyEnvironmentExcessViewRow(site.AllomorphGuid,
-                        site.OwnerKey, site.MsaGuid, site.Bucket, site.EnvironmentGuids, site.EnvironmentNames,
-                        site.Side, Names(site.Universe, site.ContextNames), Names(site.Licensed, site.ContextNames),
-                        Names(site.Observed, site.ContextNames), Names(site.Extras, site.ContextNames),
-                        Names(site.MissingObserved, site.ContextNames), site.Denominator, site.WordTypes,
-                        site.Stems, site.Witnesses,
-                        site.ExistingClassesCoveringObserved, site.FeatureIntersection,
-                        Names(site.IntersectionExtension, site.ContextNames),
-                        Names(site.UnknownFeatureMembers, site.ContextNames), "one-neighbor/v1"))
-                    .ToArray();
+                    .Select(site => EnvironmentRow(site, request.Filters.ObjectGuid is null)).ToArray();
                 var missingSites = discovery.Sites.Count(site => site.MissingObserved.Count > 0);
                 computedStatus = discovery.UnsupportedSites == 0 && discovery.AmbiguousAlignments == 0 && missingSites == 0
                     ? ParsimonyMeasureStatus.Computed
@@ -169,15 +160,7 @@ public static class ParsimonyViewsQuery
                 var discovery = session.ReadNaturalClassExcess();
                 allRows = discovery.Sites.Where(site => request.Filters.ObjectGuid is null ||
                         site.ClassGuid == request.Filters.ObjectGuid)
-                    .Select(site => (ParsimonyViewRow)new ParsimonyNaturalClassExcessViewRow(site.ClassGuid,
-                        site.ClassName, site.UsageSite, site.EnvironmentGuid, site.AllomorphGuid, site.Side,
-                        Names(site.Universe, site.ContextNames), Names(site.Observed, site.ContextNames),
-                        Names(site.Extras, site.ContextNames), Names(site.MissingObserved, site.ContextNames),
-                        site.Denominator, site.FeatureIntersection,
-                        Names(site.IntersectionExtension, site.ContextNames),
-                        Names(site.UnknownFeatureMembers, site.ContextNames), site.WordTypes, site.Stems,
-                        site.Witnesses, site.UnknownClassMembers))
-                    .ToArray();
+                    .Select(site => NaturalClassRow(site, request.Filters.ObjectGuid is null)).ToArray();
                 computedStatus = discovery.UnsupportedSites == 0 && discovery.AmbiguousAlignments == 0
                     ? ParsimonyMeasureStatus.Computed
                     : ParsimonyMeasureStatus.Inconclusive;
@@ -388,6 +371,45 @@ public static class ParsimonyViewsQuery
 
     private static T RequireRow<T>(T? row, string view) where T : ParsimonyViewRow =>
         row ?? throw new KeyNotFoundException($"The requested '{view}' identity was not found.");
+
+    internal static ParsimonyViewRow EnvironmentRow(EnvironmentExcessSite site, bool capped)
+    {
+        var totals = new Dictionary<string, int>(StringComparer.Ordinal) { ["universe"] = site.Universe.Count };
+        return new ParsimonyEnvironmentExcessViewRow(site.AllomorphGuid,
+            site.OwnerKey, site.MsaGuid, site.Bucket, site.EnvironmentGuids, site.EnvironmentNames,
+            site.Side, Capped(site.Licensed, site.ContextNames, totals, "licensed", capped),
+            Capped(site.Observed, site.ContextNames, totals, "observed", capped),
+            Capped(site.Extras, site.ContextNames, totals, "licensedExtras", capped),
+            Capped(site.MissingObserved, site.ContextNames, totals, "missingObserved", capped), site.Denominator,
+            site.WordTypes, site.Stems, Capped(site.Witnesses, null, totals, "witnesses", capped),
+            site.ExistingClassesCoveringObserved, site.FeatureIntersection,
+            Capped(site.IntersectionExtension, site.ContextNames, totals, "intersectionExtension", capped),
+            Capped(site.UnknownFeatureMembers, site.ContextNames, totals, "unknownFeatureMembers", capped),
+            "one-neighbor/v1", totals);
+    }
+
+    internal static ParsimonyViewRow NaturalClassRow(NaturalClassExcessSite site, bool capped)
+    {
+        var totals = new Dictionary<string, int>(StringComparer.Ordinal) { ["universe"] = site.Universe.Count };
+        return new ParsimonyNaturalClassExcessViewRow(site.ClassGuid, site.ClassName, site.UsageSite,
+            site.EnvironmentGuid, site.AllomorphGuid, site.Side,
+            Capped(site.Observed, site.ContextNames, totals, "observed", capped),
+            Capped(site.Extras, site.ContextNames, totals, "currentClassExtras", capped),
+            Capped(site.MissingObserved, site.ContextNames, totals, "missingObserved", capped),
+            site.Denominator, site.FeatureIntersection,
+            Capped(site.IntersectionExtension, site.ContextNames, totals, "intersectionExtension", capped),
+            Capped(site.UnknownFeatureMembers, site.ContextNames, totals, "unknownFeatureMembers", capped),
+            site.WordTypes, site.Stems, Capped(site.Witnesses, null, totals, "witnesses", capped),
+            Capped(site.UnknownClassMembers, null, totals, "unknownClassMembers", capped), totals);
+    }
+
+    private static IReadOnlyList<string> Capped(IReadOnlyCollection<string> identities,
+        IReadOnlyDictionary<string, string>? names, Dictionary<string, int> totals, string key, bool capped)
+    {
+        totals[key] = identities.Count;
+        var kept = capped ? identities.Take(ParsimonyViewLimits.ListCap) : identities;
+        return names is null ? kept.ToArray() : Names(kept, names);
+    }
 
     private static IReadOnlyList<string> Names(IEnumerable<string> identities,
         IReadOnlyDictionary<string, string> names) => identities

@@ -552,6 +552,70 @@ public sealed class MeasureDecisionTests
             "so they were not checked.", both.NoteReason);
     }
 
+    private static string[] Phonemes(int count) => Enumerable.Range(0, count).Select(i => $"p{i:000}").ToArray();
+
+    private static EnvironmentExcessSite WideEnvironmentSite(int count)
+    {
+        var all = Phonemes(count);
+        return new("allomorph-1", "owner-1", "msa-1", "Morphology", ["env-1"], ["env one"], "left", all, all,
+            all.Take(1).ToArray(), all.Skip(1).ToArray(), [], count - 1, 3, 2, all, [],
+            all.ToDictionary(name => name, name => name.ToUpperInvariant()), [], [], all, all);
+    }
+
+    [Fact]
+    public void AnEnvironmentRowCapsEveryListAndCountsWhatItLeftOut()
+    {
+        var row = Assert.IsType<ParsimonyEnvironmentExcessViewRow>(
+            ParsimonyViewsQuery.EnvironmentRow(WideEnvironmentSite(300), capped: true));
+
+        Assert.Equal(ParsimonyViewLimits.ListCap, row.Licensed.Count);
+        Assert.Equal(ParsimonyViewLimits.ListCap, row.LicensedExtras.Count);
+        Assert.Equal(ParsimonyViewLimits.ListCap, row.Witnesses.Count);
+        Assert.Equal("P000", row.Licensed[0]);
+        Assert.Equal(300, row.Totals["universe"]);
+        Assert.Equal(300, row.Totals["licensed"]);
+        Assert.Equal(299, row.Totals["licensedExtras"]);
+        Assert.Equal(300, row.Totals["intersectionExtension"]);
+        Assert.Single(row.Observed);
+        Assert.Equal(1, row.Totals["observed"]);
+        Assert.Equal(0, row.Totals["missingObserved"]);
+    }
+
+    [Fact]
+    public void AnEnvironmentRowReadForOneObjectListsEveryNameAndStillCountsThem()
+    {
+        var row = Assert.IsType<ParsimonyEnvironmentExcessViewRow>(
+            ParsimonyViewsQuery.EnvironmentRow(WideEnvironmentSite(300), capped: false));
+
+        Assert.Equal(299, row.LicensedExtras.Count);
+        Assert.Equal(299, row.Totals["licensedExtras"]);
+        Assert.Equal(300, row.Witnesses.Count);
+        Assert.Equal(300, row.Totals["universe"]);
+    }
+
+    [Fact]
+    public void ARowStaysSmallWhateverTheGrammarSize()
+    {
+        var small = System.Text.Json.JsonSerializer.Serialize(ParsimonyViewsQuery.EnvironmentRow(WideEnvironmentSite(80), capped: true));
+        var large = System.Text.Json.JsonSerializer.Serialize(ParsimonyViewsQuery.EnvironmentRow(WideEnvironmentSite(4000), capped: true));
+
+        Assert.True(large.Length < small.Length * 1.2, $"{small.Length} became {large.Length}");
+        Assert.DoesNotContain("\"universe\":[", large, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ALimitLineNamesTheFirstContextsThenCountsTheRest()
+    {
+        var site = WideEnvironmentSite(300);
+        var result = MeasureRunner.DecideEnvironmentExcess(Measure("R-env-broad"),
+            new EnvironmentExcessDiscovery([site], 0, 0), Context(site.ContextNames));
+
+        var line = Assert.Single(Assert.Single(result.Findings).Limitations, item => item.StartsWith("extra licensed context: "));
+        Assert.Equal("extra licensed context: P001, P002, P003, P004, P005, P006, P007, P008, P009, P010, P011, P012, " +
+            "and 287 more.", line);
+        Assert.Equal("a, b", MeasureRunner.Listed(["a", "b"]));
+    }
+
     // ---- the contract every Inconclusive run keeps
 
     [Fact]

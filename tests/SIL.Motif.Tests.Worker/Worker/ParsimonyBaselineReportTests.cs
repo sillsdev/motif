@@ -3412,7 +3412,7 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         Assert.All(environmentRows, environmentRow =>
         {
             Assert.Equal(environmentAnswer.Witnesses, environmentRow.Observed);
-            Assert.Equal(environmentAnswer.ExpectedContextUniverse, environmentRow.Universe);
+            Assert.Equal(environmentAnswer.ExpectedContextUniverse.Count, environmentRow.Totals["universe"]);
             Assert.Equal(environmentAnswer.ExpectedLicensedContexts, environmentRow.Licensed);
             Assert.Equal(environmentAnswer.ExpectedObservedContexts, environmentRow.Observed);
             Assert.Equal(environmentAnswer.ExpectedExcessMembers, environmentRow.LicensedExtras);
@@ -3432,7 +3432,7 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
             Assert.Equal(new[] { "Morphology", "Phonology" }, gateRows.Select(row => row.Bucket));
             Assert.All(gateRows, row =>
             {
-                Assert.Equal(environmentAnswer.ExpectedContextUniverse, row.Universe);
+                Assert.Equal(environmentAnswer.ExpectedContextUniverse.Count, row.Totals["universe"]);
                 Assert.Equal(environmentAnswer.ExpectedLicensedContexts, row.Licensed);
                 Assert.Equal(environmentAnswer.ExpectedObservedContexts, row.Observed);
                 Assert.Equal(environmentAnswer.ExpectedExcessMembers, row.LicensedExtras);
@@ -3452,7 +3452,7 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
             Assert.Equal(2, orRows.Length);
             Assert.All(orRows, row =>
             {
-                Assert.Equal(new[] { "p", "b", "t", "s" }, row.Universe);
+                Assert.Equal(4, row.Totals["universe"]);
                 Assert.Equal(new[] { "p", "b", "t" }, row.Licensed);
                 Assert.Equal(new[] { "p" }, row.Observed);
                 Assert.Equal(new[] { "b", "t" }, row.LicensedExtras);
@@ -3566,7 +3566,7 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
                     new ParsimonyViewFilters(ObjectGuid: BroadEnvironmentNaturalClassGuid)));
             var emptyRow = Assert.IsType<ParsimonyNaturalClassExcessViewRow>(Assert.Single(emptyView.Rows));
             Assert.Empty(emptyRow.FeatureIntersection);
-            Assert.Equal(emptyRow.Universe, emptyRow.IntersectionExtension);
+            Assert.Equal(emptyRow.Totals["universe"], emptyRow.Totals["intersectionExtension"]);
             Assert.Empty(emptyRow.UnknownFeatureMembers);
         }
 
@@ -3665,7 +3665,7 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
             Assert.Single(boundaryRows);
             Assert.All(boundaryRows, row =>
             {
-                Assert.Contains("word boundary", row.Universe);
+                Assert.True(row.Totals["universe"] >= 1);
                 Assert.Equal(new[] { "word boundary" }, row.Licensed);
                 Assert.Equal(new[] { "word boundary" }, row.Observed);
                 Assert.DoesNotContain("#", row.Licensed);

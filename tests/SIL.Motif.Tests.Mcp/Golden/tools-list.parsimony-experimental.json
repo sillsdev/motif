@@ -1254,7 +1254,7 @@
         },
         "limit": {
           "type": "integer",
-          "description": "Rows in this page. Default 50, maximum 200.",
+          "description": "Rows in this page. Default 50, maximum 200; a page over about 200 KB returns fewer rows and a next cursor.",
           "minimum": 1,
           "maximum": 200
         },

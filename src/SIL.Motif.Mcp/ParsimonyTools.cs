@@ -86,7 +86,7 @@ internal static class ParsimonyTools
                 ("state", Schema.String("Current or historical finding state.", "active", "suppressed", "resurfaced",
                     "no-current-finding", "evidence-unavailable", "conflict", "unavailable", "retracted", "superseded"), false),
                 ("search", Schema.String("Bounded search over returned captions and reasons."), false),
-                ("limit", Schema.Integer("Rows in this page. Default 50, maximum 200.", 1, 200), false),
+                ("limit", Schema.Integer("Rows in this page. Default 50, maximum 200; a page over about 200 KB returns fewer rows and a next cursor.", 1, 200), false),
                 ("cursor", Schema.String("Next cursor from the same bundle, view and filters."), false)),
             true,
             true,
@@ -229,13 +229,34 @@ internal static class ParsimonyTools
             State: args.Optional("state"),
             Search: args.Optional("search"),
             SubjectKey: args.Optional("subject_key"));
-        var request = new ReadParsimonyViewRequest(context.ProjectPath, context.ProductVersion,
-            new ParsimonyNamedViewRequest(args.Required("bundle_id"), args.Required("view"), filters,
-                args.Int("limit", 50), args.Optional("cursor")));
-        var outcome = ParsimonyViewsCommand.View(request);
+        var bundleId = args.Required("bundle_id");
+        var view = args.Required("view");
+        var cursor = args.Optional("cursor");
+        var outcome = FitToBytes(args.Int("limit", 50), ParsimonyViewLimits.McpResultBytes, limit =>
+            ParsimonyViewsCommand.View(new ReadParsimonyViewRequest(context.ProjectPath, context.ProductVersion,
+                new ParsimonyNamedViewRequest(bundleId, view, filters, limit, cursor))));
         return Task.FromResult(ToolOutcome.From(outcome,
             response => response.Detail?.Contains("unavailable", StringComparison.OrdinalIgnoreCase) == true
                 ? "The response includes the unavailable capability or saved-judgment state. Start a Parsimony measure explicitly to request fresh evidence."
                 : null));
+    }
+
+    /// <summary>
+    /// Reads a page and, when its JSON exceeds the byte budget, reads again with fewer rows; the page's own cursor
+    /// then continues from the first row left out. A single row over the budget is returned alone.
+    /// </summary>
+    internal static CommandOutcome<ParsimonyNamedViewResponse> FitToBytes(int limit, int maxBytes,
+        Func<int, CommandOutcome<ParsimonyNamedViewResponse>> read)
+    {
+        var outcome = read(limit);
+        for (var attempt = 0; attempt < 6 && outcome.Succeeded && outcome.Value!.Returned > 1; attempt++)
+        {
+            var bytes = System.Text.Encoding.UTF8.GetByteCount(ProjectionJson.Serialize(outcome.Value));
+            if (bytes <= maxBytes) break;
+            var fewer = (int)Math.Max(1L, (long)outcome.Value.Returned * maxBytes / bytes * 9 / 10);
+            fewer = Math.Min(fewer, outcome.Value.Returned - 1);
+            outcome = read(fewer);
+        }
+        return outcome;
     }
 }

@@ -620,24 +620,49 @@ public sealed record ParsimonyParserAnalysisViewRow(int Ordinal, string Signatur
 /// <summary>One ordered parser morph with exact source identities or its captured guessed string.</summary>
 public sealed record ParsimonyParserMorphViewRow(int Ordinal, string? FormGuid, string? MsaGuid,
     string? InflectionTypeGuid, string? GuessedStringNfd);
+/// <summary>Fixed bounds that keep a view row, a Report limit line and an MCP result from growing with grammar size.</summary>
+public static class ParsimonyViewLimits
+{
+    /// <summary>The most names a context list in an excess view row carries; the row's totals give the full count.</summary>
+    public const int ListCap = 30;
+
+    /// <summary>The most names a Report limit line lists before it says how many more there are.</summary>
+    public const int LimitLineNames = 12;
+
+    /// <summary>The most UTF-8 bytes one MCP view result carries before it returns fewer rows and a cursor.</summary>
+    public const int McpResultBytes = 200_000;
+}
+
 /// <summary>A bounded environment's licensed contexts beside its uniquely aligned Approved triggers.</summary>
+/// <remarks>
+/// The full size of each list that may be shortened to <see cref="ParsimonyViewLimits.ListCap"/> names, keyed by the
+/// list's JSON name, plus <c>universe</c>, the number of contexts the environment could license. A read of the whole
+/// view shortens lists, keeping the first names in canonical order; a read filtered to one object lists every name.
+/// </remarks>
 public sealed record ParsimonyEnvironmentExcessViewRow(string AllomorphGuid, string OwnerKey, string MsaGuid,
     string Bucket, IReadOnlyList<string> EnvironmentGuids, IReadOnlyList<string> EnvironmentNames, string Side,
-    IReadOnlyList<string> Universe, IReadOnlyList<string> Licensed, IReadOnlyList<string> Observed,
+    IReadOnlyList<string> Licensed, IReadOnlyList<string> Observed,
     IReadOnlyList<string> LicensedExtras, IReadOnlyList<string> MissingObserved, int ExcessDenominator,
     int WordTypes, int Stems,
     IReadOnlyList<string> Witnesses, IReadOnlyList<string> ExistingClassesCoveringObserved,
     IReadOnlyList<string> FeatureIntersection, IReadOnlyList<string> IntersectionExtension,
-    IReadOnlyList<string> UnknownFeatureMembers, string ScopePolicy) : ParsimonyViewRow;
+    IReadOnlyList<string> UnknownFeatureMembers, string ScopePolicy,
+    IReadOnlyDictionary<string, int> Totals) : ParsimonyViewRow;
 
 /// <summary>A natural class usage site with its effective extension and attested trigger sounds.</summary>
+/// <remarks>
+/// The full size of each list that may be shortened to <see cref="ParsimonyViewLimits.ListCap"/> names, keyed by the
+/// list's JSON name, plus <c>universe</c>, the number of contexts the class could draw on. A read of the whole view
+/// shortens lists, keeping the first names in canonical order; a read filtered to one object lists every name.
+/// </remarks>
 public sealed record ParsimonyNaturalClassExcessViewRow(string ClassGuid, string ClassName, string UsageSite,
-    string EnvironmentGuid, string AllomorphGuid, string Side, IReadOnlyList<string> Universe,
+    string EnvironmentGuid, string AllomorphGuid, string Side,
     IReadOnlyList<string> Observed, IReadOnlyList<string> CurrentClassExtras,
     IReadOnlyList<string> MissingObserved, int ExcessDenominator,
     IReadOnlyList<string> FeatureIntersection, IReadOnlyList<string> IntersectionExtension,
     IReadOnlyList<string> UnknownFeatureMembers, int WordTypes, int Stems,
-    IReadOnlyList<string> Witnesses, IReadOnlyList<string> UnknownClassMembers) : ParsimonyViewRow;
+    IReadOnlyList<string> Witnesses, IReadOnlyList<string> UnknownClassMembers,
+    IReadOnlyDictionary<string, int> Totals) : ParsimonyViewRow;
 
 /// <summary>An Approved word and its ordered recorded morph sequence.</summary>
 public sealed record ParsimonyApprovedMorphSequenceViewRow(string AnalysisGuid, string WordformGuid, string Wordform,

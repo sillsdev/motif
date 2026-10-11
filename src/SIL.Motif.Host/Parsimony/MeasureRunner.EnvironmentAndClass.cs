@@ -8,6 +8,13 @@ public static partial class MeasureRunner
     private const int BroadEnvironmentMinimumWordTypes = 3;
     private const int BroadEnvironmentMinimumStems = 2;
 
+    // The evidence detail keeps every name; a limit line is read by a person, so it stops at a short list.
+    internal static string Listed(IReadOnlyList<string> names) =>
+        names.Count <= ParsimonyViewLimits.LimitLineNames
+            ? string.Join(", ", names)
+            : string.Join(", ", names.Take(ParsimonyViewLimits.LimitLineNames)) +
+              $", and {names.Count - ParsimonyViewLimits.LimitLineNames} more";
+
     internal static ParsimonyMeasureResult DecideEnvironmentExcess(MeasureDefinition measure,
         EnvironmentExcessDiscovery discovery, MeasureContext context)
     {
@@ -59,8 +66,8 @@ public static partial class MeasureRunner
             {
                 $"Conditioned side: {site.Side}; morphology bucket: {site.Bucket}.",
                 "Environment condition(s): " + string.Join(", ", site.EnvironmentNames) + ".",
-                $"attested trigger: {string.Join(", ", observed)}.",
-                $"extra licensed context: {string.Join(", ", extras)}.",
+                $"attested trigger: {Listed(observed)}.",
+                $"extra licensed context: {Listed(extras)}.",
                 $"Support: {site.WordTypes} word types across {site.Stems} stems; the trigger is at least 3 word types across at least 2 stems.",
                 "Licensed but unobserved does not mean invalid; this is a question for the linguist, not a recommendation to remove the condition.",
                 "The exact observed segment list and any listed class are comparison candidates, not default grammar fixes.",
@@ -69,7 +76,7 @@ public static partial class MeasureRunner
             };
             if (site.ExistingClassesCoveringObserved.Count > 0)
                 limitations.Add("Existing class alternatives that retain every attested trigger: " +
-                    string.Join(", ", site.ExistingClassesCoveringObserved) + ".");
+                    Listed(site.ExistingClassesCoveringObserved) + ".");
             if (site.FeatureIntersection.Count == 0)
                 limitations.Add("The observed feature intersection is empty, so its candidate is unconstrained and is not called useful.");
             else
@@ -77,7 +84,7 @@ public static partial class MeasureRunner
                     $"; it definitely includes {featureExtension.Length} phoneme(s).");
             if (unknownFeatureMembers.Length > 0)
                 limitations.Add("Feature-intersection membership stays unknown for: " +
-                    string.Join(", ", unknownFeatureMembers) + ".");
+                    Listed(unknownFeatureMembers) + ".");
             var current = site.Licensed.ToHashSet(StringComparer.Ordinal);
             var candidate = site.IntersectionExtension.ToHashSet(StringComparer.Ordinal);
             if (site.UnknownFeatureMembers.Count == 0 && candidate.Count > 0 &&
@@ -160,8 +167,8 @@ public static partial class MeasureRunner
             {
                 $"Usage site: {site.UsageSite}; conditioned side: {site.Side}.",
                 $"Natural class: {site.ClassName}.",
-                $"attested trigger: {string.Join(", ", observed)}.",
-                $"extra class member: {string.Join(", ", extras)}.",
+                $"attested trigger: {Listed(observed)}.",
+                $"extra class member: {Listed(extras)}.",
                 $"Support: {site.WordTypes} word types across {site.Stems} stems; this measure reports even sparse observations.",
                 "An unobserved class member can be an intentional generalization; unobserved does not mean invalid.",
                 site.FeatureIntersection.Count == 0
@@ -171,9 +178,9 @@ public static partial class MeasureRunner
             };
             if (site.MissingObserved.Count > 0)
                 limitations.Add("The current class misses attested trigger(s): " +
-                    string.Join(", ", site.MissingObserved.Select(guid => site.ContextNames.GetValueOrDefault(guid, guid))) + ".");
+                    Listed(site.MissingObserved.Select(guid => site.ContextNames.GetValueOrDefault(guid, guid)).ToArray()) + ".");
             if (unknownFeatureMembers.Length > 0)
-                limitations.Add("unknown feature membership: " + string.Join(", ", unknownFeatureMembers) +
+                limitations.Add("unknown feature membership: " + Listed(unknownFeatureMembers) +
                     "; no exact excess rate or tightest-class claim is made.");
             if (unknownClassMembers.Count > 0)
                 limitations.Add("The compiler reported class members without source phoneme identities; membership is unknown.");

@@ -4,7 +4,7 @@ Extra natural-class members may be productive. Review every usage site, its Appr
 
 ## Analyse
 
-Read `natural-class-excess` for each measured usage site, the current effective extension, observed triggers, missed triggers, feature-intersection extension, and unknown members. `approved-morph-sequences` contains aligned Approved words. The shared feature assignments determine the set of possible class members from the loaded chart; this calculation has no sampling model and is not a probability. Missing feature values remain unknown, and a class may intentionally generalize beyond its current observations.
+Read `natural-class-excess` for each measured usage site, the current effective extension, observed triggers, missed triggers, feature-intersection extension, and unknown members. Reading the whole view, each list shows its first 30 names; reading one object (`--object-id`, which a finding's evidence links use) lists every name. The row's `totals` give the full count of every list and of the loaded context universe. A limit line in the Report names the first dozen members and counts the rest. `approved-morph-sequences` contains aligned Approved words. The shared feature assignments determine the set of possible class members from the loaded chart; this calculation has no sampling model and is not a probability. Missing feature values remain unknown, and a class may intentionally generalize beyond its current observations.
 
 ## Disposition
 
