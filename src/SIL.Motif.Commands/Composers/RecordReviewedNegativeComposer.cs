@@ -16,7 +16,6 @@ public static class RecordReviewedNegativeComposer
 {
     private const string ConstructName = "RecordReviewedNegative";
     private const string Rationale = "Records a human-confirmed forbidden example.";
-    private const string Marker = " [motif-human-judgment:v1:";
 
     /// <summary>Builds a Notebook revision after checking its schema, writing system and exact referenced identities.</summary>
     public static IReadOnlyList<OperationEnvelope> Build(
@@ -57,75 +56,8 @@ public static class RecordReviewedNegativeComposer
                 intent.Target, intent.WordformId, intent.AnalysisId), intent.Reason,
             new JudgmentActor(JudgmentActorKind.Human, intent.ActorId, intent.ActorName), intent.JudgedAtUtc,
             new JudgmentSource(intent.ReportId?.Value, proposalId.Value), heads.Count > 1);
-        var physicalValue = HumanJudgmentCodec.Format(judgment);
-        var markerIndex = physicalValue.LastIndexOf(Marker, StringComparison.Ordinal);
-        if (markerIndex < 0)
-            throw new InvalidOperationException($"'{ConstructName}': readable judgment format has no marker boundary.");
-        var description = physicalValue[..markerIndex];
-        var title = $"Reviewed negative: {intent.Form}";
-        var recordCreateId = mint();
-        var recordCreate = new OperationEnvelope(
-            operationId: recordCreateId,
-            kind: RnResearchNbkRecordsOperationKinds.Create,
-            entityId: revisionId,
-            target: notebookId,
-            after: Json(new { }),
-            rationale: Rationale);
-        var descriptionId = mint();
-        var descriptionCreateId = mint();
-        var descriptionCreate = new OperationEnvelope(
-            operationId: descriptionCreateId,
-            kind: RnGenericRecDescriptionOperationKinds.Create,
-            entityId: descriptionId,
-            target: revisionId,
-            after: Json(new { }),
-            dependsOn: DependsOn(recordCreateId),
-            rationale: Rationale);
-        var paragraphId = mint();
-        var paragraphCreateId = mint();
-        var paragraphCreate = new OperationEnvelope(
-            operationId: paragraphCreateId,
-            kind: StTextParagraphsOperationKinds.Create,
-            entityId: paragraphId,
-            target: descriptionId,
-            after: Json(new { @class = "StTxtPara" }),
-            dependsOn: DependsOn(descriptionCreateId),
-            rationale: Rationale);
-
-        return
-        [
-            recordCreate,
-            new OperationEnvelope(
-                operationId: mint(),
-                kind: RnGenericRecTypeOperationKinds.SetType,
-                target: revisionId,
-                after: Json(new { @ref = intent.RecordTypeId.Value }),
-                dependsOn: DependsOn(recordCreateId),
-                rationale: Rationale),
-            new OperationEnvelope(
-                operationId: mint(),
-                kind: RnGenericRecTitleOperationKinds.Set,
-                target: revisionId,
-                after: Json(new { ws = analysisWritingSystem, text = title }),
-                dependsOn: DependsOn(recordCreateId),
-                rationale: Rationale),
-            descriptionCreate,
-            paragraphCreate,
-            new OperationEnvelope(
-                operationId: mint(),
-                kind: StTxtParaContentsOperationKinds.Set,
-                target: paragraphId,
-                after: Json(new { ws = analysisWritingSystem, text = description }),
-                dependsOn: DependsOn(paragraphCreateId),
-                rationale: Rationale),
-            new OperationEnvelope(
-                operationId: mint(),
-                kind: HumanJudgmentCustomFieldOperationKinds.Set,
-                target: revisionId,
-                after: Json(new { text = physicalValue }),
-                dependsOn: DependsOn(recordCreateId),
-                rationale: Rationale),
-        ];
+        return JudgmentRecordOperations.Build(judgment, intent.RecordTypeId, notebookId,
+            $"Reviewed negative: {intent.Form}", analysisWritingSystem, mint, Rationale);
     }
 
     private static string ValidateExpectedHeads(
@@ -238,6 +170,4 @@ public static class RecordReviewedNegativeComposer
         return false;
     }
 
-    private static OperationDependency[] DependsOn(CanonicalId operationId) => [new OperationDependency(operationId)];
-    private static JsonElement Json<T>(T value) => JsonSerializer.SerializeToElement(value);
 }

@@ -120,7 +120,7 @@ public sealed class CommandCatalogParityTests
         "operation.invalid-target", "operation.invalid-writing-system",
         "initialization.analysis-writing-system-required", "initialization.cancelled", "initialization.confirmation-required", "initialization.not-saved",
         "initialization.outcome-unknown", "initialization.recovery-copy-failed",
-        "judgment.field-ambiguous", "judgment.field-incompatible",
+        "judgment.field-ambiguous", "judgment.field-incompatible", "judgment.old-format",
         "parsimony.assessment-baseline-mismatch", "parsimony.bundle-busy", "parsimony.bundle-invalid",
         "parsimony.bundle-not-found",
         "parsimony.candidate-failed",

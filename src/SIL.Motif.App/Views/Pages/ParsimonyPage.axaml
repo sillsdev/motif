@@ -23,6 +23,9 @@
       <Border Classes="parsimonyBanner" IsVisible="{Binding HasEvidenceNote}" AutomationProperties.Name="Evidence not stored">
         <views:CopyableTextBlock TextWrapping="Wrap" Text="{Binding EvidenceNote}" />
       </Border>
+      <Border Classes="parsimonyBanner" IsVisible="{Binding HasJudgmentIssues}" AutomationProperties.Name="Judgments needing a look">
+        <views:CopyableTextBlock TextWrapping="Wrap" Text="{Binding JudgmentIssuesText}" />
+      </Border>
       <Border Classes="parsimonyBanner" IsVisible="{Binding HasIncomplete}" AutomationProperties.Name="Incomplete Report">
         <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
           <views:CopyableTextBlock TextWrapping="Wrap" FontWeight="SemiBold" Text="{Binding MissingInputsText}" />
@@ -101,6 +104,7 @@
                     <Grid ColumnDefinitions="*,Auto" Classes="parsimonyRowGrid">
                       <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
                         <views:CopyableTextBlock Classes="parsimonyGroupTitle" Text="{Binding Title}" TextWrapping="Wrap" />
+                        <views:CopyableTextBlock Classes="muted" Text="{Binding Identity}" TextWrapping="Wrap" />
                         <views:CopyableTextBlock Classes="muted" Text="{Binding Reason}" TextWrapping="Wrap" />
                         <views:CopyableTextBlock Classes="muted" Text="{Binding StateLabel}" TextWrapping="Wrap" />
                         <views:CopyableTextBlock Classes="parsimonyDisposition" Text="{Binding ReturnLabel}" TextWrapping="Wrap"

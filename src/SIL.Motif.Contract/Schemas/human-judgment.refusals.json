@@ -1,0 +1,27 @@
+[
+  {
+    "name": "value-edited",
+    "failure": "HashFailed",
+    "data": "{\"actor\":null,\"body\":{\"disposition\":\"defer\",\"evidenceContract\":\"detector-v1/threshold-v1/projection-v1\",\"evidenceDigest\":\"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"kind\":\"parsimony-disposition\",\"measureCaption\":\"Unconditioned allomorph\",\"measureId\":\"R-allo-unconditioned\",\"question\":null,\"subject\":{\"kind\":\"object\",\"object\":{\"class\":\"MoAffixAllomorph\",\"id\":\"AAECAwQFBgcICQoLDA0ODw\",\"owningEntryId\":null}},\"subjectCaption\":\"plural forms\"},\"contentHash\":\"sha256:3a10e002dcc5170c4e34f48640aa37ff5e50ec65340749074c5f016d7a263f53\",\"extensions\":null,\"format\":\"motif-human-judgment\",\"judgedAtUtc\":null,\"judgmentId\":\"AAECAwQFBgcICQoLDA0ODw\",\"projectId\":\"AAECAwQFBgcICQoLDA0ODw\",\"readableFormat\":\"en-v1\",\"replaces\":[],\"resolvesConflict\":false,\"revisionId\":\"AAECAwQFBgcICQoLDA0ODw\",\"source\":null,\"version\":1}"
+  },
+  {
+    "name": "hash-removed",
+    "failure": "HashFailed",
+    "data": "{\"actor\":null,\"body\":{\"disposition\":\"keep\",\"evidenceContract\":\"detector-v1/threshold-v1/projection-v1\",\"evidenceDigest\":\"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"kind\":\"parsimony-disposition\",\"measureCaption\":\"Unconditioned allomorph\",\"measureId\":\"R-allo-unconditioned\",\"question\":null,\"subject\":{\"kind\":\"object\",\"object\":{\"class\":\"MoAffixAllomorph\",\"id\":\"AAECAwQFBgcICQoLDA0ODw\",\"owningEntryId\":null}},\"subjectCaption\":\"plural forms\"},\"extensions\":null,\"format\":\"motif-human-judgment\",\"judgedAtUtc\":null,\"judgmentId\":\"AAECAwQFBgcICQoLDA0ODw\",\"projectId\":\"AAECAwQFBgcICQoLDA0ODw\",\"readableFormat\":\"en-v1\",\"replaces\":[],\"resolvesConflict\":false,\"revisionId\":\"AAECAwQFBgcICQoLDA0ODw\",\"source\":null,\"version\":1}"
+  },
+  {
+    "name": "reformatted",
+    "failure": "HashFailed",
+    "data": "{\n  \"actor\": null,\n  \"body\": {\n    \"disposition\": \"keep\",\n    \"evidenceContract\": \"detector-v1/threshold-v1/projection-v1\",\n    \"evidenceDigest\": \"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\n    \"kind\": \"parsimony-disposition\",\n    \"measureCaption\": \"Unconditioned allomorph\",\n    \"measureId\": \"R-allo-unconditioned\",\n    \"question\": null,\n    \"subject\": {\n      \"kind\": \"object\",\n      \"object\": {\n        \"class\": \"MoAffixAllomorph\",\n        \"id\": \"AAECAwQFBgcICQoLDA0ODw\",\n        \"owningEntryId\": null\n      }\n    },\n    \"subjectCaption\": \"plural forms\"\n  },\n  \"contentHash\": \"sha256:3a10e002dcc5170c4e34f48640aa37ff5e50ec65340749074c5f016d7a263f53\",\n  \"extensions\": null,\n  \"format\": \"motif-human-judgment\",\n  \"judgedAtUtc\": null,\n  \"judgmentId\": \"AAECAwQFBgcICQoLDA0ODw\",\n  \"projectId\": \"AAECAwQFBgcICQoLDA0ODw\",\n  \"readableFormat\": \"en-v1\",\n  \"replaces\": [],\n  \"resolvesConflict\": false,\n  \"revisionId\": \"AAECAwQFBgcICQoLDA0ODw\",\n  \"source\": null,\n  \"version\": 1\n}"
+  },
+  {
+    "name": "not-json",
+    "failure": "Damaged",
+    "data": "Keep without data"
+  },
+  {
+    "name": "old-marker",
+    "failure": "Damaged",
+    "data": "Keep “plural forms” for “Unconditioned allomorph”. [motif-human-judgment:v1:e30]"
+  }
+]

@@ -591,7 +591,7 @@ public sealed partial class ConditionReviewRecipeAcceptanceTests(
                 measureId + "/v1", "The reviewed allomorph", measureId),
             reason, new JudgmentActor(JudgmentActorKind.Human));
         NotebookJudgmentFixture.AddRecord(cache, CanonicalId.Parse(id).ToGuid(), field,
-            TsStringUtils.MakeString(HumanJudgmentCodec.Format(judgment), cache.DefaultAnalWs));
+            HumanJudgmentCodec.Format(judgment));
     }
 
     private static string Case(LcmCache cache, Guid wordform, string surface) => FrozenExpectationCapture.CaseKey(

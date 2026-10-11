@@ -62,6 +62,38 @@ public sealed class ProjectInitializationRecoveryTests : IDisposable
     }
 
     [Fact]
+    public void InitializationCreatesTheVisibleIdFieldBesideTheDataField()
+    {
+        var project = CreateProject(seed: true);
+
+        var outcome = Initialize(project);
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        Assert.Equal("MotifJudgmentData, MotifJudgmentId", outcome.Value!.FieldName);
+        using var cache = new FwDataProjectLoader().LoadScratchCache(project);
+        Assert.Equal(HumanJudgmentFieldState.Compatible, HumanJudgmentFieldDefinition.Inspect(cache).State);
+        var metadata = (IFwMetaDataCacheManaged)cache.MetaDataCacheAccessor;
+        var idField = Assert.Single(metadata.GetFieldIds(), flid => metadata.GetFieldName(flid) == "MotifJudgmentId");
+        Assert.Equal((int)CellarPropertyType.String, metadata.GetFieldType(idField));
+        Assert.Equal("RnGenericRec", metadata.GetOwnClsName(idField));
+    }
+
+    [Fact]
+    public void InitializationRefusesAProjectWithTheOldSingleFieldWithoutWriting()
+    {
+        var project = CreateProject(seed: true);
+        AddUnrelatedField(project, "RnGenericRec", "MotifHumanJudgment", CellarPropertyType.String);
+        var before = File.ReadAllBytes(project);
+
+        var outcome = Initialize(project);
+
+        Assert.False(outcome.Succeeded);
+        Assert.Equal("judgment.old-format", outcome.Refusal!.Code);
+        Assert.Contains("Delete Motif's test/demo judgment records", outcome.Refusal.Message);
+        Assert.Equal(before, File.ReadAllBytes(project));
+    }
+
+    [Fact]
     public void InitializationPersistsMetadataWhenNoOrdinaryProjectDataChanged()
     {
         var project = CreateProject(seed: false);
@@ -558,7 +590,7 @@ public sealed class ProjectInitializationRecoveryTests : IDisposable
 
     private static int[] ReservedFields(LcmCache cache) =>
         ((IFwMetaDataCacheManaged)cache.MetaDataCacheAccessor).GetFieldIds()
-            .Where(flid => cache.MetaDataCacheAccessor.GetFieldName(flid) == "MotifHumanJudgment")
+            .Where(flid => cache.MetaDataCacheAccessor.GetFieldName(flid) == "MotifJudgmentData")
             .ToArray();
 
     private static int[] ReservedFields(string project)
@@ -569,7 +601,7 @@ public sealed class ProjectInitializationRecoveryTests : IDisposable
 
     private static void AddReservedField(
         string project, string ownerClass, CellarPropertyType type, int writingSystemSelector = WritingSystemServices.kwsAnal) =>
-        AddUnrelatedField(project, ownerClass, "MotifHumanJudgment", type, writingSystemSelector);
+        AddUnrelatedField(project, ownerClass, "MotifJudgmentData", type, writingSystemSelector);
 
     private static void AddUnrelatedField(
         string project, string ownerClass, string name, CellarPropertyType type,

@@ -15,7 +15,6 @@ public static class RecordParsimonyDispositionComposer
 {
     private const string ConstructName = "RecordParsimonyDisposition";
     private const string Rationale = "Authored by the RecordParsimonyDisposition composer.";
-    private const string Marker = " [motif-human-judgment:v1:";
 
     /// <summary>Builds one authored Notebook revision with explicit dependencies between its fields.</summary>
     public static IReadOnlyList<OperationEnvelope> Build(
@@ -45,79 +44,10 @@ public static class RecordParsimonyDispositionComposer
         var notebookId = CanonicalId.FromGuid(notebook.Guid);
         var projectId = CanonicalId.FromGuid(cache.LangProject.Guid).Value;
         var revisionId = mint();
-        var judgment = JudgmentFor(intent, projectId, mint().Value, revisionId.Value, proposalId);
-        var physicalValue = HumanJudgmentCodec.Format(judgment);
-        var markerIndex = physicalValue.LastIndexOf(Marker, StringComparison.Ordinal);
-        if (markerIndex < 0)
-            throw new InvalidOperationException($"'{ConstructName}': readable judgment format has no marker boundary.");
-        var description = physicalValue[..markerIndex];
-        var title = $"{intent.Disposition}: {intent.SubjectCaption}";
-
-        var recordCreateId = mint();
-        var recordCreate = new OperationEnvelope(
-            operationId: recordCreateId,
-            kind: RnResearchNbkRecordsOperationKinds.Create,
-            entityId: revisionId,
-            target: notebookId,
-            after: EmptyAfter(),
-            rationale: Rationale);
-
-        var descriptionId = mint();
-        var descriptionCreateId = mint();
-        var descriptionCreate = new OperationEnvelope(
-            operationId: descriptionCreateId,
-            kind: RnGenericRecDescriptionOperationKinds.Create,
-            entityId: descriptionId,
-            target: revisionId,
-            after: EmptyAfter(),
-            dependsOn: DependsOn(recordCreateId),
-            rationale: Rationale);
-
-        var paragraphId = mint();
-        var paragraphCreateId = mint();
-        var paragraphCreate = new OperationEnvelope(
-            operationId: paragraphCreateId,
-            kind: StTextParagraphsOperationKinds.Create,
-            entityId: paragraphId,
-            target: descriptionId,
-            after: Json(new { @class = "StTxtPara" }),
-            dependsOn: DependsOn(descriptionCreateId),
-            rationale: Rationale);
-
-        return new[]
-        {
-            recordCreate,
-            new OperationEnvelope(
-                operationId: mint(),
-                kind: RnGenericRecTypeOperationKinds.SetType,
-                target: revisionId,
-                after: Json(new { @ref = intent.RecordTypeId.Value }),
-                dependsOn: DependsOn(recordCreateId),
-                rationale: Rationale),
-            new OperationEnvelope(
-                operationId: mint(),
-                kind: RnGenericRecTitleOperationKinds.Set,
-                target: revisionId,
-                after: Json(new { ws = writingSystem, text = title }),
-                dependsOn: DependsOn(recordCreateId),
-                rationale: Rationale),
-            descriptionCreate,
-            paragraphCreate,
-            new OperationEnvelope(
-                operationId: mint(),
-                kind: StTxtParaContentsOperationKinds.Set,
-                target: paragraphId,
-                after: Json(new { ws = writingSystem, text = description }),
-                dependsOn: DependsOn(paragraphCreateId),
-                rationale: Rationale),
-            new OperationEnvelope(
-                operationId: mint(),
-                kind: HumanJudgmentCustomFieldOperationKinds.Set,
-                target: revisionId,
-                after: Json(new { text = physicalValue }),
-                dependsOn: DependsOn(recordCreateId),
-                rationale: Rationale),
-        };
+        var judgment = JudgmentFor(intent, projectId,
+            JudgmentRecordOperations.MintUniqueJudgmentId(cache, mint), revisionId.Value, proposalId);
+        return JudgmentRecordOperations.Build(judgment, intent.RecordTypeId, notebookId,
+            $"{intent.Disposition}: {intent.SubjectCaption}", writingSystem, mint, Rationale);
     }
 
     /// <summary>The logical judgment one disposition intent stores; the Parsimony decision key is derived from it.</summary>
@@ -154,11 +84,4 @@ public static class RecordParsimonyDispositionComposer
             if (current.Guid == expectedOwner.Guid) return true;
         return false;
     }
-
-    private static OperationDependency[] DependsOn(CanonicalId operationId) =>
-        [new OperationDependency(operationId)];
-
-    private static JsonElement EmptyAfter() => Json(new { });
-
-    private static JsonElement Json<T>(T value) => JsonSerializer.SerializeToElement(value);
 }

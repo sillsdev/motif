@@ -125,6 +125,8 @@ public sealed class ParsimonyReportProducer : IReportProducer
             dispositions.UnresolvedJudgmentCount > 0)
             text.AppendLine($"Presentation: {dispositions.ActiveCount} Active, {dispositions.SuppressedCount} Suppressed, " +
                 $"{dispositions.ResurfacedCount} resurfaced, {dispositions.UnresolvedJudgmentCount} unresolved judgment(s).");
+        foreach (var row in dispositions.Unresolved.Where(item => item.Check != "capability"))
+            text.AppendLine(ParsimonyJudgmentText.Line(row));
         foreach (var presentation in dispositions.Findings.Where(item => item.State is "active" or "resurfaced"))
         {
             var finding = presentation.Finding;

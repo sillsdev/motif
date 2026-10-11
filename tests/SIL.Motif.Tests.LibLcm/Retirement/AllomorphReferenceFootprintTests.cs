@@ -221,7 +221,7 @@ public sealed class AllomorphReferenceFootprintTests : IDisposable
                 "P-allo-alternation-family", ParsimonyDispositionKind.Keep, "sha256:" + new string('a', 64),
                 "retirement-test-v1", "retired form", "Unwritten phonological rules"));
         NotebookJudgmentFixture.AddRecord(cache, recordId, judgmentField,
-            TsStringUtils.MakeString(HumanJudgmentCodec.Format(judgment), cache.DefaultAnalWs));
+            HumanJudgmentCodec.Format(judgment));
         var negativeRecordId = Guid.Parse("00000000-0000-0000-0000-000000000703");
         var negativeCaseId = CanonicalId.FromGuid(Guid.Parse("00000000-0000-0000-0000-000000000704")).Value;
         var negativeJudgment = new HumanJudgment(CanonicalId.FromGuid(cache.LangProject.Guid).Value,
@@ -235,7 +235,7 @@ public sealed class AllomorphReferenceFootprintTests : IDisposable
                 ])), Actor: new SIL.Motif.Contract.HumanJudgments.JudgmentActor(
                     SIL.Motif.Contract.HumanJudgments.JudgmentActorKind.Human));
         NotebookJudgmentFixture.AddRecord(cache, negativeRecordId, judgmentField,
-            TsStringUtils.MakeString(HumanJudgmentCodec.Format(negativeJudgment), cache.DefaultAnalWs));
+            HumanJudgmentCodec.Format(negativeJudgment));
         return (retired, wordform.Guid);
     }
 

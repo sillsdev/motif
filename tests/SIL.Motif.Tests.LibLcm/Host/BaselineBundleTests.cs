@@ -202,12 +202,11 @@ public sealed class BaselineBundleTests : IDisposable
                 new ProjectJudgmentSubject(projectId), "P-test", ParsimonyDispositionKind.Keep,
                 "sha256:" + new string('1', 64), "contract-v1", "sample subject", "Sample measure"));
         var record = NotebookJudgmentFixture.AddRecord(_cache, recordGuid, fieldId,
-            TsStringUtils.MakeString(HumanJudgmentCodec.Format(judgment), _cache.DefaultAnalWs));
+            HumanJudgmentCodec.Format(judgment));
         var afterAdd = BaselineSemanticDigest.Compute(_cache);
 
-        NotebookJudgmentFixture.SetValue(_cache, record,
-            TsStringUtils.MakeString(HumanJudgmentCodec.Format(judgment with { Reason = "reviewed" }),
-                _cache.DefaultAnalWs));
+        NotebookJudgmentFixture.SetParagraphs(_cache, record,
+            HumanJudgmentCodec.Format(judgment).Statement, "reviewed");
 
         Assert.NotEqual(before, afterAdd);
         Assert.NotEqual(afterAdd, BaselineSemanticDigest.Compute(_cache));

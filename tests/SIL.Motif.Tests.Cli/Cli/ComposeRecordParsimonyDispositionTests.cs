@@ -198,7 +198,7 @@ public sealed class ComposeRecordParsimonyDispositionTests : IDisposable
         Assert.True(cli.ExitCode == 0, cli.Error + Environment.NewLine + cli.Output);
         var composed = ProjectionJson.Deserialize<ComposedOperationsResponse>(cli.Output);
         Assert.NotNull(composed);
-        Assert.Equal(7, composed.Operations.Count);
+        Assert.Equal(7 + 2 * HumanJudgmentCodec.ReasonParagraphs("This choice is intentional.").Count, composed.Operations.Count);
         Assert.All(composed.Operations, operation => Assert.False(string.IsNullOrWhiteSpace(operation.Kind)));
         Assert.True(ProposalCommands.Comment(new CommentRequest(_projectPath, ProductVersion, draft,
             "Record the exact Parsimony finding and retain its evidence with the applied Notebook decision.")).Succeeded);
@@ -223,6 +223,11 @@ public sealed class ComposeRecordParsimonyDispositionTests : IDisposable
         var judgment = Assert.Single(HumanJudgmentReader.Read(live).Judgments).Judgment;
         Assert.Equal(JudgmentActorKind.Agent, judgment.Actor!.Kind);
         Assert.Equal("This choice is intentional.", judgment.Reason);
+        var stored = Assert.Single(HumanJudgmentReader.Read(live).Judgments);
+        Assert.Empty(stored.Warnings);
+        Assert.Matches("^MJ-[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}$", stored.VisibleId);
+        Assert.EndsWith($"({stored.VisibleId})", stored.RecordTitle);
+        Assert.Equal(HumanJudgmentCodec.VisibleId(judgment.JudgmentId), stored.VisibleId);
         var body = Assert.IsType<DispositionJudgment>(judgment.Body);
         Assert.Equal(ParseDisposition(disposition), body.Disposition);
         Assert.Equal("sha256:" + new string('a', 64), body.EvidenceDigest);
@@ -279,7 +284,8 @@ public sealed class ComposeRecordParsimonyDispositionTests : IDisposable
         Assert.True(cli.ExitCode == 0, cli.Error + Environment.NewLine + cli.Output);
         var composed = ProjectionJson.Deserialize<ComposedOperationsResponse>(cli.Output);
         Assert.NotNull(composed);
-        Assert.Equal(7, composed.Operations.Count);
+        var reasonLines = HumanJudgmentCodec.ReasonParagraphs(reason).Count;
+        Assert.Equal(7 + 2 * reasonLines, composed.Operations.Count);
         Assert.True(ProposalCommands.Comment(new CommentRequest(_projectPath, ProductVersion, draft,
             "Retain the exact recipe finding and its evidence in the Notebook judgment.")).Succeeded);
         var finalized = ProposalCommands.Finalize(new FinalizeRequest(_projectPath, ProductVersion, draft));
@@ -295,7 +301,7 @@ public sealed class ComposeRecordParsimonyDispositionTests : IDisposable
                 negative.CaseId == _negativeCaseId);
             Assert.DoesNotContain(existingJudgments, item => item.Judgment.Body is DispositionJudgment);
             var dryRun = ScratchDryRun.Of(live, proposal);
-            Assert.Equal(7, dryRun.ExpectedEffects.Count);
+            Assert.Equal(7 + 2 * reasonLines, dryRun.ExpectedEffects.Count);
             var effect = Assert.Single(dryRun.ExpectedEffects,
                 item => item.Field == SnapshotFields.RnGenericRecMotifHumanJudgment);
             Assert.Equal(new[]
@@ -307,7 +313,8 @@ public sealed class ComposeRecordParsimonyDispositionTests : IDisposable
                 SnapshotFields.StTextParagraphs,
                 SnapshotFields.StTxtParaContents,
                 SnapshotFields.RnGenericRecMotifHumanJudgment,
-            }.Order(StringComparer.Ordinal),
+            }.Concat(Enumerable.Repeat(SnapshotFields.StTextParagraphs, reasonLines))
+                .Concat(Enumerable.Repeat(SnapshotFields.StTxtParaContents, reasonLines)).Order(StringComparer.Ordinal),
                 dryRun.ExpectedEffects.Select(item => item.Field).Order(StringComparer.Ordinal));
             Assert.Empty(effect.Before);
             Assert.Contains("text", effect.After.Keys);
@@ -485,7 +492,7 @@ public sealed class ComposeRecordParsimonyDispositionTests : IDisposable
         var changed = ParsimonyCommands.RecordDisposition(DispositionRequest(reportId, "changed", "fix"));
 
         Assert.True(changed.Succeeded, changed.Refusal?.Message);
-        Assert.Equal(7, changed.Value!.Operations.Count);
+        Assert.Equal(7 + 2 * HumanJudgmentCodec.ReasonParagraphs("This choice is intentional.").Count, changed.Value!.Operations.Count);
         Assert.Null(changed.Value.Outcome);
     }
 
@@ -620,7 +627,7 @@ public sealed class ComposeRecordParsimonyDispositionTests : IDisposable
         {
             var metadata = (IFwMetaDataCacheManaged)cache.MetaDataCacheAccessor;
             NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
-                metadata.AddCustomField("LexEntry", "MotifHumanJudgment", CellarPropertyType.String, 0,
+                metadata.AddCustomField("LexEntry", "MotifJudgmentData", CellarPropertyType.String, 0,
                     "Drifted duplicate", WritingSystemServices.kwsAnal, Guid.Empty));
         });
 
@@ -636,7 +643,7 @@ public sealed class ComposeRecordParsimonyDispositionTests : IDisposable
     public void PreflightRefusesWhenTheJudgmentFieldWasRenamed()
     {
         var proposal = CreateFinalizedDispositionProposal("preflight-renamed");
-        EditReservedJudgmentField("MotifHumanJudgmentRenamed");
+        EditReservedJudgmentField("MotifJudgmentDataRenamed");
 
         AssertPreflightRefusesDrift(proposal);
     }
@@ -669,7 +676,7 @@ public sealed class ComposeRecordParsimonyDispositionTests : IDisposable
         {
             var metadata = (IFwMetaDataCacheManaged)cache.MetaDataCacheAccessor;
             var field = metadata.GetFieldIds().Single(flid =>
-                string.Equals(metadata.GetFieldName(flid), "MotifHumanJudgment", StringComparison.Ordinal));
+                string.Equals(metadata.GetFieldName(flid), "MotifJudgmentData", StringComparison.Ordinal));
             NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
             {
                 metadata.DeleteCustomField(field);
@@ -1063,7 +1070,7 @@ public sealed class ComposeRecordParsimonyDispositionTests : IDisposable
                 new SurfaceNegativeTarget()), "The reviewed slot swap is impossible.",
             new JudgmentActor(JudgmentActorKind.Human));
         NotebookJudgmentFixture.AddRecord(cache, recordId, field,
-            TsStringUtils.MakeString(HumanJudgmentCodec.Format(negative), cache.DefaultAnalWs));
+            HumanJudgmentCodec.Format(negative));
         new FwDataProjectLoader().Save(cache);
     }
 

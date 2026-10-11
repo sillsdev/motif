@@ -275,7 +275,7 @@ public sealed class RetirementExpectationTranslationTests
     private static Proposal ProposalWithJudgment(HumanJudgment judgment)
     {
         var bundleOperation = Proposal().Operations.Single();
-        var physical = HumanJudgmentCodec.Format(judgment);
+        var physical = HumanJudgmentCodec.Format(judgment).Data;
         var judgmentOperation = new OperationEnvelope(CanonicalId.Mint(),
             HumanJudgmentCustomFieldOperationKinds.Set, target: CanonicalId.FromGuid(NegativeRecordGuid),
             after: Json(new { text = physical }));
@@ -288,7 +288,7 @@ public sealed class RetirementExpectationTranslationTests
 
     private static ExpectedEffect JudgmentEffect(HumanJudgment judgment)
     {
-        var physical = HumanJudgmentCodec.Format(judgment).Normalize(System.Text.NormalizationForm.FormD);
+        var physical = HumanJudgmentCodec.Format(judgment).Data.Normalize(System.Text.NormalizationForm.FormD);
         return new ExpectedEffect(CanonicalId.FromGuid(NegativeRecordGuid),
             SnapshotFields.RnGenericRecMotifHumanJudgment, new Dictionary<string, string>(),
             new Dictionary<string, string> { ["text"] = physical });

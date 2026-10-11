@@ -59,7 +59,7 @@ public sealed class ProjectInitializationArgvTests : IDisposable
         Assert.Equal(0, initialized.ExitCode);
         using var response = JsonDocument.Parse(initialized.Output);
         Assert.Equal("initialized", response.RootElement.GetProperty("status").GetString());
-        Assert.Equal("MotifHumanJudgment", response.RootElement.GetProperty("fieldName").GetString());
+        Assert.Equal("MotifJudgmentData, MotifJudgmentId", response.RootElement.GetProperty("fieldName").GetString());
         Assert.NotEqual(before, File.ReadAllBytes(Project));
     }
 

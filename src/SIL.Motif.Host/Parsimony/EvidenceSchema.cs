@@ -7,7 +7,7 @@ public static class EvidenceSchema
     public const int ApplicationId = 0x4D4F5445;
 
     /// <summary>The exact schema generation accepted by this build.</summary>
-    public const int Version = 3;
+    public const int Version = 4;
 
     internal const string Ddl = """
         CREATE TABLE artifact_metadata (
@@ -284,6 +284,8 @@ public static class EvidenceSchema
             body_kind TEXT NOT NULL COLLATE BINARY,
             physical_value TEXT NOT NULL,
             judgment_json TEXT NOT NULL,
+            record_title TEXT NOT NULL,
+            warnings_json TEXT NOT NULL,
             state TEXT NOT NULL COLLATE BINARY CHECK (state IN ('head', 'superseded', 'unavailable'))
         );
         CREATE TABLE human_judgment_subjects (
@@ -322,6 +324,9 @@ public static class EvidenceSchema
             judgment_id TEXT COLLATE BINARY,
             reason TEXT NOT NULL,
             physical_digest TEXT NOT NULL COLLATE BINARY,
+            kind TEXT NOT NULL COLLATE BINARY,
+            visible_id TEXT,
+            record_title TEXT NOT NULL,
             PRIMARY KEY (record_guid, reason)
         );
         CREATE INDEX ix_analyses_wordform_opinion ON analyses(wordform_guid, opinion);

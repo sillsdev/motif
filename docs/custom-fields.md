@@ -39,8 +39,8 @@ that uses it. Definition should have ensure semantics:
 - same class/name with incompatible structure: conflict;
 - similar label or content: never infer a match.
 
-Motif's own reserved `MotifHumanJudgment` String field on `RnGenericRec` is the one definition Motif
-installs for itself, and only through the confirmed `project initialize` command
+Motif's own reserved `MotifJudgmentData` and `MotifJudgmentId` String fields on `RnGenericRec` are the only
+definitions Motif installs for itself, and only through the confirmed `project initialize` command
 ([ADR 0056](adr/0056-human-judgments-belong-to-the-fieldworks-project.md)).
 
 ### Rare: metadata update or destructive migration

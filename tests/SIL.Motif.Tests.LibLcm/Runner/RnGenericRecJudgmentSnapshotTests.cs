@@ -27,24 +27,23 @@ public sealed class RnGenericRecJudgmentSnapshotTests : IDisposable
     public RnGenericRecJudgmentSnapshotTests() => Directory.CreateDirectory(_root);
 
     [Fact]
-    public void ChangingOnlyAJudgmentReasonChangesTheSemanticDigestAndTheRecordSnapshot()
+    public void ChangingTheJudgmentDataChangesTheSemanticDigestAndTheRecordSnapshot()
     {
         using var cache = NewLangProjFixture.CreateCache(_root);
         var fieldId = NotebookJudgmentFixture.InitializeReservedField(cache);
         var projectId = CanonicalId.FromGuid(cache.LangProject.Guid).Value;
         var first = HumanJudgmentCodec.Format(Disposition(projectId, "Alternation family"));
         var second = HumanJudgmentCodec.Format(Disposition(projectId, "Allomorph family"));
-        var record = NotebookJudgmentFixture.AddRecord(cache, RecordId, fieldId,
-            TsStringUtils.MakeString(first, cache.DefaultAnalWs));
+        var record = NotebookJudgmentFixture.AddRecord(cache, RecordId, fieldId, first);
         var digestBefore = BaselineSemanticDigest.Compute(cache);
 
-        NotebookJudgmentFixture.SetValue(cache, record, TsStringUtils.MakeString(second, cache.DefaultAnalWs));
+        NotebookJudgmentFixture.SetValue(cache, record, TsStringUtils.MakeString(second.Data, cache.DefaultAnalWs));
 
         Assert.NotEqual(digestBefore, BaselineSemanticDigest.Compute(cache));
         var snapshot = RnGenericRecSnapshotter.Snapshot(cache, record);
         var value = snapshot.AlternativesFields[SnapshotFields.RnGenericRecMotifHumanJudgment];
         Assert.Equal(
-            second.Normalize(System.Text.NormalizationForm.FormD),
+            second.Data.Normalize(System.Text.NormalizationForm.FormD),
             value["text"].Normalize(System.Text.NormalizationForm.FormD));
     }
 
@@ -69,7 +68,7 @@ public sealed class RnGenericRecJudgmentSnapshotTests : IDisposable
     {
         using var cache = NewLangProjFixture.CreateCache(_root);
         NotebookJudgmentFixture.InitializeReservedField(cache);
-        AddField(cache, "LexEntry", "MotifHumanJudgment", CellarPropertyType.String,
+        AddField(cache, "LexEntry", "MotifJudgmentData", CellarPropertyType.String,
             WritingSystemServices.kwsAnal, "Second judgment");
         var record = AddEmptyRecord(cache);
 
@@ -80,7 +79,7 @@ public sealed class RnGenericRecJudgmentSnapshotTests : IDisposable
     public void AnIncompatibleJudgmentFieldRefusesTheSnapshot()
     {
         using var cache = NewLangProjFixture.CreateCache(_root);
-        AddField(cache, "RnGenericRec", "MotifHumanJudgment", CellarPropertyType.Integer,
+        AddField(cache, "RnGenericRec", "MotifJudgmentData", CellarPropertyType.Integer,
             WritingSystemServices.kwsAnal, "Wrong type");
         var record = AddEmptyRecord(cache);
 

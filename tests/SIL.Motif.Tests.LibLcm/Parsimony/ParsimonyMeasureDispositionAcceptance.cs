@@ -40,7 +40,15 @@ namespace SIL.Motif.Tests.Parsimony;
 internal static class ParsimonyMeasureDispositionAcceptance
 {
     private const string ProductVersion = "0.1.0";
-    private static readonly string[] NotebookEffects =
+    // Each line of a reason is one more Description paragraph, with its create and its contents write.
+    private static string[] NotebookEffects(string? reason) =>
+    [
+        .. NotebookEffectsWithoutReason,
+        .. Enumerable.Repeat(SnapshotFields.StTextParagraphs, HumanJudgmentCodec.ReasonParagraphs(reason).Count),
+        .. Enumerable.Repeat(SnapshotFields.StTxtParaContents, HumanJudgmentCodec.ReasonParagraphs(reason).Count),
+    ];
+
+    private static readonly string[] NotebookEffectsWithoutReason =
     [
         SnapshotFields.RnResearchNbkRecords,
         SnapshotFields.RnGenericRecType,
@@ -109,7 +117,8 @@ internal static class ParsimonyMeasureDispositionAcceptance
             projectPath, ProductVersion, report.ReportId, finding.FindingId,
             route.Disposition, recordType.Id, draft, route.Reason, route.Question));
         Assert.True(composed.Succeeded, composed.Refusal?.Message);
-        Assert.Equal(7, composed.Value!.Operations.Count);
+        var expectedEffects = NotebookEffects(route.Reason);
+        Assert.Equal(expectedEffects.Length, composed.Value!.Operations.Count);
         Assert.True(ProposalCommands.Comment(new CommentRequest(projectPath, ProductVersion,
             draft, "Keep the exact measure finding and its evidence in the Notebook decision.")).Succeeded);
         var finalized = ProposalCommands.Finalize(new FinalizeRequest(projectPath, ProductVersion,
@@ -126,12 +135,12 @@ internal static class ParsimonyMeasureDispositionAcceptance
             Assert.DoesNotContain(HumanJudgmentReader.Read(live).Judgments,
                 item => item.Judgment.Body is DispositionJudgment body && body.MeasureId == measureId);
             var dryRun = ScratchDryRun.Of(live, proposal);
-            Assert.Equal(NotebookEffects.Order(StringComparer.Ordinal),
+            Assert.Equal(expectedEffects.Order(StringComparer.Ordinal),
                 dryRun.ExpectedEffects.Select(effect => effect.Field).Order(StringComparer.Ordinal));
-            Assert.Equal(7, dryRun.ExpectedEffects.Count);
+            Assert.Equal(expectedEffects.Length, dryRun.ExpectedEffects.Count);
             var receipt = ProposalApplier.Apply(live, proposal, dryRun.Anchor, "reviewer");
             Assert.False(receipt.AlreadyApplied);
-            Assert.Equal(NotebookEffects.Order(StringComparer.Ordinal),
+            Assert.Equal(expectedEffects.Order(StringComparer.Ordinal),
                 receipt.ActualEffects.Select(effect => effect.Field).Order(StringComparer.Ordinal));
             new FwDataProjectLoader().Save(live);
         }

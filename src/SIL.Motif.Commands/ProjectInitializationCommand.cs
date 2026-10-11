@@ -95,10 +95,11 @@ public static class ProjectInitializationCommand
             cache.Dispose();
             var retainedCopy = DeleteVerifiedRecoveryCopy(recoveryCopyPath) ? null : ExistingRecoveryPath(recoveryCopyPath);
             return CommandOutcome<ProjectInitializationResponse>.Success(
-                new ProjectInitializationResponse("already-initialized", HumanJudgmentFieldDefinition.InternalName,
+                new ProjectInitializationResponse("already-initialized", HumanJudgmentFieldDefinition.AllInternalNames,
                     retainedCopy));
         }
-        if (initialInspection.State is HumanJudgmentFieldState.Incompatible or HumanJudgmentFieldState.Ambiguous)
+        if (initialInspection.State is HumanJudgmentFieldState.Incompatible or HumanJudgmentFieldState.Ambiguous
+            or HumanJudgmentFieldState.OldFormat)
         {
             cache.Dispose();
             var retainedRecoveryCopy = ExistingRecoveryPath(recoveryCopyPath);
@@ -250,7 +251,7 @@ public static class ProjectInitializationCommand
         {
             var retainedCopy = DeleteVerifiedRecoveryCopy(recoveryCopyPath) ? null : ExistingRecoveryPath(recoveryCopyPath);
             return CommandOutcome<ProjectInitializationResponse>.Success(
-                new ProjectInitializationResponse("initialized", HumanJudgmentFieldDefinition.InternalName,
+                new ProjectInitializationResponse("initialized", HumanJudgmentFieldDefinition.AllInternalNames,
                     retainedCopy));
         }
 
@@ -281,6 +282,7 @@ public static class ProjectInitializationCommand
         {
             HumanJudgmentFieldState.Ambiguous => "The saved project contains multiple reserved judgment definitions.",
             HumanJudgmentFieldState.Incompatible => "The saved project contains an incompatible reserved judgment definition.",
+            HumanJudgmentFieldState.OldFormat => "The saved project holds judgments in the old format.",
             _ => "The saved project differs from its recovery copy, but has no compatible reserved judgment definition.",
         };
         return UnknownOutcome(projectPath, recoveryCopyPath, reason + " " + (writeFailure?.Message ?? string.Empty));
@@ -296,14 +298,20 @@ public static class ProjectInitializationCommand
             ? string.Empty
             : " Keep the retained recovery copy at '" + recoveryCopyPath + "' while resolving the schema. " +
                 ProjectInitializationRecovery.RestoreStep(projectPath, recoveryCopyPath);
+        if (inspection.State == HumanJudgmentFieldState.OldFormat)
+            return Refused("judgment.old-format", FailureReason.Refused,
+                SIL.Motif.Projection.HumanJudgments.HumanJudgmentFieldResolver.OldFormatMessage + recoveryMessage,
+                ("fwDataPath", projectPath), ("definitions", definitions), ("recoveryCopyPath", recoveryCopyPath));
+
         if (inspection.State == HumanJudgmentFieldState.Ambiguous)
             return Refused("judgment.field-ambiguous", FailureReason.Refused,
-                "The project has multiple definitions named MotifHumanJudgment: " + definitions +
+                "The project has multiple definitions named " + HumanJudgmentFieldDefinition.InternalName + " or " +
+                HumanJudgmentFieldDefinition.IdInternalName + ": " + definitions +
                 ". Resolve this schema conflict in FieldWorks before rerunning project initialization." + recoveryMessage,
                 ("fwDataPath", projectPath), ("definitions", definitions), ("recoveryCopyPath", recoveryCopyPath));
 
         return Refused("judgment.field-incompatible", FailureReason.Refused,
-            "The reserved field has an incompatible schema: " + definitions +
+            "A reserved judgment field has an incompatible schema: " + definitions +
             ". The required schema is a String on RnGenericRec with the analysis writing-system selector and no destination or list. " +
             "Resolve it deliberately in FieldWorks before rerunning project initialization." + recoveryMessage,
             ("fwDataPath", projectPath), ("definitions", definitions), ("recoveryCopyPath", recoveryCopyPath));

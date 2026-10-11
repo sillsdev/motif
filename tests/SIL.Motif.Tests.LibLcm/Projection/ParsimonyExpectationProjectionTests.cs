@@ -154,7 +154,7 @@ public sealed class ParsimonyExpectationProjectionTests : IDisposable
         var retraction = new HumanJudgment(projectId, original.Judgment.JudgmentId, Id(), [predecessor],
             new RetractionJudgment(), Actor: new JudgmentActor(JudgmentActorKind.Human));
         NotebookJudgmentFixture.AddRecord(_cache, CanonicalId.Parse(retraction.RevisionId).ToGuid(), fieldId,
-            TsStringUtils.MakeString(HumanJudgmentCodec.Format(retraction), _cache.DefaultAnalWs));
+            HumanJudgmentCodec.Format(retraction));
 
         var afterRetraction = ParsimonyExpectationProjectionBuilder.Build(_cache);
 
@@ -200,7 +200,7 @@ public sealed class ParsimonyExpectationProjectionTests : IDisposable
             new ReviewedNegativeJudgment(caseId, writingSystem, form, context, target),
             Actor: new JudgmentActor(JudgmentActorKind.Human));
         NotebookJudgmentFixture.AddRecord(_cache, CanonicalId.Parse(revisionId).ToGuid(), fieldId,
-            TsStringUtils.MakeString(HumanJudgmentCodec.Format(judgment), _cache.DefaultAnalWs));
+            HumanJudgmentCodec.Format(judgment));
         return revisionId;
     }
 

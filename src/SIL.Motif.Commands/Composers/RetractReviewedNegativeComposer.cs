@@ -14,7 +14,6 @@ public static class RetractReviewedNegativeComposer
 {
     private const string ConstructName = "RetractReviewedNegative";
     private const string Rationale = "Withdraws a reviewed negative through its Notebook history.";
-    private const string Marker = " [motif-human-judgment:v1:";
 
     /// <summary>Builds a retraction only when every named predecessor is a current head of the negative case.</summary>
     public static IReadOnlyList<OperationEnvelope> Build(
@@ -62,40 +61,8 @@ public static class RetractReviewedNegativeComposer
             new RetractionJudgment(), intent.Reason,
             new JudgmentActor(JudgmentActorKind.Human, intent.ActorId, intent.ActorName), intent.JudgedAtUtc,
             new JudgmentSource(ProposalId: proposalId.Value), intent.ExpectedHeads.Count > 1);
-        var physicalValue = HumanJudgmentCodec.Format(judgment);
-        var markerIndex = physicalValue.LastIndexOf(Marker, StringComparison.Ordinal);
-        if (markerIndex < 0)
-            throw new InvalidOperationException($"'{ConstructName}': readable judgment format has no marker boundary.");
-        var description = physicalValue[..markerIndex];
-        var title = $"Retracted negative: {negative.Form}";
-
-        var createId = mint();
-        var create = new OperationEnvelope(createId, RnResearchNbkRecordsOperationKinds.Create, revisionId,
-            notebookId, Json(new { }), rationale: Rationale);
-        var descriptionId = mint();
-        var descriptionCreateId = mint();
-        var descriptionCreate = new OperationEnvelope(descriptionCreateId, RnGenericRecDescriptionOperationKinds.Create,
-            descriptionId, revisionId, Json(new { }), dependsOn: DependsOn(createId), rationale: Rationale);
-        var paragraphId = mint();
-        var paragraphCreateId = mint();
-        var paragraphCreate = new OperationEnvelope(paragraphCreateId, StTextParagraphsOperationKinds.Create,
-            paragraphId, descriptionId, Json(new { @class = "StTxtPara" }),
-            dependsOn: DependsOn(descriptionCreateId), rationale: Rationale);
-
-        return
-        [
-            create,
-            new OperationEnvelope(mint(), RnGenericRecTypeOperationKinds.SetType, target: revisionId,
-                after: Json(new { @ref = intent.RecordTypeId.Value }), dependsOn: DependsOn(createId), rationale: Rationale),
-            new OperationEnvelope(mint(), RnGenericRecTitleOperationKinds.Set, target: revisionId,
-                after: Json(new { ws = writingSystem, text = title }), dependsOn: DependsOn(createId), rationale: Rationale),
-            descriptionCreate,
-            paragraphCreate,
-            new OperationEnvelope(mint(), StTxtParaContentsOperationKinds.Set, target: paragraphId,
-                after: Json(new { ws = writingSystem, text = description }), dependsOn: DependsOn(paragraphCreateId), rationale: Rationale),
-            new OperationEnvelope(mint(), HumanJudgmentCustomFieldOperationKinds.Set, target: revisionId,
-                after: Json(new { text = physicalValue }), dependsOn: DependsOn(createId), rationale: Rationale),
-        ];
+        return JudgmentRecordOperations.Build(judgment, intent.RecordTypeId, notebookId,
+            $"Retracted negative: {negative.Form}", writingSystem, mint, Rationale);
     }
 
     private static bool IsOwnedBy(ICmObject value, ICmObject expectedOwner)
@@ -105,6 +72,4 @@ public static class RetractReviewedNegativeComposer
         return false;
     }
 
-    private static OperationDependency[] DependsOn(CanonicalId operationId) => [new OperationDependency(operationId)];
-    private static JsonElement Json<T>(T value) => JsonSerializer.SerializeToElement(value);
 }

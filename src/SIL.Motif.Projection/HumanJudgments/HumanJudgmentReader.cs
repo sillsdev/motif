@@ -3,20 +3,38 @@ using System.Security.Cryptography;
 using System.Text;
 using SIL.LCModel;
 using SIL.LCModel.Core.KernelInterfaces;
+using SIL.LCModel.DomainServices;
 using SIL.Motif.Contract.HumanJudgments;
 using SIL.Motif.Contract.Ids;
 
 namespace SIL.Motif.Projection.HumanJudgments;
 
 /// <summary>A valid, immutable judgment read from one Notebook record.</summary>
+/// <param name="PhysicalValue">The data field's text, exactly as stored.</param>
+/// <param name="VisibleId">The ID derived from the data, which the ID field should show.</param>
+/// <param name="RecordTitle">The record's Title as the linguist sees it; informational only.</param>
+/// <param name="Warnings">Edits to the ID or sentence that leave the judgment in force.</param>
 public sealed record StoredHumanJudgment(
     string RecordId,
     HumanJudgment Judgment,
     string ContentDigest,
-    string PhysicalValue);
+    string PhysicalValue,
+    string VisibleId,
+    string RecordTitle,
+    IReadOnlyList<HumanJudgmentWarning> Warnings);
 
-/// <summary>A non-empty Notebook field value that could not be accepted as a judgment.</summary>
-public sealed record UnavailableHumanJudgment(string RecordId, string PhysicalValue, string Message);
+/// <summary>A Notebook record with judgment fields that could not be accepted as a judgment.</summary>
+/// <param name="Kind">
+/// <c>damaged</c>, <c>hash-failed</c>, <c>identity</c>, <c>incomplete</c> or <c>duplicate-id</c>.
+/// </param>
+/// <param name="VisibleId">The ID the record's ID field shows, when it shows one.</param>
+public sealed record UnavailableHumanJudgment(
+    string RecordId,
+    string PhysicalValue,
+    string Message,
+    string Kind,
+    string? VisibleId,
+    string RecordTitle);
 
 /// <summary>An immutable view of the judgments and unavailable values in one project.</summary>
 public sealed record HumanJudgmentProjectSnapshot(
@@ -51,20 +69,51 @@ public static class HumanJudgmentReader
         foreach (var record in notebook.RecordsOC.OrderBy(item => item.Guid))
         {
             var recordId = CanonicalId.FromGuid(record.Guid).Value;
-            var richValue = cache.DomainDataByFlid.get_StringProp(record.Hvo, resolution.CacheFieldId);
-            var physicalValue = richValue?.Text ?? string.Empty;
-            if (physicalValue.Length == 0) continue;
+            var physicalValue = cache.DomainDataByFlid.get_StringProp(record.Hvo, resolution.CacheFieldId)?.Text
+                ?? string.Empty;
+            var idText = cache.DomainDataByFlid.get_StringProp(record.Hvo, resolution.IdFieldId)?.Text ?? string.Empty;
+            if (physicalValue.Length == 0 && idText.Length == 0) continue;
+            var title = record.Title?.Text ?? string.Empty;
+            var shownId = idText.Length == 0 ? null : idText;
+            if (physicalValue.Length == 0)
+            {
+                unavailable.Add(new(recordId, idText, "The data field on this record is empty.", "incomplete",
+                    shownId, title));
+                continue;
+            }
 
+            var paragraphs = record.DescriptionOA?.ParagraphsOS.OfType<IStTxtPara>()
+                .Select(paragraph => paragraph.Contents?.Text ?? string.Empty).ToArray() ?? [];
             try
             {
-                var value = Freeze(ReadableJudgmentCodec.Parse(richValue!, projectId, recordId));
-                judgments.Add(new(recordId, value, HumanJudgmentCodec.LogicalDigest(value), physicalValue));
+                var reading = HumanJudgmentCodec.Read(physicalValue, idText, paragraphs, projectId, recordId);
+                var value = Freeze(reading.Judgment);
+                judgments.Add(new(recordId, value, HumanJudgmentCodec.LogicalDigest(value), physicalValue,
+                    HumanJudgmentCodec.VisibleId(value.JudgmentId), title, reading.Warnings));
             }
             catch (FormatException error)
             {
-                unavailable.Add(new(recordId, physicalValue, error.Message));
+                var kind = error is HumanJudgmentFormatException failure ? failure.Failure switch
+                {
+                    HumanJudgmentFailure.HashFailed => "hash-failed",
+                    HumanJudgmentFailure.Identity => "identity",
+                    _ => "damaged",
+                } : "damaged";
+                unavailable.Add(new(recordId, physicalValue, error.Message, kind, shownId, title));
             }
         }
+
+        // Two different judgments cannot share one ID: neither may be trusted to be the one a person means.
+        foreach (var group in judgments.GroupBy(item => item.VisibleId, StringComparer.Ordinal)
+                     .Where(group => group.Select(item => item.Judgment.JudgmentId).Distinct(StringComparer.Ordinal).Count() > 1)
+                     .ToArray())
+            foreach (var item in group)
+            {
+                judgments.Remove(item);
+                unavailable.Add(new(item.RecordId, item.PhysicalValue,
+                    $"Another judgment has the same ID {group.Key}; neither can be used until one is deleted.",
+                    "duplicate-id", group.Key, item.RecordTitle));
+            }
 
         return Snapshot(projectId, HumanJudgmentFieldCapability.Available,
             resolution.Message, judgments, unavailable);
@@ -113,9 +162,13 @@ public static class HumanJudgmentReader
             .Append(projectId).Append('\0')
             .Append(capability).Append('\n');
         foreach (var item in judgments)
-            content.Append(item.RecordId).Append('\0').Append(item.ContentDigest).Append('\n');
+        {
+            content.Append(item.RecordId).Append('\0').Append(item.ContentDigest);
+            foreach (var warning in item.Warnings) content.Append('\0').Append(warning.Kind);
+            content.Append('\n');
+        }
         foreach (var item in unavailable)
-            content.Append(item.RecordId).Append('\0').Append("unavailable:")
+            content.Append(item.RecordId).Append('\0').Append("unavailable:").Append(item.Kind).Append(':')
                 .Append(Hash(item.PhysicalValue.Normalize(NormalizationForm.FormD))).Append('\n');
         return Hash(content.ToString());
     }

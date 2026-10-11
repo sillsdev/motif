@@ -14,7 +14,6 @@ namespace SIL.Motif.Commands.Composers;
 public static class ParsimonyDispositionRevisionComposer
 {
     private const string Rationale = "Appends a Parsimony disposition revision without removing its history.";
-    private const string Marker = " [motif-human-judgment:v1:";
 
     /// <summary>Builds a disposition revision against the exact current Notebook head set.</summary>
     public static IReadOnlyList<OperationEnvelope> BuildRevision(
@@ -126,38 +125,8 @@ public static class ParsimonyDispositionRevisionComposer
             throw new InvalidOperationException("The project has no analysis writing system.");
         var writingSystem = analysisSystems.First().Id;
         var mint = mintId ?? (() => CanonicalId.Mint());
-        var physicalValue = HumanJudgmentCodec.Format(judgment);
-        var markerIndex = physicalValue.LastIndexOf(Marker, StringComparison.Ordinal);
-        if (markerIndex < 0)
-            throw new InvalidOperationException("The readable judgment format has no marker boundary.");
-        var description = physicalValue[..markerIndex];
-        var revisionId = CanonicalId.Parse(judgment.RevisionId);
-        var notebookId = CanonicalId.FromGuid(notebook.Guid);
-        var recordCreateId = mint();
-        var descriptionId = mint();
-        var descriptionCreateId = mint();
-        var paragraphId = mint();
-        var paragraphCreateId = mint();
-
-        return
-        [
-            new OperationEnvelope(recordCreateId, RnResearchNbkRecordsOperationKinds.Create, revisionId,
-                notebookId, Json(new { }), rationale: Rationale),
-            new OperationEnvelope(mint(), RnGenericRecTypeOperationKinds.SetType, target: revisionId,
-                after: Json(new { @ref = recordTypeId.Value }), dependsOn: DependsOn(recordCreateId), rationale: Rationale),
-            new OperationEnvelope(mint(), RnGenericRecTitleOperationKinds.Set, target: revisionId,
-                after: Json(new { ws = writingSystem, text = title }), dependsOn: DependsOn(recordCreateId), rationale: Rationale),
-            new OperationEnvelope(descriptionCreateId, RnGenericRecDescriptionOperationKinds.Create,
-                descriptionId, revisionId, Json(new { }), dependsOn: DependsOn(recordCreateId), rationale: Rationale),
-            new OperationEnvelope(paragraphCreateId, StTextParagraphsOperationKinds.Create,
-                paragraphId, descriptionId, Json(new { @class = "StTxtPara" }),
-                dependsOn: DependsOn(descriptionCreateId), rationale: Rationale),
-            new OperationEnvelope(mint(), StTxtParaContentsOperationKinds.Set, target: paragraphId,
-                after: Json(new { ws = writingSystem, text = description }),
-                dependsOn: DependsOn(paragraphCreateId), rationale: Rationale),
-            new OperationEnvelope(mint(), HumanJudgmentCustomFieldOperationKinds.Set, target: revisionId,
-                after: Json(new { text = physicalValue }), dependsOn: DependsOn(recordCreateId), rationale: Rationale),
-        ];
+        return JudgmentRecordOperations.Build(judgment, recordTypeId, CanonicalId.FromGuid(notebook.Guid), title,
+            writingSystem, mint, Rationale);
     }
 
     private static bool IsOwnedBy(ICmObject value, ICmObject expectedOwner)
@@ -166,9 +135,6 @@ public static class ParsimonyDispositionRevisionComposer
             if (current.Guid == expectedOwner.Guid) return true;
         return false;
     }
-
-    private static OperationDependency[] DependsOn(CanonicalId operationId) => [new OperationDependency(operationId)];
-    private static JsonElement Json<T>(T value) => JsonSerializer.SerializeToElement(value);
 
     private sealed record CurrentDisposition(
         string ProjectId,

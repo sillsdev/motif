@@ -809,6 +809,10 @@
               "type": "null"
             }
           ]
+        },
+        "contentHash": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
         }
       },
       "required": [
@@ -818,7 +822,8 @@
         "judgmentId",
         "revisionId",
         "replaces",
-        "body"
+        "body",
+        "contentHash"
       ]
     }
   }

@@ -25,10 +25,12 @@ Each action is staged in pending changes, which the Review changes page shows. N
 
 ## Suppressed decisions
 
-A Suppressed decision stays in its own tab with its reason. Select it to read its details; that only shows them. **Return to Active** stages the withdrawal of the decision, so the finding comes back to the Active tab once Apply and Refresh have run.
+A Suppressed decision stays in its own tab with its reason, its judgment ID (such as `MJ-7K3Q-9XDF`) and the title of its Notebook record, so you can match the row to the record in FieldWorks. Select it to read its details; that only shows them. **Return to Active** stages the withdrawal of the decision, so the finding comes back to the Active tab once Apply and Refresh have run.
 
 A decision returns to Active on its own when the evidence it was made on changes. It then shows "Changed since it was kept" or "Changed since it was deferred" with the reason you gave before, so you can decide again. A Motif update that changes how a check reads its evidence can bring a kept or deferred finding back once in the same way, even though nothing in the grammar changed; the release notes say when an update does this.
 
 A decision that conflicts with another, or that no longer matches any finding, stays visible and is not hidden. A conflict stays in Active and says what conflicts. A stale decision in Suppressed says that no current finding matches it.
+
+Edit the reason in FieldWorks, in the Description of the judgment's record after the first sentence. Leave the sentence, the ID and the field named "Motif data (do not edit)" alone. If the data field is edited, the page lists that record as "hash failed on this record entry", and its decision stops suppressing the finding until it is recorded again. A changed ID or sentence only produces a warning, and the decision still applies.
 
 If the stored check could not measure some of its checks, the page names them under **Not measured** and explains why. Those checks' findings are not listed. If the check was made from an earlier [Baseline](term:baseline), the page says so. Measure the grammar again to see current findings.

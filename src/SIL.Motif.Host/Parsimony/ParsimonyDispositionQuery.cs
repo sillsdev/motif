@@ -24,17 +24,26 @@ public static class ParsimonyDispositionQuery
             .Select(item => revisions.GetValueOrDefault(item.RevisionId)).OfType<HumanJudgmentRevisionProjection>()
             .ToArray();
         var unresolved = judgments.Unavailable.Select(item => new ParsimonyUnresolvedJudgmentViewRow(
-            item.RecordId, item.JudgmentId, "unavailable", item.Reason, item.PhysicalDigest)).ToList();
+            item.RecordId, item.JudgmentId, "unavailable", item.Reason, item.PhysicalDigest, item.Kind,
+            item.VisibleId, item.RecordTitle)).ToList();
         foreach (var head in judgments.Heads.Where(item => item.State is "conflict" or "unavailable"))
         {
             if (!revisions.TryGetValue(head.RevisionId, out var revision) ||
                 revision.Judgment.Body is not DispositionJudgment) continue;
             unresolved.Add(new(head.RecordId, head.JudgmentId, head.State,
-                head.Issue ?? "The judgment head could not be resolved.", Hash(revision.PhysicalValue)));
+                head.Issue ?? "The judgment head could not be resolved.", Hash(revision.PhysicalValue),
+                head.State == "conflict" ? "conflict" : "lineage", HumanJudgmentCodec.VisibleId(head.JudgmentId),
+                revision.RecordTitle));
         }
+        foreach (var revision in judgments.Revisions.Where(item => item.Warnings.Count > 0))
+            unresolved.Add(new(revision.RecordId, revision.JudgmentId, "warning",
+                string.Join("; ", revision.Warnings.Select(warning => warning.Message)),
+                Hash(revision.PhysicalValue), "warning", HumanJudgmentCodec.VisibleId(revision.JudgmentId),
+                revision.RecordTitle));
         if (judgments.Capability != "Available")
             unresolved.Add(new("project:" + judgments.ProjectId, null, "unavailable",
-                judgments.CapabilityMessage, Hash(judgments.Capability + "\0" + judgments.CapabilityMessage)));
+                judgments.CapabilityMessage, Hash(judgments.Capability + "\0" + judgments.CapabilityMessage),
+                "capability", null, ""));
 
         var output = new List<ParsimonyFindingDispositionViewRow>();
         foreach (var finding in findings.OrderBy(item => item.FindingId, StringComparer.Ordinal))
@@ -105,7 +114,8 @@ public static class ParsimonyDispositionQuery
         var unresolvedRows = unresolved.DistinctBy(item => (item.RecordId, item.JudgmentId, item.Reason))
             .OrderBy(item => item.JudgmentId, StringComparer.Ordinal).ThenBy(item => item.RecordId, StringComparer.Ordinal)
             .ToArray();
-        var unresolvedCount = unresolvedRows.Select(item => item.JudgmentId ?? item.RecordId)
+        var unresolvedCount = unresolvedRows.Where(item => item.State != "warning")
+            .Select(item => item.JudgmentId ?? item.RecordId)
             .Distinct(StringComparer.Ordinal).Count();
         return new ParsimonyDispositionProjection(bundleId, reportId, baselineBundleDigest, judgments.ProjectId,
             judgments.Digest, activeRows, suppressedRows, resurfacedRows, unresolvedCount,
@@ -161,7 +171,9 @@ public static class ParsimonyDispositionQuery
                 judgment.Source?.ReportId, reportAvailable ? reportId : null,
                 reportAvailable ? baselineBundleDigest : null, judgments.ProjectId,
                 judgment.Source?.ProposalId, judgment.Actor?.Kind.ToString().ToLowerInvariant(),
-                judgment.Actor?.Id, judgment.Actor?.Name, judgment.JudgedAtUtc?.ToString("O")));
+                judgment.Actor?.Id, judgment.Actor?.Name, judgment.JudgedAtUtc?.ToString("O"),
+                HumanJudgmentCodec.VisibleId(judgment.JudgmentId), revision.RecordTitle,
+                revision.Warnings.Select(warning => warning.Message).ToArray()));
         }
         return rows.OrderBy(item => item.JudgmentId, StringComparer.Ordinal)
             .ThenBy(item => item.RevisionId, StringComparer.Ordinal).ToArray();

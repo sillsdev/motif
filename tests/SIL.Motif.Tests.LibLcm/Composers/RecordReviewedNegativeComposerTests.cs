@@ -144,7 +144,9 @@ public sealed class RecordReviewedNegativeComposerTests : IDisposable
         var create = Assert.Single(operations, item => item.Kind == RnResearchNbkRecordsOperationKinds.Create);
         var set = Assert.Single(operations, item => item.Kind == HumanJudgmentCustomFieldOperationKinds.Set);
         var physical = set.After!.Value.GetProperty("text").GetString()!;
-        var retraction = HumanJudgmentCodec.Parse(physical, projectId, create.EntityId!.Value.Value);
+        var retraction = HumanJudgmentCodec.Read(physical, null,
+            JudgmentRecordOperations.StagedParagraphs(operations, create.EntityId!.Value), projectId,
+            create.EntityId!.Value.Value).Judgment;
 
         Assert.IsType<RetractionJudgment>(retraction.Body);
         Assert.True(retraction.ResolvesConflict);
@@ -154,17 +156,18 @@ public sealed class RecordReviewedNegativeComposerTests : IDisposable
     private HumanJudgment BuildAndRead(RecordReviewedNegativeIntent intent)
     {
         var operations = RecordReviewedNegativeComposer.Build(_cache, intent, CanonicalId.Parse(Id()));
-        Assert.Equal(7, operations.Count);
+        Assert.Equal(7 + 2 * HumanJudgmentCodec.ReasonParagraphs(intent.Reason).Count, operations.Count);
         var create = Assert.Single(operations, item => item.Kind == RnResearchNbkRecordsOperationKinds.Create);
         var set = Assert.Single(operations, item => item.Kind == HumanJudgmentCustomFieldOperationKinds.Set);
         var physical = set.After!.Value.GetProperty("text").GetString()!;
-        return HumanJudgmentCodec.Parse(physical, CanonicalId.FromGuid(_cache.LangProject.Guid).Value,
-            create.EntityId!.Value.Value);
+        return HumanJudgmentCodec.Read(physical, null,
+            JudgmentRecordOperations.StagedParagraphs(operations, create.EntityId!.Value),
+            CanonicalId.FromGuid(_cache.LangProject.Guid).Value, create.EntityId!.Value.Value).Judgment;
     }
 
     private void Store(HumanJudgment judgment) => NotebookJudgmentFixture.AddRecord(_cache,
         CanonicalId.Parse(judgment.RevisionId).ToGuid(), NotebookJudgmentFixture.FindReservedField(_cache),
-        TsStringUtils.MakeString(HumanJudgmentCodec.Format(judgment), _cache.DefaultAnalWs));
+        HumanJudgmentCodec.Format(judgment));
 
     private static JudgmentPredecessor Predecessor(HumanJudgment judgment) =>
         new(judgment.RevisionId, HumanJudgmentCodec.LogicalDigest(judgment));

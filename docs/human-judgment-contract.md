@@ -1,14 +1,14 @@
 # Human judgment contract
 
-A person's saved choice and optional reason stay with the FieldWorks project and can be read there. Motif recovers the same exact choice from the readable value without guessing from prose.
+A person's saved choice and optional reason stay with the FieldWorks project and can be read there, next to a short visible ID. Motif recovers the same exact choice from the record's hash-sealed data without guessing from prose.
 
-This is the normative `motif-human-judgment/v1` value contract under [ADR 0056](adr/0056-human-judgments-belong-to-the-fieldworks-project.md). `SIL.Motif.Contract.HumanJudgments` supplies the closed records and pure codec. It does not install fields, open projects, resolve revision graphs or implement commands. The logical JSON schema is `src/SIL.Motif.Contract/Schemas/human-judgment.schema.json`; independent vectors are embedded beside it. The schema describes logical values; the marker uses the same envelope **with the `reason` property forbidden**. Runtime validation adds UTF-8 bounds, identity/context checks, required MSA owner qualification, graph-local rules and normalization described below.
+This is the normative `motif-human-judgment/v1` value contract under [ADR 0056](adr/0056-human-judgments-belong-to-the-fieldworks-project.md). `SIL.Motif.Contract.HumanJudgments` supplies the closed records and pure codec. It does not install fields, open projects, resolve revision graphs or implement commands. The logical JSON schema is `src/SIL.Motif.Contract/Schemas/human-judgment.schema.json`; independent vectors are embedded beside it. The schema describes logical values; the stored data uses the same envelope **with the `reason` property forbidden and a required `contentHash`**. Runtime validation adds UTF-8 bounds, identity/context checks, required MSA owner qualification, graph-local rules and normalization described below.
 
 ## Field and initialization
 
 Before the first judgment, a person confirms project initialization. Applying a Proposal never silently prepares the schema.
 
-Each revision owns one `RnGenericRec`. Resolve its custom field by declaring class `RnGenericRec`, internal name `MotifHumanJudgment`, and exact String schema. The default label is `Motif human judgment`. New values use the first analysis WS; actual rich-string run tags survive a default-WS change. Never serialize a flid or custom-field GUID, use the label as identity, or accept MultiString/MultiUnicode/StText as this value. Title/Description are supplementary, not machine authority. Missing, incompatible and duplicate fields refuse authoring with initialization as the remedy; incompatible/duplicate definitions require deliberate external resolution, never silent repair. `project initialize` is the separate, human-only initialization command; ADR 0056 describes it and the recovery gate.
+Each revision owns one `RnGenericRec`. Resolve two custom String fields by declaring class `RnGenericRec`, exact internal name and exact schema: `MotifJudgmentData` (label `Motif data (do not edit)`) and `MotifJudgmentId` (label `Motif judgment ID`). New values use the first analysis WS; actual rich-string run tags survive a default-WS change. Never serialize a flid or custom-field GUID, use a label as identity, or accept MultiString/MultiUnicode/StText as these values. Title is a label ending in the visible ID and is informational only. Missing, incompatible and duplicate fields refuse authoring with initialization as the remedy; a project that still has the retired `MotifHumanJudgment` field is refused with a message to delete Motif's test/demo judgment records and that field and then initialize again. `project initialize` is the separate, human-only initialization command; ADR 0056 describes it and the recovery gate.
 
 ## Closed logical envelope
 
@@ -42,7 +42,7 @@ The finding's item-relevant evidence digest includes applicable facts, positive/
 
 Rejecting a reading does not reject the whole word. A negative example need not already exist in the dictionary or Texts.
 
-`body.kind=reviewed-negative` contains portable caseId, vernacular WS **tag**, NFD form, explicit context, closed target, optional wordformId and analysisId. It requires actor kind human; this represents confirmed input, never an agent-proposed probe. HumanOnly authoring must confirm that assertion before Apply; parsing a marker is not an authentication mechanism. Unknown probes remain outside this payload. Negative revision content is hashed independently of any detector finding digest.
+`body.kind=reviewed-negative` contains portable caseId, vernacular WS **tag**, NFD form, explicit context, closed target, optional wordformId and analysisId. It requires actor kind human; this represents confirmed input, never an agent-proposed probe. HumanOnly authoring must confirm that assertion before Apply; parsing stored data is not an authentication mechanism. Unknown probes remain outside this payload. Negative revision content is hashed independently of any detector finding digest.
 
 `target.kind=surface` means no acceptable reading in the recorded context and forbids an analysisId. `target.kind=reading` carries 1–512 ordered `NegativeJudgmentMorph` occurrences. Each reuses the existing `ParseMorph` identity: authoritative Form and MSA, optional InflType, conditional GuessedString. A guessed occurrence carries its exact guessed WS; an ordinary one requires Form and forbids guessed WS. MSA is required; MSA alone plus spelling never establishes identity. Form/MSA/InflType are portable references. Captured form/MSA captions make the rejected reading visible; they do not define morphology. Sense and word-level category do not gate ADR 0027 comparison.
 
@@ -52,17 +52,25 @@ Dialect/register restrictions belong in explicit context/provenance. SpellingSta
 
 ## Physical readable value
 
-The person sees the decision and can edit its reason in the normal FieldWorks field editor. A marker provides exact identity without making prose the parser's source of truth.
+The person sees the decision and its visible ID, and can edit the reason in the normal FieldWorks editor. Hash-sealed data gives Motif exact identity without making prose the source of truth.
 
-The one-line grammar is:
+A record stores four parts:
 
 ```text
-<en-v1 statement>[ Reason: <one JSON string>] [motif-human-judgment:v1:<strict unpadded base64url>]
+Title:                   <label> (MJ-XXXX-XXXX)
+Description paragraph 1: <en-v1 statement>
+Description paragraphs 2..n: <reason, plain text, one paragraph per line; none when there is no reason>
+MotifJudgmentId:         MJ-XXXX-XXXX
+MotifJudgmentData:       <canonical JSON including "contentHash">
 ```
 
-The marker decodes as strict UTF-8, bounded RFC 8785 canonical JSON for the closed envelope without reason. Payload bytes in the String are ASCII. The statement is generated from its disposition/target, captured captions, explicit context and pending question. A reading negative lists its ordered form/MSA captions; retraction explicitly says Withdraw and conflict resolution is indicated by its envelope. No second encoded reason can disagree with a direct FieldWorks edit.
+`contentHash` is `sha256:` plus 64 lowercase hex characters over the RFC 8785 canonical UTF-8 bytes of the data object **without** `contentHash`. The stored text is that canonical JSON itself, so any edit, including whitespace or key order, fails the check. The data is the closed envelope without `reason`; a `reason` inside it is damaged data. The hash detects edits; it is not authentication.
 
-`en-v1` is the fixed versioned wire formatter, backed by the shared embedded `HumanJudgments/ReadableFormats/en-v1.json` resource. It is not localized UI copy: screen controls/Help must use shared locale resources. Future physical formatter languages need their own versioned contract and resource-backed implementation, not a silent wording change to en-v1. Reason's reserved delimiter is literal ` Reason: `; the content is one quoted JSON string. Quoted Unicode stays readable; escaped quotes, newlines and marker-like text round-trip. Add/change/remove that quoted clause is supported. Empty/cleared reason normalizes to null and reads as no reason (the window shows “No reason given”). The codec compares expected and visible statement under NFD. A changed sentence, bad quoting, duplicate marker, unknown version/format, invalid UTF-8, padding/noncanonical base64url or marker truncation is unavailable input and preserves its original text/error for inspection.
+The visible ID is `MJ-` plus eight Crockford base32 characters (no I, L, O, U) taken from the first five bytes of SHA-256 over the logical judgment id. It is identical for every revision of one judgment, is compared without case or hyphen, and two different judgment ids that share one ID make both unavailable.
+
+Reading a record, in order: damaged data (not a closed Motif value) is `damaged`; a missing or different hash is `hash-failed`, shown as "hash failed on this record entry"; a project or record identity that is not this one is `identity`. Each makes the judgment unavailable: it cannot suppress its finding, it is listed with the record's ID and title, and nothing is repaired or partly used. A changed ID field ("The judgment ID on this record does not match its data") or a changed first paragraph ("The sentence on this record was edited; Motif uses its data") is a warning only: the record is listed, and the judgment still applies from its data. The reason is whatever follows the first paragraph.
+
+`en-v1` is the fixed versioned wire formatter, backed by the shared embedded `HumanJudgments/ReadableFormats/en-v1.json` resource. It is not localized UI copy: screen controls/Help must use shared locale resources. Future physical formatter languages need their own versioned contract and resource-backed implementation, not a silent wording change to en-v1. The reason is plain text in the Description paragraphs after the sentence, so Unicode, quotes and newlines need no escaping; adding, changing or deleting those paragraphs is the supported edit. An empty or cleared reason reads as no reason (the window shows “No reason given”). The codec compares expected and visible sentence under NFD. Damaged data, a failed hash, a mismatched identity, or a duplicate visible ID is unavailable input and preserves its original text and message for inspection.
 
 Plain semantic strings normalize to NFD before RFC 8785 hashing; visible rich strings follow LibLCM NFSC. Rich-text formatting and current default WS never enter logical identity. No formatting/font/WS rendering byte is hashed as a decision. The actual run tag must still be preserved by the subsequent project reader/writer. Logical digest includes parsed reason, exact envelope and metadata; finding evidence excludes the item's own handling revision. A direct reason edit changes predecessor content/Preflight but keeps the same suppression evidence binding. Old same-record bytes are recoverable only through retained captures or project history; direct edits are not magically append-only.
 

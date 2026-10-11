@@ -116,6 +116,7 @@ public sealed partial class ParsimonyListRow(
 /// <summary>One saved decision in the Suppressed list, read-only except for its return to Active.</summary>
 /// <param name="key">The revision the row shows, which selects it.</param>
 /// <param name="title">The measure and the subject it applies to.</param>
+/// <param name="identity">The judgment ID and the Notebook record title, so the row matches its record.</param>
 /// <param name="decision">Kept or Deferred.</param>
 /// <param name="reason">The reason the person gave, or "No reason given".</param>
 /// <param name="stateLabel">What the decision means now: suppressed, stale, or unavailable.</param>
@@ -124,14 +125,17 @@ public sealed partial class ParsimonyListRow(
 /// <param name="selectCommand">Shows this decision's detail.</param>
 /// <param name="automationId">The row's automation identifier, from its revision.</param>
 public sealed partial class ParsimonySuppressedItem(
-    string key, string title, string decision, string reason, string stateLabel, string returnLabel, bool isSelected,
-    IRelayCommand<string> selectCommand, string automationId) : ObservableObject
+    string key, string title, string identity, string decision, string reason, string stateLabel, string returnLabel,
+    bool isSelected, IRelayCommand<string> selectCommand, string automationId) : ObservableObject
 {
     /// <summary>The revision the row shows, which selects it.</summary>
     public string Key { get; } = key;
 
     /// <summary>The measure and the subject it applies to.</summary>
     public string Title { get; } = title;
+
+    /// <summary>The judgment ID and the Notebook record title, so the row matches its record.</summary>
+    public string Identity { get; } = identity;
 
     /// <summary>Kept or Deferred.</summary>
     public string Decision { get; } = decision;
@@ -270,6 +274,11 @@ public sealed partial class ParsimonyPageModel : PageModel
     [NotifyPropertyChangedFor(nameof(HasEvidenceNote))]
     private string _evidenceNote = string.Empty;
 
+    /// <summary>The judgment records that need a look: one line each with its ID, title and what is wrong.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasJudgmentIssues))]
+    private string _judgmentIssuesText = string.Empty;
+
     /// <summary>How many Active findings there are to review; the axes are never summed.</summary>
     [ObservableProperty]
     private string _axisSummary = string.Empty;
@@ -356,6 +365,9 @@ public sealed partial class ParsimonyPageModel : PageModel
 
     /// <summary>Whether the Active list is listed from the Report because its evidence is no longer stored.</summary>
     public bool HasEvidenceNote => EvidenceNote.Length > 0;
+
+    /// <summary>Whether a judgment record failed a check or carries a warning.</summary>
+    public bool HasJudgmentIssues => JudgmentIssuesText.Length > 0;
 
     /// <summary>Whether a finding's evidence is shown in the detail pane.</summary>
     public bool HasEvidence => Evidence is not null;
@@ -563,11 +575,15 @@ public sealed partial class ParsimonyPageModel : PageModel
         var staged = await Context.Commands.LoadPendingChangesAsync(
             new PendingChangesRequest(path, MotifProductVersion.CurrentText), cancellationToken).ConfigureAwait(true);
         if (!IsCurrent(generation, path)) return;
+        var history = await ReadAllViewRowsAsync(path, report, ParsimonyViews.ParsimonySuppressionHistory, cancellationToken)
+            .ConfigureAwait(true);
+        if (!IsCurrent(generation, path)) return;
 
         _report = report;
         _reportProjectPath = path;
         _suppressedRows = [.. suppressed.Value!.Rows.OfType<ParsimonySuppressionHistoryViewRow>()];
         _suppressedTotal = TotalOf(suppressed.Value, _suppressedRows.Count);
+        JudgmentIssuesText = history.Succeeded ? JudgmentIssueLines(history.Value!.Rows) : string.Empty;
         _activeRows = evidenceMissing
             ? [.. UndecidedFindings(report, _suppressedRows)]
             : [.. active.Value!.Rows.OfType<ParsimonyFindingDispositionViewRow>()];
@@ -679,6 +695,31 @@ public sealed partial class ParsimonyPageModel : PageModel
             path, MotifProductVersion.CurrentText, new ParsimonyNamedViewRequest(report.Inputs.BundleId, view,
                 new ParsimonyViewFilters(ReportId: report.ReportId), ViewPageSize, cursor)), cancellationToken)
             .ConfigureAwait(true);
+
+    // Every record that failed a check or carries a warning, named by ID and title, one line each.
+    private static string JudgmentIssueLines(IReadOnlyList<ParsimonyViewRow> rows) => string.Join("\n", rows
+        .OfType<ParsimonyUnresolvedJudgmentViewRow>().Where(row => row.Check != "capability")
+        .Select(row => ParsimonyJudgmentText.Line(row)));
+
+    private async Task<CommandOutcome<ParsimonyNamedViewResponse>> ReadAllViewRowsAsync(string path, ParsimonyReportResponse report,
+        string view, CancellationToken cancellationToken)
+    {
+        var rows = new List<ParsimonyViewRow>();
+        string? cursor = null;
+        ParsimonyNamedViewResponse? last = null;
+        do
+        {
+            var outcome = await Context.Commands.ReadParsimonyViewAsync(new ReadParsimonyViewRequest(
+                path, MotifProductVersion.CurrentText, new ParsimonyNamedViewRequest(report.Inputs.BundleId, view,
+                    new ParsimonyViewFilters(ReportId: report.ReportId), ViewPageSize, cursor)), cancellationToken)
+                .ConfigureAwait(true);
+            if (!outcome.Succeeded) return outcome;
+            last = outcome.Value!;
+            rows.AddRange(last.Rows);
+            cursor = last.NextCursor;
+        } while (last.Truncated && cursor is not null);
+        return CommandOutcome<ParsimonyNamedViewResponse>.Success(last! with { Rows = rows });
+    }
 
     // A staged decision leaves the overlay once Apply writes it; the whole overlay goes when its draft does.
     private void ForgetStagedWork(CommandOutcome<PendingChangesSnapshot> staged, string reportId)
@@ -809,6 +850,7 @@ public sealed partial class ParsimonyPageModel : PageModel
         var made = new ParsimonySuppressedItem(
             row.RevisionId,
             row.MeasureCaption + " · " + row.SubjectCaption,
+            row.VisibleId + " · " + row.RecordTitle,
             DecisionLabel(row.Disposition),
             string.IsNullOrWhiteSpace(row.Reason) ? "No reason given" : "Reason: " + row.Reason,
             SuppressedStateLabel(row.State),
@@ -877,6 +919,8 @@ public sealed partial class ParsimonyPageModel : PageModel
         InspectorDetail.Recorded(
             ("Decision", DecisionLabel(row.Disposition)),
             ("Subject", row.SubjectCaption),
+            ("Judgment ID", row.VisibleId),
+            ("Notebook record", row.RecordTitle),
             ("Reason", string.IsNullOrWhiteSpace(row.Reason) ? "No reason given" : row.Reason),
             ("Current state", SuppressedStateLabel(row.State))),
         []);
@@ -1102,6 +1146,7 @@ public sealed partial class ParsimonyPageModel : PageModel
         AxisLegend = string.Empty;
         Groups = [];
         EvidenceNote = string.Empty;
+        JudgmentIssuesText = string.Empty;
         RecordTypes = [];
         SelectedRecordType = null;
         Evidence = null;

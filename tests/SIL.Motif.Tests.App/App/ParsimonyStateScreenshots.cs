@@ -20,7 +20,7 @@ namespace SIL.Motif.Tests.App;
 /// Saves the Parsimony page in the states it can be in with Advanced AI mode on: no stored Report, a listed Report with
 /// a selected finding and its evidence, an incomplete Report, a Report from an earlier Baseline, a refusal, and the
 /// decision states: a staged keep, a Suppressed decision with and without a reason, and a finding whose evidence changed
-/// and came back to Active. Each state is driven through the page's own read and actions. Like
+/// and came back to Active, and a judgment whose stored data failed its hash. Each state is driven through the page's own read and actions. Like
 /// <see cref="PageScreenshots"/>, it runs only when <c>MOTIF_SCREENSHOTS</c> names a folder, and it writes
 /// <c>state-parsimony-&lt;state&gt;-&lt;width&gt;-&lt;theme&gt;.png</c> plus <c>parsimony-states.txt</c>.
 /// </summary>
@@ -72,7 +72,7 @@ public sealed class ParsimonyStateScreenshots(ITestOutputHelper output)
     private static readonly string[] States =
     [
         "empty", "listed-evidence", "incomplete", "earlier-baseline", "refused",
-        "pending-keep", "suppressed-with-reason", "suppressed-without-reason", "resurfaced",
+        "pending-keep", "suppressed-with-reason", "suppressed-without-reason", "resurfaced", "judgment-hash-failed",
     ];
 
     // Each decision state is reached through the page's own selection and action, not by setting its fields.
@@ -140,16 +140,28 @@ public sealed class ParsimonyStateScreenshots(ITestOutputHelper output)
         fake.ParsimonyViewHandler = (request, _) => Task.FromResult(CommandOutcome<ParsimonyNamedViewResponse>.Success(
             new ParsimonyNamedViewResponse(report.Inputs.BundleId, request.Query.View, 1,
                 ParsimonyMeasureStatus.Computed, [], 0, 0, null, false,
-                request.Query.View == "parsimony-suppressed" ? suppressed : active, null, null)));
+                request.Query.View switch
+                {
+                    "parsimony-suppressed" => suppressed,
+                    "parsimony-suppression-history" when state == "judgment-hash-failed" => [HashFailed(findings[0])],
+                    _ => active,
+                }, null, null)));
         fake.RecordDispositionHandler = (request, _) => Task.FromResult(CommandOutcome<ComposedOperationsResponse>.Success(
             new ComposedOperationsResponse(request.DraftName, "RecordParsimonyDisposition", [], 1)));
     }
+
+    // A judgment whose stored JSON was edited: it no longer suppresses, so its finding stays Active.
+    private static ParsimonyUnresolvedJudgmentViewRow HashFailed(ParsimonyFinding finding) =>
+        new("record-" + finding.FindingId, "judgment-" + finding.FindingId, "unavailable",
+            "hash failed on this record entry", "sha256:" + new string('7', 64), "hash-failed",
+            "MJ-TEST-0001", "Record title");
 
     private static ParsimonySuppressionHistoryViewRow History(ParsimonyFinding finding, string disposition, string? reason) =>
         new("judgment-" + finding.FindingId, "revision-" + finding.FindingId, "record-" + finding.FindingId,
             "sha256:" + new string('8', 64), finding.MeasureId, "subject-" + finding.FindingId, "the prohibition",
             ParsimonyRecipeCatalog.Load().Find(finding.MeasureId)?.Title ?? "Parsimony check", finding.EvidenceDigest,
-            disposition, reason, "suppressed", null, null, null, "project", null, null, null, null, null);
+            disposition, reason, "suppressed", null, null, null, "project", null, null, null, null, null,
+            "MJ-TEST-0001", "Record title", []);
 
     private static void ConfigureNoReport(FakeCommandClient fake, string state)
     {
@@ -182,6 +194,7 @@ public sealed class ParsimonyStateScreenshots(ITestOutputHelper output)
         "suppressed-with-reason" => "the Suppressed tab lists a kept finding with its reason",
         "suppressed-without-reason" => "the Suppressed tab lists a deferred finding; the page says no reason was given",
         "resurfaced" => "a kept finding whose evidence changed is back in Active with its earlier reason",
+        "judgment-hash-failed" => "a judgment whose stored data was edited is named in the banner; its finding is back in Active",
         _ => throw new ArgumentOutOfRangeException(nameof(state), state, null),
     };
 }

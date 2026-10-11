@@ -51,7 +51,7 @@ public sealed class ParsimonyDispositionRevisionComposerTests : IDisposable
         Assert.Equal(JudgmentActorKind.Agent, revision.Actor!.Kind);
         Assert.Equal(revisedReason, revision.Reason);
         Assert.Equal(Assert.IsType<DispositionJudgment>(original.Body), body);
-        Assert.Equal(7, operations.Count);
+        Assert.Equal(7 + 2 * HumanJudgmentCodec.ReasonParagraphs(revisedReason).Count, operations.Count);
     }
 
     [Fact]
@@ -119,7 +119,7 @@ public sealed class ParsimonyDispositionRevisionComposerTests : IDisposable
     {
         var record = NotebookJudgmentFixture.AddRecord(_cache,
             CanonicalId.Parse(judgment.RevisionId).ToGuid(), _fieldId,
-            TsStringUtils.MakeString(HumanJudgmentCodec.Format(judgment), _cache.DefaultAnalWs));
+            HumanJudgmentCodec.Format(judgment));
         var recordType = _cache.ServiceLocator.GetInstance<ICmPossibilityRepository>()
             .GetObject(_recordTypeId.ToGuid());
         NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () => record.TypeRA = recordType);
@@ -130,8 +130,9 @@ public sealed class ParsimonyDispositionRevisionComposerTests : IDisposable
         var create = Assert.Single(operations, item => item.Kind == RnResearchNbkRecordsOperationKinds.Create);
         var set = Assert.Single(operations, item => item.Kind == HumanJudgmentCustomFieldOperationKinds.Set);
         var text = set.After!.Value.GetProperty("text").GetString()!;
-        return HumanJudgmentCodec.Parse(text, CanonicalId.FromGuid(_cache.LangProject.Guid).Value,
-            create.EntityId!.Value.Value);
+        return HumanJudgmentCodec.Read(text, null,
+            JudgmentRecordOperations.StagedParagraphs(operations, create.EntityId!.Value),
+            CanonicalId.FromGuid(_cache.LangProject.Guid).Value, create.EntityId!.Value.Value).Judgment;
     }
 
     private void Apply(IReadOnlyList<OperationEnvelope> operations, CanonicalId proposalId)

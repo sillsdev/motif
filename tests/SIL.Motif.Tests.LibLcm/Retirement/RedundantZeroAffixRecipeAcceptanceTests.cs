@@ -193,7 +193,7 @@ public sealed partial class RedundantZeroAffixRecipeAcceptanceTests(PristineProj
                 "ZeroAffix absence control", new SurfaceNegativeTarget()),
             Actor: new JudgmentActor(JudgmentActorKind.Human));
         NotebookJudgmentFixture.AddRecord(cache, revisionId, field,
-            TsStringUtils.MakeString(HumanJudgmentCodec.Format(judgment), cache.DefaultAnalWs));
+            HumanJudgmentCodec.Format(judgment));
     }
 
     private static async Task<(ParsimonyMeasureResult Measure, IReadOnlyList<ParsimonyNullOptionalViewRow> Rows)>

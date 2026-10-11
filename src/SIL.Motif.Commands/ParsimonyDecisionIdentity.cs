@@ -41,14 +41,18 @@ internal static class ParsimonyDecisionIdentity
         operations.Where(operation => operation.Kind == HumanJudgmentCustomFieldOperationKinds.Set &&
                 operation.Target is { } && operation.After is { } after &&
                 after.TryGetProperty("text", out var text) && text.ValueKind == JsonValueKind.String)
-            .Any(operation => IsSameStagedDecision(operation, projectId, key));
+            .Any(operation => IsSameStagedDecision(operations, operation, projectId, key));
 
-    private static bool IsSameStagedDecision(OperationEnvelope operation, string projectId, string key)
+    private static bool IsSameStagedDecision(
+        IEnumerable<OperationEnvelope> operations, OperationEnvelope operation, string projectId, string key)
     {
         try
         {
             var text = operation.After!.Value.GetProperty("text").GetString()!;
-            var judgment = HumanJudgmentCodec.Parse(text, projectId, operation.Target!.Value.Value);
+            var all = operations.ToArray();
+            var judgment = HumanJudgmentCodec.Read(text, null,
+                JudgmentRecordOperations.StagedParagraphs(all, operation.Target!.Value),
+                projectId, operation.Target!.Value.Value).Judgment;
             return judgment.Body is DispositionJudgment && KeyOf(judgment) == key;
         }
         catch (FormatException)

@@ -182,7 +182,7 @@ public sealed class ParsimonyEvidenceProjectionTests : IDisposable
         var readable = HumanJudgmentCodec.Format(judgment);
         var fieldId = NotebookJudgmentFixture.InitializeReservedField(_cache);
         NotebookJudgmentFixture.AddRecord(_cache, recordGuid, fieldId,
-            TsStringUtils.MakeString(readable, _cache.DefaultAnalWs));
+            readable);
 
         var projection = BuildProjection(ParsimonyEvidenceScopeKind.ProjectApproved);
         var path = Path.Combine(_root, "judgments.sqlite");
@@ -197,7 +197,7 @@ public sealed class ParsimonyEvidenceProjectionTests : IDisposable
             "SELECT source_project_id FROM human_judgment_metadata WHERE singleton=1;"));
         Assert.Equal(projection.HumanJudgments.Digest, Scalar(connection,
             "SELECT projection_digest FROM human_judgment_metadata WHERE singleton=1;"));
-        Assert.Equal(readable, Scalar(connection,
+        Assert.Equal(readable.Data, Scalar(connection,
             $"SELECT physical_value FROM human_judgment_revisions WHERE record_guid='{revisionId}';"));
         Assert.Equal(HumanJudgmentCodec.LogicalDigest(judgment), Scalar(connection,
             $"SELECT content_digest FROM human_judgment_revisions WHERE record_guid='{revisionId}';"));

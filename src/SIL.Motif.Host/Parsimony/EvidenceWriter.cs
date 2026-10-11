@@ -139,7 +139,7 @@ public static class EvidenceWriter
             var unavailableCount = reader.GetInt64(5);
             var duplicate = reader.Read();
             reader.Close();
-            if (version != 1 || captureDigest != sourceSha256 || !IsLowerSha256(projectionDigest) || duplicate ||
+            if (version != 2 || captureDigest != sourceSha256 || !IsLowerSha256(projectionDigest) || duplicate ||
                 revisionCount != Count(connection, "human_judgment_revisions") ||
                 headCount != Count(connection, "human_judgment_heads") ||
                 unavailableCount != Count(connection, "human_judgment_unavailable"))
@@ -710,7 +710,7 @@ public static class EvidenceWriter
             metadata.CommandText = "INSERT INTO human_judgment_metadata " +
                 "(singleton, projection_version, source_project_id, source_capture_digest, capability, " +
                 "capability_message, snapshot_digest, projection_digest, revision_count, head_count, unavailable_count) " +
-                "VALUES (1, 1, $project, $capture, $capability, $message, $snapshot, $projection, $revisions, $heads, $unavailable);";
+                "VALUES (1, 2, $project, $capture, $capability, $message, $snapshot, $projection, $revisions, $heads, $unavailable);";
             metadata.Parameters.AddWithValue("$project", projection.ProjectId);
             metadata.Parameters.AddWithValue("$capture", sourceCaptureDigest);
             metadata.Parameters.AddWithValue("$capability", projection.Capability);
@@ -727,8 +727,8 @@ public static class EvidenceWriter
         revision.Transaction = transaction;
         revision.CommandText = "INSERT INTO human_judgment_revisions " +
             "(record_guid, judgment_id, revision_id, content_digest, format, version, body_kind, physical_value, " +
-            "judgment_json, state) VALUES ($record, $judgment, $revision, $digest, $format, $version, $kind, " +
-            "$physical, $json, $state);";
+            "judgment_json, record_title, warnings_json, state) VALUES ($record, $judgment, $revision, $digest, " +
+            "$format, $version, $kind, $physical, $json, $title, $warnings, $state);";
         var recordId = revision.Parameters.Add("$record", SqliteType.Text);
         var judgmentId = revision.Parameters.Add("$judgment", SqliteType.Text);
         var revisionId = revision.Parameters.Add("$revision", SqliteType.Text);
@@ -738,6 +738,8 @@ public static class EvidenceWriter
         var bodyKind = revision.Parameters.Add("$kind", SqliteType.Text);
         var physicalValue = revision.Parameters.Add("$physical", SqliteType.Text);
         var judgmentJson = revision.Parameters.Add("$json", SqliteType.Text);
+        var recordTitle = revision.Parameters.Add("$title", SqliteType.Text);
+        var warningsJson = revision.Parameters.Add("$warnings", SqliteType.Text);
         var state = revision.Parameters.Add("$state", SqliteType.Text);
         revision.Prepare();
 
@@ -771,6 +773,8 @@ public static class EvidenceWriter
             bodyKind.Value = item.BodyKind;
             physicalValue.Value = item.PhysicalValue;
             judgmentJson.Value = HumanJudgmentCodec.ToJson(item.Judgment);
+            recordTitle.Value = item.RecordTitle;
+            warningsJson.Value = JsonSerializer.Serialize(item.Warnings.Select(warning => warning.Kind.ToString()));
             state.Value = item.State;
             revision.ExecuteNonQuery();
 
@@ -829,7 +833,8 @@ public static class EvidenceWriter
         using var invalid = connection.CreateCommand();
         invalid.Transaction = transaction;
         invalid.CommandText = "INSERT INTO human_judgment_unavailable " +
-            "(record_guid, judgment_id, reason, physical_digest) VALUES ($record, $judgment, $reason, $digest);";
+            "(record_guid, judgment_id, reason, physical_digest, kind, visible_id, record_title) " +
+            "VALUES ($record, $judgment, $reason, $digest, $kind, $visibleId, $title);";
         foreach (var item in projection.Unavailable)
         {
             invalid.Parameters.Clear();
@@ -837,6 +842,9 @@ public static class EvidenceWriter
             invalid.Parameters.AddWithValue("$judgment", (object?)item.JudgmentId ?? DBNull.Value);
             invalid.Parameters.AddWithValue("$reason", item.Reason);
             invalid.Parameters.AddWithValue("$digest", item.PhysicalDigest);
+            invalid.Parameters.AddWithValue("$kind", item.Kind);
+            invalid.Parameters.AddWithValue("$visibleId", (object?)item.VisibleId ?? DBNull.Value);
+            invalid.Parameters.AddWithValue("$title", item.RecordTitle);
             invalid.ExecuteNonQuery();
         }
     }

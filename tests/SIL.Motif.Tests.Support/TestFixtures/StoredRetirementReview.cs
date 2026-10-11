@@ -56,8 +56,7 @@ internal static partial class StoredRetirementReview
     /// <remarks>
     /// Masked: every 22-character entity or job id, every <c>sha256:</c> digest and bare 64-hex digest
     /// (they hash ids and run identity), GUIDs, the published Baseline directory and target-object list in
-    /// the dry run's note (a path under the run's scratch root, and ids), the base64 body of the
-    /// <c>motif-human-judgment</c> marker (it embeds ids and digests), and the order of the alternates
+    /// the dry run's note (a path under the run's scratch root, and ids), and the order of the alternates
     /// named in a judgment's caption (it follows id order). Sorted: every list except the review's parts,
     /// whose order is the window's reading order, because effect and operation order follows id order.
     /// </remarks>
@@ -87,7 +86,7 @@ internal static partial class StoredRetirementReview
     {
         text = BaselineNote().Replace(text, "(published Baseline directory <dir>; $1 target object(s): <ids>)");
         text = AlternatesCaption().Replace(text, "$1<alternates>");
-        text = JudgmentBody().Replace(text, "$1<encoded>]");
+        text = EscapedJudgmentId().Replace(text, "<id>");
         return RunMinted().Replace(text, "<id>");
     }
 
@@ -97,8 +96,9 @@ internal static partial class StoredRetirementReview
     [GeneratedRegex("(alternation family: )[^”\"]*")]
     private static partial Regex AlternatesCaption();
 
-    [GeneratedRegex(@"(\[motif-human-judgment:v1:)[A-Za-z0-9_=-]+\]")]
-    private static partial Regex JudgmentBody();
+    // The judgment data is JSON inside a JSON string, so each of its ids follows an escaped quote.
+    [GeneratedRegex(@"(?<=u0022)[A-Za-z0-9_-]{22}(?![A-Za-z0-9_-])")]
+    private static partial Regex EscapedJudgmentId();
 
     [GeneratedRegex(@"sha256:[0-9a-f]{64}|[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}" +
         @"|(?<![A-Za-z0-9_.-])(?=[A-Za-z0-9_-]*[0-9_A-Z-])[A-Za-z0-9_-]{22}(?![A-Za-z0-9_.-])" +

@@ -483,7 +483,9 @@ public static class RetirementExpectationTranslator
             HumanJudgment judgment;
             try
             {
-                judgment = HumanJudgmentCodec.Parse(value, projectId, target.Value);
+                judgment = HumanJudgmentCodec.Read(value, null,
+                    JudgmentRecordOperations.StagedParagraphs(proposal.Operations, target),
+                    projectId, target.Value).Judgment;
             }
             catch (FormatException error)
             {

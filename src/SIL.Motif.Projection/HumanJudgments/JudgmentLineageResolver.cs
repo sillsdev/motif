@@ -15,7 +15,9 @@ public sealed record HumanJudgmentRevisionProjection(
     string BodyKind,
     string PhysicalValue,
     HumanJudgment Judgment,
-    string State);
+    string State,
+    string RecordTitle,
+    IReadOnlyList<HumanJudgmentWarning> Warnings);
 
 /// <summary>One current logical judgment head or a set of unresolved competing heads.</summary>
 public sealed record HumanJudgmentHeadProjection(
@@ -30,7 +32,10 @@ public sealed record HumanJudgmentUnavailableProjection(
     string RecordId,
     string? JudgmentId,
     string Reason,
-    string PhysicalDigest);
+    string PhysicalDigest,
+    string Kind,
+    string? VisibleId,
+    string RecordTitle);
 
 /// <summary>The deterministic judgment input captured from one already-loaded project.</summary>
 public sealed record HumanJudgmentLineageProjection(
@@ -53,7 +58,8 @@ public static class JudgmentLineageResolver
         var revisions = new List<HumanJudgmentRevisionProjection>();
         var heads = new List<HumanJudgmentHeadProjection>();
         var unavailable = snapshot.Unavailable.Select(item => new HumanJudgmentUnavailableProjection(
-            item.RecordId, null, item.Message, Hash(item.PhysicalValue.Normalize(NormalizationForm.FormD)))).ToList();
+            item.RecordId, null, item.Message, Hash(item.PhysicalValue.Normalize(NormalizationForm.FormD)),
+            item.Kind, item.VisibleId, item.RecordTitle)).ToList();
 
         foreach (var group in snapshot.Judgments.GroupBy(item => item.Judgment.JudgmentId, StringComparer.Ordinal)
                      .OrderBy(item => item.Key, StringComparer.Ordinal))
@@ -70,7 +76,8 @@ public static class JudgmentLineageResolver
                 {
                     revisions.Add(ToRevision(item, "unavailable"));
                     unavailable.Add(new(item.RecordId, group.Key, issue,
-                        Hash(item.PhysicalValue.Normalize(NormalizationForm.FormD))));
+                        Hash(item.PhysicalValue.Normalize(NormalizationForm.FormD)), "lineage", item.VisibleId,
+                        item.RecordTitle));
                     heads.Add(new(group.Key, item.Judgment.RevisionId, item.RecordId, "unavailable", issue));
                 }
                 continue;
@@ -107,7 +114,7 @@ public static class JudgmentLineageResolver
                 .Append(item.State).Append('\0').Append(item.Issue).Append('\n');
         foreach (var item in orderedUnavailable)
             digestText.Append(item.RecordId).Append('\0').Append(item.PhysicalDigest).Append('\0')
-                .Append(item.Reason).Append('\n');
+                .Append(item.Kind).Append('\0').Append(item.Reason).Append('\n');
 
         return new(snapshot.ProjectId, snapshot.Capability.ToString(), snapshot.Message, snapshot.LogicalDigest,
             Hash(digestText.ToString()), Array.AsReadOnly(orderedRevisions), Array.AsReadOnly(orderedHeads),
@@ -175,7 +182,7 @@ public static class JudgmentLineageResolver
             ReviewedNegativeJudgment => "reviewed-negative",
             RetractionJudgment => "retraction",
             _ => "unknown",
-        }, item.PhysicalValue, item.Judgment, state);
+        }, item.PhysicalValue, item.Judgment, state, item.RecordTitle, item.Warnings);
 
     private static string Hash(string value) => Convert.ToHexStringLower(
         SHA256.HashData(Encoding.UTF8.GetBytes(value)));

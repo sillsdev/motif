@@ -461,15 +461,26 @@ public sealed record ParsimonySuppressionHistoryViewRow(
     string? ActorKind,
     string? ActorId,
     string? ActorName,
-    string? JudgedAtUtc) : ParsimonyViewRow;
+    string? JudgedAtUtc,
+    string VisibleId,
+    string RecordTitle,
+    IReadOnlyList<string> Warnings) : ParsimonyViewRow;
 
-/// <summary>One malformed, incomplete, or conflicting judgment input that cannot hide a finding.</summary>
+/// <summary>
+/// One judgment record a person should look at. A State of <c>unavailable</c>, <c>conflict</c> or <c>unresolved</c>
+/// means the record cannot hide a finding; <c>warning</c> means an edited ID or sentence that leaves the judgment in
+/// force. Check names the failed check: damaged, hash-failed, identity, incomplete, duplicate-id, lineage,
+/// capability, conflict or warning. A hash failure reads "hash failed on this record entry".
+/// </summary>
 public sealed record ParsimonyUnresolvedJudgmentViewRow(
     string RecordId,
     string? JudgmentId,
     string State,
     string Reason,
-    string PhysicalDigest) : ParsimonyViewRow;
+    string PhysicalDigest,
+    string Check,
+    string? VisibleId,
+    string RecordTitle) : ParsimonyViewRow;
 
 /// <summary>The Active and Suppressed presentation derived from one frozen Report and Baseline.</summary>
 public sealed record ParsimonyDispositionProjection(
@@ -829,3 +840,17 @@ public sealed record ParsimonyDispositionRecord(
     long Version,
     string SourceReportId,
     string? ProposalId);
+
+/// <summary>The one sentence every front end uses to name a judgment record that needs a look.</summary>
+public static class ParsimonyJudgmentText
+{
+    /// <summary>Names the record by its ID and title, then says what is wrong and whether it still applies.</summary>
+    public static string Line(ParsimonyUnresolvedJudgmentViewRow row)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+        var name = $"Judgment {row.VisibleId ?? row.RecordId} \"{row.RecordTitle}\": ";
+        return row.State == "warning"
+            ? name + row.Reason + "; it still applies."
+            : name + row.Reason + "; it does not suppress its finding.";
+    }
+}

@@ -25,6 +25,9 @@ internal static class JudgmentOnlyProposalReadiness
             [HumanJudgmentCustomFieldOperationKinds.Set] = SnapshotFields.RnGenericRecMotifHumanJudgment,
         };
 
+    // Record create, type, title, Description create and the judgment data write; paragraphs add two each.
+    private const int FixedOperationsPerRecord = 5;
+
     public static string? ExemptionFor(Proposal proposal, IReadOnlyList<ExpectedEffect> effects)
     {
         var operations = proposal.Operations;
@@ -63,6 +66,7 @@ internal static class JudgmentOnlyProposalReadiness
                 .Distinct(System.StringComparer.Ordinal).Count() != 1)
             return null;
 
+        var expectedCount = 0;
         foreach (var recordCreate in recordCreates)
         {
             var recordId = recordCreate.EntityId!.Value.Value;
@@ -81,17 +85,22 @@ internal static class JudgmentOnlyProposalReadiness
             var paragraphs = operations.Where(operation =>
                 operation.Kind == StTextParagraphsOperationKinds.Create &&
                 operation.Target?.Value == descriptions[0].EntityId!.Value.Value).ToArray();
-            if (paragraphs.Length != 1 || paragraphs[0].EntityId is null)
+            if (paragraphs.Length == 0 || paragraphs.Any(paragraph => paragraph.EntityId is null))
                 return null;
 
-            var contents = operations.Where(operation =>
-                operation.Kind == StTxtParaContentsOperationKinds.Set &&
-                operation.Target?.Value == paragraphs[0].EntityId!.Value.Value).ToArray();
-            if (contents.Length != 1)
-                return null;
+            // The sentence is the first paragraph; every further paragraph is a line of the reason.
+            foreach (var paragraph in paragraphs)
+            {
+                var contents = operations.Where(operation =>
+                    operation.Kind == StTxtParaContentsOperationKinds.Set &&
+                    operation.Target?.Value == paragraph.EntityId!.Value.Value).ToArray();
+                if (contents.Length != 1)
+                    return null;
+            }
+            expectedCount += FixedOperationsPerRecord + 2 * paragraphs.Length;
         }
 
-        return operations.Count == recordCreates.Length * OperationFields.Count
+        return operations.Count == expectedCount
             ? ExemptionReason
             : null;
     }

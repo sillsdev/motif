@@ -690,7 +690,7 @@ public sealed partial class AllomorphRuleRetirementAcceptanceTests(
                 ws, "ri", "owner acceptance negative", new SurfaceNegativeTarget()),
             Actor: new JudgmentActor(JudgmentActorKind.Human));
         NotebookJudgmentFixture.AddRecord(cache, CanonicalId.Parse(negativeRevision).ToGuid(), field,
-            TsStringUtils.MakeString(HumanJudgmentCodec.Format(negative), cache.DefaultAnalWs));
+            HumanJudgmentCodec.Format(negative));
         return new(r, t, a, i, first.Entry, first.Alternate, second.Entry, second.Alternate,
             firstTarget.Wordform, firstTarget.Analysis, firstTarget.SuffixBundle, secondTarget.Analysis,
             secondTarget.SuffixBundle, unchanged.Wordform, firstTarget.EvaluationIds,

@@ -7,8 +7,8 @@ namespace SIL.Motif.Model.Snapshot;
 
 public static partial class SnapshotFields
 {
-    /// <summary>A <c>RnGenericRec</c>'s <c>MotifHumanJudgment</c> reserved custom String field.</summary>
-    public const string RnGenericRecMotifHumanJudgment = "system/rnGenericRec/motifHumanJudgment";
+    /// <summary>A <c>RnGenericRec</c>'s <c>MotifJudgmentData</c> reserved custom String field.</summary>
+    public const string RnGenericRecMotifHumanJudgment = "system/rnGenericRec/motifJudgmentData";
 
     /// <summary>A <c>RnGenericRec</c>'s <c>Title</c> basic String field.</summary>
     public const string RnGenericRecTitle = "system/rnGenericRec/title";

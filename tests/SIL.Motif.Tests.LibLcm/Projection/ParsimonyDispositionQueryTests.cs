@@ -245,7 +245,8 @@ public sealed class ParsimonyDispositionQueryTests
     private static HumanJudgmentLineageProjection Projection(IReadOnlyList<HumanJudgment> values)
     {
         var stored = values.Select(value => new StoredHumanJudgment(value.RevisionId, value,
-            HumanJudgmentCodec.LogicalDigest(value), HumanJudgmentCodec.Format(value))).ToArray();
+            HumanJudgmentCodec.LogicalDigest(value), HumanJudgmentCodec.Format(value).Data,
+            HumanJudgmentCodec.VisibleId(value.JudgmentId), "Record", [])).ToArray();
         var snapshot = new HumanJudgmentProjectSnapshot(ProjectId, HumanJudgmentFieldCapability.Available,
             "available", stored, [], "sha256:" + new string('a', 64));
         return JudgmentLineageResolver.Resolve(snapshot);

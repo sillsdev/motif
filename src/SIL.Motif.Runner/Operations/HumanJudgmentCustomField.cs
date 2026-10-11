@@ -43,18 +43,37 @@ internal sealed class HumanJudgmentCustomFieldHandler : IOperationHandler
     public static readonly HumanJudgmentCustomFieldHandler Instance = new();
     private HumanJudgmentCustomFieldHandler() { }
 
-    internal static void RequireCompatible(LcmCache cache) => _ = ResolveField(cache);
+    internal static void RequireCompatible(LcmCache cache)
+    {
+        _ = ResolveField(cache);
+        _ = ResolveIdField(cache);
+    }
+
+    internal const string DataFieldName = "MotifJudgmentData";
+    internal const string IdFieldName = "MotifJudgmentId";
+    internal const string OldFormatFieldName = "MotifHumanJudgment";
 
     /// <summary>
-    /// Returns null when no field uses the reserved name, so a snapshot emits nothing for it. Otherwise
-    /// validates the field exactly as Apply does, throwing for an ambiguous or incompatible schema.
+    /// Returns null when no field uses the data field name, so a snapshot emits nothing for it and a project that
+    /// still has only the old single field snapshots as one that never initialized judgments. Otherwise
+    /// validates the fields exactly as Apply does, throwing for an ambiguous or incompatible schema.
     /// </summary>
     internal static int? TryResolveField(LcmCache cache)
     {
         var metadata = (IFwMetaDataCacheManaged)cache.MetaDataCacheAccessor;
         var named = metadata.GetFieldIds()
-            .Any(flid => string.Equals(metadata.GetFieldName(flid), "MotifHumanJudgment", StringComparison.Ordinal));
+            .Any(flid => string.Equals(metadata.GetFieldName(flid), DataFieldName, StringComparison.Ordinal));
         return named ? ResolveField(cache) : null;
+    }
+
+    /// <summary>The visible ID field's id when the project has exactly one, else null; never throws.</summary>
+    internal static int? TryResolveIdField(LcmCache cache)
+    {
+        var metadata = (IFwMetaDataCacheManaged)cache.MetaDataCacheAccessor;
+        var named = metadata.GetFieldIds()
+            .Where(flid => string.Equals(metadata.GetFieldName(flid), IdFieldName, StringComparison.Ordinal))
+            .ToArray();
+        return named.Length == 1 ? named[0] : null;
     }
 
     public ExpectedEffect ApplyAndCaptureEffect(
@@ -72,7 +91,7 @@ internal sealed class HumanJudgmentCustomFieldHandler : IOperationHandler
 
         var projectId = CanonicalId.FromGuid(cache.LangProject.Guid).Value;
         var recordId = CanonicalId.FromGuid(record.Guid).Value;
-        var judgment = HumanJudgmentCodec.Parse(value, projectId, recordId);
+        var judgment = HumanJudgmentCodec.ParseData(value, projectId, recordId);
         var agentDisposition = judgment.Actor?.Kind == JudgmentActorKind.Agent &&
                                judgment.Body is DispositionJudgment;
         var agentRetraction = judgment.Actor?.Kind == JudgmentActorKind.Agent &&
@@ -83,8 +102,11 @@ internal sealed class HumanJudgmentCustomFieldHandler : IOperationHandler
             throw new InvalidOperationException(
                 "This field operation accepts agent dispositions and retractions or human-reviewed judgments.");
 
+        var idFieldId = ResolveIdField(cache);
         cache.DomainDataByFlid.SetString(record.Hvo, fieldId,
             TsStringUtils.MakeString(value, cache.DefaultAnalWs));
+        cache.DomainDataByFlid.SetString(record.Hvo, idFieldId,
+            TsStringUtils.MakeString(HumanJudgmentCodec.VisibleId(judgment.JudgmentId), cache.DefaultAnalWs));
         touchedTargets.Add(id);
         return new ExpectedEffect(id, SnapshotFields.RnGenericRecMotifHumanJudgment,
             before, Read(cache, record, fieldId));
@@ -98,23 +120,35 @@ internal sealed class HumanJudgmentCustomFieldHandler : IOperationHandler
         return new ExpectedEffect(id, SnapshotFields.RnGenericRecMotifHumanJudgment, current, current);
     }
 
-    private static int ResolveField(LcmCache cache)
+    private static int ResolveField(LcmCache cache) => ResolveNamed(cache, DataFieldName);
+
+    private static int ResolveIdField(LcmCache cache) => ResolveNamed(cache, IdFieldName);
+
+    private static int ResolveNamed(LcmCache cache, string name)
     {
         var metadata = (IFwMetaDataCacheManaged)cache.MetaDataCacheAccessor;
-        var fields = metadata.GetFieldIds()
-            .Where(flid => string.Equals(metadata.GetFieldName(flid), "MotifHumanJudgment", StringComparison.Ordinal))
+        int[] Find(string fieldName) => metadata.GetFieldIds()
+            .Where(flid => string.Equals(metadata.GetFieldName(flid), fieldName, StringComparison.Ordinal))
             .ToArray();
+        if (Find(OldFormatFieldName).Length != 0)
+            throw new InvalidOperationException(
+                "This project holds Motif judgments in the old format. Delete Motif's test/demo judgment records " +
+                "and the MotifHumanJudgment field in FieldWorks, then run project initialize again.");
+        var fields = Find(name);
         if (fields.Length == 0)
-            throw new InvalidOperationException("The reserved judgment field is missing; run project initialize first.");
+            throw new InvalidOperationException(
+                $"The reserved judgment field {name} is missing; run project initialize first.");
         if (fields.Length != 1)
-            throw new InvalidOperationException("The reserved judgment field name is ambiguous; resolve the project schema before authoring.");
+            throw new InvalidOperationException(
+                $"The reserved judgment field name {name} is ambiguous; resolve the project schema before authoring.");
 
         var field = fields[0];
         if (!string.Equals(metadata.GetOwnClsName(field), "RnGenericRec", StringComparison.Ordinal) ||
             (CellarPropertyType)metadata.GetFieldType(field) != CellarPropertyType.String ||
             !metadata.IsCustom(field) || metadata.GetFieldWs(field) != WritingSystemServices.kwsAnal ||
             metadata.GetDstClsId(field) != 0 || metadata.GetFieldListRoot(field) != Guid.Empty)
-            throw new InvalidOperationException("The reserved judgment field has an incompatible schema; resolve it before authoring.");
+            throw new InvalidOperationException(
+                $"The reserved judgment field {name} has an incompatible schema; resolve it before authoring.");
         return field;
     }
 

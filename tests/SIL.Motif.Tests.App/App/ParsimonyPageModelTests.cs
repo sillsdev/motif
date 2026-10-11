@@ -201,6 +201,38 @@ public sealed class ParsimonyPageModelTests
     }
 
     [Fact]
+    public async Task TheSuppressedListShowsEachJudgmentIdAndRecordTitleAndTheCheckedRecordsAreListed()
+    {
+        var fake = new FakeCommandClient();
+        var kept = Finding("f1", ParsimonyMeasure, ParsimonyAxis.Parsimony, 2, 3);
+        ExpectReport(fake, Report([kept]), [History(kept, "keep", "suppressed", "Checked.")]);
+        var withHistory = fake.ParsimonyViewHandler!;
+        fake.ParsimonyViewHandler = (request, token) => request.Query.View != "parsimony-suppression-history"
+            ? withHistory(request, token)
+            : Task.FromResult(CommandOutcome<ParsimonyNamedViewResponse>.Success(new ParsimonyNamedViewResponse(
+                BundleId, request.Query.View, 1, ParsimonyMeasureStatus.Computed, [], 2, 2, null, false,
+                [
+                    new ParsimonyUnresolvedJudgmentViewRow("record-a", "judgment-a", "unavailable",
+                        "hash failed on this record entry", "sha256:" + new string('1', 64), "hash-failed",
+                        "MJ-AAAA-0001", "Keep: plural (MJ-AAAA-0001)"),
+                    new ParsimonyUnresolvedJudgmentViewRow("record-b", "judgment-b", "warning",
+                        "The judgment ID on this record does not match its data", "sha256:" + new string('2', 64),
+                        "warning", "MJ-BBBB-0002", "Keep: other (MJ-BBBB-0002)"),
+                ], null, null)));
+        var (context, page) = Build(fake, advancedAi: true);
+
+        await context.OpenProjectAsync(ProjectA);
+
+        var item = Assert.Single(page.SuppressedItems);
+        Assert.Equal("MJ-TEST-0001 · Record title", item.Identity);
+        Assert.True(page.HasJudgmentIssues);
+        Assert.Contains("Judgment MJ-AAAA-0001 \"Keep: plural (MJ-AAAA-0001)\": hash failed on this record entry; " +
+            "it does not suppress its finding.", page.JudgmentIssuesText);
+        Assert.Contains("MJ-BBBB-0002", page.JudgmentIssuesText);
+        Assert.Contains("it still applies", page.JudgmentIssuesText);
+    }
+
+    [Fact]
     public async Task AFindingDecidedAndAppliedLeavesTheActiveListAfterARefresh()
     {
         var fake = new FakeCommandClient();
@@ -871,7 +903,7 @@ public sealed class ParsimonyPageModelTests
             "record-" + finding.FindingId, "sha256:" + new string('8', 64), finding.MeasureId, "subject-" + finding.FindingId,
             "the prohibition", ParsimonyRecipeCatalog.Load().Find(finding.MeasureId)?.Title ?? "Parsimony check",
             finding.EvidenceDigest, disposition, reason, state, ReportId, ReportId, "sha256:" + new string('6', 64),
-            "project", null, null, null, null, null);
+            "project", null, null, null, null, null, "MJ-TEST-0001", "Record title", []);
 
     private static string Describe(ParsimonyFinding finding) =>
         $"{finding.Number.Numerator} of {finding.Number.Denominator} {finding.Number.Unit}";

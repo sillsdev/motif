@@ -18,12 +18,18 @@ public sealed class HumanJudgmentContractTests
     private const string Digest = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
     [Fact]
-    public void KeepWithoutReasonOrProvenanceRoundTripsAsOneReadableValue()
+    public void KeepWithoutReasonOrProvenanceRoundTripsAsSentenceDataAndId()
     {
         var value = Keep();
-        var physical = HumanJudgmentCodec.Format(value);
-        Assert.StartsWith("Keep “plural forms” for “Unconditioned allomorph”. [motif-human-judgment:v1:", physical);
-        var read = HumanJudgmentCodec.Parse(physical, Id, Id);
+        var formatted = HumanJudgmentCodec.Format(value);
+        Assert.Equal("Keep “plural forms” for “Unconditioned allomorph”.", formatted.Statement);
+        Assert.StartsWith("{", formatted.Data);
+        Assert.Contains("\"contentHash\":\"sha256:", formatted.Data);
+        Assert.DoesNotContain("[motif-human-judgment", formatted.Data);
+        Assert.Matches("^MJ-[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}$", formatted.VisibleId);
+        var reading = HumanJudgmentCodec.Read(formatted.Data, formatted.VisibleId, [formatted.Statement], Id, Id);
+        Assert.Empty(reading.Warnings);
+        var read = reading.Judgment;
         Assert.Null(read.Reason);
         Assert.Null(read.Actor);
         Assert.Null(read.JudgedAtUtc);
@@ -31,27 +37,125 @@ public sealed class HumanJudgmentContractTests
         Assert.Equal(ParsimonyDispositionKind.Keep, Assert.IsType<DispositionJudgment>(read.Body).Disposition);
     }
 
+    [Fact]
+    public void VisibleIdIsStableAcrossRevisionsAndDependsOnTheJudgmentIdOnly()
+    {
+        var first = HumanJudgmentCodec.Format(Keep()).VisibleId;
+        var revision = HumanJudgmentCodec.Format(Keep() with { RevisionId = "EBESExQVFhcYGRobHB0eHw", Reason = "x" });
+        Assert.Equal(first, revision.VisibleId);
+        Assert.Equal(first, HumanJudgmentCodec.VisibleId(Id));
+        Assert.Equal(first, HumanJudgmentCodec.VisibleId("judgment_" + Id));
+        Assert.NotEqual(first, HumanJudgmentCodec.VisibleId("EBESExQVFhcYGRobHB0eHw"));
+        Assert.Equal(HumanJudgmentCodec.NormalizeVisibleId(first),
+            HumanJudgmentCodec.NormalizeVisibleId(" " + first.ToLowerInvariant().Replace("-", "") + " "));
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData("")]
     [InlineData("Reason: \"a quote\"\n第二行 [motif-human-judgment:v1:literal] café")]
-    public void QuotedReasonHasOneEditableSourceAndStableNfdDigest(string? reason)
+    public void ReasonLivesOnlyInTheParagraphsAfterTheSentence(string? reason)
     {
         var value = Keep() with { Reason = reason };
-        var physical = HumanJudgmentCodec.Format(value);
-        var decoded = DecodeMarker(physical);
-        Assert.False(decoded.ContainsKey("reason"));
-        var read = HumanJudgmentCodec.Parse(physical, Id, Id);
+        var formatted = HumanJudgmentCodec.Format(value);
+        Assert.False(JsonNode.Parse(formatted.Data)!.AsObject().ContainsKey("reason"));
+        var paragraphs = new[] { formatted.Statement }.Concat(HumanJudgmentCodec.ReasonParagraphs(reason)).ToArray();
+        var read = HumanJudgmentCodec.Read(formatted.Data, formatted.VisibleId, paragraphs, Id, Id).Judgment;
         Assert.Equal(string.IsNullOrEmpty(reason) ? null : reason.Normalize(NormalizationForm.FormD), read.Reason);
         Assert.Equal(HumanJudgmentCodec.LogicalDigest(value), HumanJudgmentCodec.LogicalDigest(read));
-        Assert.Equal(HumanJudgmentCodec.LogicalDigest(value),
-            HumanJudgmentCodec.LogicalDigest(value with { Reason = reason?.Normalize(NormalizationForm.FormD) }));
-        var markerAt = physical.LastIndexOf(" [motif-human-judgment:v1:", StringComparison.Ordinal);
-        var edited = "Keep “plural forms” for “Unconditioned allomorph”. Reason: \"new reason\"" + physical[markerAt..];
-        var afterEdit = HumanJudgmentCodec.Parse(edited, Id, Id);
-        Assert.Equal("new reason", afterEdit.Reason);
-        Assert.NotEqual(HumanJudgmentCodec.LogicalDigest(read), HumanJudgmentCodec.LogicalDigest(afterEdit));
-        Assert.Equal(Digest, Assert.IsType<DispositionJudgment>(afterEdit.Body).EvidenceDigest);
+        var edited = HumanJudgmentCodec.Read(formatted.Data, formatted.VisibleId,
+            [formatted.Statement, "new reason"], Id, Id);
+        Assert.Empty(edited.Warnings);
+        Assert.Equal("new reason", edited.Judgment.Reason);
+        Assert.NotEqual(HumanJudgmentCodec.LogicalDigest(read), HumanJudgmentCodec.LogicalDigest(edited.Judgment));
+        Assert.Equal(Digest, Assert.IsType<DispositionJudgment>(edited.Judgment.Body).EvidenceDigest);
+        var removed = HumanJudgmentCodec.Read(formatted.Data, formatted.VisibleId, [formatted.Statement], Id, Id);
+        Assert.Null(removed.Judgment.Reason);
+    }
+
+    [Fact]
+    public void EditedDataFailsTheHashButNeverThrowsAnythingElse()
+    {
+        var formatted = HumanJudgmentCodec.Format(Keep());
+        var tampered = formatted.Data.Replace("\"keep\"", "\"defer\"", StringComparison.Ordinal);
+        Assert.NotEqual(formatted.Data, tampered);
+        var failure = Assert.Throws<HumanJudgmentFormatException>(() => HumanJudgmentCodec.ParseData(tampered, Id, Id));
+        Assert.Equal(HumanJudgmentFailure.HashFailed, failure.Failure);
+        Assert.Equal("hash failed on this record entry", failure.Message);
+
+        var invalidValue = formatted.Data.Replace("\"keep\"", "\"nonsense\"", StringComparison.Ordinal);
+        Assert.Equal(HumanJudgmentFailure.HashFailed, Assert.Throws<HumanJudgmentFormatException>(
+            () => HumanJudgmentCodec.ParseData(invalidValue, Id, Id)).Failure);
+
+        var node = JsonNode.Parse(formatted.Data)!.AsObject();
+        node.Remove("contentHash");
+        Assert.Equal(HumanJudgmentFailure.HashFailed, Assert.Throws<HumanJudgmentFormatException>(
+            () => HumanJudgmentCodec.ParseData(node.ToJsonString(), Id, Id)).Failure);
+
+        Assert.Equal(HumanJudgmentFailure.HashFailed, Assert.Throws<HumanJudgmentFormatException>(
+            () => HumanJudgmentCodec.ParseData(" " + formatted.Data, Id, Id)).Failure);
+        Assert.Equal(HumanJudgmentFailure.HashFailed, Assert.Throws<HumanJudgmentFormatException>(
+            () => HumanJudgmentCodec.ParseData(JsonNode.Parse(formatted.Data)!.ToJsonString(
+                new JsonSerializerOptions { WriteIndented = true }), Id, Id)).Failure);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("not json")]
+    [InlineData("[1,2]")]
+    [InlineData("{\"format\":")]
+    [InlineData("Keep “x”. [motif-human-judgment:v1:e30]")]
+    public void DamagedDataIsReportedAsDamaged(string data)
+    {
+        Assert.Equal(HumanJudgmentFailure.Damaged, Assert.Throws<HumanJudgmentFormatException>(
+            () => HumanJudgmentCodec.ParseData(data, Id, Id)).Failure);
+    }
+
+    [Fact]
+    public void ADataValueWithAValidHashButAnOpenEnvelopeIsDamaged()
+    {
+        var node = JsonNode.Parse(HumanJudgmentCodec.Format(Keep()).Data)!.AsObject();
+        node["extra"] = true;
+        Assert.Equal(HumanJudgmentFailure.Damaged, Assert.Throws<HumanJudgmentFormatException>(
+            () => HumanJudgmentCodec.ParseData(Reseal(node), Id, Id)).Failure);
+    }
+
+    [Fact]
+    public void IdentityMustMatchTheContainingProjectAndRecord()
+    {
+        var data = HumanJudgmentCodec.Format(Keep()).Data;
+        var other = "EBESExQVFhcYGRobHB0eHw";
+        Assert.Equal(HumanJudgmentFailure.Identity, Assert.Throws<HumanJudgmentFormatException>(
+            () => HumanJudgmentCodec.ParseData(data, other, Id)).Failure);
+        Assert.Equal(HumanJudgmentFailure.Identity, Assert.Throws<HumanJudgmentFormatException>(
+            () => HumanJudgmentCodec.ParseData(data, Id, other)).Failure);
+        Assert.NotNull(HumanJudgmentCodec.ParseData(data, "project_" + Id, "notebook_" + Id));
+    }
+
+    [Fact]
+    public void AnEditedIdOrSentenceWarnsAndTheDataStillDecides()
+    {
+        var formatted = HumanJudgmentCodec.Format(Keep() with { Reason = "because" });
+        var wrongId = HumanJudgmentCodec.Read(formatted.Data, "MJ-0000-0000", [formatted.Statement, "because"], Id, Id);
+        var idWarning = Assert.Single(wrongId.Warnings);
+        Assert.Equal(HumanJudgmentWarningKind.IdMismatch, idWarning.Kind);
+        Assert.Equal("The judgment ID on this record does not match its data", idWarning.Message);
+        Assert.Equal("because", wrongId.Judgment.Reason);
+        Assert.Equal(HumanJudgmentWarningKind.IdMismatch, Assert.Single(
+            HumanJudgmentCodec.Read(formatted.Data, null, [formatted.Statement], Id, Id).Warnings).Kind);
+
+        var sentence = HumanJudgmentCodec.Read(formatted.Data, formatted.VisibleId,
+            ["Fix “plural forms” for “Unconditioned allomorph”.", "because"], Id, Id);
+        var sentenceWarning = Assert.Single(sentence.Warnings);
+        Assert.Equal(HumanJudgmentWarningKind.StatementEdited, sentenceWarning.Kind);
+        Assert.Equal("The sentence on this record was edited; Motif uses its data", sentenceWarning.Message);
+        Assert.Equal(ParsimonyDispositionKind.Keep, Assert.IsType<DispositionJudgment>(sentence.Judgment.Body).Disposition);
+        Assert.Equal(HumanJudgmentWarningKind.StatementEdited, Assert.Single(
+            HumanJudgmentCodec.Read(formatted.Data, formatted.VisibleId, [], Id, Id).Warnings).Kind);
+
+        var both = HumanJudgmentCodec.Read(formatted.Data, "typo", ["edited"], Id, Id);
+        Assert.Equal(2, both.Warnings.Count);
+        Assert.Null(both.Judgment.Reason);
     }
 
     [Theory]
@@ -93,53 +197,22 @@ public sealed class HumanJudgmentContractTests
     }
 
     [Fact]
-    public void DuplicateJsonKeysAndSecondEncodedReasonRefuse()
+    public void DuplicateJsonKeysAndAReasonInsideTheDataRefuse()
     {
         var json = HumanJudgmentCodec.ToJson(Keep());
         Assert.Throws<FormatException>(() => HumanJudgmentCodec.ParseJson(json.Insert(1, "\"version\":1,"), Id, Id));
-        var physical = HumanJudgmentCodec.Format(Keep());
-        var payload = DecodeMarker(physical);
-        payload["reason"] = "secret reason";
-        var changed = WithMarker(physical, payload);
-        Assert.Throws<FormatException>(() => HumanJudgmentCodec.Parse(changed, Id, Id));
+        var node = JsonNode.Parse(HumanJudgmentCodec.Format(Keep()).Data)!.AsObject();
+        node["reason"] = "secret reason";
+        Assert.Equal(HumanJudgmentFailure.Damaged, Assert.Throws<HumanJudgmentFormatException>(
+            () => HumanJudgmentCodec.ParseData(Reseal(node), Id, Id)).Failure);
     }
 
     [Fact]
-    public void UnknownReadableFormatIsRefusedWithItsMarker()
+    public void AnOldMarkerValueIsDamagedData()
     {
-        var physical = HumanJudgmentCodec.Format(Keep());
-        var payload = DecodeMarker(physical);
-        payload["readableFormat"] = "en-v2";
-
-        Assert.Throws<FormatException>(() => HumanJudgmentCodec.Parse(WithMarker(physical, payload), Id, Id));
-    }
-
-    [Fact]
-    public void MarkerAndVisibleDecisionMustAgreeAndStrictEncodingIsRequired()
-    {
-        var physical = HumanJudgmentCodec.Format(Keep());
-        foreach (var changed in new[]
-        {
-            physical.Replace("Keep “", "Fix “", StringComparison.Ordinal),
-            physical[..^1], physical[..^1] + "=]", physical + physical,
-            physical.Replace("motif-human-judgment:v1:", "motif-human-judgment:v2:", StringComparison.Ordinal),
-            physical.Replace(". [motif", ". Reason: unquoted [motif", StringComparison.Ordinal),
-            physical.Replace(". [motif", ". Reason: null [motif", StringComparison.Ordinal)
-        }) Assert.Throws<FormatException>(() => HumanJudgmentCodec.Parse(changed, Id, Id));
-        var start = physical.LastIndexOf(" [motif-human-judgment:v1:", StringComparison.Ordinal);
-        Assert.Throws<FormatException>(() => HumanJudgmentCodec.Parse(
-            physical[..start] + " [motif-human-judgment:v1:_w]", Id, Id));
-    }
-
-    [Fact]
-    public void PortableIdentityUsesNetworkGuidBytesAndActualContainingIdentities()
-    {
-        Assert.Equal(Guid.Parse("00010203-0405-0607-0809-0a0b0c0d0e0f"), CanonicalId.Parse(Id).ToGuid());
-        var physical = HumanJudgmentCodec.Format(Keep());
-        var other = "EBESExQVFhcYGRobHB0eHw";
-        Assert.Throws<FormatException>(() => HumanJudgmentCodec.Parse(physical, other, Id));
-        Assert.Throws<FormatException>(() => HumanJudgmentCodec.Parse(physical, Id, other));
-        Assert.NotNull(HumanJudgmentCodec.Parse(physical, "project_" + Id, "notebook_" + Id));
+        const string old = "Keep “plural forms” for “Unconditioned allomorph”. [motif-human-judgment:v1:e30]";
+        Assert.Equal(HumanJudgmentFailure.Damaged, Assert.Throws<HumanJudgmentFormatException>(
+            () => HumanJudgmentCodec.ParseData(old, Id, Id)).Failure);
     }
 
     [Fact]
@@ -161,7 +234,7 @@ public sealed class HumanJudgmentContractTests
         var swapped = negative with { Body = Assert.IsType<ReviewedNegativeJudgment>(negative.Body) with
             { Target = new ReadingNegativeTarget(reading.Morphs.Reverse().ToArray()) } };
         Assert.NotEqual(HumanJudgmentCodec.LogicalDigest(negative), HumanJudgmentCodec.LogicalDigest(swapped));
-        Assert.Contains("This reading", HumanJudgmentCodec.Format(negative));
+        Assert.Contains("This reading", HumanJudgmentCodec.Format(negative).Statement);
     }
 
     [Fact]
@@ -193,17 +266,17 @@ public sealed class HumanJudgmentContractTests
     {
         var surface = Negative(new SurfaceNegativeTarget());
         Assert.Null(Assert.IsType<ReviewedNegativeJudgment>(surface.Body).WordformId);
-        Assert.NotNull(HumanJudgmentCodec.Parse(HumanJudgmentCodec.Format(surface), Id, Id));
+        Assert.NotNull(HumanJudgmentCodec.ParseData(HumanJudgmentCodec.Format(surface).Data, Id, Id));
         Assert.Throws<FormatException>(() => HumanJudgmentCodec.Format(surface with { Actor = new(JudgmentActorKind.Agent) }));
         var reading = Negative(new ReadingNegativeTarget([Morph(Id) with { Identity = new ParseMorph(null, Id, null, null) }]));
         Assert.Throws<FormatException>(() => HumanJudgmentCodec.Format(reading));
         Assert.Throws<FormatException>(() => HumanJudgmentCodec.Format(Keep() with { Body = new RetractionJudgment() }));
         var previous = new JudgmentPredecessor("EBESExQVFhcYGRobHB0eHw", Digest);
         var retract = Keep() with { Body = new RetractionJudgment(), Replaces = [previous] };
-        Assert.IsType<RetractionJudgment>(HumanJudgmentCodec.Parse(HumanJudgmentCodec.Format(retract), Id, Id).Body);
+        Assert.IsType<RetractionJudgment>(HumanJudgmentCodec.ParseData(HumanJudgmentCodec.Format(retract).Data, Id, Id).Body);
         var ask = Assert.IsType<DispositionJudgment>(Keep().Body) with { Disposition = ParsimonyDispositionKind.Ask };
         Assert.Throws<FormatException>(() => HumanJudgmentCodec.Format(Keep() with { Body = ask }));
-        Assert.NotNull(HumanJudgmentCodec.Parse(HumanJudgmentCodec.Format(Keep() with { Body = ask with { Question = "Which dialect?" } }), Id, Id));
+        Assert.NotNull(HumanJudgmentCodec.ParseData(HumanJudgmentCodec.Format(Keep() with { Body = ask with { Question = "Which dialect?" } }).Data, Id, Id));
         Assert.Throws<FormatException>(() => HumanJudgmentCodec.Format(Keep() with
             { Replaces = [previous, new JudgmentPredecessor("ICEiIyQlJicoKSorLC0uLw", Digest)] }));
     }
@@ -217,7 +290,7 @@ public sealed class HumanJudgmentContractTests
     }
 
     [Fact]
-    public void IndependentPortableVectorsMatchExactReadableValuesAndDigests()
+    public void IndependentPortableVectorsMatchExactStoredPartsAndDigests()
     {
         using var stream = typeof(HumanJudgment).Assembly.GetManifestResourceStream(
             "SIL.Motif.Contract.Schemas.human-judgment.vectors.json");
@@ -226,10 +299,32 @@ public sealed class HumanJudgmentContractTests
         foreach (var vector in vectors.RootElement.EnumerateArray())
         {
             var value = HumanJudgmentCodec.ParseJson(vector.GetProperty("value").GetRawText(), Id, Id);
-            Assert.Equal(vector.GetProperty("physical").GetString(), HumanJudgmentCodec.Format(value));
+            var formatted = HumanJudgmentCodec.Format(value);
+            Assert.Equal(vector.GetProperty("statement").GetString(), formatted.Statement);
+            Assert.Equal(vector.GetProperty("data").GetString(), formatted.Data);
+            Assert.Equal(vector.GetProperty("id").GetString(), formatted.VisibleId);
             Assert.Equal(vector.GetProperty("digest").GetString(), HumanJudgmentCodec.LogicalDigest(value));
-            Assert.Equal(HumanJudgmentCodec.ToJson(value), HumanJudgmentCodec.ToJson(
-                HumanJudgmentCodec.Parse(vector.GetProperty("physical").GetString()!, Id, Id)));
+            var paragraphs = new[] { vector.GetProperty("statement").GetString()! }
+                .Concat(HumanJudgmentCodec.ReasonParagraphs(value.Reason)).ToArray();
+            var reading = HumanJudgmentCodec.Read(vector.GetProperty("data").GetString()!,
+                vector.GetProperty("id").GetString(), paragraphs, Id, Id);
+            Assert.Empty(reading.Warnings);
+            Assert.Equal(HumanJudgmentCodec.ToJson(value), HumanJudgmentCodec.ToJson(reading.Judgment));
+        }
+    }
+
+    [Fact]
+    public void HashFailureVectorsAreRefusedWithTheirNamedFailure()
+    {
+        using var stream = typeof(HumanJudgment).Assembly.GetManifestResourceStream(
+            "SIL.Motif.Contract.Schemas.human-judgment.refusals.json");
+        Assert.NotNull(stream);
+        using var refusals = JsonDocument.Parse(stream);
+        foreach (var refusal in refusals.RootElement.EnumerateArray())
+        {
+            var failure = Assert.Throws<HumanJudgmentFormatException>(
+                () => HumanJudgmentCodec.ParseData(refusal.GetProperty("data").GetString()!, Id, Id));
+            Assert.Equal(refusal.GetProperty("failure").GetString(), failure.Failure.ToString());
         }
     }
 
@@ -253,7 +348,7 @@ public sealed class HumanJudgmentContractTests
             new JudgmentPredecessor("ICEiIyQlJicoKSorLC0uLw", Digest)
         };
         var resolution = Keep() with { Replaces = heads, ResolvesConflict = true };
-        Assert.StartsWith("Resolve conflicting revisions: Keep", HumanJudgmentCodec.Format(resolution));
+        Assert.StartsWith("Resolve conflicting revisions: Keep", HumanJudgmentCodec.Format(resolution).Statement);
         Assert.Equal(HumanJudgmentCodec.LogicalDigest(resolution), HumanJudgmentCodec.LogicalDigest(
             resolution with { Replaces = heads.Reverse().ToArray() }));
         Assert.Throws<FormatException>(() => HumanJudgmentCodec.Format(resolution with { Replaces = [heads[0]] }));
@@ -262,7 +357,7 @@ public sealed class HumanJudgmentContractTests
     }
 
     [Fact]
-    public void SchemaIsClosedAndStorageForbidsASecondReasonSource()
+    public void SchemaIsClosedAndStorageForbidsAReasonButRequiresTheHash()
     {
         using var stream = typeof(HumanJudgment).Assembly.GetManifestResourceStream(
             "SIL.Motif.Contract.Schemas.human-judgment.schema.json");
@@ -274,7 +369,10 @@ public sealed class HumanJudgmentContractTests
         Assert.False(envelope.GetProperty("additionalProperties").GetBoolean());
         Assert.Equal(envelope.GetProperty("properties").EnumerateObject().Select(p => p.Name).Order(),
             logical.RootElement.EnumerateObject().Select(p => p.Name).Order());
-        Assert.False(definitions.GetProperty("StorageEnvelope").GetProperty("properties").TryGetProperty("reason", out _));
+        var storage = definitions.GetProperty("StorageEnvelope");
+        Assert.False(storage.GetProperty("properties").TryGetProperty("reason", out _));
+        Assert.True(storage.GetProperty("properties").TryGetProperty("contentHash", out _));
+        Assert.Contains("contentHash", storage.GetProperty("required").EnumerateArray().Select(item => item.GetString()));
         foreach (var name in new[] { "Object", "ObjectSubject", "ProjectSubject", "EdgeSubject", "GroupSubject",
             "ParsimonyFindingSubject",
             "Disposition", "MorphIdentity", "Morph", "SurfaceTarget", "ReadingTarget", "Negative", "Retraction",
@@ -315,18 +413,13 @@ public sealed class HumanJudgmentContractTests
         Body = new ReviewedNegativeJudgment(Id, "qaa", "tará", "standard dialect", target)
     };
 
-    private static JsonObject DecodeMarker(string physical)
+    private static string Reseal(JsonObject node)
     {
-        const string marker = " [motif-human-judgment:v1:";
-        var start = physical.LastIndexOf(marker, StringComparison.Ordinal) + marker.Length;
-        return JsonNode.Parse(Encoding.UTF8.GetString(Base64Url.Decode(physical[start..^1])))!.AsObject();
-    }
-
-    private static string WithMarker(string physical, JsonObject payload)
-    {
-        const string marker = " [motif-human-judgment:v1:";
-        var start = physical.LastIndexOf(marker, StringComparison.Ordinal);
-        return physical[..start] + marker + Base64Url.Encode(Encoding.UTF8.GetBytes(payload.ToJsonString())) + "]";
+        node.Remove("contentHash");
+        var hash = "sha256:" + Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(
+            Encoding.UTF8.GetBytes(SIL.Motif.Contract.Canonicalization.CanonicalJson.Canonicalize(node.ToJsonString()))));
+        node["contentHash"] = hash;
+        return SIL.Motif.Contract.Canonicalization.CanonicalJson.Canonicalize(node.ToJsonString());
     }
 
     private static HumanJudgment Keep() => new(

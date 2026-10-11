@@ -105,7 +105,8 @@ public sealed partial class ParsimonyQuerySession : IDisposable
         using (var command = NewCommand())
         {
             command.CommandText = "SELECT record_guid, judgment_id, revision_id, content_digest, format, version, " +
-                "body_kind, physical_value, judgment_json, state FROM evidence.human_judgment_revisions " +
+                "body_kind, physical_value, judgment_json, state, record_title, warnings_json " +
+                "FROM evidence.human_judgment_revisions " +
                 "ORDER BY judgment_id, revision_id;";
             using var reader = command.ExecuteReader();
             while (reader.Read())
@@ -118,7 +119,9 @@ public sealed partial class ParsimonyQuerySession : IDisposable
                     throw new InvalidDataException("A captured human-judgment revision does not match its normalized row.");
                 revisions.Add(new HumanJudgmentRevisionProjection(recordId, judgment.JudgmentId,
                     judgment.RevisionId, reader.GetString(3), reader.GetString(4), reader.GetInt32(5),
-                    reader.GetString(6), reader.GetString(7), judgment, reader.GetString(9)));
+                    reader.GetString(6), reader.GetString(7), judgment, reader.GetString(9), reader.GetString(10),
+                    JsonSerializer.Deserialize<string[]>(reader.GetString(11))!.Select(kind =>
+                        HumanJudgmentWarning.For(Enum.Parse<HumanJudgmentWarningKind>(kind))).ToArray()));
             }
         }
 
@@ -136,12 +139,13 @@ public sealed partial class ParsimonyQuerySession : IDisposable
         var unavailable = new List<HumanJudgmentUnavailableProjection>();
         using (var command = NewCommand())
         {
-            command.CommandText = "SELECT record_guid, judgment_id, reason, physical_digest " +
+            command.CommandText = "SELECT record_guid, judgment_id, reason, physical_digest, kind, visible_id, record_title " +
                 "FROM evidence.human_judgment_unavailable ORDER BY record_guid, reason;";
             using var reader = command.ExecuteReader();
             while (reader.Read())
                 unavailable.Add(new HumanJudgmentUnavailableProjection(reader.GetString(0),
-                    reader.IsDBNull(1) ? null : reader.GetString(1), reader.GetString(2), reader.GetString(3)));
+                    reader.IsDBNull(1) ? null : reader.GetString(1), reader.GetString(2), reader.GetString(3),
+                    reader.GetString(4), reader.IsDBNull(5) ? null : reader.GetString(5), reader.GetString(6)));
         }
 
         ThrowIfLeaseLost();

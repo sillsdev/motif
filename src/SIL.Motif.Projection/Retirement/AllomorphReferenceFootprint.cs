@@ -502,7 +502,8 @@ public static class AllomorphReferenceFootprintReader
     {
         var targets = targetForms.ToDictionary(form => form.Guid);
         var snapshot = HumanJudgmentReader.Read(cache);
-        if (snapshot.Capability is HumanJudgmentFieldCapability.Incompatible or HumanJudgmentFieldCapability.Ambiguous)
+        if (snapshot.Capability is HumanJudgmentFieldCapability.Incompatible or HumanJudgmentFieldCapability.Ambiguous
+            or HumanJudgmentFieldCapability.OldFormat)
             unavailable.Add($"Notebook human-judgment field cannot be read: {snapshot.Message}");
         foreach (var item in snapshot.Unavailable)
             unavailable.Add($"Notebook record '{item.RecordId}' has an unreadable human judgment value.");

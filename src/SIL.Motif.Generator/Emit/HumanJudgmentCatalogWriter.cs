@@ -58,7 +58,7 @@ public static class HumanJudgmentCatalogWriter
             .Append(new Slice3SnapshotFieldsEmitter.ConstantEntry(
                 "RnGenericRec", "Type", typeSpec.Group, typeSpec.Construct, "RnGenericRecType", "rel/atomic CmPossibility"))
             .Append(new Slice3SnapshotFieldsEmitter.ConstantEntry(
-                "RnGenericRec", "MotifHumanJudgment", "system", "rnGenericRec",
+                "RnGenericRec", "MotifJudgmentData", "system", "rnGenericRec",
                 "RnGenericRecMotifHumanJudgment", "reserved custom String"))
             .ToArray();
         Write("src/SIL.Motif.Model/Snapshot/SnapshotFields.Generated6.g.cs",
