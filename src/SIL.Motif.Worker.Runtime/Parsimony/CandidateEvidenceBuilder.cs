@@ -42,7 +42,7 @@ public sealed class ParsimonyCandidateEvidenceBuilder
     private readonly IPanGlossInvoker _invoker;
     private readonly ProjectLaneRegistry _lanes;
     private readonly EvidenceArtifactPublisher _publisher;
-    private readonly Action<string> _factsIntegrityCheck;
+    private readonly EvidenceBundlePipeline _pipeline;
     private readonly EvidenceArtifactRepository _artifacts;
     private readonly EvidenceRetentionCleaner _retention;
     private readonly FwDataProjectLoader _loader = new();
@@ -50,6 +50,14 @@ public sealed class ParsimonyCandidateEvidenceBuilder
     public ParsimonyCandidateEvidenceBuilder(MotifDatabase database, string projectKey, ProjectLocator project,
         RunnerOptions options, IPanGlossInvoker invoker, ProjectLaneRegistry lanes,
         Action<string>? factsIntegrityCheck = null)
+        : this(database, projectKey, project, options, invoker, lanes,
+            EvidenceBundleChecks.Create(factsIntegrityCheck), FileDigestCache.Shared)
+    {
+    }
+
+    internal ParsimonyCandidateEvidenceBuilder(MotifDatabase database, string projectKey, ProjectLocator project,
+        RunnerOptions options, IPanGlossInvoker invoker, ProjectLaneRegistry lanes, EvidenceBundleChecks checks,
+        FileDigestCache digests)
     {
         _database = database ?? throw new ArgumentNullException(nameof(database));
         _projectKey = string.IsNullOrWhiteSpace(projectKey)
@@ -59,8 +67,8 @@ public sealed class ParsimonyCandidateEvidenceBuilder
         _invoker = invoker ?? throw new ArgumentNullException(nameof(invoker));
         _lanes = lanes ?? throw new ArgumentNullException(nameof(lanes));
         _publisher = new EvidenceArtifactPublisher(options.Root, _projectKey);
-        _factsIntegrityCheck = factsIntegrityCheck ?? ParsimonyFactsIntegrity.Verify;
         _artifacts = new EvidenceArtifactRepository(database);
+        _pipeline = new EvidenceBundlePipeline(_publisher, _artifacts, options, _projectKey, checks, digests);
         _retention = new EvidenceRetentionCleaner(_artifacts, WorkspaceOwnership.Bootstrap(options.Root));
     }
 
@@ -126,11 +134,11 @@ public sealed class ParsimonyCandidateEvidenceBuilder
         {
             var assessmentIds = input.AssessmentIds ?? [];
             var assessmentSource = ParserAssessmentMaterial.ReadSourceArtifact(_database, assessmentIds);
-            var parserBefore = ParsimonyJobHandler.ParserIdentity(_options);
+            var parserBefore = _pipeline.ParserIdentity();
             if (parserBefore is null)
                 return Failure(JobFailureCategory.Infrastructure,
                     "The configured PanGloss executable is unavailable for grammar facts.");
-            var parserIdentity = ParsimonyJobHandler.RemoveDigestPrefix(parserBefore);
+            var parserIdentity = EvidenceBundlePipeline.RemoveDigestPrefix(parserBefore);
             _publisher.CreateWorkingDirectory(beforeBundleId);
             _publisher.CreateWorkingDirectory(afterBundleId);
             var prepared = await PrepareProjectStatesAsync(dryRunInput, dryRun.DryRunJson!, source,
@@ -142,7 +150,7 @@ public sealed class ParsimonyCandidateEvidenceBuilder
             var candidateFacts = await BuildFactsAsync(prepared.CandidateProjectPath, source.Token, true,
                 prepared.DryRun.EffectDigest, Path.Combine(afterWorking, "facts"), cancellationToken)
                 .ConfigureAwait(false);
-            if (ParsimonyJobHandler.ParserIdentity(_options) != parserBefore || baselineFacts.SchemaVersion != candidateFacts.SchemaVersion)
+            if (_pipeline.ParserIdentity(fresh: true) != parserBefore || baselineFacts.SchemaVersion != candidateFacts.SchemaVersion)
                 return Failure(JobFailureCategory.Semantic,
                     "PanGloss changed during the comparison; rerun the candidate evidence job.");
 
@@ -152,7 +160,7 @@ public sealed class ParsimonyCandidateEvidenceBuilder
                 source.SourceSha256, prepared.CandidateSourceSha256, candidateFacts.ModelFingerprint,
                 parserIdentity, candidateFacts.SchemaVersion, EvidenceSchema.Version, input.ScopeBinding!,
                 judgmentDigest, input.RetirementExpectationTranslation?.MappingDigest);
-            var baselineTokenJson = TokenJson(source.Token);
+            var baselineTokenJson = EvidenceBundlePipeline.TokenJson(source.Token);
             var beforeEvidencePath = Path.Combine(beforeWorking, "evidence.sqlite");
             var beforeEvidence = EvidenceWriter.Write(beforeEvidencePath, prepared.BaselineEvidence,
                 baselineTokenJson, source.Token.BundleDigest, baselineFacts.ModelFingerprint);
@@ -172,31 +180,30 @@ public sealed class ParsimonyCandidateEvidenceBuilder
             {
                 return Failure(JobFailureCategory.Semantic, exception.Message);
             }
-            var candidateEvidenceProjection = WithParserOverlay(prepared.CandidateEvidence, parserOverlay);
+            var candidateEvidenceProjection = EvidenceBundlePipeline.WithParserOverlay(prepared.CandidateEvidence, parserOverlay);
             var afterEvidencePath = Path.Combine(afterWorking, "evidence.sqlite");
             var afterEvidence = EvidenceWriter.Write(afterEvidencePath, candidateEvidenceProjection,
                 baselineTokenJson, source.Token.BundleDigest, candidateFacts.ModelFingerprint,
                 "candidate", candidateIdentity);
 
-            var beforeMaterial = MaterialKey("baseline", source.Token, baselineFacts, beforeEvidence,
-                parserIdentity, input.ScopeBinding!, null);
-            var afterMaterial = MaterialKey("candidate", source.Token, candidateFacts, afterEvidence,
-                parserIdentity, input.ScopeBinding!, candidateIdentity);
-                var before = PrepareReport(beforeBundleId, beforeMaterial, source,
-                    baselineFacts, beforeEvidence, beforeEvidencePath, prepared.BaselineEvidence,
-                    input.ScopeBinding!, input.MeasureId, "baseline", null, [], [],
-                    input.RetirementExpectationTranslation);
-                var after = PrepareReport(afterBundleId, afterMaterial, source,
-                    candidateFacts, afterEvidence, afterEvidencePath, candidateEvidenceProjection,
-                    input.ScopeBinding!, input.MeasureId, "candidate", candidateIdentity, assessmentIds,
-                    reportableAssessments, input.RetirementExpectationTranslation);
-            beforeStaging = before.StagingDirectory;
-            beforeFinal = before.FinalDirectory;
-            afterStaging = after.StagingDirectory;
-            afterFinal = after.FinalDirectory;
-            beforeFinal = _publisher.Publish(beforeStaging, before.Bundle.BundleId);
+            var beforeMaterial = EvidenceBundlePipeline.MaterialKey(EvidenceBundlePipeline.ComparisonOrigin,
+                "baseline", source.Token, baselineFacts.ModelFingerprint, parserIdentity, baselineFacts.SchemaVersion,
+                beforeEvidence.SchemaVersion, input.ScopeBinding!, [], null);
+            var afterMaterial = EvidenceBundlePipeline.MaterialKey(EvidenceBundlePipeline.ComparisonOrigin,
+                "candidate", source.Token, candidateFacts.ModelFingerprint, parserIdentity,
+                candidateFacts.SchemaVersion, afterEvidence.SchemaVersion, input.ScopeBinding!, [],
+                candidateIdentity);
+            var before = PrepareReport(beforeBundleId, beforeMaterial, source, baselineFacts, beforeEvidence,
+                beforeEvidencePath, input.ScopeBinding!, input.MeasureId, "baseline", null, [], [],
+                input.RetirementExpectationTranslation,
+                (staging, final) => (beforeStaging, beforeFinal) = (staging, final));
+            var after = PrepareReport(afterBundleId, afterMaterial, source, candidateFacts, afterEvidence,
+                afterEvidencePath, input.ScopeBinding!, input.MeasureId, "candidate", candidateIdentity,
+                assessmentIds, reportableAssessments, input.RetirementExpectationTranslation,
+                (staging, final) => (afterStaging, afterFinal) = (staging, final));
+            beforeFinal = _publisher.Publish(before.StagingDirectory, before.Bundle.BundleId);
             beforeStaging = null;
-            afterFinal = _publisher.Publish(afterStaging, after.Bundle.BundleId);
+            afterFinal = _publisher.Publish(after.StagingDirectory, after.Bundle.BundleId);
             afterStaging = null;
 
             _artifacts.Publish(before.Bundle, before.Report, cancellationToken,
@@ -412,76 +419,23 @@ public sealed class ParsimonyCandidateEvidenceBuilder
         using var lease = completed.FactsArtifactLease;
         var destination = Path.Combine(outputDirectory, "grammar-facts.sqlite");
         File.Copy(completed.Facts.Path, destination, overwrite: false);
-        var digest = Hash(File.ReadAllBytes(destination));
+        var digest = StripDigest(_pipeline.FreshDigest(destination));
         if (!StringComparer.Ordinal.Equals(digest, StripDigest(completed.Facts.OutputSha256)))
             throw new InvalidDataException("PanGloss facts changed before Motif adopted the artifact.");
         return new FactsResult(destination, completed.Facts.ModelFingerprint, completed.Facts.SchemaVersion,
             digest);
     }
 
-    private PreparedReport PrepareReport(string bundleId, string materialKey,
+    private PreparedEvidenceBundle PrepareReport(string bundleId, string materialKey,
         DryRunSourceBinding source, FactsResult facts, ParsimonyArtifactDigest evidenceDigest,
-        string evidencePath, ParsimonyEvidenceProjection projection, ParsimonyScopeBinding scope,
-        string measureId, string inputKind, string? candidateIdentity, IReadOnlyList<string> assessmentIds,
-        IReadOnlyList<ReportableAssessment> assessments,
-        SIL.Motif.Contract.Retirement.RetirementExpectationTranslation? retirementTranslation)
-    {
-        var staging = _publisher.StagingDirectory(bundleId, source.Token, facts.ModelFingerprint, materialKey,
-            inputKind, candidateIdentity);
-        var final = _publisher.FinalDirectory(bundleId, source.Token, facts.ModelFingerprint, materialKey,
-            inputKind, candidateIdentity);
-        _artifacts.SetBuildClaimPaths(bundleId, staging, final);
-        _publisher.CreateStagingDirectory(bundleId, source.Token, facts.ModelFingerprint, materialKey,
-            inputKind, candidateIdentity);
-        File.Copy(facts.Path, Path.Combine(staging, "grammar-facts.sqlite"), overwrite: false);
-        File.Copy(evidencePath, Path.Combine(staging, "evidence.sqlite"), overwrite: false);
-        _publisher.FlushAndClose(staging);
-        var stagedFacts = Path.Combine(staging, "grammar-facts.sqlite");
-        var stagedEvidence = Path.Combine(staging, "evidence.sqlite");
-        var factsSha = Hash(File.ReadAllBytes(stagedFacts));
-        var evidenceSha = Hash(File.ReadAllBytes(stagedEvidence));
-        if (factsSha != facts.Sha256 || evidenceSha != evidenceDigest.Sha256)
-            throw new InvalidDataException("The evidence files changed while they were staged for publication.");
-        var baselineTokenJson = TokenJson(source.Token);
-        EvidenceWriter.Validate(stagedEvidence, baselineTokenJson, source.Token.BundleDigest,
-            facts.ModelFingerprint, inputKind, candidateIdentity);
-        var inputs = new ParsimonyReportInputs(bundleId, source.Token, inputKind, candidateIdentity,
-            facts.ModelFingerprint, new ParsimonyArtifactDigest(facts.SchemaVersion, factsSha),
-            new ParsimonyArtifactDigest(evidenceDigest.SchemaVersion, evidenceSha),
-            scope.Selection is null ? null : StripDigest(scope.Selection.SelectionSha256), null, assessmentIds,
-            scope.Kind, retirementTranslation);
-        _factsIntegrityCheck(stagedFacts);
-        using (var verified = new ParsimonyQuerySession(stagedFacts, stagedEvidence, inputs))
-            _ = verified.ReadJoinQuality(scope.Kind);
-        var rendered = new ParsimonyReportProducer().Produce(
-            ReportInput.FromParsimonyFiles(inputs, stagedFacts, stagedEvidence, assessments, measureId),
-            new ReportQuery(), AssessorCatalog.Empty);
-        var reportId = CanonicalId.Mint("report/").Value;
-        var response = new ParsimonyReportResponse(reportId, inputs, rendered.ParsimonyFindings ?? [], rendered.Text)
-        {
-            AssessmentIds = assessmentIds,
-            MeasureRuns = rendered.ParsimonyMeasureRuns ?? [],
-            JoinQuality = rendered.ParsimonyJoinQuality,
-            Notes = rendered.ParsimonyNotes ?? [],
-        };
-        var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
-        var reportJson = JsonSerializer.Serialize(response, options);
-        var evidenceJson = JsonSerializer.Serialize(new
-        {
-            inputs,
-            grammarFactsPath = "grammar-facts.sqlite",
-            evidencePath = "evidence.sqlite",
-            findings = response.Findings.Select(item => new { item.FindingId, item.EvidenceDigest }),
-            joinQuality = response.JoinQuality,
-        }, options);
-        var bundle = new ParsimonyBundleRecord(bundleId, baselineTokenJson, final,
-            Path.Combine(final, "grammar-facts.sqlite"), Path.Combine(final, "evidence.sqlite"),
-            facts.ModelFingerprint, facts.SchemaVersion, factsSha, evidenceDigest.SchemaVersion, evidenceSha,
-            JobTimestamp.FormatUtc(DateTimeOffset.UtcNow), _projectKey, StripDigest(source.Token.BundleDigest),
-            materialKey, "available", null, source.RootDirectory, inputKind, candidateIdentity);
-        var report = new ReportRecord(reportId, null, null, reportJson, evidenceJson, "parsimony", rendered.Text);
-        return new PreparedReport(bundle, report, response, staging, final);
-    }
+        string evidencePath, ParsimonyScopeBinding scope, string measureId, string inputKind,
+        string? candidateIdentity, IReadOnlyList<string> assessmentIds, IReadOnlyList<ReportableAssessment> assessments,
+        SIL.Motif.Contract.Retirement.RetirementExpectationTranslation? retirementTranslation,
+        Action<string, string> located) =>
+        _pipeline.Prepare(new EvidenceBundleBuild(bundleId, source.Token, inputKind, candidateIdentity, materialKey,
+            facts.Path, facts.Sha256, facts.SchemaVersion, facts.ModelFingerprint, evidencePath, evidenceDigest,
+            scope, measureId, assessmentIds, assessments, retirementTranslation, source.RootDirectory,
+            IncludeDispositionProjection: false), located);
 
     private static IReadOnlyList<ParsimonyCandidateFindingChange> CompareFindings(
         ParsimonyReportResponse before, ParsimonyReportResponse after)
@@ -521,20 +475,6 @@ public sealed class ParsimonyCandidateEvidenceBuilder
     private static string AnchorDigest(BoundDryRunAnchor anchor) => Hash(JsonSerializer.Serialize(anchor,
         MotifJson.CreateOptions()));
 
-    private static string MaterialKey(string inputKind, BaselineToken token, FactsResult facts,
-        ParsimonyArtifactDigest evidence, string parserIdentity, ParsimonyScopeBinding scope, string? candidateIdentity) =>
-        Hash(JsonSerializer.Serialize(new
-        {
-            baselineToken = token,
-            inputKind,
-            candidateIdentity,
-            facts.ModelFingerprint,
-            parserIdentity,
-            factsSchemaVersion = facts.SchemaVersion,
-            evidenceSchemaVersion = evidence.SchemaVersion,
-            scope,
-        }, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
-
     private void DiscardAttempt(string bundleId, string working, string? staging, string? final)
     {
         if (_artifacts.Get(bundleId) is null)
@@ -546,24 +486,8 @@ public sealed class ParsimonyCandidateEvidenceBuilder
         _publisher.Discard(working);
     }
 
-    private static string TokenJson(BaselineToken token) => JsonSerializer.Serialize(token,
-        new JsonSerializerOptions(JsonSerializerDefaults.Web));
-
     private static string ProjectionDigest(ParsimonyEvidenceProjection projection) =>
         Hash(CanonicalJson.Canonicalize(JsonSerializer.Serialize(projection, MotifJson.CreateOptions())));
-
-    private static ParsimonyEvidenceProjection WithParserOverlay(ParsimonyEvidenceProjection projection,
-        ParserOverlayProjection overlay)
-    {
-        var status = !overlay.Requested ? "not_requested"
-            : overlay.Runs.Any(item => item.Status == "complete") ? "complete" : "unavailable";
-        var reason = status == "not_requested" ? "No Assessment overlay was requested."
-            : status == "complete" ? null : "The requested parser sidecars were unavailable or invalid.";
-        var capabilities = projection.Capabilities.Select(item => item.Capability == "parser-overlay"
-            ? item with { Status = status, Reason = reason }
-            : item).ToArray();
-        return projection with { ParserOverlay = overlay, Capabilities = capabilities };
-    }
 
     private static string GuidText(Guid value) => value.ToString("D").ToLowerInvariant();
 
@@ -591,9 +515,6 @@ public sealed class ParsimonyCandidateEvidenceBuilder
         IReadOnlyList<FrozenProposalRevision> Prerequisites, BoundDryRunAnchor PublishedAnchor);
 
     private sealed record FactsResult(string Path, string ModelFingerprint, int SchemaVersion, string Sha256);
-
-    private sealed record PreparedReport(ParsimonyBundleRecord Bundle, ReportRecord Report,
-        ParsimonyReportResponse Response, string StagingDirectory, string FinalDirectory);
 
     private sealed class PanGlossInvocationException(JobFailureCategory category, string message) : Exception(message)
     {

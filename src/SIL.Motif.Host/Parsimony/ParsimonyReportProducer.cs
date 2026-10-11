@@ -30,6 +30,22 @@ public sealed class ParsimonyReportProducer : IReportProducer
                 "A Parsimony report needs the closed grammar-facts and evidence files from its bundle.");
         using var session = new ParsimonyQuerySession(parsimony.GrammarFactsPath, parsimony.EvidencePath,
             parsimony.Inputs);
+        return Produce(parsimony, session);
+    }
+
+    /// <summary>
+    /// Renders from a session the caller already opened over the same files, so a job that has just verified
+    /// the bundle does not verify it a second time. The session's constructor remains the only verification.
+    /// </summary>
+    /// <param name="input">The Parsimony input whose bundle the session was opened over.</param>
+    /// <param name="session">The verifying session; the caller keeps ownership and disposes it.</param>
+    public RenderedReport Produce(ReportInput input, ParsimonyQuerySession session)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(session);
+        if (input is not ReportInput.Parsimony parsimony)
+            throw new ReportRefusalException(KindName,
+                "A Parsimony report needs a frozen Baseline evidence bundle, not an Assessment input.");
         var joinQuality = session.ReadJoinQuality(parsimony.Inputs.EvidenceScope);
         var result = MeasureRunner.Execute(parsimony.MeasureId, session, parsimony.Inputs.BundleId);
         var findings = result.Findings;

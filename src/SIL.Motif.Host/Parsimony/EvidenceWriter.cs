@@ -60,7 +60,9 @@ public static class EvidenceWriter
             Validate(path, baselineTokenJson, sourceSha256, modelFingerprint, inputKind, candidateIdentity);
             using (var file = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.Read))
                 file.Flush(flushToDisk: true);
-            return new ParsimonyArtifactDigest(EvidenceSchema.Version, Digest(File.ReadAllBytes(path)));
+            using var written = File.OpenRead(path);
+            return new ParsimonyArtifactDigest(EvidenceSchema.Version,
+                Convert.ToHexString(SHA256.HashData(written)).ToLowerInvariant());
         }
         catch
         {

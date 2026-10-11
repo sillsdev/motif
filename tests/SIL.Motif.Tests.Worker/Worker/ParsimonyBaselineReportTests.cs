@@ -2867,6 +2867,55 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
     }
 
     [Fact]
+    public async Task AJobHashesAndVerifiesEachArtifactOnce()
+    {
+        await PublishBaselineAsync(_pristine);
+        var parserPath = FactsParser(_pristine.Seed);
+        using var invoker = new SIL.Motif.Host.PanGloss.PanGlossInvoker(parserPath);
+        var hashes = new System.Collections.Concurrent.ConcurrentDictionary<string, int>();
+        var factsChecks = 0;
+        var sessions = 0;
+        var checks = new EvidenceBundleChecks(_ => factsChecks++, (facts, evidence, inputs) =>
+        {
+            sessions++;
+            return new ParsimonyQuerySession(facts, evidence, inputs);
+        });
+        var digests = new FileDigestCache(path =>
+        {
+            hashes.AddOrUpdate(Path.GetFileName(path), 1, (_, count) => count + 1);
+            return BatchInvocationEvidence.DigestFile(path);
+        });
+        var handler = new ParsimonyJobHandler(_database, _baselines, _projectKey, _project,
+            new RunnerOptions { Root = Path.Combine(_root, "worker"), ParserPath = parserPath }, invoker, null,
+            checks, digests);
+        int Hashed(string name) => hashes.GetValueOrDefault(name);
+        var parserName = Path.GetFileName(parserPath);
+        int ProjectHashes() => hashes.Where(item => item.Key.EndsWith(".fwdata", StringComparison.Ordinal))
+            .Sum(item => item.Value);
+
+        _ = await RunReportAsync(handler, "P-adhoc-duplicate");
+
+        Assert.Equal(1, sessions);
+        Assert.Equal(1, factsChecks);
+        Assert.Equal(1, Hashed("evidence.sqlite"));
+        Assert.Equal(1, Hashed("grammar-facts.sqlite"));
+        Assert.Equal(1, ProjectHashes());
+        Assert.Equal(2, Hashed(parserName));
+
+        _ = await RunReportAsync(handler, "P-allo-alternation-family");
+        Assert.Equal(2, ProjectHashes());
+        Assert.Equal(2, Hashed(parserName));
+        var afterReuse = hashes.ToDictionary(item => item.Key, item => item.Value);
+        _ = await RunReportAsync(handler, "P-adhoc-duplicate");
+
+        Assert.Equal(3, sessions);
+        Assert.Equal(3, factsChecks);
+        Assert.Equal(1, BundleCount());
+        Assert.Equal(afterReuse.OrderBy(item => item.Key), hashes.OrderBy(item => item.Key));
+        Assert.Equal(1, Hashed("evidence.sqlite"));
+    }
+
+    [Fact]
     public async Task AChangedEvidenceScopeBuildsAFreshBundle()
     {
         await PublishBaselineAsync(_pristine);
