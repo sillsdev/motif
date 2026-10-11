@@ -1,0 +1,21 @@
+{
+  "id": "proposal-review-keep-undo",
+  "title": "Review a Proposal's changes",
+  "description": "Walk every change in a Proposal with Previous and Next, mark what you looked at, and undo a change together with the changes that depend on it.",
+  "steps": {
+    "review-list": "Every change is in one list. The count shows how many you have looked at.",
+    "looked-at": "Next marks the change you leave as looked at. Looking at a change does not approve it.",
+    "undo-dependents": "Undoing a change that others depend on names them first, so you can undo them together or cancel."
+  },
+  "callouts": {
+    "review-list": {
+      "motif-review-looked-at": "Changes looked at"
+    },
+    "looked-at": {
+      "motif-review-looked-at": "Changes looked at"
+    },
+    "undo-dependents": {
+      "motif-review-undo-prompt": "Changes that depend on this one"
+    }
+  }
+}

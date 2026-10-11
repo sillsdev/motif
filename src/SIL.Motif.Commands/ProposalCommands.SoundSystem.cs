@@ -173,7 +173,7 @@ public static partial class ProposalCommands
         bool evidenceIsCurrent)
     {
         var repository = new ProposalRepository(database);
-        if (!TryLoadDraft(repository, request.DraftName, out var draft))
+        if (!TryLoadDraft(repository, request.DraftName, out var draft, out _))
             return CommandOutcome<ComposedOperationsResponse>.Refused(DraftNotFound(request.DraftName));
         try
         {
@@ -309,7 +309,7 @@ public static partial class ProposalCommands
         try
         {
             var repository = new ProposalRepository(database);
-            if (!TryLoadDraft(repository, draftName, out var draft))
+            if (!TryLoadDraft(repository, draftName, out var draft, out var loadedJson))
                 return CommandOutcome<ComposedOperationsResponse>.Refused(DraftNotFound(draftName));
             var previous = ProposalJsonParser.Parse(BuildProposalJson(draft));
             var (input, operations, related, replacedIds) = ProjectReadCache.ReadSaved(project, (_, cache) =>
@@ -380,7 +380,8 @@ public static partial class ProposalCommands
                     operationIds = added.Select(operation => operation.OperationId.Value).ToArray(),
                 }));
             _ = ProposalJsonParser.Parse(BuildProposalJson(draft));
-            repository.SaveDraft(draftName, SerializeDraft(draft));
+            if (!TrySaveLoadedDraft(repository, draftName, loadedJson, draft))
+                return CommandOutcome<ComposedOperationsResponse>.Refused(DraftRevisionConflict(draftName));
             return CommandOutcome<ComposedOperationsResponse>.Success(new(draftName, composer,
                 added.Select(operation => new OperationSummary(
                     operation.OperationId.Value, operation.Kind, operation.EntityId?.Value)).ToArray(),

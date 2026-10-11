@@ -3,15 +3,20 @@ using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Commands.Store;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Projects;
+using SIL.Motif.Host.Store;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Host.Analysis;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host;
 using SIL.Motif.Runner.Composers;
+using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Worker.Store;
 
 namespace SIL.Motif.Commands;
@@ -19,8 +24,8 @@ namespace SIL.Motif.Commands;
 /// <summary>Applies and measures pending changes through the catalog's UI-independent workflow.</summary>
 public static class PendingChangesWorkflow
 {
-    /// <summary>Finalizes, checks, evaluates, and applies the pending changes as one workflow.</summary>
-    /// <param name="request">The project, pending Draft, expected revision, and applying user.</param>
+    /// <summary>Applies the pending changes through the one Apply path, at FieldWorks' save boundary.</summary>
+    /// <param name="request">The project, the pending Draft and revision the caller reviewed, if any.</param>
     /// <param name="cancellationToken">Cancels the queued Dry Run and reopens the Draft while waiting.</param>
     /// <param name="dryRunTimeout">The wait bound, or <see langword="null"/> to use the command default.</param>
     /// <param name="runnerLauncher">
@@ -32,75 +37,219 @@ public static class PendingChangesWorkflow
         TimeSpan? dryRunTimeout = null, IJobRunnerLauncher? runnerLauncher = null)
     {
         ArgumentNullException.ThrowIfNull(request);
-        var version = MotifProductVersion.CurrentText;
         var identity = ReadPendingIdentity(request.ProjectPath);
         if (!identity.Succeeded) return CommandOutcome<ApplyPendingResult>.Refused(identity.Refusal!);
-        if (identity.Value!.Current is null)
+        if (identity.Value!.Current is not { } current)
             return CommandOutcome<ApplyPendingResult>.Success(ApplyPendingResult.NothingPending);
-        var pending = PendingChanges.Load(new PendingChangesRequest(request.ProjectPath, version));
-        if (!pending.Succeeded) return CommandOutcome<ApplyPendingResult>.Refused(pending.Refusal!);
-        var snapshot = pending.Value!;
-        if (snapshot.DraftId is not { } draftId ||
-            request.DraftId is { } expectedDraft && expectedDraft != draftId ||
-            request.Revision is { } expectedRevision && expectedRevision != snapshot.Revision)
-            return RefuseApply("apply.changes-changed",
-                "The changes changed. Reload and check them before applying.");
-        var uncertain = snapshot.FitSummary.Where(fit => fit.Status == ChangeFitStatus.Uncertain)
-            .Select(fit => fit.ChangeId).ToArray();
-        if (uncertain.Length > 0)
-            return CommandOutcome<ApplyPendingResult>.Refused(PendingChangeRefusals.Uncertain(uncertain));
-        if (snapshot.FitSummary.Count != snapshot.Changes.Count || snapshot.FitSummary.Any(fit => !fit.StillFits))
-            return RefuseApply("apply.change-no-longer-fits",
-                "One or more changes no longer fit the project. Remove those changes first.");
-        var resolvedRequest = request with { DraftId = draftId, Revision = snapshot.Revision };
+        if (request.DraftId is { } expectedDraft && expectedDraft != current.DraftId)
+            return RefuseApply("apply.changes-changed", ChangesChanged(isPending: true));
+        return ApplyOne(new ApplyTarget(request.ProjectPath, current.DraftId, request.Revision, Force: false,
+            DryRunSource.Fresh), cancellationToken, dryRunTimeout, runnerLauncher);
+    }
 
-        // Original ownership is required before Apply finalizes changes or queues its Dry Run.
-        var released = ProjectStoreCommand.Run(request.ProjectPath, version, (_, project) =>
+    /// <summary>
+    /// Applies one Proposal through the same path as the pending changes: finalize a Draft, check every change
+    /// once, take its Dry Run, apply in one unit of work, and reopen the Draft under the same id on refusal.
+    /// </summary>
+    /// <param name="request">The project, the Proposal, and the revision the caller reviewed.</param>
+    /// <param name="cancellationToken">Cancels the wait for the project to be released.</param>
+    /// <remarks>
+    /// The Proposal, the pending changes included, takes the Dry Run of its current Trial and is refused when it
+    /// has none; only <c>apply --all-pending</c>, at FieldWorks' save boundary, queues a fresh one.
+    /// </remarks>
+    public static CommandOutcome<ApplyPendingResult> Apply(
+        ApplyProposalRequest request, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return ApplyOne(new ApplyTarget(request.ProjectPath, request.ProposalId, request.ExpectedRevision,
+            Force: false, DryRunSource.Trial), cancellationToken, null, null);
+    }
+
+    /// <summary>
+    /// The developer <c>apply &lt;id&gt;</c>: the same path, taking the Dry Run already bound by <c>dryrun</c>
+    /// and, with <see cref="ApplyRequest.Force"/>, overriding Readiness.
+    /// </summary>
+    /// <param name="request">The project, the Proposal, and whether Readiness is overridden.</param>
+    public static CommandOutcome<ApplyPendingResult> Apply(ApplyRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return ApplyOne(new ApplyTarget(request.FwDataPath, request.ProposalId, null, request.Force,
+            DryRunSource.Bound), CancellationToken.None, null, null);
+    }
+
+    private sealed record ApplyTarget(string ProjectPath, string ProposalId, string? ExpectedRevision, bool Force,
+        DryRunSource DryRun);
+
+    // Where the Dry Run Apply binds comes from; it is the only thing the front doors choose.
+    private enum DryRunSource
+    {
+        // FieldWorks' save boundary: a Dry Run queued now, so the pending changes need no Trial.
+        Fresh,
+
+        // A reviewed Proposal: the Dry Run of its current Trial.
+        Trial,
+
+        // The developer verb: the Dry Run `dryrun` already bound.
+        Bound,
+    }
+
+    // The one Apply orchestration; every front door above only names the Proposal and its Dry Run source.
+    private static CommandOutcome<ApplyPendingResult> ApplyOne(ApplyTarget target,
+        CancellationToken cancellationToken, TimeSpan? dryRunTimeout, IJobRunnerLauncher? runnerLauncher)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var version = MotifProductVersion.CurrentText;
+        var read = ProjectStoreCommand.Run(target.ProjectPath, version, (database, project) =>
+            ReadApplyIdentity(database, project, target));
+        if (!read.Succeeded) return CommandOutcome<ApplyPendingResult>.Refused(read.Refusal!);
+        var identity = read.Value!;
+        if (identity.NothingToApply) return CommandOutcome<ApplyPendingResult>.Success(ApplyPendingResult.NothingPending);
+
+        // FieldWorks' lock is refused here, before any Draft is finalized, checked or dry-run.
+        var released = ProjectStoreCommand.Run(target.ProjectPath, version, (_, project) =>
         {
             using var cache = new FwDataProjectLoader().LoadScratchCache(project.FullFwDataPath);
-            return CommandOutcome<PendingChangesSnapshot>.Success(snapshot);
+            return CommandOutcome<ApplyIdentity>.Success(identity);
         });
         if (!released.Succeeded) return CommandOutcome<ApplyPendingResult>.Refused(released.Refusal!);
 
-        var finalized = ProposalCommands.Finalize(new FinalizeRequest(
-            request.ProjectPath, version, PendingChanges.DraftName, snapshot.Revision));
-        if (!finalized.Succeeded)
-        {
-            if (finalized.Refusal?.Code == "draft.revision-conflict")
-                return RefuseApply("apply.changes-changed",
-                    "The changes changed. Reload and check them before applying.");
-            return CommandOutcome<ApplyPendingResult>.Refused(finalized.Refusal!);
-        }
-        var proposalId = finalized.Value!.ProposalId;
-
-        var fit = ProposalCommands.Preflight(new PreflightRequest(request.ProjectPath, version, proposalId));
-        if (!fit.Succeeded) return ReopenAfterRefusal(resolvedRequest, fit.Refusal!);
+        // Every change is checked once, on the content as read, so a change that no longer fits finalizes nothing.
+        var fit = ProposalCommands.Preflight(new PreflightRequest(target.ProjectPath, version, identity.ProposalId),
+            identity.Content);
+        if (!fit.Succeeded) return CommandOutcome<ApplyPendingResult>.Refused(fit.Refusal!);
         var uncertainOperations = fit.Value!.Changes
             .Where(operation => operation.Status == ChangeFitStatus.Uncertain)
             .Select(operation => operation.ChangeId ?? operation.OperationId).ToArray();
         if (uncertainOperations.Length > 0)
-            return ReopenAfterRefusal(resolvedRequest, PendingChangeRefusals.Uncertain(uncertainOperations));
+            return CommandOutcome<ApplyPendingResult>.Refused(PendingChangeRefusals.Uncertain(uncertainOperations));
         if (fit.Value.Changes.Any(operation => !operation.StillFits))
-            return ReopenAfterRefusal(resolvedRequest, new Refusal("apply.change-no-longer-fits",
-                FailureReason.Refused, "One or more changes no longer fit the project. Remove those changes first."));
+            return RefuseApply("apply.change-no-longer-fits",
+                "One or more changes no longer fit the project. Remove those changes first.");
 
-        var queued = JobCommands.EnqueueDryRun(new EnqueueDryRunRequest(request.ProjectPath, version, proposalId));
-        if (!queued.Succeeded) return ReopenAfterRefusal(resolvedRequest, queued.Refusal!);
-        (runnerLauncher ?? ProcessRunnerLauncher.FromEnvironment()).Start(request.ProjectPath);
-        var dryRun = JobCommands.WaitForDryRun(new WaitForDryRunRequest(
-            request.ProjectPath, version, proposalId, queued.Value!.JobId,
-            dryRunTimeout ?? JobCommands.DefaultWaitTimeout), cancellationToken, cancelOnTimeout: true);
-        if (!dryRun.Succeeded) return ReopenAfterRefusal(resolvedRequest, dryRun.Refusal!);
+        string proposalId = identity.ProposalId;
+        if (identity.DraftName is { } draftName)
+        {
+            var finalized = ProposalCommands.Finalize(new FinalizeRequest(target.ProjectPath, version, draftName,
+                identity.Revision));
+            if (!finalized.Succeeded)
+            {
+                if (finalized.Refusal?.Code == "draft.revision-conflict")
+                    return RefuseApply("apply.changes-changed", ChangesChanged(identity.IsPendingChanges));
+                return CommandOutcome<ApplyPendingResult>.Refused(finalized.Refusal!);
+            }
+            proposalId = finalized.Value!.ProposalId;
+        }
 
-        var applied = ProposalCommands.Apply(new ApplyRequest(
-            request.ProjectPath, version, proposalId));
+        var unbound = target.DryRun switch
+        {
+            DryRunSource.Fresh => RunFreshDryRun(target.ProjectPath, version, proposalId, cancellationToken,
+                dryRunTimeout, runnerLauncher),
+            DryRunSource.Trial => BindTrialDryRun(target.ProjectPath, version, proposalId),
+            _ => null,
+        };
+        if (unbound is not null) return ReopenAfterRefusal(target.ProjectPath, identity, unbound);
+
+        var applied = ProposalCommands.Apply(new ApplyRequest(target.ProjectPath, version, proposalId, target.Force));
         if (applied.Succeeded)
-            return CommandOutcome<ApplyPendingResult>.Success(ApplyPendingResult.AppliedWith(
-                applied.Value!, SummaryOf(snapshot.Changes)));
+            return CommandOutcome<ApplyPendingResult>.Success(ApplyPendingResult.AppliedWith(applied.Value!,
+                identity.Summary!));
         if (applied.Refusal?.Code == "apply.reconciliation-needed")
             return CommandOutcome<ApplyPendingResult>.Refused(applied.Refusal!);
-        return ReopenAfterRefusal(resolvedRequest, applied.Refusal!);
+        return ReopenAfterRefusal(target.ProjectPath, identity, applied.Refusal!);
     }
+
+    private static CommandOutcome<ApplyIdentity> ReadApplyIdentity(MotifDatabase database, ProjectLocator project,
+        ApplyTarget target)
+    {
+        var repository = new ProposalRepository(database);
+        ProposalRecord record;
+        string id;
+        try
+        {
+            id = ProposalCommands.NormalizeId(target.ProposalId);
+            record = repository.Get(CanonicalId.Parse(id));
+        }
+        catch (Exception exception) when (exception is ArgumentException or KeyNotFoundException)
+        {
+            return CommandOutcome<ApplyIdentity>.Refused(ProposalCommands.ProposalLoadRefusal(exception));
+        }
+        var isDraft = record.DraftName is not null;
+        var isPending = isDraft && record.IsPendingChanges;
+        string revision;
+        DraftDocument draft;
+        if (isDraft)
+        {
+            draft = ProposalCommands.DeserializeDraft(record.ProposalJson!);
+            revision = DraftRevision.Compute(record.ProposalJson);
+        }
+        else
+        {
+            var (finalized, envelope) = repository.GetFinalized(record.ProposalId);
+            draft = ProposalCommands.ToDraftDocument(id, envelope, finalized.Label, finalized.Comment);
+            revision = finalized.IntentDigest!;
+        }
+        if (target.ExpectedRevision is { } expected && expected != revision)
+            return CommandOutcome<ApplyIdentity>.Refused(new Refusal("apply.changes-changed",
+                FailureReason.Refused, ChangesChanged(isPending)));
+        if (draft.Operations.Count == 0)
+            return CommandOutcome<ApplyIdentity>.Success(new ApplyIdentity(id, record.DraftName, revision, null,
+                true, isPending, record.ProposalJson));
+        if (target.DryRun == DryRunSource.Trial && CheckTrial(database, project, record.ProposalId) is { } refusal)
+            return CommandOutcome<ApplyIdentity>.Refused(refusal);
+        var changes = PendingChanges.ReadChanges(draft);
+        var summary = changes.Length > 0 || isPending ? SummaryOf(changes)
+            : $"Applied {(string.IsNullOrWhiteSpace(record.Label) ? "the Proposal" : record.Label)}.";
+        return CommandOutcome<ApplyIdentity>.Success(new ApplyIdentity(id, record.DraftName, revision, summary,
+            false, isPending, isDraft ? record.ProposalJson : null,
+            ProposalJsonParser.Parse(ProposalCommands.BuildProposalJson(draft))));
+    }
+
+    private static Refusal? RunFreshDryRun(string projectPath, string version, string proposalId,
+        CancellationToken cancellationToken, TimeSpan? dryRunTimeout, IJobRunnerLauncher? runnerLauncher)
+    {
+        var queued = JobCommands.EnqueueDryRun(new EnqueueDryRunRequest(projectPath, version, proposalId));
+        if (!queued.Succeeded) return queued.Refusal!;
+        (runnerLauncher ?? ProcessRunnerLauncher.FromEnvironment()).Start(projectPath);
+        var dryRun = JobCommands.WaitForDryRun(new WaitForDryRunRequest(projectPath, version, proposalId,
+            queued.Value!.JobId, dryRunTimeout ?? JobCommands.DefaultWaitTimeout), cancellationToken,
+            cancelOnTimeout: true);
+        return dryRun.Succeeded ? null : dryRun.Refusal!;
+    }
+
+    private static Refusal? BindTrialDryRun(string projectPath, string version, string proposalId) =>
+        ProjectStoreCommand.Run(projectPath, version, (database, project) =>
+        {
+            var canonical = CanonicalId.Parse(proposalId);
+            var refusal = CheckTrial(database, project, canonical);
+            if (refusal is not null) return CommandOutcome<string>.Refused(refusal);
+            var trial = Trials.LatestFor(database, project, proposalId)!;
+            var job = new JobRepository(database).Get(trial.JobId);
+            if (job?.DryRunJson is null)
+                return CommandOutcome<string>.Refused(TrialMissing());
+            var dryRun = JobCommands.ParsePublishedDryRun(job.DryRunJson);
+            if (dryRun.IntentDigest != trial.IntentDigest)
+                return CommandOutcome<string>.Refused(TrialStale());
+            new ProposalRepository(database).SetAnchor(canonical, JsonSerializer.Serialize(dryRun.Anchor));
+            return CommandOutcome<string>.Success("bound");
+        }).Refusal;
+
+    private static Refusal? CheckTrial(MotifDatabase database, ProjectLocator project, CanonicalId canonical)
+    {
+        var trial = Trials.LatestFor(database, project, canonical.Value);
+        if (trial is null || trial.Status != JobStatus.Completed) return TrialMissing();
+        return trial.Freshness == TrialFreshness.Current ? null : TrialStale();
+    }
+
+    private static Refusal TrialMissing() => new("apply.trial-missing", FailureReason.Refused,
+        "This Proposal has not been tried. Try it before applying.");
+
+    private static Refusal TrialStale() => new("apply.trial-stale", FailureReason.Refused,
+        "This Proposal or the project changed since it was tried. Try it again before applying.");
+
+    // The window never calls the pending changes a Proposal.
+    private static string ChangesChanged(bool isPending) => isPending
+        ? "The changes changed. Reload and check them before applying."
+        : "The Proposal changed. Reload and check it before applying.";
 
     /// <summary>Runs a Trial for the selected words and returns its recorded correctness evidence.</summary>
     /// <param name="request">The project, pending Draft, revision, words, and earlier Assessment identity.</param>
@@ -124,12 +273,13 @@ public static class PendingChangesWorkflow
         var version = MotifProductVersion.CurrentText;
         if (cancellationToken.IsCancellationRequested) return CancelledMeasure();
 
-        var identity = await Task.Run(() => ReadPendingIdentity(request.ProjectPath)).ConfigureAwait(false);
+        var identity = await Task.Run(() => request.DraftId is { } named
+            ? ReadDraftIdentity(request.ProjectPath, named)
+            : ReadPendingIdentity(request.ProjectPath)).ConfigureAwait(false);
         if (!identity.Succeeded) return CommandOutcome<MeasurePendingResult>.Refused(identity.Refusal!);
         if (identity.Value!.Current is not { } current)
             return RefuseMeasure("trial.nothing-pending", "There are no pending changes to measure.");
-        if (request.DraftId is { } expectedDraft && expectedDraft != current.DraftId ||
-            request.Revision is { } expectedRevision && expectedRevision != current.Revision)
+        if (request.Revision is { } expectedRevision && expectedRevision != current.Revision)
             return RefuseMeasure("trial.changes-changed", "The changes changed. Reload them before measuring.");
 
         TrialLimits? limits = null;
@@ -199,14 +349,34 @@ public static class PendingChangesWorkflow
     private static CommandOutcome<PendingDraftRead> ReadPendingIdentity(string projectPath) =>
         ProjectStoreCommand.Run(projectPath, MotifProductVersion.CurrentText, (database, _) =>
         {
-            var repository = new ProposalRepository(database);
-            var draft = repository.DraftNameExists(PendingChanges.DraftName)
-                ? repository.GetDraft(PendingChanges.DraftName) : null;
+            var draft = new ProposalRepository(database).FindPendingChangesDraft();
             if (draft?.ProposalJson is not { } json || JsonSerializer.Deserialize<DraftDocument>(json,
                     new JsonSerializerOptions(JsonSerializerDefaults.Web))?.Operations.Count is null or 0)
                 return CommandOutcome<PendingDraftRead>.Success(new PendingDraftRead(null));
             return CommandOutcome<PendingDraftRead>.Success(new PendingDraftRead(new PendingDraftIdentity(
                 draft.ProposalId.Value, DraftRevision.Compute(json))));
+        });
+
+    // A named Draft is measured like the pending one, through the same Trial; one with no operations has nothing.
+    private static CommandOutcome<PendingDraftRead> ReadDraftIdentity(string projectPath, string proposalId) =>
+        ProjectStoreCommand.Run(projectPath, MotifProductVersion.CurrentText, (database, _) =>
+        {
+            ProposalRecord record;
+            try { record = new ProposalRepository(database).Get(CanonicalId.Parse(ProposalCommands.NormalizeId(proposalId))); }
+            catch (Exception exception) when (exception is ArgumentException or KeyNotFoundException)
+            {
+                return CommandOutcome<PendingDraftRead>.Refused(new Refusal(RefusalCodes.TrialChangesChanged,
+                    FailureReason.Refused, "The changes changed. Reload them before measuring."));
+            }
+            if (record.DraftName is null)
+                return CommandOutcome<PendingDraftRead>.Refused(new Refusal(RefusalCodes.TrialChangesChanged,
+                    FailureReason.Refused, "The changes changed. Reload them before measuring."));
+            if (record.ProposalJson is not { } json ||
+                JsonSerializer.Deserialize<DraftDocument>(json,
+                    new JsonSerializerOptions(JsonSerializerDefaults.Web))?.Operations.Count is null or 0)
+                return CommandOutcome<PendingDraftRead>.Success(new PendingDraftRead(null));
+            return CommandOutcome<PendingDraftRead>.Success(new PendingDraftRead(new PendingDraftIdentity(
+                record.ProposalId.Value, DraftRevision.Compute(json))));
         });
 
     private static CommandOutcome<TrialLimits> ReadTrialLimits(string projectPath, string assessmentId) =>
@@ -236,11 +406,26 @@ public static class PendingChangesWorkflow
             }
         });
 
+    // A Draft that Apply finalized is reopened exactly as it was read, so its revision is unchanged for the caller.
     private static CommandOutcome<ApplyPendingResult> ReopenAfterRefusal(
-        ApplyPendingRequest request, Refusal reason)
+        string projectPath, ApplyIdentity identity, Refusal reason)
     {
-        var reopened = ProposalCommands.Reopen(new ReopenRequest(
-            request.ProjectPath, MotifProductVersion.CurrentText, PendingChanges.DraftName, request.DraftId!));
+        if (identity.DraftName is not { } draftName || identity.DraftJson is not { } draftJson)
+            return CommandOutcome<ApplyPendingResult>.Refused(reason);
+        var reopened = ProjectStoreCommand.Run(projectPath, MotifProductVersion.CurrentText, (database, _) =>
+        {
+            try
+            {
+                new ProposalRepository(database).ReopenAsDraft(CanonicalId.Parse(identity.ProposalId), draftName,
+                    draftJson);
+                return CommandOutcome<string>.Success(draftName);
+            }
+            catch (Exception exception) when (exception is InvalidOperationException or KeyNotFoundException)
+            {
+                return CommandOutcome<string>.Refused(new Refusal("apply.reopen-failed", FailureReason.Refused,
+                    exception.Message));
+            }
+        });
         return reopened.Succeeded ? CommandOutcome<ApplyPendingResult>.Refused(reason)
             : RefuseApply("apply.reopen-failed",
                 reason.Message + " The changes could not be reopened: " + reopened.Refusal!.Message);
@@ -281,6 +466,10 @@ public static class PendingChangesWorkflow
     private static CommandOutcome<MeasurePendingResult> CancelledMeasure() =>
         CommandOutcome<MeasurePendingResult>.Refused(new Refusal(
             "job.wait-cancelled", FailureReason.Cancelled, "The check was cancelled."));
+
+    private sealed record ApplyIdentity(string ProposalId, string? DraftName, string Revision, string? Summary,
+        bool NothingToApply, bool IsPendingChanges, string? DraftJson = null,
+        SIL.Motif.Contract.Model.Proposal? Content = null);
 
     private sealed record PendingDraftIdentity(string DraftId, string Revision);
 

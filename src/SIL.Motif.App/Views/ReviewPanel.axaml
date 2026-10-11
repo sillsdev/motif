@@ -14,7 +14,7 @@
   <Grid Classes="reviewLayout" ColumnDefinitions="*,Auto">
     <views:WordListSlot Grid.Column="0" Schema="{x:Static word:WordListSchemas.Review}">
     <Grid RowDefinitions="Auto,*">
-    <word:WordRowHeader Grid.Row="0" />
+    <word:WordRowHeader Grid.Row="0" IsVisible="{Binding HasWordRows}" />
     <ListBox x:Name="ReviewItems" Grid.Row="1" Classes="wordRows" ItemsSource="{Binding ReviewEntries}"
              VerticalAlignment="Stretch" AutomationProperties.Name="Changes grouped for review"
              KeyboardNavigation.TabNavigation="Continue" Grid.IsSharedSizeScope="True">
@@ -31,11 +31,37 @@
               <StackPanel Classes="reviewCompact">
                 <views:CopyableTextBlock Classes="section-title" Text="{Binding CountText}" TextWrapping="Wrap" />
                 <views:CopyableTextBlock x:Name="ReviewHeaderNote" Classes="muted" IsVisible="{Binding ShowsHeaderNote}"
-                                         TextWrapping="Wrap"
-                                         Text="Grouped by what they do. Nothing reaches FieldWorks until you apply." />
+                                         TextWrapping="Wrap" Text="{Binding HeaderNoteText}" />
                 <views:CopyableTextBlock x:Name="ApplyBlockedTitle" Classes="reviewBlockedTitle"
                                          Text="{Binding ApplyBlockedTitle}" IsVisible="{Binding IsApplyBlocked}" />
               </StackPanel>
+              <WrapPanel Classes="reviewToolbar" IsVisible="{Binding HasEntries}">
+                <Button Classes="reviewAction" Content="Previous" Command="{Binding PreviousCommand}"
+                        AutomationProperties.AutomationId="{x:Static app:AutomationIds.ReviewPrevious}" />
+                <Button Classes="reviewAction" Content="Next" Command="{Binding NextCommand}"
+                        AutomationProperties.AutomationId="{x:Static app:AutomationIds.ReviewNext}" />
+                <Button Classes="reviewAction" Content="Keep" Command="{Binding KeepCommand}"
+                        AutomationProperties.AutomationId="{x:Static app:AutomationIds.ReviewKeep}" />
+                <Button Classes="reviewAction" Content="Undo" Command="{Binding UndoCommand}"
+                        AutomationProperties.AutomationId="{x:Static app:AutomationIds.ReviewUndo}" />
+                <Button Classes="reviewAction" Content="{Binding KeepAllText}" Command="{Binding KeepAllCommand}" />
+                <Button Classes="reviewAction" Content="{Binding UndoAllText}" Command="{Binding UndoAllCommand}"
+                        IsVisible="{Binding ShowsUndoAll}" />
+                <views:CopyableTextBlock Classes="reviewSmall reviewGap" Text="{Binding LookedAtText}"
+                                         AutomationProperties.AutomationId="{x:Static app:AutomationIds.ReviewLookedAt}" />
+              </WrapPanel>
+              <Border Classes="reviewPrompt" IsVisible="{Binding UndoPrompt, Converter={x:Static ObjectConverters.IsNotNull}}"
+                      AutomationProperties.AutomationId="{x:Static app:AutomationIds.ReviewUndoPrompt}">
+                <StackPanel Classes="reviewCompact">
+                  <views:CopyableTextBlock Text="{Binding UndoPrompt.Sentence}" TextWrapping="Wrap" />
+                  <WrapPanel Classes="reviewToolbar">
+                    <Button Classes="reviewAction" Content="{Binding UndoPrompt.UndoAllText}"
+                            Command="{Binding UndoPrompt.UndoAllOfThem}" />
+                    <Button Classes="reviewAction" Content="Cancel" Command="{Binding UndoPrompt.Cancel}" />
+                  </WrapPanel>
+                </StackPanel>
+              </Border>
+              <views:RefusalBlock DataContext="{Binding UndoRefusal}" />
               <StackPanel Classes="reviewCompact" IsVisible="{Binding ShowsEmptyState}">
                 <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap"
                                          Text="Choose a word in Analyze texts, then choose what should happen to its analysis." />
@@ -82,6 +108,48 @@
                 </DataTemplate>
               </ContentControl.ContentTemplate>
             </ContentControl>
+            <ContentControl Content="{Binding GrammarGroup}">
+              <ContentControl.ContentTemplate>
+                <DataTemplate x:DataType="vm:ReviewGrammarGroupViewModel">
+            <Border Classes="reviewGroup reviewEntry header">
+              <Border Classes="reviewGroupHeader">
+                <WrapPanel ItemSpacing="{DynamicResource Intent.Space.Related}"
+                           LineSpacing="{DynamicResource Intent.Space.Compact}" VerticalAlignment="Center">
+                  <views:CopyableTextBlock Classes="reviewGroupTitle" Text="{Binding Title}" TextWrapping="Wrap" />
+                  <views:CopyableTextBlock Classes="reviewSmall reviewGap" Text="{Binding CountText}" TextWrapping="Wrap" />
+                </WrapPanel>
+              </Border>
+            </Border>
+                </DataTemplate>
+              </ContentControl.ContentTemplate>
+            </ContentControl>
+            <ContentControl Content="{Binding GrammarEntry}">
+              <ContentControl.ContentTemplate>
+                <DataTemplate x:DataType="vm:ReviewListEntryViewModel">
+            <Border Classes="reviewGroup reviewEntry" Classes.last="{Binding IsLastChange}">
+              <Border Classes="reviewCurrentFrame reviewGrammarRow" Classes.current="{Binding Review.IsCurrent}">
+                <StackPanel Classes="reviewCompact">
+                  <views:CopyableTextBlock Classes="reviewEmphasis" Text="{Binding Review.Title}" TextWrapping="Wrap" />
+                  <views:CopyableTextBlock Classes="muted" Text="{Binding Review.Summary}" TextWrapping="Wrap" />
+                  <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding Review.EffectText}"
+                                           IsVisible="{Binding Review.HasEffects}" TextWrapping="Wrap" />
+                  <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding Review.PartsText}"
+                                           IsVisible="{Binding Review.HasParts}" TextWrapping="Wrap" />
+                  <WrapPanel Classes="reviewActions">
+                    <Border Classes="reviewPill reviewLookedAt" IsVisible="{Binding Review.IsLookedAt}">
+                      <views:CopyableTextBlock Text="✓ Looked at" />
+                    </Border>
+                    <Button Classes="reviewAction" Content="Keep" Command="{Binding Review.KeepCommand}"
+                            AutomationProperties.Name="{Binding Review.KeepAutomationName}" />
+                    <Button Classes="reviewAction" Content="Undo" Command="{Binding Review.UndoCommand}"
+                            AutomationProperties.Name="{Binding Review.UndoAutomationName}" />
+                  </WrapPanel>
+                </StackPanel>
+              </Border>
+            </Border>
+                </DataTemplate>
+              </ContentControl.ContentTemplate>
+            </ContentControl>
             <ContentControl Content="{Binding ChangeEntry}">
               <ContentControl.ContentTemplate>
                 <DataTemplate x:DataType="vm:ReviewListEntryViewModel">
@@ -89,9 +157,11 @@
                     Classes.last="{Binding IsLastChange}"
                     Classes.noLongerFits="{Binding Group.IsNoLongerFits}"
                     Classes.uncertain="{Binding Group.IsUncertain}">
-              <word:WordRow Data="{Binding Change.Presentation}"
-                            State="{Binding Change.PresentationState, Mode=TwoWay}"
-                            Host="{Binding $parent[views:ReviewPanel].PresentationHost}" />
+              <Border Classes="reviewCurrentFrame" Classes.current="{Binding Review.IsCurrent}">
+                <word:WordRow Data="{Binding Change.Presentation}"
+                              State="{Binding Change.PresentationState, Mode=TwoWay}"
+                              Host="{Binding $parent[views:ReviewPanel].PresentationHost}" />
+              </Border>
             </Border>
                 </DataTemplate>
               </ContentControl.ContentTemplate>
@@ -109,6 +179,19 @@
           <views:CopyableTextBlock Classes="section-title" Text="{Binding ProjectName, StringFormat='Apply to {0}'}"
                                    TextWrapping="Wrap" />
           <views:CopyableTextBlock Classes="muted" Text="{Binding CountText}" TextWrapping="Wrap" />
+          <ItemsControl x:Name="ApplyChecks" ItemsSource="{Binding ApplyChecks}" IsVisible="{Binding HasApplyChecks}"
+                        AutomationProperties.Name="What Apply checks">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate><StackPanel Classes="reviewCompact" /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:ApplyCheck">
+                <Border Classes="reviewPill reviewCheck" Classes.failed="{Binding !Passed}">
+                  <views:CopyableTextBlock Text="{Binding MarkedText}" />
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
           <ItemsControl x:Name="ApplyBlockers" ItemsSource="{Binding ApplyBlockers}"
                         AutomationProperties.Name="What blocks Apply">
             <ItemsControl.ItemsPanel>
@@ -127,7 +210,7 @@
             </ItemsControl.ItemTemplate>
           </ItemsControl>
           <views:CopyableTextBlock x:Name="ReviewNumbersText" Classes="muted" Text="{Binding NumbersText}"
-                                   TextWrapping="Wrap" />
+                                   IsVisible="{Binding ShowsNumbersText}" TextWrapping="Wrap" />
           <views:CopyableTextBlock x:Name="ReviewMeasurementProgress" Classes="reviewSmall" Text="{Binding MeasurementProgressText}"
                                    IsVisible="{Binding IsMeasuring}" TextWrapping="Wrap" />
           <views:RefusalBlock DataContext="{Binding MeasurementRefusal}" />
@@ -142,7 +225,10 @@
                   Classes="reviewApplyTooltip"
                   views:ClearTipPlacement.IsEnabled="True"
                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.ApplyChanges}" />
-          <Button Content="Keep editing" Command="{Binding KeepEditingCommand}" IsVisible="{Binding Changes.HasItems}" />
+          <Button Content="{Binding BackText}" Command="{Binding KeepEditingCommand}" IsVisible="{Binding ShowsBackButton}" />
+          <Button Content="Decline" Command="{Binding DeclineCommand}" IsVisible="{Binding ShowsDecline}"
+                  AutomationProperties.AutomationId="{x:Static app:AutomationIds.DeclineProposal}" />
+          <views:RefusalBlock DataContext="{Binding DeclineRefusal}" />
           <views:CopyableTextBlock Classes="reviewSmall"
                                    Text="FieldWorks must be closed, or it keeps its own copy. Keep a backup: this is a tech demo."
                                    TextWrapping="Wrap" />

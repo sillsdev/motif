@@ -67,6 +67,23 @@
     <Setter Property="BorderThickness" Value="{DynamicResource Component.Review.EntryLastRule}" />
     <Setter Property="CornerRadius" Value="{DynamicResource Component.Review.EntryLastRadius}" />
   </Style>
+  <!-- The entry Previous and Next stand on: the selected-row fill and ring the word lists use. -->
+  <Style Selector="Border.reviewCurrentFrame.current">
+    <Setter Property="Background" Value="{DynamicResource Intent.Selected.Fill}" />
+    <Setter Property="BoxShadow" Value="{DynamicResource Intent.Shadow.Selected}" />
+  </Style>
+  <Style Selector="Border.reviewGrammarRow">
+    <Setter Property="Padding" Value="{DynamicResource Component.Review.RowPadding}" />
+  </Style>
+  <Style Selector="WrapPanel.reviewToolbar">
+    <Setter Property="ItemSpacing" Value="{DynamicResource Intent.Space.Related}" />
+    <Setter Property="LineSpacing" Value="{DynamicResource Intent.Space.Compact}" />
+  </Style>
+  <Style Selector="Border.reviewPrompt">
+    <Setter Property="Background" Value="{DynamicResource Intent.Warning.Fill}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.Review.HeaderPadding}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Component.Review.GroupRadius}" />
+  </Style>
   <Style Selector="Border.reviewGroup.noLongerFits">
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Danger}" />
   </Style>
@@ -165,6 +182,15 @@
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.Success.Text}" />
+  </Style>
+  <Style Selector="Border.reviewPill.reviewCheck">
+    <Setter Property="HorizontalAlignment" Value="Left" />
+  </Style>
+  <Style Selector="Border.reviewPill.failed">
+    <Setter Property="Background" Value="{DynamicResource Intent.Danger.Fill}" />
+  </Style>
+  <Style Selector="Border.reviewPill.failed :is(TextBlock)">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Danger}" />
   </Style>
   <Style Selector="Button.reviewAction">
     <Setter Property="Padding" Value="{DynamicResource Component.Review.ActionPadding}" />

@@ -61,6 +61,12 @@ public static class AutomationIds
     public const string CancelAssessment = "motif-cancel-assessment";
     public const string ReviewChanges = "motif-review-changes";
     public const string MeasureChanges = "motif-measure-changes";
+    public const string ReviewPrevious = "motif-review-previous";
+    public const string ReviewNext = "motif-review-next";
+    public const string ReviewKeep = "motif-review-keep";
+    public const string ReviewUndo = "motif-review-undo";
+    public const string ReviewLookedAt = "motif-review-looked-at";
+    public const string ReviewUndoPrompt = "motif-review-undo-prompt";
     public const string ApplyChanges = "motif-apply-changes";
     public const string WriteHandoff = "motif-write-handoff";
     public const string CancelHandoff = "motif-cancel-handoff";
@@ -80,6 +86,9 @@ public static class AutomationIds
     public const string Pages = "motif-pages";
     public const string ProposalsSetAside = "motif-proposals-set-aside";
 
+    /// <summary>The Review changes action that declines the open Proposal.</summary>
+    public const string DeclineProposal = "motif-review-decline";
+
     /// <summary>Creates the identifier of the Open button on one Proposal's card.</summary>
     /// <param name="proposalId">The Proposal's canonical id.</param>
     /// <returns>An ASCII identifier that stays with the Proposal whichever group it is in.</returns>
@@ -96,6 +105,12 @@ public static class AutomationIds
     /// <returns>An ASCII identifier that stays with the Proposal whichever group it is in.</returns>
     public static string ForProposalDelete(string proposalId) =>
         "motif-proposals-delete-" + ProposalIdPart(proposalId);
+
+    /// <summary>Creates the identifier of the Reopen button on one declined or withdrawn Proposal's card.</summary>
+    /// <param name="proposalId">The Proposal's canonical id.</param>
+    /// <returns>An ASCII identifier that stays with the Proposal whichever group it is in.</returns>
+    public static string ForProposalReopen(string proposalId) =>
+        "motif-proposals-reopen-" + ProposalIdPart(proposalId);
 
     // Script ids are lower-case ASCII, so a Proposal's id becomes a fixed-length hash of itself.
     private static string ProposalIdPart(string proposalId)

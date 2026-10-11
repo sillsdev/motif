@@ -99,6 +99,61 @@ public static class ChangeVocabulary
             [AnalysisChangeKinds.IncorrectSpelling] = Spelling,
         };
 
+    // A composer call reads as what a linguist did: "Add phoneme ɸ", or "Add a phoneme" when it names nothing.
+    private static readonly IReadOnlyDictionary<string, (string Named, string Unnamed)> ByComposer =
+        new Dictionary<string, (string, string)>(StringComparer.Ordinal)
+        {
+            ["AuthorPhoneme"] = ("Add phoneme", "Add a phoneme"),
+            ["AuthorNaturalClass"] = ("Add natural class", "Add a natural class"),
+            ["AuthorEnvironment"] = ("Add environment", "Add an environment"),
+            ["AuthorPhonologicalRule"] = ("Add rule", "Add a phonological rule"),
+            ["AuthorAffixSlot"] = ("Add affix slot", "Add an affix slot"),
+            ["AuthorAffixTemplate"] = ("Add affix template", "Add an affix template"),
+            ["AuthorFeatureValue"] = ("Add feature value", "Add a feature value"),
+            ["AuthorFeatureStructure"] = ("Add feature structure", "Add a feature structure"),
+            ["AuthorLexemeForm"] = ("Add lexeme form", "Add a lexeme form"),
+            ["EditNaturalClass"] = ("Change natural class", "Change a natural class"),
+            ["RelinkNaturalClass"] = ("Point to natural class", "Point to another natural class"),
+            ["EditAdhocProhibition"] = ("Change restriction", "Change a co-occurrence restriction"),
+            ["EditAffixSlot"] = ("Change affix slot", "Change an affix slot"),
+            ["EditAffixTemplate"] = ("Change affix template", "Change an affix template"),
+            ["EditInflectionalAffix"] = ("Change affix", "Change an inflectional affix"),
+            ["EditAllomorphCondition"] = ("Change where allomorph", "Change where an allomorph occurs"),
+            ["OrderAllomorphs"] = ("Reorder allomorphs of", "Reorder allomorphs"),
+            ["RetireAllomorph"] = ("Retire allomorph", "Retire an allomorph"),
+            ["RetireRedundantZeroAffix"] = ("Retire zero affix", "Retire a zero affix"),
+            ["RecordParsimonyDisposition"] = ("Record a decision on", "Record a Parsimony decision"),
+        };
+
+    /// <summary>
+    /// The review title of one composer call, in a linguist's words: "Add phoneme ɸ" when the call names what it
+    /// makes, "Add a phoneme" when it does not. A composer this table does not know reads from its own name, with
+    /// "Author" read as "Add" and "Edit" as "Change".
+    /// </summary>
+    /// <param name="composer">The composer's name, such as <c>AuthorPhoneme</c>.</param>
+    /// <param name="name">The name the call gave what it makes, when it gave one.</param>
+    public static string ComposerTitle(string composer, string? name = null)
+    {
+        composer ??= string.Empty;
+        var (named, unnamed) = ByComposer.TryGetValue(composer, out var known) ? known : FromComposerName(composer);
+        return string.IsNullOrWhiteSpace(name) ? unnamed : named + " " + name.Trim();
+    }
+
+    /// <summary>
+    /// What a group of operations makes, counted by kind in linguist nouns: "1 rule", "2 phonemes, 1 natural class".
+    /// Kinds this table does not name are counted only when nothing else is: "3 changes".
+    /// </summary>
+    public static string Summary(IReadOnlyList<DraftOperation> operations)
+    {
+        ArgumentNullException.ThrowIfNull(operations);
+        var tallies = operations.Select(Of).GroupBy(kind => kind.Key, StringComparer.Ordinal)
+            .Select(group => new ChangeKindTally(group.First(), group.Count())).ToArray();
+        var named = tallies.Where(tally => tally.Kind.Key != GenericKey).ToArray();
+        return named.Length > 0
+            ? string.Join(", ", named.Select(tally => tally.Text))
+            : new ChangeKind(GenericKey, "change", "changes", "Change", true).Count(operations.Count);
+    }
+
     /// <summary>Names one operation kind; an evaluation's member tells approval from disapproval.</summary>
     /// <param name="operationKind">The operation kind, such as <c>grammar/phPhonData/createPhonRules</c>.</param>
     /// <param name="evaluationMember">The <c>member</c> of an evaluation's payload, when the caller has it.</param>
@@ -174,6 +229,14 @@ public static class ChangeVocabulary
         payload.TryGetProperty("member", out var member) && member.ValueKind == JsonValueKind.String
             ? member.GetString()
             : null;
+
+    private static (string Named, string Unnamed) FromComposerName(string composer)
+    {
+        var words = Humanize(composer);
+        foreach (var (prefix, verb) in new[] { ("Author ", "Add "), ("Edit ", "Change ") })
+            if (words.StartsWith(prefix, StringComparison.Ordinal)) words = verb + words[prefix.Length..];
+        return (words, words);
+    }
 
     // Kinds read "group/entity/verbNoun", and pending actions "add-candidate"; the last segment reads as words.
     private static string Humanize(string kind)

@@ -527,6 +527,13 @@
     "control": "ItemsControl"
   },
   {
+    "view": "ReviewPanel",
+    "name": "ApplyChecks",
+    "source": "ApplyChecks",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
     "view": "SelectionPanel",
     "name": "SelectionPanelTextsItems",
     "source": "Selection.Texts",

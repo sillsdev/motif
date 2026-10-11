@@ -229,7 +229,9 @@ public sealed record FinalizeRequest(
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
 /// <param name="DraftName">The name of the Draft being authored.</param>
-public sealed record DiscardDraftRequest(string FwDataPath, string ProductVersion, string DraftName);
+/// <param name="ExpectedRevision">The Draft revision the caller read, or null to discard whatever it holds.</param>
+public sealed record DiscardDraftRequest(string FwDataPath, string ProductVersion, string DraftName,
+    string? ExpectedRevision = null);
 
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>

@@ -7,6 +7,7 @@ using SIL.Motif.App.Controls;
 using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.App.Services;
 using SIL.Motif.Commands;
+using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Requests;
@@ -114,6 +115,29 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
             await ReloadAfterConflictAsync(outcome.Refusal, path, generation, cancellationToken).ConfigureAwait(true);
     }
 
+    /// <summary>
+    /// Takes out every pending change by discarding the pending Draft, the same path that discards any Draft. The
+    /// discard is one staging action, so the window's Undo puts the changes back.
+    /// </summary>
+    public async Task<bool> DiscardAllAsync(CancellationToken cancellationToken = default)
+    {
+        if (ProjectPath is not { } path || TargetProposalId is not null || Snapshot.DraftId is null) return false;
+        using var usageAction = _client.BeginUsageAction("discard-draft", UsageArgumentShape.Text("fwDataPath"));
+        var generation = _projectGeneration;
+        var before = Snapshot;
+        var outcome = await _client.DiscardDraftAsync(new DiscardDraftRequest(path, MotifProductVersion.CurrentText,
+            SIL.Motif.Commands.PendingChanges.DraftName, Snapshot.Revision), cancellationToken).ConfigureAwait(true);
+        if (!IsCurrentProject(path, generation)) return false;
+        if (!outcome.Succeeded)
+        {
+            await ReloadAfterConflictAsync(outcome.Refusal!, path, generation, cancellationToken).ConfigureAwait(true);
+            return false;
+        }
+        await ReloadAsync(path, generation, cancellationToken).ConfigureAwait(true);
+        RecordStagingAction(before);
+        return true;
+    }
+
     public PendingChangesSnapshot Snapshot { get; private set; } = new(null, "none", [], []);
 
     public Refusal? LastRefusal { get; private set; }
@@ -143,6 +167,7 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
     {
         if (string.Equals(TargetProposalId, proposalId, StringComparison.Ordinal)) return;
         TargetProposalId = proposalId;
+        OnPropertyChanged(nameof(TargetProposalId));
         ClearStagingHistory();
         await ReloadAsync(cancellationToken).ConfigureAwait(true);
     }
@@ -920,6 +945,11 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
     [ObservableProperty]
     private bool _isContextExpanded;
 
+    /// <summary>Whether Review changes marks this change looked at, which its row shows beside Keep.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(Presentation))]
+    private bool _isLookedAt;
+
     /// <summary>The word as Review changes lists it; its Open in text goes to this change's place.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(Presentation), nameof(PresentationState))]
@@ -931,7 +961,7 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
         WordListOwner.Review, TransitionText, DetailText,
         PendingChange: new WordPendingChange(IsUncertain, StillFits,
             AfterWords.Select(token => new WordCardSentenceToken(token.Form, token.FormWritingSystem, token.IsChanged)).ToArray(),
-            CheckAgainAutomationName, UndoAutomationName));
+            CheckAgainAutomationName, UndoAutomationName, IsLookedAt, $"Keep: {Word}"));
 
     /// <summary>The card-open state retained on the pending change while its list row is recycled.</summary>
     public WordInteractionState PresentationState

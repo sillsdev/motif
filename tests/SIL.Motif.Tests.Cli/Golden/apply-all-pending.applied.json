@@ -1,0 +1,42 @@
+{
+  "exitCode": 0,
+  "stdout": {
+    "applied": true,
+    "ok": true,
+    "receipt": {
+      "alreadyApplied": "\u003Cfalse\u003E",
+      "appliedLogEntry": {
+        "intentDigest": "\u003Cstring\u003E",
+        "proposalId": "\u003Cstring\u003E",
+        "timestampUtc": "\u003Cstring\u003E",
+        "user": "\u003Cstring\u003E"
+      },
+      "effectDigest": "\u003Cstring\u003E",
+      "effects": [
+        {
+          "canonicalId": "\u003Cstring\u003E",
+          "changes": [
+            {
+              "after": "\u003Cstring\u003E",
+              "before": "\u003Cstring\u003E",
+              "ws": "\u003Cstring\u003E"
+            }
+          ],
+          "field": "\u003Cstring\u003E",
+          "operationIds": []
+        }
+      ],
+      "proposalId": "\u003Cstring\u003E",
+      "readiness": {
+        "correctnessAssessmentExempt": "\u003Cfalse\u003E",
+        "correctnessAssessmentRequired": "\u003Ctrue\u003E",
+        "forced": "\u003Cfalse\u003E",
+        "isReady": "\u003Ctrue\u003E",
+        "reasons": []
+      },
+      "resultNote": "\u003Cstring\u003E"
+    },
+    "summary": "Marked 1 word as incorrectly spelled."
+  },
+  "stderr": null
+}

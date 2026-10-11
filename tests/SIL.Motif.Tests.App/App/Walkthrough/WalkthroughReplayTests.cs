@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.Reflection;
+using System.Text.Json;
+using SIL.Motif.Commands.Requests;
 using System.Text;
 using Avalonia;
 using Avalonia.Media;
@@ -28,6 +30,7 @@ using SIL.Motif.Commands.Preferences;
 using SIL.Motif.Commands.Store;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Host;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Host.Analysis;
 using SIL.Motif.Tests.TestFixtures;
@@ -252,6 +255,16 @@ public sealed class TryWordTypingWalkthroughReplayTests(
 [Collection(LcmCacheTestCollection.Name)]
 [AuthoredWalkthroughId("no-longer-fits")]
 public sealed class NoLongerFitsWalkthroughReplayTests(
+    PristineProjectFixture pristine, ITestOutputHelper output)
+{
+    [Fact]
+    public Task ReplaysAuthoredWalkthrough() =>
+        WalkthroughReplayTestRunner.RunAsync(GetType(), pristine, output);
+}
+
+[Collection(LcmCacheTestCollection.Name)]
+[AuthoredWalkthroughId("proposal-review-keep-undo")]
+public sealed class ProposalReviewKeepUndoWalkthroughReplayTests(
     PristineProjectFixture pristine, ITestOutputHelper output)
 {
     [Fact]
@@ -895,6 +908,7 @@ internal static class WalkthroughFixtureSeeder
             ["apply-refresh-ready"] = SeedApplyRefreshReadyAsync,
             ["handoff-cancel-ready"] = SeedHandoffCancelReadyAsync,
             ["no-longer-fits-ready"] = SeedNoLongerFitsReadyAsync,
+            ["proposal-review-ready"] = SeedProposalReviewReadyAsync,
             ["warnings-ready"] = SeedWarningsReadyAsync,
             ["parsimony-report-ready"] = SeedParsimonyReportReadyAsync,
             ["proposal-ready"] = SeedProposalReadyAsync,
@@ -1041,6 +1055,31 @@ internal static class WalkthroughFixtureSeeder
             new BaselineCaptureRequest(project.FwDataPath), CancellationToken.None);
         Assert.True(baseline.Succeeded, baseline.Refusal?.Message);
         await SeedSelectionAndSkipSetupAsync(project, client);
+        return WalkthroughFixturePreparation.Empty;
+    }
+
+    // A pending Draft of sound-system changes in which the natural class needs the phoneme made before it.
+    private static async Task<WalkthroughFixturePreparation> SeedProposalReviewReadyAsync(
+        WalkthroughProjectContext project, FixedClock clock, string parserPath)
+    {
+        await SeedOverviewReadyAsync(project, clock, parserPath);
+        var version = MotifProductVersion.CurrentText;
+        const string draft = PendingChanges.DraftName;
+        var path = project.FwDataPath;
+        Assert.True(ProposalCommands.New(new NewDraftRequest(path, version, draft, "Sound system changes")).Succeeded);
+        Assert.True(ProposalCommands.Comment(new CommentRequest(path, version, draft, "Two phonemes and a class.")).Succeeded);
+        var phoneme = ProposalCommands.ComposeAuthorPhoneme(new ComposeAuthorPhonemeRequest(path, version, draft,
+            JsonSerializer.Serialize(new { name = "ɸ", representations = new[] { "ɸ" } })));
+        Assert.True(phoneme.Succeeded, phoneme.Refusal?.Message);
+        var created = phoneme.Value!.Operations.Single(operation =>
+            operation.Kind.EndsWith("/createPhonemes", StringComparison.Ordinal));
+        Assert.True(ProposalCommands.ComposeAuthorNaturalClass(new ComposeAuthorNaturalClassRequest(path, version,
+            draft, JsonSerializer.Serialize(new
+            {
+                name = "fricatives", abbreviation = "FRIC", members = new[] { created.EntityId },
+            }))).Succeeded);
+        Assert.True(ProposalCommands.ComposeAuthorPhoneme(new ComposeAuthorPhonemeRequest(path, version, draft,
+            JsonSerializer.Serialize(new { name = "ɣ", representations = new[] { "ɣ" } }))).Succeeded);
         return WalkthroughFixturePreparation.Empty;
     }
 

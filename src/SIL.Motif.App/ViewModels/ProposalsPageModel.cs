@@ -67,6 +67,7 @@ public sealed class ProposalCardViewModel
         OpenAutomationId = AutomationIds.ForProposalOpen(card.ProposalId);
         TryAgainAutomationId = AutomationIds.ForProposalTryAgain(card.ProposalId);
         DeleteAutomationId = AutomationIds.ForProposalDelete(card.ProposalId);
+        ReopenAutomationId = AutomationIds.ForProposalReopen(card.ProposalId);
         if (card.Trial is { } trial)
         {
             Numbers = ProposalNumberText.From(trial);
@@ -107,6 +108,12 @@ public sealed class ProposalCardViewModel
 
     /// <summary>The automation id of this card's Delete button.</summary>
     public string DeleteAutomationId { get; }
+
+    /// <summary>The automation id of this card's Reopen button.</summary>
+    public string ReopenAutomationId { get; }
+
+    /// <summary>Whether the card offers Reopen: a declined or withdrawn Proposal opens again as a Draft.</summary>
+    public bool CanReopen => !Card.IsDraft && Card.Status is "rejected" or "withdrawn";
 
     /// <summary>
     /// The Proposal's status in the window's words: Draft, Ready, Deferred, Applied, Declined, Superseded or
@@ -235,6 +242,7 @@ public sealed partial class ProposalsPageModel : PageModel
         TryAgainCommand = new AsyncRelayCommand<ProposalCardViewModel>(TryAgainAsync);
         ShowSetAsideCommand = new AsyncRelayCommand(ShowSetAsideAsync);
         DeleteCommand = new AsyncRelayCommand<ProposalCardViewModel>(DeleteAsync);
+        ReopenCommand = new AsyncRelayCommand<ProposalCardViewModel>(ReopenAsync);
         Context.TrialRun.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(TrialRunViewModel.States) && State == ProposalsPageState.Listed)
@@ -284,6 +292,9 @@ public sealed partial class ProposalsPageModel : PageModel
 
     /// <summary>Deletes a closed Proposal that never applied, with its Trials, and reads the list again.</summary>
     public IAsyncRelayCommand<ProposalCardViewModel> DeleteCommand { get; }
+
+    /// <summary>Opens a declined or withdrawn Proposal again as a Draft and reads the list again.</summary>
+    public IAsyncRelayCommand<ProposalCardViewModel> ReopenCommand { get; }
 
     partial void OnSetAsideLinkTextChanged(string value) => OnPropertyChanged(nameof(HasSetAsideLink));
 
@@ -388,6 +399,16 @@ public sealed partial class ProposalsPageModel : PageModel
     {
         _includeSetAside = !_includeSetAside;
         if (Context.ProjectPath is { } path) await LoadAsync(path, CancellationToken.None).ConfigureAwait(true);
+    }
+
+    private async Task ReopenAsync(ProposalCardViewModel? card)
+    {
+        if (card is null || !card.CanReopen || Context.ProjectPath is not { } path) return;
+        var reopened = await Context.Commands.ReopenProposalAsync(new ReopenProposalRequest(path, card.ProposalId),
+            CancellationToken.None).ConfigureAwait(true);
+        if (path != Context.ProjectPath) return;
+        ShownRefusal = reopened.Succeeded ? null : WindowRefusal.From(reopened.Refusal!);
+        await LoadAsync(path, CancellationToken.None).ConfigureAwait(true);
     }
 
     private async Task DeleteAsync(ProposalCardViewModel? card)

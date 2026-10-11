@@ -1,0 +1,13 @@
+{
+  "exitCode": 4,
+  "stdout": null,
+  "stderr": {
+    "code": "apply.reconciliation-needed",
+    "detail": {
+      "proposalId": "\u003Cstring\u003E"
+    },
+    "message": "\u003Cstring\u003E",
+    "ok": false,
+    "reason": "StoreInconsistent"
+  }
+}

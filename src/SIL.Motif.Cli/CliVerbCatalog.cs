@@ -147,7 +147,7 @@ public static class CliVerbCatalog
             "Commands", "finalize", "finalize", new[] { "finalize --project <fwdata> --draft <name>" }),
         new CliVerbDescriptor(
             "Commands", "discard-draft", "discard-draft",
-            new[] { "discard-draft --project <fwdata> --draft <name>" }),
+            new[] { "discard-draft --project <fwdata> --draft <name> [--revision <r>]" }),
         new CliVerbDescriptor(
             "Commands", "reopen", "reopen", new[] { "reopen --project <fwdata> --draft <name> <proposalId>" }),
         new CliVerbDescriptor(
@@ -445,5 +445,21 @@ public static class CliVerbCatalog
             new[] { "proposals --project <fwdata> [--include-set-aside] [--json]" }),
         new CliVerbDescriptor("Commands", "delete", "delete --proposal",
             new[] { "delete --proposal <id> --project <fwdata> [--json]" }),
+        new CliVerbDescriptor("Commands", "reject", "reject --proposal",
+            new[] { "reject --proposal <id> --project <fwdata> [--json]" }),
+        new CliVerbDescriptor("Commands", "reopen", "reopen --proposal",
+            new[] { "reopen --proposal <id> --project <fwdata> [--json]" }),
+        new CliVerbDescriptor("Commands", "withdraw", "withdraw",
+            new[] { "withdraw --proposal <id> --project <fwdata> [--json]" }),
+        new CliVerbDescriptor("Commands", "proposal", "proposal review",
+            new[] { "proposal review --project <fwdata> [--proposal <id>] [--json]" }),
+        new CliVerbDescriptor("Commands", "proposal", "proposal looked-at",
+            new[]
+            {
+                "proposal looked-at --project <fwdata> --proposal <id> --entry <key> --content-digest <digest> " +
+                "--evidence-digest <digest> [--clear] [--json]",
+            }),
+        new CliVerbDescriptor("Commands", "apply", "apply --proposal",
+            new[] { "apply --proposal <id> --project <fwdata> [--revision <r>] [--json]" }),
     };
 }

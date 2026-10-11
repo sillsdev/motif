@@ -185,9 +185,10 @@ public sealed partial class AllomorphRuleRetirementAcceptanceTests
         }
         Assert.Equal(beforeHash, SHA256.HashData(File.ReadAllBytes(projectPath)));
 
-        // Apply, through the same entry point as `motif apply <proposalId> --project --user`.
-        var applied = ProposalCommands.Apply(new ApplyRequest(projectPath, productVersion, proposalId));
+        // Apply through the one Apply path, as `motif apply --proposal <id>` does, from the Proposal's Trial.
+        var applied = PendingChangesWorkflow.Apply(new ApplyProposalRequest(projectPath, proposalId, null));
         Assert.True(applied.Succeeded, applied.Refusal?.Message);
+        Assert.True(applied.Value!.Applied);
         Assert.NotEqual(beforeHash, SHA256.HashData(File.ReadAllBytes(projectPath)));
 
         // Read back from the saved .fwdata in a fresh cache.

@@ -64,6 +64,10 @@ internal enum KeyboardShortcutBehavior
     Back,
     ToggleMatrixCell,
     InspectMorpheme,
+    PreviousEntry,
+    NextEntry,
+    KeepEntry,
+    UndoEntry,
 }
 
 public sealed record KeyboardShortcutEntry(string Key, string Gesture, string Scope, string Action);
@@ -126,6 +130,7 @@ public static class KeyboardShortcutRegistry
         [ShortcutKey.Delete] = Key.Delete,
         [ShortcutKey.S] = Key.S,
         [ShortcutKey.P] = Key.P,
+        [ShortcutKey.K] = Key.K,
         [ShortcutKey.F10] = Key.F10,
     };
     private static readonly IReadOnlyDictionary<Key, ShortcutKey> ShortcutKeys =

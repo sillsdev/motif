@@ -202,8 +202,18 @@ public sealed class WordRow : UserControl
             if (pending.IsUncertain)
                 actions.Children.Add(ActionButton(data, "Check again", WordAction.ReconfirmChange,
                     automationName: pending.ReconfirmAutomationName));
-            actions.Children.Add(ActionButton(data, "Undo", WordAction.UndoChange,
-                automationName: pending.UndoAutomationName));
+            if (pending.IsLookedAt)
+            {
+                actions.Children.Add(new Border
+                {
+                    Classes = { "reviewPill", "reviewLookedAt" },
+                    Child = Text("✓ Looked at", "wordPresentationNote"),
+                });
+            }
+            // Keep and Undo sit together at the row's end, as they do on a grammar change's row.
+            actions.Children.Add(ReviewButton(data, "Keep", WordAction.KeepChange,
+                pending.KeepAutomationName ?? $"Keep: {data.Facts.Word}"));
+            actions.Children.Add(ReviewButton(data, "Undo", WordAction.UndoChange, pending.UndoAutomationName));
             if (actions.Children.Count > 0) note.Children.Add(actions);
         }
         else
@@ -382,6 +392,14 @@ public sealed class WordRow : UserControl
     {
         var button = ActionButton(data, label, action, enabled);
         button.Classes.Add("wordPresentationNextAction");
+        return button;
+    }
+
+    private Button ReviewButton(WordPresentation data, string label, WordAction action, string automationName)
+    {
+        var button = new Button { Content = label, Classes = { "reviewAction" } };
+        AutomationProperties.SetName(button, automationName);
+        button.Click += async (_, _) => await SendAsync(new WordRequest(data.Key, data.EvidenceRevision, action));
         return button;
     }
 

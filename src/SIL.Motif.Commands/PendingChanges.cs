@@ -836,10 +836,10 @@ public static class PendingChanges
             return action(database, project, repository, target, baseline, liveLastWriteTicks, draft, proposal);
         });
 
-    private const string ReviewDraftPrefix = "review/";
+    private const string ReviewDraftPrefix = Catalog.ProposalLifecycleCommand.ReviewDraftPrefix;
 
     /// <summary>The Draft one command edits, and the finalized Proposal it must reopen on first write.</summary>
-    private sealed record DraftTarget(string Name, ProposalRecord? Current, CanonicalId? ReopenFrom);
+    private sealed record DraftTarget(string Name, ProposalRecord? Current, CanonicalId? ReopenFrom, string? Role = null);
 
     private static bool TryResolve(ProposalRepository repository, string? proposalId, out DraftTarget target,
         out Refusal refusal)
@@ -847,8 +847,8 @@ public static class PendingChanges
         refusal = null!;
         if (proposalId is null)
         {
-            target = new DraftTarget(DraftName,
-                repository.DraftNameExists(DraftName) ? repository.GetDraft(DraftName) : null, null);
+            var pending = repository.FindPendingChangesDraft();
+            target = new DraftTarget(pending?.DraftName ?? DraftName, pending, null, ProposalRoles.PendingChanges);
             return true;
         }
         target = null!;
@@ -928,12 +928,12 @@ public static class PendingChanges
                 ArgumentException.ThrowIfNullOrWhiteSpace(projectKey);
                 return current is null
                     ? repository.TryCreateDraftForExpectedContext(name, CanonicalId.Parse(draft.ProposalId), json,
-                        projectKey, expectedContext)
+                        projectKey, expectedContext, target.Role)
                     : repository.TrySaveDraftForExpectedContext(name, current.ProposalJson!, json,
                         projectKey, expectedContext);
             }
             return current is null
-                ? repository.TryCreateDraft(name, CanonicalId.Parse(draft.ProposalId), json)
+                ? repository.TryCreateDraft(name, CanonicalId.Parse(draft.ProposalId), json, target.Role)
                 : repository.TrySaveDraft(name, current.ProposalJson!, json);
         });
     }
@@ -973,12 +973,35 @@ public static class PendingChanges
             return new PendingChangesSnapshot(null, "none", [], []);
         }
         var draft = ParseDraft(current.ProposalJson!);
-        var provenance = draft.ComposerProvenance.Where(entry => ChangeIdOf(entry) is not null)
+        var provenance = ProvenanceByChange(draft);
+        var changes = BuildChanges(draft, provenance);
+        if (changes.Length == 0)
+        {
+            if (persistFitState) fitRepository.Clear();
+            return new PendingChangesSnapshot(draft.ProposalId, Revision(current.ProposalJson), changes, []);
+        }
+        return SnapshotWithFits(database, project, draft, current, provenance, changes, fitRepository, fitCache,
+            observedLastWriteTicks, currentBaseline, persistFitState, fitCacheBaseline, proposalId);
+    }
+
+    /// <summary>Reads the pending Draft's changes with their cached fit, as the Review list shows them.</summary>
+    internal static PendingChangesSnapshot ReadSnapshot(MotifDatabase database, ProjectLocator project) =>
+        Snapshot(database, project, new ProposalRepository(database));
+
+    /// <summary>Groups any Draft's operations into the authored word changes they came from.</summary>
+    internal static PendingChange[] ReadChanges(DraftDocument draft) =>
+        BuildChanges(draft, ProvenanceByChange(draft));
+
+    private static Dictionary<string, JsonElement> ProvenanceByChange(DraftDocument draft) =>
+        draft.ComposerProvenance.Where(entry => ChangeIdOf(entry) is not null)
             .GroupBy(entry => ChangeIdOf(entry)!, StringComparer.Ordinal)
             .ToDictionary(group => group.Key, group => group.Last(), StringComparer.Ordinal);
+
+    private static PendingChange[] BuildChanges(DraftDocument draft, Dictionary<string, JsonElement> provenance)
+    {
         var ids = provenance.Keys.Concat(draft.Operations.Select(ChangeIdOf).OfType<string>())
             .Distinct(StringComparer.Ordinal).ToArray();
-        var changes = ids.Select(id =>
+        return ids.Select(id =>
         {
             provenance.TryGetValue(id, out var entry);
             var operations = draft.Operations.Where(operation => ChangeIdOf(operation) == id).ToArray();
@@ -1017,12 +1040,14 @@ public static class PendingChanges
                 StagingIntent = stagingIntent,
             };
         }).ToArray();
-        if (changes.Length == 0)
-        {
-            if (persistFitState) fitRepository.Clear();
-            return new PendingChangesSnapshot(draft.ProposalId, Revision(current.ProposalJson), changes, []);
-        }
+    }
 
+    private static PendingChangesSnapshot SnapshotWithFits(MotifDatabase database, ProjectLocator project,
+        DraftDocument draft, ProposalRecord current, Dictionary<string, JsonElement> provenance,
+        PendingChange[] changes, PendingChangeFitRepository fitRepository, LcmCache? fitCache,
+        long? observedLastWriteTicks, BaselineRecord? currentBaseline, bool persistFitState,
+        BaselineRecord? fitCacheBaseline, string? proposalId)
+    {
         var revision = Revision(current.ProposalJson);
         var baselineEvidence = new BaselineRepository(database).GetCurrentEvidence(ProjectWorkspaceKey.Compute(project));
         currentBaseline ??= baselineEvidence?.Baseline;

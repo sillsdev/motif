@@ -42,6 +42,10 @@
                           Command="{Binding $parent[UserControl].((vm:ProposalsPageModel)DataContext).TryAgainCommand}"
                           CommandParameter="{Binding}"
                           AutomationProperties.AutomationId="{Binding TryAgainAutomationId}" />
+                  <Button Content="Reopen" IsVisible="{Binding CanReopen}"
+                          Command="{Binding $parent[UserControl].((vm:ProposalsPageModel)DataContext).ReopenCommand}"
+                          CommandParameter="{Binding}"
+                          AutomationProperties.AutomationId="{Binding ReopenAutomationId}" />
                   <Button Content="Delete" IsVisible="{Binding CanDelete}"
                           Command="{Binding $parent[UserControl].((vm:ProposalsPageModel)DataContext).DeleteCommand}"
                           CommandParameter="{Binding}"

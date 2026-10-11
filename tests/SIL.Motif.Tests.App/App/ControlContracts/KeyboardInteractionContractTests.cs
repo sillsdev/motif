@@ -129,6 +129,8 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
             ("Page Up", "Page Up", "Review changes"), ("Page Down", "Page Down", "Review changes"),
             ("Home", "Home", "Review changes"), ("End", "End", "Review changes"),
             ("Escape", "Esc", "Review changes"),
+            ("↑", "Alt+↑", "Review changes"), ("↓", "Alt+↓", "Review changes"),
+            ("K", "Alt+K", "Review changes"), ("U", "Alt+Shift+U", "Review changes"),
             ("Enter or Space", "Enter or Space", "Matrix preview"),
             ("Enter or Space", "Enter or Space", "Morpheme"),
             ("F1", "F1", "Window"), ("Escape", "Esc", "Window"), ("?", "Shift+/", "Window"),

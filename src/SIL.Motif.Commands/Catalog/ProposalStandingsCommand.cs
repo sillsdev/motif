@@ -91,7 +91,7 @@ public static class ProposalStandingsCommand
             : ProposalCommands.BuildProposalJson(JsonSerializer.Deserialize<DraftDocument>(record.ProposalJson!,
                 DraftJsonOptions) ?? throw new InvalidDataException("Stored Draft content is incomplete."));
         var proposal = ProposalJsonParser.Parse(json);
-        return new Candidate(record, proposal, record.DraftName == PendingChanges.DraftName,
+        return new Candidate(record, proposal, record.IsPendingChanges && record.DraftName is not null,
             latestTrials.GetValueOrDefault(record.ProposalId.Value));
     }
 

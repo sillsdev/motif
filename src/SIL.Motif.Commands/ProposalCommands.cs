@@ -266,7 +266,9 @@ public static partial class ProposalCommands
                     Operations = new List<DraftOperation>(),
                 };
 
-                repository.CreateDraft(request.DraftName, proposalId, SerializeDraft(draft));
+                // The pending changes' name is reserved for their role, which is what then identifies them.
+                repository.CreateDraft(request.DraftName, proposalId, SerializeDraft(draft),
+                    request.DraftName == PendingChanges.DraftName ? ProposalRoles.PendingChanges : null);
 
                 return CommandOutcome<DraftCreatedResponse>.Success(
                     new DraftCreatedResponse(request.DraftName, draft.ProposalId, request.Label));
@@ -286,7 +288,7 @@ public static partial class ProposalCommands
             try
             {
                 var repository = new ProposalRepository(database);
-                if (!TryLoadDraft(repository, request.DraftName, out var draft))
+                if (!TryLoadDraft(repository, request.DraftName, out var draft, out var loadedJson))
                     return CommandOutcome<SetGlossAddedResponse>.Refused(DraftNotFound(request.DraftName));
 
                 if (!CanonicalId.TryParse(request.Target, out var targetId, out var idError))
@@ -330,7 +332,8 @@ public static partial class ProposalCommands
                 }
                 EnsureContractVersion(draft, LexicalSenseOperationKinds.SetGloss);
 
-                repository.SaveDraft(request.DraftName, SerializeDraft(draft));
+                if (!TrySaveLoadedDraft(repository, request.DraftName, loadedJson, draft))
+                    return CommandOutcome<SetGlossAddedResponse>.Refused(DraftRevisionConflict(request.DraftName));
 
                 return CommandOutcome<SetGlossAddedResponse>.Success(new SetGlossAddedResponse(
                     request.DraftName, operationId.Value, targetId.Value, request.Ws, request.Text,
@@ -359,7 +362,7 @@ public static partial class ProposalCommands
             try
             {
                 var repository = new ProposalRepository(database);
-                if (!TryLoadDraft(repository, request.DraftName, out var draft))
+                if (!TryLoadDraft(repository, request.DraftName, out var draft, out var loadedJson))
                     return CommandOutcome<DeleteLexemeFormAddedResponse>.Refused(DraftNotFound(request.DraftName));
 
                 if (!CanonicalId.TryParse(request.Target, out var targetId, out var idError))
@@ -379,7 +382,8 @@ public static partial class ProposalCommands
                 });
                 EnsureContractVersion(draft, LexEntryLexemeFormOperationKinds.DeleteLexemeForm);
 
-                repository.SaveDraft(request.DraftName, SerializeDraft(draft));
+                if (!TrySaveLoadedDraft(repository, request.DraftName, loadedJson, draft))
+                    return CommandOutcome<DeleteLexemeFormAddedResponse>.Refused(DraftRevisionConflict(request.DraftName));
 
                 return CommandOutcome<DeleteLexemeFormAddedResponse>.Success(new DeleteLexemeFormAddedResponse(
                     request.DraftName, operationId.Value, targetId.Value, draft.Operations.Count));
@@ -447,7 +451,7 @@ public static partial class ProposalCommands
             try
             {
                 var repository = new ProposalRepository(database);
-                if (!TryLoadDraft(repository, request.DraftName, out var draft))
+                if (!TryLoadDraft(repository, request.DraftName, out var draft, out var loadedJson))
                     return CommandOutcome<PromoteGlossAddedResponse>.Refused(DraftNotFound(request.DraftName));
 
                 var corpus = CorpusCommands.StoreFor(database).Load(request.CorpusId);
@@ -504,7 +508,8 @@ public static partial class ProposalCommands
                 using var provenanceDocument = JsonDocument.Parse(provenanceJson);
                 draft.PromotionProvenance.Add(provenanceDocument.RootElement.Clone());
 
-                repository.SaveDraft(request.DraftName, SerializeDraft(draft));
+                if (!TrySaveLoadedDraft(repository, request.DraftName, loadedJson, draft))
+                    return CommandOutcome<PromoteGlossAddedResponse>.Refused(DraftRevisionConflict(request.DraftName));
 
                 return CommandOutcome<PromoteGlossAddedResponse>.Success(new PromoteGlossAddedResponse(
                     request.DraftName, operationId.Value, targetId.Value, request.Ws, request.Text,
@@ -567,11 +572,12 @@ public static partial class ProposalCommands
             try
             {
                 var repository = new ProposalRepository(database);
-                if (!TryLoadDraft(repository, draftName, out var draft))
+                if (!TryLoadDraft(repository, draftName, out var draft, out var loadedJson))
                     return CommandOutcome<DraftFieldChangedResponse>.Refused(DraftNotFound(draftName));
 
                 setter(draft);
-                repository.SaveDraft(draftName, SerializeDraft(draft));
+                if (!TrySaveLoadedDraft(repository, draftName, loadedJson, draft))
+                    return CommandOutcome<DraftFieldChangedResponse>.Refused(DraftRevisionConflict(draftName));
 
                 return CommandOutcome<DraftFieldChangedResponse>.Success(
                     new DraftFieldChangedResponse(draftName, fieldName, value));
@@ -671,7 +677,12 @@ public static partial class ProposalCommands
             try
             {
                 var repository = new ProposalRepository(database);
-                var wasReopened = repository.DiscardDraft(request.DraftName);
+                var draft = repository.GetDraft(request.DraftName);
+                if (request.ExpectedRevision is not null &&
+                    DraftRevision.Compute(draft.ProposalJson) != request.ExpectedRevision)
+                    return CommandOutcome<DraftDiscardedResponse>.Refused(DraftRevisionConflict(request.DraftName));
+                var wasReopened = repository.DiscardDraft(request.DraftName, draft.ProposalJson);
+                if (!wasReopened) Review.ReviewMarks.ClearAll(database, draft.ProposalId.Value);
 
                 return CommandOutcome<DraftDiscardedResponse>.Success(
                     new DraftDiscardedResponse(request.DraftName, wasReopened));
@@ -679,6 +690,10 @@ public static partial class ProposalCommands
             catch (KeyNotFoundException)
             {
                 return CommandOutcome<DraftDiscardedResponse>.Refused(DraftNotFound(request.DraftName));
+            }
+            catch (DraftChangedException)
+            {
+                return CommandOutcome<DraftDiscardedResponse>.Refused(DraftRevisionConflict(request.DraftName));
             }
             catch (Exception ex)
             {
@@ -724,6 +739,11 @@ public static partial class ProposalCommands
                         "proposal.already-applied", FailureReason.Refused,
                         "An applied Proposal cannot be amended under the same ID. Create a new Proposal.",
                         Fact(("proposalId", id))));
+                if (record.Status == ManifestStatus.Superseded)
+                    return CommandOutcome<ReopenedResponse>.Refused(new Refusal(
+                        "proposal.superseded", FailureReason.Refused,
+                        $"This Proposal was replaced by {record.SupersededBy}. Open that one instead.",
+                        Fact(("proposalId", id), ("supersededBy", record.SupersededBy))));
 
                 var draft = DraftOf(id, manifest, envelope);
 
@@ -774,6 +794,13 @@ public static partial class ProposalCommands
             request.FwDataPath, request.ProductVersion, request.ProposalId, ManifestStatus.Rejected,
             RejectableFrom, null,
             (repository, id, _) => repository.SetStatus(id, ManifestStatus.Rejected, supersededBy: null));
+
+    /// <summary>Moves a Proposal to <c>withdrawn</c>: its author took it back before anyone reviewed it.</summary>
+    public static CommandOutcome<ProposalStatusChangedResponse> Withdraw(RejectRequest request) =>
+        TransitionStatus(
+            request.FwDataPath, request.ProductVersion, request.ProposalId, ManifestStatus.Withdrawn,
+            RejectableFrom, null,
+            (repository, id, _) => repository.SetStatus(id, ManifestStatus.Withdrawn, supersededBy: null));
 
     /// <summary>Marks a Proposal <c>superseded</c> by another, naming which one replaced it.</summary>
     public static CommandOutcome<ProposalStatusChangedResponse> Supersede(SupersedeRequest request)
@@ -881,6 +908,20 @@ public static partial class ProposalCommands
 
         return array.EnumerateArray().Select(e => e.Clone()).ToList();
     }
+
+    /// <summary>Loads a committed Proposal's content back into the editable Draft shape.</summary>
+    internal static DraftDocument ToDraftDocument(
+        string proposalId, SIL.Motif.Contract.Model.Proposal envelope, string? label, string? comment) => new()
+    {
+        ProposalId = proposalId,
+        ContractVersions = new Dictionary<string, string>(envelope.ContractVersions),
+        Requires = envelope.Requires.Select(r => r.Value).ToList(),
+        Label = label,
+        Comment = comment,
+        Operations = envelope.Operations.Select(ToDraftOperation).ToList(),
+        ComposerProvenance = ExtractComposerProvenance(envelope.Extensions),
+        PromotionProvenance = ExtractPromotionProvenance(envelope.Extensions),
+    };
 
     private static DraftOperation ToDraftOperation(SIL.Motif.Contract.Model.OperationEnvelope operation)
     {
@@ -996,7 +1037,7 @@ public static partial class ProposalCommands
             try
             {
                 var repository = new ProposalRepository(database);
-                if (!TryLoadDraft(repository, request.DraftName, out var draft))
+                if (!TryLoadDraft(repository, request.DraftName, out var draft, out var loadedJson))
                     return CommandOutcome<OperationsRemovedResponse>.Refused(DraftNotFound(request.DraftName));
 
                 if (request.OperationIds.Count == 0)
@@ -1076,7 +1117,12 @@ public static partial class ProposalCommands
                     toRemove.Add(edge.DependentOperationId);
 
                 draft.Operations = draft.Operations.Where(o => !toRemove.Contains(o.OperationId)).ToList();
-                repository.SaveDraft(request.DraftName, SerializeDraft(draft));
+                // A contract group nothing uses any more must leave the map, or the Draft stops parsing.
+                foreach (var group in draft.ContractVersions.Keys.ToArray())
+                    if (!draft.Operations.Any(o => SIL.Motif.Contract.Model.OperationKind.GetGroup(o.Kind) == group))
+                        draft.ContractVersions.Remove(group);
+                if (!TrySaveLoadedDraft(repository, request.DraftName, loadedJson, draft))
+                    return CommandOutcome<OperationsRemovedResponse>.Refused(DraftRevisionConflict(request.DraftName));
 
                 return CommandOutcome<OperationsRemovedResponse>.Success(new OperationsRemovedResponse(
                     request.DraftName,
@@ -1349,7 +1395,7 @@ public static partial class ProposalCommands
             BuildApplyProjection(database, project, request.ProposalId, request.Force));
 
     /// <summary>The latest <c>Correctness</c> Assessment recorded against this exact revision, if any.</summary>
-    private static AssessmentRecord? FindCandidateAssessment(
+    internal static AssessmentRecord? FindCandidateAssessment(
         AssessmentRepository assessments, CanonicalId proposalId, string intentDigest)
     {
         var candidateId = assessments.ListByProposal(proposalId)
@@ -1423,6 +1469,25 @@ public static partial class ProposalCommands
         }
 
         return matches.Count == 1 ? matches[0] : null;
+    }
+
+    /// <summary>The Dry Run of the Proposal's current Trial, when it is the one the bound anchor names.</summary>
+    private static SIL.Motif.Model.DryRun.DryRun? FindTrialBoundDryRun(
+        MotifDatabase database, ProjectLocator project, CanonicalId proposalId, ManifestDocument manifest)
+    {
+        if (manifest.Anchor is not { } anchor) return null;
+        var dryRun = TrialDryRun(database, project, proposalId);
+        return dryRun is not null && dryRun.Anchor == anchor ? dryRun : null;
+    }
+
+    /// <summary>The Dry Run a current Trial of this Proposal published, or null without one.</summary>
+    internal static SIL.Motif.Model.DryRun.DryRun? TrialDryRun(
+        MotifDatabase database, ProjectLocator project, CanonicalId proposalId)
+    {
+        var trial = Trials.LatestFor(database, project, proposalId.Value);
+        if (trial is not { Freshness: TrialFreshness.Current }) return null;
+        var job = new JobRepository(database).Get(trial.JobId);
+        return job?.DryRunJson is null ? null : JobCommands.ParsePublishedDryRun(job.DryRunJson);
     }
 
     private static bool DryRunInputContainsProposal(string inputJson, string proposalJson)
@@ -1519,7 +1584,8 @@ public static partial class ProposalCommands
                     ? current.ToCorrectness()
                     : null;
 
-            var boundDryRun = FindCurrentBoundDryRun(database, project, record.ProposalJson!, manifest, envelope);
+            var boundDryRun = FindCurrentBoundDryRun(database, project, record.ProposalJson!, manifest, envelope)
+                ?? FindTrialBoundDryRun(database, project, canonicalId, manifest);
             var exemptionReason = boundDryRun is null
                 ? null
                 : JudgmentOnlyProposalReadiness.ExemptionFor(envelope, boundDryRun.ExpectedEffects);
@@ -1798,21 +1864,35 @@ public static partial class ProposalCommands
         new("draft.invalid", FailureReason.Refused, message, Fact(facts));
 
     /// <summary>Loads one Draft's in-progress content by name, or reports it is not there.</summary>
-    private static bool TryLoadDraft(ProposalRepository repository, string draftName, out DraftDocument draft)
+    private static bool TryLoadDraft(ProposalRepository repository, string draftName, out DraftDocument draft,
+        out string loadedJson)
     {
         try
         {
-            draft = DeserializeDraft(repository.GetDraft(draftName).ProposalJson!);
+            loadedJson = repository.GetDraft(draftName).ProposalJson!;
+            draft = DeserializeDraft(loadedJson);
             return true;
         }
         catch (KeyNotFoundException)
         {
             draft = null!;
+            loadedJson = null!;
             return false;
         }
     }
 
-    private static DraftDocument DeserializeDraft(string json) =>
+    // Lets a test land a racing edit between a Draft edit's read and its save.
+    internal static readonly AsyncLocal<Action<string>?> BeforeDraftSave = new();
+
+    // Every Draft edit is a compare-and-swap against what it read, so a racing edit is refused, never lost.
+    private static bool TrySaveLoadedDraft(ProposalRepository repository, string draftName, string loadedJson,
+        DraftDocument draft)
+    {
+        BeforeDraftSave.Value?.Invoke(draftName);
+        return repository.TrySaveDraft(draftName, loadedJson, SerializeDraft(draft));
+    }
+
+    internal static DraftDocument DeserializeDraft(string json) =>
         JsonSerializer.Deserialize<DraftDocument>(json, DraftJsonOptions)
         ?? throw new InvalidOperationException("Draft content is empty or invalid.");
 

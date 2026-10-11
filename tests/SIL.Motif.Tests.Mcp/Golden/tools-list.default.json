@@ -588,6 +588,31 @@
     "idempotentHint": false
   },
   {
+    "name": "motif_withdraw_proposal",
+    "description": "Withdraw a Proposal. Takes back a Proposal before anyone reviews it. The linguist sees it as withdrawn and may reopen it.\nCommand: withdraw. Agent class: Draft.\nProposalId: The Proposal to withdraw.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "proposal": {
+          "type": "string",
+          "description": "The id of the Proposal you started and now take back."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "proposal",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
     "name": "motif_proposals",
     "description": "Show a Proposal. Reads one saved Proposal or Draft by id, with its status, label, comment and operations. It does not change the FieldWorks project.\nCommand: show. Agent class: Read.\nProposalId: The exact canonical Proposal identity.\nList Proposals. Lists every Proposal with what it changes and the numbers its latest Trial measured beside today\u0027s. Proposals are grouped by what to do next; applied and set-aside ones are counted unless asked for.\nCommand: proposals. Agent class: Read.\nIncludeSetAside: Whether closed (applied, rejected, superseded, withdrawn) Proposals are listed too.",
     "inputSchema": {

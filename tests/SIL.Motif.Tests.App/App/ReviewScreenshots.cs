@@ -498,7 +498,7 @@ public sealed class ReviewScreenshots
 
     private static OccurrenceWordToken Token(int index, string form) => new(index, "wordform/" + form, form);
 
-    private static PendingChange Change(string word, string kind, string? storedAnalysisId, ReviewAnalysis analysis) =>
+    internal static PendingChange Change(string word, string kind, string? storedAnalysisId, ReviewAnalysis analysis) =>
         new(word, "wordform/" + word, word, kind, "assessment/one", word, ["operation/" + word])
         {
             Analyses = [analysis],
@@ -506,10 +506,10 @@ public sealed class ReviewScreenshots
             StoredAnalysisId = storedAnalysisId,
         };
 
-    private static ReviewAnalysis Stored(params (string Form, string Gloss)[] morphs) =>
+    internal static ReviewAnalysis Stored(params (string Form, string Gloss)[] morphs) =>
         new(Reading(morphs), ReadingGrade.Candidate, true, true);
 
-    private static ParserReading Reading(params (string Form, string Gloss)[] morphs) =>
+    internal static ParserReading Reading(params (string Form, string Gloss)[] morphs) =>
         new(morphs.Select(morph => new ParserReadingMorph(morph.Form, morph.Gloss, "n", null, false, null)).ToArray());
 
     internal static BaselineToken Token() =>

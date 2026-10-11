@@ -28,6 +28,15 @@ public enum ApplyBlockerKind
 
     /// <summary>Nobody has yet measured what these exact changes do to the numbers.</summary>
     NotMeasured,
+
+    /// <summary>The open Proposal has not been tried since it or the project last changed.</summary>
+    TrialNeeded,
+
+    /// <summary>The open Proposal has no change left to apply.</summary>
+    NothingToApply,
+
+    /// <summary>The open Proposal's evidence does not yet permit Apply.</summary>
+    NotReady,
 }
 
 /// <summary>
@@ -39,8 +48,13 @@ public sealed record ApplyBlocker(ApplyBlockerKind Kind, string Sentence, string
 {
     public bool HasAction => ActionText is not null && Action is not null;
 
-    public string? ActionAccessibleName => Kind == ApplyBlockerKind.NotMeasured
-        ? "Check what applying does to the numbers" : ActionText;
+    public string? ActionAccessibleName => Kind switch
+    {
+        ApplyBlockerKind.NotMeasured => "Check what applying does to the numbers",
+        ApplyBlockerKind.TrialNeeded => ActionText == TrialStandingWords.NotTried.Action
+            ? "Try this Proposal" : "Try this Proposal again",
+        _ => ActionText,
+    };
 
-    public bool IsMeasureAction => Kind == ApplyBlockerKind.NotMeasured;
+    public bool IsMeasureAction => Kind is ApplyBlockerKind.NotMeasured or ApplyBlockerKind.TrialNeeded;
 }

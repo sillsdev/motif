@@ -58,6 +58,7 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
         var (exitCode, output, error) = await CliProcess.RunAsync(apply);
 
         Assert.True(exitCode == 0, $"CLI failed with {exitCode}: {error}{output}");
+        ApplyAllPendingContract.Match("applied", exitCode, output, error);
         using var response = JsonDocument.Parse(output);
         Assert.True(response.RootElement.GetProperty("ok").GetBoolean());
         Assert.True(response.RootElement.GetProperty("applied").GetBoolean());
@@ -93,6 +94,7 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
         Assert.Empty(error);
         if (asJson)
         {
+            ApplyAllPendingContract.Match("empty", exitCode, output, error);
             using var response = JsonDocument.Parse(output);
             Assert.True(response.RootElement.GetProperty("ok").GetBoolean());
             Assert.False(response.RootElement.GetProperty("applied").GetBoolean());
@@ -107,6 +109,8 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
         using var connection = database.OpenConnection();
         using var command = connection.CreateCommand();
         command.CommandText = "SELECT COUNT(*) FROM Receipts;";
+        Assert.Equal(0L, (long)command.ExecuteScalar()!);
+        command.CommandText = "SELECT COUNT(*) FROM Proposals;";
         Assert.Equal(0L, (long)command.ExecuteScalar()!);
     }
 
@@ -135,6 +139,7 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
         var (exitCode, output, error) = await CliProcess.RunAsync(apply);
 
         Assert.Equal(3, exitCode);
+        ApplyAllPendingContract.Match("project-in-use", exitCode, output, error);
         Assert.Empty(output);
         using var failure = JsonDocument.Parse(error);
         Assert.Equal("project.in-use", failure.RootElement.GetProperty("code").GetString());
@@ -142,6 +147,18 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
         var unchanged = PendingChanges.Load(new PendingChangesRequest(path, "1.0"));
         Assert.True(unchanged.Succeeded, unchanged.Refusal?.Message);
         Assert.Single(unchanged.Value!.Changes);
+        // The lock is refused first: the Draft was never finalized and no Dry Run was queued.
+        Assert.False(HasDryRunJob(path));
+        Assert.Equal(0L, CountRows(path, "ProposalRevisions"));
+    }
+
+    private static long CountRows(string projectPath, string table)
+    {
+        using var database = ProjectMotifDatabase.Open(projectPath);
+        using var connection = database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = $"SELECT COUNT(*) FROM {table};";
+        return (long)command.ExecuteScalar()!;
     }
 
     [Fact]
@@ -263,6 +280,7 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
 
             Assert.True(process.ExitCode == 4,
                 $"Expected reconciliation exit 4, got {process.ExitCode}. stderr: {error} stdout: {output}");
+            ApplyAllPendingContract.Match("reconciliation-needed", process.ExitCode, output, error);
             Assert.Empty(output);
             using var failure = JsonDocument.Parse(error);
             Assert.Equal("apply.reconciliation-needed", failure.RootElement.GetProperty("code").GetString());

@@ -1065,7 +1065,7 @@ public sealed class SelectionReaderTests(PristineProjectFixture pristine) : IDis
         using var result = presentation.Value!;
         var after = reader.Diagnostics;
 
-        Assert.Equal(hasReadMarks ? 30 : 18, sharedReads.Queries);
+        Assert.Equal(hasReadMarks ? 29 : 17, sharedReads.Queries);
         Assert.Equal(9 + (hasReadMarks ? 13 : 0) + (hasCachedFits ? 1 : 0),
             sharedReads.RecordsDeserialized);
         Assert.Equal(sharedReads.Queries, after.QueriesIssued - before.QueriesIssued);

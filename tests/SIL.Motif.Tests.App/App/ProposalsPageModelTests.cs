@@ -320,6 +320,31 @@ public sealed class ProposalsPageModelTests
             Status = status,
         }).CanDelete);
 
+    [Theory]
+    [InlineData("rejected", true)]
+    [InlineData("withdrawn", true)]
+    [InlineData("superseded", false)]
+    [InlineData("applied", false)]
+    [InlineData("proposed", false)]
+    public void OnlyADeclinedOrWithdrawnProposalOffersReopen(string status, bool offered) =>
+        Assert.Equal(offered, new ProposalCardViewModel(Card("p/1", "One", ProposalGroup.SetAside) with
+        {
+            Status = status,
+        }).CanReopen);
+
+    [Fact]
+    public async Task ReopenOpensTheProposalAgainAndReadsTheListAgain()
+    {
+        var (fake, _, page) = await OpenAsync(new ProposalStandings(
+            [Card("p/declined", "Declined", ProposalGroup.SetAside) with { Status = "rejected" }], 1));
+        var reads = fake.ProposalStandingsRequests.Count;
+
+        await page.ReopenCommand.ExecuteAsync(page.Groups[0].Cards[0]);
+
+        Assert.Equal("p/declined", Assert.Single(fake.ReopenProposalRequests).ProposalId);
+        Assert.Equal(reads + 1, fake.ProposalStandingsRequests.Count);
+    }
+
     [Fact]
     public async Task DeleteRemovesTheProposalAndReadsTheListAgain()
     {

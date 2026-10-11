@@ -1,0 +1,81 @@
+{
+  "id": "proposal-review-keep-undo",
+  "locale": "en",
+  "title": "Review a Proposal\u0027s changes",
+  "description": "Walk every change in a Proposal with Previous and Next, mark what you looked at, and undo a change together with the changes that depend on it.",
+  "width": 1280,
+  "height": 720,
+  "fps": 30,
+  "steps": [
+    {
+      "id": "review-list",
+      "caption": "Every change is in one list. The count shows how many you have looked at.",
+      "startMs": 750,
+      "endMs": 2150,
+      "screenshot": "steps/01-review-list.png",
+      "annotated": "steps/01-review-list-annotated.png",
+      "width": 1280,
+      "height": 720,
+      "annotatedWidth": 1280,
+      "annotatedHeight": 720,
+      "calloutLayout": "target-overlay",
+      "callouts": [
+        {
+          "x": 638,
+          "y": 231,
+          "width": 86,
+          "height": 32,
+          "label": "1",
+          "caption": "Changes looked at"
+        }
+      ]
+    },
+    {
+      "id": "looked-at",
+      "caption": "Next marks the change you leave as looked at. Looking at a change does not approve it.",
+      "startMs": 2400,
+      "endMs": 3800,
+      "screenshot": "steps/02-looked-at.png",
+      "annotated": "steps/02-looked-at-annotated.png",
+      "width": 1280,
+      "height": 720,
+      "annotatedWidth": 1280,
+      "annotatedHeight": 720,
+      "calloutLayout": "target-overlay",
+      "callouts": [
+        {
+          "x": 638,
+          "y": 231,
+          "width": 86,
+          "height": 32,
+          "label": "1",
+          "caption": "Changes looked at"
+        }
+      ]
+    },
+    {
+      "id": "undo-dependents",
+      "caption": "Undoing a change that others depend on names them first, so you can undo them together or cancel.",
+      "startMs": 4300,
+      "endMs": 5700,
+      "screenshot": "steps/03-undo-dependents.png",
+      "annotated": "steps/03-undo-dependents-annotated.png",
+      "width": 1280,
+      "height": 720,
+      "annotatedWidth": 1280,
+      "annotatedHeight": 720,
+      "calloutLayout": "target-overlay",
+      "callouts": [
+        {
+          "x": 220,
+          "y": 275,
+          "width": 717,
+          "height": 67,
+          "label": "1",
+          "caption": "Changes that depend on this one"
+        }
+      ]
+    }
+  ],
+  "clip": null
+}

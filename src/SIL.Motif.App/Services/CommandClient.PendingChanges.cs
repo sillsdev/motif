@@ -1,5 +1,7 @@
 using SIL.Motif.Commands;
+using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Commands.Requests;
+using SIL.Motif.Commands.Review;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -48,4 +50,38 @@ public sealed partial class CommandClient
     public Task<CommandOutcome<PendingChangesSnapshot>> ReconfirmPendingChangeAsync(
         ReconfirmPendingChangeRequest request, CancellationToken cancellationToken) =>
         OneAtATime(() => PendingChanges.Reconfirm(request), cancellationToken);
+
+    public Task<CommandOutcome<ProposalReviewResponse>> ReadProposalReviewAsync(
+        ProposalReviewRequest request, CancellationToken cancellationToken) =>
+        OneAtATime(() => ProposalReview.Read(request), cancellationToken);
+
+    public Task<CommandOutcome<ReviewMarkResponse>> MarkLookedAtAsync(
+        ReviewMarkRequest request, CancellationToken cancellationToken) =>
+        OneAtATime(() => ReviewMarks.Set(request), cancellationToken);
+
+    public Task<CommandOutcome<OperationsRemovedResponse>> RemoveOperationsAsync(
+        RemoveOperationsRequest request, CancellationToken cancellationToken) =>
+        OneAtATime(() => ProposalCommands.RemoveOperations(request), cancellationToken);
+
+    public Task<CommandOutcome<ReopenedResponse>> ReopenAsync(
+        ReopenRequest request, CancellationToken cancellationToken) =>
+        OneAtATime(() => ProposalCommands.Reopen(request), cancellationToken);
+
+    public Task<CommandOutcome<ApplyPendingResult>> ApplyProposalAsync(
+        ApplyProposalRequest request, CancellationToken cancellationToken) =>
+        cancellationToken.IsCancellationRequested
+            ? Task.FromResult(WaitCancelled<ApplyPendingResult>())
+            : OneAtATime(() => PendingChangesWorkflow.Apply(request, cancellationToken), cancellationToken);
+
+    public Task<CommandOutcome<ProposalStatusChangedResponse>> DeclineProposalAsync(
+        DeclineProposalRequest request, CancellationToken cancellationToken) =>
+        OneAtATime(() => ProposalLifecycleCommand.Decline(request), cancellationToken);
+
+    public Task<CommandOutcome<ReopenedResponse>> ReopenProposalAsync(
+        ReopenProposalRequest request, CancellationToken cancellationToken) =>
+        OneAtATime(() => ProposalLifecycleCommand.Reopen(request), cancellationToken);
+
+    public Task<CommandOutcome<DraftDiscardedResponse>> DiscardDraftAsync(
+        DiscardDraftRequest request, CancellationToken cancellationToken) =>
+        OneAtATime(() => ProposalCommands.DiscardDraft(request), cancellationToken);
 }

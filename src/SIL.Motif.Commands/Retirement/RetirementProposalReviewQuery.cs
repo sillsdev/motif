@@ -35,6 +35,14 @@ public static class RetirementProposalReviewQuery
                 $"'{request.DraftId}' is not a valid Draft Proposal id: {error}");
 
         return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
+            ReadFrom(database, project, request, requestedId));
+    }
+
+    /// <summary>Reads the retirement review inside a store session the caller already holds.</summary>
+    internal static CommandOutcome<RetirementReviewQueryResponse> ReadFrom(
+        MotifDatabase database, SIL.Motif.Contract.Projects.ProjectLocator project,
+        ReadRetirementReviewRequest request, CanonicalId requestedId)
+    {
         {
             ProposalRecord record;
             try
@@ -167,7 +175,7 @@ public static class RetirementProposalReviewQuery
                 return Refused("retirement-review.evidence-inconsistent", FailureReason.StoreInconsistent,
                     "The staged retirement review could not be read safely: " + exception.Message);
             }
-        });
+        }
     }
 
     private static IReadOnlyList<JobRecord> FindDryRunJobs(MotifDatabase database,

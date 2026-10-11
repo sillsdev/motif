@@ -26,6 +26,8 @@ public static class RefusalCodes
     public const string ApplyProjectInUse = "apply.project-in-use";
     public const string ApplyReconciliationNeeded = "apply.reconciliation-needed";
     public const string ApplyRegression = "apply.regression";
+    public const string OperationCascadingDelete = "operation.cascading-delete";
+    public const string OperationInvalidDependency = "operation.invalid-dependency";
     public const string ApplyReopenFailed = "apply.reopen-failed";
 
     public const string AssessBaselineChanged = "assess.baseline-changed";

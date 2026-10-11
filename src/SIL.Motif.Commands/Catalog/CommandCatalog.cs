@@ -26,8 +26,8 @@ namespace SIL.Motif.Commands.Catalog;
 /// <remarks>
 /// The report list reaches <see cref="ReportCommands.ListKinds"/>, waited Dry Runs reach
 /// <see cref="JobCommands.WaitForDryRun"/>, waited Trials reach <see cref="JobCommands.WaitForJob"/>,
-/// pending Trials reach <see cref="PendingChangesWorkflow.Measure"/>, and pending Apply reaches
-/// <see cref="PendingChangesWorkflow.Apply"/>, and a saved trace reaches <see cref="Queries.WordTraceQuery.Load"/>.
+/// pending Trials reach <see cref="PendingChangesWorkflow.Measure"/>, every Apply verb reaches the one Apply path
+/// in <see cref="PendingChangesWorkflow"/>, and a saved trace reaches <see cref="Queries.WordTraceQuery.Load"/>.
 /// Each has its own entry. Every other name is the literal CLI
 /// verb (or its complete space-separated nested form, such as <c>"jobs show"</c>) that reaches its one named
 /// handler, pinned equal to <c>CliVerbCatalog.All</c> by
@@ -120,7 +120,7 @@ public static class CommandCatalog
         new CommandDescriptor("list", typeof(ListProposalsRequest), typeof(ProposalListProjection), CommandSurface.AdvancedAi, AgentClass.Read),
         new CommandDescriptor("show", typeof(ShowProposalRequest), typeof(ProposalDetailProjection), CommandSurface.AdvancedAi, AgentClass.Read),
         new CommandDescriptor("preflight", typeof(PreflightRequest), typeof(PreflightResponse), CommandSurface.Developer, AgentClass.Evaluate),
-        new CommandDescriptor("apply", typeof(ApplyRequest), typeof(ApplyProjection), CommandSurface.Developer, AgentClass.HumanOnly),
+        new CommandDescriptor("apply", typeof(ApplyRequest), typeof(ApplyPendingResult), CommandSurface.Developer, AgentClass.HumanOnly),
         new CommandDescriptor("log", typeof(LogRequest), typeof(AppliedLogProjection), CommandSurface.Developer, AgentClass.Read),
 
         // CorpusCommands
@@ -230,6 +230,18 @@ public static class CommandCatalog
 
         // ProposalLifecycleCommand
         new CommandDescriptor("delete --proposal", typeof(DeleteProposalRequest), typeof(ProposalDeletedResponse),
+            CommandSurface.Released, AgentClass.HumanOnly),
+        new CommandDescriptor("reject --proposal", typeof(DeclineProposalRequest),
+            typeof(ProposalStatusChangedResponse), CommandSurface.Released, AgentClass.HumanOnly),
+        new CommandDescriptor("reopen --proposal", typeof(ReopenProposalRequest), typeof(ReopenedResponse),
+            CommandSurface.Released, AgentClass.HumanOnly),
+        new CommandDescriptor("withdraw", typeof(WithdrawProposalRequest), typeof(ProposalStatusChangedResponse),
+            CommandSurface.AdvancedAi, AgentClass.Draft),
+        new CommandDescriptor("proposal review", typeof(ProposalReviewRequest), typeof(ProposalReviewResponse),
+            CommandSurface.Released, AgentClass.Read),
+        new CommandDescriptor("proposal looked-at", typeof(ReviewMarkRequest), typeof(ReviewMarkResponse),
+            CommandSurface.Developer, AgentClass.HumanOnly),
+        new CommandDescriptor("apply --proposal", typeof(ApplyProposalRequest), typeof(ApplyPendingResult),
             CommandSurface.Released, AgentClass.HumanOnly),
     };
 }

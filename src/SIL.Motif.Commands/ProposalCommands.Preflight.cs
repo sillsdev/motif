@@ -13,14 +13,21 @@ namespace SIL.Motif.Commands;
 public static partial class ProposalCommands
 {
     /// <summary>Reads the saved project through a private copy and reports Drift for each collected change.</summary>
-    public static CommandOutcome<PreflightResponse> Preflight(PreflightRequest request)
+    public static CommandOutcome<PreflightResponse> Preflight(PreflightRequest request) => Preflight(request, null);
+
+    /// <summary>
+    /// Reports Drift for given Proposal content, such as a Draft's, so Apply checks every change once before it
+    /// finalizes anything; with no content the Proposal's finalized revision is checked.
+    /// </summary>
+    internal static CommandOutcome<PreflightResponse> Preflight(PreflightRequest request,
+        SIL.Motif.Contract.Model.Proposal? content)
     {
         return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
         {
             try
             {
                 var id = NormalizeId(request.ProposalId);
-                var (_, proposal) = new ProposalRepository(database).GetFinalized(CanonicalId.Parse(id));
+                var proposal = content ?? new ProposalRepository(database).GetFinalized(CanonicalId.Parse(id)).Envelope;
                 var currentBaseline = new BaselineRepository(database)
                     .GetCurrent(ProjectWorkspaceKey.Compute(project));
                 return ProjectReadCache.ReadCurrent(project, currentBaseline,

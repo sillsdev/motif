@@ -78,6 +78,7 @@ public enum WordAction
     OpenMorphology,
     UndoChange,
     ReconfirmChange,
+    KeepChange,
 }
 
 /// <summary>A typed action request carrying the word identity and evidence revision.</summary>
@@ -135,12 +136,16 @@ public sealed record WordCardPendingChange(
 public sealed record WordCardSentenceToken(string Form, string? WritingSystem, bool IsChanged);
 
 /// <summary>The pending-change actions and status displayed on a Review word row.</summary>
+/// <param name="IsLookedAt">Whether Review changes marks the change looked at, shown as a chip before Keep.</param>
+/// <param name="KeepAutomationName">The accessible name of the row's Keep.</param>
 public sealed record WordPendingChange(
     bool IsUncertain,
     bool StillFits,
     IReadOnlyList<WordCardSentenceToken> AfterWords,
     string ReconfirmAutomationName,
-    string UndoAutomationName);
+    string UndoAutomationName,
+    bool IsLookedAt = false,
+    string? KeepAutomationName = null);
 
 /// <summary>A typed section in a word card.</summary>
 public abstract record WordCardSection;

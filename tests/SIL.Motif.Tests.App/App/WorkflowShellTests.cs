@@ -615,6 +615,13 @@ public sealed class WorkflowShellTests
                     text => text.Text == "Not in FieldWorks → Unknown");
                 var buttons = review.GetLogicalDescendants().OfType<Button>().ToArray();
                 var undo = buttons.Single(button => AutomationProperties.GetName(button) == "Undo: kitabu");
+                // Each change row has one Keep and one Undo, side by side, and no second Undo beside them.
+                var keep = buttons.Single(button => AutomationProperties.GetName(button) == "Keep: kitabu");
+                Assert.Same(keep.Parent, undo.Parent);
+                Assert.Equal(2, buttons.Count(button => Equals(button.Content, "Undo") &&
+                    AutomationProperties.GetName(button)?.StartsWith("Undo: ", StringComparison.Ordinal) == true));
+                Assert.Equal(2, buttons.Count(button => Equals(button.Content, "Keep") &&
+                    AutomationProperties.GetName(button)?.StartsWith("Keep: ", StringComparison.Ordinal) == true));
                 Assert.True(undo.IsEffectivelyVisible);
                 Assert.True(undo.IsHitTestVisible);
                 Assert.Equal(1d, undo.Opacity);

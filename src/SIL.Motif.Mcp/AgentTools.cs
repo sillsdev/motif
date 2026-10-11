@@ -657,6 +657,19 @@ internal static class AgentTools
                 c.ProjectPath, c.ProductVersion, a.Required("draft"), a.Optional("expected_revision"))),
                 r => $"Proposal {r.ProposalId} is ready for the linguist to review in Motif. Tell them its label."))) { Requests = [typeof(FinalizeRequest)] },
 
+        new("motif_withdraw_proposal",
+            string.Empty,
+            AgentClass.Draft,
+            Schema.Object([("proposal", Schema.String("The id of the Proposal you started and now take back."), true)]),
+            false,
+            false,
+            true,
+            false,
+            true,
+            (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalLifecycleCommand.Withdraw(
+                new WithdrawProposalRequest(c.ProjectPath, a.Required("proposal"))),
+                r => $"Proposal {r.ProposalId} is withdrawn. The linguist sees it as withdrawn and may reopen it."))) { Requests = [typeof(WithdrawProposalRequest)] },
+
         new("motif_proposals",
             string.Empty,
             AgentClass.Read,

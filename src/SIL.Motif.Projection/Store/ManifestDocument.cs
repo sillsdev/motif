@@ -67,4 +67,5 @@ public static class ManifestStatus
     public const string Rejected = "rejected";
     public const string Applied = "applied";
     public const string Superseded = "superseded";
+    public const string Withdrawn = "withdrawn";
 }

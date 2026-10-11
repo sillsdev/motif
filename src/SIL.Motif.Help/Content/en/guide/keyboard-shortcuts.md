@@ -87,6 +87,10 @@ Inside text inputs, Ctrl+C/X/V and Ctrl+Z/Y use the control's own copy, cut, pas
 | Home | Home | Home | Review changes | Go to the first row |
 | End | End | End | Review changes | Go to the last row |
 | Escape | Esc | Esc | Review changes | Close the word card |
+| ↑ | Alt+↑ | Alt+↑ | Review changes | Previous change |
+| ↓ | Alt+↓ | Alt+↓ | Review changes | Next change |
+| K | Alt+K | Alt+K | Review changes | Keep change |
+| U | Alt+Shift+U | Alt+Shift+U | Review changes | Undo change |
 
 ## Matrix preview
 

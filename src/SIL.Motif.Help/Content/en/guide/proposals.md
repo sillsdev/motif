@@ -14,6 +14,6 @@ A card names what the Proposal changes in one line, such as “2 rules · 1 allo
 
 Choose **Open** to see the project's pages with the Proposal beside today: the numbers on **Overview**, **Texts**, **Timing** and **Warnings** show today's value and the Proposal's. Choose **Try again** on a card that needs another try to measure it on a copy of the project. The copy is thrown away; your FieldWorks project is not changed.
 
-Each card beside its name says where the Proposal is: **Draft**, **Ready**, **Deferred**, **Applied**, **Declined**, **Superseded** or **Withdrawn**. Your own changes carry no such word. A declined, superseded or withdrawn card offers **Delete**, which removes the Proposal and its tries. An applied Proposal cannot be deleted; it and its record of what was applied are kept.
+Each card beside its name says where the Proposal is: **Draft**, **Ready**, **Deferred**, **Applied**, **Declined**, **Superseded** or **Withdrawn**. Your own changes carry no such word. A declined or withdrawn card offers **Reopen**, which makes it a Draft again with its history kept. A declined, superseded or withdrawn card offers **Delete**, which removes the Proposal and its tries. An applied Proposal cannot be deleted; it and its record of what was applied are kept.
 
 The number beside **Proposals** in the sidebar counts the cards that are waiting for you.

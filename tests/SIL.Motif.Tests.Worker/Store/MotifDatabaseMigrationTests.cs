@@ -286,7 +286,7 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
             ["AssessmentPins"] = ["AssessmentId|TEXT|1|1|", "PinnedBy|TEXT|1|2|", "PinnedUtc|TEXT|1|0|"],
             ["Proposals"] = ["ProposalId|TEXT|0|1|", "CurrentIntentDigest|TEXT|0|0|", "Status|TEXT|1|0|",
                 "Label|TEXT|0|0|", "Comment|TEXT|0|0|", "SupersededBy|TEXT|0|0|", "AnchorJson|TEXT|0|0|",
-                "ArchivedUtc|TEXT|0|0|", "DraftName|TEXT|0|0|", "DraftJson|TEXT|0|0|"],
+                "ArchivedUtc|TEXT|0|0|", "DraftName|TEXT|0|0|", "DraftJson|TEXT|0|0|", "Role|TEXT|0|0|"],
             ["ProposalRevisions"] = ["ProposalId|TEXT|1|1|", "IntentDigest|TEXT|1|2|", "ProposalJson|BLOB|1|0|",
                 "CreatedUtc|TEXT|1|0|"],
             ["Receipts"] = ["ReceiptId|TEXT|0|1|", "ProposalId|TEXT|1|0|", "IntentDigest|TEXT|1|0|",
@@ -603,6 +603,19 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
 
         Assert.Throws<InvalidDataException>(() => MotifDatabase.OpenOwned(
             path, Locator("tamper.fwdata"), MotifSchema.CurrentSchema, new Version(1, 0)));
+    }
+
+    [Fact]
+    public void AnOldStoreWithoutTheReviewMarksTableIsRefused()
+    {
+        var path = DatabasePath("no-review-marks.fwdata");
+        using (var database = Open("no-review-marks.fwdata", supportedSchema: MotifSchema.CurrentSchema))
+            Assert.NotNull(database);
+        using (var connection = NewConnection(path))
+            Execute(connection, "DROP TABLE ReviewMarks;");
+
+        Assert.Throws<InvalidDataException>(() => MotifDatabase.OpenOwned(
+            path, Locator("no-review-marks.fwdata"), MotifSchema.CurrentSchema, new Version(1, 0)));
     }
 
     [Fact]

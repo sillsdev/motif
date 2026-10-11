@@ -20,6 +20,7 @@ using SIL.Motif.Commands.Handoff;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands.Preferences;
+using SIL.Motif.Commands.Review;
 using SIL.Motif.Contract.Canonicalization;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Assess;
@@ -438,11 +439,36 @@ try
         case "discard-draft":
             if (!flags.TryGetValue("project", out var discardProject) ||
                 !flags.TryGetValue("draft", out var discardDraftName))
-                return Usage("Usage: motif discard-draft --project <fwdata> --draft <name>", asJson);
+                return Usage("Usage: motif discard-draft --project <fwdata> --draft <name> [--revision <r>]", asJson);
             result = RenderProposal(
                 ProposalCommands.DiscardDraft(
-                    new DiscardDraftRequest(discardProject, CliProductVersion(), discardDraftName)),
+                    new DiscardDraftRequest(discardProject, CliProductVersion(), discardDraftName,
+                        flags.GetValueOrDefault("revision"))),
                 successAsJson: false);
+            break;
+
+        case "reopen" when flags.ContainsKey("proposal"):
+            if (positionals.Count != 0 || !flags.TryGetValue("project", out var reopenProposalProject) ||
+                string.IsNullOrWhiteSpace(flags["proposal"]))
+                return Usage(UsageLineFor("reopen --proposal"), asJson);
+            result = RenderCommand(ProposalLifecycleCommand.Reopen(new ReopenProposalRequest(reopenProposalProject,
+                flags["proposal"])));
+            break;
+
+        case "reject" when flags.ContainsKey("proposal"):
+            if (positionals.Count != 0 || !flags.TryGetValue("project", out var declineProject) ||
+                string.IsNullOrWhiteSpace(flags["proposal"]))
+                return Usage(UsageLineFor("reject --proposal"), asJson);
+            result = RenderCommand(ProposalLifecycleCommand.Decline(new DeclineProposalRequest(declineProject,
+                flags["proposal"])));
+            break;
+
+        case "withdraw":
+            if (positionals.Count != 0 || !flags.TryGetValue("project", out var withdrawProject) ||
+                !flags.TryGetValue("proposal", out var withdrawProposal) || string.IsNullOrWhiteSpace(withdrawProposal))
+                return Usage(UsageLineFor("withdraw"), asJson);
+            result = RenderCommand(ProposalLifecycleCommand.Withdraw(new WithdrawProposalRequest(withdrawProject,
+                withdrawProposal)));
             break;
 
         case "reopen":
@@ -811,6 +837,18 @@ try
                     PendingChangesWorkflow.Apply(pendingRequest, cancellationToken)));
                 break;
             }
+            if (flags.ContainsKey("proposal"))
+            {
+                if (positionals.Count != 0 || flags.ContainsKey("user") ||
+                    !flags.TryGetValue("project", out var proposalApplyProject) ||
+                    string.IsNullOrWhiteSpace(flags["proposal"]))
+                    return Usage(UsageLineFor("apply --proposal"), asJson);
+                var proposalRequest = new ApplyProposalRequest(proposalApplyProject, flags["proposal"],
+                    flags.GetValueOrDefault("revision"));
+                result = RunWithConsoleCancellation(cancellationToken => RenderProposal(
+                    PendingChangesWorkflow.Apply(proposalRequest, cancellationToken)));
+                break;
+            }
             if (positionals.Count != 1 ||
                 flags.ContainsKey("user") ||
                 !flags.TryGetValue("project", out var applyProject))
@@ -821,7 +859,7 @@ try
             }
             var applyForce = flags.ContainsKey("force");
             result = RenderProposal(
-                ProposalCommands.Apply(
+                PendingChangesWorkflow.Apply(
                     new ApplyRequest(applyProject, CliProductVersion(), positionals[0], applyForce)));
             break;
 
@@ -1223,6 +1261,27 @@ try
             break;
 
         case "proposal":
+            if (positionals.Count == 1 && positionals[0] == "review" &&
+                flags.TryGetValue("project", out var proposalReviewProject))
+            {
+                result = RenderCommand(ProposalReview.Read(new ProposalReviewRequest(
+                    proposalReviewProject, flags.GetValueOrDefault("proposal"))));
+                break;
+            }
+            if (positionals.Count == 1 && positionals[0] == "review")
+                return Usage(UsageLineFor("proposal review"), asJson);
+            if (positionals.Count == 1 && positionals[0] == "looked-at")
+            {
+                if (!flags.TryGetValue("project", out var markProject) ||
+                    !flags.TryGetValue("proposal", out var markProposal) ||
+                    !flags.TryGetValue("entry", out var markEntry) ||
+                    !flags.TryGetValue("content-digest", out var markContent) ||
+                    !flags.TryGetValue("evidence-digest", out var markEvidence))
+                    return Usage(UsageLineFor("proposal looked-at"), asJson);
+                result = RenderCommand(ReviewMarks.Set(new ReviewMarkRequest(markProject, markProposal, markEntry,
+                    markContent, markEvidence, !flags.ContainsKey("clear"))));
+                break;
+            }
             if (positionals.Count != 2 || positionals[0] != "trial" ||
                 !flags.TryGetValue("project", out var trialReadProject))
                 return Usage("Usage: motif proposal trial --project <fwdata> <proposalId> [--json]", asJson);
@@ -1797,7 +1856,8 @@ static InspectorSubject? InspectSubjectFrom(IReadOnlyDictionary<string, string> 
 static string ResolveCommandName(string verb, IReadOnlyDictionary<string, string> flags,
     IReadOnlyList<string> positionals)
 {
-    if (verb == "proposal" && positionals.FirstOrDefault() == "trial") return "proposal trial";
+    if (verb == "proposal" && positionals.FirstOrDefault() is "trial" or "review" or "looked-at")
+        return "proposal " + positionals[0];
     if (verb == "parsimony")
     {
         if (positionals.SequenceEqual(new[] { "expectations" })) return "parsimony expectations";
@@ -1822,6 +1882,9 @@ static string ResolveCommandName(string verb, IReadOnlyDictionary<string, string
     if (verb == "apply" && flags.ContainsKey("all-pending"))
         return "apply --all-pending";
     if (verb == "delete") return "delete --proposal";
+    if (verb is "reject" or "reopen" && flags.ContainsKey("proposal")) return verb + " --proposal";
+    if (verb == "apply" && flags.ContainsKey("proposal"))
+        return "apply --proposal";
     if (verb == "trial" && flags.ContainsKey("pending"))
         return "trial --pending";
     if (verb is "config" or "baseline" or "grammar" or "jobs" or "project" or "selection" or "texts" or "setup" or "store" or "word")

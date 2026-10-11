@@ -55,9 +55,15 @@ internal sealed class ReviewWordPresentationHost(ReviewPageModel page) : IWordPr
                 return Execute(change.Listed!.Row.OpenInTextCommand);
             case WordAction.TryWord:
                 return Execute(change.Listed!.Row.TryWordCommand);
+            // The row's Keep and Undo are the list entry's, so Undo names dependents and clears the looked-at mark.
             case WordAction.UndoChange:
-                if (!page.Changes.RemoveCommand.CanExecute(change)) return new WordActionResult(false);
-                await page.Changes.RemoveCommand.ExecuteAsync(change);
+                if (EntryOf(change) is not { } undone) return new WordActionResult(false);
+                await undone.UndoCommand.ExecuteAsync(null);
+                return new WordActionResult(true);
+            case WordAction.KeepChange:
+                if (EntryOf(change) is not { } kept || !kept.KeepCommand.CanExecute(null))
+                    return new WordActionResult(false);
+                await kept.KeepCommand.ExecuteAsync(null);
                 return new WordActionResult(true);
             case WordAction.ReconfirmChange:
                 if (!page.ReconfirmChangeCommand.CanExecute(change)) return new WordActionResult(false);
@@ -72,6 +78,9 @@ internal sealed class ReviewWordPresentationHost(ReviewPageModel page) : IWordPr
         ? page.ReviewEntries.Select(entry => entry.Change).FirstOrDefault(change =>
             change is not null && change.Presentation.Key == key)
         : null;
+
+    private ReviewEntryViewModel? EntryOf(ChangeViewModel change) =>
+        page.Entries.FirstOrDefault(entry => ReferenceEquals(entry.Change, change));
 
     private static WordActionResult Execute(System.Windows.Input.ICommand command)
     {

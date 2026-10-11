@@ -7,6 +7,14 @@ namespace SIL.Motif.Contract.Requests;
 public sealed record ApplyPendingRequest(
     string ProjectPath, string? DraftId, string? Revision);
 
+/// <summary>Applies one Proposal from its current Trial: a finalized Proposal, or a Draft finalized first.</summary>
+/// <param name="ProjectPath">The FieldWorks project the Proposal will be applied to.</param>
+/// <param name="ProposalId">The Proposal to apply.</param>
+/// <param name="ExpectedRevision">
+/// The Draft revision, or the intent digest of a finalized Proposal, the caller reviewed; <see langword="null"/> accepts the current one.
+/// </param>
+public sealed record ApplyProposalRequest(string ProjectPath, string ProposalId, string? ExpectedRevision);
+
 /// <summary>Measures the selected words against one exact pending revision.</summary>
 /// <param name="ProjectPath">The FieldWorks project whose pending changes will be measured.</param>
 /// <param name="DraftId">The expected Draft identity, or <see langword="null"/> to use the current Draft.</param>

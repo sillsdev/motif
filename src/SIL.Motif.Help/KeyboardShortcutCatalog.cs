@@ -105,6 +105,8 @@ public enum ShortcutKey
     S,
     /// <summary>The P key.</summary>
     P,
+    /// <summary>The K key.</summary>
+    K,
     /// <summary>F10.</summary>
     F10,
 }

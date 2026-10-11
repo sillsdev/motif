@@ -138,7 +138,13 @@ public sealed class ReleaseSurfaceTests : IDisposable
             Assert.Contains(name, result.Error, StringComparison.Ordinal);
         foreach (var name in developerNames)
         {
-            var usagePrefix = name == "apply" ? "  apply <proposalId> " : "  " + name + " ";
+            // `reopen` and `reject` also have a Released `--proposal` form, so their Developer lines are matched whole.
+            var usagePrefix = name switch
+            {
+                "apply" => "  apply <proposalId> ",
+                "reopen" or "reject" => "  " + name + " --project ",
+                _ => "  " + name + " ",
+            };
             var usageLine = result.Error.Split(Environment.NewLine)
                 .FirstOrDefault(line => line.StartsWith(usagePrefix, StringComparison.Ordinal));
             Assert.Null(usageLine);

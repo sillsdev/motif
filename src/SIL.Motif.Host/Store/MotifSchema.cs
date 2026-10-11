@@ -16,7 +16,7 @@ public static class MotifSchema
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 44;
+    public const int CurrentSchema = 45;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
@@ -33,7 +33,7 @@ public static class MotifSchema
             command.Transaction = transaction;
             command.CommandText = MetadataDdl + CorpusDdl + ProposalWorkflowDdl + SelectionDdl + AssessmentDdl + JobDdl +
                 BaselineDdl + BaselineTextWordsDdl + BaselineTextReadIndexDdl + RetainedInvocationDdl + ParsimonyBundleDdl + ParsimonyBundleLifetimeDdl +
-                GrammarCheckDdl + PendingChangeFitDdl +
+                GrammarCheckDdl + PendingChangeFitDdl + ReviewMarkDdl +
                 ReadOccurrenceDdl + ActiveParseDdl + ParserRefusalDdl;
             command.ExecuteNonQuery();
         }
@@ -62,7 +62,7 @@ public static class MotifSchema
             "ParsedAnalyses", "AssessmentPins", "Proposals", "ProposalRevisions",
             "Receipts", "Reports", "AppliedIndex", "Jobs", "Baselines", "RetainedInvocations",
             "RetainedInvocationMembers", "NamedSelections", "DefaultSelection", "AssessmentObjectTimings",
-            "BaselineSummaries", "BaselineTextWords", "BaselineTextWordforms", "BaselineTextReadIndex", "GrammarChecks", "PendingChangeFits",
+            "BaselineSummaries", "BaselineTextWords", "BaselineTextWordforms", "BaselineTextReadIndex", "GrammarChecks", "PendingChangeFits", "ReviewMarks",
             "ReadOccurrences", "ActiveParse", "ParserRefusals", "ParsimonyBundles", "ParsimonyBundleReferences",
             "ParsimonyReaderLeases", "ParsimonyBuildClaims", "CurrentParsimonyBundles"
         };
@@ -70,7 +70,7 @@ public static class MotifSchema
         {
             "IX_AssessedWords_Assessment", "IX_AssessedWords_Word", "IX_ParsedAnalyses_Word",
             "IX_Jobs_Lineage_Attempt", "IX_Jobs_Status_Updated", "IX_Jobs_Lease", "IX_Jobs_QueueOrder",
-            "IX_Proposals_DraftName", "IX_Assessments_Proposal", "IX_Assessments_Kind",
+            "IX_Proposals_DraftName", "IX_Proposals_OpenRole", "IX_Assessments_Proposal", "IX_Assessments_Kind",
             "IX_RetainedInvocations_Project", "IX_RetainedInvocationMembers_Assessment",
             "IX_ParsimonyBundles_ProjectCreated", "IX_ParsimonyReaderLeases_BundleExpiry",
             "IX_ParsimonyBuildClaims_Project", "IX_GrammarChecks_Project", "IX_GrammarChecks_Proposal"
@@ -271,7 +271,7 @@ public static class MotifSchema
         "IX_AssessedWords_Assessment" or "IX_AssessedWords_Word" => "AssessedWords",
         "IX_ParsedAnalyses_Word" => "ParsedAnalyses",
         "IX_Jobs_Lineage_Attempt" or "IX_Jobs_Status_Updated" or "IX_Jobs_Lease" or "IX_Jobs_QueueOrder" => "Jobs",
-        "IX_Proposals_DraftName" => "Proposals",
+        "IX_Proposals_DraftName" or "IX_Proposals_OpenRole" => "Proposals",
         "IX_Assessments_Proposal" or "IX_Assessments_Kind" => "Assessments",
         "IX_RetainedInvocations_Project" => "RetainedInvocations",
         "IX_RetainedInvocationMembers_Assessment" => "RetainedInvocationMembers",
@@ -283,9 +283,9 @@ public static class MotifSchema
     };
 
     private static bool IsUniqueIndex(string index) => index is "IX_Jobs_Lineage_Attempt" or
-        "IX_Proposals_DraftName" or "IX_GrammarChecks_Project" or "IX_GrammarChecks_Proposal";
+        "IX_Proposals_DraftName" or "IX_Proposals_OpenRole" or "IX_GrammarChecks_Project" or "IX_GrammarChecks_Proposal";
 
-    private static bool IsPartialIndex(string index) => index is "IX_GrammarChecks_Project" or
+    private static bool IsPartialIndex(string index) => index is "IX_Proposals_OpenRole" or "IX_GrammarChecks_Project" or
         "IX_GrammarChecks_Proposal";
 
     private static IReadOnlyList<string> IndexColumnsFor(string index) => index switch
@@ -298,6 +298,7 @@ public static class MotifSchema
         "IX_Jobs_Lease" => ["Status", "LeaseUntilUtc"],
         "IX_Jobs_QueueOrder" => ["QueueOrder"],
         "IX_Proposals_DraftName" => ["DraftName"],
+        "IX_Proposals_OpenRole" => ["Role"],
         "IX_Assessments_Proposal" => ["ProposalId"],
         "IX_Assessments_Kind" => ["Kind"],
         "IX_RetainedInvocations_Project" => ["ProjectKey"],
@@ -358,6 +359,9 @@ public static class MotifSchema
         "PendingChangeFits" =>
         [C("DraftRevision", "TEXT", true, 1), C("ProjectLastWriteUtcTicks", "INTEGER", true, 2),
             C("BaselineIdentity", "TEXT", true, 3), C("FitSummaryJson", "TEXT", true)],
+        "ReviewMarks" =>
+        [C("ProposalId", "TEXT", true, 1), C("EntryKey", "TEXT", true, 2), C("ContentDigest", "TEXT", true),
+            C("EvidenceDigest", "TEXT", true), C("LookedAtUtc", "TEXT", true)],
         "ActiveParse" =>
         [C("Id", "INTEGER", false, 1), C("Token", "TEXT", true), C("ProcessId", "INTEGER", true),
             C("ProcessStartIdentity", "TEXT", true)],
@@ -428,7 +432,7 @@ public static class MotifSchema
         "Proposals" =>
         [C("ProposalId", "TEXT", false, 1), C("CurrentIntentDigest", "TEXT"), C("Status", "TEXT", true),
             C("Label", "TEXT"), C("Comment", "TEXT"), C("SupersededBy", "TEXT"), C("AnchorJson", "TEXT"),
-            C("ArchivedUtc", "TEXT"), C("DraftName", "TEXT"), C("DraftJson", "TEXT")],
+            C("ArchivedUtc", "TEXT"), C("DraftName", "TEXT"), C("DraftJson", "TEXT"), C("Role", "TEXT")],
         "ProposalRevisions" =>
         [C("ProposalId", "TEXT", true, 1), C("IntentDigest", "TEXT", true, 2),
             C("ProposalJson", "BLOB", true), C("CreatedUtc", "TEXT", true)],
@@ -563,9 +567,11 @@ public static class MotifSchema
             AnchorJson TEXT NULL,
             ArchivedUtc TEXT NULL,
             DraftName TEXT NULL,
-            DraftJson TEXT NULL
+            DraftJson TEXT NULL,
+            Role TEXT NULL CHECK (Role IS NULL OR Role = 'pending-changes')
         );
         CREATE UNIQUE INDEX IX_Proposals_DraftName ON Proposals(DraftName);
+        CREATE UNIQUE INDEX IX_Proposals_OpenRole ON Proposals(Role) WHERE DraftName IS NOT NULL;
 
         CREATE TABLE ProposalRevisions (
             ProposalId TEXT NOT NULL REFERENCES Proposals(ProposalId),
@@ -853,6 +859,17 @@ public static class MotifSchema
             BaselineIdentity TEXT NOT NULL,
             FitSummaryJson TEXT NOT NULL,
             PRIMARY KEY (DraftRevision, ProjectLastWriteUtcTicks, BaselineIdentity)
+        );
+        """;
+
+    private const string ReviewMarkDdl = """
+        CREATE TABLE ReviewMarks (
+            ProposalId TEXT NOT NULL,
+            EntryKey TEXT NOT NULL,
+            ContentDigest TEXT NOT NULL,
+            EvidenceDigest TEXT NOT NULL,
+            LookedAtUtc TEXT NOT NULL,
+            PRIMARY KEY (ProposalId, EntryKey)
         );
         """;
 

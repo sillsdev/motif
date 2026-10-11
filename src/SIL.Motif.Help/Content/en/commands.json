@@ -458,5 +458,30 @@
     "title": "Delete a closed Proposal",
     "description": "Deletes a declined, superseded or withdrawn Proposal that never applied, with its Trials. An applied Proposal is never deleted.",
     "source": "Hand-written from command behavior."
+  },
+  "proposal review": {
+    "title": "Review a Proposal's changes",
+    "description": "Lists every change in one Proposal in the order to read them: grammar changes first, then word changes. Each entry says whether it has been looked at, and the list carries the Proposal's latest Trial.",
+    "source": "Hand-written from command behavior."
+  },
+  "apply --proposal": {
+    "title": "Apply one Proposal",
+    "description": "Applies one Proposal to the FieldWorks project as one unit of work, using the result of its latest Trial. The Proposal must have been tried since it and the project last changed.",
+    "source": "Hand-written from command behavior."
+  },
+  "reject --proposal": {
+    "title": "Decline a Proposal",
+    "description": "Declines a Proposal you do not want. It is kept with its Trials as history, and you can reopen it later.",
+    "source": "Hand-written from command behavior."
+  },
+  "reopen --proposal": {
+    "title": "Reopen a Proposal",
+    "description": "Opens a declined or withdrawn Proposal again as a Draft under the same id, with its history kept. An applied or superseded Proposal is never reopened.",
+    "source": "Hand-written from command behavior."
+  },
+  "withdraw": {
+    "title": "Withdraw a Proposal",
+    "description": "Takes back a Proposal before anyone reviews it. The linguist sees it as withdrawn and may reopen it.",
+    "source": "Hand-written from command behavior."
   }
 }

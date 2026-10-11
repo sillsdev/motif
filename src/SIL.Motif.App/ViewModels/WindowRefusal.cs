@@ -79,6 +79,8 @@ public sealed partial record WindowRefusal
         [C.ApplyProjectInUse] = "FieldWorks has this project open. Close it before applying changes.",
         [C.ApplyReconciliationNeeded] =
             "Applying may have completed, but its result could not be confirmed. Check the project before retrying.",
+        [C.OperationCascadingDelete] = "This change deletes something that owns other things, so it cannot be undone from here.",
+        [C.OperationInvalidDependency] = "Other changes here need this one. Undo them together.",
         [C.ApplyRegression] = "The check found worse results for words already measured. Review them before applying.",
         [C.ApplyReopenFailed] =
             "The changes could not be applied or reopened. Inspect the FieldWorks project before trying again.",

@@ -102,6 +102,29 @@ never sent to FieldWorks and never carried in the Proposal.
 The `Decisions` table and the `User` argument of Apply are removed. A Receipt keeps the message the person gave, as
 before. Pre-1.0, a store with the old shape is refused and recreated; no migration is written (AGENTS.md rule 18).
 
+### 8. There is one Apply path, and the pending changes are a Proposal like any other
+
+`apply --proposal <id>`, `apply --all-pending` and the developer `apply <id>` are three front doors to one
+orchestration: read the Proposal, refuse first and cheaply while FieldWorks holds the project, finalize a Draft, check
+every change once against the project, bind a Dry Run, apply in one LibLCM unit of work, and reopen a Draft that Apply
+finalized under the same id when anything refuses. The front doors differ only in where the Dry Run comes from:
+`apply --proposal` takes the Dry Run of the Proposal's current Trial and refuses without one; `apply --all-pending`, at
+FieldWorks' save boundary, queues a fresh one, so the pending changes need no Trial there and its JSON, exit codes and
+reconciliation signal are unchanged; the developer `apply <id>` takes the one `dryrun` already bound. The pending changes
+are found by a stored role on their Proposal row, not by their Draft's name, and `trial --pending` measures them through
+the same Trial as `trial <id>`. Every Draft edit, composers included, is a compare-and-swap against the revision it read,
+so a racing edit is refused and never lost.
+
+### 9. A Proposal's life has one set of statuses, and applied is final
+
+Draft, Ready (`proposed`) and Deferred are open; Applied, Declined (`rejected`), Superseded and Withdrawn are closed.
+Applied is final: never reopened or deleted, its Receipts and applied-log entries kept. A person declines a Proposal
+with `reject --proposal` or **Decline**, and reopens a declined or withdrawn one with `reopen --proposal` or **Reopen**,
+as a Draft under the same id with its history kept; a superseded Proposal names its replacement instead. An assistant
+takes back a Proposal it started with `withdraw`. A declined, superseded or withdrawn Proposal that never applied can be
+deleted with its Trials (`delete --proposal`, **Delete**). Lists show open Proposals unless asked for closed ones. The
+pending changes' Undo all discards their Draft through the same path as `discard-draft`.
+
 ## Amendments to earlier decisions
 
 - **ADR 0046 decision 2** withdrew a recorded review Decision; this ADR removes the table it would have used.
@@ -136,7 +159,10 @@ discard.
 
 - Every evidence read in the catalog takes an evidence set, and the CLI's `overview`, `warnings`, `timing` and `stats`
   gain `--proposal <id>`; their numbers are the Proposals page's numbers.
-- `proposals`, `proposal review`, `trial`, `trial --wait` and `apply --proposal` are Released and get Help pages.
+- `proposals`, `proposal review`, `apply --proposal`, `reject --proposal`, `reopen --proposal` and `delete --proposal`
+  are Released, HumanOnly where they change anything, and get Help pages. `trial` and `trial --wait` stay Advanced AI,
+  where an assistant tries its own Proposals; the window's Try again reaches the same Trial. `withdraw` is Advanced AI
+  for an assistant's own Proposals. `proposal looked-at` and the developer `apply <id>` stay Developer.
 - The Selection reader opens one session per set in the lens.
 - Composer provenance carries operation ids; an operation without provenance is reviewed as its own entry.
 - Two Proposals that change the same words are flagged on the Proposals page and never merged.

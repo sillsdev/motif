@@ -349,6 +349,31 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine,
     }
 
     [Fact]
+    public async Task MeasuringANamedDraftQueuesTheSameTrialAsTrialWithItsId()
+    {
+        using var scratch = pristine.NewScratch();
+        var path = scratch.ProjectId.Path;
+        scratch.Dispose();
+        var root = NewManagedRoot(path);
+        var runner = IsolatedRunner.None(root);
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root).Succeeded);
+        var created = ProposalCommands.New(new NewDraftRequest(path, ProductVersion, "review/lens", "Lens"));
+        Assert.True(ProposalCommands.AddSetGloss(new AddSetGlossRequest(path, ProductVersion, "review/lens",
+            CanonicalId.Mint().Value, "en", "a gloss")).Succeeded);
+
+        var outcome = await PendingChangesWorkflow.Measure(new MeasurePendingRequest(path,
+            created.Value!.ProposalId, null, ["a gloss"]), new Progress<MeasureProgress>(), CancellationToken.None,
+            TimeSpan.FromMilliseconds(1), runnerLauncher: runner).WaitAsync(TimeSpan.FromSeconds(30));
+
+        Assert.Equal("job.wait-timeout", outcome.Refusal?.Code);
+        using var database = ProjectMotifDatabase.Open(path);
+        var job = new JobRepository(database).Get(outcome.Refusal!.Facts!["jobId"]);
+        var input = TrialJobInput.Parse(Assert.IsType<JobRecord>(job).InputJson);
+        using var proposal = System.Text.Json.JsonDocument.Parse(input.ProposalJson);
+        Assert.Equal(created.Value.ProposalId, proposal.RootElement.GetProperty("proposalId").GetString());
+    }
+
+    [Fact]
     public async Task MeasureAgainstAnEarlierAssessmentQueuesATrialWithThatAssessmentsLimits()
     {
         using var scratch = pristine.NewScratch();

@@ -33,7 +33,7 @@ public sealed class ProposalStandingsCommandTests : IDisposable
         using var fixture = new TrialsTests.ProjectFixture(_root);
         var id = CanonicalId.Mint("proposal/");
         new ProposalRepository(fixture.Database).CreateDraft(PendingChanges.DraftName, id,
-            JsonSerializer.Serialize(GlossDraft(id, "pending"), DraftOptions));
+            JsonSerializer.Serialize(GlossDraft(id, "pending"), DraftOptions), ProposalRoles.PendingChanges);
 
         var standings = Read(fixture);
 
@@ -270,7 +270,8 @@ public sealed class ProposalStandingsCommandTests : IDisposable
         using var fixture = new TrialsTests.ProjectFixture(_root);
         var id = CanonicalId.Mint("proposal/");
         var repository = new ProposalRepository(fixture.Database);
-        repository.CreateDraft(PendingChanges.DraftName, id, JsonSerializer.Serialize(GlossDraft(id, "before"), DraftOptions));
+        repository.CreateDraft(PendingChanges.DraftName, id, JsonSerializer.Serialize(GlossDraft(id, "before"), DraftOptions),
+            ProposalRoles.PendingChanges);
         fixture.CreateJob(ProposalCommands.BuildProposalJson(GlossDraft(id, "before")), "2026-09-24T11:00:00Z",
             "trial", []);
         repository.SaveDraft(PendingChanges.DraftName, JsonSerializer.Serialize(GlossDraft(id, "after"), DraftOptions));

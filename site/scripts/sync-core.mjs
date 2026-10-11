@@ -20,7 +20,7 @@ const guideSections = [
 	},
 	{
 		title: 'Everyday tasks',
-		pages: ['refresh-numbers', 'change-an-analysis', 'replace-a-pending-change', 'apply-to-fieldworks', 'when-a-change-no-longer-fits', 'switch-projects', 'cancel-a-long-run', 'when-something-goes-wrong'],
+		pages: ['refresh-numbers', 'change-an-analysis', 'replace-a-pending-change', 'apply-to-fieldworks', 'review-a-proposal', 'when-a-change-no-longer-fits', 'switch-projects', 'cancel-a-long-run', 'when-something-goes-wrong'],
 	},
 	{
 		title: 'Concepts',

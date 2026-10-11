@@ -5,3 +5,5 @@
 Use **Undo** on **Review changes** to withdraw a choice, or return to **Texts** to make a different choice for the same word and analysis. The list belongs to its project and remains available if you close Motif and open that project again.
 
 Nothing is written to FieldWorks while you are collecting or reading these changes. Before applying, use **Check these changes** to measure the touched words, confirm that the evidence is current and complete, and make sure every choice still fits. Then choose **Apply to FieldWorks project**.
+
+The list on **Review changes** is the same list a Proposal has: you can walk it with **Previous** and **Next**, as described in [Review a Proposal](guide:review-a-proposal).

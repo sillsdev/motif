@@ -1,3 +1,4 @@
+using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Projects;
@@ -60,6 +61,7 @@ public static class ProposalLifecycleCommand
         var jobs = new JobRepository(database);
         foreach (var job in trials) jobs.DeleteArchived(job.JobId);
         new AssessmentRepository(database).DeleteByProposal(record.ProposalId, exceptAssessmentId: null);
+        Review.ReviewMarks.ClearAll(database, id);
         try
         {
             repository.DeleteArchived(record.ProposalId);
@@ -70,6 +72,81 @@ public static class ProposalLifecycleCommand
         }
         return CommandOutcome<ProposalDeletedResponse>.Success(new ProposalDeletedResponse(id, trials.Count));
     }
+
+    /// <summary>Declines a Proposal, finalizing it first when it is a Draft, and keeps it with its Trials.</summary>
+    public static CommandOutcome<ProposalStatusChangedResponse> Decline(DeclineProposalRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return Close(request.ProjectPath, request.ProposalId, ManifestStatus.Rejected);
+    }
+
+    /// <summary>Withdraws a Proposal for its author, finalizing it first when it is a Draft.</summary>
+    public static CommandOutcome<ProposalStatusChangedResponse> Withdraw(WithdrawProposalRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return Close(request.ProjectPath, request.ProposalId, ManifestStatus.Withdrawn);
+    }
+
+    /// <summary>
+    /// Opens a declined or withdrawn Proposal again as a Draft under the same id, its history kept. An applied
+    /// Proposal is final and a superseded one names its replacement instead.
+    /// </summary>
+    public static CommandOutcome<ReopenedResponse> Reopen(ReopenProposalRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var version = MotifProductVersion.CurrentText;
+        var read = ReadRecord(request.ProjectPath, request.ProposalId);
+        if (!read.Succeeded) return CommandOutcome<ReopenedResponse>.Refused(read.Refusal!);
+        var record = read.Value!;
+        var id = record.ProposalId.Value;
+        if (record.Status == ManifestStatus.Applied)
+            return Refuse<ReopenedResponse>("proposal.applied-final", id,
+                "This Proposal was applied. An applied Proposal is final.");
+        if (record.DraftName is not null ||
+            record.Status is not (ManifestStatus.Rejected or ManifestStatus.Withdrawn or ManifestStatus.Superseded))
+            return Refuse<ReopenedResponse>("proposal.not-closed", id,
+                "Only a declined or withdrawn Proposal can be reopened.");
+        return ProposalCommands.Reopen(new ReopenRequest(request.ProjectPath, version, ReviewDraftPrefix + id, id));
+    }
+
+    /// <summary>The name a Proposal reopened for review takes while it is a Draft.</summary>
+    internal const string ReviewDraftPrefix = "review/";
+
+    private static CommandOutcome<ProposalStatusChangedResponse> Close(string projectPath, string proposalId,
+        string status)
+    {
+        var version = MotifProductVersion.CurrentText;
+        var read = ReadRecord(projectPath, proposalId);
+        if (!read.Succeeded) return CommandOutcome<ProposalStatusChangedResponse>.Refused(read.Refusal!);
+        var record = read.Value!;
+        var id = record.ProposalId.Value;
+        if (record.IsPendingChanges)
+            return Refuse<ProposalStatusChangedResponse>("proposal.pending-changes", id,
+                "These are your own changes. Undo them on Review changes instead.");
+        if (record.DraftName is { } draftName)
+        {
+            var finalized = ProposalCommands.Finalize(new FinalizeRequest(projectPath, version, draftName));
+            if (!finalized.Succeeded) return CommandOutcome<ProposalStatusChangedResponse>.Refused(finalized.Refusal!);
+        }
+        var rejectRequest = new RejectRequest(projectPath, version, id);
+        return status == ManifestStatus.Rejected
+            ? ProposalCommands.Reject(rejectRequest)
+            : ProposalCommands.Withdraw(rejectRequest);
+    }
+
+    private static CommandOutcome<ProposalRecord> ReadRecord(string projectPath, string proposalId) =>
+        ProjectStoreCommand.Run(projectPath, MotifProductVersion.CurrentText, (database, _) =>
+        {
+            try
+            {
+                return CommandOutcome<ProposalRecord>.Success(new ProposalRepository(database)
+                    .Get(CanonicalId.Parse(ProposalCommands.NormalizeId(proposalId))));
+            }
+            catch (Exception exception) when (exception is ArgumentException or KeyNotFoundException)
+            {
+                return CommandOutcome<ProposalRecord>.Refused(ProposalCommands.ProposalLoadRefusal(exception));
+            }
+        });
 
     private static CommandOutcome<T> Refuse<T>(string code, string proposalId, string message) where T : class =>
         CommandOutcome<T>.Refused(new Refusal(code, FailureReason.Refused, message,

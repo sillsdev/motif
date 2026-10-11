@@ -14,8 +14,9 @@ using SIL.Motif.Projection.Usage;
 namespace SIL.Motif.App.ViewModels;
 
 /// <summary>
-/// The Review changes page's model: the pending changes every page adds to, before any is written to FieldWorks,
-/// counted beside the page's sidebar label.
+/// The Review changes page's model: the changes in the Draft <see cref="WorkspaceContext.Changes"/> holds, walked as
+/// one list, before any is written to FieldWorks, and counted beside the page's sidebar label. Outside Proposal mode
+/// that Draft is the pending changes; with a Proposal open it is that Proposal (ADR 0061), and nothing else differs.
 /// </summary>
 public sealed class ReviewPageModel : PageModel
 {
@@ -29,6 +30,12 @@ public sealed class ReviewPageModel : PageModel
     private CancellationTokenSource? _retirementReviewCancellation;
     private Task? _retirementReviewTask;
     private int _retirementReviewGeneration;
+    private ProposalReviewResponse? _review;
+    private IReadOnlyList<ReviewEntryViewModel> _entries = [];
+    private int _currentIndex;
+    private bool _walked;
+    private int _reviewGeneration;
+    private Task? _reviewTask;
 
     public ReviewPageModel(WorkspaceContext context) : base(context)
     {
@@ -60,10 +67,98 @@ public sealed class ReviewPageModel : PageModel
             () => Changes.HasItems && Context.HasProject && !IsMeasuring);
         CancelMeasureCommand = new RelayCommand(() => _measurementCancellation?.Cancel(), () => IsMeasuring);
         ApplyCommand = new AsyncRelayCommand(ApplyAsync, () => CanApply);
-        KeepEditingCommand = new RelayCommand(() => Context.OpenPage(
-            Changes.Items.FirstOrDefault()?.OriginPage ?? WorkspacePage.Texts));
+        KeepEditingCommand = new RelayCommand(() => Context.OpenPage(OriginPage));
         OpenAnalyzeTextsCommand = new RelayCommand(() => Context.OpenTexts(TextsTab.AnalyzeTexts));
+        PreviousCommand = new RelayCommand(Previous, () => _currentIndex > 0);
+        NextCommand = new AsyncRelayCommand(NextAsync, () => _currentIndex < _entries.Count - 1);
+        KeepCommand = new AsyncRelayCommand(() => KeepAsync(Current), () => Current is not null);
+        UndoCommand = new AsyncRelayCommand(() => UndoAsync(Current), () => Current is not null);
+        KeepAllCommand = new AsyncRelayCommand(KeepAllAsync, () => _entries.Count > 0);
+        UndoAllCommand = new AsyncRelayCommand(UndoAllAsync, () => _entries.Count > 0);
+        TryAgainCommand = new AsyncRelayCommand(TryAgainAsync,
+            () => InProposalMode && !IsApplying && Context.ProposalStanding.CanTryAgain);
+        DeclineCommand = new AsyncRelayCommand(DeclineAsync, () => ShowsDecline && !IsApplying);
+        context.PropertyChanged += OnLensPropertyChanged;
     }
+
+    /// <summary>The Proposal list's entries in the order Previous and Next walk them.</summary>
+    public IReadOnlyList<ReviewEntryViewModel> Entries => _entries;
+
+    /// <summary>The entry Previous and Next are standing on, or <see langword="null"/> when the list is empty.</summary>
+    public ReviewEntryViewModel? Current => _currentIndex >= 0 && _currentIndex < _entries.Count
+        ? _entries[_currentIndex] : null;
+
+    /// <summary>Moves to the previous entry and marks nothing.</summary>
+    public IRelayCommand PreviousCommand { get; }
+
+    /// <summary>Marks the entry it leaves as looked at and moves to the next one.</summary>
+    public IAsyncRelayCommand NextCommand { get; }
+
+    /// <summary>Marks the current entry as looked at and moves on.</summary>
+    public IAsyncRelayCommand KeepCommand { get; }
+
+    /// <summary>Takes the current entry out of the Proposal.</summary>
+    public IAsyncRelayCommand UndoCommand { get; }
+
+    /// <summary>Marks every entry as looked at.</summary>
+    public IAsyncRelayCommand KeepAllCommand { get; }
+
+    /// <summary>Takes every entry out of the Proposal.</summary>
+    public IAsyncRelayCommand UndoAllCommand { get; }
+
+    /// <summary>Queues a fresh try of the open Proposal; nothing re-runs until the person asks.</summary>
+    public IAsyncRelayCommand TryAgainCommand { get; }
+
+    /// <summary>Declines the open Proposal: it is kept with its Trials, and the window leaves it.</summary>
+    public IAsyncRelayCommand DeclineCommand { get; }
+
+    /// <summary>Whether Decline is offered: on an open Proposal, never on the pending changes.</summary>
+    public bool ShowsDecline => InProposalMode && !ReviewsPendingChanges;
+
+    /// <summary>Why the last Decline was refused, in the window's words, or null.</summary>
+    public WindowRefusal? DeclineRefusal { get; private set; }
+
+    /// <summary>How many entries have been looked at, in the window's words.</summary>
+    public string LookedAtText => $"{_entries.Count(entry => entry.IsLookedAt)} of {_entries.Count} looked at";
+
+    /// <summary>The toolbar's Keep all, with the count it marks so it cannot be read as one group's.</summary>
+    public string KeepAllText => $"Keep all {_entries.Count:N0}";
+
+    /// <summary>The toolbar's Undo all, with the count it takes out.</summary>
+    public string UndoAllText => $"Undo all {_entries.Count:N0}";
+
+    /// <summary>
+    /// Whether the toolbar offers Undo all: only for the pending changes, since taking every change out of a Proposal
+    /// is setting the Proposal aside, not reviewing it.
+    /// </summary>
+    public bool ShowsUndoAll => HasEntries && !InProposalMode;
+
+    /// <summary>The question shown when an Undo would also take out dependent changes, or null.</summary>
+    public UndoPromptViewModel? UndoPrompt { get; private set; }
+
+    /// <summary>Why the last Undo could not finish, in the window's words.</summary>
+    public WindowRefusal? UndoRefusal { get; private set; }
+
+    /// <summary>
+    /// Whether the Draft under review is an open Proposal rather than the pending changes, so Apply works from its
+    /// try rather than a check.
+    /// </summary>
+    public bool InProposalMode => Changes.TargetProposalId is not null;
+
+    /// <summary>Whether the page has changes to act on.</summary>
+    public bool HasReviewItems => _entries.Count > 0;
+
+    /// <summary>The open Proposal's name as the page heading shows it, or null outside Proposal mode.</summary>
+    public string? ProposalLabel => !InProposalMode ? null
+        : _review?.Label is { Length: > 0 } label ? label
+        : Context.Lens is { } lens && lens.Label != lens.ProposalId ? lens.Label : "This Proposal";
+
+    // The pending changes read the same opened as a Proposal or not: still "not applied yet".
+    private bool ReviewsPendingChanges => !InProposalMode ||
+        _review?.IsPendingChanges == true;
+
+    /// <summary>Whether the list has entries to walk, which shows the toolbar.</summary>
+    public bool HasEntries => _entries.Count > 0;
 
     public ChangesViewModel Changes => Context.Changes;
     public ParseProgressViewModel ParseProgress { get; }
@@ -146,25 +241,346 @@ public sealed class ReviewPageModel : PageModel
     /// <summary>The page heading, group headings and change rows shown on the Review page.</summary>
     public IReadOnlyList<ReviewListEntryViewModel> ReviewEntries => _reviewEntries ??= BuildReviewEntries();
 
+    private void OnLensPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(WorkspaceContext.ProposalStanding))
+        {
+            RaiseApplyState();
+            TryAgainCommand.NotifyCanExecuteChanged();
+            return;
+        }
+        if (e.PropertyName is not (nameof(WorkspaceContext.Lens) or nameof(WorkspaceContext.EvidenceLens))) return;
+        RaiseModeState();
+        // A new Trial changes the evidence a looked-at mark was judged against, so the marks are read again.
+        _reviewTask = LoadReviewAsync();
+    }
+
+    private void RaiseModeState()
+    {
+        OnPropertyChanged(nameof(InProposalMode));
+        OnPropertyChanged(nameof(ProposalLabel));
+        OnPropertyChanged(nameof(ShowsUndoAll));
+        OnPropertyChanged(nameof(ShowsDecline));
+        DeclineCommand.NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(ShowsBackButton));
+        OnPropertyChanged(nameof(ShowsNumbersText));
+        OnPropertyChanged(nameof(ApplyChecks));
+        OnPropertyChanged(nameof(HasApplyChecks));
+        OnPropertyChanged(nameof(HeaderNoteText));
+        OnPropertyChanged(nameof(CountText));
+        OnPropertyChanged(nameof(ShowsSideCards));
+        RaiseApplyState();
+        TryAgainCommand.NotifyCanExecuteChanged();
+    }
+
+    /// <summary>Reads the list of the Draft <see cref="Changes"/> holds: the open Proposal's, or the pending one.</summary>
+    internal async Task LoadReviewAsync()
+    {
+        var generation = ++_reviewGeneration;
+        if (Context.ProjectPath is not { } project)
+        {
+            SetReview(null);
+            return;
+        }
+        var proposalId = Changes.TargetProposalId;
+        var outcome = await Context.Commands.ReadProposalReviewAsync(
+            new ProposalReviewRequest(project, proposalId), CancellationToken.None).ConfigureAwait(true);
+        if (generation != _reviewGeneration || !string.Equals(Context.ProjectPath, project, StringComparison.Ordinal) ||
+            !string.Equals(Changes.TargetProposalId, proposalId, StringComparison.Ordinal))
+            return;
+        SetReview(outcome.Succeeded ? outcome.Value : null);
+    }
+
+    private void SetReview(ProposalReviewResponse? review)
+    {
+        _review = review;
+        UndoPrompt = null;
+        RebuildEntries(changesMoved: false);
+    }
+
+    // One list: the review's grammar entries, then one entry per word change in Changes, in the groups' order.
+    private void RebuildEntries(bool changesMoved)
+    {
+        var previousKey = Current?.Key;
+        var reviewed = (_review?.Entries ?? []).ToArray();
+        var words = reviewed.OfType<WordChangeEntry>()
+            .ToDictionary(entry => entry.Change.ChangeId, entry => (ReviewEntry)entry, StringComparer.Ordinal);
+        var grammar = reviewed.Where(entry => entry is not WordChangeEntry)
+            .Select(entry => new ReviewEntryViewModel(this, entry, null));
+        var wordEntries = ReviewGroups.SelectMany(group => group.Items).Select(change =>
+            new ReviewEntryViewModel(this, words.GetValueOrDefault(change.ChangeId), change));
+        _entries = grammar.Concat(wordEntries).ToArray();
+        var keep = previousKey is null ? -1 : Array.FindIndex(_entries.ToArray(), entry => entry.Key == previousKey);
+        _currentIndex = keep >= 0 ? keep : 0;
+        MarkCurrent();
+        _reviewEntries = null;
+        Badge = _entries.Count > 0 ? _entries.Count.ToString(CultureInfo.CurrentCulture) : string.Empty;
+        OnPropertyChanged(nameof(Entries));
+        OnPropertyChanged(nameof(Current));
+        OnPropertyChanged(nameof(HasEntries));
+        OnPropertyChanged(nameof(HasReviewItems));
+        OnPropertyChanged(nameof(ShowsEmptyState));
+        OnPropertyChanged(nameof(ShowsHeaderNote));
+        OnPropertyChanged(nameof(ShowsUndoAll));
+        OnPropertyChanged(nameof(KeepAllText));
+        OnPropertyChanged(nameof(UndoAllText));
+        OnPropertyChanged(nameof(LookedAtText));
+        OnPropertyChanged(nameof(UndoPrompt));
+        if (changesMoved) OnPropertyChanged(nameof(ReviewGroups));
+        OnPropertyChanged(nameof(ReviewEntries));
+        RaiseModeState();
+        RaiseWalkState();
+    }
+
+    // The pending changes look as they always have until the person walks them; a Proposal starts walked.
+    private void MarkCurrent()
+    {
+        var shows = InProposalMode || _walked;
+        for (var index = 0; index < _entries.Count; index++)
+            _entries[index].IsCurrent = shows && index == _currentIndex;
+    }
+
+    private void RaiseWalkState()
+    {
+        PreviousCommand.NotifyCanExecuteChanged();
+        NextCommand.NotifyCanExecuteChanged();
+        KeepCommand.NotifyCanExecuteChanged();
+        UndoCommand.NotifyCanExecuteChanged();
+        KeepAllCommand.NotifyCanExecuteChanged();
+        UndoAllCommand.NotifyCanExecuteChanged();
+        TryAgainCommand.NotifyCanExecuteChanged();
+    }
+
+    private void Previous()
+    {
+        if (_currentIndex <= 0) return;
+        _currentIndex--;
+        AfterMove();
+    }
+
+    private async Task NextAsync()
+    {
+        if (Current is { } leaving) await MarkAsync(leaving, true).ConfigureAwait(true);
+        if (_currentIndex < _entries.Count - 1) _currentIndex++;
+        AfterMove();
+    }
+
+    private void AfterMove()
+    {
+        _walked = true;
+        MarkCurrent();
+        OnPropertyChanged(nameof(Current));
+        RaiseWalkState();
+    }
+
+    internal async Task KeepAsync(ReviewEntryViewModel? entry)
+    {
+        if (entry is null) return;
+        await MarkAsync(entry, true).ConfigureAwait(true);
+        var index = _entries.ToList().IndexOf(entry);
+        if (index >= 0 && index < _entries.Count - 1) _currentIndex = index + 1;
+        else if (index >= 0) _currentIndex = index;
+        AfterMove();
+    }
+
+    private async Task KeepAllAsync()
+    {
+        foreach (var entry in _entries.ToArray()) await MarkAsync(entry, true).ConfigureAwait(true);
+    }
+
+    private async Task MarkAsync(ReviewEntryViewModel entry, bool lookedAt)
+    {
+        if (_review is not { } review || Context.ProjectPath is not { } project || entry.Entry is not { } read) return;
+        if (entry.IsLookedAt == lookedAt) return;
+        var outcome = await Context.Commands.MarkLookedAtAsync(new ReviewMarkRequest(project, review.ProposalId,
+            entry.Key, read.ContentDigest, review.EvidenceDigest, lookedAt), CancellationToken.None)
+            .ConfigureAwait(true);
+        if (!outcome.Succeeded) return;
+        entry.IsLookedAt = lookedAt;
+        OnPropertyChanged(nameof(LookedAtText));
+    }
+
+    // The pending changes are taken out whole through the one Draft discard path; a Proposal never offers Undo all.
+    private async Task UndoAllAsync()
+    {
+        if (InProposalMode)
+        {
+            await UndoEntriesAsync(_entries.ToArray(), confirmed: true).ConfigureAwait(true);
+            return;
+        }
+        UndoRefusal = null;
+        UndoPrompt = null;
+        OnPropertyChanged(nameof(UndoRefusal));
+        OnPropertyChanged(nameof(UndoPrompt));
+        await Changes.DiscardAllAsync().ConfigureAwait(true);
+    }
+
+    internal Task UndoAsync(ReviewEntryViewModel? entry) =>
+        entry is null ? Task.CompletedTask : UndoEntriesAsync([entry], confirmed: false);
+
+    private async Task UndoEntriesAsync(IReadOnlyList<ReviewEntryViewModel> targets, bool confirmed)
+    {
+        if (Context.ProjectPath is not { } project || targets.Count == 0) return;
+        UndoRefusal = null;
+        UndoPrompt = null;
+        OnPropertyChanged(nameof(UndoRefusal));
+        OnPropertyChanged(nameof(UndoPrompt));
+
+        // A word change goes back through the staging commands, which keep their Undo history, in either mode.
+        if (targets.All(target => target.Change is not null) && DependentsOf(targets).Count == 0)
+        {
+            using (Changes.BeginStagingAction())
+            {
+                foreach (var target in targets)
+                {
+                    if (target.Change!.GroupId is not null)
+                        await Changes.RemoveGroupAsync(target.Change).ConfigureAwait(true);
+                    else await Changes.RemoveCommand.ExecuteAsync(target.Change).ConfigureAwait(true);
+                }
+            }
+            if (_review is { } read) await ClearMarksAsync(project, read, targets).ConfigureAwait(true);
+            await RefreshProposalTrialAsync().ConfigureAwait(true);
+            return;
+        }
+        if (_review is not { } review) return;
+
+        var everyone = targets.ToList();
+        if (!confirmed)
+        {
+            var dependents = DependentsOf(targets);
+            if (dependents.Count > 0)
+            {
+                var all = targets.Concat(dependents).ToArray();
+                UndoPrompt = new UndoPromptViewModel(targets.Select(entry => entry.Title).ToArray(),
+                    dependents.Select(entry => entry.Title).ToArray(), InProposalMode,
+                    new AsyncRelayCommand(() => UndoEntriesAsync(all, confirmed: true)),
+                    new RelayCommand(() =>
+                    {
+                        UndoPrompt = null;
+                        OnPropertyChanged(nameof(UndoPrompt));
+                    }));
+                OnPropertyChanged(nameof(UndoPrompt));
+                return;
+            }
+        }
+        else everyone = targets.Concat(DependentsOf(targets)).Distinct().ToList();
+
+        var draftName = review.DraftName;
+        if (!review.IsDraft || draftName is null)
+        {
+            draftName = "review/" + review.ProposalId;
+            var reopened = await Context.Commands.ReopenAsync(new ReopenRequest(project,
+                MotifProductVersion.CurrentText, draftName, review.ProposalId), CancellationToken.None)
+                .ConfigureAwait(true);
+            if (!reopened.Succeeded)
+            {
+                UndoRefusal = WindowRefusal.From(reopened.Refusal!);
+                OnPropertyChanged(nameof(UndoRefusal));
+                return;
+            }
+            // The Proposal is a Draft from here on, so a refused removal must not make the next Undo reopen it again.
+            review = _review = review with { IsDraft = true, DraftName = draftName };
+        }
+        var ids = everyone.Where(entry => entry.Entry is not null).OrderByDescending(entry => entry.Entry!.Ordinal)
+            .SelectMany(entry => entry.Entry!.OperationIds).Distinct(StringComparer.Ordinal).ToArray();
+        var removed = await Context.Commands.RemoveOperationsAsync(new RemoveOperationsRequest(project,
+            MotifProductVersion.CurrentText, draftName, ids, Force: false), CancellationToken.None)
+            .ConfigureAwait(true);
+        if (!removed.Succeeded)
+        {
+            UndoRefusal = WindowRefusal.From(removed.Refusal!);
+            OnPropertyChanged(nameof(UndoRefusal));
+            return;
+        }
+        await ClearMarksAsync(project, review, everyone).ConfigureAwait(true);
+        await RefreshProposalTrialAsync().ConfigureAwait(true);
+        await Changes.ReloadAsync().ConfigureAwait(true);
+        await LoadReviewAsync().ConfigureAwait(true);
+    }
+
+    // Undoing changes what a try measured; the open Proposal reads its stale try again, and nothing re-runs.
+    private async Task RefreshProposalTrialAsync()
+    {
+        if (Context.Lens is { } lens && lens.ProposalId == Changes.TargetProposalId)
+            await Context.OpenProposalAsync(lens.ProposalId, CancellationToken.None).ConfigureAwait(true);
+    }
+
+    private IReadOnlyList<ReviewEntryViewModel> DependentsOf(IReadOnlyList<ReviewEntryViewModel> targets)
+    {
+        var gone = targets.Select(target => target.Key).ToHashSet(StringComparer.Ordinal);
+        var found = new List<ReviewEntryViewModel>();
+        var grew = true;
+        while (grew)
+        {
+            grew = false;
+            foreach (var entry in _entries)
+            {
+                if (gone.Contains(entry.Key) || entry.Entry is not { } read ||
+                    !read.DependsOnEntries.Any(gone.Contains)) continue;
+                gone.Add(entry.Key);
+                found.Add(entry);
+                grew = true;
+            }
+        }
+        return found;
+    }
+
+    private async Task ClearMarksAsync(string project, ProposalReviewResponse review,
+        IEnumerable<ReviewEntryViewModel> removed)
+    {
+        foreach (var entry in removed.Where(entry => entry.IsLookedAt && entry.Entry is not null))
+            await Context.Commands.MarkLookedAtAsync(new ReviewMarkRequest(project, review.ProposalId, entry.Key,
+                entry.Entry!.ContentDigest, review.EvidenceDigest, false), CancellationToken.None).ConfigureAwait(true);
+    }
+
+    private async Task DeclineAsync()
+    {
+        if (Changes.TargetProposalId is not { } proposalId || Context.ProjectPath is not { } project) return;
+        var declined = await Context.Commands.DeclineProposalAsync(new DeclineProposalRequest(project, proposalId),
+            CancellationToken.None).ConfigureAwait(true);
+        DeclineRefusal = declined.Succeeded ? null : WindowRefusal.From(declined.Refusal!);
+        OnPropertyChanged(nameof(DeclineRefusal));
+        if (!declined.Succeeded || Context.ProjectPath != project) return;
+        await Context.LeaveProposalAsync().ConfigureAwait(true);
+        Context.OpenPage(WorkspacePage.Proposals);
+    }
+
+    private async Task TryAgainAsync()
+    {
+        if (Changes.TargetProposalId is not { } proposalId) return;
+        MeasurementRefusal = null;
+        OnPropertyChanged(nameof(MeasurementRefusal));
+        var outcome = await Context.TryAgainAsync(proposalId, CancellationToken.None).ConfigureAwait(true);
+        if (outcome.Refusal is { } refusal)
+        {
+            MeasurementRefusal = WindowRefusal.From(refusal);
+            OnPropertyChanged(nameof(MeasurementRefusal));
+        }
+        await LoadReviewAsync().ConfigureAwait(true);
+        RaiseApplyState();
+    }
+
     private IReadOnlyList<ReviewListEntryViewModel> BuildReviewEntries()
     {
         var entries = new List<ReviewListEntryViewModel> { new(this) };
+        var grammar = _entries.Where(entry => entry.IsGrammar).ToArray();
+        if (grammar.Length > 0) entries.Add(new ReviewListEntryViewModel(new ReviewGrammarGroupViewModel(grammar.Length)));
+        for (var index = 0; index < grammar.Length; index++)
+            entries.Add(new ReviewListEntryViewModel(grammar[index], index == grammar.Length - 1));
+        var byChange = _entries.Where(entry => entry.Change is not null)
+            .ToDictionary(entry => entry.Change!.ChangeId, StringComparer.Ordinal);
         foreach (var group in ReviewGroups)
         {
             entries.Add(new ReviewListEntryViewModel(group, null, isLastChange: false));
             for (var index = 0; index < group.Items.Count; index++)
-                entries.Add(new ReviewListEntryViewModel(group, group.Items[index], index == group.Items.Count - 1));
+                entries.Add(new ReviewListEntryViewModel(group, group.Items[index], index == group.Items.Count - 1,
+                    byChange.GetValueOrDefault(group.Items[index].ChangeId)));
         }
 
         return entries;
     }
 
-    private void RefreshReviewEntries()
-    {
-        _reviewEntries = null;
-        OnPropertyChanged(nameof(ReviewGroups));
-        OnPropertyChanged(nameof(ReviewEntries));
-    }
+    private void RefreshReviewEntries() => RebuildEntries(changesMoved: true);
 
     public bool HasUncertainChanges => UncertainChanges.Count > 0;
 
@@ -188,13 +604,19 @@ public sealed class ReviewPageModel : PageModel
             var blockers = new List<ApplyBlocker>();
             if (NeedsReconciliation)
                 blockers.Add(new(ApplyBlockerKind.ReconciliationNeeded, ReconciliationNotice, "Refresh", RefreshCommand));
-            if (!Changes.HasItems) return blockers;
+            if (!HasReviewItems)
+            {
+                if (InProposalMode && _review is not null)
+                    blockers.Add(new(ApplyBlockerKind.NothingToApply, "Nothing to apply."));
+                return blockers;
+            }
             var noLongerFits = Changes.Items.Count(item => item.IsNoLongerFits);
             if (noLongerFits > 0)
                 blockers.Add(new(ApplyBlockerKind.NoLongerFits, NoLongerFitsSentence(noLongerFits),
                     "Remove the ones that no longer fit", RemoveNonFittingCommand));
-            if (HasUncertainChanges)
-                blockers.Add(new(ApplyBlockerKind.Uncertain, UncertainSentence(UncertainChanges.Count)));
+            var uncertain = UncertainChanges.Count;
+            if (uncertain > 0)
+                blockers.Add(new(ApplyBlockerKind.Uncertain, UncertainSentence(uncertain)));
             if (Context.Baseline?.FieldWorksHeldProject == true)
                 blockers.Add(new(ApplyBlockerKind.FieldWorksHoldsProject,
                     "FieldWorks has this project open. Close it before applying changes."));
@@ -202,10 +624,23 @@ public sealed class ReviewPageModel : PageModel
                 blockers.Add(new(ApplyBlockerKind.FieldWorksSavedSince,
                     "FieldWorks saved since these numbers were measured. Refresh before applying.",
                     "Refresh", RefreshCommand));
-            if (WordsLosingApprovedAnalysis.Count > 0)
+            if (!InProposalMode && WordsLosingApprovedAnalysis.Count > 0)
                 blockers.Add(new(ApplyBlockerKind.LosesApprovedAnalysis,
                     LostAnalysisSentence(WordsLosingApprovedAnalysis)));
-            if (!EvidenceComplete && !IsMeasuring)
+            if (InProposalMode)
+            {
+                var standing = Context.ProposalStanding;
+                if (standing.Kind != TrialStandingKind.Current)
+                {
+                    var words = TrialStandingWords.For(standing);
+                    blockers.Add(standing.CanTryAgain
+                        ? new(ApplyBlockerKind.TrialNeeded, words.Sentence, words.Action, TryAgainCommand)
+                        : new(ApplyBlockerKind.TrialNeeded, words.Sentence));
+                }
+                else if (_review?.Readiness is { IsReady: false } readiness)
+                    blockers.Add(new(ApplyBlockerKind.NotReady, string.Join(" ", readiness.Reasons)));
+            }
+            else if (!EvidenceComplete && !IsMeasuring)
                 blockers.Add(new(ApplyBlockerKind.NotMeasured,
                     "See what applying does to the numbers before applying.", "Check these changes", MeasureCommand));
             return blockers;
@@ -238,17 +673,27 @@ public sealed class ReviewPageModel : PageModel
             foreach (var change in Changes.Items.Where(item => item.IsNoLongerFits || item.IsUncertain ||
                          WordsLosingApprovedAnalysis.Contains(item.Word, StringComparer.Ordinal)))
                 blockingIds.Add(change.ChangeId);
-            return blockingIds.Count > 0 ? blockingIds.Count : Changes.Count;
+            return blockingIds.Count > 0 ? blockingIds.Count : _entries.Count;
         }
     }
 
     /// <summary>
     /// The page's count of pending changes, which after an unconfirmed Apply cannot honestly say they are unapplied.
     /// </summary>
-    public string CountText => !NeedsReconciliation ? Changes.HasItems ? Changes.CountText : "No changes yet"
-        : Changes.Count == 1 ? "1 change may already be applied"
-        : Changes.Count > 1 ? $"{Changes.Count:N0} changes may already be applied"
-        : "Changes may already be applied";
+    public string CountText => NeedsReconciliation
+        ? _entries.Count == 1 ? "1 change may already be applied"
+        : _entries.Count > 1 ? $"{_entries.Count:N0} changes may already be applied"
+        : "Changes may already be applied"
+        : ReviewsPendingChanges
+        ? _entries.Count == 1 ? "1 change not applied yet"
+        : _entries.Count > 1 ? $"{_entries.Count:N0} changes not applied yet" : "No changes yet"
+        : $"{ProposalLabel} · {(_entries.Count == 0 ? "No changes" : _entries.Count == 1 ? "1 change"
+            : $"{_entries.Count:N0} changes")}";
+
+    /// <summary>The line under the heading, saying how the list is ordered and that nothing is written yet.</summary>
+    public string HeaderNoteText => _entries.Any(entry => entry.IsGrammar)
+        ? "Grammar changes first, then word changes grouped by what they do. Nothing reaches FieldWorks until you apply."
+        : "Grouped by what they do. Nothing reaches FieldWorks until you apply.";
 
     /// <summary>What the page leads with after an Apply whose result could not be confirmed.</summary>
     public string ReconciliationNotice => "FieldWorks may already have these changes. Refresh to check.";
@@ -263,12 +708,62 @@ public sealed class ReviewPageModel : PageModel
     /// <summary>
     /// Whether the header adds that nothing reaches FieldWorks until Apply, which an unconfirmed Apply makes untrue.
     /// </summary>
-    public bool ShowsHeaderNote => Changes.HasItems && !NeedsReconciliation;
+    public bool ShowsHeaderNote => HasEntries && !NeedsReconciliation;
 
-    public bool ShowsEmptyState => !Changes.HasItems && !NeedsReconciliation;
+    public bool ShowsEmptyState => !HasEntries && !NeedsReconciliation;
 
     /// <summary>Whether the numbers and Apply cards have anything to act on or report.</summary>
-    public bool ShowsSideCards => Changes.HasItems || HasReceipt || ApplyRefusal is not null;
+    public bool ShowsSideCards => HasEntries || (InProposalMode && _review is not null) ||
+        HasReceipt || ApplyRefusal is not null;
+
+    /// <summary>
+    /// What Apply checks for an open Proposal, each passed or not, so the card says what is already settled as well
+    /// as what blocks it; empty outside Proposal mode, where the numbers card speaks instead.
+    /// </summary>
+    public IReadOnlyList<ApplyCheck> ApplyChecks
+    {
+        get
+        {
+            if (!InProposalMode || !HasEntries) return [];
+            var standing = Context.ProposalStanding;
+            var checks = new List<ApplyCheck>
+            {
+                standing.Kind == TrialStandingKind.Current
+                    ? new("Tried as it is now", true)
+                    : new(TrialStandingWords.For(standing).Status, false),
+                Changes.Items.Any(item => item.IsNoLongerFits || item.IsUncertain)
+                    ? new("A change needs a look", false)
+                    : new("Every change still fits", true),
+            };
+            if (_review?.Readiness is { } readiness)
+                checks.Add(readiness.IsReady ? new("Ready to apply", true) : new("Not ready to apply", false));
+            return checks;
+        }
+    }
+
+    public bool HasApplyChecks => ApplyChecks.Count > 0;
+
+    /// <summary>
+    /// Whether the card offers its check of the changed words: only for the pending changes, since a Proposal is
+    /// checked by trying it.
+    /// </summary>
+    public bool ShowsNumbersText => !InProposalMode;
+
+    /// <summary>Whether the card offers the way back to where the pending changes were made.</summary>
+    public bool ShowsBackButton => !InProposalMode && Changes.HasItems;
+
+    private WorkspacePage OriginPage => Changes.Items.FirstOrDefault()?.OriginPage ?? WorkspacePage.Texts;
+
+    /// <summary>The way back's words, naming the page the first pending change came from.</summary>
+    public string BackText => OriginPage switch
+    {
+        WorkspacePage.TryAWord => "Back to Try a Word",
+        WorkspacePage.Texts => "Back to Analyze texts",
+        _ => "Go back",
+    };
+
+    /// <summary>Whether the page lists word changes, which gives the word column labels something to label.</summary>
+    public bool HasWordRows => _entries.Any(entry => entry.Change is not null);
 
     /// <summary>Opens Analyze texts, where most changes are made, from an empty Review.</summary>
     public IRelayCommand OpenAnalyzeTextsCommand { get; }
@@ -283,12 +778,12 @@ public sealed class ReviewPageModel : PageModel
     public WindowRefusal? MeasurementRefusal { get; private set; }
 
     /// <summary>Whether the measured changes can be applied to the FieldWorks project.</summary>
-    public bool CanApply => Changes.HasItems && Changes.Items.All(item => item.Fit is { StillFits: true }) &&
+    public bool CanApply => HasReviewItems && Changes.Items.All(item => item.Fit is { StillFits: true }) &&
         ApplyBlockers.Count == 0 && !IsMeasuring && !IsApplying;
 
     /// <summary>Every blocker's sentence in order, or what Apply is doing, for a reader of one line.</summary>
     public string ApplyBlockReason => IsApplying ? "Applying changes to FieldWorks..." :
-        !Changes.HasItems && !NeedsReconciliation ? "Choose a change in Texts to begin." :
+        !HasEntries && !NeedsReconciliation ? "Choose a change in Texts to begin." :
         string.Join(" ", ApplyBlockers.Select(blocker => blocker.Sentence));
 
     /// <summary>
@@ -507,10 +1002,14 @@ public sealed class ReviewPageModel : PageModel
 
     private async Task ApplyAsync()
     {
-        if (!CanApply || Context.ProjectPath is not { } project || Changes.Snapshot.DraftId is not { } draft)
+        var proposal = Changes.TargetProposalId;
+        if (!CanApply || Context.ProjectPath is not { } project ||
+            (proposal is null && Changes.Snapshot.DraftId is not { }))
             return;
-        using var usageAction = Context.Commands.BeginUsageAction("apply --all-pending",
-            UsageArgumentShape.Text("fwDataPath"), UsageArgumentShape.List("changes", Changes.Count));
+        var draft = Changes.Snapshot.DraftId ?? string.Empty;
+        using var usageAction = Context.Commands.BeginUsageAction(
+            proposal is null ? "apply --all-pending" : "apply --proposal",
+            UsageArgumentShape.Text("fwDataPath"), UsageArgumentShape.List("changes", _entries.Count));
         IsApplying = true;
         _applyCancellation?.Dispose();
         _applyCancellation = new CancellationTokenSource();
@@ -520,9 +1019,12 @@ public sealed class ReviewPageModel : PageModel
         CommandOutcome<ApplyPendingResult> result;
         try
         {
-            result = await Context.Commands.ApplyPendingAsync(new ApplyPendingRequest(
-                project, draft, Changes.Snapshot.Revision),
-                _applyCancellation.Token).ConfigureAwait(true);
+            result = proposal is null
+                ? await Context.Commands.ApplyPendingAsync(new ApplyPendingRequest(
+                    project, draft, Changes.Snapshot.Revision),
+                    _applyCancellation.Token).ConfigureAwait(true)
+                : await Context.Commands.ApplyProposalAsync(new ApplyProposalRequest(
+                    project, proposal, _review?.Revision), _applyCancellation.Token).ConfigureAwait(true);
         }
         finally
         {
@@ -548,7 +1050,9 @@ public sealed class ReviewPageModel : PageModel
         Receipt = result.Value!.Receipt;
         ApplyRefusal = null;
         if (result.Value.Applied) Context.RecordApplied();
+        if (proposal is not null) await Context.LeaveProposalAsync().ConfigureAwait(true);
         await Changes.ReloadAsync().ConfigureAwait(true);
+        await LoadReviewAsync().ConfigureAwait(true);
         OnPropertyChanged(nameof(Receipt));
         OnPropertyChanged(nameof(HasReceipt));
         OnPropertyChanged(nameof(ReceiptText));
@@ -567,8 +1071,10 @@ public sealed class ReviewPageModel : PageModel
 
     private void OnChangesChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(ChangesViewModel.TargetProposalId)) RaiseModeState();
         if (e.PropertyName == nameof(ChangesViewModel.Snapshot))
         {
+            _reviewTask = LoadReviewAsync();
             ClearRetirementReview();
             _retirementReviewTask = LoadRetirementReviewAsync();
             EvidenceComplete = false;
@@ -580,11 +1086,9 @@ public sealed class ReviewPageModel : PageModel
         if (e.PropertyName == nameof(ChangesViewModel.Count))
         {
             if (_contextChange is not null && !Changes.Items.Contains(_contextChange)) ReleaseContext();
-            Badge = Changes.Count > 0 ? Changes.Count.ToString(CultureInfo.CurrentCulture) : string.Empty;
-            OnPropertyChanged(nameof(CountText));
-            OnPropertyChanged(nameof(ShowsSideCards));
-            OnPropertyChanged(nameof(ShowsEmptyState));
-            OnPropertyChanged(nameof(ShowsHeaderNote));
+            OnPropertyChanged(nameof(HasWordRows));
+            OnPropertyChanged(nameof(ShowsBackButton));
+            OnPropertyChanged(nameof(BackText));
             EvidenceComplete = false;
             WordsLosingApprovedAnalysis = [];
             OnPropertyChanged(nameof(CanApply));
@@ -760,7 +1264,10 @@ public sealed class ReviewPageModel : PageModel
 
     protected override void OnProjectCleared()
     {
+        _walked = false;
         ReleaseContext();
+        _reviewGeneration++;
+        SetReview(null);
         _retirementReviewGeneration++;
         _retirementReviewCancellation?.Cancel();
         _retirementReviewCancellation?.Dispose();
@@ -791,6 +1298,8 @@ public sealed class ReviewPageModel : PageModel
         _measurementCancellation?.Cancel();
         _applyCancellation?.Cancel();
         if (_retirementReviewTask is { } retirementReview) await retirementReview.ConfigureAwait(true);
+        _reviewGeneration++;
+        if (_reviewTask is { } review) await review.ConfigureAwait(true);
         if (MeasureCommand.ExecutionTask is { } running) await running.ConfigureAwait(true);
         if (ApplyCommand.ExecutionTask is { } applying) await applying.ConfigureAwait(true);
     }

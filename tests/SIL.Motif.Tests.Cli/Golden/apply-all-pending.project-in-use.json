@@ -1,0 +1,13 @@
+{
+  "exitCode": 3,
+  "stdout": null,
+  "stderr": {
+    "code": "project.in-use",
+    "detail": {
+      "fwDataPath": "\u003Cstring\u003E"
+    },
+    "message": "\u003Cstring\u003E",
+    "ok": false,
+    "reason": "Busy"
+  }
+}

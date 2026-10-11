@@ -25,10 +25,32 @@ public sealed partial class ReviewPanel : UserControl
         _items = this.FindControl<ListBox>("ReviewItems")!;
         PresentationHost = new ReviewWordPresentationHost(page);
         _items.AddHandler(KeyDownEvent, OnReviewKeyDown, RoutingStrategies.Tunnel);
+        AddHandler(KeyDownEvent, OnEntryKeyDown, RoutingStrategies.Tunnel);
         _items.GotFocus += OnReviewGotFocus;
     }
 
     public ReviewPageModel Page { get; }
+
+    [KeyboardShortcutHandler(
+        "ReviewChanges:PreviousEntry", "ReviewChanges:NextEntry", "ReviewChanges:KeepEntry", "ReviewChanges:UndoEntry")]
+    private void OnEntryKeyDown(object? sender, KeyEventArgs e)
+    {
+        var entry = KeyboardShortcutRegistry.Find(KeyboardShortcutScope.ReviewChanges, e.Key, e.KeyModifiers,
+            targetBehaviors: [KeyboardShortcutBehavior.PreviousEntry, KeyboardShortcutBehavior.NextEntry,
+                KeyboardShortcutBehavior.KeepEntry, KeyboardShortcutBehavior.UndoEntry]);
+        if (entry is null || !KeyboardShortcutRegistry.Allows(entry, KeyboardShortcutRegistry.IsTextInput(e.Source),
+                hasFocusedItem: true)) return;
+        var command = entry.Behavior switch
+        {
+            KeyboardShortcutBehavior.PreviousEntry => (System.Windows.Input.ICommand)Page.PreviousCommand,
+            KeyboardShortcutBehavior.NextEntry => Page.NextCommand,
+            KeyboardShortcutBehavior.KeepEntry => Page.KeepCommand,
+            _ => Page.UndoCommand,
+        };
+        if (!command.CanExecute(null)) return;
+        command.Execute(null);
+        e.Handled = true;
+    }
 
     public IWordPresentationHost PresentationHost { get; }
 

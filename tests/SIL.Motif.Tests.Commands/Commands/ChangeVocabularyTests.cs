@@ -61,6 +61,29 @@ public sealed class ChangeVocabularyTests
         Assert.Equal(Evaluation(HumanEvaluationPayload.Disapproves), ChangeVocabulary.Of(draft));
     }
 
+    [Theory]
+    [InlineData("AuthorPhoneme", "ɸ", "Add phoneme ɸ")]
+    [InlineData("AuthorPhoneme", null, "Add a phoneme")]
+    [InlineData("AuthorNaturalClass", "fricatives", "Add natural class fricatives")]
+    [InlineData("AuthorPhonologicalRule", " ", "Add a phonological rule")]
+    [InlineData("AuthorWidget", "w", "Add widget w")]
+    [InlineData("EditGadget", null, "Change gadget")]
+    [InlineData("", null, "Change")]
+    public void AComposerCallIsTitledInALinguistsWords(string composer, string? name, string title) =>
+        Assert.Equal(title, ChangeVocabulary.ComposerTitle(composer, name));
+
+    [Fact]
+    public void ASummaryCountsNamedKindsAndNeverListsOperationNames()
+    {
+        var phoneme = ProposalReviewTests.Op("grammar/phPhonemeSet/createPhonemes");
+        var name = ProposalReviewTests.Op("grammar/phPhoneme/setName");
+        var codes = ProposalReviewTests.Op("grammar/phPhoneme/createCodes");
+
+        Assert.Equal("1 phoneme", ChangeVocabulary.Summary([phoneme, name, codes]));
+        Assert.Equal("2 changes", ChangeVocabulary.Summary([name, codes]));
+        Assert.DoesNotContain("Set name", ChangeVocabulary.Summary([phoneme, name, codes]), StringComparison.Ordinal);
+    }
+
     [Fact]
     public void AWordChangeIsTitledAfterItsWord()
     {

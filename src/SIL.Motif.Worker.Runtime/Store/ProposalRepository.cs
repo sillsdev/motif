@@ -47,13 +47,15 @@ public interface IProposalRepository
     /// no committed revision yet — <c>CurrentIntentDigest</c> stays <c>NULL</c> until <see cref="Finalize"/>.
     /// </summary>
     /// <exception cref="InvalidOperationException">A draft already exists under <paramref name="draftName"/>.</exception>
-    void CreateDraft(string draftName, CanonicalId proposalId, string draftJson);
+    void CreateDraft(string draftName, CanonicalId proposalId, string draftJson, string? role = null);
     /// <summary>Replaces a Draft's in-progress content. The Draft keeps its identity and name.</summary>
     void SaveDraft(string draftName, string draftJson);
     /// <summary>Replaces a Draft only if its stored bytes still equal the caller's read.</summary>
     bool TrySaveDraft(string draftName, string expectedJson, string draftJson);
-    /// <summary>Creates a Draft only if its name is still free.</summary>
-    bool TryCreateDraft(string draftName, CanonicalId proposalId, string draftJson);
+    /// <summary>Creates a Draft only if its name is still free, carrying <paramref name="role"/> when given.</summary>
+    bool TryCreateDraft(string draftName, CanonicalId proposalId, string draftJson, string? role = null);
+    /// <summary>Gets the Draft that holds the pending changes, or <see langword="null"/> when none is open.</summary>
+    ProposalRecord? FindPendingChangesDraft();
     /// <summary>Gets one Draft by name.</summary>
     ProposalRecord GetDraft(string draftName);
     /// <summary>Lists every Draft, ordered by name.</summary>
@@ -111,7 +113,8 @@ public interface IProposalRepository
     bool DraftNameExists(string draftName);
     /// <summary>
     /// Turns an already-finalized Proposal back into a Draft under a new local draft name, keeping its
-    /// id and current committed content addressable until the draft is finalized again as an amend.
+    /// id and current committed content addressable until the draft is finalized again as an amend. A declined
+    /// or withdrawn Proposal is open again; an applied or superseded one is never reopened.
     /// </summary>
     /// <exception cref="InvalidOperationException">A draft already exists under <paramref name="draftName"/>.</exception>
     /// <exception cref="KeyNotFoundException">No finalized Proposal is recorded under this id.</exception>
@@ -129,8 +132,11 @@ public interface IProposalRepository
     /// <c>true</c> when the discarded Draft had been reopened from a finalized Proposal, which is left
     /// exactly at its prior committed revision; <c>false</c> when its whole row was deleted instead.
     /// </returns>
+    /// <param name="draftName">The Draft to discard.</param>
+    /// <param name="expectedJson">The content the caller read, or <see langword="null"/> to skip the check.</param>
     /// <exception cref="KeyNotFoundException">No Draft is registered under this name.</exception>
-    bool DiscardDraft(string draftName);
+    /// <exception cref="DraftChangedException">The Draft no longer holds <paramref name="expectedJson"/>.</exception>
+    bool DiscardDraft(string draftName, string? expectedJson = null);
 }
 
 /// <summary>
@@ -141,13 +147,31 @@ public interface IProposalRepository
 public sealed record ProposalRecord(
     CanonicalId ProposalId, string? IntentDigest, string? ProposalJson, string Status, string? Label,
     string? Comment, string? SupersededBy, byte[]? ProposalJsonBytes = null,
-    string? AnchorJson = null, string? ArchivedUtc = null, string? DraftName = null);
+    string? AnchorJson = null, string? ArchivedUtc = null, string? DraftName = null, string? Role = null)
+{
+    /// <summary>Whether this Proposal holds the pending changes, the window's default staging target.</summary>
+    public bool IsPendingChanges => Role == ProposalRoles.PendingChanges;
+}
+
+/// <summary>The roles a Proposal row can carry; a row with no role is an ordinary Proposal.</summary>
+public static class ProposalRoles
+{
+    /// <summary>
+    /// The pending changes: the Proposal the window stages into by default and FieldWorks applies at its save
+    /// boundary. At most one Draft carries it.
+    /// </summary>
+    public const string PendingChanges = "pending-changes";
+}
 
 /// <summary>An immutable Proposal revision, retaining the exact source JSON bytes.</summary>
 public sealed record ProposalRevisionRecord(
     CanonicalId ProposalId, string IntentDigest, string ProposalJson, string Status, string? Label,
     string? Comment, string? SupersededBy, string? CreatedUtc = null, byte[]? ProposalJsonBytes = null);
 
+
+/// <summary>A Draft's content is no longer what the caller read, so the change was refused.</summary>
+public sealed class DraftChangedException(string draftName)
+    : InvalidOperationException($"Draft '{draftName}' changed. Reload it and try again.");
 
 /// <summary>Selection options for current Proposal rows.</summary>
 public sealed record ProposalListFilter(string? Status = null, bool IncludeArchived = false);
@@ -173,7 +197,7 @@ public sealed class ProposalRepository : IProposalRepository
         command.CommandText = """
             SELECT p.ProposalId, p.CurrentIntentDigest, r.ProposalJson,
                    p.Status, p.Label, p.Comment, p.SupersededBy,
-                   p.AnchorJson, p.ArchivedUtc, p.DraftName, p.DraftJson
+                   p.AnchorJson, p.ArchivedUtc, p.DraftName, p.DraftJson, p.Role
             FROM Proposals p LEFT JOIN ProposalRevisions r ON r.ProposalId = p.ProposalId
                 AND r.IntentDigest = p.CurrentIntentDigest
             WHERE p.ProposalId = $id;
@@ -196,7 +220,7 @@ public sealed class ProposalRepository : IProposalRepository
         command.CommandText = """
             SELECT p.ProposalId, p.CurrentIntentDigest, r.ProposalJson,
                    p.Status, p.Label, p.Comment, p.SupersededBy,
-                   p.AnchorJson, p.ArchivedUtc, p.DraftName, p.DraftJson
+                   p.AnchorJson, p.ArchivedUtc, p.DraftName, p.DraftJson, p.Role
             FROM Proposals p LEFT JOIN ProposalRevisions r ON r.ProposalId = p.ProposalId
                 AND r.IntentDigest = p.CurrentIntentDigest
             WHERE ($status IS NULL OR p.Status = $status)
@@ -330,7 +354,7 @@ public sealed class ProposalRepository : IProposalRepository
     }
 
     /// <inheritdoc />
-    public void CreateDraft(string draftName, CanonicalId proposalId, string draftJson)
+    public void CreateDraft(string draftName, CanonicalId proposalId, string draftJson, string? role = null)
     {
         if (string.IsNullOrWhiteSpace(draftName)) throw new ArgumentException("A draft name is required.", nameof(draftName));
         if (string.IsNullOrWhiteSpace(draftJson)) throw new ArgumentException("Draft content is required.", nameof(draftJson));
@@ -340,9 +364,10 @@ public sealed class ProposalRepository : IProposalRepository
         using var insert = connection.CreateCommand();
         insert.Transaction = transaction;
         insert.CommandText = """
-            INSERT INTO Proposals (ProposalId, CurrentIntentDigest, Status, DraftName, DraftJson)
-            VALUES ($id, NULL, $status, $name, $json);
+            INSERT INTO Proposals (ProposalId, CurrentIntentDigest, Status, DraftName, DraftJson, Role)
+            VALUES ($id, NULL, $status, $name, $json, $role);
             """;
+        insert.Parameters.AddWithValue("$role", (object?)role ?? DBNull.Value);
         insert.Parameters.AddWithValue("$id", proposalId.Value);
         insert.Parameters.AddWithValue("$status", DraftStatus);
         insert.Parameters.AddWithValue("$name", draftName);
@@ -424,15 +449,16 @@ public sealed class ProposalRepository : IProposalRepository
         return saved;
     }
 
-    public bool TryCreateDraft(string draftName, CanonicalId proposalId, string draftJson)
+    public bool TryCreateDraft(string draftName, CanonicalId proposalId, string draftJson, string? role = null)
     {
         using var connection = _database.OpenConnection();
         using var command = connection.CreateCommand();
         command.CommandText = """
-            INSERT INTO Proposals (ProposalId, CurrentIntentDigest, Status, DraftName, DraftJson)
-            VALUES ($id, NULL, $status, $name, $json)
-            ON CONFLICT(DraftName) DO NOTHING;
+            INSERT INTO Proposals (ProposalId, CurrentIntentDigest, Status, DraftName, DraftJson, Role)
+            VALUES ($id, NULL, $status, $name, $json, $role)
+            ON CONFLICT DO NOTHING;
             """;
+        command.Parameters.AddWithValue("$role", (object?)role ?? DBNull.Value);
         command.Parameters.AddWithValue("$id", proposalId.Value);
         command.Parameters.AddWithValue("$status", DraftStatus);
         command.Parameters.AddWithValue("$name", draftName);
@@ -448,7 +474,7 @@ public sealed class ProposalRepository : IProposalRepository
 
     /// <summary>Creates a Draft only while the full expected Selection evidence remains current.</summary>
     public bool TryCreateDraftForExpectedContext(string draftName, CanonicalId proposalId, string draftJson,
-        string projectKey, ExpectedContext expectedContext)
+        string projectKey, ExpectedContext expectedContext, string? role = null)
     {
         using var connection = _database.OpenConnection();
         using var transaction = connection.BeginTransaction();
@@ -461,8 +487,8 @@ public sealed class ProposalRepository : IProposalRepository
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
         command.CommandText = """
-            INSERT INTO Proposals (ProposalId, CurrentIntentDigest, Status, DraftName, DraftJson)
-            SELECT $id, NULL, $status, $name, $json
+            INSERT INTO Proposals (ProposalId, CurrentIntentDigest, Status, DraftName, DraftJson, Role)
+            SELECT $id, NULL, $status, $name, $json, $role
             WHERE EXISTS (
                 SELECT 1 FROM Baselines b WHERE b.ProjectKey = $project
                     AND b.ProjectIdentity = $identity AND b.SemanticSnapshotDigest = $semantic
@@ -470,8 +496,9 @@ public sealed class ProposalRepository : IProposalRepository
                     AND b.BundleDigest = $bundle
                     AND b.CapturedHostSessionId IS $hostSession
                     AND b.CapturedEditGeneration IS $editGeneration)
-            ON CONFLICT(DraftName) DO NOTHING;
+            ON CONFLICT DO NOTHING;
             """;
+        command.Parameters.AddWithValue("$role", (object?)role ?? DBNull.Value);
         command.Parameters.AddWithValue("$id", proposalId.Value);
         command.Parameters.AddWithValue("$status", DraftStatus);
         command.Parameters.AddWithValue("$name", draftName);
@@ -504,6 +531,20 @@ public sealed class ProposalRepository : IProposalRepository
         RepositoryReadCounters.QueryExecuted();
         using var reader = command.ExecuteReader();
         if (!reader.Read()) throw new KeyNotFoundException($"Draft '{draftName}' was not found.");
+        RepositoryReadCounters.RecordDeserialized();
+        return ReadDraftRecord(reader);
+    }
+
+    /// <inheritdoc />
+    public ProposalRecord? FindPendingChangesDraft()
+    {
+        using var connection = _database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = DraftSelectSql + " WHERE Role = $role AND DraftName IS NOT NULL;";
+        command.Parameters.AddWithValue("$role", ProposalRoles.PendingChanges);
+        RepositoryReadCounters.QueryExecuted();
+        using var reader = command.ExecuteReader();
+        if (!reader.Read()) return null;
         RepositoryReadCounters.RecordDeserialized();
         return ReadDraftRecord(reader);
     }
@@ -840,8 +881,10 @@ public sealed class ProposalRepository : IProposalRepository
         using var update = connection.CreateCommand();
         update.Transaction = transaction;
         update.CommandText = """
-            UPDATE Proposals SET DraftName = $name, DraftJson = $json
-            WHERE ProposalId = $id AND CurrentIntentDigest IS NOT NULL AND Status != 'applied';
+            UPDATE Proposals SET DraftName = $name, DraftJson = $json,
+                Status = CASE WHEN Status IN ('rejected', 'withdrawn') THEN 'proposed' ELSE Status END,
+                ArchivedUtc = CASE WHEN Status IN ('rejected', 'withdrawn') THEN NULL ELSE ArchivedUtc END
+            WHERE ProposalId = $id AND CurrentIntentDigest IS NOT NULL AND Status NOT IN ('applied', 'superseded');
             """;
         update.Parameters.AddWithValue("$name", draftName);
         update.Parameters.AddWithValue("$json", draftJson);
@@ -856,7 +899,7 @@ public sealed class ProposalRepository : IProposalRepository
     }
 
     /// <inheritdoc />
-    public bool DiscardDraft(string draftName)
+    public bool DiscardDraft(string draftName, string? expectedJson = null)
     {
         if (string.IsNullOrWhiteSpace(draftName)) throw new ArgumentException("A draft name is required.", nameof(draftName));
         using var connection = _database.OpenConnection();
@@ -865,10 +908,12 @@ public sealed class ProposalRepository : IProposalRepository
         using (var find = connection.CreateCommand())
         {
             find.Transaction = transaction;
-            find.CommandText = "SELECT CurrentIntentDigest FROM Proposals WHERE DraftName = $name;";
+            find.CommandText = "SELECT CurrentIntentDigest, DraftJson FROM Proposals WHERE DraftName = $name;";
             find.Parameters.AddWithValue("$name", draftName);
             using var reader = find.ExecuteReader();
             if (!reader.Read()) throw new KeyNotFoundException($"Draft '{draftName}' was not found.");
+            if (expectedJson is not null && (reader.IsDBNull(1) || reader.GetString(1) != expectedJson))
+                throw new DraftChangedException(draftName);
             wasReopened = !reader.IsDBNull(0);
         }
         using var command = connection.CreateCommand();
@@ -884,7 +929,8 @@ public sealed class ProposalRepository : IProposalRepository
     }
 
     private const string DraftSelectSql =
-        "SELECT ProposalId, Status, Label, Comment, SupersededBy, AnchorJson, ArchivedUtc, DraftName, DraftJson FROM Proposals";
+        "SELECT ProposalId, Status, Label, Comment, SupersededBy, AnchorJson, ArchivedUtc, DraftName, DraftJson, Role " +
+        "FROM Proposals";
 
     private static ProposalRecord ReadDraftRecord(SqliteDataReader reader)
     {
@@ -893,7 +939,7 @@ public sealed class ProposalRepository : IProposalRepository
             reader.IsDBNull(2) ? null : reader.GetString(2), reader.IsDBNull(3) ? null : reader.GetString(3),
             reader.IsDBNull(4) ? null : reader.GetString(4), null,
             reader.IsDBNull(5) ? null : reader.GetString(5), reader.IsDBNull(6) ? null : reader.GetString(6),
-            reader.IsDBNull(7) ? null : reader.GetString(7));
+            reader.IsDBNull(7) ? null : reader.GetString(7), reader.IsDBNull(9) ? null : reader.GetString(9));
     }
 
     private static ProposalRecord ReadRecord(SqliteDataReader reader)
@@ -926,7 +972,7 @@ public sealed class ProposalRepository : IProposalRepository
             reader.IsDBNull(4) ? null : reader.GetString(4), reader.IsDBNull(5) ? null : reader.GetString(5),
             reader.IsDBNull(6) ? null : reader.GetString(6), bytes,
             reader.IsDBNull(7) ? null : reader.GetString(7), reader.IsDBNull(8) ? null : reader.GetString(8),
-            draftName);
+            draftName, reader.IsDBNull(11) ? null : reader.GetString(11));
     }
 
     private const string DraftStatus = "draft";

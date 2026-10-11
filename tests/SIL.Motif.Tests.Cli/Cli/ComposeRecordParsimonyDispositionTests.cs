@@ -857,7 +857,7 @@ public sealed class ComposeRecordParsimonyDispositionTests : IDisposable
             "apply", "--project", _projectPath, proposal.ProposalId.Value, "--force", "--json"));
 
         Assert.NotEqual(0, cli.ExitCode);
-        Assert.Contains("apply.project-in-use", cli.Output + cli.Error, StringComparison.Ordinal);
+        Assert.Contains("\"project.in-use\"", cli.Output + cli.Error, StringComparison.Ordinal);
     }
 
     private Proposal CreateFinalizedDispositionProposal(string draft, bool includeGrammar = false)
