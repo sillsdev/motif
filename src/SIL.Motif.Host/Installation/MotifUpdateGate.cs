@@ -56,7 +56,7 @@ public static class MotifUpdateGate
     /// </summary>
     /// <remarks>
     /// An idle Worker holds no update lease, so the exclusive lease cannot see it, yet Velopack cannot swap the
-    /// installed files under it. The request is a marker file; a Worker that is running a job leaves it
+    /// installed files under it (the update flow is ADR 0062). The request is a marker file; a Worker that is running a job leaves it
     /// unanswered (pinned by `ABusyRunnerIgnoresAnUpdatesRequestToExit`), and this refuses naming that process
     /// once the wait is over (pinned by `AWorkerThatDoesNotExitRefusesTheUpdateNamingItAndClearsTheRequest`).
     /// </remarks>
