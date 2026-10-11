@@ -788,7 +788,7 @@ public sealed partial class ComponentStyleTests
         yield return new("Selection", "a text count", host => Add(host, Text("textCount")),
             TextBlock.MarginProperty, "Component.Selection.CountMargin");
         yield return new("Setup", "the dialog", host => Add(host, Box("setupDialog")),
-            Border.WidthProperty, "Component.Setup.DialogWidth");
+            Border.MaxWidthProperty, "Component.Setup.DialogWidth");
         yield return new("Overview", "the header", host => Add(host, Box("overviewHeader")),
             Border.PaddingProperty, "Component.Overview.HeaderPadding");
         yield return new("Overview", "a summary tile", host => Add(host, Press("overviewTile")),

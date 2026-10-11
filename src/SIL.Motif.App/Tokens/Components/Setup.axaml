@@ -6,6 +6,7 @@
     <StaticResource x:Key="Component.Setup.DialogHeightLimit" ResourceKey="Primitive.Size.600" />
     <StaticResource x:Key="Component.Setup.DialogRadius" ResourceKey="Primitive.Radius.12" />
     <StaticResource x:Key="Component.Setup.DialogPadding" ResourceKey="Primitive.Inset.16_16_16_16" />
+    <StaticResource x:Key="Component.Setup.DialogMargin" ResourceKey="Primitive.Inset.16_16_16_16" />
     <StaticResource x:Key="Component.Setup.TextListHeight" ResourceKey="Primitive.Size.240" />
     <StaticResource x:Key="Component.Setup.AddedWordsHeight" ResourceKey="Primitive.Size.52" />
     <StaticResource x:Key="Component.Setup.AddedWordsMaxHeight" ResourceKey="Primitive.Size.140" />
@@ -24,7 +25,8 @@
     <Setter Property="Opacity" Value="{DynamicResource Intent.Opacity.Dimmed}" />
   </Style>
   <Style Selector="Border.setupDialog">
-    <Setter Property="Width" Value="{DynamicResource Component.Setup.DialogWidth}" />
+    <Setter Property="MaxWidth" Value="{DynamicResource Component.Setup.DialogWidth}" />
+    <Setter Property="Margin" Value="{DynamicResource Component.Setup.DialogMargin}" />
     <Setter Property="MaxHeight" Value="{DynamicResource Component.Setup.DialogHeightLimit}" />
     <Setter Property="Background" Value="{DynamicResource Intent.Surface}" />
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />

@@ -9,7 +9,7 @@
              IsVisible="{Binding IsOpen}">
   <Grid Classes="setupOverlay">
     <Border Classes="setupScrim" />
-    <Border x:Name="DialogSurface" Classes="setupDialog" HorizontalAlignment="Center" VerticalAlignment="Center">
+    <Border x:Name="DialogSurface" Classes="setupDialog" HorizontalAlignment="Stretch" VerticalAlignment="Center">
       <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="{DynamicResource Intent.Space.Group}">
         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Group}">
           <TextBlock Classes="setupCaption" Text="{Binding StepCaption}" TextWrapping="Wrap" VerticalAlignment="Center" />
