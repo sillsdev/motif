@@ -28,16 +28,19 @@ namespace SIL.Motif.Tests.App;
 [Trait("MotifTestLevel", "System")]
 public sealed class ParsimonyStateScreenshots(ITestOutputHelper output)
 {
-    private static readonly (string Name, ThemeVariant Variant)[] Themes =
-        [("light", ThemeVariant.Light), ("dark", ThemeVariant.Dark)];
+    public static TheoryData<string, int> Sizes => new()
+    {
+        { "light", 1040 }, { "light", 1240 }, { "dark", 1040 }, { "dark", 1240 },
+    };
 
-    private static readonly int[] Widths = [1040, 1240];
-
-    [ScreenshotFact]
-    public void CaptureParsimonyPageStates()
+    [ScreenshotTheory]
+    [MemberData(nameof(Sizes))]
+    public void CaptureParsimonyPageStates(string theme, int width)
     {
         var folder = Environment.GetEnvironmentVariable(ScreenshotFactAttribute.FolderVariable)!;
         Directory.CreateDirectory(folder);
+        var variant = theme == "dark" ? ThemeVariant.Dark : ThemeVariant.Light;
+        // Every case writes the same notes, so parsimony-states.txt reads the same whichever case runs last.
         var notes = new List<string>();
         foreach (var state in States)
         {
@@ -52,14 +55,10 @@ public sealed class ParsimonyStateScreenshots(ITestOutputHelper output)
                     var page = workspace.PageModel<ParsimonyPageModel>();
                     await DriveAsync(state, page);
                     notes.Add($"parsimony {state}: {Describe(state)}");
-                    foreach (var (theme, variant) in Themes)
-                    foreach (var width in Widths)
-                    {
-                        Application.Current!.RequestedThemeVariant = variant;
-                        window.Width = width;
-                        PageScreenshots.Settle(window);
-                        PageScreenshots.Save(window, Path.Combine(folder, $"state-parsimony-{state}-{width}-{theme}.png"));
-                    }
+                    Application.Current!.RequestedThemeVariant = variant;
+                    window.Width = width;
+                    PageScreenshots.Settle(window);
+                    PageScreenshots.Save(window, Path.Combine(folder, $"state-parsimony-{state}-{width}-{theme}.png"));
                 }
                 finally
                 {
