@@ -1,7 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
-using Avalonia.VisualTree;
 
 namespace SIL.Motif.App.Views;
 
@@ -15,8 +14,8 @@ public sealed partial class SetupDialog : UserControl
     /// <param name="maxLogicalHeight">The available height before display zoom is applied.</param>
     public void FitToAvailableArea(double maxLogicalWidth, double maxLogicalHeight)
     {
-        var surface = this.GetVisualDescendants().OfType<Border>()
-            .FirstOrDefault(control => control.Name == "DialogSurface");
+        // A hidden dialog is never measured, so it has no visual children; its name scope still resolves the surface.
+        var surface = this.FindControl<Border>("DialogSurface");
         if (surface is null) return;
         var application = Application.Current;
         var preferredWidth = application?.TryGetResource("Component.Setup.DialogWidth", ActualThemeVariant,
