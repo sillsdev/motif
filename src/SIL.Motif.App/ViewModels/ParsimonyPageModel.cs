@@ -107,14 +107,11 @@ public sealed record ParsimonyEvidence(
 /// </summary>
 public sealed partial class ParsimonyPageModel : PageModel
 {
-    private const string NoReportCode = "parsimony.no-report";
     private const string NoReportMessage = "No Parsimony Report yet.";
     private const string NoRecordTypesMessage = "This project's Notebook has no record types, so a decision has nowhere to go. " +
         "Add one in FieldWorks, then reopen this page.";
     private const string StagedNote = "Staged in pending changes. Nothing is written to FieldWorks until Apply.";
     private const int ViewPageSize = 200;
-    private const string BundleNotFoundCode = "parsimony.bundle-not-found";
-    private const string BundleInvalidCode = "parsimony.bundle-invalid";
     private const string EvidenceNoteText = "The evidence this Report was measured from is no longer stored, so its " +
         "findings are listed from the Report itself. Decisions are matched to findings by their recorded evidence, " +
         "not checked against the grammar again.";
@@ -454,7 +451,8 @@ public sealed partial class ParsimonyPageModel : PageModel
 
         var active = await ReadViewAsync(path, report, "parsimony-active-findings", cancellationToken).ConfigureAwait(true);
         if (!IsCurrent(generation, path)) return;
-        var evidenceMissing = !active.Succeeded && active.Refusal!.Code is BundleNotFoundCode or BundleInvalidCode;
+        var evidenceMissing = !active.Succeeded &&
+            active.Refusal!.Code is ParsimonyRefusalCodes.BundleNotFound or ParsimonyRefusalCodes.BundleInvalid;
         if (!active.Succeeded && !evidenceMissing)
         {
             ShowRefusal(active.Refusal!);
@@ -548,7 +546,7 @@ public sealed partial class ParsimonyPageModel : PageModel
 
     private void ShowRefusal(Refusal refusal)
     {
-        if (string.Equals(refusal.Code, NoReportCode, StringComparison.Ordinal))
+        if (string.Equals(refusal.Code, ParsimonyRefusalCodes.NoReport, StringComparison.Ordinal))
         {
             State = ParsimonyPageState.NoReport;
             Message = NoReportMessage;

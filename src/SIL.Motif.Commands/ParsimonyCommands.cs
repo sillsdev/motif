@@ -56,24 +56,10 @@ public static class ParsimonyCommands
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(supportsMeasure);
-        if (MeasureCatalog.Find(request.MeasureId) is null)
-            return CommandOutcome<JobEnqueuedResponse>.Refused(new Refusal(
-                "parsimony.invalid-measure", FailureReason.InvalidArgument,
-                $"Unknown Parsimony measure '{request.MeasureId}'."));
-        if (!supportsMeasure(request.MeasureId))
-            return CommandOutcome<JobEnqueuedResponse>.Refused(new Refusal(
-                "parsimony.measure-unavailable", FailureReason.Refused,
-                $"Parsimony measure '{request.MeasureId}' is catalogued but not supported by this build."));
-        if (!Enum.IsDefined(request.EvidenceScope))
-            return CommandOutcome<JobEnqueuedResponse>.Refused(new Refusal(
-                "parsimony.invalid-scope", FailureReason.InvalidArgument,
-                "Evidence scope must be 'default-selection' or 'project-approved'."));
+        var admission = ParsimonyAdmission.Check(request.MeasureId, request.EvidenceScope, request.AssessmentIds,
+            supportsMeasure);
+        if (admission is not null) return CommandOutcome<JobEnqueuedResponse>.Refused(admission);
         var assessmentIds = request.AssessmentIds ?? [];
-        if (assessmentIds.Any(string.IsNullOrWhiteSpace) ||
-            assessmentIds.Distinct(StringComparer.Ordinal).Count() != assessmentIds.Count)
-            return CommandOutcome<JobEnqueuedResponse>.Refused(new Refusal(
-                "parsimony.invalid-assessment", FailureReason.InvalidArgument,
-                "Assessment references must be nonblank and unique."));
         return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
         {
             var workspaceKey = ProjectWorkspaceKey.Compute(project);
@@ -83,14 +69,14 @@ public static class ParsimonyCommands
             {
                 if (current is null)
                     return CommandOutcome<JobEnqueuedResponse>.Refused(new Refusal(
-                        "parsimony.assessment-baseline-mismatch", FailureReason.Refused,
+                        ParsimonyRefusalCodes.AssessmentBaselineMismatch, FailureReason.Refused,
                         "Parser Assessments require the exact current Baseline they measured."));
                 var sourceDigest = BatchInvocationEvidence.DigestFile(current.Baseline.FwDataPath);
                 var invalid = ValidateAssessmentReferences(database, assessmentIds, current.Baseline.Token,
                     sourceDigest, proposalId: null, proposalIntentDigest: null);
                 if (invalid is not null)
                     return CommandOutcome<JobEnqueuedResponse>.Refused(new Refusal(
-                        "parsimony.invalid-assessment", FailureReason.Refused, invalid));
+                        ParsimonyRefusalCodes.InvalidAssessment, FailureReason.Refused, invalid));
             }
             var saved = new NamedSelectionRepository(database).GetDefault();
             if (current is not null && saved is not null)
@@ -120,24 +106,10 @@ public static class ParsimonyCommands
     public static CommandOutcome<JobEnqueuedResponse> EnqueueCandidate(EnqueueParsimonyCandidateRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        if (MeasureCatalog.Find(request.MeasureId) is null)
-            return CommandOutcome<JobEnqueuedResponse>.Refused(new Refusal(
-                "parsimony.invalid-measure", FailureReason.InvalidArgument,
-                $"Unknown Parsimony measure '{request.MeasureId}'."));
-        if (!MeasureRunner.Supports(request.MeasureId))
-            return CommandOutcome<JobEnqueuedResponse>.Refused(new Refusal(
-                "parsimony.measure-unavailable", FailureReason.Refused,
-                $"Parsimony measure '{request.MeasureId}' is catalogued but not supported by this build."));
-        if (!Enum.IsDefined(request.EvidenceScope))
-            return CommandOutcome<JobEnqueuedResponse>.Refused(new Refusal(
-                "parsimony.invalid-scope", FailureReason.InvalidArgument,
-                "Evidence scope must be 'default-selection' or 'project-approved'."));
+        var admission = ParsimonyAdmission.Check(request.MeasureId, request.EvidenceScope, request.AssessmentIds) ??
+            ParsimonyAdmission.CheckDryRunJobId(request.DryRunJobId);
+        if (admission is not null) return CommandOutcome<JobEnqueuedResponse>.Refused(admission);
         var assessmentIds = request.AssessmentIds ?? [];
-        if (assessmentIds.Any(string.IsNullOrWhiteSpace) ||
-            assessmentIds.Distinct(StringComparer.Ordinal).Count() != assessmentIds.Count)
-            return CommandOutcome<JobEnqueuedResponse>.Refused(new Refusal(
-                "parsimony.invalid-assessment", FailureReason.InvalidArgument,
-                "Assessment references must be nonblank and unique."));
 
         return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
         {
@@ -146,8 +118,8 @@ public static class ParsimonyCommands
                 dryRun.Status != JobStatus.CompletedDryRunOnly || !dryRun.DryRunPublished ||
                 dryRun.DryRunJson is null)
                 return CommandOutcome<JobEnqueuedResponse>.Refused(new Refusal(
-                    "parsimony.dry-run-required", FailureReason.Refused,
-                    "Candidate evidence requires a completed Dry Run job with published effects."));
+                    ParsimonyRefusalCodes.DryRunRequired, FailureReason.Refused,
+                    ParsimonyAdmission.DryRunRequiredMessage));
 
             DryRunJobInput dryRunInput;
             DryRunSourceBinding sourceBinding;
@@ -164,7 +136,7 @@ public static class ParsimonyCommands
             catch (Exception exception) when (exception is InvalidDataException or ArgumentException or IOException)
             {
                 return CommandOutcome<JobEnqueuedResponse>.Refused(new Refusal(
-                    "parsimony.dry-run-evidence-missing", FailureReason.Refused,
+                    ParsimonyRefusalCodes.DryRunEvidenceMissing, FailureReason.Refused,
                     "This Dry Run lacks frozen source or prerequisite evidence. Rerun its Dry Run."));
             }
             if (assessmentIds.Count > 0)
@@ -174,7 +146,7 @@ public static class ParsimonyCommands
                     dryRunInput.Proposal.IntentDigest);
                 if (invalid is not null)
                     return CommandOutcome<JobEnqueuedResponse>.Refused(new Refusal(
-                        "parsimony.invalid-assessment", FailureReason.Refused, invalid));
+                        ParsimonyRefusalCodes.InvalidAssessment, FailureReason.Refused, invalid));
             }
             ParsimonyScopeBinding scopeBinding;
             if (request.EvidenceScope == ParsimonyEvidenceScopeKind.ProjectApproved)
@@ -186,13 +158,13 @@ public static class ParsimonyCommands
                 var current = new BaselineRepository(database).GetCurrentEvidence(dryRun.ProjectKey);
                 if (current is null || current.Baseline.Token != sourceBinding.Token)
                     return CommandOutcome<JobEnqueuedResponse>.Refused(new Refusal(
-                        "parsimony.selection-unavailable", FailureReason.Refused,
+                        ParsimonyRefusalCodes.SelectionUnavailable, FailureReason.Refused,
                         "The original Baseline's Default Selection is no longer available. Use 'project-approved' " +
                         "scope or rerun the Dry Run against the current Baseline."));
                 var saved = new NamedSelectionRepository(database).GetDefault();
                 if (saved is null)
                     return CommandOutcome<JobEnqueuedResponse>.Refused(new Refusal(
-                        "parsimony.selection-unavailable", FailureReason.Refused,
+                        ParsimonyRefusalCodes.SelectionUnavailable, FailureReason.Refused,
                         "No Default Selection is saved for this project."));
                 var resolved = CurrentEvidenceQuery.ResolveSelection(current.Summary, saved);
                 if (!resolved.Succeeded) return CommandOutcome<JobEnqueuedResponse>.Refused(resolved.Refusal!);
@@ -213,7 +185,7 @@ public static class ParsimonyCommands
                                                IOException or NotSupportedException)
             {
                 return CommandOutcome<JobEnqueuedResponse>.Refused(new Refusal(
-                    "parsimony.retirement-expectations-unavailable", FailureReason.Refused,
+                    ParsimonyRefusalCodes.RetirementExpectationsUnavailable, FailureReason.Refused,
                     "Frozen retirement expectations could not be captured from the Dry Run source: " +
                     exception.Message));
             }
@@ -302,7 +274,7 @@ public static class ParsimonyCommands
             var detail = ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
                 CommandOutcome<string>.Success(ReadJobFailure(database, request.JobId)));
             return CommandOutcome<ParsimonyCandidateEvidenceResponse>.Refused(new Refusal(
-                "parsimony.candidate-failed", FailureReason.Refused,
+                ParsimonyRefusalCodes.CandidateFailed, FailureReason.Refused,
                 detail.Succeeded ? detail.Value! : "The candidate Parsimony job did not complete."));
         }
 
@@ -311,7 +283,7 @@ public static class ParsimonyCommands
             var resultJson = new JobRepository(database).Get(request.JobId)?.ResultJson;
             if (resultJson is null)
                 return CommandOutcome<ParsimonyCandidateEvidenceResponse>.Refused(new Refusal(
-                    "parsimony.candidate-result-missing", FailureReason.StoreInconsistent,
+                    ParsimonyRefusalCodes.CandidateResultMissing, FailureReason.StoreInconsistent,
                     "The completed candidate job has no stored evidence response."));
             try
             {
@@ -324,7 +296,7 @@ public static class ParsimonyCommands
             catch (Exception exception) when (exception is JsonException or ArgumentException or InvalidOperationException)
             {
                 return CommandOutcome<ParsimonyCandidateEvidenceResponse>.Refused(new Refusal(
-                    "parsimony.candidate-result-invalid", FailureReason.StoreInconsistent,
+                    ParsimonyRefusalCodes.CandidateResultInvalid, FailureReason.StoreInconsistent,
                     "The stored candidate evidence response is malformed."));
             }
         });
@@ -344,7 +316,7 @@ public static class ParsimonyCommands
             var message = detail.Succeeded ? detail.Value! :
                 $"Parsimony job '{request.JobId}' finished as {JobStatusJson.ToWire(waited.Value.Status!.Value)}.";
             return CommandOutcome<ParsimonyReportResponse>.Refused(new Refusal(
-                "parsimony.job-failed", FailureReason.Refused, message));
+                ParsimonyRefusalCodes.JobFailed, FailureReason.Refused, message));
         }
 
         return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
@@ -352,7 +324,7 @@ public static class ParsimonyCommands
             var job = new JobRepository(database).Get(request.JobId);
             if (job?.ResultJson is null)
                 return CommandOutcome<ParsimonyReportResponse>.Refused(new Refusal(
-                    "parsimony.result-missing", FailureReason.StoreInconsistent,
+                    ParsimonyRefusalCodes.ResultMissing, FailureReason.StoreInconsistent,
                     "The completed Parsimony job has no stored Report identity."));
             string reportId;
             try
@@ -363,7 +335,7 @@ public static class ParsimonyCommands
             catch (Exception exception) when (exception is JsonException or InvalidOperationException)
             {
                 return CommandOutcome<ParsimonyReportResponse>.Refused(new Refusal(
-                    "parsimony.result-invalid", FailureReason.StoreInconsistent,
+                    ParsimonyRefusalCodes.ResultInvalid, FailureReason.StoreInconsistent,
                     "The completed Parsimony job has a malformed Report identity."));
             }
             return ReadReport(database, reportId);
@@ -376,7 +348,7 @@ public static class ParsimonyCommands
         ArgumentNullException.ThrowIfNull(request);
         if (string.IsNullOrWhiteSpace(request.ReportId))
             return CommandOutcome<ParsimonyReportResponse>.Refused(new Refusal(
-                "parsimony.report-id-required", FailureReason.InvalidArgument,
+                ParsimonyRefusalCodes.ReportIdRequired, FailureReason.InvalidArgument,
                 "A Report id is required."));
         return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion,
             (database, _) => ReadReport(database, request.ReportId));
@@ -387,13 +359,13 @@ public static class ParsimonyCommands
     {
         ArgumentNullException.ThrowIfNull(request);
         if (string.IsNullOrWhiteSpace(request.FwDataPath) || string.IsNullOrWhiteSpace(request.ProductVersion))
-            return Refused<ParsimonyLatestReportResponse>("parsimony.invalid-latest-request", FailureReason.InvalidArgument,
+            return Refused<ParsimonyLatestReportResponse>(ParsimonyRefusalCodes.InvalidLatestRequest, FailureReason.InvalidArgument,
                 "A FieldWorks project path and a Motif product version are required.");
         return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
         {
             var latest = new ReportRepository(database).GetLatest("parsimony");
             if (latest is null)
-                return Refused<ParsimonyLatestReportResponse>("parsimony.no-report", FailureReason.NotFound,
+                return Refused<ParsimonyLatestReportResponse>(ParsimonyRefusalCodes.NoReport, FailureReason.NotFound,
                     "No Parsimony Report yet.");
             var stored = ReadReport(database, latest.ReportId);
             if (!stored.Succeeded) return CommandOutcome<ParsimonyLatestReportResponse>.Refused(stored.Refusal!);
@@ -413,13 +385,13 @@ public static class ParsimonyCommands
         if (string.IsNullOrWhiteSpace(request.ReportId) || string.IsNullOrWhiteSpace(request.FindingId) ||
             string.IsNullOrWhiteSpace(request.Disposition) || string.IsNullOrWhiteSpace(request.RecordTypeId) ||
             string.IsNullOrWhiteSpace(request.DraftName))
-            return Refused<ComposedOperationsResponse>("parsimony.disposition-request-invalid",
+            return Refused<ComposedOperationsResponse>(ParsimonyRefusalCodes.DispositionRequestInvalid,
                 FailureReason.InvalidArgument, "A Report, finding, disposition, Notebook record type, and Draft are required.");
         if (!CanonicalId.TryParse(request.RecordTypeId, out _))
-            return Refused<ComposedOperationsResponse>("parsimony.record-type-id-invalid",
+            return Refused<ComposedOperationsResponse>(ParsimonyRefusalCodes.RecordTypeIdInvalid,
                 FailureReason.InvalidArgument, "--record-type must be the portable ID shown by parsimony record-types.");
         if (string.IsNullOrWhiteSpace(request.ProductVersion))
-            return Refused<ComposedOperationsResponse>("parsimony.disposition-request-invalid",
+            return Refused<ComposedOperationsResponse>(ParsimonyRefusalCodes.DispositionRequestInvalid,
                 FailureReason.InvalidArgument, "A Motif product version is required.");
 
         return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
@@ -435,17 +407,17 @@ public static class ParsimonyCommands
             var measuredBeforeApply = !evidenceIsCurrent &&
                 baselines.GetLatestCaptured(workspaceKey)?.Token == stored.Value!.Inputs.BaselineToken;
             if (!evidenceIsCurrent && !measuredBeforeApply)
-                return Refused<ComposedOperationsResponse>("parsimony.report-baseline-mismatch",
+                return Refused<ComposedOperationsResponse>(ParsimonyRefusalCodes.ReportBaselineMismatch,
                     FailureReason.Refused, ReportBaselineMismatch);
 
             var matches = stored.Value.Findings.Where(item =>
                 string.Equals(item.FindingId, request.FindingId, StringComparison.Ordinal)).ToArray();
             if (matches.Length == 0)
-                return Refused<ComposedOperationsResponse>("parsimony.finding-not-in-report",
+                return Refused<ComposedOperationsResponse>(ParsimonyRefusalCodes.FindingNotInReport,
                     FailureReason.NotFound,
                     $"Finding '{request.FindingId}' is not in Parsimony Report '{request.ReportId}'.");
             if (matches.Length > 1)
-                return Refused<ComposedOperationsResponse>("parsimony.finding-ambiguous",
+                return Refused<ComposedOperationsResponse>(ParsimonyRefusalCodes.FindingAmbiguous,
                     FailureReason.Refused,
                     $"Finding '{request.FindingId}' matches {matches.Length} findings in Parsimony Report " +
                     $"'{request.ReportId}', so no single finding can be disposed.");
@@ -463,7 +435,7 @@ public static class ParsimonyCommands
         ArgumentNullException.ThrowIfNull(request);
         if (string.IsNullOrWhiteSpace(request.FwDataPath) || string.IsNullOrWhiteSpace(request.ProductVersion) ||
             string.IsNullOrWhiteSpace(request.DraftName) || string.IsNullOrWhiteSpace(request.IntentJson))
-            return Refused<ComposedOperationsResponse>("parsimony.disposition-revision-request-invalid",
+            return Refused<ComposedOperationsResponse>(ParsimonyRefusalCodes.DispositionRevisionRequestInvalid,
                 FailureReason.InvalidArgument, "A project, product version, Draft, and revision intent are required.");
         return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
             ProposalCommands.ComposeReviseParsimonyDisposition(database, project, request.DraftName,
@@ -477,7 +449,7 @@ public static class ParsimonyCommands
         ArgumentNullException.ThrowIfNull(request);
         if (string.IsNullOrWhiteSpace(request.FwDataPath) || string.IsNullOrWhiteSpace(request.ProductVersion) ||
             string.IsNullOrWhiteSpace(request.DraftName) || string.IsNullOrWhiteSpace(request.IntentJson))
-            return Refused<ComposedOperationsResponse>("parsimony.disposition-retraction-request-invalid",
+            return Refused<ComposedOperationsResponse>(ParsimonyRefusalCodes.DispositionRetractionRequestInvalid,
                 FailureReason.InvalidArgument, "A project, product version, Draft, and retraction intent are required.");
         return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
             ProposalCommands.ComposeRetractParsimonyDisposition(database, project, request.DraftName,
@@ -572,12 +544,12 @@ public static class ParsimonyCommands
     {
         ArgumentNullException.ThrowIfNull(request);
         if (!string.Equals(request.Confirmation, ReviewedNegativeConfirmationPhrase, StringComparison.Ordinal))
-            return Refused<ComposedOperationsResponse>("parsimony.negative-confirmation-required",
+            return Refused<ComposedOperationsResponse>(ParsimonyRefusalCodes.NegativeConfirmationRequired,
                 FailureReason.InvalidArgument,
                 "Confirm this reviewed negative with: " + ReviewedNegativeConfirmationPhrase);
         if (string.IsNullOrWhiteSpace(request.DraftName) || string.IsNullOrWhiteSpace(request.IntentJson) ||
             string.IsNullOrWhiteSpace(request.ProductVersion))
-            return Refused<ComposedOperationsResponse>("parsimony.negative-request-invalid",
+            return Refused<ComposedOperationsResponse>(ParsimonyRefusalCodes.NegativeRequestInvalid,
                 FailureReason.InvalidArgument, "A Draft, reviewed-negative intent, and Motif product version are required.");
         return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
             ProposalCommands.ComposeRecordReviewedNegative(database, project, request.DraftName, request.IntentJson));
@@ -589,12 +561,12 @@ public static class ParsimonyCommands
     {
         ArgumentNullException.ThrowIfNull(request);
         if (!string.Equals(request.Confirmation, ReviewedNegativeRetractionConfirmationPhrase, StringComparison.Ordinal))
-            return Refused<ComposedOperationsResponse>("parsimony.negative-confirmation-required",
+            return Refused<ComposedOperationsResponse>(ParsimonyRefusalCodes.NegativeConfirmationRequired,
                 FailureReason.InvalidArgument,
                 "Confirm this reviewed negative retraction with: " + ReviewedNegativeRetractionConfirmationPhrase);
         if (string.IsNullOrWhiteSpace(request.DraftName) || string.IsNullOrWhiteSpace(request.IntentJson) ||
             string.IsNullOrWhiteSpace(request.ProductVersion))
-            return Refused<ComposedOperationsResponse>("parsimony.negative-request-invalid",
+            return Refused<ComposedOperationsResponse>(ParsimonyRefusalCodes.NegativeRequestInvalid,
                 FailureReason.InvalidArgument, "A Draft, retraction intent, and Motif product version are required.");
         return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
             ProposalCommands.ComposeRetractReviewedNegative(database, project, request.DraftName, request.IntentJson));
@@ -605,7 +577,7 @@ public static class ParsimonyCommands
         var report = new ReportRepository(database).Get(reportId);
         if (report is null || report.Kind != "parsimony")
             return CommandOutcome<ParsimonyReportResponse>.Refused(new Refusal(
-                "parsimony.report-not-found", FailureReason.NotFound,
+                ParsimonyRefusalCodes.ReportNotFound, FailureReason.NotFound,
                 $"Parsimony Report '{reportId}' was not found."));
         try
         {
@@ -620,7 +592,7 @@ public static class ParsimonyCommands
         catch (Exception exception) when (exception is JsonException or ArgumentException or InvalidOperationException)
         {
             return CommandOutcome<ParsimonyReportResponse>.Refused(new Refusal(
-                "parsimony.report-damaged", FailureReason.StoreInconsistent,
+                ParsimonyRefusalCodes.ReportDamaged, FailureReason.StoreInconsistent,
                 $"Parsimony Report '{reportId}' is damaged: {exception.Message} {DamagedReportGuidance}"));
         }
     }

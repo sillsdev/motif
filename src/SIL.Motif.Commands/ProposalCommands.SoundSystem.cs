@@ -195,10 +195,10 @@ public static partial class ProposalCommands
                     Outcome: "already-recorded"));
             if (!evidenceIsCurrent)
                 return CommandOutcome<ComposedOperationsResponse>.Refused(new Refusal(
-                    "parsimony.report-baseline-mismatch", FailureReason.Refused, ParsimonyCommands.ReportBaselineMismatch));
+                    ParsimonyRefusalCodes.ReportBaselineMismatch, FailureReason.Refused, ParsimonyCommands.ReportBaselineMismatch));
             if (state == DecisionState.Staged)
                 return CommandOutcome<ComposedOperationsResponse>.Refused(new Refusal(
-                    "parsimony.decision-already-staged", FailureReason.Refused,
+                    ParsimonyRefusalCodes.DecisionAlreadyStaged, FailureReason.Refused,
                     $"This decision is already staged in Draft '{request.DraftName}'."));
 
             return ComposeIntoDraft(database, project, request.DraftName, "RecordParsimonyDisposition",

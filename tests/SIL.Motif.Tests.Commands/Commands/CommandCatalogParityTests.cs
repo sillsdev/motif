@@ -185,6 +185,7 @@ public sealed class CommandCatalogParityTests
     public void RefusalCodesDeclaredInCommandsAreUniqueAndWellFormed()
     {
         var codes = RefusalCodeLiteralsIn("SIL.Motif.Commands");
+        codes.UnionWith(RefusalCodeLiteralsIn(Path.Combine("SIL.Motif.Contract", "Parsimony", "ParsimonyRefusalCodes.cs")));
 
         Assert.Equal(
             ExpectedRefusalCodes.Order(StringComparer.Ordinal),
@@ -197,7 +198,7 @@ public sealed class CommandCatalogParityTests
         "bak", "db", "fwdata", "json", "jsonl", "ldml", "lock", "md", "py", "sqlite", "txt", "xml", "zip",
     };
 
-    // Dotted command codes and the reserved initialization codes in a project's source.
+    // Dotted command codes and the reserved initialization codes in a project's source, or one file under src.
     private static HashSet<string> RefusalCodeLiteralsIn(string projectName)
     {
         var codePattern = new Regex(
@@ -205,7 +206,10 @@ public sealed class CommandCatalogParityTests
             RegexOptions.None);
         var root = Path.Combine(RepoPaths.FindRepoRoot(), "src", projectName);
         var codes = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var file in Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories))
+        var files = File.Exists(root)
+            ? [root]
+            : Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories);
+        foreach (var file in files)
         foreach (Match match in codePattern.Matches(File.ReadAllText(file)))
         {
             var literal = match.Groups[1].Value;

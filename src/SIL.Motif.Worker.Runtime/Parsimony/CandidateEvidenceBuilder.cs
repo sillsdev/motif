@@ -100,9 +100,8 @@ public sealed class ParsimonyCandidateEvidenceBuilder
                 "The Dry Run lacks sufficient frozen source or Proposal evidence. Rerun its Dry Run. " + exception.Message);
         }
 
-        if (MeasureCatalog.Find(input.MeasureId) is null || !MeasureRunner.Supports(input.MeasureId))
-            return Failure(JobFailureCategory.Semantic,
-                $"Parsimony measure '{input.MeasureId}' is unknown or unavailable in this build.");
+        var admission = ParsimonyAdmission.Check(input.MeasureId, input.ScopeBinding?.Kind, input.AssessmentIds);
+        if (admission is not null) return Failure(JobFailureCategory.Semantic, admission.Message);
         if (_options.ParserPath is null || !File.Exists(_options.ParserPath))
             return Failure(JobFailureCategory.Infrastructure,
                 "The configured PanGloss executable is unavailable for grammar facts.");

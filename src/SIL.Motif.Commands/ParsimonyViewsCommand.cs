@@ -23,7 +23,7 @@ public static class ParsimonyViewsCommand
     {
         ArgumentNullException.ThrowIfNull(request);
         if (string.IsNullOrWhiteSpace(request.FwDataPath) || string.IsNullOrWhiteSpace(request.ProductVersion))
-            return Refused<ParsimonyMeasureCatalogResponse>("parsimony.invalid-catalog-request",
+            return Refused<ParsimonyMeasureCatalogResponse>(ParsimonyRefusalCodes.InvalidCatalogRequest,
                 FailureReason.InvalidArgument, "A project path and product version are required.");
         return CommandOutcome<ParsimonyMeasureCatalogResponse>.Success(new ParsimonyMeasureCatalogResponse(
             MeasureCatalog.MeasureSetVersion, MeasureCatalog.All, ParsimonyViewCatalog.All));
@@ -39,7 +39,7 @@ public static class ParsimonyViewsCommand
     {
         ArgumentNullException.ThrowIfNull(request);
         if (request.Query is null)
-            return Refused<ParsimonyNamedViewResponse>("parsimony.invalid-view-request",
+            return Refused<ParsimonyNamedViewResponse>(ParsimonyRefusalCodes.InvalidViewRequest,
                 FailureReason.InvalidArgument, "A named-view query is required.");
         return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
         {
@@ -50,7 +50,7 @@ public static class ParsimonyViewsCommand
             {
                 if (CanListSavedDecisions(request.Query))
                     return ReadSavedDecisions(project, request.Query);
-                return Refused<ParsimonyNamedViewResponse>("parsimony.bundle-not-found", FailureReason.NotFound,
+                return Refused<ParsimonyNamedViewResponse>(ParsimonyRefusalCodes.BundleNotFound, FailureReason.NotFound,
                     $"Parsimony bundle '{request.Query.BundleId}' was not found in this project.");
             }
             try
@@ -97,28 +97,28 @@ public static class ParsimonyViewsCommand
             }
             catch (ParsimonyLeaseLostException)
             {
-                return Refused<ParsimonyNamedViewResponse>("parsimony.lease-lost", FailureReason.Busy,
+                return Refused<ParsimonyNamedViewResponse>(ParsimonyRefusalCodes.LeaseLost, FailureReason.Busy,
                     "The Parsimony bundle's reader lease was lost before the view finished; retry the view.");
             }
             catch (KeyNotFoundException exception)
             {
-                return Refused<ParsimonyNamedViewResponse>("parsimony.view-item-not-found", FailureReason.NotFound,
+                return Refused<ParsimonyNamedViewResponse>(ParsimonyRefusalCodes.ViewItemNotFound, FailureReason.NotFound,
                     exception.Message);
             }
             // Cancellation and out-of-memory propagate; every other failure is classified, and unknown ones mark nothing.
             catch (Exception exception) when (exception is not (OperationCanceledException or OutOfMemoryException))
             {
                 if (exception is ArgumentException)
-                    return Refused<ParsimonyNamedViewResponse>("parsimony.invalid-view-request",
+                    return Refused<ParsimonyNamedViewResponse>(ParsimonyRefusalCodes.InvalidViewRequest,
                         FailureReason.InvalidArgument, exception.Message);
                 var fault = ParsimonyBundleFaults.Classify(exception,
                     [bundle.EvidenceDirectory, bundle.GrammarFactsPath, bundle.EvidencePath]);
                 if (fault == ParsimonyBundleFault.Busy)
-                    return Refused<ParsimonyNamedViewResponse>("parsimony.bundle-busy", FailureReason.Busy,
+                    return Refused<ParsimonyNamedViewResponse>(ParsimonyRefusalCodes.BundleBusy, FailureReason.Busy,
                         exception.Message);
                 if (fault is { } known)
                     artifacts.MarkUnavailable(bundle.BundleId, known, exception.Message);
-                return Refused<ParsimonyNamedViewResponse>("parsimony.bundle-invalid",
+                return Refused<ParsimonyNamedViewResponse>(ParsimonyRefusalCodes.BundleInvalid,
                     FailureReason.StoreInconsistent, exception.Message);
             }
         });
@@ -139,7 +139,7 @@ public static class ParsimonyViewsCommand
         }
         catch (ArgumentException exception)
         {
-            return Refused<ParsimonyNamedViewResponse>("parsimony.invalid-view-request",
+            return Refused<ParsimonyNamedViewResponse>(ParsimonyRefusalCodes.InvalidViewRequest,
                 FailureReason.InvalidArgument, exception.Message);
         }
     }
@@ -171,13 +171,13 @@ public static class ParsimonyViewsCommand
     private static CommandOutcome<ParsimonyNamedViewResponse> RefuseReport(string reportId, Exception exception) =>
         exception switch
         {
-            KeyNotFoundException => Refused<ParsimonyNamedViewResponse>("parsimony.report-not-found",
+            KeyNotFoundException => Refused<ParsimonyNamedViewResponse>(ParsimonyRefusalCodes.ReportNotFound,
                 FailureReason.NotFound, exception.Message),
-            ReportNotBoundException => Refused<ParsimonyNamedViewResponse>("parsimony.report-bundle-mismatch",
+            ReportNotBoundException => Refused<ParsimonyNamedViewResponse>(ParsimonyRefusalCodes.ReportBundleMismatch,
                 FailureReason.Refused, exception.Message),
-            InvalidDataException => Refused<ParsimonyNamedViewResponse>("parsimony.report-damaged",
+            InvalidDataException => Refused<ParsimonyNamedViewResponse>(ParsimonyRefusalCodes.ReportDamaged,
                 FailureReason.StoreInconsistent, $"{exception.Message} {ParsimonyCommands.DamagedReportGuidance}"),
-            _ => Refused<ParsimonyNamedViewResponse>("parsimony.report-damaged", FailureReason.StoreInconsistent,
+            _ => Refused<ParsimonyNamedViewResponse>(ParsimonyRefusalCodes.ReportDamaged, FailureReason.StoreInconsistent,
                 $"Parsimony Report '{reportId}' is damaged: {exception.Message} " +
                 ParsimonyCommands.DamagedReportGuidance),
         };

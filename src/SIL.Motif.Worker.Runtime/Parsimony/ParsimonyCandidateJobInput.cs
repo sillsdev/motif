@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Parsimony;
 using SIL.Motif.Contract.Retirement;
+using SIL.Motif.Host.Parsimony;
 
 namespace SIL.Motif.Worker.Parsimony;
 
@@ -32,10 +33,8 @@ public sealed record ParsimonyCandidateJobInput(
             string.IsNullOrWhiteSpace(input.MeasureId) || input.ScopeBinding is null ||
             !Enum.IsDefined(input.ScopeBinding.Kind))
             throw new InvalidDataException("The candidate Parsimony job input is incomplete.");
-        if (input.AssessmentIds is { } assessmentIds &&
-            (assessmentIds.Any(string.IsNullOrWhiteSpace) ||
-             assessmentIds.Distinct(StringComparer.Ordinal).Count() != assessmentIds.Count))
-            throw new InvalidDataException("Candidate parser Assessment references must be nonblank and unique.");
+        if (ParsimonyAdmission.CheckAssessmentIds(input.AssessmentIds) is { } refusal)
+            throw new InvalidDataException(refusal.Message);
         if (input.RetirementExpectationTranslation is { } translation)
             _ = RetirementExpectationTranslationCodec.Parse(
                 RetirementExpectationTranslationCodec.ToJson(translation));

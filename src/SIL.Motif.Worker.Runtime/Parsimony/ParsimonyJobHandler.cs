@@ -58,19 +58,9 @@ public sealed class ParsimonyJobHandler
         ArgumentNullException.ThrowIfNull(claimed);
         var input = JsonSerializer.Deserialize<ParsimonyJobInput>(claimed.Job.InputJson, MotifJson.CreateOptions())
             ?? throw new InvalidDataException("The Parsimony job has no input.");
-        if (string.IsNullOrWhiteSpace(input.MeasureId))
-            return Failure(JobFailureCategory.Semantic, "The Parsimony job does not name a measure.");
-        if (input.ScopeBinding is null || !Enum.IsDefined(input.ScopeBinding.Kind))
-            return Failure(JobFailureCategory.Semantic, "The Parsimony job does not name a supported evidence scope.");
+        var admission = ParsimonyAdmission.Check(input.MeasureId, input.ScopeBinding?.Kind, input.AssessmentIds);
+        if (admission is not null) return Failure(JobFailureCategory.Semantic, admission.Message);
         var assessmentIds = input.AssessmentIds ?? [];
-        if (assessmentIds.Any(string.IsNullOrWhiteSpace) ||
-            assessmentIds.Distinct(StringComparer.Ordinal).Count() != assessmentIds.Count)
-            return Failure(JobFailureCategory.Semantic, "The Parsimony job has invalid Assessment references.");
-        if (MeasureCatalog.Find(input.MeasureId) is null)
-            return Failure(JobFailureCategory.Semantic, $"Unknown Parsimony measure '{input.MeasureId}'.");
-        if (!MeasureRunner.Supports(input.MeasureId))
-            return Failure(JobFailureCategory.Semantic,
-                $"Parsimony measure '{input.MeasureId}' is catalogued but not supported by this build.");
 
         var current = _baselines.GetCurrentEvidence(_projectKey);
         if (current is null)
