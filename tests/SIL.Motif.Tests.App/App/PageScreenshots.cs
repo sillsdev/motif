@@ -72,11 +72,18 @@ public sealed class PageScreenshots
 
     internal static FixedClock NewCaptureClock() => new(CaptureStartAt, CaptureTimeZone);
 
-    [ScreenshotFact]
-    public void CaptureEveryPage()
+    public static TheoryData<string, int> Sizes => new()
+    {
+        { "light", 1040 }, { "light", 1240 }, { "dark", 1040 }, { "dark", 1240 },
+    };
+
+    [ScreenshotTheory]
+    [MemberData(nameof(Sizes))]
+    public void CaptureEveryPage(string theme, int width)
     {
         var folder = Environment.GetEnvironmentVariable(ScreenshotFactAttribute.FolderVariable)!;
         Directory.CreateDirectory(folder);
+        var variant = theme == "dark" ? ThemeVariant.Dark : ThemeVariant.Light;
 
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -89,37 +96,31 @@ public sealed class PageScreenshots
                 OverviewPageWordsTests.AssertCaptureStopCounts(overview, "every page");
                 Assert.Equal(9, overview.SelectionWordCount);
 
-                foreach (var (theme, variant) in new[] { ("light", ThemeVariant.Light), ("dark", ThemeVariant.Dark) })
+                Application.Current!.RequestedThemeVariant = variant;
+                window.Width = width;
+                window.Height = 780;
+                foreach (var (name, page, tab) in Views())
                 {
-                    Application.Current!.RequestedThemeVariant = variant;
-                    foreach (var width in new[] { 1040, 1240 })
+                    workspace.PageModel<TextsPageModel>().Tab = tab;
+                    // Choosing a word on Texts primes Try a Word afresh, so the trace is run again here.
+                    if (page == WorkspacePage.TryAWord) await TryTheSampleWord(workspace);
+                    workspace.CurrentPage = page;
+                    if (page == WorkspacePage.Texts && tab == TextsTab.AnalyzeTexts)
+                        await AnalyzeTextsLayoutTests.SettleReaderAsync(workspace, window);
+                    AssertSceneHasExpectedErrorState(window, workspace, name);
+                    Save(window, Path.Combine(folder, $"{name}-{width}-{theme}.png"));
+                    if (page != WorkspacePage.TryAWord) continue;
+                    window.Height = 1500;
+                    AssertSceneHasExpectedErrorState(window, workspace, $"{name} tall");
+                    Save(window, Path.Combine(folder, $"{name}-{width}-{theme}-tall.png"));
+                    foreach (var height in new[] { 780, 1500 })
                     {
-                        window.Width = width;
-                        window.Height = 780;
-                        foreach (var (name, page, tab) in Views())
-                        {
-                            workspace.PageModel<TextsPageModel>().Tab = tab;
-                            // Choosing a word on Texts primes Try a Word afresh, so the trace is run again here.
-                            if (page == WorkspacePage.TryAWord) await TryTheSampleWord(workspace);
-                            workspace.CurrentPage = page;
-                            if (page == WorkspacePage.Texts && tab == TextsTab.AnalyzeTexts)
-                                await AnalyzeTextsLayoutTests.SettleReaderAsync(workspace, window);
-                            AssertSceneHasExpectedErrorState(window, workspace, name);
-                            Save(window, Path.Combine(folder, $"{name}-{width}-{theme}.png"));
-                            if (page != WorkspacePage.TryAWord) continue;
-                            window.Height = 1500;
-                            AssertSceneHasExpectedErrorState(window, workspace, $"{name} tall");
-                            Save(window, Path.Combine(folder, $"{name}-{width}-{theme}-tall.png"));
-                            foreach (var height in new[] { 780, 1500 })
-                            {
-                                workspace.Assess.Trace.IsExpert = true;
-                                window.Height = height;
-                                Save(window, Path.Combine(folder, $"{name}-expert-{width}-{theme}-{height}.png"));
-                            }
-                            workspace.Assess.Trace.IsExpert = false;
-                            window.Height = 780;
-                        }
+                        workspace.Assess.Trace.IsExpert = true;
+                        window.Height = height;
+                        Save(window, Path.Combine(folder, $"{name}-expert-{width}-{theme}-{height}.png"));
                     }
+                    workspace.Assess.Trace.IsExpert = false;
+                    window.Height = 780;
                 }
             }
             finally
