@@ -194,6 +194,57 @@ public sealed class SelectionWordRowsTests
         }, TimeSpan.FromSeconds(60));
     }
 
+    [Fact]
+    public void ScrollingTheWordListBuildsCellsOncePerShownWordRevision()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var textId = Guid.NewGuid();
+            var words = Enumerable.Range(0, 500).Select(_ => new TextWordsProjectedWordform(
+                Guid.NewGuid(), [], [], 0, false, [])).ToArray();
+            var tokens = words.Select((word, index) => new TextWordsProjectedToken($"word-{index:000}",
+                [new WritingSystemText($"word-{index:000}", "en")], word.WordformId,
+                "unanalysed", null, null, null, null, index, null)).ToArray();
+            using var fixture = new StoredSelectionFixture(new TextWordsProjection([
+                new TextWordsProjectedText(textId, "Words", [new TextWordsProjectedLine(1,
+                    string.Join(" ", tokens.Select(token => token.Text)), tokens, Guid.NewGuid(), Guid.NewGuid(), true)], [])], words));
+            var commands = new FakeCommandClient { SelectionReaderHandler = fixture.OpenAsync };
+            var reads = commands.ReaderOwner;
+            var list = new TextWordsViewModel(commands, new SelectionViewModel(commands), reads);
+            var window = new Window { Width = 1000, Height = 700, Content = new TextWordsPanel(list) };
+            try
+            {
+                var before = WordRow.TotalCellBuilds;
+                await reads.ReloadAsync(fixture.ProjectPath, [textId], []);
+                window.Show();
+                PageScreenshots.Settle(window);
+                // A detail batch legitimately rewrites a word's data, so a build is owed per word and revision shown.
+                var shown = new HashSet<string>();
+                var scroll = window.GetVisualDescendants().OfType<ScrollViewer>()
+                    .First(viewer => viewer.Extent.Height > viewer.Viewport.Height);
+                for (var offset = 0d; offset < scroll.Extent.Height - scroll.Viewport.Height; offset += scroll.Viewport.Height / 2)
+                {
+                    scroll.Offset = scroll.Offset.WithY(offset);
+                    PageScreenshots.Settle(window);
+                    await list.SettleVisibleDetailsAsync();
+                    PageScreenshots.Settle(window);
+                    foreach (var row in window.GetVisualDescendants().OfType<WordRow>().Where(row => row.Data is not null))
+                        shown.Add($"{row.Data!.Key.Value}@{row.Data.EvidenceRevision}");
+                }
+                var builds = WordRow.TotalCellBuilds - before;
+                Assert.True(shown.Count > 20, $"Only {shown.Count} word revisions were shown.");
+                Assert.True(builds <= shown.Count * 2.1,
+                    $"{builds} cell builds for {shown.Count} shown word revisions is {(double)builds / shown.Count:0.00} per word.");
+            }
+            finally
+            {
+                window.Close();
+                await list.StopAsync();
+                await reads.StopAsync();
+            }
+        }, TimeSpan.FromSeconds(120));
+    }
+
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static WeakReference<object> ObserveWordRowModel(WordRow display) =>
         new(Assert.IsType<TextWordRowViewModel>(display.DataContext));

@@ -35,13 +35,18 @@ public sealed class WordRow : UserControl
     private WordCard? _placedCard;
     private int _columnCount = 1;
     private bool _changingData;
+    private bool _cellsDirty = true;
+    private bool _deferDirtyCellsUntilMeasure;
+    private bool _builtWithData;
+    private bool _detachedFromVisualTree;
+    private WordListLayout? _builtLayout;
 
     static WordRow()
     {
         DataProperty.Changed.AddClassHandler<WordRow>((row, _) => row.OnDataChanged());
         StateProperty.Changed.AddClassHandler<WordRow>((row, _) => row.OnStateChanged());
         HostProperty.Changed.AddClassHandler<WordRow>((row, _) => row.RefreshCardHost());
-        WordListLayoutScope.LayoutProperty.Changed.AddClassHandler<WordRow>((row, _) => row.RebuildCells());
+        WordListLayoutScope.LayoutProperty.Changed.AddClassHandler<WordRow>((row, _) => row.OnLayoutChanged());
     }
 
     public WordRow()
@@ -82,18 +87,37 @@ public sealed class WordRow : UserControl
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
+        _detachedFromVisualTree = true;
         CancelRead();
         base.OnDetachedFromVisualTree(e);
     }
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
+        _detachedFromVisualTree = false;
         base.OnAttachedToVisualTree(e);
+        if (_deferDirtyCellsUntilMeasure)
+        {
+            _deferDirtyCellsUntilMeasure = false;
+            InvalidateMeasure();
+        }
+        else if (Data is null && !_builtWithData)
+        {
+            _builtLayout = WordListLayoutScope.GetLayout(this);
+            _cellsDirty = false;
+            SyncState();
+        }
+        else if (_cellsDirty || !ReferenceEquals(_builtLayout, WordListLayoutScope.GetLayout(this))) RebuildCells();
         if (State?.IsOpen == true) StartCardRead();
     }
 
     /// <summary>How many times this row has built its cells; a recycled row builds them once per word.</summary>
     internal int CellBuildCount { get; private set; }
+
+    /// <summary>Every cell build by any row in this process; tests bound it against the words shown.</summary>
+    internal static long TotalCellBuilds => Interlocked.Read(ref _totalCellBuilds);
+
+    private static long _totalCellBuilds;
 
     private void OnDataChanged()
     {
@@ -108,7 +132,7 @@ public sealed class WordRow : UserControl
         {
             _changingData = false;
         }
-        RebuildCells();
+        InvalidateCells(dataChanged: true);
         if (State?.IsOpen == true) StartCardRead();
     }
 
@@ -138,9 +162,59 @@ public sealed class WordRow : UserControl
         _shell.Children.Add(card);
     }
 
+    // Data and the list's inherited layout arrive separately; building at measure coalesces them into one build.
+    private void OnLayoutChanged()
+    {
+        var layout = WordListLayoutScope.GetLayout(this);
+        if (Data is null && !_builtWithData)
+        {
+            _builtLayout = layout;
+            _cellsDirty = false;
+            return;
+        }
+        if (!_cellsDirty && ReferenceEquals(_builtLayout, layout)) return;
+        InvalidateCells();
+    }
+
+    private void InvalidateCells(bool dataChanged = false)
+    {
+        _cellsDirty = true;
+        var data = Data;
+        var isAttached = this.IsAttachedToVisualTree() && !_detachedFromVisualTree;
+        // Publish data revisions before observers capture cells; detached rows and Review actions need them too.
+        if ((dataChanged && data is { Owner: not WordListOwner.WordList } &&
+                (!isAttached || data.Owner == WordListOwner.Review)) ||
+            (data is null && isAttached) ||
+            (dataChanged && data is { Owner: WordListOwner.WordList } && isAttached))
+        {
+            RebuildCells();
+            return;
+        }
+        if (!isAttached)
+        {
+            _deferDirtyCellsUntilMeasure = true;
+            return;
+        }
+        InvalidateMeasure();
+    }
+
+    protected override Size MeasureOverride(Size availableSize)
+    {
+        if (Data is null && !_builtWithData)
+        {
+            _builtLayout = WordListLayoutScope.GetLayout(this);
+            _cellsDirty = false;
+            SyncState();
+        }
+        else if (_cellsDirty && this.IsAttachedToVisualTree() && !_detachedFromVisualTree) RebuildCells();
+        return base.MeasureOverride(availableSize);
+    }
+
     private void RebuildCells()
     {
+        _cellsDirty = false;
         CellBuildCount++;
+        Interlocked.Increment(ref _totalCellBuilds);
         _tick = null;
         _placedCard = null;
         _shell.Children.Clear();
@@ -150,12 +224,14 @@ public sealed class WordRow : UserControl
         _shell.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
         _shell.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
         var data = Data;
+        _builtWithData = data is not null;
         if (data is null)
         {
+            _builtLayout = WordListLayoutScope.GetLayout(this);
             SyncState();
             return;
         }
-        var layout = WordListLayoutScope.GetLayout(this);
+        var layout = _builtLayout = WordListLayoutScope.GetLayout(this);
         var columns = layout?.Schema.OrderedColumns(layout.ShowsMeaning) ?? DefaultColumns();
         _columnCount = Math.Max(1, columns.Count);
         foreach (var column in columns)
