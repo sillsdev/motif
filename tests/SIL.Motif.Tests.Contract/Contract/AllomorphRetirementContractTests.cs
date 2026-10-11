@@ -48,7 +48,7 @@ public class AllomorphRetirementContractTests
         var json = AllomorphRetirementCodec.ToJson(Example());
         Assert.Contains("\"inflType\":null", json);
         Assert.Equal(json, AllomorphRetirementCodec.ToJson(AllomorphRetirementCodec.Parse(json)));
-        Assert.False(AllomorphRetirementCapabilities.CanApply);
+        Assert.True(AllomorphRetirementCapabilities.CanApplyFor(AllomorphRetirementScope.Affix));
     }
 
     [Theory]

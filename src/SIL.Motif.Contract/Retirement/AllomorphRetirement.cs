@@ -109,7 +109,16 @@ public static class AllomorphRetirementCapabilities
 {
     public const string Contract = "allomorph-retirement/v2";
     public const string FrozenExpectationContract = "frozen-expectations/v1";
-    public const bool CanApply = false;
+
+    /// <summary>
+    /// Whether a retirement of this scope may be composed, and so applied. Ordinary affixes have every
+    /// required proof; stems still lack the stem-specific ones in <see cref="RequiredCapabilitiesFor"/>.
+    /// </summary>
+    public static bool CanApplyFor(AllomorphRetirementScope scope) => scope == AllomorphRetirementScope.Affix;
+
+    public const string StemRefusal =
+        "The rule replacement recipe supports ordinary affix alternates only; stem retirement evidence is incomplete.";
+
     public static IReadOnlyList<AllomorphRetirementScope> AuthoringScopes { get; } =
         System.Array.AsReadOnly(new[] { AllomorphRetirementScope.Affix, AllomorphRetirementScope.Stem });
     public static IReadOnlyList<string> RequiredCapabilities { get; } = System.Array.AsReadOnly(new[]

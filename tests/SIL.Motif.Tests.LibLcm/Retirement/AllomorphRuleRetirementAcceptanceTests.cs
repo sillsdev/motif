@@ -251,7 +251,6 @@ public sealed partial class AllomorphRuleRetirementAcceptanceTests(
         using (var heldOutResult = JsonDocument.Parse(File.ReadAllText(heldOutTracePath)))
             Assert.NotEmpty(heldOutResult.RootElement.GetProperty("result").GetProperty("analyses").EnumerateArray());
 
-        Assert.False(AllomorphRetirementCapabilities.CanApply);
         output.WriteLine($"Parser={parser}; version=0.7.0");
         output.WriteLine($"Target={fixture.TargetWord.Form.get_String(cache.DefaultVernWs)?.Text}; unchanged={fixture.UnchangedWord.Form.get_String(cache.DefaultVernWs)?.Text}");
         output.WriteLine($"FrozenCases={frozen.Cases.Count}; Approved={frozen.Cases.SelectMany(item => item.Readings).Count(item => item.Opinion == "approved")}; reviewedNegatives={frozen.ReviewedNegatives.Count}");

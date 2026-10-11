@@ -27,7 +27,7 @@ public class StemAllomorphRetirementContractTests
     }
 
     [Fact]
-    public void StemAlternateRoundTripsWithoutEnablingApply()
+    public void StemAlternateRoundTripsButStaysRefused()
     {
         var json = StemJson().ToJsonString();
         var intent = AllomorphRetirementCodec.Parse(json);
@@ -35,7 +35,7 @@ public class StemAllomorphRetirementContractTests
         Assert.Contains("\"scope\":\"stem\"", canonical);
         Assert.Contains("\"stemName\":null", canonical);
         Assert.Equal(canonical, AllomorphRetirementCodec.ToJson(AllomorphRetirementCodec.Parse(canonical)));
-        Assert.False(AllomorphRetirementCapabilities.CanApply);
+        Assert.False(AllomorphRetirementCapabilities.CanApplyFor(AllomorphRetirementScope.Stem));
     }
 
     [Theory]
@@ -185,7 +185,7 @@ public class StemAllomorphRetirementContractTests
         Assert.Contains("frozen-stem-reading-verification", required);
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             AllomorphRetirementCapabilities.RequiredCapabilitiesFor((AllomorphRetirementScope)99));
-        Assert.False(AllomorphRetirementCapabilities.CanApply);
+        Assert.False(AllomorphRetirementCapabilities.CanApplyFor(AllomorphRetirementScope.Stem));
     }
 
     [Fact]

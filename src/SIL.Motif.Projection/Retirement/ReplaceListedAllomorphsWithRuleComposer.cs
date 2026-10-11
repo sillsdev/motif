@@ -24,9 +24,8 @@ public static class ReplaceListedAllomorphsWithRuleComposer
         ArgumentNullException.ThrowIfNull(intent);
         ArgumentNullException.ThrowIfNull(operationIdFactory);
         _ = AllomorphRetirementCodec.ToJson(intent);
-        if (intent.Retirements.Any(retirement => retirement.Scope != AllomorphRetirementScope.Affix))
-            throw new InvalidOperationException(
-                "The rule replacement recipe supports ordinary affix alternates only; stem retirement evidence is incomplete.");
+        if (intent.Retirements.Any(retirement => !AllomorphRetirementCapabilities.CanApplyFor(retirement.Scope)))
+            throw new InvalidOperationException(AllomorphRetirementCapabilities.StemRefusal);
 
         var naturalClassId = CanonicalId.Parse(intent.NaturalClass.Id);
         var ruleId = CanonicalId.Parse(intent.Rule.Id);
