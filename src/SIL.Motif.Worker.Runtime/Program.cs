@@ -105,7 +105,8 @@ internal static class WorkerRuntime
         var sweeping = SweepUntilCancelledAsync(knownProjects, runtimes, host.ProjectLanes, options, invoker,
             ownerId, activity, shutdown.Token);
 
-        var lifetime = RunUntilRetiredAsync(new WorkerLifetime(), options.IdleTimeout, activity, shutdown.Token);
+        var lifetime = RunUntilRetiredAsync(new WorkerLifetime(), options.IdleTimeout, activity, shutdown.Token,
+            MotifUpdateGate.IsWorkerRetirementRequested);
         // A sweep that fails, e.g. because the machine database went away, ends the runner now, not at idle.
         await Task.WhenAny(lifetime, sweeping).ConfigureAwait(false);
         shutdown.Cancel();
@@ -173,16 +174,47 @@ internal static class WorkerRuntime
         }
     }
 
-    /// <summary>Waits out the idle timeout, then retires, unless a sweep found work in the meantime.</summary>
+    /// <summary>
+    /// Waits out the idle timeout, or an update's request to exit, then retires, unless a sweep found work in the
+    /// meantime.
+    /// </summary>
     internal static async Task RunUntilRetiredAsync(WorkerLifetime lifetime, TimeSpan idleTimeout,
-        SweepActivity activity, CancellationToken shutdown)
+        SweepActivity activity, CancellationToken shutdown, Func<bool>? retirementRequested = null)
     {
         do
         {
-            await lifetime.RunUntilIdleAsync(idleTimeout, () => activity.HasActiveWork, shutdown)
+            using var idleWait = CancellationTokenSource.CreateLinkedTokenSource(shutdown);
+            var watching = WatchForRetirementRequestAsync(retirementRequested, idleWait);
+            await lifetime.RunUntilIdleAsync(idleTimeout, () => activity.HasActiveWork, idleWait.Token)
                 .ConfigureAwait(false);
+            idleWait.Cancel();
+            await watching.ConfigureAwait(false);
+            if (shutdown.IsCancellationRequested || await RetireAsync(activity, shutdown).ConfigureAwait(false))
+                return;
+            // A request a busy runner cannot answer stays up; poll for the work to end instead of spinning.
+            if (retirementRequested?.Invoke() == true)
+            {
+                try { await Task.Delay(IdlePollInterval, shutdown).ConfigureAwait(false); }
+                catch (OperationCanceledException) { return; }
+            }
         }
-        while (!shutdown.IsCancellationRequested && !await RetireAsync(activity, shutdown).ConfigureAwait(false));
+        while (true);
+    }
+
+    private static async Task WatchForRetirementRequestAsync(Func<bool>? retirementRequested,
+        CancellationTokenSource idleWait)
+    {
+        if (retirementRequested is null) return;
+        while (!idleWait.IsCancellationRequested)
+        {
+            if (retirementRequested())
+            {
+                idleWait.Cancel();
+                return;
+            }
+            try { await Task.Delay(IdlePollInterval, idleWait.Token).ConfigureAwait(false); }
+            catch (OperationCanceledException) { return; }
+        }
     }
 
     // False when a sweep found work, which restarts the idle timer; a sweep still scanning is only waited out.

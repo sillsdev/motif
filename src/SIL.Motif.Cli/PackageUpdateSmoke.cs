@@ -38,6 +38,7 @@ internal static class PackageUpdateSmoke
                     "The local feed offered " + targetVersion + ", expected " + args[3] + ".");
 
             await manager.DownloadUpdatesAsync(update).ConfigureAwait(false);
+            MotifUpdateGate.RetireIdleWorkers(AppContext.BaseDirectory, TimeSpan.FromSeconds(30));
             Console.Error.WriteLine("Applying Motif update " + targetVersion + ".");
             manager.ApplyUpdatesAndExit(update.TargetFullRelease);
             return 0;

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using SIL.Motif.Host.PanGloss;
 
 namespace SIL.Motif.Host.Installation;
@@ -36,6 +37,89 @@ public static class MotifUpdateGate
         owner.Dispose();
         return null;
     }
+
+    private static readonly TimeSpan RetirementRequestLifetime = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan RetirementPoll = TimeSpan.FromMilliseconds(100);
+
+    /// <summary>Whether an updater has asked idle Workers to exit; a Worker with work in hand ignores it.</summary>
+    public static bool IsWorkerRetirementRequested() => IsRetirementRequested(GetGateName());
+
+    internal static bool IsRetirementRequested(string gateName)
+    {
+        var marker = GetRetirementMarkerPath(gateName);
+        // A marker a crashed updater left behind goes stale rather than retiring every later Worker.
+        return File.Exists(marker) && DateTime.UtcNow - File.GetLastWriteTimeUtc(marker) < RetirementRequestLifetime;
+    }
+
+    /// <summary>
+    /// Asks every idle Worker running from <paramref name="installDirectory"/> to exit, and waits for it.
+    /// </summary>
+    /// <remarks>
+    /// An idle Worker holds no update lease, so the exclusive lease cannot see it, yet Velopack cannot swap the
+    /// installed files under it (the update flow is ADR 0062). The request is a marker file; a Worker that is running a job leaves it
+    /// unanswered (pinned by `ABusyRunnerIgnoresAnUpdatesRequestToExit`), and this refuses naming that process
+    /// once the wait is over (pinned by `AWorkerThatDoesNotExitRefusesTheUpdateNamingItAndClearsTheRequest`).
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">A Worker from the install is still running at the deadline.</exception>
+    public static void RetireIdleWorkers(string installDirectory, TimeSpan timeout) =>
+        RetireIdleWorkers(GetGateName(), installDirectory, timeout, FindInstalledWorkers);
+
+    internal static void RetireIdleWorkers(string gateName, string installDirectory, TimeSpan timeout,
+        Func<string, IReadOnlyList<WorkerProcessInfo>> findWorkers)
+    {
+        var marker = GetRetirementMarkerPath(gateName);
+        File.WriteAllText(marker, DateTime.UtcNow.ToString("O"));
+        try
+        {
+            var deadline = DateTime.UtcNow + timeout;
+            var remaining = findWorkers(installDirectory);
+            while (remaining.Count > 0 && DateTime.UtcNow < deadline)
+            {
+                Thread.Sleep(RetirementPoll);
+                remaining = findWorkers(installDirectory);
+            }
+            if (remaining.Count == 0) return;
+            throw new InvalidOperationException(
+                "Motif cannot update while a Worker is still running from this installation: " +
+                string.Join("; ", remaining.Select(worker => "PID " + worker.ProcessId + " " + worker.Path)) +
+                ". It did not exit within " + timeout.TotalSeconds.ToString("0") + " seconds of being asked to.");
+        }
+        finally
+        {
+            try { File.Delete(marker); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
+    }
+
+    internal readonly record struct WorkerProcessInfo(int ProcessId, string Path);
+
+    private static IReadOnlyList<WorkerProcessInfo> FindInstalledWorkers(string installDirectory)
+    {
+        var root = Path.GetFullPath(installDirectory).TrimEnd(Path.DirectorySeparatorChar,
+            Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        var found = new List<WorkerProcessInfo>();
+        foreach (var process in Process.GetProcessesByName("SIL.Motif.Worker"))
+        {
+            using (process)
+            {
+                string? path;
+                try { path = process.MainModule?.FileName; }
+                catch (Exception exception) when (exception is InvalidOperationException or
+                    System.ComponentModel.Win32Exception or NotSupportedException)
+                {
+                    continue;
+                }
+                if (path is not null && Path.GetFullPath(path).StartsWith(root, comparison))
+                    found.Add(new WorkerProcessInfo(process.Id, path));
+            }
+        }
+        return found;
+    }
+
+    private static string GetRetirementMarkerPath(string gateName) =>
+        WorkerLockPaths.GetLockPath(gateName + ".RetireIdleWorkers", machineWide: false) + ".request";
 
     private static string GetGateName()
     {

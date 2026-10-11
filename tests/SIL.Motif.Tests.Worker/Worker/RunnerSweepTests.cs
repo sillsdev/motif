@@ -196,6 +196,35 @@ public sealed class RunnerSweepTests : IDisposable
     }
 
     [Fact]
+    public async Task AnIdleRunnerRetiresAtOnceWhenAnUpdateAsksItToExit()
+    {
+        var activity = new SIL.Motif.Worker.WorkerRuntime.SweepActivity();
+        activity.Set(false);
+        using var shutdown = new CancellationTokenSource();
+
+        await SIL.Motif.Worker.WorkerRuntime.RunUntilRetiredAsync(new WorkerLifetime(), TimeSpan.FromMinutes(10),
+            activity, shutdown.Token, retirementRequested: () => true).WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.False(activity.TryBeginSweep());
+    }
+
+    [Fact]
+    public async Task ABusyRunnerIgnoresAnUpdatesRequestToExit()
+    {
+        var activity = new SIL.Motif.Worker.WorkerRuntime.SweepActivity();
+        activity.Set(true);
+        using var shutdown = new CancellationTokenSource();
+
+        var retiring = SIL.Motif.Worker.WorkerRuntime.RunUntilRetiredAsync(new WorkerLifetime(),
+            TimeSpan.FromMinutes(10), activity, shutdown.Token, retirementRequested: () => true);
+
+        Assert.NotSame(retiring, await Task.WhenAny(retiring, Task.Delay(TimeSpan.FromMilliseconds(700))));
+        Assert.True(activity.TryBeginSweep());
+        shutdown.Cancel();
+        await retiring.WaitAsync(TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
     public async Task AMachineDatabaseFileDeletedBetweenSweepsFailsTheSweepAsAMachineDatabaseLoss()
     {
         using var machine = MachineDatabase.Open(_options.Root);

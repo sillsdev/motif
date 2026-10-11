@@ -43,6 +43,39 @@ public sealed class MotifUpdateGateTests
     }
 
     [Fact]
+    public void AnIdleWorkerThatAnswersTheRetirementRequestLetsTheUpdateProceed()
+    {
+        var gateName = UniqueGateName();
+        var workers = new[] { new MotifUpdateGate.WorkerProcessInfo(4242, "install/current/SIL.Motif.Worker.exe") };
+
+        // The fake Worker exits the way a real idle one does: it sees the request and goes away.
+        MotifUpdateGate.RetireIdleWorkers(gateName, "install/current", TimeSpan.FromSeconds(5),
+            _ => MotifUpdateGate.IsRetirementRequested(gateName) ? [] : workers);
+
+        Assert.False(MotifUpdateGate.IsRetirementRequested(gateName));
+    }
+
+    [Fact]
+    public void AWorkerThatDoesNotExitRefusesTheUpdateNamingItAndClearsTheRequest()
+    {
+        var gateName = UniqueGateName();
+        var workers = new[] { new MotifUpdateGate.WorkerProcessInfo(4242, "install/current/SIL.Motif.Worker.exe") };
+
+        var refusal = Assert.Throws<InvalidOperationException>(() => MotifUpdateGate.RetireIdleWorkers(
+            gateName, "install/current", TimeSpan.FromMilliseconds(300), _ => workers));
+
+        Assert.Contains("PID 4242", refusal.Message);
+        Assert.Contains("SIL.Motif.Worker.exe", refusal.Message);
+        Assert.False(MotifUpdateGate.IsRetirementRequested(gateName));
+    }
+
+    [Fact]
+    public void NoRetirementIsRequestedUntilAnUpdaterAsks()
+    {
+        Assert.False(MotifUpdateGate.IsRetirementRequested(UniqueGateName()));
+    }
+
+    [Fact]
     public async Task ActivitiesCanShareTheGateAcrossProcesses()
     {
         if (Environment.GetEnvironmentVariable(ChildGateNameVariable) is { Length: > 0 } childGateName)
