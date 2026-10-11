@@ -161,6 +161,7 @@ public sealed partial class ResultsInTextPanel : UserControl
         if (lineIndex < 0 || InText.LinePages is not { } pages) return null;
         for (var attempt = 0; attempt < 3; attempt++)
         {
+            ScrollNearLineIntoRealization(lineIndex);
             _lineItems.ScrollIntoView(lineIndex);
             if (lineIndex == 0) _textScrollViewer.ScrollToHome();
             else if (lineIndex == InText.VisibleHeaders.Count - 1) _textScrollViewer.ScrollToEnd();
@@ -181,6 +182,24 @@ public sealed partial class ResultsInTextPanel : UserControl
             if (arrived is not null && StripFor(arrived) is not null) return arrived;
         }
         return null;
+    }
+
+    // ScrollIntoView on an unrealized line rebuilds every visible strip; scrolling to a near one builds new lines.
+    private void ScrollNearLineIntoRealization(int lineIndex)
+    {
+        const int maxSteps = 16;
+        for (var step = 0; step < maxSteps && _lineItems.ContainerFromIndex(lineIndex) is null; step++)
+        {
+            var realized = _lineItems.GetRealizedContainers().Select(_lineItems.IndexFromContainer).Where(i => i >= 0).ToList();
+            if (realized.Count == 0) return;
+            var below = lineIndex > realized.Max();
+            var distance = below ? lineIndex - realized.Max() : realized.Min() - lineIndex;
+            if (distance > realized.Count || (!below && lineIndex > realized.Min())) return;
+            var delta = _textScrollViewer.Viewport.Height / (realized.Count * 2);
+            var offset = _textScrollViewer.Offset.Y + (below ? delta : -delta);
+            _textScrollViewer.Offset = _textScrollViewer.Offset.WithY(Math.Max(0, offset));
+            _lineItems.UpdateLayout();
+        }
     }
 
     internal static ResultsTokenViewModel? TokenOf(Control control) => control is WordStripToken strip ? strip.Data : control.Tag switch

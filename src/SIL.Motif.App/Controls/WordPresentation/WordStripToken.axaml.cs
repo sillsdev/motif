@@ -62,8 +62,14 @@ public sealed partial class WordStripToken : Border
         ShowsSelectionCheckBoxProperty.Changed.AddClassHandler<WordStripToken>((row, _) => row.SyncOptionalControls());
     }
 
+    /// <summary>How many word strips this process has built, so a test can bound the work of a scroll or jump.</summary>
+    internal static int BuiltCount => _builtCount;
+
+    private static int _builtCount;
+
     public WordStripToken()
     {
+        Interlocked.Increment(ref _builtCount);
         AvaloniaXamlLoader.Load(this);
         _strip = this;
         _wordLine = this.FindControl<Control>("WordLine")!;
