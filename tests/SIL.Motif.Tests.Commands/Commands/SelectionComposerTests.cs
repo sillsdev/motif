@@ -29,6 +29,7 @@ public sealed class SelectionComposerTests : IDisposable
         Path.Combine(Path.GetTempPath(), "motif-selection-composer-" + Guid.NewGuid().ToString("N"));
     private readonly LcmCache _cache;
     private readonly SeededText _text;
+    private readonly List<MotifDatabase> _databases = [];
 
     public SelectionComposerTests(PristineProjectFixture pristine)
     {
@@ -40,6 +41,8 @@ public sealed class SelectionComposerTests : IDisposable
     public void Dispose()
     {
         if (!_cache.IsDisposed) _cache.Dispose();
+        // An open store keeps its pooled database handles, which Windows will not let a delete pass.
+        foreach (var database in _databases) database.Dispose();
         try { Directory.Delete(_root, recursive: true); } catch (DirectoryNotFoundException) { }
     }
 
@@ -331,8 +334,10 @@ public sealed class SelectionComposerTests : IDisposable
     private MotifDatabase NewDatabase()
     {
         var project = new ProjectLocator(Path.Combine(_root, "project.fwdata"), "project");
-        return MotifDatabase.OpenOwned(Path.Combine(_root, "project.motif.db"), project,
+        var database = MotifDatabase.OpenOwned(Path.Combine(_root, "project.motif.db"), project,
             MotifSchema.CurrentSchema, new Version(1, 0));
+        _databases.Add(database);
+        return database;
     }
 
     private string CurrentBaselineToken => JsonSerializer.Serialize(

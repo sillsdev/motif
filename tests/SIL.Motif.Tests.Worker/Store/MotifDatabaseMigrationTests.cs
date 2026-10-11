@@ -189,7 +189,7 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
     public void DisposingOwnerClosesPooledHandlesSoTheFileCanBeDeleted()
     {
         var path = DatabasePath("released.fwdata");
-        var owner = MotifDatabase.OpenOwned(path, Locator("released.fwdata"), MotifSchema.CurrentSchema, new Version(1, 0));
+        using var owner = MotifDatabase.OpenOwned(path, Locator("released.fwdata"), MotifSchema.CurrentSchema, new Version(1, 0));
         using (var connection = owner.OpenConnection())
             Execute(connection, "UPDATE MotifMetadata SET CurrentAssessmentId = NULL WHERE Id = 1;");
 

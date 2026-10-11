@@ -15,6 +15,7 @@ namespace SIL.Motif.Tests.Store;
 public sealed class AssessmentRepositoryTests : IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), "motif-assessments-" + Guid.NewGuid().ToString("N"));
+    private readonly List<MotifDatabase> _databases = [];
 
     public AssessmentRepositoryTests() => Directory.CreateDirectory(_root);
 
@@ -541,6 +542,7 @@ public sealed class AssessmentRepositoryTests : IDisposable
         database = MotifDatabase.OpenOwned(
             Path.Combine(_root, Path.GetFileNameWithoutExtension(fileName) + ".motif.db"), project,
             MotifSchema.CurrentSchema, new Version(1, 0));
+        _databases.Add(database);
         return new AssessmentRepository(database);
     }
 
@@ -587,6 +589,8 @@ public sealed class AssessmentRepositoryTests : IDisposable
 
     public void Dispose()
     {
+        // An open store keeps its pooled database handles, which Windows will not let a delete pass.
+        foreach (var database in _databases) database.Dispose();
         try { Directory.Delete(_root, recursive: true); }
         catch (DirectoryNotFoundException) { }
     }
