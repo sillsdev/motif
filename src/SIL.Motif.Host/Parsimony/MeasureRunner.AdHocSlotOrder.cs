@@ -44,7 +44,7 @@ public static partial class MeasureRunner
         {
             candidatePairs++;
             findings.Add(CreateAdhocSlotOrderFinding(measure, session, bundleId,
-                review.ThemeKey + "/adjacency-question/" + review.Rule.Guid, [review], 1, eligible,
+                ParsimonyFindingIdentity.AdjacencyThemeKey(review.ThemeKey, review.Rule.Guid), [review], 1, eligible,
                 false, true, session.GroupedAdhocFactsAvailable));
         }
 
@@ -310,8 +310,8 @@ public static partial class MeasureRunner
         if (!groupedFactsAvailable)
             limitations.Add("Grouped ad hoc provenance is unavailable; the finding uses flat prohibition facts only.");
 
-        var identity = "adhoc-slot-order/" + themeKey;
-        var findingId = $"{measure.Id}:{(adjacencyQuestion ? "adjacency:" : "theme:")}{Digest(themeKey)}";
+        var identity = ParsimonyFindingIdentity.AdhocSlotOrderIdentity(themeKey);
+        var findingId = ParsimonyFindingIdentity.AdhocSlotOrderFindingId(measure.Id, adjacencyQuestion, themeKey);
         return new ParsimonyFinding(findingId, measure.Id, measure.Axis, measure.Tier,
             new ParsimonyFindingAttachment(ParsimonyAttachmentKind.Group, identity,
                 GroupKind: ParsimonyGroupKind.AdhocSlotOrder), themeKey,

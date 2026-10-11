@@ -41,7 +41,7 @@ public static class ParsimonyDispositionQuery
         {
             var related = effective.Where(item => item.Judgment.Body is DispositionJudgment disposition &&
                 disposition.MeasureId == finding.MeasureId &&
-                SubjectMatches(disposition.Subject, finding, judgments.ProjectId)).ToArray();
+                ParsimonyFindingIdentity.SubjectMatches(disposition.Subject, finding, judgments.ProjectId)).ToArray();
             var exact = related.Where(item => item.Judgment.Body is DispositionJudgment disposition &&
                 SameEvidenceDigest(disposition.EvidenceDigest, finding.EvidenceDigest) &&
                 disposition.EvidenceContract == MeasureCatalog.Find(finding.MeasureId)?.QueryId).ToArray();
@@ -49,7 +49,7 @@ public static class ParsimonyDispositionQuery
                 .Where(item => revisions.TryGetValue(item.RevisionId, out var revision) &&
                     revision.Judgment.Body is DispositionJudgment disposition &&
                     disposition.MeasureId == finding.MeasureId &&
-                    SubjectMatches(disposition.Subject, finding, judgments.ProjectId) &&
+                    ParsimonyFindingIdentity.SubjectMatches(disposition.Subject, finding, judgments.ProjectId) &&
                     SameEvidenceDigest(disposition.EvidenceDigest, finding.EvidenceDigest))
                 .ToArray();
 
@@ -137,7 +137,7 @@ public static class ParsimonyDispositionQuery
             var current = revisions.Values.FirstOrDefault(item => item.Judgment.JudgmentId == revision.JudgmentId &&
                 heads.GetValueOrDefault(item.RevisionId)?.State == "effective");
             var matchingSubject = findings.Where(finding => finding.MeasureId == disposition.MeasureId &&
-                SubjectMatches(disposition.Subject, finding, judgments.ProjectId)).ToArray();
+                ParsimonyFindingIdentity.SubjectMatches(disposition.Subject, finding, judgments.ProjectId)).ToArray();
             var exact = matchingSubject.Any(finding => SameEvidenceDigest(disposition.EvidenceDigest, finding.EvidenceDigest) &&
                 disposition.EvidenceContract == MeasureCatalog.Find(finding.MeasureId)?.QueryId);
             var changed = matchingSubject.Any(finding => (!SameEvidenceDigest(disposition.EvidenceDigest, finding.EvidenceDigest) ||
@@ -189,130 +189,9 @@ public static class ParsimonyDispositionQuery
             .OrderBy(item => item.JudgmentId, StringComparer.Ordinal)
             .ThenBy(item => item.RevisionId, StringComparer.Ordinal).ToArray();
 
-    private static bool SubjectMatches(HumanJudgmentSubject subject, ParsimonyFinding finding, string projectId)
-    {
-        var attachment = finding.AttachesTo;
-        switch (subject)
-        {
-            case ProjectJudgmentSubject project:
-                return attachment.Kind == ParsimonyAttachmentKind.Project &&
-                    SameIdentity(project.Id, attachment.Identity) && SameIdentity(project.Id, projectId);
-            case ParsimonyFindingJudgmentSubject reportedFinding:
-                return attachment.Kind == ParsimonyAttachmentKind.WordCase &&
-                    reportedFinding.MeasureId == finding.MeasureId &&
-                    reportedFinding.FindingId == finding.FindingId;
-            case ObjectJudgmentSubject item:
-                if (attachment.Kind == ParsimonyAttachmentKind.AuthoredObject &&
-                    item.Object.ClassMatches(attachment.AuthoredObjectKind) &&
-                    SameIdentity(item.Object.Id, attachment.Identity)) return true;
-                return attachment.Kind == ParsimonyAttachmentKind.Group &&
-                    attachment.GroupKind == ParsimonyGroupKind.UnusedStatement &&
-                    item.Object.Class is "PhEnvironment" or "PhNCSegments" or "PhNCFeatures" &&
-                    SameIdentity(item.Object.Id, LastIdentity(attachment.Identity));
-            case GroupJudgmentSubject group:
-                if (group.MeasureId != finding.MeasureId || attachment.Kind != ParsimonyAttachmentKind.Group ||
-                    !GroupRoleMatches(group.Role, attachment.GroupKind)) return false;
-                var referenced = ReferencedObjectIds(finding, attachment.GroupKind);
-                if (referenced.Count == 0) referenced.Add(LastIdentity(attachment.Identity));
-                var members = group.Members.Select(member => NormalizeIdentity(member.Id)).Order(StringComparer.Ordinal).ToArray();
-                return members.Length == referenced.Count && members.SequenceEqual(referenced.Order(StringComparer.Ordinal)) &&
-                    group.Members.All(member => GroupMemberClassMatches(member.Class, attachment.GroupKind));
-            default:
-                return false;
-        }
-    }
-
-    private static HashSet<string> ReferencedObjectIds(ParsimonyFinding finding, ParsimonyGroupKind? groupKind)
-    {
-        var result = new HashSet<string>(StringComparer.Ordinal);
-        var evidenceView = groupKind switch
-        {
-            ParsimonyGroupKind.AlternationFamily or ParsimonyGroupKind.AllomorphDuplicateForms =>
-                "allomorph-context",
-            ParsimonyGroupKind.AdhocSlotOrder => "adhoc-context",
-            _ => null,
-        };
-        foreach (var reference in finding.EvidenceRefs.Where(item => evidenceView is null || item.View == evidenceView))
-        {
-            if (reference.Arguments.ValueKind != JsonValueKind.Object ||
-                !reference.Arguments.TryGetProperty("objectGuid", out var value) ||
-                value.ValueKind != JsonValueKind.String || value.GetString() is not { } identity) continue;
-            result.Add(NormalizeIdentity(identity));
-        }
-        return result;
-    }
-
-    private static bool GroupRoleMatches(JudgmentGroupRole role, ParsimonyGroupKind? kind) => (role, kind) switch
-    {
-        (JudgmentGroupRole.AlternationFamily, ParsimonyGroupKind.AlternationFamily) => true,
-        (JudgmentGroupRole.DuplicatePair, ParsimonyGroupKind.AllomorphDuplicateForms) => true,
-        (JudgmentGroupRole.AdhocSlotOrder, ParsimonyGroupKind.AdhocSlotOrder) => true,
-        (JudgmentGroupRole.AdhocCluster, ParsimonyGroupKind.UnusedStatement) => true,
-        _ => false,
-    };
-
-    private static bool GroupMemberClassMatches(string className, ParsimonyGroupKind? kind) => kind switch
-    {
-        ParsimonyGroupKind.AlternationFamily or ParsimonyGroupKind.AllomorphDuplicateForms =>
-            className is "MoStemAllomorph" or "MoAffixAllomorph" or "MoAffixProcess",
-        ParsimonyGroupKind.AdhocSlotOrder =>
-            className is "MoAlloAdhocProhib" or "MoMorphAdhocProhib" or "MoAdhocProhibGr",
-        ParsimonyGroupKind.UnusedStatement =>
-            className is "PhEnvironment" or "PhNCSegments" or "PhNCFeatures",
-        _ => false,
-    };
-
-    private static bool ObjectClassMatches(string className, ParsimonyAuthoredObjectKind? kind) => kind switch
-    {
-        ParsimonyAuthoredObjectKind.AdhocProhibition =>
-            className is "MoAlloAdhocProhib" or "MoMorphAdhocProhib" or "MoAdhocProhibGr",
-        ParsimonyAuthoredObjectKind.InflectionalMsa => className == "MoInflAffMsa",
-        ParsimonyAuthoredObjectKind.AffixTemplate => className == "MoInflAffixTemplate",
-        ParsimonyAuthoredObjectKind.AffixSlot => className == "MoInflAffixSlot",
-        ParsimonyAuthoredObjectKind.Allomorph =>
-            className is "MoStemAllomorph" or "MoAffixAllomorph" or "MoAffixProcess",
-        ParsimonyAuthoredObjectKind.NaturalClass => className is "PhNCSegments" or "PhNCFeatures",
-        ParsimonyAuthoredObjectKind.Environment => className == "PhEnvironment",
-        _ => false,
-    };
-
     private static bool SameEvidenceDigest(string first, string second) =>
-        StripDigestPrefix(first) == StripDigestPrefix(second);
-
-    private static string StripDigestPrefix(string value) => value.StartsWith("sha256:", StringComparison.Ordinal)
-        ? value[7..] : value;
-
-    private static bool SameIdentity(string first, string second) => NormalizeIdentity(first) == NormalizeIdentity(second);
-
-    private static string LastIdentity(string value)
-    {
-        var segment = value.Split('/', StringSplitOptions.RemoveEmptyEntries).LastOrDefault() ?? value;
-        return NormalizeIdentity(segment);
-    }
-
-    private static string NormalizeIdentity(string value)
-    {
-        if (Guid.TryParse(value, out var guid)) return CanonicalId.FromGuid(guid).Value;
-        return CanonicalId.TryParse(value, out var id) ? CanonicalId.FromGuid(id.ToGuid()).Value : value;
-    }
+        ParsimonyFindingIdentity.EvidenceDigestsMatch(first, second);
 
     private static string Hash(string value) => Convert.ToHexStringLower(
         System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(value)));
-}
-
-internal static class JudgmentObjectClassExtensions
-{
-    public static bool ClassMatches(this JudgmentObject value, ParsimonyAuthoredObjectKind? kind) =>
-        value.Class switch
-        {
-            "MoAlloAdhocProhib" or "MoMorphAdhocProhib" or "MoAdhocProhibGr" =>
-                kind == ParsimonyAuthoredObjectKind.AdhocProhibition,
-            "MoInflAffMsa" => kind == ParsimonyAuthoredObjectKind.InflectionalMsa,
-            "MoInflAffixTemplate" => kind == ParsimonyAuthoredObjectKind.AffixTemplate,
-            "MoInflAffixSlot" => kind == ParsimonyAuthoredObjectKind.AffixSlot,
-            "MoStemAllomorph" or "MoAffixAllomorph" => kind == ParsimonyAuthoredObjectKind.Allomorph,
-            "PhNCSegments" or "PhNCFeatures" => kind == ParsimonyAuthoredObjectKind.NaturalClass,
-            "PhEnvironment" => kind == ParsimonyAuthoredObjectKind.Environment,
-            _ => false,
-        };
 }

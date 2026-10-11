@@ -7,6 +7,7 @@ using SIL.Motif.Contract.Parsimony;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Contract.Canonicalization;
 using SIL.Motif.Help;
+using SIL.Motif.Host.Parsimony;
 using SIL.Motif.Projection;
 using SIL.Motif.Runner.Composers;
 
@@ -125,22 +126,13 @@ internal static class ParsimonyFindingDispositionComposer
         };
         if (finding.MeasureId != expectedMeasure || string.IsNullOrWhiteSpace(finding.GroupKey))
             throw new InvalidOperationException("The computed group has an incomplete measure or member identity.");
-        var identityMatches = groupKind switch
-        {
-            ParsimonyGroupKind.AllomorphDuplicateForms =>
-                finding.GroupKey.StartsWith("entry/", StringComparison.Ordinal) &&
-                finding.AttachesTo.Identity.StartsWith(finding.GroupKey + "/duplicate-forms/", StringComparison.Ordinal),
-            ParsimonyGroupKind.AlternationFamily => finding.AttachesTo.Identity == finding.GroupKey,
-            ParsimonyGroupKind.AdhocSlotOrder =>
-                finding.AttachesTo.Identity == "adhoc-slot-order/" + finding.GroupKey,
-            _ => false,
-        };
+        var identityMatches = ParsimonyFindingIdentity.GroupIdentityIsConsistent(finding);
         if (!identityMatches)
             throw new InvalidOperationException("The computed group identity does not match its exact member key.");
 
         var references = finding.EvidenceRefs.Where(reference => reference.View == evidenceView).ToArray();
         if (groupKind == ParsimonyGroupKind.AdhocSlotOrder &&
-            finding.FindingId.StartsWith(expectedMeasure + ":adjacency:", StringComparison.Ordinal))
+            ParsimonyFindingIdentity.IsAdjacencyQuestion(finding))
         {
             var reference = references.Length == 1 ? references[0] :
                 throw new InvalidOperationException("The adjacency finding must name its one exact prohibition.");
@@ -151,7 +143,7 @@ internal static class ParsimonyFindingDispositionComposer
                 throw new InvalidOperationException("The adjacency finding does not carry its exact prohibition identity.");
             var prohibition = ResolveObject(cache, identity.GetString()!);
             if (!MatchesAuthoredKind(prohibition, ParsimonyAuthoredObjectKind.AdhocProhibition) ||
-                !finding.GroupKey.EndsWith("/adjacency-question/" + prohibition.Guid, StringComparison.Ordinal))
+                !ParsimonyFindingIdentity.AdjacencyNamesRule(finding, prohibition.Guid.ToString()))
                 throw new InvalidOperationException("The adjacency finding does not match its exact prohibition.");
             return (new GroupJudgmentSubject(finding.MeasureId, role, [ToJudgmentObject(prohibition)]),
                 "ad hoc prohibition " + Caption(cache, prohibition));
@@ -167,14 +159,8 @@ internal static class ParsimonyFindingDispositionComposer
                 throw new InvalidOperationException("The finding does not carry its exact computed-group member identities.");
 
             var item = ResolveObject(cache, guidValue.GetString()!);
-            var supportedMember = groupKind switch
-            {
-                ParsimonyGroupKind.AllomorphDuplicateForms or ParsimonyGroupKind.AlternationFamily =>
-                    item is IMoForm && item.Owner is ILexEntry,
-                ParsimonyGroupKind.AdhocSlotOrder =>
-                    MatchesAuthoredKind(item, ParsimonyAuthoredObjectKind.AdhocProhibition),
-                _ => false,
-            };
+            var supportedMember = ParsimonyFindingIdentity.GroupMemberClassMatches(groupKind, item.ClassName) &&
+                (groupKind == ParsimonyGroupKind.AdhocSlotOrder || item.Owner is ILexEntry);
             if (!supportedMember)
                 throw new InvalidOperationException("A computed-group member has an unsupported model type or owner.");
             return item;
@@ -186,7 +172,7 @@ internal static class ParsimonyFindingDispositionComposer
         {
             var entry = (ILexEntry)members[0].Owner!;
             if (members.Any(item => item.Owner is not ILexEntry owner || owner.Guid != entry.Guid) ||
-                !string.Equals(finding.GroupKey, "entry/" + entry.Guid.ToString("D"), StringComparison.Ordinal))
+                !ParsimonyFindingIdentity.GroupKeyIsEntry(finding, entry.Guid.ToString("D")))
                 throw new InvalidOperationException("The duplicate-allomorph members do not match the finding's entry group.");
         }
         if (groupKind == ParsimonyGroupKind.AlternationFamily &&
@@ -289,17 +275,8 @@ internal static class ParsimonyFindingDispositionComposer
         _ => "an unnamed item",
     };
 
-    private static bool MatchesAuthoredKind(ICmObject item, ParsimonyAuthoredObjectKind? kind) => kind switch
-    {
-        ParsimonyAuthoredObjectKind.AdhocProhibition => item.ClassName is "MoAlloAdhocProhib" or "MoMorphAdhocProhib" or "MoAdhocProhibGr",
-        ParsimonyAuthoredObjectKind.InflectionalMsa => item.ClassName == "MoInflAffMsa",
-        ParsimonyAuthoredObjectKind.AffixTemplate => item.ClassName == "MoInflAffixTemplate",
-        ParsimonyAuthoredObjectKind.AffixSlot => item.ClassName == "MoInflAffixSlot",
-        ParsimonyAuthoredObjectKind.Allomorph => item is IMoForm,
-        ParsimonyAuthoredObjectKind.NaturalClass => item.ClassName is "PhNCSegments" or "PhNCFeatures",
-        ParsimonyAuthoredObjectKind.Environment => item.ClassName == "PhEnvironment",
-        _ => false,
-    };
+    private static bool MatchesAuthoredKind(ICmObject item, ParsimonyAuthoredObjectKind? kind) =>
+        ParsimonyFindingIdentity.ClassMatches(kind, item.ClassName);
 
     private static bool MatchesId(string identity, Guid expected) =>
         Guid.TryParse(identity, out var guid) ? guid == expected :

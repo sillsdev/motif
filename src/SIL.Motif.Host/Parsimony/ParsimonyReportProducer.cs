@@ -129,19 +129,13 @@ public sealed class ParsimonyReportProducer : IReportProducer
     /// </summary>
     internal static string DescribeFinding(ParsimonyQuerySession session, ParsimonyFinding finding)
     {
-        foreach (var owner in new[] { finding.GroupKey, finding.AttachesTo.Identity }.OfType<string>())
+        foreach (var (kind, guid) in ParsimonyFindingIdentity.GuidSegments(finding))
         {
-            var parts = owner.Split('/');
-            for (var index = 0; index < parts.Length; index++)
-            {
-                if (!Guid.TryParse(parts[index], out _))
-                    continue;
-                var words = finding.AttachesTo.AuthoredObjectKind == ParsimonyAuthoredObjectKind.InflectionalMsa
-                    ? session.DescribeMsa(parts[index])
-                    : session.DescribeObject(parts[index]);
-                if (words is null) continue;
-                return index > 0 ? $"{parts[index - 1]} \"{words}\"" : $"\"{words}\"";
-            }
+            var words = finding.AttachesTo.AuthoredObjectKind == ParsimonyAuthoredObjectKind.InflectionalMsa
+                ? session.DescribeMsa(guid)
+                : session.DescribeObject(guid);
+            if (words is null) continue;
+            return kind is not null ? $"{kind} \"{words}\"" : $"\"{words}\"";
         }
         return finding.AttachesTo.Identity;
     }

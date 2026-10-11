@@ -488,8 +488,7 @@ internal static class AlternationDiscovery
         {
             var members = Members.Values.OrderBy(item => item.EntryGuid, StringComparer.Ordinal)
                 .Select(item => item.Build()).ToArray();
-            var familyDigest = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(key))).ToLowerInvariant();
-            return new AlternationFamilyFacts("alternation-family/" + familyDigest, key,
+                        return new AlternationFamilyFacts(ParsimonyFindingIdentity.AlternationFamilyIdentity(key), key,
                 change.Description, change.Lane, change.Directed, context.Key, context.ConditionKeys, context.Description,
                 gateKey, gateDescription, sideDescription, change.InputPhonemeGuids, change.OutputPhonemeGuids,
                 change.ChangedFeatures, change.SharedFeatures, Array.AsReadOnly(members));

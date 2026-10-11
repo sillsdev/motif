@@ -14,6 +14,7 @@ using SIL.Motif.Contract.Parsimony;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Contract.Retirement;
 using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Host.Parsimony;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Host.Baselines;
 using SIL.Motif.Projection.Retirement;
@@ -113,7 +114,7 @@ internal static class RetirementReviewProjectionAssembler
         if (report.ReportId != record.ReportId || report.ReportId != intent.ReportId.Value.Value)
             throw new InvalidDataException("The bound Parsimony Report identity does not match its stored row.");
         var matches = report.Findings.Where(finding => finding.MeasureId == intent.MeasureId &&
-            CanonicalDigest(finding.EvidenceDigest) == intent.EvidenceDigest && SubjectMatches(intent.Subject, finding))
+            ParsimonyFindingIdentity.EvidenceDigestsMatch(finding.EvidenceDigest, intent.EvidenceDigest) && SubjectMatches(intent.Subject, finding))
             .ToArray();
         if (matches.Length != 1)
             throw new InvalidDataException("The bound issue does not identify one exact finding in its source Report.");
@@ -134,36 +135,10 @@ internal static class RetirementReviewProjectionAssembler
 
     private static bool SubjectMatches(HumanJudgmentSubject subject, ParsimonyFinding finding) => subject switch
     {
-        ParsimonyFindingJudgmentSubject direct => direct.MeasureId == finding.MeasureId &&
-            direct.FindingId == finding.FindingId,
-        GroupJudgmentSubject group => GroupMatches(group, finding),
+        ParsimonyFindingJudgmentSubject or GroupJudgmentSubject { Role: not JudgmentGroupRole.AdhocCluster } =>
+            ParsimonyFindingIdentity.SubjectMatches(subject, finding, string.Empty),
         _ => false,
     };
-
-    private static bool GroupMatches(GroupJudgmentSubject subject, ParsimonyFinding finding)
-    {
-        var groupKind = subject.Role switch
-        {
-            JudgmentGroupRole.DuplicatePair => ParsimonyGroupKind.AllomorphDuplicateForms,
-            JudgmentGroupRole.AlternationFamily => ParsimonyGroupKind.AlternationFamily,
-            JudgmentGroupRole.AdhocSlotOrder => ParsimonyGroupKind.AdhocSlotOrder,
-            _ => (ParsimonyGroupKind?)null,
-        };
-        if (groupKind is null || subject.MeasureId != finding.MeasureId ||
-            finding.AttachesTo.Kind != ParsimonyAttachmentKind.Group || finding.AttachesTo.GroupKind != groupKind)
-            return false;
-        var view = subject.Role == JudgmentGroupRole.AdhocSlotOrder ? "adhoc-context" : "allomorph-context";
-        var members = new HashSet<Guid>(subject.Members.Select(item => CanonicalId.Parse(item.Id).ToGuid()));
-        var reported = new HashSet<Guid>();
-        foreach (var reference in finding.EvidenceRefs.Where(item => item.View == view))
-        {
-            if (reference.Arguments.ValueKind != JsonValueKind.Object ||
-                !reference.Arguments.TryGetProperty("objectGuid", out var identity) ||
-                identity.ValueKind != JsonValueKind.String) return false;
-            reported.Add(ParseGuid(identity.GetString()!));
-        }
-        return members.Count == subject.Members.Count && members.SetEquals(reported);
-    }
 
     private static void ValidateBeforeFinding(ParsimonyFinding bound, ParsimonyReportResponse before)
     {
@@ -354,10 +329,6 @@ internal static class RetirementReviewProjectionAssembler
     private static string Required(string? value, string kind) => string.IsNullOrWhiteSpace(value)
         ? throw new InvalidDataException($"A footprint row has no {kind}.")
         : value;
-
-    private static Guid ParseGuid(string value) => Guid.TryParse(value, out var guid)
-        ? guid
-        : CanonicalId.Parse(value).ToGuid();
 
     private static string CanonicalDigest(string digest) => digest.StartsWith("sha256:", StringComparison.Ordinal)
         ? digest

@@ -72,6 +72,31 @@ public sealed class ParsimonyDispositionQueryTests
         Assert.Equal("suppressed", Assert.Single(result.History).State);
     }
 
+    [Theory]
+    [InlineData("MoStemAllomorph")]
+    [InlineData("MoAffixAllomorph")]
+    [InlineData("MoAffixProcess")]
+    public void AKeepOnAnAllomorphSuppressesItsFindingForEveryAllomorphClass(string className)
+    {
+        var measureId = "P-allo-duplicate-form";
+        var finding = new ParsimonyFinding(measureId + ":item", measureId, ParsimonyAxis.Parsimony,
+            ParsimonyTier.Static,
+            new ParsimonyFindingAttachment(ParsimonyAttachmentKind.AuthoredObject, SubjectId,
+                ParsimonyAuthoredObjectKind.Allomorph), null,
+            new ParsimonyMeasureNumber(1, 1, "allomorphs"),
+            new ParsimonyMeasureThreshold(ParsimonyThresholdOperator.RankedOnly, null, "1"),
+            FindingDigest, [], "P-test", [], ParsimonyVerification.NotRun);
+        var judgment = NewJudgment(Id(), [], new DispositionJudgment(
+            new ObjectJudgmentSubject(new JudgmentObject(className, SubjectId)), measureId,
+            ParsimonyDispositionKind.Keep, FindingDigest, MeasureCatalog.Find(measureId)!.QueryId!,
+            "an allomorph", "Duplicate forms"), "reviewed allomorph");
+
+        var result = Query([judgment], finding);
+
+        Assert.Equal("suppressed", Assert.Single(result.Findings).State);
+        Assert.Equal(1, result.SuppressedCount);
+    }
+
     [Fact]
     public void AnIncompatibleContractResurfacesEvenWhenTheDigestMatches()
     {

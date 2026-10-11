@@ -83,7 +83,7 @@ public static partial class MeasureRunner
                      .Where(group => group.Count() > 1).OrderBy(group => group.Key, StringComparer.Ordinal))
         {
             var members = group.OrderBy(item => item.Guid, StringComparer.Ordinal).ToArray();
-            var groupKey = "adhoc-signature/" + Digest(group.Key);
+            var groupKey = ParsimonyFindingIdentity.AdhocSignatureGroupKey(group.Key);
             var retained = members[0];
             foreach (var duplicate in members.Skip(1))
             {
@@ -135,8 +135,8 @@ public static partial class MeasureRunner
             redundant += members.Length - 1;
             var memberIds = members.Select(item => item.Guid).ToArray();
             // Member GUIDs name the group so a form edit keeps the finding ID.
-            var groupKey = $"entry/{group.Key.EntryGuid}/duplicate-forms/{group.Key.MorphType}/" +
-                Digest(string.Join("\n", memberIds));
+            var groupKey = ParsimonyFindingIdentity.DuplicateFormsIdentity(group.Key.EntryGuid, group.Key.MorphType,
+                memberIds);
             var digestValue = JsonSerializer.Serialize(new
             {
                 group.Key.EntryGuid,
@@ -148,10 +148,10 @@ public static partial class MeasureRunner
             var references = members.Select(item => EvidenceReference(bundleId, "allomorph-context",
                 new { objectGuid = item.Guid })).ToArray();
             findings.Add(new ParsimonyFinding(
-                $"{measure.Id}:{Digest(groupKey)}", measure.Id, measure.Axis, measure.Tier,
+                ParsimonyFindingIdentity.GroupFindingId(measure.Id, groupKey), measure.Id, measure.Axis, measure.Tier,
                 new ParsimonyFindingAttachment(ParsimonyAttachmentKind.Group, groupKey,
                     GroupKind: ParsimonyGroupKind.AllomorphDuplicateForms),
-                "entry/" + group.Key.EntryGuid,
+                ParsimonyFindingIdentity.EntryGroupKey(group.Key.EntryGuid),
                 new ParsimonyMeasureNumber(members.Length - 1, members.Length, measure.Unit),
                 measure.Threshold!,
                 MeasureEvidence.Compute(measure, session, digestValue), references, measure.RecipeLink,
@@ -210,7 +210,7 @@ public static partial class MeasureRunner
                 if (discovery.InvalidConditions > 0)
                     limitations.Add("Invalid phone restrictions were excluded for grammar-health review.");
                 findings.Add(new ParsimonyFinding(
-                    $"{measure.Id}:{candidate.Allomorph.Guid}:{Digest(family.Key)}", measure.Id, measure.Axis,
+                    ParsimonyFindingIdentity.SiteFindingId(measure.Id, candidate.Allomorph.Guid, family.Key), measure.Id, measure.Axis,
                     measure.Tier,
                     new ParsimonyFindingAttachment(measure.AttachesTo, candidate.Allomorph.Guid,
                         measure.AuthoredObjectKind),
@@ -387,8 +387,8 @@ public static partial class MeasureRunner
         var findings = unused.Select(item => new ParsimonyFinding(
             $"{measure.Id}:{item.StatementKind}:{item.StatementGuid}", measure.Id, measure.Axis, measure.Tier,
             new ParsimonyFindingAttachment(ParsimonyAttachmentKind.Group,
-                $"statement/{item.StatementKind}/{item.StatementGuid}", GroupKind: ParsimonyGroupKind.UnusedStatement),
-            $"statement/{item.StatementKind}", new ParsimonyMeasureNumber(1, statements.Count, measure.Unit),
+                ParsimonyFindingIdentity.StatementIdentity(item.StatementKind, item.StatementGuid), GroupKind: ParsimonyGroupKind.UnusedStatement),
+            ParsimonyFindingIdentity.StatementGroupKey(item.StatementKind), new ParsimonyMeasureNumber(1, statements.Count, measure.Unit),
             measure.Threshold!,
             MeasureEvidence.Compute(measure, session, JsonSerializer.Serialize(new
             {
@@ -467,7 +467,7 @@ public static partial class MeasureRunner
             return new ParsimonyFinding(
                 $"{measure.Id}:{item.WordformGuid}:{item.Signature}", measure.Id, measure.Axis, measure.Tier,
                 new ParsimonyFindingAttachment(ParsimonyAttachmentKind.WordCase, item.WordformGuid),
-                "wordform/" + item.WordformGuid,
+                ParsimonyFindingIdentity.WordformGroupKey(item.WordformGuid),
                 new ParsimonyMeasureNumber(1, facts.EligibleMorphologies, measure.Unit), measure.Threshold!,
                 MeasureEvidence.Compute(measure, session, evidence),
                 [EvidenceReference(bundleId, "parser-cases", new { caseKey = item.CaseKey })],
@@ -510,7 +510,7 @@ public static partial class MeasureRunner
             return new ParsimonyFinding(
                 $"{measure.Id}:{item.CaseId}:{item.RevisionId}", measure.Id, measure.Axis, measure.Tier,
                 new ParsimonyFindingAttachment(ParsimonyAttachmentKind.WordCase, item.CaseId),
-                "reviewed-negative/" + item.CaseId,
+                ParsimonyFindingIdentity.ReviewedNegativeGroupKey(item.CaseId),
                 new ParsimonyMeasureNumber(1, facts.EligibleNegatives, measure.Unit), measure.Threshold!,
                 MeasureEvidence.Compute(measure, session, evidence),
                 [EvidenceReference(bundleId, "parser-cases", new { caseKey = item.CaseKey })],
@@ -560,7 +560,7 @@ public static partial class MeasureRunner
                 .Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)
                 .Select(guid => EvidenceReference(bundleId, "allomorph-context", new { objectGuid = guid })));
             return new ParsimonyFinding(
-                $"{measure.Id}:{Digest(family.Key)}", measure.Id, measure.Axis, measure.Tier,
+                ParsimonyFindingIdentity.GroupFindingId(measure.Id, family.Key), measure.Id, measure.Axis, measure.Tier,
                 new ParsimonyFindingAttachment(ParsimonyAttachmentKind.Group, family.Key,
                     GroupKind: ParsimonyGroupKind.AlternationFamily),
                 family.Key, new ParsimonyMeasureNumber(family.Members.Count, denominator, measure.Unit),

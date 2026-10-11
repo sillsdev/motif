@@ -92,7 +92,7 @@ public static partial class MeasureRunner
             references.AddRange(site.EnvironmentGuids.Select(environmentGuid =>
                 EvidenceReference(bundleId, "environment-excess", new { objectGuid = environmentGuid })));
             findings.Add(new ParsimonyFinding(
-                $"{measure.Id}:{site.AllomorphGuid}:{Digest(site.Bucket + "/" + site.Side)}", measure.Id,
+                ParsimonyFindingIdentity.SiteFindingId(measure.Id, site.AllomorphGuid, site.Bucket + "/" + site.Side), measure.Id,
                 measure.Axis, measure.Tier,
                 new ParsimonyFindingAttachment(measure.AttachesTo, site.AllomorphGuid, measure.AuthoredObjectKind),
                 groupKey, new ParsimonyMeasureNumber(site.Extras.Count, site.Denominator, "context-types"),
@@ -166,10 +166,10 @@ public static partial class MeasureRunner
             if (unknownClassMembers.Count > 0)
                 limitations.Add("The compiler reported class members without source phoneme identities; membership is unknown.");
             findings.Add(new ParsimonyFinding(
-                $"{measure.Id}:{site.ClassGuid}:{Digest(site.UsageSite)}", measure.Id,
+                ParsimonyFindingIdentity.SiteFindingId(measure.Id, site.ClassGuid, site.UsageSite), measure.Id,
                 measure.Axis, measure.Tier,
                 new ParsimonyFindingAttachment(measure.AttachesTo, site.ClassGuid, measure.AuthoredObjectKind),
-                $"class/{site.ClassGuid}/site/{Digest(site.UsageSite)}",
+                ParsimonyFindingIdentity.ClassSiteGroupKey(site.ClassGuid, site.UsageSite),
                 new ParsimonyMeasureNumber(site.Extras.Count, site.Denominator, "phoneme-types"),
                 measure.Threshold!, MeasureEvidence.Compute(measure, session, detail),
                 [EvidenceReference(bundleId, "natural-class-excess", new { objectGuid = site.ClassGuid }),
