@@ -56,8 +56,9 @@ public static class MotifUpdateGate
     /// </summary>
     /// <remarks>
     /// An idle Worker holds no update lease, so the exclusive lease cannot see it, yet Velopack cannot swap the
-    /// installed files under it. The request is a marker file the Worker's idle poll reads; a Worker that is
-    /// running a job leaves it unanswered, and this refuses naming that process once the wait is over.
+    /// installed files under it. The request is a marker file; a Worker that is running a job leaves it
+    /// unanswered (pinned by `ABusyRunnerIgnoresAnUpdatesRequestToExit`), and this refuses naming that process
+    /// once the wait is over (pinned by `AWorkerThatDoesNotExitRefusesTheUpdateNamingItAndClearsTheRequest`).
     /// </remarks>
     /// <exception cref="InvalidOperationException">A Worker from the install is still running at the deadline.</exception>
     public static void RetireIdleWorkers(string installDirectory, TimeSpan timeout) =>
