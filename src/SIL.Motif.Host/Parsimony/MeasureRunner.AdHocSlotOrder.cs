@@ -6,13 +6,14 @@ namespace SIL.Motif.Host.Parsimony;
 
 public static partial class MeasureRunner
 {
-    private static ParsimonyMeasureResult RunAdhocSlotOrder(MeasureDefinition measure,
-        ParsimonyQuerySession session, string bundleId)
+    internal static ParsimonyMeasureResult DecideAdhocSlotOrder(MeasureDefinition measure,
+        AdhocSlotOrderInput input, MeasureContext context)
     {
-        var rules = session.ReadAdhocProhibitions();
-        var facts = session.ReadTemplateSequenceFacts();
-        var compiledMorphRuleMsas = session.ReadCompiledMorphRuleMsas();
-        var loaderReasons = session.ReadAdhocProhibitionLoaderReasons();
+        var bundleId = context.BundleId;
+        var rules = input.Rules;
+        var facts = input.Facts;
+        var compiledMorphRuleMsas = input.CompiledMorphRuleMsas;
+        var loaderReasons = input.LoaderReasons;
         var reviews = new List<AdhocSlotOrderReview>();
         var eligible = 0L;
         var unknown = false;
@@ -36,28 +37,52 @@ public static partial class MeasureRunner
             candidatePairs += distinctPairs.Length;
             var family = distinctPairs.Length >= 2;
             var members = distinctPairs.SelectMany(group => group).ToArray();
-            findings.Add(CreateAdhocSlotOrderFinding(measure, session, bundleId, theme.Key, members,
-                distinctPairs.Length, eligible, family, false, session.GroupedAdhocFactsAvailable));
+            findings.Add(CreateAdhocSlotOrderFinding(measure, context, theme.Key, members,
+                distinctPairs.Length, eligible, family, false, input.GroupedFactsAvailable));
         }
 
         foreach (var review in reviews.Where(review => review.AdjacencyQuestion))
         {
             candidatePairs++;
-            findings.Add(CreateAdhocSlotOrderFinding(measure, session, bundleId,
+            findings.Add(CreateAdhocSlotOrderFinding(measure, context,
                 ParsimonyFindingIdentity.AdjacencyThemeKey(review.ThemeKey, review.Rule.Guid), [review], 1, eligible,
-                false, true, session.GroupedAdhocFactsAvailable));
+                false, true, input.GroupedFactsAvailable));
         }
 
-        var details = reviews.Select(review => review.Detail).ToList();
+        var details = new List<string>();
+        var abstentions = new MeasureAbstentions();
+        abstentions.Add("unknown-loader-state", reviews.Count(review => review.UnknownReason == "unknown-loader-state"),
+            "The final loader state of some ad hoc prohibitions is unknown, so their slot order was not checked.");
+        abstentions.Add("incomplete-category-hierarchy",
+            reviews.Count(review => review.UnknownReason == "incomplete-category-hierarchy"),
+            "The category hierarchy of some ad hoc prohibitions is incomplete, so their applicable templates were not found.");
+        abstentions.Add("incomplete-compiled-order",
+            reviews.Count(review => review.UnknownReason == "incomplete-compiled-order"),
+            "The compiled order of some ad hoc prohibitions' target placements is incomplete, so their slot order was not checked.");
+        if (unknown) details.Add(abstentions.Detail());
+        details.AddRange(reviews.Select(review => review.Detail));
         if (rules.Count == 0) details.Add("No ad hoc prohibitions are present in this facts artifact.");
-        if (!session.GroupedAdhocFactsAvailable)
+        if (!input.GroupedFactsAvailable)
             details.Add("Grouped ad hoc provenance is unavailable; the flat prohibition facts still determine these findings.");
         details.Add("No parser comparison or paired verification was run; template entailment is not a global equivalence proof.");
         var result = findings.OrderBy(item => item.FindingId, StringComparer.Ordinal).ToArray();
         var status = unknown ? ParsimonyMeasureStatus.Inconclusive : ParsimonyMeasureStatus.Computed;
         var detail = details.Count == 0 ? null : string.Join(Environment.NewLine, details);
         return Result(measure, status, eligible, candidatePairs, result, detail,
-            unknown ? "the loader state or compiled order of some ad hoc prohibitions is unknown, so their slot order was not checked." : null);
+            unknown ? MeasureAbstentions.JoinClauses(UnknownCauses(abstentions)) +
+                ", so their slot order was not checked." : null);
+    }
+
+    private static List<string> UnknownCauses(MeasureAbstentions abstentions)
+    {
+        var causes = new List<string>();
+        if (abstentions.Count("unknown-loader-state") > 0)
+            causes.Add("the loader state of some ad hoc prohibitions is unknown");
+        if (abstentions.Count("incomplete-category-hierarchy") > 0)
+            causes.Add("the category hierarchy of some ad hoc prohibitions is incomplete");
+        if (abstentions.Count("incomplete-compiled-order") > 0)
+            causes.Add("the compiled order of some ad hoc prohibitions is incomplete");
+        return causes;
     }
 
     private static AdhocSlotOrderReview ReviewAdhocSlotOrderRule(AdhocProhibitionFact rule,
@@ -69,7 +94,7 @@ public static partial class MeasureRunner
         if (rule.Kind != "morpheme")
             return Excluded(rule, "allomorph prohibition remains visible and is outside the measured catalog");
         if (rule.Loaded is null)
-            return Excluded(rule, "final loader state is unknown", unknown: true);
+            return Excluded(rule, "final loader state is unknown", "unknown-loader-state");
         if (rule.Loaded == false)
         {
             var reason = loaderReasons.GetValueOrDefault(rule.Guid);
@@ -119,12 +144,14 @@ public static partial class MeasureRunner
             var rootCategories = DescendantCategories(facts.CategoryParents, category, out var validHierarchy);
             if (!validHierarchy)
             {
-                return Excluded(rule, "category hierarchy is incomplete while checking applicable templates", unknown: true);
+                return Excluded(rule, "category hierarchy is incomplete while checking applicable templates",
+                    "incomplete-category-hierarchy");
             }
             foreach (var rootCategory in rootCategories)
             {
                 if (!TryGetApplicableTemplates(facts, rootCategory, out var templates))
-                    return Excluded(rule, "category hierarchy is incomplete while checking applicable templates", unknown: true);
+                    return Excluded(rule, "category hierarchy is incomplete while checking applicable templates",
+                        "incomplete-category-hierarchy");
                 foreach (var applicable in templates)
                 {
                     var rawTemplate = facts.Templates.First(item => item.Guid == applicable.Template.Guid);
@@ -220,13 +247,14 @@ public static partial class MeasureRunner
         }
 
         if (incompleteOrder)
-            return Excluded(rule, "one or more target placements have no complete compiled order", unknown: true);
+            return Excluded(rule, "one or more target placements have no complete compiled order",
+                "incomplete-compiled-order");
         if (placements.Count == 0)
             return Excluded(rule, "no active applicable template has both targets in ordered placements");
 
         var themeKey = PlacementTheme(placements);
         if (admittedProhibitedOrder.Count > 0)
-            return new AdhocSlotOrderReview(rule, true, false, false, false, false, themeKey,
+            return new AdhocSlotOrderReview(rule, true, false, false, false, null, themeKey,
                 placements, [], [],
                 $"Ad hoc rule {rule.Guid}: eligible; not entailed because applicable template(s) " +
                 $"{string.Join(", ", admittedProhibitedOrder)} allow the prohibited order.");
@@ -243,7 +271,7 @@ public static partial class MeasureRunner
         if (counterexamples.Length > 0)
         {
             var ids = string.Join(", ", counterexamples.Select(item => item.AnalysisGuid));
-            return new AdhocSlotOrderReview(rule, true, false, false, true, false, themeKey,
+            return new AdhocSlotOrderReview(rule, true, false, false, true, null, themeKey,
                 placements, relevantAnalyses, counterexamples,
                 $"Ad hoc rule {rule.Guid}: eligible; Approved counterexample(s) {ids} violate {rule.Adjacency}; " +
                 "the order replacement is blocked.");
@@ -257,11 +285,11 @@ public static partial class MeasureRunner
               "order restriction is intended and verify with a Trial."
             : $"Ad hoc rule {rule.Guid}: eligible; every applicable placement excludes the prohibited direction; " +
               "no Approved counterexample was found.";
-        return new AdhocSlotOrderReview(rule, true, !adjacent, adjacent, false, false, themeKey,
+        return new AdhocSlotOrderReview(rule, true, !adjacent, adjacent, false, null, themeKey,
             placements, relevantAnalyses, [], detail);
     }
 
-    private static ParsimonyFinding CreateAdhocSlotOrderFinding(MeasureDefinition measure, ParsimonyQuerySession session, string bundleId,
+    private static ParsimonyFinding CreateAdhocSlotOrderFinding(MeasureDefinition measure, MeasureContext context,
         string themeKey, IReadOnlyList<AdhocSlotOrderReview> members, long pairCount, long eligible,
         bool family, bool adjacencyQuestion, bool groupedFactsAvailable)
     {
@@ -290,6 +318,7 @@ public static partial class MeasureRunner
             approvedSequences = analyses.Select(item => item.AnalysisGuid),
             policy = "adhoc-slot-order/v1",
         });
+        var bundleId = context.BundleId;
         var references = rules.Select(item => EvidenceReference(bundleId, ParsimonyViews.AdhocContext,
                 new { objectGuid = item.Guid })).ToList();
         foreach (var templateGuid in placements.Select(item => item.TemplateGuid).Distinct(StringComparer.Ordinal))
@@ -315,7 +344,7 @@ public static partial class MeasureRunner
         return new ParsimonyFinding(findingId, measure.Id, measure.Axis, measure.Tier,
             new ParsimonyFindingAttachment(ParsimonyAttachmentKind.Group, identity,
                 GroupKind: ParsimonyGroupKind.AdhocSlotOrder), themeKey,
-            new ParsimonyMeasureNumber(pairCount, eligible, measure.Unit), measure.Threshold!, MeasureEvidence.Compute(measure, session, evidence),
+            new ParsimonyMeasureNumber(pairCount, eligible, measure.Unit), measure.Threshold!, MeasureEvidence.Compute(measure, context.Digest, evidence),
             references, measure.RecipeLink, limitations, ParsimonyVerification.NotRun);
     }
 
@@ -391,15 +420,19 @@ public static partial class MeasureRunner
     private static string PairIdentity(AdhocProhibitionFact rule) =>
         $"{rule.PrimaryGuid}\u001f{rule.Others[0].Guid}";
 
-    private static AdhocSlotOrderReview Excluded(AdhocProhibitionFact rule, string reason, bool unknown = false) =>
-        new(rule, false, false, false, false, unknown, string.Empty, [], [], [],
+    private static AdhocSlotOrderReview Excluded(AdhocProhibitionFact rule, string reason,
+        string? unknownReason = null) =>
+        new(rule, false, false, false, false, unknownReason, string.Empty, [], [], [],
             $"Ad hoc rule {rule.Guid}: ineligible; {reason}.");
 
     private sealed record AdhocSlotOrderReview(AdhocProhibitionFact Rule, bool Eligible,
-        bool ExactCandidate, bool AdjacencyQuestion, bool HasCounterexample, bool Unknown,
+        bool ExactCandidate, bool AdjacencyQuestion, bool HasCounterexample, string? UnknownReason,
         string ThemeKey, IReadOnlyList<AdhocSlotOrderPlacement> Placements,
         IReadOnlyList<ParsimonyApprovedMorphSequenceViewRow> RelevantAnalyses,
-        IReadOnlyList<ParsimonyApprovedMorphSequenceViewRow> Counterexamples, string Detail);
+        IReadOnlyList<ParsimonyApprovedMorphSequenceViewRow> Counterexamples, string Detail)
+    {
+        public bool Unknown => UnknownReason is not null;
+    }
 
     private sealed record AdhocSlotOrderPlacement(string CategoryGuid, string RootCategoryGuid,
         string TemplateGuid, string Side, string OtherSlotGuid, string PrimarySlotGuid, bool OtherBeforePrimary);

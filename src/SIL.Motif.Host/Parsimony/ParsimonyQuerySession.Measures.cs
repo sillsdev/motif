@@ -399,7 +399,10 @@ public sealed partial class ParsimonyQuerySession
     /// Returns a readable form or name for a grammar object, wordform, prohibition, or Approved morph sequence.
     /// Returns <see langword="null"/> when the attached artifacts hold no readable description.
     /// </summary>
-    public string? DescribeObject(string guid)
+    public string? DescribeObject(string guid) =>
+        _objectDescriptions.GetOrAdd(guid, key => ReadObjectDescription(key));
+
+    private string? ReadObjectDescription(string guid)
     {
         using var command = NewCommand();
         command.CommandText = """
@@ -424,6 +427,12 @@ public sealed partial class ParsimonyQuerySession
         command.Parameters.AddWithValue("$guid", guid);
         return command.ExecuteScalar() as string ?? DescribeProhibition(guid) ?? DescribeApprovedSequence(guid);
     }
+
+    // The attached artifacts are immutable for the life of a session, so a description never changes.
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, string?> _objectDescriptions =
+        new(StringComparer.Ordinal);
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, string?> _msaDescriptions =
+        new(StringComparer.Ordinal);
 
     /// <summary>Names an ad hoc prohibition by kind and items, such as "Morpheme co-prohibition: ba".</summary>
     private string? DescribeProhibition(string prohibitionGuid)
@@ -451,7 +460,10 @@ public sealed partial class ParsimonyQuerySession
         return names.All(name => name == "(unnamed)") ? $"{label} (unnamed)" : $"{label}: {string.Join(", ", names)}";
     }
 
-    internal string? DescribeMsa(string guid)
+    internal string? DescribeMsa(string guid) =>
+        _msaDescriptions.GetOrAdd(guid, key => ReadMsaDescription(key));
+
+    private string? ReadMsaDescription(string guid)
     {
         using var command = NewCommand();
         command.CommandText = """

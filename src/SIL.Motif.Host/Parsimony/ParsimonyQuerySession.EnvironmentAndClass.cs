@@ -12,7 +12,16 @@ public sealed partial class ParsimonyQuerySession
         var inventory = ReadContextInventory();
         var orders = ReadContextOrders();
         var observationRead = ReadContextObservations(inventory.Graphemes, inventory.Phones);
-        var observations = observationRead.Items;
+        var observationsBySite = observationRead.Items.ToLookup(item => (item.AllomorphGuid, item.MsaGuid));
+        var contextNames = GetContextNames(inventory);
+        var conditions = new Dictionary<(string AllomorphGuid, string ContextKey), ContextCondition>();
+        ContextCondition ConditionOf(string allomorphGuid, string bucket)
+        {
+            var key = (allomorphGuid, CompileContextKey(bucket));
+            if (!conditions.TryGetValue(key, out var condition))
+                conditions[key] = condition = ReadContextCondition(allomorphGuid, inventory, bucket);
+            return condition;
+        }
         var groups = orders.GroupBy(item => (item.OwnerKey, item.MsaGuid, item.Bucket)).ToArray();
         var targetSites = orders.Where(item => !item.IsAbstract && item.MsaGuid is not null)
             .Select(item => (item.AllomorphGuid, item.MsaGuid!)).ToHashSet();
@@ -33,7 +42,7 @@ public sealed partial class ParsimonyQuerySession
                 .ToArray();
             foreach (var target in ordered.Where(item => item.Abstract[0] == false))
             {
-                var condition = ReadContextCondition(target.Guid, inventory, group.Key.Bucket);
+                var condition = ConditionOf(target.Guid, group.Key.Bucket);
                 if (!condition.Supported)
                 {
                     unsupported++;
@@ -46,7 +55,7 @@ public sealed partial class ParsimonyQuerySession
                 var unknownSibling = false;
                 foreach (var earlier in ordered.Where(item => item.Orders[0] < order))
                 {
-                    var earlierCondition = ReadContextCondition(earlier.Guid, inventory, group.Key.Bucket);
+                    var earlierCondition = ConditionOf(earlier.Guid, group.Key.Bucket);
                     if (!earlierCondition.Supported)
                     {
                         unknownSibling = true;
@@ -66,8 +75,8 @@ public sealed partial class ParsimonyQuerySession
                     continue;
                 }
                 if (group.Key.MsaGuid is null) { unsupported++; continue; }
-                var witnessed = UniqueContexts(observations.Where(item => item.AllomorphGuid == target.Guid &&
-                    item.MsaGuid == group.Key.MsaGuid), condition.Side, condition.BoundaryLabels);
+                var witnessed = UniqueContexts(observationsBySite[(target.Guid, group.Key.MsaGuid)], condition.Side,
+                    condition.BoundaryLabels);
                 if (witnessed.Ambiguous)
                 {
                     unsupported++;
@@ -89,7 +98,7 @@ public sealed partial class ParsimonyQuerySession
                     supports.Select(item => item.WordformGuid).Distinct(StringComparer.Ordinal).Count(),
                     supports.Select(item => item.StemGuid).Distinct(StringComparer.Ordinal).Count(),
                     supports.Select(item => item.Display).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray(),
-                    condition.BoundaryLabels, GetContextNames(inventory),
+                    condition.BoundaryLabels, contextNames,
                     FindClassesCovering(observed, inventory.ClassMembers, inventory.Phones, inventory.ClassNames),
                     featureIntersection.Assignments, featureIntersection.Extension.Order(StringComparer.Ordinal).ToArray(),
                     featureIntersection.UnknownPhonemes.Order(StringComparer.Ordinal).ToArray()));
@@ -108,7 +117,11 @@ public sealed partial class ParsimonyQuerySession
             "phonology", "features");
         var inventory = ReadContextInventory();
         var observationRead = ReadContextObservations(inventory.Graphemes, inventory.Phones);
-        var observations = observationRead.Items;
+        var observationsBySite = observationRead.Items.ToLookup(item => (item.AllomorphGuid, item.MsaGuid));
+        var contextNames = GetContextNames(inventory);
+        var allPhones = inventory.Phones.Keys.Order(StringComparer.Ordinal).ToArray();
+        var phoneEnvironmentCounts = new Dictionary<string, long>(StringComparer.Ordinal);
+        var onlyClassUses = new Dictionary<(string EnvironmentGuid, string ClassGuid, string Side), bool>();
         var references = new List<ClassContextReference>();
         using (var command = NewCommand())
         {
@@ -150,15 +163,21 @@ public sealed partial class ParsimonyQuerySession
                 unsupported++;
                 continue;
             }
-            if (ScalarLong("SELECT COUNT(DISTINCT environment_guid) FROM facts.allomorph_environment " +
-                           "WHERE allomorph_guid=$guid AND role='phone';", reference.AllomorphGuid) != 1 ||
-                !EnvironmentUsesOnlyClass(reference.EnvironmentGuid, reference.ClassGuid, reference.Side))
+            if (!phoneEnvironmentCounts.TryGetValue(reference.AllomorphGuid, out var phoneEnvironments))
+                phoneEnvironmentCounts[reference.AllomorphGuid] = phoneEnvironments = ScalarLong(
+                    "SELECT COUNT(DISTINCT environment_guid) FROM facts.allomorph_environment " +
+                    "WHERE allomorph_guid=$guid AND role='phone';", reference.AllomorphGuid);
+            var useKey = (reference.EnvironmentGuid, reference.ClassGuid, reference.Side);
+            if (phoneEnvironments == 1 && !onlyClassUses.ContainsKey(useKey))
+                onlyClassUses[useKey] = EnvironmentUsesOnlyClass(reference.EnvironmentGuid, reference.ClassGuid,
+                    reference.Side);
+            if (phoneEnvironments != 1 || !onlyClassUses[useKey])
             {
                 unsupported++;
                 continue;
             }
-            var observed = UniqueContexts(observations.Where(item => item.AllomorphGuid == reference.AllomorphGuid &&
-                item.MsaGuid == reference.MsaGuid), reference.Side);
+            var observed = UniqueContexts(observationsBySite[(reference.AllomorphGuid, reference.MsaGuid)],
+                reference.Side);
             if (observed.Ambiguous)
             {
                 unsupported++;
@@ -174,7 +193,7 @@ public sealed partial class ParsimonyQuerySession
             var support = observed.Items.ToArray();
             sites.Add(new NaturalClassExcessSite(reference.ClassGuid, reference.Name,
                 $"{reference.AllomorphGuid}/{reference.EnvironmentGuid}/{reference.Side}/{reference.Bucket}", reference.EnvironmentGuid,
-                reference.AllomorphGuid, reference.Side, inventory.Phones.Keys.Order(StringComparer.Ordinal).ToArray(),
+                reference.AllomorphGuid, reference.Side, allPhones,
                 observedGuids.Order(StringComparer.Ordinal).ToArray(), extra, missing,
                 inventory.Phones.Keys.Except(observedGuids, StringComparer.Ordinal).Count(),
                 featureIntersection.Assignments, featureIntersection.Extension.Order(StringComparer.Ordinal).ToArray(),
@@ -182,7 +201,7 @@ public sealed partial class ParsimonyQuerySession
                 support.Select(item => item.StemGuid).Distinct(StringComparer.Ordinal).Count(),
                 support.Select(item => item.Display).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray(),
                 inventory.ClassUnknownMembers.GetValueOrDefault(reference.ClassGuid) ?? [],
-                GetContextNames(inventory)));
+                contextNames));
         }
         var targetSites = references.Where(item => item.MsaGuid is not null)
             .Select(item => (item.AllomorphGuid, item.MsaGuid!)).ToHashSet();
@@ -292,7 +311,7 @@ public sealed partial class ParsimonyQuerySession
                 ORDER BY a.ordinal, u.compile_context_key;
                 """;
             command.Parameters.AddWithValue("$guid", allomorphGuid);
-            command.Parameters.AddWithValue("$context", bucket is "Morphology" or "Clitics" ? "production" : "default");
+            command.Parameters.AddWithValue("$context", CompileContextKey(bucket));
             using var reader = command.ExecuteReader();
             while (reader.Read())
                 environments.Add((reader.GetString(0), reader.IsDBNull(1) ? reader.GetString(0) : reader.GetString(1),
@@ -321,6 +340,8 @@ public sealed partial class ParsimonyQuerySession
             alternatives.Select(item => item.EnvironmentGuid!).ToArray(),
             alternatives.Select(item => item.EnvironmentName!).ToArray(), explicitBoundaries);
     }
+
+    private static string CompileContextKey(string bucket) => bucket is "Morphology" or "Clitics" ? "production" : "default";
 
     private ContextAlternative ReadSimpleEnvironment(string environmentGuid, ContextInventory inventory)
     {
@@ -456,10 +477,13 @@ public sealed partial class ParsimonyQuerySession
             }
         }
         var output = new List<ObservedMorphemeContext>();
+        var tables = new Dictionary<string, TokenTable>(StringComparer.Ordinal);
         foreach (var row in rows.Values)
         {
-            if (!graphemes.TryGetValue(row.WritingSystem, out var map) || row.Morphs.Count == 0 ||
+            if (!graphemes.TryGetValue(row.WritingSystem, out var graphemeMap) || row.Morphs.Count == 0 ||
                 row.Morphs.Any(item => item.Form is null || item.MorphGuid is null)) continue;
+            if (!tables.TryGetValue(row.WritingSystem, out var map))
+                tables[row.WritingSystem] = map = new TokenTable(graphemeMap);
             var wordTokens = Tokenize(row.Wordform, map, out var wordAmbiguous);
             var rowAmbiguous = wordAmbiguous;
             if (wordTokens is null)
@@ -509,19 +533,35 @@ public sealed partial class ParsimonyQuerySession
                 row.WritingSystem));
     }
 
-    private static string[]? Tokenize(string text,
-        IReadOnlyDictionary<string, List<string>> graphemes, out bool ambiguous)
+    // The sorted grapheme table of one writing system, indexed by first character: built once, not per word.
+    private sealed class TokenTable
     {
-        var forms = graphemes.SelectMany(pair => pair.Value.Select(form => (Guid: pair.Key, Form: form)))
-            .Distinct().OrderByDescending(item => item.Form.Length)
-            .ThenBy(item => item.Guid, StringComparer.Ordinal).ToArray();
+        private readonly Dictionary<char, (string Guid, string Form)[]> _byFirstChar;
+
+        public TokenTable(IReadOnlyDictionary<string, List<string>> graphemes)
+        {
+            var forms = graphemes.SelectMany(pair => pair.Value.Select(form => (Guid: pair.Key, Form: form)))
+                .Where(item => item.Form.Length > 0)
+                .Distinct().OrderByDescending(item => item.Form.Length)
+                .ThenBy(item => item.Guid, StringComparer.Ordinal).ToArray();
+            _byFirstChar = forms.GroupBy(item => item.Form[0]).ToDictionary(group => group.Key, group => group.ToArray());
+        }
+
+        public IEnumerable<(string Guid, string Form)> Matching(string text, int offset) =>
+            _byFirstChar.TryGetValue(text[offset], out var candidates)
+                ? candidates.Where(item => text.AsSpan(offset).StartsWith(item.Form.AsSpan(), StringComparison.Ordinal))
+                : [];
+    }
+
+    private static string[]? Tokenize(string text, TokenTable table, out bool ambiguous)
+    {
         var memo = new Dictionary<int, List<string[]>?>();
         List<string[]>? Visit(int offset)
         {
             if (offset == text.Length) return [Array.Empty<string>()];
             if (memo.TryGetValue(offset, out var cached)) return cached;
             var results = new List<string[]>();
-            foreach (var form in forms.Where(item => text.AsSpan(offset).StartsWith(item.Form.AsSpan(), StringComparison.Ordinal)))
+            foreach (var form in table.Matching(text, offset))
             {
                 foreach (var tail in Visit(offset + form.Form.Length) ?? [])
                 {
@@ -572,29 +612,7 @@ public sealed partial class ParsimonyQuerySession
     private (string[] Assignments, HashSet<string> Extension, HashSet<string> UnknownPhonemes)
         ReadFeatureIntersection(HashSet<string> observed, IReadOnlyDictionary<string, string> phones)
     {
-        var assignmentRows = new Dictionary<string, Dictionary<string, (string Kind, string? Value)>>(StringComparer.Ordinal);
-        var labels = new Dictionary<(string Feature, string Value), string>();
-        using (var command = NewCommand())
-        {
-            command.CommandText = """
-                SELECT p.guid, a.feature_guid, a.value_kind, a.value_guid, f.name, v.name
-                FROM facts.phoneme AS p JOIN facts.feature_structure AS s ON s.fs_id=p.feature_structure_id
-                JOIN facts.feature_assignment AS a ON a.fs_id=s.fs_id
-                JOIN facts.feature AS f ON f.guid=a.feature_guid
-                LEFT JOIN facts.feature_value AS v ON v.guid=a.value_guid
-                WHERE s.system='phonological' AND f.system='phonological' AND f.kind='closed'
-                ORDER BY p.guid, a.feature_guid;
-                """;
-            using var reader = command.ExecuteReader();
-            while (reader.Read())
-            {
-                var phoneme = reader.GetString(0);
-                if (!assignmentRows.TryGetValue(phoneme, out var values)) assignmentRows[phoneme] = values = new(StringComparer.Ordinal);
-                values[reader.GetString(1)] = (reader.GetString(2), NullableString(reader, 3));
-                if (!reader.IsDBNull(3) && !reader.IsDBNull(4) && !reader.IsDBNull(5))
-                    labels[(reader.GetString(1), reader.GetString(3))] = reader.GetString(4) + "=" + reader.GetString(5);
-            }
-        }
+        var (assignmentRows, labels) = _closedFeatureTable ??= ReadClosedFeatureTable();
         var common = new Dictionary<string, string>(StringComparer.Ordinal);
         if (observed.Count > 0)
         {
@@ -621,6 +639,37 @@ public sealed partial class ParsimonyQuerySession
         var descriptions = common.OrderBy(pair => pair.Key, StringComparer.Ordinal)
             .Select(pair => labels.GetValueOrDefault((pair.Key, pair.Value), $"{pair.Key}={pair.Value}")).ToArray();
         return (descriptions, extension, unknown);
+    }
+
+    // The table is the same for every site of a discovery, and the artifacts never change under a session.
+    private (Dictionary<string, Dictionary<string, (string Kind, string? Value)>> Assignments,
+        Dictionary<(string Feature, string Value), string> Labels)? _closedFeatureTable;
+
+    private (Dictionary<string, Dictionary<string, (string Kind, string? Value)>> Assignments,
+        Dictionary<(string Feature, string Value), string> Labels) ReadClosedFeatureTable()
+    {
+        var assignmentRows = new Dictionary<string, Dictionary<string, (string Kind, string? Value)>>(StringComparer.Ordinal);
+        var labels = new Dictionary<(string Feature, string Value), string>();
+        using var command = NewCommand();
+        command.CommandText = """
+            SELECT p.guid, a.feature_guid, a.value_kind, a.value_guid, f.name, v.name
+            FROM facts.phoneme AS p JOIN facts.feature_structure AS s ON s.fs_id=p.feature_structure_id
+            JOIN facts.feature_assignment AS a ON a.fs_id=s.fs_id
+            JOIN facts.feature AS f ON f.guid=a.feature_guid
+            LEFT JOIN facts.feature_value AS v ON v.guid=a.value_guid
+            WHERE s.system='phonological' AND f.system='phonological' AND f.kind='closed'
+            ORDER BY p.guid, a.feature_guid;
+            """;
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            var phoneme = reader.GetString(0);
+            if (!assignmentRows.TryGetValue(phoneme, out var values)) assignmentRows[phoneme] = values = new(StringComparer.Ordinal);
+            values[reader.GetString(1)] = (reader.GetString(2), NullableString(reader, 3));
+            if (!reader.IsDBNull(3) && !reader.IsDBNull(4) && !reader.IsDBNull(5))
+                labels[(reader.GetString(1), reader.GetString(3))] = reader.GetString(4) + "=" + reader.GetString(5);
+        }
+        return (assignmentRows, labels);
     }
 
     private static IReadOnlyList<string> FindClassesCovering(HashSet<string> observed,

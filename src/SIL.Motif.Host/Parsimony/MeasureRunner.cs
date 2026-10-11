@@ -13,21 +13,45 @@ public static partial class MeasureRunner
         ParsimonyMeasureResult>> QueryRunners = new Dictionary<string, Func<MeasureDefinition, ParsimonyQuerySession,
         string, ParsimonyMeasureResult>>(StringComparer.Ordinal)
     {
-        [ParsimonyQueryIds.AdhocDuplicate] = RunDuplicateProhibitions,
-        [ParsimonyQueryIds.AllomorphDuplicateForm] = RunDuplicateAllomorphs,
-        [ParsimonyQueryIds.AlloAlternationFamily] = RunAlternationFamilies,
-        [ParsimonyQueryIds.StatementUnused] = RunUnusedStatements,
-        [ParsimonyQueryIds.TemplatePrecedence] = RunTemplatePrecedence,
-        [ParsimonyQueryIds.SlotBlocking] = RunSlotBlocking,
-        [ParsimonyQueryIds.AdhocSlotOrder] = RunAdhocSlotOrder,
-        [ParsimonyQueryIds.AlloUnconditioned] = RunUnconditionedAllomorphs,
-        [ParsimonyQueryIds.NegativeAccepted] = RunReviewedNegativeAccepted,
-        [ParsimonyQueryIds.DisapprovedProduced] = RunDisapprovedProduced,
-        [ParsimonyQueryIds.UnslottedAffix] = RunUnslottedAffixes,
-        [ParsimonyQueryIds.NullOptional] = RunNullOptionalAffixes,
-        [ParsimonyQueryIds.EnvironmentExcess] = RunEnvironmentExcess,
-        [ParsimonyQueryIds.NaturalClassExcess] = RunNaturalClassExcess,
+        [ParsimonyQueryIds.AdhocDuplicate] = Query(session => session.ReadDuplicateProhibitionInput(),
+            DecideDuplicateProhibitions),
+        [ParsimonyQueryIds.AllomorphDuplicateForm] = Query(session => session.ReadAllomorphsForMeasure(),
+            DecideDuplicateAllomorphs),
+        [ParsimonyQueryIds.AlloAlternationFamily] = Query(session => session.ReadAlternationInput(),
+            DecideAlternationFamilies),
+        [ParsimonyQueryIds.StatementUnused] = Query(session => session.ReadStatementUsageInput(),
+            DecideUnusedStatements),
+        [ParsimonyQueryIds.TemplatePrecedence] = Query(session => session.ReadTemplateSequenceFacts(),
+            DecideTemplatePrecedence),
+        [ParsimonyQueryIds.SlotBlocking] = Query(session => session.ReadTemplateSequenceFacts(),
+            DecideSlotBlocking),
+        [ParsimonyQueryIds.AdhocSlotOrder] = Query(session => session.ReadAdhocSlotOrderInput(),
+            DecideAdhocSlotOrder),
+        [ParsimonyQueryIds.AlloUnconditioned] = Query(session => session.ReadUnconditionedAllomorphFamilies(),
+            DecideUnconditionedAllomorphs),
+        [ParsimonyQueryIds.NegativeAccepted] = Query(session => session.ReadReviewedNegativeAcceptedFacts(),
+            DecideReviewedNegativeAccepted),
+        [ParsimonyQueryIds.DisapprovedProduced] = Query(session => session.ReadDisapprovedProducedFacts(),
+            DecideDisapprovedProduced),
+        [ParsimonyQueryIds.UnslottedAffix] = Query(session => session.ReadUnslottedAffixInput(),
+            DecideUnslottedAffixes),
+        [ParsimonyQueryIds.NullOptional] = Query(session => session.ReadNullOptionalAffixes(),
+            DecideNullOptionalAffixes),
+        [ParsimonyQueryIds.EnvironmentExcess] = Query(session => session.ReadEnvironmentExcess(),
+            DecideEnvironmentExcess),
+        [ParsimonyQueryIds.NaturalClassExcess] = Query(session => session.ReadNaturalClassExcess(),
+            DecideNaturalClassExcess),
     };
+
+    // The session reads one plain input; the decision sees that input and a context, never the session.
+    private static Func<MeasureDefinition, ParsimonyQuerySession, string, ParsimonyMeasureResult> Query<TInput>(
+        Func<ParsimonyQuerySession, TInput> read,
+        Func<MeasureDefinition, TInput, MeasureContext, ParsimonyMeasureResult> decide) =>
+        (measure, session, bundleId) =>
+        {
+            var input = read(session);
+            return decide(measure, input, session.ReadMeasureContext(bundleId));
+        };
 
     /// <summary>The query ids this build can run, which the measure catalog's registered ids must equal.</summary>
     public static IReadOnlySet<string> RegisteredQueryIds { get; } =
@@ -70,13 +94,14 @@ public static partial class MeasureRunner
     public static IReadOnlyList<ParsimonyFinding> Run(string measureId, ParsimonyQuerySession session, string bundleId) =>
         Execute(measureId, session, bundleId).Findings;
 
-    private static ParsimonyMeasureResult RunDuplicateProhibitions(MeasureDefinition measure,
-        ParsimonyQuerySession session, string bundleId)
+    internal static ParsimonyMeasureResult DecideDuplicateProhibitions(MeasureDefinition measure,
+        DuplicateProhibitionInput input, MeasureContext context)
     {
-        var facts = session.ReadAdhocProhibitions();
+        var bundleId = context.BundleId;
+        var facts = input.Prohibitions;
         var eligible = facts.Where(item => !item.Disabled && item.Loaded == true).ToArray();
         var limitations = new List<string>();
-        if (!session.GroupedAdhocFactsAvailable)
+        if (!input.GroupedFactsAvailable)
             limitations.Add("Grouped ad hoc provenance is unavailable in this facts artifact.");
         var unknown = facts.Count(item => !item.Disabled && item.Loaded is null);
         if (unknown > 0)
@@ -103,7 +128,7 @@ public static partial class MeasureRunner
                     new ParsimonyFindingAttachment(measure.AttachesTo, duplicate.Guid, measure.AuthoredObjectKind),
                     groupKey, new ParsimonyMeasureNumber(members.Length - 1, members.Length, measure.Unit),
                     measure.Threshold!,
-                    MeasureEvidence.Compute(measure, session, evidence),
+                    MeasureEvidence.Compute(measure, context.Digest, evidence),
                     [EvidenceReference(bundleId, ParsimonyViews.AdhocContext, new { objectGuid = duplicate.Guid }),
                      EvidenceReference(bundleId, ParsimonyViews.AdhocContext, new { objectGuid = retained.Guid })],
                     measure.RecipeLink, limitations, ParsimonyVerification.NotRun));
@@ -111,18 +136,20 @@ public static partial class MeasureRunner
         }
         var result = findings.OrderBy(item => item.FindingId, StringComparer.Ordinal).ToArray();
         var status = unknown == 0 ? ParsimonyMeasureStatus.Computed : ParsimonyMeasureStatus.Inconclusive;
-        var reason = status == ParsimonyMeasureStatus.Inconclusive
-            ? "Some enabled prohibitions have unknown loader state; they were excluded from the comparison." : null;
+        var abstentions = new MeasureAbstentions();
+        abstentions.Add("unknown-loader-state", unknown,
+            "Some enabled prohibitions have unknown loader state; they were excluded from the comparison.");
+        var reason = abstentions.Any ? abstentions.Detail() : null;
         return Result(measure, status, eligible.LongLength, result.LongLength, result, reason,
             status == ParsimonyMeasureStatus.Inconclusive
                 ? "the loader state of some enabled prohibitions is unknown, so they were excluded from the comparison."
                 : null);
     }
 
-    private static ParsimonyMeasureResult RunDuplicateAllomorphs(MeasureDefinition measure,
-        ParsimonyQuerySession session, string bundleId)
+    internal static ParsimonyMeasureResult DecideDuplicateAllomorphs(MeasureDefinition measure,
+        IReadOnlyList<AllomorphMeasureFact> allomorphs, MeasureContext context)
     {
-        var allomorphs = session.ReadAllomorphsForMeasure();
+        var bundleId = context.BundleId;
         var groups = allomorphs.GroupBy(item => new AllomorphSignature(item.EntryGuid, item.MorphType,
                 FormsSignature(item.Forms), EnvironmentsSignature(item.Environments)))
             .Where(group => group.Count() > 1)
@@ -158,7 +185,7 @@ public static partial class MeasureRunner
                 ParsimonyFindingIdentity.EntryGroupKey(group.Key.EntryGuid),
                 new ParsimonyMeasureNumber(members.Length - 1, members.Length, measure.Unit),
                 measure.Threshold!,
-                MeasureEvidence.Compute(measure, session, digestValue), references, measure.RecipeLink,
+                MeasureEvidence.Compute(measure, context.Digest, digestValue), references, measure.RecipeLink,
                 ["The listed allomorphs have identical authored environment lists.",
                  "Allomorphs with different environment lists are excluded from this exact-match finding.",
                  "The duplicate GUIDs identify records for inspection; no similarity or linguistic claim is inferred."],
@@ -168,10 +195,10 @@ public static partial class MeasureRunner
         return Result(measure, ParsimonyMeasureStatus.Computed, allomorphs.Count, redundant, result, null);
     }
 
-    private static ParsimonyMeasureResult RunUnconditionedAllomorphs(MeasureDefinition measure,
-        ParsimonyQuerySession session, string bundleId)
+    internal static ParsimonyMeasureResult DecideUnconditionedAllomorphs(MeasureDefinition measure,
+        UnconditionedAllomorphDiscovery discovery, MeasureContext context)
     {
-        var discovery = session.ReadUnconditionedAllomorphFamilies();
+        var bundleId = context.BundleId;
         var findings = new List<ParsimonyFinding>();
         foreach (var family in discovery.Families)
         {
@@ -220,7 +247,7 @@ public static partial class MeasureRunner
                         measure.AuthoredObjectKind),
                     family.Key,
                     new ParsimonyMeasureNumber(1, family.Siblings.Count, measure.Unit), measure.Threshold!,
-                    MeasureEvidence.Compute(measure, session, evidence), references, measure.RecipeLink, Array.AsReadOnly(limitations.ToArray()),
+                    MeasureEvidence.Compute(measure, context.Digest, evidence), references, measure.RecipeLink, Array.AsReadOnly(limitations.ToArray()),
                     ParsimonyVerification.NotRun));
             }
         }
@@ -229,25 +256,35 @@ public static partial class MeasureRunner
         var status = discovery.UnknownFamilies == 0
             ? ParsimonyMeasureStatus.Computed
             : ParsimonyMeasureStatus.Inconclusive;
-        var details = new List<string>();
-        if (discovery.InvalidConditions > 0)
-            details.Add($"Excluded {discovery.InvalidConditions} invalid phone restriction(s) for grammar-health review.");
-        if (discovery.UnknownFamilies > 0)
-            details.Add($"Excluded {discovery.UnknownFamilies} family/families with incomplete condition or compiler-order facts.");
-        details.Add("Effective selected contexts and extra-context counts are not published in the grammar facts.");
+        var abstentions = new MeasureAbstentions();
+        abstentions.Add("invalid-phone-restriction", discovery.InvalidConditions,
+            $"Excluded {discovery.InvalidConditions} invalid phone restriction(s) for grammar-health review.");
+        abstentions.Add("incomplete-family-facts", discovery.UnknownFamilies,
+            $"Excluded {discovery.UnknownFamilies} family/families with incomplete condition or compiler-order facts.");
+        const string selectedContextsNotPublished =
+            "Effective selected contexts and extra-context counts are not published in the grammar facts.";
         // Selected contexts are never published, so this check always has something to say, even with no findings.
         var noteReason = discovery.UnknownFamilies == 0
             ? "the effective selected contexts of each allomorph are not published in the grammar facts, so selected-context counts were not checked."
             : "the condition or compiler-order facts for some allomorph families are incomplete, so they were not compared.";
-        return Result(measure, status, discovery.EligibleAllomorphs, result.LongLength, result,
-            string.Join(" ", details), noteReason);
+        var detail = status == ParsimonyMeasureStatus.Inconclusive
+            ? abstentions.Detail() + " " + selectedContextsNotPublished
+            : string.Join(" ", new[]
+            {
+                discovery.InvalidConditions > 0
+                    ? $"Excluded {discovery.InvalidConditions} invalid phone restriction(s) for grammar-health review."
+                    : null,
+                selectedContextsNotPublished,
+            }.OfType<string>());
+        return Result(measure, status, discovery.EligibleAllomorphs, result.LongLength, result, detail, noteReason);
     }
 
-    private static ParsimonyMeasureResult RunUnslottedAffixes(MeasureDefinition measure,
-        ParsimonyQuerySession session, string bundleId)
+    internal static ParsimonyMeasureResult DecideUnslottedAffixes(MeasureDefinition measure,
+        UnslottedAffixInput input, MeasureContext context)
     {
-        var rows = session.ReadUnslottedAffixes();
-        var denominator = session.CountLoadedInflectionalAffixes();
+        var bundleId = context.BundleId;
+        var rows = input.Rows;
+        var denominator = input.LoadedInflectionalAffixes;
         var findings = rows.Select(row =>
         {
             var evidence = JsonSerializer.Serialize(row with
@@ -275,7 +312,7 @@ public static partial class MeasureRunner
                 $"{measure.Id}:{row.MsaGuid}", measure.Id, measure.Axis, measure.Tier,
                 new ParsimonyFindingAttachment(measure.AttachesTo, row.MsaGuid, measure.AuthoredObjectKind),
                 null, new ParsimonyMeasureNumber(1, denominator, measure.Unit), measure.Threshold!,
-                MeasureEvidence.Compute(measure, session, evidence), Array.AsReadOnly(references.ToArray()), measure.RecipeLink,
+                MeasureEvidence.Compute(measure, context.Digest, evidence), Array.AsReadOnly(references.ToArray()), measure.RecipeLink,
                 Array.AsReadOnly(limitations.Distinct(StringComparer.Ordinal).ToArray()),
                 ParsimonyVerification.NotRun);
         }).OrderBy(item => item.FindingId, StringComparer.Ordinal).ToArray();
@@ -299,10 +336,10 @@ public static partial class MeasureRunner
                (row.Precedence.Count == 0 ? string.Empty : " Same-side order: " + string.Join("; ", orders) + ".");
     }
 
-    private static ParsimonyMeasureResult RunNullOptionalAffixes(MeasureDefinition measure,
-        ParsimonyQuerySession session, string bundleId)
+    internal static ParsimonyMeasureResult DecideNullOptionalAffixes(MeasureDefinition measure,
+        IReadOnlyList<ParsimonyNullOptionalViewRow> rows, MeasureContext context)
     {
-        var rows = session.ReadNullOptionalAffixes();
+        var bundleId = context.BundleId;
         var loadedZeros = rows.Where(row => row.IsLoadedZeroOnly).ToArray();
         var findings = loadedZeros.Select(row =>
         {
@@ -341,7 +378,7 @@ public static partial class MeasureRunner
                 $"{measure.Id}:{row.MsaGuid}", measure.Id, measure.Axis, measure.Tier,
                 new ParsimonyFindingAttachment(measure.AttachesTo, row.MsaGuid, measure.AuthoredObjectKind),
                 null, new ParsimonyMeasureNumber(1, loadedZeros.LongLength, measure.Unit), measure.Threshold!,
-                MeasureEvidence.Compute(measure, session, evidence), Array.AsReadOnly(references.ToArray()), measure.RecipeLink,
+                MeasureEvidence.Compute(measure, context.Digest, evidence), Array.AsReadOnly(references.ToArray()), measure.RecipeLink,
                 Array.AsReadOnly(limitations.Distinct(StringComparer.Ordinal).ToArray()),
                 ParsimonyVerification.NotRun);
         }).OrderBy(item => item.FindingId, StringComparer.Ordinal).ToArray();
@@ -382,19 +419,19 @@ public static partial class MeasureRunner
         return forms.Length == 0 ? $"allomorph {allomorph.Guid}" : string.Join(" / ", forms);
     }
 
-    private static ParsimonyMeasureResult RunUnusedStatements(MeasureDefinition measure,
-        ParsimonyQuerySession session, string bundleId)
+    internal static ParsimonyMeasureResult DecideUnusedStatements(MeasureDefinition measure,
+        StatementUsageInput input, MeasureContext context)
     {
-        var statements = session.ReadStatementUsage();
-        var unused = statements.Where(item => item.Classification is "defined-but-unreferenced"
-            or "referenced-but-not-applied").ToArray();
+        var bundleId = context.BundleId;
+        var statements = input.Statements;
+        var unused = statements.Where(IsUnusedStatement).ToArray();
         var findings = unused.Select(item => new ParsimonyFinding(
             $"{measure.Id}:{item.StatementKind}:{item.StatementGuid}", measure.Id, measure.Axis, measure.Tier,
             new ParsimonyFindingAttachment(ParsimonyAttachmentKind.Group,
                 ParsimonyFindingIdentity.StatementIdentity(item.StatementKind, item.StatementGuid), GroupKind: ParsimonyGroupKind.UnusedStatement),
             ParsimonyFindingIdentity.StatementGroupKey(item.StatementKind), new ParsimonyMeasureNumber(1, statements.Count, measure.Unit),
             measure.Threshold!,
-            MeasureEvidence.Compute(measure, session, JsonSerializer.Serialize(new
+            MeasureEvidence.Compute(measure, context.Digest, JsonSerializer.Serialize(new
             {
                 item.StatementKind, item.StatementGuid, item.ReferenceCount, item.CompiledReferenceCount,
                 item.Loaded, item.LoadDisposition, item.Classification,
@@ -406,26 +443,30 @@ public static partial class MeasureRunner
             })],
             measure.RecipeLink,
             ["Only fact-table references and compiler load facts were considered; Text content was not used.",
-                .. ReferrerNotes(session, item)],
+                .. ReferrerNotes(input, context, item)],
             ParsimonyVerification.NotRun)).OrderBy(item => item.FindingId, StringComparer.Ordinal).ToArray();
         return Result(measure, ParsimonyMeasureStatus.Computed, statements.Count, unused.LongLength, findings, null);
     }
 
     // Naming the referrers shows which reference the compiler did not apply, so a reader can check it.
-    private static string[] ReferrerNotes(ParsimonyQuerySession session, ParsimonyStatementUsageViewRow item)
+    private static string[] ReferrerNotes(StatementUsageInput input, MeasureContext context,
+        ParsimonyStatementUsageViewRow item)
     {
-        var referrers = session.ReadStatementReferrers(item.StatementKind, item.StatementGuid);
+        var referrers = input.Referrers.GetValueOrDefault((item.StatementKind, item.StatementGuid)) ?? [];
         if (referrers.Count == 0) return ["No grammar object references this statement."];
         var named = referrers.Select(referrer =>
         {
             var kind = ReferrerKindWords(referrer.ReferrerKind);
-            var name = session.DescribeObject(referrer.ReferrerGuid) is { } words
+            var name = context.Describe(referrer.ReferrerGuid) is { } words
                 ? $"{kind} \"{words}\""
                 : $"{kind} {referrer.ReferrerGuid}";
             return $"{name} ({ParserEffectWords(referrer.ParserEffect)})";
         });
         return [$"Referenced only by {string.Join(", ", named)}; none of these applies it to parsing."];
     }
+
+    internal static bool IsUnusedStatement(ParsimonyStatementUsageViewRow item) =>
+        item.Classification is "defined-but-unreferenced" or "referenced-but-not-applied";
 
     private static string ReferrerKindWords(string kind) => kind switch
     {
@@ -447,10 +488,10 @@ public static partial class MeasureRunner
         _ => effect.Replace('_', ' '),
     };
 
-    private static ParsimonyMeasureResult RunDisapprovedProduced(MeasureDefinition measure,
-        ParsimonyQuerySession session, string bundleId)
+    internal static ParsimonyMeasureResult DecideDisapprovedProduced(MeasureDefinition measure,
+        ParserOverlayMeasureFacts facts, MeasureContext context)
     {
-        var facts = session.ReadDisapprovedProducedFacts();
+        var bundleId = context.BundleId;
         if (!facts.Requested)
             return Unavailable(measure, facts.Detail ?? ParsimonyNotes.NoAssessmentReason,
                 facts.Detail ?? ParsimonyNotes.NoAssessmentReason);
@@ -473,7 +514,7 @@ public static partial class MeasureRunner
                 new ParsimonyFindingAttachment(ParsimonyAttachmentKind.WordCase, item.WordformGuid),
                 ParsimonyFindingIdentity.WordformGroupKey(item.WordformGuid),
                 new ParsimonyMeasureNumber(1, facts.EligibleMorphologies, measure.Unit), measure.Threshold!,
-                MeasureEvidence.Compute(measure, session, evidence),
+                MeasureEvidence.Compute(measure, context.Digest, evidence),
                 [EvidenceReference(bundleId, ParsimonyViews.ParserCases, new { caseKey = item.CaseKey })],
                 measure.RecipeLink,
                 ["A completed parser search produced the same morphology as a Disapproved analysis.",
@@ -483,14 +524,17 @@ public static partial class MeasureRunner
         }).OrderBy(item => item.FindingId, StringComparer.Ordinal).ToArray();
         var status = facts.ExcludedEvidence == 0 ? ParsimonyMeasureStatus.Computed
             : ParsimonyMeasureStatus.Inconclusive;
+        var abstentions = new MeasureAbstentions();
+        abstentions.Add("incomplete-parser-evidence", facts.ExcludedEvidence, MeasureAbstentions.Sentence(facts.Detail));
         return Result(measure, status, facts.EligibleMorphologies, facts.MatchedMorphologies, findings,
-            facts.Detail, status == ParsimonyMeasureStatus.Inconclusive ? facts.Detail : null);
+            status == ParsimonyMeasureStatus.Inconclusive ? abstentions.Detail() : facts.Detail,
+            status == ParsimonyMeasureStatus.Inconclusive ? facts.Detail : null);
     }
 
-    private static ParsimonyMeasureResult RunReviewedNegativeAccepted(MeasureDefinition measure,
-        ParsimonyQuerySession session, string bundleId)
+    internal static ParsimonyMeasureResult DecideReviewedNegativeAccepted(MeasureDefinition measure,
+        ParserReviewedNegativeMeasureFacts facts, MeasureContext context)
     {
-        var facts = session.ReadReviewedNegativeAcceptedFacts();
+        var bundleId = context.BundleId;
         if (!facts.Requested)
             return Unavailable(measure, facts.Detail ?? ParsimonyNotes.NoAssessmentReason,
                 facts.Detail ?? ParsimonyNotes.NoAssessmentReason);
@@ -516,7 +560,7 @@ public static partial class MeasureRunner
                 new ParsimonyFindingAttachment(ParsimonyAttachmentKind.WordCase, item.CaseId),
                 ParsimonyFindingIdentity.ReviewedNegativeGroupKey(item.CaseId),
                 new ParsimonyMeasureNumber(1, facts.EligibleNegatives, measure.Unit), measure.Threshold!,
-                MeasureEvidence.Compute(measure, session, evidence),
+                MeasureEvidence.Compute(measure, context.Digest, evidence),
                 [EvidenceReference(bundleId, ParsimonyViews.ParserCases, new { caseKey = item.CaseKey })],
                 measure.RecipeLink,
                 ["A completed parser search accepted this human-confirmed negative case.",
@@ -525,14 +569,18 @@ public static partial class MeasureRunner
         }).OrderBy(item => item.FindingId, StringComparer.Ordinal).ToArray();
         var status = facts.ExcludedNegatives == 0 ? ParsimonyMeasureStatus.Computed
             : ParsimonyMeasureStatus.Inconclusive;
+        var abstentions = new MeasureAbstentions();
+        abstentions.Add("incomplete-parser-case", facts.ExcludedNegatives, MeasureAbstentions.Sentence(facts.Detail));
         return Result(measure, status, facts.EligibleNegatives, facts.AcceptedNegatives, findings,
-            facts.Detail, status == ParsimonyMeasureStatus.Inconclusive ? facts.Detail : null);
+            status == ParsimonyMeasureStatus.Inconclusive ? abstentions.Detail() : facts.Detail,
+            status == ParsimonyMeasureStatus.Inconclusive ? facts.Detail : null);
     }
 
-    private static ParsimonyMeasureResult RunAlternationFamilies(MeasureDefinition measure,
-        ParsimonyQuerySession session, string bundleId)
+    internal static ParsimonyMeasureResult DecideAlternationFamilies(MeasureDefinition measure,
+        AlternationInput input, MeasureContext context)
     {
-        var discovery = session.ReadAlternationFamilies();
+        var bundleId = context.BundleId;
+        var discovery = AlternationDiscovery.Analyze(input);
         var limitations = discovery.Limitations.Concat(
         [
             "This static evidence does not establish that a sound change is productive.",
@@ -568,7 +616,7 @@ public static partial class MeasureRunner
                 new ParsimonyFindingAttachment(ParsimonyAttachmentKind.Group, family.Key,
                     GroupKind: ParsimonyGroupKind.AlternationFamily),
                 family.Key, new ParsimonyMeasureNumber(family.Members.Count, denominator, measure.Unit),
-                measure.Threshold!, MeasureEvidence.Compute(measure, session, evidence), Array.AsReadOnly(evidenceRefs.ToArray()),
+                measure.Threshold!, MeasureEvidence.Compute(measure, context.Digest, evidence), Array.AsReadOnly(evidenceRefs.ToArray()),
                 measure.RecipeLink, Array.AsReadOnly(limitations), ParsimonyVerification.NotRun);
         }).OrderBy(item => item.FindingId, StringComparer.Ordinal).ToArray();
         var participatingMorphemes = discovery.Families.SelectMany(item => item.Members)
@@ -581,10 +629,10 @@ public static partial class MeasureRunner
                 : null);
     }
 
-    private static ParsimonyMeasureResult RunTemplatePrecedence(MeasureDefinition measure,
-        ParsimonyQuerySession session, string bundleId)
+    internal static ParsimonyMeasureResult DecideTemplatePrecedence(MeasureDefinition measure,
+        TemplateSequenceMeasureFacts facts, MeasureContext context)
     {
-        var facts = session.ReadTemplateSequenceFacts();
+        var bundleId = context.BundleId;
         var findings = new List<ParsimonyFinding>();
         var pairCounts = new Dictionary<AffixPairKey, PairOrderCount>();
         long eligible = 0;
@@ -605,7 +653,7 @@ public static partial class MeasureRunner
                 }
                 continue;
             }
-            RecordPairOrders(analysis, pairCounts, session);
+            RecordPairOrders(analysis, pairCounts, context);
             if (analysis.Occurrences.Count < 2 || !HasSameSidePair(analysis.Occurrences)) continue;
             if (!TryGetApplicableTemplates(facts, analysis.RootCategoryGuid, out var templates))
             {
@@ -652,11 +700,11 @@ public static partial class MeasureRunner
                 var pairs = itemWithPairs.Pairs.Select(pair => new
                 {
                     firstMsa = pair.First.MsaGuid,
-                    first = DescribeMorph(pair.First, session, analysis.Morphs),
+                    first = DescribeMorph(pair.First, context, analysis.Morphs),
                     secondMsa = pair.Second.MsaGuid,
-                    second = DescribeMorph(pair.Second, session, analysis.Morphs),
-                    observed = $"{DescribeMorph(pair.First, session, analysis.Morphs)} before " +
-                        DescribeMorph(pair.Second, session, analysis.Morphs),
+                    second = DescribeMorph(pair.Second, context, analysis.Morphs),
+                    observed = $"{DescribeMorph(pair.First, context, analysis.Morphs)} before " +
+                        DescribeMorph(pair.Second, context, analysis.Morphs),
                 }).ToArray();
                 var evidence = JsonSerializer.Serialize(new
                 {
@@ -679,7 +727,7 @@ public static partial class MeasureRunner
                     measure.Axis, measure.Tier,
                     new ParsimonyFindingAttachment(measure.AttachesTo, itemWithPairs.Template.Guid,
                         measure.AuthoredObjectKind), null,
-                    new ParsimonyMeasureNumber(1, 1, measure.Unit), measure.Threshold!, MeasureEvidence.Compute(measure, session, evidence),
+                    new ParsimonyMeasureNumber(1, 1, measure.Unit), measure.Threshold!, MeasureEvidence.Compute(measure, context.Digest, evidence),
                     references, measure.RecipeLink,
                     ["No active applicable template embeds this Approved sequence in order.",
                      "Multi-template chains are not inferred; parser comparison was not run."],
@@ -690,25 +738,19 @@ public static partial class MeasureRunner
         var variability = DescribePairVariability(pairCounts);
         var detailParts = new List<string>();
         if (variability.Count > 0) detailParts.Add("Pair-order variability: " + string.Join("; ", variability));
-        if (unsupportedCases > 0)
-            detailParts.Add($"Abstained for {unsupportedCases} Approved analysis case(s) with unsupported roots, morph types, or category ancestry.");
-        if (chainCases > 0)
-            detailParts.Add($"Abstained for {chainCases} possible multi-template chain(s); chains are unsupported.");
-        if (capCases > 0)
-            detailParts.Add($"Abstained for {capCases} Approved analysis case(s) because assignment enumeration exceeded its safety bound.");
+        var abstentions = TemplateAbstentions(unsupportedCases, chainCases, capCases);
+        if (abstentions.Any) detailParts.Add(abstentions.Detail());
         var status = abstained.Count == 0 ? ParsimonyMeasureStatus.Computed : ParsimonyMeasureStatus.Inconclusive;
         var result = findings.OrderBy(item => item.FindingId, StringComparer.Ordinal).ToArray();
         var detail = detailParts.Count == 0 ? null : string.Join(" ", detailParts);
         return Result(measure, status, eligible, contradicted, result, detail,
-            abstained.Count == 0 ? null : "some Approved analysis cases could not be checked, because their roots, " +
-                "morph types, or category ancestry are unsupported, they form multi-template chains, or assignment " +
-                "enumeration exceeded its bound.");
+            abstained.Count == 0 ? null : TemplateAbstentionClause(abstentions) + ".");
     }
 
-    private static ParsimonyMeasureResult RunSlotBlocking(MeasureDefinition measure,
-        ParsimonyQuerySession session, string bundleId)
+    internal static ParsimonyMeasureResult DecideSlotBlocking(MeasureDefinition measure,
+        TemplateSequenceMeasureFacts facts, MeasureContext context)
     {
-        var facts = session.ReadTemplateSequenceFacts();
+        var bundleId = context.BundleId;
         var witnesses = new Dictionary<string, SlotBlockingWitnesses>(StringComparer.Ordinal);
         var slotEligible = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
         long eligible = 0;
@@ -838,7 +880,7 @@ public static partial class MeasureRunner
                     new { objectGuid = witness.Evidence.AnalysisGuid }));
 
             var causeDescriptions = witnessRows.SelectMany(value => value.Failures.Values.Select(failure =>
-                    DescribeTemplateFailure(failure, session, slotNames)))
+                    DescribeTemplateFailure(failure, context, slotNames)))
                 .Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
             var limitations = new List<string>
             {
@@ -856,7 +898,7 @@ public static partial class MeasureRunner
                 new ParsimonyFindingAttachment(measure.AttachesTo, item.SlotGuid, measure.AuthoredObjectKind), null,
                 new ParsimonyMeasureNumber(witnessRows.Length,
                     Math.Max(witnessRows.Length, slotEligible.GetValueOrDefault(item.SlotGuid)?.Count ?? 0), measure.Unit),
-                measure.Threshold!, MeasureEvidence.Compute(measure, session, evidence), refs, measure.RecipeLink,
+                measure.Threshold!, MeasureEvidence.Compute(measure, context.Digest, evidence), refs, measure.RecipeLink,
                 limitations, ParsimonyVerification.Inconclusive);
         }).ToArray();
         var findingCases = witnesses.Values.SelectMany(item => item.Analyses.Keys)
@@ -865,23 +907,41 @@ public static partial class MeasureRunner
             ? ParsimonyMeasureStatus.Computed
             : ParsimonyMeasureStatus.Inconclusive;
         var detail = "This Text-tier measure does not run the one-slot-optional parser counterfactual. Use a single-slot Draft, scratch Dry Run, and paired Assessments before recommending optionality.";
-        if (unsupportedCases > 0)
-            detail += $" Abstained for {unsupportedCases} Approved analysis case(s) with unsupported roots, morph types, or category ancestry.";
-        if (chainCases > 0)
-            detail += $" Abstained for {chainCases} possible multi-template chain(s); chains are unsupported.";
-        if (capCases > 0)
-            detail += $" Abstained for {capCases} Approved analysis case(s) because assignment enumeration exceeded its safety bound.";
-        if (unknownObligationCases.Count > 0)
-            detail += $" Obligation is unknown for {unknownObligationCases.Count} order-compatible case(s) with an unresolved slot optionality fact.";
+        var abstentions = TemplateAbstentions(unsupportedCases, chainCases, capCases);
+        abstentions.Add("unknown-slot-optionality", unknownObligationCases.Count,
+            $"Obligation is unknown for {unknownObligationCases.Count} order-compatible case(s) with an unresolved slot optionality fact.");
+        if (abstentions.Any) detail += " " + abstentions.Detail();
         var clauses = new List<string>();
-        if (abstained.Count > 0)
-            clauses.Add("some Approved analysis cases could not be checked, because their roots, morph types, or " +
-                "category ancestry are unsupported, they form multi-template chains, or assignment enumeration " +
-                "exceeded its bound");
+        if (abstentions.Count("unsupported-analysis-shape") + abstentions.Count("multi-template-chain") +
+            abstentions.Count("assignment-bound-exceeded") > 0)
+            clauses.Add(TemplateAbstentionClause(abstentions));
         if (unknownObligationCases.Count > 0)
             clauses.Add("the slot optionality of some order-compatible cases is unknown");
         return Result(measure, status, eligible, findingCases, findings, detail,
             status == ParsimonyMeasureStatus.Inconclusive ? string.Join(" and ", clauses) + "." : null);
+    }
+
+    private static MeasureAbstentions TemplateAbstentions(int unsupportedCases, int chainCases, int capCases)
+    {
+        var abstentions = new MeasureAbstentions();
+        abstentions.Add("unsupported-analysis-shape", unsupportedCases,
+            $"Abstained for {unsupportedCases} Approved analysis case(s) with unsupported roots, morph types, or category ancestry.");
+        abstentions.Add("multi-template-chain", chainCases,
+            $"Abstained for {chainCases} possible multi-template chain(s); chains are unsupported.");
+        abstentions.Add("assignment-bound-exceeded", capCases,
+            $"Abstained for {capCases} Approved analysis case(s) because assignment enumeration exceeded its safety bound.");
+        return abstentions;
+    }
+
+    // Names only the causes that arose, so the note says why this run could not look.
+    private static string TemplateAbstentionClause(MeasureAbstentions abstentions)
+    {
+        var causes = new List<string>();
+        if (abstentions.Count("unsupported-analysis-shape") > 0)
+            causes.Add("their roots, morph types, or category ancestry are unsupported");
+        if (abstentions.Count("multi-template-chain") > 0) causes.Add("they form multi-template chains");
+        if (abstentions.Count("assignment-bound-exceeded") > 0) causes.Add("assignment enumeration exceeded its bound");
+        return "some Approved analysis cases could not be checked, because " + MeasureAbstentions.JoinClauses(causes);
     }
 
     private static TemplateObligationEvaluation EvaluateObligations(EvaluatedTemplate attempt)
@@ -918,11 +978,11 @@ public static partial class MeasureRunner
     }
 
     private static string DescribeTemplateFailure(SlotBlockingTemplateFailure failure,
-        ParsimonyQuerySession session, IReadOnlyDictionary<string, string> slotNames)
+        MeasureContext context, IReadOnlyDictionary<string, string> slotNames)
     {
-        var templateName = session.DescribeObject(failure.TemplateGuid) ?? failure.TemplateGuid;
+        var templateName = context.Describe(failure.TemplateGuid) ?? failure.TemplateGuid;
         var alternatives = failure.MissingSlotAlternatives.Select(slots => "[" + string.Join(" + ", slots.Select(
-            slotGuid => $"\"{session.DescribeObject(slotGuid) ?? slotNames.GetValueOrDefault(slotGuid) ?? slotGuid}\"")) + "]");
+            slotGuid => $"\"{context.Describe(slotGuid) ?? slotNames.GetValueOrDefault(slotGuid) ?? slotGuid}\"")) + "]");
         return $"{templateName} leaves one of these obligatory-slot sets unfilled across its order-compatible embeddings: " +
             string.Join(" or ", alternatives);
     }
@@ -1086,7 +1146,7 @@ public static partial class MeasureRunner
         occurrences.GroupBy(item => item.Side, StringComparer.Ordinal).Any(group => group.Count() > 1);
 
     private static void RecordPairOrders(SupportedTemplateAnalysis analysis,
-        IDictionary<AffixPairKey, PairOrderCount> counts, ParsimonyQuerySession session)
+        IDictionary<AffixPairKey, PairOrderCount> counts, MeasureContext context)
     {
         foreach (var sideGroup in analysis.Occurrences.GroupBy(item => item.Side, StringComparer.Ordinal))
         {
@@ -1105,10 +1165,10 @@ public static partial class MeasureRunner
                     : new AffixPairKey(sideGroup.Key, second.MsaGuid, first.MsaGuid);
                 if (!counts.TryGetValue(key, out var count))
                 {
-                    var firstLabel = firstIsCanonical ? DescribeMorph(first, session, analysis.Morphs) :
-                        DescribeMorph(second, session, analysis.Morphs);
-                    var secondLabel = firstIsCanonical ? DescribeMorph(second, session, analysis.Morphs) :
-                        DescribeMorph(first, session, analysis.Morphs);
+                    var firstLabel = firstIsCanonical ? DescribeMorph(first, context, analysis.Morphs) :
+                        DescribeMorph(second, context, analysis.Morphs);
+                    var secondLabel = firstIsCanonical ? DescribeMorph(second, context, analysis.Morphs) :
+                        DescribeMorph(first, context, analysis.Morphs);
                     counts.Add(key, count = new PairOrderCount(firstLabel, secondLabel));
                 }
                 if (firstIsCanonical) count.FirstBeforeSecond++;
@@ -1132,17 +1192,17 @@ public static partial class MeasureRunner
                 $"{(double)Math.Min(first, second) / total:0.00} (descriptive only)";
         }).ToArray());
 
-    private static string DescribeMorph(ParsimonyApprovedMorph morph, ParsimonyQuerySession session)
+    private static string DescribeMorph(ParsimonyApprovedMorph morph, MeasureContext context)
     {
         var form = morph.Forms.Values.FirstOrDefault();
-        var entryForm = morph.EntryGuid is null ? null : session.DescribeObject(morph.EntryGuid);
+        var entryForm = morph.EntryGuid is null ? null : context.Describe(morph.EntryGuid);
         var gloss = morph.Glosses.Values.FirstOrDefault();
         var label = form ?? entryForm ?? morph.MsaGuid ?? morph.MorphGuid ?? "unknown morpheme";
         return gloss is null ? label : $"{label} ({gloss})";
     }
 
-    private static string DescribeMorph(TemplateEmbeddingOccurrence occurrence, ParsimonyQuerySession session,
-        IReadOnlyDictionary<int, ParsimonyApprovedMorph> morphs) => DescribeMorph(morphs[occurrence.MorphOrdinal], session);
+    private static string DescribeMorph(TemplateEmbeddingOccurrence occurrence, MeasureContext context,
+        IReadOnlyDictionary<int, ParsimonyApprovedMorph> morphs) => DescribeMorph(morphs[occurrence.MorphOrdinal], context);
 
     private sealed record SupportedTemplateAnalysis(ParsimonyApprovedMorphSequenceViewRow Evidence,
         string RootCategoryGuid, IReadOnlyList<TemplateEmbeddingOccurrence> Occurrences,

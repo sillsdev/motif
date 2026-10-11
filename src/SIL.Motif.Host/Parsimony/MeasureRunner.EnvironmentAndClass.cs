@@ -8,10 +8,10 @@ public static partial class MeasureRunner
     private const int BroadEnvironmentMinimumWordTypes = 3;
     private const int BroadEnvironmentMinimumStems = 2;
 
-    private static ParsimonyMeasureResult RunEnvironmentExcess(MeasureDefinition measure,
-        ParsimonyQuerySession session, string bundleId)
+    internal static ParsimonyMeasureResult DecideEnvironmentExcess(MeasureDefinition measure,
+        EnvironmentExcessDiscovery discovery, MeasureContext context)
     {
-        var discovery = session.ReadEnvironmentExcess();
+        var bundleId = context.BundleId;
         var findings = new List<ParsimonyFinding>();
         var belowFloor = 0;
         var missingAttested = 0;
@@ -96,7 +96,7 @@ public static partial class MeasureRunner
                 measure.Axis, measure.Tier,
                 new ParsimonyFindingAttachment(measure.AttachesTo, site.AllomorphGuid, measure.AuthoredObjectKind),
                 groupKey, new ParsimonyMeasureNumber(site.Extras.Count, site.Denominator, "context-types"),
-                measure.Threshold!, MeasureEvidence.Compute(measure, session, detail),
+                measure.Threshold!, MeasureEvidence.Compute(measure, context.Digest, detail),
                 references,
                 measure.RecipeLink, limitations, ParsimonyVerification.NotRun));
         }
@@ -104,21 +104,33 @@ public static partial class MeasureRunner
         var status = discovery.UnsupportedSites == 0 && discovery.AmbiguousAlignments == 0 && missingAttested == 0
             ? ParsimonyMeasureStatus.Computed
             : ParsimonyMeasureStatus.Inconclusive;
-        var detailText = discovery.UnsupportedSites == 0 && discovery.AmbiguousAlignments == 0 &&
-                         missingAttested == 0 && belowFloor == 0 ? null :
-            $"Abstained on {discovery.UnsupportedSites} unsupported site(s), " +
-            $"{discovery.AmbiguousAlignments} ambiguous alignment(s), and {missingAttested} site(s) that miss attested triggers; " +
-            $"{belowFloor} site(s) did not meet the support floor.";
+        var abstentions = new MeasureAbstentions();
+        abstentions.Add("unsupported-site", discovery.UnsupportedSites,
+            $"{discovery.UnsupportedSites} unsupported site(s) have an environment shape this check does not measure.");
+        abstentions.Add("ambiguous-alignment", discovery.AmbiguousAlignments,
+            $"{discovery.AmbiguousAlignments} ambiguous alignment(s) of a morph to its word were set aside.");
+        abstentions.Add("missing-attested-trigger", missingAttested,
+            $"{missingAttested} site(s) miss attested triggers.");
+        abstentions.Add("below-support-floor", belowFloor,
+            $"{belowFloor} site(s) did not meet the support floor.");
+        var detailText = status == ParsimonyMeasureStatus.Inconclusive ? abstentions.Detail()
+            : belowFloor == 0 ? null
+            : $"Abstained on 0 unsupported site(s), 0 ambiguous alignment(s), and 0 site(s) that miss attested triggers; " +
+              $"{belowFloor} site(s) did not meet the support floor.";
+        var causes = new List<string>();
+        if (discovery.UnsupportedSites > 0) causes.Add("some sites have unsupported shapes");
+        if (discovery.AmbiguousAlignments > 0) causes.Add("some sites have ambiguous alignments");
+        if (missingAttested > 0) causes.Add("some sites miss attested triggers");
         return Result(measure, status, discovery.Sites.Count, result.Length, result, detailText,
             status == ParsimonyMeasureStatus.Inconclusive
-                ? "some sites have unsupported shapes, ambiguous alignments, or missing attested triggers, so they were not checked."
+                ? MeasureAbstentions.JoinClauses(causes) + ", so they were not checked."
                 : null);
     }
 
-    private static ParsimonyMeasureResult RunNaturalClassExcess(MeasureDefinition measure,
-        ParsimonyQuerySession session, string bundleId)
+    internal static ParsimonyMeasureResult DecideNaturalClassExcess(MeasureDefinition measure,
+        NaturalClassExcessDiscovery discovery, MeasureContext context)
     {
-        var discovery = session.ReadNaturalClassExcess();
+        var bundleId = context.BundleId;
         var findings = new List<ParsimonyFinding>();
         foreach (var site in discovery.Sites.Where(item => item.Extras.Count > 0))
         {
@@ -171,7 +183,7 @@ public static partial class MeasureRunner
                 new ParsimonyFindingAttachment(measure.AttachesTo, site.ClassGuid, measure.AuthoredObjectKind),
                 ParsimonyFindingIdentity.ClassSiteGroupKey(site.ClassGuid, site.UsageSite),
                 new ParsimonyMeasureNumber(site.Extras.Count, site.Denominator, "phoneme-types"),
-                measure.Threshold!, MeasureEvidence.Compute(measure, session, detail),
+                measure.Threshold!, MeasureEvidence.Compute(measure, context.Digest, detail),
                 [EvidenceReference(bundleId, ParsimonyViews.NaturalClassExcess, new { objectGuid = site.ClassGuid }),
                  EvidenceReference(bundleId, ParsimonyViews.NaturalClassContext, new { objectGuid = site.ClassGuid }),
                  EvidenceReference(bundleId, ParsimonyViews.ApprovedMorphSequences, new { objectGuid = (string?)null })],
@@ -181,12 +193,18 @@ public static partial class MeasureRunner
         var status = discovery.UnsupportedSites == 0 && discovery.AmbiguousAlignments == 0
             ? ParsimonyMeasureStatus.Computed
             : ParsimonyMeasureStatus.Inconclusive;
-        var detailText = discovery.UnsupportedSites == 0 && discovery.AmbiguousAlignments == 0 ? null :
-            $"Abstained on {discovery.UnsupportedSites} unsupported usage site(s) and " +
-            $"{discovery.AmbiguousAlignments} ambiguous alignment(s).";
-        return Result(measure, status, discovery.Sites.Count, result.Length, result, detailText,
+        var abstentions = new MeasureAbstentions();
+        abstentions.Add("unsupported-usage-site", discovery.UnsupportedSites,
+            $"{discovery.UnsupportedSites} unsupported usage site(s) have an environment shape this check does not measure.");
+        abstentions.Add("ambiguous-alignment", discovery.AmbiguousAlignments,
+            $"{discovery.AmbiguousAlignments} ambiguous alignment(s) of a morph to its word were set aside.");
+        var causes = new List<string>();
+        if (discovery.UnsupportedSites > 0) causes.Add("some usage sites have unsupported shapes");
+        if (discovery.AmbiguousAlignments > 0) causes.Add("some usage sites have ambiguous alignments");
+        return Result(measure, status, discovery.Sites.Count, result.Length, result,
+            abstentions.Any ? abstentions.Detail() : null,
             status == ParsimonyMeasureStatus.Inconclusive
-                ? "some usage sites have unsupported shapes or ambiguous alignments, so they were not checked."
+                ? MeasureAbstentions.JoinClauses(causes) + ", so they were not checked."
                 : null);
     }
 }

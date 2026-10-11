@@ -35,13 +35,13 @@ public static class MeasureEvidence
     internal static readonly IReadOnlyList<string> ScopedViews =
         [ParsimonyViews.ApprovedMorphSequences, ParsimonyViews.EnvironmentExcess, ParsimonyViews.NaturalClassExcess];
 
-    internal static string Compute(MeasureDefinition measure, ParsimonyQuerySession session, string evidence)
+    internal static string Compute(MeasureDefinition measure, MeasureDigestContext context, string evidence)
     {
-        var inputs = session.Inputs;
         var scoped = measure.Tier != ParsimonyTier.Static || measure.EvidenceViews.Any(ScopedViews.Contains);
-        return Compute(measure, evidence, inputs.GrammarFacts.SchemaVersion,
-            inputs.Evidence.SchemaVersion, scoped ? inputs.EvidenceScope.ToString() : null,
-            scoped && inputs.EvidenceScope == ParsimonyEvidenceScopeKind.DefaultSelection ? inputs.SelectionSha256 : null,
-            measure.RequiredCapabilities.Contains("reviewed-negative-expectations") ? inputs.ExpectationRevisionSha256 : null);
+        return Compute(measure, evidence, context.FactsSchemaVersion, context.EvidenceSchemaVersion,
+            scoped ? context.Scope.ToString() : null,
+            scoped && context.Scope == ParsimonyEvidenceScopeKind.DefaultSelection ? context.SelectionSha256 : null,
+            measure.RequiredCapabilities.Contains("reviewed-negative-expectations")
+                ? context.ExpectationRevisionSha256 : null);
     }
 }
