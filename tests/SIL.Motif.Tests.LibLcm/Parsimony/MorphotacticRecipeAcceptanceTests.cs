@@ -72,8 +72,7 @@ public sealed partial class MorphotacticRecipeAcceptanceTests(
         var duplicateId = CanonicalId.FromGuid(duplicate.Guid).Value;
 
         var result = await RunProposalAsync(cache, fixture.Wordforms, fixture.Words, "adhoc-duplicate-disable",
-            (path, draft) => ComposeDisableProhibition(path, draft, duplicateId),
-            RecipeVerificationCriteria.StructuralCleanup);
+            (path, draft) => ComposeDisableProhibition(path, draft, duplicateId));
 
         Assert.Single(result.Proposal.Operations);
         Assert.Equal(MoAdhocProhibDisabledOperationKinds.SetDisabled, result.Proposal.Operations[0].Kind);
@@ -81,8 +80,7 @@ public sealed partial class MorphotacticRecipeAcceptanceTests(
         Assert.Single(result.DryRun.ExpectedEffects,
             effect => effect.Field == SnapshotFields.MoAdhocProhibDisabled);
         Assert.Equal(RecipeVerificationStatus.Pass, result.Verification.Status);
-        Assert.Equal(RecipeVerificationCriteria.StructuralCleanup, result.Verification.Criteria);
-        Assert.Equal(0, result.Verification.ChangedAnalysisCases);
+        Assert.Empty(AssessmentComparer.Compare(result.Before.Assessment, result.After.Assessment).Changes);
         Assert.Equal(0, result.Verification.LostApprovedReadings);
         Assert.Equal(0, result.Verification.NewlyAcceptedNegativeCases);
 
@@ -460,8 +458,7 @@ public sealed partial class MorphotacticRecipeAcceptanceTests(
 
     private async Task<Acceptance> RunProposalAsync(LcmCache cache, IReadOnlyList<Guid> wordforms,
         IReadOnlyList<string> words, string draftName,
-        Func<string, string, CommandOutcome<ComposedOperationsResponse>> compose,
-        RecipeVerificationCriteria criteria = RecipeVerificationCriteria.Tightening)
+        Func<string, string, CommandOutcome<ComposedOperationsResponse>> compose)
     {
         Directory.CreateDirectory(_root);
         var projectPath = cache.ProjectId.Path;
@@ -506,8 +503,9 @@ public sealed partial class MorphotacticRecipeAcceptanceTests(
         }
 
         var after = await AssessAsync(afterPath, invoker, words, Path.Combine(_root, draftName + "-after"), baseline);
-        var verification = RecipeVerification.Compare(frozen, before, after, criteria);
-        return new Acceptance(proposal, dryRun, verification, afterPath, frozen, composed.Value!, projectPath);
+        var verification = RecipeVerification.Compare(frozen, before, after);
+        return new Acceptance(proposal, dryRun, verification, afterPath, frozen, composed.Value!, projectPath,
+            before, after);
     }
 
     private static void EnsureReservedField(LcmCache cache)
@@ -1200,5 +1198,5 @@ public sealed partial class MorphotacticRecipeAcceptanceTests(
 
     private sealed record Acceptance(Proposal Proposal, DryRun DryRun, RecipeVerificationResult Verification,
         string AfterProjectPath, FrozenExpectationSet Frozen, ComposedOperationsResponse Composed,
-        string BeforeProjectPath);
+        string BeforeProjectPath, RecipeVerificationRun Before, RecipeVerificationRun After);
 }

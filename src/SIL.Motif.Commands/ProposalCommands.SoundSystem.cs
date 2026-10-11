@@ -4,6 +4,7 @@ using SIL.LCModel;
 using SIL.LCModel.Core.KernelInterfaces;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Commands.Requests;
+using SIL.Motif.Commands.Retirement;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
@@ -81,11 +82,11 @@ public static partial class ProposalCommands
 
     public static CommandOutcome<ComposedOperationsResponse> ComposeRetireAllomorph(ComposeRetireAllomorphRequest request) =>
         ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
-            "RetireAllomorph", (cache, input, _) =>
+            RetirementRecipes.RuleReplacement.ComposerName, (cache, input, _) =>
             {
                 var json = input.GetRawText();
                 return input.TryGetProperty("format", out var format) &&
-                       format.GetString() == "motif-allomorph-retirement"
+                       format.GetString() == RetirementRecipes.RuleReplacement.ProvenanceFormat
                     ? ReplaceListedAllomorphsWithRuleComposer.Build(cache, AllomorphRetirementCodec.Parse(json),
                         () => CanonicalId.Mint())
                     : RetireAllomorphComposer.Build(cache, RetireAllomorphCodec.Parse(json),

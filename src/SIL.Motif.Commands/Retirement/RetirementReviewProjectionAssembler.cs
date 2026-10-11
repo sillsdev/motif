@@ -73,7 +73,7 @@ internal static class RetirementReviewProjectionAssembler
 
         var verification = RecipeVerification.Compare(translation,
             RecipeVerificationTrialProjection.From(beforeAssessment),
-            RecipeVerificationTrialProjection.From(afterAssessment), RecipeVerificationCriteria.Tightening);
+            RecipeVerificationTrialProjection.From(afterAssessment));
         var statistics = Statistics(footprint, translation, dryRun, boundFinding.Finding, evidence, afterFinding);
         var attributions = translation.Original.Cases.SelectMany(@case => @case.Readings
             .Where(reading => reading.Opinion == "approved")
@@ -94,9 +94,8 @@ internal static class RetirementReviewProjectionAssembler
 
     private static BoundFinding? FindBoundFinding(MotifDatabase database, DraftDocument draft)
     {
-        var entries = draft.ComposerProvenance.Where(item => item.ValueKind == JsonValueKind.Object &&
-            item.TryGetProperty("composer", out var composer) && composer.ValueKind == JsonValueKind.String &&
-            composer.GetString() == "RecordParsimonyDisposition" && item.TryGetProperty("input", out _)).ToArray();
+        var binding = RetirementRecipes.RuleReplacement.FindingBinding;
+        var entries = binding.Entries(draft);
         if (entries.Length == 0) return null;
         if (entries.Length != 1)
             throw new InvalidDataException("The Draft has several issue bindings and the retirement review is ambiguous.");
@@ -114,7 +113,7 @@ internal static class RetirementReviewProjectionAssembler
         if (report.ReportId != record.ReportId || report.ReportId != intent.ReportId.Value.Value)
             throw new InvalidDataException("The bound Parsimony Report identity does not match its stored row.");
         var matches = report.Findings.Where(finding => finding.MeasureId == intent.MeasureId &&
-            ParsimonyFindingIdentity.EvidenceDigestsMatch(finding.EvidenceDigest, intent.EvidenceDigest) && SubjectMatches(intent.Subject, finding))
+            ParsimonyFindingIdentity.EvidenceDigestsMatch(finding.EvidenceDigest, intent.EvidenceDigest) && binding.Binds(intent.Subject, finding))
             .ToArray();
         if (matches.Length != 1)
             throw new InvalidDataException("The bound issue does not identify one exact finding in its source Report.");
@@ -132,13 +131,6 @@ internal static class RetirementReviewProjectionAssembler
             throw new InvalidDataException("The stored finding binding repeats an operation identity.");
         return Array.AsReadOnly(ids);
     }
-
-    private static bool SubjectMatches(HumanJudgmentSubject subject, ParsimonyFinding finding) => subject switch
-    {
-        ParsimonyFindingJudgmentSubject or GroupJudgmentSubject { Role: not JudgmentGroupRole.AdhocCluster } =>
-            ParsimonyFindingIdentity.SubjectMatches(subject, finding, string.Empty),
-        _ => false,
-    };
 
     private static void ValidateBeforeFinding(ParsimonyFinding bound, ParsimonyReportResponse before)
     {

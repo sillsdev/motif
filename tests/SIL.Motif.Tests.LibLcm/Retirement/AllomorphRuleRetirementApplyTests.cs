@@ -228,8 +228,7 @@ public sealed partial class AllomorphRuleRetirementAcceptanceTests
             translated.Original.Baseline);
         var afterRun = await AssessAsync(afterCache.ProjectId.Path, invoker, words,
             Path.Combine(_root, "apply-assess-after"), translated.Original.Baseline);
-        var verification = RecipeVerification.Compare(translated, beforeRun.Run, afterRun.Run,
-            RecipeVerificationCriteria.Tightening);
+        var verification = RecipeVerification.Compare(translated, beforeRun.Run, afterRun.Run);
         Assert.Equal(RecipeVerificationStatus.Pass, verification.Status);
         Assert.Equal(3, verification.PreservedApprovedReadings);
         Assert.Equal(0, verification.LostApprovedReadings);

@@ -49,13 +49,12 @@ public sealed class RecipeVerificationTests
         var readings = new[] { Parsed(FormOneGuid), Parsed(FormTwoGuid) };
 
         var result = RecipeVerification.Compare(frozen, Run("before", [Case("ara", readings)]),
-            Run("after", [Case("ara", readings)]), RecipeVerificationCriteria.StructuralCleanup);
+            Run("after", [Case("ara", readings)]));
 
         Assert.Equal(RecipeVerificationStatus.Pass, result.Status);
         Assert.Equal(2, result.PreservedApprovedReadings);
         Assert.Equal(0, result.RecoveredApprovedReadings);
         Assert.Equal(0, result.LostApprovedReadings);
-        Assert.Equal(0, result.ChangedAnalysisCases);
     }
 
     [Fact]
@@ -65,8 +64,7 @@ public sealed class RecipeVerificationTests
 
         var result = RecipeVerification.Compare(frozen,
             Run("before", [Case("ara", [Parsed(FormOneGuid)])]),
-            Run("after", [Case("ara", [Parsed(FormOneGuid), Parsed(FormTwoGuid)])]),
-            RecipeVerificationCriteria.Tightening);
+            Run("after", [Case("ara", [Parsed(FormOneGuid), Parsed(FormTwoGuid)])]));
 
         Assert.Equal(1, result.RecoveredApprovedReadings);
         Assert.Equal(0, result.LostApprovedReadings);
@@ -74,8 +72,7 @@ public sealed class RecipeVerificationTests
 
         var lost = RecipeVerification.Compare(frozen,
             Run("before", [Case("ara", [Parsed(FormOneGuid), Parsed(FormTwoGuid)])]),
-            Run("after", [Case("ara", [Parsed(FormOneGuid)])]),
-            RecipeVerificationCriteria.Tightening);
+            Run("after", [Case("ara", [Parsed(FormOneGuid)])]));
 
         Assert.Equal(1, lost.PreservedApprovedReadings);
         Assert.Equal(1, lost.LostApprovedReadings);
@@ -90,7 +87,7 @@ public sealed class RecipeVerificationTests
 
         var result = RecipeVerification.Compare(frozen,
             Run("before", [Case("ara", [Parsed(FormOneGuid)])]),
-            Run("after", [Case("ara", [])]), RecipeVerificationCriteria.StructuralCleanup);
+            Run("after", [Case("ara", [])]));
 
         Assert.Equal(frozenForm, frozen.Cases[0].Readings[0].Morphs[0].Form);
         Assert.Equal(1, result.LostApprovedReadings);
@@ -104,7 +101,7 @@ public sealed class RecipeVerificationTests
 
         Assert.Throws<NotSupportedException>(() => RecipeVerification.Compare(Expectations(Reading(FormOneGuid)),
             Run("before", [Case("ara", [Parsed(FormOneGuid)])]),
-            Run("after", [Case("ara", [Parsed(FormTwoGuid)])]), RecipeVerificationCriteria.Tightening, mapping));
+            Run("after", [Case("ara", [Parsed(FormTwoGuid)])]), mapping));
     }
 
     [Fact]
@@ -128,7 +125,7 @@ public sealed class RecipeVerificationTests
 
         var result = RecipeVerification.Compare(translation,
             Run("before", [Case("ara", [Parsed(FormOneGuid)])]),
-            Run("after", [Case("ara", [Parsed(FormTwoGuid)])]), RecipeVerificationCriteria.Tightening);
+            Run("after", [Case("ara", [Parsed(FormTwoGuid)])]));
 
         Assert.Equal(RecipeVerificationStatus.Pass, result.Status);
         Assert.Equal(1, result.PreservedApprovedReadings);
@@ -143,7 +140,7 @@ public sealed class RecipeVerificationTests
         var partial = Case("ara", [Parsed(FormTwoGuid)], capped: true);
 
         var result = RecipeVerification.Compare(frozen,
-            Run("before", [Case("ara", [])]), Run("after", [partial]), RecipeVerificationCriteria.Tightening);
+            Run("before", [Case("ara", [])]), Run("after", [partial]));
 
         Assert.Equal(1, result.PartialNegativeWitnesses);
         Assert.Equal(0, result.CompletedNegativeCases);
@@ -158,8 +155,7 @@ public sealed class RecipeVerificationTests
 
         var result = RecipeVerification.Compare(frozen,
             Run("before", [Case("ara", [])]),
-            Run("after", [Case("ara", [Parsed(FormOneGuid)], capped: true)]),
-            RecipeVerificationCriteria.Tightening);
+            Run("after", [Case("ara", [Parsed(FormOneGuid)], capped: true)]));
 
         Assert.Equal(0, result.RecoveredApprovedReadings);
         Assert.Equal(1, result.IncompleteCases);
@@ -174,7 +170,7 @@ public sealed class RecipeVerificationTests
         var before = Run("before", [Case("ara", [Parsed(FormOneGuid)]), Case("extra", [])], options);
         var after = Run("after", [Case("ara", [Parsed(FormOneGuid)]), Case("extra", [])], options);
 
-        var result = RecipeVerification.Compare(frozen, before, after, RecipeVerificationCriteria.Tightening);
+        var result = RecipeVerification.Compare(frozen, before, after);
 
         Assert.Equal(RecipeVerificationStatus.Incomplete, result.Status);
         Assert.Contains("unreadable project judgment", result.Unavailable);
@@ -193,14 +189,11 @@ public sealed class RecipeVerificationTests
         var before = Run("before", [Case("ara", [Parsed(FormOneGuid)])]);
 
         Assert.Throws<ComparisonRefusalException>(() => RecipeVerification.Compare(frozen, before,
-            Run("other-assessor", [Case("ara", [Parsed(FormOneGuid)])], assessor: "other"),
-            RecipeVerificationCriteria.Tightening));
+            Run("other-assessor", [Case("ara", [Parsed(FormOneGuid)])], assessor: "other")));
         Assert.Throws<ComparisonRefusalException>(() => RecipeVerification.Compare(frozen, before,
-            Run("other-kind", [Case("ara", [Parsed(FormOneGuid)])], kind: "Correctness"),
-            RecipeVerificationCriteria.Tightening));
+            Run("other-kind", [Case("ara", [Parsed(FormOneGuid)])], kind: "Correctness")));
         Assert.Throws<RecipeVerificationRefusalException>(() => RecipeVerification.Compare(frozen, before,
-            Run("other-options", [Case("ara", [Parsed(FormOneGuid)])], options: Options(2000, 200_000, 1)),
-            RecipeVerificationCriteria.Tightening));
+            Run("other-options", [Case("ara", [Parsed(FormOneGuid)])], options: Options(2000, 200_000, 1))));
     }
 
     [Fact]
@@ -210,23 +203,17 @@ public sealed class RecipeVerificationTests
 
         Assert.Throws<RecipeVerificationRefusalException>(() => RecipeVerification.Compare(frozen,
             Run("before", [Case("ara", [Parsed(FormOneGuid)])]),
-            Run("after", [Case("other", [Parsed(FormOneGuid)])]), RecipeVerificationCriteria.Tightening));
+            Run("after", [Case("other", [Parsed(FormOneGuid)])])));
     }
 
     [Fact]
-    public void CleanupRequiresEqualCompletedAnalysisSetsButTighteningReportsOnlyIntroducedNegatives()
+    public void DroppingAnUnexpectedAnalysisIsNotARegression()
     {
         var frozen = Expectations(Reading(FormOneGuid));
         var before = Run("before", [Case("ara", [Parsed(FormOneGuid), Parsed(FormTwoGuid)])]);
         var after = Run("after", [Case("ara", [Parsed(FormOneGuid)])]);
 
-        var cleanup = RecipeVerification.Compare(frozen, before, after,
-            RecipeVerificationCriteria.StructuralCleanup);
-        var tightening = RecipeVerification.Compare(frozen, before, after, RecipeVerificationCriteria.Tightening);
-
-        Assert.Equal(RecipeVerificationStatus.Regression, cleanup.Status);
-        Assert.Equal(1, cleanup.ChangedAnalysisCases);
-        Assert.Equal(RecipeVerificationStatus.Pass, tightening.Status);
+        Assert.Equal(RecipeVerificationStatus.Pass, RecipeVerification.Compare(frozen, before, after).Status);
     }
 
     private static FrozenExpectationSet Expectations(params FrozenExpectedReading[] readings) =>

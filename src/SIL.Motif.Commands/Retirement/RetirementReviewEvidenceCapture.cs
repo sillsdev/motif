@@ -23,17 +23,7 @@ internal static class RetirementReviewEvidenceCapture
     internal static ReplaceListedAllomorphsWithRuleIntent? FindRetirementComposition(
         DraftDocument draft, Proposal proposal)
     {
-        var authored = new List<ReplaceListedAllomorphsWithRuleIntent>();
-        foreach (var provenance in draft.ComposerProvenance)
-        {
-            if (provenance.ValueKind != JsonValueKind.Object ||
-                !provenance.TryGetProperty("composer", out var composer) ||
-                composer.ValueKind != JsonValueKind.String || composer.GetString() != "RetireAllomorph" ||
-                !provenance.TryGetProperty("input", out var input) || input.ValueKind != JsonValueKind.Object ||
-                !input.TryGetProperty("format", out var format) || format.GetString() != "motif-allomorph-retirement")
-                continue;
-            authored.Add(AllomorphRetirementCodec.Parse(input.GetRawText()));
-        }
+        var authored = RetirementRecipes.RuleReplacement.Compositions(draft);
         if (authored.Count == 0) return null;
         if (authored.Count != 1)
             throw new InvalidDataException("A Draft with several rule-retirement compositions is ambiguous.");

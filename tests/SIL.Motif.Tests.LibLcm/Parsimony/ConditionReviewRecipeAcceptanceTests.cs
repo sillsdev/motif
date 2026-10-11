@@ -247,7 +247,7 @@ public sealed partial class ConditionReviewRecipeAcceptanceTests(
 
         var after = await AssessAsync(afterPath, invoker, words, Path.Combine(_root, draftName + "-after"),
             frozen.Baseline);
-        var verification = RecipeVerification.Compare(frozen, before, after, RecipeVerificationCriteria.Tightening);
+        var verification = RecipeVerification.Compare(frozen, before, after);
         var authoredEnvironment = proposal.Operations.Select(operation => operation.EntityId?.Value)
             .FirstOrDefault(id => id is not null);
         return new Acceptance(proposal, dryRun, verification, frozen, before, after, afterPath,
@@ -299,7 +299,7 @@ public sealed partial class ConditionReviewRecipeAcceptanceTests(
             frozen.Baseline);
         var after = await AssessAsync(cache.ProjectId.Path, invoker, words, Path.Combine(_root, name + "-after"),
             frozen.Baseline);
-        var verification = RecipeVerification.Compare(frozen, before, after, RecipeVerificationCriteria.Tightening);
+        var verification = RecipeVerification.Compare(frozen, before, after);
         return new Acceptance(null, null, verification, frozen, before, after, cache.ProjectId.Path, null);
     }
 

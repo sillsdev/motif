@@ -146,8 +146,7 @@ public sealed partial class AllomorphRuleRetirementAcceptanceTests(
             Path.Combine(_root, "assess-before"), sourceBaseline);
         var afterRun = await ApplyAndAssessAsync(cache, proposal, dryRun, invoker, ["ata", "ira", "ri"],
             Path.Combine(_root, "assess-after"), fixture, translated);
-        var verification = RecipeVerification.Compare(translated, beforeRun.Run, afterRun,
-            RecipeVerificationCriteria.Tightening);
+        var verification = RecipeVerification.Compare(translated, beforeRun.Run, afterRun);
         output.WriteLine($"Verification={verification.Status}; incomplete={verification.IncompleteCases}; " +
             $"unavailable={string.Join(" | ", verification.Unavailable)}; exclusions={string.Join(" | ", verification.Exclusions)}; " +
             $"negativeGap={verification.NegativeEvidenceGap}; negatives={verification.CompletedNegativeCases}/{verification.AcceptedNegativeCases}/{verification.NewlyAcceptedNegativeCases}");

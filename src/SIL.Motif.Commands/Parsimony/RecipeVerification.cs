@@ -10,20 +10,10 @@ using SIL.Motif.Host.Parsimony;
 
 namespace SIL.Motif.Commands.Parsimony;
 
-/// <summary>The parse-preservation criteria appropriate to a recipe's purpose.</summary>
-public enum RecipeVerificationCriteria
-{
-    /// <summary>Require equal completed parse-analysis sets on every required case.</summary>
-    StructuralCleanup,
-
-    /// <summary>Require preservation of produced Approved readings and no new negative acceptance.</summary>
-    Tightening,
-}
-
 /// <summary>The outcome of comparing one frozen before expectation set with paired parser Assessments.</summary>
 public enum RecipeVerificationStatus
 {
-    /// <summary>All required checks completed and the selected criteria were met.</summary>
+    /// <summary>All required checks completed and the preservation checks were met.</summary>
     Pass,
 
     /// <summary>Completed evidence proves that the candidate changed a protected result.</summary>
@@ -82,7 +72,6 @@ public sealed record RecipeVerificationNegative(
 /// <summary>Counts, exclusions, limits and exact witnesses from paired recipe verification.</summary>
 public sealed record RecipeVerificationResult(
     RecipeVerificationStatus Status,
-    RecipeVerificationCriteria Criteria,
     int PreservedApprovedReadings,
     int RecoveredApprovedReadings,
     int MissingBeforeApprovedReadings,
@@ -94,7 +83,6 @@ public sealed record RecipeVerificationResult(
     int DistinctSurfaceCount,
     int MaximumDistinctSurfaces,
     int IncompleteCases,
-    int ChangedAnalysisCases,
     int ExcludedAssessmentCases,
     int ExcludedExpectationReadings,
     bool NegativeEvidenceGap,
@@ -111,27 +99,26 @@ public static class RecipeVerification
 
     /// <summary>Runs the shared preservation and regression checks for one bounded grammar change.</summary>
     public static RecipeVerificationResult Compare(FrozenExpectationSet frozen,
-        RecipeVerificationRun before, RecipeVerificationRun after, RecipeVerificationCriteria criteria,
+        RecipeVerificationRun before, RecipeVerificationRun after,
         IReadOnlyDictionary<string, string>? identityMapping = null)
     {
         ArgumentNullException.ThrowIfNull(frozen);
         if (identityMapping is { Count: > 0 })
             throw new NotSupportedException("Explicit identity translation is not supported by frozen-expectations/v1 verification.");
-        return ComparePair(frozen, frozen, before, after, criteria);
+        return ComparePair(frozen, frozen, before, after);
     }
 
     /// <summary>Compares the original oracle before and its Dry Run-bound translation after a retirement.</summary>
     public static RecipeVerificationResult Compare(RetirementExpectationTranslation translation,
-        RecipeVerificationRun before, RecipeVerificationRun after, RecipeVerificationCriteria criteria)
+        RecipeVerificationRun before, RecipeVerificationRun after)
     {
         ArgumentNullException.ThrowIfNull(translation);
         RetirementExpectationTranslator.ValidatePair(translation);
-        return ComparePair(translation.Original, translation.Translated, before, after, criteria);
+        return ComparePair(translation.Original, translation.Translated, before, after);
     }
 
     private static RecipeVerificationResult ComparePair(FrozenExpectationSet beforeFrozen,
-        FrozenExpectationSet afterFrozen, RecipeVerificationRun before, RecipeVerificationRun after,
-        RecipeVerificationCriteria criteria)
+        FrozenExpectationSet afterFrozen, RecipeVerificationRun before, RecipeVerificationRun after)
     {
         ArgumentNullException.ThrowIfNull(beforeFrozen);
         ArgumentNullException.ThrowIfNull(before);
@@ -236,10 +223,6 @@ public static class RecipeVerification
             negativeResults.Add(CompareReviewedNegative(original, negative, beforeCase, afterCase, identityAvailable));
         }
 
-        var completeWordPairs = SharedCompleteWords(expectedSurfaces, beforeCases, afterCases);
-        var changedAnalysisCases = criteria == RecipeVerificationCriteria.StructuralCleanup
-            ? CompareCompletedSets(before, after, completeWordPairs, unavailable)
-            : 0;
         var lost = readingResults.Count(item => item.Status == RecipeVerificationReadingStatus.Lost);
         var preserved = readingResults.Count(item => item.Status == RecipeVerificationReadingStatus.Preserved);
         var recovered = readingResults.Count(item => item.Status == RecipeVerificationReadingStatus.Recovered);
@@ -254,7 +237,7 @@ public static class RecipeVerification
             beforeFrozen.Cases.SelectMany(item => item.Readings).All(item => item.Opinion != "disapproved");
         if (negativeGap) exclusions.Add("No reviewed-negative or Disapproved-reading evidence was available.");
 
-        var regression = lost > 0 || newlyAccepted > 0 || changedAnalysisCases > 0;
+        var regression = lost > 0 || newlyAccepted > 0;
         var incomplete = incompleteCases.Count > 0 || unavailable.Count > 0 ||
             readingResults.Any(item => item.Status is RecipeVerificationReadingStatus.Incomplete or
                 RecipeVerificationReadingStatus.FoundAfterBeforeIncomplete) ||
@@ -263,10 +246,10 @@ public static class RecipeVerification
             : incomplete ? RecipeVerificationStatus.Incomplete
             : RecipeVerificationStatus.Pass;
 
-        return new RecipeVerificationResult(status, criteria, preserved, recovered, missingBefore, lost,
+        return new RecipeVerificationResult(status, preserved, recovered, missingBefore, lost,
             completedNegatives, acceptedNegatives, newlyAccepted, partialWitnesses, expectedSurfaces.Count,
             MaximumDistinctSurfaces, incompleteCases.Count,
-            changedAnalysisCases, excludedCases, excludedReadings, negativeGap, after.Options,
+            excludedCases, excludedReadings, negativeGap, after.Options,
             Array.AsReadOnly(readingResults.ToArray()), Array.AsReadOnly(negativeResults.ToArray()),
             Array.AsReadOnly(unavailable.Distinct(StringComparer.Ordinal).ToArray()),
             Array.AsReadOnly(exclusions.Distinct(StringComparer.Ordinal).ToArray()));
@@ -392,46 +375,6 @@ public static class RecipeVerification
     private static string? GuidText(string? id) => id is null
         ? null
         : CanonicalId.Parse(id).ToGuid().ToString("D").ToLowerInvariant();
-
-    private static IReadOnlyList<(string Surface, AssessedWord Before, AssessedWord After)> SharedCompleteWords(
-        IReadOnlySet<string> expectedSurfaces,
-        IReadOnlyDictionary<string, CaseObservation[]> beforeCases,
-        IReadOnlyDictionary<string, CaseObservation[]> afterCases)
-    {
-        var result = new List<(string, AssessedWord, AssessedWord)>();
-        foreach (var surface in expectedSurfaces)
-        {
-            if (!beforeCases.TryGetValue(surface, out var from) || from.Length != 1 || !from[0].Complete ||
-                !afterCases.TryGetValue(surface, out var to) || to.Length != 1 || !to[0].Complete) continue;
-            result.Add((surface, Normalize(from[0].Word), Normalize(to[0].Word)));
-        }
-        return result;
-    }
-
-    private static AssessedWord Normalize(AssessedWord word)
-    {
-        var surface = word.Word.Normalize(NormalizationForm.FormD);
-        var morphology = word.Morphology is null ? null : word.Morphology with { Word = surface };
-        return word with { Word = surface, Morphology = morphology };
-    }
-
-    private static int CompareCompletedSets(RecipeVerificationRun before, RecipeVerificationRun after,
-        IReadOnlyList<(string Surface, AssessedWord Before, AssessedWord After)> pairs,
-        ICollection<string> unavailable)
-    {
-        try
-        {
-            var comparison = AssessmentComparer.Compare(
-                before.Assessment with { Words = pairs.Select(item => item.Before).ToArray() },
-                after.Assessment with { Words = pairs.Select(item => item.After).ToArray() });
-            return comparison.Changes.Count;
-        }
-        catch (ComparisonRefusalException exception)
-        {
-            unavailable.Add("Completed analysis sets could not be compared: " + exception.Message);
-            return 0;
-        }
-    }
 
     private static int CountDistinctAssessmentCases(IReadOnlyList<AssessedWord> before,
         IReadOnlyList<AssessedWord> after, IReadOnlySet<string> expectedSurfaces) =>

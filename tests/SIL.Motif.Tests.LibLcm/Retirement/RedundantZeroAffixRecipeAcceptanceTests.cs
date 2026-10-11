@@ -108,8 +108,7 @@ public sealed partial class RedundantZeroAffixRecipeAcceptanceTests(PristineProj
 
         var afterAssessment = await AssessAsync(afterPath, words, baseline, invoker,
             Path.Combine(_root, "assess-after"));
-        var verification = RecipeVerification.Compare(frozen, beforeAssessment, afterAssessment,
-            RecipeVerificationCriteria.Tightening);
+        var verification = RecipeVerification.Compare(frozen, beforeAssessment, afterAssessment);
         Assert.Equal(RecipeVerificationStatus.Pass, verification.Status);
         Assert.DoesNotContain(ParserMsaIds(afterAssessment), id => id == zeroMsaId);
         Assert.Equal(0, verification.LostApprovedReadings);
