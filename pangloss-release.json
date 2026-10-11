@@ -36,7 +36,8 @@
         "--step-cap": true
       },
       "grammar-health": {
-        "--fw-project": true
+        "--fw-project": true,
+        "--stored-analyses": true
       },
       "facts": {
         "--out": true,

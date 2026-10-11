@@ -19,6 +19,7 @@ public enum SettingsGroup
     Display,
     Shortcuts,
     Parsing,
+    ProposalChecks,
     WritingSystems,
     Help,
     About,

@@ -5,6 +5,7 @@ using SIL.Motif.Commands;
 using SIL.Motif.Commands.Assistants;
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Commands.Preferences;
+using SIL.Motif.Host.Preferences;
 
 namespace SIL.Motif.App.Composition;
 
@@ -35,6 +36,7 @@ namespace SIL.Motif.App.Composition;
 /// <param name="UserPreferencesStore">The shared per-user App preferences, or process-local defaults when omitted.</param>
 /// <param name="AdvancedAiModePreferences">Where the user's Advanced AI mode choice is read and saved.</param>
 /// <param name="AssistantConnections">The replaceable assistant discovery and connection service.</param>
+/// <param name="DefaultProposalChecks">Where the user's Default proposal checks are read and saved.</param>
 public sealed record MotifAppOptions(
     string ManagedRoot,
     string? ParserPath,
@@ -49,7 +51,8 @@ public sealed record MotifAppOptions(
     bool RememberBounds = false,
     IUserPreferencesStore? UserPreferencesStore = null,
     IAdvancedAiModePreferenceStore? AdvancedAiModePreferences = null,
-    IAssistantConnectionService? AssistantConnections = null)
+    IAssistantConnectionService? AssistantConnections = null,
+    IDefaultProposalChecksStore? DefaultProposalChecks = null)
 {
     /// <summary>The command surface the window may show for the current preference choice.</summary>
     public CommandSurfacePolicy SurfacePolicy =>
@@ -66,7 +69,8 @@ public sealed record MotifAppOptions(
             TimeProvider.System, RememberBounds: true,
             UserPreferencesStore: new FileUserPreferencesStore(FileUserPreferencesStore.DefaultPath),
             AdvancedAiModePreferences: FileAdvancedAiModePreferenceStore.ForInstallation(),
-            AssistantConnections: AssistantConnectionService.ForInstallation());
+            AssistantConnections: AssistantConnectionService.ForInstallation(),
+            DefaultProposalChecks: FileDefaultProposalChecksStore.ForInstallation());
     }
 }
 
@@ -117,6 +121,7 @@ public static class MotifAppComposition
             advancedAiModeEnabled: surfacePolicy.AdvancedAiModeEnabled,
             advancedAiModePreferences: options.AdvancedAiModePreferences,
             assistantConnections: options.AssistantConnections,
+            defaultProposalChecks: options.DefaultProposalChecks,
             uriLauncher: new AvaloniaLauncher(window));
         window.Compose(workspace);
         var crashes = new CrashReporter(options.TimeProvider, options.CrashWindow ?? new CrashWindowServices());

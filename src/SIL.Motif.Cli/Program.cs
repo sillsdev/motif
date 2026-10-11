@@ -1253,8 +1253,20 @@ try
             if (positionals.Count != 1 || positionals[0] != "check" ||
                 !flags.TryGetValue("project", out var grammarProject))
                 return Usage(UsageLineFor("grammar check"), asJson);
+            StoredAnalysisComparison? storedAnalyses = null;
+            if (flags.TryGetValue("stored-analyses", out var storedAnalysesWord))
+            {
+                storedAnalyses = storedAnalysesWord switch
+                {
+                    "budget" => StoredAnalysisComparison.Budget,
+                    "all" => StoredAnalysisComparison.All,
+                    "off" => StoredAnalysisComparison.Off,
+                    _ => null,
+                };
+                if (storedAnalyses is null) return Usage(UsageLineFor("grammar check"), asJson);
+            }
             result = RunWithConsoleCancellation(token => RenderCommand(
-                GrammarCheckQuery.Query(new GrammarCheckRequest(grammarProject), token)));
+                GrammarCheckQuery.Query(new GrammarCheckRequest(grammarProject, StoredAnalyses: storedAnalyses), token)));
             break;
 
         case "timing":

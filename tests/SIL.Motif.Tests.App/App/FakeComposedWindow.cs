@@ -18,7 +18,8 @@ internal static class FakeComposedWindow
             string.Equals(AutomationProperties.GetName(button), name, StringComparison.Ordinal));
 
     public static (WorkspaceShellViewModel Workspace, MainWindow Window) Create(FakeCommandClient? fake = null,
-        string? settingsFilePath = null, IUriLauncher? uriLauncher = null)
+        string? settingsFilePath = null, IUriLauncher? uriLauncher = null,
+        SIL.Motif.Host.Preferences.IDefaultProposalChecksStore? defaultProposalChecks = null)
     {
         fake ??= new FakeCommandClient();
         var selection = new SelectionViewModel(fake);
@@ -32,7 +33,7 @@ internal static class FakeComposedWindow
             selection,
             new AssessViewModel(fake, selection),
             new NoFolderPicker(), new NoDragSource(), fake,
-            clipboard: new AvaloniaClipboard(window));
+            clipboard: new AvaloniaClipboard(window), defaultProposalChecks: defaultProposalChecks);
         window.Compose(workspace);
         return (workspace, window);
     }

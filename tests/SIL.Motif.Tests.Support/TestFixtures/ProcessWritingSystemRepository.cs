@@ -26,12 +26,16 @@ internal static class ProcessWritingSystemRepository
 {
     internal const string RepositoryPathVariable = "MOTIF_WRITING_SYSTEM_REPOSITORY_PATH";
     internal const string AdvancedAiModePathVariable = "MOTIF_ADVANCED_AI_MODE_PATH";
+    internal const string DefaultProposalChecksPathVariable = "MOTIF_DEFAULT_PROPOSAL_CHECKS_PATH";
 
     /// <summary>The directory this process's repository lives in.</summary>
     internal static string BasePath { get; } = Path.Combine(
         Path.GetTempPath(), "SIL.Motif.Tests.WritingSystems", Environment.ProcessId + "-" + Guid.NewGuid().ToString("N"));
 
     internal static string AdvancedAiModePath { get; } = Path.Combine(BasePath, "Preferences", "advanced-ai-mode.json");
+
+    internal static string DefaultProposalChecksPath { get; } =
+        Path.Combine(BasePath, "Preferences", "default-proposal-checks.json");
 
     /// <summary>The repository LibLCM will hand the next cache it opens.</summary>
     /// <summary>
@@ -77,5 +81,6 @@ internal static class ProcessWritingSystemRepository
     {
         Environment.SetEnvironmentVariable(RepositoryPathVariable, BasePath);
         Environment.SetEnvironmentVariable(AdvancedAiModePathVariable, AdvancedAiModePath);
+        Environment.SetEnvironmentVariable(DefaultProposalChecksPathVariable, DefaultProposalChecksPath);
     }
 }

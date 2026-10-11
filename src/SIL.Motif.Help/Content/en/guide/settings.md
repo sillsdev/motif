@@ -1,6 +1,6 @@
 # Settings
 
-Open **Settings** from the bottom of the left sidebar to change how Motif looks and to find its keyboard shortcuts, project parsing limits, problem reports, and version information. **Help** beside it opens guidance for the current page. Display choices are remembered for this user on this computer; a project's parsing limits are saved with that project's [Default Selection](term:default-selection).
+Open **Settings** from the bottom of the left sidebar to change how Motif looks and to find its keyboard shortcuts, project parsing limits, grammar-check defaults, problem reports, and version information. **Help** beside it opens guidance for the current page. Display choices are remembered for this user on this computer; a project's parsing limits are saved with that project's [Default Selection](term:default-selection).
 
 ## Display
 
@@ -13,6 +13,16 @@ Theme can follow the operating system or use Light or Dark. The change applies w
 The Parsing group edits the current project's Default Selection. Setup, Settings, and **Analysis options** edit that same saved limit policy; the next parse uses it, while earlier results keep the limits from their own run. See [Default Selection](guide:default-selection) and [first-run setup](guide:first-run-setup) for choosing what to parse.
 
 When the step limit is finite, the time limit can follow Motif's estimate or use an explicit value. An explicit value remains in force when the step limit changes until you choose the estimate again. With no step limit there is no time limit, and an explicit override is cleared. Enter commits a number; leaving the field also commits it. If Motif refuses the value, the saved Selection stays as it was. Escape restores the last accepted value before it closes Settings.
+
+## Default proposal checks
+
+Default proposal checks sets how thorough Motif's grammar check is when it runs by itself, from Warnings, or for a Proposal. **Compare stored analyses** checks that each word's saved analyses still parse, which is the one part of a grammar check that slows down as a project grows. Choose one:
+
+- **Within a work budget (recommended)** compares words until a fixed amount of work is spent, then says how many were left. It gives the same result on every computer.
+- **Every word** compares all of them. A large project can take half a minute or more.
+- **Off** skips the comparison; the other grammar checks still run.
+
+The choice is remembered for this user on this computer and applies to the next grammar check. Results already shown keep the choice they were checked with. The command line's [Check a grammar](cmd:grammar%20check) accepts `--stored-analyses` to override it for one run.
 
 ## Writing systems
 

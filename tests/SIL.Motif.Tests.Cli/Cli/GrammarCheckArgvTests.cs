@@ -6,6 +6,7 @@ using SIL.Motif.Contract;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Parser;
+using SIL.Motif.Host.Preferences;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker;
 using Xunit;
@@ -63,6 +64,54 @@ public sealed class GrammarCheckArgvTests(PristineProjectFixture pristine) : IDi
     }
 
     [Theory]
+    [InlineData(null, null, "bounded")]
+    [InlineData("all", null, "all")]
+    [InlineData("off", null, "off")]
+    [InlineData(null, "all", "all")]
+    [InlineData(null, "off", "off")]
+    [InlineData("budget", "off", "bounded")]
+    [InlineData("off", "all", "off")]
+    [InlineData("all", "budget", "all")]
+    public void TheFlagOverridesTheSavedChoiceAndTheSavedChoiceOverridesTheDefault(
+        string? flag, string? saved, string expectedForPanGloss)
+    {
+        var project = pristine.CopyProjectFile();
+        var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(project), _managedRoot);
+        Assert.True(captured.Succeeded, captured.Refusal?.Message);
+        var parser = FakeParser.CopyRecordingInvocations(Path.Combine(_managedRoot, "recording-parser"));
+        var preference = Path.Combine(_managedRoot, "preferences", "default-proposal-checks.json");
+        if (saved is not null) new FileDefaultProposalChecksStore(preference).SetStoredAnalyses(saved switch
+        {
+            "all" => StoredAnalysisComparison.All,
+            "off" => StoredAnalysisComparison.Off,
+            _ => StoredAnalysisComparison.Budget,
+        });
+        var arguments = new List<string> { "grammar", "check", "--project", project, "--json" };
+        if (flag is not null) arguments.AddRange(["--stored-analyses", flag]);
+
+        var result = RunWith(parser, preference, arguments.ToArray());
+
+        Assert.True(result.ExitCode == 0, result.Error);
+        Assert.Equal([expectedForPanGloss], FakeParser.StoredAnalysesRequested(parser));
+    }
+
+    [Theory]
+    [InlineData("bounded")]
+    [InlineData("everything")]
+    [InlineData("")]
+    public void AnUnknownStoredAnalysesWordPrintsTheUsageLineAndNeverStartsPanGloss(string word)
+    {
+        var project = pristine.CopyProjectFile();
+        var parser = FakeParser.CopyRecordingInvocations(Path.Combine(_managedRoot, "recording-parser"));
+
+        var result = RunWith(parser, null, "grammar", "check", "--project", project, "--stored-analyses", word);
+
+        Assert.Equal(1, result.ExitCode);
+        Assert.Contains("[--stored-analyses budget|all|off]", result.Output + result.Error, StringComparison.Ordinal);
+        Assert.Empty(FakeParser.Invocations(parser));
+    }
+
+    [Theory]
     [InlineData("grammar", null, null)]
     [InlineData("grammar", "foo", "unused.fwdata")]
     [InlineData("grammar", "check", null)]
@@ -90,7 +139,9 @@ public sealed class GrammarCheckArgvTests(PristineProjectFixture pristine) : IDi
         catch (UnauthorizedAccessException) { }
     }
 
-    private CliRun Run(params string[] arguments)
+    private CliRun Run(params string[] arguments) => RunWith(FakeParser.ExecutablePath, null, arguments);
+
+    private CliRun RunWith(string parserPath, string? preferencePath, params string[] arguments)
     {
         var start = new ProcessStartInfo(BuildOutput.Cli)
         {
@@ -101,7 +152,9 @@ public sealed class GrammarCheckArgvTests(PristineProjectFixture pristine) : IDi
         };
         foreach (var argument in arguments) start.ArgumentList.Add(argument);
         start.Environment[RunnerOptions.RootVariable] = _managedRoot;
-        start.Environment[PanGlossExecutable.PathVariable] = FakeParser.ExecutablePath;
+        start.Environment[PanGlossExecutable.PathVariable] = parserPath;
+        if (preferencePath is not null)
+            start.Environment[FileDefaultProposalChecksStore.PathEnvironmentVariable] = preferencePath;
         using var process = Process.Start(start)!;
         var outputTask = process.StandardOutput.ReadToEndAsync();
         var errorTask = process.StandardError.ReadToEndAsync();

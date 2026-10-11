@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Generator;
@@ -134,8 +135,31 @@ public sealed class FakePanGlossSurfaceTests
 
         request.AddArguments(start, "scratch");
 
-        Assert.Equal(new[] { "grammar-health", "project.fwdata", "--fw-project", "project" },
+        Assert.Equal(new[] { "grammar-health", "project.fwdata", "--fw-project", "project", "--stored-analyses", "bounded" },
             start.ArgumentList);
+    }
+
+    [Theory]
+    [InlineData(StoredAnalysisComparison.Budget, "bounded")]
+    [InlineData(StoredAnalysisComparison.All, "all")]
+    [InlineData(StoredAnalysisComparison.Off, "off")]
+    public void GrammarHealthRequestPassesEachStoredAnalysisChoiceToPanGloss(StoredAnalysisComparison mode, string word)
+    {
+        var request = new PanGlossRequest.GrammarHealth("project.fwdata", "project", mode);
+        var start = new ProcessStartInfo();
+
+        request.AddArguments(start, "scratch");
+
+        Assert.Equal(new[] { "grammar-health", "project.fwdata", "--fw-project", "project", "--stored-analyses", word },
+            start.ArgumentList);
+    }
+
+    [Fact]
+    public void AnUnknownStoredAnalysisChoiceIsRefusedBeforePanGlossStarts()
+    {
+        var request = new PanGlossRequest.GrammarHealth("project.fwdata", "project", (StoredAnalysisComparison)9);
+
+        Assert.Throws<ArgumentException>(() => request.Validate());
     }
 
     internal static Dictionary<string, JsonElement> Commands(JsonDocument document) =>
@@ -187,7 +211,7 @@ public sealed class FakePanGlossSurfaceTests
                                 ? name is "--trace" or "--trace-format" or "--trace-details" or "--step-cap"
                                 : request.Subcommand == "facts"
                                     ? name is "--out" or "--context" or "--stats" or "--stats-manifest" or "--json"
-                                    : request.Subcommand == "grammar-health" && name == "--fw-project")
+                                    : request.Subcommand == "grammar-health" && name is "--fw-project" or "--stored-analyses")
                     .OrderBy(name => name, StringComparer.Ordinal),
                 pinnedFlags.EnumerateObject().Select(flag => flag.Name).OrderBy(name => name, StringComparer.Ordinal));
             foreach (var pinnedFlag in pinnedFlags.EnumerateObject())

@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using SIL.Motif.Contract.Assess;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Host.Parsimony;
 
@@ -229,13 +230,17 @@ public abstract record PanGlossRequest
     }
 
     /// <summary>
-    /// <c>pangloss grammar-health &lt;grammar&gt; --fw-project &lt;project&gt;</c>: a JSON grammar-health report on
-    /// standard output. Omitting its optional output path keeps the report available when PanGloss exits
-    /// nonzero to signal error-level diagnostics.
+    /// <c>pangloss grammar-health &lt;grammar&gt; --fw-project &lt;project&gt; --stored-analyses &lt;mode&gt;</c>: a JSON
+    /// grammar-health report on standard output. Omitting its optional output path keeps the report available
+    /// when PanGloss exits nonzero to signal error-level diagnostics.
     /// </summary>
     /// <remarks>PanGloss can exit nonzero after writing an error report; that report remains usable. A nonzero exit
     /// without a report is refused.</remarks>
-    public sealed record GrammarHealth(string GrammarPath, string FieldWorksProjectName) : PanGlossRequest
+    /// <param name="GrammarPath">The grammar, or saved project, PanGloss checks.</param>
+    /// <param name="FieldWorksProjectName">The FieldWorks project name PanGloss puts in its deep links.</param>
+    /// <param name="StoredAnalyses">How much of the stored-analysis comparison PanGloss runs.</param>
+    public sealed record GrammarHealth(string GrammarPath, string FieldWorksProjectName,
+        StoredAnalysisComparison StoredAnalyses = StoredAnalysisComparison.Budget) : PanGlossRequest
     {
         public override string Subcommand => "grammar-health";
         internal override bool AcceptsNonzeroExit(string standardOutput) => true;
@@ -245,6 +250,7 @@ public abstract record PanGlossRequest
             if (string.IsNullOrWhiteSpace(GrammarPath)) throw new ArgumentException("Required.", nameof(GrammarPath));
             if (string.IsNullOrWhiteSpace(FieldWorksProjectName))
                 throw new ArgumentException("Required.", nameof(FieldWorksProjectName));
+            if (!Enum.IsDefined(StoredAnalyses)) throw new ArgumentException("Unknown mode.", nameof(StoredAnalyses));
             if (!File.Exists(GrammarPath))
                 throw new FileNotFoundException("The grammar the parser must read does not exist.", GrammarPath);
         }
@@ -255,6 +261,13 @@ public abstract record PanGlossRequest
             startInfo.ArgumentList.Add(GrammarPath);
             startInfo.ArgumentList.Add("--fw-project");
             startInfo.ArgumentList.Add(FieldWorksProjectName);
+            startInfo.ArgumentList.Add("--stored-analyses");
+            startInfo.ArgumentList.Add(StoredAnalyses switch
+            {
+                StoredAnalysisComparison.Budget => "bounded",
+                StoredAnalysisComparison.All => "all",
+                _ => "off",
+            });
         }
 
         internal override PanGlossOutcome Finish(string scratch, string standardOutput, string standardError,

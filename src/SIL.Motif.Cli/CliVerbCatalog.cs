@@ -347,7 +347,7 @@ public static class CliVerbCatalog
             new[] { "warnings --project <fwdata> [--proposal <id>] [--kind <code>] [--left-out] [--json]" }),
         new CliVerbDescriptor(
             "Project", "grammar", "grammar check",
-            new[] { "grammar check --project <fwdata> [--json]" }),
+            new[] { "grammar check --project <fwdata> [--stored-analyses budget|all|off] [--json]" }),
         new CliVerbDescriptor(
             "Project", "timing", "timing",
             new[]

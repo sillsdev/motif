@@ -8,6 +8,7 @@ using SIL.Motif.Commands.Assistants;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands.Preferences;
+using SIL.Motif.Host.Preferences;
 using SIL.Motif.Projection.Usage;
 using SIL.Motif.App.Views;
 using SIL.Motif.Contract.Responses;
@@ -61,7 +62,8 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         IDiagnosticFilePicker? diagnosticFiles = null, IDiagnosticWindowDialogs? diagnosticDialogs = null,
         TechDemoNoticeViewModel? techDemoNotice = null,
         IAdvancedAiModePreferenceStore? advancedAiModePreferences = null,
-        IAssistantConnectionService? assistantConnections = null, IUriLauncher? uriLauncher = null, bool advancedAiModeEnabled = false)
+        IAssistantConnectionService? assistantConnections = null, IUriLauncher? uriLauncher = null, bool advancedAiModeEnabled = false,
+        IDefaultProposalChecksStore? defaultProposalChecks = null)
     {
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(baseline);
@@ -77,7 +79,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         TechDemoNotice = techDemoNotice;
         Context = new WorkspaceContext(selection, assess, new ChangesViewModel(commandClient), commandClient, folderPicker,
             dragSource, baseline, clock, clipboard, diagnosticFiles, diagnosticDialogs,
-            advancedAiModePreferences, assistantConnections, uriLauncher)
+            advancedAiModePreferences, assistantConnections, uriLauncher, defaultProposalChecks)
         {
             AdvancedAiModeEnabled = advancedAiModeEnabled,
             KnownProjects = project.KnownProjects,

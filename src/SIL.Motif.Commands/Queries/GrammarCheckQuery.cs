@@ -14,6 +14,7 @@ using SIL.Motif.Contract;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Commands.Assess;
 using SIL.Motif.Commands.Handoff;
+using SIL.Motif.Host.Preferences;
 using SIL.Motif.Commands.Store;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.LcmUtils;
@@ -55,11 +56,15 @@ public static class GrammarCheckQuery
     /// <param name="invoker">Runs the grammar check.</param>
     /// <param name="cancellationToken">Cancels the grammar check.</param>
     /// <param name="parserStamp">Identifies the parser build recorded with the findings.</param>
+    /// <param name="defaultChecks">
+    /// The per-user Default proposal checks the request falls back to, or null for the installed user's.
+    /// </param>
     internal static CommandOutcome<GrammarCheckResponse> Query(
         GrammarCheckRequest request,
         IPanGlossInvoker invoker,
         CancellationToken cancellationToken,
-        string? parserStamp = null)
+        string? parserStamp = null,
+        IDefaultProposalChecksStore? defaultChecks = null)
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(invoker);
@@ -72,8 +77,11 @@ public static class GrammarCheckQuery
                 return CommandOutcome<GrammarCheckResponse>.Success(
                     new GrammarCheckResponse(Array.Empty<GrammarWarning>(), HasBaseline: false));
 
+            var storedAnalyses = request.StoredAnalyses ??
+                (defaultChecks ?? FileDefaultProposalChecksStore.ForInstallation()).StoredAnalyses;
             var outcome = invoker.RunAsync(
-                    new PanGlossRequest.GrammarHealth(baseline.FwDataPath, project.FieldWorksProjectIdentity),
+                    new PanGlossRequest.GrammarHealth(baseline.FwDataPath, project.FieldWorksProjectIdentity,
+                        storedAnalyses),
                     "grammar-check:" + workspaceKey,
                     cancellationToken)
                 .GetAwaiter().GetResult();

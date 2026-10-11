@@ -4,6 +4,7 @@ using SIL.Motif.Host.Baselines;
 using SIL.Motif.Host.Config;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Host.Preferences;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Runner.AppliedLog;
 using SIL.Motif.Runner.DryRun;
@@ -42,9 +43,12 @@ public static class ProjectJobHandlers
     /// <param name="invoker">The parser invoker a Trial's Assessment runs through.</param>
     /// <param name="ownerId">The owner recorded on every claim.</param>
     /// <param name="lanes">The per-project lanes that order work against the current Baseline.</param>
+    /// <param name="defaultChecks">
+    /// The per-user Default proposal checks a Trial's grammar check follows, or null for the installed user's.
+    /// </param>
     public static JobRunnerLoop CreateLoop(MotifDatabase database, BaselineRepository baselines,
         string workspaceKey, ProjectLocator project, RunnerOptions options, IPanGlossInvoker invoker,
-        string ownerId, ProjectLaneRegistry lanes)
+        string ownerId, ProjectLaneRegistry lanes, IDefaultProposalChecksStore? defaultChecks = null)
     {
         ArgumentNullException.ThrowIfNull(database);
         ArgumentNullException.ThrowIfNull(baselines);
@@ -79,7 +83,8 @@ public static class ProjectJobHandlers
                     .RunAsync(job, token),
         };
 
-        if (TryBuildTrialHandler(database, baselines, proposals, lanes, project, options, invoker) is { } trial)
+        if (TryBuildTrialHandler(database, baselines, proposals, lanes, project, options, invoker,
+                defaultChecks ?? FileDefaultProposalChecksStore.ForInstallation()) is { } trial)
             handlers[TrialJobHandler.TrialKind] = (job, token) => trial.RunAsync(job, project, token);
 
         return new JobRunnerLoop(new JobClaims(database), workspaceKey, ownerId: ownerId,
@@ -89,7 +94,7 @@ public static class ProjectJobHandlers
     /// <summary>Builds a Trial handler, or null when the parser or root is not usable.</summary>
     private static TrialJobHandler? TryBuildTrialHandler(MotifDatabase database, BaselineRepository baselines,
         ProposalRepository proposals, ProjectLaneRegistry lanes, ProjectLocator project, RunnerOptions options,
-        IPanGlossInvoker invoker)
+        IPanGlossInvoker invoker, IDefaultProposalChecksStore defaultChecks)
     {
         // No executable, no Trial handler: a Trial job would otherwise fail on every attempt.
         if (options.ParserPath is null) return null;
@@ -130,18 +135,8 @@ public static class ProjectJobHandlers
                 loader.Save(cache);
                 var directory = Path.GetDirectoryName(Path.GetFullPath(cache.ProjectId.Path))!;
                 return Task.FromResult(directory);
-            }, options.Root, async (grammarPath, projectName, cancellationToken) =>
-            {
-                var outcome = await invoker.RunAsync(new PanGlossRequest.GrammarHealth(grammarPath, projectName),
-                    "trial-grammar:" + ProjectWorkspaceKey.Compute(project), cancellationToken).ConfigureAwait(false);
-                var output = outcome switch
-                {
-                    PanGlossOutcome.Completed completed => completed.Output,
-                    PanGlossOutcome.Refused refused when !string.IsNullOrWhiteSpace(refused.StandardOutput) =>
-                        refused.StandardOutput,
-                    _ => throw new InvalidOperationException(outcome.Message),
-                };
-                return GrammarHealthReportReader.ReadResponse(output);
-            });
+            }, options.Root, (grammarPath, projectName, cancellationToken) =>
+                TrialGrammarCheck.RunAsync(invoker, "trial-grammar:" + ProjectWorkspaceKey.Compute(project),
+                    defaultChecks.StoredAnalyses, grammarPath, projectName, cancellationToken));
     }
 }

@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             xmlns:req="clr-namespace:SIL.Motif.Contract.Requests;assembly=SIL.Motif.Contract"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:controls="clr-namespace:SIL.Motif.App.Controls"
              x:Class="SIL.Motif.App.Views.SettingsPopupView"
@@ -153,6 +154,49 @@
                 <TextBlock Classes="settingsRefusal" Text="{Binding TimeLimitRefusal}"
                            IsVisible="{Binding HasTimeLimitRefusal}" TextWrapping="Wrap" />
               </StackPanel>
+            </StackPanel>
+
+            <StackPanel IsVisible="{Binding IsProposalChecksSelected}" Classes="settingsPage">
+              <TextBlock Classes="settingsGroupHeading" Text="Default proposal checks" />
+              <TextBlock Classes="settingsLead" Text="{Binding ProposalChecksLead}" TextWrapping="Wrap" />
+              <StackPanel Classes="settingsLabel">
+                <TextBlock Classes="settingsLabelText" Text="Compare stored analyses" TextWrapping="Wrap" />
+                <TextBlock Classes="settingsCaption" TextWrapping="Wrap"
+                           Text="Checks that each word's saved analyses still parse. It is the one part of a grammar check that slows down as a project grows." />
+              </StackPanel>
+              <StackPanel Classes="settingsChoices">
+                <Button x:Name="StoredAnalysesBudgetChoice" Classes="settingsSegment settingsChoice" Classes.selected="{Binding IsStoredAnalysesBudget}"
+                             Command="{Binding ChooseStoredAnalysesCommand}" CommandParameter="{x:Static req:StoredAnalysisComparison.Budget}"
+                             AutomationProperties.Name="Within a work budget, recommended">
+                  <StackPanel Classes="settingsLabel">
+                    <TextBlock Classes="settingsLabelText" Text="Within a work budget (recommended)" TextWrapping="Wrap" />
+                    <TextBlock Classes="settingsCaption" TextWrapping="Wrap"
+                               Text="Compares words until a fixed amount of work is spent, then says how many were left. The same on every computer." />
+                  </StackPanel>
+                </Button>
+                <Button x:Name="StoredAnalysesAllChoice" Classes="settingsSegment settingsChoice" Classes.selected="{Binding IsStoredAnalysesAll}"
+                             Command="{Binding ChooseStoredAnalysesCommand}" CommandParameter="{x:Static req:StoredAnalysisComparison.All}"
+                             AutomationProperties.Name="Every word, slower on large projects">
+                  <StackPanel Classes="settingsLabel">
+                    <TextBlock Classes="settingsLabelText" Text="Every word" TextWrapping="Wrap" />
+                    <TextBlock Classes="settingsCaption" TextWrapping="Wrap"
+                               Text="Compares all of them. A large project can take half a minute or more." />
+                  </StackPanel>
+                </Button>
+                <Button x:Name="StoredAnalysesOffChoice" Classes="settingsSegment settingsChoice" Classes.selected="{Binding IsStoredAnalysesOff}"
+                             Command="{Binding ChooseStoredAnalysesCommand}" CommandParameter="{x:Static req:StoredAnalysisComparison.Off}"
+                             AutomationProperties.Name="Off">
+                  <StackPanel Classes="settingsLabel">
+                    <TextBlock Classes="settingsLabelText" Text="Off" TextWrapping="Wrap" />
+                    <TextBlock Classes="settingsCaption" TextWrapping="Wrap"
+                               Text="Skips the comparison. The other grammar checks still run." />
+                  </StackPanel>
+                </Button>
+              </StackPanel>
+              <TextBlock Classes="settingsRefusal" Text="{Binding StoredAnalysesRefusal}"
+                         IsVisible="{Binding HasStoredAnalysesRefusal}" TextWrapping="Wrap" />
+              <TextBlock Classes="settingsCaption" TextWrapping="Wrap"
+                         Text="Applies to the next grammar check. Results already shown keep the choice they were checked with." />
             </StackPanel>
 
             <StackPanel IsVisible="{Binding IsWritingSystemsSelected}" Classes="settingsPage settingsWritingSystemsPage">

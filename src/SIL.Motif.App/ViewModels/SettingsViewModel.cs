@@ -13,6 +13,7 @@ using Avalonia;
 using Avalonia.Media;
 using Avalonia.Styling;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host.Preferences;
 
 namespace SIL.Motif.App.ViewModels;
 
@@ -23,6 +24,7 @@ internal enum SettingsGroup
     Display,
     KeyboardShortcuts,
     Parsing,
+    ProposalChecks,
     WritingSystems,
     HelpAndReports,
     About,
@@ -106,6 +108,8 @@ internal sealed class WritingSystemSettingsRow
 internal sealed partial class SettingsViewModel : ObservableObject
 {
     private readonly IUserPreferencesStore _preferences;
+    private readonly IDefaultProposalChecksStore _defaultChecks;
+    private StoredAnalysisComparison _storedAnalyses;
     private readonly WorkspaceShellViewModel _workspace;
     private readonly ApplicationFacts _applicationFacts;
     private readonly ShortcutEntry[] _shortcutCatalog;
@@ -129,6 +133,8 @@ internal sealed partial class SettingsViewModel : ObservableObject
         _workspace = workspace;
         _overview = workspace.PageModel<OverviewPageModel>();
         _preferences = preferences ?? new MemoryUserPreferencesStore();
+        _defaultChecks = workspace.Context.DefaultProposalChecks;
+        _storedAnalyses = _defaultChecks.StoredAnalyses;
         _applicationFacts = applicationFacts ?? ApplicationFacts.Current;
         var culture = CultureInfo.CurrentUICulture;
         _shortcutCatalog = KeyboardShortcutRegistry.Entries.Select(entry => new ShortcutEntry(
@@ -149,6 +155,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
         ResetZoomCommand = new RelayCommand(() => ZoomPercent = 100, () => ZoomPercent != 100);
         ResetPreferencesCommand = new RelayCommand(ResetPreferences, () => _preferences.State == PreferenceState.Refused);
         SelectGroupCommand = new RelayCommand<SettingsGroup>(group => SelectGroup(group));
+        ChooseStoredAnalysesCommand = new RelayCommand<StoredAnalysisComparison>(ChooseStoredAnalyses);
         ClearShortcutSearchCommand = new RelayCommand(() => ShortcutSearch = string.Empty,
             () => !string.IsNullOrEmpty(ShortcutSearch));
         SelectThemeCommand = new RelayCommand<WindowThemeChoice>(choice => ThemeChoice = choice);
@@ -156,6 +163,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
             new(SettingsGroup.Display, "Display"),
             new(SettingsGroup.KeyboardShortcuts, "Keyboard shortcuts"),
             new(SettingsGroup.Parsing, "Parsing"),
+            new(SettingsGroup.ProposalChecks, "Default proposal checks"),
             new(SettingsGroup.WritingSystems, "Writing systems"),
             new(SettingsGroup.HelpAndReports, "Help and problem reports"),
             new(SettingsGroup.About, "About Motif"),
@@ -222,6 +230,15 @@ internal sealed partial class SettingsViewModel : ObservableObject
     public bool IsDisplaySelected => SelectedGroup == SettingsGroup.Display;
     public bool IsKeyboardShortcutsSelected => SelectedGroup == SettingsGroup.KeyboardShortcuts;
     public bool IsParsingSelected => SelectedGroup == SettingsGroup.Parsing;
+    public bool IsProposalChecksSelected => SelectedGroup == SettingsGroup.ProposalChecks;
+    public string ProposalChecksLead => "How thorough Motif's grammar check is when it runs by itself or on a " +
+        "Proposal. Remembered for this computer, like zoom.";
+    public bool IsStoredAnalysesBudget => _storedAnalyses == StoredAnalysisComparison.Budget;
+    public bool IsStoredAnalysesAll => _storedAnalyses == StoredAnalysisComparison.All;
+    public bool IsStoredAnalysesOff => _storedAnalyses == StoredAnalysisComparison.Off;
+    public IRelayCommand<StoredAnalysisComparison> ChooseStoredAnalysesCommand { get; }
+    public string StoredAnalysesRefusal { get; private set; } = string.Empty;
+    public bool HasStoredAnalysesRefusal => !string.IsNullOrEmpty(StoredAnalysesRefusal);
     public bool IsWritingSystemsSelected => SelectedGroup == SettingsGroup.WritingSystems;
     public bool IsHelpAndReportsSelected => SelectedGroup == SettingsGroup.HelpAndReports;
     public bool IsAboutSelected => SelectedGroup == SettingsGroup.About;
@@ -395,6 +412,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
         OnPropertyChanged(nameof(IsDisplaySelected));
         OnPropertyChanged(nameof(IsKeyboardShortcutsSelected));
         OnPropertyChanged(nameof(IsParsingSelected));
+        OnPropertyChanged(nameof(IsProposalChecksSelected));
         OnPropertyChanged(nameof(IsWritingSystemsSelected));
         OnPropertyChanged(nameof(IsHelpAndReportsSelected));
         OnPropertyChanged(nameof(IsAboutSelected));
@@ -409,6 +427,29 @@ internal sealed partial class SettingsViewModel : ObservableObject
                 SelectionTimeLimitMode.Explicit;
         if (IsUsingEstimate) ApplyEstimate();
         RememberGoodValues();
+    }
+
+    private void ChooseStoredAnalyses(StoredAnalysisComparison mode)
+    {
+        if (_storedAnalyses == mode) return;
+        var previous = _storedAnalyses;
+        try
+        {
+            _defaultChecks.SetStoredAnalyses(mode);
+            _storedAnalyses = mode;
+            StoredAnalysesRefusal = string.Empty;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            _storedAnalyses = previous;
+            StoredAnalysesRefusal = "Motif couldn't save this choice, so the grammar check keeps its earlier one. " +
+                exception.Message;
+        }
+        OnPropertyChanged(nameof(IsStoredAnalysesBudget));
+        OnPropertyChanged(nameof(IsStoredAnalysesAll));
+        OnPropertyChanged(nameof(IsStoredAnalysesOff));
+        OnPropertyChanged(nameof(StoredAnalysesRefusal));
+        OnPropertyChanged(nameof(HasStoredAnalysesRefusal));
     }
 
     partial void OnShortcutSearchChanged(string value)
@@ -713,6 +754,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
     {
         SIL.Motif.App.Services.SettingsGroup.Shortcuts => SettingsGroup.KeyboardShortcuts,
         SIL.Motif.App.Services.SettingsGroup.Parsing => SettingsGroup.Parsing,
+        SIL.Motif.App.Services.SettingsGroup.ProposalChecks => SettingsGroup.ProposalChecks,
         SIL.Motif.App.Services.SettingsGroup.WritingSystems => SettingsGroup.WritingSystems,
         SIL.Motif.App.Services.SettingsGroup.Help => SettingsGroup.HelpAndReports,
         SIL.Motif.App.Services.SettingsGroup.About => SettingsGroup.About,
@@ -723,6 +765,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
     {
         SettingsGroup.KeyboardShortcuts => SIL.Motif.App.Services.SettingsGroup.Shortcuts,
         SettingsGroup.Parsing => SIL.Motif.App.Services.SettingsGroup.Parsing,
+        SettingsGroup.ProposalChecks => SIL.Motif.App.Services.SettingsGroup.ProposalChecks,
         SettingsGroup.WritingSystems => SIL.Motif.App.Services.SettingsGroup.WritingSystems,
         SettingsGroup.HelpAndReports => SIL.Motif.App.Services.SettingsGroup.Help,
         SettingsGroup.About => SIL.Motif.App.Services.SettingsGroup.About,

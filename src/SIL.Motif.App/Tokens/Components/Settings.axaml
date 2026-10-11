@@ -164,6 +164,13 @@
   <Style Selector="StackPanel.settingsStepper, StackPanel.settingsSegments, StackPanel.settingsTimeControls">
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
   </Style>
+  <Style Selector="StackPanel.settingsChoices">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Group}" />
+  </Style>
+  <Style Selector="Button.settingsChoice">
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Left" />
+  </Style>
   <Style Selector="StackPanel.settingsDisplayControls">
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
   </Style>

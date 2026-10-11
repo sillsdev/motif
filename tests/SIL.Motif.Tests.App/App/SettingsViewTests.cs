@@ -16,6 +16,7 @@ using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host.Preferences;
 using SIL.Motif.Tests.App.Walkthrough;
 using SIL.Motif.Worker;
 using Xunit;
@@ -55,7 +56,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                     HeadlessClick.Click(window, clear, "Clear shortcut search");
                     Assert.Equal(string.Empty, search.Text);
 
-                    groups.SelectedIndex = 4;
+                    groups.SelectedIndex = 5;
                     PageScreenshots.Settle(window);
                     var details = Assert.Single(popup.GetVisualDescendants().OfType<Expander>());
                     Assert.False(details.IsExpanded);
@@ -127,7 +128,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
 
                     window.KeyPress(Key.End, RawInputModifiers.None, PhysicalKey.End, null);
                     PageScreenshots.Settle(window);
-                    Assert.Equal(5, groups.SelectedIndex);
+                    Assert.Equal(6, groups.SelectedIndex);
                     Assert.Equal("About Motif", ActiveGroupHeading(popup));
 
                     window.KeyPress(Key.Home, RawInputModifiers.None, PhysicalKey.Home, null);
@@ -181,7 +182,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                     .HasWarning);
 
                 var groups = popup.FindControl<ListBox>("SettingsGroups")!;
-                groups.SelectedIndex = 3;
+                groups.SelectedIndex = 4;
                 PageScreenshots.Settle(window);
                 Assert.Equal("Writing systems in Sample", ActiveGroupHeading(popup));
                 Assert.Contains(popup.GetVisualDescendants().OfType<TextBlock>(), text =>
@@ -279,7 +280,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                 {
                     window.Show();
                     var popup = OpenSettings(window);
-                    popup.FindControl<ListBox>("SettingsGroups")!.SelectedIndex = 5;
+                    popup.FindControl<ListBox>("SettingsGroups")!.SelectedIndex = 6;
                     PageScreenshots.Settle(window);
                     var copy = Button(popup, "Copy versions");
                     HeadlessClick.Click(window, copy, "Copy versions");
@@ -320,7 +321,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                 {
                     window.Show();
                     var popup = OpenSettings(window);
-                    popup.FindControl<ListBox>("SettingsGroups")!.SelectedIndex = 4;
+                    popup.FindControl<ListBox>("SettingsGroups")!.SelectedIndex = 5;
                     PageScreenshots.Settle(window);
                     HeadlessClick.Click(window, Button(popup, "Report a problem"), "Report a problem");
                     for (var pass = 0; pass < 4; pass++)
@@ -360,7 +361,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                 {
                     window.Show();
                     var popup = OpenSettings(window);
-                    popup.FindControl<ListBox>("SettingsGroups")!.SelectedIndex = 4;
+                    popup.FindControl<ListBox>("SettingsGroups")!.SelectedIndex = 5;
                     PageScreenshots.Settle(window);
                     ClickFlyout(window, Button(popup, "Open the Motif site"), "Open the Motif site");
                     for (var pass = 0; pass < 4; pass++)
@@ -371,7 +372,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                     Assert.Equal(new Uri("https://motif-docs.pages.dev"), Assert.Single(launcher.Launches));
 
                     popup = OpenSettings(window);
-                    popup.FindControl<ListBox>("SettingsGroups")!.SelectedIndex = 5;
+                    popup.FindControl<ListBox>("SettingsGroups")!.SelectedIndex = 6;
                     PageScreenshots.Settle(window);
                     await Task.Delay(300);
                     ClickFlyout(window, Button(popup, "Open Motif data folder"), "Open Motif data folder");
@@ -767,6 +768,141 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
         }
     }
 
+    [Fact]
+    public void DefaultProposalChecksGroupShowsTheSavedChoiceAndSavesAChange()
+    {
+        var settingsPath = NewSettingsPath();
+        var checksPath = Path.Combine(Path.GetDirectoryName(settingsPath)!, "default-proposal-checks.json");
+        var store = new FileDefaultProposalChecksStore(checksPath);
+        var priorTheme = ReadTheme();
+        try
+        {
+            avalonia.Invoke(() =>
+            {
+                var (workspace, window) = FakeComposedWindow.Create(settingsFilePath: settingsPath,
+                    defaultProposalChecks: store);
+                try
+                {
+                    window.Show();
+                    var popup = OpenSettings(window);
+                    var groups = popup.FindControl<ListBox>("SettingsGroups")!;
+                    Assert.Contains(groups.Items.OfType<SettingsGroupOption>(),
+                        option => option.Title == "Default proposal checks");
+                    groups.SelectedIndex = 3;
+                    PageScreenshots.Settle(window);
+                    Assert.Equal("Default proposal checks", ActiveGroupHeading(popup));
+
+                    var budget = popup.FindControl<Button>("StoredAnalysesBudgetChoice")!;
+                    var all = popup.FindControl<Button>("StoredAnalysesAllChoice")!;
+                    var off = popup.FindControl<Button>("StoredAnalysesOffChoice")!;
+                    Assert.All(new[] { budget, all, off }, choice => Assert.True(choice.IsEffectivelyVisible));
+                    Assert.True(budget.Classes.Contains("selected"));
+                    Assert.Equal(StoredAnalysisComparison.Budget, store.StoredAnalyses);
+
+                    HeadlessClick.Click(window, off, "Off");
+                    PageScreenshots.Settle(window);
+                    Assert.True(off.Classes.Contains("selected"));
+                    Assert.False(budget.Classes.Contains("selected"));
+                    Assert.Equal(StoredAnalysisComparison.Off, store.StoredAnalyses);
+
+                    HeadlessClick.Click(window, all, "Every word");
+                    PageScreenshots.Settle(window);
+                    Assert.Equal(StoredAnalysisComparison.All, store.StoredAnalyses);
+                }
+                finally
+                {
+                    window.Close();
+                    workspace.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                }
+            });
+            using var reopened = JsonDocument.Parse(File.ReadAllText(checksPath));
+            Assert.Equal("all", reopened.RootElement.GetProperty("storedAnalyses").GetString());
+
+            avalonia.Invoke(() =>
+            {
+                var (workspace, window) = FakeComposedWindow.Create(settingsFilePath: settingsPath,
+                    defaultProposalChecks: new FileDefaultProposalChecksStore(checksPath));
+                try
+                {
+                    window.Show();
+                    var popup = OpenSettings(window);
+                    PageScreenshots.Settle(window);
+                    var settings = Assert.IsType<SettingsViewModel>(popup.DataContext);
+                    Assert.Equal(SIL.Motif.App.ViewModels.SettingsGroup.ProposalChecks, settings.SelectedGroup);
+                    Assert.True(popup.FindControl<Button>("StoredAnalysesAllChoice")!.Classes.Contains("selected"));
+                }
+                finally
+                {
+                    window.Close();
+                    workspace.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                }
+            });
+        }
+        finally
+        {
+            RestoreTheme(priorTheme);
+            DeleteSettingsPath(settingsPath);
+        }
+    }
+
+    [Fact]
+    public void DefaultProposalChecksGroupFitsAt100125And150PercentZoomInBothThemes()
+    {
+        var settingsPath = NewSettingsPath();
+        var priorTheme = ReadTheme();
+        try
+        {
+            avalonia.Invoke(() =>
+            {
+                var (workspace, window) = FakeComposedWindow.Create(settingsFilePath: settingsPath);
+                try
+                {
+                    window.Width = 1040;
+                    window.Height = 780;
+                    window.Show();
+                    var popup = OpenSettings(window);
+                    var settings = Assert.IsType<SettingsViewModel>(popup.DataContext);
+                    popup.FindControl<ListBox>("SettingsGroups")!.SelectedIndex = 3;
+                    foreach (var theme in new[] { WindowThemeChoice.Light, WindowThemeChoice.Dark })
+                    {
+                        settings.ThemeChoice = theme;
+                        foreach (var zoom in new[] { 100, 125, 150 })
+                        {
+                            settings.ZoomPercent = zoom;
+                            PageScreenshots.Settle(window);
+                            var scroll = popup.GetVisualDescendants().OfType<ScrollViewer>()
+                                .Single(item => item.Classes.Contains("settingsContentScroll"));
+                            Assert.True(scroll.Extent.Width <= scroll.Viewport.Width + 0.5,
+                                $"The group overflows sideways at {zoom}% in {theme}.");
+                            foreach (var name in new[]
+                            {
+                                "StoredAnalysesBudgetChoice", "StoredAnalysesAllChoice", "StoredAnalysesOffChoice",
+                            })
+                            {
+                                var choice = popup.FindControl<Button>(name)!;
+                                var bounds = choice.TranslatePoint(default, scroll);
+                                Assert.NotNull(bounds);
+                                Assert.True(bounds!.Value.X >= -0.5 && bounds.Value.X + choice.Bounds.Width <=
+                                    scroll.Viewport.Width + 0.5, $"{name} is clipped sideways at {zoom}% in {theme}.");
+                            }
+                            LayoutAssertions.AssertCurrent(window);
+                        }
+                    }
+                }
+                finally
+                {
+                    window.Close();
+                    workspace.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                }
+            });
+        }
+        finally
+        {
+            RestoreTheme(priorTheme);
+            DeleteSettingsPath(settingsPath);
+        }
+    }
+
     internal static void CaptureSettingsGroupsBothThemesAndWidthsWithSearchAndRefusal()
     {
         var folder = Environment.GetEnvironmentVariable(ScreenshotFactAttribute.FolderVariable)!;
@@ -806,7 +942,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                         {
                             window.Width = width;
                             PageScreenshots.Settle(window);
-                            for (var index = 0; index < 6; index++)
+                            for (var index = 0; index < GroupSlugs.Length; index++)
                             {
                                 groups.SelectedIndex = index;
                                 PageScreenshots.Settle(window);
@@ -899,7 +1035,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
         }
     }
 
-    internal static readonly string[] GroupSlugs = ["display", "keyboard", "parsing", "writing-systems", "help", "about"];
+    internal static readonly string[] GroupSlugs = ["display", "keyboard", "parsing", "proposal-checks", "writing-systems", "help", "about"];
     internal static readonly Guid SampleTextId = Guid.Parse("11111111-0000-0000-0000-000000000001");
 
     private static WritingSystemDisplay[] WritingSystemCaptureData() =>

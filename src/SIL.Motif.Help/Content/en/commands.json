@@ -196,7 +196,7 @@
   },
   "grammar check": {
     "title": "Check a grammar",
-    "description": "Runs the grammar checker against the project's current Baseline and stores its findings. Use warnings to read those findings afterward.",
+    "description": "Runs the grammar checker against the project's current Baseline and stores its findings. Use warnings to read those findings afterward. The stored-analysis comparison follows the Default proposal checks setting unless the command overrides it.",
     "source": "Hand-written from docs/cli-api.md and command behavior."
   },
   "timing": {

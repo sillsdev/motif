@@ -43,6 +43,9 @@ internal static class Program
     /// <summary>One command name per line, for each invocation of a copy that carries the sentinel.</summary>
     internal const string InvocationsFileName = "_pangloss-invocations.log";
 
+    /// <summary>One <c>--stored-analyses</c> value per grammar-health run, for a copy that carries the sentinel.</summary>
+    internal const string StoredAnalysesFileName = "_pangloss-stored-analyses.log";
+
     private sealed record Flag(string Name, bool TakesValue);
 
     private sealed record Command(string Name, string[] Positionals, Flag[] Flags, Func<string[], int> Run);
@@ -62,7 +65,8 @@ internal static class Program
         new("parse", ["grammar", "word"],
             [new("--trace", true), new("--trace-format", true), new("--trace-details", false),
                 new("--step-cap", true)], RunParse),
-        new("grammar-health", ["grammar", "out.json?"], [new("--fw-project", true)], RunGrammarHealth),
+        new("grammar-health", ["grammar", "out.json?"],
+            [new("--fw-project", true), new("--stored-analyses", true)], RunGrammarHealth),
     ];
 
     private static int Main(string[] args)
@@ -571,14 +575,25 @@ internal static class Program
         "\"surfaceMismatch\":0,\"uses\":0,\"timingAvailable\":false,\"selfElapsedNs\":null}}" +
         ",\"trace\":" + (treeJson ?? "null") + "}";
 
-    // grammar-health <grammar> [<out.json>] [--fw-project <project>]
+    // grammar-health <grammar> [<out.json>] [--fw-project <project>] [--stored-analyses bounded|all|off]
     private static int RunGrammarHealth(string[] args)
     {
         if (args.Length < 2)
         {
-            Console.Error.WriteLine("usage: pangloss grammar-health <grammar> [<out.json>] [--fw-project <project>]");
+            Console.Error.WriteLine(
+                "usage: pangloss grammar-health <grammar> [<out.json>] [--fw-project <project>] [--stored-analyses bounded|all|off]");
             return 64;
         }
+        var storedAnalysesIndex = Array.IndexOf(args, "--stored-analyses");
+        if (storedAnalysesIndex >= 0 &&
+            (storedAnalysesIndex + 1 >= args.Length || args[storedAnalysesIndex + 1] is not ("bounded" or "all" or "off")))
+        {
+            Console.Error.WriteLine("pangloss grammar-health: --stored-analyses expects bounded, all or off");
+            return 64;
+        }
+        if (File.Exists(Path.Combine(AppContext.BaseDirectory, RecordInvocationsSentinel)))
+            File.AppendAllText(Path.Combine(AppContext.BaseDirectory, StoredAnalysesFileName),
+                (storedAnalysesIndex < 0 ? "bounded" : args[storedAnalysesIndex + 1]) + "\n");
         var grammarPath = args[1];
         var outPath = args.Length > 2 && !args[2].StartsWith("--", StringComparison.Ordinal) ? args[2] : null;
         var directory = Path.GetDirectoryName(Path.GetFullPath(grammarPath));

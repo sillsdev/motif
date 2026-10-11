@@ -17,6 +17,7 @@ internal static class FakeParser
     private const string WrongDescriptionFileName = "_fake-pangloss-wrong-description";
     private const string RecordInvocationsSentinel = "_fake-pangloss-record-invocations";
     private const string InvocationsFileName = "_pangloss-invocations.log";
+    private const string StoredAnalysesFileName = "_pangloss-stored-analyses.log";
 
     internal static string ExecutableFileName => OperatingSystem.IsWindows() ? "pangloss.exe" : "pangloss";
 
@@ -114,6 +115,13 @@ internal static class FakeParser
     internal static IReadOnlyList<string> Invocations(string copiedExecutable)
     {
         var log = Path.Combine(Path.GetDirectoryName(copiedExecutable)!, InvocationsFileName);
+        return File.Exists(log) ? File.ReadAllLines(log) : [];
+    }
+
+    /// <summary>The <c>--stored-analyses</c> value of each grammar-health run a recording copy has answered.</summary>
+    internal static IReadOnlyList<string> StoredAnalysesRequested(string copiedExecutable)
+    {
+        var log = Path.Combine(Path.GetDirectoryName(copiedExecutable)!, StoredAnalysesFileName);
         return File.Exists(log) ? File.ReadAllLines(log) : [];
     }
 

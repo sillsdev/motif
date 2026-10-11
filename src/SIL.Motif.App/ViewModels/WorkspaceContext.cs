@@ -6,6 +6,7 @@ using SIL.Motif.App.Services;
 using SIL.Motif.Commands.Assistants;
 using SIL.Motif.Commands.Handoff;
 using SIL.Motif.Commands.Preferences;
+using SIL.Motif.Host.Preferences;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands.SelectionReading;
 using SIL.Motif.Contract.Assess;
@@ -132,7 +133,8 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         IFileDragSource dragSource, BaselineViewModel baseline, TimeProvider? clock = null, IClipboard? clipboard = null,
         IDiagnosticFilePicker? diagnosticFiles = null, IDiagnosticWindowDialogs? diagnosticDialogs = null,
         IAdvancedAiModePreferenceStore? advancedAiModePreferences = null,
-        IAssistantConnectionService? assistantConnections = null, IUriLauncher? uriLauncher = null)
+        IAssistantConnectionService? assistantConnections = null, IUriLauncher? uriLauncher = null,
+        IDefaultProposalChecksStore? defaultProposalChecks = null)
     {
         ArgumentNullException.ThrowIfNull(selection);
         ArgumentNullException.ThrowIfNull(assess);
@@ -162,6 +164,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         TextStyles = new TextStyles();
         Assess.Trace.SetTextStyles(TextStyles);
         AdvancedAiModePreferences = advancedAiModePreferences;
+        DefaultProposalChecks = defaultProposalChecks ?? new MemoryDefaultProposalChecksStore();
         AssistantConnections = assistantConnections ?? NoAssistantConnectionService.Instance;
         UriLauncher = uriLauncher;
         Assess.PropertyChanged += OnAssessPropertyChanged;
@@ -238,6 +241,9 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
 
     /// <summary>The saved choice that determines whether AI assistants receive project tools.</summary>
     public IAdvancedAiModePreferenceStore? AdvancedAiModePreferences { get; }
+
+    /// <summary>The saved per-user choices behind the checks a grammar gets without being asked.</summary>
+    public IDefaultProposalChecksStore DefaultProposalChecks { get; }
 
     /// <summary>The service that finds assistants and connects them to Motif.</summary>
     public IAssistantConnectionService AssistantConnections { get; }
