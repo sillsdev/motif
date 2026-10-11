@@ -330,6 +330,12 @@ internal static class ComponentStateContractCases
             StateStimulus.Pointer, StatePart.Face, ContentPresenter.BackgroundProperty, "Intent.Clear");
         yield return new("ListBox.wordRows ListBoxItem:selected" + rowsFace, "selected", () => WordRowsEntry(selected: true),
             StateStimulus.None, StatePart.Face, ContentPresenter.BackgroundProperty, "Intent.Clear");
+        yield return new("ListBox.parsimonyRows ListBoxItem:pointerover" + rowsFace, "hover",
+            () => WordRowsEntry(selected: false, "parsimonyRows"), StateStimulus.Pointer, StatePart.Face,
+            ContentPresenter.BackgroundProperty, "Intent.Clear");
+        yield return new("ListBox.parsimonyRows ListBoxItem:selected" + rowsFace, "selected",
+            () => WordRowsEntry(selected: true, "parsimonyRows"), StateStimulus.None, StatePart.Face,
+            ContentPresenter.BackgroundProperty, "Intent.Clear");
         yield return new("Border.wordPresentationFrame:pointerover", "hover", () => PresentationRow(),
             StateStimulus.Pointer, StatePart.Self, Border.BackgroundProperty, "Intent.Surface.Hover");
         yield return new("Border.wordPresentationFrame.open", "opened", () => PresentationRow(open: true),
@@ -419,9 +425,9 @@ internal static class ComponentStateContractCases
             .FirstOrDefault(ring => ring is not null);
     }
 
-    private static (Control, Control) WordRowsEntry(bool selected)
+    private static (Control, Control) WordRowsEntry(bool selected, string rowsClass = "wordRows")
     {
-        var list = new ListBox { Classes = { "wordRows" } };
+        var list = new ListBox { Classes = { rowsClass } };
         var item = new ListBoxItem { Content = "kitabu" };
         list.Items.Add(item);
         if (selected) list.SelectedIndex = 0;

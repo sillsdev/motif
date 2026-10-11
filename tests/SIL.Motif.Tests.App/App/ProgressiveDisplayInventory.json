@@ -775,8 +775,8 @@
     "view": "Pages/ParsimonyPage",
     "name": "ParsimonyRowsItems",
     "source": "Rows",
-    "mode": "finite",
-    "control": "ItemsControl"
+    "mode": "rows",
+    "control": "ListBox"
   },
   {
     "view": "Pages/ParsimonyPage",
@@ -796,8 +796,8 @@
     "view": "Pages/ParsimonyPage",
     "name": "ParsimonySuppressedItems",
     "source": "SuppressedItems",
-    "mode": "finite",
-    "control": "ItemsControl"
+    "mode": "rows",
+    "control": "ListBox"
   },
   {
     "view": "Pages/ParsimonyPage",

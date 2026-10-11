@@ -230,7 +230,7 @@ public sealed class ParsimonyPageModelTests
         await context.OpenProjectAsync(ProjectA);
         var row = Assert.Single(page.Groups.SelectMany(group => group.Items));
 
-        Assert.True(page.SelectFinding(row.Link));
+        Assert.True(page.SelectFinding(row.Link!));
 
         var evidence = Assert.IsType<ParsimonyEvidence>(page.Evidence);
         Assert.Equal(Title(ParsimonyMeasure), evidence.Title);
@@ -250,7 +250,7 @@ public sealed class ParsimonyPageModelTests
         ExpectReport(fake, Report([Finding("f1", ParsimonyMeasure, ParsimonyAxis.Parsimony, 2, 3)]));
         var (context, page) = Build(fake, advancedAi: true);
         await context.OpenProjectAsync(ProjectA);
-        var link = Assert.Single(page.Groups.SelectMany(group => group.Items)).Link;
+        var link = Assert.Single(page.Groups.SelectMany(group => group.Items)).Link!;
 
         ExpectNoReport(fake);
         await context.OpenProjectAsync(ProjectB);
@@ -615,6 +615,177 @@ public sealed class ParsimonyPageModelTests
         Assert.StartsWith(recipe.Metadata.UpdateIntents.Count > 0
             ? "The Guide page \u201c" + recipe.Title + "\u201d describes the update Motif supports"
             : "This check has no supported update in Motif yet", page.FixNote, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ASelectionKeepsEveryRowAndChangesOnlyTheTwoRowsItTouches()
+    {
+        var fake = new FakeCommandClient();
+        ExpectReport(fake, Report(Many(3000)));
+        var (context, page) = Build(fake, advancedAi: true);
+        await context.OpenProjectAsync(ProjectA);
+        var before = page.Rows.ToArray();
+        var findings = before.Where(row => !row.IsHeader).ToArray();
+        Assert.Equal(3000, findings.Length);
+        var changed = new List<ParsimonyListRow>();
+        foreach (var row in before) row.PropertyChanged += (sender, _) => changed.Add((ParsimonyListRow)sender!);
+        var listChanges = 0;
+        ((System.Collections.Specialized.INotifyCollectionChanged)page.Rows).CollectionChanged += (_, _) => listChanges++;
+        var groupsChanged = false;
+        page.PropertyChanged += (_, args) => groupsChanged |= args.PropertyName is nameof(page.Groups) or nameof(page.Rows);
+
+        Assert.True(page.SelectFinding(findings[10].Link!));
+        Assert.True(page.SelectFinding(findings[2000].Link!));
+
+        Assert.Equal(before, page.Rows);
+        Assert.All(before.Zip(page.Rows), pair => Assert.Same(pair.First, pair.Second));
+        Assert.Equal(0, listChanges);
+        Assert.False(groupsChanged);
+        Assert.Equal([findings[10], findings[2000]], changed.Distinct().OrderBy(row => Array.IndexOf(findings, row)));
+        Assert.Same(findings[2000], Assert.Single(page.Rows, row => row.IsSelected));
+        Assert.Same(findings[2000], Assert.Single(page.Groups.SelectMany(group => group.Items), item => item.IsSelected));
+    }
+
+    [Fact]
+    public async Task StagingADecisionUpdatesOnlyThatRowInPlace()
+    {
+        var fake = new FakeCommandClient();
+        ExpectReport(fake, Report(Many(5)));
+        var (context, page) = Build(fake, advancedAi: true);
+        await context.OpenProjectAsync(ProjectA);
+        var before = page.Rows.ToArray();
+        var target = before.Where(row => !row.IsHeader).ElementAt(2);
+        Assert.True(page.SelectFinding(target.Link!));
+
+        await page.KeepCommand.ExecuteAsync(null);
+
+        Assert.All(before.Zip(page.Rows), pair => Assert.Same(pair.First, pair.Second));
+        Assert.Equal("Kept · staged, not yet applied", target.Disposition);
+        Assert.True(target.HasDisposition);
+        Assert.All(before.Where(row => !ReferenceEquals(row, target)), row => Assert.Equal(string.Empty, row.Disposition));
+    }
+
+    [Fact]
+    public async Task AFindingThatNamesManyItemsShowsTheFirstFewInItsRowAndAllOfThemInTheInspector()
+    {
+        var fake = new FakeCommandClient();
+        var names = Enumerable.Range(0, 40).Select(index => $"item-{index}").ToArray();
+        ExpectReport(fake, Report([Finding("many", ParsimonyMeasure, ParsimonyAxis.Parsimony, 2, 3, items: names)]));
+        var (context, page) = Build(fake, advancedAi: true);
+        await context.OpenProjectAsync(ProjectA);
+        var row = Assert.Single(page.Rows, item => !item.IsHeader);
+
+        Assert.StartsWith("item-0, item-1, ", row.Items, StringComparison.Ordinal);
+        Assert.EndsWith("item-11, and 28 more", row.Items, StringComparison.Ordinal);
+        Assert.DoesNotContain("item-12", row.Items, StringComparison.Ordinal);
+        Assert.True(page.SelectFinding(row.Link!));
+
+        var inspector = page.Evidence!.Details.Single(detail => detail.Label == "Items").Value;
+        Assert.Equal(string.Join(", ", names), inspector);
+    }
+
+    [Fact]
+    public async Task TheFirstPageIsListedAtOnceAndTheRestArrivesInPlace()
+    {
+        var fake = new FakeCommandClient();
+        var gate = new TaskCompletionSource();
+        ExpectPagedReport(fake, Report(Many(450)), gate.Task);
+        var (context, page) = Build(fake, advancedAi: true);
+
+        await context.OpenProjectAsync(ProjectA);
+
+        Assert.Equal(ParsimonyPageState.Listed, page.State);
+        var firstPage = page.Rows.ToArray();
+        Assert.Equal(200, firstPage.Count(row => !row.IsHeader));
+        Assert.Equal("Active (450)", page.ActiveTabLabel);
+        Assert.Equal("450", page.Badge);
+        Assert.Equal("450 findings to review", page.AxisSummary);
+        Assert.True(page.HasLoadingNote);
+        Assert.Contains("200 of 450", page.LoadingNote, StringComparison.Ordinal);
+        Assert.True(page.SelectFinding(firstPage.First(row => !row.IsHeader).Link!));
+
+        gate.SetResult();
+        await page.RemainingLoad;
+
+        Assert.Equal(450, page.Rows.Count(row => !row.IsHeader));
+        // The two measures interleave across pages, so rows shift down but each first-page row is the same instance.
+        var kept = page.Rows.Where(row => firstPage.Contains(row)).ToArray();
+        Assert.Equal(firstPage, kept);
+        Assert.False(page.HasLoadingNote);
+        Assert.Equal(450, page.Groups.Sum(group => group.Items.Count));
+        Assert.Single(page.Rows, row => row.IsSelected);
+        Assert.Equal(["150 findings", "300 findings"], page.Rows.Where(row => row.IsHeader).Select(row => row.Count).Order());
+    }
+
+    [Fact]
+    public async Task AReadOfAnotherProjectDropsTheFindingsStillArrivingForTheFirst()
+    {
+        var fake = new FakeCommandClient();
+        var gate = new TaskCompletionSource();
+        ExpectPagedReport(fake, Report(Many(450)), gate.Task);
+        var (context, page) = Build(fake, advancedAi: true);
+        await context.OpenProjectAsync(ProjectA);
+        var stale = page.RemainingLoad;
+        Assert.False(stale.IsCompleted);
+
+        ExpectNoReport(fake);
+        await context.OpenProjectAsync(ProjectB);
+        gate.SetResult();
+        await stale;
+
+        Assert.Equal(ParsimonyPageState.NoReport, page.State);
+        Assert.Empty(page.Rows);
+        Assert.Empty(page.Groups);
+        Assert.False(page.HasLoadingNote);
+    }
+
+    [Fact]
+    public async Task APageThatCannotBeReadLeavesWhatIsListedAndSaysSo()
+    {
+        var fake = new FakeCommandClient();
+        var report = Report(Many(450));
+        ExpectPagedReport(fake, report, Task.CompletedTask);
+        var served = fake.ParsimonyViewHandler!;
+        fake.ParsimonyViewHandler = (request, token) => request.Query.Cursor is null
+            ? served(request, token)
+            : Task.FromResult(CommandOutcome<ParsimonyNamedViewResponse>.Refused(
+                new Refusal("parsimony.view-failed", FailureReason.Refused, "The view timed out.")));
+        var (context, page) = Build(fake, advancedAi: true);
+
+        await context.OpenProjectAsync(ProjectA);
+        await page.RemainingLoad;
+
+        Assert.Equal(ParsimonyPageState.Listed, page.State);
+        Assert.Equal(200, page.Rows.Count(row => !row.IsHeader));
+        Assert.Equal("Not every finding could be loaded: The view timed out.", page.LoadingNote);
+    }
+
+    private static ParsimonyFinding[] Many(int count) =>
+    [
+        .. Enumerable.Range(0, count).Select(index => Finding($"finding-{index:D5}",
+            index % 3 == 0 ? RestrictivenessMeasure : ParsimonyMeasure,
+            index % 3 == 0 ? ParsimonyAxis.Restrictiveness : ParsimonyAxis.Parsimony, 1 + index % 5, 7, items: [$"item-{index}"])),
+    ];
+
+    // Serves the Active view by cursor, 200 rows to the page; every page after the first waits for the gate.
+    private static void ExpectPagedReport(FakeCommandClient fake, ParsimonyReportResponse report, Task gate)
+    {
+        ExpectReport(fake, report);
+        fake.ParsimonyViewHandler = async (request, _) =>
+        {
+            if (request.Query.View != "parsimony-active-findings")
+                return CommandOutcome<ParsimonyNamedViewResponse>.Success(new ParsimonyNamedViewResponse(BundleId,
+                    request.Query.View, 1, ParsimonyMeasureStatus.Computed, [], 0, 0, null, false, [], null, null));
+            var offset = request.Query.Cursor is null ? 0 : int.Parse(request.Query.Cursor);
+            if (offset > 0) await gate;
+            var rows = report.Findings.Skip(offset).Take(request.Query.Limit)
+                .Select(finding => (ParsimonyViewRow)new ParsimonyFindingDispositionViewRow(ReportId, BundleId, "active",
+                    finding, null, null, null, null, null, null)).ToArray();
+            var next = offset + rows.Length;
+            return CommandOutcome<ParsimonyNamedViewResponse>.Success(new ParsimonyNamedViewResponse(BundleId,
+                request.Query.View, 1, ParsimonyMeasureStatus.Computed, [], report.Findings.Count, rows.Length,
+                next < report.Findings.Count ? next.ToString() : null, next < report.Findings.Count, rows, null, null));
+        };
     }
 
     // Serves the given rows as the Active view and no Suppressed rows, for a test that needs an exact Active state.

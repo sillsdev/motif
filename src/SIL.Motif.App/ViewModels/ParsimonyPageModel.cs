@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -42,19 +43,11 @@ public enum ParsimonyPageState
 /// </summary>
 public sealed record ParsimonyFindingLink(string ProjectPath, string ReportId, string FindingId);
 
-/// <summary>One finding row in a measure's group, with its decision state beside it.</summary>
-/// <param name="Description">The finding's counted numbers in words, such as "2 of 3 prohibitions".</param>
-/// <param name="Items">The grammar items the finding concerns, or a plain statement that the Report names none.</param>
-/// <param name="Disposition">The decision state beside the row, empty while the finding is open.</param>
-/// <param name="SelectCommand">Shows this finding's evidence and its actions in the detail pane.</param>
-public sealed record ParsimonyFindingRow(
-    string Description, string Items, string Disposition, ParsimonyFindingLink Link, bool IsSelected,
-    IRelayCommand<ParsimonyFindingLink> SelectCommand);
-
 /// <summary>The findings of one measure, under the measure's title and its axis.</summary>
 /// <param name="Title">The measure's recipe title, or a plain fallback when no recipe exists.</param>
 /// <param name="AxisLabel">Restrictiveness, Parsimony or both, kept apart from every other group.</param>
-public sealed record ParsimonyMeasureGroup(string Title, string AxisLabel, IReadOnlyList<ParsimonyFindingRow> Items)
+/// <param name="Items">The measure's finding rows, the same instances the flat list shows.</param>
+public sealed record ParsimonyMeasureGroup(string Title, string AxisLabel, IReadOnlyList<ParsimonyListRow> Items)
 {
     /// <summary>The group's count in words, such as "2 findings", shown on its header.</summary>
     public string CountLabel => FindingCount(Items.Count);
@@ -67,28 +60,103 @@ public sealed record ParsimonyMeasureGroup(string Title, string AxisLabel, IRead
 }
 
 /// <summary>
-/// One line of the findings list: a measure's header, or one finding under it. Flat, so the page draws one list.
+/// One line of the findings list: a measure's header, or one finding under it. Flat, so the page draws one
+/// virtualized list. A row is made once per finding and changes in place, so a selection or a staged decision
+/// updates the rows it concerns and no others.
 /// </summary>
-public sealed record ParsimonyListRow(
-    bool IsHeader, string Title, string Detail, string Count, string Description, string Items, string Disposition,
-    ParsimonyFindingLink? Link, bool IsSelected, IRelayCommand<ParsimonyFindingLink>? SelectCommand, string AutomationId)
+public sealed partial class ParsimonyListRow(
+    bool isHeader, string title, string detail, string count, string description, string items, string disposition,
+    ParsimonyFindingLink? link, bool isSelected, IRelayCommand<ParsimonyFindingLink>? selectCommand, string automationId)
+    : ObservableObject
 {
+    /// <summary>Whether this line is a measure's header and not a finding.</summary>
+    public bool IsHeader { get; } = isHeader;
+
+    /// <summary>A header's measure title.</summary>
+    public string Title { get; } = title;
+
+    /// <summary>A header's axis, or empty on a finding.</summary>
+    public string Detail { get; } = detail;
+
+    /// <summary>The finding's counted numbers in words, such as "2 of 3 prohibitions".</summary>
+    public string Description { get; } = description;
+
+    /// <summary>
+    /// The grammar items the finding concerns, shortened to the first few names, or a plain statement that the
+    /// Report names none. The inspector holds the full list.
+    /// </summary>
+    public string Items { get; } = items;
+
+    /// <summary>The finding's address, or null on a header.</summary>
+    public ParsimonyFindingLink? Link { get; } = link;
+
+    /// <summary>Shows this finding's evidence and its actions in the detail pane.</summary>
+    public IRelayCommand<ParsimonyFindingLink>? SelectCommand { get; } = selectCommand;
+
+    /// <summary>The row's automation identifier.</summary>
+    public string AutomationId { get; } = automationId;
+
+    /// <summary>A header's count in words, such as "2 findings".</summary>
+    [ObservableProperty]
+    private string _count = count;
+
+    /// <summary>The decision state beside the row, empty while the finding is open.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasDisposition))]
+    private string _disposition = disposition;
+
+    /// <summary>Whether this finding is the one shown in the detail pane.</summary>
+    [ObservableProperty]
+    private bool _isSelected = isSelected;
+
     /// <summary>Whether the finding has a decision state to show as a chip.</summary>
     public bool HasDisposition => Disposition.Length > 0;
 }
 
 /// <summary>One saved decision in the Suppressed list, read-only except for its return to Active.</summary>
-/// <param name="Key">The revision the row shows, which selects it.</param>
-/// <param name="Title">The measure and the subject it applies to.</param>
-/// <param name="Decision">Kept or Deferred.</param>
-/// <param name="Reason">The reason the person gave, or "No reason given".</param>
-/// <param name="StateLabel">What the decision means now: suppressed, stale, or unavailable.</param>
-/// <param name="ReturnLabel">Set while a return to Active is staged and not yet applied.</param>
-/// <param name="AutomationId">The row's automation identifier, from its revision.</param>
-public sealed record ParsimonySuppressedItem(
-    string Key, string Title, string Decision, string Reason, string StateLabel, string ReturnLabel, bool IsSelected,
-    IRelayCommand<string> SelectCommand, string AutomationId)
+/// <param name="key">The revision the row shows, which selects it.</param>
+/// <param name="title">The measure and the subject it applies to.</param>
+/// <param name="decision">Kept or Deferred.</param>
+/// <param name="reason">The reason the person gave, or "No reason given".</param>
+/// <param name="stateLabel">What the decision means now: suppressed, stale, or unavailable.</param>
+/// <param name="returnLabel">Set while a return to Active is staged and not yet applied.</param>
+/// <param name="isSelected">Whether the decision is the one shown in the detail pane.</param>
+/// <param name="selectCommand">Shows this decision's detail.</param>
+/// <param name="automationId">The row's automation identifier, from its revision.</param>
+public sealed partial class ParsimonySuppressedItem(
+    string key, string title, string decision, string reason, string stateLabel, string returnLabel, bool isSelected,
+    IRelayCommand<string> selectCommand, string automationId) : ObservableObject
 {
+    /// <summary>The revision the row shows, which selects it.</summary>
+    public string Key { get; } = key;
+
+    /// <summary>The measure and the subject it applies to.</summary>
+    public string Title { get; } = title;
+
+    /// <summary>Kept or Deferred.</summary>
+    public string Decision { get; } = decision;
+
+    /// <summary>The reason the person gave, or "No reason given".</summary>
+    public string Reason { get; } = reason;
+
+    /// <summary>What the decision means now: suppressed, stale, or unavailable.</summary>
+    public string StateLabel { get; } = stateLabel;
+
+    /// <summary>Shows this decision's detail.</summary>
+    public IRelayCommand<string> SelectCommand { get; } = selectCommand;
+
+    /// <summary>The row's automation identifier, from its revision.</summary>
+    public string AutomationId { get; } = automationId;
+
+    /// <summary>Set while a return to Active is staged and not yet applied.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasReturn))]
+    private string _returnLabel = returnLabel;
+
+    /// <summary>Whether this decision is the one shown in the detail pane.</summary>
+    [ObservableProperty]
+    private bool _isSelected = isSelected;
+
     /// <summary>Whether the decision is shown as a chip, which every Suppressed row has.</summary>
     public bool HasDecision => Decision.Length > 0;
 
@@ -112,6 +180,10 @@ public sealed partial class ParsimonyPageModel : PageModel
         "Add one in FieldWorks, then reopen this page.";
     private const string StagedNote = "Staged in pending changes. Nothing is written to FieldWorks until Apply.";
     private const int ViewPageSize = 200;
+    private const string ReturnStagedLabel = "Return to Active is staged. Apply writes it.";
+
+    // A row names this many items and then counts the rest; the inspector lists them all.
+    private const int RowItemNames = 12;
     private const string EvidenceNoteText = "The evidence this Report was measured from is no longer stored, so its " +
         "findings are listed from the Report itself. Decisions are matched to findings by their recorded evidence, " +
         "not checked against the grammar again.";
@@ -125,8 +197,20 @@ public sealed partial class ParsimonyPageModel : PageModel
     private string? _reportProjectPath;
     private string? _selectedFindingId;
     private string? _selectedSuppressedKey;
-    private IReadOnlyList<ParsimonyFindingDispositionViewRow> _activeRows = [];
-    private IReadOnlyList<ParsimonySuppressionHistoryViewRow> _suppressedRows = [];
+    private List<ParsimonyFindingDispositionViewRow> _activeRows = [];
+    private List<ParsimonySuppressionHistoryViewRow> _suppressedRows = [];
+    private int _activeTotal;
+    private int _suppressedTotal;
+    private CancellationTokenSource? _remainingCancellation;
+
+    // The flat list and its rows are made once per finding; a page that arrives only inserts what is new.
+    private readonly ObservableCollection<ParsimonyListRow> _rows = [];
+    private readonly Dictionary<string, ParsimonyListRow> _rowsByFinding = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, ParsimonyListRow> _headersByMeasure = new(StringComparer.Ordinal);
+    private readonly ObservableCollection<ParsimonySuppressedItem> _suppressedItems = [];
+    private readonly Dictionary<string, ParsimonySuppressedItem> _suppressedByKey = new(StringComparer.Ordinal);
+    private ParsimonyListRow? _selectedRow;
+    private ParsimonySuppressedItem? _selectedSuppressedItem;
 
     // Staged here and not yet applied. They are cleared once Apply has written them or the draft is gone.
     private readonly Dictionary<string, StagedDecision> _stagedByFinding = new(StringComparer.Ordinal);
@@ -144,6 +228,7 @@ public sealed partial class ParsimonyPageModel : PageModel
         AskCommand = new AsyncRelayCommand(() => StageDecisionAsync("ask"), CanStageFinding);
         ReturnToActiveCommand = new AsyncRelayCommand(ReturnToActiveAsync, CanReturnSelected);
         State = context.AdvancedAiModeEnabled ? ParsimonyPageState.NoProject : ParsimonyPageState.Off;
+        _suppressedItems.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasSuppressedItems));
     }
 
     /// <summary>Where the page is in reading the stored Report.</summary>
@@ -193,21 +278,20 @@ public sealed partial class ParsimonyPageModel : PageModel
     [ObservableProperty]
     private string _axisLegend = string.Empty;
 
-    /// <summary>The Active findings, one group per measure.</summary>
+    /// <summary>The Active findings loaded so far, one group per measure.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(Rows))]
     private IReadOnlyList<ParsimonyMeasureGroup> _groups = [];
+
+    /// <summary>Says findings are still arriving, or why the rest are missing; empty when all are listed.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasLoadingNote))]
+    private string _loadingNote = string.Empty;
 
     /// <summary>Whether the Suppressed tab is showing; the Active tab is the default.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ActiveTabLabel), nameof(SuppressedTabLabel), nameof(ShowingActive),
         nameof(ShowingSuppressed), nameof(HasSuppressedEmptyText))]
     private bool _isShowingSuppressed;
-
-    /// <summary>The Suppressed decisions, each with its reason or the plain statement that none was given.</summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasSuppressedItems), nameof(HasSuppressedEmptyText))]
-    private IReadOnlyList<ParsimonySuppressedItem> _suppressedItems = [];
 
     /// <summary>The reason the person writes for a keep or a defer; empty means none is recorded.</summary>
     [ObservableProperty]
@@ -288,11 +372,20 @@ public sealed partial class ParsimonyPageModel : PageModel
     /// <summary>Whether the project's Notebook offers any record type.</summary>
     public bool HasRecordTypes => RecordTypes.Count > 0;
 
+    /// <summary>The Suppressed decisions, each with its reason or the plain statement that none was given.</summary>
+    public IReadOnlyList<ParsimonySuppressedItem> SuppressedItems => _suppressedItems;
+
+    /// <summary>Whether the page has a note about findings still arriving or not loaded.</summary>
+    public bool HasLoadingNote => LoadingNote.Length > 0;
+
+    /// <summary>Completes when every page of findings has been read; already complete when the first page was all.</summary>
+    public Task RemainingLoad { get; private set; } = Task.CompletedTask;
+
     /// <summary>Whether a Suppressed decision is listed.</summary>
-    public bool HasSuppressedItems => SuppressedItems.Count > 0;
+    public bool HasSuppressedItems => _suppressedItems.Count > 0;
 
     /// <summary>Whether the Suppressed tab is empty and should say what would put a finding there.</summary>
-    public bool HasSuppressedEmptyText => IsShowingSuppressed && SuppressedItems.Count == 0 && IsListed;
+    public bool HasSuppressedEmptyText => IsShowingSuppressed && _suppressedItems.Count == 0 && IsListed;
 
     /// <summary>Whether the Active tab is the one showing.</summary>
     public bool ShowingActive => !IsShowingSuppressed;
@@ -301,11 +394,11 @@ public sealed partial class ParsimonyPageModel : PageModel
     public bool ShowingSuppressed => IsShowingSuppressed;
 
     /// <summary>The Active tab's label with its count.</summary>
-    public string ActiveTabLabel => "Active (" + _activeRows.Count.ToString(System.Globalization.CultureInfo.CurrentCulture) + ")";
+    public string ActiveTabLabel => "Active (" + _activeTotal.ToString(System.Globalization.CultureInfo.CurrentCulture) + ")";
 
     /// <summary>The Suppressed tab's label with its count.</summary>
     public string SuppressedTabLabel =>
-        "Suppressed (" + _suppressedRows.Count.ToString(System.Globalization.CultureInfo.CurrentCulture) + ")";
+        "Suppressed (" + _suppressedTotal.ToString(System.Globalization.CultureInfo.CurrentCulture) + ")";
 
     /// <summary>Whether a selected Active finding has the decision actions to show.</summary>
     public bool ShowActiveActions => Evidence is not null && _selectedFindingId is not null;
@@ -316,15 +409,10 @@ public sealed partial class ParsimonyPageModel : PageModel
     /// <summary>Whether a decision can be recorded against the current selection.</summary>
     public bool CanActOnSelection => SelectedRecordType is not null && _report is not null;
 
-    /// <summary>The Active list as one flat list: each measure's header, then its findings.</summary>
-    public IReadOnlyList<ParsimonyListRow> Rows =>
-    [
-        .. Groups.SelectMany(group => new[] { new ParsimonyListRow(true, group.Title, group.AxisLabel, group.CountLabel,
-                string.Empty, string.Empty, string.Empty, null, false, null, string.Empty) }
-            .Concat(group.Items.Select(item => new ParsimonyListRow(false, string.Empty, string.Empty, string.Empty, item.Description,
-                item.Items, item.Disposition, item.Link, item.IsSelected, item.SelectCommand,
-                AutomationIds.ForParsimonyFinding(item.Link.FindingId))))),
-    ];
+    /// <summary>
+    /// The Active list as one flat list: each measure's header, then its findings. The page draws it virtualized.
+    /// </summary>
+    public IReadOnlyList<ParsimonyListRow> Rows => _rows;
 
     /// <summary>Selects one Active finding and shows its evidence and actions.</summary>
     public IRelayCommand<ParsimonyFindingLink> SelectFindingCommand { get; }
@@ -388,7 +476,7 @@ public sealed partial class ParsimonyPageModel : PageModel
         ActionMessage = string.Empty;
         _selectedSuppressedKey = null;
         _selectedFindingId = row.Finding.FindingId;
-        RebuildLists();
+        MoveSelection();
         Evidence = BuildEvidence(row.Finding, row.Reason, row.PreviousEvidenceDigest is not null);
         ActionsChanged();
         FixNote = FixNoteFor(row.Finding.MeasureId);
@@ -411,7 +499,7 @@ public sealed partial class ParsimonyPageModel : PageModel
         ActionMessage = string.Empty;
         _selectedFindingId = null;
         _selectedSuppressedKey = key;
-        RebuildLists();
+        MoveSelection();
         Evidence = BuildSuppressedDetail(row);
         ActionsChanged();
         return true;
@@ -449,7 +537,7 @@ public sealed partial class ParsimonyPageModel : PageModel
         }
         var report = shown.Value!;
 
-        var active = await ReadViewAsync(path, report, "parsimony-active-findings", cancellationToken).ConfigureAwait(true);
+        var active = await ReadViewPageAsync(path, report, ParsimonyViews.ParsimonyActiveFindings, null, cancellationToken).ConfigureAwait(true);
         if (!IsCurrent(generation, path)) return;
         var evidenceMissing = !active.Succeeded &&
             active.Refusal!.Code is ParsimonyRefusalCodes.BundleNotFound or ParsimonyRefusalCodes.BundleInvalid;
@@ -458,7 +546,7 @@ public sealed partial class ParsimonyPageModel : PageModel
             ShowRefusal(active.Refusal!);
             return;
         }
-        var suppressed = await ReadViewAsync(path, report, "parsimony-suppressed", cancellationToken).ConfigureAwait(true);
+        var suppressed = await ReadViewPageAsync(path, report, ParsimonyViews.ParsimonySuppressed, null, cancellationToken).ConfigureAwait(true);
         if (!IsCurrent(generation, path)) return;
         if (!suppressed.Succeeded)
         {
@@ -478,16 +566,100 @@ public sealed partial class ParsimonyPageModel : PageModel
 
         _report = report;
         _reportProjectPath = path;
-        _suppressedRows = suppressed.Value!.Rows.OfType<ParsimonySuppressionHistoryViewRow>().ToArray();
+        _suppressedRows = [.. suppressed.Value!.Rows.OfType<ParsimonySuppressionHistoryViewRow>()];
+        _suppressedTotal = TotalOf(suppressed.Value, _suppressedRows.Count);
         _activeRows = evidenceMissing
-            ? UndecidedFindings(report, _suppressedRows)
-            : active.Value!.Rows.OfType<ParsimonyFindingDispositionViewRow>().ToArray();
+            ? [.. UndecidedFindings(report, _suppressedRows)]
+            : [.. active.Value!.Rows.OfType<ParsimonyFindingDispositionViewRow>()];
+        _activeTotal = evidenceMissing ? _activeRows.Count : TotalOf(active.Value!, _activeRows.Count);
         EvidenceNote = evidenceMissing ? EvidenceNoteText : string.Empty;
         IsHistorical = !(current.Succeeded && current.Value?.Token == report.Inputs.BaselineToken);
         RecordTypes = types.Succeeded ? types.Value!.RecordTypes : [];
         SelectedRecordType = RecordTypes.Count == 1 ? RecordTypes[0] : null;
         ForgetStagedWork(staged, report.ReportId);
+        var activeCursor = evidenceMissing ? null : NextCursorOf(active.Value!);
+        var suppressedCursor = NextCursorOf(suppressed.Value!);
+        if (suppressedCursor is null) PruneAppliedStagedWork();
+        var more = activeCursor is not null || suppressedCursor is not null;
+        LoadingNote = more ? LoadingNoteText() : string.Empty;
         ShowReport(report, path);
+        if (more)
+        {
+            var remaining = new CancellationTokenSource();
+            _remainingCancellation = remaining;
+            RemainingLoad = LoadRemainingAsync(generation, path, report, activeCursor, suppressedCursor, remaining.Token);
+        }
+    }
+
+    private static int TotalOf(ParsimonyNamedViewResponse page, int loaded) =>
+        (int)Math.Max(loaded, Math.Min(page.Total ?? loaded, int.MaxValue));
+
+    private static string? NextCursorOf(ParsimonyNamedViewResponse page) => page.Truncated ? page.NextCursor : null;
+
+    private string LoadingNoteText()
+    {
+        var loaded = _activeRows.Count + _suppressedRows.Count;
+        var total = _activeTotal + _suppressedTotal;
+        return $"Showing {loaded.ToString(System.Globalization.CultureInfo.CurrentCulture)} of " +
+            $"{total.ToString(System.Globalization.CultureInfo.CurrentCulture)} findings; the rest are still loading.";
+    }
+
+    // The first page is already listed. Each later page is appended in place, and a newer read drops what is left.
+    private async Task LoadRemainingAsync(int generation, string path, ParsimonyReportResponse report,
+        string? activeCursor, string? suppressedCursor, CancellationToken cancellationToken)
+    {
+        try
+        {
+            while (activeCursor is not null)
+            {
+                var page = await ReadViewPageAsync(path, report, ParsimonyViews.ParsimonyActiveFindings, activeCursor, cancellationToken)
+                    .ConfigureAwait(true);
+                if (!IsCurrent(generation, path)) return;
+                if (!page.Succeeded)
+                {
+                    LoadingNote = "Not every finding could be loaded: " + page.Refusal!.Message;
+                    return;
+                }
+                _activeRows.AddRange(page.Value!.Rows.OfType<ParsimonyFindingDispositionViewRow>());
+                activeCursor = NextCursorOf(page.Value);
+                ShowArrivedPage(report);
+            }
+            while (suppressedCursor is not null)
+            {
+                var page = await ReadViewPageAsync(path, report, ParsimonyViews.ParsimonySuppressed, suppressedCursor, cancellationToken)
+                    .ConfigureAwait(true);
+                if (!IsCurrent(generation, path)) return;
+                if (!page.Succeeded)
+                {
+                    LoadingNote = "Not every finding could be loaded: " + page.Refusal!.Message;
+                    return;
+                }
+                _suppressedRows.AddRange(page.Value!.Rows.OfType<ParsimonySuppressionHistoryViewRow>());
+                suppressedCursor = NextCursorOf(page.Value);
+                ShowArrivedPage(report);
+            }
+            PruneAppliedStagedWork();
+            LoadingNote = string.Empty;
+        }
+        catch (OperationCanceledException) when (!IsCurrent(generation, path))
+        {
+        }
+        catch (Exception exception) when (IsCurrent(generation, path))
+        {
+            LoadingNote = "Not every finding could be loaded: " + exception.Message;
+        }
+    }
+
+    private void ShowArrivedPage(ParsimonyReportResponse report)
+    {
+        _activeTotal = Math.Max(_activeTotal, _activeRows.Count);
+        _suppressedTotal = Math.Max(_suppressedTotal, _suppressedRows.Count);
+        SyncLists();
+        ShowAxes();
+        Badge = _activeTotal.ToString(System.Globalization.CultureInfo.CurrentCulture);
+        LoadingNote = LoadingNoteText();
+        OnPropertyChanged(nameof(ActiveTabLabel));
+        OnPropertyChanged(nameof(SuppressedTabLabel));
     }
 
     // Without the evidence bundle, the Report's findings stand in for the Active view, less matched decisions.
@@ -501,25 +673,12 @@ public sealed partial class ParsimonyPageModel : PageModel
                     "active", finding, null, null, null, null, null, null)),
         ];
 
-    private async Task<CommandOutcome<ParsimonyNamedViewResponse>> ReadViewAsync(string path, ParsimonyReportResponse report,
-        string view, CancellationToken cancellationToken)
-    {
-        var rows = new List<ParsimonyViewRow>();
-        string? cursor = null;
-        ParsimonyNamedViewResponse? last = null;
-        do
-        {
-            var outcome = await Context.Commands.ReadParsimonyViewAsync(new ReadParsimonyViewRequest(
-                path, MotifProductVersion.CurrentText, new ParsimonyNamedViewRequest(report.Inputs.BundleId, view,
-                    new ParsimonyViewFilters(ReportId: report.ReportId), ViewPageSize, cursor)), cancellationToken)
-                .ConfigureAwait(true);
-            if (!outcome.Succeeded) return outcome;
-            last = outcome.Value!;
-            rows.AddRange(last.Rows);
-            cursor = last.NextCursor;
-        } while (last.Truncated && cursor is not null);
-        return CommandOutcome<ParsimonyNamedViewResponse>.Success(last! with { Rows = rows });
-    }
+    private async Task<CommandOutcome<ParsimonyNamedViewResponse>> ReadViewPageAsync(string path,
+        ParsimonyReportResponse report, string view, string? cursor, CancellationToken cancellationToken) =>
+        await Context.Commands.ReadParsimonyViewAsync(new ReadParsimonyViewRequest(
+            path, MotifProductVersion.CurrentText, new ParsimonyNamedViewRequest(report.Inputs.BundleId, view,
+                new ParsimonyViewFilters(ReportId: report.ReportId), ViewPageSize, cursor)), cancellationToken)
+            .ConfigureAwait(true);
 
     // A staged decision leaves the overlay once Apply writes it; the whole overlay goes when its draft does.
     private void ForgetStagedWork(CommandOutcome<PendingChangesSnapshot> staged, string reportId)
@@ -534,8 +693,12 @@ public sealed partial class ParsimonyPageModel : PageModel
         {
             _stagedByFinding.Clear();
             _stagedReturns.Clear();
-            return;
         }
+    }
+
+    // Needs every Suppressed row, so it runs once the last page is in; a page short of it would drop live staging.
+    private void PruneAppliedStagedWork()
+    {
         foreach (var applied in _suppressedRows)
             foreach (var entry in _stagedByFinding.Where(entry => entry.Value.MeasureId == applied.MeasureId &&
                 entry.Value.EvidenceDigest == applied.EvidenceDigest).Select(entry => entry.Key).ToArray())
@@ -569,11 +732,10 @@ public sealed partial class ParsimonyPageModel : PageModel
             ? "Some checks did not run on the stored evidence, so their findings are not listed. " +
               "Measure the grammar again once the evidence is complete."
             : string.Empty;
-        RebuildLists();
-        AxisSummary = SummariseAxes(_activeRows.Select(row => row.Finding).ToArray());
-        AxisLegend = LegendOf(_activeRows.Select(row => row.Finding).ToArray());
+        SyncLists();
+        ShowAxes();
         State = ParsimonyPageState.Listed;
-        Badge = _activeRows.Count.ToString(System.Globalization.CultureInfo.CurrentCulture);
+        Badge = _activeTotal.ToString(System.Globalization.CultureInfo.CurrentCulture);
         Message = string.Empty;
         NextStep = string.Empty;
         FixNote = string.Empty;
@@ -582,17 +744,100 @@ public sealed partial class ParsimonyPageModel : PageModel
         OnPropertyChanged(nameof(SuppressedTabLabel));
     }
 
-    // Rebuilds the groups and the Suppressed list from the live views, with staged decisions shown as staged.
-    private void RebuildLists()
+    private void ShowAxes()
+    {
+        var findings = _activeRows.Select(row => row.Finding).ToArray();
+        AxisSummary = _activeTotal == 0 ? "No findings to review" : ParsimonyMeasureGroup.FindingCount(_activeTotal) + " to review";
+        AxisLegend = LegendOf(findings);
+    }
+
+    // Brings the flat lists up to the rows read so far. Rows already listed are kept and only what is new goes in.
+    private void SyncLists()
     {
         var path = _reportProjectPath ?? string.Empty;
         var reportId = _report?.ReportId ?? string.Empty;
-        Groups = BuildGroups(path, reportId);
-        SuppressedItems = BuildSuppressedItems();
+        var groups = new List<ParsimonyMeasureGroup>();
+        var flat = new List<ParsimonyListRow>(_activeRows.Count + 8);
+        foreach (var measure in _activeRows.GroupBy(row => row.Finding.MeasureId, StringComparer.Ordinal))
+        {
+            var items = measure.Select(row => RowFor(row, path, reportId)).ToArray();
+            var group = new ParsimonyMeasureGroup(TitleOf(measure.Key), AxisLabel(measure.First().Finding.Axis), items);
+            groups.Add(group);
+            if (!_headersByMeasure.TryGetValue(measure.Key, out var header))
+                _headersByMeasure[measure.Key] = header = new ParsimonyListRow(true, group.Title, group.AxisLabel,
+                    group.CountLabel, string.Empty, string.Empty, string.Empty, null, false, null, string.Empty);
+            header.Count = group.CountLabel;
+            flat.Add(header);
+            flat.AddRange(items);
+        }
+        Groups = groups;
+        InsertNew(_rows, flat);
+        InsertNew(_suppressedItems, [.. _suppressedRows.Select(SuppressedItemFor)]);
         OnPropertyChanged(nameof(ActiveTabLabel));
         OnPropertyChanged(nameof(SuppressedTabLabel));
-        OnPropertyChanged(nameof(Rows));
+        OnPropertyChanged(nameof(HasSuppressedEmptyText));
         OnPropertyChanged(nameof(CanActOnSelection));
+        ActionsChanged();
+    }
+
+    // Pages only ever add rows and keep the order of the rows before them, so the new ones slot in by position.
+    private static void InsertNew<T>(ObservableCollection<T> shown, IReadOnlyList<T> target) where T : class
+    {
+        for (var index = 0; index < target.Count; index++)
+        {
+            if (index < shown.Count && ReferenceEquals(shown[index], target[index])) continue;
+            shown.Insert(index, target[index]);
+        }
+        while (shown.Count > target.Count) shown.RemoveAt(shown.Count - 1);
+    }
+
+    private ParsimonyListRow RowFor(ParsimonyFindingDispositionViewRow row, string path, string reportId)
+    {
+        if (_rowsByFinding.TryGetValue(row.Finding.FindingId, out var existing)) return existing;
+        var made = new ParsimonyListRow(false, string.Empty, string.Empty, string.Empty, Describe(row.Finding),
+            ItemsText(row.Finding, RowItemNames), StatusOf(row), new ParsimonyFindingLink(path, reportId, row.Finding.FindingId),
+            row.Finding.FindingId == _selectedFindingId, SelectFindingCommand,
+            AutomationIds.ForParsimonyFinding(row.Finding.FindingId));
+        _rowsByFinding[row.Finding.FindingId] = made;
+        if (made.IsSelected) _selectedRow = made;
+        return made;
+    }
+
+    private ParsimonySuppressedItem SuppressedItemFor(ParsimonySuppressionHistoryViewRow row)
+    {
+        if (_suppressedByKey.TryGetValue(row.RevisionId, out var existing)) return existing;
+        var made = new ParsimonySuppressedItem(
+            row.RevisionId,
+            row.MeasureCaption + " · " + row.SubjectCaption,
+            DecisionLabel(row.Disposition),
+            string.IsNullOrWhiteSpace(row.Reason) ? "No reason given" : "Reason: " + row.Reason,
+            SuppressedStateLabel(row.State),
+            _stagedReturns.ContainsKey(row.RecordId) ? ReturnStagedLabel : string.Empty,
+            row.RevisionId == _selectedSuppressedKey,
+            SelectSuppressedCommand,
+            AutomationIds.ForParsimonySuppressed(row.RevisionId));
+        _suppressedByKey[row.RevisionId] = made;
+        if (made.IsSelected) _selectedSuppressedItem = made;
+        return made;
+    }
+
+    // A selection changes the flag on the row it leaves and the row it reaches, and on no other.
+    private void MoveSelection()
+    {
+        var row = _selectedFindingId is null ? null : _rowsByFinding.GetValueOrDefault(_selectedFindingId);
+        if (!ReferenceEquals(row, _selectedRow))
+        {
+            _selectedRow?.IsSelected = false;
+            row?.IsSelected = true;
+            _selectedRow = row;
+        }
+        var item = _selectedSuppressedKey is null ? null : _suppressedByKey.GetValueOrDefault(_selectedSuppressedKey);
+        if (!ReferenceEquals(item, _selectedSuppressedItem))
+        {
+            _selectedSuppressedItem?.IsSelected = false;
+            item?.IsSelected = true;
+            _selectedSuppressedItem = item;
+        }
         ActionsChanged();
     }
 
@@ -603,32 +848,6 @@ public sealed partial class ParsimonyPageModel : PageModel
         AskCommand.NotifyCanExecuteChanged();
         ReturnToActiveCommand.NotifyCanExecuteChanged();
     }
-
-    private IReadOnlyList<ParsimonyMeasureGroup> BuildGroups(string path, string reportId) =>
-    [
-        .. _activeRows.GroupBy(row => row.Finding.MeasureId, StringComparer.Ordinal).Select(group => new ParsimonyMeasureGroup(
-            TitleOf(group.Key), AxisLabel(group.First().Finding.Axis),
-            [.. group.Select(row => new ParsimonyFindingRow(
-                Describe(row.Finding),
-                ItemsText(row.Finding),
-                StatusOf(row),
-                new ParsimonyFindingLink(path, reportId, row.Finding.FindingId),
-                row.Finding.FindingId == _selectedFindingId, SelectFindingCommand))])),
-    ];
-
-    private IReadOnlyList<ParsimonySuppressedItem> BuildSuppressedItems() =>
-    [
-        .. _suppressedRows.Select(row => new ParsimonySuppressedItem(
-            row.RevisionId,
-            row.MeasureCaption + " · " + row.SubjectCaption,
-            DecisionLabel(row.Disposition),
-            string.IsNullOrWhiteSpace(row.Reason) ? "No reason given" : "Reason: " + row.Reason,
-            SuppressedStateLabel(row.State),
-            _stagedReturns.ContainsKey(row.RecordId) ? "Return to Active is staged. Apply writes it." : string.Empty,
-            row.RevisionId == _selectedSuppressedKey,
-            SelectSuppressedCommand,
-            AutomationIds.ForParsimonySuppressed(row.RevisionId))),
-    ];
 
     // A staged decision shows over the applied state, so the person sees what Apply has not yet written.
     private string StatusOf(ParsimonyFindingDispositionViewRow row)
@@ -705,7 +924,7 @@ public sealed partial class ParsimonyPageModel : PageModel
             ReasonText = string.Empty;
             QuestionText = string.Empty;
             ActionMessage = StagedNote;
-            RebuildLists();
+            if (_rowsByFinding.TryGetValue(row.Finding.FindingId, out var staged)) staged.Disposition = StatusOf(row);
             Evidence = BuildEvidence(row.Finding, row.Reason, row.PreviousEvidenceDigest is not null);
         }
         finally
@@ -740,7 +959,7 @@ public sealed partial class ParsimonyPageModel : PageModel
             }
             _stagedReturns[row.RecordId] = row.RevisionId;
             ActionMessage = "Return to Active is staged. " + StagedNote;
-            RebuildLists();
+            if (_suppressedByKey.TryGetValue(row.RevisionId, out var shown)) shown.ReturnLabel = ReturnStagedLabel;
         }
         finally
         {
@@ -757,9 +976,13 @@ public sealed partial class ParsimonyPageModel : PageModel
             : "This check has no supported update in Motif yet, so there is nothing to link to. Ask about it or defer it instead.";
     }
 
-    private static string ItemsText(ParsimonyFinding finding) => finding.ItemNames.Count == 0
-        ? "The Report does not name the items for this finding."
-        : string.Join(", ", finding.ItemNames);
+    // A row names the first few items and counts the rest; the inspector passes no limit and lists every one.
+    private static string ItemsText(ParsimonyFinding finding, int limit = int.MaxValue)
+    {
+        if (finding.ItemNames.Count == 0) return "The Report does not name the items for this finding.";
+        if (finding.ItemNames.Count <= limit) return string.Join(", ", finding.ItemNames);
+        return string.Join(", ", finding.ItemNames.Take(limit)) + $", and {finding.ItemNames.Count - limit} more";
+    }
 
     // Two names read "A and B"; three or more read "A, B, and C".
     private static string JoinPlainly(IReadOnlyList<string> names) => names.Count switch
@@ -782,11 +1005,6 @@ public sealed partial class ParsimonyPageModel : PageModel
         ParsimonyAxis.Parsimony => "Parsimony",
         _ => "Both",
     };
-
-    private static string SummariseAxes(IReadOnlyList<ParsimonyFinding> findings) =>
-        findings.Count == 0
-            ? "No findings to review"
-            : ParsimonyMeasureGroup.FindingCount(findings.Count) + " to review";
 
     private static string LegendOf(IReadOnlyList<ParsimonyFinding> findings)
     {
@@ -857,12 +1075,25 @@ public sealed partial class ParsimonyPageModel : PageModel
 
     private void ClearShown()
     {
+        _remainingCancellation?.Cancel();
+        _remainingCancellation = null;
+        RemainingLoad = Task.CompletedTask;
+        LoadingNote = string.Empty;
         _selectedFindingId = null;
         _selectedSuppressedKey = null;
         _report = null;
         _reportProjectPath = null;
         _activeRows = [];
         _suppressedRows = [];
+        _activeTotal = 0;
+        _suppressedTotal = 0;
+        _rows.Clear();
+        _rowsByFinding.Clear();
+        _headersByMeasure.Clear();
+        _suppressedItems.Clear();
+        _suppressedByKey.Clear();
+        _selectedRow = null;
+        _selectedSuppressedItem = null;
         IsIncomplete = false;
         IsHistorical = false;
         MissingInputs = [];
@@ -870,7 +1101,6 @@ public sealed partial class ParsimonyPageModel : PageModel
         AxisSummary = string.Empty;
         AxisLegend = string.Empty;
         Groups = [];
-        SuppressedItems = [];
         EvidenceNote = string.Empty;
         RecordTypes = [];
         SelectedRecordType = null;
@@ -891,7 +1121,7 @@ public sealed partial class ParsimonyPageModel : PageModel
         _selectedFindingId = null;
         _selectedSuppressedKey = null;
         Evidence = null;
-        RebuildLists();
+        MoveSelection();
         SelectionMessage = message;
     }
 
