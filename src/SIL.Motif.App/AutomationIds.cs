@@ -78,10 +78,45 @@ public static class AutomationIds
     public const string TryWordRun = "motif-try-word-run";
     public const string TryWordResult = "motif-try-word-result";
     public const string Pages = "motif-pages";
+    public const string ProposalsSetAside = "motif-proposals-set-aside";
+
+    /// <summary>Creates the identifier of the Open button on one Proposal's card.</summary>
+    /// <param name="proposalId">The Proposal's canonical id.</param>
+    /// <returns>An ASCII identifier that stays with the Proposal whichever group it is in.</returns>
+    public static string ForProposalOpen(string proposalId) => "motif-proposals-open-" + ProposalIdPart(proposalId);
+
+    /// <summary>Creates the identifier of the Try again button on one Proposal's card.</summary>
+    /// <param name="proposalId">The Proposal's canonical id.</param>
+    /// <returns>An ASCII identifier that stays with the Proposal whichever group it is in.</returns>
+    public static string ForProposalTryAgain(string proposalId) =>
+        "motif-proposals-try-again-" + ProposalIdPart(proposalId);
+
+    /// <summary>Creates the identifier of the Delete button on one closed Proposal's card.</summary>
+    /// <param name="proposalId">The Proposal's canonical id.</param>
+    /// <returns>An ASCII identifier that stays with the Proposal whichever group it is in.</returns>
+    public static string ForProposalDelete(string proposalId) =>
+        "motif-proposals-delete-" + ProposalIdPart(proposalId);
+
+    // Script ids are lower-case ASCII, so a Proposal's id becomes a fixed-length hash of itself.
+    private static string ProposalIdPart(string proposalId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(proposalId);
+        return Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
+            Encoding.UTF8.GetBytes(proposalId)), 0, 8).ToLowerInvariant();
+    }
+
+    /// <summary>Creates the identifier of one Proposal's row on the Proposals page.</summary>
+    /// <param name="proposalId">The Proposal's canonical id.</param>
+    /// <returns>An ASCII identifier that names that row.</returns>
+    public static string ForProposalRow(string proposalId)
+    {
+        return "motif-proposal-row-" + ProposalIdPart(proposalId);
+    }
 
     public static string ForPage(WorkspacePage page) => page switch
     {
         WorkspacePage.Overview => "motif-page-overview",
+        WorkspacePage.Proposals => "motif-page-proposals",
         WorkspacePage.Texts => "motif-page-texts",
         WorkspacePage.TryAWord => "motif-page-try-a-word",
         WorkspacePage.Timing => "motif-page-timing",

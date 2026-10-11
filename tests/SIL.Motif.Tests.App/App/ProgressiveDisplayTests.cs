@@ -43,7 +43,7 @@ public sealed class ProgressiveDisplayTests
     [
         "ComparePanel", "DiagnosticPanel", "DifferencePanel", "ExpertTracePanel", "GrammarPanel", "HandoffPanel",
         "Inspector", "MainWindow", "MiniMatrix", "Pages/AssistantConnectionsPage", "Pages/OverviewPage", "Pages/ParsimonyPage",
-        "Pages/TimingPage",
+        "Pages/ProposalsPage", "Pages/TimingPage",
         "RefusalBlock", "ResultsInTextPanel", "ReviewWordRow",
         "RetirementProposalReviewPanel", "ReviewPanel", "SelectionPanel", "SettingsPopupView", "SetupDialog", "StatisticsPanel", "TextWordsPanel", "TextsListsPanel",
         "TraceAnalysesView", "TryWordPanel", "WordCard", "WordDispositionButtons",
@@ -998,6 +998,7 @@ public sealed class ProgressiveDisplayTests
                 workspace.PageModel<AssistantConnectionsPageModel>()),
             "Pages/OverviewPage" => new OverviewPage(workspace.PageModel<OverviewPageModel>()),
             "Pages/ParsimonyPage" => new ParsimonyPage(workspace.PageModel<ParsimonyPageModel>()),
+            "Pages/ProposalsPage" => new ProposalsPage(workspace.PageModel<ProposalsPageModel>()),
             "Pages/TimingPage" => new TimingPage(workspace.PageModel<TimingPageModel>()),
             "ReviewWordRow" => new PresentationWordRow
             {

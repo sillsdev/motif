@@ -12,6 +12,9 @@ public enum WorkspacePage
     /// <summary>Where the project stands: its Baseline, its latest Assessment, its grammar and its history.</summary>
     Overview,
 
+    /// <summary>Every Proposal, grouped by what to do next, with its numbers before and after its Trial.</summary>
+    Proposals,
+
     /// <summary>Everything about the words in the texts: the Compare matrix, what changed, and the texts read in place.</summary>
     Texts,
 

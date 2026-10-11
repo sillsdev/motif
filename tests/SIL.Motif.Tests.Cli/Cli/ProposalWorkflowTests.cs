@@ -65,6 +65,32 @@ public sealed class ProposalWorkflowTests : IDisposable
     }
 
     [Fact]
+    public void ListShowsOpenProposalsUnlessAskedForClosedOnes()
+    {
+        string Finalized(string name)
+        {
+            Assert.True(ProposalCommands.New(new NewDraftRequest(_fwDataPath, ProductVersion, name, name)).Succeeded);
+            Assert.True(ProposalCommands.AddSetGloss(new AddSetGlossRequest(_fwDataPath, ProductVersion, name,
+                CanonicalId.Mint().Value, "en", name)).Succeeded);
+            DraftRationale.Author(_fwDataPath, name, name, "Why " + name + " is right.");
+            return ProposalCommands.Finalize(new FinalizeRequest(_fwDataPath, ProductVersion, name)).Value!.ProposalId;
+        }
+        var open = Finalized("open-one");
+        var declined = Finalized("declined-one");
+        Assert.True(ProposalCommands.Reject(new RejectRequest(_fwDataPath, ProductVersion, declined)).Succeeded);
+
+        IReadOnlyList<string> Listed(bool all = false, string? status = null) => ProposalCommands.List(
+            new ListProposalsRequest(_fwDataPath, ProductVersion, all, status)).Value!.Proposals
+            .Select(item => item.ProposalId).ToArray();
+
+        Assert.Equal([open], Listed());
+        Assert.Equal(new[] { open, declined }.Order(StringComparer.Ordinal), Listed(all: true));
+        Assert.Equal([declined], Listed(status: "rejected"));
+        Assert.Equal("proposal.unknown-status", ProposalCommands.List(
+            new ListProposalsRequest(_fwDataPath, ProductVersion, Status: "declined")).Refusal?.Code);
+    }
+
+    [Fact]
     public void FullLoop_New_AddSetGloss_Finalize_DryRun_Apply_Log_DrivesRealProjectEndToEnd()
     {
         var senseGuid = _seed.FirstSenseId;

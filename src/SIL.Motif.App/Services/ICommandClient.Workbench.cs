@@ -22,6 +22,14 @@ public partial interface ICommandClient
     Task<CommandOutcome<TimingResponse>> TimingAsync(
         TimingRequest request, CancellationToken cancellationToken);
 
+    /// <summary>Lists every Proposal with its latest Trial's numbers beside today's.</summary>
+    Task<CommandOutcome<ProposalStandings>> ProposalStandingsAsync(
+        ProposalStandingsRequest request, CancellationToken cancellationToken);
+
+    /// <summary>Deletes a declined, superseded or withdrawn Proposal that never applied, with its Trials.</summary>
+    Task<CommandOutcome<ProposalDeletedResponse>> DeleteProposalAsync(
+        DeleteProposalRequest request, CancellationToken cancellationToken);
+
     /// <summary>Reads the stored Baseline, default Selection, matching Assessment, and current freshness.</summary>
     Task<CommandOutcome<CurrentEvidenceSnapshot>> ReadCurrentEvidenceAsync(
         string projectPath, CancellationToken cancellationToken);

@@ -1,0 +1,17 @@
+{
+  "id": "proposals-open",
+  "fixture": "proposal-ready",
+  "steps": [
+    { "id": "open-project-menu", "kind": "click", "automationId": "motif-project-menu" },
+    { "id": "select-project", "kind": "click", "automationId": "motif-select-new-project" },
+    { "id": "wait-for-project", "kind": "waitFor", "automationId": "motif-overview-selection-word-count", "condition": "text", "expectedText": "2", "timeoutMs": 30000 },
+    { "id": "open-proposals", "kind": "click", "automationId": "motif-page-proposals" },
+    { "id": "wait-for-proposals", "kind": "waitFor", "automationId": "motif-proposals-open-8d2ef64357cba44e", "condition": "visible", "timeoutMs": 30000 },
+    { "id": "highlight-proposals", "kind": "highlight", "automationId": "motif-proposal-row-8d2ef64357cba44e" },
+    { "id": "proposals", "kind": "capture", "durationMs": 1400, "callouts": [ { "automationId": "motif-proposal-row-8d2ef64357cba44e" } ] },
+    { "id": "open-first", "kind": "click", "automationId": "motif-proposals-open-8d2ef64357cba44e" },
+    { "id": "wait-for-overview", "kind": "waitFor", "automationId": "motif-overview-selection-word-count", "condition": "text", "expectedText": "2", "timeoutMs": 30000 },
+    { "id": "highlight-overview", "kind": "highlight", "automationId": "motif-page-overview" },
+    { "id": "overview-with-proposal", "kind": "capture", "durationMs": 1400, "callouts": [ { "automationId": "motif-page-overview" } ] }
+  ]
+}

@@ -494,6 +494,18 @@ public sealed class TrialsTests : IDisposable
             return jobId;
         }
 
+        public string CreateDefaultSelectionJob(string proposalJson, string createdUtc, string jobId,
+            IReadOnlyList<string> assessmentIds)
+        {
+            var job = CreateRunningJob(proposalJson, createdUtc, jobId, null);
+            var dryRun = PublishedDryRun(ProposalJsonParser.Parse(proposalJson));
+            job = _jobs.PublishDryRun(job.JobId, dryRun, job.Version);
+            var completion = JsonSerializer.Serialize(new { baselineToken = Token, assessmentIds, allWords = false },
+                MotifJson.CreateOptions());
+            _jobs.Transition(job.JobId, JobStatus.Completed, completion);
+            return jobId;
+        }
+
         public JobRecord CreateRunningJob(string proposalJson, string createdUtc, string jobId, bool allWords = false)
             => CreateRunningJob(proposalJson, createdUtc, jobId, ["cat"], allWords);
 

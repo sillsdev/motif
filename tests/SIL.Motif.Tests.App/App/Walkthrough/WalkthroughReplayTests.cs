@@ -13,8 +13,10 @@ using Avalonia.Headless;
 using Avalonia.Styling;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using SIL.LCModel;
 using SIL.Motif.App;
 using SIL.Motif.Commands.Baselines;
+using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.App.ViewModels;
@@ -23,6 +25,8 @@ using SIL.Motif.App.Views;
 using SIL.Motif.App.Walkthroughs;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Preferences;
+using SIL.Motif.Commands.Store;
+using SIL.Motif.Commands.Requests;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Host.Analysis;
@@ -258,6 +262,16 @@ public sealed class NoLongerFitsWalkthroughReplayTests(
 [Collection(LcmCacheTestCollection.Name)]
 [AuthoredWalkthroughId("parsimony-findings")]
 public sealed class ParsimonyFindingsWalkthroughReplayTests(
+    PristineProjectFixture pristine, ITestOutputHelper output)
+{
+    [Fact]
+    public Task ReplaysAuthoredWalkthrough() =>
+        WalkthroughReplayTestRunner.RunAsync(GetType(), pristine, output);
+}
+
+[Collection(LcmCacheTestCollection.Name)]
+[AuthoredWalkthroughId("proposals-open")]
+public sealed class ProposalsOpenWalkthroughReplayTests(
     PristineProjectFixture pristine, ITestOutputHelper output)
 {
     [Fact]
@@ -883,6 +897,7 @@ internal static class WalkthroughFixtureSeeder
             ["no-longer-fits-ready"] = SeedNoLongerFitsReadyAsync,
             ["warnings-ready"] = SeedWarningsReadyAsync,
             ["parsimony-report-ready"] = SeedParsimonyReportReadyAsync,
+            ["proposal-ready"] = SeedProposalReadyAsync,
         };
 
     public static Task<WalkthroughFixturePreparation> SeedAsync(
@@ -913,6 +928,69 @@ internal static class WalkthroughFixtureSeeder
         Assert.True(baseline.Succeeded, baseline.Refusal?.Message);
         Assert.Equal(CaptureTime, DateTimeOffset.Parse(baseline.Value!.Token.CapturedUtc, CultureInfo.InvariantCulture));
         await SeedSelectionAndSkipSetupAsync(project, client);
+        return WalkthroughFixturePreparation.Empty;
+    }
+
+    internal const string WalkthroughProposalId = "AAAAAAAAQACAAAAAAAAAAQ";
+
+    // A finalized Proposal with a completed Trial beside the pending Draft: the project in Proposal mode.
+    private static async Task<WalkthroughFixturePreparation> SeedProposalReadyAsync(
+        WalkthroughProjectContext project, FixedClock clock, string parserPath)
+    {
+        PendingChangeFixture.AddIncorrectSpelling(project.FwDataPath, project.ManagedRoot, "walkthrough-pending-word");
+        FakeParser.BehaveBesideExecutable(parserPath, AssessmentWords("today"));
+        var baselineClient = RealCommandClient.Create(project.ManagedRoot, parserPath, timeProvider: clock);
+        var baseline = await baselineClient.CaptureBaselineAsync(
+            new BaselineCaptureRequest(project.FwDataPath), CancellationToken.None);
+        Assert.True(baseline.Succeeded, baseline.Refusal?.Message);
+        await SeedSelectionAndSkipSetupAsync(project, baselineClient);
+        await AssessAsync(project, baselineClient);
+
+        var version = SIL.Motif.Host.MotifProductVersion.CurrentText;
+        string senseId;
+        using (var cache = new SIL.Motif.Host.LcmUtils.FwDataProjectLoader().LoadCache(project.FwDataPath))
+            senseId = SIL.Motif.Contract.Ids.CanonicalId.FromGuid(cache.ServiceLocator
+                .GetInstance<ILexSenseRepository>().AllInstances().First().Guid).Value;
+        var today = OverviewCommand.Overview(new OverviewRequest(project.FwDataPath));
+        Assert.True(today.Succeeded, today.Refusal?.Message);
+        Assert.True(today.Value!.AssessmentId is not null, "no today assessment: " + today.Value.SelectionWordCount);
+        const string draft = "review-sample";
+        // A fixed id lets the script name this Proposal's buttons.
+        var locator = ProjectStoreCommand.Locate(project.FwDataPath);
+        using (var database = MotifDatabase.OpenOwned(ProjectDatabaseCatalog.DatabasePathFor(locator), locator,
+            MotifSchema.CurrentSchema, new Version(1, 0)))
+            new ProposalRepository(database).CreateDraft(draft,
+                SIL.Motif.Contract.Ids.CanonicalId.Parse(WalkthroughProposalId),
+                System.Text.Json.JsonSerializer.Serialize(new DraftDocument
+                {
+                    ProposalId = WalkthroughProposalId,
+                    ContractVersions = new Dictionary<string, string>(),
+                    Requires = [],
+                    Label = "Sound change",
+                    Operations = [],
+                }, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)));
+        var added = ProposalCommands.AddSetGloss(new AddSetGlossRequest(
+            project.FwDataPath, version, draft, senseId, "en", "walkthrough gloss"));
+        Assert.True(added.Succeeded, added.Refusal?.Message);
+        Assert.True(ProposalCommands.Comment(new CommentRequest(project.FwDataPath, version, draft,
+            "Changes one gloss so the parser's numbers can be compared.")).Succeeded);
+        var finalized = ProposalCommands.Finalize(new FinalizeRequest(project.FwDataPath, version, draft));
+        Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
+
+        FakeParser.BehaveBesideExecutable(parserPath, new
+        {
+            words = new[]
+            {
+                new { word = SeededProject.AnalysedWordForm, outcome = "complete", signature = "today" },
+                new { word = SeededProject.UnanalysedWordForm, outcome = "complete", signature = "with-proposal" },
+            },
+        });
+        await using var runner = new InProcessRunnerLauncher(new JobRunnerLaunchOptions(project.ManagedRoot, parserPath));
+        var client = RealCommandClient.Create(project.ManagedRoot, parserPath, runner, clock);
+        var queued = await client.EnqueueTrialAsync(new EnqueueTrialRequest(
+            project.FwDataPath, version, finalized.Value!.ProposalId, AllWords: true), CancellationToken.None);
+        Assert.True(queued.Succeeded, queued.Refusal?.Message);
+        await runner.WhenIdleAsync();
         return WalkthroughFixturePreparation.Empty;
     }
 

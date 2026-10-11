@@ -719,6 +719,14 @@ public sealed partial class ComponentStyleTests
             TextBlock.MarginProperty, "Intent.Gap.CompactItem");
         yield return new("Warnings", "finding details", host => Add(host, Box("warningDetail")),
             Border.PaddingProperty, "Component.Warnings.DetailPadding");
+        yield return new("Proposals", "the page", host => Add(host, Stack("proposalsPage")),
+            StackPanel.MarginProperty, "Component.Proposals.PageMargin");
+        yield return new("Proposals", "a group", host => Add(host, Stack("proposalsGroup")),
+            StackPanel.MarginProperty, "Component.Proposals.GroupMargin");
+        yield return new("Proposals", "a card", host => Add(host, Box("proposalCard")),
+            Border.PaddingProperty, "Component.Proposals.CardPadding");
+        yield return new("Proposals", "a card", host => Add(host, Box("proposalCard")),
+            Border.CornerRadiusProperty, "Component.Proposals.CardRadius");
         yield return new("Parsimony", "the page", host => Add(host, With(new Grid(), ["parsimonyPanel"])),
             Grid.MarginProperty, "Component.Parsimony.PageMargin");
         yield return new("Parsimony", "the state notice", host => Add(host, Box("parsimonyNotice")),

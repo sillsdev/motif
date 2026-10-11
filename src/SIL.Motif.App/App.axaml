@@ -57,6 +57,7 @@
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Interaction.axaml" />
     <!-- Last, so no owner's descendant selector restyles the words of its tooltip. -->
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/ToolTip.axaml" />
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Proposals.axaml" />
   </Application.Styles>
   <Application.Resources>
     <ResourceDictionary>

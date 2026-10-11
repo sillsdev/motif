@@ -969,13 +969,17 @@
   },
   {
     "name": "motif_proposals",
-    "description": "List Proposals. Lists saved Proposals and Drafts, including each identity, label and status. Read one Proposal to inspect its semantic intent.\nCommand: list. Agent class: Read.\n\nShow a Proposal. Reads one saved Proposal or Draft by id, with its status, label, comment and operations. It does not change the FieldWorks project.\nCommand: show. Agent class: Read.\nProposalId: The exact canonical Proposal identity.",
+    "description": "Show a Proposal. Reads one saved Proposal or Draft by id, with its status, label, comment and operations. It does not change the FieldWorks project.\nCommand: show. Agent class: Read.\nProposalId: The exact canonical Proposal identity.\nList Proposals. Lists every Proposal with what it changes and the numbers its latest Trial measured beside today\u0027s. Proposals are grouped by what to do next; applied and set-aside ones are counted unless asked for.\nCommand: proposals. Agent class: Read.\nIncludeSetAside: Whether closed (applied, rejected, superseded, withdrawn) Proposals are listed too.",
     "inputSchema": {
       "type": "object",
       "properties": {
         "proposal": {
           "type": "string",
           "description": "A proposal id to show in full. Omit to list."
+        },
+        "include_set_aside": {
+          "type": "boolean",
+          "description": "Also list applied, rejected, superseded and deferred."
         },
         "detail": {
           "type": "string",

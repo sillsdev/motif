@@ -661,6 +661,7 @@ internal static class AgentTools
             string.Empty,
             AgentClass.Read,
             Schema.Object([("proposal", Schema.String("A proposal id to show in full. Omit to list."), false),
+                ("include_set_aside", Schema.Boolean("Also list applied, rejected, superseded and deferred."), false),
                 ..Schema.Verbosity()]),
             true,
             true,
@@ -669,7 +670,8 @@ internal static class AgentTools
             true,
             (c, a, ct) => Task.FromResult(a.Optional("proposal") is { } id
                 ? ToolOutcome.From(ProposalCommands.Show(new ShowProposalRequest(c.ProjectPath, c.ProductVersion, id)))
-                : ToolOutcome.From(ProposalCommands.List(new ListProposalsRequest(c.ProjectPath, c.ProductVersion))))) { Requests = [typeof(ListProposalsRequest), typeof(ShowProposalRequest)] },
+                : ToolOutcome.From(ProposalStandingsCommand.Read(
+                    new ProposalStandingsRequest(c.ProjectPath, a.Flag("include_set_aside")))))) { Requests = [typeof(ProposalStandingsRequest), typeof(ShowProposalRequest)] },
 
         new("motif_activity",
             string.Empty,

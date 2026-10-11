@@ -177,6 +177,7 @@ public sealed partial class HelpPopupViewModel : ObservableObject
         private static string PageCode(WorkspacePage page) => page switch
         {
             WorkspacePage.Overview => "OverviewPage",
+            WorkspacePage.Proposals => "ProposalsPage",
             WorkspacePage.Texts => "TextsPage",
             WorkspacePage.TryAWord => "TryAWordPage",
             WorkspacePage.Timing => "TimingPage",
@@ -190,6 +191,7 @@ public sealed partial class HelpPopupViewModel : ObservableObject
         private static string GuideCode(WorkspacePage page) => page switch
         {
             WorkspacePage.Overview => "overview",
+            WorkspacePage.Proposals => "proposals",
             WorkspacePage.Texts => "texts",
             WorkspacePage.TryAWord => "try-a-word",
             WorkspacePage.Timing => "timing",

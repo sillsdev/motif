@@ -6,7 +6,11 @@ namespace SIL.Motif.App.ViewModels;
 /// <param name="Status">A short label for a heading, chip or group, such as "Needs another try".</param>
 /// <param name="Sentence">The sentence the context bar and a card show, such as "Trying…".</param>
 /// <param name="Action">The label of the button that tries the Proposal: "Try it" before any Trial.</param>
-public sealed record TrialStandingText(string Status, string Sentence, string Action);
+public sealed record TrialStandingText(string Status, string Sentence, string Action)
+{
+    /// <summary>What to say beside numbers that came from an earlier try, or null when they are not old.</summary>
+    public string? OldNumbers { get; init; }
+}
 
 /// <summary>
 /// The one table of what the window says about a Proposal's Trial, as <see cref="WindowRefusal"/> is for refusals.
@@ -31,11 +35,17 @@ public static class TrialStandingWords
 
     /// <summary>What the window says when FieldWorks changed since the Trial.</summary>
     public static TrialStandingText BaselineMoved { get; } = new("Needs another try",
-        "FieldWorks changed since this was tried. Try again.", "Try again");
+        "FieldWorks changed since this was tried. Try again.", "Try again")
+    {
+        OldNumbers = "From the last try, before FieldWorks changed",
+    };
 
     /// <summary>What the window says when the Proposal changed since the Trial.</summary>
     public static TrialStandingText ProposalChanged { get; } = new("Needs another try",
-        "This Proposal changed since it was tried. Try again.", "Try again");
+        "This Proposal changed since it was tried. Try again.", "Try again")
+    {
+        OldNumbers = "From the last try, before this Proposal changed",
+    };
 
     /// <summary>The window's words for <paramref name="standing"/>.</summary>
     public static TrialStandingText For(TrialStanding standing)

@@ -95,7 +95,7 @@ public static class OverviewCommand
         }
     }
 
-    private static CommandOutcome<OverviewResponse> OverviewCurrent(MotifDatabase database, ProjectLocator project)
+    internal static CommandOutcome<OverviewResponse> OverviewCurrent(MotifDatabase database, ProjectLocator project)
     {
         var current = CurrentEvidenceQuery.ReadCurrentEvidence(database, project,
             includeResolvedReadings: false, includeWordContext: false);

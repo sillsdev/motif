@@ -175,7 +175,7 @@ public static class CliVerbCatalog
             "Commands", "supersede", "supersede",
             new[] { "supersede --project <fwdata> <proposalId> <supersededByProposalId>" }),
         new CliVerbDescriptor(
-            "Commands", "list", "list", new[] { "list --project <fwdata> [--json]" }),
+            "Commands", "list", "list", new[] { "list --project <fwdata> [--all | --status <status>] [--json]" }),
         new CliVerbDescriptor(
             "Commands", "show", "show", new[] { "show --project <fwdata> <proposalId> [--json]" }),
         new CliVerbDescriptor(
@@ -440,5 +440,10 @@ public static class CliVerbCatalog
                 "motif jobs move <jobId> --project <fwdata> (--before <jobId> | --to-top | --to-bottom) " +
                 "[--json]",
             }),
+        new CliVerbDescriptor(
+            "Commands", "proposals", "proposals",
+            new[] { "proposals --project <fwdata> [--include-set-aside] [--json]" }),
+        new CliVerbDescriptor("Commands", "delete", "delete --proposal",
+            new[] { "delete --proposal <id> --project <fwdata> [--json]" }),
     };
 }

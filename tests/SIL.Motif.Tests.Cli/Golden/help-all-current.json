@@ -148,6 +148,19 @@
     },
     {
       "kind": "command",
+      "code": "delete --proposal",
+      "slug": "delete-proposal",
+      "title": "Delete a closed Proposal",
+      "description": "Deletes a declined, superseded or withdrawn Proposal that never applied, with its Trials. An applied Proposal is never deleted.",
+      "helpPage": "# Delete a closed Proposal\n\n\u0060delete --proposal\u0060 deletes a declined, superseded or withdrawn Proposal that never applied, together with its [Trials](term:trial).\n\n## When to use it\n\nUse it to clear away Proposals nobody will apply. An applied Proposal is final: it is never deleted, and its Receipts are kept. A Proposal that is still open, or is being tried, is refused.\n\n## Example\n\n\u0060\u0060\u0060powershell\nmotif delete --proposal \u003Cid\u003E --project \u0022C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\u0022 --json\n\u0060\u0060\u0060\n\n## What it prints\n\nThe deleted Proposal\u0027s id and how many Trials were removed with it. In the window, a closed card on **Proposals** offers **Delete** for the same.\n\n## Related commands\n\n- [List Proposals](cmd:proposals) lists closed Proposals with \u0060--include-set-aside\u0060.\n",
+      "usage": [
+        "Usage: motif delete --proposal \u003Cid\u003E --project \u003Cfwdata\u003E [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/delete-proposal/"
+    },
+    {
+      "kind": "command",
       "code": "grammar check",
       "slug": "grammar-check",
       "title": "Check a grammar",
@@ -276,6 +289,19 @@
       ],
       "surface": "Released",
       "url": "https://motif-docs.pages.dev/reference/commands/overview/"
+    },
+    {
+      "kind": "command",
+      "code": "proposals",
+      "slug": "proposals",
+      "title": "List Proposals",
+      "description": "Lists every Proposal with what it changes and the numbers its latest Trial measured beside today\u0027s. Proposals are grouped by what to do next; applied and set-aside ones are counted unless asked for.",
+      "helpPage": "# List Proposals\n\n\u0060proposals\u0060 lists every Proposal in a project, grouped by what to do with it, with what each one changes and the numbers its latest [Trial](term:trial) measured beside today\u0027s.\n\n## When to use it\n\nUse it to see what is waiting for review, what needs another try, and which changes are your own and not yet applied. The Proposals page in the window reads the same list.\n\n## Example\n\n\u0060\u0060\u0060powershell\nmotif proposals --project \u0022C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\u0022 --json\nmotif proposals --project \u0022C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\u0022 --include-set-aside --json\n\u0060\u0060\u0060\n\n## What it prints\n\nEach Proposal carries its label, status and group: **WaitingForYou** (a complete Trial matches the project and the Proposal as they are now), **NeedsAnotherTry** (the project or the Proposal moved since the Trial, or its latest Trial is running or did not finish), **NotTried** (no Trial exists), **NotAppliedYet** (your own collected changes) or **SetAside** (closed: applied, rejected, superseded or withdrawn). Closed Proposals are counted in \u0060setAsideCount\u0060 and listed only with \u0060--include-set-aside\u0060. A deferred Proposal is still open and is grouped by its Trial like a proposed one.\n\nA Proposal also lists its change kinds, such as two rules, one allomorph and one approved parse, and the ids of other Proposals that change one of the same words. Its Trial summary pairs five numbers, each as a value before and after: Text Coverage, approved words kept, approved words, parse time and the warning count. A Trial over only the touched words still pairs the totals: every word it did not measure keeps today\u0027s value. Chips count approved words the Trial lost and changes that no longer fit.\n\n## Trying a Proposal again\n\nIn the window, **Try again** on a card measures the Proposal on a copy of the project. The copy is thrown away and your FieldWorks project is not changed. A card whose Trial is still running says **Trying\u2026** and offers no second button.\n\n## Related commands\n\n- [Read the project Overview](cmd:overview) reads one Proposal\u0027s Trial with \u0060--proposal\u0060.\n- [Delete a closed Proposal](cmd:delete%20--proposal) removes a closed Proposal that never applied.\n",
+      "usage": [
+        "Usage: motif proposals --project \u003Cfwdata\u003E [--include-set-aside] [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/proposals/"
     },
     {
       "kind": "command",
@@ -1222,6 +1248,15 @@
     },
     {
       "kind": "term",
+      "code": "trial",
+      "slug": "trial",
+      "title": "A Proposal tried on a copy",
+      "description": "A Trial applies a Proposal to a throwaway copy of the project and parses words again, so its numbers can sit beside today\u0027s. A Trial is out of date once the project or the Proposal changes; the window then says it needs another try.",
+      "helpPage": "# Trial\n\nA Trial applies a [Proposal](term:proposal) to a throwaway copy of the project and parses words again, so its numbers can be read beside today\u0027s. It never changes the real project.\n\nA Trial goes out of date when the project is refreshed or the Proposal changes. The window then says the Proposal needs another try; nothing re-runs until you ask.\n",
+      "url": "https://motif-docs.pages.dev/reference/terms/trial/"
+    },
+    {
+      "kind": "term",
       "code": "walkthrough",
       "slug": "walkthrough",
       "title": "A tested window guide",
@@ -1642,6 +1677,15 @@
       "description": "Pending changes are the analysis choices you have collected in Motif but have not yet written to FieldWorks. They can come from Texts and are listed together on Review changes. The window labels them as \u201Cchanges not applied yet.\u201D",
       "helpPage": "# Pending changes\n\n[Pending changes](term:proposal) are the analysis choices you have collected in Motif but have not yet written to FieldWorks. They can come from **Texts** and are listed together on **Review changes**. The window labels them as \u201Cchanges not applied yet.\u201D\n\nUse **Undo** on **Review changes** to withdraw a choice, or return to **Texts** to make a different choice for the same word and analysis. The list belongs to its project and remains available if you close Motif and open that project again.\n\nNothing is written to FieldWorks while you are collecting or reading these changes. Before applying, use **Check these changes** to measure the touched words, confirm that the evidence is current and complete, and make sure every choice still fits. Then choose **Apply to FieldWorks project**.\n",
       "url": "https://motif-docs.pages.dev/guide/pending-changes/"
+    },
+    {
+      "kind": "guide",
+      "code": "proposals",
+      "slug": "proposals",
+      "title": "Proposals",
+      "description": "Proposals lists every set of changes you can review: the Proposals an AI assistant put together, and the changes you collected yourself that are not applied yet. Each card shows what it changes and four numbers, today\u0027s beside what they would be with the Proposal.",
+      "helpPage": "# Proposals\n\n**Proposals** lists every set of changes you can review: the Proposals an AI assistant put together, and the changes you collected yourself that are not applied yet. Each card shows what it changes and four numbers, today\u0027s beside what they would be with the Proposal.\n\nThe cards are grouped by what to do next:\n\n- **Waiting for you** has been tried against the project as it is now and is ready to read.\n- **Needs another try** was tried, but the project or the Proposal changed since, or the try did not finish. Its numbers are from that try, and nothing re-runs until you ask.\n- **Not tried yet** has no Trial. Choose **Try it** to measure it.\n- **Your changes not applied yet** are the changes you collected on **Texts**; they are also listed on **Review changes**.\n- **Closed** lists the Proposals that were applied, declined, superseded or withdrawn. They are hidden until you choose **Show closed**, and **Hide closed** hides them again.\n\nA card names what the Proposal changes in one line, such as \u201C2 rules \u00B7 1 allomorph \u00B7 1 parse approved\u201D. Its four numbers are Text Coverage, approved words kept, word time and warnings. A number that moved is shown in bold. A chip can say that approved words were lost, that a change no longer fits, or that another Proposal also changes some of the same words. A Proposal that only approves or removes analyses measures only the words it touches; every other word keeps today\u0027s value, so its totals still compare with today\u0027s.\n\nChoose **Open** to see the project\u0027s pages with the Proposal beside today: the numbers on **Overview**, **Texts**, **Timing** and **Warnings** show today\u0027s value and the Proposal\u0027s. Choose **Try again** on a card that needs another try to measure it on a copy of the project. The copy is thrown away; your FieldWorks project is not changed.\n\nEach card beside its name says where the Proposal is: **Draft**, **Ready**, **Deferred**, **Applied**, **Declined**, **Superseded** or **Withdrawn**. Your own changes carry no such word. A declined, superseded or withdrawn card offers **Delete**, which removes the Proposal and its tries. An applied Proposal cannot be deleted; it and its record of what was applied are kept.\n\nThe number beside **Proposals** in the sidebar counts the cards that are waiting for you.\n",
+      "url": "https://motif-docs.pages.dev/guide/proposals/"
     },
     {
       "kind": "guide",

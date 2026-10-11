@@ -99,6 +99,40 @@ public sealed partial class FakeCommandClient
     public void OnReadTrial(Func<ReadTrialRequest, CancellationToken, Task<CommandOutcome<TrialRecord?>>> behavior) =>
         _readTrial = behavior;
 
+    private Func<ProposalStandingsRequest, CancellationToken, Task<CommandOutcome<ProposalStandings>>>
+        _proposalStandings = (_, _) => Completed(new ProposalStandings([], 0));
+
+    public List<ProposalStandingsRequest> ProposalStandingsRequests { get; } = [];
+
+    public void ProposalStandingsCompleteWith(ProposalStandings standings) =>
+        _proposalStandings = (_, _) => Completed(standings);
+
+    public void OnProposalStandings(
+        Func<ProposalStandingsRequest, CancellationToken, Task<CommandOutcome<ProposalStandings>>> behavior) =>
+        _proposalStandings = behavior;
+
+    public Task<CommandOutcome<ProposalStandings>> ProposalStandingsAsync(
+        ProposalStandingsRequest request, CancellationToken cancellationToken)
+    {
+        ProposalStandingsRequests.Add(request);
+        return _proposalStandings(request, cancellationToken);
+    }
+
+    public List<DeleteProposalRequest> DeleteProposalRequests { get; } = [];
+
+    private Func<DeleteProposalRequest, CommandOutcome<ProposalDeletedResponse>> _deleteProposal = request =>
+        CommandOutcome<ProposalDeletedResponse>.Success(new ProposalDeletedResponse(request.ProposalId, 0));
+
+    public void OnDeleteProposal(Func<DeleteProposalRequest, CommandOutcome<ProposalDeletedResponse>> behavior) =>
+        _deleteProposal = behavior;
+
+    public Task<CommandOutcome<ProposalDeletedResponse>> DeleteProposalAsync(
+        DeleteProposalRequest request, CancellationToken cancellationToken)
+    {
+        DeleteProposalRequests.Add(request);
+        return Task.FromResult(_deleteProposal(request));
+    }
+
     public Task<CommandOutcome<TrialRecord?>> ReadTrialAsync(
         ReadTrialRequest request, CancellationToken cancellationToken)
     {

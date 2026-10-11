@@ -1,0 +1,93 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             x:Class="SIL.Motif.App.Views.ProposalsPage"
+             x:DataType="vm:ProposalsPageModel">
+  <ScrollViewer>
+    <StackPanel Classes="proposalsPage">
+      <StackPanel Classes="proposalsHeading">
+        <views:CopyableTextBlock Classes="section-title" Text="Proposals" />
+        <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap"
+                                 Text="Each one is tried on a copy of your project. Nothing reaches FieldWorks until you apply it." />
+      </StackPanel>
+      <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" IsVisible="{Binding IsLoading}"
+                               Text="Reading Proposals…" />
+      <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" IsVisible="{Binding IsEmpty}"
+                               Text="No Proposals yet. Changes you collect and Proposals an assistant puts together are listed here." />
+      <views:RefusalBlock DataContext="{Binding ShownRefusal}" />
+      <ItemsControl x:Name="ProposalsRowsItems" ItemsSource="{Binding Rows}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <StackPanel Classes="proposalRows" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.DataTemplates>
+          <DataTemplate DataType="vm:ProposalGroupHeader">
+            <TextBlock Classes="section-title proposalsHeader" Text="{Binding Title}" />
+          </DataTemplate>
+          <DataTemplate DataType="vm:ProposalNumber">
+            <StackPanel Classes="proposalNumber">
+              <TextBlock Classes="proposalNumberLabel muted" Text="{Binding Label}" />
+              <TextBlock Classes="proposalNumberValue" Classes.moved="{Binding Moved}" Text="{Binding Value}" />
+            </StackPanel>
+          </DataTemplate>
+          <DataTemplate DataType="vm:ProposalCardViewModel">
+            <Border Classes="proposalCard" AutomationProperties.AutomationId="{Binding RowAutomationId}"
+                    AutomationProperties.Name="{Binding Label}">
+              <DockPanel LastChildFill="True">
+                <StackPanel DockPanel.Dock="Right" Classes="proposalActions">
+                  <Button Content="{Binding TryText}" IsVisible="{Binding CanTry}"
+                          Command="{Binding $parent[UserControl].((vm:ProposalsPageModel)DataContext).TryAgainCommand}"
+                          CommandParameter="{Binding}"
+                          AutomationProperties.AutomationId="{Binding TryAgainAutomationId}" />
+                  <Button Content="Delete" IsVisible="{Binding CanDelete}"
+                          Command="{Binding $parent[UserControl].((vm:ProposalsPageModel)DataContext).DeleteCommand}"
+                          CommandParameter="{Binding}"
+                          AutomationProperties.AutomationId="{Binding DeleteAutomationId}" />
+                  <Button Content="Open" Classes="Primary" Theme="{DynamicResource SolidButton}"
+                          Command="{Binding $parent[UserControl].((vm:ProposalsPageModel)DataContext).OpenCommand}"
+                          CommandParameter="{Binding}"
+                          AutomationProperties.AutomationId="{Binding OpenAutomationId}" />
+                </StackPanel>
+                <StackPanel Classes="proposalBody">
+                  <StackPanel Classes="proposalTitleRow">
+                    <TextBlock Classes="proposalLabel" Text="{Binding Label}" />
+                    <Border Classes="meaningMark look" IsVisible="{Binding HasStatusWord}">
+                      <TextBlock Text="{Binding StatusWord}" />
+                    </Border>
+                  </StackPanel>
+                  <TextBlock Classes="muted" Text="{Binding KindsText}" />
+                  <WrapPanel Classes="proposalNumbers" Classes.old="{Binding NumbersAreOld}"
+                             IsVisible="{Binding HasNumbers}">
+                    <ContentControl Content="{Binding Coverage}" />
+                    <ContentControl Content="{Binding ApprovedKept}" />
+                    <ContentControl Content="{Binding WordTime}" />
+                    <ContentControl Content="{Binding Warnings}" />
+                  </WrapPanel>
+                  <TextBlock Classes="muted" Text="{Binding StatusText}" IsVisible="{Binding HasStatus}" />
+                  <views:RefusalBlock DataContext="{Binding ShownRefusal}" />
+                  <WrapPanel Classes="proposalNumbers">
+                    <Border Classes="meaningMark problem" IsVisible="{Binding HasLostChip}">
+                      <TextBlock Text="{Binding LostChip}" />
+                    </Border>
+                    <Border Classes="meaningMark problem" IsVisible="{Binding HasFitChip}">
+                      <TextBlock Text="{Binding FitChip}" />
+                    </Border>
+                    <Border Classes="meaningMark look" IsVisible="{Binding HasAlsoChip}">
+                      <TextBlock Text="{Binding AlsoChip}" />
+                    </Border>
+                  </WrapPanel>
+                </StackPanel>
+              </DockPanel>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.DataTemplates>
+      </ItemsControl>
+      <Button Content="{Binding SetAsideLinkText}" IsVisible="{Binding HasSetAsideLink}"
+              Command="{Binding ShowSetAsideCommand}" HorizontalAlignment="Left"
+              AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalsSetAside}" />
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

@@ -3,10 +3,10 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { convertXmlDocsToMarkdown } from '../../tools/xml-docs-to-markdown.mjs';
 
-// Every Parsimony recipe page follows Parsimony findings, in the order the recipe manifest lists them.
+// Each Parsimony recipe page follows Parsimony findings in manifest order, named by its lowercase measure id.
 function parsimonyRecipeCodes() {
 	const manifest = JSON.parse(readFileSync(new URL('../../src/SIL.Motif.Help/Content/en/guide/parsimony/parsimony-recipes.json', import.meta.url), 'utf8'));
-	return manifest.recipes.map((recipe) => recipe.helpPath.replace(/^guide\//, '').replace(/\.md$/, ''));
+	return manifest.recipes.map((recipe) => 'parsimony/recipes/' + recipe.measureId.toLowerCase());
 }
 
 const guideSections = [
@@ -16,7 +16,7 @@ const guideSections = [
 	},
 	{
 		title: 'Pages of the window',
-		pages: ['overview', 'texts', 'keyboard-shortcuts', 'settings', 'try-a-word', 'timing', 'warnings', 'review-changes', 'ai-handoff'],
+		pages: ['overview', 'proposals', 'texts', 'keyboard-shortcuts', 'settings', 'try-a-word', 'timing', 'warnings', 'review-changes', 'ai-handoff'],
 	},
 	{
 		title: 'Everyday tasks',

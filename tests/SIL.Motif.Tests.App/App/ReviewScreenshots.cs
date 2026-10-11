@@ -418,7 +418,7 @@ public sealed class ReviewScreenshots
         });
     }
 
-    private static void SaveAll(MainWindow window, string folder, string name)
+    internal static void SaveAll(MainWindow window, string folder, string name)
     {
         foreach (var (theme, variant) in new[] { ("light", ThemeVariant.Light), ("dark", ThemeVariant.Dark) })
         {
@@ -445,7 +445,7 @@ public sealed class ReviewScreenshots
         frame.Save(path, PngBitmapEncoderOptions.Default);
     }
 
-    private static async Task<(WorkspaceShellViewModel Workspace, MainWindow Window)> OpenAsync(FakeCommandClient fake)
+    internal static async Task<(WorkspaceShellViewModel Workspace, MainWindow Window)> OpenAsync(FakeCommandClient fake)
     {
         var clock = PageScreenshots.NewCaptureClock();
         fake.KnownProjectsListIs([new KnownProjectSummary(ProjectPath, PageScreenshots.CaptureStartAt)]);
@@ -512,7 +512,7 @@ public sealed class ReviewScreenshots
     private static ParserReading Reading(params (string Form, string Gloss)[] morphs) =>
         new(morphs.Select(morph => new ParserReadingMorph(morph.Form, morph.Gloss, "n", null, false, null)).ToArray());
 
-    private static BaselineToken Token() =>
+    internal static BaselineToken Token() =>
         new("project-1", "sha256:" + new string('a', 64), "1", "2026-09-22T10:00:00Z", "sha256:" + new string('b', 64));
 
     private sealed class Picker : IProjectPicker

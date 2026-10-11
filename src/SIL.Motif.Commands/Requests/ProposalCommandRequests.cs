@@ -290,7 +290,10 @@ public sealed record SupersedeRequest(
 
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
-public sealed record ListProposalsRequest(string FwDataPath, string ProductVersion);
+/// <param name="All">Whether closed Proposals (applied, declined, superseded, withdrawn) are listed too.</param>
+/// <param name="Status">Lists only Proposals in this stored status, open or closed.</param>
+public sealed record ListProposalsRequest(string FwDataPath, string ProductVersion, bool All = false,
+    string? Status = null);
 
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>

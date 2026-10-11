@@ -224,5 +224,12 @@ public static class CommandCatalog
         new CommandDescriptor("jobs cancel", typeof(CancelJobRequest), typeof(JobStatusResponse), CommandSurface.Released, AgentClass.HumanOnly),
         new CommandDescriptor("jobs requeue", typeof(RequeueJobRequest), typeof(JobStatusResponse), CommandSurface.Released, AgentClass.HumanOnly),
         new CommandDescriptor("jobs move", typeof(MoveJobRequest), typeof(JobStatusResponse), CommandSurface.Released, AgentClass.HumanOnly),
+
+        // ProposalStandingsCommand
+        new CommandDescriptor("proposals", typeof(ProposalStandingsRequest), typeof(ProposalStandings), CommandSurface.Released, AgentClass.Read),
+
+        // ProposalLifecycleCommand
+        new CommandDescriptor("delete --proposal", typeof(DeleteProposalRequest), typeof(ProposalDeletedResponse),
+            CommandSurface.Released, AgentClass.HumanOnly),
     };
 }

@@ -80,6 +80,7 @@ public sealed class HelpPopupViewModelTests
 
     [Theory]
     [InlineData(WorkspacePage.Overview)]
+    [InlineData(WorkspacePage.Proposals)]
     [InlineData(WorkspacePage.Texts)]
     [InlineData(WorkspacePage.TryAWord)]
     [InlineData(WorkspacePage.Timing)]

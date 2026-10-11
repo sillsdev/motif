@@ -1,0 +1,67 @@
+<!-- The Proposals page: grouped cards, each with a label, its change kinds, four numbers and its actions. -->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <StaticResource x:Key="Component.Proposals.PageMargin" ResourceKey="Primitive.Inset.16_12_16_0" />
+    <StaticResource x:Key="Component.Proposals.GroupMargin" ResourceKey="Primitive.Inset.0_0_8_8" />
+    <StaticResource x:Key="Component.Proposals.HeaderMargin" ResourceKey="Primitive.Inset.0_8_0_8" />
+    <StaticResource x:Key="Component.Proposals.CardRadius" ResourceKey="Primitive.Radius.6" />
+    <StaticResource x:Key="Component.Proposals.CardPadding" ResourceKey="Primitive.Inset.8_4_8_4" />
+  </Styles.Resources>
+
+  <Style Selector="StackPanel.proposalsPage">
+    <Setter Property="Margin" Value="{DynamicResource Component.Proposals.PageMargin}" />
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Section}" />
+  </Style>
+  <Style Selector="StackPanel.proposalsGroup">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Related}" />
+    <Setter Property="Margin" Value="{DynamicResource Component.Proposals.GroupMargin}" />
+  </Style>
+  <Style Selector="Border.proposalCard">
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Component.Proposals.CardRadius}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.Proposals.CardPadding}" />
+  </Style>
+  <Style Selector="StackPanel.proposalBody">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
+  </Style>
+  <Style Selector="WrapPanel.proposalNumbers">
+    <Setter Property="ItemSpacing" Value="{DynamicResource Intent.Space.Section}" />
+  </Style>
+  <Style Selector="StackPanel.proposalNumber">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Minimal}" />
+  </Style>
+  <Style Selector="StackPanel.proposalActions">
+    <Setter Property="Orientation" Value="Horizontal" />
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Related}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="StackPanel.proposalTitleRow">
+    <Setter Property="Orientation" Value="Horizontal" />
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Related}" />
+  </Style>
+  <Style Selector="StackPanel.proposalsHeading">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
+  </Style>
+  <Style Selector="StackPanel.proposalRows">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Related}" />
+  </Style>
+  <Style Selector=":is(TextBlock).proposalsHeader">
+    <Setter Property="Margin" Value="{DynamicResource Component.Proposals.HeaderMargin}" />
+  </Style>
+  <Style Selector="WrapPanel.proposalNumbers.old :is(TextBlock).proposalNumberValue">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+  </Style>
+  <Style Selector=":is(TextBlock).proposalLabel">
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Text}" />
+  </Style>
+  <Style Selector=":is(TextBlock).proposalNumberLabel">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Caption}" />
+  </Style>
+  <Style Selector=":is(TextBlock).proposalNumberValue.moved">
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+</Styles>

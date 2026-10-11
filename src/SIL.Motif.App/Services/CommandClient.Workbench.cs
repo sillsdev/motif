@@ -20,6 +20,18 @@ public sealed partial class CommandClient
         OverviewRequest request, CancellationToken cancellationToken) =>
         Task.Run(() => OverviewCommand.Overview(request));
 
+    public Task<CommandOutcome<ProposalStandings>> ProposalStandingsAsync(
+        ProposalStandingsRequest request, CancellationToken cancellationToken) =>
+        cancellationToken.IsCancellationRequested
+            ? Task.FromResult(WaitCancelled<ProposalStandings>())
+            : Task.Run(() => ProposalStandingsCommand.Read(request));
+
+    public Task<CommandOutcome<ProposalDeletedResponse>> DeleteProposalAsync(
+        DeleteProposalRequest request, CancellationToken cancellationToken) =>
+        cancellationToken.IsCancellationRequested
+            ? Task.FromResult(WaitCancelled<ProposalDeletedResponse>())
+            : Task.Run(() => ProposalLifecycleCommand.Delete(request));
+
     public Task<CommandOutcome<CurrentEvidenceSnapshot>> ReadCurrentEvidenceAsync(
         string projectPath, CancellationToken cancellationToken) =>
         Task.Run(() => CurrentEvidenceQuery.ReadCurrentEvidence(projectPath));

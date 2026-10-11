@@ -280,7 +280,7 @@ public sealed class ProposalRepository : IProposalRepository
     {
         policy ??= TimeRetentionPolicy.Default;
         return List(new ProposalListFilter(IncludeArchived: true))
-            .Where(proposal => IsTerminal(proposal.Status) &&
+            .Where(proposal => IsTerminal(proposal.Status) && proposal.Status != "applied" &&
                 policy.ShouldPurge(ParseNullableUtc(proposal.ArchivedUtc), now)).ToArray();
     }
 
@@ -295,9 +295,14 @@ public sealed class ProposalRepository : IProposalRepository
             check.Parameters.AddWithValue("$id", proposalId.Value);
             var status = check.ExecuteScalar() as string;
             if (status is null || !IsTerminal(status)) throw new InvalidOperationException("Only terminal Proposals may be archived.");
+            if (status == "applied")
+                throw new InvalidOperationException("An applied Proposal is final: it and its Receipts are kept.");
+            check.CommandText = "SELECT COUNT(*) FROM Receipts WHERE ProposalId = $id;";
+            if ((long)check.ExecuteScalar()! > 0)
+                throw new InvalidOperationException("A Proposal with a Receipt is final: it and its Receipts are kept.");
         }
-        foreach (var sql in new[] { "DELETE FROM Receipts WHERE ProposalId = $id;",
-            "DELETE FROM Reports WHERE ProposalId = $id;", "DELETE FROM ProposalRevisions WHERE ProposalId = $id;" })
+        foreach (var sql in new[] { "DELETE FROM Reports WHERE ProposalId = $id;",
+            "DELETE FROM GrammarChecks WHERE ProposalId = $id;", "DELETE FROM ProposalRevisions WHERE ProposalId = $id;" })
         {
             using var command = connection.CreateCommand();
             command.Transaction = transaction;

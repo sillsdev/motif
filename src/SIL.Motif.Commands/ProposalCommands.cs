@@ -1285,14 +1285,26 @@ public static partial class ProposalCommands
 
     public static CommandOutcome<ProposalListProjection> List(ListProposalsRequest request) =>
         ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
-            BuildProposalList(database));
+            BuildProposalList(database, request.All, request.Status));
 
-    private static CommandOutcome<ProposalListProjection> BuildProposalList(MotifDatabase database)
+    private static readonly string[] ListedStatuses =
+    [
+        "draft", ManifestStatus.Proposed, ManifestStatus.Deferred, ManifestStatus.Applied, ManifestStatus.Rejected,
+        ManifestStatus.Superseded, "withdrawn",
+    ];
+
+    private static CommandOutcome<ProposalListProjection> BuildProposalList(MotifDatabase database, bool all,
+        string? status)
     {
+        if (status is not null && !ListedStatuses.Contains(status, StringComparer.Ordinal))
+            return CommandOutcome<ProposalListProjection>.Refused(new Refusal("proposal.unknown-status",
+                FailureReason.InvalidArgument,
+                $"'{status}' is not a Proposal status. Use one of: {string.Join(", ", ListedStatuses)}.",
+                Fact(("status", status))));
         try
         {
             var repository = new ProposalRepository(database);
-            var manifests = repository.List(new ProposalListFilter())
+            var manifests = repository.List(new ProposalListFilter(status, IncludeArchived: all || status is not null))
                 .Select(ProposalRecordMapping.ToManifest)
                 .ToList();
             return CommandOutcome<ProposalListProjection>.Success(ProposalListProjectionBuilder.Build(manifests));

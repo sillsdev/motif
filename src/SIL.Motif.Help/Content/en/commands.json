@@ -446,7 +446,17 @@
   },
   "list": {
     "title": "List Proposals",
-    "description": "Lists saved Proposals and Drafts, including each identity, label and status. Read one Proposal to inspect its semantic intent.",
+    "description": "Lists open Proposals and Drafts, including each identity, label and status. Add --all to include closed ones, or --status to list one status.",
     "source": "The shared command catalog and typed request contract."
+  },
+  "proposals": {
+    "title": "List Proposals",
+    "description": "Lists every Proposal with what it changes and the numbers its latest Trial measured beside today's. Proposals are grouped by what to do next; applied and set-aside ones are counted unless asked for.",
+    "source": "Hand-written from command behavior."
+  },
+  "delete --proposal": {
+    "title": "Delete a closed Proposal",
+    "description": "Deletes a declined, superseded or withdrawn Proposal that never applied, with its Trials. An applied Proposal is never deleted.",
+    "source": "Hand-written from command behavior."
   }
 }

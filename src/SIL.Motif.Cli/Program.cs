@@ -534,10 +534,12 @@ try
             break;
 
         case "list":
-            if (!flags.TryGetValue("project", out var listProject))
-                return Usage("Usage: motif list --project <fwdata> [--json]", asJson);
+            if (!flags.TryGetValue("project", out var listProject) ||
+                flags.TryGetValue("status", out var listStatus) && string.IsNullOrWhiteSpace(listStatus))
+                return Usage("Usage: motif list --project <fwdata> [--all | --status <status>] [--json]", asJson);
             result = RenderProposal(
-                ProposalCommands.List(new ListProposalsRequest(listProject, CliProductVersion())));
+                ProposalCommands.List(new ListProposalsRequest(listProject, CliProductVersion(),
+                    flags.ContainsKey("all"), flags.GetValueOrDefault("status"))));
             break;
 
         case "show":
@@ -1240,6 +1242,21 @@ try
             result = RenderCommand(WordContextQuery.Query(new WordContextRequest(contextProject, contextWord)));
             break;
 
+        case "delete":
+            if (positionals.Count != 0 || !flags.TryGetValue("project", out var deleteProject) ||
+                !flags.TryGetValue("proposal", out var deleteProposal) || string.IsNullOrWhiteSpace(deleteProposal))
+                return Usage(UsageLineFor("delete --proposal"), asJson);
+            result = RenderCommand(ProposalLifecycleCommand.Delete(new DeleteProposalRequest(deleteProject,
+                deleteProposal)));
+            break;
+
+        case "proposals":
+            if (!flags.TryGetValue("project", out var proposalsProject))
+                return Usage(UsageLineFor("proposals"), asJson);
+            result = RenderCommand(ProposalStandingsCommand.Read(new ProposalStandingsRequest(
+                proposalsProject, flags.ContainsKey("include-set-aside"))));
+            break;
+
         case "warnings":
             if (!flags.TryGetValue("project", out var warningsProject) ||
                 (flags.TryGetValue("kind", out var warningKind) && string.IsNullOrWhiteSpace(warningKind)))
@@ -1804,6 +1821,7 @@ static string ResolveCommandName(string verb, IReadOnlyDictionary<string, string
     }
     if (verb == "apply" && flags.ContainsKey("all-pending"))
         return "apply --all-pending";
+    if (verb == "delete") return "delete --proposal";
     if (verb == "trial" && flags.ContainsKey("pending"))
         return "trial --pending";
     if (verb is "config" or "baseline" or "grammar" or "jobs" or "project" or "selection" or "texts" or "setup" or "store" or "word")

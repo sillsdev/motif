@@ -27,7 +27,7 @@ public sealed class ArchivePolicyTests
     }
 
     [Fact]
-    public void TerminalProposalArchivesImmediatelyAndAppliedIndexSurvivesManualPurge()
+    public void AnAppliedProposalArchivesImmediatelyAndIsFinalWithItsAppliedIndex()
     {
         var root = Path.Combine(Path.GetTempPath(), "motif-archive-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
@@ -52,7 +52,8 @@ public sealed class ArchivePolicyTests
                 command.Parameters.AddWithValue("$utc", "2026-08-23T12:00:00Z");
                 command.ExecuteNonQuery();
             }
-            repository.DeleteArchived(id);
+            Assert.Throws<InvalidOperationException>(() => repository.DeleteArchived(id));
+            Assert.Equal("applied", repository.Get(id).Status);
             using var reopened = database.OpenConnection();
             using var count = reopened.CreateCommand();
             count.CommandText = "SELECT COUNT(*) FROM AppliedIndex WHERE ProposalId = $id;";
@@ -93,11 +94,12 @@ public sealed class ArchivePolicyTests
             Assert.Single(active);
             Assert.Equal(stale, active[0].ProposalId);
             Assert.Equal(5, repository.List(new ProposalListFilter(IncludeArchived: true)).Count);
-            Assert.Equal(4, repository.ListArchived(now, new TimeRetentionPolicy(TimeSpan.Zero)).Count);
+            Assert.Equal(3, repository.ListArchived(now, new TimeRetentionPolicy(TimeSpan.Zero)).Count);
             Assert.Empty(repository.ListArchived(now, TimeRetentionPolicy.Default));
             Assert.Throws<InvalidOperationException>(() => repository.DeleteArchived(stale));
-            foreach (var id in archived) repository.DeleteArchived(id);
-            Assert.Single(repository.List(new ProposalListFilter(IncludeArchived: true)));
+            Assert.Throws<InvalidOperationException>(() => repository.DeleteArchived(archived[0]));
+            foreach (var id in archived.Skip(1)) repository.DeleteArchived(id);
+            Assert.Equal(2, repository.List(new ProposalListFilter(IncludeArchived: true)).Count);
         }
         finally
         {

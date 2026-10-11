@@ -87,6 +87,12 @@ public static class Trials
             .ToArray();
     }
 
+    /// <summary>Every Trial job that names this Proposal, running or not, so deleting the Proposal removes them.</summary>
+    internal static IReadOnlyList<JobRecord> JobsFor(MotifDatabase database, ProjectLocator project,
+        CanonicalId proposalId) =>
+        ReadCandidates(new JobRepository(database).ListByProjectAndKind(ProjectWorkspaceKey.Compute(project),
+            TrialJobHandler.TrialKind), proposalId).Select(candidate => candidate.Job).ToArray();
+
     private static TrialRecord? ReadLatest(MotifDatabase database, ProjectLocator project, string proposalId,
         bool includeWordResults)
     {
@@ -120,7 +126,7 @@ public static class Trials
         var workspaceKey = ProjectWorkspaceKey.Compute(project);
         var proposals = new ProposalRepository(database);
         return new TrialReadContext(database,
-            new BaselineRepository(database).GetCurrentEvidence(workspaceKey), proposals,
+            () => new BaselineRepository(database).GetCurrentEvidence(workspaceKey), proposals,
             new AssessmentRepository(database), new JobRepository(database)
                 .ListByProjectAndKind(workspaceKey, TrialJobHandler.TrialKind)
                 .OrderByDescending(job => job.CreatedUtc, StringComparer.Ordinal)
@@ -272,14 +278,17 @@ public static class Trials
     private sealed record TrialCandidate(JobRecord Job, TrialJobInput Input, Contract.Model.Proposal Proposal);
 
     // Each Proposal's current content is digested at most once per read, from one listing of the Proposals.
-    private sealed class TrialReadContext(MotifDatabase database, CurrentBaselineEvidence? current,
+    private sealed class TrialReadContext(MotifDatabase database, Func<CurrentBaselineEvidence?> current,
         ProposalRepository proposals, AssessmentRepository assessments, IReadOnlyList<JobRecord> jobs)
     {
         private Dictionary<CanonicalId, ProposalRecord>? _records;
         private readonly Dictionary<CanonicalId, string?> _digests = [];
 
         public MotifDatabase Database { get; } = database;
-        public CurrentBaselineEvidence? Current { get; } = current;
+        // A project with no Trial job never needs the Baseline summary, so it is read on first use.
+        private readonly Lazy<CurrentBaselineEvidence?> _current = new(current);
+
+        public CurrentBaselineEvidence? Current => _current.Value;
         public ProposalRepository Proposals { get; } = proposals;
         public AssessmentRepository Assessments { get; } = assessments;
         public IReadOnlyList<JobRecord> Jobs { get; } = jobs;

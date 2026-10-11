@@ -13,13 +13,13 @@ const execFileAsync = promisify(execFile);
 const repositoryRoot = fileURLToPath(new URL('../../', import.meta.url));
 const guideSections = [
 	['what-is-motif', 'install', 'open-a-project', 'first-run-setup', 'reading-the-overview'],
-	['overview', 'texts', 'keyboard-shortcuts', 'settings', 'try-a-word', 'timing', 'warnings', 'review-changes', 'ai-handoff'],
+	['overview', 'proposals', 'texts', 'keyboard-shortcuts', 'settings', 'try-a-word', 'timing', 'warnings', 'review-changes', 'ai-handoff'],
 	['refresh-numbers', 'change-an-analysis', 'replace-a-pending-change', 'apply-to-fieldworks', 'when-a-change-no-longer-fits', 'switch-projects', 'cancel-a-long-run', 'when-something-goes-wrong'],
 	['baseline', 'assessment', 'pangloss', 'text-coverage', 'default-selection', 'drift', 'pending-changes', 'writing-systems'],
 	['agents/start-here', 'agents/output-and-exit-codes', 'agents/measure-a-grammar', 'agents/work-with-jobs', 'agents/handoff'],
 	['ai-assistants', 'parsimony-findings', ...JSON.parse(readFileSync(
 		new URL('../../src/SIL.Motif.Help/Content/en/guide/parsimony/parsimony-recipes.json', import.meta.url), 'utf8'))
-		.recipes.map((recipe) => recipe.helpPath.replace(/^guide\//, '').replace(/\.md$/, ''))],
+		.recipes.map((recipe) => 'parsimony/recipes/' + recipe.measureId.toLowerCase())],
 ];
 const learnCodes = [
 	'learn/index',

@@ -93,5 +93,10 @@
     "title": "A tested window guide",
     "description": "A Walkthrough is a script that tests the real Motif window using fixed data and produces screenshots at marked steps. It can also render a short, silent clip.",
     "source": "Hand-written from CONTEXT.md."
+  },
+  "trial": {
+    "title": "A Proposal tried on a copy",
+    "description": "A Trial applies a Proposal to a throwaway copy of the project and parses words again, so its numbers can sit beside today's. A Trial is out of date once the project or the Proposal changes; the window then says it needs another try.",
+    "source": "Hand-written from CONTEXT.md."
   }
 }

@@ -71,11 +71,13 @@ public sealed class WorkspacePageTests
         var (_, _, workspace) = NewWorkspace();
 
         Assert.Equal(
-            [WorkspacePage.Overview, WorkspacePage.Texts, WorkspacePage.TryAWord, WorkspacePage.Timing,
-                WorkspacePage.Warnings, WorkspacePage.Parsimony, WorkspacePage.Review, WorkspacePage.AiHandoff, WorkspacePage.AiAssistants],
+            [WorkspacePage.Overview, WorkspacePage.Proposals, WorkspacePage.Texts, WorkspacePage.TryAWord,
+                WorkspacePage.Timing, WorkspacePage.Warnings, WorkspacePage.Parsimony, WorkspacePage.Review,
+                WorkspacePage.AiHandoff, WorkspacePage.AiAssistants],
             workspace.Pages.Select(page => page.Page));
         Assert.Equal(
-            ["Overview", "Texts", "Try a Word", "Timing", "Warnings", "Parsimony", "Review changes", "AI Handoff", "AI assistants"],
+            ["Overview", "Proposals", "Texts", "Try a Word", "Timing", "Warnings", "Parsimony", "Review changes",
+                "AI Handoff", "AI assistants"],
             workspace.Pages.Select(page => page.Title));
         Assert.Equal(WorkspacePage.Overview, workspace.CurrentPage);
         Assert.All(workspace.Pages, page => Assert.False(page.HasBadge));
@@ -83,6 +85,7 @@ public sealed class WorkspacePageTests
 
     [Theory]
     [InlineData(WorkspacePage.Overview)]
+    [InlineData(WorkspacePage.Proposals)]
     [InlineData(WorkspacePage.Texts)]
     [InlineData(WorkspacePage.TryAWord)]
     [InlineData(WorkspacePage.Timing)]
@@ -107,7 +110,7 @@ public sealed class WorkspacePageTests
     {
         var (_, _, workspace) = NewWorkspace();
 
-        workspace.SelectedPage = workspace.Pages[6];
+        workspace.SelectedPage = workspace.Pages[7];
         workspace.SelectedPage = null!;
 
         Assert.Equal(WorkspacePage.Review, workspace.CurrentPage);

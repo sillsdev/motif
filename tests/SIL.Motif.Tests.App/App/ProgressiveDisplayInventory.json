@@ -805,5 +805,12 @@
     "source": "RecordTypes",
     "mode": "finite",
     "control": "ComboBox"
+  },
+  {
+    "view": "Pages/ProposalsPage",
+    "name": "ProposalsRowsItems",
+    "source": "Rows",
+    "mode": "inline",
+    "control": "ItemsControl"
   }
 ]

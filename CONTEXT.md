@@ -38,6 +38,15 @@ Proposal's state. A Draft is therefore a phase of a Proposal's life, never a sep
 somewhere else ([ADR 0041](docs/adr/0041-the-database-is-the-only-store.md) decision 3).
 _Avoid_: working copy, staging area, scratch proposal, uncommitted proposal
 
+**Proposal status**:
+Where a Proposal is in its life, in the window's words: **Draft** (still being authored), **Ready** (finalized and
+open for review; stored `proposed`), **Deferred** (wanted later, still open), and the closed ones: **Applied**
+(final: never reopened or deleted, its Receipts kept), **Declined** (a person said no; stored `rejected`),
+**Superseded** (replaced by the Proposal it names) and **Withdrawn** (its author took it back before review).
+Lists show open Proposals by default. A declined, superseded or withdrawn Proposal that never applied can be
+deleted with its Trials.
+_Avoid_: state, closed-out, archived, cancelled
+
 **Finalize**:
 To commit a Draft's content as the Proposal's first immutable revision, handing it to a person to review.
 Finalizing is not needed to measure a Proposal: a Draft can be Dry Run and Trialled as often as its author
