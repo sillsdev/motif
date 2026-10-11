@@ -37,6 +37,17 @@ internal sealed class MotifSqliteStoreDescriptor
     /// worker; <see cref="MachineSchema"/> has nothing to check here and leaves it null.
     /// </summary>
     public Action<SqliteConnection>? BeforeOpen { get; init; }
+
+    /// <summary>
+    /// Keeps closed connections pooled for the store's lifetime instead of closing their files.
+    /// </summary>
+    /// <remarks>
+    /// When the last unpooled connection closes, SQLite checkpoints and deletes the <c>-wal</c> and <c>-shm</c>
+    /// files, and the next open creates them again. Where Windows Defender scans, that costs about 12 ms per
+    /// repository call against about 2 ms pooled. A pooled store holds its files open until it is disposed, so a
+    /// database whose deletion between calls must be noticed, as the machine database's is, stays unpooled.
+    /// </remarks>
+    public bool PooledConnections { get; init; }
 }
 
 /// <summary>
@@ -63,18 +74,25 @@ internal sealed class MotifSqliteStoreDescriptor
 internal sealed class MotifSqliteStore : IDisposable
 {
     private static readonly TimeSpan DefaultOwnershipPatience = TimeSpan.FromSeconds(30);
+    private static readonly object PoolOwnersGate = new();
+    private static readonly Dictionary<string, int> PoolOwnerCounts = new(StringComparer.Ordinal);
     private readonly string _path;
     private readonly string _name;
     private readonly FileStream _useLease;
     private readonly object _stateGate = new();
     private readonly HashSet<SqliteConnection> _connections = [];
+    private readonly bool _pooled;
+    private readonly string? _poolConnectionString;
     private bool _disposed;
 
-    private MotifSqliteStore(string path, string name, FileStream useLease)
+    private MotifSqliteStore(string path, string name, FileStream useLease, bool pooled)
     {
         _path = path;
         _name = name;
         _useLease = useLease;
+        _pooled = pooled;
+        _poolConnectionString = pooled ? ConnectionString(path, pooled: true) : null;
+        if (_poolConnectionString is not null) RegisterPoolOwner(_poolConnectionString);
     }
 
     /// <summary>Opens a store with a shared use lease, creating its schema if absent.</summary>
@@ -126,7 +144,7 @@ internal sealed class MotifSqliteStore : IDisposable
             SqliteConnections.EnableWal(connection);
             ownership?.Dispose();
             ownership = null;
-            var store = new MotifSqliteStore(fullPath, descriptor.Name, useLease);
+            var store = new MotifSqliteStore(fullPath, descriptor.Name, useLease, descriptor.PooledConnections);
             useLease = null;
             return store;
         }
@@ -194,7 +212,7 @@ internal sealed class MotifSqliteStore : IDisposable
             SqliteConnection connection;
             try
             {
-                connection = OpenConfiguredConnection(_path, RemoveConnection);
+                connection = OpenConfiguredConnection(_path, _pooled, RemoveConnection);
             }
             catch (SqliteException exception) when (SqliteConnections.IsCorruption(exception))
             {
@@ -242,7 +260,14 @@ internal sealed class MotifSqliteStore : IDisposable
         }
         finally
         {
-            _useLease.Dispose();
+            try
+            {
+                if (_poolConnectionString is not null) ReleasePoolOwner(_poolConnectionString);
+            }
+            finally
+            {
+                _useLease.Dispose();
+            }
         }
     }
 
@@ -254,21 +279,17 @@ internal sealed class MotifSqliteStore : IDisposable
 
     private static SqliteConnection OpenConfiguredConnection(
         string path,
+        bool pooled,
         Action<SqliteConnection>? onDisposed = null)
-        => OpenConnectionCore(path, SqliteConnections.ConfigureConnection, onDisposed);
+        => OpenConnectionCore(path, SqliteConnections.ConfigureConnection, onDisposed, pooled);
 
     private static SqliteConnection OpenConnectionCore(
         string path,
         Action<SqliteConnection> configure,
-        Action<SqliteConnection>? onDisposed = null)
+        Action<SqliteConnection>? onDisposed = null,
+        bool pooled = false)
     {
-        var connectionString = new SqliteConnectionStringBuilder
-        {
-            // Opening the main file through a URI enables read-only URI ATTACH elsewhere in this process.
-            DataSource = new Uri(path).AbsoluteUri,
-            Pooling = false,
-            Mode = SqliteOpenMode.ReadWriteCreate
-        }.ToString();
+        var connectionString = ConnectionString(path, pooled);
         var connection = onDisposed is null
             ? new SqliteConnection(connectionString)
             : new OwnedSqliteConnection(connectionString, onDisposed);
@@ -282,6 +303,48 @@ internal sealed class MotifSqliteStore : IDisposable
         {
             connection.Dispose();
             throw;
+        }
+    }
+
+    private static string ConnectionString(string path, bool pooled) => new SqliteConnectionStringBuilder
+    {
+        // Opening the main file through a URI enables read-only URI ATTACH elsewhere in this process.
+        DataSource = new Uri(path).AbsoluteUri,
+        Pooling = pooled,
+        Mode = SqliteOpenMode.ReadWriteCreate
+    }.ToString();
+
+    private static void RegisterPoolOwner(string connectionString)
+    {
+        lock (PoolOwnersGate)
+        {
+            PoolOwnerCounts.TryGetValue(connectionString, out var count);
+            PoolOwnerCounts[connectionString] = count + 1;
+        }
+    }
+
+    private static void ReleasePoolOwner(string connectionString)
+    {
+        lock (PoolOwnersGate)
+        {
+            if (!PoolOwnerCounts.TryGetValue(connectionString, out var count))
+                throw new InvalidOperationException("A pooled Motif store has no registered owner.");
+            if (count > 1)
+            {
+                PoolOwnerCounts[connectionString] = count - 1;
+                return;
+            }
+
+            try
+            {
+                // Clear the pool before releasing the last owner's use lease.
+                using var pooled = new SqliteConnection(connectionString);
+                SqliteConnection.ClearPool(pooled);
+            }
+            finally
+            {
+                PoolOwnerCounts.Remove(connectionString);
+            }
         }
     }
 

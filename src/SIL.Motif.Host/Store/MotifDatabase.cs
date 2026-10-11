@@ -113,6 +113,8 @@ public sealed class MotifDatabase : IDisposable
             CurrentSchema = supportedSchema,
             ValidateSchema = MotifSchema.ValidateSchema,
             Create = (connection, transaction) => MotifSchema.Create(connection, transaction, project, timeProvider),
+            // Every job, progress and Proposal write goes through here, so its files stay open between calls.
+            PooledConnections = true,
             BeforeOpen = connection =>
             {
                 var metadata = MotifSchema.ReadMetadata(connection);

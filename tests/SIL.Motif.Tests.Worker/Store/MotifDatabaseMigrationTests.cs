@@ -169,6 +169,37 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
         Assert.Equal(0, owner.TrackedConnectionCount);
     }
 
+    [Fact]
+    public void ConnectionsReuseTheWriteAheadLogWhileTheOwnerIsOpen()
+    {
+        var path = DatabasePath("pooled.fwdata");
+        using var owner = MotifDatabase.OpenOwned(path, Locator("pooled.fwdata"), MotifSchema.CurrentSchema, new Version(1, 0));
+
+        for (var i = 0; i < 3; i++)
+        {
+            using var connection = owner.OpenConnection();
+            Execute(connection, "UPDATE MotifMetadata SET CurrentAssessmentId = NULL WHERE Id = 1;");
+        }
+
+        // A closed last connection deletes the log; Defender then scans its re-creation on every repository call.
+        Assert.True(File.Exists(path + "-wal"), "The write-ahead log must survive between connections.");
+    }
+
+    [Fact]
+    public void DisposingOwnerClosesPooledHandlesSoTheFileCanBeDeleted()
+    {
+        var path = DatabasePath("released.fwdata");
+        var owner = MotifDatabase.OpenOwned(path, Locator("released.fwdata"), MotifSchema.CurrentSchema, new Version(1, 0));
+        using (var connection = owner.OpenConnection())
+            Execute(connection, "UPDATE MotifMetadata SET CurrentAssessmentId = NULL WHERE Id = 1;");
+
+        owner.Dispose();
+
+        Assert.False(File.Exists(path + "-wal"), "The last handle's close must checkpoint and remove the log.");
+        File.Delete(path);
+        Assert.False(File.Exists(path));
+    }
+
     [Theory]
     [InlineData("MotifMetadata")]
     [InlineData("Corpora")]
