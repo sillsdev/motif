@@ -46,6 +46,13 @@
   .PARAMETER Filter
   Run only matching tests in the selected project, using the VSTest filter syntax.
 
+  .PARAMETER Coverage
+  Collect line coverage with coverlet (restored on demand into the shared NuGet packages folder; no project
+  references it) and write coverage-summary.md and coverage-summary.json under
+  bin/<Configuration>/test-results/coverage/: one row per Motif assembly, plus a subtotal over every source file
+  in a Parsimony or Retirement folder. Off by default, and a normal run pays nothing for it. Instrumented
+  tests run slower, and the summary covers only the projects this run selected, so pair it with -Project.
+
   .PARAMETER NoProcessSweep
   Keep the worktree lock and process policy but skip stale-process cleanup.
 
@@ -60,6 +67,7 @@ param(
     [switch] $System,
     [string] $Project,
     [string] $Filter,
+    [switch] $Coverage,
     [switch] $NoProcessSweep
 )
 
@@ -270,6 +278,15 @@ Import-Module (Join-Path $repoRoot 'tools/MotifTestSlot.psm1') -Force
 $testSlot = Enter-MotifTestSlot
 Write-PhaseDuration 'test slot wait'
 
+$coverageAdapter = ''
+$coverageSettings = ''
+if ($Coverage) {
+    Import-Module (Join-Path $repoRoot 'tools/MotifCoverage.psm1') -Force
+    Write-Step 'coverage collector'
+    $coverageAdapter = Install-MotifCoverageCollector -RepoRoot $repoRoot
+    $coverageSettings = Join-Path $repoRoot 'tools/coverage/coverage.runsettings'
+}
+
 $phaseClocks['test artifact preparation'] = [Diagnostics.Stopwatch]::StartNew()
 $artifactRequirements = [pscustomobject]@{
     PortableWorkerPackage = $false
@@ -316,9 +333,10 @@ $jobs = foreach ($run in $testRuns) {
     [IO.File]::WriteAllText($projectInput, $inputToken)
     Start-ThreadJob -Name $run.Label -ThrottleLimit $projectConcurrency `
         -ArgumentList $run.Label, $run.Assembly, $run.Shard, $Filter, $levelSelection, $Configuration,
-            $projectResults, $projectLog, $projectErrorLog, $projectInput, $inputToken -ScriptBlock {
+            $projectResults, $projectLog, $projectErrorLog, $projectInput, $inputToken, $coverageAdapter,
+            $coverageSettings -ScriptBlock {
         param($name, $assemblyPath, $shard, $filter, $levels, $configuration, $projectResults, $log, $errorLog,
-            $inputPath, $inputToken)
+            $inputPath, $inputToken, $coverageAdapter, $coverageSettings)
         $projectClock = [Diagnostics.Stopwatch]::StartNew()
         $arguments = @(
             'test'
@@ -338,6 +356,10 @@ $jobs = foreach ($run in $testRuns) {
             'none'
         )
         if ($filter) { $arguments += @('--filter', ('"{0}"' -f $filter)) }
+        if ($coverageAdapter) {
+            $arguments += @('--collect', '"XPlat Code Coverage"', '--test-adapter-path', ('"{0}"' -f $coverageAdapter),
+                '--settings', ('"{0}"' -f $coverageSettings))
+        }
         # Passed to the test host alone: a thread job's own environment is shared with every other job.
         if ($shard) { $arguments += @('--environment', ('"MOTIF_TEST_SHARD={0}"' -f $shard)) }
         $arguments += @('--environment', ('"MOTIF_TEST_LEVELS={0}"' -f $levels))
@@ -441,6 +463,12 @@ Write-Host ('  {0,-36} {1,6:N1} s  passed {2,5}  failed {3,3}  skipped {4,3}  (t
     $clock.Elapsed.TotalSeconds, $totals.passed, $totals.failed, $totals.notExecuted, $totals.total)
 if ($missingParserTests.Count -gt 0) {
     Write-Host "Parser validation incomplete: $($missingParserTests.Count) PanGloss-dependent test(s) skipped because pangloss was not found." -ForegroundColor Yellow
+}
+if ($Coverage) {
+    $coverageSummary = Merge-MotifCoverage -ResultsDirectory $resultsRoot -OutputDirectory (Join-Path $resultsRoot 'coverage')
+    Write-Host ('  line coverage: Parsimony and Retirement folders {0}% ({1} of {2} lines); per assembly in {3}' -f
+        $coverageSummary.parsimony.percent, $coverageSummary.parsimony.covered, $coverageSummary.parsimony.total,
+        (Join-Path $resultsRoot 'coverage/coverage-summary.md'))
 }
 Write-PhaseDuration 'whole gate'
 

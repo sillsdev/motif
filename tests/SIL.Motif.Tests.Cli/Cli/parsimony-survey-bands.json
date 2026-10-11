@@ -1,0 +1,381 @@
+{
+  "panglossVersion": "0.8.3",
+  "samples": {
+    "Amharic": {
+      "B-adhoc-is-slot-order": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "B-affix-null-vs-optional": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "B-affix-unslotted": {
+        "status": "Computed",
+        "eligibleMin": 25,
+        "findingsMin": 1,
+        "findingsMax": 5
+      },
+      "P-adhoc-duplicate": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "P-allo-alternation-family": {
+        "status": "Inconclusive",
+        "eligibleMin": 3,
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "P-allo-duplicate-form": {
+        "status": "Computed",
+        "eligibleMin": 68,
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "P-statement-unused": {
+        "status": "Computed",
+        "eligibleMin": 13,
+        "findingsMin": 5,
+        "findingsMax": 25
+      },
+      "R-allo-unconditioned": {
+        "status": "Computed",
+        "eligibleMin": 3,
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "R-env-broad": {
+        "status": "Inconclusive",
+        "eligibleMin": 1,
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "R-nc-excess": {
+        "status": "Computed",
+        "eligibleMin": 1,
+        "findingsMin": 1,
+        "findingsMax": 7
+      },
+      "R-slot-blocking": {
+        "status": "Inconclusive",
+        "eligibleMin": 13,
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "R-tmpl-precedence": {
+        "status": "Inconclusive",
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "R-word-disapproved-produced": {
+        "status": "NotAvailable"
+      },
+      "R-word-negative-accepted": {
+        "status": "NotAvailable"
+      }
+    },
+    "Awetí": {
+      "B-adhoc-is-slot-order": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "B-affix-null-vs-optional": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "B-affix-unslotted": {
+        "status": "Computed",
+        "eligibleMin": 37,
+        "findingsMin": 1,
+        "findingsMax": 5
+      },
+      "P-adhoc-duplicate": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "P-allo-alternation-family": {
+        "status": "Inconclusive",
+        "eligibleMin": 48,
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "P-allo-duplicate-form": {
+        "status": "Computed",
+        "eligibleMin": 514,
+        "findingsMin": 1,
+        "findingsMax": 7
+      },
+      "P-statement-unused": {
+        "status": "Computed",
+        "eligibleMin": 22,
+        "findingsMin": 8,
+        "findingsMax": 35
+      },
+      "R-allo-unconditioned": {
+        "status": "Inconclusive",
+        "eligibleMin": 13,
+        "findingsMin": 1,
+        "findingsMax": 9
+      },
+      "R-env-broad": {
+        "status": "Inconclusive",
+        "eligibleMin": 1,
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "R-nc-excess": {
+        "status": "Inconclusive",
+        "eligibleMin": 1,
+        "findingsMin": 1,
+        "findingsMax": 7
+      },
+      "R-slot-blocking": {
+        "status": "Inconclusive",
+        "eligibleMin": 26,
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "R-tmpl-precedence": {
+        "status": "Inconclusive",
+        "eligibleMin": 3,
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "R-word-disapproved-produced": {
+        "status": "NotAvailable"
+      },
+      "R-word-negative-accepted": {
+        "status": "NotAvailable"
+      }
+    },
+    "Indonesian": {
+      "B-adhoc-is-slot-order": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "B-affix-null-vs-optional": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "B-affix-unslotted": {
+        "status": "Computed",
+        "eligibleMin": 1,
+        "findingsMin": 1,
+        "findingsMax": 7
+      },
+      "P-adhoc-duplicate": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "P-allo-alternation-family": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "P-allo-duplicate-form": {
+        "status": "Computed",
+        "eligibleMin": 36,
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "P-statement-unused": {
+        "status": "Computed",
+        "eligibleMin": 12,
+        "findingsMin": 7,
+        "findingsMax": 33
+      },
+      "R-allo-unconditioned": {
+        "status": "Inconclusive",
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "R-env-broad": {
+        "status": "Inconclusive",
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "R-nc-excess": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "R-slot-blocking": {
+        "status": "Inconclusive",
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "R-tmpl-precedence": {
+        "status": "Inconclusive",
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "R-word-disapproved-produced": {
+        "status": "NotAvailable"
+      },
+      "R-word-negative-accepted": {
+        "status": "NotAvailable"
+      }
+    },
+    "Mbugwe": {
+      "B-adhoc-is-slot-order": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "B-affix-null-vs-optional": {
+        "status": "Computed",
+        "eligibleMin": 1,
+        "findingsMin": 1,
+        "findingsMax": 9
+      },
+      "B-affix-unslotted": {
+        "status": "Computed",
+        "eligibleMin": 101,
+        "findingsMin": 1,
+        "findingsMax": 5
+      },
+      "P-adhoc-duplicate": {
+        "status": "Computed",
+        "eligibleMin": 1,
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "P-allo-alternation-family": {
+        "status": "Inconclusive",
+        "eligibleMin": 7,
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "P-allo-duplicate-form": {
+        "status": "Computed",
+        "eligibleMin": 166,
+        "findingsMin": 1,
+        "findingsMax": 5
+      },
+      "P-statement-unused": {
+        "status": "Computed",
+        "eligibleMin": 76,
+        "findingsMin": 43,
+        "findingsMax": 177
+      },
+      "R-allo-unconditioned": {
+        "status": "Inconclusive",
+        "eligibleMin": 23,
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "R-env-broad": {
+        "status": "Inconclusive",
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "R-nc-excess": {
+        "status": "Inconclusive",
+        "eligibleMin": 1,
+        "findingsMin": 1,
+        "findingsMax": 7
+      },
+      "R-slot-blocking": {
+        "status": "Inconclusive",
+        "eligibleMin": 727,
+        "findingsMin": 1,
+        "findingsMax": 7
+      },
+      "R-tmpl-precedence": {
+        "status": "Inconclusive",
+        "eligibleMin": 291,
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "R-word-disapproved-produced": {
+        "status": "NotAvailable"
+      },
+      "R-word-negative-accepted": {
+        "status": "NotAvailable"
+      }
+    },
+    "Sena": {
+      "B-adhoc-is-slot-order": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "B-affix-null-vs-optional": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "B-affix-unslotted": {
+        "status": "Computed",
+        "eligibleMin": 30,
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "P-adhoc-duplicate": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "P-allo-alternation-family": {
+        "status": "Inconclusive",
+        "eligibleMin": 43,
+        "findingsMin": 7,
+        "findingsMax": 31
+      },
+      "P-allo-duplicate-form": {
+        "status": "Computed",
+        "eligibleMin": 783,
+        "findingsMin": 1,
+        "findingsMax": 5
+      },
+      "P-statement-unused": {
+        "status": "Computed",
+        "eligibleMin": 31,
+        "findingsMin": 17,
+        "findingsMax": 73
+      },
+      "R-allo-unconditioned": {
+        "status": "Inconclusive",
+        "eligibleMin": 81,
+        "findingsMin": 2,
+        "findingsMax": 11
+      },
+      "R-env-broad": {
+        "status": "Inconclusive",
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "R-nc-excess": {
+        "status": "Inconclusive",
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "R-slot-blocking": {
+        "status": "Inconclusive",
+        "eligibleMin": 1,
+        "findingsMin": 1,
+        "findingsMax": 7
+      },
+      "R-tmpl-precedence": {
+        "status": "Inconclusive",
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "R-word-disapproved-produced": {
+        "status": "NotAvailable"
+      },
+      "R-word-negative-accepted": {
+        "status": "NotAvailable"
+      }
+    }
+  }
+}

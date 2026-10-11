@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat Code Coverage">
+        <Configuration>
+          <Format>cobertura</Format>
+          <!-- Motif's own product assemblies only: instrumenting LibLCM and the SDKs costs minutes and says nothing. -->
+          <Include>[SIL.Motif.*]*</Include>
+          <Exclude>[SIL.Motif.Tests.*]*,[SIL.Motif.FakePanGloss]*</Exclude>
+          <SingleHit>false</SingleHit>
+          <SkipAutoProps>true</SkipAutoProps>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

@@ -10,6 +10,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Include="Cli\parsimony-survey-bands.json" CopyToOutputDirectory="PreserveNewest" Link="parsimony-survey-bands.json" />
+  </ItemGroup>
+
+  <ItemGroup>
     <SupportedPlatform Include="windows" />
     <ProjectReference Include="..\..\src\SIL.Motif.App\SIL.Motif.App.csproj" />
     <ProjectReference Include="..\..\src\SIL.Motif.Cli\SIL.Motif.Cli.csproj" />

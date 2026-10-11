@@ -111,6 +111,8 @@ public sealed class ParsimonySampleSurveySystemTests
             Assert.Equal(projectSha256, Sha256File(projectPath));
             _output.WriteLine($"{sample.Name} copied project unchanged: sha256={projectSha256}");
 
+            var observed = measureResults.Select(item =>
+                new ObservedMeasure(item.MeasureId, item.Status, item.EligibleItems, item.FindingItems)).ToArray();
             var markdown = RenderMarkdown([new GrammarSurvey(sample.Name, measureResults)]);
             _output.WriteLine(markdown);
             Assert.True(markdown.Length > 0);
@@ -122,6 +124,19 @@ public sealed class ParsimonySampleSurveySystemTests
                 var file = Path.Combine(outputDirectory, $"{outputName}-{sample.Slug}.md");
                 File.WriteAllText(file, markdown);
                 Assert.True(new FileInfo(file).Length > 0);
+                if (selectedMeasureIds is null)
+                    File.WriteAllText(Path.Combine(outputDirectory, $"{outputName}-{sample.Slug}.observed.json"),
+                        JsonSerializer.Serialize(new { sample = sample.Name, measures = observed },
+                            new JsonSerializerOptions(JsonSerializerDefaults.Web) { WriteIndented = true }) + "\n");
+            }
+
+            // The bands are for the full survey; a one-measure run has nothing to compare every measure against.
+            if (selectedMeasureIds is null)
+            {
+                var violations = ParsimonySurveyBands.Load().Violations(sample.Name, observed);
+                Assert.True(violations.Count == 0,
+                    "The survey left the checked-in finding bands (" + ParsimonySurveyBands.FileName + "):" +
+                    Environment.NewLine + string.Join(Environment.NewLine, violations));
             }
         }
         finally
