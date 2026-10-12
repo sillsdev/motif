@@ -26,7 +26,7 @@ internal static class TestLevelClassifier
         return levels.ToHashSet(StringComparer.Ordinal);
     }
 
-    /// <summary>Returns the effective level, promoting parser and walkthrough classes to System.</summary>
+    /// <summary>Returns the effective level, promoting real-parser and walkthrough classes to System.</summary>
     internal static string ResolveLevel(
         string className, string defaultLevel, IEnumerable<string?> declarations, bool hasRealParserFact)
     {

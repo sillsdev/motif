@@ -22,6 +22,7 @@ using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Parser;
+using SIL.Motif.Tests.Parser;
 using SIL.Motif.Host.Parsimony;
 using SIL.Motif.LiveHost.HumanJudgments;
 using SIL.Motif.Model.Snapshot;
@@ -283,11 +284,4 @@ internal static class ParsimonyMeasureDispositionAcceptance
     private sealed record Route(string Disposition, string Reason, string? Question);
 }
 
-public sealed class ParsimonyFactsFactAttribute : Xunit.FactAttribute
-{
-    public ParsimonyFactsFactAttribute()
-    {
-        if (PanGlossExecutable.TryLocate() is null)
-            Skip = $"PanGloss was not found; Parsimony grammar facts are unavailable. Set {PanGlossExecutable.PathVariable}.";
-    }
-}
+public sealed class ParsimonyFactsFactAttribute : RealParserFactAttribute { }

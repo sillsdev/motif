@@ -306,10 +306,8 @@ public sealed class ParsimonySurveyTheoryAttribute : TheoryAttribute
 {
     public ParsimonySurveyTheoryAttribute()
     {
-        var missing = new[] { "MOTIF_PANGLOSS_SAMPLES", PanGlossExecutable.PathVariable }
-            .Where(variable => string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(variable)))
-            .ToArray();
-        if (missing.Length > 0)
-            Skip = $"Parsimony sample survey requires {string.Join(" and ", missing)}.";
+        Skip = new SIL.Motif.Tests.Parser.RealParserFactAttribute().Skip;
+        if (Skip is null && string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("MOTIF_PANGLOSS_SAMPLES")))
+            Skip = "Parsimony sample survey requires MOTIF_PANGLOSS_SAMPLES.";
     }
 }

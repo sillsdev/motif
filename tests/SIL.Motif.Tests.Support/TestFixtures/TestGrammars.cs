@@ -1,5 +1,6 @@
 using System.Text.Json;
 using SIL.Motif.Host.Parser;
+using SIL.Motif.Tests.Parser;
 using Xunit;
 
 namespace SIL.Motif.Tests.TestFixtures;
@@ -33,19 +34,12 @@ internal static class TestGrammars
 }
 
 /// <summary>Runs an evaluation-set check when its pinned data and PanGloss are available.</summary>
-public sealed class RealEvalSetParserFactAttribute : FactAttribute
+public sealed class RealEvalSetParserFactAttribute : RealParserFactAttribute
 {
     /// <summary>Skips with the missing dependency when evaluation data or PanGloss is unavailable.</summary>
     public RealEvalSetParserFactAttribute()
     {
-        if (TestGrammars.SetsRoot is null)
-        {
+        if (Skip is null && TestGrammars.SetsRoot is null)
             Skip = TestGrammars.MissingReason;
-            return;
-        }
-
-        if (PanGlossExecutable.TryLocate() is null)
-            Skip = $"pangloss not found; parser validation incomplete. Build it (cargo build --release -p pg-cli) or set " +
-                   $"{PanGlossExecutable.PathVariable}.";
     }
 }

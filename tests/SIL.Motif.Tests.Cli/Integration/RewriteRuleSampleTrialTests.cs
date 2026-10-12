@@ -22,6 +22,7 @@ using SIL.Motif.Runner.Apply;
 using SIL.Motif.Runner.Operations;
 using SIL.Motif.Runner.Snapshotting;
 using SIL.Motif.Tests.TestFixtures;
+using SIL.Motif.Tests.Parser;
 using SIL.Motif.Worker;
 using SIL.Motif.Worker.Store;
 using Xunit;
@@ -264,19 +265,16 @@ public sealed class RewriteRuleSampleTrialTests(ITestOutputHelper output)
     }
 }
 
-public sealed class RewriteRuleSampleFactAttribute : FactAttribute
+public sealed class RewriteRuleSampleFactAttribute : RealParserFactAttribute
 {
     public RewriteRuleSampleFactAttribute()
     {
+        if (Skip is not null) return;
+
         var samplePath = Environment.GetEnvironmentVariable("MOTIF_PANGLOSS_SAMPLES");
         if (string.IsNullOrWhiteSpace(samplePath))
         {
             Skip = "Set MOTIF_PANGLOSS_SAMPLES to PanGloss samples/data for the disposable rewrite-rule check.";
-            return;
-        }
-        if (PanGlossExecutable.TryLocate() is null)
-        {
-            Skip = $"Set {PanGlossExecutable.PathVariable} to the pinned PanGloss executable for the Trial check.";
             return;
         }
         if (!File.Exists(Path.Combine(samplePath, "mbugwe.fwdata")) ||

@@ -10,7 +10,7 @@ namespace SIL.Motif.Tests.Parser;
 /// conformance. A missing local executable keeps the checks skipped and makes parser validation incomplete.
 /// Release validation supplies and verifies the pinned artifact and checks for skips caused by its absence.
 /// </remarks>
-public sealed class RealParserFactAttribute : FactAttribute
+public class RealParserFactAttribute : FactAttribute
 {
     public RealParserFactAttribute()
     {

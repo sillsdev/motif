@@ -20,6 +20,7 @@ using SIL.Motif.Host.Parser;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Runner.Operations;
 using SIL.Motif.Tests.TestFixtures;
+using SIL.Motif.Tests.Parser;
 using SIL.Motif.Worker.Store;
 using SIL.Motif.Worker.Jobs;
 using Xunit;
@@ -565,13 +566,11 @@ public sealed class MorphotacticsSampleWorkflowTests(ITestOutputHelper output)
             .Select(file => Path.GetFileName(file) + ":" + FileDigest(file))))));
 }
 
-public sealed class MorphotacticsSampleFactAttribute : FactAttribute
+public sealed class MorphotacticsSampleFactAttribute : RealParserFactAttribute
 {
     public MorphotacticsSampleFactAttribute()
     {
-        if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("MOTIF_PANGLOSS_SAMPLES")))
+        if (Skip is null && string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("MOTIF_PANGLOSS_SAMPLES")))
             Skip = "Set MOTIF_PANGLOSS_SAMPLES to PanGloss samples/data for a disposable grammar check.";
-        else if (PanGlossExecutable.TryLocate() is null)
-            Skip = $"Set {PanGlossExecutable.PathVariable} to the pinned PanGloss executable.";
     }
 }
