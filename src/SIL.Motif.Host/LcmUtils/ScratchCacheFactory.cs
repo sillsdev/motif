@@ -125,7 +125,7 @@ public class ScratchCacheFactory
         // Preserves FieldWorks' {projectsFolder}/{projectName}/{projectName}.fwdata layout the loader expects.
         var projectName = System.IO.Path.GetFileNameWithoutExtension(sourceFwDataPath);
         var destFolder = System.IO.Path.Combine(destinationRoot, projectName);
-        CopyDirectory(sourceFolder, destFolder);
+        CopyDirectory(sourceFolder, destFolder, projectName);
 
         var destFwData = System.IO.Path.Combine(destFolder, System.IO.Path.GetFileName(sourceFwDataPath));
         if (!System.IO.File.Exists(destFwData))
@@ -134,17 +134,27 @@ public class ScratchCacheFactory
         return _loader.LoadScratchCache(destFwData);
     }
 
-    private static void CopyDirectory(string sourceDir, string destDir)
+    private static void CopyDirectory(string sourceDir, string destDir, string projectName)
     {
         System.IO.Directory.CreateDirectory(destDir);
         foreach (var file in System.IO.Directory.GetFiles(sourceDir))
         {
             // Ownership belongs to the source reader, never to its independent copy.
             if (file.EndsWith(".fwdata.lock", StringComparison.OrdinalIgnoreCase)) continue;
+            // The paired Motif store is owned separately; a scratch cache only needs FieldWorks files.
+            if (IsMotifStoreFile(file, projectName)) continue;
             System.IO.File.Copy(file, System.IO.Path.Combine(destDir, System.IO.Path.GetFileName(file)), overwrite: true);
         }
 
         foreach (var subDir in System.IO.Directory.GetDirectories(sourceDir))
-            CopyDirectory(subDir, System.IO.Path.Combine(destDir, System.IO.Path.GetFileName(subDir)));
+            CopyDirectory(subDir, System.IO.Path.Combine(destDir, System.IO.Path.GetFileName(subDir)), projectName);
+    }
+
+    private static bool IsMotifStoreFile(string path, string projectName)
+    {
+        var fileName = System.IO.Path.GetFileName(path);
+        var databaseName = projectName + ".motif.db";
+        return fileName.StartsWith(databaseName, StringComparison.OrdinalIgnoreCase) &&
+            (fileName.Length == databaseName.Length || fileName[databaseName.Length] is '-' or '.');
     }
 }

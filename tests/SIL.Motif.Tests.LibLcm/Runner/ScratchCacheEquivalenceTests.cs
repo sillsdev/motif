@@ -1,5 +1,7 @@
 using SIL.LCModel;
+using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host.LcmUtils;
+using SIL.Motif.Host.Store;
 using SIL.Motif.Spikes.ScratchCache;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
@@ -109,6 +111,24 @@ public class ScratchCacheEquivalenceTests : IDisposable
         Assert.Equal(report.WritingSystems.LiveCount, report.WritingSystems.ValueEqualCount);
         Assert.True(report.IsUsableForWritingSystemSensitiveWork,
             "the file path is the control: it should be equivalent to live on every axis, including writing systems");
+    }
+
+    [Fact]
+    public void FileCopyPath_DoesNotCopyAnOpenPairedMotifStore()
+    {
+        var projectName = Path.GetFileNameWithoutExtension(_fwDataPath);
+        var project = new ProjectLocator(_fwDataPath, projectName);
+        var databasePath = Path.Combine(Path.GetDirectoryName(_fwDataPath)!, projectName + ".motif.db");
+        using var database = MotifDatabase.OpenOwned(databasePath, project, MotifSchema.CurrentSchema, new Version(1, 0));
+        using (database.OpenConnection()) { }
+
+        var destRoot = Path.Combine(_tempRoot, "file-scratch-with-store");
+        using var scratch = new ScratchCacheFactory().CreateFromFileCopy(_fwDataPath, destRoot);
+
+        var scratchFolder = Path.Combine(destRoot, projectName);
+        Assert.False(File.Exists(Path.Combine(scratchFolder, projectName + ".motif.db")));
+        Assert.False(File.Exists(Path.Combine(scratchFolder, projectName + ".motif.db.use.lock")));
+        Assert.False(File.Exists(Path.Combine(scratchFolder, projectName + ".motif.db.owner.lock")));
     }
 
     /// <summary>
