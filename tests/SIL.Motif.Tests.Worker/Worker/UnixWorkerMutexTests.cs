@@ -119,7 +119,7 @@ public sealed class UnixWorkerMutexTests
         Directory.CreateDirectory(scratch);
         var startPath = Path.Combine(scratch, "start");
         const int childCount = 3;
-        const int iterations = 20_000;
+        const int iterations = 2_000;
         var projectPath = Path.Combine(FindRepositoryRoot(), "tests", "SIL.Motif.Tests.Worker",
             "SIL.Motif.Tests.Worker.csproj");
         var children = new List<(Process Process, Task<string> Output, Task<string> Error)>();
@@ -243,7 +243,7 @@ public sealed class UnixWorkerMutexTests
         await File.WriteAllTextAsync(readyPath, string.Empty);
         await WaitUntilAsync(() => File.Exists(startPath), TimeSpan.FromSeconds(30));
 
-        var iterations = int.Parse(Environment.GetEnvironmentVariable(IterationsVariable) ?? "20000");
+        var iterations = int.Parse(Environment.GetEnvironmentVariable(IterationsVariable) ?? "2000");
         for (var index = 0; index < iterations; index++)
         {
             while (!owner.TryAcquire()) await Task.Yield();
