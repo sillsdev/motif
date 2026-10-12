@@ -73,6 +73,9 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
         command.CommandText = "SELECT COUNT(*) FROM Receipts WHERE ProposalId = $proposal;";
         command.Parameters.AddWithValue("$proposal", added.Value.DraftId);
         Assert.Equal(1L, (long)command.ExecuteScalar()!);
+
+        using (var cache = new FwDataProjectLoader().LoadScratchCache(path))
+            Assert.Contains("review-word", ApprovedMorphologyReader.ReadIncorrectSpellings(cache));
     }
 
     [Theory]
@@ -84,6 +87,7 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
         var root = Path.Combine(Path.GetDirectoryName(path)!, "empty-pending-apply-worker");
         var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root);
         Assert.True(captured.Succeeded, captured.Refusal?.Message);
+        var projectBytes = File.ReadAllBytes(path);
 
         var apply = CliProcess.Start(IsolatedRunner.Options(root), "apply", "--all-pending", "--project", path);
         if (asJson) apply.ArgumentList.Add("--json");
@@ -92,6 +96,7 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
 
         Assert.Equal(0, exitCode);
         Assert.Empty(error);
+        Assert.Equal(projectBytes, File.ReadAllBytes(path));
         if (asJson)
         {
             ApplyAllPendingContract.Match("empty", exitCode, output, error);
