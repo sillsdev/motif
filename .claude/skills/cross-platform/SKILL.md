@@ -84,8 +84,8 @@ the rule was broken.
 
 - Wait on a condition or on progress, bounded by the lifetime of the thing that makes progress. A fixed
   wall-clock deadline is a flake on a slower runner.
-- CI runners have two or three cores and run slower than a desktop; `test.ps1` runs at most half as many
-  test projects at once as there are cores.
+- `test.ps1` runs at most one sixth as many test projects at once as there are processors, rounded down
+  with a minimum of two. `MOTIF_TEST_SLOTS` can cap concurrent runs across worktrees on one machine.
 - Polling a job's status by launching the CLI is slow on macOS, so a fast job can pass through a state
   between two polls. Treat any state past the one you waited for as reached.
 - Stored timestamps that SQL compares as text share one fixed-width format. For jobs that is
@@ -101,6 +101,8 @@ the rule was broken.
 - An await that resumes after the dispatcher has shut down uses `ConfigureAwait(false)`.
 - Headless clicks wait until the target's bounds are stable across layout passes
   (`WalkthroughWindow.ClickControl`).
+- Stable bounds do not mean asynchronous page data is ready. The walkthrough waits for Review entries
+  before measuring and for Analyze texts to finish loading and publishing evidence before selecting results.
 - Walkthrough pixel baselines match only the machine that captured them. CI reports pixel differences;
   `MOTIF_WALKTHROUGH_STRICT_BASELINES=1` turns them into failures on the reference machine.
 
@@ -130,6 +132,11 @@ command.
 writing-system repository, a private PanGloss slot namespace, and offline SLDR lookups
 (`MOTIF_TEST_SLDR_OFFLINE`). `test.ps1` sets `MOTIF_DEVELOPER_COMMANDS=1`; set it yourself when you run
 `dotnet test` directly, or developer CLI commands refuse with exit 2.
+
+Production access to the shared writing-system repository is serialized across processes by a lock keyed
+to the resolved repository path, so aliases to one directory share the lock. On Unix, a worker lock file
+persists after release: the lock is released and its file descriptor closes, but the file is not deleted.
+File presence alone does not mean a worker still holds the lock.
 
 ## Diagnosing a failure only Ubuntu or macOS shows
 

@@ -51,9 +51,11 @@ runs every test.
 Each process writes its console log to `bin/<Configuration>/test-results/<run>.log` and its TRX to
 `bin/<Configuration>/test-results/<run>/<run>.trx`, where `<run>` is the project name, or
 `<project>.shard<i>` for a sharded project. When a run fails, open that process's log first.
-Every test process gets a private writing-system repository (`ProcessWritingSystemRepository`). The operating
-system's shared writing-system store is shared across processes, and concurrent saves into it collide.
-Tests set `MOTIF_WRITING_SYSTEM_REPOSITORY_PATH` at module load, and child processes inherit it.
+Every test process gets a private writing-system repository (`ProcessWritingSystemRepository`). Tests set
+`MOTIF_WRITING_SYSTEM_REPOSITORY_PATH` at module load, and child processes inherit it. In production,
+Motif serializes access to the shared writing-system repository across processes with a lock keyed to its
+resolved path; tests keep their own repository so they do not change developer data or depend on other
+programs using the same lock.
 The same module initializer points SLDR at a private, empty cache (`MOTIF_TEST_SLDR_CACHE_PATH`): the
 machine-wide SLDR cache holds whatever earlier runs downloaded, about 1.4 MB of LDML per writing system, and a
 project whose writing systems carry it takes several hundred milliseconds longer to open, every time.
@@ -125,6 +127,7 @@ bin/Debug/tests/SIL.Motif.Tests.Contract.dll
 bin/Debug/tests/SIL.Motif.Tests.LibLcm.dll
 bin/Debug/tests/SIL.Motif.Tests.Commands.dll
 bin/Debug/tests/SIL.Motif.Tests.Cli.dll
+bin/Debug/tests/SIL.Motif.Tests.Mcp.dll
 bin/Debug/tests/SIL.Motif.Tests.Worker.dll
 bin/Debug/tests/SIL.Motif.Tests.App.dll
 bin/Debug/tests/SIL.Motif.Tests.App.Lifetime.dll
@@ -298,7 +301,7 @@ site step and uploads bin/Release/media.
 3. The caller supplies an already-loaded `LcmCache` and owns project lifecycle and persistence. If
    the caller does not own the project and intend to persist it, `FwDataProjectLoader.LoadScratchCache`
    is the one to call, not `LoadCache`.
-4. One complete Change Set is one atomic LibLCM unit of work. Individual operation methods never
+4. One complete Proposal is one atomic LibLCM unit of work. Individual operation methods never
    commit or open independent transactions.
 5. **Order is authoritative only where it is declared.** The runner honours declared dependencies
    (`requires`, `dependsOn`) and never infers one from array position. **No two operations in a finalized

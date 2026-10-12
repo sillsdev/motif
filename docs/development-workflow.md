@@ -79,9 +79,9 @@ own project lifecycle and persistence, and that generated LibLCM Mutation Plans 
 Do not add migration or back-compat scaffolding before 1.0. Code is implementation evidence, not
 automatic authority over a normative contract or its tests.
 
-For documentation-only changes, use proportional validation: inspect links and names, check Markdown
-structure and whitespace, and run the repository comment/build gate only when the touched file types or
-repository policy require it. The normal build commands are `./build.ps1` and `./test.ps1`. The test
+For documentation-only changes, inspect links and names and check Markdown structure and whitespace.
+Repository policy requires `./build.ps1` every time; it runs the comment and token gates before compiling.
+The normal build and test commands are `./build.ps1` and `./test.ps1`. The test
 wrapper defaults to Unit and Integration; `-System` selects System tests and `-All` selects every level.
 Use `-Project <name-or-path>` to select a test project and `-Filter <expression>` with `-Project` to
 narrow its tests. Do not claim a full .NET run for Markdown-only work.

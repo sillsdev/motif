@@ -142,7 +142,7 @@ So an API doc either says the thing, or points at something anyone can open:
 | Instead of | Write |
 |---|---|
 | `docs/adr/0016-scratch-cache-copy-not-undo.md` | `ADR 0016` — the number is the stable coordinate; the path is not |
-| `docs/change-set-contract.md` | "the Change Set contract" |
+| `docs/change-set-contract.md` | "the Proposal contract" |
 | `docs/applied-log.md` | "the applied log format" |
 | `manifest/README.md` | "the manifest README" |
 | `See docs/research/2026-08-06-parser-timing-measured.md` | the measurement itself, in a sentence |
