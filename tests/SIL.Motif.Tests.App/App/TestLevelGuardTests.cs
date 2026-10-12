@@ -18,6 +18,74 @@ public sealed class TestLevelGuardCollection
 public sealed class TestLevelGuardTests
 {
     private static readonly HashSet<string> ValidLevels = ["Unit", "Integration", "System"];
+    private static readonly BoundaryEntry[] BoundaryInventory =
+    [
+        new("SIL.Motif.Tests.App", "ReadStateCommandClientTests", TestBoundary.RealCommandClient, "Integration"),
+        new("SIL.Motif.Tests.App", "AnalysisMarkingCommandClientTests", TestBoundary.RealCommandClient, "Integration"),
+        new("SIL.Motif.Tests.App", "ReviewCommandClientTests", TestBoundary.RealCommandClient, "Integration"),
+        new("SIL.Motif.Tests.App", "ProjectSwitchDraftTests", TestBoundary.RealCommandClient, "Integration"),
+        new("SIL.Motif.Tests.App", "OverviewSpeedRealClientTests", TestBoundary.RealCommandClient, "Integration"),
+        new("SIL.Motif.Tests.App", "AdapterCancellationTests", TestBoundary.RealCommandClient, "Integration"),
+        new("SIL.Motif.Tests.App", "PendingChangesWindowActivationTests", TestBoundary.RealCommandClient, "Integration"),
+        new("SIL.Motif.Tests.App", "PendingChangesCliAppTests", TestBoundary.Process, "Integration"),
+        new("SIL.Motif.Tests.App", "SetupRealClientTests", TestBoundary.RealCommandClient, "Integration"),
+        new("SIL.Motif.Tests.App", "TextsRealClientTests", TestBoundary.RealCommandClient, "Integration"),
+        new("SIL.Motif.Tests.App", "ExternalApplyActivationRealClientTests", TestBoundary.RealCommandClient, "Integration"),
+        new("SIL.Motif.Tests.App", "CommandClientCancellationTests", TestBoundary.RealCommandClient, "Integration"),
+        new("SIL.Motif.Tests.App", "CommandStartGateTests", TestBoundary.RealCommandClient, "Integration"),
+        new("SIL.Motif.Tests.App", "PackageReleaseBoundaryIntegrationTests", TestBoundary.Process, "Integration"),
+        new("SIL.Motif.Tests.App", "AppStartupSmokeSystemTests", TestBoundary.Process, "System"),
+        new("SIL.Motif.Tests.App", "AnalyzeTextsLayoutTests", TestBoundary.FakeOnly, "Unit"),
+        new("SIL.Motif.Tests.App", "TimingSharesTests", TestBoundary.FakeOnly, "Unit"),
+        new("SIL.Motif.Tests.App", "TooltipPlacementTests", TestBoundary.FakeOnly, "Unit"),
+        new("SIL.Motif.Tests.App", "WordRowOpenLayoutSystemTests", TestBoundary.FakeOnly, "Unit"),
+        new("SIL.Motif.Tests.App", "ComparePanelSystemTests", TestBoundary.FakeOnly, "Unit"),
+        new("SIL.Motif.Tests.App", "ParsimonyDecisionChipTests", TestBoundary.FakeOnly, "Unit"),
+        new("SIL.Motif.Tests.App", "ParsimonyTabSelectionTests", TestBoundary.FakeOnly, "Unit"),
+        new("SIL.Motif.Tests.App", "TimingSourceAvailabilityTests", TestBoundary.FakeOnly, "Unit"),
+        new("SIL.Motif.Tests.App", "SettingsViewTests", TestBoundary.FakeOnly, "Unit"),
+        new("SIL.Motif.Tests.App", "EntryPointStartupTests", TestBoundary.Deterministic, "Unit"),
+        new("SIL.Motif.Tests.Cli", "RunnerSpineTests", TestBoundary.Process, "Integration"),
+        new("SIL.Motif.Tests.Cli", "PortableWorkerPackageTests", TestBoundary.Process, "Integration"),
+        new("SIL.Motif.Tests.Cli", "MorphotacticsSampleWorkflowTests", TestBoundary.RealParser, "System"),
+        new("SIL.Motif.Tests.Cli", "RewriteRuleSampleTrialTests", TestBoundary.RealParser, "System"),
+        new("SIL.Motif.Tests.Cli", "ParsimonySampleSurveySystemTests", TestBoundary.RealParser, "System"),
+        new("SIL.Motif.Tests.Cli", "ReviewNumbersTextRenderingTests", TestBoundary.FakeOnly, "Unit"),
+        new("SIL.Motif.Tests.Cli", "HelpCatalogTests", TestBoundary.FakeOnly, "Unit"),
+        new("SIL.Motif.Tests.Commands", "PanGlossInvokerTests", TestBoundary.Process, "Integration"),
+        new("SIL.Motif.Tests.Commands", "FakePanGlossSurfaceTests", TestBoundary.Process, "Integration"),
+        new("SIL.Motif.Tests.Commands", "AssessorCatalogTests", TestBoundary.FakeOnly, "Unit"),
+        new("SIL.Motif.Tests.Commands", "CurrentEvidenceQueryTests", TestBoundary.FakeOnly, "Unit"),
+        new("SIL.Motif.Tests.Commands", "ChangeFitReasonsTests", TestBoundary.FakeOnly, "Unit"),
+        new("SIL.Motif.Tests.Commands", "RetirementRecipeDeclarationTests", TestBoundary.FakeOnly, "Unit"),
+        new("SIL.Motif.Tests.Commands", "RetirementExpectationTranslationTests", TestBoundary.FakeOnly, "Unit"),
+        new("SIL.Motif.Tests.LibLcm", "OrderedGrammarSampleTests", TestBoundary.RealLcmCache, "Integration"),
+        new("SIL.Motif.Tests.LibLcm", "AllomorphRetargetSampleTests", TestBoundary.RealLcmCache, "Integration"),
+        new("SIL.Motif.Tests.LibLcm", "AllomorphReferenceFootprintSampleSurveyTests", TestBoundary.RealLcmCache, "Integration"),
+        new("SIL.Motif.Tests.LibLcm", "EvaluationSetVerificationTests", TestBoundary.RealParser, "System"),
+        new("SIL.Motif.Tests.LibLcm", "AllomorphRuleRetirementAcceptanceTests", TestBoundary.RealParser, "System"),
+        new("SIL.Motif.Tests.LibLcm", "RedundantZeroAffixRecipeAcceptanceTests", TestBoundary.RealParser, "System"),
+        new("SIL.Motif.Tests.LibLcm", "MorphotacticRecipeAcceptanceTests", TestBoundary.RealParser, "System"),
+        new("SIL.Motif.Tests.LibLcm", "ConditionReviewRecipeAcceptanceTests", TestBoundary.RealParser, "System"),
+        new("SIL.Motif.Tests.LibLcm", "FakeParserSeamIntegrationTests", TestBoundary.FakeOnly, "Unit"),
+        new("SIL.Motif.Tests.LibLcm", "PanGlossParserTests", TestBoundary.FakeOnly, "Unit"),
+        new("SIL.Motif.Tests.LibLcm", "ParsimonyFindingIdentityTests", TestBoundary.FakeOnly, "Unit"),
+        new("SIL.Motif.Tests.LibLcm", "ParsimonyDispositionQueryTests", TestBoundary.FakeOnly, "Unit"),
+        new("SIL.Motif.Tests.LibLcm", "JudgmentLineageResolverTests", TestBoundary.FakeOnly, "Unit"),
+        new("SIL.Motif.Tests.Mcp", "AgentPluginSkillTests", TestBoundary.FakeOnly, "Unit"),
+        new("SIL.Motif.Tests.Mcp", "CatalogExecutionTests", TestBoundary.FakeOnly, "Unit"),
+        new("SIL.Motif.Tests.Mcp", "DifferencePagingTests", TestBoundary.FakeOnly, "Unit"),
+        new("SIL.Motif.Tests.Mcp", "EncodingGuidesTests", TestBoundary.FakeOnly, "Unit"),
+        new("SIL.Motif.Tests.Mcp", "ParsimonyRunCancellationTests", TestBoundary.FakeOnly, "Unit"),
+        new("SIL.Motif.Tests.Mcp", "ParsimonyToolSurfaceTests", TestBoundary.FakeOnly, "Unit"),
+        new("SIL.Motif.Tests.Mcp", "ParsimonyViewByteCapTests", TestBoundary.FakeOnly, "Unit"),
+        new("SIL.Motif.Tests.Mcp", "ProjectResolverTests", TestBoundary.FakeOnly, "Unit"),
+        new("SIL.Motif.Tests.Mcp", "RefusalMappingTests", TestBoundary.FakeOnly, "Unit"),
+        new("SIL.Motif.Tests.Mcp", "ResultShaperTests", TestBoundary.FakeOnly, "Unit"),
+        new("SIL.Motif.Tests.Mcp", "ToolSurfaceTests", TestBoundary.FakeOnly, "Unit"),
+        new("SIL.Motif.Tests.Mcp", "TrialSummaryTests", TestBoundary.FakeOnly, "Unit"),
+        new("SIL.Motif.Tests.Worker", "TrialGrammarCheckTests", TestBoundary.FakeOnly, "Unit"),
+    ];
 
     [Fact]
     public void EveryTestProjectDeclaresOneDefaultLevel()
@@ -148,6 +216,54 @@ public sealed class TestLevelGuardTests
         Assert.Contains("class", failure.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void BoundaryInventoryKeepsRealSeamsOutOfUnitAndFakesInUnit()
+    {
+        var assemblies = Directory.GetFiles(AppContext.BaseDirectory, "SIL.Motif.Tests.*.dll")
+            .Where(path => !Path.GetFileNameWithoutExtension(path).EndsWith(".Support", StringComparison.Ordinal))
+            .Select(Assembly.LoadFrom)
+            .ToDictionary(assembly => assembly.GetName().Name!, StringComparer.Ordinal);
+
+        foreach (var entry in BoundaryInventory)
+        {
+            Assert.Contains(entry.Assembly, assemblies.Keys);
+            var assembly = assemblies[entry.Assembly];
+            var testClass = assembly.GetTypes().SingleOrDefault(type => type.Name == entry.ClassName);
+            Assert.NotNull(testClass);
+            Assert.True(HasTests(testClass!), $"{entry.ClassName} no longer contains tests.");
+
+            var level = ResolveClassLevel(testClass!, assembly);
+            Assert.Equal(entry.ExpectedLevel, level);
+            switch (entry.Boundary)
+            {
+                case TestBoundary.RealLcmCache:
+                case TestBoundary.RealCommandClient:
+                case TestBoundary.Process:
+                    Assert.NotEqual("Unit", level);
+                    break;
+                case TestBoundary.FakeOnly:
+                case TestBoundary.Deterministic:
+                    Assert.Equal("Unit", level);
+                    break;
+                case TestBoundary.RealParser:
+                    Assert.Equal("System", level);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(entry.Boundary), entry.Boundary, null);
+            }
+        }
+    }
+
+    [Fact]
+    public void DerivedRealParserFactsSelectSystem()
+    {
+        var method = typeof(DerivedParserFixture).GetMethod(nameof(DerivedParserFixture.Parser))!;
+        using var testCase = CaseFor(typeof(DerivedParserFixture), method);
+
+        Assert.True(TestLevelClassifier.IsSelected(testCase, "Integration", new HashSet<string> { "System" }));
+        Assert.False(TestLevelClassifier.IsSelected(testCase, "Integration", new HashSet<string> { "Integration" }));
+    }
+
     [Theory]
     [InlineData(typeof(RealClient.OverviewRealClientTests), "Integration")]
     [InlineData(typeof(RealClient.WarningsRealClientTests), "Integration")]
@@ -204,10 +320,37 @@ public sealed class TestLevelGuardTests
         public void Test() { }
     }
 
+    public abstract class DerivedParserFixture
+    {
+        [DerivedRealParserFact]
+        public void Parser() { }
+    }
+
+    public sealed class DerivedRealParserFactAttribute : RealParserFactAttribute { }
+
     private static bool HasTests(Type type) => !type.IsAbstract && type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic |
                                                                BindingFlags.Instance | BindingFlags.Static)
         .Any(method => method.GetCustomAttributes(inherit: true)
             .Any(attribute => attribute is FactAttribute));
+
+    private static string ResolveClassLevel(Type testClass, Assembly assembly)
+    {
+        var declarations = testClass.GetCustomAttributesData()
+            .Where(attribute => attribute.AttributeType == typeof(TraitAttribute))
+            .Select(attribute => attribute.ConstructorArguments)
+            .Where(arguments => arguments.Count == 2 && arguments[0].Value as string == "MotifTestLevel")
+            .Select(arguments => arguments[1].Value as string);
+        var parserClass = testClass.GetMethods(BindingFlags.Public | BindingFlags.NonPublic |
+                                               BindingFlags.Instance | BindingFlags.Static)
+            .SelectMany(method => method.GetCustomAttributes(inherit: true))
+            .Any(attribute => attribute is RealParserFactAttribute);
+        return TestLevelClassifier.ResolveLevel(testClass.FullName!,
+            TestLevelClassifier.ReadAssemblyDefault(assembly), declarations, parserClass);
+    }
+
+    private enum TestBoundary { RealLcmCache, RealCommandClient, Process, FakeOnly, Deterministic, RealParser }
+
+    private sealed record BoundaryEntry(string Assembly, string ClassName, TestBoundary Boundary, string ExpectedLevel);
 
     private static void RestoreProcessEnvironment(IDictionary originalEnvironment)
     {

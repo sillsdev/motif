@@ -47,7 +47,8 @@ public sealed class NoTestBuildCommandsTests
 
         Assert.True(preparation.Success, "test.ps1 must prepare selected artifacts before launching tests.");
         var body = preparation.Groups["body"].Value;
-        Assert.Contains("if ($All -or $System)", body, StringComparison.Ordinal);
+        Assert.Contains("Import-Module (Join-Path $repoRoot 'tools/MotifTestRunPlan.psm1') -Force", body,
+            StringComparison.Ordinal);
         Assert.Contains("$selectedProjectNames = @($testRuns | Select-Object -ExpandProperty Project -Unique)", body,
             StringComparison.Ordinal);
         Assert.Contains("Get-MotifTestArtifactRequirements -All:$All -System:$System", body,
