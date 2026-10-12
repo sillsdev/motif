@@ -589,7 +589,7 @@
   },
   {
     "name": "motif_withdraw_proposal",
-    "description": "Withdraw a Proposal. Takes back a Proposal before anyone reviews it. The linguist sees it as withdrawn and may reopen it.\nCommand: withdraw. Agent class: Draft.\nProposalId: The Proposal to withdraw.",
+    "description": "Withdraw a Proposal. Takes back an open Proposal and keeps its history. A person can reopen it later as a Draft.\nCommand: withdraw. Agent class: Draft.\nProposalId: The Proposal to withdraw.",
     "inputSchema": {
       "type": "object",
       "properties": {
