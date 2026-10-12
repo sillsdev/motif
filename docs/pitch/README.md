@@ -20,8 +20,10 @@ Everything else is formatting. Edit the words there; the build turns them into a
 ./build.ps1 -Watch         # rebuild the full deck's HTML on every save (diagrams fall back to system fonts)
 ```
 
-Needs Node.js and Chrome, Edge or Chromium. [Marp CLI](https://github.com/marp-team/marp-cli) is
-fetched by `npx` on first run.
+The committed PDFs live in `dist/A-Working-Grammar-for-Every-Language.pdf` and `dist/Motif-in-Brief.pdf`.
+From the repository root, rebuild them with `pwsh ./tools/Build-Media.ps1 -Only pitch`. This step uses
+Marp CLI through `npx`, fetched on first run, and needs Node.js plus Chrome, Edge or Chromium. HTML and
+PPTX files stay ignored. See [Marp CLI](https://github.com/marp-team/marp-cli).
 
 ## Files
 

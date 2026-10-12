@@ -11,6 +11,8 @@
     { "path": "docs/pitch/diagrams/hosts.svg", "classification": "source" },
     { "path": "docs/pitch/diagrams/loop.svg", "classification": "source" },
     { "path": "docs/pitch/diagrams/propose-confirm.svg", "classification": "source" },
+    { "path": "docs/pitch/dist/A-Working-Grammar-for-Every-Language.pdf", "classification": "generated", "step": "pitch", "outputPath": "docs/pitch/dist/A-Working-Grammar-for-Every-Language.pdf" },
+    { "path": "docs/pitch/dist/Motif-in-Brief.pdf", "classification": "generated", "step": "pitch", "outputPath": "docs/pitch/dist/Motif-in-Brief.pdf" },
     { "path": "docs/pitch/figures/baton.dc.html", "classification": "source" },
     { "path": "docs/pitch/figures/circles.dc.html", "classification": "source" },
     { "path": "docs/pitch/figures/conformance.dc.html", "classification": "source" },

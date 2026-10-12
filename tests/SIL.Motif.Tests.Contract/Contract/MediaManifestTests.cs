@@ -12,7 +12,7 @@ public sealed class MediaManifestTests
     {
         ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tif", ".tiff", ".ico", ".svg",
         ".mp4", ".webm", ".mov", ".mkv", ".avi", ".m4v", ".drawio", ".mmd", ".mermaid",
-        ".puml", ".dot",
+        ".puml", ".dot", ".pdf",
     };
 
     [Fact]

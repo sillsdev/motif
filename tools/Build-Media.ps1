@@ -15,7 +15,7 @@ $screenshotsRoot = Join-Path $mediaRoot 'screenshots'
 $walkthroughOutput = Join-Path $mediaRoot 'walkthroughs'
 $helpExport = Join-Path $mediaRoot 'help-export.json'
 $siteRoot = Join-Path $repositoryRoot 'site'
-$stepNames = @('build', 'icons', 'samples', 'screenshots', 'walkthroughs', 'help', 'media-test', 'site')
+$stepNames = @('build', 'icons', 'samples', 'screenshots', 'walkthroughs', 'help', 'media-test', 'pitch', 'site')
 
 New-Item -ItemType Directory -Path $mediaRoot -Force | Out-Null
 $selectedSteps = [System.Collections.Generic.List[string]]::new()
@@ -186,6 +186,10 @@ function Invoke-MediaStep {
         'media-test' {
             Invoke-MediaTest 'SIL.Motif.Tests.Contract' 'FullyQualifiedName~MediaManifestTests'
         }
+        'pitch' {
+            $pitchRoot = Join-Path $repositoryRoot 'docs/pitch'
+            Invoke-Native 'pwsh' @('-NoProfile', '-File', (Join-Path $pitchRoot 'build.ps1'), '-Format', 'pdf')
+        }
         'site' {
             Invoke-Native 'npm' @('ci', '--prefix', $siteRoot)
             $syncArgs = @(
@@ -211,7 +215,7 @@ function Invoke-MediaStep {
 }
 
 $failure = $null
-$steps = if ($selectedSteps.Count -eq 0) { @($stepNames | Where-Object { $_ -ne 'site' }) } else { $selectedSteps.ToArray() }
+$steps = if ($selectedSteps.Count -eq 0) { @($stepNames | Where-Object { $_ -notin @('pitch', 'site') }) } else { $selectedSteps.ToArray() }
 try {
     foreach ($step in $steps) {
         Invoke-MediaStep $step
@@ -229,6 +233,7 @@ finally {
         $screenshotsRoot,
         $walkthroughOutput,
         $helpExport,
+        (Join-Path $repositoryRoot 'docs/pitch/dist'),
         (Join-Path $siteRoot 'dist')
     )) {
         if (Test-Path -LiteralPath $output) { Write-Host "  $output" }
