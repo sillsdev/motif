@@ -9,6 +9,7 @@ using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Contract.Projects;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Baselines;
@@ -16,6 +17,8 @@ using SIL.Motif.Host.Config;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Parser;
+using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Host.Preferences;
 using SIL.Motif.Host.Store;
 using SIL.Motif.LiveHost.Baselines;
 using SIL.Motif.Runner.AppliedLog;
@@ -24,6 +27,7 @@ using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Worker.Projects;
+using SIL.Motif.Worker;
 using SIL.Motif.Worker.Scheduling;
 using SIL.Motif.Worker.Store;
 using Xunit;
@@ -142,6 +146,31 @@ public sealed class TrialJobHandlerTests : IDisposable
         Assert.False(string.IsNullOrWhiteSpace(reader.GetString(2)));
         using var response = JsonDocument.Parse(reader.GetString(3));
         Assert.True(response.RootElement.GetProperty("HasBaseline").GetBoolean());
+    }
+
+    [Fact]
+    public async Task AProposalTrialUsesTheSavedDefaultProposalChecksChoice()
+    {
+        var parserPath = FakeParser.CopyRecordingInvocations(Path.Combine(_root, "recording-parser"));
+        var defaultChecks = new FileDefaultProposalChecksStore(
+            Path.Combine(_root, "preferences", "default-proposal-checks.json"));
+        defaultChecks.SetStoredAnalyses(StoredAnalysisComparison.Off);
+        using var invoker = new PanGlossInvoker(parserPath);
+        using var lanes = new ProjectLaneRegistry(_ => _token);
+        var workspaceKey = ProjectWorkspaceKey.Compute(_project);
+        var loop = ProjectJobHandlers.CreateLoop(_database, _baselines, workspaceKey, _project,
+            new RunnerOptions { Root = Path.Combine(_root, "worker"), ParserPath = parserPath },
+            invoker, "trial-default-checks", lanes, defaultChecks);
+        var proposalId = CanonicalId.Mint("proposal/");
+        var proposalJson = BuildSetGlossProposalJson(proposalId, _seed.FirstSenseId, "saved checks");
+        SaveCommittedProposal(proposalId, proposalJson);
+        var job = CreateTrialJob(proposalJson, words: [], startRunning: false);
+
+        await loop.RunUntilIdleAsync(CancellationToken.None);
+
+        Assert.Equal(JobStatus.Completed, _jobs.Get(job.JobId)!.Status);
+        Assert.Equal(["off"], FakeParser.StoredAnalysesRequested(parserPath));
+        Assert.Contains("grammar-health", FakeParser.Invocations(parserPath));
     }
 
     [Fact]

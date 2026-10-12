@@ -6,6 +6,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Worker;
 
+[Trait("MotifTestLevel", "Unit")]
 public sealed class TrialGrammarCheckTests
 {
     [Theory]
