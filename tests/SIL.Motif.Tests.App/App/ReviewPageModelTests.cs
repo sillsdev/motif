@@ -53,10 +53,64 @@ public sealed class ReviewPageModelTests
 
         await context.OpenProjectAsync(ProjectPath);
 
+        Assert.Empty(fake.RetirementReviewRequests);
+        context.OpenPage(WorkspacePage.Review);
+
         Assert.Equal("draft/one", Assert.Single(fake.RetirementReviewRequests).DraftId);
         Assert.True(page.HasRetirementReview);
         Assert.Contains("A Dry Run is not available yet.", page.RetirementReview!.PendingEvidenceText,
             StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task HiddenReviewWaitsForThePageToOpenBeforeReadingTheDraft()
+    {
+        var fake = new FakeCommandClient();
+        fake.PendingChangesIs(new PendingChangesSnapshot(null, "none", [], []));
+        var context = NewContext(fake);
+        _ = new ReviewPageModel(context);
+
+        await context.OpenProjectAsync(ProjectPath);
+
+        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one", [], []));
+        await context.Changes.ReloadAsync();
+
+        Assert.Empty(fake.ProposalReviewRequests);
+        context.OpenPage(WorkspacePage.Review);
+        Assert.Null(Assert.Single(fake.ProposalReviewRequests).ProposalId);
+    }
+
+    [Fact]
+    public async Task HiddenReviewCountsStagedRetirementFromTheStoreAndLoadsFullReviewOnOpen()
+    {
+        var fake = new FakeCommandClient();
+        fake.PendingChangesIs(new PendingChangesSnapshot(null, "none", [], []));
+        fake.ProposalReviewEntryCount = 1;
+        fake.Review = new ProposalReviewResponse("", "sha256:intent", "sha256:revision",
+            [new GrammarChangeEntry("operation/retire", 0, "Retire a rule", ["operation/retire"], [],
+                "sha256:content", false, "RetireAllomorph", "Retirement", [], [], [])], null, null, [], 0)
+        {
+            IsDraft = true,
+            DraftName = "pending-changes",
+            IsPendingChanges = true,
+        };
+        var context = NewContext(fake);
+        var page = new ReviewPageModel(context);
+
+        await context.OpenProjectAsync(ProjectPath);
+        fake.ProposalReviewEntryCountRequests.Clear();
+        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/retirement", [], []));
+        await context.Changes.ReloadAsync();
+
+        Assert.Equal("1", page.Badge);
+        Assert.Single(fake.ProposalReviewEntryCountRequests);
+        Assert.Empty(fake.ProposalReviewRequests);
+
+        context.OpenPage(WorkspacePage.Review);
+
+        Assert.Single(fake.ProposalReviewRequests);
+        Assert.IsType<GrammarChangeEntry>(Assert.Single(page.Entries).Entry);
+        Assert.Equal("1", page.Badge);
     }
 
     [Fact]

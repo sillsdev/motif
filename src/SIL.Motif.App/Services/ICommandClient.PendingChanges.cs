@@ -35,6 +35,9 @@ public partial interface ICommandClient
     Task<CommandOutcome<ProposalReviewResponse>> ReadProposalReviewAsync(
         ProposalReviewRequest request, CancellationToken cancellationToken);
 
+    Task<CommandOutcome<ProposalReviewEntryCountResponse>> ReadProposalReviewEntryCountAsync(
+        ProposalReviewRequest request, CancellationToken cancellationToken);
+
     Task<CommandOutcome<ReviewMarkResponse>> MarkLookedAtAsync(
         ReviewMarkRequest request, CancellationToken cancellationToken);
 

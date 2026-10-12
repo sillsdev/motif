@@ -141,6 +141,24 @@ public sealed class ProposalReviewTests : IDisposable
     }
 
     [Fact]
+    public void EntryCountReadsAStagedRetirementWithoutTheLiveProjectFile()
+    {
+        using var fixture = new TrialsTests.ProjectFixture(_root);
+        var first = Op("lexical/lexSense/setGloss");
+        var second = Op("lexical/lexSense/setGloss");
+        var draft = Draft([first, second], Provenance("RetireAllomorph", first, second));
+        new ProposalRepository(fixture.Database).CreateDraft(PendingChanges.DraftName,
+            CanonicalId.Parse(draft.ProposalId), JsonSerializer.Serialize(draft, DraftOptions),
+            ProposalRoles.PendingChanges);
+        File.Delete(fixture.Project.FullFwDataPath);
+
+        var outcome = ProposalReview.ReadEntryCount(fixture.Database, fixture.Project, null);
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        Assert.Equal(1, outcome.Value!.EntryCount);
+    }
+
+    [Fact]
     public void WithoutAPendingDraftTheListIsEmpty()
     {
         using var fixture = new TrialsTests.ProjectFixture(_root);

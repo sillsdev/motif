@@ -55,6 +55,10 @@ public sealed partial class CommandClient
         ProposalReviewRequest request, CancellationToken cancellationToken) =>
         OneAtATime(() => ProposalReview.Read(request), cancellationToken);
 
+    public Task<CommandOutcome<ProposalReviewEntryCountResponse>> ReadProposalReviewEntryCountAsync(
+        ProposalReviewRequest request, CancellationToken cancellationToken) =>
+        OneAtATime(() => ProposalReview.ReadEntryCount(request), cancellationToken);
+
     public Task<CommandOutcome<ReviewMarkResponse>> MarkLookedAtAsync(
         ReviewMarkRequest request, CancellationToken cancellationToken) =>
         OneAtATime(() => ReviewMarks.Set(request), cancellationToken);

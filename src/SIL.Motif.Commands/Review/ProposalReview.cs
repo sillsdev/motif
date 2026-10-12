@@ -39,6 +39,14 @@ public static class ProposalReview
             (database, project) => Read(database, project, request.ProposalId));
     }
 
+    /// <summary>Counts a Proposal's Draft entries using only its Motif store.</summary>
+    public static CommandOutcome<ProposalReviewEntryCountResponse> ReadEntryCount(ProposalReviewRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText,
+            (database, project) => ReadEntryCount(database, project, request.ProposalId));
+    }
+
     /// <summary>Reads the list inside a store session the caller already holds.</summary>
     public static CommandOutcome<ProposalReviewResponse> Read(
         MotifDatabase database, ProjectLocator project, string? proposalId)
@@ -73,6 +81,46 @@ public static class ProposalReview
         }
     }
 
+    /// <summary>Counts entries from a store session without reading the live project or calculating fits.</summary>
+    public static CommandOutcome<ProposalReviewEntryCountResponse> ReadEntryCount(
+        MotifDatabase database, ProjectLocator project, string? proposalId)
+    {
+        ArgumentNullException.ThrowIfNull(database);
+        ArgumentNullException.ThrowIfNull(project);
+        OperationRegistryBootstrap.Initialize();
+        var repository = new ProposalRepository(database);
+        ProposalRecord? record;
+        try
+        {
+            record = proposalId is null
+                ? repository.FindPendingChangesDraft()
+                : repository.Get(CanonicalId.Parse(ProposalCommands.NormalizeId(proposalId)));
+        }
+        catch (Exception exception) when (exception is ArgumentException or KeyNotFoundException)
+        {
+            return CommandOutcome<ProposalReviewEntryCountResponse>.Refused(
+                ProposalCommands.ProposalLoadRefusal(exception));
+        }
+        if (record is null)
+            return CommandOutcome<ProposalReviewEntryCountResponse>.Success(new ProposalReviewEntryCountResponse(0));
+
+        try
+        {
+            var draft = record.DraftName is not null
+                ? ProposalCommands.DeserializeDraft(record.ProposalJson!)
+                : ReadFinalizedDraft(repository, record);
+            return CommandOutcome<ProposalReviewEntryCountResponse>.Success(
+                new ProposalReviewEntryCountResponse(CountEntries(draft)));
+        }
+        catch (Exception exception) when (exception is InvalidDataException or JsonException or
+                                              NotSupportedException or ContractParseException)
+        {
+            return CommandOutcome<ProposalReviewEntryCountResponse>.Refused(new Refusal("review.unreadable",
+                FailureReason.StoreInconsistent,
+                "This Proposal's changes could not be read as a list: " + exception.Message));
+        }
+    }
+
     /// <summary>The digest a looked-at mark is judged against: the Trial's content and Baseline, or none.</summary>
     public static string EvidenceDigestOf(TrialRecord? trial) => trial is null ? ReviewMarks.NoEvidence
         : IntentDigest.Sha256Of(System.Text.Encoding.UTF8.GetBytes(trial.IntentDigest + "|" +
@@ -80,6 +128,37 @@ public static class ProposalReview
 
     private static ProposalReviewResponse Empty { get; } =
         new("", "", "none", [], null, null, [], 0);
+
+    private static DraftDocument ReadFinalizedDraft(ProposalRepository repository, ProposalRecord record)
+    {
+        var (finalized, envelope) = repository.GetFinalized(record.ProposalId);
+        return ProposalCommands.ToDraftDocument(record.ProposalId.Value, envelope, finalized.Label, finalized.Comment);
+    }
+
+    private static int CountEntries(DraftDocument draft)
+    {
+        var present = draft.Operations.Select(operation => operation.OperationId).ToHashSet(StringComparer.Ordinal);
+        var claimed = new HashSet<string>(StringComparer.Ordinal);
+        var count = 0;
+        foreach (var change in PendingChanges.ReadChanges(draft))
+        {
+            var operations = change.OperationIds.Where(present.Contains).Distinct(StringComparer.Ordinal).ToArray();
+            if (operations.Length == 0) continue;
+            claimed.UnionWith(operations);
+            count++;
+        }
+        foreach (var provenance in draft.ComposerProvenance)
+        {
+            if (provenance.ValueKind != JsonValueKind.Object || provenance.TryGetProperty("changeId", out _))
+                continue;
+            var operations = OperationIdsOf(provenance).Where(present.Contains)
+                .Where(operation => !claimed.Contains(operation)).Distinct(StringComparer.Ordinal).ToArray();
+            if (operations.Length == 0) continue;
+            claimed.UnionWith(operations);
+            count++;
+        }
+        return count + draft.Operations.Count(operation => !claimed.Contains(operation.OperationId));
+    }
 
     private static ProposalReviewResponse Build(MotifDatabase database, ProjectLocator project,
         ProposalRepository repository, ProposalRecord record)

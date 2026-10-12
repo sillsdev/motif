@@ -36,6 +36,8 @@ public sealed class ReviewPageModel : PageModel
     private bool _walked;
     private int _reviewGeneration;
     private Task? _reviewTask;
+    private int _reviewEntryCountGeneration;
+    private int? _hiddenReviewEntryCount;
 
     public ReviewPageModel(WorkspaceContext context) : base(context)
     {
@@ -252,7 +254,8 @@ public sealed class ReviewPageModel : PageModel
         if (e.PropertyName is not (nameof(WorkspaceContext.Lens) or nameof(WorkspaceContext.EvidenceLens))) return;
         RaiseModeState();
         // A new Trial changes the evidence a looked-at mark was judged against, so the marks are read again.
-        _reviewTask = LoadReviewAsync();
+        if (e.PropertyName == nameof(WorkspaceContext.Lens) && Context.CurrentPage == WorkspacePage.Review)
+            _reviewTask = LoadReviewAsync();
     }
 
     private void RaiseModeState()
@@ -314,7 +317,6 @@ public sealed class ReviewPageModel : PageModel
         _currentIndex = keep >= 0 ? keep : 0;
         MarkCurrent();
         _reviewEntries = null;
-        Badge = _entries.Count > 0 ? _entries.Count.ToString(CultureInfo.CurrentCulture) : string.Empty;
         OnPropertyChanged(nameof(Entries));
         OnPropertyChanged(nameof(Current));
         OnPropertyChanged(nameof(HasEntries));
@@ -328,8 +330,35 @@ public sealed class ReviewPageModel : PageModel
         OnPropertyChanged(nameof(UndoPrompt));
         if (changesMoved) OnPropertyChanged(nameof(ReviewGroups));
         OnPropertyChanged(nameof(ReviewEntries));
+        var badgeCount = Context.CurrentPage != WorkspacePage.Review && _hiddenReviewEntryCount is { } hiddenCount
+            ? Math.Max(hiddenCount, Changes.Items.Count) : _entries.Count;
+        Badge = BadgeText(badgeCount);
         RaiseModeState();
         RaiseWalkState();
+    }
+
+    private static string BadgeText(int count) => count > 0 ? count.ToString(CultureInfo.CurrentCulture) : string.Empty;
+
+    private async Task RefreshHiddenReviewBadgeAsync()
+    {
+        var generation = ++_reviewEntryCountGeneration;
+        _hiddenReviewEntryCount = null;
+        if (Context.ProjectPath is not { } project)
+        {
+            Badge = string.Empty;
+            return;
+        }
+        var revision = Changes.Snapshot.Revision;
+        var proposalId = Changes.TargetProposalId;
+        var outcome = await Context.Commands.ReadProposalReviewEntryCountAsync(
+            new ProposalReviewRequest(project, proposalId), CancellationToken.None).ConfigureAwait(true);
+        if (generation != _reviewEntryCountGeneration || Context.CurrentPage == WorkspacePage.Review ||
+            !string.Equals(Context.ProjectPath, project, StringComparison.Ordinal) ||
+            !string.Equals(Changes.Snapshot.Revision, revision, StringComparison.Ordinal) ||
+            !string.Equals(Changes.TargetProposalId, proposalId, StringComparison.Ordinal) ||
+            !outcome.Succeeded || outcome.Value is not { } result) return;
+        _hiddenReviewEntryCount = result.EntryCount;
+        Badge = BadgeText(result.EntryCount);
     }
 
     // The pending changes look as they always have until the person walks them; a Proposal starts walked.
@@ -1074,9 +1103,25 @@ public sealed class ReviewPageModel : PageModel
         if (e.PropertyName == nameof(ChangesViewModel.TargetProposalId)) RaiseModeState();
         if (e.PropertyName == nameof(ChangesViewModel.Snapshot))
         {
-            _reviewTask = LoadReviewAsync();
+            if (Context.CurrentPage == WorkspacePage.Review)
+            {
+                _reviewEntryCountGeneration++;
+                _hiddenReviewEntryCount = null;
+                _reviewTask = LoadReviewAsync();
+            }
+            else
+            {
+                _reviewGeneration++;
+                _ = RefreshHiddenReviewBadgeAsync();
+            }
             ClearRetirementReview();
-            _retirementReviewTask = LoadRetirementReviewAsync();
+            if (Context.CurrentPage == WorkspacePage.Review)
+                _retirementReviewTask = LoadRetirementReviewAsync();
+            else
+            {
+                _retirementReviewGeneration++;
+                _retirementReviewCancellation?.Cancel();
+            }
             EvidenceComplete = false;
             WordsLosingApprovedAnalysis = [];
             NumbersText = NumbersPrompt;
@@ -1207,8 +1252,24 @@ public sealed class ReviewPageModel : PageModel
 
     private void OnContextPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(WorkspaceContext.CurrentPage) && Context.CurrentPage != WorkspacePage.Review)
-            ReleaseContext();
+        if (e.PropertyName == nameof(WorkspaceContext.CurrentPage))
+        {
+            if (Context.CurrentPage == WorkspacePage.Review)
+            {
+                _reviewEntryCountGeneration++;
+                _hiddenReviewEntryCount = null;
+                _reviewTask = LoadReviewAsync();
+                _retirementReviewTask = LoadRetirementReviewAsync();
+            }
+            else
+            {
+                ReleaseContext();
+                _reviewGeneration++;
+                _reviewEntryCountGeneration++;
+                _retirementReviewGeneration++;
+                _retirementReviewCancellation?.Cancel();
+            }
+        }
         if (e.PropertyName == nameof(WorkspaceContext.ProjectName)) OnPropertyChanged(nameof(ProjectName));
         if (e.PropertyName == nameof(WorkspaceContext.ProjectPath))
         {
@@ -1267,6 +1328,8 @@ public sealed class ReviewPageModel : PageModel
         _walked = false;
         ReleaseContext();
         _reviewGeneration++;
+        _reviewEntryCountGeneration++;
+        _hiddenReviewEntryCount = null;
         SetReview(null);
         _retirementReviewGeneration++;
         _retirementReviewCancellation?.Cancel();

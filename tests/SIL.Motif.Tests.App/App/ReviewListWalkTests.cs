@@ -610,6 +610,7 @@ public sealed class ReviewListWalkTests
         var context = NewContext(fake);
         var page = new ReviewPageModel(context);
         await context.OpenProjectAsync(ProjectPath);
+        context.OpenPage(WorkspacePage.Review);
         await context.OpenProposalAsync(ProposalId, CancellationToken.None);
         await page.LoadReviewAsync();
         return (fake, context, page);

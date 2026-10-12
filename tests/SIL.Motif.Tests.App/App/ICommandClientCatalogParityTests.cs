@@ -74,13 +74,20 @@ public sealed class ICommandClientCatalogParityTests
         nameof(ICommandClient.ReadParsimonyReportAsync),
     };
 
+    private static readonly IReadOnlyDictionary<string, string> ReadsViaCataloguedCommand =
+        new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            [nameof(ICommandClient.ReadProposalReviewEntryCountAsync)] = "proposal review",
+        };
+
     [Fact]
     public void EveryClientMethodMapsToACataloguedCommandOrAStoreFreeRead()
     {
         var methods = typeof(ICommandClient).GetMethods()
             .Where(method => method.Name != nameof(ICommandClient.BeginUsageAction))
             .ToDictionary(method => method.Name, StringComparer.Ordinal);
-        var accountedFor = CataloguedCommands.Keys.Concat(ReadsThatNeverWriteTheStore).ToArray();
+        var accountedFor = CataloguedCommands.Keys.Concat(ReadsThatNeverWriteTheStore)
+            .Concat(ReadsViaCataloguedCommand.Keys).ToArray();
 
         Assert.Equal(methods.Keys.Order(StringComparer.Ordinal), accountedFor.Order(StringComparer.Ordinal));
         Assert.Empty(CataloguedCommands.Keys.Intersect(ReadsThatNeverWriteTheStore, StringComparer.Ordinal));
@@ -93,6 +100,13 @@ public sealed class ICommandClientCatalogParityTests
 
             Assert.Equal(descriptor.RequestType, method.GetParameters()[0].ParameterType);
             Assert.Equal(descriptor.ResponseType, outcome.GetGenericArguments().Single());
+        }
+
+        foreach (var (methodName, commandName) in ReadsViaCataloguedCommand)
+        {
+            var method = methods[methodName];
+            var descriptor = Assert.Single(CommandCatalog.All, command => command.Name == commandName);
+            Assert.Equal(descriptor.RequestType, method.GetParameters()[0].ParameterType);
         }
     }
 }

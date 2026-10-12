@@ -8,6 +8,7 @@ namespace SIL.Motif.Tests.App;
 public sealed partial class FakeCommandClient
 {
     public List<ProposalReviewRequest> ProposalReviewRequests { get; } = [];
+    public List<ProposalReviewRequest> ProposalReviewEntryCountRequests { get; } = [];
     public List<ReviewMarkRequest> ReviewMarkRequests { get; } = [];
     public List<RemoveOperationsRequest> RemoveOperationsRequests { get; } = [];
     public List<ReopenRequest> ReopenRequests { get; } = [];
@@ -15,6 +16,7 @@ public sealed partial class FakeCommandClient
 
     /// <summary>The review list the fake returns; marks and removals edit it as the real commands would.</summary>
     public ProposalReviewResponse Review { get; set; } = new("", "", "none", [], null, null, [], 0);
+    public int? ProposalReviewEntryCount { get; set; }
 
     public Refusal? RemoveOperationsRefusal { get; set; }
 
@@ -26,6 +28,13 @@ public sealed partial class FakeCommandClient
     {
         ProposalReviewRequests.Add(request);
         return Completed(Review);
+    }
+
+    public Task<CommandOutcome<ProposalReviewEntryCountResponse>> ReadProposalReviewEntryCountAsync(
+        ProposalReviewRequest request, CancellationToken cancellationToken)
+    {
+        ProposalReviewEntryCountRequests.Add(request);
+        return Completed(new ProposalReviewEntryCountResponse(ProposalReviewEntryCount ?? _pending.Changes.Count));
     }
 
     public Task<CommandOutcome<ReviewMarkResponse>> MarkLookedAtAsync(
