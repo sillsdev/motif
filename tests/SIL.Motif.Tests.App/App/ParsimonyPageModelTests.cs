@@ -7,7 +7,6 @@ using SIL.Motif.Commands.Handoff;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract;
-using SIL.Motif.Contract;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Parsimony;
@@ -82,6 +81,10 @@ public sealed class ParsimonyPageModelTests
         Assert.Equal(ParsimonyPageState.NoReport, page.State);
         Assert.Equal("No Parsimony Report yet.", page.Message);
         Assert.False(string.IsNullOrWhiteSpace(page.NextStep));
+        Assert.Contains("Ask an AI assistant with Motif tools", page.NextStep, StringComparison.Ordinal);
+        Assert.Contains("motif parsimony --project \"<project.fwdata>\" --measure all --wait", page.NextStep,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("Advanced AI tools", page.NextStep, StringComparison.Ordinal);
         Assert.Empty(fake.ShowParsimonyReportRequests);
     }
 

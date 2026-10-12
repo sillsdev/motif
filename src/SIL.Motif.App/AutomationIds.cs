@@ -28,6 +28,8 @@ public static class AutomationIds
     public const string ParsimonyAsk = "motif-parsimony-ask";
     public const string ParsimonyReturn = "motif-parsimony-return";
     public const string ParsimonyActionMessage = "motif-parsimony-action-message";
+    /// <summary>The staged-decision link to Review changes.</summary>
+    public const string ParsimonyReviewChanges = "motif-parsimony-review-changes";
     /// <summary>A finding's decision, shown as the window's chip beside its text.</summary>
     public const string ParsimonyDecision = "motif-parsimony-decision";
     /// <summary>The Suppressed decision of one revision.</summary>

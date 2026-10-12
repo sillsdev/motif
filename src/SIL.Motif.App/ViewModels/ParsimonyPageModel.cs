@@ -180,6 +180,10 @@ public sealed record ParsimonyEvidence(
 public sealed partial class ParsimonyPageModel : PageModel
 {
     private const string NoReportMessage = "No Parsimony Report yet.";
+    private const string NoReportNextStep = "Ask an AI assistant with Motif tools to run every Parsimony measure for " +
+        "this project, or run this in the CLI after replacing the project path:\n" +
+        "motif parsimony --project \"<project.fwdata>\" --measure all --wait\n" +
+        "Then come back here. Opening this page never starts a check; it reads the stored Report.";
     private const string NoRecordTypesMessage = "This project's Notebook has no record types, so a decision has nowhere to go. " +
         "Add one in FieldWorks, then reopen this page.";
     private const string StagedNote = "Staged in pending changes. Nothing is written to FieldWorks until Apply.";
@@ -314,6 +318,10 @@ public sealed partial class ParsimonyPageModel : PageModel
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasActionMessage))]
     private string _actionMessage = string.Empty;
+
+    /// <summary>Whether the last action staged a change that can be reviewed before Apply.</summary>
+    [ObservableProperty]
+    private bool _hasStagedAction;
 
     /// <summary>The record type a decision is recorded under; the person picks one when there are several.</summary>
     [ObservableProperty]
@@ -486,6 +494,7 @@ public sealed partial class ParsimonyPageModel : PageModel
         }
         SelectionMessage = string.Empty;
         ActionMessage = string.Empty;
+        HasStagedAction = false;
         _selectedSuppressedKey = null;
         _selectedFindingId = row.Finding.FindingId;
         MoveSelection();
@@ -509,6 +518,7 @@ public sealed partial class ParsimonyPageModel : PageModel
         }
         SelectionMessage = string.Empty;
         ActionMessage = string.Empty;
+        HasStagedAction = false;
         _selectedFindingId = null;
         _selectedSuppressedKey = key;
         MoveSelection();
@@ -754,7 +764,7 @@ public sealed partial class ParsimonyPageModel : PageModel
         {
             State = ParsimonyPageState.NoReport;
             Message = NoReportMessage;
-            NextStep = "Start a Parsimony check from the Advanced AI tools, then come back here. This page only reads what that check stored.";
+            NextStep = NoReportNextStep;
         }
         else
         {
@@ -960,6 +970,7 @@ public sealed partial class ParsimonyPageModel : PageModel
             if (!IsCurrent(_readGeneration, path)) return;
             if (!outcome.Succeeded)
             {
+                HasStagedAction = false;
                 ActionMessage = outcome.Refusal!.Message;
                 return;
             }
@@ -968,6 +979,7 @@ public sealed partial class ParsimonyPageModel : PageModel
             ReasonText = string.Empty;
             QuestionText = string.Empty;
             ActionMessage = StagedNote;
+            HasStagedAction = true;
             if (_rowsByFinding.TryGetValue(row.Finding.FindingId, out var staged)) staged.Disposition = StatusOf(row);
             Evidence = BuildEvidence(row.Finding, row.Reason, row.PreviousEvidenceDigest is not null);
         }
@@ -998,11 +1010,13 @@ public sealed partial class ParsimonyPageModel : PageModel
             if (!IsCurrent(_readGeneration, path)) return;
             if (!outcome.Succeeded)
             {
+                HasStagedAction = false;
                 ActionMessage = outcome.Refusal!.Message;
                 return;
             }
             _stagedReturns[row.RecordId] = row.RevisionId;
             ActionMessage = "Return to Active is staged. " + StagedNote;
+            HasStagedAction = true;
             if (_suppressedByKey.TryGetValue(row.RevisionId, out var shown)) shown.ReturnLabel = ReturnStagedLabel;
         }
         finally

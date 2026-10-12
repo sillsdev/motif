@@ -1,6 +1,7 @@
 using Avalonia.Input;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
+using SIL.Motif.Commands;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
@@ -13,6 +14,32 @@ public sealed class ReviewPageModelTests
 {
     private const string ProjectPath = @"C:\projects\one.fwdata";
     private const string InternalId = "12345678-1234-1234-1234-123456789abc";
+
+    [Fact]
+    public async Task ReviewBadgeCountsAStagedParsimonyJudgment()
+    {
+        var operation = "operation/parsimony-decision";
+        var entry = new GrammarChangeEntry(operation, 0, "Record a decision on a Parsimony finding", [operation],
+            [], "sha256:decision", false, "RecordParsimonyDisposition", "1 decision", [], [], []);
+        var fake = new FakeCommandClient
+        {
+            Review = new ProposalReviewResponse(string.Empty, string.Empty, "revision/one", [entry], null, null, [], 0)
+            {
+                IsPendingChanges = true,
+                IsDraft = true,
+                DraftName = PendingChanges.DraftName,
+            },
+        };
+        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one", [], []));
+        var context = NewContext(fake);
+        var page = new ReviewPageModel(context);
+        await context.OpenProjectAsync(ProjectPath);
+        await page.LoadReviewAsync();
+
+        Assert.Equal("1", page.Badge);
+        Assert.Equal("RecordParsimonyDisposition", Assert.IsType<GrammarChangeEntry>(
+            Assert.Single(page.Entries).Entry).Composer);
+    }
 
     [Fact]
     public async Task OpeningAStagedRetirementDraftLoadsItsReviewStatus()

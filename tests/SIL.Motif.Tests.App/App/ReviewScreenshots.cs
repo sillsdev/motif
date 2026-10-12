@@ -305,6 +305,51 @@ public sealed class ReviewScreenshots
     }
 
     [ScreenshotFact]
+    public void CaptureReviewWithStagedParsimonyJudgment()
+    {
+        var folder = Environment.GetEnvironmentVariable(ScreenshotFactAttribute.FolderVariable)!;
+        Directory.CreateDirectory(folder);
+
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+            var operation = "operation/parsimony-judgment";
+            var title = "Record a decision on repeated ad hoc restrictions";
+            var fake = new FakeCommandClient
+            {
+                Review = new ProposalReviewResponse(string.Empty, string.Empty, "revision/one",
+                [new GrammarChangeEntry(operation, 0, title, [operation], [], "sha256:decision", false,
+                    "RecordParsimonyDisposition", "1 decision", [], [], [])], null, null, [], 0)
+                {
+                    IsPendingChanges = true,
+                    IsDraft = true,
+                    DraftName = "pending",
+                },
+            };
+            fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one", [], []));
+            var (workspace, window) = await OpenAsync(fake);
+            try
+            {
+                var page = workspace.PageModel<ReviewPageModel>();
+                workspace.CurrentPage = WorkspacePage.Review;
+                await page.LoadReviewAsync();
+                PageScreenshots.Settle(window);
+
+                Assert.Equal("1", page.Badge);
+                Assert.Contains(page.Entries, entry => entry.Title == title && entry.IsGrammar);
+                Assert.Contains(window.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
+                    text.IsEffectivelyVisible && text.Text == title);
+                SaveAll(window, folder, "review-parsimony-judgment");
+            }
+            finally
+            {
+                Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
+                window.Close();
+            }
+        }, TimeSpan.FromMinutes(3));
+    }
+
+    [ScreenshotFact]
     public void CaptureRetirementProposalReview()
     {
         var folder = Environment.GetEnvironmentVariable(ScreenshotFactAttribute.FolderVariable)!;

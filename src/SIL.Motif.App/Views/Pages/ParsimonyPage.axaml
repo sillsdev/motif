@@ -186,6 +186,9 @@
         <views:CopyableTextBlock Classes="parsimonyMessage" Text="{Binding ActionMessage}" TextWrapping="Wrap"
                                  IsVisible="{Binding HasActionMessage}"
                                  AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParsimonyActionMessage}" />
+        <HyperlinkButton Classes="reviewLink" Content="Review changes" Command="{Binding ShowPageCommand}"
+                         CommandParameter="{x:Static vm:WorkspacePage.Review}" IsVisible="{Binding HasStagedAction}"
+                         AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParsimonyReviewChanges}" />
       </StackPanel>
       </ScrollViewer>
     </Grid>

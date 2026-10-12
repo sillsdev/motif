@@ -4,6 +4,7 @@ using Avalonia.Media;
 using Avalonia.VisualTree;
 using SIL.Motif.App;
 using SIL.Motif.App.ViewModels;
+using SIL.Motif.App.Views;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
@@ -39,6 +40,61 @@ public sealed class ParsimonyTabSelectionTests
                 page.ShowActiveCommand.Execute(null);
                 PageScreenshots.Settle(window);
                 Assert.Equal("Active", SelectedTabName(window));
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, TimeSpan.FromMinutes(2));
+    }
+
+    [Fact]
+    public void AStagedDecisionLinksToReviewChanges()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData(advancedAiModeEnabled: true,
+                configure: (fake, _) => ParsimonyStateScreenshots.Configure(fake, "pending-keep"));
+            try
+            {
+                workspace.CurrentPage = WorkspacePage.Parsimony;
+                var page = workspace.PageModel<ParsimonyPageModel>();
+                Assert.True(page.SelectFinding(page.Rows.First(row => !row.IsHeader).Link!));
+                await page.KeepCommand.ExecuteAsync(null);
+                PageScreenshots.Settle(window);
+
+                var link = Assert.Single(window.GetVisualDescendants().OfType<HyperlinkButton>(), button =>
+                    AutomationProperties.GetAutomationId(button) == AutomationIds.ParsimonyReviewChanges);
+                Assert.True(link.IsEffectivelyVisible);
+                Assert.Equal("Review changes", link.Content);
+                link.Command!.Execute(link.CommandParameter);
+
+                Assert.Equal(WorkspacePage.Review, workspace.CurrentPage);
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, TimeSpan.FromMinutes(2));
+    }
+
+    [Fact]
+    public void EmptyStateShowsCopyableAssistantAndCliInstructions()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData(advancedAiModeEnabled: true,
+                configure: (fake, _) => ParsimonyStateScreenshots.Configure(fake, "empty"));
+            try
+            {
+                workspace.CurrentPage = WorkspacePage.Parsimony;
+                PageScreenshots.Settle(window);
+
+                var guidance = Assert.Single(window.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
+                    text.IsEffectivelyVisible && text.Text?.Contains("motif parsimony", StringComparison.Ordinal) == true);
+                var text = guidance.Text ?? string.Empty;
+                Assert.Contains("Ask an AI assistant with Motif tools", text, StringComparison.Ordinal);
+                Assert.DoesNotContain("Advanced AI tools", text, StringComparison.Ordinal);
             }
             finally
             {
