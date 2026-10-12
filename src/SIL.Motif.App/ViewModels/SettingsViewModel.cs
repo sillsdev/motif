@@ -210,6 +210,9 @@ internal sealed partial class SettingsViewModel : ObservableObject
     public string PanGlossVersion => _windowReport.PanGlossVersion;
     public string OperatingSystemText => _windowReport.OperatingSystem;
     public string DataRoot => _applicationFacts.ManagedDataRoot;
+    public string DataRootDisplay => DataRoot
+        .Replace("/", "/\u200B", StringComparison.Ordinal)
+        .Replace("\\", "\\\u200B", StringComparison.Ordinal);
     public string DataFolderActionText => OperatingSystem.IsWindows() ? "Show in Explorer"
         : OperatingSystem.IsMacOS() ? "Show in Finder" : "Open folder";
     public string ParsingLead => $"These limits are saved with {ProjectName}'s Selection. Setup chose them; " +

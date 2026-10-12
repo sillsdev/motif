@@ -41,7 +41,8 @@
             </ListBox.ItemTemplate>
           </ListBox>
         </Border>
-        <Grid Grid.Column="1" RowDefinitions="*,Auto">
+        <Grid x:Name="SettingsContent" Grid.Column="1" RowDefinitions="*,Auto"
+              SizeChanged="OnSettingsContentSizeChanged">
           <Grid>
             <ScrollViewer Classes="settingsContentScroll" IsVisible="{Binding !IsKeyboardShortcutsSelected}"
                           VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
@@ -392,11 +393,13 @@
 
             <StackPanel IsVisible="{Binding IsAboutSelected}" Classes="settingsPage">
               <TextBlock Classes="settingsGroupHeading" Text="About Motif" />
-              <Border Classes="settingsAboutRow"><Grid Classes="settingsAboutRow" ColumnDefinitions="Auto,*">
+              <Border Classes="settingsAboutRow"><Grid Classes="settingsAboutRow" ColumnDefinitions="Auto,*"
+                    RowSpacing="{DynamicResource Intent.Space.Compact}">
                 <TextBlock Classes="settingsAboutLabel" Text="Motif" />
                 <TextBlock Grid.Column="1" Classes="settingsAboutValue" Text="{Binding MotifVersion}" />
               </Grid></Border>
-              <Border Classes="settingsAboutRow"><Grid Classes="settingsAboutRow" ColumnDefinitions="Auto,*">
+              <Border Classes="settingsAboutRow"><Grid Classes="settingsAboutRow" ColumnDefinitions="Auto,*"
+                    RowSpacing="{DynamicResource Intent.Space.Compact}">
                 <TextBlock Classes="settingsAboutLabel" Text="PanGloss" />
                 <StackPanel Grid.Column="1">
                   <TextBlock Classes="settingsAboutValue" Classes.warning="{Binding PanGlossNotFound}"
@@ -405,15 +408,19 @@
                              IsVisible="{Binding PanGlossNotFound}" TextWrapping="Wrap" />
                 </StackPanel>
               </Grid></Border>
-              <Border Classes="settingsAboutRow"><Grid Classes="settingsAboutRow" ColumnDefinitions="Auto,*">
+              <Border Classes="settingsAboutRow"><Grid Classes="settingsAboutRow" ColumnDefinitions="Auto,*"
+                    RowSpacing="{DynamicResource Intent.Space.Compact}">
                 <TextBlock Classes="settingsAboutLabel" Text="Operating system" />
-                <TextBlock Grid.Column="1" Classes="settingsAboutValue" Text="{Binding OperatingSystemText}" />
+                <TextBlock Grid.Column="1" Classes="settingsAboutValue" Text="{Binding OperatingSystemText}"
+                           TextWrapping="Wrap" />
               </Grid></Border>
-              <Border Classes="settingsAboutRow"><Grid Classes="settingsAboutRow" ColumnDefinitions="Auto,*">
+              <Border Classes="settingsAboutRow"><Grid Classes="settingsAboutRow" ColumnDefinitions="Auto,*"
+                    RowSpacing="{DynamicResource Intent.Space.Compact}">
                 <TextBlock Classes="settingsAboutLabel" Text="Where Motif keeps its data" />
-                <Grid Grid.Column="1" ColumnDefinitions="*,Auto"
+                <Grid x:Name="SettingsAboutDataRow" Classes="settingsAboutDataRow" Grid.Column="1"
+                      ColumnDefinitions="*,Auto" RowSpacing="{DynamicResource Intent.Space.Compact}"
                       ColumnSpacing="{DynamicResource Intent.Space.Compact}">
-                  <TextBlock Classes="settingsAboutValue" Text="{Binding DataRoot}" TextWrapping="Wrap" />
+                  <TextBlock Classes="settingsAboutValue" Text="{Binding DataRootDisplay}" TextWrapping="Wrap" />
                   <Button Grid.Column="1" Classes="settingsLink" Content="{Binding DataFolderActionText}"
                           Click="OnOpenDataFolderRequested" AutomationProperties.Name="Open Motif data folder" />
                 </Grid>

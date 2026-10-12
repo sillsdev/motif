@@ -7,6 +7,7 @@ using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Media;
+using Avalonia.Media.Imaging;
 using Avalonia.Styling;
 using Avalonia.VisualTree;
 using SIL.Motif.App.Services;
@@ -764,6 +765,106 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
         finally
         {
             RestoreTheme(priorTheme);
+            DeleteSettingsPath(settingsPath);
+        }
+    }
+
+    [Fact]
+    public void AboutGroupFitsLongRuntimeValuesAt1040And150PercentZoom()
+    {
+        const string operatingSystem = "Microsoft Windows 10.0.26300";
+        var dataRoot = Path.Combine(Path.GetTempPath(), "linguist", "projects", "motif", "managed",
+            "parser", "artifacts", "language", "review", "long-folder-name-0123456789");
+        var facts = new ApplicationFacts("0.2.0", "0.8.3", operatingSystem, false, true, dataRoot);
+        var settingsPath = NewSettingsPath();
+        try
+        {
+            avalonia.Invoke(() =>
+            {
+                var (workspace, window) = FakeComposedWindow.Create(settingsFilePath: settingsPath,
+                    applicationFacts: facts);
+                try
+                {
+                    window.Width = 1040;
+                    window.Height = 780;
+                    window.Show();
+                    var popup = OpenSettings(window);
+                    var settings = Assert.IsType<SettingsViewModel>(popup.DataContext);
+                    var groups = popup.FindControl<ListBox>("SettingsGroups")!;
+                    groups.SelectedIndex = GroupSlugs.Length - 1;
+                    settings.ZoomPercent = 150;
+
+                    foreach (var (theme, themeName) in new[]
+                    {
+                        (WindowThemeChoice.Light, "light"),
+                        (WindowThemeChoice.Dark, "dark"),
+                    })
+                    {
+                        settings.ThemeChoice = theme;
+                        PageScreenshots.Settle(window);
+
+                        var scroll = popup.GetVisualDescendants().OfType<ScrollViewer>()
+                            .Single(item => item.Classes.Contains("settingsContentScroll"));
+                        var visibleText = popup.GetVisualDescendants().OfType<TextBlock>()
+                            .Where(text => text.IsEffectivelyVisible).ToArray();
+                        var operatingSystemLabel = Assert.Single(visibleText,
+                            text => text.Text == "Operating system");
+                        var operatingSystemValue = Assert.Single(visibleText,
+                            text => text.Text == operatingSystem);
+                        var dataRootLabel = Assert.Single(visibleText,
+                            text => text.Text == "Where Motif keeps its data");
+                        var dataRootValue = Assert.Single(visibleText,
+                            text => text.Text?.Replace("\u200B", "", StringComparison.Ordinal) == dataRoot);
+                        var openFolder = Button(popup, "Open Motif data folder");
+
+                        Assert.Equal(TextWrapping.Wrap, operatingSystemValue.TextWrapping);
+                        LayoutAssertions.AssertTextFits(operatingSystemValue);
+                        Assert.True(scroll.Extent.Width <= scroll.Viewport.Width + 0.5,
+                            "The About group overflows the Settings page horizontally.");
+                        var operatingSystemLabelPoint = operatingSystemLabel.TranslatePoint(default, scroll);
+                        var operatingSystemValuePoint = operatingSystemValue.TranslatePoint(default, scroll);
+                        Assert.True(operatingSystemValuePoint!.Value.Y >= operatingSystemLabelPoint!.Value.Y +
+                            operatingSystemLabel.Bounds.Height - 0.5,
+                            $"The operating-system value should follow its label when the page is narrow. " +
+                            $"Content width={popup.FindControl<Grid>("SettingsContent")!.Bounds.Width:0.#}; " +
+                            $"label={operatingSystemLabelPoint.Value}; value={operatingSystemValuePoint.Value}; " +
+                            $"compact={operatingSystemLabel.Classes.Contains("compact")}; " +
+                            $"breakpoint={Application.Current!.FindResource("Component.Settings.AboutStackBreakpoint")}.");
+
+                        var dataRootLabelPoint = dataRootLabel.TranslatePoint(default, scroll);
+                        var dataRootValuePoint = dataRootValue.TranslatePoint(default, scroll);
+                        var openFolderPoint = openFolder.TranslatePoint(default, scroll);
+                        Assert.True(dataRootValuePoint!.Value.Y >= dataRootLabelPoint!.Value.Y +
+                            dataRootLabel.Bounds.Height - 0.5,
+                            "The data-folder path should follow its label when the page is narrow.");
+                        Assert.True(openFolderPoint!.Value.Y >= dataRootValuePoint.Value.Y +
+                            dataRootValue.Bounds.Height - 0.5,
+                            "The folder action should appear below the path.");
+                        Assert.True(openFolderPoint.Value.X >= -0.5 &&
+                            openFolderPoint.Value.X + openFolder.Bounds.Width <= scroll.Viewport.Width + 0.5,
+                            "The folder action is clipped horizontally.");
+                        LayoutAssertions.AssertCurrent(popup);
+
+                        if (Environment.GetEnvironmentVariable(ScreenshotFactAttribute.FolderVariable) is { Length: > 0 } folder)
+                        {
+                            Directory.CreateDirectory(folder);
+                            using var frame = TopLevel.GetTopLevel(popup)?.CaptureRenderedFrame() ??
+                                throw new InvalidOperationException("No Settings frame rendered for the About capture.");
+                            frame.Save(Path.Combine(folder,
+                                $"settings-about-long-values-1040-150-{themeName}.png"),
+                                PngBitmapEncoderOptions.Default);
+                        }
+                    }
+                }
+                finally
+                {
+                    window.Close();
+                    workspace.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                }
+            });
+        }
+        finally
+        {
             DeleteSettingsPath(settingsPath);
         }
     }

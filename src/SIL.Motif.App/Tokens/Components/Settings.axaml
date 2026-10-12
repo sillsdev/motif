@@ -9,6 +9,8 @@
     <StaticResource x:Key="Component.Settings.ContentPadding" ResourceKey="Primitive.Inset.24_16_24_20" />
     <StaticResource x:Key="Component.Settings.HeaderPadding" ResourceKey="Primitive.Inset.16_12_16_0" />
     <StaticResource x:Key="Component.Settings.LabelColumnWidth" ResourceKey="Primitive.Size.240" />
+    <StaticResource x:Key="Component.Settings.CompactLabelMinWidth" ResourceKey="Primitive.Size.1" />
+    <StaticResource x:Key="Component.Settings.AboutStackBreakpoint" ResourceKey="Primitive.Size.520" />
     <StaticResource x:Key="Component.Settings.KeyColumnWidth" ResourceKey="Primitive.GridLength.140" />
     <StaticResource x:Key="Component.Settings.KeyRadius" ResourceKey="Primitive.Radius.3" />
     <StaticResource x:Key="Component.Settings.KeyPadding" ResourceKey="Primitive.Inset.6_0_6_0" />
@@ -268,6 +270,9 @@
     <Setter Property="MinWidth" Value="{DynamicResource Component.Settings.LabelColumnWidth}" />
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Body}" />
     <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="TextBlock.settingsAboutLabel.compact">
+    <Setter Property="MinWidth" Value="{DynamicResource Component.Settings.CompactLabelMinWidth}" />
   </Style>
   <Style Selector="TextBlock.settingsAboutValue">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Body}" />

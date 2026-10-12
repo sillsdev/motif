@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -13,6 +14,8 @@ namespace SIL.Motif.App.Views;
 /// <summary>The Settings flyout attached to the window's gear button.</summary>
 public sealed partial class SettingsPopupView : UserControl
 {
+    private bool? _aboutRowsAreCompact;
+
     /// <summary>Raised when a person asks to close the Settings flyout.</summary>
     public event EventHandler? CloseRequested;
     /// <summary>Raised when a person opens the page-specific Help flyout.</summary>
@@ -36,6 +39,60 @@ public sealed partial class SettingsPopupView : UserControl
     }
 
     private SettingsViewModel? Settings => DataContext as SettingsViewModel;
+
+    private void OnSettingsContentSizeChanged(object? sender, SizeChangedEventArgs e)
+    {
+        var breakpoint = (double)Application.Current!.FindResource("Component.Settings.AboutStackBreakpoint")!;
+        var compact = e.NewSize.Width < breakpoint;
+        if (_aboutRowsAreCompact == compact) return;
+        _aboutRowsAreCompact = compact;
+        foreach (var row in this.GetVisualDescendants().OfType<Grid>()
+                     .Where(grid => grid.Classes.Contains("settingsAboutRow")))
+            SetAboutRowLayout(row, compact);
+
+        if (this.FindControl<Grid>("SettingsAboutDataRow") is { } dataRow)
+            SetAboutDataRowLayout(dataRow, compact);
+    }
+
+    private static void SetAboutRowLayout(Grid row, bool compact)
+    {
+        var label = row.Children.OfType<Control>()
+            .Single(control => control.Classes.Contains("settingsAboutLabel"));
+        var value = row.Children.OfType<Control>().Single(control => !ReferenceEquals(control, label));
+        label.Classes.Set("compact", compact);
+
+        row.ColumnDefinitions.Clear();
+        row.ColumnDefinitions.Add(new ColumnDefinition(compact ? GridLength.Star : GridLength.Auto));
+        if (!compact) row.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+        row.RowDefinitions.Clear();
+        row.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+        if (compact) row.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+
+        Grid.SetColumn(label, 0);
+        Grid.SetRow(label, 0);
+        Grid.SetColumn(value, compact ? 0 : 1);
+        Grid.SetRow(value, compact ? 1 : 0);
+    }
+
+    private static void SetAboutDataRowLayout(Grid row, bool compact)
+    {
+        var value = row.Children.OfType<TextBlock>().Single(control => control.Classes.Contains("settingsAboutValue"));
+        var button = row.Children.OfType<Button>().Single();
+        row.ColumnDefinitions.Clear();
+        row.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+        if (!compact) row.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+        row.RowDefinitions.Clear();
+        row.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+        if (compact) row.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+
+        Grid.SetColumn(value, 0);
+        Grid.SetRow(value, 0);
+        Grid.SetColumn(button, compact ? 0 : 1);
+        Grid.SetRow(button, compact ? 1 : 0);
+        button.HorizontalAlignment = compact
+            ? Avalonia.Layout.HorizontalAlignment.Left
+            : Avalonia.Layout.HorizontalAlignment.Right;
+    }
 
     /// <summary>Moves focus to the currently selected group when the flyout opens.</summary>
     public void FocusSelectedGroup() => this.FindControl<ListBox>("SettingsGroups")?.Focus(NavigationMethod.Tab);
