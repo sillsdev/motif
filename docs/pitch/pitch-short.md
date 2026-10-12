@@ -16,7 +16,7 @@ A working demonstration of tools for FieldWorks grammars, built on forty years o
 
 <div class="scripts"><span lang="am">ቋንቋ</span><span lang="ar" dir="rtl">لغة</span><span lang="hi">भाषा</span><span lang="my">ဘာသာစကား</span><span lang="en">language</span></div>
 
-###### SIL Global · HermitCrab, PanGloss and Motif · September 2026
+###### SIL Global · HermitCrab, PanGloss and Motif · October 2026
 
 ---
 
@@ -63,9 +63,9 @@ The linguistics is sound. What gets harder as a grammar grows is everything arou
 
 # Motif today: a working demonstration
 
-**Motif** is a demonstration, not a finished product: a desktop application and command-line tool that shows, on the FieldWorks project a team already uses, what these tools could be. It runs on Windows, macOS and Linux.
+**Motif** is a desktop and command-line demonstration for the FieldWorks project a team already uses. Invited testers have a Windows installer, with macOS and Linux previews. It opens projects and backups; large Texts and word lists load as you scroll.
 
-### Seven pages in the window
+### The main pages in the window
 
 ![](figures/window.dc.html)
 
@@ -85,9 +85,9 @@ An author marks analysis changes in Texts. Motif tries them on a copy of the pro
 
 ### The AI Handoff
 
-One click writes five small files: grammar, texts, the latest results with traces, a helper script and a short guide. The author drags them into any AI chat, which explains in plain language why a word failed and what to change. The full project never leaves the machine.
+One click writes the grammar, selected texts, available results and diagnostics, a helper script and a short guide. The author chooses what to share with an AI chat, which can explain why a word failed. Motif does not send the files.
 
-> **Not yet** Support for a team's daily work, Proposals across the whole grammar, reviewed in the window, and a finished way back from the assistant's advice to a reviewed change.
+> **Still a demonstration** The beta measures and stages analysis changes. Advanced AI work is taking shape in current source; daily use and FieldWorks integration need pilot teams.
 
 ---
 
@@ -96,7 +96,7 @@ One click writes five small files: grammar, texts, the latest results with trace
 
 # The grammar-improvement loop
 
-PanGloss measures, Motif shows, an AI assistant drafts, and a person decides. Steps 1 to 3 can be seen working in the demonstration today, and so can review and apply for analysis changes.
+PanGloss measures, Motif shows, an AI assistant drafts, and a person decides. Analysis changes already follow this loop. In current development, connected assistants can also draft, try and revise supported grammar changes before handing them over.
 
 ![](diagrams/loop.svg)
 
@@ -104,11 +104,26 @@ PanGloss measures, Motif shows, an AI assistant drafts, and a person decides. St
 
 **What the author needs** A good understanding of their language, and the judgement to say whether a proposed change is right.
 
-**What makes it fast** Results in seconds; diagnostics that point at the problem; an assistant that reads traces so the author does not have to.
+**What makes it fast** Parallel parsing; diagnostics that point at the problem; an assistant that reads traces so the author does not have to.
 
-**What keeps it honest** The grammar is tuned, never the parser. Every change has an author and a reason, and is dry-run before it lands.
+**What keeps it honest** The grammar is tuned, never the parser. Changes are tried on a copy; the assistant cannot Apply. A person decides what lands.
 
 </div>
+
+---
+
+<!-- _class: cards dense -->
+<!-- header: Coming next -->
+
+# Coming next: from advice to checked changes
+
+Work taking shape beyond the released beta, with the same rule throughout: the linguist decides.
+
+- **Connect an assistant** Advanced AI mode lets Claude or Codex read Known projects and draft supported grammar changes as Proposals. The assistant can Dry Run, Trial, read the differences, revise and Finalize. It cannot Apply.
+- **Find grammar worth tidying** Parsimony points to duplication, broad conditions and listed alternates that a sound rule might explain. Each finding names its evidence and limits. A linguist can keep it, ask a question or defer it. Recipes guide supported fixes through checked Proposals; the page never repairs the grammar itself.
+- **Review what would change** A Proposal's Trial measures a copy of the project. The evidence and word-card work is in place; a complete window showing today beside the Proposal is still being finished.
+
+> **Next proof** Try the whole workflow with pilot teams: do the suggestions preserve valid readings, avoid forbidden ones, and help people improve their grammars?
 
 ---
 
@@ -121,11 +136,11 @@ PanGloss measures, Motif shows, an AI assistant drafts, and a person decides. St
 
 ### Faithful to HermitCrab
 
-Dozens of grammars that trace the contours of the parser hold PanGloss to HermitCrab's answers. Where the two differ, the difference is written up and tracked. It reads FieldWorks projects directly, so every existing FLEx grammar keeps working.
+Grammar fixtures that trace the contours of the parser hold PanGloss to HermitCrab's answers. Where the two differ, the difference is written up and tracked. It reads FieldWorks projects directly. Documented differences and unsupported patterns remain visible; compatibility is checked, not assumed.
 
 ### Faster, never by guessing
 
-Better algorithms are built in HermitCrab and SIL.Machine and shared both ways. PanGloss's own long-term gains come from Rust: careful memory use, every processor core at work, and an engine that runs almost anywhere.
+Better algorithms are shared with HermitCrab and SIL.Machine. Parallel batches now spread words across several threads; Motif uses at most half the machine. Difficult single words can still dominate the wait.
 
 <div class="break"></div>
 
@@ -133,13 +148,22 @@ Better algorithms are built in HermitCrab and SIL.Machine and shared both ways. 
 
 - **Timing** for every word, with runaway words stopped and reported
 - **Statistics**: where the time goes, and which rules never fire
-- **Grammar health**: problems such as an affix with no slot, which can slow every word
+- **Grammar health**: structural problems and stored analyses lost to authored rules; unfinished checks are reported
 
-### Runs anywhere
+### Native releases; more hosts ahead
 
 ![](figures/surfaces.dc.html)
 
 > **Why a port** Every hour already spent on a FLEx grammar is kept, and every answer can be checked against the original.
+
+<!--
+Measured parallel-batch example: Motif 0.2.0-beta002 release notes record 300 Mbugwe words on a
+20-processor Windows machine at 1,608 s before and 424 s after, with identical analyses.
+One capped word still took 397 s. This is throughput evidence, not a general Rust-versus-C#
+speedup or evidence that the 50× Phase 1 target has been met.
+Source: docs/release-notes/0.2.0-beta002.md; commit e83791a74.
+-->
+
 
 ---
 
@@ -180,8 +204,8 @@ Once grammars are fast and easy to build, they can work in **Paratext**, for bac
 
 1. **Plan together** with the FieldWorks and HermitCrab maintainers, so speedups and tools flow both ways.
 2. **Choose pilot teams**: five to ten translation projects with a FieldWorks lexicon, interlinear texts and a grammar under way.
-3. **Publish a baseline** of today's parse speed and coverage on their data.
-4. **Finish the loop**, from the assistant's advice to a reviewed change, on real projects.
+3. **Publish a baseline** of today's parse speed and Text Coverage on their data.
+4. **Prove the loop with pilot teams**, from the assistant's advice to a checked Proposal and a person's Apply.
 5. **Bring it home**: move what Motif has demonstrated into FieldWorks.
 
 <div class="break"></div>

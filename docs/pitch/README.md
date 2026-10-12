@@ -8,7 +8,7 @@ SIL Global's: landscape letter pages, SIL blues, and SIL's own open fonts, with 
 word in several scripts, each in its SIL font.
 
 There are two decks. **`pitch.md`** is the full paper, *A Working Grammar for Every Language*.
-**`pitch-short.md`** is *Motif in Brief*: eight pages on what the Motif demonstration shows today and where it goes.
+**`pitch-short.md`** is *Motif in Brief*: nine pages on what the Motif demonstration shows today and where it goes.
 Everything else is formatting. Edit the words there; the build turns them into a PDF and an HTML page.
 
 ## Build
@@ -63,8 +63,8 @@ geometry. To change one, edit its SVG in `diagrams/` directly.
 
 Most pages carry one figure from `figures/`. Each is a Claude Design artboard, kept verbatim from the canvas
 [Pitch image options](https://claude.ai/artifact/EjB9HVrNXq69gK6djdRjra), page *Deck figures (in use)*, where
-`figures/NAME.dc.html` is the artboard `fig-NAME`. The canvas's other pages hold the options that were not chosen. One exception: `figures/flourishing.dc.html`
-was written by hand in the same artboard shape and is not on the canvas yet.
+`figures/NAME.dc.html` is the artboard `fig-NAME`. The canvas's other pages hold the options that were not chosen. `figures/flourishing.dc.html`
+was written by hand in the same artboard shape and is not on the canvas yet. The Handoff figure's file names and sharing note have been refreshed in this checkout to match the product.
 
 A figure is a line of its own: `![](figures/tools.dc.html)`, with `wide` to span both columns of a `cols` page
 or `narrow` on a full-width page. `build.ps1` inlines the artboard's markup unscaled, so it is drawn at the size

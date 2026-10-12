@@ -1,19 +1,168 @@
 # Repository facts for the “Working grammar for every language” pitch
 
-Snapshot: source was inspected on 2026-09-29. The checked refs were PanGloss ac13fc17, this Motif pitch worktree f77998e0, Machine a4b29742, and FieldWorks 089eb9027. Citations below use repository-relative paths; measurements and status statements are tied to those checked copies.
+Reviewed on 2026-10-12, covering work from October 4 through the latest commits on October 10.
+Source refs: Motif `a709b96bf`, PanGloss `45eabfd6`. Two Luna reviews inspected history and
+implementation; this fact sheet distinguishes source behavior, published releases, measured examples,
+and future plans. It is not a record of a fresh product test run.
 
-## 1. PanGloss in one paragraph
+## What has reached testers
 
-PanGloss is a Rust morphological parser based on SIL.Machine’s HermitCrab. It reads FieldWorks language data and grammar formats so parsing can run outside the FieldWorks desktop process. Its full HermitCrab-style search is the normal analysis path; a finite-state transducer (FST) path is an experimental/guarded proposer that still asks HermitCrab to confirm candidates. The repository calls the Rust work a “line-for-line port,” but its own audit describes behavioral conformance as the meaningful contract and allows implementation details to diverge. (PanGloss README.md:3–10, 55–73; PanGloss docs/hermitcrab-rust-port-audit.md:1–15.)
+Motif remains a working demonstration. [Beta002](https://github.com/sillsdev/motif/releases/tag/v0.2.0-beta002)
+was published October 10, with Windows Setup, Linux x64 AppImage preview and macOS arm64 ZIP preview.
+The Windows package needs no developer checkout or .NET SDK. Unix previews do not establish compatibility
+with every installation; automatic updates are not enabled. The release includes PanGloss 0.8.1.
+The later AI and Proposal work below is in current source, not evidenced as part of that beta.
 
-## 2. Compatibility
+PanGloss [0.8.3](https://github.com/sillsdev/PanGloss/releases/tag/v0.8.3) was published October 10,
+with Windows x64, Linux x64 and macOS arm64/x64 binaries and SHA-256 files. Publication and asset names
+were verified from GitHub's release API on October 12. Current Motif source pins 0.8.3; its release
+manifest checks both executable identity and the formats Motif consumes. PanGloss 0.8.0 was tagged but
+not published after a Windows build failure; 0.8.1 repaired that path.
 
-- **HermitCrab compatibility is behavioral, not a claim that the Rust code is textually identical to C#.** PanGloss’s README uses “line-for-line,” while its port audit says the parity target is the evolving Machine conformance oracle and internal representations may diverge. Conformance fixtures test outcomes; the audit document is not itself the conformance gate. (PanGloss README.md:3–10; PanGloss docs/hermitcrab-rust-port-audit.md:1–15.)
-- **The repositories do not establish byte-identical output across all grammars or languages.** The direct profile comparison below reports matching signatures for its named words, and the recent Indonesian FST experiment reports matching signatures for one fixed set; those are bounded samples. (PanGloss rust/docs/o2-profile-findings.md:7–11; PanGloss docs/benchmark-matrix.md:114–138.)
-- **XAMPLE is an oracle for differential tests, not a grammar format PanGloss loads.** The pg-xample-oracle helper consumes JSON from a C# projector that calls real XAMPLE through FieldWorks and maps its HVOs to GUIDs. PanGloss’s accepted inputs are HermitCrab XML, project snapshot JSON, .fwdata, and .fwbackup. The ignored differential gate compares three selected words, then repeats after one phonology mutation; it requires a live FieldWorks witness and helper. (PanGloss rust/crates/pg-xample-oracle/src/lib.rs:1–16; PanGloss rust/crates/pg-parse/tests/xample_migration_differential_gate.rs:1, 15–19, 247–289, 506–529; PanGloss README.md:80–90; PanGloss rust/crates/pg-cli/src/main.rs:66–74, 333–365.)
-- **Fixture count needs a definition.** The checked conformance roots contain 44 Machine conformance projects and 39 conformance-staging projects (83 project directories total); the PanGloss README separately says 14 fixtures. These may count different fixture groupings, so quote 83 only with its two-root definition and note the README’s separate count. (PanGloss rust/crates/pg-conformance-fixtures/src/lib.rs:159–185, 284–295; PanGloss rust/crates/pg-parse/tests/conformance_fixtures_gate.rs:1–3, 20–50; PanGloss README.md:75–76.)
+Sources: Motif `docs/release-notes/0.2.0-beta002.md`, `pangloss-release.json`, commits `f688fbed0`,
+`1afdf8016`, `fc7bbaa1b`; PanGloss `CHANGELOG.md`, `.github/workflows/release.yml`.
 
-## 3. Speed measurements
+## Motif: the demonstrated workflow
+
+The beta's seven main pages are Overview, Texts, Try a Word, Timing, Warnings, Review changes and
+AI Handoff. A person stages Approved, Disapproved or Unknown Opinions one analysis at a time, adds
+parser analyses, or removes a stored analysis. Review changes shows the pending effects; Apply is
+explicit and refuses while FieldWorks owns the project. Trial and Dry Run use a copy, not the live project.
+
+The week added opening a `.fwbackup` into a separate restored folder, paged Text/Word list reads,
+shared word rows and cards, writing-system fonts and direction, editing shortcuts, Settings, a quieter
+window frame, and more reliable Apply availability. Install/update/uninstall validation runs against
+packaged applications without the SDK. These are usability and release-readiness changes, not changes
+to the two-phase vision.
+
+Sources: Motif beta001/beta002 notes; shared Help under `src/SIL.Motif.Help/Content/en/guide/`;
+commits `a3cb84d91`, `a4c508ccf`, `5c46cd7bb`, `86c8a634c`, `3ff2cb858`, `2703c3c73`, `e8174018d`,
+`6a8611f26`.
+
+### Measured parallel throughput and scale
+
+- Beta002 records 300 Mbugwe words on one 20-processor Windows machine: 1,608 s before, 424 s after,
+  with the same analyses. One capped word still took 397 s. Motif caps parsing at half the processors;
+  this is throughput evidence, not a general Rust-versus-C# speedup or the 50× Phase 1 target achieved.
+- On a 22,948-wordform/129-Text test project, opening went from about 6 s to 2.5 s and reopening from
+  4.5 s to 1.6 s. Reading 21,604 Word list rows went from 12 s to 9 s. Scrolling to the end of a
+  224-line Text became slower (about 1 s to 2.3 s). Do not quote only the gains as universal guarantees.
+
+Source: Motif `docs/release-notes/0.2.0-beta002.md`; commits `e83791a74`, `a4c508ccf`.
+
+## AI assistance: Handoff and connected tools
+
+Handoff remains a manual outbound folder. It contains the grammar, selected Texts, a helper reader and
+orientation; measured results are present for an Assessment, and a word-specific Handoff can preserve
+its displayed diagnostic without re-parsing. Current names include `parse-results.json` and
+`read_results.py`, replacing the older fact sheet's names. Motif sends no Handoff files itself; a person
+chooses what to share. Avoid a fixed five-file claim for all modes.
+
+Advanced AI mode is opt-in. While off, MCP exposes no tools. A connected assistant names a Known
+project per call; it cannot add projects or Apply. Tools come from the typed command catalog. It can
+draft supported semantic changes, Dry Run and Trial a Draft before Finalize, read a paged Difference,
+revise, then Finalize for a person's review. Evidence is bound to the exact content and Baseline;
+editing or changing the project makes earlier evidence need another try.
+
+Claude Desktop, Claude Code and Codex connection/package paths and five expert/workflow skills exist
+in source. Packaging and tool-shape tests do not prove that every installed assistant integration has
+passed the manual client workflow. The A/B evaluation harness now distinguishes agent failures, cloud
+failures and harness defects, grades Proposal effects by independent read-back, and includes failed
+Episodes in Price to solve. This is evaluation machinery, not published evidence that AI can build a
+working grammar in weeks.
+
+Sources: Help `guide/ai-handoff.md`, `guide/ai-assistants.md`; `docs/current-architecture.md`;
+ADRs 0058/0059; `plugin/CONTEXT.md`; `docs/agent-plugin-release-smoke.md`; commits `602fecffe`, `12fa14efa`.
+
+## Proposal review: infrastructure and remaining window work
+
+Current source has Trial records, named evidence sets, command queries for a Proposal's evidence,
+Trial freshness and retry handling, and word-card staging of Approved or expected parses into a Proposal.
+These effects are measured on the Proposal's scratch project and applied with its other changes.
+
+Do not claim that every page already presents today beside the Proposal. At the reviewed ref,
+`WorkspaceContext.OpenProposalAsync` has no app call site; Overview, Timing and Warnings still read
+`lens.Today` or issue project-only queries. The full navigation and paired window display remain work
+ahead. Proposal authoring covers supported composers, not arbitrary properties or the whole grammar
+surface. The FieldWorks save-boundary integration contract is specified, not evidence of a shipped
+FieldWorks integration.
+
+Sources: ADR 0061; `src/SIL.Motif.App/ViewModels/WorkspaceContext.cs`, `OverviewPageModel.cs`,
+`TimingPageModel.cs`, `WarningsPageModel.cs`; Help `guide/change-an-analysis.md`; commits `ca07aa36e`,
+`a709b96bf`; `AGENTS.md` FieldWorks integration contract.
+
+## Parsimony: advisory findings, not a grammar score
+
+Current source reads PanGloss grammar facts and project/parser evidence to report grammar tidiness:
+duplicate statements, slot structure, broad allomorph/environment conditions, and alternates that a
+sound rule might replace. Findings name their unit, scope, evidence tier and limitations. Parsimony
+(fewer/less duplicated statements) and Restrictiveness (narrow statements preserving valid data and
+limiting forbidden readings) remain distinct; no combined score decides correctness.
+
+The optional Parsimony page reads the latest stored Report without starting a check. Keep, Ask and
+Defer stage Notebook decisions for a person's Apply. Suppressed decisions can be revisited, and relevant
+evidence changes bring a finding back. Fix is a guide note, not an automatic repair button; unsupported
+updates say so. Reports do not grant Readiness or gate Apply. Repeated requests reuse Baseline evidence
+and run only the requested measure.
+
+Sources: ADR 0060; `docs/parsimony-evidence-contract.md`; Help `guide/parsimony-findings.md` and
+`guide/parsimony/`; commits `602fecffe`, `7747c392d`, `9beb760ba`, `e281ceee8`.
+
+## PanGloss: compatibility and useful diagnostics
+
+Compatibility is behavioral conformance with tracked divergences, not universal source or output
+identity. Recent releases improve named narrowing-rule, bare word-edge and right-to-left rule cases;
+some fixes address defects also present in C# HermitCrab and are proposed upstream. XAMPLE is a
+separate comparison oracle reached through FieldWorks, not an input grammar format or proof that
+PanGloss reproduces every XAMPLE interpretation.
+
+Underdefined phonology can run with reported provisional definitions; fatal/malformed source problems
+are refused. Grammar facts/stats now use schema v8, exposing compiled identities, allomorph gate facts,
+resolved environments and statement references. The README's remaining v7 sentence is stale relative
+to the format contract and changelog.
+
+Grammar health can attribute a stored analysis no longer produced to an authored phonological rule.
+Version 0.8.3 reports capped comparisons individually and work not reached under its deterministic
+budget, continuing the report. Parallel workers fold results in wordform order. Its changelog records
+4.4× faster Amharic, 3.0× Indonesian and 1.4× Sena checks; peak memory rises. These are grammar-check
+measurements, not batch-parse factors. Import drops redundant/quadratic provenance work with unchanged
+snapshot output. A separate facts-file transaction change records 423→17 ms Windows and 723→22 ms Linux;
+those times concern artifact writes alone.
+
+Sources: PanGloss `CHANGELOG.md`, `docs/grammar-diagnostics.md`, `docs/grammar-facts-format.md`,
+`docs/divergences/083-*`, `087-*`, `088-*`, `089-*`; commits `51599ba9`, `99095595`, `03bb031d`,
+`e764c789`, `2902640e`, `44ad2248`.
+
+## Speed ambitions and deployment still ahead
+
+The 50× Phase 1 figure is a target. Near-instant parsing remains a Phase 2 goal. October FST work
+expands support for repeated alpha environments, ambiguous disagreement and partial explicit classes,
+and records capability evidence/refusals. It does not supply a new cross-language performance matrix.
+The July 26 matrix refuses the three reference grammars by default; its Indonesian developer-only
+11× result on 121 words is uncertified. Do not present that historical admission result as a fresh
+October check, or support for more compiler rule shapes as general production readiness.
+
+Native CLI releases are public. C ABI, WebAssembly and Language Pack source do not establish deployment
+in FieldWorks, Paratext, browsers or keyboards. WASM consumes prebuilt packages rather than compiling
+grammars. Spell correction, general prediction, multilingual natural-phrase back-translation and a
+shared grammar library remain future work. Feature coverage remains a separate design; Parsimony and
+grammar-health findings do not prove it has shipped.
+
+Sources: PanGloss `docs/benchmark-matrix.md`, `CHANGELOG.md`, `docs/spell-checking-plan.md`,
+`docs/natural-phrases-plan.md`, `rust/README.md`; Motif `docs/grammar-coverage-design.md`, `CONTEXT.md`.
+
+## Engineering work behind the week
+
+Motif added worktree build locks/process cleanup, private writing-system repositories and scratch
+roots, explicit incomplete-search behavior, platform line-ending consistency and narrower long-running
+screenshot/sample tests. PanGloss improved managed lint/build/release gates, Windows file-identity
+handling and process cleanup. These strengthen repeatable validation; they are not fresh evidence that
+all product, real-parser, screenshot or installed-assistant checks passed for this pitch revision.
+
+Sources: Motif `AGENTS.md`, commits `635e3f3d7`, `4c79d4976`, `9eb4428b3`, `91d20f9ba`;
+PanGloss `AGENTS.md`, `CHANGELOG.md`, `rust/tools/pg.ps1`.
+
+## Earlier speed measurements
 
 These numbers come from different machines, grammars, word sets, and parser modes. Keep each with its method and date. Most are research measurements, not a product-wide performance guarantee.
 
@@ -34,76 +183,4 @@ These numbers come from different machines, grammars, word sets, and parser mode
 - The same 2026-08-06 note reports one-off FST compilation of 0.13 seconds for Indonesian, 4.9 seconds for Amharic, and 12.1 seconds for the mid-profile grammar. The FST-confirm path was measured at 12–19× faster with no timeouts in that experiment; the 6,973-word runs were about 16 seconds for mid-profile and 29 seconds for Amharic. On 40 mid-profile words, full HermitCrab took 2.3 seconds and FST propose-and-confirm took 12.3 seconds because compilation did not amortize; the estimated crossover was about 87 words mid-profile and four words for Amharic. PanGloss compare reported matching outcomes on those 40 words. (Motif docs/plan-cross-repo.md:75–97.)
 - **Earlier FST-plan measurements, 2026-07-15:** Indonesian, 121 words, 505 to 60 ms; Sena, 300 words, 106.5 to 4.52 seconds; Sena full-FST, 7,121 words, 125.9 seconds while the HermitCrab leg stopped at about 4,400 words; Amharic, 673 words, 1,000.2 to 20.7 seconds with 54 default timeouts. Seven Sena single-word speed ratios ranged from 12.6× to 1,215×, and one word had a signature mismatch. This was a noisy single-thread release run, not a reliable headline. (PanGloss docs/fst-plan/foma-fst-plan.md:292–339.)
 - **PanGloss README timings, 2026-07-17:** the table reports FST compile/per-word figures of about 85 ms/0.7 ms for Indonesian, 225 ms/29 ms for Sena, and 5.7 seconds/41 ms for Amharic; the Amharic median was reported near 1 μs with a heavy tail. Those figures lack the capability-certification detail supplied by the later matrix. (PanGloss README.md:167–172.)
-- **Latest capability check:** the latest benchmark matrix says the optimized FST refuses all three reference grammars under default capability enforcement because of MprGroupOverwrite. Indonesian alone was force-compiled with the development-only --allow-unproven flag: 121/121 signatures matched, about 11× total speed and 5× p95/worst-case speed. The matrix explicitly does not certify that as production-publishable; it reports no corresponding Amharic or Sena speed result. Thus none of the older 12–19× or 11× figures is a defensible general current-product headline. (PanGloss docs/benchmark-matrix.md:1–15, 24–110, 114–150.)
-
-## 4. Algorithms and why they may help
-
-- **FST propose-and-confirm:** proposes morpheme sequences for HermitCrab to check, aiming to avoid search while preserving its results. It is guarded; the current CLI still uses full search, and default checks refuse the reference grammars (section 3c). (PanGloss README.md:5–10, 55–73; docs/benchmark-matrix.md:24–110.)
-- **Hash-backed deduplication:** buckets candidates by canonical result hash, then retains equality checking; this replaces a costly linear duplicate scan without changing recorded output signatures. (PanGloss rust/docs/o2-profile-findings.md:3–11.)
-- **Analysis-state/file-system work and parallelism:** fixed-word-set studies report measured gains (section 3b); parallel analysis can reduce batch wall time, not single-word search time. (PanGloss docs/research/2026-09-10-hc-analysis-fs-port-measurements.md:19–59; README.md:163–164.)
-- **Memoization, pruning, recipe optimization:** memoization differs by layer and version: the Rust rule cascade is not memoized, while a separate analysis-collapse layer is. The CLI has `recipe-optimize`, but these sources do not establish its algorithm or runtime use; they also do not establish a general rule-pruning speedup. (PanGloss rust/crates/pg-rules/src/cascade.rs:1–25; rust/crates/pg-rules/src/analysis_state_key.rs:1–7; Motif docs/adr/0045-the-handoff-is-five-files-and-a-pasted-header.md:39–40, 129–130; PanGloss rust/crates/pg-cli/src/main.rs:333–350.)
-
-## 5. Deployment surfaces
-
-PanGloss source includes a native CLI, a C ABI, an inference-only WASM target, and data-only `.pgpack` language packs; local native builds are documented. The FFI currently constructs the Foma proposer directly. CI validates on Linux but does not publish releases; the reviewed repos do not establish downloadable artifacts, a hosted service, or field deployment. (PanGloss rust/crates/pg-cli/src/main.rs:333–350; rust/README.md:7–19; README.md:16–22, 31–53, 117–123; PanGloss .github/workflows/rust-ci.yml.)
-
-## 6. Statistics, health checks, and timing
-
-`batch --stats` records per-word counters and per-object facts; `stats --group never-fires` can list rules that repeatedly produce no analysis, while `stats --group object --sort no-root` surfaces forms without a lexical root. `grammar-health` reports severity-coded grammar diagnostics; `fst-health` reports FST capability without compiling or parsing a corpus. Timing reports expose slow words, limits, and work by object or rule. (PanGloss README.md:178–190; rust/crates/pg-cli/src/main.rs:52–64; Motif docs/cli-api.md:500–560.)
-
-## 7. Plans and status
-
-Spell correction (including deletion-FST candidates, keyboard/phonetic ranking, caching, and n-grams) remains a five-phase plan that names no dedicated diacritic-restoration layer, so the pitch's diacritics signal is a proposed addition. PanGloss's spell-check research notes that scalar edit distance can miscount an NFD base plus tone mark, that normalisation is not correction, and that tone marks and SIL tone-character homoglyphs break tokenisation (PanGloss docs/research/spellcheck/00-synthesis.md:111–115, 154, 358–374, 501–506; docs/research/spellcheck/sil-primary-sources.md:60–84). Grammar compilation reports characters that collide after NFD as grammar-health diagnostics, not repairs (PanGloss rust/crates/pg-grammar/src/compile/chardef.rs:68–82, 117–132). Motif normalises Selection input to NFD so equivalent encodings match: representation consistency, not accent-insensitive matching (Motif src/SIL.Motif.Commands/Assess/SelectionComposer.cs:24–36). No spell-check command appears in the CLI inventory. Natural-phrase N0–N4 are marked shipped, but the evidence is a narrow English demonstration with stated corpus gaps, not general multilingual back-translation. No general word prediction is evidenced. These repos show local builds and Motif documentation-site source, not a hosted parser or grammar-authoring service. (PanGloss docs/spell-checking-plan.md:1–56; docs/natural-phrases-plan.md:1–24; rust/crates/pg-cli/src/main.rs:333–350; README.md:31–34; Motif README.md, Documentation section.)
-
-## 8. Motif: shipped surface versus planned Proposal system
-
-- **What the first Motif window contains:** seven pages—Overview, Texts, Try a Word, Timing, Warnings, Review changes, and AI Handoff. Baseline capture and the saved Default Selection are shared project state/workflow rather than separate pages. Refresh captures the saved FieldWorks Baseline and assesses the selected words/texts. Overview summarizes Text Coverage, Accuracy, timing, and stored warnings. (Motif README.md:45–49, 326–385; Motif docs/adr/0046-pages-not-stages.md:8–12; Motif help/en/guide/overview.md:3–7.)
-- **Try a Word:** a person may type a word that is not in a Text or the project, run a trace against the current Baseline, and inspect the furthest attempt and rule steps. A capped/interrupted search is identified as incomplete, not as proof the grammar cannot parse the word. (Motif help/en/guide/try-a-word.md:1–10.)
-- **Statistics, timing, and warnings:** Overview and Timing read stored Assessment evidence. Motif’s stats verb forwards PanGloss’s stats query. Warnings read a stored PanGloss grammar-health report; grammar check runs PanGloss again. These are parser/grammar diagnostics, not feature-coverage holes. (Motif README.md:280–285; Motif docs/cli-api.md:500–560.)
-- **AI Handoff (ADR 0045):** the normal folder has five flat files: grammar.json, texts.json, assessment.json, parse_grammar_texts_assessment.py, and handoff.md. assessment.json includes selected parse traces and summaries. With --no-assess, assessment.json is absent, so the folder has four files. It excludes the full .fwdata project; the person reviews the data warning, drags files into a chat, and pastes a short generated header. This is a manual outbound handoff, not a networked AI integration. (Motif docs/adr/0045-the-handoff-is-five-files-and-a-pasted-header.md:8–16, 51–79, 84–108; Motif docs/cli-api.md:602–640.)
-- **Trace cost and limit:** traces are a second, unmerged parse, because merging hides search detail. PanGloss’s parse trace is written only at completion and does not expose its step-cap flag on the wire; ADR 0045 says Motif must not treat a clean process exit as proof that a trace is complete. (Motif docs/adr/0045-the-handoff-is-five-files-and-a-pasted-header.md:31–44, 158–185.)
-- **CLI surface:** the command catalog has 64 descriptors: 30 Released and 34 Developer. The Released surface includes open, baseline capture, assess, stats, overview, warnings, grammar check, timing, handoff, reports, and current pending-change apply. Proposal authoring/evaluation verbs such as new, add-set-gloss, compose-author-feature-structure, finalize, dry-run, and one-Proposal apply are on the Developer surface. (Motif README.md:49; Motif docs/cli-api.md:28–48, 124–140.)
-- **How an AI change can come back:** the intended return path is a semantic Proposal, not an edited Mutation Plan. In the current CLI proving path an agent/developer can create a draft, author supported semantic intent, finalize, Dry Run, and apply it. Today README’s end-to-end example is lexical/lexSense/setGloss; the plan records one early grammar Construct operation, createMsFeatures, whose parse/evaluation leg and populated feature values remain unfinished. Proposal review in the window, durable job orchestration, Apply Authorization, and the new reconciliation protocol are specified but not built. (Motif README.md:21–30, 223–241; Motif docs/plan-motif.md:154–158; Motif docs/cli-api.md:32, 41–48, 132–138.)
-- **FieldWorks integration:** still intended, not built. The planned boundary is that FieldWorks releases the saved project, invokes Motif’s apply surface, and reloads after confirmed or ambiguous results; the present proposal-level apply is not yet the final integration protocol. (Motif README.md:45–47, 117–119; Motif AGENTS.md, FieldWorks integration contract.)
-
-## 9. Coverage and completeness measures
-
-- **Parse coverage** is the share of a tested word list that parses; it does not show whether grammar features were exercised. **Motif Text Coverage** measures parsing over the project’s Default Selection and chosen Texts; **grammar coverage** reports parse coverage over a named Corpus. (Motif docs/adr/0033-three-systems-and-who-owns-which-measure.md:17–22, 128–136; CONTEXT.md:379–399.)
-- **Feature coverage** asks which declared features/combinations occur in analyses. It remains a design, not a shipped hole report. A proposed “hole” could be an over-broad rule, a missing corpus word, or an unreachable combination; the design says Motif cannot distinguish these automatically, and the transfer of software pairwise-coverage methods is unverified. (Motif CONTEXT.md:384–399; docs/adr/0033-three-systems-and-who-owns-which-measure.md:84–109; docs/grammar-coverage-design.md:8–14, 49–74, 83–105, 145–176.)
-- Machine analyses show occurrence, not correctness: two sampled projects had 8 `CmAgentEvaluation` objects across 7,646 wordforms. (Motif docs/adr/0033-three-systems-and-who-owns-which-measure.md:60–82.)
-
-## 10. Repository scale and velocity
-
-Numbers below are static counts, not tests run. Git history counts refer to the refs named at the top; source scans count declarations/fixtures and are not counts of successful executions.
-
-- PanGloss: first recorded commit 2026-07-10; 2,074 commits at ac13fc17; 26 Rust workspace crates; 2,908 literal test attributes; 83 conformance project directories (44 Machine-root plus 39 staging-root); 7 ADR Markdown files. (PanGloss git log/rev-list at ac13fc17; PanGloss rust/Cargo.toml; PanGloss rust/**/*.rs; PanGloss rust/crates/pg-conformance-fixtures/src/lib.rs:159–185, 284–295; PanGloss docs/adr/.)
-- Motif pitch worktree: first recorded commit 2026-07-23; 1,284 commits at f77998e0; 9 test projects; 2,609 [Fact]/[Theory] attributes in 501 C# test files; 50 ADR Markdown files. (Motif git log/rev-list at f77998e0; Motif Motif.sln; Motif tests/**/*.cs; Motif docs/adr/.)
-- Machine: first recorded commit 2011-05-11; 1,670 commits at a4b29742. (Machine git log/rev-list at a4b29742.)
-- FieldWorks: oldest visible commit 2012-10-02, titled “Initial commit with truncated history”; 7,434 commits at 089eb9027. Treat the oldest date as the visible-history boundary, not the project’s definitive start date. (FieldWorks git log/rev-list at 089eb9027.)
-- Recorded Co-authored-by trailer lines: PanGloss 1,176; Motif 905; Machine 31; FieldWorks 320. The checked logs include Claude, Codex/GPT, and Copilot identities. (git log --format=%B at the checked refs; counts are trailer-line counts, not unique commits or a measure of work share.)
-
-## 11. Honest limits: what the repositories do not prove
-
-- They do not establish that HermitCrab is used by fewer than ten languages or that its use is limited to Scripture. Those are deployment/adoption claims and need external, auditable usage evidence; the code and test fixtures do not supply that count. (PanGloss README.md:31–34; Machine and FieldWorks source trees; repository histories.)
-- Do not say PanGloss is a literal source-code translation, has byte-identical results for all grammars, or loads XAMPLE grammars. Its evidence is behavioral conformance plus a very small, ignored XAMPLE comparison. (PanGloss docs/hermitcrab-rust-port-audit.md:1–15; PanGloss rust/crates/pg-parse/tests/xample_migration_differential_gate.rs:1, 15–19, 247–289, 506–529; PanGloss README.md:80–90.)
-- Do not claim current general FST acceleration of 11× or 12–19×. The latest matrix refuses all three reference grammars by default; its lone 11× result uses a development-only override on Indonesian and is explicitly uncertified. (PanGloss docs/benchmark-matrix.md:24–110, 114–150.)
-- Do not say the CLI, C ABI, WASM, or packs are broadly deployed. Source exists; the checked CI/repository does not prove downloadable releases, production integrations, or a hosted parser. (PanGloss rust/README.md:7–19; PanGloss .github/workflows/rust-ci.yml; PanGloss README.md:31–34.)
-- Do not present the spell checker, general prediction, general multilingual natural phrases, or back-translation as shipped. Spell correction remains a plan; natural phrases are narrowly demonstrated and corpus gaps are stated in the plan. (PanGloss docs/spell-checking-plan.md:1–56; PanGloss docs/natural-phrases-plan.md:1–24.)
-- Do not equate PanGloss grammar-health warnings with feature coverage. Feature coverage and hole reports are separate design work, and a “hole” is not automatically an over-permissive rule. (Motif docs/grammar-coverage-design.md:8–14, 83–105, 161–176; Motif docs/cli-api.md:529–560.)
-- Do not describe Motif’s Handoff as AI automation or a return channel. It packages data for a person to share; no model call or Proposal import is specified by ADR 0045. Proposal authoring is a limited Developer CLI surface, while Proposal review in the App is still specified but not built. (Motif docs/adr/0045-the-handoff-is-five-files-and-a-pasted-header.md:20–22, 51–79; Motif README.md:21–30; Motif docs/cli-api.md:132–138.)
-- Do not imply Motif already supports the full grammar surface. The plan records one initial grammar Construct slice and 29 other Constructs not started; the current CLI Proposal example remains the lexical gloss control. (Motif README.md:223–241; Motif docs/plan-motif.md:154–158.)
-
-## Top 12 facts for the pitch
-
-1. PanGloss is a Rust HermitCrab-derived parser intended to run on FieldWorks language data outside the FieldWorks desktop process. (PanGloss README.md:3–10, 80–90.)
-2. Compatibility is established by behavior fixtures; “line-for-line” is not evidence of source identity or universal byte-identical output. (PanGloss docs/hermitcrab-rust-port-audit.md:1–15.)
-3. XAMPLE is a comparison oracle reached through a FieldWorks helper, not an input grammar format; the ignored differential gate uses three selected words. (PanGloss rust/crates/pg-xample-oracle/src/lib.rs:1–16; PanGloss rust/crates/pg-parse/tests/xample_migration_differential_gate.rs:1, 15–19, 247–289, 506–529.)
-4. The strongest direct Rust/C# speed result in these sources is one Amharic word at about 54.3 seconds in Rust versus 64.0 seconds for C#, after the Rust run improved from about 145 seconds. (PanGloss rust/docs/o2-profile-findings.md:3–11, 81–103.)
-5. Fixed-set PanGloss-internal optimizations range from 0.42× to 6.0× and 0.78× to 3.56× across separate 199-word studies; they are not general speed promises. (PanGloss docs/research/2026-09-10-hc-analysis-fs-port-measurements.md:19–59; PanGloss docs/research/2026-09-11-exact-analysis-fs-measurements.md:15–49.)
-6. Current default FST capability checks reject the three reference grammars; the 11× Indonesian result is development-only and uncertified. (PanGloss docs/benchmark-matrix.md:24–110, 114–150.)
-7. The CLI, FFI, WASM, and .pgpack sources exist, but the checked repository does not establish packaged releases or field deployment. (PanGloss rust/README.md:7–19; PanGloss README.md:31–53.)
-8. PanGloss exposes diagnostics that can direct an author to never-firing rules, rootless forms, costly rules, or FST capability limits. (PanGloss README.md:178–190; PanGloss rust/crates/pg-cli/src/main.rs:52–64; Motif docs/cli-api.md:511–527.)
-9. Spell correction is planned; English natural-phrase support is marked shipped but demonstrated narrowly, without broad corpus evidence. (PanGloss docs/spell-checking-plan.md:1–56; PanGloss docs/natural-phrases-plan.md:1–24.)
-10. Motif’s shipped window has seven pages for project measurements, text review, Try a Word traces, timings, warnings, pending-change review, and Handoff. (Motif README.md:45–49; Motif docs/adr/0046-pages-not-stages.md:8–12.)
-11. Motif Handoff is a person-shared file bundle; supported Proposal verbs can return semantic changes through a limited Developer CLI path, but AI automation and App Proposal review are not built. (Motif docs/adr/0045-the-handoff-is-five-files-and-a-pasted-header.md:51–108; Motif README.md:21–30, 223–241.)
-12. Parse/Text/grammar coverage measures how much data parses; feature coverage measures which declared grammar combinations are exercised and remains a design rather than a shipped hole report. (Motif CONTEXT.md:379–399; Motif docs/grammar-coverage-design.md:145–176; Motif docs/cli-api.md:500–560.)
+- **July 26 capability check:** that historical benchmark matrix says the optimized FST refuses all three reference grammars under default capability enforcement because of MprGroupOverwrite. Indonesian alone was force-compiled with the development-only --allow-unproven flag: 121/121 signatures matched, about 11× total speed and 5× p95/worst-case speed. The matrix explicitly does not certify that as production-publishable; it reports no corresponding Amharic or Sena speed result. Thus none of the older 12–19× or 11× figures is a defensible general current-product headline. (PanGloss docs/benchmark-matrix.md:1–15, 24–110, 114–150.)
