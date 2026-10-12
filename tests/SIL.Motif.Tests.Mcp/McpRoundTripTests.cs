@@ -1,17 +1,23 @@
 using System.IO.Pipelines;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
 using SIL.LCModel;
+using SIL.LCModel.Core.Text;
 using SIL.LCModel.Core.KernelInterfaces;
 using SIL.LCModel.DomainServices;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Baselines;
+using SIL.Motif.Commands.Review;
 using SIL.Motif.Commands.Requests;
+using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.HumanJudgments;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Parsimony;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host;
 using SIL.Motif.Host.LcmUtils;
@@ -19,9 +25,12 @@ using SIL.Motif.Host.Store;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Mcp;
 using SIL.Motif.Commands.Preferences;
+using SIL.Motif.Projection.HumanJudgments;
+using SIL.Motif.Runner.Operations;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker;
 using SIL.Motif.Worker.Projects;
+using SIL.Motif.Worker.Store;
 using Xunit;
 
 namespace SIL.Motif.Tests.Mcp;
@@ -339,6 +348,97 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public async Task ExperimentalDispositionToolsStageMeasuredChangesWithoutApplyingThem()
+    {
+        using var project = new WalkthroughProject(pristine);
+        var savedDispositions = SeedSavedDispositions(project);
+        var duplicateRules = CreateDuplicateAllomorphProhibitions(project);
+        Assert.True(BaselineCaptureCommand.Capture(
+            new BaselineCaptureRequest(project.FwDataPath), project.ManagedRoot).Succeeded);
+        var parserPath = FakeParser.CopyRecordingInvocations(Path.Combine(project.ManagedRoot, "disposition-parser"));
+        var primary = project.Seed.FirstLexemeFormId.ToString("D").ToLowerInvariant();
+        var other = project.Seed.SecondLexemeFormId.ToString("D").ToLowerInvariant();
+        FakeParser.WriteFactsFixture(parserPath, new
+        {
+            prohibitions = new[]
+            {
+                Prohibition(duplicateRules[0].ToGuid().ToString("D").ToLowerInvariant(), primary, other),
+                Prohibition(duplicateRules[1].ToGuid().ToString("D").ToLowerInvariant(), primary, other),
+            },
+        });
+        await using var runner = new InProcessRunnerLauncher(
+            new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), parserPath));
+        await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions(
+            Profile: "parsimony-experimental", Runner: runner));
+        var projectHash = HashProject(project.FwDataPath);
+
+        const string draftName = "mcp-disposition-round-trip";
+        var started = await session.CallAsync("motif_start_proposal", ("draft", draftName),
+            ("label", "Review measured dispositions"), ("comment", "Keep these choices in a Draft."));
+        var proposalId = started.GetProperty("result").GetProperty("proposalId").GetString()!;
+        AssertDraftComposers(project.FwDataPath, draftName, proposalId, []);
+        AssertProjectUnchanged(project, projectHash, savedDispositions);
+
+        var measure = await session.CallAsync("motif_run_parsimony_measure", ("measure_id", "P-adhoc-duplicate"),
+            ("evidence_scope", "project-approved"), ("wait_seconds", 120));
+        Assert.True(measure.GetProperty("ok").GetBoolean(), measure.ToString());
+        var report = measure.GetProperty("result");
+        var finding = Assert.Single(report.GetProperty("findings").EnumerateArray());
+        var findingId = finding.GetProperty("findingId").GetString()!;
+        var reportId = report.GetProperty("reportId").GetString()!;
+        AssertDraftComposers(project.FwDataPath, draftName, proposalId, []);
+        AssertProjectUnchanged(project, projectHash, savedDispositions);
+
+        var recordTypes = await session.CallAsync("motif_parsimony_record_types");
+        var recordTypeId = Assert.Single(recordTypes.GetProperty("result").GetProperty("recordTypes")
+            .EnumerateArray()).GetProperty("id").GetString()!;
+        var disposed = await session.CallAsync("motif_dispose_parsimony_finding",
+            ("report_id", reportId), ("finding_id", findingId), ("disposition", "defer"),
+            ("record_type_id", recordTypeId), ("draft", draftName), ("reason", "Compare the exact rules first."));
+        Assert.Equal("RecordParsimonyDisposition", disposed.GetProperty("result").GetProperty("composerName").GetString());
+        var afterDispose = AssertDraftComposers(project.FwDataPath, draftName, proposalId,
+            ["RecordParsimonyDisposition"]);
+        var disposalInput = afterDispose[0];
+        Assert.Equal("defer", disposalInput.GetProperty("disposition").GetString());
+        var measuredObjectId = CanonicalId.FromGuid(Guid.Parse(findingId["P-adhoc-duplicate:".Length..])).Value;
+        Assert.Equal(measuredObjectId,
+            disposalInput.GetProperty("subject").GetProperty("object").GetProperty("id").GetString());
+        AssertProjectUnchanged(project, projectHash, savedDispositions);
+
+        var revised = await session.CallAsync("motif_revise_parsimony_disposition", ("draft", draftName),
+            ("recordId", savedDispositions.ToRevise.RecordId),
+            ("expectedHeads", new[] { new
+            {
+                revisionId = savedDispositions.ToRevise.Head.RevisionId,
+                contentDigest = savedDispositions.ToRevise.Head.ContentDigest,
+            } }),
+            ("disposition", "defer"), ("reason", "The evidence needs another check."));
+        Assert.Equal("ReviseParsimonyDisposition", revised.GetProperty("result").GetProperty("composerName").GetString());
+        var afterRevision = AssertDraftComposers(project.FwDataPath, draftName, proposalId,
+            ["RecordParsimonyDisposition", "ReviseParsimonyDisposition"]);
+        var revisionInput = afterRevision[1];
+        Assert.Equal(savedDispositions.ToRevise.RecordId, revisionInput.GetProperty("recordId").GetString());
+        Assert.Equal("defer", revisionInput.GetProperty("disposition").GetString());
+        Assert.Equal("The evidence needs another check.", revisionInput.GetProperty("reason").GetString());
+        AssertProjectUnchanged(project, projectHash, savedDispositions);
+
+        var retracted = await session.CallAsync("motif_retract_parsimony_disposition", ("draft", draftName),
+            ("recordId", savedDispositions.ToRetract.RecordId),
+            ("expectedHeads", new[] { new
+            {
+                revisionId = savedDispositions.ToRetract.Head.RevisionId,
+                contentDigest = savedDispositions.ToRetract.Head.ContentDigest,
+            } }));
+        Assert.Equal("RetractParsimonyDisposition", retracted.GetProperty("result").GetProperty("composerName").GetString());
+        var afterRetraction = AssertDraftComposers(project.FwDataPath, draftName, proposalId,
+            ["RecordParsimonyDisposition", "ReviseParsimonyDisposition", "RetractParsimonyDisposition"]);
+        Assert.Equal(savedDispositions.ToRetract.RecordId, afterRetraction[2].GetProperty("recordId").GetString());
+        Assert.Equal(savedDispositions.ToRetract.Head.RevisionId,
+            afterRetraction[2].GetProperty("expectedHeads")[0].GetProperty("revisionId").GetString());
+        AssertProjectUnchanged(project, projectHash, savedDispositions);
+    }
+
+    [Fact]
     public async Task PhonologyToolsUseDraftReferencesAndReturnActionableRefusals()
     {
         using var project = new WalkthroughProject(pristine);
@@ -445,6 +545,119 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         new FwDataProjectLoader().Save(cache);
         return id;
     }
+
+    private static SavedDispositionPair SeedSavedDispositions(WalkthroughProject project)
+    {
+        using var cache = new FwDataProjectLoader().LoadCache(project.FwDataPath);
+        var fieldId = NotebookJudgmentFixture.InitializeReservedField(cache);
+        var notebook = cache.LangProject.ResearchNotebookOA;
+        var recordTypes = notebook.RecTypesOA;
+        ICmPossibility recordType = null!;
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            recordTypes ??= cache.ServiceLocator.GetInstance<ICmPossibilityListFactory>().Create();
+            notebook.RecTypesOA = recordTypes;
+            recordType = cache.ServiceLocator.GetInstance<ICmPossibilityFactory>().Create();
+            recordTypes.PossibilitiesOS.Add(recordType);
+            recordType.Name.set_String(cache.DefaultAnalWs, TsStringUtils.MakeString("Motif disposition", cache.DefaultAnalWs));
+        });
+        var projectId = CanonicalId.FromGuid(cache.LangProject.Guid).Value;
+        var values = new[]
+        {
+            CreateSavedDisposition(projectId, ParsimonyDispositionKind.Keep, "Existing choice to revise."),
+            CreateSavedDisposition(projectId, ParsimonyDispositionKind.Fix, "Existing choice to retract."),
+        };
+        foreach (var judgment in values)
+        {
+            var record = NotebookJudgmentFixture.AddRecord(cache,
+                CanonicalId.Parse(judgment.RevisionId).ToGuid(), fieldId, HumanJudgmentCodec.Format(judgment));
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () => record.TypeRA = recordType);
+        }
+        new FwDataProjectLoader().Save(cache);
+        return new SavedDispositionPair(ToSavedHead(values[0]), ToSavedHead(values[1]));
+    }
+
+    private static HumanJudgment CreateSavedDisposition(string projectId, ParsimonyDispositionKind disposition,
+        string reason)
+    {
+        var revisionId = CanonicalId.FromGuid(Guid.NewGuid()).Value;
+        return new HumanJudgment(projectId, revisionId, revisionId, [],
+            new DispositionJudgment(new ProjectJudgmentSubject(projectId), "P-adhoc-duplicate", disposition,
+                "sha256:" + new string('a', 64), "p-adhoc-duplicate/v1", "the FieldWorks project", "Duplicate rules"),
+            Reason: reason, Actor: new JudgmentActor(JudgmentActorKind.Agent));
+    }
+
+    private static SavedDisposition ToSavedHead(HumanJudgment judgment) => new(judgment.RevisionId,
+        new JudgmentPredecessor(judgment.RevisionId, HumanJudgmentCodec.LogicalDigest(judgment)));
+
+    private static CanonicalId[] CreateDuplicateAllomorphProhibitions(WalkthroughProject project)
+    {
+        using var cache = new FwDataProjectLoader().LoadCache(project.FwDataPath);
+        var prohibitions = new IMoAlloAdhocProhib[2];
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            for (var index = 0; index < prohibitions.Length; index++)
+            {
+                prohibitions[index] = cache.ServiceLocator.GetInstance<IMoAlloAdhocProhibFactory>().Create();
+                cache.LangProject.MorphologicalDataOA.AdhocCoProhibitionsOC.Add(prohibitions[index]);
+            }
+        });
+        new FwDataProjectLoader().Save(cache);
+        return prohibitions.Select(item => CanonicalId.FromGuid(item.Guid)).ToArray();
+    }
+
+    private static object Prohibition(string id, string primary, string other) => new
+    {
+        prohibitionGuid = id,
+        kind = "allomorph",
+        disabled = false,
+        adjacency = "somewhereToLeft",
+        primaryGuid = primary,
+        targetKind = "allomorph",
+        others = new[] { new { targetGuid = other, targetKind = "allomorph" } },
+        loaded = true,
+    };
+
+    private static JsonElement[] AssertDraftComposers(string projectPath, string draftName, string proposalId,
+        string[] expectedComposers)
+    {
+        var review = ProposalReview.Read(new ProposalReviewRequest(projectPath, proposalId));
+        Assert.True(review.Succeeded, review.Refusal?.Message);
+        Assert.True(review.Value!.IsDraft);
+        Assert.Equal(draftName, review.Value.DraftName);
+        Assert.Equal(expectedComposers.Length, review.Value.Entries.Count);
+
+        var draft = ProjectStoreCommand.Run(projectPath, MotifProductVersion.CurrentText, (database, _) =>
+        {
+            var record = new ProposalRepository(database).GetDraft(draftName);
+            return CommandOutcome<string>.Success(record.ProposalJson!);
+        });
+        Assert.True(draft.Succeeded, draft.Refusal?.Message);
+        using var json = JsonDocument.Parse(draft.Value!);
+        var composers = json.RootElement.GetProperty("composerProvenance").EnumerateArray().ToArray();
+        Assert.Equal(expectedComposers, composers.Select(item => item.GetProperty("composer").GetString()));
+        return composers.Select(item => item.GetProperty("input").Clone()).ToArray();
+    }
+
+    private static void AssertProjectUnchanged(WalkthroughProject project, string expectedHash,
+        SavedDispositionPair savedDispositions)
+    {
+        Assert.Equal(expectedHash, HashProject(project.FwDataPath));
+        using var cache = new FwDataProjectLoader().LoadScratchCache(project.FwDataPath);
+        var snapshot = HumanJudgmentReader.Read(cache);
+        Assert.Equal(2, snapshot.Judgments.Count);
+        Assert.Empty(snapshot.Unavailable);
+        Assert.Contains(snapshot.Judgments, item => item.RecordId == savedDispositions.ToRevise.RecordId &&
+            item.Judgment.Body is DispositionJudgment { Disposition: ParsimonyDispositionKind.Keep });
+        Assert.Contains(snapshot.Judgments, item => item.RecordId == savedDispositions.ToRetract.RecordId &&
+            item.Judgment.Body is DispositionJudgment { Disposition: ParsimonyDispositionKind.Fix });
+    }
+
+    private static string HashProject(string path) => Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path)));
+
+    private sealed record SavedDisposition(string RecordId, JudgmentPredecessor Head);
+
+    private sealed record SavedDispositionPair(SavedDisposition ToRevise, SavedDisposition ToRetract);
 
     private static CanonicalId CreateAffixSlot(WalkthroughProject project)
     {
