@@ -17,11 +17,41 @@ namespace SIL.Motif.Tests.WritingSystems;
 [Collection(LcmCacheTestCollection.Name)]
 public sealed class ProcessWritingSystemRepositoryTests
 {
+    private static readonly TimeSpan ChildHangGuard = TimeSpan.FromSeconds(90);
+
     private readonly PristineProjectFixture _pristine;
 
     public ProcessWritingSystemRepositoryTests(PristineProjectFixture pristine)
     {
         _pristine = pristine;
+    }
+
+    [Fact]
+    public void RepositoryLockNameMatchesFilesystemAliases()
+    {
+        var root = Path.Combine(BuildOutput.ProductDirectory, "RepositoryLockIdentity",
+            Guid.NewGuid().ToString("N"));
+        var repositoryPath = Path.Combine(root, "WritingSystems");
+        var aliasPath = OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
+            ? Path.Combine(root, "WRITINGSYSTEMS")
+            : Path.Combine(root, "writing-systems-link");
+        Directory.CreateDirectory(repositoryPath);
+
+        try
+        {
+            if (!OperatingSystem.IsWindows() && !OperatingSystem.IsMacOS())
+                Directory.CreateSymbolicLink(aliasPath, repositoryPath);
+
+            Assert.Equal(
+                SerializedGlobalWritingSystemRepository.GetRepositoryLockName(repositoryPath),
+                SerializedGlobalWritingSystemRepository.GetRepositoryLockName(aliasPath));
+        }
+        finally
+        {
+            try { Directory.Delete(root, recursive: true); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
     }
 
     [Fact]
@@ -58,6 +88,67 @@ public sealed class ProcessWritingSystemRepositoryTests
         finally
         {
             if (repository.Contains(tag)) repository.Remove(tag);
+        }
+    }
+
+    [Fact]
+    public async Task ConcurrentSampleBuildersKeepTheSharedWritingSystemRepositoryReadable()
+    {
+        const int rounds = 3;
+        const int buildersPerRound = 8;
+        var root = Path.Combine(BuildOutput.ProductDirectory, "ConcurrentSampleBuilders",
+            Guid.NewGuid().ToString("N"));
+        var repositoryRoot = Path.GetFullPath(Path.Combine(BuildOutput.ProductDirectory, "..", ".."));
+        var builderPath = Path.Combine(BuildOutput.ProductDirectory,
+            OperatingSystem.IsWindows() ? "SIL.Motif.SampleProjects.exe" : "SIL.Motif.SampleProjects");
+        var samplePath = Path.Combine(repositoryRoot, "samples", "synthetic-turkic", "sample.json");
+        Directory.CreateDirectory(root);
+
+        try
+        {
+            for (var round = 0; round < rounds; round++)
+            {
+                var builds = await Task.WhenAll(Enumerable.Range(0, buildersPerRound).Select(async index =>
+                {
+                    var outputRoot = Path.Combine(root, $"build-{round}-{index}");
+                    var start = new ProcessStartInfo(builderPath)
+                    {
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                    };
+                    start.ArgumentList.Add("build");
+                    start.ArgumentList.Add(samplePath);
+                    start.ArgumentList.Add(outputRoot);
+                    using var process = Process.Start(start)
+                        ?? throw new InvalidOperationException("Could not start the sample builder.");
+                    var output = process.StandardOutput.ReadToEndAsync();
+                    var error = process.StandardError.ReadToEndAsync();
+                    var exited = await WaitForChildExitAsync(process, ChildHangGuard);
+                    return (
+                        OutputRoot: outputRoot,
+                        TimedOut: !exited,
+                        ExitCode: process.HasExited ? process.ExitCode : (int?)null,
+                        Output: await CaptureChildTextAsync(output),
+                        Error: await CaptureChildTextAsync(error));
+                }));
+
+                Assert.All(builds, build =>
+                {
+                    var outcome = build.TimedOut
+                        ? $"timed out after {ChildHangGuard}"
+                        : $"exited with code {build.ExitCode}";
+                    Assert.True(!build.TimedOut && build.ExitCode == 0,
+                        $"Sample builder {outcome}.\nstderr: {build.Error}\nstdout: {build.Output}");
+                });
+                Assert.All(builds, build => Assert.True(File.Exists(Path.Combine(build.OutputRoot,
+                    "MotifSyntheticTurkic", "WritingSystemStore", "en.ldml"))));
+            }
+        }
+        finally
+        {
+            try { Directory.Delete(root, recursive: true); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
         }
     }
 
@@ -116,18 +207,11 @@ public sealed class ProcessWritingSystemRepositoryTests
             using var process = Process.Start(start)!;
             var outputTask = process.StandardOutput.ReadToEndAsync();
             var errorTask = process.StandardError.ReadToEndAsync();
-            if (!process.WaitForExit((int)TimeSpan.FromSeconds(90).TotalMilliseconds))
-            {
-                var executable = Path.GetFullPath(start.FileName);
-                var productDirectory = Path.GetFullPath(BuildOutput.ProductDirectory);
-                var repositoryRoot = Path.GetFullPath(Path.Combine(productDirectory, "..", ".."));
-                if (executable.StartsWith(Path.Combine(repositoryRoot, "bin") + Path.DirectorySeparatorChar,
-                    StringComparison.OrdinalIgnoreCase))
-                    process.Kill();
-                throw new TimeoutException($"motif open did not exit before the test timeout: {executable}");
-            }
-            var output = await outputTask;
-            var error = await errorTask;
+            var exited = await WaitForChildExitAsync(process, ChildHangGuard);
+            var output = await CaptureChildTextAsync(outputTask);
+            var error = await CaptureChildTextAsync(errorTask);
+            Assert.True(exited,
+                $"motif open did not exit before {ChildHangGuard}.\nstderr: {error}\nstdout: {output}");
 
             Assert.True(process.ExitCode == 0, $"motif open failed: {error}\n{output}");
             Assert.Equal(machineStoreBefore, SnapshotFiles(machineStore));
@@ -157,5 +241,41 @@ public sealed class ProcessWritingSystemRepositoryTests
                 File.GetLastWriteTimeUtc(path).Ticks,
                 Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path)))))
             .ToArray();
+    }
+
+    private static async Task<bool> WaitForChildExitAsync(Process process, TimeSpan timeout)
+    {
+        try
+        {
+            await process.WaitForExitAsync().WaitAsync(timeout);
+            return true;
+        }
+        catch (TimeoutException)
+        {
+            if (process.HasExited) return true;
+
+            process.Kill(entireProcessTree: true);
+            try
+            {
+                await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(15));
+            }
+            catch (TimeoutException)
+            {
+            }
+
+            return false;
+        }
+    }
+
+    private static async Task<string> CaptureChildTextAsync(Task<string> capture)
+    {
+        try
+        {
+            return await capture.WaitAsync(TimeSpan.FromSeconds(5));
+        }
+        catch (TimeoutException)
+        {
+            return "<stream did not close before the diagnostic deadline>";
+        }
     }
 }
