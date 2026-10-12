@@ -283,7 +283,7 @@ public sealed class WalkthroughArtifactTests(AvaloniaHeadlessFixture avalonia)
         var guide = HelpCatalog.Load(System.Globalization.CultureInfo.GetCultureInfo("en"))
             .GetHelpPage(HelpEntryKind.Guide, "pangloss");
         Assert.NotNull(guide);
-        Assert.Contains("PanGloss parses XAmple and HermitCrab grammars fast. Fully compatible.", guide,
+        Assert.Contains("PanGloss parses the project's grammar. Motif records parser warnings and refusals alongside the results.", guide,
             StringComparison.Ordinal);
     }
 

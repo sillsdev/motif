@@ -795,7 +795,7 @@ public static partial class ProposalCommands
             RejectableFrom, null,
             (repository, id, _) => repository.SetStatus(id, ManifestStatus.Rejected, supersededBy: null));
 
-    /// <summary>Moves a Proposal to <c>withdrawn</c>: its author took it back before anyone reviewed it.</summary>
+    /// <summary>Moves an open Proposal to <c>withdrawn</c>: its author took it back; it can be reopened as a Draft.</summary>
     public static CommandOutcome<ProposalStatusChangedResponse> Withdraw(RejectRequest request) =>
         TransitionStatus(
             request.FwDataPath, request.ProductVersion, request.ProposalId, ManifestStatus.Withdrawn,

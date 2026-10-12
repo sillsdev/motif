@@ -481,7 +481,7 @@
   },
   "withdraw": {
     "title": "Withdraw a Proposal",
-    "description": "Takes back a Proposal before anyone reviews it. The linguist sees it as withdrawn and may reopen it.",
+    "description": "Takes back an open Proposal and keeps its history. A person can reopen it later as a Draft.",
     "source": "Hand-written from command behavior."
   }
 }
