@@ -25,7 +25,7 @@ Status: `open` · `in-progress` · `fixed` · `wontfix (recorded)` · `upstream`
 
 | # | Issue | Status |
 | --- | --- | --- |
-| S1 | **The app trusts any `pangloss` executable found beside it and launches it with the parent's full environment.** Discovery has no hash or signature check, and `PanGlossInvoker` never sets `ProcessStartInfo.EnvironmentVariables`, so a file dropped into the install directory runs with the user's environment. Release work package R9's verification item is the fix; another lane is adding a minimal child environment now. | open |
+| S1 | **The app does not verify the executable it discovers beside itself against the release pin before launch.** Packaging verifies the staged PanGloss artifact, but runtime discovery only checks that the adjacent file exists; replacing that file lets an unverified parser run. The child environment is now cleared and rebuilt from an allowlist by `PanGlossProcessEnvironment`, so the original inherited-environment exposure is fixed. | open |
 | S2 | **`Refusal.Facts` carry the full local project path and the window renders them verbatim.** A pasted or screenshotted refusal can therefore leak the Windows username and folder layout. The user-facing fact should be the file name; the full path belongs in logs. | open |
 | S3 | **`HandoffWriter.Publish` and Baseline capture staging are not pinned against a reparse point at the destination.** `WorkspaceCleanup`, `PanGlossWorkspace`, and `BaselineBundleReceiver` are covered by `RequiresSymbolicLinkFact` tests, but these two staging paths are not. | open |
 

@@ -2,9 +2,9 @@
 
 > **Historical and superseded plan.** Its milestone status and architecture describe an earlier implementation stage. Use the [current architecture overview](current-architecture.md) for today's front ends, project graph, runtime targets, store boundaries and Help location; the historical details below are retained as a record.
 
-**Release 0.1.0:** A user captures a saved Baseline, assesses it, and hands the matching Baseline and
-Assessment files to ChatGPT. The [0.1.0 release work map](superpowers/plans/2026-09-15-release-1-0.md)
-governs this release: Windows x64 with bundled PanGloss, with no Proposals or project mutation.
+**Original release 0.1.0 target:** A user captures a saved Baseline, assesses it, and hands the matching
+Baseline and Assessment files to ChatGPT. The [0.1.0 release work map](superpowers/plans/2026-09-15-release-1-0.md)
+governed that target: Windows x64 with bundled PanGloss, with no Proposals or project mutation.
 The broader delivery and operation milestones below remain longer-term work, not 0.1.0 prerequisites.
 
 *Historical delivery plan. Adopted 2026-08-01 from
@@ -96,6 +96,9 @@ alternative merge design was considered and rejected is recorded once, in the
 
 ## Two scopes
 
+The command line comes first, so people can use Motif without installing a FieldWorks window integration.
+FieldWorks can later render the same results while remaining responsible for saving the project.
+
 [ADR 0020](adr/0020-cli-first-fieldworks-planned-not-built.md), as amended by ADR 0039 and
 [ADR 0040](adr/0040-one-api-the-cli.md). **Scope 1 establishes the LibLCM seams and the durable workflow
 through the CLI with an AI agent as the author. Scope 2 adds FieldWorks surfaces that render the same CLI
@@ -111,10 +114,11 @@ point — the agent-facing Layer 1 is **expected to churn** while FieldWorks is 
 What may not churn is anything hashed: Layer 0 `kind` strings, payload schemas, the canonical JSON form,
 and the digest algorithm. That boundary is ADR 0021 decision 3.
 
-Scope 2 is planned now precisely so scope 1 does not make it more expensive. The obligations that must hold
-throughout are listed as decision 3 of ADR 0020 and are build-time invariants, not intentions — with one
-narrowed by ADR 0040: `netstandard2.0` is required on **Contract alone**, which FieldWorks references to
-deserialise `motif --json`, and no longer on the Runner, which nothing outside Motif loads. The rest stand:
+Scope 2 was planned so scope 1 would not make it more expensive. In this plan's original scope, the
+obligations listed in decision 3 of ADR 0020 included `netstandard2.0` on **Contract alone**, which
+FieldWorks would reference to deserialise `motif --json`, and no longer on the Runner. ADR 0043 later
+superseded that target: every Motif project now targets only `net10.0`; Contract crosses the process
+boundary as shapes. The other historical obligations were:
 one JSON stack, the Runner never owning a cache, apply never calling `Save`, the Layer 0/Layer 1 split, and
 the applied log's unresolved Chorus caveat. Two obligations are added by ADR 0040 — the FieldWorks surface
 never opens `Project.motif.db`, and the `--json` response records must move from `Projection` into Contract
@@ -141,7 +145,8 @@ the first author, not the last. M5 is the first thing a linguist would recognise
 
 ## Status summary
 
-This table shows which user-visible capabilities work today and which still require implementation.
+This historical snapshot records which user-visible capabilities had been built and which still required
+implementation when the plan was last maintained.
 
 | Item | M | Size | Status |
 | --- | --- | --- | --- |

@@ -4,6 +4,13 @@ Velopack can package Motif and deliver updates on Windows, macOS, and Linux, but
 
 Research checked on 2026-09-26. Velopack packaging details come from its [packaging overview](https://docs.velopack.io/packaging/overview), OS guides, CLI reference, and repository. Product-specific observations come from this repository's [release script](../tools/package-release.ps1), [PanGloss release pin](../pangloss-release.json), [README](../README.md), [ICU findings](three-paths-report.md), and [ADR 0048](adr/0048-cross-platform-parser-containment.md).
 
+**Implementation update (2026-10-12).** Motif now stages the App, CLI, Worker and pinned PanGloss entry
+points together for each supported runtime identifier, with the declared SIL ICU payload and a release
+manifest. `pangloss-release.json` pins Windows x64, Linux x64, macOS x64 and macOS ARM64. The package
+workflow uses Velopack CLI 1.2.158 and runs install, invoke, update and uninstall smoke checks for the
+Windows, Linux and macOS package jobs. This update supersedes the dated staging and integration
+observations below; FieldWorks deployment ownership and native registration remain open design questions.
+
 ## 1. Outputs, locations, and install scope
 
 The pack command takes one staged directory for one platform and one main executable. It writes a full package, channel metadata (releases.<channel>.json and assets.<channel>.json), and a portable package; it writes a delta when the previous release package is available. The platform outputs are:
@@ -24,9 +31,9 @@ Velopack packages the files staged in the input directory and preserves their re
 
 On Windows, Velopack puts the versioned payload below <install-root>\current, stores Update.exe at the install root, and creates a stable root-level stub for the selected main executable. Updates replace the contents of current as a unit, so the directory path remains while its files change. A running CLI or Worker, an app whose working directory is in current, or an external process reading a file there can hold a lock. Velopack attempts to stop processes using the old payload; an unrecognized or elevated process can prevent replacement. See the [Windows layout and locking notes](https://docs.velopack.io/packaging/operating-systems/windows).
 
-For FieldWorks, selecting motif as the main executable gives it the stable Windows root stub. The current payload also contains the CLI and its adjacent Worker and PanGloss files. FieldWorks should use a configured install root or a Motif-owned discovery record, then invoke the CLI through a documented entry point; it should not treat replaceable current contents as a versioned API. macOS has an .app bundle entry in Info.plist, and Linux has a generated .desktop/AppImage entry point. The sibling arrangement can be staged inside those bundles, but verify their internal paths against real packages before FieldWorks relies on them.
+The current package workflows select `SIL.Motif.App` as the main executable, so its GUI is the installer and desktop launch target; the adjacent `motif` CLI and Worker are also staged. FieldWorks should use a configured install root or Motif-owned discovery record to locate and invoke the CLI, and should not treat replaceable package contents as a versioned API. macOS has an .app bundle entry in Info.plist, and Linux has a generated .desktop/AppImage entry point. Verify the CLI's internal path in real packages before FieldWorks relies on it.
 
-There is an important difference between the brief's intended layout and today's release script. [package-release.ps1](../tools/package-release.ps1) currently publishes separate app and cli directories, duplicates pangloss into each, includes SIL.Motif.Worker.dll but deliberately excludes a Worker apphost, and does not make the four requested executables siblings. [pangloss-release.json](../pangloss-release.json) currently pins only win-x64, although the release script accepts the four stated RIDs. Velopack adoption therefore first needs a staging decision: publish one common directory per RID with all four executable entry points, or preserve separate app/CLI layouts and document how each frontend locates its companions.
+At the 2026-09-26 research snapshot, [package-release.ps1](../tools/package-release.ps1) published separate app and CLI directories, duplicated PanGloss into each, omitted a Worker apphost, and [pangloss-release.json](../pangloss-release.json) pinned only Windows x64. The implementation update above supersedes those observations: the release script now stages the App, CLI and Worker apphosts beside the pinned parser.
 
 Velopack auto-applies a prepared newer update at startup by default when the app runs its integration startup. That is a poor time to replace files if an earlier Motif process still owns a Worker or is writing project/store state. Disable automatic apply with SetAutoApplyOnStartup(false), then apply explicitly after quiescence: no active motif apply --all-pending, Worker job, or PanGloss invocation. ADR 0048 gives Motif process-tree and worker ownership rules across OSes, but those locks coordinate Motif processes; they do not by themselves make a package update safe. See [Velopack integration](https://docs.velopack.io/integrating/overview) and [hooks](https://docs.velopack.io/integrating/hooks).
 
@@ -123,7 +130,7 @@ For a real N→N+1 update, the installed Motif app needs an update smoke mode th
         manager.ApplyUpdatesAndRestart(update);
     }
 
-The commands vpk upload local --path <feed> and vpk download local --path <feed> can move feed assets in and out of CI. Velopack's test locator covers check/download behavior but does not perform a real update install. The current Motif repository packages portable directories and has no Velopack integration or update smoke mode, so a real headless N→N+1 test requires adding that mode to an installed Motif executable. See [Velopack testing](https://docs.velopack.io/integrating/testing), [update sources](https://docs.velopack.io/integrating/update-sources), and [local feed commands](https://docs.velopack.io/distributing/self-hosting).
+The commands vpk upload local --path <feed> and vpk download local --path <feed> can move feed assets in and out of CI. Velopack's test locator covers check/download behavior but does not itself perform a real update install. At the 2026-09-26 research snapshot, Motif had no Velopack integration or update smoke mode. The implementation update above records the current package workflow's N-to-N+1 install smoke checks. See [Velopack testing](https://docs.velopack.io/integrating/testing), [update sources](https://docs.velopack.io/integrating/update-sources), and [local feed commands](https://docs.velopack.io/distributing/self-hosting).
 
 ## 8. FieldWorks fit
 
@@ -145,13 +152,13 @@ Current open issue reports worth validating against Motif's intended MSI path in
 
 ## Recommendation
 
-**Conditional go for standalone Motif distribution through Velopack; do not make it FieldWorks' sole installer yet.** A no-admin per-user Motif package and static update feed match the standalone product well. The Windows MSI option and cross-platform packaging are useful building blocks, but FieldWorks' system-wide C++/COM integration still needs an explicit installer owner. Keep that responsibility in its existing MSI/WiX path until an equivalent deployment has passed install, update, rollback, and uninstall validation. Resolve the package staging layout, PanGloss artifacts for every RID, and the SIL ICU payload before the first Velopack release.
+**Conditional go for standalone Motif distribution through Velopack; do not make it FieldWorks' sole installer yet.** A no-admin per-user Motif package and static update feed match the standalone product well. The Windows MSI option and cross-platform packaging are useful building blocks, but FieldWorks' system-wide C++/COM integration still needs an explicit installer owner. Keep that responsibility in its existing MSI/WiX path until an equivalent deployment has passed install, update, rollback, and uninstall validation.
 
 ### Gotchas ranked by severity
 
 1. **ICU semantic mismatch — release blocker.** Stock ICU 72 is not necessarily the custom SIL ICU LibLCM expects. Missing custom exports/tables can silently change normalization and string identity.
 2. **Updating while Motif work is live — data-integrity risk.** Velopack replaces the Windows current payload and tries to stop processes using it. Updates must wait for CLI, Worker, and PanGloss work to finish.
-3. **Package's single main executable — deployment design decision.** Choose whether the stable entry point is motif or the GUI and prove how FieldWorks launches the other entry point on each OS.
+3. **Package's single main executable — deployment design decision.** The current workflows select `SIL.Motif.App`; prove how FieldWorks finds and invokes the `motif` CLI companion on each OS.
 4. **Competing install owners — enterprise deployment risk.** Do not let Velopack and FieldWorks MSI manage the same install directory or disagree about machine/user scope.
 5. **Native registration — FieldWorks integration gap.** Registry, COM, services, and rich optional-feature authoring need separate MSI/WiX work or a simpler component model.
 6. **AppImage FUSE and macOS loader paths — platform acceptance risk.** Test on clean supported hosts; packaging alone does not prove native libraries load.
@@ -160,11 +167,8 @@ Current open issue reports worth validating against Motif's intended MSI path in
 
 ### Open questions for the owner
 
-- Should motif or SIL.Motif.App be the Velopack main executable, and what exact stable path will FieldWorks call?
+- What stable install-root or discovery record will FieldWorks use to locate the packaged `motif` CLI beside its `SIL.Motif.App` main executable?
 - Will FieldWorks own a bundled per-machine Motif version, or should it discover a separate per-user Motif installation?
-- Is the required release payload actually four sibling executables, given today's separate app/CLI trees and Worker library-only layout?
-- Which PanGloss artifact is pinned for Linux and macOS, and which exact SIL ICU library/data files will ship for each RID?
 - Which Windows registry, COM, file-association, or prerequisite actions must FieldWorks preserve when genericinstaller is retired?
 - Which macOS and Linux versions/distributions must run Motif, and can CI test signing, notarization, ICU loading, and AppImage FUSE behavior there?
 - What is the measured package size, and which CI system owns the signing identities and update feed credentials?
-- Should the release gate require a real N→N+1 update/restart/uninstall test for all four RIDs before Velopack becomes the default?
