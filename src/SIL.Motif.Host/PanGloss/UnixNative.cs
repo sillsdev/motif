@@ -169,36 +169,16 @@ internal sealed class UnixFileLock : IDisposable
         if (!_held) return;
 
         Exception? failure = null;
-        var registryDescriptor = -1;
         try
         {
-            registryDescriptor = OpenFile(_registryPath, _machineWide, "worker lock registry");
-            AcquireRegistry(registryDescriptor);
-            if (_access == WorkerLockAccess.Shared)
-            {
-                if (UnixNative.Flock(_fileDescriptor, UnixNative.LockExclusive | UnixNative.LockNonBlocking) == 0)
-                    File.Delete(_lockPath);
-                else
-                {
-                    var error = UnixNative.LastError;
-                    if (error is not (11 or 35))
-                        throw new IOException("Could not release the shared worker lock.", error);
-                }
-            }
-            else File.Delete(_lockPath);
-        }
-        catch (Exception exception)
-        {
-            failure = exception;
+            if (UnixNative.Flock(_fileDescriptor, UnixNative.LockUnlock) != 0)
+                failure = new IOException("Could not release the worker lock.", UnixNative.LastError);
         }
         finally
         {
-            if (UnixNative.Flock(_fileDescriptor, UnixNative.LockUnlock) != 0 && failure is null)
-                failure = new IOException("Could not release the worker lock.", UnixNative.LastError);
             _held = false;
             _ = UnixNative.Close(_fileDescriptor);
             _fileDescriptor = -1;
-            if (registryDescriptor >= 0) _ = UnixNative.Close(registryDescriptor);
         }
 
         if (failure is not null) throw failure;
@@ -262,7 +242,6 @@ internal sealed class UnixFileLock : IDisposable
         }
     }
 
-    // The registry keeps every opener out while a released lock file is unlinked.
     private static void AcquireRegistry(int fileDescriptor)
     {
         while (UnixNative.Flock(fileDescriptor, UnixNative.LockExclusive) != 0)

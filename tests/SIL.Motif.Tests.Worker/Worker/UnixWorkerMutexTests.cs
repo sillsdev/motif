@@ -20,9 +20,11 @@ public sealed class UnixWorkerMutexTests
     private const string ReadyPathVariable = "MOTIF_UNIX_WORKER_LOCK_TEST_READY";
     private const string StartPathVariable = "MOTIF_UNIX_WORKER_LOCK_TEST_START";
     private const string OccupancyPathVariable = "MOTIF_UNIX_WORKER_LOCK_TEST_OCCUPANCY";
+    private const string ClearRegistryNamespaceVariable = "MOTIF_UNIX_WORKER_LOCK_TEST_CLEAR_REGISTRY_NAMESPACE";
+    private const string IterationsVariable = "MOTIF_UNIX_WORKER_LOCK_TEST_ITERATIONS";
 
     [UnixWorkerLockFact]
-    public async Task ReleaseRemovesLockFilesAndConcurrentProcessesNeverOverlap()
+    public async Task ReleaseKeepsLockFilesAndConcurrentProcessesNeverOverlap()
     {
         if (Environment.GetEnvironmentVariable(LockNameVariable) is { Length: > 0 } childLockName)
         {
@@ -35,6 +37,7 @@ public sealed class UnixWorkerMutexTests
 
         var lockName = "MotifWorkerLockCleanupTest-" + Guid.NewGuid().ToString("N");
         var lockPath = UnixFileLock.GetLockPath(lockName, machineWide: true);
+        using var lockFileCleanup = new DeleteLockFileOnDispose(lockPath);
         Assert.False(File.Exists(lockPath));
 
         using (var owner = new WorkerMutexOwner(lockName, machineWide: true))
@@ -44,7 +47,7 @@ public sealed class UnixWorkerMutexTests
                 Assert.True(owner.TryAcquire());
                 Assert.True(File.Exists(lockPath));
                 owner.Release();
-                Assert.False(File.Exists(lockPath));
+                Assert.True(File.Exists(lockPath));
             }
         }
 
@@ -56,7 +59,7 @@ public sealed class UnixWorkerMutexTests
         var projectPath = Path.Combine(FindRepositoryRoot(), "tests", "SIL.Motif.Tests.Worker",
             "SIL.Motif.Tests.Worker.csproj");
         var childStart = DotnetTestProcess.CreateTestStartInfo(projectPath,
-            "FullyQualifiedName=SIL.Motif.Tests.Worker.UnixWorkerMutexTests.ReleaseRemovesLockFilesAndConcurrentProcessesNeverOverlap");
+            "FullyQualifiedName=SIL.Motif.Tests.Worker.UnixWorkerMutexTests.ReleaseKeepsLockFilesAndConcurrentProcessesNeverOverlap");
         childStart.Environment[LockNameVariable] = lockName;
         childStart.Environment[ReadyPathVariable] = readyPath;
         childStart.Environment[StartPathVariable] = startPath;
@@ -74,7 +77,7 @@ public sealed class UnixWorkerMutexTests
             await child.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(30));
 
             Assert.True(child.ExitCode == 0, $"Child test failed. stdout: {await output} stderr: {await error}");
-            Assert.False(File.Exists(lockPath));
+            Assert.True(File.Exists(lockPath));
             Assert.False(File.Exists(occupancyPath));
         }
         finally
@@ -98,10 +101,89 @@ public sealed class UnixWorkerMutexTests
     }
 
     [UnixWorkerLockFact]
+    public async Task ProcessesWithDifferentRegistriesCanReacquireOneLockFile()
+    {
+        if (Environment.GetEnvironmentVariable(LockNameVariable) is { Length: > 0 } childLockName)
+        {
+            if (Environment.GetEnvironmentVariable(ClearRegistryNamespaceVariable) == "1")
+                Environment.SetEnvironmentVariable(WorkerLockPaths.TestRegistryNamespaceVariable, null);
+            await RunLockStressWorkerAsync(childLockName,
+                Environment.GetEnvironmentVariable(ReadyPathVariable)!,
+                Environment.GetEnvironmentVariable(StartPathVariable)!);
+            return;
+        }
+
+        var lockName = "MotifWorkerLockRegistryRaceTest-" + Guid.NewGuid().ToString("N");
+        var lockPath = UnixFileLock.GetLockPath(lockName, machineWide: true);
+        var scratch = Path.Combine(Path.GetTempPath(), "MotifWorkerLockRegistryRace-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(scratch);
+        var startPath = Path.Combine(scratch, "start");
+        const int childCount = 3;
+        const int iterations = 20_000;
+        var projectPath = Path.Combine(FindRepositoryRoot(), "tests", "SIL.Motif.Tests.Worker",
+            "SIL.Motif.Tests.Worker.csproj");
+        var children = new List<(Process Process, Task<string> Output, Task<string> Error)>();
+
+        try
+        {
+            for (var index = 0; index < childCount; index++)
+            {
+                var childStart = DotnetTestProcess.CreateTestStartInfo(projectPath,
+                    "FullyQualifiedName=SIL.Motif.Tests.Worker.UnixWorkerMutexTests.ProcessesWithDifferentRegistriesCanReacquireOneLockFile");
+                childStart.Environment[LockNameVariable] = lockName;
+                childStart.Environment[ReadyPathVariable] = Path.Combine(scratch, $"ready-{index}");
+                childStart.Environment[StartPathVariable] = startPath;
+                childStart.Environment[IterationsVariable] = iterations.ToString();
+                if (index == childCount - 1 &&
+                    Environment.GetEnvironmentVariable(ClearRegistryNamespaceVariable) != "0")
+                    childStart.Environment[ClearRegistryNamespaceVariable] = "1";
+
+                var child = Process.Start(childStart)
+                    ?? throw new InvalidOperationException("Could not start the lock stress process.");
+                children.Add((child, child.StandardOutput.ReadToEndAsync(), child.StandardError.ReadToEndAsync()));
+            }
+
+            for (var index = 0; index < children.Count; index++)
+                await WaitForFileAsync(Path.Combine(scratch, $"ready-{index}"), children[index].Process);
+
+            var parentWorker = RunLockStressWorkerAsync(lockName, Path.Combine(scratch, "parent-ready"), startPath);
+            await WaitForFileAsync(Path.Combine(scratch, "parent-ready"), children[0].Process);
+            await File.WriteAllTextAsync(startPath, string.Empty);
+            await parentWorker.WaitAsync(TimeSpan.FromSeconds(90));
+            foreach (var child in children)
+                await child.Process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(90));
+
+            foreach (var child in children)
+                Assert.True(child.Process.ExitCode == 0,
+                    $"Child stress process failed. stdout: {await child.Output} stderr: {await child.Error}");
+        }
+        finally
+        {
+            await File.WriteAllTextAsync(startPath, string.Empty);
+            foreach (var child in children)
+            {
+                if (!child.Process.HasExited)
+                {
+                    try { await child.Process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(10)); }
+                    catch (TimeoutException)
+                    {
+                        child.Process.Kill(entireProcessTree: true);
+                        await child.Process.WaitForExitAsync();
+                    }
+                }
+                child.Process.Dispose();
+            }
+            if (File.Exists(lockPath)) File.Delete(lockPath);
+            Directory.Delete(scratch, recursive: true);
+        }
+    }
+
+    [UnixWorkerLockFact]
     public void SharedWorkersKeepTheLockFileUntilTheLastReaderLeaves()
     {
         var lockName = "MotifWorkerSharedLockCleanupTest-" + Guid.NewGuid().ToString("N");
         var lockPath = UnixFileLock.GetLockPath(lockName, machineWide: false);
+        using var lockFileCleanup = new DeleteLockFileOnDispose(lockPath);
         using var readerA = new WorkerMutexOwner(lockName, machineWide: false, WorkerLockAccess.Shared);
         using var readerB = new WorkerMutexOwner(lockName, machineWide: false, WorkerLockAccess.Shared);
         using var writer = new WorkerMutexOwner(lockName, machineWide: false, WorkerLockAccess.Exclusive);
@@ -116,10 +198,10 @@ public sealed class UnixWorkerMutexTests
         Assert.False(writer.TryAcquire());
 
         readerB.Release();
-        Assert.False(File.Exists(lockPath));
+        Assert.True(File.Exists(lockPath));
         Assert.True(writer.TryAcquire());
         writer.Release();
-        Assert.False(File.Exists(lockPath));
+        Assert.True(File.Exists(lockPath));
     }
 
     private static async Task RunCompetingWorkerAsync(string lockName, string readyPath, string startPath,
@@ -155,6 +237,20 @@ public sealed class UnixWorkerMutexTests
         }
     }
 
+    private static async Task RunLockStressWorkerAsync(string lockName, string readyPath, string startPath)
+    {
+        using var owner = new WorkerMutexOwner(lockName, machineWide: true);
+        await File.WriteAllTextAsync(readyPath, string.Empty);
+        await WaitUntilAsync(() => File.Exists(startPath), TimeSpan.FromSeconds(30));
+
+        var iterations = int.Parse(Environment.GetEnvironmentVariable(IterationsVariable) ?? "20000");
+        for (var index = 0; index < iterations; index++)
+        {
+            while (!owner.TryAcquire()) await Task.Yield();
+            owner.Release();
+        }
+    }
+
     private static async Task WaitForFileAsync(string path, Process child)
     {
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
@@ -181,5 +277,13 @@ public sealed class UnixWorkerMutexTests
             directory = directory.Parent;
         }
         throw new DirectoryNotFoundException("Could not find Motif.sln above the test output directory.");
+    }
+
+    private sealed class DeleteLockFileOnDispose(string lockPath) : IDisposable
+    {
+        public void Dispose()
+        {
+            if (File.Exists(lockPath)) File.Delete(lockPath);
+        }
     }
 }
