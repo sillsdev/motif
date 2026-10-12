@@ -22,10 +22,10 @@
     <Setter Property="FontWeight" Value="SemiBold" />
   </Style>
   <Style Selector=":is(TextBlock).failed">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Danger}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Danger.Text}" />
   </Style>
   <Style Selector=":is(TextBlock).succeeded">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Success}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Success.Text}" />
   </Style>
   <Style Selector="Button.stopGroup">
     <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
@@ -76,7 +76,7 @@
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Caption}" />
   </Style>
   <Style Selector=":is(TextBlock).stopText">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Warning}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Warning.Text}" />
   </Style>
   <Style Selector=":is(TextBlock).traceNotation">
     <Setter Property="FontFamily" Value="{DynamicResource Component.TryWord.NotationFont}" />

@@ -126,6 +126,91 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
     }
 
     [Fact]
+    public void ComponentStatusTextMeetsWcagAaAgainstItsBackgroundInBothThemes()
+    {
+        var failures = new List<string>();
+        avalonia.Invoke(() =>
+        {
+            foreach (var theme in Themes)
+            foreach (var scene in ComponentStatusTextScenes())
+            {
+                var (content, text) = scene.Build();
+                var window = new Window { Content = content, RequestedThemeVariant = theme, Width = 400, Height = 160 };
+                try
+                {
+                    window.Show();
+                    window.UpdateLayout();
+                    var ratio = Effective(text);
+                    if (ratio < Text) failures.Add($"{theme} {scene.What}: {ratio:F2}:1, needs {Text}:1");
+                }
+                finally
+                {
+                    window.Close();
+                }
+            }
+        });
+
+        Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures));
+    }
+
+    private sealed record StatusTextScene(string What, Func<(Control Content, Visual Text)> Build);
+
+    private static IEnumerable<StatusTextScene> ComponentStatusTextScenes()
+    {
+        yield return TextScene("Text error", "error", "error");
+        yield return SelectableTextScene("warning missing", "warningMissing");
+        yield return SelectableTextScene("warning value", "warningValue");
+        yield return ReviewHeaderTextScene("review no-longer-fits title", "reviewGroupTitle");
+        yield return ReviewHeaderTextScene("review no-longer-fits note", "reviewGroupNote");
+        yield return ReviewFailedPillScene();
+        yield return TextScene("freshness current", "freshLabel", "current");
+        yield return TextScene("freshness stale", "freshLabel", "stale");
+        yield return TextScene("freshness busy", "freshLabel", "busy");
+        yield return TextScene("freshness refused", "freshLabel", "refused");
+        yield return TextScene("Setup coverage", "setupCoverage");
+        yield return TextScene("Setup error", "setupError");
+        yield return TextScene("Try a Word failed", "failed");
+        yield return TextScene("Try a Word succeeded", "succeeded");
+        yield return TextScene("Try a Word stopped", "stopText");
+        yield return TextScene("word presentation failure", "wordPresentationCardFailure");
+    }
+
+    private static StatusTextScene TextScene(string what, params string[] classes)
+    {
+        var text = StatusText(what, classes);
+        return new StatusTextScene(what, () => (text, text));
+    }
+
+    private static StatusTextScene SelectableTextScene(string what, string @class)
+    {
+        var text = new SelectableTextBlock { Text = what };
+        text.Classes.Add(@class);
+        return new StatusTextScene(what, () => (text, text));
+    }
+
+    private static StatusTextScene ReviewHeaderTextScene(string what, string @class)
+    {
+        var text = StatusText(what, @class);
+        var header = new Border { Classes = { "reviewGroupHeader" }, Child = text };
+        var group = new Border { Classes = { "reviewGroup", "noLongerFits" }, Child = header };
+        return new StatusTextScene(what, () => (group, text));
+    }
+
+    private static StatusTextScene ReviewFailedPillScene()
+    {
+        var text = StatusText("Apply failed");
+        var pill = new Border { Classes = { "reviewPill", "failed" }, Child = text };
+        return new StatusTextScene("review failed pill", () => (pill, text));
+    }
+
+    private static TextBlock StatusText(string text, params string[] classes)
+    {
+        var block = new TextBlock { Text = text };
+        foreach (var @class in classes) block.Classes.Add(@class);
+        return block;
+    }
+
+    [Fact]
     public void TheTechDemoBannersButtonsAreLiveAndReadableInBothThemes()
     {
         var failures = new List<string>();
@@ -556,7 +641,12 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
     /// <summary>The ratio between a text's painted colour and the colour painted behind it.</summary>
     internal static double Effective(TextBlock text)
     {
-        var foreground = Assert.IsAssignableFrom<ISolidColorBrush>(text.Foreground);
+        return Effective((Visual)text);
+    }
+
+    private static double Effective(Visual text)
+    {
+        var foreground = Assert.IsAssignableFrom<ISolidColorBrush>(text.GetValue(TextBlock.ForegroundProperty));
         return Ratio(Painted(text, Layer(foreground)), Painted(text, default));
     }
 

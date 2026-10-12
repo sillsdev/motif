@@ -18,7 +18,7 @@
     <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
   <Style Selector="Ellipse.freshDot.current">
-    <Setter Property="Fill" Value="{DynamicResource Intent.Success.Text}" />
+    <Setter Property="Fill" Value="{DynamicResource Intent.Success}" />
   </Style>
   <Style Selector="Ellipse.freshDot.stale">
     <Setter Property="Fill" Value="{DynamicResource Intent.Warning.Text}" />
@@ -44,7 +44,7 @@
     <Setter Property="Foreground" Value="{DynamicResource Intent.Accent}" />
   </Style>
   <Style Selector=":is(TextBlock).freshLabel.refused">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Danger}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Danger.Text}" />
   </Style>
   <Style Selector=":is(TextBlock).freshDetail">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Status}" />

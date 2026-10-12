@@ -105,7 +105,7 @@
     <Setter Property="FontWeight" Value="Bold" />
   </Style>
   <Style Selector="Border.reviewGroup.noLongerFits :is(TextBlock).reviewGroupTitle">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Danger}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Danger.Text}" />
   </Style>
   <Style Selector="Border.reviewGroup.uncertain :is(TextBlock).reviewGroupTitle">
     <Setter Property="Foreground" Value="{DynamicResource Intent.Warning.Text}" />
@@ -114,7 +114,7 @@
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
   </Style>
   <Style Selector="Border.reviewGroup.noLongerFits :is(TextBlock).reviewGroupNote">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Danger}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Danger.Text}" />
   </Style>
   <Style Selector="Border.reviewGroup.uncertain :is(TextBlock).reviewGroupNote">
     <Setter Property="Foreground" Value="{DynamicResource Intent.Warning.Text}" />
@@ -190,7 +190,7 @@
     <Setter Property="Background" Value="{DynamicResource Intent.Danger.Fill}" />
   </Style>
   <Style Selector="Border.reviewPill.failed :is(TextBlock)">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Danger}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Danger.Text}" />
   </Style>
   <Style Selector="Button.reviewAction">
     <Setter Property="Padding" Value="{DynamicResource Component.Review.ActionPadding}" />

@@ -13,7 +13,7 @@
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
   </Style>
   <Style Selector=":is(TextBlock).error">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Danger}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Danger.Text}" />
     <Setter Property="TextWrapping" Value="Wrap" />
   </Style>
 </Styles>

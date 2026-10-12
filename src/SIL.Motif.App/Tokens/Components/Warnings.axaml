@@ -100,11 +100,11 @@
   </Style>
 
   <Style Selector=":is(SelectableTextBlock).warningMissing">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Danger}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Danger.Text}" />
     <Setter Property="FontWeight" Value="SemiBold" />
   </Style>
 
   <Style Selector=":is(SelectableTextBlock).warningValue">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Success}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Success.Text}" />
   </Style>
 </Styles>

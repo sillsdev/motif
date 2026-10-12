@@ -94,7 +94,7 @@
     <Setter Property="Background" Value="{DynamicResource Intent.Emphasis.Fill}" />
   </Style>
   <Style Selector="TextBlock.setupError">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Danger}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Danger.Text}" />
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
   </Style>
   <Style Selector="Button.setupPrimary">

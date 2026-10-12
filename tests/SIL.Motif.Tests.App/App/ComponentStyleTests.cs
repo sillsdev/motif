@@ -432,7 +432,7 @@ public sealed partial class ComponentStyleTests
     private static IEnumerable<Case> Cases()
     {
         yield return new("Text", "a muted line", host => Add(host, Text("muted")), TextBlock.ForegroundProperty, "Intent.TextMuted");
-        yield return new("Text", "an error", host => Add(host, Text("error")), TextBlock.ForegroundProperty, "Intent.Danger");
+        yield return new("Text", "an error", host => Add(host, Text("error")), TextBlock.ForegroundProperty, "Intent.Danger.Text");
 
         yield return new("Card", "a card", host => Add(host, Box("card")), Border.PaddingProperty, "Component.Card.Padding");
         yield return new("Card", "a card", host => Add(host, Box("card")), Border.CornerRadiusProperty, "Component.Card.Radius");
@@ -660,10 +660,12 @@ public sealed partial class ComponentStyleTests
             DockPanel.HorizontalSpacingProperty, "Intent.Space.Snug");
         yield return new("Freshness", "a stale dot", host => Add(host, Dot("stale")), Shape.FillProperty, "Intent.Warning.Text");
         yield return new("Freshness", "a dot", host => Add(host, Dot()), Shape.WidthProperty, "Component.Freshness.DotSize");
+        yield return new("Freshness", "a current dot", host => Add(host, Dot("current")),
+            Shape.FillProperty, "Intent.Success");
         yield return new("Freshness", "a current label", host => Add(host, Text("freshLabel", "current")),
             TextBlock.ForegroundProperty, "Intent.Success.Text");
         yield return new("Freshness", "a refused label", host => Add(host, Text("freshLabel", "refused")),
-            TextBlock.ForegroundProperty, "Intent.Danger");
+            TextBlock.ForegroundProperty, "Intent.Danger.Text");
 
         yield return new("Sidebar", "the sidebar", host => Add(host, Box("sidebar")), Border.BackgroundProperty, "Intent.Surface.Subtle");
         yield return new("Sidebar", "the sidebar", host => Add(host, Box("sidebar")), Border.WidthProperty, "Component.Sidebar.Width");
@@ -772,7 +774,7 @@ public sealed partial class ComponentStyleTests
         yield return new("Review", "a changed sentence word", host => Add(host, Box("reviewSentenceToken", "changed")),
             Border.BorderThicknessProperty, "Intent.Stroke.Box");
         yield return new("TryWord", "a failed diagnostic", host => Add(host, Text("failed")),
-            TextBlock.ForegroundProperty, "Intent.Danger");
+            TextBlock.ForegroundProperty, "Intent.Danger.Text");
         yield return new("Timing", "the page", host => Add(host, Box("timingPage")), Border.PaddingProperty,
             "Component.Timing.PagePadding");
         yield return new("Timing", "the table header", host => Add(host, Box("timingTableHeader")),

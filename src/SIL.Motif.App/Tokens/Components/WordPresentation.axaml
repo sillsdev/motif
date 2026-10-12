@@ -135,6 +135,6 @@
     <Setter Property="FontWeight" Value="Bold" />
   </Style>
   <Style Selector=":is(TextBlock).wordPresentationCardFailure">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Danger}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Danger.Text}" />
   </Style>
 </Styles>
