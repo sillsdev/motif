@@ -92,6 +92,7 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
 
             walkthrough.ShowPage(WorkspacePage.Texts);
             walkthrough.ShowTextsTab(TextsTab.AnalyzeTexts);
+            WaitForSelectionResults(walkthrough);
             var selectionPanel = Assert.Single(walkthrough.Window.GetLogicalDescendants().OfType<SelectionPanel>());
             var panelClear = Assert.Single(selectionPanel.GetLogicalDescendants().OfType<Button>(), button =>
                 AutomationProperties.GetAutomationId(button) == AutomationIds.ClearTexts);
@@ -99,10 +100,9 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
                 AutomationProperties.GetAutomationId(button) == AutomationIds.SelectAllTexts);
             InteractiveControlSweep.AssertScene(walkthrough, "Analyze texts with many Texts",
                 InteractiveControlFamily.Action, InteractiveControlFamily.Check);
-            WaitForStablePosition(walkthrough, panelClear, panelSelectAll);
             HeadlessClick.Click(walkthrough.Window, panelClear, "Clear Texts in Analyze texts");
             Assert.Empty(selectionPanel.Selection.ChosenTextIds);
-            WaitForStablePosition(walkthrough, panelSelectAll);
+            WaitForSelectionResults(walkthrough);
             HeadlessClick.Click(walkthrough.Window, panelSelectAll, "Select all Texts in Analyze texts");
             Assert.Equal(selectedTextIds, selectionPanel.Selection.ChosenTextIds.Order());
 
@@ -258,19 +258,13 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
         }, WalkthroughSteps.Remaining(deadline));
     }
 
-    // Rows the parse's results load above the panel land after the parse reports done; a person waits them out too.
-    private static void WaitForStablePosition(WalkthroughWindow walkthrough, params Control[] controls)
+    private static void WaitForSelectionResults(WalkthroughWindow walkthrough)
     {
-        Point?[]? last = null;
-        var steady = 0;
+        var page = walkthrough.Workspace.PageModel<TextsPageModel>();
         walkthrough.WaitUntil(() =>
         {
-            PageScreenshots.Settle(walkthrough.Window);
-            var now = controls.Select(control => control.TranslatePoint(default, walkthrough.Window)).ToArray();
-            steady = last is not null && now.SequenceEqual(last) ? steady + 1 : 0;
-            last = now;
-            return steady >= 5;
-        }, TimeSpan.FromSeconds(30), "the Analyze texts panel kept moving");
+            return !page.Words.IsLoading && walkthrough.Workspace.Context.EvidencePublication.IsCompleted;
+        }, TimeSpan.FromSeconds(30), "Analyze texts did not finish loading the selected words");
     }
 
     private static void AssertEstimatedLimit(NamedSelectionProjection selection, long steps)
