@@ -63,6 +63,52 @@ public sealed class ReviewScreenshots
         }, TimeSpan.FromMinutes(3));
     }
 
+    [Theory]
+    [InlineData(1040)]
+    [InlineData(1240)]
+    public void ReviewOpinionLabelDoesNotOverlapItsFirstMorpheme(int width)
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var fake = new FakeCommandClient();
+            fake.PendingChangesIs(Blocked());
+            var (workspace, window) = await OpenAsync(fake);
+            try
+            {
+                window.Width = width;
+                window.Height = 780;
+                workspace.CurrentPage = WorkspacePage.Review;
+                PageScreenshots.Settle(window);
+
+                var row = Assert.Single(window.GetVisualDescendants().OfType<WordPresentationRow>(),
+                    item => item.Data?.Facts.Word == "kitabu");
+                var opinion = Assert.Single(row.GetVisualDescendants().OfType<NamedMark>(),
+                    mark => mark.Text == "Unknown");
+                Assert.True(opinion.IsEffectivelyVisible);
+                Assert.Contains(opinion.GetVisualDescendants().OfType<CopyableTextBlock>(),
+                    text => text.IsEffectivelyVisible && text.Text == "Unknown");
+                var firstMorpheme = Assert.Single(row.GetVisualDescendants().OfType<CopyableTextBlock>(),
+                    text => text.Text == "ki-");
+                var slot = Assert.Single(row.GetVisualAncestors().OfType<WordListSlot>());
+                Assert.Contains(WordListColumn.Opinion, slot.CurrentLayout!.Schema.OrderedColumns());
+                Assert.Contains(Assert.Single(slot.GetVisualDescendants().OfType<WordRowHeader>())
+                    .GetVisualDescendants().OfType<CopyableTextBlock>(), text => text.Text == "Opinion");
+                var opinionBounds = new Rect(opinion.TranslatePoint(default, window)!.Value, opinion.Bounds.Size);
+                var morphemeBounds = new Rect(firstMorpheme.TranslatePoint(default, window)!.Value,
+                    firstMorpheme.Bounds.Size);
+
+                Assert.True(opinionBounds.Right < morphemeBounds.Left,
+                    $"At {width}px, the opinion ends at {opinionBounds.Right:0.#} but the first morpheme " +
+                    $"starts at {morphemeBounds.Left:0.#}.");
+            }
+            finally
+            {
+                Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
+                window.Close();
+            }
+        }, TimeSpan.FromMinutes(3));
+    }
+
     [Fact]
     public void ReviewRowsStayBelowTheirHeaderWhenScrolledAndOpened()
     {

@@ -123,6 +123,7 @@ internal sealed class WordListSizingAdapter
     private static WordListColumnSet ColumnFlag(WordListColumn column) => column switch
     {
         WordListColumn.Tick => WordListColumnSet.Tick,
+        WordListColumn.Opinion => WordListColumnSet.Opinion,
         WordListColumn.FieldWorks => WordListColumnSet.FieldWorks,
         WordListColumn.PanGloss => WordListColumnSet.PanGloss,
         WordListColumn.Meaning => WordListColumnSet.Meaning,

@@ -233,6 +233,7 @@ public sealed class WordRow : UserControl
         }
         var layout = _builtLayout = WordListLayoutScope.GetLayout(this);
         var columns = layout?.Schema.OrderedColumns(layout.ShowsMeaning) ?? DefaultColumns();
+        var hasOpinionColumn = columns.Contains(WordListColumn.Opinion);
         _columnCount = Math.Max(1, columns.Count);
         foreach (var column in columns)
         {
@@ -243,7 +244,7 @@ public sealed class WordRow : UserControl
         }
         for (var index = 0; index < columns.Count; index++)
         {
-            var cell = Cell(data, columns[index]);
+            var cell = Cell(data, columns[index], hasOpinionColumn);
             if (cell is null) continue;
             Grid.SetColumn(cell, index);
             _shell.Children.Add(cell);
@@ -314,14 +315,15 @@ public sealed class WordRow : UserControl
 
     private WordCard? _card;
 
-    private Control? Cell(WordPresentation data, WordListColumn column)
+    private Control? Cell(WordPresentation data, WordListColumn column, bool hasOpinionColumn)
     {
         var facts = data.Facts;
         return column switch
         {
             WordListColumn.Tick => TickCell(data),
             WordListColumn.Word => WordCell(data),
-            WordListColumn.FieldWorks => FieldWorksCell(data),
+            WordListColumn.Opinion => OpinionCell(data),
+            WordListColumn.FieldWorks => FieldWorksCell(data, hasOpinionColumn),
             WordListColumn.PanGloss => PanGlossCell(data),
             WordListColumn.Meaning => new NamedMark { Mark = facts.MeaningMark, Text = facts.Meaning, Classes = { "wordPresentationMeaning" } },
             WordListColumn.Warnings => facts.HasWarningsNamed
@@ -334,6 +336,13 @@ public sealed class WordRow : UserControl
             _ => throw new ArgumentOutOfRangeException(nameof(column), column, null),
         };
     }
+
+    private static Control OpinionCell(WordPresentation data) => new NamedMark
+    {
+        Mark = data.Facts.OpinionMark,
+        Text = data.Facts.OpinionLabel,
+        Classes = { "wordPresentationOpinion" },
+    };
 
     private static Control WordCell(WordPresentation data)
     {
@@ -356,19 +365,19 @@ public sealed class WordRow : UserControl
         return cell;
     }
 
-    private Control FieldWorksCell(WordPresentation data)
+    private Control FieldWorksCell(WordPresentation data, bool hasOpinionColumn)
     {
         var facts = data.Facts;
         if (facts.FieldWorksMorphemes.Count == 0)
-            return new NamedMark { Mark = facts.OpinionMark, Text = facts.OpinionLabel };
+            return hasOpinionColumn ? new Panel() : OpinionCell(data);
         var panel = new MorphemePanel
         {
             Morphs = facts.FieldWorksMorphemes,
             ShowCategory = false,
             RevealLinks = true,
             CompactLinks = true,
-            LeadingMark = facts.OpinionMark,
-            LeadingText = facts.OpinionLabel,
+            LeadingMark = hasOpinionColumn ? null : facts.OpinionMark,
+            LeadingText = hasOpinionColumn ? null : facts.OpinionLabel,
             MaxVisibleMorphs = data.Owner is WordListOwner.Matrix or WordListOwner.FixFirst ? 2 : 6,
             OverflowRequest = new MorphemeOverflowRequest(data.Key.Value, $"{data.Key.Value}:fieldworks",
                 data.EvidenceRevision, MorphologyProducer.FieldWorks),

@@ -16,6 +16,7 @@ public enum WordListColumnSet
     Places = 32,
     Time = 64,
     Read = 128,
+    Opinion = 256,
     All = Tick | FieldWorks | PanGloss | Meaning | Warnings | Places | Time | Read,
 }
 
@@ -24,6 +25,7 @@ public enum WordListColumn
 {
     Tick,
     Word,
+    Opinion,
     FieldWorks,
     PanGloss,
     Meaning,
@@ -40,7 +42,8 @@ public enum WordListColumn
 /// </summary>
 public sealed record WordListSchema
 {
-    private const WordListColumnSet OptionalColumns = WordListColumnSet.Tick | WordListColumnSet.FieldWorks |
+    private const WordListColumnSet OptionalColumns = WordListColumnSet.Tick | WordListColumnSet.Opinion |
+        WordListColumnSet.FieldWorks |
         WordListColumnSet.PanGloss | WordListColumnSet.Meaning | WordListColumnSet.Warnings |
         WordListColumnSet.Places | WordListColumnSet.Time | WordListColumnSet.Read;
 
@@ -84,6 +87,7 @@ public sealed record WordListSchema
         var columns = ImmutableArray.CreateBuilder<WordListColumn>(10);
         Add(WordListColumn.Tick, WordListColumnSet.Tick);
         columns.Add(WordListColumn.Word);
+        Add(WordListColumn.Opinion, WordListColumnSet.Opinion);
         Add(WordListColumn.FieldWorks, WordListColumnSet.FieldWorks);
         Add(WordListColumn.PanGloss, WordListColumnSet.PanGloss);
         if (showsMeaning) Add(WordListColumn.Meaning, WordListColumnSet.Meaning);
@@ -121,7 +125,7 @@ public static class WordListSchemas
 
     /// <summary>The current and proposed analyses shown for a pending Review change.</summary>
     public static readonly WordListSchema Review = WordListSchema.Create(
-        WordListColumnSet.FieldWorks | WordListColumnSet.PanGloss,
+        WordListColumnSet.Opinion | WordListColumnSet.FieldWorks | WordListColumnSet.PanGloss,
         hasFieldWorksMorphology: true, hasPanGlossMorphology: true);
 
     /// <summary>The parser result and occurrence count shown for a changed word.</summary>

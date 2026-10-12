@@ -32,6 +32,14 @@ public sealed class WordListPolicyTests
     }
 
     [Fact]
+    public void ReviewSchemaGivesFieldWorksOpinionItsOwnTrack()
+    {
+        Assert.Equal(
+            [WordListColumn.Word, WordListColumn.Opinion, WordListColumn.FieldWorks, WordListColumn.PanGloss, WordListColumn.Next],
+            WordListSchemas.Review.OrderedColumns().ToArray());
+    }
+
+    [Fact]
     public void SchemaRejectsMorphologyWithoutItsProducerColumn()
     {
         Assert.Throws<ArgumentException>(() => WordListSchema.Create(
@@ -110,6 +118,7 @@ public sealed class WordListPolicyTests
         [
             new(WordListColumn.Tick, 24, 24, 24, 24),
             new(WordListColumn.Word, 80, 120, 220, 100),
+            new(WordListColumn.Opinion, 70, 90, 110, 50),
             new(WordListColumn.FieldWorks, 72, 120, 400, 88),
             new(WordListColumn.PanGloss, 72, 120, 400, 80),
             new(WordListColumn.Meaning, 80, 90, 220, 90),

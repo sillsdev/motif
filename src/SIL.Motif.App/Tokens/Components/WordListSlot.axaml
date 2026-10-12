@@ -12,6 +12,9 @@
     <StaticResource x:Key="Component.WordListSlot.Word.Minimum" ResourceKey="Primitive.Size.92" />
     <StaticResource x:Key="Component.WordListSlot.Word.Preferred" ResourceKey="Primitive.Size.140" />
     <StaticResource x:Key="Component.WordListSlot.Word.Maximum" ResourceKey="Primitive.Size.220" />
+    <StaticResource x:Key="Component.WordListSlot.Opinion.Minimum" ResourceKey="Primitive.Size.70" />
+    <StaticResource x:Key="Component.WordListSlot.Opinion.Preferred" ResourceKey="Primitive.Size.90" />
+    <StaticResource x:Key="Component.WordListSlot.Opinion.Maximum" ResourceKey="Primitive.Size.110" />
     <StaticResource x:Key="Component.WordListSlot.FieldWorks.Minimum" ResourceKey="Primitive.Size.110" />
     <StaticResource x:Key="Component.WordListSlot.FieldWorks.Preferred" ResourceKey="Primitive.Size.170" />
     <StaticResource x:Key="Component.WordListSlot.FieldWorks.Maximum" ResourceKey="Primitive.Size.420" />
@@ -69,6 +72,11 @@
     <Setter Property="(views:WordListSizingHints.Minimum)" Value="{StaticResource Component.WordListSlot.Word.Minimum}" />
     <Setter Property="(views:WordListSizingHints.Preferred)" Value="{StaticResource Component.WordListSlot.Word.Preferred}" />
     <Setter Property="(views:WordListSizingHints.Maximum)" Value="{StaticResource Component.WordListSlot.Word.Maximum}" />
+  </Style>
+  <Style Selector="views|WordListSlot :is(Control).wordPresentationColumnOpinion">
+    <Setter Property="(views:WordListSizingHints.Minimum)" Value="{StaticResource Component.WordListSlot.Opinion.Minimum}" />
+    <Setter Property="(views:WordListSizingHints.Preferred)" Value="{StaticResource Component.WordListSlot.Opinion.Preferred}" />
+    <Setter Property="(views:WordListSizingHints.Maximum)" Value="{StaticResource Component.WordListSlot.Opinion.Maximum}" />
   </Style>
   <Style Selector="views|WordListSlot :is(Control).wordPresentationColumnFieldWorks">
     <Setter Property="(views:WordListSizingHints.Minimum)" Value="{StaticResource Component.WordListSlot.FieldWorks.Minimum}" />

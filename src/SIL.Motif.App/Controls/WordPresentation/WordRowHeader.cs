@@ -85,6 +85,7 @@ public sealed class WordRowHeader : UserControl
     private string HeadingText(WordListColumn column) => column switch
     {
         WordListColumn.Word => "Word",
+        WordListColumn.Opinion => "Opinion",
         WordListColumn.FieldWorks => "FieldWorks",
         WordListColumn.PanGloss => "PanGloss",
         WordListColumn.Meaning => MeaningHeader,
@@ -97,6 +98,7 @@ public sealed class WordRowHeader : UserControl
     private static string HeadingClass(WordListColumn column) => column switch
     {
         WordListColumn.Word => "wordPresentationColumnWord",
+        WordListColumn.Opinion => "wordPresentationColumnOpinion",
         WordListColumn.FieldWorks => "wordPresentationColumnFieldWorks",
         WordListColumn.PanGloss => "wordPresentationColumnPanGloss",
         WordListColumn.Meaning => "wordPresentationColumnMeaning",
