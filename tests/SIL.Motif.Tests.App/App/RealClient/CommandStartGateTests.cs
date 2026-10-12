@@ -5,11 +5,13 @@ using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Tests.TestFixtures;
+using SIL.Motif.Tests.App.Walkthrough;
 using Xunit;
 
-namespace SIL.Motif.Tests.App.Walkthrough;
+namespace SIL.Motif.Tests.App.RealClient;
 
 [Collection(LcmCacheTestCollection.Name)]
+[Trait("MotifTestLevel", "Integration")]
 public sealed class CommandStartGateTests(PristineProjectFixture pristine)
 {
     [Fact]

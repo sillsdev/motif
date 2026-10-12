@@ -16,6 +16,7 @@ using Xunit;
 namespace SIL.Motif.Tests.App;
 
 [Collection(LcmCacheTestCollection.Name)]
+[Trait("MotifTestLevel", "Integration")]
 public sealed class PendingChangesCliAppTests(PristineProjectFixture pristine)
 {
     [Fact]

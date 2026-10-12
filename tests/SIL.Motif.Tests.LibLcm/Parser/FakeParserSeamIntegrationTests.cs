@@ -1,4 +1,3 @@
-using SIL.LCModel;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Tests.TestFixtures;
@@ -9,7 +8,7 @@ using Xunit.Abstractions;
 
 namespace SIL.Motif.Tests.Parser;
 
-[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group2)]
+[Trait("MotifTestLevel", "Unit")]
 public sealed class FakeParserSeamIntegrationTests
 {
     [Fact]

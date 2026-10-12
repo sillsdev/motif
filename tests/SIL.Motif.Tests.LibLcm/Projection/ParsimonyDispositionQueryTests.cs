@@ -8,6 +8,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.LibLcm.Projection;
 
+[Trait("MotifTestLevel", "Unit")]
 public sealed class ParsimonyDispositionQueryTests
 {
     private static readonly string ProjectId = Id();

@@ -9,10 +9,11 @@ function Assert-Requirements {
         [string] $Filter,
         [bool] $ExpectedPortable,
         [bool] $ExpectedExplainedWordCard,
+        [switch] $All,
         [switch] $System
     )
 
-    $requirements = Get-MotifTestArtifactRequirements -All:$(-not $System) -System:$System `
+    $requirements = Get-MotifTestArtifactRequirements -All:$All -System:$System `
         -SelectedProjects $Projects -Filter $Filter
     if ($requirements.PortableWorkerPackage -ne $ExpectedPortable -or
         $requirements.ExplainedWordCardFixture -ne $ExpectedExplainedWordCard) {
@@ -21,13 +22,16 @@ function Assert-Requirements {
 }
 
 Assert-Requirements @('SIL.Motif.Tests.Cli') '' $true $false
-Assert-Requirements @('SIL.Motif.Tests.App') '' $false $true
-Assert-Requirements @('SIL.Motif.Tests.App', 'SIL.Motif.Tests.Cli') '' $true $true
+Assert-Requirements @('SIL.Motif.Tests.App') '' $false $false
+Assert-Requirements @('SIL.Motif.Tests.App', 'SIL.Motif.Tests.Cli') '' $true $false
 Assert-Requirements @('SIL.Motif.Tests.Cli') 'FullyQualifiedName~HelpCatalogTests' $false $false
 Assert-Requirements @('SIL.Motif.Tests.App') 'FullyQualifiedName~KeyboardInteractionContractTests' $false $false
 Assert-Requirements @('SIL.Motif.Tests.Cli') 'FullyQualifiedName~PortableWorkerPackageTests' $true $false
-Assert-Requirements @('SIL.Motif.Tests.App') 'FullyQualifiedName~ExplainedWordCard' $false $true
-Assert-Requirements @('SIL.Motif.Tests.App', 'SIL.Motif.Tests.Cli') 'Trait=System' $true $true
+Assert-Requirements @('SIL.Motif.Tests.Cli') '' $true $false -All
+Assert-Requirements @('SIL.Motif.Tests.App') '' $false $true -All
+Assert-Requirements @('SIL.Motif.Tests.App', 'SIL.Motif.Tests.Cli') '' $true $true -All
+Assert-Requirements @('SIL.Motif.Tests.App') 'FullyQualifiedName~ExplainedWordCard' $false $false
+Assert-Requirements @('SIL.Motif.Tests.App', 'SIL.Motif.Tests.Cli') 'Trait=System' $false $true -System
 Assert-Requirements @('SIL.Motif.Tests.App') 'FullyQualifiedName~UnrelatedTest' $false $false -System
 
 Write-Host 'Test artifact selection checks passed.' -ForegroundColor Green

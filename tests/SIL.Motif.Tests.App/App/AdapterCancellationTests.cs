@@ -27,6 +27,7 @@ namespace SIL.Motif.Tests.App;
 /// store-only read does not wait behind project work at all.
 /// </summary>
 [Collection(LcmCacheTestCollection.Name)]
+[Trait("MotifTestLevel", "Integration")]
 public sealed class AdapterCancellationTests(PristineProjectFixture pristine)
 {
     private static readonly string ProductVersion = MotifProductVersion.CurrentText;

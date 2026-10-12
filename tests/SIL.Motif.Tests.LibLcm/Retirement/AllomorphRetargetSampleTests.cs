@@ -17,7 +17,7 @@ using Xunit.Abstractions;
 
 namespace SIL.Motif.Tests.Retirement;
 
-[Trait("MotifTestLevel", "System")]
+[Trait("MotifTestLevel", "Integration")]
 public sealed class AllomorphRetargetSampleTests(ITestOutputHelper output)
 {
     private static readonly Guid MbugweRetiredNj = Guid.Parse("30fcb4a3-db6a-4acc-bf4e-347891c01f5a");

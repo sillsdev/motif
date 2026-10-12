@@ -289,7 +289,7 @@ public sealed class AllomorphReferenceFootprintTests : IDisposable
             .Order(StringComparer.Ordinal));
 }
 
-[Trait("MotifTestLevel", "System")]
+[Trait("MotifTestLevel", "Integration")]
 public sealed class AllomorphReferenceFootprintSampleSurveyTests(ITestOutputHelper output)
 {
     private static readonly Guid[] SenaStemForms =

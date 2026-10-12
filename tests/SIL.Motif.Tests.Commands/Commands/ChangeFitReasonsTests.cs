@@ -8,6 +8,7 @@ namespace SIL.Motif.Tests.Commands;
 /// Pins that every reason the fit check writes for a change that no longer fits can be read back as a kind, so the
 /// window words the reason by kind and a reworded reason cannot quietly fall back to the generic line.
 /// </summary>
+[Trait("MotifTestLevel", "Unit")]
 public sealed class ChangeFitReasonsTests
 {
     public static TheoryData<string, ChangeFitReasonKind> EveryReason() => new()

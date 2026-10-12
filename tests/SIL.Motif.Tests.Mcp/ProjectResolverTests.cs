@@ -4,6 +4,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Mcp;
 
+[Trait("MotifTestLevel", "Unit")]
 public sealed class ProjectResolverTests : IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), "motif-project-selectors-" + Guid.NewGuid().ToString("N"));

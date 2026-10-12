@@ -6,6 +6,7 @@ using Xunit;
 namespace SIL.Motif.Tests.Parser;
 
 /// <summary>The batch pass is now a reading of one invocation's outcome; nothing here starts a process.</summary>
+[Trait("MotifTestLevel", "Unit")]
 public sealed class PanGlossParserTests
 {
     private static readonly string Project = Path.GetTempFileName();

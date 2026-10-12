@@ -19,7 +19,7 @@ using WordRow = SIL.Motif.App.Controls.WordPresentation.WordRow;
 namespace SIL.Motif.Tests.App;
 
 [Collection(AvaloniaHeadlessCollection.Name)]
-[Trait("MotifTestLevel", "System")]
+[Trait("MotifTestLevel", "Unit")]
 public sealed class WordRowOpenLayoutSystemTests(ITestOutputHelper output)
 {
     private static readonly TimeSpan Deadline = TimeSpan.FromMinutes(1);

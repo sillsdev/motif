@@ -5,6 +5,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Mcp;
 
+[Trait("MotifTestLevel", "Unit")]
 public sealed class AgentPluginSkillTests
 {
     private static readonly Regex ToolName = new(@"\bmotif_[a-z][a-z0-9_]*\b", RegexOptions.CultureInvariant);

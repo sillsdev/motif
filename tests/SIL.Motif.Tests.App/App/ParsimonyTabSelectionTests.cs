@@ -15,7 +15,7 @@ namespace SIL.Motif.Tests.App;
 /// rendered buttons hold, after a layout pass, so a binding that stops updating fails here.
 /// </summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
-[Trait("MotifTestLevel", "System")]
+[Trait("MotifTestLevel", "Unit")]
 public sealed class ParsimonyTabSelectionTests
 {
     [Fact]

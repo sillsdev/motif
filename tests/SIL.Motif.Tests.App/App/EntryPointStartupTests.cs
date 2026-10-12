@@ -98,32 +98,6 @@ public sealed class EntryPointStartupTests
     }
 
     [Fact]
-    public async Task TheBuiltAppsSmokeRunRendersAWindowAndExitsCleanly()
-    {
-        var app = Path.Combine(BuildOutput.ProductDirectory,
-            OperatingSystem.IsWindows() ? "SIL.Motif.App.exe" : "SIL.Motif.App");
-        var start = new System.Diagnostics.ProcessStartInfo(app, "--smoke")
-        {
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
-        start.Environment.Remove("ICU_DATA");
-        using var process = System.Diagnostics.Process.Start(start)!;
-        var error = process.StandardError.ReadToEndAsync();
-        using var limit = new CancellationTokenSource(TimeSpan.FromMinutes(2));
-        try { await process.WaitForExitAsync(limit.Token); }
-        catch (OperationCanceledException)
-        {
-            process.Kill(entireProcessTree: true);
-            Assert.Fail("The app's --smoke run did not exit within two minutes.");
-        }
-
-        Assert.True(process.ExitCode == 0,
-            $"The app's --smoke run exited {process.ExitCode}. stderr: {await error}");
-    }
-
-    [Fact]
     public void PackageSmokeScriptsUseTheSampleProjectBuilderOutput()
     {
         var repositoryRoot = Path.GetFullPath(Path.Combine(BuildOutput.ProductDirectory, "..", ".."));
@@ -198,27 +172,6 @@ public sealed class EntryPointStartupTests
         Assert.Contains("-p:MotifBinRoot=$BuildOutputRoot", release, StringComparison.Ordinal);
         var unixSmoke = File.ReadAllText(Path.Combine(repositoryRoot, "tools/package-smoke-unix.sh"));
         Assert.Contains("cmp -- \"$staged_worker_runtime_config\" \"$worker_runtime_config\"", unixSmoke, StringComparison.Ordinal);
-    }
-
-    [WindowsHostFact]
-    public void PackageReleaseRejectsUnixTargetsOnAWindowsHostBeforeResolvingTheParser()
-    {
-        var repositoryRoot = Path.GetFullPath(Path.Combine(BuildOutput.ProductDirectory, "..", ".."));
-        var start = new System.Diagnostics.ProcessStartInfo("pwsh");
-        start.ArgumentList.Add("-NoProfile");
-        start.ArgumentList.Add("-File");
-        start.ArgumentList.Add(Path.Combine(repositoryRoot, "tools", "package-release.ps1"));
-        start.ArgumentList.Add("-ProductVersion");
-        start.ArgumentList.Add("0.1.0");
-        start.ArgumentList.Add("-ParserArtifact");
-        start.ArgumentList.Add(Path.Combine(repositoryRoot, ".tmp", "missing-pangloss"));
-        start.ArgumentList.Add("-RuntimeIdentifier");
-        start.ArgumentList.Add("linux-x64");
-
-        var result = ToolProcess.Run(start);
-
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("Unix package targets must be built on Linux or macOS", result.Error, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -307,6 +260,61 @@ public sealed class EntryPointStartupTests
         OperandType.InlineSwitch => 4 + 4 * BitConverter.ToInt32(il, offset),
         _ => 4,
     };
+}
+
+[Trait("MotifTestLevel", "System")]
+public sealed class AppStartupSmokeSystemTests
+{
+    [Fact]
+    public async Task TheBuiltAppsSmokeRunRendersAWindowAndExitsCleanly()
+    {
+        var app = Path.Combine(BuildOutput.ProductDirectory,
+            OperatingSystem.IsWindows() ? "SIL.Motif.App.exe" : "SIL.Motif.App");
+        var start = new System.Diagnostics.ProcessStartInfo(app, "--smoke")
+        {
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+        };
+        start.Environment.Remove("ICU_DATA");
+        using var process = System.Diagnostics.Process.Start(start)!;
+        var error = process.StandardError.ReadToEndAsync();
+        using var limit = new CancellationTokenSource(TimeSpan.FromMinutes(2));
+        try { await process.WaitForExitAsync(limit.Token); }
+        catch (OperationCanceledException)
+        {
+            process.Kill(entireProcessTree: true);
+            Assert.Fail("The app's --smoke run did not exit within two minutes.");
+        }
+
+        Assert.True(process.ExitCode == 0,
+            $"The app's --smoke run exited {process.ExitCode}. stderr: {await error}");
+    }
+}
+
+[Trait("MotifTestLevel", "Integration")]
+public sealed class PackageReleaseBoundaryIntegrationTests
+{
+    [WindowsHostFact]
+    public void PackageReleaseRejectsUnixTargetsOnAWindowsHostBeforeResolvingTheParser()
+    {
+        var repositoryRoot = Path.GetFullPath(Path.Combine(BuildOutput.ProductDirectory, "..", ".."));
+        var start = new System.Diagnostics.ProcessStartInfo("pwsh");
+        start.ArgumentList.Add("-NoProfile");
+        start.ArgumentList.Add("-File");
+        start.ArgumentList.Add(Path.Combine(repositoryRoot, "tools", "package-release.ps1"));
+        start.ArgumentList.Add("-ProductVersion");
+        start.ArgumentList.Add("0.1.0");
+        start.ArgumentList.Add("-ParserArtifact");
+        start.ArgumentList.Add(Path.Combine(repositoryRoot, ".tmp", "missing-pangloss"));
+        start.ArgumentList.Add("-RuntimeIdentifier");
+        start.ArgumentList.Add("linux-x64");
+
+        var result = ToolProcess.Run(start);
+
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.Contains("Unix package targets must be built on Linux or macOS", result.Error, StringComparison.Ordinal);
+    }
 }
 
 /// <summary>A fact about how release packaging behaves when the host running it is Windows.</summary>

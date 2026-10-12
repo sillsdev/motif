@@ -29,7 +29,7 @@ namespace SIL.Motif.Tests.App;
 /// first parse, and each word strip carries the Word, FieldWorks and PanGloss lines with one action and one Fix.
 /// </summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
-[Trait("MotifTestLevel", "System")]
+[Trait("MotifTestLevel", "Unit")]
 public sealed class AnalyzeTextsLayoutTests
 {
     private static readonly TimeSpan Deadline = TimeSpan.FromSeconds(60);

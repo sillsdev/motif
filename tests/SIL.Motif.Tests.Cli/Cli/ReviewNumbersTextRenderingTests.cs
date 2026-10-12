@@ -5,6 +5,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Cli;
 
+[Trait("MotifTestLevel", "Unit")]
 public sealed class ReviewNumbersTextRenderingTests
 {
     [Theory]

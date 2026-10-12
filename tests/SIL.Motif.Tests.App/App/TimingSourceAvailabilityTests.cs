@@ -15,7 +15,7 @@ using Xunit;
 namespace SIL.Motif.Tests.App;
 
 [Collection(AvaloniaHeadlessCollection.Name)]
-[Trait("MotifTestLevel", "System")]
+[Trait("MotifTestLevel", "Unit")]
 public sealed class TimingSourceAvailabilityTests
 {
     private const string ProjectPath = @"C:\projects\reading.fwdata";

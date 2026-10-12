@@ -83,16 +83,20 @@ public sealed class NoTestBuildCommandsTests
     }
 
     [Fact]
-    public void ArtifactDependentTestsAreSystemLevel()
+    public void ArtifactDependentProcessTestsHaveTheirIntendedLevels()
     {
         var repositoryRoot = RepositoryRoot();
         var portablePackage = File.ReadAllText(Path.Combine(repositoryRoot, "tests", "SIL.Motif.Tests.Cli",
             "Integration", "PortableWorkerPackageTests.cs"));
         var explainedWordCard = File.ReadAllText(Path.Combine(repositoryRoot, "tests", "SIL.Motif.Tests.App",
             "App", "Walkthrough", "WalkthroughReplayTests.cs"));
+        var startup = File.ReadAllText(Path.Combine(repositoryRoot, "tests", "SIL.Motif.Tests.App",
+            "App", "EntryPointStartupTests.cs"));
 
-        Assert.Contains("[Trait(\"MotifTestLevel\", \"System\")]", portablePackage, StringComparison.Ordinal);
+        Assert.Contains("[Trait(\"MotifTestLevel\", \"Integration\")]", portablePackage, StringComparison.Ordinal);
         Assert.Contains("[Trait(\"MotifTestLevel\", \"System\")]", explainedWordCard, StringComparison.Ordinal);
+        Assert.Contains("[Trait(\"MotifTestLevel\", \"System\")]\npublic sealed class AppStartupSmokeSystemTests",
+            startup, StringComparison.Ordinal);
     }
 
     [Fact]

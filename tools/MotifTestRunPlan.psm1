@@ -24,7 +24,7 @@ function Get-MotifTestArtifactRequirements {
         ($prepareAllSelectedTests -or $Filter -match 'ExplainedWordCard')
 
     [pscustomobject]@{
-        PortableWorkerPackage = ($All -or $System) -and $portableSelected
+        PortableWorkerPackage = -not $System -and $portableSelected
         ExplainedWordCardFixture = ($All -or $System) -and $explainedWordCardSelected
     }
 }

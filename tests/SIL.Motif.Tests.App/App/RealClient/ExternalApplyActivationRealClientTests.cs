@@ -28,7 +28,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.App.RealClient;
 
-[Trait("MotifTestLevel", "System")]
+[Trait("MotifTestLevel", "Integration")]
 [Collection(LcmCacheTestCollection.Name)]
 public sealed class ExternalApplyActivationRealClientTests(PristineProjectFixture pristine)
 {

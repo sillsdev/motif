@@ -4,6 +4,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Assess;
 
+[Trait("MotifTestLevel", "Unit")]
 public sealed class AssessorCatalogTests
 {
     [Fact]

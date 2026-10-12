@@ -24,6 +24,7 @@ namespace SIL.Motif.Tests.App;
 /// unchanged through the window's real command client.
 /// </summary>
 [Collection(LcmCacheTestCollection.Name)]
+[Trait("MotifTestLevel", "Integration")]
 public sealed class OverviewSpeedRealClientTests(PristineProjectFixture pristine) : IDisposable
 {
     private readonly string _managedRoot =

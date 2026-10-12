@@ -9,6 +9,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.LibLcm.Projection;
 
+[Trait("MotifTestLevel", "Unit")]
 public sealed class ParsimonyFindingIdentityTests
 {
     private const string Entry = "04490809-320d-47c7-9efa-4633fdbe95de";

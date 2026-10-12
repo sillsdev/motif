@@ -2,6 +2,7 @@ using System.Collections;
 using System.Reflection;
 using System.Xml.Linq;
 using SIL.Motif.Tests.TestFixtures;
+using SIL.Motif.Tests.Parser;
 using Xunit;
 using Xunit.Sdk;
 
@@ -76,13 +77,10 @@ public sealed class TestLevelGuardTests
                     var parserClass = testClass.GetMethods(BindingFlags.Public | BindingFlags.NonPublic |
                                                            BindingFlags.Instance | BindingFlags.Static)
                         .SelectMany(method => method.GetCustomAttributes(inherit: true))
-                        .Any(attribute => attribute.GetType().Name == "RealParserFactAttribute");
+                        .Any(attribute => attribute is RealParserFactAttribute);
                     var walkthroughNamespace = testClass.Namespace?.Split('.')
                         .Any(segment => segment is "Walkthrough" or "Smoke") == true;
-                    var namedSystemClass = testClass.Name is "PortableWorkerPackageTests" or
-                        "ExplainedWordCardWalkthroughReplayTests" or
-                        "ExternalApplyActivationRealClientTests" or
-                        "RunnerSpineTests";
+                    var namedSystemClass = testClass.Name == "ExplainedWordCardWalkthroughReplayTests";
                     var resolvedLevel = TestLevelClassifier.ResolveLevel(
                         testClass.FullName!, defaultLevel, declarations, parserClass);
                     foreach (var method in testClass.GetMethods().Where(method =>

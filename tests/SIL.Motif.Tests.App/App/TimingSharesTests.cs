@@ -22,7 +22,7 @@ namespace SIL.Motif.Tests.App;
 /// rule recorded is shown as unattributed, and that no count is shown without saying what it counts.
 /// </summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
-[Trait("MotifTestLevel", "System")]
+[Trait("MotifTestLevel", "Unit")]
 public sealed class TimingSharesTests
 {
     private const string ProjectPath = @"C:\projects\sample.fwdata";

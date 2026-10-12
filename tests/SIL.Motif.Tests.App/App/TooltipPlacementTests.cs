@@ -21,7 +21,7 @@ namespace SIL.Motif.Tests.App;
 /// Matrix's pending mark and the Timing page at both widths and in both themes. Each tip opens under the pointer.
 /// </summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
-[Trait("MotifTestLevel", "System")]
+[Trait("MotifTestLevel", "Unit")]
 public sealed class TooltipPlacementTests
 {
     private static readonly string[] Owners =

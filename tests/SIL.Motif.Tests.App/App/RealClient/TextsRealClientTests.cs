@@ -16,7 +16,7 @@ using Xunit;
 namespace SIL.Motif.Tests.App.RealClient;
 
 [Collection(LcmCacheTestCollection.Name)]
-[Trait("MotifTestLevel", "System")]
+[Trait("MotifTestLevel", "Integration")]
 public sealed class TextsRealClientTests(PristineProjectFixture pristine)
 {
     private static object ParsedFirstForm => new

@@ -24,6 +24,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Commands;
 
+[Trait("MotifTestLevel", "Unit")]
 public sealed class CurrentEvidenceQueryTests : IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), "SIL.Motif.CurrentEvidenceQueryTests",

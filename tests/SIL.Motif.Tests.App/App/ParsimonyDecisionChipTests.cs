@@ -15,7 +15,7 @@ namespace SIL.Motif.Tests.App;
 /// visible rendered controls after a layout pass, at the 1040 width the captures use.
 /// </summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
-[Trait("MotifTestLevel", "System")]
+[Trait("MotifTestLevel", "Unit")]
 public sealed class ParsimonyDecisionChipTests
 {
     // Intent.Space.Compact, the least gap a decision keeps from the text beside it.

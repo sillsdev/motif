@@ -10,7 +10,7 @@ using Xunit;
 namespace SIL.Motif.Tests.Integration;
 
 [Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group0)]
-[Trait("MotifTestLevel", "System")]
+[Trait("MotifTestLevel", "Integration")]
 public sealed class PortableWorkerPackageTests(PristineProjectFixture projects)
 {
     private static readonly TimeSpan CliBound = TimeSpan.FromMinutes(2);

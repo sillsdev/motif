@@ -16,6 +16,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Commands.Parsimony;
 
+[Trait("MotifTestLevel", "Unit")]
 public sealed class RetirementExpectationTranslationTests
 {
     private static readonly string Digest = "sha256:" + new string('a', 64);

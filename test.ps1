@@ -288,16 +288,10 @@ if ($Coverage) {
 }
 
 $phaseClocks['test artifact preparation'] = [Diagnostics.Stopwatch]::StartNew()
-$artifactRequirements = [pscustomobject]@{
-    PortableWorkerPackage = $false
-    ExplainedWordCardFixture = $false
-}
-if ($All -or $System) {
-    Import-Module (Join-Path $repoRoot 'tools/MotifTestRunPlan.psm1') -Force
-    $selectedProjectNames = @($testRuns | Select-Object -ExpandProperty Project -Unique)
-    $artifactRequirements = Get-MotifTestArtifactRequirements -All:$All -System:$System `
-        -SelectedProjects $selectedProjectNames -Filter $Filter
-}
+Import-Module (Join-Path $repoRoot 'tools/MotifTestRunPlan.psm1') -Force
+$selectedProjectNames = @($testRuns | Select-Object -ExpandProperty Project -Unique)
+$artifactRequirements = Get-MotifTestArtifactRequirements -All:$All -System:$System `
+    -SelectedProjects $selectedProjectNames -Filter $Filter
 $preparePortable = $artifactRequirements.PortableWorkerPackage
 $prepareExplainedWordCard = $artifactRequirements.ExplainedWordCardFixture
 $prepareTestArtifacts = Join-Path $repoRoot 'tools/Prepare-TestArtifacts.ps1'

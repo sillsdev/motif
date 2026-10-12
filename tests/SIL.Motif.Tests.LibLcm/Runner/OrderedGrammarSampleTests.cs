@@ -9,7 +9,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Runner;
 
-[Trait("MotifTestLevel", "System")]
+[Trait("MotifTestLevel", "Integration")]
 public sealed class OrderedGrammarSampleTests
 {
     [OrderedGrammarSampleFact]

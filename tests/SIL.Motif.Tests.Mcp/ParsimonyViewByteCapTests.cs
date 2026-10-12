@@ -6,6 +6,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Mcp;
 
+[Trait("MotifTestLevel", "Unit")]
 public sealed class ParsimonyViewByteCapTests
 {
     private static CommandOutcome<ParsimonyNamedViewResponse> Page(int total, int offset, int limit, int rowBytes)

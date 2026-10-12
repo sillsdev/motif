@@ -6,6 +6,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Commands;
 
+[Trait("MotifTestLevel", "Unit")]
 public sealed class RetirementRecipeDeclarationTests
 {
     private static readonly RetirementFindingBinding Binding = new("RecordParsimonyDisposition", _ => true);

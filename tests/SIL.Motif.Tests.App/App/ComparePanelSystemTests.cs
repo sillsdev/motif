@@ -12,7 +12,7 @@ using WordRow = SIL.Motif.App.Controls.WordPresentation.WordRow;
 namespace SIL.Motif.Tests.App;
 
 [Collection(AvaloniaHeadlessCollection.Name)]
-[Trait("MotifTestLevel", "System")]
+[Trait("MotifTestLevel", "Unit")]
 public sealed class ComparePanelSystemTests(AvaloniaHeadlessFixture avalonia)
 {
     [Fact]
