@@ -257,6 +257,8 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
                 StepFor(deadline), "the pending change did not appear in Review");
 
             var review = walkthrough.Workspace.PageModel<ReviewPageModel>();
+            await review.LoadReviewAsync();
+            WaitForMeasureAction(walkthrough, deadline);
             var applyButton = walkthrough.Find<Button>("Apply to FieldWorks project");
             var checkNumbers = walkthrough.Find<Button>("Check what applying does to the numbers");
             Assert.True(checkNumbers.IsEffectivelyVisible);
@@ -280,6 +282,8 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
             var concurrentFreshnessCheck = walkthrough.Workspace.CheckFreshnessAsync();
             var checksShareTask = ReferenceEquals(freshnessCheck, concurrentFreshnessCheck);
             await Task.WhenAll(freshnessCheck, concurrentFreshnessCheck);
+            await review.LoadReviewAsync();
+            WaitForMeasureAction(walkthrough, deadline);
             walkthrough.WaitUntil(
                 () => !walkthrough.Workspace.Baseline.FieldWorksHeldProject,
                 StepFor(deadline), "the window did not clear the held-project status after release");
@@ -313,6 +317,16 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
 
     private static TimeSpan StepFor(long deadline) => TimeSpan.FromTicks(Math.Min(
         WalkthroughSteps.Remaining(deadline).Ticks, TimeSpan.FromSeconds(30).Ticks));
+
+    private static void WaitForMeasureAction(WalkthroughWindow walkthrough, long deadline)
+    {
+        walkthrough.WaitUntil(
+            () => walkthrough.Window.GetLogicalDescendants().OfType<Button>().Any(button =>
+                string.Equals(Avalonia.Automation.AutomationProperties.GetName(button),
+                    "Check what applying does to the numbers", StringComparison.Ordinal) &&
+                button.IsEffectivelyVisible && button.IsEffectivelyEnabled),
+            StepFor(deadline), "Review's measurement action did not become available after loading its entries");
+    }
 
     private static void WaitForMeasurementDisplay(
         WalkthroughWindow walkthrough, ReviewPageModel review, long deadline)
