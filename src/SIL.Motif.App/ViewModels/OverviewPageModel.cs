@@ -104,7 +104,7 @@ public sealed partial class OverviewPageModel : PageModel
         var resolver = Context.TextStyles;
         void Refresh()
         {
-            resolver.ReplaceContext(value?.WritingSystems ?? []);
+            resolver.ReplaceContextIfChanged(value?.WritingSystems ?? []);
         }
 
         // Overview queries can complete on a worker, but resolver refresh touches Avalonia controls.

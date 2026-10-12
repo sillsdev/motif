@@ -1,9 +1,13 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Headless;
+using Avalonia.LogicalTree;
 using Avalonia.Media;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
+using SIL.Motif.App;
 using SIL.Motif.App.Controls;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
@@ -20,6 +24,86 @@ namespace SIL.Motif.Tests.App;
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class TextStylesTests
 {
+    [Fact]
+    public void AnalyzeTextsKeepsItsMissingFontNoticeStableDuringSelectionLoad()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            FakeCommandClient? fake = null;
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData(parse: false,
+                configure: (client, _) => fake = client,
+                capturedWords: WritingSystemTestData.ArabicText());
+            var releaseReader = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            try
+            {
+                var overview = workspace.PageModel<OverviewPageModel>();
+                overview.Overview = overview.Overview! with { WritingSystems = [WritingSystemTestData.Arabic] };
+                var texts = workspace.PageModel<TextsPageModel>();
+                texts.Tab = TextsTab.AnalyzeTexts;
+                texts.ShowAnalyzeViewCommand.Execute(AnalyzeTextsView.TextReader);
+                workspace.CurrentPage = WorkspacePage.Texts;
+                await AnalyzeTextsLayoutTests.SettleReaderAsync(workspace, window);
+                await workspace.Selection.LoadTextsAsync(workspace.Context.ProjectPath!);
+
+                var notices = workspace.Context.TextStyles.MissingFontNotices;
+                Assert.Single(notices);
+                var noticeRow = window.FindControl<ItemsControl>("MainWindowWritingSystemNoticesItems");
+                Assert.NotNull(noticeRow);
+                var selectionPanel = Assert.Single(window.GetLogicalDescendants().OfType<SelectionPanel>());
+                var selectAll = Assert.Single(selectionPanel.GetLogicalDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetAutomationId(button) == AutomationIds.SelectAllTexts);
+                var selectedText = Assert.Single(workspace.Selection.Texts, choice =>
+                    string.Equals(choice.Title, WritingSystemTestData.TextTitle, StringComparison.Ordinal));
+                Assert.True(selectedText.IsChecked);
+                var initialHeight = noticeRow.Bounds.Height;
+
+                var readerStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                var originalReader = fake!.SelectionReaderHandler
+                    ?? throw new InvalidOperationException("The selection reader was not configured.");
+                fake.SelectionReaderHandler = async (request, cancellationToken) =>
+                {
+                    readerStarted.TrySetResult();
+                    await releaseReader.Task.WaitAsync(cancellationToken);
+                    return await originalReader(request, cancellationToken);
+                };
+
+                selectedText.IsChecked = false;
+                await readerStarted.Task.WaitAsync(TimeSpan.FromSeconds(10));
+                Assert.True(texts.Words.IsLoading);
+                Assert.False(workspace.Context.EvidencePublication.IsCompleted);
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+                var loadingButtonOrigin = selectAll.TranslatePoint(new Point(), window);
+                Assert.NotNull(loadingButtonOrigin);
+
+                var current = overview.Overview!;
+                overview.Overview = current with
+                {
+                    WritingSystems = current.WritingSystems.Select(system => system with
+                    {
+                        StyleSizes = system.StyleSizes.ToDictionary(pair => pair.Key, pair => pair.Value,
+                            StringComparer.Ordinal),
+                        StyleFonts = system.StyleFonts.ToDictionary(pair => pair.Key, pair => pair.Value,
+                            StringComparer.Ordinal),
+                    }).ToArray(),
+                };
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+
+                Assert.Single(notices);
+                Assert.Equal(initialHeight, noticeRow.Bounds.Height);
+                var buttonOrigin = selectAll.TranslatePoint(new Point(), window);
+                Assert.NotNull(buttonOrigin);
+                Assert.Equal(loadingButtonOrigin!.Value.Y, buttonOrigin!.Value.Y);
+            }
+            finally
+            {
+                releaseReader.TrySetResult();
+                window.Close();
+            }
+        }, TimeSpan.FromMinutes(2));
+    }
+
     [Fact]
     public void ResolvesStyleFontFeaturesDirectionAndPointSizeWithoutTheInterfaceFont()
     {

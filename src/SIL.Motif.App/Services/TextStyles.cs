@@ -59,6 +59,26 @@ public sealed partial class TextStyles
         AdvanceRevision();
     }
 
+    /// <summary>Replaces the captured display context only when its effective inputs change.</summary>
+    internal void ReplaceContextIfChanged(IReadOnlyList<WritingSystemDisplay> writingSystems, string? uiLocale = null)
+    {
+        ArgumentNullException.ThrowIfNull(writingSystems);
+        var effectiveLocale = string.IsNullOrWhiteSpace(uiLocale) ? CultureInfo.CurrentUICulture.Name : uiLocale;
+        var incoming = new List<WritingSystemDisplay>();
+        var incomingIds = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var writingSystem in writingSystems)
+        {
+            if (incomingIds.Add(writingSystem.Id)) incoming.Add(writingSystem);
+        }
+
+        var current = _systems.Values.ToArray();
+        if (string.Equals(_uiLocale, effectiveLocale, StringComparison.Ordinal) && current.Length == incoming.Count &&
+            current.Zip(incoming).All(pair => SameWritingSystem(pair.First, pair.Second)))
+            return;
+
+        ReplaceContext(writingSystems, uiLocale);
+    }
+
     /// <summary>The current default vernacular id, if the Baseline recorded one.</summary>
     public string? DefaultVernacularId => _systems.Values
         .Where(system => system.Kind == WritingSystemKind.Vernacular && system.IsDefault)
@@ -283,6 +303,30 @@ public sealed partial class TextStyles
         _cache.Clear();
         Revision++;
         ContextChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private static bool SameWritingSystem(WritingSystemDisplay left, WritingSystemDisplay right) =>
+        string.Equals(left.Id, right.Id, StringComparison.Ordinal) &&
+        string.Equals(left.Name, right.Name, StringComparison.Ordinal) &&
+        string.Equals(left.Abbreviation, right.Abbreviation, StringComparison.Ordinal) &&
+        left.Kind == right.Kind && left.Position == right.Position && left.IsDefault == right.IsDefault &&
+        string.Equals(left.FontFamily, right.FontFamily, StringComparison.Ordinal) &&
+        string.Equals(left.FontFeatures, right.FontFeatures, StringComparison.Ordinal) &&
+        left.RightToLeft == right.RightToLeft &&
+        SameDictionary(left.StyleSizes, right.StyleSizes, (first, second) => first.Equals(second)) &&
+        SameDictionary(left.StyleFonts, right.StyleFonts, (first, second) => first == second);
+
+    private static bool SameDictionary<T>(IReadOnlyDictionary<string, T> left, IReadOnlyDictionary<string, T> right,
+        Func<T, T, bool> sameValue)
+    {
+        if (left.Count != right.Count) return false;
+        foreach (var entry in left)
+        {
+            if (!right.Keys.Contains(entry.Key, StringComparer.Ordinal) ||
+                !right.TryGetValue(entry.Key, out var value) || !sameValue(entry.Value, value))
+                return false;
+        }
+        return true;
     }
 
     private static string? TextOf(Control control) => control switch
