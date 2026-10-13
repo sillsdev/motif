@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace SIL.Motif.Cli;
 
@@ -23,7 +24,7 @@ public static class CliVerbCatalog
 {
     private static readonly string[] NoUsage = Array.Empty<string>();
 
-    public static IReadOnlyList<CliVerbDescriptor> All { get; } = new[]
+    public static IReadOnlyList<CliVerbDescriptor> All { get; } = AddCitationOptions(new[]
     {
         new CliVerbDescriptor("Commands", "open", "open", new[] { "open <fwdata> [--json]" }),
         new CliVerbDescriptor("Project", "writing-systems", "writing-systems",
@@ -78,7 +79,7 @@ public static class CliVerbCatalog
             new[]
             {
                 "add-set-gloss --project <fwdata> --draft <name> --target <canonicalId> --ws <wsTag> " +
-                "--text <text> [--depends-on <opId>[,<opId>...]]",
+                "--text <text> [--depends-on <opId>[,<opId>...]] [--cite-source <text> [--cite-locator <text>]]",
             }),
         new CliVerbDescriptor(
             "Commands", "add-delete-lexeme-form", "add-delete-lexeme-form",
@@ -215,6 +216,8 @@ public static class CliVerbCatalog
             "Commands", "apply", "apply --all-pending",
             new[] { "apply --all-pending --project <fwdata> [--revision <r>] [--json]" }),
         new CliVerbDescriptor("Commands", "log", "log", new[] { "log --project <fwdata> [--json]" }),
+        new CliVerbDescriptor("Commands", "citations", "citations",
+            new[] { "citations --project <fwdata> [--uncited] [--json]" }),
 
         new CliVerbDescriptor(
             "Configuration", "config", "config show",
@@ -465,5 +468,22 @@ public static class CliVerbCatalog
             }),
         new CliVerbDescriptor("Commands", "apply", "apply --proposal",
             new[] { "apply --proposal <id> --project <fwdata> [--revision <r>] [--json]" }),
-    };
+    });
+
+    private static IReadOnlyList<CliVerbDescriptor> AddCitationOptions(
+        IReadOnlyList<CliVerbDescriptor> descriptors) => descriptors.Select(descriptor =>
+    {
+        var supportsCitation = descriptor.Verb.StartsWith("compose-", StringComparison.Ordinal) &&
+                               descriptor.Verb != "compose-batch" ||
+                               descriptor.Verb.StartsWith("retire-", StringComparison.Ordinal) ||
+                               descriptor.Verb is "add-set-gloss" or "add-delete-lexeme-form" or "promote-gloss" or
+                                   "order-allomorphs";
+        if (!supportsCitation || descriptor.UsageLines.Any(line => line.Contains("--cite-source", StringComparison.Ordinal)))
+            return descriptor;
+        return descriptor with
+        {
+            UsageLines = descriptor.UsageLines.Select(line =>
+                line + " [--cite-source <text> [--cite-locator <text>]]").ToArray(),
+        };
+    }).ToArray();
 }

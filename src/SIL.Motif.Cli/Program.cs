@@ -153,6 +153,23 @@ try
         return CommandTextRenderer.Render(outcome, asJson, successAsJson);
     }
 
+    var hasCitationFlag = flags.ContainsKey("cite-source") || flags.ContainsKey("cite-locator");
+    SIL.Motif.Contract.Model.OperationCitation? commandCitation = null;
+    if (hasCitationFlag)
+    {
+        var citationSupported = verb is "add-set-gloss" or "add-delete-lexeme-form" or "promote-gloss" ||
+                                ProposalCommands.DraftComposers.ContainsKey(verb);
+        if (!citationSupported)
+            return Usage("--cite-source and --cite-locator are available on Draft-authoring commands.", asJson);
+        if (!TryReadCitation(flags, out commandCitation, out var citationError))
+            return Usage(citationError!, asJson);
+    }
+
+    CommandOutcome<ComposedOperationsResponse> ComposeWithCitation(string project, string draft, string intent,
+        Func<CommandOutcome<ComposedOperationsResponse>> compose) => commandCitation is null
+        ? compose()
+        : ProposalCommands.ComposeIntentForCli(project, CliProductVersion(), draft, verb, intent, commandCitation);
+
     switch (verb)
     {
         case "open":
@@ -206,14 +223,16 @@ try
             {
                 return Usage(
                     "Usage: motif add-set-gloss --project <fwdata> --draft <name> --target <canonicalId> " +
-                    "--ws <wsTag> --text <text> [--depends-on <opId>[,<opId>...]]", asJson);
+                    "--ws <wsTag> --text <text> [--depends-on <opId>[,<opId>...]] " +
+                    "[--cite-source <text> [--cite-locator <text>]]", asJson);
             }
             var addDependsOn = flags.TryGetValue("depends-on", out var addDependsOnRaw)
                 ? addDependsOnRaw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                 : null;
             result = RenderProposal(
                 ProposalCommands.AddSetGloss(new AddSetGlossRequest(
-                    addProject, CliProductVersion(), addDraftName, addTarget, addWs, addText, addDependsOn)),
+                    addProject, CliProductVersion(), addDraftName, addTarget, addWs, addText, addDependsOn),
+                    commandCitation),
                 successAsJson: false);
             break;
 
@@ -228,7 +247,8 @@ try
             }
             result = RenderProposal(
                 ProposalCommands.AddDeleteLexemeForm(
-                    new AddDeleteLexemeFormRequest(addDelProject, CliProductVersion(), addDelDraftName, addDelTarget)),
+                    new AddDeleteLexemeFormRequest(addDelProject, CliProductVersion(), addDelDraftName, addDelTarget),
+                    commandCitation),
                 successAsJson: false);
             break;
 
@@ -242,8 +262,9 @@ try
                     "'{\"entry\":...,\"morphType\":...,\"ws\":...,\"text\":...}'", asJson);
             }
             result = RenderProposal(
-                ProposalCommands.ComposeAuthorLexemeForm(new ComposeAuthorLexemeFormRequest(
-                    composeProject, CliProductVersion(), composeDraftName, composeIntent)),
+                ComposeWithCitation(composeProject, composeDraftName, composeIntent,
+                    () => ProposalCommands.ComposeAuthorLexemeForm(new ComposeAuthorLexemeFormRequest(
+                        composeProject, CliProductVersion(), composeDraftName, composeIntent))),
                 successAsJson: false);
             break;
 
@@ -261,7 +282,7 @@ try
                 !flags.TryGetValue("project", out var soundProject) ||
                 !flags.TryGetValue("intent", out var soundIntent))
                 return Usage("Usage: motif " + verb + " --draft <name> --project <fwdata> --intent '<closed intent JSON>'", asJson);
-            var soundOutcome = verb switch
+            var soundOutcome = ComposeWithCitation(soundProject, soundDraft, soundIntent, () => verb switch
             {
                 "compose-author-feature-value" => ProposalCommands.ComposeAuthorFeatureValue(new(soundProject, CliProductVersion(), soundDraft, soundIntent)),
                 "compose-author-phoneme" => ProposalCommands.ComposeAuthorPhoneme(new(soundProject, CliProductVersion(), soundDraft, soundIntent)),
@@ -279,7 +300,7 @@ try
                 "compose-relink-natural-class" => ProposalCommands.ComposeRelinkNaturalClass(
                     new(soundProject, CliProductVersion(), soundDraft, soundIntent)),
                 _ => ProposalCommands.ComposeAuthorEnvironment(new(soundProject, CliProductVersion(), soundDraft, soundIntent)),
-            };
+            });
             result = RenderProposal(soundOutcome, successAsJson: false);
             break;
 
@@ -300,8 +321,9 @@ try
                 !flags.TryGetValue("project", out var retireProject) ||
                 !flags.TryGetValue("intent", out var retireIntent))
                 return Usage("Usage: motif retire-allomorph --draft <name> --project <fwdata> --intent '<closed intent JSON>'", asJson);
-            result = RenderProposal(ProposalCommands.ComposeRetireAllomorph(new ComposeRetireAllomorphRequest(
-                retireProject, CliProductVersion(), retireDraft, retireIntent)), successAsJson: false);
+            result = RenderProposal(ComposeWithCitation(retireProject, retireDraft, retireIntent,
+                () => ProposalCommands.ComposeRetireAllomorph(new ComposeRetireAllomorphRequest(
+                    retireProject, CliProductVersion(), retireDraft, retireIntent))), successAsJson: false);
             break;
 
         case "retire-redundant-zero-affix":
@@ -309,8 +331,9 @@ try
                 !flags.TryGetValue("project", out var zeroProject) ||
                 !flags.TryGetValue("intent", out var zeroIntent))
                 return Usage("Usage: motif retire-redundant-zero-affix --draft <name> --project <fwdata> --intent '<closed intent JSON>'", asJson);
-            result = RenderProposal(ProposalCommands.ComposeRetireRedundantZeroAffix(
-                new ComposeRetireRedundantZeroAffixRequest(zeroProject, CliProductVersion(), zeroDraft, zeroIntent)),
+            result = RenderProposal(ComposeWithCitation(zeroProject, zeroDraft, zeroIntent,
+                () => ProposalCommands.ComposeRetireRedundantZeroAffix(
+                    new ComposeRetireRedundantZeroAffixRequest(zeroProject, CliProductVersion(), zeroDraft, zeroIntent))),
                 successAsJson: false);
             break;
 
@@ -323,10 +346,9 @@ try
                     "Usage: motif compose-author-feature-structure --draft <name> --project <fwdata> " +
                     "--intent '{\"msa\":...}'", asJson);
             }
-            result = RenderProposal(
-                ProposalCommands.ComposeAuthorFeatureStructure(new ComposeAuthorFeatureStructureRequest(
-                    composeFsProject, CliProductVersion(), composeFsDraftName, composeFsIntent)),
-                successAsJson: false);
+            result = RenderProposal(ComposeWithCitation(composeFsProject, composeFsDraftName, composeFsIntent,
+                () => ProposalCommands.ComposeAuthorFeatureStructure(new ComposeAuthorFeatureStructureRequest(
+                    composeFsProject, CliProductVersion(), composeFsDraftName, composeFsIntent))), successAsJson: false);
             break;
 
         case "compose-record-parsimony-disposition":
@@ -335,9 +357,9 @@ try
                 !flags.TryGetValue("intent", out var dispositionIntent))
                 return Usage("Usage: motif compose-record-parsimony-disposition --draft <name> " +
                     "--project <fwdata> --intent '<closed intent JSON>'", asJson);
-            result = RenderProposal(ProposalCommands.ComposeRecordParsimonyDisposition(
-                new ComposeRecordParsimonyDispositionRequest(
-                    dispositionProject, CliProductVersion(), dispositionDraft, dispositionIntent)), successAsJson: false);
+            result = RenderProposal(ComposeWithCitation(dispositionProject, dispositionDraft, dispositionIntent,
+                () => ProposalCommands.ComposeRecordParsimonyDisposition(new ComposeRecordParsimonyDispositionRequest(
+                    dispositionProject, CliProductVersion(), dispositionDraft, dispositionIntent))), successAsJson: false);
             break;
 
         case "compose-edit-adhoc-prohibition":
@@ -346,9 +368,9 @@ try
                 !flags.TryGetValue("intent", out var adhocIntent))
                 return Usage("Usage: motif compose-edit-adhoc-prohibition --draft <name> " +
                     "--project <fwdata> --intent '<closed intent JSON>'", asJson);
-            result = RenderProposal(ProposalCommands.ComposeEditAdhocProhibition(
-                new ComposeEditAdhocProhibitionRequest(
-                    adhocProject, CliProductVersion(), adhocDraft, adhocIntent)), successAsJson: false);
+            result = RenderProposal(ComposeWithCitation(adhocProject, adhocDraft, adhocIntent,
+                () => ProposalCommands.ComposeEditAdhocProhibition(new ComposeEditAdhocProhibitionRequest(
+                    adhocProject, CliProductVersion(), adhocDraft, adhocIntent))), successAsJson: false);
             break;
 
         case "compose-edit-affix-slot":
@@ -357,8 +379,9 @@ try
                 !flags.TryGetValue("intent", out var affixSlotIntent))
                 return Usage("Usage: motif compose-edit-affix-slot --draft <name> --project <fwdata> " +
                     "--intent '<closed intent JSON>'", asJson);
-            result = RenderProposal(ProposalCommands.ComposeEditAffixSlot(new ComposeEditAffixSlotRequest(
-                affixSlotProject, CliProductVersion(), affixSlotDraft, affixSlotIntent)), successAsJson: false);
+            result = RenderProposal(ComposeWithCitation(affixSlotProject, affixSlotDraft, affixSlotIntent,
+                () => ProposalCommands.ComposeEditAffixSlot(new ComposeEditAffixSlotRequest(
+                    affixSlotProject, CliProductVersion(), affixSlotDraft, affixSlotIntent))), successAsJson: false);
             break;
 
         case "compose-edit-affix-template":
@@ -367,8 +390,9 @@ try
                 !flags.TryGetValue("intent", out var affixTemplateIntent))
                 return Usage("Usage: motif compose-edit-affix-template --draft <name> --project <fwdata> " +
                     "--intent '<closed intent JSON>'", asJson);
-            result = RenderProposal(ProposalCommands.ComposeEditAffixTemplate(new ComposeEditAffixTemplateRequest(
-                affixTemplateProject, CliProductVersion(), affixTemplateDraft, affixTemplateIntent)), successAsJson: false);
+            result = RenderProposal(ComposeWithCitation(affixTemplateProject, affixTemplateDraft, affixTemplateIntent,
+                () => ProposalCommands.ComposeEditAffixTemplate(new ComposeEditAffixTemplateRequest(
+                    affixTemplateProject, CliProductVersion(), affixTemplateDraft, affixTemplateIntent))), successAsJson: false);
             break;
 
         case "compose-edit-inflectional-affix":
@@ -377,9 +401,10 @@ try
                 !flags.TryGetValue("intent", out var inflectionalAffixIntent))
                 return Usage("Usage: motif compose-edit-inflectional-affix --draft <name> --project <fwdata> " +
                     "--intent '<closed intent JSON>'", asJson);
-            result = RenderProposal(ProposalCommands.ComposeEditInflectionalAffix(
-                new ComposeEditInflectionalAffixRequest(inflectionalAffixProject, CliProductVersion(),
-                    inflectionalAffixDraft, inflectionalAffixIntent)), successAsJson: false);
+            result = RenderProposal(ComposeWithCitation(inflectionalAffixProject, inflectionalAffixDraft,
+                inflectionalAffixIntent, () => ProposalCommands.ComposeEditInflectionalAffix(
+                    new ComposeEditInflectionalAffixRequest(inflectionalAffixProject, CliProductVersion(),
+                        inflectionalAffixDraft, inflectionalAffixIntent))), successAsJson: false);
             break;
 
         case "compose-edit-allomorph-condition":
@@ -388,9 +413,10 @@ try
                 !flags.TryGetValue("intent", out var allomorphConditionIntent))
                 return Usage("Usage: motif compose-edit-allomorph-condition --draft <name> --project <fwdata> " +
                     "--intent '<closed intent JSON>'", asJson);
-            result = RenderProposal(ProposalCommands.ComposeEditAllomorphCondition(
-                new ComposeEditAllomorphConditionRequest(allomorphConditionProject, CliProductVersion(),
-                    allomorphConditionDraft, allomorphConditionIntent)), successAsJson: false);
+            result = RenderProposal(ComposeWithCitation(allomorphConditionProject, allomorphConditionDraft,
+                allomorphConditionIntent, () => ProposalCommands.ComposeEditAllomorphCondition(
+                    new ComposeEditAllomorphConditionRequest(allomorphConditionProject, CliProductVersion(),
+                        allomorphConditionDraft, allomorphConditionIntent))), successAsJson: false);
             break;
 
         case "order-allomorphs":
@@ -399,9 +425,10 @@ try
                 !flags.TryGetValue("intent", out var orderAllomorphsIntent))
                 return Usage("Usage: motif order-allomorphs --draft <name> --project <fwdata> " +
                     "--intent '<closed intent JSON>'", asJson);
-            result = RenderProposal(ProposalCommands.ComposeOrderAllomorphs(
-                new ComposeOrderAllomorphsRequest(orderAllomorphsProject, CliProductVersion(),
-                    orderAllomorphsDraft, orderAllomorphsIntent)), successAsJson: false);
+            result = RenderProposal(ComposeWithCitation(orderAllomorphsProject, orderAllomorphsDraft,
+                orderAllomorphsIntent, () => ProposalCommands.ComposeOrderAllomorphs(
+                    new ComposeOrderAllomorphsRequest(orderAllomorphsProject, CliProductVersion(),
+                        orderAllomorphsDraft, orderAllomorphsIntent))), successAsJson: false);
             break;
 
         case "promote-gloss":
@@ -419,7 +446,7 @@ try
             result = RenderProposal(
                 ProposalCommands.PromoteGloss(new PromoteGlossRequest(
                     promoteProject, CliProductVersion(), promoteDraftName, promoteTarget, promoteWs, promoteText,
-                    promoteCorpus, flags.GetValueOrDefault("document"))),
+                    promoteCorpus, flags.GetValueOrDefault("document")), commandCitation),
                 successAsJson: false);
             break;
 
@@ -882,6 +909,13 @@ try
             if (!flags.TryGetValue("project", out var logProject))
                 return Usage("Usage: motif log --project <fwdata> [--json]", asJson);
             result = RenderProposal(ProposalCommands.Log(new LogRequest(logProject)));
+            break;
+
+        case "citations":
+            if (!flags.TryGetValue("project", out var citationsProject))
+                return Usage("Usage: motif citations --project <fwdata> [--uncited] [--json]", asJson);
+            result = RenderProposal(ProposalCommands.Citations(new CitationsRequest(citationsProject, CliProductVersion(),
+                flags.ContainsKey("uncited"))));
             break;
 
         case "add-corpus":
@@ -1702,6 +1736,37 @@ catch (Exception ex)
     // Nothing decided this; it escaped. That is a bug, not a refusal, and it gets its own code.
     error.WriteLine($"error: {ex.Message}");
     return FailureEnvelope.ExitCodeFor(FailureReason.StoreInconsistent);
+}
+
+static bool TryReadCitation(IReadOnlyDictionary<string, string> flags, out SIL.Motif.Contract.Model.OperationCitation? citation,
+    out string? error)
+{
+    citation = null;
+    error = null;
+    var hasSource = flags.TryGetValue("cite-source", out var source);
+    var hasLocator = flags.TryGetValue("cite-locator", out var locator);
+    if (!hasSource && !hasLocator) return true;
+    // ParseArgs records a flag given no value as "true", which is never a meant source or locator.
+    if (source == "true" || locator == "true")
+    {
+        error = "--cite-source and --cite-locator each need a value.";
+        return false;
+    }
+    if (!hasSource)
+    {
+        error = "--cite-locator needs --cite-source: a citation names the work it cites.";
+        return false;
+    }
+    try
+    {
+        citation = SIL.Motif.Contract.Model.OperationCitation.Create(source, locator);
+        return true;
+    }
+    catch (SIL.Motif.Contract.Parsing.ContractParseException exception)
+    {
+        error = exception.Message;
+        return false;
+    }
 }
 
 int Usage(string message, bool asJson = false, bool withUsageBanner = false)

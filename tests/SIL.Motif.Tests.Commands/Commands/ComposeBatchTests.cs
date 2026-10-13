@@ -4,12 +4,15 @@ using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Commands.Store;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Runner.DryRun;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Store;
+using SIL.LCModel;
 using Xunit;
 
 namespace SIL.Motif.Tests.Commands;
@@ -183,7 +186,7 @@ public sealed class ComposeBatchTests(PristineProjectFixture pristine)
     [Theory]
     [InlineData("""{"intents":[]}""", "at least one intent")]
     [InlineData("""{"intents":[{"verb":"add-set-gloss","intent":{}}]}""", "not a verb a batch can run")]
-    [InlineData("""{"intents":[{"verb":"compose-author-phoneme","intent":{},"note":"x"}]}""", "exactly 'verb'")]
+    [InlineData("""{"intents":[{"verb":"compose-author-phoneme","intent":{},"note":"x"}]}""", "each entry has 'verb'")]
     [InlineData("""{"intents":[],"draft":"x"}""", "one property, 'intents'")]
     [InlineData("""[{"verb":"compose-author-phoneme","intent":{}}]""", "one property, 'intents'")]
     public void ABatchFileIsClosed(string json, string expected)
@@ -198,6 +201,67 @@ public sealed class ComposeBatchTests(PristineProjectFixture pristine)
         Assert.False(refused.Succeeded);
         Assert.Contains(expected, refused.Refusal!.Message);
         Assert.Empty(ReadDraft(path, "closed").Operations);
+    }
+
+    [Fact]
+    public void ABatchIntentCarriesItsSiblingCitationToEveryLoweredOperation()
+    {
+        using var cache = pristine.NewScratch();
+        var path = cache.ProjectId.Path;
+        cache.Dispose();
+        var seed = pristine.Seed;
+        var intent = new
+        {
+            entry = CanonicalId.FromGuid(seed.FirstEntryId).Value,
+            morphType = CanonicalId.FromGuid(MoMorphTypeTags.kguidMorphStem).Value,
+            ws = "fr",
+            text = "zzCitedForm",
+            sense = CanonicalId.FromGuid(seed.FirstSenseId).Value,
+            glossWs = "en",
+            glossText = "a cited gloss",
+        };
+        var json = JsonSerializer.Serialize(new
+        {
+            intents = new[]
+            {
+                new
+                {
+                    verb = "compose-author-lexeme-form",
+                    intent,
+                    citation = new { source = "Grammar 2026", locator = "§ 3" },
+                },
+            },
+        });
+        Assert.True(ProposalCommands.New(new(path, Version, "cited-batch", "Cited batch")).Succeeded);
+
+        var batch = ProposalCommands.ComposeBatch(new(path, Version, "cited-batch", json));
+
+        Assert.True(batch.Succeeded, batch.Refusal?.Message);
+        var cited = ReadDraft(path, "cited-batch").Operations
+            .Select(operation => OperationCitation.FromProvenance(operation.Provenance))
+            .OfType<OperationCitation>().ToArray();
+        Assert.Equal(2, cited.Length);
+        Assert.All(cited, citation => Assert.Equal(("Grammar 2026", "§ 3"),
+            (citation.Source, citation.Locator)));
+    }
+
+    [Theory]
+    [InlineData("""{"intents":[{"verb":"compose-author-phoneme","intent":{},"citation":{"source":"Grammar","type":"citation"}}]}""", "only 'source' and 'locator'")]
+    [InlineData("""{"intents":[{"verb":"compose-author-phoneme","intent":{},"citation":{"source":" "}}]}""", "non-empty 'source'")]
+    [InlineData("""{"intents":[{"verb":"compose-author-phoneme","intent":{},"citation":{"source":"Grammar"},"citation":{"source":"Other"}}]}""", "repeats a property")]
+    public void ABatchRejectsMalformedCitationShapes(string json, string expected)
+    {
+        using var cache = pristine.NewScratch();
+        var path = cache.ProjectId.Path;
+        cache.Dispose();
+        StartDraft(path, "bad-citation");
+        var before = ReadDraft(path, "bad-citation").Operations.Count;
+
+        var refused = ProposalCommands.ComposeBatch(new(path, Version, "bad-citation", json));
+
+        Assert.False(refused.Succeeded);
+        Assert.Contains(expected, refused.Refusal!.Message);
+        Assert.Equal(before, ReadDraft(path, "bad-citation").Operations.Count);
     }
 
     [Fact]

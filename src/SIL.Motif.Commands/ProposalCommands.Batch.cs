@@ -1,12 +1,41 @@
 using System.Text.Json;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Model;
+using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.Commands;
 
 public static partial class ProposalCommands
 {
+    /// <summary>Runs one CLI composer through the batch append path so citations share its validation rules.</summary>
+    /// <param name="fwDataPath">The saved project this Draft belongs to.</param>
+    /// <param name="productVersion">The Motif product version used to open the paired store.</param>
+    /// <param name="draftName">The Draft that receives the composed operations.</param>
+    /// <param name="verb">The CLI composing verb that selects the composer.</param>
+    /// <param name="intentJson">The closed semantic intent accepted by that composer.</param>
+    /// <param name="citation">The optional source copied to every operation the composer creates.</param>
+    internal static CommandOutcome<ComposedOperationsResponse> ComposeIntentForCli(
+        string fwDataPath, string productVersion, string draftName, string verb, string intentJson,
+        OperationCitation? citation) =>
+        ProjectStoreCommand.Run(fwDataPath, productVersion, (database, project) =>
+        {
+            try
+            {
+                if (!DraftComposers.TryGetValue(verb, out var composer))
+                    throw new InvalidOperationException($"'{verb}' is not a composing verb.");
+                using var document = JsonDocument.Parse(intentJson);
+                return Single(ComposeStepsIntoDraft(database, project, draftName,
+                    [ComposeStep.From(composer, document.RootElement.Clone(), citation)]));
+            }
+            catch (Exception exception)
+            {
+                return CommandOutcome<ComposedOperationsResponse>.Refused(
+                    DraftInvalid(exception.Message, ("draftName", draftName)));
+            }
+        });
+
     /// <summary>
     /// Composes many intents into one Draft from one project load, through the same composers and checks as
     /// each verb run alone, and appends all of them or none.
@@ -23,7 +52,7 @@ public static partial class ProposalCommands
             {
                 steps = ParseBatch(request.IntentsJson);
             }
-            catch (Exception exception) when (exception is JsonException or InvalidOperationException)
+            catch (Exception exception) when (exception is JsonException or InvalidOperationException or ContractParseException)
             {
                 return CommandOutcome<ComposedBatchResponse>.Refused(
                     DraftInvalid(exception.Message, ("draftName", request.DraftName)));
@@ -52,17 +81,23 @@ public static partial class ProposalCommands
         {
             var index = steps.Count;
             if (entry.ValueKind != JsonValueKind.Object ||
-                entry.EnumerateObject().Any(property => property.Name is not ("verb" or "intent")) ||
+                entry.EnumerateObject().Any(property => property.Name is not ("verb" or "intent" or "citation")) ||
                 !entry.TryGetProperty("verb", out var verbValue) || verbValue.ValueKind != JsonValueKind.String ||
                 !entry.TryGetProperty("intent", out var intent))
                 throw new InvalidOperationException(
-                    $"Intent {index}: each entry has exactly 'verb' (a composing verb) and 'intent'.");
+                    $"Intent {index}: each entry has 'verb' (a composing verb) and 'intent', with optional 'citation'.");
+            var names = new HashSet<string>(StringComparer.Ordinal);
+            if (entry.EnumerateObject().Any(property => !names.Add(property.Name)))
+                throw new InvalidOperationException($"Intent {index}: an entry repeats a property.");
             var verb = verbValue.GetString()!;
             if (!DraftComposers.TryGetValue(verb, out var composer))
                 throw new InvalidOperationException(
                     $"Intent {index}: '{verb}' is not a verb a batch can run. Batchable verbs: " +
                     string.Join(", ", DraftComposers.Keys.Order(StringComparer.Ordinal)) + ".");
-            steps.Add(ComposeStep.From(composer, intent.Clone()));
+            var citation = entry.TryGetProperty("citation", out var citationValue)
+                ? OperationCitation.Parse(citationValue)
+                : null;
+            steps.Add(ComposeStep.From(composer, intent.Clone(), citation));
         }
         return steps;
     }

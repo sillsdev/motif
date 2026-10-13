@@ -58,7 +58,11 @@ public abstract record ReviewEntry(
     IReadOnlyList<string> OperationIds,
     IReadOnlyList<string> DependsOnEntries,
     string ContentDigest,
-    bool LookedAt);
+    bool LookedAt)
+{
+    /// <summary>The distinct sources this entry's operations cite, in operation order; empty when none cite one.</summary>
+    public IReadOnlyList<CitationView> Citations { get; init; } = [];
+}
 
 /// <summary>
 /// A change to one word's analyses: the authored change and its operations, how it fits the project now, and the

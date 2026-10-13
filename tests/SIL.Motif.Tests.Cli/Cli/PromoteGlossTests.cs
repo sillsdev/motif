@@ -30,11 +30,14 @@ public sealed class PromoteGlossTests : IDisposable
 
     private readonly string _root =
         Path.Combine(Path.GetTempPath(), "motif-promote-gloss-tests", Guid.NewGuid().ToString("N"));
+    private readonly string _workerRoot;
     private readonly string _fwDataPath;
 
     public PromoteGlossTests()
     {
         Directory.CreateDirectory(_root);
+        _workerRoot = Path.Combine(_root, "worker");
+        Directory.CreateDirectory(_workerRoot);
         _fwDataPath = Path.Combine(_root, "Project.fwdata");
         File.WriteAllText(_fwDataPath, string.Empty);
     }
@@ -69,6 +72,26 @@ public sealed class PromoteGlossTests : IDisposable
     {
         if (Directory.Exists(_root)) Directory.Delete(_root, recursive: true);
         GC.SuppressFinalize(this);
+    }
+
+    [Fact]
+    public void PromoteGlossCliCitationKeepsTheCorpusOriginBesideIt()
+    {
+        SeedCorpus();
+        Assert.True(NewDraft(_fwDataPath, ProductVersion, "cited", null).Succeeded);
+
+        var result = CliInProcess.Run(_workerRoot, null, developerCommands: true,
+            "promote-gloss", "--project", _fwDataPath, "--draft", "cited", "--target", CanonicalId.Mint().Value,
+            "--ws", "en", "--text", "a cited gloss", "--corpus", "wiki-testlang", "--cite-source",
+            "Grammar 2026", "--cite-locator", "§ 6", "--json");
+
+        Assert.Equal(0, result.ExitCode);
+        var draft = JsonSerializer.Deserialize<SIL.Motif.Commands.Store.DraftDocument>(ReadDraftJson("cited"),
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
+        var operation = Assert.Single(draft.Operations);
+        var citation = OperationCitation.FromProvenance(operation.Provenance);
+        Assert.Equal(new CitationView("Grammar 2026", "§ 6"), new CitationView(citation!.Source, citation.Locator));
+        Assert.Equal("wiki-testlang", Assert.Single(draft.PromotionProvenance).GetProperty("corpusId").GetString());
     }
 
     private void SeedCorpus(string corpusId = "wiki-testlang", string? licence = "CC-BY-SA-4.0") =>

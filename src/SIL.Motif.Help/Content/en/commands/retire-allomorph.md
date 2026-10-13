@@ -17,3 +17,5 @@ The four displayed parts stay in that one Proposal: the sound class and rule; an
 The reference census refuses an incomplete or changed view, an unsupported reference, a form that no longer matches its authored identity, or an owned dependent that deletion would remove. When a destination is missing, the refusal names the number of distinct Approved analyses and ad hoc rules still unresolved, plus other references. Declare every destination and run Dry Run again.
 
 Review the paired before and after reading evidence for every affected Approved reading. The review keeps each FieldWorks Opinion and surface spelling beside its parser result and rule attribution. Missing identity, parser completion, read-back, or rule trace is shown as unavailable; it is never counted as a preserved reading. Check that the detector finding is resolved in the rebuilt after Report, separately from whether a disposition is Suppressed, before a person Applies the whole Proposal.
+
+Add `--cite-source <text>` and optionally `--cite-locator <text>` to record the source on every operation this command produces.

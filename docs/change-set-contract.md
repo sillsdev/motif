@@ -91,6 +91,20 @@ that drift is a diagnostic condition, not a reinterpretation of `set`; applicati
 chooses whether warnings may proceed. Structural guards deliberately authored as part of intent
 (for example an expected target type) are different: they are hashed and enforced.
 
+### Citations
+
+An operation may cite the source it was taken from as one entry of its `provenance` array:
+
+```json
+"provenance": [ { "type": "citation", "source": "Steere 1870, A Handbook of the Swahili Language", "locator": "p. 142" } ]
+```
+
+`source` is required, non-blank, and at most 300 characters; `locator` (a page, section or verse) is optional
+and at most 120. An entry whose `type` is `citation` admits no other property, and an operation carries at most
+one; a malformed or repeated citation makes the Proposal unparseable. Other `provenance` entries stay open.
+Like all of `provenance`, a citation is excluded from the intent digest. A citation names a source, never a
+person or an agent ([ADR 0064](adr/0064-every-operation-can-cite-its-source.md)).
+
 ## Operation vocabulary
 
 The catalog is a closed, versioned, hashed set of **ten primitive verbs** — Layer 0. Each is admitted
@@ -877,6 +891,10 @@ After the host saves the project, it records the Receipt in the paired project's
 and marks the Proposal applied in the same store transaction. Retrying an already applied Proposal
 does not add another row. If saving or Receipt recording fails after the LibLCM commit, the caller
 receives a reconciliation error rather than a rollback claim.
+
+The Apply response includes one cited-operation row per cited operation, projected from the Applied Proposal's
+existing `provenance`. The citation stays with that Proposal; it is not copied into the FieldWorks applied-change log
+or stored Receipt.
 
 No receipt is emitted for a rolled-back application, except a distinct failure report that cannot
 be mistaken for a realized state edge.

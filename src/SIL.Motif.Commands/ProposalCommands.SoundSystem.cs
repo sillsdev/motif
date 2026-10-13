@@ -250,12 +250,14 @@ public static partial class ProposalCommands
         Action<IReadOnlyList<OperationEnvelope>, JsonElement, IReadOnlyList<OperationEnvelope>>? ValidateAppend = null,
         Func<JsonElement, OperationEnvelope, bool>? ReplacePrevious = null,
         Func<LcmCache, JsonElement, IReadOnlyList<ComposedRelatedObject>>? RelatedObjects = null,
-        JsonElement? Authored = null)
+        JsonElement? Authored = null,
+        OperationCitation? Citation = null)
     {
-        internal static ComposeStep From(DraftComposer composer, JsonElement authored) =>
+        internal static ComposeStep From(DraftComposer composer, JsonElement authored,
+            OperationCitation? citation = null) =>
             new(composer.Verb, composer.Composer,
                 (cache, proposalId) => (authored, composer.Build(cache, authored, proposalId)),
-                composer.ValidateAppend, composer.ReplacePrevious, composer.RelatedObjects, authored);
+                composer.ValidateAppend, composer.ReplacePrevious, composer.RelatedObjects, authored, citation);
     }
 
     private sealed class ComposeStepException(int index, Exception inner) : Exception(inner.Message, inner)
@@ -334,7 +336,9 @@ public static partial class ProposalCommands
             {
                 foreach (var declared in result.Added)
                 {
-                    draft.Operations.Add(ToDraftOperation(declared));
+                    var authored = ToDraftOperation(declared);
+                    authored.Cite(step.Citation);
+                    draft.Operations.Add(authored);
                     EnsureContractVersion(draft, declared.Kind);
                 }
                 if (step.ReplacePrevious is not null && result.Input.ValueKind == JsonValueKind.Object &&

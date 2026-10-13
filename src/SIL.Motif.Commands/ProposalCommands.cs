@@ -281,7 +281,12 @@ public static partial class ProposalCommands
         });
     }
 
-    public static CommandOutcome<SetGlossAddedResponse> AddSetGloss(AddSetGlossRequest request)
+    /// <summary>
+    /// Stages one sense gloss in a Draft. Writing the same sense and writing system again replaces the earlier
+    /// operation's value, and its citation with <paramref name="citation"/>.
+    /// </summary>
+    public static CommandOutcome<SetGlossAddedResponse> AddSetGloss(AddSetGlossRequest request,
+        SIL.Motif.Contract.Model.OperationCitation? citation = null)
     {
         return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
         {
@@ -330,6 +335,7 @@ public static partial class ProposalCommands
                     previous.After = authored.After;
                     previous.DependsOn = authored.DependsOn;
                 }
+                (previous ?? authored).Cite(citation);
                 EnsureContractVersion(draft, LexicalSenseOperationKinds.SetGloss);
 
                 if (!TrySaveLoadedDraft(repository, request.DraftName, loadedJson, draft))
@@ -353,9 +359,10 @@ public static partial class ProposalCommands
     /// exposed here so the removal analysis has a genuine cascading-delete operation to test
     /// against, not a synthetic one. Its <c>after</c> payload is the empty object — an entry has at
     /// most one lexeme form, so nothing is left to disambiguate once the target entry is known.
+    /// An optional citation records the source beside that operation.
     /// </summary>
     public static CommandOutcome<DeleteLexemeFormAddedResponse> AddDeleteLexemeForm(
-        AddDeleteLexemeFormRequest request)
+        AddDeleteLexemeFormRequest request, SIL.Motif.Contract.Model.OperationCitation? citation = null)
     {
         return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
         {
@@ -373,13 +380,15 @@ public static partial class ProposalCommands
 
                 var operationId = CanonicalId.Mint();
 
-                draft.Operations.Add(new DraftOperation
+                var operation = new DraftOperation
                 {
                     OperationId = operationId.Value,
                     Kind = LexEntryLexemeFormOperationKinds.DeleteLexemeForm,
                     Target = targetId.Value,
                     After = new Dictionary<string, JsonElement>(),
-                });
+                };
+                operation.Cite(citation);
+                draft.Operations.Add(operation);
                 EnsureContractVersion(draft, LexEntryLexemeFormOperationKinds.DeleteLexemeForm);
 
                 if (!TrySaveLoadedDraft(repository, request.DraftName, loadedJson, draft))
@@ -437,14 +446,15 @@ public static partial class ProposalCommands
     /// sanctioned route from the Motif store into the language project (ADR 0036 decision 2). The
     /// corpus's origin travels with the operation as non-hashed provenance, so a licence obligation a
     /// promoted value carries (e.g. CC-BY-SA attribution) is never lost between the evidence and the
-    /// dictionary entry it justified.
+    /// dictionary entry it justified. An optional citation records the source of that value separately.
     /// </summary>
     /// <remarks>
     /// The draft and the corpus both live in the project's paired database, opened once through
     /// <see cref="ProjectStoreCommand.Run{T}"/> so the two never disagree about which project a corpus
     /// id names.
     /// </remarks>
-    public static CommandOutcome<PromoteGlossAddedResponse> PromoteGloss(PromoteGlossRequest request)
+    public static CommandOutcome<PromoteGlossAddedResponse> PromoteGloss(PromoteGlossRequest request,
+        SIL.Motif.Contract.Model.OperationCitation? citation = null)
     {
         return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
         {
@@ -482,7 +492,7 @@ public static partial class ProposalCommands
 
                 var operationId = CanonicalId.Mint();
 
-                draft.Operations.Add(new DraftOperation
+                var operation = new DraftOperation
                 {
                     OperationId = operationId.Value,
                     Kind = LexicalSenseOperationKinds.SetGloss,
@@ -492,7 +502,9 @@ public static partial class ProposalCommands
                         ["ws"] = JsonSerializer.SerializeToElement(request.Ws),
                         ["text"] = JsonSerializer.SerializeToElement(request.Text),
                     },
-                });
+                };
+                operation.Cite(citation);
+                draft.Operations.Add(operation);
                 EnsureContractVersion(draft, LexicalSenseOperationKinds.SetGloss);
 
                 var origin = corpus.Provenance.Origin;
@@ -985,6 +997,7 @@ public static partial class ProposalCommands
             DependsOn = operation.DependsOn.Select(d => d.OperationId.Value).ToList(),
             After = afterDict,
             Extensions = operation.Extensions,
+            Provenance = operation.Provenance.ToList(),
         };
     }
 
@@ -1747,7 +1760,15 @@ public static partial class ProposalCommands
                     CorrectnessAssessmentExemptionReason: readiness.CorrectnessAssessmentExemptionReason,
                     Reasons: readiness.Reasons,
                     Forced: force && readiness.Reasons.Count > 0);
-                var projection = ApplyProjectionBuilder.Build(id, receipt, readinessProjection);
+                var citations = envelope.Operations
+                    .Select(operation => (Operation: operation, Citation: CitationView.Of(operation)))
+                    .Where(item => item.Citation is not null)
+                    .Select(item => new CitedOperationRow(id, manifest.Label, item.Operation.OperationId.Value,
+                        item.Operation.Kind, item.Operation.Target?.Value, item.Operation.EntityId?.Value,
+                        item.Citation))
+                    .ToArray();
+                var projection = ApplyProjectionBuilder.Build(id, receipt, readinessProjection,
+                    citations.Length == 0 ? null : citations);
                 if (readiness.CorrectnessAssessmentExemptionReason is { } reason)
                     projection = projection with
                     {
@@ -1860,6 +1881,7 @@ public static partial class ProposalCommands
                 placement = op.Placement is { } p ? new { after = p.After, before = p.Before } : null,
                 dependsOn = op.DependsOn,
                 after = op.After,
+                provenance = op.Provenance.Count > 0 ? op.Provenance : null,
                 extensions = op.Extensions,
             }).ToList(),
             extensions = BuildExtensions(draft),

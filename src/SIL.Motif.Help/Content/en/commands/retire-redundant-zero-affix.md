@@ -7,3 +7,5 @@ motif retire-redundant-zero-affix --project language.fwdata --draft remove-unuse
 ```
 
 The command includes the entry, its senses, analysis, form, and every owned dependent in one delete. It refuses feature, inflection-class, exception, condition, required-slot, or outside-reference contributions. References from the analysis to optional slots are removed before deletion; any template and its optional slot remain. Review the Dry Run and Trial before a person Applies the Proposal.
+
+Add `--cite-source <text>` and optionally `--cite-locator <text>` to record the source on every operation this command produces.

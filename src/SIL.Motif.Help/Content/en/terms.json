@@ -9,6 +9,11 @@
     "description": "A Baseline is a saved, minimal, file-backed copy of a project from which Motif can make independent Dry Run copies. When captured from a project FieldWorks holds open, it reflects FieldWorks' last save.",
     "source": "Hand-written from CONTEXT.md."
   },
+  "citation": {
+    "title": "Where a change came from",
+    "description": "A citation records the work a change was taken from, such as a grammar section or a dictionary entry, with an optional page or section. It is shown beside the change and never changes what the Proposal does.",
+    "source": "Hand-written from CONTEXT.md."
+  },
   "default-selection": {
     "title": "Words measured by default",
     "description": "A project's Default Selection is the chosen Texts plus any added words Motif measures when no other Selection is named. Motif resolves it to an exact word list for each run.",

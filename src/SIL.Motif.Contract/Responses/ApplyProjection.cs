@@ -8,7 +8,9 @@ public sealed record AppliedLogEntrySummary(string ProposalId, string TimestampU
 
 /// <summary>
 /// The <c>apply</c> report: whether the Proposal actually mutated the project (idempotent no-op
-/// otherwise), the resulting effects, and the applied-change-log entry it is recorded under.
+/// otherwise), the resulting effects, and the applied-change-log entry it is recorded under. Cited operation rows
+/// are read from the Applied Proposal's provenance and are absent when no operation cites a source, pinned by
+/// <c>Citations_ListsEveryAppliedOperationWithItsSource_AndCanListOnlyTheUncitedOnes</c>.
 /// </summary>
 public sealed record ApplyProjection(
     string ProposalId,
@@ -17,4 +19,5 @@ public sealed record ApplyProjection(
     IReadOnlyList<EffectView> Effects,
     string EffectDigest,
     AppliedLogEntrySummary AppliedLogEntry,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ReadinessProjection? Readiness = null);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ReadinessProjection? Readiness = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<CitedOperationRow>? Citations = null);

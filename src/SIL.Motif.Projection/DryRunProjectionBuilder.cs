@@ -40,7 +40,7 @@ public static class DryRunProjectionBuilder
                     operation.Target?.Value, operation.EntityId?.Value,
                     operation.DependsOn.Select(dependency => dependency.OperationId.Value)
                         .OrderBy(id => id, System.StringComparer.Ordinal).ToArray(),
-                    operation.After?.GetRawText()));
+                    operation.After?.GetRawText(), CitationView.Of(operation)));
             }
         }
         return emitted;

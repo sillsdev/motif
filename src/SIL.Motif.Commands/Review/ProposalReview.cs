@@ -245,6 +245,11 @@ public static class ProposalReview
             var operations = draft.Operations.Where(operation => item.OperationIds.Contains(operation.OperationId))
                 .ToArray();
             var digest = ContentDigest(operations);
+            var citations = operations
+                .Select(operation => SIL.Motif.Contract.Model.OperationCitation.FromProvenance(operation.Provenance))
+                .OfType<SIL.Motif.Contract.Model.OperationCitation>()
+                .Select(citation => new CitationView(citation.Source, citation.Locator))
+                .Distinct().ToArray();
             var lookedAt = marks.TryGetValue(item.Key, out var mark) && mark.ContentDigest == digest &&
                 mark.EvidenceDigest == evidenceDigest;
             var ordinal = entries.Count;
@@ -252,14 +257,16 @@ public static class ProposalReview
             if (item.Change is { } change)
                 entries.Add(new WordChangeEntry(item.Key, ordinal, item.Title, item.OperationIds, depends, digest,
                     lookedAt, change, fits.FirstOrDefault(fit => fit.ChangeId == change.ChangeId),
-                    PairedToday(change.Analyses.FirstOrDefault(analysis => analysis.Touched)?.Reading)));
+                    PairedToday(change.Analyses.FirstOrDefault(analysis => analysis.Touched)?.Reading))
+                { Citations = citations });
             else
                 entries.Add(new GrammarChangeEntry(item.Key, ordinal, item.Title, item.OperationIds, depends, digest,
                     lookedAt, item.Composer!, ChangeVocabulary.Summary(operations),
                     trial?.DryRun?.Effects.Where(effect => effect.OperationIds.Any(item.OperationIds.Contains))
                         .ToArray() ?? [],
                     retirement is not null && item.Composer == "RetireAllomorph" ? retirement.AffectedReadings : [],
-                    retirement is not null && item.Composer == "RetireAllomorph" ? retirement.Parts : []));
+                    retirement is not null && item.Composer == "RetireAllomorph" ? retirement.Parts : [])
+                { Citations = citations });
         }
 
         return new ProposalReviewResponse(id, intentDigest, revision, entries, trial,
@@ -323,11 +330,21 @@ public static class ProposalReview
 
     private static string ContentDigest(IReadOnlyList<DraftOperation> operations)
     {
-        var json = JsonSerializer.Serialize(operations.Select(operation => new
+        var json = JsonSerializer.Serialize(operations.Select(operation =>
         {
-            operation.OperationId, operation.Kind, operation.EntityId, operation.Target,
-            placement = operation.Placement is { } placement ? new { placement.After, placement.Before } : null,
-            operation.DependsOn, operation.After, operation.Extensions,
+            var placement = operation.Placement is { } p ? new { p.After, p.Before } : null;
+            // Provenance joins the digest only when present, so an uncited entry keeps its digest.
+            return operation.Provenance.Count == 0
+                ? (object)new
+                {
+                    operation.OperationId, operation.Kind, operation.EntityId, operation.Target, placement,
+                    operation.DependsOn, operation.After, operation.Extensions,
+                }
+                : new
+                {
+                    operation.OperationId, operation.Kind, operation.EntityId, operation.Target, placement,
+                    operation.DependsOn, operation.After, operation.Extensions, operation.Provenance,
+                };
         }), OperationJson);
         return IntentDigest.Sha256Of(CanonicalJson.CanonicalizeToUtf8(json));
     }

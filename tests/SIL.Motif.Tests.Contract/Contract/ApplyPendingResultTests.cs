@@ -40,6 +40,22 @@ public sealed class ApplyPendingResultTests
     }
 
     [Fact]
+    public void AnApplyReceiptCarriesCitedOperationsFromTheProposal()
+    {
+        var projection = Receipt() with
+        {
+            Citations = [new CitedOperationRow("proposal/one", "A grammar change", "operation/one",
+                "grammar/phPhonData/createPhonemes", null, "entity/one", new CitationView("Grammar 2026", "§ 3"))],
+        };
+        var rendered = ProjectionJson.Serialize(ApplyPendingResult.AppliedWith(projection, "Applied one grammar change."));
+
+        using var document = JsonDocument.Parse(rendered);
+        var citation = Assert.Single(document.RootElement.GetProperty("receipt").GetProperty("citations").EnumerateArray());
+        Assert.Equal("Grammar 2026", citation.GetProperty("citation").GetProperty("source").GetString());
+        Assert.Equal("§ 3", citation.GetProperty("citation").GetProperty("locator").GetString());
+    }
+
+    [Fact]
     public void BothShapesBindFromTheirOwnRenderedJson()
     {
         var nothing = JsonSerializer.Deserialize<ApplyPendingResult>(

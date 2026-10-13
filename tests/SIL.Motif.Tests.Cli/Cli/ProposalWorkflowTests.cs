@@ -9,6 +9,7 @@ using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Cli;
@@ -88,6 +89,156 @@ public sealed class ProposalWorkflowTests : IDisposable
         Assert.Equal([declined], Listed(status: "rejected"));
         Assert.Equal("proposal.unknown-status", ProposalCommands.List(
             new ListProposalsRequest(_fwDataPath, ProductVersion, Status: "declined")).Refusal?.Code);
+    }
+
+    [Fact]
+    public void Citation_TravelsFromAuthoringThroughFinalizeShowDryRunAndReopen_WithoutMovingTheDigest()
+    {
+        var target = CanonicalId.FromGuid(_seed.FirstSenseId).Value;
+        var ws = NewLangProjFixture.AnalysisTag;
+        string Authored(string name, OperationCitation? first, OperationCitation? second)
+        {
+            Assert.True(ProposalCommands.New(new NewDraftRequest(_fwDataPath, ProductVersion, name, name)).Succeeded);
+            Assert.True(ProposalCommands.AddSetGloss(
+                new AddSetGlossRequest(_fwDataPath, ProductVersion, name, target, ws, "draft gloss"), first).Succeeded);
+            var rewritten = ProposalCommands.AddSetGloss(
+                new AddSetGlossRequest(_fwDataPath, ProductVersion, name, target, ws, "cited gloss"), second);
+            Assert.True(rewritten.Value!.ReplacedPriorValue);
+            DraftRationale.Author(_fwDataPath, name, name, "Why " + name + " is right.");
+            return ProposalCommands.Finalize(new FinalizeRequest(_fwDataPath, ProductVersion, name)).Value!.ProposalId;
+        }
+
+        var cited = Authored("cited", OperationCitation.Create("Ashton 1944"),
+            OperationCitation.Create("Steere 1870", "p. 142"));
+        var uncited = Authored("uncited", OperationCitation.Create("Ashton 1944"), null);
+
+        var shown = ProposalCommands.Show(new ShowProposalRequest(_fwDataPath, ProductVersion, cited)).Value!;
+        Assert.Equal(new CitationView("Steere 1870", "p. 142"), Assert.Single(shown.Operations).Citation);
+        Assert.Contains("cites:     Steere 1870, p. 142", SIL.Motif.Projection.Rendering.CommandTextRenderer.Render(shown));
+        var json = JsonNode.Parse(ProjectionJson.Serialize(shown))!["operations"]![0]!["citation"]!;
+        Assert.Equal(("Steere 1870", "p. 142"), (json["source"]!.GetValue<string>(), json["locator"]!.GetValue<string>()));
+        var unshown = ProposalCommands.Show(new ShowProposalRequest(_fwDataPath, ProductVersion, uncited)).Value!;
+        Assert.Null(Assert.Single(unshown.Operations).Citation);
+
+        var dryRun = RunDryRun(cited);
+        Assert.True(dryRun.Succeeded);
+        Assert.Equal("Steere 1870", Assert.Single(dryRun.Value!.Operations).Citation?.Source);
+
+        Assert.True(ProposalCommands.Reopen(new ReopenRequest(_fwDataPath, ProductVersion, "cited-again", cited)).Succeeded);
+        using var database = ProjectMotifDatabase.Open(_fwDataPath);
+        var reopened = JsonSerializer.Deserialize<SIL.Motif.Commands.Store.DraftDocument>(
+            new ProposalRepository(database).GetDraft("cited-again").ProposalJson!,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
+        var citation = OperationCitation.FromProvenance(Assert.Single(reopened.Operations).Provenance);
+        Assert.Equal("Steere 1870, p. 142", citation?.ToString());
+
+        var digest = GetRecord(cited).IntentDigest;
+        Assert.True(ProposalCommands.AddSetGloss(new AddSetGlossRequest(_fwDataPath, ProductVersion, "cited-again", target,
+            ws, "cited gloss"), OperationCitation.Create("Ashton 1944", "§ 12")).Value!.ReplacedPriorValue);
+        var refinalized = ProposalCommands.Finalize(new FinalizeRequest(_fwDataPath, ProductVersion, "cited-again"));
+        Assert.True(refinalized.Succeeded, refinalized.Refusal?.Code + ": " + refinalized.Refusal?.Message);
+        Assert.Equal(digest, GetRecord(cited).IntentDigest);
+        var recited = ProposalCommands.Show(new ShowProposalRequest(_fwDataPath, ProductVersion, cited)).Value!;
+        Assert.Equal(new CitationView("Ashton 1944", "§ 12"), Assert.Single(recited.Operations).Citation);
+    }
+
+    [Fact]
+    public void Citations_ListsEveryAppliedOperationWithItsSource_AndCanListOnlyTheUncitedOnes()
+    {
+        var first = CanonicalId.FromGuid(_seed.FirstSenseId).Value;
+        var second = CanonicalId.FromGuid(_seed.SecondSenseId).Value;
+        var ws = NewLangProjFixture.AnalysisTag;
+        Assert.True(ProposalCommands.New(new NewDraftRequest(_fwDataPath, ProductVersion, "unapplied", null)).Succeeded);
+        Assert.True(ProposalCommands.AddSetGloss(new AddSetGlossRequest(_fwDataPath, ProductVersion, "unapplied", first,
+            ws, "never applied"), OperationCitation.Create("Unapplied 2000")).Succeeded);
+        Assert.True(ProposalCommands.New(new NewDraftRequest(_fwDataPath, ProductVersion, "glosses", null)).Succeeded);
+        var cited = ProposalCommands.AddSetGloss(new AddSetGlossRequest(_fwDataPath, ProductVersion, "glosses", first,
+            ws, "cited gloss"), OperationCitation.Create("Steere 1870", "p. 142")).Value!.OperationId;
+        var uncited = ProposalCommands.AddSetGloss(new AddSetGlossRequest(_fwDataPath, ProductVersion, "glosses", second,
+            ws, "uncited gloss")).Value!.OperationId;
+        DraftRationale.Author(_fwDataPath, "glosses", "Two glosses", "One cited, one not.");
+        var id = ProposalCommands.Finalize(new FinalizeRequest(_fwDataPath, ProductVersion, "glosses")).Value!.ProposalId;
+        Assert.Empty(ProposalCommands.Citations(new CitationsRequest(_fwDataPath, ProductVersion)).Value!.Rows);
+        Assert.True(RunDryRun(id).Succeeded);
+        var apply = ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, id, Force: true));
+        Assert.True(apply.Succeeded, apply.Refusal?.Message);
+        var receiptCitation = Assert.Single(apply.Value!.Citations!);
+        Assert.Equal((id, cited, "Steere 1870", "p. 142"),
+            (receiptCitation.ProposalId, receiptCitation.OperationId, receiptCitation.Citation!.Source,
+                receiptCitation.Citation.Locator));
+
+        var all = ProposalCommands.Citations(new CitationsRequest(_fwDataPath, ProductVersion)).Value!;
+        Assert.Equal((1, 2, 1), (all.AppliedProposals, all.Operations, all.Cited));
+        var citedRow = Assert.Single(all.Rows, row => row.OperationId == cited);
+        Assert.Equal((id, "Two glosses", "lexical/lexSense/setGloss", first),
+            (citedRow.ProposalId, citedRow.Label, citedRow.Kind, citedRow.Target));
+        Assert.Equal(new CitationView("Steere 1870", "p. 142"), citedRow.Citation);
+        var onlyUncited = ProposalCommands.Citations(new CitationsRequest(_fwDataPath, ProductVersion, UncitedOnly: true)).Value!;
+        Assert.Equal(uncited, Assert.Single(onlyUncited.Rows).OperationId);
+        Assert.Equal(1, onlyUncited.Cited);
+    }
+
+    [Fact]
+    public void ComposeCliFlagsRecordCitationOnEveryLoweredOperation()
+    {
+        Assert.True(ProposalCommands.New(new NewDraftRequest(_fwDataPath, ProductVersion, "cli-cited", null)).Succeeded);
+        var intent = JsonSerializer.Serialize(new
+        {
+            entry = CanonicalId.FromGuid(_seed.FirstEntryId).Value,
+            morphType = CanonicalId.FromGuid(MoMorphTypeTags.kguidMorphStem).Value,
+            ws = "fr",
+            text = "zzCitedForm",
+            sense = CanonicalId.FromGuid(_seed.FirstSenseId).Value,
+            glossWs = "en",
+            glossText = "a cited gloss",
+        });
+
+        var response = CliInProcess.Run(_workerRoot, null, developerCommands: true,
+            "compose-author-lexeme-form", "--project", _fwDataPath, "--draft", "cli-cited", "--intent", intent,
+            "--cite-source", "Grammar 2026",
+            "--cite-locator", "§ 3", "--json");
+
+        Assert.Equal(0, response.ExitCode);
+        var citations = ReadDraft("cli-cited").Operations
+            .Select(operation => OperationCitation.FromProvenance(operation.Provenance))
+            .OfType<OperationCitation>().ToArray();
+        Assert.Equal(2, citations.Length);
+        Assert.All(citations, citation => Assert.Equal(("Grammar 2026", "§ 3"),
+            (citation.Source, citation.Locator)));
+    }
+
+    [Fact]
+    public void GlossAndDeleteCliFlagsRecordTheirSeparateCitations()
+    {
+        var glossDraft = "cli-gloss-cited";
+        var deleteDraft = "cli-delete-cited";
+        Assert.True(ProposalCommands.New(new NewDraftRequest(_fwDataPath, ProductVersion, glossDraft, null)).Succeeded);
+        Assert.True(ProposalCommands.New(new NewDraftRequest(_fwDataPath, ProductVersion, deleteDraft, null)).Succeeded);
+
+        var gloss = CliInProcess.Run(_workerRoot, null, developerCommands: true, "add-set-gloss", "--project",
+            _fwDataPath, "--draft", glossDraft, "--target", CanonicalId.FromGuid(_seed.FirstSenseId).Value,
+            "--ws", NewLangProjFixture.AnalysisTag, "--text", "cited gloss", "--cite-source", "Grammar 2026",
+            "--cite-locator", "§ 4", "--json");
+        var delete = CliInProcess.Run(_workerRoot, null, developerCommands: true, "add-delete-lexeme-form", "--project",
+            _fwDataPath, "--draft", deleteDraft, "--target", CanonicalId.FromGuid(_seed.FirstEntryId).Value,
+            "--cite-source", "Grammar 2026", "--cite-locator", "§ 5", "--json");
+
+        Assert.Equal(0, gloss.ExitCode);
+        Assert.Equal(0, delete.ExitCode);
+        var glossCitation = OperationCitation.FromProvenance(Assert.Single(ReadDraft(glossDraft).Operations).Provenance);
+        var deleteCitation = OperationCitation.FromProvenance(Assert.Single(ReadDraft(deleteDraft).Operations).Provenance);
+        Assert.Equal(new CitationView("Grammar 2026", "§ 4"),
+            new CitationView(glossCitation!.Source, glossCitation.Locator));
+        Assert.Equal(new CitationView("Grammar 2026", "§ 5"),
+            new CitationView(deleteCitation!.Source, deleteCitation.Locator));
+    }
+
+    private SIL.Motif.Commands.Store.DraftDocument ReadDraft(string draftName)
+    {
+        using var database = ProjectMotifDatabase.Open(_fwDataPath);
+        return JsonSerializer.Deserialize<SIL.Motif.Commands.Store.DraftDocument>(
+            new ProposalRepository(database).GetDraft(draftName).ProposalJson!,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
     }
 
     [Fact]
@@ -173,6 +324,7 @@ public sealed class ProposalWorkflowTests : IDisposable
         Assert.True(applyResult.Succeeded);
         Assert.False(applyResult.Value!.AlreadyApplied);
         Assert.Equal(proposalId, applyResult.Value.ProposalId);
+        Assert.Null(applyResult.Value.Citations);
         Assert.Empty(applyResult.Value.AppliedLogEntry.User);
         var appliedEffect = Assert.Single(applyResult.Value.Effects);
         Assert.Equal(canonicalId.Value, appliedEffect.CanonicalId);

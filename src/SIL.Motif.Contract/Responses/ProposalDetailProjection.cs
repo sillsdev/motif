@@ -10,13 +10,30 @@ namespace SIL.Motif.Contract.Responses;
 /// <param name="EntityId">The portable identity of an entity created by the operation, when present.</param>
 /// <param name="DependsOn">The operation identities that this operation declares as prerequisites.</param>
 /// <param name="AfterJson"><c>null</c> when the operation carries no after-state at all.</param>
+/// <param name="Citation">The source the operation cites, or <c>null</c> when it cites none.</param>
 public sealed record ProposalOperationView(
     string OperationId,
     string Kind,
     string? Target,
     string? EntityId,
     IReadOnlyList<string> DependsOn,
-    string? AfterJson);
+    string? AfterJson,
+    CitationView? Citation = null);
+
+/// <summary>The source an operation cites: a grammar section, a dictionary entry, a corpus passage.</summary>
+/// <param name="Source">The work cited.</param>
+/// <param name="Locator">Where in the work, such as a section or page; <c>null</c> when the whole work is cited.</param>
+public sealed record CitationView(string Source, string? Locator)
+{
+    /// <summary>The view of an operation's citation, or <c>null</c> when it has none.</summary>
+    public static CitationView? Of(SIL.Motif.Contract.Model.OperationEnvelope operation) =>
+        SIL.Motif.Contract.Model.OperationCitation.FromProvenance(operation.Provenance) is { } citation
+            ? new CitationView(citation.Source, citation.Locator)
+            : null;
+
+    /// <summary>The source followed by its locator, for one line of text.</summary>
+    public override string ToString() => Locator is null ? Source : Source + ", " + Locator;
+}
 
 /// <summary>The <c>show</c> report: a Proposal's review state and its full operation list.</summary>
 /// <param name="ProposalId">The Proposal's portable identity.</param>

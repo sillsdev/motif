@@ -46,6 +46,7 @@ public static class ProposalCommandRenderer
             ApplyPendingResult { Receipt: { } receipt } => ProjectionText.Render(receipt),
             ApplyPendingResult => "Nothing to apply." + Environment.NewLine,
             AppliedLogProjection p => ProjectionText.Render(p),
+            CitationTraceResponse r => RenderCitations(r),
             DraftCreatedResponse r => RenderDraftCreated(r),
             SetGlossAddedResponse r => RenderSetGlossAdded(r),
             DeleteLexemeFormAddedResponse r => RenderDeleteLexemeFormAdded(r),
@@ -63,6 +64,22 @@ public static class ProposalCommandRenderer
             _ => throw new NotSupportedException($"No text rendering registered for '{typeof(T)}'."),
         };
         return new CommandResult(0, text);
+    }
+
+    private static string RenderCitations(CitationTraceResponse response)
+    {
+        var text = new StringBuilder();
+        text.AppendLine($"{response.Cited} of {response.Operations} operation(s) in {response.AppliedProposals} " +
+            "Applied Proposal(s) cite a source.");
+        foreach (var row in response.Rows)
+        {
+            text.AppendLine($"  {row.ProposalId} {row.OperationId}  ({row.Kind})");
+            if (row.Label is not null) text.AppendLine($"    proposal: {row.Label}");
+            if (row.Target is not null) text.AppendLine($"    target:   {row.Target}");
+            if (row.EntityId is not null) text.AppendLine($"    entityId: {row.EntityId}");
+            text.AppendLine($"    cites:    {row.Citation?.ToString() ?? "(none)"}");
+        }
+        return text.ToString();
     }
 
     private static string RenderPendingChanges(PendingChangesSnapshot snapshot)

@@ -126,6 +126,7 @@ public static class CommandCatalog
         new CommandDescriptor("preflight", typeof(PreflightRequest), typeof(PreflightResponse), CommandSurface.Developer, AgentClass.Evaluate),
         new CommandDescriptor("apply", typeof(ApplyRequest), typeof(ApplyPendingResult), CommandSurface.Developer, AgentClass.HumanOnly),
         new CommandDescriptor("log", typeof(LogRequest), typeof(AppliedLogProjection), CommandSurface.Developer, AgentClass.Read),
+        new CommandDescriptor("citations", typeof(CitationsRequest), typeof(CitationTraceResponse), CommandSurface.Developer, AgentClass.Read),
 
         // CorpusCommands
         new CommandDescriptor("add-corpus", typeof(AddCorpusRequest), typeof(CorpusAddedResponse), CommandSurface.Released, AgentClass.HumanOnly),

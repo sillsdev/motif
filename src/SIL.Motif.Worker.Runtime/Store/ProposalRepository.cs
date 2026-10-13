@@ -63,9 +63,9 @@ public interface IProposalRepository
     /// <summary>
     /// Commits a Draft: in one transaction, writes its first <c>ProposalRevisions</c> row, sets
     /// <c>CurrentIntentDigest</c>, clears <c>DraftName</c>/<c>DraftJson</c>, retains an anchor bound to the same digest, and moves
-    /// the Proposal to <c>proposed</c>. A failure (for example a digest collision with different content
-    /// already recorded under this Proposal) leaves the Draft exactly as it was — none of the four
-    /// effects is observable without all of them.
+    /// the Proposal to <c>proposed</c>. Finalizing to an intent digest this Proposal already has rewrites that
+    /// revision's stored JSON: the intent is the same, so only review metadata such as a citation changed. A failure
+    /// leaves the Draft exactly as it was — none of the four effects is observable without all of them.
     /// </summary>
     /// <param name="draftName">The name identifying the Draft to commit.</param>
     /// <param name="intentDigest">The digest of the finalized Proposal content.</param>
@@ -591,17 +591,28 @@ public sealed class ProposalRepository : IProposalRepository
         if (expectedDraftRevision is not null && DraftRevision.Compute(draftJson) != expectedDraftRevision)
             return DraftFinalizationResult.DraftChanged;
         var bytes = Encoding.UTF8.GetBytes(proposalJson);
-        bool revisionExists;
+        object? stored;
         using (var existing = connection.CreateCommand())
         {
             existing.Transaction = transaction;
             existing.CommandText = "SELECT ProposalJson FROM ProposalRevisions WHERE ProposalId = $id AND IntentDigest = $digest;";
             existing.Parameters.AddWithValue("$id", proposalId);
             existing.Parameters.AddWithValue("$digest", intentDigest);
-            var stored = existing.ExecuteScalar();
-            revisionExists = stored is byte[] storedBytes && storedBytes.SequenceEqual(bytes);
+            stored = existing.ExecuteScalar();
         }
-        if (!revisionExists)
+        if (stored is byte[] storedBytes && !storedBytes.SequenceEqual(bytes))
+        {
+            // Same intent digest, so only review metadata changed: the revision takes the new bytes.
+            using var amend = connection.CreateCommand();
+            amend.Transaction = transaction;
+            amend.CommandText =
+                "UPDATE ProposalRevisions SET ProposalJson = $bytes WHERE ProposalId = $id AND IntentDigest = $digest;";
+            amend.Parameters.AddWithValue("$id", proposalId);
+            amend.Parameters.AddWithValue("$digest", intentDigest);
+            amend.Parameters.AddWithValue("$bytes", bytes);
+            amend.ExecuteNonQuery();
+        }
+        else if (stored is null || stored is DBNull)
         {
             using var revision = connection.CreateCommand();
             revision.Transaction = transaction;

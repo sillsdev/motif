@@ -1,5 +1,7 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
+using SIL.Motif.Contract.Model;
 
 namespace SIL.Motif.Commands.Store;
 
@@ -79,6 +81,19 @@ public sealed class DraftOperation
 
     /// <summary>Non-semantic metadata carried with the operation across finalize and reopen.</summary>
     public JsonElement? Extensions { get; set; }
+
+    /// <summary>
+    /// The operation's contract <c>provenance</c> entries, review metadata outside the intent digest, carried across
+    /// finalize and reopen. A <see cref="OperationCitation"/> is one of them.
+    /// </summary>
+    public List<JsonElement> Provenance { get; set; } = new();
+
+    /// <summary>
+    /// Records the source the request that authored this operation cited, or removes the citation when it cited
+    /// none: an operation's citation is always the one its latest author supplied.
+    /// </summary>
+    public void Cite(OperationCitation? citation) =>
+        Provenance = OperationCitation.Replace(Provenance, citation).ToList();
 }
 
 /// <summary>Identity-relative neighbours preserved across Draft serialization and finalization.</summary>

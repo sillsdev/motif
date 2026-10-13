@@ -285,7 +285,7 @@ public sealed class ProposalRepositoryTests : IDisposable
     }
 
     [Fact]
-    public void FinalizeRollsBackEverythingWhenTheRevisionInsertHitsAGenuinePrimaryKeyCollision()
+    public void FinalizeRollsBackTheNewRevisionWhenUpdatingTheProposalFails()
     {
         var project = new ProjectLocator(Path.Combine(_root, "finalize-rollback.fwdata"), "finalize-rollback");
         using var database = MotifDatabase.OpenOwned(Path.Combine(_root, "finalize-rollback.motif.db"), project,
@@ -294,19 +294,22 @@ public sealed class ProposalRepositoryTests : IDisposable
         var id = CanonicalId.Mint("proposal/");
         repository.CreateDraft("working", id, "{\"draft\":true}");
 
-        // Pre-seeds Finalize's own (ProposalId, IntentDigest) with different content: a real PK collision.
+        // Fail after the new revision is inserted to prove Finalize keeps both writes atomic.
         using (var connection = database.OpenConnection())
         using (var command = connection.CreateCommand())
         {
-            command.CommandText = "INSERT INTO ProposalRevisions (ProposalId, IntentDigest, ProposalJson, CreatedUtc) " +
-                "VALUES ($id, $digest, X'7B7D', '2026-08-27T00:00:00Z');";
-            command.Parameters.AddWithValue("$id", id.Value);
-            command.Parameters.AddWithValue("$digest", "sha256:collide");
+            command.CommandText = """
+                CREATE TRIGGER RejectProposalFinalize
+                BEFORE UPDATE ON Proposals
+                BEGIN
+                    SELECT RAISE(ABORT, 'injected finalize update failure');
+                END;
+                """;
             command.ExecuteNonQuery();
         }
 
         Assert.ThrowsAny<SqliteException>(
-            () => repository.Finalize("working", "sha256:collide", "{\"different\":true}", "a label", "a comment"));
+            () => repository.Finalize("working", "sha256:new-digest", "{\"different\":true}", "a label", "a comment"));
 
         var draft = repository.GetDraft("working");
         Assert.Equal("{\"draft\":true}", draft.ProposalJson);
@@ -316,7 +319,7 @@ public sealed class ProposalRepositoryTests : IDisposable
         using var count = check.CreateCommand();
         count.CommandText = "SELECT COUNT(*) FROM ProposalRevisions WHERE ProposalId = $id;";
         count.Parameters.AddWithValue("$id", id.Value);
-        Assert.Equal(1L, count.ExecuteScalar());
+        Assert.Equal(0L, count.ExecuteScalar());
     }
 
     [Fact]

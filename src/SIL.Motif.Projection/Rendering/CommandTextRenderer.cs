@@ -63,6 +63,8 @@ public static class CommandTextRenderer
                 sb.AppendLine($"      dependsOn: {string.Join(", ", op.DependsOn)}");
             if (op.AfterJson is not null)
                 sb.AppendLine($"      after:     {op.AfterJson}");
+            if (op.Citation is not null)
+                sb.AppendLine($"      cites:     {op.Citation}");
         }
         return sb.ToString();
     }
@@ -248,6 +250,8 @@ public static class CommandTextRenderer
                 sb.AppendLine($"    {operation.OperationId}  ({operation.Kind})");
                 if (operation.DependsOn.Count > 0)
                     sb.AppendLine($"      dependsOn: {string.Join(", ", operation.DependsOn)}");
+                if (operation.Citation is not null)
+                    sb.AppendLine($"      cites:     {operation.Citation}");
             }
         }
         sb.AppendLine($"  effects ({projection.Effects.Count}):");

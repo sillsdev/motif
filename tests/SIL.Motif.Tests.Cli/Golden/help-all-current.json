@@ -1192,6 +1192,15 @@
     },
     {
       "kind": "term",
+      "code": "citation",
+      "slug": "citation",
+      "title": "Where a change came from",
+      "description": "A citation records the work a change was taken from, such as a grammar section or a dictionary entry, with an optional page or section. It is shown beside the change and never changes what the Proposal does.",
+      "helpPage": null,
+      "url": "https://motif-docs.pages.dev/reference/terms/citation/"
+    },
+    {
+      "kind": "term",
       "code": "default-selection",
       "slug": "default-selection",
       "title": "Words measured by default",

@@ -54,6 +54,13 @@ Finalizing is not needed to measure a Proposal: a Draft can be Dry Run and Trial
 likes.
 _Avoid_: finish, submit, commit, publish
 
+**Citation**:
+The source a Motif operation was taken from — a section of a published grammar, a dictionary entry, a corpus
+passage — recorded as a `source` and an optional `locator` such as a page or section. It is review metadata:
+citing a source, or a different one, never changes what a Proposal does or its intent digest. It names where a
+change came from, never who made it ([ADR 0064](docs/adr/0064-every-operation-can-cite-its-source.md)).
+_Avoid_: author, attribution, reference (for a cited source), provenance (the contract field that holds it)
+
 **Construct**:
 One of the ~30 grammar things a Proposal can be about — a stratum, a natural class, an affix template,
 a phonological rule. **The unit in which grammar support is staged and delivered**, and hand-authored

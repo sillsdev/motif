@@ -244,6 +244,7 @@ public static class ProposalJsonParser
             foreach (var item in provenanceEl.EnumerateArray())
                 provenance.Add(item.Clone());
         }
+        _ = OperationCitation.FromProvenance(provenance);
 
         var extensions = ParseExtensions(operationEl, "an operation");
 

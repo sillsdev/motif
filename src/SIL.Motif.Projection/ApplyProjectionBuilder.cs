@@ -4,10 +4,14 @@ using System.Collections.Generic;
 
 namespace SIL.Motif.Projection;
 
-/// <summary>Shapes a Runner <see cref="Receipt"/> into an <see cref="ApplyProjection"/>.</summary>
+/// <summary>
+/// Shapes a Runner <see cref="Receipt"/> into an <see cref="ApplyProjection"/>, carrying any cited-operation rows
+/// supplied for the Applied Proposal.
+/// </summary>
 public static class ApplyProjectionBuilder
 {
-    public static ApplyProjection Build(string proposalId, Receipt receipt, ReadinessProjection? readiness = null) => new(
+    public static ApplyProjection Build(string proposalId, Receipt receipt, ReadinessProjection? readiness = null,
+        IReadOnlyList<CitedOperationRow>? citations = null) => new(
         proposalId,
         receipt.AlreadyApplied,
         receipt.ResultNote,
@@ -18,5 +22,6 @@ public static class ApplyProjectionBuilder
             receipt.AppliedLogEntry.TimestampUtc,
             receipt.AppliedLogEntry.User,
             receipt.AppliedLogEntry.IntentDigest),
-        readiness);
+        readiness,
+        citations);
 }

@@ -17,7 +17,8 @@ public static class ProposalDetailProjectionBuilder
             Target: op.Target?.Value,
             EntityId: op.EntityId?.Value,
             DependsOn: op.DependsOn.Select(d => d.OperationId.Value).ToList(),
-            AfterJson: op.After?.GetRawText())).ToList();
+            AfterJson: op.After?.GetRawText(),
+            Citation: CitationView.Of(op))).ToList();
 
         return new ProposalDetailProjection(
             proposalId, manifest.Status, manifest.Label, manifest.Comment, manifest.CurrentIntentDigest, operations,

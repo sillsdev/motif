@@ -7,3 +7,5 @@ motif compose-record-parsimony-disposition --project language.fwdata --draft rev
 ```
 
 The command appends bounded Notebook and reserved-field operations to the Draft. Review the Proposal with Dry Run before a human Applies it. A pending keep does not change the live findings; it becomes project data only after Apply and a later Refresh.
+
+Add `--cite-source <text>` and optionally `--cite-locator <text>` to record the source on every operation this command produces.

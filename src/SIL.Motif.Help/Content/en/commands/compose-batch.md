@@ -2,11 +2,13 @@
 
 Stages every intent in a JSON file in one Draft with one project load, through the same checks as each composing command alone. If any intent is refused, nothing is added. Only a person can Apply.
 
-The file names each intent's composing command and carries the same intent that command's `--intent` takes:
+The file names each intent's composing command and carries the same closed intent that command's `--intent` takes.
+Add an optional `citation` beside `intent`; Motif records it as operation provenance without changing the intent or its digest.
 
 ```json
 {"intents": [
-  {"verb": "compose-author-phoneme", "intent": {"name": "i", "representations": ["i"]}},
+  {"verb": "compose-author-phoneme", "intent": {"name": "i", "representations": ["i"]},
+   "citation": {"source": "Grammar 2026", "locator": "§ 3"}},
   {"verb": "compose-author-natural-class", "intent": {"name": "front", "abbreviation": "F", "members": ["<phoneme id>"]}}
 ]}
 ```

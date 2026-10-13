@@ -200,8 +200,9 @@ public sealed record ComposeRecordParsimonyDispositionRequest(
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
 /// <param name="DraftName">The name of the Draft being authored.</param>
 /// <param name="IntentsJson">
-/// <c>{"intents":[{"verb":"compose-author-phoneme","intent":{...}}, ...]}</c>: each entry names a composing verb
-/// and carries exactly the closed intent that verb's <c>--intent</c> takes.
+/// <c>{"intents":[{"verb":"compose-author-phoneme","intent":{...},"citation":{"source":"Grammar","locator":"§ 3"}}, ...]}</c>:
+/// each entry names a composing verb, carries exactly the closed intent that verb's <c>--intent</c> takes, and may
+/// include one citation beside that intent.
 /// </param>
 public sealed record ComposeBatchRequest(
     string FwDataPath, string ProductVersion, string DraftName, string IntentsJson);
@@ -333,3 +334,8 @@ public sealed record PreflightRequest(string FwDataPath, string ProductVersion, 
 
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
 public sealed record LogRequest(string FwDataPath);
+
+/// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
+/// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
+/// <param name="UncitedOnly">List only the Applied operations that cite no source.</param>
+public sealed record CitationsRequest(string FwDataPath, string ProductVersion, bool UncitedOnly = false);

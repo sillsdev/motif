@@ -554,7 +554,8 @@
         "Target": "NfanxcWRSeisilusQ-ZCcA",
         "EntityId": "AaEpypbnKEiDKXFlljKtbQ",
         "DependsOn": [],
-        "AfterJson": "{}"
+        "AfterJson": "{}",
+        "Citation": null
       },
       {
         "OperationId": "AaEpypdKh7sKYBDPJ_7Vcw",
@@ -562,7 +563,8 @@
         "Target": "zaTcwq9iTTmOGHBKpVcQvQ",
         "EntityId": "AaEpypVJJjNq24KMJSAsKA",
         "DependsOn": [],
-        "AfterJson": "{\n        \u0022class\u0022: \u0022PhNCSegments\u0022\n      }"
+        "AfterJson": "{\n        \u0022class\u0022: \u0022PhNCSegments\u0022\n      }",
+        "Citation": null
       },
       {
         "OperationId": "AaEpypbo2xTeP5NbId3tZg",
@@ -572,7 +574,8 @@
         "DependsOn": [
           "AaEpypboyFW-bfy6XKf8AA"
         ],
-        "AfterJson": "{}"
+        "AfterJson": "{}",
+        "Citation": null
       },
       {
         "OperationId": "AaEpypboHHiGWg8SCGrqDg",
@@ -582,7 +585,8 @@
         "DependsOn": [
           "AaEpypboyFW-bfy6XKf8AA"
         ],
-        "AfterJson": "{\n        \u0022ref\u0022: \u0022aOsm2UQ5Q6SMxpg17UEj9Q\u0022\n      }"
+        "AfterJson": "{\n        \u0022ref\u0022: \u0022aOsm2UQ5Q6SMxpg17UEj9Q\u0022\n      }",
+        "Citation": null
       },
       {
         "OperationId": "AaEpypboRdGrAhmsO21nUA",
@@ -592,7 +596,8 @@
         "DependsOn": [
           "AaEpypboyFW-bfy6XKf8AA"
         ],
-        "AfterJson": "{\n        \u0022text\u0022: \u0022{\\u0022actor\\u0022:{\\u0022id\\u0022:null,\\u0022kind\\u0022:\\u0022agent\\u0022,\\u0022name\\u0022:null},\\u0022body\\u0022:{\\u0022disposition\\u0022:\\u0022fix\\u0022,\\u0022evidenceContract\\u0022:\\u0022allo-alternation-family/v1\\u0022,\\u0022evidenceDigest\\u0022:\\u0022sha256:9e124a11639f8644cd932ea5a1be9b02f22384a49fda63997e6a8d934abe0799\\u0022,\\u0022kind\\u0022:\\u0022parsimony-disposition\\u0022,\\u0022measureCaption\\u0022:\\u0022Listed shapes share a rule\\u0022,\\u0022measureId\\u0022:\\u0022P-allo-alternation-family\\u0022,\\u0022question\\u0022:null,\\u0022subject\\u0022:{\\u0022kind\\u0022:\\u0022computed-group\\u0022,\\u0022measureId\\u0022:\\u0022P-allo-alternation-family\\u0022,\\u0022members\\u0022:[{\\u0022class\\u0022:\\u0022MoAffixAllomorph\\u0022,\\u0022id\\u0022:\\u0022Jev4yFPZSnyf1qRCxA25ig\\u0022,\\u0022owningEntryId\\u0022:null},{\\u0022class\\u0022:\\u0022MoAffixAllomorph\\u0022,\\u0022id\\u0022:\\u0022WeEP-t_tR-aQhjNCHzP-qg\\u0022,\\u0022owningEntryId\\u0022:null},{\\u0022class\\u0022:\\u0022MoAffixAllomorph\\u0022,\\u0022id\\u0022:\\u0022w91KIi5fSW-mj-jLGoYMJg\\u0022,\\u0022owningEntryId\\u0022:null},{\\u0022class\\u0022:\\u0022MoAffixAllomorph\\u0022,\\u0022id\\u0022:\\u0022wFOMSiYERuqS4lA_kJ3rAg\\u0022,\\u0022owningEntryId\\u0022:null}],\\u0022role\\u0022:\\u0022alternation-family\\u0022},\\u0022subjectCaption\\u0022:\\u0022allomorphs in the alternation family: ra, ta, ta, ra\\u0022},\\u0022contentHash\\u0022:\\u0022sha256:c3c266fb32f318ec4489b7ed7e55efcdcd695a3c0b4dae6a460eef87575547fe\\u0022,\\u0022extensions\\u0022:null,\\u0022format\\u0022:\\u0022motif-human-judgment\\u0022,\\u0022judgedAtUtc\\u0022:null,\\u0022judgmentId\\u0022:\\u0022AaEpypbomuuEfFGeP-LfUw\\u0022,\\u0022projectId\\u0022:\\u0022ccmOxBJlRP-2jYeUjsFzfw\\u0022,\\u0022readableFormat\\u0022:\\u0022en-v1\\u0022,\\u0022replaces\\u0022:[],\\u0022resolvesConflict\\u0022:false,\\u0022revisionId\\u0022:\\u0022AaEpypbnKEiDKXFlljKtbQ\\u0022,\\u0022source\\u0022:{\\u0022proposalId\\u0022:\\u0022AaEpyparMoBemn7db9LC7A\\u0022,\\u0022reportId\\u0022:\\u0022report/AaEpypaGeMA6ThyPxYa_GQ\\u0022},\\u0022version\\u0022:1}\u0022\n      }"
+        "AfterJson": "{\n        \u0022text\u0022: \u0022{\\u0022actor\\u0022:{\\u0022id\\u0022:null,\\u0022kind\\u0022:\\u0022agent\\u0022,\\u0022name\\u0022:null},\\u0022body\\u0022:{\\u0022disposition\\u0022:\\u0022fix\\u0022,\\u0022evidenceContract\\u0022:\\u0022allo-alternation-family/v1\\u0022,\\u0022evidenceDigest\\u0022:\\u0022sha256:9e124a11639f8644cd932ea5a1be9b02f22384a49fda63997e6a8d934abe0799\\u0022,\\u0022kind\\u0022:\\u0022parsimony-disposition\\u0022,\\u0022measureCaption\\u0022:\\u0022Listed shapes share a rule\\u0022,\\u0022measureId\\u0022:\\u0022P-allo-alternation-family\\u0022,\\u0022question\\u0022:null,\\u0022subject\\u0022:{\\u0022kind\\u0022:\\u0022computed-group\\u0022,\\u0022measureId\\u0022:\\u0022P-allo-alternation-family\\u0022,\\u0022members\\u0022:[{\\u0022class\\u0022:\\u0022MoAffixAllomorph\\u0022,\\u0022id\\u0022:\\u0022Jev4yFPZSnyf1qRCxA25ig\\u0022,\\u0022owningEntryId\\u0022:null},{\\u0022class\\u0022:\\u0022MoAffixAllomorph\\u0022,\\u0022id\\u0022:\\u0022WeEP-t_tR-aQhjNCHzP-qg\\u0022,\\u0022owningEntryId\\u0022:null},{\\u0022class\\u0022:\\u0022MoAffixAllomorph\\u0022,\\u0022id\\u0022:\\u0022w91KIi5fSW-mj-jLGoYMJg\\u0022,\\u0022owningEntryId\\u0022:null},{\\u0022class\\u0022:\\u0022MoAffixAllomorph\\u0022,\\u0022id\\u0022:\\u0022wFOMSiYERuqS4lA_kJ3rAg\\u0022,\\u0022owningEntryId\\u0022:null}],\\u0022role\\u0022:\\u0022alternation-family\\u0022},\\u0022subjectCaption\\u0022:\\u0022allomorphs in the alternation family: ra, ta, ta, ra\\u0022},\\u0022contentHash\\u0022:\\u0022sha256:c3c266fb32f318ec4489b7ed7e55efcdcd695a3c0b4dae6a460eef87575547fe\\u0022,\\u0022extensions\\u0022:null,\\u0022format\\u0022:\\u0022motif-human-judgment\\u0022,\\u0022judgedAtUtc\\u0022:null,\\u0022judgmentId\\u0022:\\u0022AaEpypbomuuEfFGeP-LfUw\\u0022,\\u0022projectId\\u0022:\\u0022ccmOxBJlRP-2jYeUjsFzfw\\u0022,\\u0022readableFormat\\u0022:\\u0022en-v1\\u0022,\\u0022replaces\\u0022:[],\\u0022resolvesConflict\\u0022:false,\\u0022revisionId\\u0022:\\u0022AaEpypbnKEiDKXFlljKtbQ\\u0022,\\u0022source\\u0022:{\\u0022proposalId\\u0022:\\u0022AaEpyparMoBemn7db9LC7A\\u0022,\\u0022reportId\\u0022:\\u0022report/AaEpypaGeMA6ThyPxYa_GQ\\u0022},\\u0022version\\u0022:1}\u0022\n      }",
+        "Citation": null
       },
       {
         "OperationId": "AaEpypbo_E_uQ54CK76crg",
@@ -602,7 +607,8 @@
         "DependsOn": [
           "AaEpypboyFW-bfy6XKf8AA"
         ],
-        "AfterJson": "{\n        \u0022ws\u0022: \u0022en\u0022,\n        \u0022text\u0022: \u0022Fix: allomorphs in the alternation family: ra, ta, ta, ra (MJ-HWWV-87P6)\u0022\n      }"
+        "AfterJson": "{\n        \u0022ws\u0022: \u0022en\u0022,\n        \u0022text\u0022: \u0022Fix: allomorphs in the alternation family: ra, ta, ta, ra (MJ-HWWV-87P6)\u0022\n      }",
+        "Citation": null
       },
       {
         "OperationId": "AaEpypdL87EfkECrI8k78Q",
@@ -612,7 +618,8 @@
         "DependsOn": [
           "AaEpypdKh7sKYBDPJ_7Vcw"
         ],
-        "AfterJson": "{\n        \u0022member\u0022: \u0022AaEpypRSvzHUAORujHrQMA\u0022\n      }"
+        "AfterJson": "{\n        \u0022member\u0022: \u0022AaEpypRSvzHUAORujHrQMA\u0022\n      }",
+        "Citation": null
       },
       {
         "OperationId": "AaEpypdLP4E-11HX1vI3Qg",
@@ -622,7 +629,8 @@
         "DependsOn": [
           "AaEpypdKh7sKYBDPJ_7Vcw"
         ],
-        "AfterJson": "{\n        \u0022ws\u0022: \u0022en\u0022,\n        \u0022text\u0022: \u0022V\u0022\n      }"
+        "AfterJson": "{\n        \u0022ws\u0022: \u0022en\u0022,\n        \u0022text\u0022: \u0022V\u0022\n      }",
+        "Citation": null
       },
       {
         "OperationId": "AaEpypdLm9lZSNOXdq9Bpw",
@@ -632,7 +640,8 @@
         "DependsOn": [
           "AaEpypdKh7sKYBDPJ_7Vcw"
         ],
-        "AfterJson": "{\n        \u0022ws\u0022: \u0022en\u0022,\n        \u0022text\u0022: \u0022vowels\u0022\n      }"
+        "AfterJson": "{\n        \u0022ws\u0022: \u0022en\u0022,\n        \u0022text\u0022: \u0022vowels\u0022\n      }",
+        "Citation": null
       },
       {
         "OperationId": "AaEpypbogCHncZbk3edsVw",
@@ -642,7 +651,8 @@
         "DependsOn": [
           "AaEpypbo2xTeP5NbId3tZg"
         ],
-        "AfterJson": "{\n        \u0022class\u0022: \u0022StTxtPara\u0022\n      }"
+        "AfterJson": "{\n        \u0022class\u0022: \u0022StTxtPara\u0022\n      }",
+        "Citation": null
       },
       {
         "OperationId": "AaEpypdQetCViaynvWVYYw",
@@ -655,7 +665,8 @@
           "AaEpypdLP4E-11HX1vI3Qg",
           "AaEpypdLm9lZSNOXdq9Bpw"
         ],
-        "AfterJson": "{\n        \u0022class\u0022: \u0022PhRegularRule\u0022\n      }"
+        "AfterJson": "{\n        \u0022class\u0022: \u0022PhRegularRule\u0022\n      }",
+        "Citation": null
       },
       {
         "OperationId": "AaEpypbo1eBOXuz4v3cUoA",
@@ -666,7 +677,8 @@
           "AaEpypbo2xTeP5NbId3tZg",
           "AaEpypbogCHncZbk3edsVw"
         ],
-        "AfterJson": "{\n        \u0022class\u0022: \u0022StTxtPara\u0022\n      }"
+        "AfterJson": "{\n        \u0022class\u0022: \u0022StTxtPara\u0022\n      }",
+        "Citation": null
       },
       {
         "OperationId": "AaEpypboNnDksthjsHPo7w",
@@ -676,7 +688,8 @@
         "DependsOn": [
           "AaEpypbogCHncZbk3edsVw"
         ],
-        "AfterJson": "{\n        \u0022ws\u0022: \u0022en\u0022,\n        \u0022text\u0022: \u0022Fix \\u201Callomorphs in the alternation family: ra, ta, ta, ra\\u201D for \\u201CListed shapes share a rule\\u201D.\u0022\n      }"
+        "AfterJson": "{\n        \u0022ws\u0022: \u0022en\u0022,\n        \u0022text\u0022: \u0022Fix \\u201Callomorphs in the alternation family: ra, ta, ta, ra\\u201D for \\u201CListed shapes share a rule\\u201D.\u0022\n      }",
+        "Citation": null
       },
       {
         "OperationId": "AaEpypdTAvio0FjCDyRn-A",
@@ -690,7 +703,8 @@
           "AaEpypdLm9lZSNOXdq9Bpw",
           "AaEpypdQetCViaynvWVYYw"
         ],
-        "AfterJson": "{\n        \u0022ws\u0022: \u0022en\u0022,\n        \u0022text\u0022: \u0022r becomes t between a segments\u0022\n      }"
+        "AfterJson": "{\n        \u0022ws\u0022: \u0022en\u0022,\n        \u0022text\u0022: \u0022r becomes t between a segments\u0022\n      }",
+        "Citation": null
       },
       {
         "OperationId": "AaEpypdTpwEXNfvf_FZBCQ",
@@ -704,7 +718,8 @@
           "AaEpypdLm9lZSNOXdq9Bpw",
           "AaEpypdQetCViaynvWVYYw"
         ],
-        "AfterJson": "{\n        \u0022value\u0022: 2\n      }"
+        "AfterJson": "{\n        \u0022value\u0022: 2\n      }",
+        "Citation": null
       },
       {
         "OperationId": "AaEpypdVAtyMFo49u4tTlQ",
@@ -718,7 +733,8 @@
           "AaEpypdLm9lZSNOXdq9Bpw",
           "AaEpypdQetCViaynvWVYYw"
         ],
-        "AfterJson": "{\n        \u0022class\u0022: \u0022PhSimpleContextSeg\u0022\n      }"
+        "AfterJson": "{\n        \u0022class\u0022: \u0022PhSimpleContextSeg\u0022\n      }",
+        "Citation": null
       },
       {
         "OperationId": "AaEpypdVGR9H21pR8RTipg",
@@ -732,7 +748,8 @@
           "AaEpypdLm9lZSNOXdq9Bpw",
           "AaEpypdQetCViaynvWVYYw"
         ],
-        "AfterJson": "{}"
+        "AfterJson": "{}",
+        "Citation": null
       },
       {
         "OperationId": "AaEpypbo4fwfLO4Tha9tEg",
@@ -742,7 +759,8 @@
         "DependsOn": [
           "AaEpypbo1eBOXuz4v3cUoA"
         ],
-        "AfterJson": "{\n        \u0022ws\u0022: \u0022en\u0022,\n        \u0022text\u0022: \u0022Stage the rule that replaces this alternation.\u0022\n      }"
+        "AfterJson": "{\n        \u0022ws\u0022: \u0022en\u0022,\n        \u0022text\u0022: \u0022Stage the rule that replaces this alternation.\u0022\n      }",
+        "Citation": null
       },
       {
         "OperationId": "AaEpypdV1F6soQVwuWDvVw",
@@ -756,7 +774,8 @@
           "AaEpypdLm9lZSNOXdq9Bpw",
           "AaEpypdVGR9H21pR8RTipg"
         ],
-        "AfterJson": "{\n        \u0022class\u0022: \u0022PhSimpleContextSeg\u0022\n      }"
+        "AfterJson": "{\n        \u0022class\u0022: \u0022PhSimpleContextSeg\u0022\n      }",
+        "Citation": null
       },
       {
         "OperationId": "AaEpypdVbnmgcYd5ODRh_w",
@@ -770,7 +789,8 @@
           "AaEpypdLm9lZSNOXdq9Bpw",
           "AaEpypdVAtyMFo49u4tTlQ"
         ],
-        "AfterJson": "{\n        \u0022ref\u0022: \u0022AaEpypQjflPDk6DZ72g0Zg\u0022\n      }"
+        "AfterJson": "{\n        \u0022ref\u0022: \u0022AaEpypQjflPDk6DZ72g0Zg\u0022\n      }",
+        "Citation": null
       },
       {
         "OperationId": "AaEpypdW_N880wLK8AADkw",
@@ -784,7 +804,8 @@
           "AaEpypdLm9lZSNOXdq9Bpw",
           "AaEpypdVGR9H21pR8RTipg"
         ],
-        "AfterJson": "{\n        \u0022class\u0022: \u0022PhSimpleContextSeg\u0022\n      }"
+        "AfterJson": "{\n        \u0022class\u0022: \u0022PhSimpleContextSeg\u0022\n      }",
+        "Citation": null
       },
       {
         "OperationId": "AaEpypdWcsJgf38bu58QjQ",
@@ -798,7 +819,8 @@
           "AaEpypdLm9lZSNOXdq9Bpw",
           "AaEpypdVGR9H21pR8RTipg"
         ],
-        "AfterJson": "{\n        \u0022class\u0022: \u0022PhSimpleContextNC\u0022\n      }"
+        "AfterJson": "{\n        \u0022class\u0022: \u0022PhSimpleContextNC\u0022\n      }",
+        "Citation": null
       },
       {
         "OperationId": "AaEpypdVk5E8bkt5v-66fw",
@@ -812,7 +834,8 @@
           "AaEpypdLm9lZSNOXdq9Bpw",
           "AaEpypdV1F6soQVwuWDvVw"
         ],
-        "AfterJson": "{\n        \u0022ref\u0022: \u0022AaEpypQ1ZwkdXDmlZY92eg\u0022\n      }"
+        "AfterJson": "{\n        \u0022ref\u0022: \u0022AaEpypQ1ZwkdXDmlZY92eg\u0022\n      }",
+        "Citation": null
       },
       {
         "OperationId": "AaEpypdWS6WICaaC_KD9Qg",
@@ -826,7 +849,8 @@
           "AaEpypdLm9lZSNOXdq9Bpw",
           "AaEpypdWcsJgf38bu58QjQ"
         ],
-        "AfterJson": "{\n        \u0022ref\u0022: \u0022AaEpypVJJjNq24KMJSAsKA\u0022\n      }"
+        "AfterJson": "{\n        \u0022ref\u0022: \u0022AaEpypVJJjNq24KMJSAsKA\u0022\n      }",
+        "Citation": null
       },
       {
         "OperationId": "AaEpypdWuxa8993v_UwMSw",
@@ -840,7 +864,8 @@
           "AaEpypdLm9lZSNOXdq9Bpw",
           "AaEpypdW_N880wLK8AADkw"
         ],
-        "AfterJson": "{\n        \u0022ref\u0022: \u0022AaEpypRSvzHUAORujHrQMA\u0022\n      }"
+        "AfterJson": "{\n        \u0022ref\u0022: \u0022AaEpypRSvzHUAORujHrQMA\u0022\n      }",
+        "Citation": null
       },
       {
         "OperationId": "AaEpypdWzs7xUmC0T7yV2g",
@@ -865,7 +890,8 @@
           "AaEpypdWcsJgf38bu58QjQ",
           "AaEpypdWuxa8993v_UwMSw"
         ],
-        "AfterJson": "{\n        \u0022value\u0022: false\n      }"
+        "AfterJson": "{\n        \u0022value\u0022: false\n      }",
+        "Citation": null
       },
       {
         "OperationId": "AaEpype_JXKhdWYkOX9hSA",
@@ -875,7 +901,8 @@
         "DependsOn": [
           "AaEpypdWzs7xUmC0T7yV2g"
         ],
-        "AfterJson": "{\n        \u0022retiredForms\u0022: [\n          \u0022wFOMSiYERuqS4lA_kJ3rAg\u0022\n        ],\n        \u0022censusDigest\u0022: \u0022sha256:82f053deb1cf82fbf1194c47a28886d6a4e8de27939fff177638b7ba4889762c\u0022,\n        \u0022retiredForm\u0022: \u0022wFOMSiYERuqS4lA_kJ3rAg\u0022,\n        \u0022replacement\u0022: \u0022w91KIi5fSW-mj-jLGoYMJg\u0022\n      }"
+        "AfterJson": "{\n        \u0022retiredForms\u0022: [\n          \u0022wFOMSiYERuqS4lA_kJ3rAg\u0022\n        ],\n        \u0022censusDigest\u0022: \u0022sha256:82f053deb1cf82fbf1194c47a28886d6a4e8de27939fff177638b7ba4889762c\u0022,\n        \u0022retiredForm\u0022: \u0022wFOMSiYERuqS4lA_kJ3rAg\u0022,\n        \u0022replacement\u0022: \u0022w91KIi5fSW-mj-jLGoYMJg\u0022\n      }",
+        "Citation": null
       },
       {
         "OperationId": "AaEpypfgytZjLPj5Wb6D4Q",
@@ -885,7 +912,8 @@
         "DependsOn": [
           "AaEpypdWzs7xUmC0T7yV2g"
         ],
-        "AfterJson": "{\n        \u0022retiredForms\u0022: [\n          \u0022WeEP-t_tR-aQhjNCHzP-qg\u0022\n        ],\n        \u0022censusDigest\u0022: \u0022sha256:4c543d99dd3a73b91585ddd0d5d6c8f40cb5d121bde2cd5bf8a05934b1ef4c60\u0022,\n        \u0022retiredForm\u0022: \u0022WeEP-t_tR-aQhjNCHzP-qg\u0022,\n        \u0022replacement\u0022: \u0022Jev4yFPZSnyf1qRCxA25ig\u0022\n      }"
+        "AfterJson": "{\n        \u0022retiredForms\u0022: [\n          \u0022WeEP-t_tR-aQhjNCHzP-qg\u0022\n        ],\n        \u0022censusDigest\u0022: \u0022sha256:4c543d99dd3a73b91585ddd0d5d6c8f40cb5d121bde2cd5bf8a05934b1ef4c60\u0022,\n        \u0022retiredForm\u0022: \u0022WeEP-t_tR-aQhjNCHzP-qg\u0022,\n        \u0022replacement\u0022: \u0022Jev4yFPZSnyf1qRCxA25ig\u0022\n      }",
+        "Citation": null
       },
       {
         "OperationId": "AaEpypfDv0abut1IAkM8aA",
@@ -895,7 +923,8 @@
         "DependsOn": [
           "AaEpype_JXKhdWYkOX9hSA"
         ],
-        "AfterJson": "{\n        \u0022forms\u0022: [\n          \u0022wFOMSiYERuqS4lA_kJ3rAg\u0022\n        ],\n        \u0022duplicateSurvivors\u0022: [\n          \u0022w91KIi5fSW-mj-jLGoYMJg\u0022\n        ],\n        \u0022formWitnesses\u0022: [\n          {\n            \u0022form\u0022: \u0022w91KIi5fSW-mj-jLGoYMJg\u0022,\n            \u0022semanticDigest\u0022: \u0022sha256:812b6e0ad8ecc74d928f88cfc7be572a48f50b32a2d992e48d34a044896b34ee\u0022\n          },\n          {\n            \u0022form\u0022: \u0022wFOMSiYERuqS4lA_kJ3rAg\u0022,\n            \u0022semanticDigest\u0022: \u0022sha256:241f01e7d6ded5d830ebb76365910ae19655941dfce9cfd5a8a599f3fd2c8cad\u0022\n          }\n        ],\n        \u0022before\u0022: [\n          \u0022wFOMSiYERuqS4lA_kJ3rAg\u0022\n        ],\n        \u0022after\u0022: [],\n        \u0022ruleReplacement\u0022: {\n          \u0022rule\u0022: \u0022AaEpypVJzEC0TaO5Wt3t1w\u0022,\n          \u0022inputPhoneme\u0022: \u0022AaEpypQjflPDk6DZ72g0Zg\u0022,\n          \u0022outputPhoneme\u0022: \u0022AaEpypQ1ZwkdXDmlZY92eg\u0022\n        }\n      }"
+        "AfterJson": "{\n        \u0022forms\u0022: [\n          \u0022wFOMSiYERuqS4lA_kJ3rAg\u0022\n        ],\n        \u0022duplicateSurvivors\u0022: [\n          \u0022w91KIi5fSW-mj-jLGoYMJg\u0022\n        ],\n        \u0022formWitnesses\u0022: [\n          {\n            \u0022form\u0022: \u0022w91KIi5fSW-mj-jLGoYMJg\u0022,\n            \u0022semanticDigest\u0022: \u0022sha256:812b6e0ad8ecc74d928f88cfc7be572a48f50b32a2d992e48d34a044896b34ee\u0022\n          },\n          {\n            \u0022form\u0022: \u0022wFOMSiYERuqS4lA_kJ3rAg\u0022,\n            \u0022semanticDigest\u0022: \u0022sha256:241f01e7d6ded5d830ebb76365910ae19655941dfce9cfd5a8a599f3fd2c8cad\u0022\n          }\n        ],\n        \u0022before\u0022: [\n          \u0022wFOMSiYERuqS4lA_kJ3rAg\u0022\n        ],\n        \u0022after\u0022: [],\n        \u0022ruleReplacement\u0022: {\n          \u0022rule\u0022: \u0022AaEpypVJzEC0TaO5Wt3t1w\u0022,\n          \u0022inputPhoneme\u0022: \u0022AaEpypQjflPDk6DZ72g0Zg\u0022,\n          \u0022outputPhoneme\u0022: \u0022AaEpypQ1ZwkdXDmlZY92eg\u0022\n        }\n      }",
+        "Citation": null
       },
       {
         "OperationId": "AaEpypfgKspxzEb77fHLCA",
@@ -905,7 +934,8 @@
         "DependsOn": [
           "AaEpypfgytZjLPj5Wb6D4Q"
         ],
-        "AfterJson": "{\n        \u0022forms\u0022: [\n          \u0022WeEP-t_tR-aQhjNCHzP-qg\u0022\n        ],\n        \u0022duplicateSurvivors\u0022: [\n          \u0022Jev4yFPZSnyf1qRCxA25ig\u0022\n        ],\n        \u0022formWitnesses\u0022: [\n          {\n            \u0022form\u0022: \u0022Jev4yFPZSnyf1qRCxA25ig\u0022,\n            \u0022semanticDigest\u0022: \u0022sha256:812b6e0ad8ecc74d928f88cfc7be572a48f50b32a2d992e48d34a044896b34ee\u0022\n          },\n          {\n            \u0022form\u0022: \u0022WeEP-t_tR-aQhjNCHzP-qg\u0022,\n            \u0022semanticDigest\u0022: \u0022sha256:241f01e7d6ded5d830ebb76365910ae19655941dfce9cfd5a8a599f3fd2c8cad\u0022\n          }\n        ],\n        \u0022before\u0022: [\n          \u0022WeEP-t_tR-aQhjNCHzP-qg\u0022\n        ],\n        \u0022after\u0022: [],\n        \u0022ruleReplacement\u0022: {\n          \u0022rule\u0022: \u0022AaEpypVJzEC0TaO5Wt3t1w\u0022,\n          \u0022inputPhoneme\u0022: \u0022AaEpypQjflPDk6DZ72g0Zg\u0022,\n          \u0022outputPhoneme\u0022: \u0022AaEpypQ1ZwkdXDmlZY92eg\u0022\n        }\n      }"
+        "AfterJson": "{\n        \u0022forms\u0022: [\n          \u0022WeEP-t_tR-aQhjNCHzP-qg\u0022\n        ],\n        \u0022duplicateSurvivors\u0022: [\n          \u0022Jev4yFPZSnyf1qRCxA25ig\u0022\n        ],\n        \u0022formWitnesses\u0022: [\n          {\n            \u0022form\u0022: \u0022Jev4yFPZSnyf1qRCxA25ig\u0022,\n            \u0022semanticDigest\u0022: \u0022sha256:812b6e0ad8ecc74d928f88cfc7be572a48f50b32a2d992e48d34a044896b34ee\u0022\n          },\n          {\n            \u0022form\u0022: \u0022WeEP-t_tR-aQhjNCHzP-qg\u0022,\n            \u0022semanticDigest\u0022: \u0022sha256:241f01e7d6ded5d830ebb76365910ae19655941dfce9cfd5a8a599f3fd2c8cad\u0022\n          }\n        ],\n        \u0022before\u0022: [\n          \u0022WeEP-t_tR-aQhjNCHzP-qg\u0022\n        ],\n        \u0022after\u0022: [],\n        \u0022ruleReplacement\u0022: {\n          \u0022rule\u0022: \u0022AaEpypVJzEC0TaO5Wt3t1w\u0022,\n          \u0022inputPhoneme\u0022: \u0022AaEpypQjflPDk6DZ72g0Zg\u0022,\n          \u0022outputPhoneme\u0022: \u0022AaEpypQ1ZwkdXDmlZY92eg\u0022\n        }\n      }",
+        "Citation": null
       }
     ]
   },
@@ -1463,7 +1493,8 @@
           "Target": "NfanxcWRSeisilusQ-ZCcA",
           "EntityId": "AaEpypbnKEiDKXFlljKtbQ",
           "DependsOn": [],
-          "AfterJson": "{}"
+          "AfterJson": "{}",
+          "Citation": null
         },
         {
           "OperationId": "AaEpypdKh7sKYBDPJ_7Vcw",
@@ -1471,7 +1502,8 @@
           "Target": "zaTcwq9iTTmOGHBKpVcQvQ",
           "EntityId": "AaEpypVJJjNq24KMJSAsKA",
           "DependsOn": [],
-          "AfterJson": "{\n        \u0022class\u0022: \u0022PhNCSegments\u0022\n      }"
+          "AfterJson": "{\n        \u0022class\u0022: \u0022PhNCSegments\u0022\n      }",
+          "Citation": null
         },
         {
           "OperationId": "AaEpypbo2xTeP5NbId3tZg",
@@ -1481,7 +1513,8 @@
           "DependsOn": [
             "AaEpypboyFW-bfy6XKf8AA"
           ],
-          "AfterJson": "{}"
+          "AfterJson": "{}",
+          "Citation": null
         },
         {
           "OperationId": "AaEpypboHHiGWg8SCGrqDg",
@@ -1491,7 +1524,8 @@
           "DependsOn": [
             "AaEpypboyFW-bfy6XKf8AA"
           ],
-          "AfterJson": "{\n        \u0022ref\u0022: \u0022aOsm2UQ5Q6SMxpg17UEj9Q\u0022\n      }"
+          "AfterJson": "{\n        \u0022ref\u0022: \u0022aOsm2UQ5Q6SMxpg17UEj9Q\u0022\n      }",
+          "Citation": null
         },
         {
           "OperationId": "AaEpypboRdGrAhmsO21nUA",
@@ -1501,7 +1535,8 @@
           "DependsOn": [
             "AaEpypboyFW-bfy6XKf8AA"
           ],
-          "AfterJson": "{\n        \u0022text\u0022: \u0022{\\u0022actor\\u0022:{\\u0022id\\u0022:null,\\u0022kind\\u0022:\\u0022agent\\u0022,\\u0022name\\u0022:null},\\u0022body\\u0022:{\\u0022disposition\\u0022:\\u0022fix\\u0022,\\u0022evidenceContract\\u0022:\\u0022allo-alternation-family/v1\\u0022,\\u0022evidenceDigest\\u0022:\\u0022sha256:9e124a11639f8644cd932ea5a1be9b02f22384a49fda63997e6a8d934abe0799\\u0022,\\u0022kind\\u0022:\\u0022parsimony-disposition\\u0022,\\u0022measureCaption\\u0022:\\u0022Listed shapes share a rule\\u0022,\\u0022measureId\\u0022:\\u0022P-allo-alternation-family\\u0022,\\u0022question\\u0022:null,\\u0022subject\\u0022:{\\u0022kind\\u0022:\\u0022computed-group\\u0022,\\u0022measureId\\u0022:\\u0022P-allo-alternation-family\\u0022,\\u0022members\\u0022:[{\\u0022class\\u0022:\\u0022MoAffixAllomorph\\u0022,\\u0022id\\u0022:\\u0022Jev4yFPZSnyf1qRCxA25ig\\u0022,\\u0022owningEntryId\\u0022:null},{\\u0022class\\u0022:\\u0022MoAffixAllomorph\\u0022,\\u0022id\\u0022:\\u0022WeEP-t_tR-aQhjNCHzP-qg\\u0022,\\u0022owningEntryId\\u0022:null},{\\u0022class\\u0022:\\u0022MoAffixAllomorph\\u0022,\\u0022id\\u0022:\\u0022w91KIi5fSW-mj-jLGoYMJg\\u0022,\\u0022owningEntryId\\u0022:null},{\\u0022class\\u0022:\\u0022MoAffixAllomorph\\u0022,\\u0022id\\u0022:\\u0022wFOMSiYERuqS4lA_kJ3rAg\\u0022,\\u0022owningEntryId\\u0022:null}],\\u0022role\\u0022:\\u0022alternation-family\\u0022},\\u0022subjectCaption\\u0022:\\u0022allomorphs in the alternation family: ra, ta, ta, ra\\u0022},\\u0022contentHash\\u0022:\\u0022sha256:c3c266fb32f318ec4489b7ed7e55efcdcd695a3c0b4dae6a460eef87575547fe\\u0022,\\u0022extensions\\u0022:null,\\u0022format\\u0022:\\u0022motif-human-judgment\\u0022,\\u0022judgedAtUtc\\u0022:null,\\u0022judgmentId\\u0022:\\u0022AaEpypbomuuEfFGeP-LfUw\\u0022,\\u0022projectId\\u0022:\\u0022ccmOxBJlRP-2jYeUjsFzfw\\u0022,\\u0022readableFormat\\u0022:\\u0022en-v1\\u0022,\\u0022replaces\\u0022:[],\\u0022resolvesConflict\\u0022:false,\\u0022revisionId\\u0022:\\u0022AaEpypbnKEiDKXFlljKtbQ\\u0022,\\u0022source\\u0022:{\\u0022proposalId\\u0022:\\u0022AaEpyparMoBemn7db9LC7A\\u0022,\\u0022reportId\\u0022:\\u0022report/AaEpypaGeMA6ThyPxYa_GQ\\u0022},\\u0022version\\u0022:1}\u0022\n      }"
+          "AfterJson": "{\n        \u0022text\u0022: \u0022{\\u0022actor\\u0022:{\\u0022id\\u0022:null,\\u0022kind\\u0022:\\u0022agent\\u0022,\\u0022name\\u0022:null},\\u0022body\\u0022:{\\u0022disposition\\u0022:\\u0022fix\\u0022,\\u0022evidenceContract\\u0022:\\u0022allo-alternation-family/v1\\u0022,\\u0022evidenceDigest\\u0022:\\u0022sha256:9e124a11639f8644cd932ea5a1be9b02f22384a49fda63997e6a8d934abe0799\\u0022,\\u0022kind\\u0022:\\u0022parsimony-disposition\\u0022,\\u0022measureCaption\\u0022:\\u0022Listed shapes share a rule\\u0022,\\u0022measureId\\u0022:\\u0022P-allo-alternation-family\\u0022,\\u0022question\\u0022:null,\\u0022subject\\u0022:{\\u0022kind\\u0022:\\u0022computed-group\\u0022,\\u0022measureId\\u0022:\\u0022P-allo-alternation-family\\u0022,\\u0022members\\u0022:[{\\u0022class\\u0022:\\u0022MoAffixAllomorph\\u0022,\\u0022id\\u0022:\\u0022Jev4yFPZSnyf1qRCxA25ig\\u0022,\\u0022owningEntryId\\u0022:null},{\\u0022class\\u0022:\\u0022MoAffixAllomorph\\u0022,\\u0022id\\u0022:\\u0022WeEP-t_tR-aQhjNCHzP-qg\\u0022,\\u0022owningEntryId\\u0022:null},{\\u0022class\\u0022:\\u0022MoAffixAllomorph\\u0022,\\u0022id\\u0022:\\u0022w91KIi5fSW-mj-jLGoYMJg\\u0022,\\u0022owningEntryId\\u0022:null},{\\u0022class\\u0022:\\u0022MoAffixAllomorph\\u0022,\\u0022id\\u0022:\\u0022wFOMSiYERuqS4lA_kJ3rAg\\u0022,\\u0022owningEntryId\\u0022:null}],\\u0022role\\u0022:\\u0022alternation-family\\u0022},\\u0022subjectCaption\\u0022:\\u0022allomorphs in the alternation family: ra, ta, ta, ra\\u0022},\\u0022contentHash\\u0022:\\u0022sha256:c3c266fb32f318ec4489b7ed7e55efcdcd695a3c0b4dae6a460eef87575547fe\\u0022,\\u0022extensions\\u0022:null,\\u0022format\\u0022:\\u0022motif-human-judgment\\u0022,\\u0022judgedAtUtc\\u0022:null,\\u0022judgmentId\\u0022:\\u0022AaEpypbomuuEfFGeP-LfUw\\u0022,\\u0022projectId\\u0022:\\u0022ccmOxBJlRP-2jYeUjsFzfw\\u0022,\\u0022readableFormat\\u0022:\\u0022en-v1\\u0022,\\u0022replaces\\u0022:[],\\u0022resolvesConflict\\u0022:false,\\u0022revisionId\\u0022:\\u0022AaEpypbnKEiDKXFlljKtbQ\\u0022,\\u0022source\\u0022:{\\u0022proposalId\\u0022:\\u0022AaEpyparMoBemn7db9LC7A\\u0022,\\u0022reportId\\u0022:\\u0022report/AaEpypaGeMA6ThyPxYa_GQ\\u0022},\\u0022version\\u0022:1}\u0022\n      }",
+          "Citation": null
         },
         {
           "OperationId": "AaEpypbo_E_uQ54CK76crg",
@@ -1511,7 +1546,8 @@
           "DependsOn": [
             "AaEpypboyFW-bfy6XKf8AA"
           ],
-          "AfterJson": "{\n        \u0022ws\u0022: \u0022en\u0022,\n        \u0022text\u0022: \u0022Fix: allomorphs in the alternation family: ra, ta, ta, ra (MJ-HWWV-87P6)\u0022\n      }"
+          "AfterJson": "{\n        \u0022ws\u0022: \u0022en\u0022,\n        \u0022text\u0022: \u0022Fix: allomorphs in the alternation family: ra, ta, ta, ra (MJ-HWWV-87P6)\u0022\n      }",
+          "Citation": null
         },
         {
           "OperationId": "AaEpypdL87EfkECrI8k78Q",
@@ -1521,7 +1557,8 @@
           "DependsOn": [
             "AaEpypdKh7sKYBDPJ_7Vcw"
           ],
-          "AfterJson": "{\n        \u0022member\u0022: \u0022AaEpypRSvzHUAORujHrQMA\u0022\n      }"
+          "AfterJson": "{\n        \u0022member\u0022: \u0022AaEpypRSvzHUAORujHrQMA\u0022\n      }",
+          "Citation": null
         },
         {
           "OperationId": "AaEpypdLP4E-11HX1vI3Qg",
@@ -1531,7 +1568,8 @@
           "DependsOn": [
             "AaEpypdKh7sKYBDPJ_7Vcw"
           ],
-          "AfterJson": "{\n        \u0022ws\u0022: \u0022en\u0022,\n        \u0022text\u0022: \u0022V\u0022\n      }"
+          "AfterJson": "{\n        \u0022ws\u0022: \u0022en\u0022,\n        \u0022text\u0022: \u0022V\u0022\n      }",
+          "Citation": null
         },
         {
           "OperationId": "AaEpypdLm9lZSNOXdq9Bpw",
@@ -1541,7 +1579,8 @@
           "DependsOn": [
             "AaEpypdKh7sKYBDPJ_7Vcw"
           ],
-          "AfterJson": "{\n        \u0022ws\u0022: \u0022en\u0022,\n        \u0022text\u0022: \u0022vowels\u0022\n      }"
+          "AfterJson": "{\n        \u0022ws\u0022: \u0022en\u0022,\n        \u0022text\u0022: \u0022vowels\u0022\n      }",
+          "Citation": null
         },
         {
           "OperationId": "AaEpypbogCHncZbk3edsVw",
@@ -1551,7 +1590,8 @@
           "DependsOn": [
             "AaEpypbo2xTeP5NbId3tZg"
           ],
-          "AfterJson": "{\n        \u0022class\u0022: \u0022StTxtPara\u0022\n      }"
+          "AfterJson": "{\n        \u0022class\u0022: \u0022StTxtPara\u0022\n      }",
+          "Citation": null
         },
         {
           "OperationId": "AaEpypdQetCViaynvWVYYw",
@@ -1564,7 +1604,8 @@
             "AaEpypdLP4E-11HX1vI3Qg",
             "AaEpypdLm9lZSNOXdq9Bpw"
           ],
-          "AfterJson": "{\n        \u0022class\u0022: \u0022PhRegularRule\u0022\n      }"
+          "AfterJson": "{\n        \u0022class\u0022: \u0022PhRegularRule\u0022\n      }",
+          "Citation": null
         },
         {
           "OperationId": "AaEpypbo1eBOXuz4v3cUoA",
@@ -1575,7 +1616,8 @@
             "AaEpypbo2xTeP5NbId3tZg",
             "AaEpypbogCHncZbk3edsVw"
           ],
-          "AfterJson": "{\n        \u0022class\u0022: \u0022StTxtPara\u0022\n      }"
+          "AfterJson": "{\n        \u0022class\u0022: \u0022StTxtPara\u0022\n      }",
+          "Citation": null
         },
         {
           "OperationId": "AaEpypboNnDksthjsHPo7w",
@@ -1585,7 +1627,8 @@
           "DependsOn": [
             "AaEpypbogCHncZbk3edsVw"
           ],
-          "AfterJson": "{\n        \u0022ws\u0022: \u0022en\u0022,\n        \u0022text\u0022: \u0022Fix \\u201Callomorphs in the alternation family: ra, ta, ta, ra\\u201D for \\u201CListed shapes share a rule\\u201D.\u0022\n      }"
+          "AfterJson": "{\n        \u0022ws\u0022: \u0022en\u0022,\n        \u0022text\u0022: \u0022Fix \\u201Callomorphs in the alternation family: ra, ta, ta, ra\\u201D for \\u201CListed shapes share a rule\\u201D.\u0022\n      }",
+          "Citation": null
         },
         {
           "OperationId": "AaEpypdTAvio0FjCDyRn-A",
@@ -1599,7 +1642,8 @@
             "AaEpypdLm9lZSNOXdq9Bpw",
             "AaEpypdQetCViaynvWVYYw"
           ],
-          "AfterJson": "{\n        \u0022ws\u0022: \u0022en\u0022,\n        \u0022text\u0022: \u0022r becomes t between a segments\u0022\n      }"
+          "AfterJson": "{\n        \u0022ws\u0022: \u0022en\u0022,\n        \u0022text\u0022: \u0022r becomes t between a segments\u0022\n      }",
+          "Citation": null
         },
         {
           "OperationId": "AaEpypdTpwEXNfvf_FZBCQ",
@@ -1613,7 +1657,8 @@
             "AaEpypdLm9lZSNOXdq9Bpw",
             "AaEpypdQetCViaynvWVYYw"
           ],
-          "AfterJson": "{\n        \u0022value\u0022: 2\n      }"
+          "AfterJson": "{\n        \u0022value\u0022: 2\n      }",
+          "Citation": null
         },
         {
           "OperationId": "AaEpypdVAtyMFo49u4tTlQ",
@@ -1627,7 +1672,8 @@
             "AaEpypdLm9lZSNOXdq9Bpw",
             "AaEpypdQetCViaynvWVYYw"
           ],
-          "AfterJson": "{\n        \u0022class\u0022: \u0022PhSimpleContextSeg\u0022\n      }"
+          "AfterJson": "{\n        \u0022class\u0022: \u0022PhSimpleContextSeg\u0022\n      }",
+          "Citation": null
         },
         {
           "OperationId": "AaEpypdVGR9H21pR8RTipg",
@@ -1641,7 +1687,8 @@
             "AaEpypdLm9lZSNOXdq9Bpw",
             "AaEpypdQetCViaynvWVYYw"
           ],
-          "AfterJson": "{}"
+          "AfterJson": "{}",
+          "Citation": null
         },
         {
           "OperationId": "AaEpypbo4fwfLO4Tha9tEg",
@@ -1651,7 +1698,8 @@
           "DependsOn": [
             "AaEpypbo1eBOXuz4v3cUoA"
           ],
-          "AfterJson": "{\n        \u0022ws\u0022: \u0022en\u0022,\n        \u0022text\u0022: \u0022Stage the rule that replaces this alternation.\u0022\n      }"
+          "AfterJson": "{\n        \u0022ws\u0022: \u0022en\u0022,\n        \u0022text\u0022: \u0022Stage the rule that replaces this alternation.\u0022\n      }",
+          "Citation": null
         },
         {
           "OperationId": "AaEpypdV1F6soQVwuWDvVw",
@@ -1665,7 +1713,8 @@
             "AaEpypdLm9lZSNOXdq9Bpw",
             "AaEpypdVGR9H21pR8RTipg"
           ],
-          "AfterJson": "{\n        \u0022class\u0022: \u0022PhSimpleContextSeg\u0022\n      }"
+          "AfterJson": "{\n        \u0022class\u0022: \u0022PhSimpleContextSeg\u0022\n      }",
+          "Citation": null
         },
         {
           "OperationId": "AaEpypdVbnmgcYd5ODRh_w",
@@ -1679,7 +1728,8 @@
             "AaEpypdLm9lZSNOXdq9Bpw",
             "AaEpypdVAtyMFo49u4tTlQ"
           ],
-          "AfterJson": "{\n        \u0022ref\u0022: \u0022AaEpypQjflPDk6DZ72g0Zg\u0022\n      }"
+          "AfterJson": "{\n        \u0022ref\u0022: \u0022AaEpypQjflPDk6DZ72g0Zg\u0022\n      }",
+          "Citation": null
         },
         {
           "OperationId": "AaEpypdW_N880wLK8AADkw",
@@ -1693,7 +1743,8 @@
             "AaEpypdLm9lZSNOXdq9Bpw",
             "AaEpypdVGR9H21pR8RTipg"
           ],
-          "AfterJson": "{\n        \u0022class\u0022: \u0022PhSimpleContextSeg\u0022\n      }"
+          "AfterJson": "{\n        \u0022class\u0022: \u0022PhSimpleContextSeg\u0022\n      }",
+          "Citation": null
         },
         {
           "OperationId": "AaEpypdWcsJgf38bu58QjQ",
@@ -1707,7 +1758,8 @@
             "AaEpypdLm9lZSNOXdq9Bpw",
             "AaEpypdVGR9H21pR8RTipg"
           ],
-          "AfterJson": "{\n        \u0022class\u0022: \u0022PhSimpleContextNC\u0022\n      }"
+          "AfterJson": "{\n        \u0022class\u0022: \u0022PhSimpleContextNC\u0022\n      }",
+          "Citation": null
         },
         {
           "OperationId": "AaEpypdVk5E8bkt5v-66fw",
@@ -1721,7 +1773,8 @@
             "AaEpypdLm9lZSNOXdq9Bpw",
             "AaEpypdV1F6soQVwuWDvVw"
           ],
-          "AfterJson": "{\n        \u0022ref\u0022: \u0022AaEpypQ1ZwkdXDmlZY92eg\u0022\n      }"
+          "AfterJson": "{\n        \u0022ref\u0022: \u0022AaEpypQ1ZwkdXDmlZY92eg\u0022\n      }",
+          "Citation": null
         },
         {
           "OperationId": "AaEpypdWS6WICaaC_KD9Qg",
@@ -1735,7 +1788,8 @@
             "AaEpypdLm9lZSNOXdq9Bpw",
             "AaEpypdWcsJgf38bu58QjQ"
           ],
-          "AfterJson": "{\n        \u0022ref\u0022: \u0022AaEpypVJJjNq24KMJSAsKA\u0022\n      }"
+          "AfterJson": "{\n        \u0022ref\u0022: \u0022AaEpypVJJjNq24KMJSAsKA\u0022\n      }",
+          "Citation": null
         },
         {
           "OperationId": "AaEpypdWuxa8993v_UwMSw",
@@ -1749,7 +1803,8 @@
             "AaEpypdLm9lZSNOXdq9Bpw",
             "AaEpypdW_N880wLK8AADkw"
           ],
-          "AfterJson": "{\n        \u0022ref\u0022: \u0022AaEpypRSvzHUAORujHrQMA\u0022\n      }"
+          "AfterJson": "{\n        \u0022ref\u0022: \u0022AaEpypRSvzHUAORujHrQMA\u0022\n      }",
+          "Citation": null
         },
         {
           "OperationId": "AaEpypdWzs7xUmC0T7yV2g",
@@ -1774,7 +1829,8 @@
             "AaEpypdWcsJgf38bu58QjQ",
             "AaEpypdWuxa8993v_UwMSw"
           ],
-          "AfterJson": "{\n        \u0022value\u0022: false\n      }"
+          "AfterJson": "{\n        \u0022value\u0022: false\n      }",
+          "Citation": null
         },
         {
           "OperationId": "AaEpype_JXKhdWYkOX9hSA",
@@ -1784,7 +1840,8 @@
           "DependsOn": [
             "AaEpypdWzs7xUmC0T7yV2g"
           ],
-          "AfterJson": "{\n        \u0022retiredForms\u0022: [\n          \u0022wFOMSiYERuqS4lA_kJ3rAg\u0022\n        ],\n        \u0022censusDigest\u0022: \u0022sha256:82f053deb1cf82fbf1194c47a28886d6a4e8de27939fff177638b7ba4889762c\u0022,\n        \u0022retiredForm\u0022: \u0022wFOMSiYERuqS4lA_kJ3rAg\u0022,\n        \u0022replacement\u0022: \u0022w91KIi5fSW-mj-jLGoYMJg\u0022\n      }"
+          "AfterJson": "{\n        \u0022retiredForms\u0022: [\n          \u0022wFOMSiYERuqS4lA_kJ3rAg\u0022\n        ],\n        \u0022censusDigest\u0022: \u0022sha256:82f053deb1cf82fbf1194c47a28886d6a4e8de27939fff177638b7ba4889762c\u0022,\n        \u0022retiredForm\u0022: \u0022wFOMSiYERuqS4lA_kJ3rAg\u0022,\n        \u0022replacement\u0022: \u0022w91KIi5fSW-mj-jLGoYMJg\u0022\n      }",
+          "Citation": null
         },
         {
           "OperationId": "AaEpypfgytZjLPj5Wb6D4Q",
@@ -1794,7 +1851,8 @@
           "DependsOn": [
             "AaEpypdWzs7xUmC0T7yV2g"
           ],
-          "AfterJson": "{\n        \u0022retiredForms\u0022: [\n          \u0022WeEP-t_tR-aQhjNCHzP-qg\u0022\n        ],\n        \u0022censusDigest\u0022: \u0022sha256:4c543d99dd3a73b91585ddd0d5d6c8f40cb5d121bde2cd5bf8a05934b1ef4c60\u0022,\n        \u0022retiredForm\u0022: \u0022WeEP-t_tR-aQhjNCHzP-qg\u0022,\n        \u0022replacement\u0022: \u0022Jev4yFPZSnyf1qRCxA25ig\u0022\n      }"
+          "AfterJson": "{\n        \u0022retiredForms\u0022: [\n          \u0022WeEP-t_tR-aQhjNCHzP-qg\u0022\n        ],\n        \u0022censusDigest\u0022: \u0022sha256:4c543d99dd3a73b91585ddd0d5d6c8f40cb5d121bde2cd5bf8a05934b1ef4c60\u0022,\n        \u0022retiredForm\u0022: \u0022WeEP-t_tR-aQhjNCHzP-qg\u0022,\n        \u0022replacement\u0022: \u0022Jev4yFPZSnyf1qRCxA25ig\u0022\n      }",
+          "Citation": null
         },
         {
           "OperationId": "AaEpypfDv0abut1IAkM8aA",
@@ -1804,7 +1862,8 @@
           "DependsOn": [
             "AaEpype_JXKhdWYkOX9hSA"
           ],
-          "AfterJson": "{\n        \u0022forms\u0022: [\n          \u0022wFOMSiYERuqS4lA_kJ3rAg\u0022\n        ],\n        \u0022duplicateSurvivors\u0022: [\n          \u0022w91KIi5fSW-mj-jLGoYMJg\u0022\n        ],\n        \u0022formWitnesses\u0022: [\n          {\n            \u0022form\u0022: \u0022w91KIi5fSW-mj-jLGoYMJg\u0022,\n            \u0022semanticDigest\u0022: \u0022sha256:812b6e0ad8ecc74d928f88cfc7be572a48f50b32a2d992e48d34a044896b34ee\u0022\n          },\n          {\n            \u0022form\u0022: \u0022wFOMSiYERuqS4lA_kJ3rAg\u0022,\n            \u0022semanticDigest\u0022: \u0022sha256:241f01e7d6ded5d830ebb76365910ae19655941dfce9cfd5a8a599f3fd2c8cad\u0022\n          }\n        ],\n        \u0022before\u0022: [\n          \u0022wFOMSiYERuqS4lA_kJ3rAg\u0022\n        ],\n        \u0022after\u0022: [],\n        \u0022ruleReplacement\u0022: {\n          \u0022rule\u0022: \u0022AaEpypVJzEC0TaO5Wt3t1w\u0022,\n          \u0022inputPhoneme\u0022: \u0022AaEpypQjflPDk6DZ72g0Zg\u0022,\n          \u0022outputPhoneme\u0022: \u0022AaEpypQ1ZwkdXDmlZY92eg\u0022\n        }\n      }"
+          "AfterJson": "{\n        \u0022forms\u0022: [\n          \u0022wFOMSiYERuqS4lA_kJ3rAg\u0022\n        ],\n        \u0022duplicateSurvivors\u0022: [\n          \u0022w91KIi5fSW-mj-jLGoYMJg\u0022\n        ],\n        \u0022formWitnesses\u0022: [\n          {\n            \u0022form\u0022: \u0022w91KIi5fSW-mj-jLGoYMJg\u0022,\n            \u0022semanticDigest\u0022: \u0022sha256:812b6e0ad8ecc74d928f88cfc7be572a48f50b32a2d992e48d34a044896b34ee\u0022\n          },\n          {\n            \u0022form\u0022: \u0022wFOMSiYERuqS4lA_kJ3rAg\u0022,\n            \u0022semanticDigest\u0022: \u0022sha256:241f01e7d6ded5d830ebb76365910ae19655941dfce9cfd5a8a599f3fd2c8cad\u0022\n          }\n        ],\n        \u0022before\u0022: [\n          \u0022wFOMSiYERuqS4lA_kJ3rAg\u0022\n        ],\n        \u0022after\u0022: [],\n        \u0022ruleReplacement\u0022: {\n          \u0022rule\u0022: \u0022AaEpypVJzEC0TaO5Wt3t1w\u0022,\n          \u0022inputPhoneme\u0022: \u0022AaEpypQjflPDk6DZ72g0Zg\u0022,\n          \u0022outputPhoneme\u0022: \u0022AaEpypQ1ZwkdXDmlZY92eg\u0022\n        }\n      }",
+          "Citation": null
         },
         {
           "OperationId": "AaEpypfgKspxzEb77fHLCA",
@@ -1814,7 +1873,8 @@
           "DependsOn": [
             "AaEpypfgytZjLPj5Wb6D4Q"
           ],
-          "AfterJson": "{\n        \u0022forms\u0022: [\n          \u0022WeEP-t_tR-aQhjNCHzP-qg\u0022\n        ],\n        \u0022duplicateSurvivors\u0022: [\n          \u0022Jev4yFPZSnyf1qRCxA25ig\u0022\n        ],\n        \u0022formWitnesses\u0022: [\n          {\n            \u0022form\u0022: \u0022Jev4yFPZSnyf1qRCxA25ig\u0022,\n            \u0022semanticDigest\u0022: \u0022sha256:812b6e0ad8ecc74d928f88cfc7be572a48f50b32a2d992e48d34a044896b34ee\u0022\n          },\n          {\n            \u0022form\u0022: \u0022WeEP-t_tR-aQhjNCHzP-qg\u0022,\n            \u0022semanticDigest\u0022: \u0022sha256:241f01e7d6ded5d830ebb76365910ae19655941dfce9cfd5a8a599f3fd2c8cad\u0022\n          }\n        ],\n        \u0022before\u0022: [\n          \u0022WeEP-t_tR-aQhjNCHzP-qg\u0022\n        ],\n        \u0022after\u0022: [],\n        \u0022ruleReplacement\u0022: {\n          \u0022rule\u0022: \u0022AaEpypVJzEC0TaO5Wt3t1w\u0022,\n          \u0022inputPhoneme\u0022: \u0022AaEpypQjflPDk6DZ72g0Zg\u0022,\n          \u0022outputPhoneme\u0022: \u0022AaEpypQ1ZwkdXDmlZY92eg\u0022\n        }\n      }"
+          "AfterJson": "{\n        \u0022forms\u0022: [\n          \u0022WeEP-t_tR-aQhjNCHzP-qg\u0022\n        ],\n        \u0022duplicateSurvivors\u0022: [\n          \u0022Jev4yFPZSnyf1qRCxA25ig\u0022\n        ],\n        \u0022formWitnesses\u0022: [\n          {\n            \u0022form\u0022: \u0022Jev4yFPZSnyf1qRCxA25ig\u0022,\n            \u0022semanticDigest\u0022: \u0022sha256:812b6e0ad8ecc74d928f88cfc7be572a48f50b32a2d992e48d34a044896b34ee\u0022\n          },\n          {\n            \u0022form\u0022: \u0022WeEP-t_tR-aQhjNCHzP-qg\u0022,\n            \u0022semanticDigest\u0022: \u0022sha256:241f01e7d6ded5d830ebb76365910ae19655941dfce9cfd5a8a599f3fd2c8cad\u0022\n          }\n        ],\n        \u0022before\u0022: [\n          \u0022WeEP-t_tR-aQhjNCHzP-qg\u0022\n        ],\n        \u0022after\u0022: [],\n        \u0022ruleReplacement\u0022: {\n          \u0022rule\u0022: \u0022AaEpypVJzEC0TaO5Wt3t1w\u0022,\n          \u0022inputPhoneme\u0022: \u0022AaEpypQjflPDk6DZ72g0Zg\u0022,\n          \u0022outputPhoneme\u0022: \u0022AaEpypQ1ZwkdXDmlZY92eg\u0022\n        }\n      }",
+          "Citation": null
         }
       ]
     },
