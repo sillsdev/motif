@@ -129,6 +129,11 @@
     "description": "Stages one simple rewrite rule in a Draft, using existing phonemes and natural classes with explicit context and rule placement. Empty input or output means insertion or deletion; unsupported alpha variables and metathesis are refused. Only a person can Apply.",
     "source": "Hand-written from the regular rewrite-rule composer contract and command behavior."
   },
+  "compose-author-part-of-speech": {
+    "title": "Author a part of speech",
+    "description": "Stages a new part of speech, at the top of the category list or under an existing category, with its name and optional abbreviation. Later composer calls in the same Draft can use it as the category of entries, slots and affixes.",
+    "source": "Hand-written from command behavior."
+  },
   "compose-author-affix-slot": {
     "title": "Author an affix slot",
     "description": "Stages a named inflectional affix slot owned by an existing category and can assign existing inflectional affixes to it in the same Draft. Inspect its Dry Run and Trial before a person Applies the Proposal.",

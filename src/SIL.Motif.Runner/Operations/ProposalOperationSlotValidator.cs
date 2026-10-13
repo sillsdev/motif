@@ -113,6 +113,25 @@ public static class ProposalOperationSlotValidator
             PhSegmentRuleNameOperationKinds.ClearName when operation.Target is { } target &&
                 operation.After is { } after =>
                 (target, SnapshotFields.PhSegmentRuleName, PhSegmentRuleNameClearPayload.Parse(after)),
+            CmPossibilityNameOperationKinds.SetName when operation.Target is { } target &&
+                operation.After is { } after =>
+                (target, SnapshotFields.CmPossibilityName, CmPossibilityNameSetPayload.Parse(after).WritingSystemTag),
+            CmPossibilityNameOperationKinds.ClearName when operation.Target is { } target &&
+                operation.After is { } after =>
+                (target, SnapshotFields.CmPossibilityName, CmPossibilityNameClearPayload.Parse(after)),
+            CmPossibilityAbbreviationOperationKinds.SetAbbreviation when operation.Target is { } target &&
+                operation.After is { } after =>
+                (target, SnapshotFields.CmPossibilityAbbreviation,
+                    CmPossibilityAbbreviationSetPayload.Parse(after).WritingSystemTag),
+            CmPossibilityAbbreviationOperationKinds.ClearAbbreviation when operation.Target is { } target &&
+                operation.After is { } after =>
+                (target, SnapshotFields.CmPossibilityAbbreviation, CmPossibilityAbbreviationClearPayload.Parse(after)),
+            CmPossibilityListPossibilitiesOperationKinds.Create when operation.Target is { } target &&
+                operation.EntityId is { } member =>
+                (target, SnapshotFields.CmPossibilityListPossibilities, member.Value),
+            CmPossibilitySubPossibilitiesOperationKinds.Create when operation.Target is { } target &&
+                operation.EntityId is { } member =>
+                (target, SnapshotFields.CmPossibilitySubPossibilities, member.Value),
             PhSegmentRuleDirectionOperationKinds.SetDirection or
                 PhSegmentRuleDirectionOperationKinds.ClearDirection when operation.Target is { } target =>
                 (target, SnapshotFields.PhSegmentRuleDirection, (string?)null),

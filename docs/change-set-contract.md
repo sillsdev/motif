@@ -120,6 +120,25 @@ starts disabled. Its `Name` is authored per writing system and `Direction` accep
 false, including through `clear`, is refused until the rule has at least one right-hand side and every
 right-hand side has both left and right contexts. Context construction is a separate family.
 
+Part-of-speech creation is narrow too. `lists/cmPossibilityList/createPossibilities` creates a
+`PartOfSpeech` (closed payload `{ "class": "PartOfSpeech" }`) at the top of the project's parts-of-speech
+list and refuses any list whose items are not parts of speech; `lists/cmPossibility/createSubPossibilities`
+creates one as a subcategory of an existing part of speech. Both append and accept no `placement`, because
+FieldWorks shows the category list sorted and its stored order carries no meaning. `lists/cmPossibility/setName`
+sets one plain-Unicode name alternative with the closed payload `{ "ws": "<tag>", "text": "<name>" }`;
+`lists/cmPossibility/clearName` clears only the alternative named by `{ "ws": "<tag>" }`. Name and abbreviation
+writes address a slot per writing system: two sets, or a set and clear, on the same item and writing system are
+refused in one Proposal. Different writing systems are independent. Each create addresses its owner's collection
+slot with the created entity identity as discriminator; two creates of that member are refused.
+
+The `AuthorPartOfSpeech` composer authors the create, the name and an optional abbreviation, and refuses a
+name another category already has in that writing system, including nested subcategories. Names follow LibLCM's
+NFD normalization. A same-type identity collision refuses overwrite/reuse; a wrong-type identity collision is
+a semantic conflict. These creates accept no storage-GUID override. A category added since the Dry Run changes
+the owning collection's footprint and requires a fresh Dry Run; refreshing evidence preserves the authored
+identity, owner, name and dependencies. Apply also refuses a Dry Run from another semantic projection version
+with an instruction to run a fresh Dry Run, before comparing its footprint or writing anything.
+
 `grammar/phPhonData/movePhonRules` moves one existing rule in the ordered `PhonRules` owning sequence.
 Its closed `after` payload is `{ "member": "<rule-id>" }`; `target` is the owning phonological data
 object, and `placement` names the adjacent rule identities around the new gap. The rule member id is
@@ -531,6 +550,9 @@ semantic digest are not interchangeable.
 
 The snapshot is an inspectable deterministic projection of every supported semantic model member.
 The digest is derived from its RFC 8785 canonical JSON form.
+
+Projection version 5 includes `CmPossibility.Name` alternatives, so category names contribute to the semantic
+state. Dry Runs recorded with an earlier projection require a fresh Dry Run before Apply.
 
 The preimage includes `projectionVersion`, so two different projections can never yield equal hex.
 It excludes runner, LibLCM assembly, and coverage-manifest versions, which are implementation facts

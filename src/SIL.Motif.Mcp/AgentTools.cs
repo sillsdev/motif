@@ -344,6 +344,25 @@ internal static class AgentTools
                 a.IntentJson("category", "name", "ws", "optional", "assignments"))),
                 r => $"Draft now has {r.OperationCount} changes. Run motif_dry_run and a bounded motif_trial, revise, then Finalize; only a person can Apply."))) { Requests = [typeof(ComposeAuthorAffixSlotRequest)] },
 
+        new("motif_add_part_of_speech",
+            string.Empty,
+            AgentClass.Draft,
+            Schema.Object(
+                ("draft", Schema.String("The draft name from motif_start_proposal."), true),
+                ("name", Schema.String("Category name, such as noun; unique among the project's categories."), true),
+                ("ws", Schema.String("Writing system tag for the name and abbreviation."), true),
+                ("abbreviation", Schema.String("Optional short label, such as n."), false),
+                ("parent", Schema.String("Optional canonical id of an existing category to place this one under."), false)),
+            false,
+            false,
+            false,
+            false,
+            true,
+            (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalCommands.ComposeAuthorPartOfSpeech(new(
+                c.ProjectPath, c.ProductVersion, a.Required("draft"),
+                a.IntentJson("name", "ws", "abbreviation", "parent"))),
+                r => $"Draft now has {r.OperationCount} changes. Use the created entityId as the category of new entries, slots and affixes; Dry Run, then Finalize; only a person can Apply."))) { Requests = [typeof(ComposeAuthorPartOfSpeechRequest)] },
+
         new("motif_add_affix_template",
             string.Empty,
             AgentClass.Draft,

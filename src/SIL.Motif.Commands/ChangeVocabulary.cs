@@ -80,6 +80,10 @@ public static class ChangeVocabulary
                 Grammar("template", "affix template", "affix templates", "Add an affix template"),
             ["grammar/partOfSpeech/createAffixSlots"] =
                 Grammar("slot", "affix slot", "affix slots", "Add an affix slot"),
+            ["lists/cmPossibilityList/createPossibilities"] =
+                Grammar("category", "category", "categories", "Add a part of speech"),
+            ["lists/cmPossibility/createSubPossibilities"] =
+                Grammar("category", "category", "categories", "Add a part of speech"),
             [WfiAnalysisOperationKinds.AddRefEvaluations] = Evaluated,
             [WfiAnalysisOperationKinds.RemoveRefEvaluations] = SetToUnknown,
             [WfiAnalysisOperationKinds.DeleteAnalysis] = Removed,
@@ -108,6 +112,7 @@ public static class ChangeVocabulary
             ["AuthorEnvironment"] = ("Add environment", "Add an environment"),
             ["AuthorPhonologicalRule"] = ("Add rule", "Add a phonological rule"),
             ["AuthorAffixSlot"] = ("Add affix slot", "Add an affix slot"),
+            ["AuthorPartOfSpeech"] = ("Add category", "Add a part of speech"),
             ["AuthorAffixTemplate"] = ("Add affix template", "Add an affix template"),
             ["AuthorFeatureValue"] = ("Add feature value", "Add a feature value"),
             ["AuthorFeatureStructure"] = ("Add feature structure", "Add a feature structure"),

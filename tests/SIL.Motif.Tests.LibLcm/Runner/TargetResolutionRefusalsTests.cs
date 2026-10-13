@@ -4,6 +4,7 @@ using System.Text.Json;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
 using SIL.Motif.Model.DryRun;
+using SIL.Motif.Model.Snapshot;
 using SIL.Motif.Runner.Apply;
 using SIL.Motif.Runner.AppliedLog;
 using SIL.Motif.Runner.Operations;
@@ -97,6 +98,6 @@ public sealed class TargetResolutionRefusalsTests : IDisposable
         EffectDigest: "sha256:" + new string('0', 64),
         RunnerVersion: "test",
         LibLcmVersion: "test",
-        ProjectionVersion: "1",
+        ProjectionVersion: SnapshotFields.ProjectionVersion,
         DryRunAtUtc: "20260101T000000Z");
 }

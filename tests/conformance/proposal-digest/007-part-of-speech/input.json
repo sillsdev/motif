@@ -1,0 +1,65 @@
+{
+  "contractVersions": {
+    "lists": "1.0"
+  },
+  "operations": [
+    {
+      "operationId": "agent_AAECAwQFBgcICQoLDA0ODw",
+      "kind": "lists/cmPossibilityList/createPossibilities",
+      "target": "agent_AQIDBAUGBwgJCgsMDQ4PEA",
+      "entityId": "agent_AgMEBQYHCAkKCwwNDg8QEQ",
+      "after": {
+        "class": "PartOfSpeech"
+      }
+    },
+    {
+      "operationId": "agent_AwQFBgcICQoLDA0ODxAREg",
+      "kind": "lists/cmPossibility/setName",
+      "target": "agent_AgMEBQYHCAkKCwwNDg8QEQ",
+      "after": {
+        "ws": "en",
+        "text": "noun"
+      },
+      "dependsOn": [
+        "agent_AAECAwQFBgcICQoLDA0ODw"
+      ]
+    },
+    {
+      "operationId": "agent_BAUGBwgJCgsMDQ4PEBESEw",
+      "kind": "lists/cmPossibility/createSubPossibilities",
+      "target": "agent_AgMEBQYHCAkKCwwNDg8QEQ",
+      "entityId": "agent_BQYHCAkKCwwNDg8QERITFA",
+      "after": {
+        "class": "PartOfSpeech"
+      },
+      "dependsOn": [
+        "agent_AAECAwQFBgcICQoLDA0ODw"
+      ]
+    },
+    {
+      "operationId": "agent_BgcICQoLDA0ODxAREhMUFQ",
+      "kind": "lists/cmPossibility/setName",
+      "target": "agent_BQYHCAkKCwwNDg8QERITFA",
+      "after": {
+        "ws": "en",
+        "text": "proper noun"
+      },
+      "dependsOn": [
+        "agent_BAUGBwgJCgsMDQ4PEBESEw"
+      ]
+    },
+    {
+      "operationId": "agent_BwgJCgsMDQ4PEBESExQVFg",
+      "kind": "lists/cmPossibility/clearName",
+      "target": "agent_BQYHCAkKCwwNDg8QERITFA",
+      "after": {
+        "ws": "fr"
+      },
+      "dependsOn": [
+        "agent_BAUGBwgJCgsMDQ4PEBESEw"
+      ]
+    }
+  ],
+  "proposalId": "agent_CAkKCwwNDg8QERITFBUWFw",
+  "requires": []
+}

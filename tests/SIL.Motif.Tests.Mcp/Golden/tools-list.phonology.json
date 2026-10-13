@@ -748,6 +748,49 @@
     "idempotentHint": false
   },
   {
+    "name": "motif_add_part_of_speech",
+    "description": "Author a part of speech. Stages a new part of speech, at the top of the category list or under an existing category, with its name and optional abbreviation. Later composer calls in the same Draft can use it as the category of entries, slots and affixes.\nCommand: compose-author-part-of-speech. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "The draft name from motif_start_proposal."
+        },
+        "name": {
+          "type": "string",
+          "description": "Category name, such as noun; unique among the project\u0027s categories."
+        },
+        "ws": {
+          "type": "string",
+          "description": "Writing system tag for the name and abbreviation."
+        },
+        "abbreviation": {
+          "type": "string",
+          "description": "Optional short label, such as n."
+        },
+        "parent": {
+          "type": "string",
+          "description": "Optional canonical id of an existing category to place this one under."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "name",
+        "ws",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
     "name": "motif_set_gloss",
     "description": "Set a sense gloss. Stages the explicitly authored gloss of one sense in one writing system in a Draft. Dry Run and Trial the Draft before Finalize; only a person can Apply.\nCommand: add-set-gloss. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nTarget: The exact canonical identity of the existing object.\nWs: The project writing system tag for this value.\nText: The authored Unicode text.\nDependsOn: Explicit operation dependencies; array position implies no dependency.",
     "inputSchema": {

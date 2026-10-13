@@ -126,3 +126,6 @@
 "MoInflAffixTemplate"	"Name"	"Template Name"	"Names this template for display in its category's affix-template list."	"unsourced"	""	""	""
 "PartOfSpeech"	"AffixSlots"	"Affix Slots"	"Creates inflectional slots owned by this category."	"unsourced"	""	""	""
 "PartOfSpeech"	"AffixTemplates"	"Affix Templates"	"Adds a template to the category's ordered sequence of inflectional templates."	"unsourced"	""	""	""
+"CmPossibilityList"	"Possibilities"	"Categories"	"Creates a part of speech at the top level of the project's category list; other lists are refused."	"unsourced"	""	""	""
+"CmPossibility"	"SubPossibilities"	"Subcategories"	"Creates a part of speech as a subcategory of an existing part of speech."	"unsourced"	""	""	""
+"CmPossibility"	"Name"	"Name"	"Names this list item, such as a part of speech, in one writing system."	"unsourced"	""	""	""

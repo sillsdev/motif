@@ -7,6 +7,15 @@ namespace SIL.Motif.Model.Snapshot;
 
 public static partial class SnapshotFields
 {
+    /// <summary>A <c>CmPossibilityList</c>'s <c>Possibilities</c> owning CmPossibility field.</summary>
+    public const string CmPossibilityListPossibilities = "lists/cmPossibilityList/possibilities";
+
+    /// <summary>A <c>CmPossibility</c>'s <c>Name</c> basic MultiUnicode field.</summary>
+    public const string CmPossibilityName = "lists/cmPossibility/name";
+
+    /// <summary>A <c>CmPossibility</c>'s <c>SubPossibilities</c> owning CmPossibility field.</summary>
+    public const string CmPossibilitySubPossibilities = "lists/cmPossibility/subPossibilities";
+
     /// <summary>A <c>FsClosedValue</c>'s <c>Value</c> rel atomic field.</summary>
     public const string FsClosedValueValue = "grammar/fsClosedValue/value";
 

@@ -68,6 +68,12 @@ public static partial class ProposalCommands
             "AuthorPhonologicalRule", (cache, input, _) => AuthorPhonologicalRuleComposer.Build(cache,
                 AuthorPhonologicalRuleIntentParser.Parse(input)));
 
+    public static CommandOutcome<ComposedOperationsResponse> ComposeAuthorPartOfSpeech(
+        ComposeAuthorPartOfSpeechRequest request) =>
+        ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
+            "AuthorPartOfSpeech", (cache, input, _) => AuthorPartOfSpeechComposer.Build(cache,
+                AuthorPartOfSpeechIntentParser.Parse(input)));
+
     public static CommandOutcome<ComposedOperationsResponse> ComposeAuthorAffixSlot(
         ComposeAuthorAffixSlotRequest request) =>
         ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,

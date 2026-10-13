@@ -84,6 +84,8 @@ public static class CommandCatalog
             typeof(ComposedOperationsResponse), CommandSurface.AdvancedAi, AgentClass.Draft),
         new CommandDescriptor("compose-author-phonological-rule", typeof(ComposeAuthorPhonologicalRuleRequest),
             typeof(ComposedOperationsResponse), CommandSurface.AdvancedAi, AgentClass.Draft),
+        new CommandDescriptor("compose-author-part-of-speech", typeof(ComposeAuthorPartOfSpeechRequest),
+            typeof(ComposedOperationsResponse), CommandSurface.AdvancedAi, AgentClass.Draft),
         new CommandDescriptor("compose-author-affix-slot", typeof(ComposeAuthorAffixSlotRequest),
             typeof(ComposedOperationsResponse), CommandSurface.AdvancedAi, AgentClass.Draft),
         new CommandDescriptor("compose-author-affix-template", typeof(ComposeAuthorAffixTemplateRequest),

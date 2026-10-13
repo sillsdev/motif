@@ -108,7 +108,7 @@ public sealed class EditAdhocProhibitionComposerTests : IDisposable
         var proposal = Proposal(new EditAdhocProhibitionIntent(Id(rule), false, true));
         var anchor = new BoundDryRunAnchor(IntentDigest.Compute(proposal),
             FootprintProbe.ComputeCurrentFootprintDigest(_cache, proposal),
-            "sha256:" + new string('0', 64), "test", "test", "1", "20260101T000000Z");
+            "sha256:" + new string('0', 64), "test", "test", SnapshotFields.ProjectionVersion, "20260101T000000Z");
 
         Assert.Throws<InvalidOperationException>(() => ProposalApplier.Apply(_cache, proposal, anchor,
             "motif-tests", "", (_, _) => throw new InvalidOperationException("stop after the field write")));

@@ -253,6 +253,7 @@ try
         case "compose-author-environment":
         case "compose-author-phonological-rule":
         case "compose-author-affix-slot":
+        case "compose-author-part-of-speech":
         case "compose-author-affix-template":
         case "compose-edit-natural-class":
         case "compose-relink-natural-class":
@@ -266,6 +267,8 @@ try
                 "compose-author-phoneme" => ProposalCommands.ComposeAuthorPhoneme(new(soundProject, CliProductVersion(), soundDraft, soundIntent)),
                 "compose-author-natural-class" => ProposalCommands.ComposeAuthorNaturalClass(new(soundProject, CliProductVersion(), soundDraft, soundIntent)),
                 "compose-author-phonological-rule" => ProposalCommands.ComposeAuthorPhonologicalRule(
+                    new(soundProject, CliProductVersion(), soundDraft, soundIntent)),
+                "compose-author-part-of-speech" => ProposalCommands.ComposeAuthorPartOfSpeech(
                     new(soundProject, CliProductVersion(), soundDraft, soundIntent)),
                 "compose-author-affix-slot" => ProposalCommands.ComposeAuthorAffixSlot(
                     new(soundProject, CliProductVersion(), soundDraft, soundIntent)),

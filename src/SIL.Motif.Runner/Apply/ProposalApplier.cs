@@ -7,6 +7,7 @@ using SIL.Motif.Model.AppliedLog;
 using SIL.Motif.Model.DryRun;
 using SIL.Motif.Model.Effects;
 using SIL.Motif.Model.Receipts;
+using SIL.Motif.Model.Snapshot;
 using SIL.Motif.Runner.AppliedLog;
 using SIL.Motif.Runner.Operations;
 using SIL.LCModel;
@@ -133,6 +134,14 @@ public static class ProposalApplier
                 $"{anchor.IntentDigest}, but the supplied Proposal's is {fullIntentDigest}. An anchor " +
                 "authorizes apply only for the exact content its DryRun evaluated -- run DryRun again " +
                 "against this Proposal and apply with the anchor it produces.");
+        }
+
+        if (!string.Equals(anchor.ProjectionVersion, SnapshotFields.ProjectionVersion, StringComparison.Ordinal))
+        {
+            throw new ApplyPreconditionException(
+                $"This Dry Run was recorded with semantic snapshot projection version {anchor.ProjectionVersion}, " +
+                $"but this Motif reads version {SnapshotFields.ProjectionVersion}, so its effects cannot be " +
+                "compared with the project. Run a fresh Dry Run and apply with the anchor it produces.");
         }
 
         // Drift check (docs/adr/0004 decision 3): re-read footprint, hard-stop if it no longer matches the anchor.

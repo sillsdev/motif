@@ -63,5 +63,5 @@ public static partial class SnapshotFields
     /// only when the snapshot/effect shape changes in a way that could alter a digest for otherwise
     /// unchanged content.
     /// </summary>
-    public const string ProjectionVersion = "4";
+    public const string ProjectionVersion = "5";
 }
