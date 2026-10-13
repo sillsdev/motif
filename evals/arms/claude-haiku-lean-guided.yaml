@@ -1,0 +1,8 @@
+{
+  "id": "claude-haiku-lean-guided",
+  "host": "claude",
+  "model": "claude-haiku-5-5",
+  "effort": "high",
+  "authMode": "claude-plan",
+  "server": { "ref": "HEAD", "profile": "profiles/surface/lean-guided.json", "grade_profile": "profiles/mcp-lean-grade.json" }
+}

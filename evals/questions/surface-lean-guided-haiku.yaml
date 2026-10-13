@@ -1,0 +1,8 @@
+{
+  "question": "On Haiku, does the ten-tool lean surface with a short instruction solve as many tasks as the default surface at lower Price to solve?",
+  "arm_a": "claude-haiku-subscription",
+  "arm_b": "claude-haiku-lean-guided",
+  "tasks": ["t0-*", "t1-*", "t2-*", "t3-*"],
+  "trials": 3,
+  "primary_metric": "task-success"
+}

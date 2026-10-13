@@ -1,0 +1,8 @@
+{
+  "question": "Does the default surface with summary-only tool descriptions run every active task's scripted workflow as the default does?",
+  "arm_a": "fake-default",
+  "arm_b": "fake-default-clean",
+  "tasks": ["t0-*", "t1-*", "t2-*", "t3-*"],
+  "trials": 1,
+  "primary_metric": "task-success"
+}

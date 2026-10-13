@@ -1,0 +1,13 @@
+{
+  "question": "On Haiku, does hiding four tools no active task needs (activity, assess, remove operations, withdraw) keep task success while using fewer tokens?",
+  "arm_a": "claude-haiku-subscription",
+  "arm_b": "claude-haiku-default-trim",
+  "tasks": [
+    "t0-*",
+    "t1-*",
+    "t2-*",
+    "t3-*"
+  ],
+  "trials": 3,
+  "primary_metric": "task-success"
+}

@@ -1,0 +1,55 @@
+{
+  "name": "default-trim",
+  "description": "The default surface without four tools no active task needs (motif_activity, motif_assess, motif_remove_operations, motif_withdraw_proposal); descriptions and instructions unchanged.",
+  "defaultDetail": "concise",
+  "tools": [
+    {
+      "tool": "motif_overview"
+    },
+    {
+      "tool": "motif_capture_baseline"
+    },
+    {
+      "tool": "motif_grammar"
+    },
+    {
+      "tool": "motif_lexicon"
+    },
+    {
+      "tool": "motif_word"
+    },
+    {
+      "tool": "motif_start_proposal"
+    },
+    {
+      "tool": "motif_guide"
+    },
+    {
+      "tool": "motif_add_lexeme_form"
+    },
+    {
+      "tool": "motif_set_gloss"
+    },
+    {
+      "tool": "motif_dry_run"
+    },
+    {
+      "tool": "motif_trial"
+    },
+    {
+      "tool": "motif_try_word"
+    },
+    {
+      "tool": "motif_finalize_proposal"
+    },
+    {
+      "tool": "motif_proposals"
+    },
+    {
+      "tool": "motif_list_projects"
+    },
+    {
+      "tool": "motif_difference"
+    }
+  ]
+}

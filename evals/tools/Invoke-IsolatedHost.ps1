@@ -183,6 +183,13 @@ $hostClock = [Diagnostics.Stopwatch]::StartNew()
 $hostRun = $null
 $hostData = $null
 if ($manifest.arm.host -eq 'fake') {
+    # A script names built-in tools; the profile's renames let it drive any profile file.
+    $toolRenames = [ordered]@{}
+    $servedProfile = Read-ABJson $manifest.profile
+    $selections = if ($servedProfile.Contains('tools')) { @($servedProfile.tools) } else { @() }
+    foreach ($selection in $selections) {
+        if ($selection -and $selection.Contains('as') -and $selection.as) { $toolRenames[[string]$selection.tool] = [string]$selection.as }
+    }
     $fakeManifest = [ordered]@{
         server = [ordered]@{ command = $hostPlan.bridge; arguments = $hostPlan.bridgeArguments }
         childEnvironment = $hostPlan.environment
@@ -190,6 +197,7 @@ if ($manifest.arm.host -eq 'fake') {
         fakeScript = '/opt/client/actions.jsonl'
         task = $task
         profileName = $manifest.profileName
+        toolRenames = $toolRenames
         transcriptPath = '-'
         hostResultPath = '/workspace/state/host.json'
         mcpTimeoutMs = $manifest.mcpTimeoutMs

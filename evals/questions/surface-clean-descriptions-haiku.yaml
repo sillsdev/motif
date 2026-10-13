@@ -1,0 +1,8 @@
+{
+  "question": "On Haiku, do summary-only tool descriptions, without CLI command names and CLI field lists that are not the tools' parameters, keep task success while using fewer tokens and causing fewer tool errors?",
+  "arm_a": "claude-haiku-subscription",
+  "arm_b": "claude-haiku-default-clean",
+  "tasks": ["t0-*", "t1-*", "t2-*", "t3-*"],
+  "trials": 3,
+  "primary_metric": "task-success"
+}

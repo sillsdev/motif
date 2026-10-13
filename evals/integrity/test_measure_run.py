@@ -50,6 +50,28 @@ class MeasureRunTests(unittest.TestCase):
             summary_text = (run / 'metrics.md').read_text()
             self.assertIn('| arm-a | task-a | 1/2 | 2200 | incomplete costs | incomplete costs |', summary_text)
 
+    def test_counts_calls_from_the_bridge_when_the_host_reports_none_of_its_own(self):
+        with tempfile.TemporaryDirectory() as directory:
+            run = Path(directory)
+            use = event({'type': 'assistant', 'message': {'content': [{'type': 'tool_use', 'name': 'mcp__motif__motif_lexicon'}]}})
+            summary = {'source': 'host-summary', 'payload': {'inputTokens': 900, 'outputTokens': 90, 'wallMs': 4000, 'turns': 3}}
+            self.trial(run, 'claude-arm', 1, True, [use, summary])
+            calls = [('motif_lexicon', {'query': 'qaje'}, {'result': {'content': [{'type': 'text', 'text': 'x' * 1500}]}}),
+                     ('motif_guide', {'topic': 'workflow'}, {'result': {'content': [{'type': 'text', 'text': 'g'}]}}),
+                     ('motif_set_gloss', {}, {'result': {'isError': True, 'content': [{'type': 'text', 'text': 'bad'}]}})]
+            records = [{'source': 'mcp-client', 'direction': 'sent', 'payload': {'method': 'tools/list', 'id': 1}}]
+            for number, (tool, arguments, response) in enumerate(calls, start=2):
+                records.append({'source': 'mcp-client', 'direction': 'sent',
+                                'payload': {'method': 'tools/call', 'id': number, 'params': {'name': tool, 'arguments': arguments}}})
+                records.append({'source': 'mcp-client', 'direction': 'received', 'payload': dict(response, id=number)})
+            trial = run / 'trials/task-a/claude-arm/trial-1'
+            (trial / 'server.mcp-transcript.jsonl').write_text('\n'.join(json.dumps(r) for r in records) + '\n')
+            subprocess.run([sys.executable, str(SCRIPT), str(run)], check=True, capture_output=True, stdin=subprocess.DEVNULL)
+            row = next(csv.DictReader(open(run / 'metrics.csv')))
+            self.assertEqual(('3', '1', '1', '1.5', '990'), (row['mcpCalls'], row['mcpErrors'], row['guideTopics'],
+                             row['resultKiloChars'], row['totalTokens']))
+            self.assertEqual('motif_guide=1 motif_lexicon=1 motif_set_gloss=1', row['toolCounts'])
+
     def test_price_to_solve_counts_actual_cost_of_failed_scored_episodes(self):
         with tempfile.TemporaryDirectory() as directory:
             run = Path(directory)

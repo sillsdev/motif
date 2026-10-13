@@ -1,0 +1,8 @@
+{
+  "id": "codex-luna-lean-guided",
+  "host": "codex",
+  "model": "gpt-6-luna",
+  "effort": "high",
+  "authMode": "chatgpt-plan",
+  "server": { "ref": "HEAD", "profile": "profiles/surface/lean-guided.json", "grade_profile": "profiles/mcp-lean-grade.json" }
+}

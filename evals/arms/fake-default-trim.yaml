@@ -1,0 +1,7 @@
+{
+  "id": "fake-default-trim",
+  "host": "fake",
+  "model": null,
+  "effort": null,
+  "server": { "ref": "HEAD", "profile": "profiles/surface/default-trim.json", "grade_profile": "profiles/surface/default-trim-grade.json" }
+}

@@ -1,0 +1,49 @@
+{
+  "name": "lean-guided",
+  "description": "The lean surface plus a short server instruction: the default instructions' workflow and no-invent rule, said once and naming only the lean tools.",
+  "instructions": "Draft FieldWorks changes through Motif; only the linguist can Apply them. Read motif_overview, motif_grammar and motif_lexicon before drafting, and copy ids exactly from their results. Make one small Proposal with motif_new_proposal, check it with motif_trial on attested forms and counterexamples, then call motif_finalize_proposal. When two analyses remain possible, ask one question grounded in project evidence. If requested forms are unattested, do not invent affixes, allomorphs or example words; ask for attested forms. If a tool you need does not exist, say so rather than working around it.",
+  "defaultDetail": "concise",
+  "tools": [
+    {
+      "tool": "motif_overview",
+      "description": "How well the grammar analyzes the project's texts."
+    },
+    {
+      "tool": "motif_grammar",
+      "description": "List grammar objects by kind, with ids."
+    },
+    {
+      "tool": "motif_lexicon",
+      "description": "Search lexicon entries, with ids."
+    },
+    {
+      "tool": "motif_word",
+      "description": "What FieldWorks holds for one word."
+    },
+    {
+      "tool": "motif_start_proposal",
+      "as": "motif_new_proposal",
+      "description": "Start a draft Proposal."
+    },
+    {
+      "tool": "motif_add_lexeme_form",
+      "description": "Add a lexeme form (and optional gloss) to an existing entry in a draft."
+    },
+    {
+      "tool": "motif_set_gloss",
+      "description": "Set a sense's gloss in a draft."
+    },
+    {
+      "tool": "motif_trial",
+      "description": "Parse sample words with and without the draft's changes."
+    },
+    {
+      "tool": "motif_finalize_proposal",
+      "description": "Finalize the Draft so the linguist can review it."
+    },
+    {
+      "tool": "motif_proposals",
+      "description": "List Proposals, or show one."
+    }
+  ]
+}

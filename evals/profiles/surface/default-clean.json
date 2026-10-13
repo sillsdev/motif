@@ -1,0 +1,87 @@
+{
+  "name": "default-clean",
+  "description": "The default surface with each tool description cut to its summary sentences: no CLI command name, Agent class or CLI field list, whose PascalCase names are not the tool's parameters.",
+  "defaultDetail": "concise",
+  "tools": [
+    {
+      "tool": "motif_overview",
+      "description": "Read the project Overview. Displays the latest saved counts, Text Coverage, manual-analysis agreement, timing, and warnings. It reads stored evidence and does not start a new run."
+    },
+    {
+      "tool": "motif_capture_baseline",
+      "description": "Capture a Baseline. Reads the saved .fwdata project to create or reuse a file-backed Baseline. Use it when the latest FieldWorks save should be the point of comparison for later work."
+    },
+    {
+      "tool": "motif_grammar",
+      "description": "Read grammar. Reads the Baseline grammar by kind and exact object identity. Choose a kind to page through its objects, or omit it for counts."
+    },
+    {
+      "tool": "motif_lexicon",
+      "description": "Read lexicon. Searches Baseline entries, senses, forms and glosses. Detailed results include allomorphs and their environments."
+    },
+    {
+      "tool": "motif_word",
+      "description": "Read one word's context. Reads a word's captured FieldWorks presence and every stored analysis with its individual Opinion. Uses the current Baseline without requiring a Selection or an Assessment, and reports whether FieldWorks has saved since."
+    },
+    {
+      "tool": "motif_start_proposal",
+      "description": "Start a Proposal. Starts a named Draft holding one related set of semantic changes. Measure it and revise it before Finalize. Only a person can Apply."
+    },
+    {
+      "tool": "motif_guide",
+      "description": "Read encoding guidance. Reads an encoding guide or the draft, Dry Run, Trial, revise and Finalize workflow."
+    },
+    {
+      "tool": "motif_add_lexeme_form",
+      "description": "Author a lexeme form. Stages a lexeme form with explicitly authored spelling, writing system and morph type in a Draft. Dry Run and Trial the Draft before Finalize; only a person can Apply."
+    },
+    {
+      "tool": "motif_set_gloss",
+      "description": "Set a sense gloss. Stages the explicitly authored gloss of one sense in one writing system in a Draft. Dry Run and Trial the Draft before Finalize; only a person can Apply."
+    },
+    {
+      "tool": "motif_remove_operations",
+      "description": "Remove Draft operations. Removes explicit operations from a Draft while respecting declared dependencies. Revise and measure the content again before Finalize. Only a person can Apply."
+    },
+    {
+      "tool": "motif_dry_run",
+      "description": "Dry Run a Proposal. Queues a Dry Run of a Draft or finalized Proposal on a throwaway copy of its Baseline. Its effects are bound to that content and project state. Read a Dry Run. Waits for the Dry Run of a Draft or finalized Proposal and reads its effects. Content and Baseline identify whether the evidence remains current."
+    },
+    {
+      "tool": "motif_trial",
+      "description": "Trial a Proposal. Measures a Draft or finalized Proposal on a throwaway copy, producing a Dry Run and Assessments. Read negatives now parsing, positives lost, unfinished cases, other changes and counts before revising. Read Trial progress. Waits for a Trial job and reads its state. Read the stored Difference after the Trial completes."
+    },
+    {
+      "tool": "motif_try_word",
+      "description": "Trace a word. Runs PanGloss for one word against the project's current Baseline and returns its diagnostic. Use it to inspect recorded analyses and trace events."
+    },
+    {
+      "tool": "motif_finalize_proposal",
+      "description": "Finalize a Proposal. Finalizes a Draft as an immutable Proposal revision for a person to review. Evidence for unchanged content on the same Baseline remains current."
+    },
+    {
+      "tool": "motif_withdraw_proposal",
+      "description": "Withdraw a Proposal. Takes back an open Proposal and keeps its history. A person can reopen it later as a Draft."
+    },
+    {
+      "tool": "motif_proposals",
+      "description": "Show a Proposal. Reads one saved Proposal or Draft by id, with its status, label, comment and operations. It does not change the FieldWorks project. List Proposals. Lists every Proposal with what it changes and the numbers its latest Trial measured beside today's. Proposals are grouped by what to do next; applied and set-aside ones are counted unless asked for."
+    },
+    {
+      "tool": "motif_activity",
+      "description": "Read agent activity. Reads calls, Proposals and jobs from this conversation and the selected project."
+    },
+    {
+      "tool": "motif_list_projects",
+      "description": "List Known projects. Lists the Known projects a person has added to this installation. Select one by name or its recorded path for project tools."
+    },
+    {
+      "tool": "motif_assess",
+      "description": "Measure a Selection. Runs PanGloss over chosen Texts or word forms and stores the resulting Assessments. After FieldWorks saves project changes, capture a new Baseline before measuring them."
+    },
+    {
+      "tool": "motif_difference",
+      "description": "Read Trial Difference. Pages through a stored Trial Difference by category. Unfinished parser cases are separate from words that no longer parse."
+    }
+  ]
+}

@@ -100,13 +100,14 @@ try {
             continue
         }
         $toolName = [string]$scriptCall.tool
-        if ($toolName -eq 'motif_start_proposal' -and $profileName -eq 'lean') {
-            $toolName = 'motif_new_proposal'
+        if ($manifest.Contains('toolRenames') -and $manifest.toolRenames.Contains($toolName)) {
+            $toolName = [string]$manifest.toolRenames[$toolName]
         }
+        $listed = @($session.Tools | Where-Object { $_.name -eq $toolName } | Select-Object -First 1)
+        if ($scriptCall.Contains('skipProfiles') -and -not $listed.Count) { continue }
         $toolArguments = if ($scriptCall.arguments -is [System.Collections.IDictionary]) {
             Resolve-ABScriptValue $scriptCall.arguments
         } else { @{} }
-        $listed = @($session.Tools | Where-Object { $_.name -eq $toolName } | Select-Object -First 1)
         if ($manifest.Contains('project') -and -not $toolArguments.ContainsKey('project') -and $listed.Count -and
             $listed[0].inputSchema.Contains('required') -and 'project' -in @($listed[0].inputSchema.required)) {
             $toolArguments.project = [string]$manifest.project

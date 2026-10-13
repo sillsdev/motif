@@ -44,6 +44,22 @@ def host_events(trial):
             yield event
 
 
+def bridge_calls(trial):
+    requests = {}
+    for record in lines(trial / 'server.mcp-transcript.jsonl'):
+        payload = record.get('payload')
+        if not isinstance(payload, dict) or record.get('source') != 'mcp-client':
+            continue
+        if record.get('direction') == 'sent' and payload.get('method') == 'tools/call':
+            params = payload.get('params') or {}
+            requests[payload.get('id')] = (str(params.get('name', '')), params.get('arguments'))
+        elif record.get('direction') == 'received' and payload.get('id') in requests:
+            name, arguments = requests.pop(payload['id'])
+            yield name, arguments, payload.get('result'), payload.get('error')
+    for name, arguments in requests.values():
+        yield name, arguments, None, 'no response'
+
+
 def measure_trial(trial, classes):
     usage = Counter()
     calls = Counter()
@@ -52,6 +68,7 @@ def measure_trial(trial, classes):
     commands = 0
     guide_topics = set()
     resources = set()
+    host_calls = []
     for event in host_events(trial):
         if event.get('type') == 'turn.completed':
             for key, value in (event.get('usage') or {}).items():
@@ -62,16 +79,16 @@ def measure_trial(trial, classes):
             continue
         if item.get('type') == 'command_execution':
             commands += 1
-        if item.get('type') != 'mcp_tool_call':
-            continue
-        name = item.get('tool', '')
+        if item.get('type') == 'mcp_tool_call':
+            host_calls.append((item.get('tool', ''), item.get('arguments'), item.get('result'), item.get('error')))
+    # Only Codex reports calls as events; for other hosts the bridge's record of the same traffic counts them.
+    for name, arguments, result, error in host_calls or bridge_calls(trial):
         calls[name] += 1
-        if item.get('error') or (item.get('result') or {}).get('isError'):
+        if error or (result or {}).get('isError'):
             errors += 1
-        for part in (item.get('result') or {}).get('content') or []:
+        for part in (result or {}).get('content') or []:
             if isinstance(part, dict) and isinstance(part.get('text'), str):
                 result_chars += len(part['text'])
-        arguments = item.get('arguments') or {}
         if name == 'motif_guide' and isinstance(arguments, dict):
             guide_topics.add(str(arguments.get('topic', '')))
     for record in lines(trial / 'server.mcp-transcript.jsonl'):
