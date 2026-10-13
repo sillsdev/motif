@@ -9,6 +9,8 @@ import sys
 import tempfile
 import time
 import unittest
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import threading
 from unittest.mock import patch
 
 TOOLS = Path(__file__).resolve().parents[1] / 'tools'
@@ -146,6 +148,51 @@ class JudgeIsolationTests(unittest.TestCase):
             SemanticJudge.live_judge({'prompt': 'judge-prompt', 'schema': {'type': 'object'}}, 'sol')
         self.assertTrue(bodies, f'the Sol Judge sent no request: {raised.exception}')
         self.assertTrue(all('judge-prompt' in body and SENTINEL not in body for body in bodies))
+
+    @unittest.skipUnless(os.environ.get('MOTIF_CLAUDE_NATIVE') or shutil.which('claude'), 'Claude Code is not installed')
+    def test_opus_ignores_instructions_and_skills_above_its_directory(self):
+        root = Path(self.temporary.name)
+        skill = root / '.claude' / 'skills' / 'sentinel'
+        skill.mkdir(parents=True)
+        (skill / 'SKILL.md').write_text(f'---\nname: sentinel\ndescription: {SENTINEL}\n---\n{SENTINEL}\n')
+        for name in ('CLAUDE.md', 'AGENTS.md'):
+            (root / name).write_text(SENTINEL)
+        (root / 'tmp').mkdir()
+        bodies = []
+
+        class Recorder(BaseHTTPRequestHandler):
+            def do_POST(self):
+                bodies.append(self.rfile.read(int(self.headers.get('Content-Length', '0'))).decode())
+                payload = b'{"type":"error","error":{"type":"invalid_request_error","message":"recorded"}}'
+                self.send_response(400)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Content-Length', str(len(payload)))
+                self.end_headers()
+                self.wfile.write(payload)
+
+            def log_message(self, *_):
+                pass
+
+        server = ThreadingHTTPServer(('127.0.0.1', 0), Recorder)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        original = SemanticJudge.judge_environment
+
+        def recorded_environment(directory):
+            return {**original(directory), 'ANTHROPIC_BASE_URL': f'http://127.0.0.1:{server.server_port}'}
+
+        caller = {key: value for key, value in self.caller.items() if key != 'MOTIF_CLAUDE_NATIVE'}
+        if os.environ.get('MOTIF_CLAUDE_NATIVE'):
+            caller['MOTIF_CLAUDE_NATIVE'] = os.environ['MOTIF_CLAUDE_NATIVE']
+        try:
+            with patch.dict(os.environ, caller, clear=True), patch('tempfile.tempdir', str(root / 'tmp')), \
+                    patch('SemanticJudge.judge_environment', recorded_environment), self.assertRaises(CloudFailure):
+                SemanticJudge.live_judge({'prompt': 'judge-prompt', 'schema': {}}, 'opus')
+        finally:
+            server.shutdown()
+            server.server_close()
+        messages = [body for body in bodies if 'judge-prompt' in body]
+        self.assertTrue(messages, 'the Opus Judge sent no model request')
+        self.assertTrue(all(SENTINEL not in body for body in bodies))
 
     def test_unusable_claude_login_is_a_cloud_failure_before_launch(self):
         def expired():
