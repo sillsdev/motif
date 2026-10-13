@@ -69,6 +69,29 @@ public sealed class ParkedDryRunReconciliationTests : IDisposable
         Assert.Equal(JobStatus.Running, refresh.Status);
     }
 
+    [Theory]
+    [InlineData("dry-run")]
+    [InlineData("trial")]
+    public void ACompletedRefreshDoesNotPreventCapturingTheNextBaseline(string kind)
+    {
+        var runtime = OpenRuntime("completed-refresh-" + kind);
+        runtime.Jobs.Create("previous-refresh", runtime.WorkspaceKey, BaselineRefreshKind, "{}",
+            Stamp(_now.AddMinutes(-1)));
+        runtime.Jobs.Transition("previous-refresh", JobStatus.Running);
+        runtime.Jobs.Transition("previous-refresh", JobStatus.Completed);
+        var parked = Park(runtime, "next-job", kind);
+
+        SIL.Motif.Worker.WorkerRuntime.ReconcileParkedJobs(runtime, _now);
+
+        var refreshes = runtime.Jobs.ListByProjectAndKind(runtime.WorkspaceKey, BaselineRefreshKind);
+        Assert.Equal(2, refreshes.Count);
+        var next = Assert.Single(refreshes, job => job.JobId != "previous-refresh");
+        Assert.Equal(JobStatus.Queued, next.Status);
+        Assert.Equal(1, next.Attempt);
+        Assert.Equal(JobStatus.Completed, runtime.Jobs.Get("previous-refresh")!.Status);
+        Assert.Equal(JobStatus.WaitingForBaseline, runtime.Jobs.Get(parked)!.Status);
+    }
+
     [Fact]
     public void AParkedDryRunBecomesClaimableAgainOncePublishedBaselineExists()
     {

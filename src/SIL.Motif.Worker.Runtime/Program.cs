@@ -514,7 +514,7 @@ internal static class WorkerRuntime
             ? null
             : refreshes.Aggregate((left, right) =>
                 string.CompareOrdinal(left.CreatedUtc, right.CreatedUtc) >= 0 ? left : right);
-        if (latest is null)
+        if (latest is null || latest.Status == JobStatus.Completed)
         {
             EnqueueBaselineRefresh(runtime, now);
             return;
