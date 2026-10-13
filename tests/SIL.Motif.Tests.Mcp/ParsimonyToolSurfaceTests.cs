@@ -121,8 +121,8 @@ public sealed class ParsimonyToolSurfaceTests
                 ["draft", "target", "expected_prefix_slots", "prefix_slots", "expected_suffix_slots", "suffix_slots"],
             ["motif_edit_inflectional_affix"] = ["draft", "target", "expected_slots", "slots"],
             ["motif_edit_allomorph_condition"] =
-                ["draft", "target", "field", "expected_environments", "environments"],
-            ["motif_order_allomorphs"] = ["draft", "target", "expected_alternates", "alternates"],
+                ["draft", "target", "field", "expectedEnvironments", "environments"],
+            ["motif_order_allomorphs"] = ["draft", "target", "expectedAlternates", "alternates"],
             ["motif_edit_natural_class"] = ["draft", "target", "expectedMembers", "members"],
             ["motif_relink_natural_class"] =
                 ["draft", "source", "replacement", "replacementCreationOperation", "environments", "ruleContexts"],

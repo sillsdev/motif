@@ -817,10 +817,45 @@ public static partial class ProposalCommands
                 Fact(("supersededByProposalId", request.SupersededByProposalId))));
         }
 
+        string proposalId;
+        try
+        {
+            proposalId = NormalizeId(request.ProposalId);
+        }
+        catch (ArgumentException ex)
+        {
+            return CommandOutcome<ProposalStatusChangedResponse>.Refused(new Refusal(
+                "proposal.invalid-id", FailureReason.InvalidArgument, ex.Message,
+                Fact(("proposalId", request.ProposalId))));
+        }
+
+        if (string.Equals(proposalId, supersededById, StringComparison.Ordinal))
+        {
+            return CommandOutcome<ProposalStatusChangedResponse>.Refused(new Refusal(
+                "proposal.supersede-self", FailureReason.InvalidArgument,
+                $"Proposal {proposalId} cannot be replaced by itself. Name the other Proposal that replaces it.",
+                Fact(("proposalId", proposalId), ("supersededByProposalId", supersededById))));
+        }
+
         return TransitionStatus(
             request.FwDataPath, request.ProductVersion, request.ProposalId, ManifestStatus.Superseded,
             SupersedableFrom, supersededById,
-            (repository, id, _) => repository.SetStatus(id, ManifestStatus.Superseded, supersededById));
+            (repository, id, _) =>
+            {
+                // Any status counts as existing: a replacement may itself be rejected or applied.
+                try
+                {
+                    repository.GetForTransition(CanonicalId.Parse(supersededById));
+                }
+                catch (KeyNotFoundException)
+                {
+                    throw new KeyNotFoundException(
+                        $"The replacement Proposal '{supersededById}' is not in the store, so {id} was left as it was. " +
+                        "Run 'list' to see committed proposals.");
+                }
+
+                repository.SetStatus(id, ManifestStatus.Superseded, supersededById);
+            });
     }
 
     /// <summary>Moves a Proposal to a new status, refusing if its current status is not an allowed origin.</summary>

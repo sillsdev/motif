@@ -122,6 +122,36 @@ public sealed class ProposalStatusTransitionTests
     }
 
     [Fact]
+    public void Supersede_ByItself_Refuses_AndLeavesTheStatusAlone()
+    {
+        var id = CommitFreshProposal();
+
+        var result = ProposalCommands.Supersede(new SupersedeRequest(_fwDataPath, ProductVersion, id, id));
+
+        Assert.False(result.Succeeded);
+        Assert.Equal("proposal.supersede-self", result.Refusal!.Code);
+        Assert.Equal(FailureReason.InvalidArgument, result.Refusal.Reason);
+        Assert.Equal(ManifestStatus.Proposed, GetRecord(id).Status);
+    }
+
+    [Fact]
+    public void Supersede_ByAProposalThatDoesNotExist_Refuses_NamingIt()
+    {
+        var id = CommitFreshProposal();
+        var missing = CanonicalId.Mint().Value;
+
+        var result = ProposalCommands.Supersede(new SupersedeRequest(_fwDataPath, ProductVersion, id, missing));
+
+        Assert.False(result.Succeeded);
+        Assert.Equal("proposal.not-found", result.Refusal!.Code);
+        Assert.Equal(FailureReason.NotFound, result.Refusal.Reason);
+        Assert.Contains(missing, result.Refusal.Message, StringComparison.Ordinal);
+        var record = GetRecord(id);
+        Assert.Equal(ManifestStatus.Proposed, record.Status);
+        Assert.Null(record.SupersededBy);
+    }
+
+    [Fact]
     public void Supersede_IsAllowedFromRejected_SoAReplacementCanPointAtHoweverItEnded()
     {
         var id = CommitFreshProposal("old");

@@ -466,7 +466,7 @@ internal static class AgentTools
                 ("draft", Schema.String("The draft name from motif_start_proposal."), true),
                 ("target", Schema.String("Canonical id of the existing stem or affix allomorph."), true),
                 ("field", Schema.String("LibLCM condition field.", "phoneEnv", "position"), true),
-                ("expected_environments", Schema.StringArray("Current environment ids; order matters only for position."), true),
+                ("expectedEnvironments", Schema.StringArray("Current environment ids; order matters only for position."), true),
                 ("environments", Schema.StringArray("Requested environment ids; order matters only for position."), true)),
             false,
             false,
@@ -475,7 +475,7 @@ internal static class AgentTools
             true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalCommands.ComposeEditAllomorphCondition(new(
                 c.ProjectPath, c.ProductVersion, a.Required("draft"),
-                a.IntentJson("target", "field", "expected_environments", "environments"))),
+                a.IntentJson("target", "field", "expectedEnvironments", "environments"))),
                 r => $"Draft now has {r.OperationCount} changes. Run motif_dry_run and a bounded motif_trial, revise, then Finalize; only a person can Apply."))) { Requests = [typeof(ComposeEditAllomorphConditionRequest)] },
         new("motif_order_allomorphs",
             string.Empty,
@@ -483,7 +483,7 @@ internal static class AgentTools
             Schema.Object(
                 ("draft", Schema.String("The draft name from motif_start_proposal."), true),
                 ("target", Schema.String("Canonical id of the owning lexical entry."), true),
-                ("expected_alternates", Schema.StringArray("Current alternate-form ids in project order."), true),
+                ("expectedAlternates", Schema.StringArray("Current alternate-form ids in project order."), true),
                 ("alternates", Schema.StringArray("Requested order of those same alternate forms."), true)),
             false,
             false,
@@ -492,7 +492,7 @@ internal static class AgentTools
             true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalCommands.ComposeOrderAllomorphs(new(
                 c.ProjectPath, c.ProductVersion, a.Required("draft"),
-                a.IntentJson("target", "expected_alternates", "alternates"))),
+                a.IntentJson("target", "expectedAlternates", "alternates"))),
                 r => $"Draft now has {r.OperationCount} moves. Run motif_dry_run and motif_trial, revise, then Finalize; only a person can Apply."))) { Requests = [typeof(ComposeOrderAllomorphsRequest)] },
         new("motif_record_parsimony_disposition",
             string.Empty,

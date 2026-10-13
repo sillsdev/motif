@@ -474,6 +474,41 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         await session.CallAsync("motif_finalize_proposal", ("draft", "sounds"));
     }
 
+    [Fact]
+    public async Task AllomorphConditionToolAcceptsItsCamelCaseIntentFields()
+    {
+        using var project = new WalkthroughProject(pristine);
+        await using var session = await Session.StartAsync(project.FwDataPath,
+            new McpLaunchOptions(Profile: "parsimony-experimental"));
+        await session.CallAsync("motif_start_proposal", ("draft", "condition"),
+            ("label", "Restrict one allomorph"), ("comment", "The environment identifies its use."));
+
+        var result = await session.CallAsync("motif_edit_allomorph_condition", ("draft", "condition"),
+            ("target", CanonicalId.FromGuid(pristine.Seed.FirstLexemeFormId).Value), ("field", "phoneEnv"),
+            ("expectedEnvironments", Array.Empty<string>()), ("environments", Array.Empty<string>()));
+
+        Assert.True(result.GetProperty("ok").GetBoolean(), result.ToString());
+        Assert.Equal(0, result.GetProperty("result").GetProperty("operationCount").GetInt32());
+    }
+
+    [Fact]
+    public async Task AllomorphOrderToolAcceptsItsCamelCaseIntentFields()
+    {
+        using var project = new WalkthroughProject(pristine);
+        var expectedAlternates = AddAlternateForms(project, pristine.Seed, count: 2);
+        await using var session = await Session.StartAsync(project.FwDataPath,
+            new McpLaunchOptions(Profile: "parsimony-experimental"));
+        await session.CallAsync("motif_start_proposal", ("draft", "order"),
+            ("label", "Order alternate forms"), ("comment", "The first form is preferred."));
+
+        var result = await session.CallAsync("motif_order_allomorphs", ("draft", "order"),
+            ("target", CanonicalId.FromGuid(pristine.Seed.FirstEntryId).Value),
+            ("expectedAlternates", expectedAlternates), ("alternates", expectedAlternates.Reverse().ToArray()));
+
+        Assert.True(result.GetProperty("ok").GetBoolean(), result.ToString());
+        Assert.True(result.GetProperty("result").GetProperty("operationCount").GetInt32() > 0);
+    }
+
     private sealed class Session : IAsyncDisposable
     {
         private readonly CancellationTokenSource _stop = new();
@@ -544,6 +579,28 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         var id = CanonicalId.FromGuid(prohibition.Guid);
         new FwDataProjectLoader().Save(cache);
         return id;
+    }
+
+    private static string[] AddAlternateForms(WalkthroughProject project, SeededProject seed, int count)
+    {
+        var loader = new FwDataProjectLoader();
+        using var cache = loader.LoadCache(project.FwDataPath);
+        var entry = cache.ServiceLocator.GetInstance<ILexEntryRepository>().GetObject(seed.FirstEntryId);
+        var formFactory = cache.ServiceLocator.GetInstance<IMoStemAllomorphFactory>();
+        var ids = new List<string>(count);
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            for (var index = 0; index < count; index++)
+            {
+                var form = formFactory.Create();
+                entry.AlternateFormsOS.Add(form);
+                form.MorphTypeRA = entry.LexemeFormOA!.MorphTypeRA;
+                form.Form.set_String(cache.DefaultVernWs, $"motifa{index + 1}");
+                ids.Add(CanonicalId.FromGuid(form.Guid).Value);
+            }
+        });
+        loader.Save(cache);
+        return ids.ToArray();
     }
 
     private static SavedDispositionPair SeedSavedDispositions(WalkthroughProject project)

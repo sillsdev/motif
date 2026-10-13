@@ -783,7 +783,7 @@
             "position"
           ]
         },
-        "expected_environments": {
+        "expectedEnvironments": {
           "type": "array",
           "items": {
             "type": "string"
@@ -806,7 +806,7 @@
         "draft",
         "target",
         "field",
-        "expected_environments",
+        "expectedEnvironments",
         "environments",
         "project"
       ],
@@ -830,7 +830,7 @@
           "type": "string",
           "description": "Canonical id of the owning lexical entry."
         },
-        "expected_alternates": {
+        "expectedAlternates": {
           "type": "array",
           "items": {
             "type": "string"
@@ -852,7 +852,7 @@
       "required": [
         "draft",
         "target",
-        "expected_alternates",
+        "expectedAlternates",
         "alternates",
         "project"
       ],
