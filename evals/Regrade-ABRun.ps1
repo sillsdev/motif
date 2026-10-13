@@ -17,7 +17,12 @@ if (-not $source.Contains('measurementFingerprint') -or [string]$source.measurem
     throw 'This stored run has no valid measurement fingerprint. Recreate it with Invoke-ABQuestion before regrading.'
 }
 if (-not $JudgePolicy) { $JudgePolicy = if ($source.Contains('judgePolicy')) { [string]$source.judgePolicy } else { 'paired' } }
-$setRoot = Get-ABSetRoot $repoRoot
+$storedConfirmation = $source.Contains('confirmation') -and [bool]$source.confirmation
+if (($Confirmation -and -not $source.Contains('confirmation')) -or $storedConfirmation -ne [bool]$Confirmation) {
+    throw 'The regrade confirmation setting must match the stored run, which must record it.'
+}
+$setRoot = Get-ABSetRoot $repoRoot -Confirmation:$Confirmation
+if ($Confirmation) { [void](Set-ABConfirmationTrialRoot $repoRoot (Get-ABConfirmationResultsRoot $repoRoot)) }
 $runId = 'regrade-' + [DateTimeOffset]::UtcNow.ToString('yyyyMMdd-HHmmss') + '-' + [Guid]::NewGuid().ToString('N').Substring(0, 8)
 $runRoot = Join-Path $sourceRoot $runId
 New-Item -ItemType Directory -Path $runRoot | Out-Null
@@ -108,6 +113,8 @@ try {
     $summary.sourceRun = $sourceRoot
     $summary.sourceMeasurementFingerprint = $source.measurementFingerprint
     $summary.integrityReused = $true
+    $summary.confirmation = [bool]$Confirmation
+    if ($source.Contains('confirmationCommit')) { $summary.confirmationCommit = $source.confirmationCommit }
     for ($index = 0; $index -lt $completed.Count; $index++) {
         $row = $completed[$index]
         foreach ($name in @('manifest', 'transcript', 'activity')) {

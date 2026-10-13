@@ -1,11 +1,15 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-function Get-ABTrialBase([string] $RepoRoot) {
+function Get-ABTrialBasePath([string] $RepoRoot) {
     $configured = if ($env:MOTIF_TRIAL_ROOT) { $env:MOTIF_TRIAL_ROOT }
         elseif ($env:TMPDIR) { $env:TMPDIR }
         else { Join-Path $RepoRoot 'bin/.cache/ab-trials' }
-    $root = [IO.Path]::GetFullPath($configured)
+    return [IO.Path]::GetFullPath($configured)
+}
+
+function Get-ABTrialBase([string] $RepoRoot) {
+    $root = Get-ABTrialBasePath $RepoRoot
     New-Item -ItemType Directory -Path $root -Force | Out-Null
     return $root
 }
@@ -60,11 +64,115 @@ function Get-ABSetRoot([string] $RepoRoot, [switch] $Confirmation) {
         if ($ancestor.LinkTarget) { throw "$variable must not traverse a symbolic link." }
         $ancestor = $ancestor.Parent
     }
-    $comparison = if ($IsWindows) { [StringComparison]::OrdinalIgnoreCase } else { [StringComparison]::Ordinal }
+    $comparison = if ($IsWindows -or $IsMacOS) { [StringComparison]::OrdinalIgnoreCase } else { [StringComparison]::Ordinal }
     if ($root.Equals($checkout, $comparison) -or $root.StartsWith($checkout + [IO.Path]::DirectorySeparatorChar, $comparison)) {
         throw "$variable must be outside the Motif checkout."
     }
     return $root
+}
+
+function Test-ABPathWithin([string] $Path, [string] $Root) {
+    $comparison = if ($IsWindows -or $IsMacOS) { [StringComparison]::OrdinalIgnoreCase } else { [StringComparison]::Ordinal }
+    $normalizedPath = [IO.Path]::GetFullPath($Path)
+    $normalizedRoot = [IO.Path]::GetFullPath($Root).TrimEnd([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)
+    return $normalizedPath.Equals($normalizedRoot, $comparison) -or
+        $normalizedPath.StartsWith($normalizedRoot + [IO.Path]::DirectorySeparatorChar, $comparison)
+}
+
+function Resolve-ABPhysicalPath([string] $Path) {
+    $full = [IO.Path]::GetFullPath($Path)
+    $current = [IO.Path]::GetPathRoot($full)
+    foreach ($part in $full.Substring($current.Length) -split '[\\/]') {
+        if (-not $part) { continue }
+        $current = Join-Path $current $part
+        $entry = Get-Item -LiteralPath $current -Force -ErrorAction SilentlyContinue
+        if ($entry -and $entry.LinkTarget) { $current = $entry.ResolveLinkTarget($true).FullName }
+    }
+    return $current
+}
+
+function Get-ABConfirmationResultsRoot([string] $RepoRoot) {
+    $configured = $env:MOTIF_CONFIRMATION_RESULTS
+    if ([string]::IsNullOrWhiteSpace($configured)) {
+        throw 'Set MOTIF_CONFIRMATION_RESULTS to an external directory for confirmation results.'
+    }
+    $root = [IO.Path]::GetFullPath($configured)
+    $pathRoot = [IO.Path]::GetPathRoot($root)
+    $current = $pathRoot
+    foreach ($part in $root.Substring($pathRoot.Length) -split '[\\/]') {
+        if (-not $part) { continue }
+        $current = Join-Path $current $part
+        $entry = Get-Item -LiteralPath $current -Force -ErrorAction SilentlyContinue
+        if ($entry -and ($entry.LinkTarget -or ($entry.Attributes -band [IO.FileAttributes]::ReparsePoint))) {
+            throw 'MOTIF_CONFIRMATION_RESULTS must not traverse a symbolic link.'
+        }
+    }
+    [void](Get-ABSetRoot $RepoRoot -Confirmation)
+    $protected = [ordered]@{
+        'the Motif checkout' = Resolve-ABPhysicalPath $RepoRoot
+        'the confirmation grammar repository' = Resolve-ABPhysicalPath $env:MOTIF_CONFIRMATION_GRAMMARS
+    }
+    if ($env:MOTIF_TEST_GRAMMARS -and (Test-Path -LiteralPath $env:MOTIF_TEST_GRAMMARS)) {
+        $protected['the public grammar repository'] = Resolve-ABPhysicalPath $env:MOTIF_TEST_GRAMMARS
+    }
+    $staging = Resolve-ABPhysicalPath (Get-ABTrialBasePath $RepoRoot)
+    # Staging that a confirmation run already moved under this results root is the one allowed overlap.
+    if (-not (Test-ABPathWithin $staging (Join-Path $root 'staging'))) { $protected['trial staging'] = $staging }
+    foreach ($name in $protected.Keys) {
+        if ((Test-ABPathWithin $root $protected[$name]) -or (Test-ABPathWithin $protected[$name] $root)) {
+            throw "MOTIF_CONFIRMATION_RESULTS must be outside $name and must not contain it."
+        }
+    }
+    New-Item -ItemType Directory -Path $root -Force | Out-Null
+    return $root
+}
+
+function Get-ABFakeScriptPath([string] $RepoRoot, [object] $Manifest) {
+    if ($Manifest.Contains('fakeScript') -and $Manifest.fakeScript) { return [string]$Manifest.fakeScript }
+    if ($Manifest.Contains('confirmation') -and [bool]$Manifest.confirmation) {
+        $path = Join-Path ([string]$Manifest.taskPath) 'validity/gold.jsonl'
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+            throw "Confirmation task '$($Manifest.task.id)' requires validity/gold.jsonl."
+        }
+        return $path
+    }
+    return Join-Path $RepoRoot ("evals/fake-scripts/$($Manifest.task.id).jsonl")
+}
+
+function Get-ABConfirmationValidityScripts([object] $Task) {
+    $paths = [ordered]@{
+        gold = Join-Path ([string]$Task.taskPath) 'validity/gold.jsonl'
+        wrong = Join-Path ([string]$Task.taskPath) 'validity/wrong.jsonl'
+    }
+    foreach ($name in @('gold', 'wrong')) {
+        if (-not (Test-Path -LiteralPath $paths[$name] -PathType Leaf)) {
+            throw "Confirmation task '$($Task.id)' requires validity/$name.jsonl."
+        }
+    }
+    return $paths
+}
+
+function Set-ABConfirmationTrialRoot([string] $RepoRoot, [string] $ResultsRoot) {
+    $configured = Get-ABTrialBasePath $RepoRoot
+    $existing = $configured
+    $suffix = [Collections.Generic.List[string]]::new()
+    while (-not (Test-Path -LiteralPath $existing)) {
+        $part = Split-Path -Leaf $existing
+        if (-not $part) { break }
+        $suffix.Insert(0, $part)
+        $parent = Split-Path -Parent $existing
+        if ($parent -eq $existing) { break }
+        $existing = $parent
+    }
+    $comparisonPath = $configured
+    if (Test-Path -LiteralPath $existing) {
+        $comparisonPath = (Resolve-Path -LiteralPath $existing).ProviderPath
+        foreach ($part in $suffix) { $comparisonPath = Join-Path $comparisonPath $part }
+    }
+    if (Test-ABPathWithin $comparisonPath $RepoRoot) {
+        $env:MOTIF_TRIAL_ROOT = Join-Path $ResultsRoot 'staging'
+    }
+    return $env:MOTIF_TRIAL_ROOT
 }
 
 function Get-ABIntegritySummary([object[]] $Trials) {
@@ -930,4 +1038,4 @@ function Get-ABGrade(
 
 Export-ModuleMember -Function Get-ABJudgeFamilies, Read-ABJson, Write-ABJson, Add-ABJsonl, Format-ABPosixArgument, Format-ABCommand, `
     Get-ABRepositoryFingerprint, Invoke-ABProcess, Resolve-ABTestGrammarsRoot, Read-ABLines, Test-ABTaskFuture, Get-ABParserRows, Get-ABToolAttempts, Get-ABGrade, `
-    Test-ABInventedMorphology, Get-ABSetRoot, Get-ABIntegritySummary, Get-ABFakeMcpTimeoutMs, Get-ABTrialBase, New-ABTrialDirectory, Remove-ABTrialDirectory
+    Test-ABInventedMorphology, Get-ABSetRoot, Get-ABConfirmationResultsRoot, Get-ABFakeScriptPath, Get-ABConfirmationValidityScripts, Set-ABConfirmationTrialRoot, Get-ABIntegritySummary, Get-ABFakeMcpTimeoutMs, Get-ABTrialBase, New-ABTrialDirectory, Remove-ABTrialDirectory

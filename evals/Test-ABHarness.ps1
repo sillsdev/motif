@@ -3,6 +3,7 @@ param(
     [switch] $ValidityOnly,
     [string] $ArmManifest,
     [string] $Configuration = 'Debug',
+    [switch] $Confirmation,
     [Alias('-keep')][switch] $Keep
 )
 
@@ -11,7 +12,10 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $toolsRoot = Join-Path $PSScriptRoot 'tools'
 Import-Module (Join-Path $toolsRoot 'ABHarness.psm1') -Force
-$setRoot = Get-ABSetRoot $repoRoot
+$setRoot = Get-ABSetRoot $repoRoot -Confirmation:$Confirmation
+$resultsRoot = if ($Confirmation) { Get-ABConfirmationResultsRoot $repoRoot }
+    else { Join-Path $PSScriptRoot 'results' }
+if ($Confirmation) { [void](Set-ABConfirmationTrialRoot $repoRoot $resultsRoot) }
 
 $parserPath = $env:MOTIF_PANGLOSS_EXE
 if ([string]::IsNullOrWhiteSpace($parserPath) -or -not (Test-Path -LiteralPath $parserPath -PathType Leaf)) {
@@ -43,7 +47,14 @@ $tasks = @(Get-ChildItem -LiteralPath $setRoot -Filter 'task.yaml' -File -Recurs
     $task.primaryMetric = if ($task.Contains('primary_metric')) { [string]$task.primary_metric } else { 'task-success' }
     $task
 })
-if ($tasks.Count -eq 0) { throw 'No tasks were found under MOTIF_TEST_GRAMMARS.' }
+if ($tasks.Count -eq 0) {
+    $variable = if ($Confirmation) { 'MOTIF_CONFIRMATION_GRAMMARS' } else { 'MOTIF_TEST_GRAMMARS' }
+    throw "No tasks were found under $variable."
+}
+$confirmationScripts = @{}
+if ($Confirmation) {
+    foreach ($task in $tasks) { $confirmationScripts[$task.taskPath] = Get-ABConfirmationValidityScripts $task }
+}
 
 $fakeArm = Read-ABJson (Join-Path $PSScriptRoot 'arms/fake-default.yaml')
 $fakeArm.server.profilePath = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot ([string]$fakeArm.server.grade_profile)))
@@ -60,12 +71,13 @@ $validationArms = foreach ($sourceArm in $fingerprintArms) {
     $validationArm.authMode = 'none'
     $validationArm
 }
-$stampPath = Join-Path $PSScriptRoot 'results/.validity.json'
-$sampleRoot = Join-Path $PSScriptRoot 'results/validity-samples'
+$stampPath = Join-Path $resultsRoot '.validity.json'
+$sampleRoot = Join-Path $resultsRoot 'validity-samples'
 $validityFinals = @(Read-ABJson (Join-Path $PSScriptRoot 'integrity/fixtures/validity-finals.json'))
 $temporaryRoot = New-ABTrialDirectory $repoRoot
 $originalJudgeCommand = $env:MOTIF_MEANING_JUDGE_COMMAND
 $originalJudgeMode = $env:MOTIF_FAKE_JUDGE_MODE
+$originalJudgeFinals = $env:MOTIF_FAKE_JUDGE_FINALS
 if (-not $originalJudgeCommand) {
     $env:MOTIF_FAKE_JUDGE_MODE = 'validity'
     $env:MOTIF_MEANING_JUDGE_COMMAND = ConvertTo-Json -Compress -InputObject @(
@@ -74,6 +86,31 @@ if (-not $originalJudgeCommand) {
 }
 
 try {
+    if ($Confirmation) {
+        $confirmationFinals = [Collections.Generic.List[object]]::new()
+        foreach ($task in $tasks) {
+            foreach ($grader in $task.graders | Where-Object { $_.type -in @('answer', 'meaning', 'rubric') }) {
+                $keyName = if ($grader.Contains('key')) { [string]$grader.key } else { 'answer.yaml' }
+                $key = Read-ABJson (Join-Path $task.taskPath $keyName)
+                if (-not $key.Contains('meaning')) { continue }
+                $scripts = $confirmationScripts[$task.taskPath]
+                $goldMessages = @(Read-ABLines $scripts.gold | Where-Object { $_.Contains('finalMessage') })
+                $wrongMessages = @(Read-ABLines $scripts.wrong | Where-Object { $_.Contains('finalMessage') })
+                if (-not $goldMessages.Count -or -not $wrongMessages.Count) {
+                    throw "Confirmation task '$($task.id)' validity scripts must contain finalMessage records."
+                }
+                $confirmationFinals.Add([ordered]@{
+                    required = @($key.meaning.required)
+                    gold = [string]$goldMessages[-1].finalMessage
+                    wrong = [string]$wrongMessages[-1].finalMessage
+                })
+                break
+            }
+        }
+        $confirmationFinalsPath = Join-Path $temporaryRoot 'confirmation-validity-finals.json'
+        Write-ABJson $confirmationFinalsPath @($confirmationFinals)
+        $env:MOTIF_FAKE_JUDGE_FINALS = $confirmationFinalsPath
+    }
     foreach ($arm in $validationArms) {
       foreach ($task in $tasks) {
         $cases = @(
@@ -81,7 +118,7 @@ try {
             [ordered]@{ name = 'empty'; start = [string]$task.start; validationMode = 'empty'; minimum = 0.0; maximum = 0.01 }
         )
         $finalFixture = @($validityFinals | Where-Object { $_.task -eq $task.id })
-        if ($finalFixture.Count -eq 1) {
+        if ($Confirmation -or $finalFixture.Count -eq 1) {
             $cases += [ordered]@{ name = 'wrong'; start = [string]$task.start; validationMode = $null; minimum = 0.0; maximum = 0.01 }
         }
         foreach ($case in $cases) {
@@ -106,9 +143,12 @@ try {
                 task = $validationTask
                 arm = $arm
                 validationMode = $case.validationMode
+                confirmation = [bool]$Confirmation
                 keep = [bool]$Keep
             }
-            if ($case.name -eq 'wrong') {
+            if ($Confirmation -and $case.name -in @('gold', 'wrong')) {
+                $manifest.fakeScript = $confirmationScripts[$task.taskPath][$case.name]
+            } elseif ($case.name -eq 'wrong') {
                 $wrongScript = Join-Path $privateRoot 'wrong.jsonl'
                 @{ finalMessage = $finalFixture[0].wrong } | ConvertTo-Json -Compress | Set-Content -LiteralPath $wrongScript -Encoding utf8
                 $manifest.fakeScript = $wrongScript
@@ -141,34 +181,42 @@ try {
     }
 
     $questionPath = Join-Path $PSScriptRoot 'questions/default-vs-lean-fake.yaml'
-    $fakeArguments = @(
-        '-NoProfile', '-File', (Join-Path $PSScriptRoot 'Invoke-ABQuestion.ps1'),
-        '-Question', $questionPath, '-Trials', '1', '-Parallel', '2',
-        '-Configuration', $Configuration, '-SkipValidityCheck'
-    ) + $(if ($Keep) { @('-Keep') } else { @() })
-    $fakeRun = Invoke-ABProcess (Get-Command pwsh).Source $fakeArguments $repoRoot @{} 7200000
-    if ($fakeRun.ExitCode -ne 0) { throw "The fake-host end-to-end question failed:`n$($fakeRun.Stdout)`n$($fakeRun.Stderr)" }
-    $reportMatch = [regex]::Match($fakeRun.Stdout, '(?m)^Report: (?<path>.+)$')
-    if (-not $reportMatch.Success) { throw "The fake-host run did not report a sample report path:`n$($fakeRun.Stdout)" }
-    $sampleReport = $reportMatch.Groups['path'].Value.Trim()
-    if (-not (Test-Path -LiteralPath $sampleReport -PathType Leaf)) { throw "The fake-host sample report is missing: $sampleReport" }
-    $reportText = Get-Content -LiteralPath $sampleReport -Raw
-    $summaryPath = Join-Path (Split-Path -Parent $sampleReport) 'summary.json'
-    $sampleSummary = Read-ABJson $summaryPath
-    if (@($sampleSummary.trials | Where-Object { $_.integrity.state -ne 'clean' -or $_.success -ne $true }).Count -gt 0) {
-        throw "The fake-host A/B smoke trials did not all pass. See $summaryPath"
-    }
-    $firstLine = ($reportText -split "`r?`n")[0]
-    if ([regex]::Matches($firstLine, '\.').Count -lt 2 -or $firstLine -notmatch 'not enough evidence|scored higher') {
-        throw "The sample report does not begin with the required two-sentence verdict: $firstLine"
-    }
-    foreach ($artifact in @('summary.json')) {
-        if (-not (Test-Path -LiteralPath (Join-Path (Split-Path -Parent $sampleReport) $artifact) -PathType Leaf)) {
-            throw "The fake-host run did not produce $artifact beside $sampleReport."
+    $fakeReports = [Collections.Generic.List[string]]::new()
+    $fakeTaskIds = if ($Confirmation) { @($tasks | ForEach-Object { [string]$_.id }) } else { @('') }
+    foreach ($fakeTaskId in $fakeTaskIds) {
+        $fakeArguments = @(
+            '-NoProfile', '-File', (Join-Path $PSScriptRoot 'Invoke-ABQuestion.ps1'),
+            '-Question', $questionPath, '-Trials', '1', '-Parallel', '2',
+            '-Configuration', $Configuration, '-SkipValidityCheck'
+        ) + $(if ($Confirmation) { @('-Confirmation', '-Tasks', $fakeTaskId) } else { @() }) +
+            $(if ($Keep) { @('-Keep') } else { @() })
+        $fakeRun = Invoke-ABProcess (Get-Command pwsh).Source $fakeArguments $repoRoot @{} 7200000
+        if ($fakeRun.ExitCode -ne 0) { throw "The fake-host end-to-end question failed:`n$($fakeRun.Stdout)`n$($fakeRun.Stderr)" }
+        $reportMatch = [regex]::Match($fakeRun.Stdout, '(?m)^Report: (?<path>.+)$')
+        if (-not $reportMatch.Success) { throw "The fake-host run did not report a sample report path:`n$($fakeRun.Stdout)" }
+        $sampleReport = $reportMatch.Groups['path'].Value.Trim()
+        if (-not (Test-Path -LiteralPath $sampleReport -PathType Leaf)) { throw "The fake-host sample report is missing: $sampleReport" }
+        $reportText = Get-Content -LiteralPath $sampleReport -Raw
+        $summaryPath = Join-Path (Split-Path -Parent $sampleReport) 'summary.json'
+        $sampleSummary = Read-ABJson $summaryPath
+        if (@($sampleSummary.trials | Where-Object { $_.integrity.state -ne 'clean' -or $_.success -ne $true }).Count -gt 0) {
+            throw "The fake-host A/B smoke trials did not all pass. See $summaryPath"
         }
+        if ($Confirmation -and (@($sampleSummary.tasks).Count -ne 1 -or [string]$sampleSummary.tasks[0].id -ne $fakeTaskId)) {
+            throw "The confirmation smoke selected tasks other than '$fakeTaskId'."
+        }
+        $firstLine = ($reportText -split "`r?`n")[0]
+        if ([regex]::Matches($firstLine, '\.').Count -lt 2 -or $firstLine -notmatch 'not enough evidence|scored higher') {
+            throw "The sample report does not begin with the required two-sentence verdict: $firstLine"
+        }
+        if (-not (Test-Path -LiteralPath (Join-Path (Split-Path -Parent $sampleReport) 'summary.json') -PathType Leaf)) {
+            throw "The fake-host run did not produce summary.json beside $sampleReport."
+        }
+        if ($reportText -notmatch '## Integrity' -or $sampleSummary.integrity.counts.clean -ne $sampleSummary.integrity.attempted) { throw 'The integrity report did not retain all clean trials.' }
+        $fakeReports.Add($sampleReport)
+        Write-Host "Fake-host end to end: $sampleReport"
     }
-    if ($reportText -notmatch '## Integrity' -or $sampleSummary.integrity.counts.clean -ne $sampleSummary.integrity.attempted) { throw 'The integrity report did not retain all clean trials.' }
-    Write-Host "Fake-host end to end: $sampleReport"
+    $sampleReport = $fakeReports[0]
 
     if ($ValidityOnly) {
         $fingerprint = if ($ArmManifest) { Get-ABRepositoryFingerprint $repoRoot $Configuration $fingerprintArms }
@@ -186,6 +234,7 @@ try {
             checkedUtc = [DateTimeOffset]::UtcNow.ToString('O')
             taskCount = $tasks.Count
             fakeReport = $sampleReport
+            fakeReports = @($fakeReports)
         })
         Write-Host "Validity stamp: $stampPath"
     }
@@ -193,6 +242,7 @@ try {
 finally {
     $env:MOTIF_MEANING_JUDGE_COMMAND = $originalJudgeCommand
     $env:MOTIF_FAKE_JUDGE_MODE = $originalJudgeMode
+    $env:MOTIF_FAKE_JUDGE_FINALS = $originalJudgeFinals
     Remove-ABTrialDirectory $temporaryRoot -Keep:$Keep
     if ($Keep) { Write-Host "Validity staging retained at: $temporaryRoot" }
 }

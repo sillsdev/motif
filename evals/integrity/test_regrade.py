@@ -99,6 +99,66 @@ class RegradeTests(unittest.TestCase):
             with self.subTest(failure_class=failure_class):
                 self.regrade('pass', None, boundary_class=failure_class)
 
+    def test_confirmation_regrade_resolves_tasks_from_the_confirmation_root(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            repo, grammar, source = self.fixture(root)
+            summary = json.loads((source / 'summary.json').read_text())
+            summary['confirmation'] = True
+            (source / 'summary.json').write_text(json.dumps(summary))
+            results = root / 'confirmation-results'
+            results.mkdir()
+            checkout_staging = repo / 'bin/.cache/regrade-confirmation-staging-test'
+            public = root / 'public-grammars'
+            (public / 'sets').mkdir(parents=True)
+            process = subprocess.run(['pwsh', '-NoProfile', '-File', str(repo / 'evals/Regrade-ABRun.ps1'),
+                '-RunDirectory', str(source), '-Confirmation'],
+                env=dict(fake_environment('pass'), MOTIF_TEST_GRAMMARS=str(public),
+                         MOTIF_CONFIRMATION_GRAMMARS=str(grammar), MOTIF_CONFIRMATION_RESULTS=str(results),
+                         MOTIF_TRIAL_ROOT=str(checkout_staging)),
+                stdin=subprocess.DEVNULL, capture_output=True, timeout=60)
+            self.assertEqual(0, process.returncode, process.stdout.decode() + process.stderr.decode())
+            outputs = list(source.glob('regrade-*'))
+            self.assertEqual(1, len(outputs))
+            result = json.loads((outputs[0] / 'summary.json').read_text(encoding='utf-8-sig'))
+            self.assertTrue(result['confirmation'])
+            self.assertEqual(1, result['trials'][0]['primaryScore'])
+            self.assertFalse(checkout_staging.exists())
+            self.assertTrue((results / 'staging').is_dir())
+
+    def test_regrade_refuses_a_confirmation_flag_mismatch(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            repo, grammar, source = self.fixture(root)
+            summary = json.loads((source / 'summary.json').read_text())
+            summary['confirmation'] = True
+            (source / 'summary.json').write_text(json.dumps(summary))
+            process = subprocess.run(['pwsh', '-NoProfile', '-File', str(repo / 'evals/Regrade-ABRun.ps1'),
+                '-RunDirectory', str(source)],
+                env=dict(fake_environment('pass'), MOTIF_TEST_GRAMMARS=str(grammar),
+                         MOTIF_CONFIRMATION_GRAMMARS=str(grammar), MOTIF_TRIAL_ROOT=str(root / 'staging')),
+                stdin=subprocess.DEVNULL, capture_output=True, timeout=60)
+            self.assertNotEqual(0, process.returncode, process.stdout.decode() + process.stderr.decode())
+            self.assertIn('confirmation setting', (process.stdout + process.stderr).decode().lower())
+
+    def test_confirmation_regrade_refuses_a_run_that_does_not_record_its_setting(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            repo, grammar, source = self.fixture(root)
+            summary = json.loads((source / 'summary.json').read_text())
+            summary.pop('confirmation', None)
+            (source / 'summary.json').write_text(json.dumps(summary))
+            results = root / 'confirmation-results'
+            process = subprocess.run(['pwsh', '-NoProfile', '-File', str(repo / 'evals/Regrade-ABRun.ps1'),
+                '-RunDirectory', str(source), '-Confirmation'],
+                env=dict(fake_environment('pass'), MOTIF_TEST_GRAMMARS=str(grammar),
+                         MOTIF_CONFIRMATION_GRAMMARS=str(grammar), MOTIF_CONFIRMATION_RESULTS=str(results),
+                         MOTIF_TRIAL_ROOT=str(root / 'staging')),
+                stdin=subprocess.DEVNULL, capture_output=True, timeout=60)
+            self.assertNotEqual(0, process.returncode, process.stdout.decode() + process.stderr.decode())
+            self.assertIn('confirmation setting', (process.stdout + process.stderr).decode().lower())
+            self.assertEqual([], list(source.glob('regrade-*')))
+
     def regrade(self, mode, expected, right_clean=False, tamper=False, boundary_class=None):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

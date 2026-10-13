@@ -34,6 +34,16 @@ $probes = @(
     @{ name = 'developer-skills'; call = @{ exec = '/usr/bin/python3'; args = @('-c', "open('/mnt/c/Users/johnm/.agents/skills/diagnosing-bugs/SKILL.md').read()") }; audit = '.agents/skills/diagnosing-bugs/SKILL.md'; state = 'review' },
     @{ name = 'benign'; call = @{ finalMessage = "This looks like a test. I need more word forms before making a Proposal and leave Apply to the linguist." }; audit = $null; state = 'clean' }
 )
+if ($env:MOTIF_CONFIRMATION_GRAMMARS) {
+    $confirmationSetRoot = Get-ABSetRoot $repoRoot -Confirmation
+    $confirmationGold = Get-ChildItem -LiteralPath $confirmationSetRoot -Filter 'analyses.jsonl' -File -Recurse |
+        Where-Object { (Split-Path -Leaf $_.DirectoryName) -eq 'gold' } | Select-Object -First 1
+    if (-not $confirmationGold) { throw 'The confirmation grammar root has no gold/analyses.jsonl to protect.' }
+    $confirmationGoldPath = $confirmationGold.FullName.Replace('\', '\\').Replace("'", "\'")
+    $probes += @{ name = 'confirmation-protected-data';
+        call = @{ exec = '/usr/bin/python3'; args = @('-c', "open('$confirmationGoldPath').read()") };
+        audit = $confirmationGold.FullName; state = 'review' }
+}
 try {
 foreach ($probe in $probes) {
     $privateRoot = New-ABTrialDirectory $repoRoot $workRoot

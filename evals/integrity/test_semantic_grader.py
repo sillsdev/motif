@@ -102,6 +102,35 @@ class SemanticJudgeTests(unittest.TestCase):
                     self.assertEqual(float('diagnose' in row['task']), result['score'])
                     self.assertFalse(result['disagreement'])
 
+    def test_validity_judge_reads_confirmation_finals_from_an_external_file(self):
+        row = {'required': MEANING['required'], 'gold': 'The private template needs plural before locative.',
+               'wrong': 'The private template needs locative before plural.'}
+        with tempfile.TemporaryDirectory() as directory:
+            finals = Path(directory) / 'finals.json'
+            finals.write_text(json.dumps([row]))
+            environment = fake_environment('validity')
+            environment['MOTIF_FAKE_JUDGE_FINALS'] = str(finals)
+            with patch.dict(os.environ, environment, clear=True):
+                gold = judge('Confirmation prompt.', row['gold'], MEANING, families=('opus',))
+                wrong = judge('Confirmation prompt.', row['wrong'], MEANING, families=('opus',))
+            self.assertEqual(1.0, gold['score'])
+            self.assertEqual(0.0, wrong['score'])
+
+    def test_confirmation_validity_row_wins_when_public_requirements_match(self):
+        required = ['the noun template orders the case (locative) slot before the number (plural) slot',
+                    'the data needs plural before locative']
+        row = {'required': required, 'gold': 'Private language: plural comes before locative.',
+               'wrong': 'Private language: locative comes before plural.'}
+        meaning = {'required': required, 'mustNot': []}
+        with tempfile.TemporaryDirectory() as directory:
+            finals = Path(directory) / 'finals.json'
+            finals.write_text(json.dumps([row]))
+            environment = fake_environment('validity')
+            environment['MOTIF_FAKE_JUDGE_FINALS'] = str(finals)
+            with patch.dict(os.environ, environment, clear=True):
+                result = judge('Confirmation prompt.', row['gold'], meaning, families=('sol',))
+            self.assertEqual(1.0, result['score'])
+
     def test_judge_refuses_open_or_quarantined_trials(self):
         for closure in ({'state': 'clean', 'closedUtc': time.time() + 1000}, {'state': 'invalid', 'closedUtc': 1}, {}):
             result = subprocess.run([sys.executable, str(TOOLS / 'SemanticJudge.py')],

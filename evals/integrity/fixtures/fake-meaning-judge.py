@@ -18,7 +18,15 @@ if mode == 'fixtures':
     row = next(r for r in rows if r['finalMessage'] == answer)
     met = row['task'].find('diagnose') >= 0
 elif mode == 'validity':
-    rows = json.loads((Path(__file__).parent / 'validity-finals.json').read_text())
+    rows = []
+    extra_finals = os.environ.get('MOTIF_FAKE_JUDGE_FINALS')
+    if extra_finals:
+        extra_rows = json.loads(Path(extra_finals).read_text())
+        if not isinstance(extra_rows, list) or any(
+                not isinstance(row, dict) or not {'required', 'gold', 'wrong'} <= row.keys() for row in extra_rows):
+            raise ValueError('MOTIF_FAKE_JUDGE_FINALS must contain validity rows')
+        rows.extend(extra_rows)
+    rows.extend(json.loads((Path(__file__).parent / 'validity-finals.json').read_text()))
     row = next((r for r in rows if r['required'] == context['meaning']['required']), None)
     met = row is not None and row['gold'] == answer
 else:

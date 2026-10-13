@@ -120,8 +120,7 @@ $inside = [ordered]@{
 Write-ABJson (Join-Path $inputRoot 'session.json') $inside
 $inside.preflight = $true
 Write-ABJson (Join-Path $inputRoot 'preflight.json') $inside
-if ($manifest.Contains('fakeScript')) { $fakeScript = [string]$manifest.fakeScript }
-else { $fakeScript = Join-Path $repoRoot ("evals/fake-scripts/$($task.id).jsonl") }
+$fakeScript = Get-ABFakeScriptPath $repoRoot $manifest
 if ($manifest.validationMode -eq 'empty') {
     Set-Content (Join-Path $inputRoot 'actions.jsonl') '{"finalMessage":""}'
     $inside.validationMode = $null
@@ -144,7 +143,7 @@ $boundaryConfig = [ordered]@{
     timeout = [int]$task.limits.wall_seconds + 30
     mounts = @(@($productRoot, '/opt/product'), @($clientRoot, '/opt/client'), @($dotnetRoot, '/opt/runtime'), @((Split-Path (Get-Command pwsh).Source), '/opt/powershell'), @($inputRoot, '/input'))
     allowedTools = $allowed
-    protected = @($repoRoot, $env:MOTIF_TEST_GRAMMARS, $env:MOTIF_CONFIRMATION_GRAMMARS, [string]$manifest.setPath, [string]$manifest.taskPath, $controlRoot, [string]$RunManifest, [Environment]::GetFolderPath('UserProfile'))
+    protected = @($repoRoot, $env:MOTIF_TEST_GRAMMARS, $env:MOTIF_CONFIRMATION_GRAMMARS, $env:MOTIF_CONFIRMATION_RESULTS, [string]$manifest.setPath, [string]$manifest.taskPath, $controlRoot, [string]$RunManifest, [Environment]::GetFolderPath('UserProfile'))
 }
 $boundaryConfig.protected = @($boundaryConfig.protected | Where-Object { $_ })
 $pwshFile = [IO.FileInfo](Get-Command pwsh).Source

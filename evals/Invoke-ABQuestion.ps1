@@ -21,6 +21,9 @@ Import-Module (Join-Path $PSScriptRoot 'tools/HostPlan.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'tools/ProductStaging.psm1') -Force
 $setRoot = Get-ABSetRoot $repoRoot -Confirmation:$Confirmation
 if ($Confirmation -and -not $env:MOTIF_CONFIRMATION_GRAMMARS) { throw 'Confirmation requires MOTIF_CONFIRMATION_GRAMMARS on the grading side.' }
+$resultsRoot = if ($Confirmation) { Get-ABConfirmationResultsRoot $repoRoot }
+    else { Join-Path $repoRoot 'evals/results' }
+if ($Confirmation) { [void](Set-ABConfirmationTrialRoot $repoRoot $resultsRoot) }
 if ($Parallel -lt 1) { throw '-Parallel must be at least 1.' }
 if ($Trials -lt 0) { throw '-Trials must be zero or a positive whole number.' }
 
@@ -207,7 +210,7 @@ foreach ($arm in $arms) {
 $fingerprint = Get-ABRepositoryFingerprint $repoRoot $Configuration $arms
 
 if (-not $SkipValidityCheck) {
-    $stampPath = Join-Path $repoRoot 'evals/results/.validity.json'
+    $stampPath = Join-Path $resultsRoot '.validity.json'
     $fresh = $false
     if (Test-Path -LiteralPath $stampPath) {
         try { $fresh = (Read-ABJson $stampPath).fingerprint -eq $fingerprint } catch { $fresh = $false }
@@ -219,7 +222,8 @@ if (-not $SkipValidityCheck) {
             $validationArguments = @(
                 '-NoProfile', '-File', (Join-Path $repoRoot 'evals/Test-ABHarness.ps1'),
                 '-ValidityOnly', '-ArmManifest', $armsManifest, '-Configuration', $Configuration
-            ) + $(if ($Keep) { @('-Keep') } else { @() })
+            ) + $(if ($Confirmation) { @('-Confirmation') } else { @() }) +
+                $(if ($Keep) { @('-Keep') } else { @() })
             $validation = Invoke-ABProcess (Get-Command pwsh).Source $validationArguments $repoRoot @{} 14400000
             if ($validation.ExitCode -ne 0) { throw "A/B validity checks failed before the agent run:`n$($validation.Stdout)`n$($validation.Stderr)" }
         }
@@ -237,7 +241,7 @@ if (-not $SkipValidityCheck) {
 }
 
 $runId = [DateTimeOffset]::UtcNow.ToString('yyyyMMdd-HHmmss') + '-' + [Guid]::NewGuid().ToString('N').Substring(0, 8)
-$runRoot = Join-Path $repoRoot ("evals/results/{0}/{1}" -f $questionId, $runId)
+$runRoot = Join-Path $resultsRoot ("{0}/{1}" -f $questionId, $runId)
 New-Item -ItemType Directory -Path $runRoot -Force | Out-Null
 $trialSpecs = [Collections.Generic.List[object]]::new()
 foreach ($task in $selectedTasks) {
@@ -428,6 +432,17 @@ while ($nextIndex -lt $trialSpecs.Count -or $active.Count -gt 0) {
 
 Import-Module (Join-Path $PSScriptRoot 'tools/ABReport.psm1') -Force
 Write-ABReport $completed $selectedTasks $arms $trialCount $primaryMetric $questionData $questionId $runId $runRoot $fingerprint
+$summaryPath = Join-Path $runRoot 'summary.json'
+$summary = Read-ABJson $summaryPath
+$summary.confirmation = [bool]$Confirmation
+if ($Confirmation) {
+    $confirmationRoot = Get-ABSetRoot $repoRoot -Confirmation
+    $confirmationCommit = (& git -C $confirmationRoot rev-parse HEAD 2>$null | Out-String).Trim()
+    if ($LASTEXITCODE -eq 0 -and $confirmationCommit -match '^[0-9a-f]{40,64}$') {
+        $summary.confirmationCommit = $confirmationCommit
+    }
+}
+Write-ABJson $summaryPath $summary
 
 foreach ($arm in $arms) {
     if ($arm.server.Contains('worktreePath') -and $arm.server.worktreePath) {
