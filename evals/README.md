@@ -106,8 +106,13 @@ rows require person review. `graders[].judge` retains each raw response, parsed 
 SHA-256 of the complete judge prompt, and agreement or disagreement.
 
 Live judging launches the Opus Claude CLI and the Sol Codex CLI through the same `InferenceBroker.py`
-transport as live trials. Credentials stay in the controller; each judge child gets a private empty
-home, no inherited user configuration or rules, and a local broker provider. Set `MOTIF_CLAUDE_NATIVE`
+transport as live trials. Each judge child gets a private empty home and configuration, system essentials
+such as `PATH` and nothing else from the caller's environment: no user settings, instructions, skills,
+memory, project instructions or MCP servers. The Sol Judge reaches the model through a local broker
+provider, so its ChatGPT login stays in the controller. The Opus Judge receives only the access token
+from the owner's Claude login (`CLAUDE_CONFIG_DIR/.credentials.json`, default `~/.claude`), never the
+refresh token, and runs in safe mode; a missing or nearly expired login is a Cloud failure that says to
+run `claude` on the host. Set `MOTIF_CLAUDE_NATIVE`
 or `MOTIF_CODEX_NATIVE` to the corresponding host executable when needed. Judging starts only after
 closed-trial timestamps and frozen bundle hashes are checked, and never invokes the trial again.
 Answer keys, judge prompts and judge output are not staged in trial inputs or runtime mounts.
@@ -134,9 +139,11 @@ in the external grammar repository.
 
 ## Re-grade a stored run and calibrate on the host
 
-Run live calibration on the host before relying on new scores. Keep the original run and external
-v0.2.0 grammar checkout available; re-grading all tasks also needs the current built EvalSets executable,
-staged SIL ICU and pinned PanGloss. Neither command belongs inside a trial jail.
+Run live calibration on the host before relying on new scores. Keep the original run available, and
+`MOTIF_TEST_GRAMMARS` at the revision pinned in `evals/test-grammars.lock.json` (v0.3.0); the harness
+refuses any other revision, so a run recorded against an older pin is re-graded with the current task
+keys. Re-grading all tasks also needs the current built EvalSets executable, staged SIL ICU and pinned
+PanGloss. Neither command belongs inside a trial jail. The example run below was recorded on v0.2.0.
 
 ```bash
 unset MOTIF_MEANING_JUDGE_COMMAND

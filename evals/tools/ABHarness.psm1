@@ -558,6 +558,22 @@ function Get-ABRefusalCode([object] $ActivityRecord) {
     return $null
 }
 
+function Get-ABJudgeFamilies([object] $Arm, [string] $Policy = 'paired') {
+    $model = if ($Arm.Contains('model') -and $Arm.model) { [string]$Arm.model } else { '' }
+    $family = if ($model -match '^(claude-)?opus($|-)') { 'opus' } elseif ($model -match '(^|-)sol($|-)') { 'sol' } else { $null }
+    if ($Policy -ceq 'paired') {
+        if ($family) {
+            throw "Arm '$($Arm.id)' runs $model, which sits on the Judge pair; the model under test is never its own Judge. Use judge_policy 'other-family-alone'."
+        }
+        return @('opus', 'sol')
+    }
+    if ($Policy -ceq 'other-family-alone') {
+        if (-not $family) { throw "The other-family-alone policy has no family mapping for model '$model'." }
+        return @($(if ($family -eq 'opus') { 'sol' } else { 'opus' }))
+    }
+    throw "Unknown judge policy '$Policy'."
+}
+
 function Get-ABMeaningResult([object] $Task, [object] $Meaning, [string] $Message, [object] $Closure,
     [string[]] $JudgeFamilies = @('opus', 'sol')) {
     if (-not $Closure -or $Closure.state -ne 'clean' -or
@@ -912,6 +928,6 @@ function Get-ABGrade(
     }
 }
 
-Export-ModuleMember -Function Read-ABJson, Write-ABJson, Add-ABJsonl, Format-ABPosixArgument, Format-ABCommand, `
+Export-ModuleMember -Function Get-ABJudgeFamilies, Read-ABJson, Write-ABJson, Add-ABJsonl, Format-ABPosixArgument, Format-ABCommand, `
     Get-ABRepositoryFingerprint, Invoke-ABProcess, Resolve-ABTestGrammarsRoot, Read-ABLines, Test-ABTaskFuture, Get-ABParserRows, Get-ABToolAttempts, Get-ABGrade, `
     Test-ABInventedMorphology, Get-ABSetRoot, Get-ABIntegritySummary, Get-ABFakeMcpTimeoutMs, Get-ABTrialBase, New-ABTrialDirectory, Remove-ABTrialDirectory

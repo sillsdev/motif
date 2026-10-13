@@ -94,7 +94,12 @@ class RegradeTests(unittest.TestCase):
     def test_changed_frozen_bundle_is_unscored_without_redeciding_integrity(self):
         self.regrade('pass', None, tamper=True)
 
-    def regrade(self, mode, expected, right_clean=False, tamper=False):
+    def test_episode_excluded_at_the_boundary_stays_unscored_after_regrade(self):
+        for failure_class in ('cloud_failure', 'harness_defect'):
+            with self.subTest(failure_class=failure_class):
+                self.regrade('pass', None, boundary_class=failure_class)
+
+    def regrade(self, mode, expected, right_clean=False, tamper=False, boundary_class=None):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             repo, grammar, source = self.fixture(root)
@@ -108,6 +113,18 @@ class RegradeTests(unittest.TestCase):
                     if name == 'manifest.json': record['integrity']['state'] = 'clean'
                     else: record['state'] = 'clean'
                     (trial_root / name).write_text(json.dumps(record))
+            if boundary_class:
+                left = source / 'trials/diagnose/left/trial-1'
+                manifest = json.loads((left / 'manifest.json').read_text())
+                manifest['integrity']['failureClass'] = boundary_class
+                manifest['failureClass'] = boundary_class
+                (left / 'manifest.json').write_text(json.dumps(manifest))
+                grade = json.loads((left / 'grade.json').read_text())
+                grade.update(primaryScore=None, success=None, gradingState='unscored', failureClass=boundary_class)
+                (left / 'grade.json').write_text(json.dumps(grade))
+                summary = json.loads((source / 'summary.json').read_text())
+                summary['trials'][0].update(primaryScore=None, success=None, failureClass=boundary_class)
+                (source / 'summary.json').write_text(json.dumps(summary))
             if tamper:
                 (source / 'trials/diagnose/left/trial-1/frozen/host.json').write_text('{}')
             original = {p: p.read_bytes() for p in source.rglob('*') if p.is_file()}
@@ -138,7 +155,8 @@ class RegradeTests(unittest.TestCase):
             self.assertEqual(2, result['integrity']['attempted'])
             self.assertTrue(result['integrityReused'])
             self.assertEqual(str(source), result['sourceRun'])
-            self.assertEqual(int(mode == 'malformed' or tamper), result['grading']['harnessDefects'])
+            self.assertEqual(int(mode == 'malformed' or tamper or boundary_class == 'harness_defect'),
+                             result['grading']['harnessDefects'])
             for row in result['trials']:
                 self.assertTrue(all(Path(p).exists() for p in row['files'].values()))
             if expected is None:

@@ -123,7 +123,7 @@ class SemanticJudgeTests(unittest.TestCase):
     def test_live_codex_uses_broker_and_no_controller_credentials_in_child(self):
         class FakeBroker:
             def __init__(self, host, model, archive, auth_mode):
-                self.failures = []; self.denials = []
+                self.failures = []; self.failure_events = []; self.denials = []
                 self.model = model
                 self.auth_mode = auth_mode
         def run(command, **kwargs):

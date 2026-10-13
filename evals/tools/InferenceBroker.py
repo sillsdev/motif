@@ -30,6 +30,35 @@ class CloudFailure(InferenceFailure):
 
 
 LOGIN_FAILURE = "ChatGPT login is missing, expired or unusable; run codex on the host to refresh the login"
+SERVICE_STATUSES = {401, 403, 408, 409, 425, 429}
+CONTEXT_EVIDENCE = ("context_length_exceeded", "context length", "context window", "prompt is too long",
+                    "too many tokens", "maximum context", "request_too_large")
+
+
+def provider_error(content, secrets):
+    """The provider's own error type, code and message from an error body, short and credential-free."""
+    try:
+        error = json.loads(content).get("error")
+    except (ValueError, AttributeError):
+        error = None
+    if isinstance(error, str):
+        error = {"message": error}
+    if not isinstance(error, dict):
+        return {}
+    found = {key: str(error[key])[:200] for key in ("type", "code", "message") if error.get(key) is not None}
+    for secret in secrets:
+        found = {key: value.replace(secret, "[redacted]") for key, value in found.items()}
+    return found
+
+
+def status_failure_class(status, error):
+    """Policy for an upstream HTTP error: the service's fault, the Agent's context, or the harness's request."""
+    if status in SERVICE_STATUSES or status >= 500:
+        return "cloud_failure"
+    text = " ".join(error.values()).lower()
+    if status in (400, 413, 422) and any(marker in text for marker in CONTEXT_EVIDENCE):
+        return "agent_failure"
+    return "harness_defect"
 
 
 def inference_upstream(host, auth_mode=None):
@@ -97,6 +126,7 @@ class Broker:
         self.failure_events = []
         self.denials = []
         self.count = 0
+        self.last_success = 0
         self.session_id = str(uuid.uuid4())
         self.opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
         self.start_channel()
@@ -128,15 +158,21 @@ class Broker:
         method = frame.get("method")
         if path not in self.paths or method != "POST" or len(body) > LIMIT or self.count > 1000:
             self.denials.append("inference route or request limit refused")
+            self.record(None, body, outcome="refused", reason="route or request limit", requestedPath=str(path)[:200])
             return 403, {}, b'{"error":{"message":"Route refused by the model service"}}'
         document = json.loads(body)
         if document.get("model") != self.model:
             self.denials.append("unconfigured model refused")
+            self.record(None, body, outcome="refused", reason="unconfigured model", requestedPath=path)
             return 403, {}, b'{"error":{"message":"Model refused by the model service"}}'
         headers = {"Content-Type": "application/json"}
         destination = self.origin + path
         if self.upstream == "codex-chatgpt":
-            token, account = chatgpt_credentials()
+            try:
+                token, account = chatgpt_credentials()
+            except CloudFailure:
+                self.record(None, body, outcome="login_unusable")
+                raise
             secrets = (token, account)
             headers.update({"Authorization": "Bearer " + token, "chatgpt-account-id": account,
                             "OpenAI-Beta": "responses=experimental", "originator": "codex_cli_rs",
@@ -151,6 +187,7 @@ class Broker:
             incoming = {key.lower(): value for key, value in frame.get("headers", {}).items()}
             authorization = incoming.get("authorization", "")
             if not authorization.startswith("Bearer ") or not authorization[7:].strip():
+                self.record(None, body, outcome="login_unusable")
                 raise CloudFailure("Claude subscription login is missing or unusable")
             token = authorization[7:]
             secrets = (token,)
@@ -173,6 +210,7 @@ class Broker:
         except urllib.error.HTTPError as error:
             response = error
         except (OSError, urllib.error.URLError):
+            self.record(destination, body, outcome="transport_failure")
             raise CloudFailure("Inference upstream request failed") from None
         try:
             with response:
@@ -182,20 +220,32 @@ class Broker:
                 metadata = {"Content-Type": response.headers.get("Content-Type", "application/json")}
                 status = response.code
         except (OSError, http.client.HTTPException):
+            self.record(destination, body, outcome="response_failure")
             raise CloudFailure("Inference upstream response failed") from None
         for secret in secrets:
             content = content.replace(secret.encode(), b"[redacted]")
             metadata["Content-Type"] = metadata["Content-Type"].replace(secret, "[redacted]")
-        with (self.archive / "network.jsonl").open("a") as log:
-            log.write(json.dumps({"at": time.time(), "destination": destination, "status": status, "authMode": self.auth_mode,
-                                  "requestHash": hashlib.sha256(body).hexdigest()}) + "\n")
+        error = provider_error(content, secrets) if status >= 400 else {}
+        self.record(destination, body, status=status, **({"providerError": error} if error else {}))
         if self.upstream == "codex-chatgpt" and status == 401:
             raise CloudFailure(LOGIN_FAILURE)
         if status >= 400:
             evidence = "Inference upstream returned HTTP " + str(status)
+            if error:
+                evidence += ": " + " ".join(error[key] for key in ("type", "code", "message") if key in error)
             self.failures.append(evidence)
-            self.failure_events.append({"failureClass": "cloud_failure", "evidence": evidence})
+            self.failure_events.append({"failureClass": status_failure_class(status, error), "evidence": evidence,
+                                        "status": status, "request": self.count})
+        else:
+            self.last_success = self.count
         return status, metadata, content
+
+    def record(self, destination, body, status=None, **details):
+        row = {"at": time.time(), "destination": destination, "status": status, "authMode": self.auth_mode,
+               "requestHash": hashlib.sha256(body).hexdigest()}
+        row.update(details)
+        with (self.archive / "network.jsonl").open("a") as log:
+            log.write(json.dumps(row) + "\n")
 
     def serve(self):
         try:
@@ -212,13 +262,18 @@ class Broker:
                         evidence = str(error)
                         self.failures.append(evidence)
                         failure_class = "cloud_failure" if isinstance(error, CloudFailure) else "harness_defect"
-                        self.failure_events.append({"failureClass": failure_class, "evidence": evidence})
+                        self.failure_events.append({"failureClass": failure_class, "evidence": evidence,
+                                                    "request": self.count})
                         status, headers = 503, {"Content-Type": "application/json"}
                         body = json.dumps({"error": {"message": evidence}}).encode()
                     outgoing.write(json.dumps({"status": status, "headers": headers, "body": base64.b64encode(body).decode()}).encode() + b"\n")
                     outgoing.flush()
         except Exception as error:
             self.errors.append(type(error).__name__)
+
+    def episode_failures(self):
+        """Failure events, each marked recovered when the service answered a later request successfully."""
+        return [dict(event, recovered=event["request"] < self.last_success) for event in self.failure_events]
 
     def closed(self):
         self.thread.join(timeout=190)

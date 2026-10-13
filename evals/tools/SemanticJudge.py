@@ -3,6 +3,7 @@ import base64
 import hashlib
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
+import math
 import os
 from pathlib import Path
 import shutil
@@ -87,19 +88,59 @@ class HttpBroker(Broker):
         pass
 
 
+CLAUDE_LOGIN_FAILURE = 'Claude login is missing, expired or unusable; run claude on the host to refresh the login'
+CLAUDE_TOKEN_MARGIN_SECONDS = 300
+
+
+def claude_access_token():
+    try:
+        config = Path(os.environ['CLAUDE_CONFIG_DIR']) if os.environ.get('CLAUDE_CONFIG_DIR') else Path.home() / '.claude'
+        source = config / '.credentials.json'
+        if source.is_symlink() or not source.is_file():
+            raise ValueError()
+        login = json.loads(source.read_text(encoding='utf-8'))['claudeAiOauth']
+        token, expiry = login['accessToken'], login['expiresAt']
+        if not (isinstance(token, str) and token and token.isascii() and token.isprintable()
+                and not any(c.isspace() for c in token)):
+            raise ValueError()
+        if isinstance(expiry, bool) or not isinstance(expiry, (int, float)) or not math.isfinite(expiry):
+            raise ValueError()
+        if expiry / 1000 <= time.time() + CLAUDE_TOKEN_MARGIN_SECONDS:
+            raise ValueError()
+        return token
+    except (OSError, ValueError, KeyError, TypeError):
+        raise CloudFailure(CLAUDE_LOGIN_FAILURE) from None
+
+
+def judge_environment(root):
+    """The judge child's whole environment: system essentials and a private home, nothing of the caller's."""
+    environment = {key: os.environ[key] for key in ('PATH', 'SYSTEMROOT', 'WINDIR', 'TMP', 'TEMP') if key in os.environ}
+    for name in ('home', 'config', 'data', 'cache', 'state'):
+        (root / name).mkdir()
+    environment.update(HOME=str(root / 'home'), USERPROFILE=str(root / 'home'), XDG_CONFIG_HOME=str(root / 'config'),
+                       XDG_DATA_HOME=str(root / 'data'), XDG_CACHE_HOME=str(root / 'cache'),
+                       XDG_STATE_HOME=str(root / 'state'))
+    return environment
+
+
 def _invoke_opus(request):
     executable = os.environ.get('MOTIF_CLAUDE_NATIVE') or shutil.which('claude')
     if not executable:
         raise InferenceFailure('The Opus Judge requires the owner\'s Claude Code login')
+    token = claude_access_token()
     with tempfile.TemporaryDirectory(prefix='motif-opus-judge-') as directory:
-        environment = dict(os.environ)
-        for name in ('ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_BASE_URL'):
-            environment.pop(name, None)
-        environment.update(DISABLE_AUTOUPDATER='1', CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC='1')
+        root = Path(directory)
+        environment = judge_environment(root)
+        (root / 'claude').mkdir()
+        (root / 'work').mkdir()
+        # An access token in the environment cannot be refreshed, so the owner's refresh token never rotates.
+        environment.update(CLAUDE_CONFIG_DIR=str(root / 'claude'), CLAUDE_CODE_OAUTH_TOKEN=token,
+                           DISABLE_AUTOUPDATER='1', CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC='1')
         command = [executable, '-p', '--model', OPUS_MODEL, '--tools', '', '--output-format', 'text',
-                   '--no-session-persistence', '--strict-mcp-config', request['prompt']]
+                   '--no-session-persistence', '--strict-mcp-config', '--safe-mode', '--disable-slash-commands',
+                   request['prompt']]
         result = subprocess.run(command, text=True, encoding='utf-8', capture_output=True,
-                                env=environment, cwd=directory, timeout=240)
+                                env=environment, cwd=root / 'work', timeout=240)
         if result.returncode:
             raise CloudFailure('The Opus Judge did not complete')
         return result.stdout
@@ -142,13 +183,13 @@ def _invoke_sol(request):
             executable = os.environ.get('MOTIF_CODEX_NATIVE') or shutil.which('codex')
             if not executable:
                 raise InferenceFailure('The Sol Judge requires the Codex CLI')
-            environment = {key: os.environ[key] for key in ('PATH', 'SYSTEMROOT', 'WINDIR', 'TMP', 'TEMP') if key in os.environ}
+            environment = judge_environment(root)
             (root / 'codex').mkdir()
-            environment.update(HOME=str(root), USERPROFILE=str(root), CODEX_HOME=str(root / 'codex'))
+            environment.update(CODEX_HOME=str(root / 'codex'))
             command = [executable, 'exec', '--json', '-m', SOL_MODEL, '--sandbox', 'read-only', '--ephemeral',
                        '--skip-git-repo-check', '--ignore-user-config', '--ignore-rules', '--cd', str(root),
                        '--output-schema', str(schema), '--output-last-message', str(answer_path)]
-            for config in ['features.shell_snapshot=false', 'features.shell_tool=false', 'features.exec=false',
+            for config in ['project_doc_max_bytes=0', 'features.shell_snapshot=false', 'features.shell_tool=false', 'features.exec=false',
                            'web_search="disabled"', 'model_reasoning_effort="high"', 'model_provider="judge"',
                            'model_providers.judge.name="Control Judge Broker"',
                            f'model_providers.judge.base_url="http://127.0.0.1:{server.server_port}/v1"',
@@ -156,7 +197,10 @@ def _invoke_sol(request):
                 command.extend(['-c', config])
             result = subprocess.run(command + ['-'], input=request['prompt'], text=True, encoding='utf-8',
                                     capture_output=True, env=environment, cwd=root, timeout=240)
-            if result.returncode or not answer_path.exists() or broker.failures or broker.denials:
+            rejected = [event['evidence'] for event in broker.failure_events if event['failureClass'] != 'cloud_failure']
+            if rejected or broker.denials:
+                raise InferenceFailure('The Sol Judge request was rejected: ' + '; '.join(rejected + broker.denials))
+            if result.returncode or not answer_path.exists() or broker.failures:
                 raise CloudFailure('The Sol Judge did not complete')
             return answer_path.read_text()
         finally:

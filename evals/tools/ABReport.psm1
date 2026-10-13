@@ -266,6 +266,7 @@ function Write-ABReport {
         measurementFingerprint = $measurementFingerprint
         question = [string]$questionData.question
         questionId = $questionId
+        judgePolicy = if ($questionData.Contains('judge_policy')) { [string]$questionData.judge_policy } else { 'paired' }
         integrity = $integritySummary
         grading = @{ harnessDefects = $gradingFailures; trialsWithJudgeDisagreement = $judgeSplits;
             cloudFailures = @($completed | Where-Object { $_.failureClass -eq 'cloud_failure' }).Count }

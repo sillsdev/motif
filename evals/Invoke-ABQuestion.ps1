@@ -30,6 +30,11 @@ $questionData = Read-ABJson $questionPath
 $questionId = [IO.Path]::GetFileNameWithoutExtension($questionPath)
 $judgePolicy = if ($questionData.Contains('judge_policy')) { [string]$questionData.judge_policy } else { 'paired' }
 if ($judgePolicy -notin @('paired', 'other-family-alone')) { throw "Unknown judge policy '$judgePolicy'." }
+foreach ($armId in @([string]$questionData.arm_a, [string]$questionData.arm_b)) {
+    $armData = Read-ABJson (Join-Path $repoRoot ("evals/arms/{0}.yaml" -f $armId))
+    if (-not $armData.Contains('id')) { $armData.id = $armId }
+    [void](Get-ABJudgeFamilies $armData $judgePolicy)
+}
 $trialCount = if ($Trials -gt 0) { $Trials } elseif ($questionData.trials) { [int]$questionData.trials } else { 3 }
 if ($trialCount -lt 1) { throw 'The question must request at least one trial.' }
 $primaryMetric = if ($questionData.primary_metric) { [string]$questionData.primary_metric } else { 'grade' }
@@ -237,15 +242,7 @@ New-Item -ItemType Directory -Path $runRoot -Force | Out-Null
 $trialSpecs = [Collections.Generic.List[object]]::new()
 foreach ($task in $selectedTasks) {
     foreach ($arm in $arms) {
-        $judgeFamilies = @('opus', 'sol')
-        if ($judgePolicy -eq 'other-family-alone') {
-            $judgedFamily = switch ([string]$arm.model) {
-                'opus' { 'sol' }
-                'gpt-6-sol' { 'opus' }
-                default { throw "The other-family-alone policy has no family mapping for model '$($arm.model)'." }
-            }
-            $judgeFamilies = @($judgedFamily)
-        }
+        $judgeFamilies = Get-ABJudgeFamilies $arm $judgePolicy
         for ($trial = 1; $trial -le $trialCount; $trial++) {
             $outputRoot = Join-Path $runRoot ("trials/{0}/{1}/trial-{2}" -f $task.id, $arm.id, $trial)
             $privateRoot = New-ABTrialDirectory $repoRoot

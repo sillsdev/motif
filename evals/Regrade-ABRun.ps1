@@ -3,7 +3,8 @@ param(
     [Parameter(Mandatory)][string] $RunDirectory,
     [string] $Configuration = 'Debug',
     [switch] $Confirmation,
-    [string] $Tasks = '*'
+    [string] $Tasks = '*',
+    [ValidateSet('paired', 'other-family-alone')][string] $JudgePolicy
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -15,6 +16,7 @@ $source = Read-ABJson (Join-Path $sourceRoot 'summary.json')
 if (-not $source.Contains('measurementFingerprint') -or [string]$source.measurementFingerprint -notmatch '^[0-9a-f]{64}$') {
     throw 'This stored run has no valid measurement fingerprint. Recreate it with Invoke-ABQuestion before regrading.'
 }
+if (-not $JudgePolicy) { $JudgePolicy = if ($source.Contains('judgePolicy')) { [string]$source.judgePolicy } else { 'paired' } }
 $setRoot = Get-ABSetRoot $repoRoot
 $runId = 'regrade-' + [DateTimeOffset]::UtcNow.ToString('yyyyMMdd-HHmmss') + '-' + [Guid]::NewGuid().ToString('N').Substring(0, 8)
 $runRoot = Join-Path $sourceRoot $runId
@@ -40,7 +42,9 @@ try {
         New-Item -ItemType Directory -Path $outputRoot -Force | Out-Null
         $manifest = Read-ABJson (Join-Path $trialSource 'manifest.json')
         $grade = Read-ABJson (Join-Path $trialSource 'grade.json')
-        if ($manifest.integrity.state -eq 'clean') {
+        # The live run never grades an Episode its boundary excluded, so neither does a re-grade.
+        $boundaryClass = if ($manifest.integrity.Contains('failureClass')) { [string]$manifest.integrity.failureClass } else { '' }
+        if ($manifest.integrity.state -eq 'clean' -and $boundaryClass -notin @('cloud_failure', 'harness_defect')) {
             $arm = Read-ABJson (Join-Path $PSScriptRoot "arms/$($stored.arm).yaml")
             $profile = Read-ABJson (Join-Path $PSScriptRoot ([string]$arm.server.grade_profile))
             # Grade against the tools this trial's server offered, as the live trial did, not today's profile file.
@@ -54,7 +58,7 @@ try {
                 repoRoot = $repoRoot; confirmation = [bool]$Confirmation
                 bundle = Join-Path $trialSource 'frozen'; integrityPath = Join-Path $trialSource 'integrity.json'
                 task = $task; setPath = $task.setPath; builder = $builder; primaryMetric = $source.primaryMetric
-                profile = $profile; outputRoot = $outputRoot; scratchRoot = Join-Path $scratchRoot ([Guid]::NewGuid().ToString('N'))
+                profile = $profile; judgeFamilies = @(Get-ABJudgeFamilies $arm $JudgePolicy); outputRoot = $outputRoot; scratchRoot = Join-Path $scratchRoot ([Guid]::NewGuid().ToString('N'))
             }
             $configPath = Join-Path $scratchRoot 'grading.json'
             Write-ABJson $configPath $config
@@ -97,7 +101,7 @@ try {
     }
     $trialCount = [int](($source.arms | Select-Object -First 1).requestedTrials)
     Write-ABReport $completed $selectedTasks $source.arms $trialCount $source.primaryMetric @{
-        question = $source.question
+        question = $source.question; judge_policy = $JudgePolicy
     } $source.questionId $runId $runRoot $source.measurementFingerprint
     $summaryPath = Join-Path $runRoot 'summary.json'
     $summary = Read-ABJson $summaryPath

@@ -192,12 +192,17 @@ class BoundaryTests(unittest.TestCase):
         broker.paths = {"/v1/responses"}
         broker.denials = []
         broker.model = "declared-model"
+        broker.auth_mode = "api-key"
         import base64
-        frame = {"method": "POST", "path": "https://elsewhere.invalid/", "body": base64.b64encode(b'{}').decode()}
-        self.assertEqual(403, broker.forward(frame)[0])
-        frame.update(path="/v1/responses", body=base64.b64encode(b'{"model":"other"}').decode())
-        self.assertEqual(403, broker.forward(frame)[0])
-        self.assertEqual(2, len(broker.denials))
+        with tempfile.TemporaryDirectory() as directory:
+            broker.archive = Path(directory)
+            frame = {"method": "POST", "path": "https://elsewhere.invalid/", "body": base64.b64encode(b'{}').decode()}
+            self.assertEqual(403, broker.forward(frame)[0])
+            frame.update(path="/v1/responses", body=base64.b64encode(b'{"model":"other"}').decode())
+            self.assertEqual(403, broker.forward(frame)[0])
+            self.assertEqual(2, len(broker.denials))
+            rows = [json.loads(line) for line in (broker.archive / "network.jsonl").read_text().splitlines()]
+            self.assertEqual(["refused", "refused"], [row["outcome"] for row in rows])
 
 
 if __name__ == "__main__":

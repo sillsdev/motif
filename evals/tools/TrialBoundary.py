@@ -177,7 +177,7 @@ def audited_run(config, label, command, timeout):
     if broker:
         if not broker.closed():
             audit_complete = False
-        inference_errors = broker.failure_events
+        inference_errors = broker.episode_failures()
     if broker and broker.denials:
         config["networkDenials"] = broker.denials
     network_path = archive / "network.jsonl"
@@ -579,6 +579,12 @@ def run(config):
             else:
                 failure_class = 'cloud_failure'
                 evidence = failure
+            # A later request succeeded, so this error did not end the Episode.
+            if (isinstance(failure, dict) and failure.get('recovered') and
+                    (failure_class != 'harness_defect' or 'status' in failure)):
+                integrity.setdefault('recoveredInferenceErrors', []).append(
+                    {'class': failure_class, 'evidence': str(evidence)})
+                continue
             record_failure(integrity, failure_class, evidence)
         try:
             integrity['mcpRegistration'] = client_registration(session, names, config['host'])
