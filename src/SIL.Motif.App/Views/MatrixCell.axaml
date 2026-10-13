@@ -4,6 +4,7 @@
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.MatrixCell"
              x:DataType="vm:CompareCellViewModel"
+             AutomationProperties.Name="{Binding AccessibleName}"
              Focusable="True">
   <Border Classes="matrixCell" Classes.compact="{Binding $parent[views:MatrixCell].Compact}"
           Focusable="True" Tag="{Binding}"

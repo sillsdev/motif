@@ -11,7 +11,7 @@
           Classes.uncertainChanged="{Binding IsUncertainChanged}"
           Classes.dimmed="{Binding IsDimmed}" Focusable="True" IsTabStop="True"
           AutomationProperties.AutomationId="{Binding StripAutomationId}"
-          ToolTip.Tip="{Binding HoverSummary}" views:ClearTipPlacement.IsEnabled="True">
+          ToolTip.Tip="{Binding TooltipSummary}" views:ClearTipPlacement.IsEnabled="True">
   <Grid x:Name="StripContent" x:DataType="vm:ResultsTokenViewModel"
         ColumnDefinitions="*,Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
       <StackPanel Grid.Column="0" Classes="stripStack stripRows">

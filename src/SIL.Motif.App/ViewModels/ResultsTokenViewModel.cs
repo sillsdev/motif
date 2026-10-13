@@ -566,8 +566,11 @@ public sealed partial class ResultsTokenViewModel : ObservableObject, IDisposabl
         _ => CompareColumnKind.Skipped,
     };
 
-    /// <summary>The read-only hover summary for the stored opinion and current PanGloss result.</summary>
-    public string HoverSummary => $"{Form} · {FieldWorksSummary} · PanGloss: {PanGlossSummary}";
+    /// <summary>The word and stored opinion details shown in its visual tooltip.</summary>
+    public string TooltipSummary => $"{Form} · {FieldWorksSummary} · PanGloss: {PanGlossSummary}";
+
+    /// <summary>The accessible summary for the word, its read state, and its current PanGloss result.</summary>
+    public string HoverSummary => $"{(ShowUnread ? "Unread · " : string.Empty)}{TooltipSummary}";
 
     private string FieldWorksSummary => FieldWorksAnalyses.Count == 0
         ? "No analysis in FieldWorks"
@@ -801,7 +804,7 @@ public sealed partial class ResultsTokenViewModel : ObservableObject, IDisposabl
                      nameof(IsPanGlossExtra), nameof(IsPanGlossNone), nameof(IsPanGlossCapped), nameof(PanGlossSummary),
                      nameof(PanGlossNote), nameof(PanGlossNoteMark), nameof(ShowsPanGlossReading), nameof(ShowsPanGlossNote),
                      nameof(HasMorePanGlossReadings), nameof(HasPrimaryAction), nameof(PrimaryActionLabel), nameof(BoundPrimaryAction),
-                     nameof(HoverSummary), nameof(Disposition),
+                     nameof(TooltipSummary), nameof(HoverSummary), nameof(Disposition),
                  })
             OnPropertyChanged(name);
     }

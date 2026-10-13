@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Data;
@@ -10,6 +11,8 @@ using Avalonia.Input;
 using Avalonia.LogicalTree;
 using Avalonia.Styling;
 using Avalonia.Threading;
+using SIL.Motif.App.Controls;
+using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Commands.Queries;
@@ -87,10 +90,35 @@ public sealed class ViewTokenTests
         var token = new ResultsTokenViewModel("Text", 1,
             new TextToken("word", "word", null, null), null);
         var markup = File.ReadAllText(Path.Combine(AppDirectory(), "Controls", "WordPresentation", "WordStripToken.axaml"));
-        Assert.Equal("word · No analysis in FieldWorks · PanGloss: Not parsed yet", token.HoverSummary);
+        Assert.Equal("word · No analysis in FieldWorks · PanGloss: Not parsed yet", token.TooltipSummary);
+        Assert.Equal(token.TooltipSummary, token.HoverSummary);
         Assert.Null(token.Actions);
-        Assert.Contains("ToolTip.Tip=\"{Binding HoverSummary}\"", markup, StringComparison.Ordinal);
+        Assert.Contains("ToolTip.Tip=\"{Binding TooltipSummary}\"", markup, StringComparison.Ordinal);
         Assert.DoesNotContain("<ToolTip", markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void UnreadWordAutomationNameIncludesItsReadState()
+    {
+        var token = new ResultsTokenViewModel("Text", 1,
+            new TextToken("word", "word", null, null),
+            new AssessmentWordResult("word", "no-analysis", false, "Complete", 3, null));
+
+        _avalonia.Invoke(() =>
+        {
+            var strip = new WordStripToken { Data = token };
+            var unreadMark = Assert.Single(strip.GetLogicalDescendants().OfType<UnreadMark>());
+
+            Assert.StartsWith("Unread · ", token.HoverSummary, StringComparison.Ordinal);
+            Assert.Equal(token.HoverSummary, AutomationProperties.GetName(strip));
+            Assert.Equal("Unread", AutomationProperties.GetName(unreadMark));
+
+            token.SetReadState(true);
+
+            Assert.DoesNotContain("Unread", token.HoverSummary, StringComparison.Ordinal);
+            Assert.Equal(token.HoverSummary, AutomationProperties.GetName(strip));
+            Assert.DoesNotContain("Unread", token.TooltipSummary, StringComparison.Ordinal);
+        });
     }
 
     [Fact]

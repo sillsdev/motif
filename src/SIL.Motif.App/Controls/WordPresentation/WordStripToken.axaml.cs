@@ -172,6 +172,12 @@ public sealed partial class WordStripToken : Border
 
     private void OnDataPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(ResultsTokenViewModel.HoverSummary))
+        {
+            if (Dispatcher.UIThread.CheckAccess()) SetCurrentAutomationName();
+            else Dispatcher.UIThread.Post(SetCurrentAutomationName);
+            return;
+        }
         if (e.PropertyName is { Length: > 0 } name && name is not (
                 nameof(ResultsTokenViewModel.ShowUnread) or nameof(ResultsTokenViewModel.HasNamedWarning) or
                 nameof(ResultsTokenViewModel.HasDisapprovedReading) or nameof(ResultsTokenViewModel.HasFieldWorksAnalyses) or
@@ -181,6 +187,11 @@ public sealed partial class WordStripToken : Border
                 nameof(ResultsTokenViewModel.HasStagedChanges) or nameof(ResultsTokenViewModel.ShowsActions))) return;
         if (Dispatcher.UIThread.CheckAccess()) SyncOptionalControls();
         else Dispatcher.UIThread.Post(SyncOptionalControls);
+    }
+
+    private void SetCurrentAutomationName()
+    {
+        if (_observedData is { } data) AutomationProperties.SetName(_strip, data.HoverSummary);
     }
 
     private void SyncOptionalControls()

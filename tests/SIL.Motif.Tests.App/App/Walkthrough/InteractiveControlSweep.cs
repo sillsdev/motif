@@ -70,6 +70,7 @@ internal static class InteractiveControlSweep
             .ToArray();
         var discovered = new Dictionary<InteractiveControlFamily, List<string>>();
         var unknown = new List<string>();
+        var unnamedInteractive = new List<string>();
 
         foreach (var (root, control) in controls)
         {
@@ -86,6 +87,9 @@ internal static class InteractiveControlSweep
             {
                 unknown.Add(Describe(root, control, null));
             }
+
+            if (RequiresAccessibleName(control) && string.IsNullOrWhiteSpace(EffectiveAccessibleName(control)))
+                unnamedInteractive.Add(Describe(root, control, families.FirstOrDefault()));
         }
 
         var observedFamilies = discovered.Keys.ToHashSet();
@@ -100,10 +104,12 @@ internal static class InteractiveControlSweep
             [currentPageId, .. criticalActions], observedAutomationIds);
         var observed = string.Join("; ", discovered.OrderBy(pair => pair.Key)
             .Select(pair => $"{pair.Key} ({pair.Value.Count}): {pair.Value[0]}"));
-        Assert.True(missing.Count == 0 && missingAutomationIds.Count == 0 && unknown.Count == 0,
+        Assert.True(missing.Count == 0 && missingAutomationIds.Count == 0 && unknown.Count == 0 &&
+                    unnamedInteractive.Count == 0,
             $"Scene '{scene}' contract mismatch. Missing required families=[{string.Join(", ", missing)}]; " +
             $"missing critical AutomationIds=[{string.Join(", ", missingAutomationIds)}]; " +
-            $"unknown peers ({unknown.Count})=[{string.Join(" | ", unknown.Take(12))}]. " +
+            $"unknown peers ({unknown.Count})=[{string.Join(" | ", unknown.Take(12))}]; " +
+            $"interactive controls without names ({unnamedInteractive.Count})=[{string.Join(" | ", unnamedInteractive.Take(12))}]. " +
             $"Observed=[{observed}].");
     }
 
@@ -122,6 +128,41 @@ internal static class InteractiveControlSweep
             return [family, InteractiveControlFamily.FocusableSurface];
         return [family];
     }
+
+    private static bool RequiresAccessibleName(Control control)
+    {
+        if (control is ToggleButton { Name: "ExpanderHeader" } || IsNumericUpDownPart(control)) return false;
+        var family = FamilyOf(control);
+        if (family == InteractiveControlFamily.Occurrence) return control.Focusable;
+        return family is InteractiveControlFamily.Action or InteractiveControlFamily.Link or
+            InteractiveControlFamily.Filter or InteractiveControlFamily.TextEntry or InteractiveControlFamily.Choice or
+            InteractiveControlFamily.Check or InteractiveControlFamily.Radio or InteractiveControlFamily.Disclosure or
+            InteractiveControlFamily.List or InteractiveControlFamily.MatrixCell or InteractiveControlFamily.Tree or
+            InteractiveControlFamily.Grid or InteractiveControlFamily.FocusableSurface;
+    }
+
+    private static bool IsNumericUpDownPart(Control control) =>
+        control.Name is { } name && name.StartsWith("PART_", StringComparison.Ordinal) &&
+        control.GetVisualAncestors().OfType<NumericUpDown>().Any();
+
+    private static string? EffectiveAccessibleName(Control control)
+    {
+        var explicitName = AutomationProperties.GetName(control);
+        if (!string.IsNullOrWhiteSpace(explicitName)) return explicitName;
+        if (control is ContentControl { Content: string text }) return text;
+        if (control is Expander { Header: { } header }) return VisibleText(header);
+        return control is ListBoxItem ? VisibleText(control) : null;
+    }
+
+    private static string? VisibleText(object content) => content switch
+    {
+        string text => text,
+        TextBlock textBlock => textBlock.Text,
+        Control control => string.Join(" ", control.GetVisualDescendants().OfType<TextBlock>()
+            .Where(textBlock => textBlock.IsEffectivelyVisible && !string.IsNullOrWhiteSpace(textBlock.Text))
+            .Select(textBlock => textBlock.Text)),
+        _ => null,
+    };
 
     private static IReadOnlyList<(Control Root, string Label)> CollectRoots(WalkthroughWindow walkthrough)
     {

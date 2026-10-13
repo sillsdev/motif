@@ -705,7 +705,7 @@ internal static class TooltipOwners
         },
         new("text to read", "Views/ResultsInTextPanel.axaml", "{Binding Title}", TooltipScene.TextPicker,
             control => control is TextBlock && control.DataContext is ResultsTextViewModel),
-        new("word strip", "Controls/WordPresentation/WordStripToken.axaml", "{Binding HoverSummary}", TooltipScene.Reader,
+        new("word strip", "Controls/WordPresentation/WordStripToken.axaml", "{Binding TooltipSummary}", TooltipScene.Reader,
             control => control is Border { Name: "WordStrip" }),
         new("a word's opinion mark", "Views/WordDispositionButtons.axaml", "{Binding Disposition.MarkTip}", TooltipScene.Reader,
             control => control is Button && AutomationProperties.GetName(control) == "Change what FieldWorks holds for this word"),

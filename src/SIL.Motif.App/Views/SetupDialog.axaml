@@ -73,7 +73,8 @@
                     <DataTemplate x:DataType="vm:TextChoiceViewModel">
                       <Border Classes="setupTextRow">
                         <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
-                          <CheckBox IsChecked="{Binding IsChecked}" VerticalAlignment="Center" />
+                          <CheckBox IsChecked="{Binding IsChecked}" VerticalAlignment="Center"
+                                    AutomationProperties.Name="{Binding Title}" />
                           <TextBlock Grid.Column="1" Text="{Binding Title}" FontWeight="SemiBold" VerticalAlignment="Center" />
                           <TextBlock Grid.Column="2" Classes="setupMuted" Text="{Binding DistinctCountText}"
                                      TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
