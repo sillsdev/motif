@@ -100,6 +100,7 @@ public static class ProposalDryRunner
             }
 
             RuleContextSemanticValidator.ValidateProposal(cache, proposal.Operations);
+            InflectionRegionSemanticValidator.ValidateProposal(cache, proposal.Operations);
         }
 
         var effectDigest = ExpectedEffectSetDigest.Compute(effects);

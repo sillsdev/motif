@@ -186,6 +186,7 @@ public static class ProposalApplier
             }
 
             RuleContextSemanticValidator.ValidateProposal(cache, proposal.Operations);
+            InflectionRegionSemanticValidator.ValidateProposal(cache, proposal.Operations);
 
             // Exactly one applied-log entry, written inside this same unit of work, so a rollback leaves none.
             ProjectAppliedLog.WriteEntry(cache, logEntry);

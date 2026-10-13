@@ -16,8 +16,20 @@ public static partial class SnapshotFields
     /// <summary>A <c>CmPossibility</c>'s <c>SubPossibilities</c> owning CmPossibility field.</summary>
     public const string CmPossibilitySubPossibilities = "lists/cmPossibility/subPossibilities";
 
+    /// <summary>A <c>FsClosedFeature</c>'s <c>Values</c> owning FsSymFeatVal field.</summary>
+    public const string FsClosedFeatureValues = "grammar/fsClosedFeature/values";
+
     /// <summary>A <c>FsClosedValue</c>'s <c>Value</c> rel atomic field.</summary>
     public const string FsClosedValueValue = "grammar/fsClosedValue/value";
+
+    /// <summary>A <c>FsFeatDefn</c>'s <c>Name</c> basic MultiUnicode field.</summary>
+    public const string FsFeatDefnName = "grammar/fsFeatDefn/name";
+
+    /// <summary>A <c>FsFeatureSystem</c>'s <c>Features</c> owning FsFeatDefn field.</summary>
+    public const string FsFeatureSystemFeatures = "grammar/fsFeatureSystem/features";
+
+    /// <summary>A <c>FsSymFeatVal</c>'s <c>Name</c> basic MultiUnicode field.</summary>
+    public const string FsSymFeatValName = "grammar/fsSymFeatVal/name";
 
     /// <summary>A <c>LexEntry</c>'s <c>MorphoSyntaxAnalyses</c> owning MoMorphSynAnalysis field.</summary>
     public const string LexEntryMorphoSyntaxAnalyses = "lexical/lexEntry/morphoSyntaxAnalyses";
@@ -34,11 +46,29 @@ public static partial class SnapshotFields
     /// <summary>A <c>MoInflAffixTemplate</c>'s <c>Name</c> basic MultiUnicode field.</summary>
     public const string MoInflAffixTemplateName = "grammar/moInflAffixTemplate/name";
 
+    /// <summary>A <c>MoInflClass</c>'s <c>Name</c> basic MultiUnicode field.</summary>
+    public const string MoInflClassName = "grammar/moInflClass/name";
+
+    /// <summary>A <c>MoInflClass</c>'s <c>Subclasses</c> owning MoInflClass field.</summary>
+    public const string MoInflClassSubclasses = "grammar/moInflClass/subclasses";
+
+    /// <summary>A <c>MoStemName</c>'s <c>Name</c> basic MultiUnicode field.</summary>
+    public const string MoStemNameName = "grammar/moStemName/name";
+
+    /// <summary>A <c>MoStemName</c>'s <c>Regions</c> owning FsFeatStruc field.</summary>
+    public const string MoStemNameRegions = "grammar/moStemName/regions";
+
     /// <summary>A <c>PartOfSpeech</c>'s <c>AffixSlots</c> owning MoInflAffixSlot field.</summary>
     public const string PartOfSpeechAffixSlots = "grammar/partOfSpeech/affixSlots";
 
     /// <summary>A <c>PartOfSpeech</c>'s <c>AffixTemplates</c> owning MoInflAffixTemplate field.</summary>
     public const string PartOfSpeechAffixTemplates = "grammar/partOfSpeech/affixTemplates";
+
+    /// <summary>A <c>PartOfSpeech</c>'s <c>InflectionClasses</c> owning MoInflClass field.</summary>
+    public const string PartOfSpeechInflectionClasses = "grammar/partOfSpeech/inflectionClasses";
+
+    /// <summary>A <c>PartOfSpeech</c>'s <c>StemNames</c> owning MoStemName field.</summary>
+    public const string PartOfSpeechStemNames = "grammar/partOfSpeech/stemNames";
 
     /// <summary>A <c>PhEnvironment</c>'s <c>Name</c> basic MultiUnicode field.</summary>
     public const string PhEnvironmentName = "grammar/phEnvironment/name";

@@ -67,6 +67,15 @@
     },
     {
       "tool": "motif_add_phonological_rule"
+    },
+    {
+      "tool": "motif_add_inflection_feature"
+    },
+    {
+      "tool": "motif_add_inflection_class"
+    },
+    {
+      "tool": "motif_add_stem_name"
     }
   ]
 }

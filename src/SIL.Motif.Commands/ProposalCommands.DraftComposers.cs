@@ -69,6 +69,12 @@ public static partial class ProposalCommands
             AuthorPartOfSpeechComposer.Build(cache, AuthorPartOfSpeechIntentParser.Parse(input))),
         new("compose-author-lexical-entry", "AuthorLexicalEntry", (cache, input, _) =>
             AuthorLexicalEntryComposer.Build(cache, AuthorLexicalEntryIntentParser.Parse(input))),
+        new("compose-author-inflection-feature", "AuthorInflectionFeature", (cache, input, _) =>
+            AuthorInflectionFeatureComposer.Build(cache, AuthorInflectionFeatureIntentParser.Parse(input))),
+        new("compose-author-inflection-class", "AuthorInflectionClass", (cache, input, _) =>
+            AuthorInflectionClassComposer.Build(cache, AuthorInflectionClassIntentParser.Parse(input))),
+        new("compose-author-stem-name", "AuthorStemName", (cache, input, _) =>
+            AuthorStemNameComposer.Build(cache, AuthorStemNameIntentParser.Parse(input))),
         new("compose-author-affix-slot", "AuthorAffixSlot", (cache, input, _) =>
             AuthorAffixSlotComposer.Build(cache, AuthorAffixSlotIntentParser.Parse(input))),
         new("compose-author-affix-template", "AuthorAffixTemplate", (cache, input, _) =>

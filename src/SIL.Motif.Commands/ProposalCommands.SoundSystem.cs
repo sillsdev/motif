@@ -58,6 +58,18 @@ public static partial class ProposalCommands
         ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
             DraftComposers["compose-author-part-of-speech"]);
 
+    public static CommandOutcome<ComposedOperationsResponse> ComposeAuthorInflectionFeature(ComposeAuthorInflectionFeatureRequest request) =>
+        ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
+            DraftComposers["compose-author-inflection-feature"]);
+
+    public static CommandOutcome<ComposedOperationsResponse> ComposeAuthorInflectionClass(ComposeAuthorInflectionClassRequest request) =>
+        ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
+            DraftComposers["compose-author-inflection-class"]);
+
+    public static CommandOutcome<ComposedOperationsResponse> ComposeAuthorStemName(ComposeAuthorStemNameRequest request) =>
+        ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
+            DraftComposers["compose-author-stem-name"]);
+
     public static CommandOutcome<ComposedOperationsResponse> ComposeAuthorLexicalEntry(
         ComposeAuthorLexicalEntryRequest request) =>
         ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,

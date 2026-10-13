@@ -271,7 +271,7 @@ internal static class SoundSystemAuthoring
         }
     }
 
-    internal sealed class Builder(Func<CanonicalId>? mintId)
+    internal sealed class Builder(Func<CanonicalId>? mintId, string rationale = "Authored sound-system intent.")
     {
         private readonly Func<CanonicalId> _mint = mintId ?? (() => CanonicalId.Mint());
         private readonly Dictionary<CanonicalId, CanonicalId> _creates = new();
@@ -294,7 +294,7 @@ internal static class SoundSystemAuthoring
             var dependencies = referenced.Where(_creates.ContainsKey).Select(id => _creates[id]).Distinct()
                 .Select(id => new OperationDependency(id)).ToArray();
             var operation = new OperationEnvelope(_mint(), kind, entityId, target, JsonSerializer.SerializeToElement(after),
-                placement, dependencies, rationale: "Authored sound-system intent.");
+                placement, dependencies, rationale: rationale);
             Operations.Add(operation);
             return operation;
         }

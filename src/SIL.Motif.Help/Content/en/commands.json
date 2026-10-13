@@ -498,5 +498,20 @@
     "title": "Withdraw a Proposal",
     "description": "Takes back an open Proposal and keeps its history. A person can reopen it later as a Draft.",
     "source": "Hand-written from command behavior."
+  },
+  "compose-author-inflection-feature": {
+    "title": "Author inflection feature",
+    "description": "Adds a closed morphosyntactic feature and its named values to a Draft. Use the created ids in feature-structure and stem-name authoring, then Dry Run and Trial the Draft before Finalize.",
+    "source": "Hand-written from the closed intent and composer contract."
+  },
+  "compose-author-inflection-class": {
+    "title": "Author inflection class",
+    "description": "Adds an inflection class or subclass, such as a noun class, to a Draft. Its owner is explicit and the category's default is unchanged; use the created id when authoring a stem.",
+    "source": "Hand-written from the closed intent and composer contract."
+  },
+  "compose-author-stem-name": {
+    "title": "Author a stem name",
+    "description": "Adds a category-owned stem name with explicit feature regions to a Draft. Each region states where an allomorph bearing this stem name is eligible; attaching it to an allomorph is a separate operation.",
+    "source": "Hand-written from the closed intent and composer contract."
   }
 }

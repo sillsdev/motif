@@ -16,6 +16,62 @@ namespace SIL.Motif.Tests.Commands;
 public sealed class LexiconDraftTests(PristineProjectFixture pristine)
 {
     [Fact]
+    public void InflectionPiecesAndAnEntryComposeTogetherWithCrossIntentDependencies()
+    {
+        using var cache = pristine.NewScratch();
+        var path = cache.ProjectId.Path;
+        var ws = cache.WritingSystemFactory.GetStrFromWs(cache.DefaultAnalWs);
+        var vernacular = cache.WritingSystemFactory.GetStrFromWs(cache.DefaultVernWs);
+        var category = CanonicalId.FromGuid(pristine.Seed.PartOfSpeechId);
+        cache.Dispose();
+        const string version = "0.1.0";
+        const string draft = "inflection-noun";
+        Assert.True(ProposalCommands.New(new(path, version, draft, "Add inflection pieces")).Succeeded);
+        var feature = ProposalCommands.ComposeAuthorInflectionFeature(new(path, version, draft,
+            JsonSerializer.Serialize(new { name = "Number", ws, values = new[] { new { name = "Plural", abbreviation = "pl" } } })));
+        Assert.True(feature.Succeeded, feature.Refusal?.Message);
+        var featureCreate = feature.Value!.Operations.Single(op => op.Kind == "grammar/fsFeatureSystem/createFeatures");
+        var valueCreate = feature.Value.Operations.Single(op => op.Kind == "grammar/fsClosedFeature/createValues");
+        var cls = ProposalCommands.ComposeAuthorInflectionClass(new(path, version, draft,
+            JsonSerializer.Serialize(new { category = category.Value, name = "Class Seven", ws })));
+        Assert.True(cls.Succeeded, cls.Refusal?.Message);
+        var classCreate = cls.Value!.Operations.Single(op => op.Kind == "grammar/partOfSpeech/createInflectionClasses");
+        var stem = ProposalCommands.ComposeAuthorStemName(new(path, version, draft, JsonSerializer.Serialize(new
+        {
+            category = category.Value, name = "Plural stem", ws,
+            regions = new[] { new[] { new { feature = featureCreate.EntityId, value = valueCreate.EntityId } } },
+        })));
+        Assert.True(stem.Succeeded, stem.Refusal?.Message);
+        var entry = ProposalCommands.ComposeAuthorLexicalEntry(new(path, version, draft, JsonSerializer.Serialize(new
+        {
+            form = "vitabu", formWs = vernacular, morphType = CanonicalId.FromGuid(MoMorphTypeTags.kguidMorphStem).Value,
+            gloss = "books", analysisWs = ws, msa = new { kind = "stem", category = category.Value, inflectionClass = classCreate.EntityId },
+        })));
+        Assert.True(entry.Succeeded, entry.Refusal?.Message);
+        Assert.True(ProposalCommands.Label(new(path, version, draft, "Add an inflected noun")).Succeeded);
+        Assert.True(ProposalCommands.Comment(new(path, version, draft, "Explicit grammar pieces and a noun.")).Succeeded);
+        var finalized = ProposalCommands.Finalize(new(path, version, draft));
+        Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
+        var loaded = ProjectStoreCommand.Run<Proposal>(path, version, (database, _) =>
+            CommandOutcome<Proposal>.Success(ProposalJsonParser.Parse(new ProposalRepository(database)
+                .Get(CanonicalId.Parse(finalized.Value!.ProposalId)).ProposalJson!)));
+        Assert.True(loaded.Succeeded, loaded.Refusal?.Message);
+        var proposal = loaded.Value!;
+        foreach (var (kind, predecessor) in new[]
+        {
+            ("grammar/fsFeatureSpecification/setFeature", featureCreate.OperationId),
+            ("grammar/fsClosedValue/setValue", valueCreate.OperationId),
+            ("grammar/moStemMsa/setInflectionClass", classCreate.OperationId),
+        })
+            Assert.Contains(CanonicalId.Parse(predecessor), Assert.Single(proposal.Operations, op => op.Kind == kind)
+                .DependsOn.Select(dependency => dependency.OperationId));
+        using var scratch = DryRunScratch.Adopt(new SIL.Motif.Host.LcmUtils.FwDataProjectLoader().LoadScratchCache(path), "inflection pieces");
+        var effects = ProposalDryRunner.Run(scratch, proposal).ExpectedEffects;
+        foreach (var field in new[] { "grammar/fsFeatureSystem/features", "grammar/moStemName/regions", "grammar/moStemMsa/inflectionClass" })
+            Assert.Contains(effects, effect => effect.Field == field);
+    }
+
+    [Fact]
     public void AnEntryUsesAPartOfSpeechCreatedEarlierInTheSameDraft()
     {
         using var cache = pristine.NewScratch();

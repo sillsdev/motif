@@ -113,6 +113,75 @@ public static class ProposalOperationSlotValidator
             PhSegmentRuleNameOperationKinds.ClearName when operation.Target is { } target &&
                 operation.After is { } after =>
                 (target, SnapshotFields.PhSegmentRuleName, PhSegmentRuleNameClearPayload.Parse(after)),
+            FsFeatureSystemFeaturesOperationKinds.Create when operation.Target is { } target &&
+                operation.EntityId is { } member => (target, SnapshotFields.FsFeatureSystemFeatures, member.Value),
+            FsClosedFeatureValuesOperationKinds.Create when operation.Target is { } target &&
+                operation.EntityId is { } member => (target, SnapshotFields.FsClosedFeatureValues, member.Value),
+            PartOfSpeechInflectionClassesOperationKinds.Create when operation.Target is { } target &&
+                operation.EntityId is { } member => (target, SnapshotFields.PartOfSpeechInflectionClasses, member.Value),
+            MoInflClassSubclassesOperationKinds.Create when operation.Target is { } target &&
+                operation.EntityId is { } member => (target, SnapshotFields.MoInflClassSubclasses, member.Value),
+            PartOfSpeechStemNamesOperationKinds.Create when operation.Target is { } target &&
+                operation.EntityId is { } member => (target, SnapshotFields.PartOfSpeechStemNames, member.Value),
+            MoStemNameRegionsOperationKinds.Create when operation.Target is { } target &&
+                operation.EntityId is { } member => (target, SnapshotFields.MoStemNameRegions, member.Value),
+            FsFeatDefnNameOperationKinds.SetName when operation.Target is { } target &&
+                operation.After is { } after =>
+                (target, SnapshotFields.FsFeatDefnName, FsFeatDefnNameSetPayload.Parse(after).WritingSystemTag),
+            FsFeatDefnNameOperationKinds.ClearName when operation.Target is { } target &&
+                operation.After is { } after =>
+                (target, SnapshotFields.FsFeatDefnName, FsFeatDefnNameClearPayload.Parse(after)),
+            FsFeatDefnAbbreviationOperationKinds.SetAbbreviation when operation.Target is { } target &&
+                operation.After is { } after =>
+                (target, SnapshotFields.FsFeatDefnAbbreviation, FsFeatDefnAbbreviationSetPayload.Parse(after).WritingSystemTag),
+            FsFeatDefnAbbreviationOperationKinds.ClearAbbreviation when operation.Target is { } target &&
+                operation.After is { } after =>
+                (target, SnapshotFields.FsFeatDefnAbbreviation, FsFeatDefnAbbreviationClearPayload.Parse(after)),
+            FsSymFeatValNameOperationKinds.SetName when operation.Target is { } target &&
+                operation.After is { } after =>
+                (target, SnapshotFields.FsSymFeatValName, FsSymFeatValNameSetPayload.Parse(after).WritingSystemTag),
+            FsSymFeatValNameOperationKinds.ClearName when operation.Target is { } target &&
+                operation.After is { } after =>
+                (target, SnapshotFields.FsSymFeatValName, FsSymFeatValNameClearPayload.Parse(after)),
+            FsSymFeatValAbbreviationOperationKinds.SetAbbreviation when operation.Target is { } target &&
+                operation.After is { } after =>
+                (target, SnapshotFields.FsSymFeatValAbbreviation, FsSymFeatValAbbreviationSetPayload.Parse(after).WritingSystemTag),
+            FsSymFeatValAbbreviationOperationKinds.ClearAbbreviation when operation.Target is { } target &&
+                operation.After is { } after =>
+                (target, SnapshotFields.FsSymFeatValAbbreviation, FsSymFeatValAbbreviationClearPayload.Parse(after)),
+            MoInflClassNameOperationKinds.SetName when operation.Target is { } target &&
+                operation.After is { } after =>
+                (target, SnapshotFields.MoInflClassName, MoInflClassNameSetPayload.Parse(after).WritingSystemTag),
+            MoInflClassNameOperationKinds.ClearName when operation.Target is { } target &&
+                operation.After is { } after =>
+                (target, SnapshotFields.MoInflClassName, MoInflClassNameClearPayload.Parse(after)),
+            MoInflClassAbbreviationOperationKinds.SetAbbreviation when operation.Target is { } target &&
+                operation.After is { } after =>
+                (target, SnapshotFields.MoInflClassAbbreviation, MoInflClassAbbreviationSetPayload.Parse(after).WritingSystemTag),
+            MoInflClassAbbreviationOperationKinds.ClearAbbreviation when operation.Target is { } target &&
+                operation.After is { } after =>
+                (target, SnapshotFields.MoInflClassAbbreviation, MoInflClassAbbreviationClearPayload.Parse(after)),
+            MoStemNameNameOperationKinds.SetName when operation.Target is { } target &&
+                operation.After is { } after =>
+                (target, SnapshotFields.MoStemNameName, MoStemNameNameSetPayload.Parse(after).WritingSystemTag),
+            MoStemNameNameOperationKinds.ClearName when operation.Target is { } target &&
+                operation.After is { } after =>
+                (target, SnapshotFields.MoStemNameName, MoStemNameNameClearPayload.Parse(after)),
+            MoStemNameAbbreviationOperationKinds.SetAbbreviation when operation.Target is { } target &&
+                operation.After is { } after =>
+                (target, SnapshotFields.MoStemNameAbbreviation, MoStemNameAbbreviationSetPayload.Parse(after).WritingSystemTag),
+            MoStemNameAbbreviationOperationKinds.ClearAbbreviation when operation.Target is { } target &&
+                operation.After is { } after =>
+                (target, SnapshotFields.MoStemNameAbbreviation, MoStemNameAbbreviationClearPayload.Parse(after)),
+            FsFeatStrucFeatureSpecsOperationKinds.CreateFeatureSpecs when operation.Target is { } target &&
+                operation.EntityId is { } member => (target, SnapshotFields.FsFeatStrucFeatureSpecs, member.Value),
+            FsFeatureSpecificationFeatureOperationKinds.SetFeature or
+                FsFeatureSpecificationFeatureOperationKinds.ClearFeature when operation.Target is { } target =>
+                (target, SnapshotFields.FsFeatureSpecificationFeature, null),
+            FsClosedValueValueOperationKinds.SetValue or FsClosedValueValueOperationKinds.ClearValue
+                when operation.Target is { } target => (target, SnapshotFields.FsClosedValueValue, null),
+            MoStemAllomorphStemNameOperationKinds.SetStemName or MoStemAllomorphStemNameOperationKinds.ClearStemName
+                when operation.Target is { } target => (target, SnapshotFields.MoStemAllomorphStemName, null),
             LexDbEntriesOperationKinds.Create when operation.Target is { } target &&
                 operation.EntityId is { } member => (target, SnapshotFields.LexDbEntries, member.Value),
             LexEntrySensesOperationKinds.Create when operation.Target is { } target &&

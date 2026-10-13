@@ -275,6 +275,9 @@ try
         case "compose-author-phonological-rule":
         case "compose-author-affix-slot":
         case "compose-author-part-of-speech":
+        case "compose-author-inflection-feature":
+        case "compose-author-inflection-class":
+        case "compose-author-stem-name":
         case "compose-author-lexical-entry":
         case "compose-author-affix-template":
         case "compose-edit-natural-class":
@@ -289,6 +292,12 @@ try
                 "compose-author-phoneme" => ProposalCommands.ComposeAuthorPhoneme(new(soundProject, CliProductVersion(), soundDraft, soundIntent)),
                 "compose-author-natural-class" => ProposalCommands.ComposeAuthorNaturalClass(new(soundProject, CliProductVersion(), soundDraft, soundIntent)),
                 "compose-author-phonological-rule" => ProposalCommands.ComposeAuthorPhonologicalRule(
+                    new(soundProject, CliProductVersion(), soundDraft, soundIntent)),
+                "compose-author-inflection-feature" => ProposalCommands.ComposeAuthorInflectionFeature(
+                    new(soundProject, CliProductVersion(), soundDraft, soundIntent)),
+                "compose-author-inflection-class" => ProposalCommands.ComposeAuthorInflectionClass(
+                    new(soundProject, CliProductVersion(), soundDraft, soundIntent)),
+                "compose-author-stem-name" => ProposalCommands.ComposeAuthorStemName(
                     new(soundProject, CliProductVersion(), soundDraft, soundIntent)),
                 "compose-author-lexical-entry" => ProposalCommands.ComposeAuthorLexicalEntry(
                     new(soundProject, CliProductVersion(), soundDraft, soundIntent)),

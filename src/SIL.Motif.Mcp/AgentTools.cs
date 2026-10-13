@@ -344,6 +344,58 @@ internal static class AgentTools
                 a.IntentJson("category", "name", "ws", "optional", "assignments"))),
                 r => $"Draft now has {r.OperationCount} changes. Run motif_dry_run and a bounded motif_trial, revise, then Finalize; only a person can Apply."))) { Requests = [typeof(ComposeAuthorAffixSlotRequest)] },
 
+        new("motif_add_inflection_feature",
+            string.Empty,
+            AgentClass.Draft,
+            Schema.Object(
+                ("draft", Schema.String("The Draft name from motif_start_proposal."), true),
+                ("name", Schema.String("Name of the closed morphosyntactic feature."), true),
+                ("ws", Schema.String("Writing system tag for the feature and value names."), true),
+                ("abbreviation", Schema.String("Optional short feature label."), false),
+                ("values", Schema.Array("Nonempty named choices for this feature.", Schema.Object(
+                    ("name", Schema.String("Value name; distinct within this feature."), true),
+                    ("abbreviation", Schema.String("Optional short value label."), false))), true)),
+            false, false, false, false, true,
+            (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalCommands.ComposeAuthorInflectionFeature(new(
+                c.ProjectPath, c.ProductVersion, a.Required("draft"), a.IntentJson("name", "ws", "abbreviation", "values"))),
+                r => "Use the feature and value create entityIds in later composer calls; Dry Run and Trial before Finalize.")))
+            { Requests = [typeof(ComposeAuthorInflectionFeatureRequest)] },
+
+        new("motif_add_inflection_class",
+            string.Empty,
+            AgentClass.Draft,
+            Schema.Object(
+                ("draft", Schema.String("The Draft name from motif_start_proposal."), true),
+                ("category", Schema.String("Canonical id of the category owning this class tree."), true),
+                ("name", Schema.String("Inflection class name, such as a noun class."), true),
+                ("ws", Schema.String("Writing system tag for the name and abbreviation."), true),
+                ("abbreviation", Schema.String("Optional short class label."), false),
+                ("parent", Schema.String("Optional existing parent class in the declared category."), false)),
+            false, false, false, false, true,
+            (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalCommands.ComposeAuthorInflectionClass(new(
+                c.ProjectPath, c.ProductVersion, a.Required("draft"), a.IntentJson("category", "name", "ws", "abbreviation", "parent"))),
+                r => "Use the created class entityId when authoring a stem; Dry Run and Trial before Finalize.")))
+            { Requests = [typeof(ComposeAuthorInflectionClassRequest)] },
+
+        new("motif_add_stem_name",
+            string.Empty,
+            AgentClass.Draft,
+            Schema.Object(
+                ("draft", Schema.String("The Draft name from motif_start_proposal."), true),
+                ("category", Schema.String("Canonical id of the category owning this stem name."), true),
+                ("name", Schema.String("Stem name label."), true),
+                ("ws", Schema.String("Writing system tag for the name and abbreviation."), true),
+                ("abbreviation", Schema.String("Optional short stem name label."), false),
+                ("regions", Schema.Array("Nonempty feature regions permitting the named stem.",
+                    Schema.Array("Nonempty choices; one value for each feature.", Schema.Object(
+                        ("feature", Schema.String("Closed feature id in the morphosyntactic system."), true),
+                        ("value", Schema.String("Value id belonging to that feature."), true)))), true)),
+            false, false, false, false, true,
+            (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalCommands.ComposeAuthorStemName(new(
+                c.ProjectPath, c.ProductVersion, a.Required("draft"), a.IntentJson("category", "name", "ws", "abbreviation", "regions"))),
+                r => "Attaching the created stem name to an allomorph is separate; Dry Run and Trial before Finalize.")))
+            { Requests = [typeof(ComposeAuthorStemNameRequest)] },
+
         new("motif_add_lexical_entry",
             string.Empty,
             AgentClass.Draft,

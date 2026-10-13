@@ -129,6 +129,27 @@ public static class OwningCreateCatalogWriter
             "    \"MoUnclassifiedAffixMsa\" => cache.ServiceLocator.GetInstance<IMoUnclassifiedAffixMsaFactory>().Create(guid),\n" +
             "    _ => throw new InvalidOperationException(\"Grammatical info must be a supported MSA class.\"),\n" +
             "};\nowner.MorphoSyntaxAnalysesOC.Add(child);"),
+        new("FsFeatureSystem", "Features", "FsFeatDefn", FieldCard.Col,
+            "IFsFeatDefn child = concreteClass switch\n" +
+            "{\n" +
+            "    \"FsClosedFeature\" => cache.ServiceLocator.GetInstance<IFsClosedFeatureFactory>().Create(guid),\n" +
+            "    _ => throw new InvalidOperationException(\"Feature must be FsClosedFeature.\"),\n" +
+            "};\nowner.FeaturesOC.Add(child);"),
+        new("FsClosedFeature", "Values", "FsSymFeatVal", FieldCard.Col,
+            "var child = cache.ServiceLocator.GetInstance<IFsSymFeatValFactory>().Create(guid);\n" +
+            "owner.ValuesOC.Add(child);"),
+        new("PartOfSpeech", "InflectionClasses", "MoInflClass", FieldCard.Col,
+            "var child = cache.ServiceLocator.GetInstance<IMoInflClassFactory>().Create(guid);\n" +
+            "owner.InflectionClassesOC.Add(child);"),
+        new("MoInflClass", "Subclasses", "MoInflClass", FieldCard.Col,
+            "var child = cache.ServiceLocator.GetInstance<IMoInflClassFactory>().Create(guid);\n" +
+            "owner.SubclassesOC.Add(child);"),
+        new("PartOfSpeech", "StemNames", "MoStemName", FieldCard.Col,
+            "var child = cache.ServiceLocator.GetInstance<IMoStemNameFactory>().Create(guid);\n" +
+            "owner.StemNamesOC.Add(child);"),
+        new("MoStemName", "Regions", "FsFeatStruc", FieldCard.Col,
+            "var child = cache.ServiceLocator.GetInstance<IFsFeatStrucFactory>().Create(guid);\n" +
+            "owner.RegionsOC.Add(child);"),
         new("StText", "Paragraphs", "StPara", FieldCard.Seq,
             "IStPara child = concreteClass switch\n" +
             "{\n" +
@@ -150,7 +171,8 @@ public static class OwningCreateCatalogWriter
             ("PhEnvironment", "StringRepresentation"), ("FsClosedValue", "Value"),
             ("PhSegmentRule", "Name"),
             ("MoInflAffixSlot", "Name"), ("MoInflAffixTemplate", "Name"), ("CmPossibility", "Name"),
-            ("LexSense", "Definition"),
+            ("LexSense", "Definition"), ("FsFeatDefn", "Name"), ("FsSymFeatVal", "Name"), ("MoInflClass", "Name"),
+            ("MoStemName", "Name"),
         }).ToHashSet();
         var directionRows = RewriteRuleFieldSelector.SelectDirection(model.Rows);
         DescriptionCheck.CheckEmittedKinds(model.Rows.Where(r => selected.Contains((r.DeclaringClass, r.FieldName)))
@@ -191,6 +213,7 @@ public static class OwningCreateCatalogWriter
                     "PhPhonContext" => "new[] { \"PhSimpleContextSeg\", \"PhSimpleContextNC\", \"PhSimpleContextBdry\", \"PhSequenceContext\" }",
                     "StPara" => "new[] { \"StTxtPara\" }",
                     "CmPossibility" => "new[] { \"PartOfSpeech\" }",
+                    "FsFeatDefn" => "new[] { \"FsClosedFeature\" }",
                     "MoMorphSynAnalysis" => "new[] { \"MoStemMsa\", \"MoInflAffMsa\", \"MoDerivAffMsa\", \"MoUnclassifiedAffixMsa\" }",
                     _ => "Array.Empty<string>()",
                 });
@@ -222,7 +245,8 @@ public static class OwningCreateCatalogWriter
         foreach (var (owner, field) in new[] { ("PhTerminalUnit", "Name"), ("PhNaturalClass", "Name"),
                      ("PhEnvironment", "Name"), ("PhSegmentRule", "Name"), ("MoInflAffixSlot", "Name"),
                      ("MoInflAffixTemplate", "Name"), ("CmPossibility", "Name"),
-                     ("LexSense", "Definition") })
+                     ("LexSense", "Definition"), ("FsFeatDefn", "Name"), ("FsSymFeatVal", "Name"),
+                     ("MoInflClass", "Name"), ("MoStemName", "Name") })
         {
             var row = model.Rows.Single(r => r.DeclaringClass == owner && r.FieldName == field);
             var spec = BasicFieldSpecBuilder.Build(row);

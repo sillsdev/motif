@@ -202,6 +202,28 @@ public sealed class OwningCreateGeneratedFilesTests
     }
 
     [Fact]
+    public void WriteAllEmitsClosedInflectionFeaturesClassesAndStemNames()
+    {
+        var temporary = Path.Combine(Path.GetTempPath(), "motif-inflection-emission-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var written = OwningCreateCatalogWriter.WriteAll(MotifModelLoader.Load(), temporary);
+            foreach (var prefix in new[] { "FsFeatureSystemFeatures", "FsClosedFeatureValues",
+                         "PartOfSpeechInflectionClasses", "MoInflClassSubclasses", "PartOfSpeechStemNames", "MoStemNameRegions" })
+                Assert.Contains(written, file => file.RelativePath.EndsWith($"Operations/Generated5/{prefix}.g.cs",
+                    StringComparison.Ordinal));
+            var features = File.ReadAllText(Path.Combine(temporary,
+                "src/SIL.Motif.Runner/Operations/Generated5/FsFeatureSystemFeatures.g.cs"));
+            Assert.Contains("new[] { \"FsClosedFeature\" }", features);
+            Assert.DoesNotContain("IFsOpenFeatureFactory", features);
+            foreach (var prefix in new[] { "FsFeatDefn", "FsSymFeatVal", "MoInflClass", "MoStemName" })
+                Assert.Contains(written, file => file.RelativePath.EndsWith($"Operations/Generated5/{prefix}Name.g.cs",
+                    StringComparison.Ordinal));
+        }
+        finally { if (Directory.Exists(temporary)) Directory.Delete(temporary, true); }
+    }
+
+    [Fact]
     public void EveryOwningCreateFileMatchesTheCheckedManifestAndGenerator()
     {
         var root = RepoPaths.FindRepoRoot();

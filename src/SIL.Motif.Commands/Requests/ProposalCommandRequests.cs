@@ -346,3 +346,27 @@ public sealed record LogRequest(string FwDataPath);
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
 /// <param name="UncitedOnly">List only the Applied operations that cite no source.</param>
 public sealed record CitationsRequest(string FwDataPath, string ProductVersion, bool UncitedOnly = false);
+
+/// <summary>Authors a new inflection feature in a Draft through its closed intent.</summary>
+/// <param name="FwDataPath">The saved project this Draft belongs to.</param>
+/// <param name="ProductVersion">The Motif version opening the paired store.</param>
+/// <param name="DraftName">The Draft to append the authored operations to.</param>
+/// <param name="IntentJson">The closed inflection feature input, resolved against the prepared Draft.</param>
+public sealed record ComposeAuthorInflectionFeatureRequest(string FwDataPath, string ProductVersion,
+    string DraftName, string IntentJson);
+
+/// <summary>Authors a new inflection class in a Draft through its closed intent.</summary>
+/// <param name="FwDataPath">The saved project this Draft belongs to.</param>
+/// <param name="ProductVersion">The Motif version opening the paired store.</param>
+/// <param name="DraftName">The Draft to append the authored operations to.</param>
+/// <param name="IntentJson">The closed inflection class input, resolved against the prepared Draft.</param>
+public sealed record ComposeAuthorInflectionClassRequest(string FwDataPath, string ProductVersion,
+    string DraftName, string IntentJson);
+
+/// <summary>Authors a new stem name in a Draft through its closed intent.</summary>
+/// <param name="FwDataPath">The saved project this Draft belongs to.</param>
+/// <param name="ProductVersion">The Motif version opening the paired store.</param>
+/// <param name="DraftName">The Draft to append the authored operations to.</param>
+/// <param name="IntentJson">The closed stem name input, resolved against the prepared Draft.</param>
+public sealed record ComposeAuthorStemNameRequest(string FwDataPath, string ProductVersion,
+    string DraftName, string IntentJson);

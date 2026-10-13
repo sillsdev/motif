@@ -748,6 +748,186 @@
     "idempotentHint": false
   },
   {
+    "name": "motif_add_inflection_feature",
+    "description": "Author inflection feature. Adds a closed morphosyntactic feature and its named values to a Draft. Use the created ids in feature-structure and stem-name authoring, then Dry Run and Trial the Draft before Finalize.\nCommand: compose-author-inflection-feature. Agent class: Draft.\nDraftName: The Draft to append the authored operations to.\nIntentJson: The closed inflection feature input, resolved against the prepared Draft.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "The Draft name from motif_start_proposal."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the closed morphosyntactic feature."
+        },
+        "ws": {
+          "type": "string",
+          "description": "Writing system tag for the feature and value names."
+        },
+        "abbreviation": {
+          "type": "string",
+          "description": "Optional short feature label."
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Value name; distinct within this feature."
+              },
+              "abbreviation": {
+                "type": "string",
+                "description": "Optional short value label."
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          "description": "Nonempty named choices for this feature."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "name",
+        "ws",
+        "values",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_add_inflection_class",
+    "description": "Author inflection class. Adds an inflection class or subclass, such as a noun class, to a Draft. Its owner is explicit and the category\u0027s default is unchanged; use the created id when authoring a stem.\nCommand: compose-author-inflection-class. Agent class: Draft.\nDraftName: The Draft to append the authored operations to.\nIntentJson: The closed inflection class input, resolved against the prepared Draft.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "The Draft name from motif_start_proposal."
+        },
+        "category": {
+          "type": "string",
+          "description": "Canonical id of the category owning this class tree."
+        },
+        "name": {
+          "type": "string",
+          "description": "Inflection class name, such as a noun class."
+        },
+        "ws": {
+          "type": "string",
+          "description": "Writing system tag for the name and abbreviation."
+        },
+        "abbreviation": {
+          "type": "string",
+          "description": "Optional short class label."
+        },
+        "parent": {
+          "type": "string",
+          "description": "Optional existing parent class in the declared category."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "category",
+        "name",
+        "ws",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_add_stem_name",
+    "description": "Author a stem name. Adds a category-owned stem name with explicit feature regions to a Draft. Each region states where an allomorph bearing this stem name is eligible; attaching it to an allomorph is a separate operation.\nCommand: compose-author-stem-name. Agent class: Draft.\nDraftName: The Draft to append the authored operations to.\nIntentJson: The closed stem name input, resolved against the prepared Draft.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "The Draft name from motif_start_proposal."
+        },
+        "category": {
+          "type": "string",
+          "description": "Canonical id of the category owning this stem name."
+        },
+        "name": {
+          "type": "string",
+          "description": "Stem name label."
+        },
+        "ws": {
+          "type": "string",
+          "description": "Writing system tag for the name and abbreviation."
+        },
+        "abbreviation": {
+          "type": "string",
+          "description": "Optional short stem name label."
+        },
+        "regions": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "feature": {
+                  "type": "string",
+                  "description": "Closed feature id in the morphosyntactic system."
+                },
+                "value": {
+                  "type": "string",
+                  "description": "Value id belonging to that feature."
+                }
+              },
+              "required": [
+                "feature",
+                "value"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Nonempty choices; one value for each feature."
+          },
+          "description": "Nonempty feature regions permitting the named stem."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "category",
+        "name",
+        "ws",
+        "regions",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
     "name": "motif_add_lexical_entry",
     "description": "Author a dictionary entry. Stages one new dictionary entry with its lexeme form, one sense with gloss and optional definition, and grammatical info: a stem, or an inflectional, derivational or unclassified affix. Inspect its Dry Run and try words with it before a person Applies the Proposal.\nCommand: compose-author-lexical-entry. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
     "inputSchema": {

@@ -1,5 +1,29 @@
 # Coverage manifest
 
+## Inflection authoring mappings
+
+Proposals can create named inflection features, classes and stem names that grammatical info can use.
+These creates use the existing semantic-operation classifications; adding a construction path does not
+change the classification of any LibLCM member.
+
+| LibLCM surface in `liblcm-inventory.tsv` | Authored operation | Snapshot/effect field |
+| --- | --- | --- |
+| `FsFeatureSystem.Features` | `grammar/fsFeatureSystem/createFeatures` (closed feature only) | `grammar/fsFeatureSystem/features` |
+| `FsClosedFeature.Values` | `grammar/fsClosedFeature/createValues` | `grammar/fsClosedFeature/values` |
+| `PartOfSpeech.InflectionClasses` | `grammar/partOfSpeech/createInflectionClasses` | `grammar/partOfSpeech/inflectionClasses` |
+| `MoInflClass.Subclasses` | `grammar/moInflClass/createSubclasses` | `grammar/moInflClass/subclasses` |
+| `PartOfSpeech.StemNames` | `grammar/partOfSpeech/createStemNames` | `grammar/partOfSpeech/stemNames` |
+| `MoStemName.Regions` | `grammar/moStemName/createRegions` | `grammar/moStemName/regions` |
+| `FsFeatDefn.Name`, `FsSymFeatVal.Name`, `MoInflClass.Name`, `MoStemName.Name` | `grammar/<type>/setName`, `clearName` | `grammar/<type>/name`, per writing system |
+
+Region specifications reuse `FsFeatStruc.FeatureSpecs`, `FsFeatureSpecification.Feature` and
+`FsClosedValue.Value`; allomorph attachment reuses `MoStemAllomorph.StemName`. `MoStemName.DefaultStem`
+and `DefaultAffix` remain unsupported. Creates do not authorize deleting an owning graph.
+The lexical create families additionally project virtual `LexDb.Entries`, ordered `LexEntry.Senses`
+and unordered `LexEntry.MorphoSyntaxAnalyses` through `LexiconOwningSnapshots`.
+Closed shapes, ownership, normalization and evidence refresh are specified in the
+[Proposal contract](../docs/change-set-contract.md).
+
 ## Companion files
 
 Six files sit alongside `liblcm-inventory.tsv`, in the same dialect (tab-separated, double-quoted, CRLF).

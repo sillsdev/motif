@@ -19,6 +19,20 @@ public class ConformanceVectorTests
     static ConformanceVectorTests()
     {
         // Contract vectors test hashing without referencing Runner, so register this slice's kinds here.
+        OperationKindRegistry.Register("grammar/fsFeatureSystem/createFeatures");
+        OperationKindRegistry.Register("grammar/fsClosedFeature/createValues");
+        OperationKindRegistry.Register("grammar/partOfSpeech/createInflectionClasses");
+        OperationKindRegistry.Register("grammar/moInflClass/createSubclasses");
+        OperationKindRegistry.Register("grammar/partOfSpeech/createStemNames");
+        OperationKindRegistry.Register("grammar/moStemName/createRegions");
+        OperationKindRegistry.Register("grammar/fsFeatDefn/setName");
+        OperationKindRegistry.Register("grammar/fsFeatDefn/clearName");
+        OperationKindRegistry.Register("grammar/fsSymFeatVal/setName");
+        OperationKindRegistry.Register("grammar/fsSymFeatVal/clearName");
+        OperationKindRegistry.Register("grammar/moInflClass/setName");
+        OperationKindRegistry.Register("grammar/moInflClass/clearName");
+        OperationKindRegistry.Register("grammar/moStemName/setName");
+        OperationKindRegistry.Register("grammar/moStemName/clearName");
         OperationKindRegistry.Register("lexical/lexDb/createEntries");
         OperationKindRegistry.Register("lexical/lexEntry/createSenses");
         OperationKindRegistry.Register("lexical/lexEntry/createMorphoSyntaxAnalyses");

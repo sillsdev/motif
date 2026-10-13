@@ -175,6 +175,50 @@ refuses a morph type whose shape disagrees with the grammatical info (a stem mor
 the reverse), a form in a writing system that is not vernacular, and a slot or inflection class outside the
 category or its ancestors.
 
+Inflection authoring creates the named grammar pieces that stems can refer to. It keeps categories,
+inflection classes, feature choices and stem names explicit, so creating a piece never silently changes
+an existing entry or a category's default class.
+
+The six unordered owning creates are `grammar/fsFeatureSystem/createFeatures` (closed
+`{ "class": "FsClosedFeature" }`), `grammar/fsClosedFeature/createValues`,
+`grammar/partOfSpeech/createInflectionClasses`, `grammar/moInflClass/createSubclasses`,
+`grammar/partOfSpeech/createStemNames` and `grammar/moStemName/createRegions` (each closed `{}`).
+They create, respectively, a closed feature, symbolic value, class, subclass, stem name and feature
+structure. Each targets its exact owning type, takes an authored entity identity, refuses placement,
+same-type overwrite/reuse and wrong-type identity conflicts, and accepts no storage-GUID override.
+The create slot is `(owner, field, created entity identity)`. The feature create supports only closed
+features; open and complex features are refused. Low-level feature-system creates can target either
+feature system; the inflection composer targets the project's morphosyntactic system only.
+
+For `fsFeatDefn`, `fsSymFeatVal`, `moInflClass` and `moStemName`, the `grammar/<type>/setName` payload
+is closed `{ "ws": "<tag>", "text": "<name>" }`; `clearName` takes only `{ "ws": "<tag>" }`.
+Names and abbreviations use NFD alternatives. Set and clear share one slot per writing system,
+including the existing abbreviation operations. Independent writing systems remain independent.
+Preview and Apply read back the owning membership and each authored alternative or reference;
+snapshots and mechanical diff use those same field mappings. Changes to those footprints require a
+fresh Dry Run. Refreshing evidence retains owner, verb, identity, value and declared dependencies;
+unordered collections have no position to refresh.
+
+`AuthorInflectionFeature` accepts closed `{name, ws, values:[{name, abbreviation?}], abbreviation?}`,
+with at least one value, distinct normalized value names, and a feature name unused in that writing
+system in the morphosyntactic feature system. `AuthorInflectionClass` accepts closed
+`{category, name, ws, abbreviation?, parent?}`. Its category must be in the project's parts-of-speech
+list; its optional parent must belong to that exact category, and its name must be unused throughout
+that category's class tree. Neither composer assigns grammatical info or edits a default class.
+
+`AuthorStemName` accepts closed `{category, name, ws, regions:[[{feature, value}]], abbreviation?}`.
+It requires at least one nonempty region, each feature at most once per region, each feature a closed
+morphosyntactic feature and each value owned by that feature. Names are unique within the category
+in the selected writing system. It creates all region structures and closed-value specifications
+with explicit dependencies. It does not attach the stem name to a form: the existing `setStemName`
+operation does that explicitly. Dry Run and Apply validate affected region specifications after lowering:
+each must still use a closed morphosyntactic feature, a value belonging to it, and distinct features. A
+choice whose ownership changed after composition or Dry Run is refused, and Apply rolls back the graph.
+Empty low-level region structures can be authored as scaffolding; the composer requires nonempty regions.
+Affix attachment and implicit fallback/default stem names are outside
+this composer. The `phonology` MCP profile exposes the three composers; default and lean profiles do
+not expose them.
+
 `grammar/phPhonData/movePhonRules` moves one existing rule in the ordered `PhonRules` owning sequence.
 Its closed `after` payload is `{ "member": "<rule-id>" }`; `target` is the owning phonological data
 object, and `placement` names the adjacent rule identities around the new gap. The rule member id is
@@ -613,12 +657,19 @@ support diff, expected effects, rebase, and read-back validation.
 ### Projection versions
 
 A version changes when members join or leave the projection, because the same project then hashes
-differently. A stored Baseline or Dry Run on another version is refused and recaptured, never migrated.
+differently. Historical Baseline records retain their version as provenance. Capturing a frozen expectation against
+current model state refuses a mismatched Baseline; Apply refuses a mismatched Dry Run with instructions
+to run a fresh Dry Run. Evidence is recaptured, never migrated.
 
 - **5**: `CmPossibility.Name` joins, so the parts-of-speech list's names are part of a project's state once
   Proposals can create parts of speech.
 - **6**: `LexSense.Definition` joins, so a sense's definition is part of a project's state once Proposals
   can create dictionary entries with definitions.
+
+- **7**: `FsFeatDefn.Name`, `FsSymFeatVal.Name`, `MoInflClass.Name` and `MoStemName.Name` join,
+  and the six inflection owning collections plus `FsFeatStruc.FeatureSpecs` join, so names and
+  feature/class/region membership contribute to the semantic state. `LexDb.Entries`, `LexEntry.Senses`
+  and `LexEntry.MorphoSyntaxAnalyses` also join, preserving sense order and explicit entry ownership.
 
 Versions up to 4 predate this list.
 
