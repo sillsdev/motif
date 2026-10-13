@@ -365,7 +365,8 @@ public class FwDataProjectLoader
         var restore = SingletonsContainer.Item(GlobalWritingSystemRepositoryKey) as CoreGlobalWritingSystemRepository;
         if (restore is not null) SingletonsContainer.Remove(GlobalWritingSystemRepositoryKey);
 
-        SingletonsContainer.Add(GlobalWritingSystemRepositoryKey, _sharedDecoy ??= new DiscardingGlobalWritingSystemRepository());
+        SingletonsContainer.Add(GlobalWritingSystemRepositoryKey,
+            _sharedDecoy ??= DiscardingGlobalWritingSystemRepository.Create());
         return new RestoreGlobalWritingSystemRepository(restore);
     }
 

@@ -16,18 +16,22 @@ namespace SIL.Motif.Host.LcmUtils;
 /// processes using the same repository path. A cross-process lock derived from that path guards construction and each
 /// access, as pinned by <c>ConcurrentSampleBuildersKeepTheSharedWritingSystemRepositoryReadable</c>.
 /// </remarks>
-internal sealed class SerializedGlobalWritingSystemRepository : CoreGlobalWritingSystemRepository
+internal class SerializedGlobalWritingSystemRepository : CoreGlobalWritingSystemRepository
 {
-    private static readonly object WriteGate = new();
+    private static readonly object RepositoryAccessGate = new();
     private readonly WorkerMutexOwner _repositoryWriteGate;
     private int _gateDepth;
 
-    private SerializedGlobalWritingSystemRepository(WorkerMutexOwner repositoryWriteGate)
+    protected SerializedGlobalWritingSystemRepository(WorkerMutexOwner repositoryWriteGate)
     {
         _repositoryWriteGate = repositoryWriteGate;
     }
 
-    internal static SerializedGlobalWritingSystemRepository Create()
+    internal static SerializedGlobalWritingSystemRepository Create() =>
+        Create(repositoryWriteGate => new SerializedGlobalWritingSystemRepository(repositoryWriteGate));
+
+    internal static TRepository Create<TRepository>(Func<WorkerMutexOwner, TRepository> createRepository)
+        where TRepository : SerializedGlobalWritingSystemRepository
     {
         var repositoryPath = GlobalWritingSystemRepository<CoreWritingSystemDefinition>.CurrentVersionPath(
             GlobalWritingSystemRepository<CoreWritingSystemDefinition>.DefaultBasePath);
@@ -38,7 +42,7 @@ internal sealed class SerializedGlobalWritingSystemRepository : CoreGlobalWritin
         {
             while (!gate.TryAcquire()) Thread.Sleep(10);
 
-            var repository = new SerializedGlobalWritingSystemRepository(gate);
+            var repository = createRepository(gate);
             gate.Release();
             transferred = true;
             return repository;
@@ -150,7 +154,7 @@ internal sealed class SerializedGlobalWritingSystemRepository : CoreGlobalWritin
 
     private T WithRepositoryGate<T>(Func<T> operation)
     {
-        lock (WriteGate)
+        lock (RepositoryAccessGate)
         {
             var outermost = _gateDepth == 0;
             if (outermost)

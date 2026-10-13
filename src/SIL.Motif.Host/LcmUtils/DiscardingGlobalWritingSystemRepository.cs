@@ -1,4 +1,5 @@
 using SIL.LCModel.Core.WritingSystems;
+using SIL.Motif.Host.PanGloss;
 
 namespace SIL.Motif.Host.LcmUtils;
 
@@ -24,18 +25,18 @@ namespace SIL.Motif.Host.LcmUtils;
 /// writing system it would have had anyway; only the shared store it is paired with decides whether a
 /// write ever leaves the project folder. Every write to the shared store on this path originates in
 /// <c>SIL.WritingSystems.LocalWritingSystemRepositoryBase{T}.OnChangeNotifySharedStore</c>, which reaches
-/// the shared store through <see cref="Set"/> or <see cref="Replace"/> and nothing else, so overriding
-/// just those two members is sufficient. Every read member (<c>AllWritingSystems</c>, <c>TryGet</c>, …)
-/// still falls through to the base implementation, which reads the real shared store, so a scratch
-/// backed by this type is indistinguishable from an ordinary one for anything that only reads.
+/// the shared store through <see cref="Set"/> or <see cref="Replace"/> and nothing else, so those writes
+/// are discarded. Other mutation members are discarded too. Reads use the ordinary repository
+/// implementation under the same path-derived lock as persisted repositories, so a scratch cache cannot
+/// enumerate the shared folder while a replacement has temporarily removed a live file.
 /// </para>
 /// <para>
 /// <b>One instance serves the whole process, and it is never disposed.</b> A cache opened while this
 /// type is swapped in keeps the reference until its own <c>Dispose()</c>, long after the swap has been
 /// undone, so the instance has to outlive every scratch. The base type holds a <c>GlobalMutex</c>;
 /// constructing one per scratch would therefore leak a named system handle per Dry Run — unnoticeable
-/// across one test run, unbounded in a host that stays open. Sharing is safe because the two overrides
-/// hold no state and every read still reaches the real store through the base.
+/// across one test run, unbounded in a host that stays open. Sharing is safe because the overrides hold
+/// no state and every read reaches the real store under the inherited repository gate.
 /// </para>
 /// <para>
 /// <b>The swap that installs it is process-wide.</b> A cache opened on another thread during that window
@@ -44,8 +45,17 @@ namespace SIL.Motif.Host.LcmUtils;
 /// cache under one process-wide gate, pinned by <c>ConcurrentScratchLoadsLeaveTheProcessRepositoryInstalled</c>.
 /// </para>
 /// </remarks>
-internal sealed class DiscardingGlobalWritingSystemRepository : CoreGlobalWritingSystemRepository
+internal sealed class DiscardingGlobalWritingSystemRepository : SerializedGlobalWritingSystemRepository
 {
+    private DiscardingGlobalWritingSystemRepository(WorkerMutexOwner repositoryWriteGate)
+        : base(repositoryWriteGate)
+    {
+    }
+
+    internal new static DiscardingGlobalWritingSystemRepository Create() =>
+        SerializedGlobalWritingSystemRepository.Create(repositoryWriteGate =>
+            new DiscardingGlobalWritingSystemRepository(repositoryWriteGate));
+
     /// <inheritdoc />
     public override void Set(CoreWritingSystemDefinition ws)
     {
@@ -54,6 +64,26 @@ internal sealed class DiscardingGlobalWritingSystemRepository : CoreGlobalWritin
 
     /// <inheritdoc />
     public override void Replace(string languageTag, CoreWritingSystemDefinition newWs)
+    {
+        // Discarded: this instance exists only to keep a scratch's writes out of the shared store.
+    }
+
+    public override void Remove(string languageTag)
+    {
+        // Discarded: this instance exists only to keep a scratch's writes out of the shared store.
+    }
+
+    protected override void RemoveDefinition(CoreWritingSystemDefinition ws)
+    {
+        // Discarded: this instance exists only to keep a scratch's writes out of the shared store.
+    }
+
+    public override void Conflate(string fromLanguageTag, string toLanguageTag)
+    {
+        // Discarded: this instance exists only to keep a scratch's writes out of the shared store.
+    }
+
+    public override void Save()
     {
         // Discarded: this instance exists only to keep a scratch's writes out of the shared store.
     }

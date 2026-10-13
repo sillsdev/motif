@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Security.Cryptography;
 using SIL.Motif.Cli;
 using SIL.Motif.Commands;
+using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker;
 using Xunit;
@@ -92,10 +93,60 @@ public sealed class ProcessWritingSystemRepositoryTests
     }
 
     [Fact]
+    public async Task DiscardingRepositoryReadsWaitForSharedRepositoryWriters()
+    {
+        FwDataProjectLoader.Init();
+        var decoy = DiscardingGlobalWritingSystemRepository.Create();
+        var repository = Assert.IsType<SerializedGlobalWritingSystemRepository>(
+            ProcessWritingSystemRepository.CurrentOutsideScratchLoads());
+        const string tag = "qaa-x-discarding-remove";
+        try
+        {
+            repository.Set(new CoreWritingSystemDefinition(tag));
+            decoy.Remove(tag);
+            Assert.True(repository.Contains(tag));
+        }
+        finally
+        {
+            if (repository.Contains(tag)) repository.Remove(tag);
+        }
+
+        using var writerGate = new WorkerMutexOwner(
+            SerializedGlobalWritingSystemRepository.GetRepositoryLockName(decoy.PathToWritingSystems));
+        var gateWait = Stopwatch.StartNew();
+        var gateAcquired = false;
+        while (!gateAcquired && gateWait.Elapsed < ChildHangGuard)
+        {
+            gateAcquired = writerGate.TryAcquire();
+            if (!gateAcquired) Thread.Sleep(10);
+        }
+        Assert.True(gateAcquired);
+
+        var readStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var read = Task.Run(() =>
+        {
+            readStarted.SetResult();
+            decoy.TryGet("en", out _);
+        });
+
+        try
+        {
+            await readStarted.Task.WaitAsync(ChildHangGuard);
+            Assert.NotSame(read, await Task.WhenAny(read, Task.Delay(TimeSpan.FromMilliseconds(100))));
+        }
+        finally
+        {
+            writerGate.Release();
+        }
+
+        await read.WaitAsync(ChildHangGuard);
+    }
+
+    [Fact]
     public async Task ConcurrentSampleBuildersKeepTheSharedWritingSystemRepositoryReadable()
     {
         const int rounds = 3;
-        const int buildersPerRound = 8;
+        const int buildersPerRound = 16;
         var root = Path.Combine(BuildOutput.ProductDirectory, "ConcurrentSampleBuilders",
             Guid.NewGuid().ToString("N"));
         var repositoryRoot = Path.GetFullPath(Path.Combine(BuildOutput.ProductDirectory, "..", ".."));
