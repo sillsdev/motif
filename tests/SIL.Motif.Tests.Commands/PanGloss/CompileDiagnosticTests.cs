@@ -44,6 +44,26 @@ public sealed class CompileDiagnosticTests
         Assert.Contains(result.Issues, issue => issue.Text.Contains("unknown natural class \"+ATR\"", StringComparison.Ordinal));
     }
 
+    /// <summary>
+    /// PanGloss's advice for a phoneme table that cannot segment "+" says to report an unsupported construct; the usual
+    /// cause is a project with no phonology yet, so Motif names the fix instead. The text is PanGloss 0.8.3's own.
+    /// </summary>
+    [Fact]
+    public void UnsegmentableBoundaryAdviceNamesTheFirstPhonemeProposal()
+    {
+        const string text = """
+            {"schema_version":1,"status":"compile_error","path":"p.fwdata","message":"cannot compile compounding","issues":[
+              {"code":"grammar.compile.failed","kind":"unsegmentable_boundary","object_guid":null,"object_kind":null,"field":null,
+               "text":"cannot compile compounding: table \"main\" cannot segment the morph boundary \"+\"",
+               "advice":"Use the error description to locate and correct malformed grammar input. If FieldWorks accepts the input, report the unsupported construct with this diagnostic.",
+               "fatal":true}]}
+            """;
+        var issue = Assert.Single(ParserCompileDiagnosticReader.Read(text)!.Issues);
+        Assert.Equal(ParserCompileDiagnosticReader.NoBoundaryMarkersAdvice, issue.Advice);
+        Assert.Contains("phoneme Proposal", issue.Advice, StringComparison.Ordinal);
+        Assert.DoesNotContain("report the unsupported construct", issue.Advice, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void StructuredIssuesKeepAuthoredTextIdentityAndAdvice()
     {

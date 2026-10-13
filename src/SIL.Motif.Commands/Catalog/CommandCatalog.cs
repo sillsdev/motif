@@ -21,7 +21,7 @@ namespace SIL.Motif.Commands.Catalog;
 /// <see cref="TimingCommand"/>, <see cref="Queries.GrammarCheckQuery"/>, <see cref="HandoffCommand"/>,
 /// <see cref="JobCommands"/>, <see cref="PendingChangesWorkflow"/>, <see cref="ReadStateCommands"/>,
 /// <see cref="Queries.WordContextQuery"/>, <see cref="Queries.WordTraceQuery"/>, <see cref="Queries.ObjectUsesQuery"/>, and <see cref="Queries.InspectQuery"/>.
-/// The project setup group reaches <see cref="ProjectInitializationCommand"/>.
+/// The project setup group reaches <see cref="ProjectCreateCommand"/> and <see cref="ProjectInitializationCommand"/>.
 /// </summary>
 /// <remarks>
 /// The report list reaches <see cref="ReportCommands.ListKinds"/>, waited Dry Runs reach
@@ -189,6 +189,8 @@ public static class CommandCatalog
         new CommandDescriptor("stats", typeof(StatsRequest), typeof(StatsCommandResponse), CommandSurface.Released, AgentClass.Evaluate),
 
         // Saved default Selection
+        new CommandDescriptor("project create", typeof(ProjectCreateRequest),
+            typeof(ProjectCreatedResponse), CommandSurface.Developer, AgentClass.HumanOnly),
         new CommandDescriptor("project initialize", typeof(ProjectInitializationRequest),
             typeof(ProjectInitializationResponse), CommandSurface.AdvancedAi, AgentClass.HumanOnly),
         new CommandDescriptor("selection show", typeof(ReadDefaultSelectionRequest), typeof(DefaultSelectionResponse), CommandSurface.Released, AgentClass.Read),

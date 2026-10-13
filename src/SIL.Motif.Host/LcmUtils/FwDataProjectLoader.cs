@@ -6,6 +6,7 @@ using SIL.LCModel;
 using SIL.LCModel.Core.KernelInterfaces;
 using SIL.LCModel.Core.Text;
 using SIL.LCModel.Core.WritingSystems;
+using SIL.LCModel.Infrastructure;
 using SIL.LCModel.Utils;
 using SIL.WritingSystems;
 
@@ -315,6 +316,64 @@ public class FwDataProjectLoader
             new LcmSettings(),
             progress);
     }
+
+    /// <summary>
+    /// Creates a new, blank <c>.fwdata</c> project through LibLCM and returns it open; the caller saves and disposes it.
+    /// </summary>
+    /// <remarks>
+    /// The project gets one vernacular and one analysis writing system, written to its own <c>WritingSystemStore</c>
+    /// and to the process's global writing-system repository as any persisted open does. It holds no phonology,
+    /// lexicon or texts. The project folder (<c>{projectsFolder}/{name}/</c>) must not exist yet.
+    /// </remarks>
+    public virtual LcmCache CreateBlankProject(string fwDataFilePath, string vernacularTag, string analysisTag,
+        string? templatesFolder = null)
+    {
+        Init();
+        var fullPath = Path.GetFullPath(fwDataFilePath);
+        var projectFolder = Path.GetDirectoryName(fullPath)
+            ?? throw new ArgumentException($"Could not determine project folder from '{fwDataFilePath}'.", nameof(fwDataFilePath));
+        var projectsPath = Path.GetDirectoryName(projectFolder)
+            ?? throw new ArgumentException($"Could not determine projects folder from '{fwDataFilePath}'.", nameof(fwDataFilePath));
+        templatesFolder ??= Path.Combine(Path.GetTempPath(), "SIL.Motif.Templates");
+        Directory.CreateDirectory(templatesFolder);
+        Directory.CreateDirectory(projectFolder);
+
+        var progress = new LcmThreadedProgress();
+        var cache = Serialized(() => LcmCache.CreateCacheWithNewBlankLangProj(
+            new FileProjectId(fullPath), BootstrapTag, BootstrapTag, BootstrapTag,
+            new HeadlessLcmUi(progress.SynchronizeInvoke),
+            new LcmDirectories(projectsPath, templatesFolder), new LcmSettings()));
+        try
+        {
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                var manager = cache.ServiceLocator.WritingSystemManager;
+                var writingSystems = cache.ServiceLocator.WritingSystems;
+                manager.GetOrSet(vernacularTag, out var vernacular);
+                manager.GetOrSet(analysisTag, out var analysis);
+                Replace(writingSystems.VernacularWritingSystems, writingSystems.CurrentVernacularWritingSystems, vernacular);
+                Replace(writingSystems.AnalysisWritingSystems, writingSystems.CurrentAnalysisWritingSystems, analysis);
+            });
+            return cache;
+        }
+        catch
+        {
+            cache.Dispose();
+            throw;
+        }
+
+        static void Replace(ICollection<CoreWritingSystemDefinition> all, IList<CoreWritingSystemDefinition> current,
+            CoreWritingSystemDefinition only)
+        {
+            current.Clear();
+            all.Clear();
+            all.Add(only);
+            current.Add(only);
+        }
+    }
+
+    // LibLCM creates a project only with a writing system it already knows; the requested ones replace it.
+    private const string BootstrapTag = "en";
 
     /// <summary>
     /// Opens an existing <c>.fwdata</c> project the same way <see cref="LoadCache"/> does, except that

@@ -9,6 +9,18 @@ public static partial class ParserCompileDiagnosticReader
 {
     public const int SchemaVersion = PanGlossInterfaceVersions.CompileErrorSchemaVersion;
 
+    /// <summary>The issue kind PanGloss reports when the phoneme table cannot segment a boundary marker.</summary>
+    public const string UnsegmentableBoundaryKind = "unsegmentable_boundary";
+
+    /// <summary>
+    /// What a person can do about <see cref="UnsegmentableBoundaryKind"/>. It replaces PanGloss's own advice, which
+    /// suggests reporting an unsupported construct, because the usual cause is a project with no phonology yet.
+    /// </summary>
+    public const string NoBoundaryMarkersAdvice =
+        "This project's phonemes do not include the morpheme boundary marker '+', which the parser needs. " +
+        "A project with no phonemes yet gets it, with the word boundary '#', from its first phoneme Proposal; " +
+        "otherwise add the marker in FieldWorks: Grammar › Phonemes.";
+
     public static ParserCompileDiagnostic? Read(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
@@ -79,8 +91,10 @@ public static partial class ParserCompileDiagnosticReader
                 var message = String(row, "text");
                 var code = String(row, "code");
                 if (message is null || code is null) continue;
-                issues.Add(new(code, kind, id, String(row, "field"), message,
-                    String(row, "advice") ?? AdviceFor(objectKind ?? kind), objectKind));
+                var advice = kind == UnsegmentableBoundaryKind
+                    ? NoBoundaryMarkersAdvice
+                    : String(row, "advice") ?? AdviceFor(objectKind ?? kind);
+                issues.Add(new(code, kind, id, String(row, "field"), message, advice, objectKind));
             }
             return issues;
         }

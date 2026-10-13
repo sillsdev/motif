@@ -142,6 +142,8 @@ public sealed class CommandCatalogParityTests
         "project.busy", "project.in-use", "project.invalid", "project.not-found", "project.operation-io", "project.refused",
         "project.saving", "project.unloadable", "project.unreadable",
         "project.store-io",
+        "project-create.exists", "project-create.failed", "project-create.folder-not-found", "project-create.invalid-folder",
+        "project-create.invalid-name", "project-create.invalid-word-forming", "project-create.invalid-writing-system",
         "preflight.unavailable",
         "proposal.already-applied", "proposal.inconsistent", "proposal.invalid-id", "proposal.invalid-status",
         "proposal.not-editable", "proposal.not-found",

@@ -1515,6 +1515,18 @@ try
             break;
 
         case "project":
+            if (positionals is ["create"])
+            {
+                if (!flags.TryGetValue("into", out var createInto) || !flags.TryGetValue("name", out var createName) ||
+                    !flags.TryGetValue("vernacular", out var createVernacular))
+                    return Usage(UsageLineFor("project create"), asJson);
+                var created = ProjectCreateCommand.Create(new ProjectCreateRequest(createInto, createName, createVernacular,
+                    flags.GetValueOrDefault("vernacular-name"), flags.GetValueOrDefault("word-forming"),
+                    flags.GetValueOrDefault("analysis")));
+                if (created.Succeeded) RecordKnownProject(created.Value!.FwDataPath, ResolveRoot(), error);
+                result = RenderCommand(created);
+                break;
+            }
             if (positionals.Count != 1 || positionals[0] != "initialize" ||
                 !flags.TryGetValue("project", out var initializationProject))
                 return Usage(UsageLineFor("project initialize"), asJson);

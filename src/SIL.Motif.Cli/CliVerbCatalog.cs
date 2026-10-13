@@ -29,6 +29,12 @@ public static class CliVerbCatalog
         new CliVerbDescriptor("Commands", "open", "open", new[] { "open <fwdata> [--json]" }),
         new CliVerbDescriptor("Project", "writing-systems", "writing-systems",
             new[] { "writing-systems --project <fwdata> [--json]" }),
+        new CliVerbDescriptor("Project", "project create", "project create",
+            new[]
+            {
+                "project create --into <folder> --name <ProjectName> --vernacular <bcp47> [--vernacular-name <text>] " +
+                "[--word-forming <characters>] [--analysis <bcp47>] [--json]",
+            }),
         new CliVerbDescriptor("Project", "project initialize", "project initialize",
             new[]
             {

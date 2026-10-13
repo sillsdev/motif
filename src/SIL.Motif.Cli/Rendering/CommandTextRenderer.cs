@@ -73,6 +73,7 @@ public static class CommandTextRenderer
             StatsCommandResponse r => RenderStats(r),
             DefaultSelectionResponse r => RenderDefaultSelection(r),
             ProjectInitializationResponse r => RenderProjectInitialization(r),
+            ProjectCreatedResponse r => RenderProjectCreated(r),
             NamedSelectionProjection p => RenderDefaultSelection(new DefaultSelectionResponse(p)),
             ProjectSetupResponse r => r.SetupSkipped
                 ? "Setup skipped for this project." + Environment.NewLine
@@ -136,6 +137,20 @@ public static class CommandTextRenderer
         if (response.RecoveryCopyPath is not null)
             text += " Keep the recovery copy at '" + response.RecoveryCopyPath + "'.";
         return text + Environment.NewLine;
+    }
+
+    private static string RenderProjectCreated(ProjectCreatedResponse r)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine($"Created project '{r.ProjectName}' at '{r.FwDataPath}'.");
+        sb.AppendLine($"  Vernacular: {r.Vernacular} ({r.VernacularName})");
+        if (r.WordFormingCharacters.Count > 0)
+            sb.AppendLine($"  Word-forming beyond letters: {string.Join(" ", r.WordFormingCharacters)}");
+        sb.AppendLine($"  Analysis:   {r.Analysis}");
+        sb.AppendLine();
+        sb.AppendLine("Next: motif project initialize --project \"" + r.FwDataPath + "\" --confirm \"" +
+            "Initialize this project to work with Motif Proposals?\"");
+        return sb.ToString();
     }
 
     private static string RenderCorpusDocumentAdded(CorpusDocumentAddedResponse r)
