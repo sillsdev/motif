@@ -247,8 +247,7 @@ public class FwDataProjectLoader
             RedirectDefaultWritingSystemRepository(repositoryPath);
         }
 
-        // The parameterless constructor reads the default path, which the redirect above has just set.
-        var repository = new SerializedGlobalWritingSystemRepository();
+        var repository = SerializedGlobalWritingSystemRepository.Create();
 
         var key = typeof(CoreGlobalWritingSystemRepository).FullName!;
         if (SingletonsContainer.Item(key) is not null) SingletonsContainer.Remove(key);

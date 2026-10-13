@@ -13,8 +13,8 @@ namespace SIL.Motif.Host.LcmUtils;
 /// <remarks>
 /// Disposing a <see cref="SIL.LCModel.LcmCache"/> saves its local writing-system store, and each save
 /// reaches the shared repository through file-backed reads and writes. A process-local lock cannot protect Motif
-/// processes using the same repository path. A cross-process lock derived from that path guards each access. Pinned by
-/// <c>ConcurrentSampleBuildersKeepTheSharedWritingSystemRepositoryReadable</c>.
+/// processes using the same repository path. A cross-process lock derived from that path guards construction and each
+/// access, as pinned by <c>ConcurrentSampleBuildersKeepTheSharedWritingSystemRepositoryReadable</c>.
 /// </remarks>
 internal sealed class SerializedGlobalWritingSystemRepository : CoreGlobalWritingSystemRepository
 {
@@ -22,9 +22,31 @@ internal sealed class SerializedGlobalWritingSystemRepository : CoreGlobalWritin
     private readonly WorkerMutexOwner _repositoryWriteGate;
     private int _gateDepth;
 
-    public SerializedGlobalWritingSystemRepository()
+    private SerializedGlobalWritingSystemRepository(WorkerMutexOwner repositoryWriteGate)
     {
-        _repositoryWriteGate = new WorkerMutexOwner(GetRepositoryLockName(PathToWritingSystems));
+        _repositoryWriteGate = repositoryWriteGate;
+    }
+
+    internal static SerializedGlobalWritingSystemRepository Create()
+    {
+        var repositoryPath = GlobalWritingSystemRepository<CoreWritingSystemDefinition>.CurrentVersionPath(
+            GlobalWritingSystemRepository<CoreWritingSystemDefinition>.DefaultBasePath);
+        var gate = new WorkerMutexOwner(GetRepositoryLockName(repositoryPath));
+        var transferred = false;
+
+        try
+        {
+            while (!gate.TryAcquire()) Thread.Sleep(10);
+
+            var repository = new SerializedGlobalWritingSystemRepository(gate);
+            gate.Release();
+            transferred = true;
+            return repository;
+        }
+        finally
+        {
+            if (!transferred) gate.Dispose();
+        }
     }
 
     /// <summary>Returns the cross-process lock name for a writing-system repository path.</summary>
@@ -90,7 +112,12 @@ internal sealed class SerializedGlobalWritingSystemRepository : CoreGlobalWritin
         WithRepositoryGate(() =>
         {
             if (base.Contains(ws.LanguageTag)) base.Replace(ws.LanguageTag, ws);
-            else base.Set(ws);
+            else
+            {
+                base.Set(ws);
+                // Flush a new ID before another process refreshes this repository's file statistics.
+                base.Save();
+            }
         });
     }
 
