@@ -34,7 +34,9 @@ public sealed partial class FakeCommandClient
         ProposalReviewRequest request, CancellationToken cancellationToken)
     {
         ProposalReviewEntryCountRequests.Add(request);
-        return Completed(new ProposalReviewEntryCountResponse(ProposalReviewEntryCount ?? _pending.Changes.Count));
+        var entryCount = ProposalReviewEntryCount ?? _pending.Changes.Count +
+            Review.Entries.Count(entry => entry is GrammarChangeEntry);
+        return Completed(new ProposalReviewEntryCountResponse(entryCount));
     }
 
     public Task<CommandOutcome<ReviewMarkResponse>> MarkLookedAtAsync(

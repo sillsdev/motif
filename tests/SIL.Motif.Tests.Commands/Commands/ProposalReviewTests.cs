@@ -4,6 +4,7 @@ using SIL.Motif.Commands.Review;
 using SIL.Motif.Commands.Store;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Runner.Operations;
 using SIL.Motif.Worker.Store;
 using Xunit;
 
@@ -147,6 +148,32 @@ public sealed class ProposalReviewTests : IDisposable
         var first = Op("lexical/lexSense/setGloss");
         var second = Op("lexical/lexSense/setGloss");
         var draft = Draft([first, second], Provenance("RetireAllomorph", first, second));
+        new ProposalRepository(fixture.Database).CreateDraft(PendingChanges.DraftName,
+            CanonicalId.Parse(draft.ProposalId), JsonSerializer.Serialize(draft, DraftOptions),
+            ProposalRoles.PendingChanges);
+        File.Delete(fixture.Project.FullFwDataPath);
+
+        var outcome = ProposalReview.ReadEntryCount(fixture.Database, fixture.Project, null);
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        Assert.Equal(1, outcome.Value!.EntryCount);
+    }
+
+    [Fact]
+    public void EntryCountReadsAStagedParsimonyJudgmentWithoutTheLiveProjectFile()
+    {
+        using var fixture = new TrialsTests.ProjectFixture(_root);
+        var judgment = new DraftOperation
+        {
+            OperationId = CanonicalId.Mint("operation/").Value,
+            Kind = HumanJudgmentCustomFieldOperationKinds.Set,
+            Target = CanonicalId.Mint("record/").Value,
+            After = JsonSerializer.SerializeToElement(new { text = "judgment" }).EnumerateObject()
+                .ToDictionary(property => property.Name, property => property.Value.Clone(), StringComparer.Ordinal),
+        };
+        var draft = Draft([judgment], Provenance("RecordParsimonyDisposition", judgment));
+        draft.ContractVersions.Clear();
+        draft.ContractVersions["system"] = "1.0";
         new ProposalRepository(fixture.Database).CreateDraft(PendingChanges.DraftName,
             CanonicalId.Parse(draft.ProposalId), JsonSerializer.Serialize(draft, DraftOptions),
             ProposalRoles.PendingChanges);

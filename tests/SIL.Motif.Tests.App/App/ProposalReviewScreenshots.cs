@@ -51,8 +51,11 @@ public sealed class ProposalReviewScreenshots
             {
                 await workspace.Context.OpenProposalAsync(ProposalId, CancellationToken.None);
                 var page = workspace.PageModel<ReviewPageModel>();
-                await page.LoadReviewAsync();
                 workspace.CurrentPage = WorkspacePage.Review;
+                await page.LoadReviewAsync();
+                while (page.Current?.Key != "rule" && page.PreviousCommand.CanExecute(null))
+                    page.PreviousCommand.Execute(null);
+                Assert.Equal("rule", page.Current!.Key);
                 PageScreenshots.Settle(window);
                 await page.KeepCommand.ExecuteAsync(null);
                 await page.KeepCommand.ExecuteAsync(null);
@@ -62,6 +65,8 @@ public sealed class ProposalReviewScreenshots
 
                 page.PreviousCommand.Execute(null);
                 page.PreviousCommand.Execute(null);
+                Assert.Equal("rule", page.Current!.Key);
+                Assert.Equal(["rule"], page.Entries[1].Entry!.DependsOnEntries);
                 await page.UndoCommand.ExecuteAsync(null);
                 PageScreenshots.Settle(window);
                 Assert.NotNull(page.UndoPrompt);
