@@ -117,6 +117,18 @@ public static class OwningCreateCatalogWriter
             "if (owner is not IPartOfSpeech parent)\n" +
             "    throw new InvalidOperationException(\"Only a part of speech accepts a PartOfSpeech subcategory.\");\n" +
             "cache.ServiceLocator.GetInstance<IPartOfSpeechFactory>().Create(guid, parent);", PositionMatters: false),
+        new("LexEntry", "Senses", "LexSense", FieldCard.Seq,
+            "var child = cache.ServiceLocator.GetInstance<ILexSenseFactory>().Create(guid);\n" +
+            "owner.SensesOS.Insert(index, child);"),
+        new("LexEntry", "MorphoSyntaxAnalyses", "MoMorphSynAnalysis", FieldCard.Col,
+            "IMoMorphSynAnalysis child = concreteClass switch\n" +
+            "{\n" +
+            "    \"MoStemMsa\" => cache.ServiceLocator.GetInstance<IMoStemMsaFactory>().Create(guid),\n" +
+            "    \"MoInflAffMsa\" => cache.ServiceLocator.GetInstance<IMoInflAffMsaFactory>().Create(guid),\n" +
+            "    \"MoDerivAffMsa\" => cache.ServiceLocator.GetInstance<IMoDerivAffMsaFactory>().Create(guid),\n" +
+            "    \"MoUnclassifiedAffixMsa\" => cache.ServiceLocator.GetInstance<IMoUnclassifiedAffixMsaFactory>().Create(guid),\n" +
+            "    _ => throw new InvalidOperationException(\"Grammatical info must be a supported MSA class.\"),\n" +
+            "};\nowner.MorphoSyntaxAnalysesOC.Add(child);"),
         new("StText", "Paragraphs", "StPara", FieldCard.Seq,
             "IStPara child = concreteClass switch\n" +
             "{\n" +
@@ -138,6 +150,7 @@ public static class OwningCreateCatalogWriter
             ("PhEnvironment", "StringRepresentation"), ("FsClosedValue", "Value"),
             ("PhSegmentRule", "Name"),
             ("MoInflAffixSlot", "Name"), ("MoInflAffixTemplate", "Name"), ("CmPossibility", "Name"),
+            ("LexSense", "Definition"),
         }).ToHashSet();
         var directionRows = RewriteRuleFieldSelector.SelectDirection(model.Rows);
         DescriptionCheck.CheckEmittedKinds(model.Rows.Where(r => selected.Contains((r.DeclaringClass, r.FieldName)))
@@ -178,6 +191,7 @@ public static class OwningCreateCatalogWriter
                     "PhPhonContext" => "new[] { \"PhSimpleContextSeg\", \"PhSimpleContextNC\", \"PhSimpleContextBdry\", \"PhSequenceContext\" }",
                     "StPara" => "new[] { \"StTxtPara\" }",
                     "CmPossibility" => "new[] { \"PartOfSpeech\" }",
+                    "MoMorphSynAnalysis" => "new[] { \"MoStemMsa\", \"MoInflAffMsa\", \"MoDerivAffMsa\", \"MoUnclassifiedAffixMsa\" }",
                     _ => "Array.Empty<string>()",
                 });
             if (creation.SupportsMove)
@@ -207,7 +221,8 @@ public static class OwningCreateCatalogWriter
 
         foreach (var (owner, field) in new[] { ("PhTerminalUnit", "Name"), ("PhNaturalClass", "Name"),
                      ("PhEnvironment", "Name"), ("PhSegmentRule", "Name"), ("MoInflAffixSlot", "Name"),
-                     ("MoInflAffixTemplate", "Name"), ("CmPossibility", "Name") })
+                     ("MoInflAffixTemplate", "Name"), ("CmPossibility", "Name"),
+                     ("LexSense", "Definition") })
         {
             var row = model.Rows.Single(r => r.DeclaringClass == owner && r.FieldName == field);
             var spec = BasicFieldSpecBuilder.Build(row);

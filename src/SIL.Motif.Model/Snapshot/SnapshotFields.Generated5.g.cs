@@ -19,6 +19,15 @@ public static partial class SnapshotFields
     /// <summary>A <c>FsClosedValue</c>'s <c>Value</c> rel atomic field.</summary>
     public const string FsClosedValueValue = "grammar/fsClosedValue/value";
 
+    /// <summary>A <c>LexEntry</c>'s <c>MorphoSyntaxAnalyses</c> owning MoMorphSynAnalysis field.</summary>
+    public const string LexEntryMorphoSyntaxAnalyses = "lexical/lexEntry/morphoSyntaxAnalyses";
+
+    /// <summary>A <c>LexEntry</c>'s <c>Senses</c> owning LexSense field.</summary>
+    public const string LexEntrySenses = "lexical/lexEntry/senses";
+
+    /// <summary>A <c>LexSense</c>'s <c>Definition</c> basic MultiUnicode field.</summary>
+    public const string LexSenseDefinition = "lexical/lexSense/definition";
+
     /// <summary>A <c>MoInflAffixSlot</c>'s <c>Name</c> basic MultiUnicode field.</summary>
     public const string MoInflAffixSlotName = "grammar/moInflAffixSlot/name";
 

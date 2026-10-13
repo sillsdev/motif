@@ -153,6 +153,28 @@ the owning collection's footprint and requires a fresh Dry Run; refreshing evide
 identity, owner, name and dependencies. Apply also refuses a Dry Run from another semantic projection version
 with an instruction to run a fresh Dry Run, before comparing its footprint or writing anything.
 
+Dictionary entries are unowned in LibLCM: the lexicon lists them through a virtual `Entries` property the
+model does not carry as a field. `lexical/lexDb/createEntries` therefore targets the project's lexicon with
+the closed payload `{}`, and its effect records only the new entry's membership, never the whole entry list.
+An entry's senses come from `lexical/lexEntry/createSenses` (ordered, identity-relative placement when the
+entry already has senses) and its grammatical info from `lexical/lexEntry/createMorphoSyntaxAnalyses`, whose
+`class` is `MoStemMsa`, `MoInflAffMsa`, `MoDerivAffMsa` or `MoUnclassifiedAffixMsa`. `lexical/lexSense/setDefinition`
+sets a sense's plain-text rich-string definition with `{ "ws": "<tag>", "text": "<definition>" }`;
+`lexical/lexSense/clearDefinition` clears only `{ "ws": "<tag>" }`. Both payloads are closed, and the snapshot
+uses LibLCM's NFSC rich-string normalization. Set and clear address the same per-writing-system slot.
+The entry and sense creates take only `{}`; the MSA create takes only `{ "class": "<supported class>" }`.
+Each create's slot is its owner, field and created entity identity. All three refuse same-type identity reuse
+and wrong-type identity conflicts, and accept no storage-GUID override. Entry and MSA creates accept no placement;
+sense creation requires adjacent identity anchors when its owning sequence is nonempty. A changed owning
+sequence requires fresh evidence and valid anchors; refreshing evidence never changes create identity or content.
+
+The `AuthorLexicalEntry` composer authors a complete entry in
+one call: the entry, its lexeme form, its grammatical info with category and slots, derivational target or
+inflection class, and one sense with gloss, optional definition and a link to that grammatical info. It
+refuses a morph type whose shape disagrees with the grammatical info (a stem morph type with affix info, or
+the reverse), a form in a writing system that is not vernacular, and a slot or inflection class outside the
+category or its ancestors.
+
 `grammar/phPhonData/movePhonRules` moves one existing rule in the ordered `PhonRules` owning sequence.
 Its closed `after` payload is `{ "member": "<rule-id>" }`; `target` is the owning phonological data
 object, and `placement` names the adjacent rule identities around the new gap. The rule member id is
@@ -587,6 +609,18 @@ Normalization follows LibLCM:
 
 The snapshot includes enough identity, ownership, reference, order, and definition information to
 support diff, expected effects, rebase, and read-back validation.
+
+### Projection versions
+
+A version changes when members join or leave the projection, because the same project then hashes
+differently. A stored Baseline or Dry Run on another version is refused and recaptured, never migrated.
+
+- **5**: `CmPossibility.Name` joins, so the parts-of-speech list's names are part of a project's state once
+  Proposals can create parts of speech.
+- **6**: `LexSense.Definition` joins, so a sense's definition is part of a project's state once Proposals
+  can create dictionary entries with definitions.
+
+Versions up to 4 predate this list.
 
 ## Expected effects
 

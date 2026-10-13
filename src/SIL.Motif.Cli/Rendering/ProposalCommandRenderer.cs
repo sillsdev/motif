@@ -178,7 +178,9 @@ public static class ProposalCommandRenderer
         sb.AppendLine(
             $"Composed '{r.ComposerName}' against draft '{r.DraftName}': {r.Operations.Count} operation(s) added.");
         foreach (var op in r.Operations)
-            sb.AppendLine($"  {op.OperationId}  ({op.Kind})");
+            sb.AppendLine(op.EntityId is { Length: > 0 } created
+                ? $"  {op.OperationId}  ({op.Kind}) creates {created}"
+                : $"  {op.OperationId}  ({op.Kind})");
         if (r.RelatedObjects is { Count: > 0 } related)
         {
             sb.AppendLine("The changed slot is used by:");

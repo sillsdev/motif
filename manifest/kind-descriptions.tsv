@@ -129,3 +129,6 @@
 "CmPossibilityList"	"Possibilities"	"Categories"	"Creates a part of speech at the top level of the project's category list; other lists are refused."	"unsourced"	""	""	""
 "CmPossibility"	"SubPossibilities"	"Subcategories"	"Creates a part of speech as a subcategory of an existing part of speech."	"unsourced"	""	""	""
 "CmPossibility"	"Name"	"Name"	"Names this list item, such as a part of speech, in one writing system."	"unsourced"	""	""	""
+"LexEntry"	"Senses"	"Senses"	"Adds a sense to this entry's ordered list of meanings."	"unsourced"	""	""	""
+"LexEntry"	"MorphoSyntaxAnalyses"	"Grammatical Info."	"Creates grammatical info (an MSA) on this entry: a stem, or an inflectional, derivational or unclassified affix, which its senses can then use."	"unsourced"	""	""	""
+"LexSense"	"Definition"	"Definition"	"Gives this sense a full definition in one writing system, alongside its short gloss."	"unsourced"	""	""	""

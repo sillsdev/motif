@@ -109,6 +109,8 @@ public static class CliVerbCatalog
             new[] { "compose-author-phonological-rule --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
         new CliVerbDescriptor("Commands", "compose-author-part-of-speech", "compose-author-part-of-speech",
             new[] { "compose-author-part-of-speech --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
+        new CliVerbDescriptor("Commands", "compose-author-lexical-entry", "compose-author-lexical-entry",
+            new[] { "compose-author-lexical-entry --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
         new CliVerbDescriptor("Commands", "compose-author-affix-slot", "compose-author-affix-slot",
             new[] { "compose-author-affix-slot --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
         new CliVerbDescriptor("Commands", "compose-author-affix-template", "compose-author-affix-template",

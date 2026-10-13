@@ -129,6 +129,11 @@
     "description": "Stages one simple rewrite rule in a Draft, using existing phonemes and natural classes with explicit context and rule placement. Empty input or output means insertion or deletion; unsupported alpha variables and metathesis are refused. Only a person can Apply.",
     "source": "Hand-written from the regular rewrite-rule composer contract and command behavior."
   },
+  "compose-author-lexical-entry": {
+    "title": "Author a dictionary entry",
+    "description": "Stages one new dictionary entry with its lexeme form, one sense with gloss and optional definition, and grammatical info: a stem, or an inflectional, derivational or unclassified affix. Inspect its Dry Run and try words with it before a person Applies the Proposal.",
+    "source": "Hand-written from command behavior."
+  },
   "compose-author-part-of-speech": {
     "title": "Author a part of speech",
     "description": "Stages a new part of speech, at the top of the category list or under an existing category, with its name and optional abbreviation. Later composer calls in the same Draft can use it as the category of entries, slots and affixes.",

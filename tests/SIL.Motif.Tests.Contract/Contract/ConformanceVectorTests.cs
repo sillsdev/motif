@@ -19,6 +19,11 @@ public class ConformanceVectorTests
     static ConformanceVectorTests()
     {
         // Contract vectors test hashing without referencing Runner, so register this slice's kinds here.
+        OperationKindRegistry.Register("lexical/lexDb/createEntries");
+        OperationKindRegistry.Register("lexical/lexEntry/createSenses");
+        OperationKindRegistry.Register("lexical/lexEntry/createMorphoSyntaxAnalyses");
+        OperationKindRegistry.Register("lexical/lexSense/setDefinition");
+        OperationKindRegistry.Register("lexical/lexSense/clearDefinition");
         OperationKindRegistry.Register("lists/cmPossibilityList/createPossibilities");
         OperationKindRegistry.Register("lists/cmPossibility/createSubPossibilities");
         OperationKindRegistry.Register("lists/cmPossibility/setName");

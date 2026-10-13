@@ -748,6 +748,100 @@
     "idempotentHint": false
   },
   {
+    "name": "motif_add_lexical_entry",
+    "description": "Author a dictionary entry. Stages one new dictionary entry with its lexeme form, one sense with gloss and optional definition, and grammatical info: a stem, or an inflectional, derivational or unclassified affix. Inspect its Dry Run and try words with it before a person Applies the Proposal.\nCommand: compose-author-lexical-entry. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "The draft name from motif_start_proposal."
+        },
+        "form": {
+          "type": "string",
+          "description": "The lexeme form, without affix hyphens."
+        },
+        "formWs": {
+          "type": "string",
+          "description": "Vernacular writing system tag of the form."
+        },
+        "morphType": {
+          "type": "string",
+          "description": "Canonical id of the morph type, such as stem, root, prefix or suffix."
+        },
+        "gloss": {
+          "type": "string",
+          "description": "The sense\u0027s gloss."
+        },
+        "analysisWs": {
+          "type": "string",
+          "description": "Analysis writing system tag of the gloss and definition."
+        },
+        "definition": {
+          "type": "string",
+          "description": "Optional definition of the sense."
+        },
+        "msa": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "description": "Grammatical info (MSA) kind; must match the morph type.",
+              "enum": [
+                "stem",
+                "inflectional",
+                "derivational",
+                "unclassified"
+              ]
+            },
+            "category": {
+              "type": "string",
+              "description": "Canonical id of the part of speech; for a derivational affix, the one it attaches to."
+            },
+            "toCategory": {
+              "type": "string",
+              "description": "Derivational only: canonical id of the part of speech it makes."
+            },
+            "slots": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Inflectional only: canonical ids of existing slots the affix fills."
+            },
+            "inflectionClass": {
+              "type": "string",
+              "description": "Stem only: canonical id of its inflection class, such as a noun class."
+            }
+          },
+          "required": [
+            "kind",
+            "category"
+          ],
+          "additionalProperties": false
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "form",
+        "formWs",
+        "morphType",
+        "gloss",
+        "analysisWs",
+        "msa",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
     "name": "motif_add_part_of_speech",
     "description": "Author a part of speech. Stages a new part of speech, at the top of the category list or under an existing category, with its name and optional abbreviation. Later composer calls in the same Draft can use it as the category of entries, slots and affixes.\nCommand: compose-author-part-of-speech. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
     "inputSchema": {

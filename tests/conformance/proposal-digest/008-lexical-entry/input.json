@@ -1,0 +1,97 @@
+{
+  "contractVersions": {
+    "lexical": "1.0"
+  },
+  "operations": [
+    {
+      "operationId": "agent_AAECAwQFBgcICQoLDA0ODw",
+      "kind": "lexical/lexDb/createEntries",
+      "target": "agent_AQIDBAUGBwgJCgsMDQ4PEA",
+      "entityId": "agent_AgMEBQYHCAkKCwwNDg8QEQ",
+      "after": {}
+    },
+    {
+      "operationId": "agent_AwQFBgcICQoLDA0ODxAREg",
+      "kind": "lexical/lexEntry/createSenses",
+      "target": "agent_AgMEBQYHCAkKCwwNDg8QEQ",
+      "entityId": "agent_BAUGBwgJCgsMDQ4PEBESEw",
+      "after": {},
+      "dependsOn": [
+        "agent_AAECAwQFBgcICQoLDA0ODw"
+      ]
+    },
+    {
+      "operationId": "agent_BQYHCAkKCwwNDg8QERITFA",
+      "kind": "lexical/lexEntry/createMorphoSyntaxAnalyses",
+      "target": "agent_AgMEBQYHCAkKCwwNDg8QEQ",
+      "entityId": "agent_BgcICQoLDA0ODxAREhMUFQ",
+      "after": {
+        "class": "MoStemMsa"
+      },
+      "dependsOn": [
+        "agent_AAECAwQFBgcICQoLDA0ODw"
+      ]
+    },
+    {
+      "operationId": "agent_BwgJCgsMDQ4PEBESExQVFg",
+      "kind": "lexical/lexEntry/createMorphoSyntaxAnalyses",
+      "target": "agent_AgMEBQYHCAkKCwwNDg8QEQ",
+      "entityId": "agent_CAkKCwwNDg8QERITFBUWFw",
+      "after": {
+        "class": "MoInflAffMsa"
+      },
+      "dependsOn": [
+        "agent_AAECAwQFBgcICQoLDA0ODw"
+      ]
+    },
+    {
+      "operationId": "agent_CQoLDA0ODxAREhMUFRYXGA",
+      "kind": "lexical/lexEntry/createMorphoSyntaxAnalyses",
+      "target": "agent_AgMEBQYHCAkKCwwNDg8QEQ",
+      "entityId": "agent_CgsMDQ4PEBESExQVFhcYGQ",
+      "after": {
+        "class": "MoDerivAffMsa"
+      },
+      "dependsOn": [
+        "agent_AAECAwQFBgcICQoLDA0ODw"
+      ]
+    },
+    {
+      "operationId": "agent_CwwNDg8QERITFBUWFxgZGg",
+      "kind": "lexical/lexEntry/createMorphoSyntaxAnalyses",
+      "target": "agent_AgMEBQYHCAkKCwwNDg8QEQ",
+      "entityId": "agent_DA0ODxAREhMUFRYXGBkaGw",
+      "after": {
+        "class": "MoUnclassifiedAffixMsa"
+      },
+      "dependsOn": [
+        "agent_AAECAwQFBgcICQoLDA0ODw"
+      ]
+    },
+    {
+      "operationId": "agent_Dg8QERITFBUWFxgZGhscHQ",
+      "kind": "lexical/lexSense/setDefinition",
+      "target": "agent_BAUGBwgJCgsMDQ4PEBESEw",
+      "after": {
+        "ws": "en",
+        "text": "synthetic entry definition"
+      },
+      "dependsOn": [
+        "agent_AwQFBgcICQoLDA0ODxAREg"
+      ]
+    },
+    {
+      "operationId": "agent_DxAREhMUFRYXGBkaGxwdHg",
+      "kind": "lexical/lexSense/clearDefinition",
+      "target": "agent_BAUGBwgJCgsMDQ4PEBESEw",
+      "after": {
+        "ws": "fr"
+      },
+      "dependsOn": [
+        "agent_AwQFBgcICQoLDA0ODxAREg"
+      ]
+    }
+  ],
+  "proposalId": "agent_EBESExQVFhcYGRobHB0eHw",
+  "requires": []
+}

@@ -54,6 +54,9 @@ public static partial class SnapshotFields
     /// <summary>The semantic context read by a retained-form retarget operation.</summary>
     public const string AllomorphRetargetContext = "retirement/allomorph/retargetContext";
 
+    /// <summary>Whether one lexical entry exists in the lexicon; never the whole entry list.</summary>
+    public const string LexDbEntries = "lexical/lexDb/entries";
+
     /// <summary>The ordered alternate forms owned by a lexical entry.</summary>
     public const string LexEntryAlternateForms = "lexical/lexEntry/alternateForms";
 
@@ -63,5 +66,5 @@ public static partial class SnapshotFields
     /// only when the snapshot/effect shape changes in a way that could alter a digest for otherwise
     /// unchanged content.
     /// </summary>
-    public const string ProjectionVersion = "5";
+    public const string ProjectionVersion = "6";
 }

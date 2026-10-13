@@ -67,6 +67,8 @@ public static partial class ProposalCommands
             AuthorPhonologicalRuleComposer.Build(cache, AuthorPhonologicalRuleIntentParser.Parse(input))),
         new("compose-author-part-of-speech", "AuthorPartOfSpeech", (cache, input, _) =>
             AuthorPartOfSpeechComposer.Build(cache, AuthorPartOfSpeechIntentParser.Parse(input))),
+        new("compose-author-lexical-entry", "AuthorLexicalEntry", (cache, input, _) =>
+            AuthorLexicalEntryComposer.Build(cache, AuthorLexicalEntryIntentParser.Parse(input))),
         new("compose-author-affix-slot", "AuthorAffixSlot", (cache, input, _) =>
             AuthorAffixSlotComposer.Build(cache, AuthorAffixSlotIntentParser.Parse(input))),
         new("compose-author-affix-template", "AuthorAffixTemplate", (cache, input, _) =>

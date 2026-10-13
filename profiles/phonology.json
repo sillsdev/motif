@@ -48,6 +48,9 @@
       "tool": "motif_add_part_of_speech"
     },
     {
+      "tool": "motif_add_lexical_entry"
+    },
+    {
       "tool": "motif_add_feature_structure"
     },
     {

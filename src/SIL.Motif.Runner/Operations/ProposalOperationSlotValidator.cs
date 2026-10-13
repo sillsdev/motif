@@ -113,6 +113,18 @@ public static class ProposalOperationSlotValidator
             PhSegmentRuleNameOperationKinds.ClearName when operation.Target is { } target &&
                 operation.After is { } after =>
                 (target, SnapshotFields.PhSegmentRuleName, PhSegmentRuleNameClearPayload.Parse(after)),
+            LexDbEntriesOperationKinds.Create when operation.Target is { } target &&
+                operation.EntityId is { } member => (target, SnapshotFields.LexDbEntries, member.Value),
+            LexEntrySensesOperationKinds.Create when operation.Target is { } target &&
+                operation.EntityId is { } member => (target, SnapshotFields.LexEntrySenses, member.Value),
+            LexEntryMorphoSyntaxAnalysesOperationKinds.Create when operation.Target is { } target &&
+                operation.EntityId is { } member => (target, SnapshotFields.LexEntryMorphoSyntaxAnalyses, member.Value),
+            LexSenseDefinitionOperationKinds.SetDefinition when operation.Target is { } target &&
+                operation.After is { } after =>
+                (target, SnapshotFields.LexSenseDefinition, LexSenseDefinitionSetPayload.Parse(after).WritingSystemTag),
+            LexSenseDefinitionOperationKinds.ClearDefinition when operation.Target is { } target &&
+                operation.After is { } after =>
+                (target, SnapshotFields.LexSenseDefinition, LexSenseDefinitionClearPayload.Parse(after)),
             CmPossibilityNameOperationKinds.SetName when operation.Target is { } target &&
                 operation.After is { } after =>
                 (target, SnapshotFields.CmPossibilityName, CmPossibilityNameSetPayload.Parse(after).WritingSystemTag),

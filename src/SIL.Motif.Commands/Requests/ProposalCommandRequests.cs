@@ -130,6 +130,13 @@ public sealed record ComposeAuthorPartOfSpeechRequest(
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
 /// <param name="DraftName">The name of the Draft being authored.</param>
 /// <param name="IntentJson">The closed semantic intent JSON accepted by this composer.</param>
+public sealed record ComposeAuthorLexicalEntryRequest(
+    string FwDataPath, string ProductVersion, string DraftName, string IntentJson);
+
+/// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
+/// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
+/// <param name="DraftName">The name of the Draft being authored.</param>
+/// <param name="IntentJson">The closed semantic intent JSON accepted by this composer.</param>
 public sealed record ComposeAuthorAffixTemplateRequest(
     string FwDataPath, string ProductVersion, string DraftName, string IntentJson);
 
