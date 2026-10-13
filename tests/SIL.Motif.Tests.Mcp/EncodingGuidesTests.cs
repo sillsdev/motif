@@ -93,7 +93,7 @@ public sealed class EncodingGuidesTests
     {
         var context = new ServerContext("unused.fwdata", "1.0",
             new NoRunnerLauncher(new JobRunnerLaunchOptions("root", null)), new ActivityLog(null),
-            ToolProfile.Builtin, TextWriter.Null);
+            ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
         var tools = MotifMcpServer.Expose(ToolProfile.Builtin);
         Assert.Contains(tools, tool => tool.Name == "motif_guide");
 

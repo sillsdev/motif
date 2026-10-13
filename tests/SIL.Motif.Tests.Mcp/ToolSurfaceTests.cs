@@ -22,6 +22,15 @@ public sealed class ToolSurfaceTests
     }
 
     [Theory]
+    [InlineData("SIL.Motif.Contract")]
+    [InlineData("SIL.Motif.Commands")]
+    public void RequestFieldDocsTravelInsideTheServerSoAPublishedBuildCannotDropThem(string assembly)
+    {
+        Assert.Contains("motif-field-docs/" + assembly + ".xml",
+            typeof(MotifMcpServer).Assembly.GetManifestResourceNames());
+    }
+
+    [Theory]
     [InlineData("default")]
     [InlineData("phonology")]
     [InlineData("parsimony")]
@@ -109,7 +118,7 @@ public sealed class ToolSurfaceTests
     {
         var tool = AgentTools.All.Single(tool => tool.Name == "motif_stats");
         var context = new ServerContext("unused.fwdata", "1.0", new SIL.Motif.Commands.NoRunnerLauncher(
-            new SIL.Motif.Commands.JobRunnerLaunchOptions("root", null)), new ActivityLog(null), ToolProfile.Builtin, TextWriter.Null);
+            new SIL.Motif.Commands.JobRunnerLaunchOptions("root", null)), new ActivityLog(null), ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
         Assert.DoesNotContain(tool.InputSchema["required"]!.AsArray(), value => value!.GetValue<string>() == "assessmentId");
         var arguments = new JsonObject { ["output"] = "JsonRows",
             ["forwardedArguments"] = new JsonArray("--format", "jsonl") };

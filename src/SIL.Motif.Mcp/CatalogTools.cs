@@ -74,9 +74,7 @@ internal static class CatalogTools
 
     private static string FieldDoc(Type type, PropertyInfo property)
     {
-        var path = Path.ChangeExtension(type.Assembly.Location, ".xml");
-        if (!File.Exists(path)) return string.Empty;
-        var document = XDocument.Load(path);
+        var document = FieldDocs.GetOrAdd(type.Assembly, LoadFieldDocs);
         var member = document.Descendants("member").FirstOrDefault(element =>
             (string?)element.Attribute("name") == "T:" + type.FullName);
         var text = member?.Elements("param").FirstOrDefault(element =>
@@ -84,6 +82,18 @@ internal static class CatalogTools
         text ??= document.Descendants("member").FirstOrDefault(element =>
             (string?)element.Attribute("name") == "P:" + type.FullName + "." + property.Name)?.Element("summary")?.Value;
         return text is null ? string.Empty : property.Name + ": " + Regex.Replace(text.Trim(), @"\s+", " ");
+    }
+
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<Assembly, XDocument> FieldDocs = new();
+
+    internal const string FieldDocsResourcePrefix = "motif-field-docs/";
+
+    private static XDocument LoadFieldDocs(Assembly assembly)
+    {
+        var name = FieldDocsResourcePrefix + assembly.GetName().Name + ".xml";
+        using var stream = typeof(CatalogTools).Assembly.GetManifestResourceStream(name)
+            ?? throw new InvalidOperationException($"Request field docs '{name}' are not embedded in the MCP server.");
+        return XDocument.Load(stream);
     }
 
     private static bool IsContext(string name) => name is "ProjectPath" or "FwDataPath" or "ProductVersion";

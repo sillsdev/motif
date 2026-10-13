@@ -7,7 +7,7 @@ namespace SIL.Motif.Mcp;
 
 /// <summary>Everything a tool call needs from the server that is not in its arguments.</summary>
 internal sealed class ServerContext(string projectPath, string productVersion, IJobRunnerLauncher runner,
-    ActivityLog activity, ToolProfile profile, TextWriter log, bool advancedAiModeEnabled = true, string? parserPath = null)
+    ActivityLog activity, ToolProfile profile, TextWriter log, bool advancedAiModeEnabled, string? parserPath = null)
 {
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, SemaphoreSlim> Gates = new();
 

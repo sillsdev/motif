@@ -11,10 +11,7 @@
   "plugins": [
     {
       "name": "motif",
-      "source": {
-        "source": "directory",
-        "path": "./plugin"
-      },
+      "source": "./plugin",
       "description": "FieldWorks expertise and safe Motif Proposal workflows.",
       "version": "0.2.0"
     }

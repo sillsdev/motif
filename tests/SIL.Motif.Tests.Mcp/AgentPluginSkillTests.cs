@@ -77,6 +77,19 @@ public sealed class AgentPluginSkillTests
     }
 
     [Fact]
+    public void EverySkillCrosswalkCopyMatchesTheAuthoredOne()
+    {
+        var pluginRoot = Path.Combine(FindRepositoryRoot(), "plugin");
+        var authored = File.ReadAllBytes(Path.Combine(pluginRoot, "references", "crosswalk.md"));
+        var copies = Directory.GetFiles(Path.Combine(pluginRoot, "skills"), "crosswalk.md", SearchOption.AllDirectories);
+
+        Assert.Equal(3, copies.Length);
+        foreach (var copy in copies)
+            Assert.True(authored.AsSpan().SequenceEqual(File.ReadAllBytes(copy)),
+                $"{copy} differs from plugin/references/crosswalk.md; run tools/Sync-SkillCrosswalk.py.");
+    }
+
+    [Fact]
     public void BundledManifestsExposeTheLocalServerWithoutAProjectArgument()
     {
         var repository = FindRepositoryRoot();
@@ -91,7 +104,8 @@ public sealed class AgentPluginSkillTests
         Assert.Equal("motif", claudePlugin["name"]!.GetValue<string>());
         Assert.Equal("motif", codexPlugin["name"]!.GetValue<string>());
         Assert.Equal("motif", claudeMarketplace["name"]!.GetValue<string>());
-        Assert.Equal("./plugin", claudeMarketplace["plugins"]![0]!["source"]!["path"]!.GetValue<string>());
+        // Claude Code takes a relative plugin source only as a bare string; an object source needs github, url or npm.
+        Assert.Equal("./plugin", claudeMarketplace["plugins"]![0]!["source"]!.GetValue<string>());
         Assert.Equal("./", codexMarketplace["plugins"]![0]!["source"]!["path"]!.GetValue<string>());
         foreach (var server in new[] { claudeServer, codexServer })
         {

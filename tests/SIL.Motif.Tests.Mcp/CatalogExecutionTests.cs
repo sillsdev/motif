@@ -19,7 +19,7 @@ public sealed class CatalogExecutionTests
         {
             var runner = new RecordingRunner(root);
             var context = new ServerContext(project, "1.0", runner, new ActivityLog(null),
-                ToolProfile.Builtin, TextWriter.Null);
+                ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
             var tool = AgentTools.All.Single(tool => tool.Name == "motif_baseline_refresh");
 
             var result = await tool.Run(context, new ToolArgs(new JsonObject(), tool.ArgumentNames), CancellationToken.None);

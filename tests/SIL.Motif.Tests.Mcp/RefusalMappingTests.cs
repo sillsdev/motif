@@ -52,10 +52,19 @@ public sealed class RefusalMappingTests
     }
 
     [Fact]
+    public void AServerContextMustBeToldWhetherAdvancedAiModeIsOn()
+    {
+        var parameter = typeof(MotifMcpServer).Assembly.GetType("SIL.Motif.Mcp.ServerContext", throwOnError: true)!
+            .GetConstructors().Single().GetParameters().Single(p => p.Name == "advancedAiModeEnabled");
+
+        Assert.False(parameter.HasDefaultValue, "A context built without the user's choice must not serve tools.");
+    }
+
+    [Fact]
     public async Task AnUnknownToolIsAnErrorTheModelCanReadNotAProtocolFailure()
     {
         var context = new ServerContext("absent.fwdata", "1.0", new SIL.Motif.Commands.NoRunnerLauncher(
-            new SIL.Motif.Commands.JobRunnerLaunchOptions("root", null)), new ActivityLog(null), ToolProfile.Builtin, TextWriter.Null);
+            new SIL.Motif.Commands.JobRunnerLaunchOptions("root", null)), new ActivityLog(null), ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
         var tools = MotifMcpServer.Expose(ToolProfile.Builtin);
 
         var result = await MotifMcpServer.CallAsync(context, tools, "motif_apply", null, CancellationToken.None);
@@ -68,7 +77,7 @@ public sealed class RefusalMappingTests
     public async Task AnArgumentTheToolDoesNotHaveIsRefusedWithAHint()
     {
         var context = new ServerContext("absent.fwdata", "1.0", new SIL.Motif.Commands.NoRunnerLauncher(
-            new SIL.Motif.Commands.JobRunnerLaunchOptions("root", null)), new ActivityLog(null), ToolProfile.Builtin, TextWriter.Null);
+            new SIL.Motif.Commands.JobRunnerLaunchOptions("root", null)), new ActivityLog(null), ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
         var tools = MotifMcpServer.Expose(ToolProfile.Builtin);
         var arguments = new Dictionary<string, JsonElement> { ["force"] = JsonSerializer.SerializeToElement(true) };
 
@@ -83,7 +92,7 @@ public sealed class RefusalMappingTests
     {
         var context = new ServerContext(Path.Combine(Path.GetTempPath(), "no-such-motif-project.fwdata"), "1.0",
             new SIL.Motif.Commands.NoRunnerLauncher(new SIL.Motif.Commands.JobRunnerLaunchOptions("root", null)),
-            new ActivityLog(null), ToolProfile.Builtin, TextWriter.Null);
+            new ActivityLog(null), ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
         var tools = MotifMcpServer.Expose(ToolProfile.Builtin);
 
         var result = await MotifMcpServer.CallAsync(context, tools, "motif_proposals", new Dictionary<string, JsonElement>

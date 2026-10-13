@@ -43,7 +43,7 @@ public sealed class DifferencePagingTests
             });
             Assert.True(recorded.Succeeded, recorded.Refusal?.Message);
             var context = new ServerContext(project, "1.0", new NoRunnerLauncher(new JobRunnerLaunchOptions(root, null)),
-                new ActivityLog(null), ToolProfile.Builtin, TextWriter.Null);
+                new ActivityLog(null), ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
             JsonObject Page(string category, int offset) => Assert.IsType<JsonObject>(TrialResults.Read(context,
                 new ToolArgs(new JsonObject { ["difference"] = "difference", ["category"] = category,
                     ["offset"] = offset, ["limit"] = 1 }, ["difference", "category", "offset", "limit"])).Value);

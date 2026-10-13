@@ -33,4 +33,15 @@
     </EmbeddedResource>
   </ItemGroup>
 
+  <!-- Tool descriptions quote request-field docs, so they ride inside this assembly rather than beside it. -->
+  <Target Name="EmbedRequestFieldDocs" AfterTargets="ResolveAssemblyReferences" BeforeTargets="PrepareResources">
+    <ItemGroup>
+      <_RequestFieldDocs Include="@(ReferenceCopyLocalPaths)"
+        Condition="'%(Extension)' == '.xml' and ('%(Filename)' == 'SIL.Motif.Contract' or '%(Filename)' == 'SIL.Motif.Commands')" />
+      <EmbeddedResource Include="@(_RequestFieldDocs)" LogicalName="motif-field-docs/%(Filename)%(Extension)" />
+    </ItemGroup>
+    <Error Condition="'@(_RequestFieldDocs->Count())' != '2'"
+      Text="The MCP tool descriptions need the Contract and Commands documentation files; found '@(_RequestFieldDocs)'." />
+  </Target>
+
 </Project>
