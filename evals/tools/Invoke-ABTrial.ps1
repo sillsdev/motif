@@ -99,7 +99,8 @@ Copy-Item (Join-Path $PSScriptRoot 'IsolatedHost.psm1') (Join-Path $clientRoot '
 Copy-Item (Join-Path $PSScriptRoot 'HostPlan.psm1') (Join-Path $clientRoot 'host-plan.psm1')
 Copy-Item (Join-Path $PSScriptRoot 'AgentBoundary.py') (Join-Path $clientRoot 'agent-boundary.py')
 Copy-Item (Join-Path $PSScriptRoot 'McpBridgeClient.py') (Join-Path $clientRoot 'stdio.py')
-$prompt = Get-Content -LiteralPath (Join-Path $manifest.taskPath $task.prompt) -Raw
+$projectPromptLine = Get-ABProjectPromptLine
+$prompt = Get-ABTrialPrompt (Get-Content -LiteralPath (Join-Path $manifest.taskPath $task.prompt) -Raw)
 $systemAppend = $null
 if ($manifest.arm.Contains('system_append') -and $manifest.arm.system_append) {
     $path = [string]$manifest.arm.system_append
@@ -128,9 +129,7 @@ if ($manifest.validationMode -eq 'empty') {
     Write-ABJson (Join-Path $inputRoot 'session.json') $inside
 } elseif ($manifest.arm.host -eq 'fake') { Copy-Item $fakeScript (Join-Path $inputRoot 'actions.jsonl') }
 
-$listRoot = Join-Path $controlRoot 'listing'
-Copy-Item -LiteralPath $projectRoot -Destination $listRoot -Recurse
-$listSession = New-ABMcpSession $motifExe @('mcp', '--project', (Join-Path $listRoot 'project.fwdata'), '--profile', $serverProfilePath) $controlRoot @{} (Join-Path $controlRoot 'listing.jsonl')
+$listSession = New-ABMcpSession $motifExe (Get-ABServerArguments $serverProfilePath $null) $controlRoot @{} (Join-Path $controlRoot 'listing.jsonl')
 try { $allowed = @($listSession.Tools | ForEach-Object { [string]$_.name }) }
 finally { [void](Close-ABMcpSession $listSession) }
 $gradeTools = @{}
@@ -230,6 +229,7 @@ Write-ABJson (Join-Path $outputRoot 'manifest.json') ([ordered]@{
     armFingerprint = if ($manifest.arm.server.Contains('fingerprint')) { $manifest.arm.server.fingerprint } else { $null }
     sourceCommit = if ($manifest.arm.server.Contains('sourceCommit')) { $manifest.arm.server.sourceCommit } else { $null }
     authMode = $authMode
+    projectPromptLine = $projectPromptLine
     staging = @{ retained = [bool]$keepStaging; path = if ($keepStaging) { $trialRoot } else { $null } }
     excludedFromScoring = $integrity.state -ne 'clean' -or $grade.failureClass -in @('cloud_failure', 'harness_defect') -or
         $integrity.failureClass -in @('cloud_failure', 'harness_defect') -or

@@ -81,4 +81,29 @@ Read the project through the registered Motif MCP tools. In code mode, discover 
         registrationArguments = $registration; mcpConfig = $config; bridge = $bridge; bridgeArguments = $bridgeArguments }
 }
 
-Export-ModuleMember -Function New-ABHostPlan, Get-ABInferenceAuthMode
+# The server starts without a project (ADR 0058), so a trial names its one Known project by this file name.
+$script:ABProjectName = 'project'
+
+function Get-ABProjectName { return $script:ABProjectName }
+
+function Get-ABProjectPromptLine { return "Work in the Motif project named ``$script:ABProjectName``." }
+
+# Every Arm reads the same task text followed by the same project line.
+function Get-ABTrialPrompt([string] $TaskPrompt) { return $TaskPrompt.TrimEnd() + "`n`n" + (Get-ABProjectPromptLine) + "`n" }
+
+function Get-ABServerArguments([string] $ProfilePath, [string] $ActivityPath) {
+    $arguments = @('mcp', '--profile', $ProfilePath)
+    if ($ActivityPath) { $arguments += @('--activity-log', $ActivityPath) }
+    return $arguments
+}
+
+# Any CLI command that names a project records it as Known; this one only reads writing systems.
+function Get-ABProjectRegistrationArguments([string] $FwDataPath) {
+    if ([IO.Path]::GetFileNameWithoutExtension($FwDataPath) -ne $script:ABProjectName) {
+        throw "A trial project file must be named '$script:ABProjectName.fwdata'."
+    }
+    return @('writing-systems', '--project', $FwDataPath, '--json')
+}
+
+Export-ModuleMember -Function New-ABHostPlan, Get-ABInferenceAuthMode, Get-ABProjectName, Get-ABProjectPromptLine, Get-ABTrialPrompt, `
+    Get-ABServerArguments, Get-ABProjectRegistrationArguments

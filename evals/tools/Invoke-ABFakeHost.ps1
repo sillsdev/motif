@@ -106,6 +106,11 @@ try {
         $toolArguments = if ($scriptCall.arguments -is [System.Collections.IDictionary]) {
             Resolve-ABScriptValue $scriptCall.arguments
         } else { @{} }
+        $listed = @($session.Tools | Where-Object { $_.name -eq $toolName } | Select-Object -First 1)
+        if ($manifest.Contains('project') -and -not $toolArguments.ContainsKey('project') -and $listed.Count -and
+            $listed[0].inputSchema.Contains('required') -and 'project' -in @($listed[0].inputSchema.required)) {
+            $toolArguments.project = [string]$manifest.project
+        }
         try { $result = Invoke-ABMcpTool $session $toolName $toolArguments }
         catch {
             if ($_.Exception -isnot [TimeoutException] -and $scriptCall.Contains('expectDenied') -and $scriptCall.expectDenied) { continue }

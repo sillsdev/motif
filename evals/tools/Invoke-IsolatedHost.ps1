@@ -15,7 +15,7 @@ $hostResultPath = '/session/output/host.json'
 $motifExe = '/opt/product/motif'
 $task = $manifest.task
 $serverCommand = $motifExe
-$serverArguments = @('mcp', '--project', $fwDataPath, '--profile', $manifest.profile, '--activity-log', $activityPath)
+$serverArguments = Get-ABServerArguments $manifest.profile $activityPath
 $systemAppend = $manifest.systemAppend
 $hostPlan = New-ABHostPlan $manifest.arm ([string]$task.promptText) $task.limits $systemAppend
 
@@ -163,6 +163,10 @@ Write-ABJson '/session/agent/config/mcp.json' $hostPlan.mcpConfig
 Write-ABJson $agentLaunchPath @{ plan = $hostPlan; host = $manifest.arm.host; serverCommand = $serverCommand
     serverArguments = $serverArguments; preflight = [bool]$manifest.preflight }
 foreach ($path in @($privateRoot, $agentDirectory, $workerRoot)) { New-Item -ItemType Directory $path -Force | Out-Null }
+$registered = Invoke-ABProcess $motifExe (Get-ABProjectRegistrationArguments $fwDataPath) $agentDirectory @{} 300000
+if ($registered.ExitCode -ne 0 -or $registered.Stderr -match 'could not be recorded') {
+    throw "Known project registration failed: $($registered.Stderr)"
+}
 $baseline = Invoke-ABProcess $motifExe @('baseline', 'capture', $fwDataPath, '--json') $agentDirectory @{} 300000
 if ($baseline.ExitCode -ne 0) { throw "Baseline capture failed: $($baseline.Stderr)" }
 if ($manifest.preflight) {
@@ -189,6 +193,7 @@ if ($manifest.arm.host -eq 'fake') {
         transcriptPath = '-'
         hostResultPath = '/workspace/state/host.json'
         mcpTimeoutMs = $manifest.mcpTimeoutMs
+        project = Get-ABProjectName
     }
     Write-ABJson '/session/agent/config/session.json' $fakeManifest
 }

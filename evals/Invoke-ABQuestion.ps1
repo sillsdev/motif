@@ -179,7 +179,7 @@ if ($DryRun) {
                 if (-not [IO.Path]::IsPathRooted($path)) { $path = Join-Path $repoRoot $path }
                 $systemAppend = Get-Content -LiteralPath $path -Raw
             }
-            $hostPlan = New-ABHostPlan $arm (Get-Content (Join-Path $task.taskPath $task.prompt) -Raw) $task.limits $systemAppend
+            $hostPlan = New-ABHostPlan $arm (Get-ABTrialPrompt (Get-Content (Join-Path $task.taskPath $task.prompt) -Raw)) $task.limits $systemAppend
             Write-Host "$($task.id) / $($arm.id): host $($arm.host), profile $($arm.server.profileArgument), model $($arm.model), auth $($hostPlan.authMode)."
             Write-Host (Format-ABCommand $hostPlan.command $hostPlan.arguments)
             Write-Host ($hostPlan.mcpConfig | ConvertTo-Json -Depth 20 -Compress)
