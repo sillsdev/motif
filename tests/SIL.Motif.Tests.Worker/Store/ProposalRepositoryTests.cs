@@ -391,6 +391,49 @@ public sealed class ProposalRepositoryTests : IDisposable
         Assert.True(repository.DraftNameExists("reopened"));
     }
 
+    [Theory]
+    [InlineData("rejected")]
+    [InlineData("withdrawn")]
+    public void DiscardingAReopenedClosedProposalLeavesItClosedAndArchived(string status)
+    {
+        var (repository, id) = ClosedProposal("closed-discard-" + status, status);
+
+        repository.ReopenAsDraft(id, "reopened", "{\"draft\":true}");
+        repository.DiscardDraft("reopened");
+
+        var record = repository.Get(id);
+        Assert.Equal(status, record.Status);
+        Assert.NotNull(record.ArchivedUtc);
+    }
+
+    [Theory]
+    [InlineData("rejected")]
+    [InlineData("withdrawn")]
+    public void FinalizingAReopenedClosedProposalOpensItAgain(string status)
+    {
+        var (repository, id) = ClosedProposal("closed-finalize-" + status, status);
+
+        repository.ReopenAsDraft(id, "reopened", "{\"draft\":true}");
+        Assert.Equal(status, repository.Get(id).Status);
+        repository.Finalize("reopened", "sha256:amended", "{\"proposalId\":\"" + id.Value + "\",\"v\":2}", "label", "comment");
+
+        var record = repository.Get(id);
+        Assert.Equal("proposed", record.Status);
+        Assert.Null(record.ArchivedUtc);
+    }
+
+    private (ProposalRepository Repository, CanonicalId Id) ClosedProposal(string name, string status)
+    {
+        var project = new ProjectLocator(Path.Combine(_root, name + ".fwdata"), name);
+        var database = MotifDatabase.OpenOwned(Path.Combine(_root, name + ".motif.db"), project,
+            MotifSchema.CurrentSchema, new Version(1, 0));
+        var repository = new ProposalRepository(database);
+        var id = CanonicalId.Mint("proposal/");
+        repository.SaveRevision(new ProposalRevisionRecord(
+            id, "sha256:committed", "{\"proposalId\":\"" + id.Value + "\"}", status, null, null, null));
+        return (repository, id);
+    }
+
     [Fact]
     public void DiscardDraftOfAnUnknownNameThrowsKeyNotFound()
     {

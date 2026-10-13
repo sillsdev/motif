@@ -145,7 +145,7 @@ public sealed class CommandCatalogParityTests
         "preflight.unavailable",
         "proposal.already-applied", "proposal.inconsistent", "proposal.invalid-id", "proposal.invalid-status",
         "proposal.not-editable", "proposal.not-found",
-        "proposal.applied-final", "proposal.not-closed", "proposal.trial-running", "proposal.unknown-status",
+        "proposal.applied-final", "proposal.has-draft", "proposal.not-closed", "proposal.trial-running", "proposal.unknown-status",
         "proposal.pending-changes", "proposal.supersede-self", "proposal.superseded",
         "proposal.split-duplicate-operation",
         "report.assessment-not-found", "report.invalid-kind", "report.refused",

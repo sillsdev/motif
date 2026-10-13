@@ -78,6 +78,30 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
             Assert.Contains("review-word", ApprovedMorphologyReader.ReadIncorrectSpellings(cache));
     }
 
+    [Fact]
+    public async Task ApplyAllPendingRefusesWhileTheProjectCarriesAReconciliationWarning()
+    {
+        var (path, _) = ReleasedProjectWithWord("marked-word");
+        var root = Path.Combine(Path.GetDirectoryName(path)!, "marked-pending-apply-worker");
+        var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root);
+        Assert.True(captured.Succeeded, captured.Refusal?.Message);
+        ProjectReconciliationMarker.Mark(path);
+        var projectBytes = File.ReadAllBytes(path);
+
+        var apply = CliProcess.Start(IsolatedRunner.Options(root), "apply", "--all-pending", "--project", path, "--json");
+        apply.Environment[ProcessRunnerLauncher.SuppressVariable] = "1";
+        var (exitCode, output, error) = await CliProcess.RunAsync(apply);
+
+        Assert.Equal(4, exitCode);
+        Assert.Empty(output);
+        using var failure = JsonDocument.Parse(error);
+        Assert.Equal("apply.reconciliation-needed", failure.RootElement.GetProperty("code").GetString());
+        Assert.Equal("StoreInconsistent", failure.RootElement.GetProperty("reason").GetString());
+        Assert.Contains("Open Motif", failure.RootElement.GetProperty("message").GetString());
+        Assert.Equal(projectBytes, File.ReadAllBytes(path));
+        Assert.True(ProjectReconciliationMarker.Exists(path));
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

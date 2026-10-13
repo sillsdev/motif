@@ -24,7 +24,11 @@ namespace SIL.Motif.Commands;
 /// <summary>Applies and measures pending changes through the catalog's UI-independent workflow.</summary>
 public static class PendingChangesWorkflow
 {
-    /// <summary>Applies the pending changes through the one Apply path, at FieldWorks' save boundary.</summary>
+    /// <summary>
+    /// Applies the pending changes through the one Apply path, at FieldWorks' save boundary. A project carrying an
+    /// unresolved <see cref="ProjectReconciliationMarker"/> is refused with <c>apply.reconciliation-needed</c>
+    /// before anything is read or changed, until the warning is cleared by reconciling the project in Motif.
+    /// </summary>
     /// <param name="request">The project, the pending Draft and revision the caller reviewed, if any.</param>
     /// <param name="cancellationToken">Cancels the queued Dry Run and reopens the Draft while waiting.</param>
     /// <param name="dryRunTimeout">The wait bound, or <see langword="null"/> to use the command default.</param>
@@ -37,6 +41,13 @@ public static class PendingChangesWorkflow
         TimeSpan? dryRunTimeout = null, IJobRunnerLauncher? runnerLauncher = null)
     {
         ArgumentNullException.ThrowIfNull(request);
+        if (ProjectReconciliationMarker.Exists(request.ProjectPath))
+        {
+            return CommandOutcome<ApplyPendingResult>.Refused(new Refusal("apply.reconciliation-needed",
+                FailureReason.StoreInconsistent,
+                "Motif could not confirm that an earlier Apply was saved to this project. Open Motif to check " +
+                "the project. Do not retry automatically."));
+        }
         var identity = ReadPendingIdentity(request.ProjectPath);
         if (!identity.Succeeded) return CommandOutcome<ApplyPendingResult>.Refused(identity.Refusal!);
         if (identity.Value!.Current is not { } current)

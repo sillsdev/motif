@@ -113,8 +113,9 @@ public interface IProposalRepository
     bool DraftNameExists(string draftName);
     /// <summary>
     /// Turns an already-finalized Proposal back into a Draft under a new local draft name, keeping its
-    /// id and current committed content addressable until the draft is finalized again as an amend. A declined
-    /// or withdrawn Proposal is open again; an applied or superseded one is never reopened.
+    /// id and current committed content addressable until the draft is finalized again as an amend. Only its
+    /// Draft name and content are set: a declined or withdrawn Proposal stays closed until the Draft is
+    /// finalized, which opens it again. An applied or superseded one is never reopened.
     /// </summary>
     /// <exception cref="InvalidOperationException">A draft already exists under <paramref name="draftName"/>.</exception>
     /// <exception cref="KeyNotFoundException">No finalized Proposal is recorded under this id.</exception>
@@ -125,7 +126,7 @@ public interface IProposalRepository
     /// yet, so its whole <c>Proposals</c> row is deleted and <paramref name="draftName"/> is free for
     /// immediate reuse. A Draft <see cref="ReopenAsDraft"/> produced keeps its source Proposal's
     /// <c>CurrentIntentDigest</c>, so only <c>DraftName</c> and <c>DraftJson</c> are cleared — the exact
-    /// inverse of what <see cref="ReopenAsDraft"/> set — leaving the Proposal exactly as committed, with
+    /// inverse of what <see cref="ReopenAsDraft"/> set, status included — leaving the Proposal exactly as committed, with
     /// its <c>ProposalRevisions</c> untouched.
     /// </summary>
     /// <returns>
@@ -216,7 +217,7 @@ public sealed class ProposalRepository : IProposalRepository
         using var connection = _database.OpenConnection();
         using var command = connection.CreateCommand();
         var archived = filter.IncludeArchived ? "" :
-            " AND p.Status NOT IN ('applied', 'rejected', 'superseded', 'withdrawn')";
+            " AND (p.Status NOT IN ('applied', 'rejected', 'superseded', 'withdrawn') OR p.DraftName IS NOT NULL)";
         command.CommandText = """
             SELECT p.ProposalId, p.CurrentIntentDigest, r.ProposalJson,
                    p.Status, p.Label, p.Comment, p.SupersededBy,
@@ -305,6 +306,7 @@ public sealed class ProposalRepository : IProposalRepository
         policy ??= TimeRetentionPolicy.Default;
         return List(new ProposalListFilter(IncludeArchived: true))
             .Where(proposal => IsTerminal(proposal.Status) && proposal.Status != "applied" &&
+                proposal.DraftName is null &&
                 policy.ShouldPurge(ParseNullableUtc(proposal.ArchivedUtc), now)).ToArray();
     }
 
@@ -319,6 +321,9 @@ public sealed class ProposalRepository : IProposalRepository
             check.Parameters.AddWithValue("$id", proposalId.Value);
             var status = check.ExecuteScalar() as string;
             if (status is null || !IsTerminal(status)) throw new InvalidOperationException("Only terminal Proposals may be archived.");
+            check.CommandText = "SELECT DraftName FROM Proposals WHERE ProposalId = $id;";
+            if (check.ExecuteScalar() is string)
+                throw new InvalidOperationException("A Proposal with an open Draft is kept until the Draft is finalized or discarded.");
             if (status == "applied")
                 throw new InvalidOperationException("An applied Proposal is final: it and its Receipts are kept.");
             check.CommandText = "SELECT COUNT(*) FROM Receipts WHERE ProposalId = $id;";
@@ -616,7 +621,7 @@ public sealed class ProposalRepository : IProposalRepository
             commit.Transaction = transaction;
             commit.CommandText = """
                 UPDATE Proposals SET CurrentIntentDigest = $digest, Status = $status, Label = $label,
-                    Comment = $comment, DraftName = NULL, DraftJson = NULL,
+                    Comment = $comment, DraftName = NULL, DraftJson = NULL, ArchivedUtc = NULL,
                     AnchorJson = CASE WHEN json_extract(AnchorJson, '$.IntentDigest') = $digest
                         OR json_extract(AnchorJson, '$.intentDigest') = $digest THEN AnchorJson ELSE NULL END
                 WHERE DraftName = $name;
@@ -881,9 +886,7 @@ public sealed class ProposalRepository : IProposalRepository
         using var update = connection.CreateCommand();
         update.Transaction = transaction;
         update.CommandText = """
-            UPDATE Proposals SET DraftName = $name, DraftJson = $json,
-                Status = CASE WHEN Status IN ('rejected', 'withdrawn') THEN 'proposed' ELSE Status END,
-                ArchivedUtc = CASE WHEN Status IN ('rejected', 'withdrawn') THEN NULL ELSE ArchivedUtc END
+            UPDATE Proposals SET DraftName = $name, DraftJson = $json
             WHERE ProposalId = $id AND CurrentIntentDigest IS NOT NULL AND Status NOT IN ('applied', 'superseded');
             """;
         update.Parameters.AddWithValue("$name", draftName);

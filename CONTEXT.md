@@ -44,7 +44,8 @@ open for review; stored `proposed`), **Deferred** (wanted later, still open), an
 (final: never reopened or deleted, its Receipts kept), **Declined** (a person said no; stored `rejected`),
 **Superseded** (replaced by the Proposal it names) and **Withdrawn** (its author took it back before review).
 Lists show open Proposals by default. A declined, superseded or withdrawn Proposal that never applied can be
-deleted with its Trials.
+deleted with its Trials. A reopened Declined or Withdrawn Proposal stays closed until its Draft is Finalized;
+discarding the Draft leaves it as it was.
 _Avoid_: state, closed-out, archived, cancelled
 
 **Finalize**:

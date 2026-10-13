@@ -16,6 +16,72 @@ namespace SIL.Motif.Tests.Commands;
 [Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group0)]
 public sealed class ApplyReconciliationTests(PristineProjectFixture pristine)
 {
+    [Theory]
+    [InlineData("declined", "Declined")]
+    [InlineData("withdrawn", "Withdrawn")]
+    [InlineData("superseded", "Superseded")]
+    public void ApplyRefusesAClosedProposalWithoutChangingTheProject(string status, string statusWord)
+    {
+        var seed = pristine.Seed;
+        string projectPath;
+        using (var scratch = pristine.NewScratch())
+            projectPath = scratch.ProjectId.Path;
+
+        var proposalId = CreateMeasuredProposal(projectPath, "closed-" + status,
+            CanonicalId.FromGuid(seed.FirstSenseId).Value, SeededProject.FirstGloss + " proposed");
+        string? replacementId = null;
+        switch (status)
+        {
+            case "declined":
+                Assert.True(ProposalCommands.Reject(new RejectRequest(projectPath, "1.0", proposalId)).Succeeded);
+                break;
+            case "withdrawn":
+                Assert.True(ProposalCommands.Withdraw(new RejectRequest(projectPath, "1.0", proposalId)).Succeeded);
+                break;
+            case "superseded":
+                replacementId = CreateMeasuredProposal(projectPath, "replacement",
+                    CanonicalId.FromGuid(seed.FirstSenseId).Value, SeededProject.FirstGloss + " replacement");
+                Assert.True(ProposalCommands.Supersede(new SupersedeRequest(
+                    projectPath, "1.0", proposalId, replacementId)).Succeeded);
+                break;
+        }
+
+        var outcome = ProposalCommands.Apply(new ApplyRequest(projectPath, "1.0", proposalId));
+
+        Assert.False(outcome.Succeeded);
+        Assert.Equal("proposal.invalid-status", outcome.Refusal?.Code);
+        Assert.Equal(FailureReason.Refused, outcome.Refusal?.Reason);
+        Assert.Contains(statusWord, outcome.Refusal!.Message, StringComparison.Ordinal);
+        if (replacementId is null)
+            Assert.Contains("Reopen", outcome.Refusal.Message, StringComparison.Ordinal);
+        else
+        {
+            Assert.Contains(replacementId, outcome.Refusal.Message, StringComparison.Ordinal);
+            Assert.Contains("Open", outcome.Refusal.Message, StringComparison.Ordinal);
+        }
+        AssertGlossOnDisk(projectPath, seed.FirstSenseId, NewLangProjFixture.AnalysisTag, SeededProject.FirstGloss);
+    }
+
+    [Fact]
+    public void ADeferredProposalCanStillBeApplied()
+    {
+        var seed = pristine.Seed;
+        string projectPath;
+        using (var scratch = pristine.NewScratch())
+            projectPath = scratch.ProjectId.Path;
+
+        var gloss = SeededProject.FirstGloss + " deferred";
+        var proposalId = CreateMeasuredProposal(projectPath, "deferred-apply",
+            CanonicalId.FromGuid(seed.FirstSenseId).Value, gloss);
+        Assert.True(ProposalCommands.Defer(new DeferRequest(projectPath, "1.0", proposalId)).Succeeded);
+
+        var outcome = ProposalCommands.Apply(new ApplyRequest(projectPath, "1.0", proposalId, Force: true));
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        Assert.Equal(proposalId, outcome.Value!.ProposalId);
+        AssertGlossOnDisk(projectPath, seed.FirstSenseId, NewLangProjFixture.AnalysisTag, gloss);
+    }
+
     [Fact]
     public void ReceiptWriteFailureAfterSavedApplyIsStoreInconsistent()
     {

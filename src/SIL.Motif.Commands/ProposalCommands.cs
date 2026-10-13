@@ -1582,7 +1582,38 @@ public static partial class ProposalCommands
             var repository = new ProposalRepository(database);
             var id = NormalizeId(proposalId);
             var canonicalId = CanonicalId.Parse(id);
-            var (record, envelope) = repository.GetFinalized(canonicalId);
+            ProposalRecord record;
+            SIL.Motif.Contract.Model.Proposal envelope;
+            try
+            {
+                (record, envelope) = repository.GetFinalized(canonicalId);
+            }
+            catch (KeyNotFoundException)
+            {
+                ProposalRecord? stored = null;
+                try { stored = repository.Get(canonicalId); }
+                catch (KeyNotFoundException) { }
+                if (stored?.DraftName is null) throw;
+                return CommandOutcome<ApplyProjection>.Refused(new Refusal(
+                    "proposal.has-draft", FailureReason.Refused,
+                    $"Proposal {id} has an open Draft '{stored.DraftName}'. Finalize or discard the Draft before applying it.",
+                    Fact(("proposalId", id), ("draftName", stored.DraftName))));
+            }
+            (string? StatusWord, string? NextStep) closedStatus = record.Status switch
+            {
+                ManifestStatus.Rejected => ("Declined", "Reopen it, then Finalize its Draft, before applying it."),
+                ManifestStatus.Withdrawn => ("Withdrawn", "Reopen it, then Finalize its Draft, before applying it."),
+                ManifestStatus.Superseded => ("Superseded", $"Open replacement Proposal {record.SupersededBy} instead."),
+                _ => (null, null),
+            };
+            if (closedStatus.StatusWord is not null)
+            {
+                return CommandOutcome<ApplyProjection>.Refused(new Refusal(
+                    "proposal.invalid-status", FailureReason.Refused,
+                    $"Proposal {id} is {closedStatus.StatusWord} and cannot be applied. {closedStatus.NextStep}",
+                    Fact(("proposalId", id), ("status", record.Status), ("supersededBy", record.SupersededBy))));
+            }
+
             var manifest = ProposalRecordMapping.ToManifest(record);
 
             // ADR 0004 decision 3: a bare apply with no bound DryRun is a hard error, checked before loading the project.

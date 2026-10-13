@@ -377,7 +377,10 @@ release line that still built for `netstandard2.0`.
 **FieldWorks integration contract:** At its save boundary, FieldWorks releases the project and calls
 `motif apply --all-pending`. It reads the exit code and the JSON fields `ok`, `applied`, `summary`, and failure
 `code`; it reloads after a confirmed Apply or an ambiguous reconciliation result. It references no Motif
-assembly and reads the command's JSON rather than Motif's internal stores.
+assembly and reads the command's JSON rather than Motif's internal stores. On success the JSON is on standard
+output; on failure the FailureEnvelope (`ok: false`, `code`, `reason`, `message`, and `detail` when there is one) is
+on standard error and standard output is empty. A project with an unresolved reconciliation warning is refused with
+`apply.reconciliation-needed` (exit 4) until it is reconciled in Motif.
 
 The JSON response records live in `SIL.Motif.Contract`, which has no LibLCM reference. Their
 `LcmCache`-dependent builders remain in `SIL.Motif.Projection`.

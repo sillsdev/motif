@@ -28,8 +28,8 @@ public sealed class ProposalLifecycleTests(PristineProjectFixture pristine)
         Assert.True(reopened.Succeeded, reopened.Refusal?.Message);
         var record = Record(path, id);
         Assert.Equal("review/" + id, record.DraftName);
-        Assert.Equal("proposed", record.Status);
-        Assert.Null(record.ArchivedUtc);
+        // The Proposal stays Declined until its Draft is Finalized; discarding the Draft leaves it as it was.
+        Assert.Equal("rejected", record.Status);
     }
 
     [Fact]
@@ -55,7 +55,7 @@ public sealed class ProposalLifecycleTests(PristineProjectFixture pristine)
         Assert.Equal("withdrawn", Record(path, id).Status);
 
         Assert.True(ProposalLifecycleCommand.Reopen(new ReopenProposalRequest(path, id)).Succeeded);
-        Assert.Equal("proposed", Record(path, id).Status);
+        Assert.Equal("withdrawn", Record(path, id).Status);
     }
 
     [Fact]
@@ -136,6 +136,44 @@ public sealed class ProposalLifecycleTests(PristineProjectFixture pristine)
         Assert.Equal("draft.revision-conflict", stale.Refusal?.Code);
         using (var database = ProjectMotifDatabase.Open(path))
             Assert.True(new ProposalRepository(database).DraftNameExists("discarded"));
+    }
+
+    [Fact]
+    public void TheDefaultListShowsAReopenedProposalUntilItsDraftIsDiscarded()
+    {
+        var (path, id) = Finalized("listed");
+        Assert.True(ProposalLifecycleCommand.Decline(new DeclineProposalRequest(path, id)).Succeeded);
+        Assert.DoesNotContain(id, ListedIds(path));
+
+        Assert.True(ProposalLifecycleCommand.Reopen(new ReopenProposalRequest(path, id)).Succeeded);
+        Assert.Contains(id, ListedIds(path));
+
+        string revision;
+        using (var database = ProjectMotifDatabase.Open(path))
+            revision = DraftRevision.Compute(new ProposalRepository(database).GetDraft("review/" + id).ProposalJson);
+        var discarded = ProposalCommands.DiscardDraft(new DiscardDraftRequest(path, Version, "review/" + id, revision));
+        Assert.True(discarded.Succeeded, discarded.Refusal?.Message);
+        Assert.DoesNotContain(id, ListedIds(path));
+    }
+
+    [Fact]
+    public void ApplyingAReopenedProposalByIdIsRefusedBecauseItHasAnOpenDraft()
+    {
+        var (path, id) = Finalized("apply-reopened");
+        Assert.True(ProposalLifecycleCommand.Decline(new DeclineProposalRequest(path, id)).Succeeded);
+        Assert.True(ProposalLifecycleCommand.Reopen(new ReopenProposalRequest(path, id)).Succeeded);
+
+        var applied = ProposalCommands.Apply(new ApplyRequest(path, Version, id));
+
+        Assert.Equal("proposal.has-draft", applied.Refusal?.Code);
+        Assert.Equal(SIL.Motif.Contract.Responses.FailureReason.Refused, applied.Refusal?.Reason);
+    }
+
+    private static string[] ListedIds(string path)
+    {
+        var listed = ProposalCommands.List(new ListProposalsRequest(path, Version));
+        Assert.True(listed.Succeeded, listed.Refusal?.Message);
+        return listed.Value!.Proposals.Select(item => item.ProposalId).ToArray();
     }
 
     private string NewProject()

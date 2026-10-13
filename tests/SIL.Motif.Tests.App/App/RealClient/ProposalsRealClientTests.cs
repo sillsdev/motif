@@ -45,7 +45,8 @@ public sealed class ProposalsRealClientTests(PristineProjectFixture pristine)
         var reopened = Assert.Single(firstPage.Page.Groups.SelectMany(group => group.Cards),
             card => card.ProposalId == proposalId);
         Assert.True(reopened.Card.IsDraft, "The Proposals page reread did not show the reopened Proposal as a Draft.");
-        Assert.Equal("proposed", reopened.Card.Status);
+        // A reopened Declined Proposal stays declined, with its Draft attached, until that Draft is Finalized.
+        Assert.Equal("rejected", reopened.Card.Status);
 
         var secondPage = await OpenPageAsync(RealCommandClient.Create(project.ManagedRoot, FakeParser.ExecutablePath),
             project.FwDataPath);
@@ -54,7 +55,7 @@ public sealed class ProposalsRealClientTests(PristineProjectFixture pristine)
 
         Assert.True(persisted.Card.IsDraft,
             "Reopening from the Proposals page did not persist as a Draft for a new client.");
-        Assert.Equal("proposed", persisted.Card.Status);
+        Assert.Equal("rejected", persisted.Card.Status);
     }
 
     [Fact]

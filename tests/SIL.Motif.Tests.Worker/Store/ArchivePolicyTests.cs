@@ -67,6 +67,34 @@ public sealed class ArchivePolicyTests
     }
 
     [Fact]
+    public void ARejectedProposalWithAnOpenDraftIsNeitherListedForPurgeNorDeletable()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "motif-proposal-archive-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var locator = new ProjectLocator(Path.Combine(root, "project.fwdata"), "project");
+            using var database = MotifDatabase.OpenOwned(Path.Combine(root, "project.motif.db"), locator,
+                MotifSchema.CurrentSchema, new Version(1, 0));
+            var repository = new ProposalRepository(database, new FixedClock("2020-01-01T00:00:00Z"));
+            var id = CanonicalId.Mint("proposal/");
+            repository.SaveRevision(new ProposalRevisionRecord(id, "sha256:rejected", "{}", "rejected", null, null, null));
+            var now = DateTimeOffset.Parse("2026-08-23T12:00:00Z");
+            Assert.Single(repository.ListArchived(now));
+
+            repository.ReopenAsDraft(id, "reopened", "{}");
+
+            Assert.Empty(repository.ListArchived(now));
+            Assert.Throws<InvalidOperationException>(() => repository.DeleteArchived(id));
+            Assert.Equal("rejected", repository.Get(id).Status);
+        }
+        finally
+        {
+            try { Directory.Delete(root, true); } catch (DirectoryNotFoundException) { }
+        }
+    }
+
+    [Fact]
     public void AllTerminalProposalStatesLeaveActiveListsImmediatelyAndRespectRetention()
     {
         var root = Path.Combine(Path.GetTempPath(), "motif-proposal-archive-" + Guid.NewGuid().ToString("N"));
