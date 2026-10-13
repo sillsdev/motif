@@ -14,6 +14,7 @@ using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Tests.App.ControlContracts;
 using SIL.Motif.Tests.App.Walkthrough;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
@@ -292,7 +293,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         yield return new("shell", "help-texts", stage => stage.OpenMenu(WorkspacePage.Texts,
             () => stage.Window.FindControl<Button>("HelpButton")!, "Help on Texts"));
         yield return new("shell", "refresh-tooltip", stage => stage.Hover(WorkspacePage.Overview,
-            () => stage.Named<Button>("Refresh the project"), "Refresh"));
+            () => stage.Named<Button>("Refresh the project"), "Refresh", requireTooltip: true));
         yield return new("shell", "sidebar-hover", stage => stage.Hover(WorkspacePage.Overview,
             () => stage.SidebarItem("Timing"), "the Timing sidebar entry"));
         yield return new("shell", "sidebar-focus", stage => stage.FocusFromKeyboard(WorkspacePage.Overview,
@@ -385,7 +386,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
             return await stage.Hover(WorkspacePage.Texts,
                 () => stage.Strip("walikula").GetVisualDescendants().OfType<Border>()
                 .First(border => border.Classes.Contains("markChip") && border.IsEffectivelyVisible),
-                "the Built anyway mark on walikula", TextsTab.AnalyzeTexts);
+                "the Built anyway mark on walikula", TextsTab.AnalyzeTexts, requireTooltip: true);
         })
         { Teardown = stage => { stage.InText.SelectedText = stage.InText.Texts.First(); return Task.CompletedTask; } };
         yield return new("analyze", "fix-menu", async stage =>
@@ -448,8 +449,10 @@ public sealed class StateScreenshots(ITestOutputHelper output)
             await stage.ChooseList();
             var button = stage.Visible<Button>(candidate =>
                 AutomationProperties.GetAutomationId(candidate) == SIL.Motif.App.AutomationIds.HandOffCheckedWords).Single();
-            return $"{(button.IsEffectivelyEnabled ? "Enabled" : "Disabled")} button. " +
-                await stage.Hover(null, () => button, "Tick words first");
+            InteractiveStateCaptureCases.RequireAvailability(
+                stage.CurrentState, button.IsEffectivelyEnabled, expectedEnabled: false);
+            return "Disabled button. " +
+                await stage.Hover(null, () => button, "Tick words first", requireTooltip: true);
         });
 
         // Try a Word.
@@ -618,8 +621,10 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         {
             stage.Open(WorkspacePage.Review);
             var apply = stage.Named<Button>("Apply to FieldWorks project");
-            return $"{(apply.IsEffectivelyEnabled ? "Enabled" : "Disabled")} Apply. " +
-                await stage.Hover(null, () => apply, "Apply to FieldWorks project");
+            InteractiveStateCaptureCases.RequireAvailability(
+                stage.CurrentState, apply.IsEffectivelyEnabled, expectedEnabled: false);
+            return "Disabled Apply. " +
+                await stage.Hover(null, () => apply, "Apply to FieldWorks project", requireTooltip: true);
         })
         { Setup = stage => stage.StageChakula(), Teardown = stage => stage.UnstageChakula() };
 
@@ -713,9 +718,10 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         yield return new("ai-handoff", "drag-tooltip", stage => stage.Hover(WorkspacePage.AiHandoff,
             () => stage.Visible<Button>(button =>
                 AutomationProperties.GetAutomationId(button) == SIL.Motif.App.AutomationIds.DragAllHandoffFiles).Single(),
-            "the drag-all button"));
+            "the drag-all button", requireTooltip: true));
         yield return new("ai-handoff", "question-hover", stage => stage.Hover(WorkspacePage.AiHandoff,
-            () => stage.Visible<Button>(button => button.Classes.Contains("handoffQuestion")).First(), "the first question"));
+            () => stage.Visible<Button>(button => button.Classes.Contains("handoffQuestion")).First(),
+            "the first question", requireTooltip: true));
         yield return new("ai-handoff", "handoff-md-expanded", stage => stage.Expand(WorkspacePage.AiHandoff,
             () => stage.Visible<Expander>(expander => expander.Header as string == "handoff.md").First(), "handoff.md"))
         { Height = 1300 };
@@ -865,7 +871,8 @@ public sealed class StateScreenshots(ITestOutputHelper output)
             Window.Focus();
         }
 
-        public async Task<string> Hover(WorkspacePage? page, Func<Control> find, string what, TextsTab? tab = null)
+        public async Task<string> Hover(
+            WorkspacePage? page, Func<Control> find, string what, TextsTab? tab = null, bool requireTooltip = false)
         {
             if (page is { } shown) Open(shown, tab);
             var control = find();
@@ -877,10 +884,18 @@ public sealed class StateScreenshots(ITestOutputHelper output)
             }
             Window.MouseMove(CentreOf(control));
             PageScreenshots.Settle(Window);
-            if (owner is null) return $"Pointer over {what}; it has no tooltip.";
+            if (owner is null)
+            {
+                if (requireTooltip)
+                    InteractiveStateCaptureCases.RequireTooltipOpen(CurrentState, isOpen: false);
+                return $"Pointer over {what}; it has no tooltip.";
+            }
             await Task.Yield();
             PageScreenshots.Settle(Window);
-            return ToolTip.GetIsOpen(owner)
+            var tooltipIsOpen = ToolTip.GetIsOpen(owner);
+            if (requireTooltip)
+                InteractiveStateCaptureCases.RequireTooltipOpen(CurrentState, tooltipIsOpen);
+            return tooltipIsOpen
                 ? $"Pointer over {what}; its tooltip is open: \"{ToolTip.GetTip(owner)}\"."
                 : $"Pointer over {what}; its tooltip \"{ToolTip.GetTip(owner)}\" did not open.";
         }
@@ -906,9 +921,8 @@ public sealed class StateScreenshots(ITestOutputHelper output)
                 : control.GetVisualDescendants().OfType<Control>().First(candidate => candidate.Focusable);
             target.Focus(NavigationMethod.Tab);
             PageScreenshots.Settle(Window);
-            return Task.FromResult(target.IsKeyboardFocusWithin
-                ? $"Keyboard focus on {what}."
-                : $"Keyboard focus did not reach {what}.");
+            InteractiveStateCaptureCases.RequireKeyboardFocus(CurrentState, target.IsKeyboardFocusWithin);
+            return Task.FromResult($"Keyboard focus on {what}.");
         }
 
         public Task<string> Press(WorkspacePage page, Func<Control> find, string what)
@@ -994,7 +1008,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
             row.IsOpen = true;
             PageScreenshots.Settle(Window);
             var link = Visible<HyperlinkButton>(button => button.Classes.Contains("warningObjectLink")).First();
-            return Hover(null, () => link, "a FieldWorks link in a finding");
+            return Hover(null, () => link, "a FieldWorks link in a finding", requireTooltip: true);
         }
 
         public Task CloseWarningRow()
