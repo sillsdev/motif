@@ -28,6 +28,7 @@ class ProductTests(unittest.TestCase):
         if probe.returncode:
             raise RuntimeError(probe.stderr.decode(errors='replace'))
 
+    @unittest.skipUnless(os.environ.get('MOTIF_TEST_GRAMMARS'), 'Staging a baseline needs the pinned test grammars in MOTIF_TEST_GRAMMARS')
     def test_staged_baseline_capture_loads_native_assets(self):
         repo = Path(__file__).resolve().parents[2]
         build = repo / 'bin' / os.environ.get('MOTIF_TEST_CONFIGURATION', 'Debug')

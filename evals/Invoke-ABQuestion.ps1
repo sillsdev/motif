@@ -20,11 +20,6 @@ $modulePath = Join-Path $PSScriptRoot 'tools/ABHarness.psm1'
 Import-Module $modulePath -Force
 Import-Module (Join-Path $PSScriptRoot 'tools/HostPlan.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'tools/ProductStaging.psm1') -Force
-$setRoot = Get-ABSetRoot $repoRoot -Confirmation:$Confirmation
-if ($Confirmation -and -not $env:MOTIF_CONFIRMATION_GRAMMARS) { throw 'Confirmation requires MOTIF_CONFIRMATION_GRAMMARS on the grading side.' }
-$resultsRoot = if ($Confirmation) { Get-ABConfirmationResultsRoot $repoRoot }
-    else { Join-Path $repoRoot 'evals/results' }
-if ($Confirmation) { [void](Set-ABConfirmationTrialRoot $repoRoot $resultsRoot) }
 if ($Parallel -lt 1) { throw '-Parallel must be at least 1.' }
 if ($Trials -lt 0) { throw '-Trials must be zero or a positive whole number.' }
 
@@ -77,6 +72,12 @@ if ($archiveRun) { [void](Get-ABRunArchiveRoot $repoRoot) }
 $trialCount = if ($Trials -gt 0) { $Trials } elseif ($questionData.trials) { [int]$questionData.trials } else { 3 }
 if ($trialCount -lt 1) { throw 'The question must request at least one trial.' }
 $primaryMetric = if ($questionData.primary_metric) { [string]$questionData.primary_metric } else { 'grade' }
+# Grammar and results roots are read only once the question and its Arms are known to be valid.
+$setRoot = Get-ABSetRoot $repoRoot -Confirmation:$Confirmation
+if ($Confirmation -and -not $env:MOTIF_CONFIRMATION_GRAMMARS) { throw 'Confirmation requires MOTIF_CONFIRMATION_GRAMMARS on the grading side.' }
+$resultsRoot = if ($Confirmation) { Get-ABConfirmationResultsRoot $repoRoot }
+    else { Join-Path $repoRoot 'evals/results' }
+if ($Confirmation) { [void](Set-ABConfirmationTrialRoot $repoRoot $resultsRoot) }
 
 function Resolve-ABTask([string] $TaskDirectory) {
     $taskFile = Join-Path $TaskDirectory 'task.yaml'

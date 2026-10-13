@@ -1,5 +1,6 @@
 """The model under test is never on its own Judge, in a fresh run or a re-grade."""
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -51,9 +52,12 @@ class JudgePolicyTests(unittest.TestCase):
             question = Path(directory) / 'opus-vs-luna.yaml'
             question.write_text(json.dumps({'question': 'Opus against Luna', 'arm_a': 'claude-opus',
                                             'arm_b': 'codex-default', 'tasks': '*', 'trials': 1, 'primary_metric': 'grade'}))
+            # A bad question is refused before any external root is read, so none is configured here.
+            environment = {k: v for k, v in os.environ.items()
+                           if k not in ('MOTIF_TEST_GRAMMARS', 'MOTIF_CONFIRMATION_GRAMMARS', 'MOTIF_CONFIRMATION_RESULTS')}
             result = subprocess.run(['pwsh', '-NoProfile', '-File', str(REPO / 'evals/Invoke-ABQuestion.ps1'),
                                      '-Question', str(question), '-DryRun'], text=True, capture_output=True,
-                                    timeout=300, cwd=REPO)
+                                    timeout=300, cwd=REPO, env=environment)
         self.assertNotEqual(0, result.returncode)
         self.assertIn('never its own Judge', result.stdout + result.stderr)
 
