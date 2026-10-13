@@ -1,7 +1,9 @@
 """A Judge child sees a private empty home and only the login it needs, never the caller's configuration."""
 import json
+import base64
 import os
 from pathlib import Path
+import shutil
 import stat
 import sys
 import tempfile
@@ -112,10 +114,38 @@ class JudgeIsolationTests(unittest.TestCase):
     def test_sol_judge_sees_an_empty_home_and_no_project_instructions(self):
         seen = self.judged('sol')
         self.assert_isolated(seen, {'CODEX_HOME'})
-        self.assertIn('project_doc_max_bytes=0', seen['argv'])
+        for config in ('project_doc_max_bytes=0', 'skills.include_instructions=false', 'features.plugins=false',
+                       'features.apps=false', 'features.hooks=false'):
+            self.assertIn(config, seen['argv'])
         for flag in ('--ignore-user-config', '--ignore-rules', '--ephemeral'):
             self.assertIn(flag, seen['argv'])
         self.assertEqual('judge-prompt', seen['stdin'])
+
+    @unittest.skipUnless(os.environ.get('MOTIF_CODEX_NATIVE') or shutil.which('codex'), 'the Codex CLI is not installed')
+    def test_sol_ignores_skills_above_its_directory(self):
+        root = Path(self.temporary.name)
+        skill = root / '.agents' / 'skills' / 'sentinel'
+        skill.mkdir(parents=True)
+        (skill / 'SKILL.md').write_text(f'---\nname: sentinel\ndescription: {SENTINEL}\n---\n{SENTINEL}\n')
+        (root / 'tmp').mkdir()
+        claims = base64.urlsafe_b64encode(json.dumps({'exp': time.time() + 3600}).encode()).decode().rstrip('=')
+        (self.codex / 'auth.json').write_text(json.dumps({'tokens': {'access_token': f'e30.{claims}.x',
+                                                                      'account_id': 'account'}}))
+        bodies = []
+
+        def record(broker, request):
+            bodies.append(base64.b64decode(request['body']).decode())
+            return 400, {}, b'{"error":{"message":"recorded"}}'
+
+        caller = {key: value for key, value in self.caller.items() if key != 'MOTIF_CODEX_NATIVE'}
+        caller['PATH'] = os.environ.get('PATH', '')
+        if os.environ.get('MOTIF_CODEX_NATIVE'):
+            caller['MOTIF_CODEX_NATIVE'] = os.environ['MOTIF_CODEX_NATIVE']
+        with patch.dict(os.environ, caller, clear=True), patch('tempfile.tempdir', str(root / 'tmp')), \
+                patch('SemanticJudge.HttpBroker.forward', record), self.assertRaises(Exception) as raised:
+            SemanticJudge.live_judge({'prompt': 'judge-prompt', 'schema': {'type': 'object'}}, 'sol')
+        self.assertTrue(bodies, f'the Sol Judge sent no request: {raised.exception}')
+        self.assertTrue(all('judge-prompt' in body and SENTINEL not in body for body in bodies))
 
     def test_unusable_claude_login_is_a_cloud_failure_before_launch(self):
         def expired():

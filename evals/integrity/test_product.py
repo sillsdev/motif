@@ -21,7 +21,7 @@ class ProductTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             session = Path(directory) / 'session'
             (session / 'output').mkdir(parents=True)
-            probe = subprocess.run(boundary({'session': str(session), 'mounts': []}, ['/usr/bin/true']),
+            probe = subprocess.run(boundary({'session': str(session), 'mounts': []}, ['/usr/bin/sh', '-c', ':']),
                                    stdin=subprocess.DEVNULL, capture_output=True, timeout=15)
         if b'NETLINK_ROUTE socket: Operation not permitted' in probe.stderr:
             raise unittest.SkipTest('The sandbox does not allow bubblewrap to create its private network namespace')

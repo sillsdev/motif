@@ -189,7 +189,10 @@ def _invoke_sol(request):
             command = [executable, 'exec', '--json', '-m', SOL_MODEL, '--sandbox', 'read-only', '--ephemeral',
                        '--skip-git-repo-check', '--ignore-user-config', '--ignore-rules', '--cd', str(root),
                        '--output-schema', str(schema), '--output-last-message', str(answer_path)]
-            for config in ['project_doc_max_bytes=0', 'features.shell_snapshot=false', 'features.shell_tool=false', 'features.exec=false',
+            # Codex reads skills above its cwd: pinned by `test_sol_ignores_skills_above_its_directory`.
+            for config in ['project_doc_max_bytes=0', 'skills.include_instructions=false', 'features.plugins=false',
+                           'features.apps=false', 'features.hooks=false',
+                           'features.shell_snapshot=false', 'features.shell_tool=false', 'features.exec=false',
                            'web_search="disabled"', 'model_reasoning_effort="high"', 'model_provider="judge"',
                            'model_providers.judge.name="Control Judge Broker"',
                            f'model_providers.judge.base_url="http://127.0.0.1:{server.server_port}/v1"',
