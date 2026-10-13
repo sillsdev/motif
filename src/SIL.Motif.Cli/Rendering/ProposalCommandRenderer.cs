@@ -50,6 +50,7 @@ public static class ProposalCommandRenderer
             SetGlossAddedResponse r => RenderSetGlossAdded(r),
             DeleteLexemeFormAddedResponse r => RenderDeleteLexemeFormAdded(r),
             ComposedOperationsResponse r => RenderComposedOperations(r),
+            ComposedBatchResponse r => RenderComposedBatch(r),
             PromoteGlossAddedResponse r => RenderPromoteGlossAdded(r),
             DraftFieldChangedResponse r => $"Set {r.Field} on draft '{r.DraftName}'.{Environment.NewLine}",
             ProposalFinalizedResponse r => RenderProposalFinalized(r),
@@ -131,6 +132,23 @@ public static class ProposalCommandRenderer
             $"Added operation '{r.OperationId}' ({LexEntryLexemeFormOperationKinds.DeleteLexemeForm}) to draft " +
             $"'{r.DraftName}'.");
         sb.AppendLine($"  target: {r.Target}");
+        sb.AppendLine($"Draft now has {r.OperationCount} operation(s).");
+        return sb.ToString();
+    }
+
+    private static string RenderComposedBatch(ComposedBatchResponse r)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine($"Composed {r.Intents.Count} intent(s) against draft '{r.DraftName}': " +
+            $"{r.Intents.Sum(intent => intent.Operations.Count)} operation(s) added.");
+        foreach (var intent in r.Intents)
+        {
+            sb.AppendLine($"  [{intent.Index}] {intent.Verb}: {intent.Operations.Count} operation(s)");
+            foreach (var op in intent.Operations)
+                sb.AppendLine(op.EntityId is { } created
+                    ? $"    {op.OperationId}  ({op.Kind}) creates {created}"
+                    : $"    {op.OperationId}  ({op.Kind})");
+        }
         sb.AppendLine($"Draft now has {r.OperationCount} operation(s).");
         return sb.ToString();
     }

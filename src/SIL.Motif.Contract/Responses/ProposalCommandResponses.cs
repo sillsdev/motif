@@ -38,6 +38,19 @@ public sealed record ComposedOperationsResponse(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     string? Outcome = null);
 
+/// <summary>The operations one intent of a batch resolved to, by its position in the batch.</summary>
+public sealed record ComposedIntentResult(
+    int Index, string Verb, string ComposerName, IReadOnlyList<OperationSummary> Operations,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    IReadOnlyList<ComposedRelatedObject>? RelatedObjects = null);
+
+/// <summary>
+/// Every intent of one <c>compose-batch</c> call, all appended to the Draft together; <c>OperationCount</c> is the
+/// Draft's operation count afterwards.
+/// </summary>
+public sealed record ComposedBatchResponse(
+    string DraftName, IReadOnlyList<ComposedIntentResult> Intents, int OperationCount);
+
 /// <summary>
 /// A <c>lexical/lexSense/setGloss</c> operation appended by <c>promote-gloss</c>, evidenced by a
 /// stored corpus.

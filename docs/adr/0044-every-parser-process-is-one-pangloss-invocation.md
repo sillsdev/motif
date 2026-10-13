@@ -55,7 +55,9 @@ This ADR establishes six invariants:
 4. Every invocation remains cancellable. A Batch without a per-word time limit has no default overall
    wall-clock deadline, so a legitimate long run may finish unless cancelled. Other invocations default to
    ten minutes, overridable per request. On expiry the process tree is killed, exactly as on cancellation.
-   The per-word limit stays a batch argument; it bounds a word, not a process.
+   The per-word limit stays a batch argument; it bounds a word, not a process. A Batch with a per-word time
+   limit gets ten minutes plus that limit for every word it names (no deadline once that exceeds what a timer
+   can hold), so a long word list is never killed for its length alone.
 5. The module models only subcommands the shipped binary has and Motif uses: `batch`, `stats`, `import`. It
    does not model `assess`. `PanGlossAssessmentProcess` stays outside the module, untouched, until K46 settles who
    produces the report. `FakePanGloss` models the same surface and no more.

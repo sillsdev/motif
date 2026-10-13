@@ -190,8 +190,10 @@ public sealed class TrialJobHandlerTests : IDisposable
         Assert.Contains("grammar-health unavailable", completed.ResultJson, StringComparison.Ordinal);
     }
 
-    [Fact]
-    public void ATrialCanMeasureOnlyTheWordsTouchedByAChange()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ATrialCanMeasureOnlyTheWordsTouchedByAChange(bool externalList)
     {
         using var lanes = new ProjectLaneRegistry(_ => _token);
         var handler = BuildHandler(lanes, new FakeAssessor("pangloss", [AssessmentKind.Correctness]));
@@ -199,7 +201,8 @@ public sealed class TrialJobHandlerTests : IDisposable
         var proposalJson = BuildSetGlossProposalJson(proposalId, _seed.FirstSenseId, "one word");
         SaveCommittedProposal(proposalId, proposalJson);
 
-        var job = CreateTrialJob(proposalJson, [UnanalysedWordform]);
+        var list = externalList ? JobWordLists.Store(_database, [UnanalysedWordform]) : null;
+        var job = CreateTrialJob(proposalJson, externalList ? null : [UnanalysedWordform], wordList: list);
         var completed = RunAndFinish(handler, job.JobId);
 
         Assert.Equal(JobStatus.Completed, completed.Status);
@@ -631,9 +634,9 @@ public sealed class TrialJobHandlerTests : IDisposable
     }
 
     private JobRecord CreateTrialJob(string proposalJson, IReadOnlyList<string>? words = null, bool allWords = false,
-        string? createdUtc = null, bool startRunning = true)
+        string? createdUtc = null, bool startRunning = true, JobWordList? wordList = null)
     {
-        var inputJson = JsonSerializer.Serialize(new { proposalJson, scope = (string?)null, words, allWords },
+        var inputJson = JsonSerializer.Serialize(new { proposalJson, scope = (string?)null, words, allWords, wordList },
             SIL.Motif.Contract.MotifJson.CreateOptions());
         var job = _jobs.Create(Guid.NewGuid().ToString("N"), ProjectWorkspaceKey.Compute(_project),
             TrialJobHandler.TrialKind, inputJson, createdUtc ?? "2026-08-29T00:00:00Z");

@@ -329,6 +329,11 @@
     "description": "Moves explicitly named environments and rewrite-rule contexts to a replacement class created earlier in the Draft. Other users remain on the source class. Only a person can Apply.",
     "source": "Hand-written from command behavior."
   },
+  "compose-batch": {
+    "title": "Compose many intents",
+    "description": "Stages every intent in a JSON file in one Draft with one project load, through the same checks as each composing command alone. If any intent is refused, nothing is added. Only a person can Apply.",
+    "source": "Hand-written from command behavior."
+  },
   "order-allomorphs": {
     "title": "Order alternate forms",
     "description": "Changes the order of existing alternate forms within one entry after checking their current order. The lexeme form cannot be moved, and Motif stages the moves in a Draft for human review. Only a person can Apply.",

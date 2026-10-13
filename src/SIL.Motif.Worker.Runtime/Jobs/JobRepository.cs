@@ -521,6 +521,10 @@ public sealed class JobRepository
             ReleaseBundlePin(connection, transaction, candidate.JobId);
         }
         transaction.Commit();
+        var removed = candidates.Select(candidate => candidate.JobId).ToHashSet(StringComparer.Ordinal);
+        JobWordLists.RemoveUnreferenced(_database,
+            all.Where(record => !removed.Contains(record.JobId)).Select(record => record.InputJson),
+            _clock.UtcNow.UtcDateTime);
         return count;
     }
 

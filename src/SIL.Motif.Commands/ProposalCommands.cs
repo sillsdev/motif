@@ -413,7 +413,7 @@ public static partial class ProposalCommands
         ComposeAuthorLexemeFormRequest request)
     {
         return ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
-            "AuthorLexemeForm", (cache, input, _) => AuthorLexemeFormComposer.Build(cache, AuthorLexemeFormIntentParser.Parse(input)));
+            DraftComposers["compose-author-lexeme-form"]);
     }
 
     /// <summary>
@@ -429,7 +429,7 @@ public static partial class ProposalCommands
         ComposeAuthorFeatureStructureRequest request)
     {
         return ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
-            "AuthorFeatureStructure", (cache, input, _) => AuthorFeatureStructureComposer.Build(cache, AuthorFeatureStructureIntentParser.Parse(input)));
+            DraftComposers["compose-author-feature-structure"]);
     }
 
     /// <summary>

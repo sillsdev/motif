@@ -199,6 +199,16 @@ public sealed record ComposeRecordParsimonyDispositionRequest(
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
 /// <param name="DraftName">The name of the Draft being authored.</param>
+/// <param name="IntentsJson">
+/// <c>{"intents":[{"verb":"compose-author-phoneme","intent":{...}}, ...]}</c>: each entry names a composing verb
+/// and carries exactly the closed intent that verb's <c>--intent</c> takes.
+/// </param>
+public sealed record ComposeBatchRequest(
+    string FwDataPath, string ProductVersion, string DraftName, string IntentsJson);
+
+/// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
+/// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
+/// <param name="DraftName">The name of the Draft being authored.</param>
 /// <param name="Target">The exact canonical identity of the existing object.</param>
 /// <param name="Ws">The project writing system tag for this value.</param>
 /// <param name="Text">The authored Unicode text.</param>

@@ -79,6 +79,7 @@ public sealed class HelpCatalogTests
                      "compose-author-affix-template",
                      "compose-edit-allomorph-condition",
                      "order-allomorphs",
+                     "compose-batch",
                  })
         {
             var entry = Assert.IsType<HelpEntry>(catalog.Find(HelpEntryKind.Command, code));

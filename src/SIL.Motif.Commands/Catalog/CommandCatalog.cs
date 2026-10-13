@@ -106,6 +106,8 @@ public static class CommandCatalog
             typeof(ComposedOperationsResponse), CommandSurface.AdvancedAi, AgentClass.Draft),
         new CommandDescriptor("order-allomorphs", typeof(ComposeOrderAllomorphsRequest),
             typeof(ComposedOperationsResponse), CommandSurface.AdvancedAi, AgentClass.Draft),
+        new CommandDescriptor("compose-batch", typeof(ComposeBatchRequest),
+            typeof(ComposedBatchResponse), CommandSurface.AdvancedAi, AgentClass.Draft),
         new CommandDescriptor("promote-gloss", typeof(PromoteGlossRequest), typeof(PromoteGlossAddedResponse), CommandSurface.Developer, AgentClass.Draft),
         new CommandDescriptor("label", typeof(LabelRequest), typeof(DraftFieldChangedResponse), CommandSurface.Developer, AgentClass.Draft),
         new CommandDescriptor("comment", typeof(CommentRequest), typeof(DraftFieldChangedResponse), CommandSurface.Developer, AgentClass.Draft),

@@ -12,7 +12,8 @@ public interface IPanGlossInvoker
     /// <summary>
     /// Runs one request after machine-queue admission, inside the machine's job object, under
     /// <paramref name="wallClockCap"/> or the request's default when null. Never throws for anything the
-    /// parser did; a batch without a per-word time limit has no wall-clock deadline and remains cancellable.
+    /// parser did; a batch without a per-word time limit has no wall-clock deadline and remains cancellable, and
+    /// a batch with one has the default deadline plus that limit for each of its words.
     /// <paramref name="label"/> names the work in the queue's diagnostics.
     /// </summary>
     Task<PanGlossOutcome> RunAsync(

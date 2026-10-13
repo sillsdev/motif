@@ -20,7 +20,8 @@ namespace SIL.Motif.Host.PanGloss;
 /// <para>
 /// The default cap is the parser's own ratified execution limit rather than a number Motif chose. A batch
 /// without a per-word time limit has no wall-clock deadline and remains cancellable. The per-word limit is a
-/// <see cref="PanGlossRequest.Batch"/> argument and bounds a word, not the process.
+/// <see cref="PanGlossRequest.Batch"/> argument and bounds a word, not the process, so a batch with one is allowed
+/// the default cap plus that limit for every word it names: a large word list is never killed for its size.
 /// </para>
 /// </remarks>
 public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
@@ -96,9 +97,21 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
     }
 
     internal static TimeSpan ResolveWallClockCap(PanGlossRequest request, TimeSpan? wallClockCap) =>
-        wallClockCap ?? (request is PanGlossRequest.Batch { PerWordLimit: null }
-            ? Timeout.InfiniteTimeSpan
-            : DefaultWallClockCap);
+        wallClockCap ?? request switch
+        {
+            PanGlossRequest.Batch { PerWordLimit: null } => Timeout.InfiniteTimeSpan,
+            PanGlossRequest.Batch { PerWordLimit: { } limit } batch => BatchDeadline(batch.Words.Count, limit),
+            _ => DefaultWallClockCap,
+        };
+
+    // Every word reaching its limit on one thread, plus the default for loading; past what a timer holds, none.
+    private static TimeSpan BatchDeadline(int words, TimeSpan perWordLimit)
+    {
+        var ticks = (decimal)perWordLimit.Ticks * words + DefaultWallClockCap.Ticks;
+        return ticks > LongestTimerDeadline.Ticks ? Timeout.InfiniteTimeSpan : TimeSpan.FromTicks((long)ticks);
+    }
+
+    private static readonly TimeSpan LongestTimerDeadline = TimeSpan.FromMilliseconds(int.MaxValue - 1);
 
     /// <summary>Releases the queue; a run still in flight completes or cancels on its own terms.</summary>
     public void Dispose()

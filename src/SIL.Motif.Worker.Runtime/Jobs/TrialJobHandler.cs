@@ -34,6 +34,10 @@ namespace SIL.Motif.Worker.Jobs;
 /// </param>
 /// <param name="Scope">The declared Assessment scope to use, or <c>null</c> for the project's default.</param>
 /// <param name="Limits">Optional per-word limits copied from the earlier Assessment being compared.</param>
+/// <param name="WordList">
+/// The named words stored beside the project's store instead of in <c>words</c>, when inline they would carry the
+/// input past its structured JSON bound.
+/// </param>
 public sealed record TrialJobInput(
     [property: JsonPropertyName("proposalJson")] string ProposalJson,
     [property: JsonPropertyName("scope")] string? Scope,
@@ -42,7 +46,8 @@ public sealed record TrialJobInput(
     [property: JsonPropertyName("prerequisites")] IReadOnlyList<FrozenProposalRevision>? Prerequisites = null,
     [property: JsonPropertyName("limits")] TrialLimits? Limits = null,
     [property: JsonPropertyName("baselineAssessmentIds")] IReadOnlyList<string>? BaselineAssessmentIds = null,
-    [property: JsonPropertyName("negativeWords")] IReadOnlyList<string>? NegativeWords = null)
+    [property: JsonPropertyName("negativeWords")] IReadOnlyList<string>? NegativeWords = null,
+    [property: JsonPropertyName("wordList")] JobWordList? WordList = null)
 {
     /// <exception cref="InvalidOperationException">The input is not a well-formed Trial job input.</exception>
     public static TrialJobInput Parse(string inputJson) =>
@@ -168,8 +173,9 @@ internal sealed class TrialJobHandler
         var preserveScratch = false;
         try
         {
+            var words = input.WordList is { } list ? JobWordLists.Read(claim.Database, list) : input.Words;
             candidate = await RunCandidateAsync(claim, lane, proposal, input.Prerequisites ?? [],
-                scopeConfiguration, input.Words, input.AllWords, input.Limits, baseline.FwDataPath,
+                scopeConfiguration, words, input.AllWords, input.Limits, baseline.FwDataPath,
                 scratchRoot, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)

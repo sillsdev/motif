@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using SIL.LCModel;
@@ -26,150 +27,80 @@ public static partial class ProposalCommands
 {
     public static CommandOutcome<ComposedOperationsResponse> ComposeAuthorFeatureValue(ComposeAuthorFeatureValueRequest request) =>
         ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
-            "AuthorFeatureValue", (cache, input, _) => AuthorFeatureValueComposer.Build(cache, AuthorFeatureValueIntentParser.Parse(input)));
+            DraftComposers["compose-author-feature-value"]);
 
     public static CommandOutcome<ComposedOperationsResponse> ComposeAuthorPhoneme(ComposeAuthorPhonemeRequest request) =>
         ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
-            "AuthorPhoneme", (cache, input, _) => AuthorPhonemeComposer.Build(cache, AuthorPhonemeIntentParser.Parse(input)));
+            DraftComposers["compose-author-phoneme"]);
 
     public static CommandOutcome<ComposedOperationsResponse> ComposeAuthorNaturalClass(ComposeAuthorNaturalClassRequest request) =>
         ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
-            "AuthorNaturalClass", (cache, input, _) => AuthorNaturalClassComposer.Build(cache, AuthorNaturalClassIntentParser.Parse(input)));
+            DraftComposers["compose-author-natural-class"]);
 
     public static CommandOutcome<ComposedOperationsResponse> ComposeEditNaturalClass(ComposeEditNaturalClassRequest request) =>
         ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
-            "EditNaturalClass", (cache, input, _) => EditNaturalClassComposer.Build(cache,
-                EditNaturalClassIntentParser.Parse(input)),
-            replacePrevious: (input, operation) => ReplacesTarget(input, operation,
-                PhNCSegmentsSegmentsOperationKinds.AddRefSegments, PhNCSegmentsSegmentsOperationKinds.RemoveRefSegments),
-            relatedObjects: (cache, input) => EditNaturalClassComposer.ReadAffectedUsers(cache,
-                EditNaturalClassIntentParser.Parse(input).Target));
+            DraftComposers["compose-edit-natural-class"]);
 
     public static CommandOutcome<ComposedOperationsResponse> ComposeRelinkNaturalClass(ComposeRelinkNaturalClassRequest request) =>
         ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
-            "RelinkNaturalClass", (cache, input, _) => RelinkNaturalClassComposer.Build(cache,
-                RelinkNaturalClassIntentParser.Parse(input)),
-            validateAppend: (proposal, operations) =>
-            {
-                using var document = JsonDocument.Parse(request.IntentJson);
-                RelinkNaturalClassComposer.RequireEarlierCreation(proposal.Operations,
-                    RelinkNaturalClassIntentParser.Parse(document.RootElement), operations);
-            },
-            relatedObjects: (cache, input) => EditNaturalClassComposer.ReadAffectedUsers(cache,
-                RelinkNaturalClassIntentParser.Parse(input).Source));
+            DraftComposers["compose-relink-natural-class"]);
 
     public static CommandOutcome<ComposedOperationsResponse> ComposeAuthorEnvironment(ComposeAuthorEnvironmentRequest request) =>
         ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
-            "AuthorEnvironment", (cache, input, _) => AuthorEnvironmentComposer.Build(cache, AuthorEnvironmentIntentParser.Parse(input)));
+            DraftComposers["compose-author-environment"]);
 
-    public static CommandOutcome<ComposedOperationsResponse> ComposeAuthorPhonologicalRule(
-        ComposeAuthorPhonologicalRuleRequest request) =>
+    public static CommandOutcome<ComposedOperationsResponse> ComposeAuthorPhonologicalRule(ComposeAuthorPhonologicalRuleRequest request) =>
         ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
-            "AuthorPhonologicalRule", (cache, input, _) => AuthorPhonologicalRuleComposer.Build(cache,
-                AuthorPhonologicalRuleIntentParser.Parse(input)));
+            DraftComposers["compose-author-phonological-rule"]);
 
     public static CommandOutcome<ComposedOperationsResponse> ComposeAuthorPartOfSpeech(
         ComposeAuthorPartOfSpeechRequest request) =>
         ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
-            "AuthorPartOfSpeech", (cache, input, _) => AuthorPartOfSpeechComposer.Build(cache,
-                AuthorPartOfSpeechIntentParser.Parse(input)));
+            DraftComposers["compose-author-part-of-speech"]);
 
-    public static CommandOutcome<ComposedOperationsResponse> ComposeAuthorAffixSlot(
-        ComposeAuthorAffixSlotRequest request) =>
+    public static CommandOutcome<ComposedOperationsResponse> ComposeAuthorAffixSlot(ComposeAuthorAffixSlotRequest request) =>
         ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
-            "AuthorAffixSlot", (cache, input, _) => AuthorAffixSlotComposer.Build(cache,
-                AuthorAffixSlotIntentParser.Parse(input)));
+            DraftComposers["compose-author-affix-slot"]);
 
-    public static CommandOutcome<ComposedOperationsResponse> ComposeAuthorAffixTemplate(
-        ComposeAuthorAffixTemplateRequest request) =>
+    public static CommandOutcome<ComposedOperationsResponse> ComposeAuthorAffixTemplate(ComposeAuthorAffixTemplateRequest request) =>
         ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
-            "AuthorAffixTemplate", (cache, input, _) => AuthorAffixTemplateComposer.Build(cache,
-                AuthorAffixTemplateIntentParser.Parse(input)));
+            DraftComposers["compose-author-affix-template"]);
 
     public static CommandOutcome<ComposedOperationsResponse> ComposeRetireAllomorph(ComposeRetireAllomorphRequest request) =>
         ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
-            RetirementRecipes.RuleReplacement.ComposerName, (cache, input, _) =>
-            {
-                var json = input.GetRawText();
-                return input.TryGetProperty("format", out var format) &&
-                       format.GetString() == RetirementRecipes.RuleReplacement.ProvenanceFormat
-                    ? ReplaceListedAllomorphsWithRuleComposer.Build(cache, AllomorphRetirementCodec.Parse(json),
-                        () => CanonicalId.Mint())
-                    : RetireAllomorphComposer.Build(cache, RetireAllomorphCodec.Parse(json),
-                        () => CanonicalId.Mint());
-            });
+            DraftComposers["retire-allomorph"]);
 
-    public static CommandOutcome<ComposedOperationsResponse> ComposeRetireRedundantZeroAffix(
-        ComposeRetireRedundantZeroAffixRequest request) =>
+    public static CommandOutcome<ComposedOperationsResponse> ComposeRetireRedundantZeroAffix(ComposeRetireRedundantZeroAffixRequest request) =>
         ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
-            "RetireRedundantZeroAffix", (cache, input, _) => RetireRedundantZeroAffixComposer.Build(cache,
-                RetireRedundantZeroAffixCodec.Parse(input.GetRawText()), () => CanonicalId.Mint()));
+            DraftComposers["retire-redundant-zero-affix"]);
 
-    public static CommandOutcome<ComposedOperationsResponse> ComposeEditAdhocProhibition(
-        ComposeEditAdhocProhibitionRequest request) =>
+    public static CommandOutcome<ComposedOperationsResponse> ComposeEditAdhocProhibition(ComposeEditAdhocProhibitionRequest request) =>
         ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
-            "EditAdhocProhibition", (cache, input, _) => EditAdhocProhibitionComposer.Build(cache,
-                EditAdhocProhibitionIntentParser.Parse(input)), ValidateUniqueAdhocDisabledWrites);
+            DraftComposers["compose-edit-adhoc-prohibition"]);
 
-    public static CommandOutcome<ComposedOperationsResponse> ComposeEditAffixSlot(
-        ComposeEditAffixSlotRequest request) =>
+    public static CommandOutcome<ComposedOperationsResponse> ComposeEditAffixSlot(ComposeEditAffixSlotRequest request) =>
         ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
-            "EditAffixSlot", (cache, input, _) => EditAffixSlotComposer.Build(cache,
-                EditAffixSlotIntentParser.Parse(input)),
-            replacePrevious: (input, operation) => ReplacesTarget(input, operation,
-                MoInflAffixSlotOptionalOperationKinds.SetOptional, MoInflAffixSlotOptionalOperationKinds.ClearOptional),
-            relatedObjects: (cache, input) => EditAffixSlotComposer.ReadAffectedUsers(cache,
-                EditAffixSlotIntentParser.Parse(input)));
+            DraftComposers["compose-edit-affix-slot"]);
 
-    public static CommandOutcome<ComposedOperationsResponse> ComposeEditAffixTemplate(
-        ComposeEditAffixTemplateRequest request) =>
+    public static CommandOutcome<ComposedOperationsResponse> ComposeEditAffixTemplate(ComposeEditAffixTemplateRequest request) =>
         ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
-            "EditAffixTemplate", (cache, input, _) => EditAffixTemplateComposer.Build(cache,
-                EditAffixTemplateIntentParser.Parse(input)),
-            replacePrevious: (input, operation) => ReplacesTarget(input, operation,
-                MoInflAffixTemplatePrefixSlotsOperationKinds.AddRefPrefixSlots,
-                MoInflAffixTemplatePrefixSlotsOperationKinds.RemoveRefPrefixSlots,
-                MoInflAffixTemplatePrefixSlotsOperationKinds.MovePrefixSlots,
-                MoInflAffixTemplateSuffixSlotsOperationKinds.AddRefSuffixSlots,
-                MoInflAffixTemplateSuffixSlotsOperationKinds.RemoveRefSuffixSlots,
-                MoInflAffixTemplateSuffixSlotsOperationKinds.MoveSuffixSlots));
+            DraftComposers["compose-edit-affix-template"]);
 
-    public static CommandOutcome<ComposedOperationsResponse> ComposeEditInflectionalAffix(
-        ComposeEditInflectionalAffixRequest request) =>
+    public static CommandOutcome<ComposedOperationsResponse> ComposeEditInflectionalAffix(ComposeEditInflectionalAffixRequest request) =>
         ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
-            "EditInflectionalAffix", (cache, input, _) => EditInflectionalAffixComposer.Build(cache,
-                EditInflectionalAffixIntentParser.Parse(input)),
-            replacePrevious: (input, operation) => ReplacesTarget(input, operation,
-                MoInflAffMsaSlotsOperationKinds.AddRefSlots, MoInflAffMsaSlotsOperationKinds.RemoveRefSlots));
+            DraftComposers["compose-edit-inflectional-affix"]);
 
-    public static CommandOutcome<ComposedOperationsResponse> ComposeEditAllomorphCondition(
-        ComposeEditAllomorphConditionRequest request) =>
+    public static CommandOutcome<ComposedOperationsResponse> ComposeEditAllomorphCondition(ComposeEditAllomorphConditionRequest request) =>
         ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
-            "EditAllomorphCondition", (cache, input, _) => EditAllomorphConditionComposer.Build(cache,
-                EditAllomorphConditionIntentParser.Parse(input)),
-            replacePrevious: (input, operation) => ReplacesTarget(input, operation,
-                MoStemAllomorphPhoneEnvOperationKinds.AddRefPhoneEnv,
-                MoStemAllomorphPhoneEnvOperationKinds.RemoveRefPhoneEnv,
-                MoAffixAllomorphPhoneEnvOperationKinds.AddRefPhoneEnv,
-                MoAffixAllomorphPhoneEnvOperationKinds.RemoveRefPhoneEnv,
-                MoAffixAllomorphPositionOperationKinds.AddRefPosition,
-                MoAffixAllomorphPositionOperationKinds.RemoveRefPosition,
-                MoAffixAllomorphPositionOperationKinds.MovePosition));
+            DraftComposers["compose-edit-allomorph-condition"]);
 
-    public static CommandOutcome<ComposedOperationsResponse> ComposeOrderAllomorphs(
-        ComposeOrderAllomorphsRequest request) =>
+    public static CommandOutcome<ComposedOperationsResponse> ComposeOrderAllomorphs(ComposeOrderAllomorphsRequest request) =>
         ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
-            "OrderAllomorphs", (cache, input, _) => OrderAllomorphsComposer.Build(cache,
-                OrderAllomorphsIntentParser.Parse(input)),
-            replacePrevious: (input, operation) => ReplacesTarget(input, operation,
-                LexEntryAlternateFormsOperationKinds.MoveAlternateForms));
+            DraftComposers["order-allomorphs"]);
 
-    public static CommandOutcome<ComposedOperationsResponse> ComposeRecordParsimonyDisposition(
-        ComposeRecordParsimonyDispositionRequest request) =>
+    public static CommandOutcome<ComposedOperationsResponse> ComposeRecordParsimonyDisposition(ComposeRecordParsimonyDispositionRequest request) =>
         ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
-            "RecordParsimonyDisposition", (cache, input, proposalId) =>
-                RecordParsimonyDispositionComposer.Build(cache,
-                    RecordParsimonyDispositionIntentParser.Parse(input), proposalId));
+            DraftComposers["compose-record-parsimony-disposition"]);
 
     internal static CommandOutcome<ComposedOperationsResponse> ComposeRecordParsimonyDispositionFromFinding(
         MotifDatabase database,
@@ -282,19 +213,14 @@ public static partial class ProposalCommands
     }
 
     private static CommandOutcome<ComposedOperationsResponse> ComposeSoundSystem(string path, string version,
-        string draftName, string intentJson, string composer,
-        Func<LcmCache, JsonElement, CanonicalId, IReadOnlyList<OperationEnvelope>> build,
-        Action<Proposal, IReadOnlyList<OperationEnvelope>>? validateAppend = null,
-        Func<JsonElement, OperationEnvelope, bool>? replacePrevious = null,
-        Func<LcmCache, JsonElement, IReadOnlyList<ComposedRelatedObject>>? relatedObjects = null) =>
+        string draftName, string intentJson, DraftComposer composer) =>
         ProjectStoreCommand.Run(path, version, (database, project) =>
         {
             try
             {
                 using var document = JsonDocument.Parse(intentJson);
-                return ComposeIntoDraft(database, project, draftName, composer, (cache, proposalId) =>
-                    (document.RootElement.Clone(), build(cache, document.RootElement, proposalId)), validateAppend,
-                    replacePrevious, relatedObjects, document.RootElement.Clone());
+                return Single(ComposeStepsIntoDraft(database, project, draftName,
+                    [ComposeStep.From(composer, document.RootElement.Clone())]));
             }
             catch (Exception ex)
             {
@@ -307,27 +233,58 @@ public static partial class ProposalCommands
         ProjectLocator project,
         string draftName,
         string composer,
-        Func<LcmCache, CanonicalId, (JsonElement Input, IReadOnlyList<OperationEnvelope> Operations)> build,
-        Action<Proposal, IReadOnlyList<OperationEnvelope>>? validateAppend = null,
-        Func<JsonElement, OperationEnvelope, bool>? replacePrevious = null,
-        Func<LcmCache, JsonElement, IReadOnlyList<ComposedRelatedObject>>? relatedObjects = null,
-        JsonElement? authoredInput = null)
+        Func<LcmCache, CanonicalId, (JsonElement Input, IReadOnlyList<OperationEnvelope> Operations)> build) =>
+        Single(ComposeStepsIntoDraft(database, project, draftName, [new ComposeStep(null, composer, build)]));
+
+    private static CommandOutcome<ComposedOperationsResponse> Single(
+        CommandOutcome<ComposedOperationsResponse[]> outcome) =>
+        outcome.Succeeded
+            ? CommandOutcome<ComposedOperationsResponse>.Success(outcome.Value![0])
+            : CommandOutcome<ComposedOperationsResponse>.Refused(outcome.Refusal!);
+
+    /// <summary>One intent composed into a Draft, in the order its batch states it.</summary>
+    private sealed record ComposeStep(
+        string? Verb,
+        string Composer,
+        Func<LcmCache, CanonicalId, (JsonElement Input, IReadOnlyList<OperationEnvelope> Operations)> Build,
+        Action<IReadOnlyList<OperationEnvelope>, JsonElement, IReadOnlyList<OperationEnvelope>>? ValidateAppend = null,
+        Func<JsonElement, OperationEnvelope, bool>? ReplacePrevious = null,
+        Func<LcmCache, JsonElement, IReadOnlyList<ComposedRelatedObject>>? RelatedObjects = null,
+        JsonElement? Authored = null)
+    {
+        internal static ComposeStep From(DraftComposer composer, JsonElement authored) =>
+            new(composer.Verb, composer.Composer,
+                (cache, proposalId) => (authored, composer.Build(cache, authored, proposalId)),
+                composer.ValidateAppend, composer.ReplacePrevious, composer.RelatedObjects, authored);
+    }
+
+    private sealed class ComposeStepException(int index, Exception inner) : Exception(inner.Message, inner)
+    {
+        public int Index { get; } = index;
+    }
+
+    /// <summary>Composes every step from one copy and one cache load; saves all of them or none.</summary>
+    private static CommandOutcome<ComposedOperationsResponse[]> ComposeStepsIntoDraft(
+        MotifDatabase database, ProjectLocator project, string draftName, IReadOnlyList<ComposeStep> steps,
+        bool describeBatchFailure = false)
     {
         try
         {
             var repository = new ProposalRepository(database);
             if (!TryLoadDraft(repository, draftName, out var draft, out var loadedJson))
-                return CommandOutcome<ComposedOperationsResponse>.Refused(DraftNotFound(draftName));
+                return CommandOutcome<ComposedOperationsResponse[]>.Refused(DraftNotFound(draftName));
             var previous = ProposalJsonParser.Parse(BuildProposalJson(draft));
-            var (input, operations, related, replacedIds) = ProjectReadCache.ReadSaved(project, (_, cache) =>
+            var proposalId = CanonicalId.Parse(draft.ProposalId);
+            var replacedSet = steps
+                .SelectMany(step => step.Authored is { } authored && step.ReplacePrevious is { } replaces
+                    ? previous.Operations.Where(operation => replaces(authored, operation))
+                    : [])
+                .Select(operation => operation.OperationId.Value)
+                .ToHashSet(StringComparer.Ordinal);
+            var retained = previous.Operations.Where(operation => !replacedSet.Contains(operation.OperationId.Value))
+                .ToArray();
+            var composed = ProjectReadCache.ReadSaved(project, (_, cache) =>
             {
-                var replaced = authoredInput is { } authored && replacePrevious is not null
-                    ? previous.Operations.Where(operation => replacePrevious(authored, operation)).ToArray()
-                    : [];
-                var replacedSet = replaced.Select(operation => operation.OperationId.Value)
-                    .ToHashSet(StringComparer.Ordinal);
-                var retained = previous.Operations.Where(operation => !replacedSet.Contains(operation.OperationId.Value))
-                    .ToArray();
                 if (retained.Any(operation => operation.DependsOn.Any(dependency =>
                         replacedSet.Contains(dependency.OperationId.Value))))
                     throw new InvalidOperationException(
@@ -338,67 +295,152 @@ public static partial class ProposalCommands
                 foreach (var operation in OperationExecutionOrder.Sort(retained))
                     OperationHandlerRegistry.Resolve(operation.Kind, "Draft composer preparation")
                         .ApplyAndCaptureEffect(cache, operation, new List<CanonicalId>());
-                var result = build(cache, CanonicalId.Parse(draft.ProposalId));
-                return (result.Input, result.Operations,
-                    relatedObjects?.Invoke(cache, result.Input), replaced.Select(operation => operation.OperationId.Value).ToArray());
+                var staged = new List<OperationEnvelope>(retained);
+                var validated = new List<OperationEnvelope>(previous.Operations);
+                var batchAdded = new List<OperationEnvelope>();
+                var results = new List<(JsonElement Input, OperationEnvelope[] Added,
+                    IReadOnlyList<ComposedRelatedObject>? Related)>();
+                for (var index = 0; index < steps.Count; index++)
+                {
+                    var step = steps[index];
+                    try
+                    {
+                        // Two edits of one slot cannot both stand, so a batch never replaces its own edit.
+                        if (step.Authored is { } authored && step.ReplacePrevious is { } replaces &&
+                            batchAdded.Any(operation => replaces(authored, operation)))
+                            throw new InvalidOperationException(
+                                "An earlier intent in this batch already edits the same target; author one edit.");
+                        var (input, operations) = step.Build(cache, proposalId);
+                        var related = step.RelatedObjects?.Invoke(cache, input);
+                        step.ValidateAppend?.Invoke(validated, input, operations);
+                        var added = DeclareDependencies(input, operations, staged);
+                        // Later steps read the project as a later single call would, after this step's changes.
+                        if (index < steps.Count - 1)
+                            ApplyToScratch(cache, added);
+                        staged.AddRange(added);
+                        validated.AddRange(added);
+                        batchAdded.AddRange(added);
+                        results.Add((input, added, related));
+                    }
+                    catch (Exception exception)
+                    {
+                        throw new ComposeStepException(index, exception);
+                    }
+                }
+                return results;
             });
-            validateAppend?.Invoke(previous, operations);
-            var replacedSet = replacedIds.ToHashSet(StringComparer.Ordinal);
-            var retainedOperations = previous.Operations
-                .Where(operation => !replacedSet.Contains(operation.OperationId.Value)).ToArray();
-            draft.Operations = draft.Operations
-                .Where(operation => !replacedSet.Contains(operation.OperationId)).ToList();
-            var authoredReferences = new HashSet<CanonicalId>();
-            CollectIds(input, authoredReferences);
-            var added = new List<OperationEnvelope>();
-            foreach (var operation in operations)
+            draft.Operations = draft.Operations.Where(operation => !replacedSet.Contains(operation.OperationId)).ToList();
+            foreach (var (step, result) in steps.Zip(composed))
             {
-                var references = new HashSet<CanonicalId>(authoredReferences);
-                if (operation.Target is { } target) references.Add(target);
-                if (operation.Placement?.After is { } left) references.Add(left);
-                if (operation.Placement?.Before is { } right) references.Add(right);
-                if (operation.After is { } after) CollectIds(after, references);
-                var dependencies = operation.DependsOn.Select(dependency => dependency.OperationId)
-                    .Concat(retainedOperations
-                        .Where(prior => (prior.EntityId is { } created && references.Contains(created)) ||
-                            (prior.Target is { } modified && references.Contains(modified)))
-                        .Select(prior => prior.OperationId))
-                    .Distinct().Select(id => new OperationDependency(id)).ToArray();
-                var declared = new OperationEnvelope(operation.OperationId, operation.Kind, operation.EntityId,
-                    operation.Target, operation.After, operation.Placement, dependencies, rationale: operation.Rationale);
-                added.Add(declared);
-                draft.Operations.Add(ToDraftOperation(declared));
-                EnsureContractVersion(draft, declared.Kind);
+                foreach (var declared in result.Added)
+                {
+                    draft.Operations.Add(ToDraftOperation(declared));
+                    EnsureContractVersion(draft, declared.Kind);
+                }
+                if (step.ReplacePrevious is not null && result.Input.ValueKind == JsonValueKind.Object &&
+                    result.Input.TryGetProperty("target", out var replacementTarget) &&
+                    replacementTarget.ValueKind == JsonValueKind.String)
+                    draft.ComposerProvenance.RemoveAll(provenance => ReplacesComposerIntent(provenance,
+                        step.Composer, replacementTarget.GetString()));
+                if (result.Added.Length > 0)
+                    draft.ComposerProvenance.Add(JsonSerializer.SerializeToElement(new
+                    {
+                        composer = step.Composer,
+                        input = result.Input,
+                        operationIds = result.Added.Select(operation => operation.OperationId.Value).ToArray(),
+                    }));
             }
             foreach (var group in draft.ContractVersions.Keys.ToArray())
                 if (!draft.Operations.Any(operation =>
                         SIL.Motif.Contract.Model.OperationKind.GetGroup(operation.Kind) == group))
                     draft.ContractVersions.Remove(group);
-            if (replacePrevious is not null && input.ValueKind == JsonValueKind.Object &&
-                input.TryGetProperty("target", out var replacementTarget) &&
-                replacementTarget.ValueKind == JsonValueKind.String)
-                draft.ComposerProvenance.RemoveAll(provenance => ReplacesComposerIntent(provenance, composer,
-                    replacementTarget.GetString()));
-            if (operations.Count > 0)
-                draft.ComposerProvenance.Add(JsonSerializer.SerializeToElement(new
-                {
-                    composer,
-                    input,
-                    operationIds = added.Select(operation => operation.OperationId.Value).ToArray(),
-                }));
             _ = ProposalJsonParser.Parse(BuildProposalJson(draft));
             if (!TrySaveLoadedDraft(repository, draftName, loadedJson, draft))
-                return CommandOutcome<ComposedOperationsResponse>.Refused(DraftRevisionConflict(draftName));
-            return CommandOutcome<ComposedOperationsResponse>.Success(new(draftName, composer,
-                added.Select(operation => new OperationSummary(
-                    operation.OperationId.Value, operation.Kind, operation.EntityId?.Value)).ToArray(),
-                draft.Operations.Count, related));
+                return CommandOutcome<ComposedOperationsResponse[]>.Refused(DraftRevisionConflict(draftName));
+            return CommandOutcome<ComposedOperationsResponse[]>.Success(steps.Zip(composed, (step, result) =>
+                new ComposedOperationsResponse(draftName, step.Composer,
+                    result.Added.Select(operation => new OperationSummary(
+                        operation.OperationId.Value, operation.Kind, operation.EntityId?.Value)).ToArray(),
+                    draft.Operations.Count, result.Related)).ToArray());
+        }
+        catch (ComposeStepException exception) when (describeBatchFailure)
+        {
+            var verb = steps[exception.Index].Verb;
+            return CommandOutcome<ComposedOperationsResponse[]>.Refused(DraftInvalid(
+                $"Intent {exception.Index} ({verb}): {exception.Message} Nothing in this batch was added.",
+                ("draftName", draftName), ("intentIndex", exception.Index.ToString(CultureInfo.InvariantCulture)),
+                ("verb", verb)));
         }
         catch (Exception exception)
         {
-            return CommandOutcome<ComposedOperationsResponse>.Refused(
+            return CommandOutcome<ComposedOperationsResponse[]>.Refused(
                 DraftInvalid(exception.Message, ("draftName", draftName)));
         }
+    }
+
+    /// <summary>Adds an ordering edge from each new operation to every staged one that made what it names.</summary>
+    private static OperationEnvelope[] DeclareDependencies(JsonElement input,
+        IReadOnlyList<OperationEnvelope> operations, IReadOnlyList<OperationEnvelope> staged)
+    {
+        var authoredReferences = new HashSet<CanonicalId>();
+        CollectIds(input, authoredReferences);
+        var positions = new Dictionary<CanonicalId, int>();
+        for (var index = 0; index < staged.Count; index++) positions[staged[index].OperationId] = index;
+        return operations.Select(operation =>
+        {
+            var references = new HashSet<CanonicalId>(authoredReferences);
+            if (operation.Target is { } target) references.Add(target);
+            if (operation.Placement?.After is { } left) references.Add(left);
+            if (operation.Placement?.Before is { } right) references.Add(right);
+            if (operation.After is { } after) CollectIds(after, references);
+            var creators = staged.Where(prior => prior.EntityId is { } created && references.Contains(created))
+                .Select(prior => prior.OperationId).ToArray();
+            var editors = staged.Where(prior => prior.Target is { } modified && references.Contains(modified))
+                .Select(prior => prior.OperationId).Except(creators).ToArray();
+            var dependencies = operation.DependsOn.Select(dependency => dependency.OperationId)
+                .Concat(creators)
+                .Concat(WithoutImplied(creators.Concat(editors).ToArray(), editors, staged, positions))
+                .Distinct().Select(id => new OperationDependency(id)).ToArray();
+            return new OperationEnvelope(operation.OperationId, operation.Kind, operation.EntityId,
+                operation.Target, operation.After, operation.Placement, dependencies, rationale: operation.Rationale);
+        }).ToArray();
+    }
+
+    /// <summary>Drops each editor another predecessor already follows, so edits of one owner chain.</summary>
+    private static IEnumerable<CanonicalId> WithoutImplied(IReadOnlyList<CanonicalId> candidates,
+        IReadOnlyList<CanonicalId> editors, IReadOnlyList<OperationEnvelope> staged,
+        IReadOnlyDictionary<CanonicalId, int> positions)
+    {
+        if (candidates.Count < 2) return editors;
+        // Stopping below the earliest candidate can only keep a redundant edge, never drop a needed one.
+        var earliest = candidates.Min(candidate => positions[candidate]);
+        var implied = new HashSet<CanonicalId>();
+        var pending = new Stack<CanonicalId>();
+        foreach (var candidate in candidates)
+            foreach (var parent in staged[positions[candidate]].DependsOn)
+                pending.Push(parent.OperationId);
+        while (pending.Count > 0)
+        {
+            var next = pending.Pop();
+            if (!positions.TryGetValue(next, out var position) || position < earliest || !implied.Add(next))
+                continue;
+            foreach (var parent in staged[position].DependsOn) pending.Push(parent.OperationId);
+        }
+        return editors.Where(editor => !implied.Contains(editor));
+    }
+
+    /// <summary>Applies one step's operations to the scratch cache, honouring the edges among them.</summary>
+    private static void ApplyToScratch(LcmCache cache, IReadOnlyList<OperationEnvelope> added)
+    {
+        var own = added.Select(operation => operation.OperationId).ToHashSet();
+        var internalOnly = added.Select(operation => new OperationEnvelope(operation.OperationId, operation.Kind,
+            operation.EntityId, operation.Target, operation.After, operation.Placement,
+            operation.DependsOn.Where(dependency => own.Contains(dependency.OperationId)).ToArray(),
+            rationale: operation.Rationale)).ToArray();
+        var byId = added.ToDictionary(operation => operation.OperationId);
+        foreach (var ordered in OperationExecutionOrder.Sort(internalOnly))
+            OperationHandlerRegistry.Resolve(ordered.Kind, "Draft composer preparation")
+                .ApplyAndCaptureEffect(cache, byId[ordered.OperationId], new List<CanonicalId>());
     }
 
     private static bool ReplacesTarget(JsonElement authored, OperationEnvelope operation, params string[] kinds) =>
@@ -419,9 +461,9 @@ public static partial class ProposalCommands
     }
 
     private static void ValidateUniqueAdhocDisabledWrites(
-        Proposal previous, IReadOnlyList<OperationEnvelope> additions)
+        IReadOnlyList<OperationEnvelope> staged, IReadOnlyList<OperationEnvelope> additions)
     {
-        var targets = previous.Operations.Concat(additions)
+        var targets = staged.Concat(additions)
             .Where(operation => operation.Kind is MoAdhocProhibDisabledOperationKinds.SetDisabled or
                 MoAdhocProhibDisabledOperationKinds.ClearDisabled)
             .Where(operation => operation.Target is not null)

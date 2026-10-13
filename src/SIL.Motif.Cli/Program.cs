@@ -283,6 +283,18 @@ try
             result = RenderProposal(soundOutcome, successAsJson: false);
             break;
 
+        case "compose-batch":
+            if (!flags.TryGetValue("draft", out var batchDraft) ||
+                !flags.TryGetValue("project", out var batchProject) ||
+                !flags.TryGetValue("intents", out var batchFile))
+                return Usage("Usage: motif compose-batch --draft <name> --project <fwdata> --intents <file.json> [--json]",
+                    asJson);
+            if (!File.Exists(batchFile))
+                return Usage($"The --intents file '{batchFile}' does not exist.", asJson);
+            result = RenderProposal(ProposalCommands.ComposeBatch(new ComposeBatchRequest(
+                batchProject, CliProductVersion(), batchDraft, File.ReadAllText(batchFile))), successAsJson: false);
+            break;
+
         case "retire-allomorph":
             if (!flags.TryGetValue("draft", out var retireDraft) ||
                 !flags.TryGetValue("project", out var retireProject) ||

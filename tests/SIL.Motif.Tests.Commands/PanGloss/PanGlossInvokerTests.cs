@@ -1194,6 +1194,21 @@ public sealed class PanGlossInvokerTests : IDisposable
     }
 
     [Fact]
+    public void ABatchWithAWordTimeLimitHasADeadlineThatGrowsWithItsWords()
+    {
+        var project = Project("batch-deadline-scales");
+        var words = Enumerable.Range(0, 60_000).Select(index => $"w{index}").ToArray();
+
+        var cap = PanGlossInvoker.ResolveWallClockCap(new PanGlossRequest.Batch(project, words, TimeSpan.FromSeconds(5)), null);
+
+        Assert.Equal(PanGlossInvoker.DefaultWallClockCap + TimeSpan.FromSeconds(5 * 60_000), cap);
+        Assert.Equal(Timeout.InfiniteTimeSpan, PanGlossInvoker.ResolveWallClockCap(
+            new PanGlossRequest.Batch(project, words, TimeSpan.FromMinutes(10)), null));
+        Assert.Equal(TimeSpan.FromSeconds(3), PanGlossInvoker.ResolveWallClockCap(
+            new PanGlossRequest.Batch(project, words, TimeSpan.FromSeconds(5)), TimeSpan.FromSeconds(3)));
+    }
+
+    [Fact]
     public async Task ABatchWithoutAWordTimeLimitHasNoWallClockDeadlineAndStillCancels()
     {
         var project = Project("batch-without-time-limit");
@@ -1204,7 +1219,7 @@ public sealed class PanGlossInvokerTests : IDisposable
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(15));
 
         Assert.Equal(Timeout.InfiniteTimeSpan, PanGlossInvoker.ResolveWallClockCap(request, null));
-        Assert.Equal(PanGlossInvoker.DefaultWallClockCap,
+        Assert.Equal(PanGlossInvoker.DefaultWallClockCap + TimeSpan.FromSeconds(1),
             PanGlossInvoker.ResolveWallClockCap(new PanGlossRequest.Batch(project, ["motifa"], TimeSpan.FromSeconds(1)), null));
         var run = invoker.RunAsync(request, "test:unlimited-batch", cancellation.Token);
         var deadline = DateTime.UtcNow.AddSeconds(10);

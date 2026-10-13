@@ -233,7 +233,8 @@ public static class Trials
             words, allWords, input.Limits, job.Status, completedUtc, freshness)
         {
             WordScope = allWords ? TrialWordScope.AllWords
-                : input.Words is null ? TrialWordScope.DefaultSelection : TrialWordScope.ChosenWords,
+                : input.Words is null && input.WordList is null ? TrialWordScope.DefaultSelection
+                    : TrialWordScope.ChosenWords,
             Label = label,
             GrammarCheckId = grammarCheckId,
             WordResults = wordResults,
