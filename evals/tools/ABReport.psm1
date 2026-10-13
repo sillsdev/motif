@@ -1,21 +1,90 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 Import-Module (Join-Path $PSScriptRoot 'ABHarness.psm1')
+function Get-ABMean([double[]] $Values) {
+    if ($Values.Count -eq 0) { return $null }
+    return [double](($Values | Measure-Object -Average).Average)
+}
+
+function Get-ABPairedInterval([object[]] $Pairs) {
+    $clusterGroups = @($Pairs | Group-Object { $_.set + '|' + $_.language })
+    if ($Pairs.Count -eq 0) {
+        return [ordered]@{ mean = $null; confidenceInterval95 = $null; intervalIncludesZero = $null; unit = $null; n = 0 }
+    }
+    $unitValues = [Collections.Generic.List[double]]::new()
+    $unitName = 'task means'
+    if ($clusterGroups.Count -gt 1) {
+        $unitName = 'set/language cluster means'
+        foreach ($clusterGroup in $clusterGroups) {
+            $unitValues.Add((Get-ABMean @($clusterGroup.Group | ForEach-Object { [double]$_.difference })))
+        }
+    } else {
+        foreach ($taskGroup in @($Pairs | Group-Object { [string]$_.task })) {
+            $unitValues.Add((Get-ABMean @($taskGroup.Group | ForEach-Object { [double]$_.difference })))
+        }
+    }
+    $count = $unitValues.Count
+    $mean = Get-ABMean @($unitValues)
+    if ($count -lt 2) {
+        return [ordered]@{ mean = $mean; confidenceInterval95 = $null; intervalIncludesZero = $null; unit = $unitName; n = $count }
+    }
+    $sumSquares = 0.0
+    foreach ($unitValue in $unitValues) { $sumSquares += [Math]::Pow($unitValue - $mean, 2) }
+    $standardError = [Math]::Sqrt(($sumSquares / ($count - 1)) / $count)
+    $degreesOfFreedom = $count - 1
+    $criticalValues = @{
+        1 = 12.706; 2 = 4.303; 3 = 3.182; 4 = 2.776; 5 = 2.571; 6 = 2.447; 7 = 2.365; 8 = 2.306
+        9 = 2.262; 10 = 2.228; 11 = 2.201; 12 = 2.179; 13 = 2.160; 14 = 2.145; 15 = 2.131
+        16 = 2.120; 17 = 2.110; 18 = 2.101; 19 = 2.093; 20 = 2.086; 25 = 2.060; 30 = 2.042
+        40 = 2.021; 60 = 2.000; 120 = 1.980
+    }
+    $tableDf = 1
+    foreach ($key in $criticalValues.Keys | Sort-Object { [int]$_ }) {
+        if ([int]$key -gt $degreesOfFreedom) { break }
+        $tableDf = [int]$key
+    }
+    $halfWidth = [double]$criticalValues[$tableDf] * $standardError
+    $interval = [ordered]@{
+        lower = $mean - $halfWidth
+        upper = $mean + $halfWidth
+        method = "Student-t 95% interval over $unitName (n = $count)."
+    }
+    return [ordered]@{ mean = $mean; confidenceInterval95 = $interval;
+        intervalIncludesZero = $interval.lower -le 0 -and $interval.upper -ge 0; unit = $unitName; n = $count }
+}
+
+function Test-ABScoredRow([object] $Row) {
+    $failureClass = if ($Row.Contains('failureClass')) { [string]$Row.failureClass } else { '' }
+    return $Row.integrity.state -eq 'clean' -and $null -ne $Row.primaryScore -and
+        $failureClass -notin @('cloud_failure', 'harness_defect')
+}
+
+function Get-ABCommonEligibleTasks([object[]] $Completed, [object[]] $Arms, [int] $TrialCount) {
+    # A task counts toward pass rates only when every Arm has every trial scored and decided, so Arms share one task set.
+    $eligible = [Collections.Generic.List[string]]::new()
+    foreach ($taskGroup in @($Completed | Group-Object { [string]$_.task })) {
+        $complete = $true
+        foreach ($arm in $Arms) {
+            $rows = @($taskGroup.Group | Where-Object { $_.arm -eq $arm.id })
+            if ($rows.Count -ne $TrialCount -or
+                @($rows | Where-Object { -not (Test-ABScoredRow $_) -or $null -eq $_.success }).Count -gt 0) {
+                $complete = $false
+            }
+        }
+        if ($complete) { $eligible.Add([string]$taskGroup.Name) }
+    }
+    return @($eligible)
+}
+
 function Write-ABReport {
     param($completed, $selectedTasks, $arms, $trialCount, $primaryMetric, $questionData, $questionId, $runId, $runRoot,
         [string] $measurementFingerprint = '')
-    function Get-ABMean([double[]] $Values) {
-        if ($Values.Count -eq 0) { return $null }
-        return [double](($Values | Measure-Object -Average).Average)
-    }
-
     $paired = [Collections.Generic.List[object]]::new()
     foreach ($task in $selectedTasks) {
         for ($trial = 1; $trial -le $trialCount; $trial++) {
             $left = $completed | Where-Object { $_.task -eq $task.id -and $_.arm -eq $arms[0].id -and $_.trial -eq $trial } | Select-Object -First 1
             $right = $completed | Where-Object { $_.task -eq $task.id -and $_.arm -eq $arms[1].id -and $_.trial -eq $trial } | Select-Object -First 1
-            if ($left -and $right -and $left.integrity.state -eq 'clean' -and $right.integrity.state -eq 'clean' -and
-                $null -ne $left.primaryScore -and $null -ne $right.primaryScore) {
+            if ($left -and $right -and (Test-ABScoredRow $left) -and (Test-ABScoredRow $right)) {
                 $setLanguagePath = Join-Path $task.setPath 'language/language.yaml'
                 $languageId = if (Test-Path -LiteralPath $setLanguagePath) { (Read-ABJson $setLanguagePath).id } else { $task.set }
                 $paired.Add([ordered]@{
@@ -26,56 +95,36 @@ function Write-ABReport {
             }
         }
     }
-    $diffs = @($paired | ForEach-Object { [double]$_.difference })
-    $meanDifference = Get-ABMean $diffs
-    $interval = $null
-    if ($diffs.Count -gt 0) {
-        $clusterGroups = @($paired | Group-Object { $_.set + '|' + $_.language })
-        $rng = [Random]::new(531009)
-        $bootstrap = [Collections.Generic.List[double]]::new()
-        for ($iteration = 0; $iteration -lt 2000; $iteration++) {
-            $sample = [Collections.Generic.List[double]]::new()
-            for ($clusterIndex = 0; $clusterIndex -lt $clusterGroups.Count; $clusterIndex++) {
-                $cluster = $clusterGroups[$rng.Next(0, $clusterGroups.Count)]
-                $taskGroups = @($cluster.Group | Group-Object { [string]$_.task })
-                for ($taskIndex = 0; $taskIndex -lt $taskGroups.Count; $taskIndex++) {
-                    $taskGroup = $taskGroups[$rng.Next(0, $taskGroups.Count)]
-                    $rows = @($taskGroup.Group)
-                    $sample.Add([double]$rows[$rng.Next(0, $rows.Count)].difference)
-                }
-            }
-            if ($sample.Count -gt 0) { $bootstrap.Add((Get-ABMean @($sample))) }
-        }
-        $sorted = @($bootstrap | Sort-Object)
-        $lowerIndex = [Math]::Max(0, [int][Math]::Floor(($sorted.Count - 1) * 0.025))
-        $upperIndex = [Math]::Min($sorted.Count - 1, [int][Math]::Ceiling(($sorted.Count - 1) * 0.975))
-        $interval = [ordered]@{ lower = $sorted[$lowerIndex]; upper = $sorted[$upperIndex]; method = 'paired bootstrap, clustered by set and language, 2000 resamples' }
-    }
+    $intervalResult = Get-ABPairedInterval @($paired)
+    $meanDifference = $intervalResult.mean
+    $interval = $intervalResult.confidenceInterval95
 
+    $commonTasks = @(Get-ABCommonEligibleTasks @($completed) @($arms) $trialCount)
     $armSummary = [Collections.Generic.List[object]]::new()
     foreach ($arm in $arms) {
         $armRows = @($completed | Where-Object { $_.arm -eq $arm.id })
-        $validRows = @($armRows | Where-Object { $_.integrity.state -eq 'clean' -and $null -ne $_.primaryScore })
-        $taskGroups = @($armRows | Group-Object { [string]$_.task })
-        $eligibleTasks = 0
+        $validRows = @($armRows | Where-Object { Test-ABScoredRow $_ })
+        # Rows whose success is undecided (a capped parser) are inconclusive, not failures, in rates and prices.
+        $decidedRows = @($validRows | Where-Object { $null -ne $_.success })
+        $eligibleTasks = $commonTasks.Count
         $passedAtOne = 0
         $passedAll = 0
-        foreach ($group in $taskGroups) {
-            $taskRows = @($group.Group | Sort-Object trial)
-            if (@($taskRows | Where-Object { $_.integrity.state -ne 'clean' -or $null -eq $_.primaryScore }).Count -gt 0) { continue }
-            $eligibleTasks++
-            if ($taskRows.Count -gt 0 -and $taskRows[0].success -eq $true) { $passedAtOne++ }
-            if ($taskRows.Count -eq $trialCount -and @($taskRows | Where-Object { $_.success -ne $true }).Count -eq 0) { $passedAll++ }
+        foreach ($taskId in $commonTasks) {
+            $taskRows = @($armRows | Where-Object { $_.task -eq $taskId } | Sort-Object trial)
+            if ($taskRows[0].success -eq $true) { $passedAtOne++ }
+            if (@($taskRows | Where-Object { $_.success -ne $true }).Count -eq 0) { $passedAll++ }
         }
-        $successfulCount = @($validRows | Where-Object { $_.success -eq $true }).Count
-        $costs = @($validRows | Where-Object { $null -ne $_.costUsd } | ForEach-Object { [double]$_.costUsd })
-        $completeCost = $costs.Count -eq $validRows.Count
+        $successfulCount = @($decidedRows | Where-Object { $_.success -eq $true }).Count
+        $costs = @($decidedRows | Where-Object { $null -ne $_.costUsd } | ForEach-Object { [double]$_.costUsd })
+        $completeCost = $costs.Count -eq $decidedRows.Count
+        $unpricedRetries = [int](@($decidedRows | ForEach-Object {
+            if ($_.Contains('unpricedRetryAttempts')) { [int]$_.unpricedRetryAttempts } else { 0 } }) | Measure-Object -Sum).Sum
         $totalScoredCost = if ($completeCost -and $costs.Count -gt 0) { [double](($costs | Measure-Object -Sum).Sum) } else { $null }
         $priceToSolve = if ($null -ne $totalScoredCost -and $successfulCount -gt 0) {
             $totalScoredCost / $successfulCount
         } else { $null }
-        $averageEpisodeCost = if ($null -ne $totalScoredCost -and $validRows.Count -gt 0) {
-            $totalScoredCost / $validRows.Count
+        $averageEpisodeCost = if ($null -ne $totalScoredCost -and $decidedRows.Count -gt 0) {
+            $totalScoredCost / $decidedRows.Count
         } else { $null }
         $errorCounts = @($armRows | ForEach-Object { $_.activity } | Where-Object { $_.isError } |
             Group-Object { if ($_.Contains('name')) { [string]$_.name } elseif ($_.Contains('tool')) { [string]$_.tool } else { '' } } |
@@ -92,7 +141,8 @@ function Write-ABReport {
             passPowerK = if ($eligibleTasks -gt 0) { [double]$passedAll / $eligibleTasks } else { $null }
             priceToSolveUsd = $priceToSolve
             averageCostPerEpisodeUsd = $averageEpisodeCost
-            costCoverage = @{ scoredEpisodes = $validRows.Count; pricedEpisodes = $costs.Count; complete = $completeCost }
+            costCoverage = @{ scoredEpisodes = $decidedRows.Count; pricedEpisodes = $costs.Count; complete = $completeCost
+                unpricedRetryAttempts = $unpricedRetries }
             successfulTasksAtK = $passedAll; eligibleTasks = $eligibleTasks
             harnessDefects = @($armRows | Where-Object { $_.failureClass -eq 'harness_defect' }).Count
             cloudFailures = @($armRows | Where-Object { $_.failureClass -eq 'cloud_failure' }).Count
@@ -137,12 +187,37 @@ function Write-ABReport {
         })
     }
 
+    $isAA = $questionData.Contains('mode') -and [string]$questionData.mode -ceq 'aa'
     $intervalCrossesZero = $null -eq $interval -or ($interval.lower -le 0 -and $interval.upper -ge 0)
     $leftLabel = [string]$arms[0].id
     $rightLabel = [string]$arms[1].id
+    $aaArm = if ($questionData.Contains('aaArm') -and $questionData.aaArm) {
+        [string]$questionData.aaArm
+    } else { $leftLabel -replace '\.a1$', '' }
     $meanText = if ($null -eq $meanDifference) { 'unavailable' } else { '{0:P1}' -f $meanDifference }
     $intervalText = if ($interval) { '[{0:P1}, {1:P1}]' -f $interval.lower, $interval.upper } else { '[unavailable]' }
-    if ($null -eq $interval) {
+    $aaMetricDifferences = $null
+    if ($isAA) {
+        $aaMetricDifferences = [ordered]@{
+            passAt1 = if ($null -ne $armSummary[0].passAt1 -and $null -ne $armSummary[1].passAt1) {
+                [double]$armSummary[1].passAt1 - [double]$armSummary[0].passAt1
+            } else { $null }
+            meanWallMs = if ($null -ne $armSummary[0].meanWallMs -and $null -ne $armSummary[1].meanWallMs) {
+                [double]$armSummary[1].meanWallMs - [double]$armSummary[0].meanWallMs
+            } else { $null }
+            meanToolCalls = if ($null -ne $armSummary[0].meanToolCalls -and $null -ne $armSummary[1].meanToolCalls) {
+                [double]$armSummary[1].meanToolCalls - [double]$armSummary[0].meanToolCalls
+            } else { $null }
+        }
+        $verdict = "A/A check of ${aaArm}: two identical copies. Paired difference $meanText, 95% interval $intervalText."
+        if ($null -eq $interval) {
+            $verdict += ' The interval is unavailable because fewer than two independent units were scored.'
+        } elseif ($intervalResult.intervalIncludesZero) {
+            $verdict += ' The interval includes zero: the harness shows no difference where none exists.'
+        } else {
+            $verdict += ' The interval excludes zero: the harness reports a difference between identical Arms; do not trust A/B results until this is explained.'
+        }
+    } elseif ($null -eq $interval) {
         $verdict = "No clean paired scores are available to compare $rightLabel with $leftLabel on $primaryMetric."
     }
     elseif ($intervalCrossesZero) {
@@ -161,6 +236,13 @@ function Write-ABReport {
     $report = [Collections.Generic.List[string]]::new()
     $report.Add($verdict)
     $report.Add('')
+    if ($isAA) {
+        $passAt1DifferenceText = if ($null -ne $aaMetricDifferences.passAt1) { '{0:N4}' -f $aaMetricDifferences.passAt1 } else { 'unavailable' }
+        $wallDifferenceText = if ($null -ne $aaMetricDifferences.meanWallMs) { '{0:N1} ms' -f $aaMetricDifferences.meanWallMs } else { 'unavailable' }
+        $toolDifferenceText = if ($null -ne $aaMetricDifferences.meanToolCalls) { '{0:N2}' -f $aaMetricDifferences.meanToolCalls } else { 'unavailable' }
+        $report.Add("A/A metric differences (copy 2 minus copy 1): pass@1 $passAt1DifferenceText; mean wall time $wallDifferenceText; mean tool calls $toolDifferenceText.")
+        $report.Add('')
+    }
     $report.Add("Question: $($questionData.question)")
     $report.Add("Run: $runId | primary metric: $primaryMetric | trials per task: $trialCount | paired trials: $($paired.Count) | inconclusive or invalid trials: $incompleteCount")
     $report.Add('')
@@ -196,7 +278,11 @@ function Write-ABReport {
         $report.Add("| $($armResult.id) | $($armResult.host) / $($armResult.model) | $($armResult.authMode) | $($armResult.meanPrimaryScore) | $passAtOneText | $passKText | $priceText | $averageCostText | $wallText | $($armResult.meanTurns) | $($armResult.meanToolCalls) | $($armResult.meanOperationCount) | $($armResult.quarantined) |")
     }
     $report.Add('')
-    $report.Add('pass@1 is the share of tasks passed on the first trial. pass^k is the share passed on every requested trial. Only clean trials are included in those rates and paired estimates.')
+    $report.Add("pass@1 is the share of tasks passed on the first trial. pass^k is the share passed on every requested trial. Both use the $($commonTasks.Count) tasks every Arm has scored and decided on every trial, so the Arms share one task set; paired estimates use every clean scored pair.")
+    $unpricedTotal = [int](@($armSummary | ForEach-Object { [int]$_.costCoverage.unpricedRetryAttempts }) | Measure-Object -Sum).Sum
+    if ($unpricedTotal -gt 0) {
+        $report.Add("Prices include every recorded Cloud retry cost; $unpricedTotal retried attempts reported no cost, so those prices are lower bounds.")
+    }
     $report.Add('')
     $report.Add('## Paired results by task')
     $report.Add('')
@@ -266,7 +352,16 @@ function Write-ABReport {
         measurementFingerprint = $measurementFingerprint
         question = [string]$questionData.question
         questionId = $questionId
+        mode = if ($isAA) { 'aa' } else { 'ab' }
+        aa = if ($isAA) { [ordered]@{
+            arm = $aaArm
+            intervalIncludesZero = $intervalResult.intervalIncludesZero
+            passAt1Difference = $aaMetricDifferences.passAt1
+            meanWallMsDifference = $aaMetricDifferences.meanWallMs
+            meanToolCallsDifference = $aaMetricDifferences.meanToolCalls
+        } } else { $null }
         judgePolicy = if ($questionData.Contains('judge_policy')) { [string]$questionData.judge_policy } else { 'paired' }
+        testGrammars = Get-ABTestGrammarsPin (Split-Path -Parent $PSScriptRoot)
         integrity = $integritySummary
         grading = @{ harnessDefects = $gradingFailures; trialsWithJudgeDisagreement = $judgeSplits;
             cloudFailures = @($completed | Where-Object { $_.failureClass -eq 'cloud_failure' }).Count }
@@ -286,7 +381,7 @@ function Write-ABReport {
                 failureEvidence = if ($_.Contains('failureEvidence')) { $_.failureEvidence } else { @() }
                 measurementFingerprint = if ($_.Contains('measurementFingerprint')) { $_.measurementFingerprint } else { $measurementFingerprint }
                 armFingerprint = if ($_.Contains('armFingerprint')) { $_.armFingerprint } else { $null }
-                judgeFamilies = if ($_.Contains('judgeFamilies')) { @($_.judgeFamilies) } else { @() }
+                judgeFamilies = @(if ($_.Contains('judgeFamilies')) { $_.judgeFamilies })
                 judgeVerdict = if ($_.Contains('judgeVerdict')) { $_.judgeVerdict } else { $null }
                 cloudRetries = if ($_.Contains('cloudRetries')) { $_.cloudRetries } else { 0 }
                 cloudRetryEvidence = if ($_.Contains('cloudRetryEvidence')) { $_.cloudRetryEvidence } else { @() }
@@ -325,4 +420,4 @@ function Write-ABReport {
     Write-Host "Summary: $(Join-Path $runRoot 'summary.json')"
 
 }
-Export-ModuleMember -Function Write-ABReport
+Export-ModuleMember -Function Get-ABCommonEligibleTasks, Get-ABPairedInterval, Test-ABScoredRow, Write-ABReport

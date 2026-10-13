@@ -39,7 +39,8 @@ class JudgePolicyTests(unittest.TestCase):
     def test_every_stored_question_resolves_a_lawful_judge_for_both_arms(self):
         for path in sorted((REPO / 'evals/questions').glob('*.yaml')):
             question = json.loads(path.read_text())
-            for arm_id in (question['arm_a'], question['arm_b']):
+            arm_ids = [question['arm']] if question.get('mode') == 'aa' else [question['arm_a'], question['arm_b']]
+            for arm_id in arm_ids:
                 with self.subTest(question=path.name, arm=arm_id):
                     arm = json.loads((REPO / 'evals/arms' / (arm_id + '.yaml')).read_text())
                     outcome = families(arm, question.get('judge_policy', 'paired'))
@@ -55,10 +56,6 @@ class JudgePolicyTests(unittest.TestCase):
                                     timeout=300, cwd=REPO)
         self.assertNotEqual(0, result.returncode)
         self.assertIn('never its own Judge', result.stdout + result.stderr)
-
-    def test_regrade_passes_policy_families_to_the_grader(self):
-        text = (REPO / 'evals/Regrade-ABRun.ps1').read_text()
-        self.assertIn('judgeFamilies = @(Get-ABJudgeFamilies $arm $JudgePolicy)', text)
 
 
 if __name__ == '__main__':

@@ -62,6 +62,25 @@ class MeasureRunTests(unittest.TestCase):
             summary = (run / 'metrics.md').read_text()
             self.assertIn('| arm-a | ALL | 1/2 | 0 | 3.0 | 1.5 |', summary)
 
+    def test_tokens_to_solve_counts_retried_cloud_attempts_like_their_cost(self):
+        with tempfile.TemporaryDirectory() as directory:
+            run = Path(directory)
+            usage = {'type': 'turn.completed', 'usage': {'input_tokens': 1000, 'output_tokens': 100}}
+            self.trial(run, 'arm-a', 1, True, [event(usage)], cost=1.0)
+            trial = run / 'trials/task-a/arm-a/trial-1'
+            attempt = trial / 'cloud-attempts/attempt-1'
+            attempt.mkdir(parents=True)
+            (attempt / 'transcript.jsonl').write_text(json.dumps(event(usage)) + '\n')
+            manifest = json.loads((trial / 'manifest.json').read_text())
+            manifest['unpricedRetryAttempts'] = 1
+            (trial / 'manifest.json').write_text(json.dumps(manifest))
+            subprocess.run([sys.executable, str(SCRIPT), str(run)], check=True, capture_output=True, stdin=subprocess.DEVNULL)
+            row = next(csv.DictReader(open(run / 'metrics.csv')))
+            self.assertEqual(('1100', '1100'), (row['totalTokens'], row['retryTokens']))
+            summary = (run / 'metrics.md').read_text()
+            self.assertIn('| arm-a | ALL | 1/1 | 2200 | 1.0 | 1.0 | 2200 |', summary)
+            self.assertIn('1 retried attempts reported no cost', summary)
+
 
 if __name__ == '__main__':
     unittest.main()

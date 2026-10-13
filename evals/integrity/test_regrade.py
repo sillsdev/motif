@@ -16,19 +16,23 @@ from CalibrateMeaning import calibrate
 
 @unittest.skipUnless(os.name == 'posix' and shutil.which('pwsh'), 'Re-grade executable fixture requires Unix and PowerShell')
 class RegradeTests(unittest.TestCase):
-    def fixture(self, root):
+    def fixture(self, root, model=None, question=None):
         repo = root / 'repo'
         tools = repo / 'evals/tools'
         tools.mkdir(parents=True)
         for source in TOOLS.glob('*'):
             if source.is_file(): shutil.copyfile(source, tools / source.name)
         shutil.copyfile(TOOLS.parent / 'Regrade-ABRun.ps1', repo / 'evals/Regrade-ABRun.ps1')
+        (repo / 'evals/test-grammars.lock.json').write_text(json.dumps({'tag': 'v0.3.0', 'commit': 'c' * 40}))
         arms = repo / 'evals/arms'
         arms.mkdir()
         profiles = repo / 'evals/profiles'
         profiles.mkdir()
         for arm in ('left', 'right'):
-            (arms / (arm + '.yaml')).write_text(json.dumps({'server': {'grade_profile': 'profiles/test.json'}}))
+            (arms / (arm + '.yaml')).write_text(json.dumps({'model': model, 'server': {'grade_profile': 'profiles/test.json'}}))
+        if question is not None:
+            (repo / 'evals/questions').mkdir()
+            (repo / 'evals/questions/question.yaml').write_text(json.dumps(question))
         (profiles / 'test.json').write_text(json.dumps({'tools': [], 'hiddenTools': []}))
         builder = repo / 'bin/Debug/SIL.Motif.EvalSets'
         builder.parent.mkdir(parents=True)
@@ -159,10 +163,39 @@ class RegradeTests(unittest.TestCase):
             self.assertIn('confirmation setting', (process.stdout + process.stderr).decode().lower())
             self.assertEqual([], list(source.glob('regrade-*')))
 
-    def regrade(self, mode, expected, right_clean=False, tamper=False, boundary_class=None):
+    def test_regrade_judges_with_the_stored_question_policy(self):
+        for model, question, families in ((None, None, ['opus', 'sol']),
+                                          ('claude-opus-5-5', {'judge_policy': 'other-family-alone'}, ['sol']),
+                                          ('gpt-6-sol', {'judge_policy': 'other-family-alone'}, ['opus'])):
+            with self.subTest(model=model):
+                result = self.regrade('pass', 1, model=model, question=question)
+                self.assertEqual(families, result['trials'][0]['judgeFamilies'])
+                self.assertEqual(question['judge_policy'] if question else 'paired', result['judgePolicy'])
+
+    def test_regrade_refuses_to_put_the_model_under_test_on_its_judge(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            repo, grammar, source = self.fixture(root)
+            repo, grammar, source = self.fixture(root, model='claude-opus-5-5')
+            process = subprocess.run(['pwsh', '-NoProfile', '-File', str(repo / 'evals/Regrade-ABRun.ps1'),
+                '-RunDirectory', str(source)], env=dict(fake_environment('pass'), MOTIF_TEST_GRAMMARS=str(grammar),
+                MOTIF_TRIAL_ROOT=str(root / 'staging')), stdin=subprocess.DEVNULL, capture_output=True, timeout=60)
+            self.assertNotEqual(0, process.returncode)
+            self.assertIn(b'never its own Judge', process.stdout + process.stderr)
+
+    def test_regrade_says_when_the_run_was_recorded_on_another_grammar_pin(self):
+        current = {'tag': 'v0.3.0', 'commit': 'c' * 40}
+        for recorded, changed in ((current, False), ({'tag': 'v0.2.0', 'commit': 'b' * 40}, True), (None, True)):
+            with self.subTest(recorded=recorded):
+                result = self.regrade('pass', 1, grammars=recorded)
+                self.assertEqual(current, result['testGrammars'])
+                self.assertEqual(changed, result['testGrammarsChanged'])
+                self.assertEqual(changed, 'task keys may differ' in result['reportText'])
+
+    def regrade(self, mode, expected, right_clean=False, tamper=False, boundary_class=None, model=None, question=None,
+                grammars=None):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            repo, grammar, source = self.fixture(root, model, question)
             if right_clean:
                 summary = json.loads((source / 'summary.json').read_text())
                 summary['trials'][1]['integrity']['state'] = 'clean'
@@ -185,6 +218,10 @@ class RegradeTests(unittest.TestCase):
                 summary = json.loads((source / 'summary.json').read_text())
                 summary['trials'][0].update(primaryScore=None, success=None, failureClass=boundary_class)
                 (source / 'summary.json').write_text(json.dumps(summary))
+            if grammars is not None:
+                summary = json.loads((source / 'summary.json').read_text())
+                summary['testGrammars'] = grammars
+                (source / 'summary.json').write_text(json.dumps(summary))
             if tamper:
                 (source / 'trials/diagnose/left/trial-1/frozen/host.json').write_text('{}')
             original = {p: p.read_bytes() for p in source.rglob('*') if p.is_file()}
@@ -195,6 +232,7 @@ class RegradeTests(unittest.TestCase):
             outputs = list(source.glob('regrade-*'))
             self.assertEqual(1, len(outputs))
             result = json.loads((outputs[0] / 'summary.json').read_text(encoding='utf-8-sig'))
+            result['reportText'] = (outputs[0] / 'report.md').read_text(encoding='utf-8-sig')
             for path, data in original.items(): self.assertEqual(data, path.read_bytes(), str(path))
             self.assertEqual(expected, result['trials'][0]['primaryScore'], json.dumps(result['trials'][0], indent=2))
             self.assertEqual('clean', result['trials'][0]['integrity']['state'])
@@ -209,7 +247,7 @@ class RegradeTests(unittest.TestCase):
                     self.assertEqual(1, result['trials'][1]['primaryScore'])
                     self.assertEqual(1, len(result['pairs']))
                     self.assertEqual(0, result['meanPairedDifferenceBMinusA'])
-                    self.assertEqual(0, result['confidenceInterval95']['lower'])
+                    self.assertIsNone(result['confidenceInterval95'])
             else:
                 self.assertIsNone(result['trials'][1]['primaryScore'])
             self.assertEqual(2, result['integrity']['attempted'])
@@ -222,6 +260,9 @@ class RegradeTests(unittest.TestCase):
             if expected is None:
                 self.assertIsNone(result['arms'][0]['passAt1'])
                 self.assertIsNone(result['arms'][0]['meanPrimaryScore'])
+            if boundary_class:
+                self.assertEqual(boundary_class, result['trials'][0]['status'])
+            return result
 
     def test_calibration_runs_the_judge_pair_on_stored_and_known_controls(self):
         from unittest.mock import patch

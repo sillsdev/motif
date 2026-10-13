@@ -31,8 +31,9 @@ class CloudFailure(InferenceFailure):
 
 LOGIN_FAILURE = "ChatGPT login is missing, expired or unusable; run codex on the host to refresh the login"
 SERVICE_STATUSES = {401, 403, 408, 409, 425, 429}
-CONTEXT_EVIDENCE = ("context_length_exceeded", "context length", "context window", "prompt is too long",
-                    "too many tokens", "maximum context", "request_too_large")
+# "prompt is too long" is Anthropic's whole context-overflow message; every other marker names the context.
+CONTEXT_EVIDENCE = ("context_length_exceeded", "context length", "context window", "maximum context",
+                    "prompt is too long")
 
 
 def provider_error(content, secrets):

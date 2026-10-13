@@ -121,7 +121,11 @@ def main():
         row = {'task': task, 'arm': arm, 'trial': number, 'model': model, 'integrity': integrity,
                'grade': grade.get('grade'), 'success': grade.get('success')}
         row.update(measure_trial(trial, classes))
+        # Retried Cloud attempts are archived beside the Episode; their tokens are spent like the cost already counted.
+        retried = [measure_trial(attempt, classes) for attempt in sorted(trial.glob('cloud-attempts/attempt-*'))]
+        row['retryTokens'] = sum(attempt['totalTokens'] for attempt in retried)
         row['costUsd'] = manifest.get('costUsd')
+        row['unpricedRetryAttempts'] = manifest.get('unpricedRetryAttempts') or 0
         rows.append(row)
     if not rows:
         raise SystemExit('No trials found under ' + str(run))
@@ -154,7 +158,7 @@ def write_summary(path, rows):
     for (arm, task), items in sorted(groups.items(), key=lambda kv: (kv[0][0], kv[0][1] == 'ALL', kv[0][1])):
         n = len(items)
         solved = sum(1 for row in items if row['success'])
-        tokens = sum(row['totalTokens'] for row in items)
+        tokens = sum(row['totalTokens'] + row['retryTokens'] for row in items)
         costs = [row['costUsd'] for row in items]
         cost = sum(costs) if all(c is not None for c in costs) else None
         average_cost = cost / n if cost is not None and n else None
@@ -166,8 +170,11 @@ def write_summary(path, rows):
             round(average_cost, 4) if average_cost is not None else 'incomplete costs',
             round(tokens / n), mean('wallSeconds'), mean('mcpCalls'), mean('readCalls'), mean('resultKiloChars'),
             mean('guideTopics'), sum(row['mcpErrors'] for row in items)))
-    out += ['', 'Costs come from the Episode manifest, including recorded Cloud retry spend. A missing value is '
-            'not replaced with a token-rate estimate.']
+    unpriced = sum(row['unpricedRetryAttempts'] for row in rows if row['integrity'] == 'clean' and row['success'] is not None)
+    out += ['', 'Costs come from the Episode manifest, including recorded Cloud retry spend; tokens to solve and mean '
+            'tokens include the tokens of retried attempts. A missing value is not replaced with a token-rate estimate.']
+    if unpriced:
+        out.append(f'{unpriced} retried attempts reported no cost, so those prices are lower bounds.')
     path.write_text('\n'.join(out) + '\n', encoding='utf-8')
 
 

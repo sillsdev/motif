@@ -4,6 +4,7 @@ param(
     [int] $Trials = 0,
     [string] $Tasks,
     [switch] $DryRun,
+    [switch] $AA,
     [int] $Parallel = 2,
     [string] $Configuration = 'Debug',
     [switch] $SkipValidityCheck,
@@ -31,13 +32,48 @@ $questionPath = if ([IO.Path]::IsPathRooted($Question)) { $Question } else { Joi
 if (-not (Test-Path -LiteralPath $questionPath -PathType Leaf)) { throw "Question file not found: $questionPath" }
 $questionData = Read-ABJson $questionPath
 $questionId = [IO.Path]::GetFileNameWithoutExtension($questionPath)
+$declaredMode = if ($questionData.Contains('mode')) { ([string]$questionData.mode).ToLowerInvariant() } else { 'ab' }
+if ($declaredMode -notin @('ab', 'aa')) { throw "Unknown question mode '$declaredMode'." }
+$aaMode = [bool]$AA -or $declaredMode -eq 'aa'
+if ($AA) {
+    $aaArmId = if ($questionData.Contains('arm_a') -and $questionData.arm_a) { [string]$questionData.arm_a }
+        elseif ($questionData.Contains('arm') -and $questionData.arm) { [string]$questionData.arm }
+        else { throw '-AA requires the question to name arm_a.' }
+} elseif ($declaredMode -eq 'aa') {
+    if (-not $questionData.Contains('arm') -or [string]::IsNullOrWhiteSpace([string]$questionData.arm)) {
+        throw "A/A question '$questionId' must name one arm."
+    }
+    if ($questionData.Contains('arm_a') -or $questionData.Contains('arm_b')) {
+        throw "A/A question '$questionId' must use 'arm' and omit arm_a and arm_b."
+    }
+    $aaArmId = [string]$questionData.arm
+} else {
+    if (-not $questionData.Contains('arm_a') -or -not $questionData.arm_a -or
+        -not $questionData.Contains('arm_b') -or -not $questionData.arm_b) {
+        throw "A/B question '$questionId' must name arm_a and arm_b."
+    }
+    $sourceArmIds = @([string]$questionData.arm_a, [string]$questionData.arm_b)
+}
+$questionData.mode = if ($aaMode) { 'aa' } else { 'ab' }
+if ($aaMode) {
+    $questionData.aaArm = $aaArmId
+    $sourceArmIds = @($aaArmId)
+}
 $judgePolicy = if ($questionData.Contains('judge_policy')) { [string]$questionData.judge_policy } else { 'paired' }
 if ($judgePolicy -notin @('paired', 'other-family-alone')) { throw "Unknown judge policy '$judgePolicy'." }
-foreach ($armId in @([string]$questionData.arm_a, [string]$questionData.arm_b)) {
+$liveRun = $false
+$armDataById = @{}
+$judgeFamiliesByArm = @{}
+foreach ($armId in $sourceArmIds) {
     $armData = Read-ABJson (Join-Path $repoRoot ("evals/arms/{0}.yaml" -f $armId))
     if (-not $armData.Contains('id')) { $armData.id = $armId }
-    [void](Get-ABJudgeFamilies $armData $judgePolicy)
+    $armDataById[$armId] = $armData
+    $judgeFamiliesByArm[$armId] = @(Get-ABJudgeFamilies $armData $judgePolicy)
+    if ($armData.host -ne 'fake') { $liveRun = $true }
 }
+# Live evidence must outlive the worktree; confirmation results stay private and are not archived.
+$archiveRun = $liveRun -and -not $DryRun -and -not $Confirmation
+if ($archiveRun) { [void](Get-ABRunArchiveRoot $repoRoot) }
 $trialCount = if ($Trials -gt 0) { $Trials } elseif ($questionData.trials) { [int]$questionData.trials } else { 3 }
 if ($trialCount -lt 1) { throw 'The question must request at least one trial.' }
 $primaryMetric = if ($questionData.primary_metric) { [string]$questionData.primary_metric } else { 'grade' }
@@ -72,11 +108,9 @@ if ($Tasks -and $selectedTasks.Count -eq 0) { throw "-Tasks did not select any e
 if (-not $Tasks -and $selectedTasks.Count -eq 0) { throw "Question '$questionId' did not select any eval tasks." }
 
 if (-not $DryRun) {
-    $hasHeadArm = $false
-    foreach ($armId in @([string]$questionData.arm_a, [string]$questionData.arm_b)) {
-        $armData = Read-ABJson (Join-Path $repoRoot ("evals/arms/{0}.yaml" -f $armId))
-        if ($armData.server.Contains('ref') -and $armData.server.ref -eq 'HEAD') { $hasHeadArm = $true }
-    }
+    $hasHeadArm = @($sourceArmIds | Where-Object {
+        $armDataById[$_].server.Contains('ref') -and $armDataById[$_].server.ref -eq 'HEAD'
+    }).Count -gt 0
     if (-not $hasHeadArm -and -not $SkipValidityCheck) {
         $build = Invoke-ABProcess (Get-Command pwsh).Source @('-NoProfile', '-File', (Join-Path $repoRoot 'build.ps1'), '-Configuration', $Configuration) `
             $repoRoot @{ MSBUILDDISABLENODEREUSE = '1'; UseSharedCompilation = 'false' } 3600000
@@ -168,13 +202,18 @@ function Resolve-ABArm([string] $ArmId) {
     return $arm
 }
 
-$arms = @(
-    Resolve-ABArm ([string]$questionData.arm_a)
-    Resolve-ABArm ([string]$questionData.arm_b)
-)
+if ($aaMode) {
+    $resolvedArm = Resolve-ABArm $aaArmId
+    $arms = @(New-ABAAArms $resolvedArm)
+} else {
+    $arms = @(
+        Resolve-ABArm ([string]$questionData.arm_a)
+        Resolve-ABArm ([string]$questionData.arm_b)
+    )
+}
 
 if ($DryRun) {
-    Write-Host "A/B question: $($questionData.question)"
+    Write-Host "$(if ($aaMode) { 'A/A' } else { 'A/B' }) question: $($questionData.question)"
     Write-Host "Judge policy: $judgePolicy"
     Write-Host "Control-side sets: $setRoot"
     Write-Host 'Execution: control preparation -> bubblewrap host and MCP -> frozen output -> separate grader.'
@@ -203,9 +242,19 @@ if ($SkipValidityCheck -and @($arms | Where-Object { $_.host -ne 'fake' }).Count
 }
 
 $armFingerprints = [ordered]@{}
-foreach ($arm in $arms) {
-    $armFingerprints[[string]$arm.id] = Get-ABRepositoryFingerprint $repoRoot $Configuration @($arm)
-    $arm.server.fingerprint = $armFingerprints[[string]$arm.id]
+if ($aaMode) {
+    $canonicalArm = ConvertFrom-Json -AsHashtable -InputObject (ConvertTo-Json -InputObject $arms[0] -Depth 80 -Compress)
+    $canonicalArm.id = $aaArmId
+    $sharedArmFingerprint = Get-ABRepositoryFingerprint $repoRoot $Configuration @($canonicalArm)
+    foreach ($arm in $arms) {
+        $armFingerprints[[string]$arm.id] = $sharedArmFingerprint
+        $arm.server.fingerprint = $sharedArmFingerprint
+    }
+} else {
+    foreach ($arm in $arms) {
+        $armFingerprints[[string]$arm.id] = Get-ABRepositoryFingerprint $repoRoot $Configuration @($arm)
+        $arm.server.fingerprint = $armFingerprints[[string]$arm.id]
+    }
 }
 $fingerprint = Get-ABRepositoryFingerprint $repoRoot $Configuration $arms
 
@@ -245,9 +294,10 @@ $runRoot = Join-Path $resultsRoot ("{0}/{1}" -f $questionId, $runId)
 New-Item -ItemType Directory -Path $runRoot -Force | Out-Null
 $trialSpecs = [Collections.Generic.List[object]]::new()
 foreach ($task in $selectedTasks) {
-    foreach ($arm in $arms) {
-        $judgeFamilies = Get-ABJudgeFamilies $arm $judgePolicy
-        for ($trial = 1; $trial -le $trialCount; $trial++) {
+    for ($trial = 1; $trial -le $trialCount; $trial++) {
+        foreach ($arm in (Get-ABCounterbalancedArmOrder $arms $trial)) {
+            $sourceArmId = if ($aaMode) { $aaArmId } else { [string]$arm.id }
+            $judgeFamilies = @($judgeFamiliesByArm[$sourceArmId])
             $outputRoot = Join-Path $runRoot ("trials/{0}/{1}/trial-{2}" -f $task.id, $arm.id, $trial)
             $privateRoot = New-ABTrialDirectory $repoRoot
             New-Item -ItemType Directory -Path $outputRoot -Force | Out-Null
@@ -379,12 +429,14 @@ while ($nextIndex -lt $trialSpecs.Count -or $active.Count -gt 0) {
         $trialManifest.cloudRetries = [Math]::Max(0, [int]$spec.attempt - 1)
         $trialManifest.cloudRetryEvidence = @($spec.cloudRetryHistory)
         $finalAttemptCost = $trialManifest.costUsd
-        $attemptCosts = @(@($spec.cloudRetryHistory | ForEach-Object { $_.costUsd }) + @($finalAttemptCost))
-        $episodeCostComplete = $attemptCosts.Count -gt 0 -and @($attemptCosts | Where-Object { $null -eq $_ }).Count -eq 0
-        $episodeCost = if ($episodeCostComplete) {
-            [double](($attemptCosts | ForEach-Object { [double]$_ } | Measure-Object -Sum).Sum)
-        } else { $null }
+        $retryCosts = @($spec.cloudRetryHistory | Where-Object { $null -ne $_.costUsd } | ForEach-Object { [double]$_.costUsd })
+        # A failed attempt often reports no cost; counting it as unpriced keeps the spend that was recorded.
+        $unpricedRetryAttempts = @($spec.cloudRetryHistory | Where-Object { $null -eq $_.costUsd }).Count
+        $episodeCost = if ($null -eq $finalAttemptCost) { $null } else {
+            [double]$finalAttemptCost + [double](($retryCosts | Measure-Object -Sum).Sum)
+        }
         $trialManifest.costUsd = $episodeCost
+        $trialManifest.unpricedRetryAttempts = $unpricedRetryAttempts
         Write-ABJson (Join-Path $spec.root 'manifest.json') $trialManifest
         $completed.Add([ordered]@{
             task = [string]$spec.task.id
@@ -418,6 +470,7 @@ while ($nextIndex -lt $trialSpecs.Count -or $active.Count -gt 0) {
             outputTokens = $trialManifest.outputTokens
             costUsd = $episodeCost
             finalAttemptCostUsd = $finalAttemptCost
+            unpricedRetryAttempts = $unpricedRetryAttempts
             agentBudget = if ($trialManifest.Contains('agentBudget')) { $trialManifest.agentBudget } else { $null }
             agentElapsedMs = if ($trialManifest.Contains('agentElapsedMs')) { $trialManifest.agentElapsedMs } else { $null }
             trialRoot = $spec.root
@@ -443,13 +496,21 @@ if ($Confirmation) {
     }
 }
 Write-ABJson $summaryPath $summary
+if ($archiveRun) {
+    Write-Host "Archived: $(Copy-ABRunArchive $repoRoot $runRoot $questionId $runId)"
+}
 
+$cleanedArmResources = @{}
 foreach ($arm in $arms) {
-    if ($arm.server.Contains('worktreePath') -and $arm.server.worktreePath) {
+    if ($arm.server.Contains('worktreePath') -and $arm.server.worktreePath -and
+        -not $cleanedArmResources.ContainsKey([string]$arm.server.worktreePath)) {
         $git = (Get-Command git).Source
         [void](Invoke-ABProcess $git @('-C', $repoRoot, 'worktree', 'remove', '--force', $arm.server.worktreePath) $repoRoot @{} 120000)
         Remove-ABTrialDirectory $arm.server.worktreeRoot
-    } elseif ($arm.server.Contains('buildStaging') -and $arm.server.buildStaging) {
+        $cleanedArmResources[[string]$arm.server.worktreePath] = $true
+    } elseif ($arm.server.Contains('buildStaging') -and $arm.server.buildStaging -and
+        -not $cleanedArmResources.ContainsKey([string]$arm.server.buildStaging)) {
         Remove-ABTrialDirectory $arm.server.buildStaging -Keep:$Keep
+        $cleanedArmResources[[string]$arm.server.buildStaging] = $true
     }
 }

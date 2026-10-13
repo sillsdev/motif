@@ -77,6 +77,8 @@ single judge are re-graded.
 
 ### The loop and the acceptance rule
 
+The paired interval is a t interval over task means (or set/language cluster means when there are 2+ clusters), calibrated by an A/A false-positive test.
+
 Each round: sort the failures in transcripts by type; make the smallest change that addresses the
 largest type; screen it on 4–6 affected tasks × 3 Episodes × 2 Arms; run the full suite of 21 tasks ×
 3 × 2 = 126 Episodes; confirm on 5 fresh Episodes per Arm, never more than 10 per Arm per task.

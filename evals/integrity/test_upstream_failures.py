@@ -37,14 +37,16 @@ class StatusClassTests(unittest.TestCase):
     def test_context_exhaustion_is_an_agent_failure(self):
         for status, error in ((400, {'type': 'invalid_request_error', 'message': 'prompt is too long: 210000 tokens'}),
                               (400, {'code': 'context_length_exceeded', 'message': 'Your input exceeds the window'}),
-                              (413, {'type': 'request_too_large', 'message': 'Request exceeds the maximum size'})):
+                              (400, {'message': "This model's maximum context length is 400000 tokens"})):
             with self.subTest(status=status, error=error):
                 self.assertEqual('agent_failure', status_failure_class(status, error))
 
     def test_other_rejected_requests_are_harness_defects(self):
         for status, error in ((400, {'type': 'invalid_request_error', 'message': 'Unsupported parameter: store'}),
                               (400, {}), (404, {'type': 'not_found_error', 'message': 'model: claude-x'}),
-                              (422, {'message': 'tools.0.name: invalid'})):
+                              (422, {'message': 'tools.0.name: invalid'}),
+                              (400, {'message': 'max_tokens: too many tokens requested'}),
+                              (413, {'type': 'request_too_large', 'message': 'Request exceeds the maximum size'})):
             with self.subTest(status=status, error=error):
                 self.assertEqual('harness_defect', status_failure_class(status, error))
 

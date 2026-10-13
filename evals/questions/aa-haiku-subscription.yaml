@@ -1,0 +1,13 @@
+{
+  "question": "Does the harness report a difference between two identical Haiku subscription Arms?",
+  "mode": "aa",
+  "arm": "claude-haiku-subscription",
+  "tasks": [
+    "t0-*",
+    "t1-*",
+    "t2-*",
+    "t3-*"
+  ],
+  "trials": 3,
+  "primary_metric": "task-success"
+}

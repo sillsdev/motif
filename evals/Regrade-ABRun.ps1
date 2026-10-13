@@ -16,7 +16,13 @@ $source = Read-ABJson (Join-Path $sourceRoot 'summary.json')
 if (-not $source.Contains('measurementFingerprint') -or [string]$source.measurementFingerprint -notmatch '^[0-9a-f]{64}$') {
     throw 'This stored run has no valid measurement fingerprint. Recreate it with Invoke-ABQuestion before regrading.'
 }
-if (-not $JudgePolicy) { $JudgePolicy = if ($source.Contains('judgePolicy')) { [string]$source.judgePolicy } else { 'paired' } }
+if (-not $JudgePolicy -and $source.Contains('judgePolicy')) { $JudgePolicy = [string]$source.judgePolicy }
+$questionPath = Join-Path $PSScriptRoot ("questions/{0}.yaml" -f $source.questionId)
+if (-not $JudgePolicy -and (Test-Path -LiteralPath $questionPath -PathType Leaf)) {
+    $storedQuestion = Read-ABJson $questionPath
+    if ($storedQuestion.Contains('judge_policy')) { $JudgePolicy = [string]$storedQuestion.judge_policy }
+}
+if (-not $JudgePolicy) { $JudgePolicy = 'paired' }
 $storedConfirmation = $source.Contains('confirmation') -and [bool]$source.confirmation
 if (($Confirmation -and -not $source.Contains('confirmation')) -or $storedConfirmation -ne [bool]$Confirmation) {
     throw 'The regrade confirmation setting must match the stored run, which must record it.'
@@ -50,7 +56,8 @@ try {
         # The live run never grades an Episode its boundary excluded, so neither does a re-grade.
         $boundaryClass = if ($manifest.integrity.Contains('failureClass')) { [string]$manifest.integrity.failureClass } else { '' }
         if ($manifest.integrity.state -eq 'clean' -and $boundaryClass -notin @('cloud_failure', 'harness_defect')) {
-            $arm = Read-ABJson (Join-Path $PSScriptRoot "arms/$($stored.arm).yaml")
+            $sourceArmId = [string]$stored.arm -replace '\.a[12]$', ''
+            $arm = Read-ABJson (Join-Path $PSScriptRoot "arms/$sourceArmId.yaml")
             $profile = Read-ABJson (Join-Path $PSScriptRoot ([string]$arm.server.grade_profile))
             # Grade against the tools this trial's server offered, as the live trial did, not today's profile file.
             $served = Join-Path $trialSource 'server.client-tools.json'
@@ -95,8 +102,7 @@ try {
         $row.judgeDisagreements = @($grade.graders | Where-Object { $_.Contains('judge') -and $_.judge -and $_.judge.disagreement }).Count
         $row.operationCount = $grade.operationCount
         $row.status = if ($manifest.integrity.state -ne 'clean') { $manifest.status }
-            elseif ($grade.Contains('failureClass') -and $grade.failureClass -eq 'harness_defect') { 'harness_defect' }
-            elseif ($grade.Contains('failureClass') -and $grade.failureClass -eq 'cloud_failure') { 'cloud_failure' }
+            elseif ($row.failureClass -in @('harness_defect', 'cloud_failure')) { [string]$row.failureClass }
             elseif ($grade.Contains('gradingState') -and $grade.gradingState -eq 'judge_disagreement') { 'judge_disagreement' }
             elseif ($null -eq $grade.success) { 'inconclusive' } elseif ($grade.success) { 'passed' } else { 'failed' }
         $row.trialRoot = $outputRoot; $row.sourceTrialRoot = $trialSource
@@ -105,8 +111,18 @@ try {
         Write-Host "Re-graded $($stored.task) / $($stored.arm) / $($stored.trial): $($row.status)."
     }
     $trialCount = [int](($source.arms | Select-Object -First 1).requestedTrials)
+    $reportQuestion = [ordered]@{
+        question = $source.question
+        judge_policy = $JudgePolicy
+        mode = if ($source.Contains('mode')) { [string]$source.mode } else { 'ab' }
+        aaArm = $null
+    }
+    if ($reportQuestion.mode -eq 'aa' -and $source.Contains('aa') -and $source.aa) {
+        $reportQuestion.aaArm = [string]$source.aa.arm
+    }
     Write-ABReport $completed $selectedTasks $source.arms $trialCount $source.primaryMetric @{
-        question = $source.question; judge_policy = $JudgePolicy
+        question = $reportQuestion.question; judge_policy = $reportQuestion.judge_policy
+        mode = $reportQuestion.mode; aaArm = $reportQuestion.aaArm
     } $source.questionId $runId $runRoot $source.measurementFingerprint
     $summaryPath = Join-Path $runRoot 'summary.json'
     $summary = Read-ABJson $summaryPath
@@ -115,6 +131,15 @@ try {
     $summary.integrityReused = $true
     $summary.confirmation = [bool]$Confirmation
     if ($source.Contains('confirmationCommit')) { $summary.confirmationCommit = $source.confirmationCommit }
+    # The harness accepts only the pinned grammars, so an older run is graded with newer keys.
+    $summary.sourceTestGrammars = if ($source.Contains('testGrammars')) { $source.testGrammars } else { $null }
+    $currentPin = $summary.testGrammars | ConvertTo-Json -Compress
+    $summary.testGrammarsChanged = ($summary.sourceTestGrammars | ConvertTo-Json -Compress) -ne $currentPin
+    if ($summary.testGrammarsChanged) {
+        $recorded = if ($summary.sourceTestGrammars) { "$($summary.sourceTestGrammars.tag) ($($summary.sourceTestGrammars.commit))" } else { 'no recorded revision' }
+        $current = if ($summary.testGrammars) { "$($summary.testGrammars.tag) ($($summary.testGrammars.commit))" } else { 'no pinned revision' }
+        Add-Content -LiteralPath (Join-Path $runRoot 'report.md') -Value ("`nRe-graded with test grammars $current; the original run recorded $recorded, so task keys may differ from the ones its agents faced.")
+    }
     for ($index = 0; $index -lt $completed.Count; $index++) {
         $row = $completed[$index]
         foreach ($name in @('manifest', 'transcript', 'activity')) {
