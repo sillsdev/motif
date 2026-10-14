@@ -21,6 +21,9 @@ internal static class RefusalMapper
         ["baseline.unavailable"] = "Call motif_capture_baseline to take a fresh saved copy, then repeat this call.",
         ["project.busy"] = "Another Motif task holds this project. Wait about ten seconds and repeat the same call.",
         ["project.in-use"] = "FieldWorks has the project open. Ask the linguist to save and close it, then repeat.",
+        ["project.registration-failed"] = "Check that the worker root at {workerRoot} and machine store at " +
+            "{machineStorePath} are writable and valid. If another writer holds the store, let it finish, " +
+            "then call motif_open again.",
         ["change.project-saving"] = "FieldWorks is saving. Wait a few seconds and repeat the same call.",
         ["project.not-found"] = "The project file is missing. Tell the linguist; do not guess another path.",
         ["job.wait-timeout"] = "The job is still running. Call this tool again with job set to {jobId} to keep waiting.",

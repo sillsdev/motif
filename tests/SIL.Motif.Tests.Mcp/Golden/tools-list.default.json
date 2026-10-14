@@ -3576,6 +3576,26 @@
     "idempotentHint": true
   },
   {
+    "name": "motif_open",
+    "description": "Open a project. Reads the saved FieldWorks language project and reports its identity and key counts. Use it to confirm a project path before measuring it.\nCommand: open. Agent class: Read.\n",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Path to an existing FieldWorks .fwdata project."
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": true
+  },
+  {
     "name": "motif_list_projects",
     "description": "List Known projects. Lists the Known projects a person has added to this installation. Select one by name or its recorded path for project tools.",
     "inputSchema": {

@@ -4,7 +4,9 @@ Start by learning what the saved project and words already show. Make one small 
 
 ## Inspect
 
-- Use `motif_list_projects` and pass the Known project as `project` on every project call.
+- Use `motif_list_projects`. If the intended project is not Known, ask for its exact existing `.fwdata` path if
+  needed, call `motif_open` with that path, then pass it as `project` on later calls. Use the Known project name or
+  recorded path for other calls.
 - Read `motif_overview`, then `motif_grammar` and `motif_lexicon` for the relevant objects and forms.
 - Use `motif_word` for the linguist's recorded analysis and `motif_try_word` to see how the current grammar handles a form.
 - Read the guide for the phenomenon. Check whether Motif has a composer for every object the encoding needs.

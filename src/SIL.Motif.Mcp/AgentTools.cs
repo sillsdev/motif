@@ -7,8 +7,11 @@ using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Worker;
+using SIL.Motif.Worker.Store;
 
 namespace SIL.Motif.Mcp;
 
@@ -891,6 +894,11 @@ internal static class AgentTools
             false,
             false,
             (c, a, ct) => Task.FromResult(Activity(c))),
+        new("motif_open", string.Empty, AgentClass.Read,
+            Schema.Object(("path", Schema.String("Path to an existing FieldWorks .fwdata project."), true)),
+            false, true, true, false, true,
+            (c, a, ct) => Task.Run(() => OpenProject(a), ct))
+            { Requests = [typeof(OpenRequest)], NeedsProject = false },
         new("motif_list_projects", string.Empty, AgentClass.Read, Schema.Object(), true, true, true, false, false,
             (c, a, ct) => Task.FromResult(ToolOutcome.Ok(System.Text.Json.JsonSerializer.SerializeToNode(
                 KnownProjectsQuery.List(), new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web))!)))
@@ -1076,6 +1084,45 @@ internal static class AgentTools
         if (!commented.Succeeded) return ToolOutcome.Refused(commented.Refusal!);
         return ToolOutcome.From(created, r =>
             $"Add one related change to draft '{r.DraftName}'. Read motif_guide(topic=workflow) for the inspect-to-Trial steps.");
+    }
+
+    private static ToolOutcome OpenProject(ToolArgs args)
+    {
+        var fwDataPath = args.Required("path");
+        var opened = ProposalCommands.Open(new OpenRequest(fwDataPath));
+        if (!opened.Succeeded) return ToolOutcome.From(opened);
+
+        var fullPath = Path.GetFullPath(fwDataPath);
+        var project = new ProjectLocator(fullPath, Path.GetFileNameWithoutExtension(fullPath));
+        var managedRoot = RunnerOptions.ResolveRoot();
+        var workerRoot = managedRoot;
+        var machineStorePath = Path.Combine(managedRoot, "motif.db");
+        Exception? registrationFailure;
+        try
+        {
+            workerRoot = Path.GetFullPath(managedRoot);
+            machineStorePath = Path.Combine(workerRoot, "motif.db");
+            registrationFailure = KnownProjectRecorder.TryRecord(managedRoot, project);
+        }
+        catch (Exception exception) when (exception is ArgumentException or IOException or
+            UnauthorizedAccessException or InvalidDataException or NotSupportedException or
+            Microsoft.Data.Sqlite.SqliteException)
+        {
+            registrationFailure = exception;
+        }
+
+        if (registrationFailure is not null)
+            return ToolOutcome.Refused("project.registration-failed", FailureReason.Refused,
+                "Motif opened a disposable copy of the project but could not register it as Known: " +
+                registrationFailure.Message,
+                new Dictionary<string, string>
+                {
+                    ["workerRoot"] = workerRoot,
+                    ["machineStorePath"] = machineStorePath,
+                    ["cause"] = registrationFailure.Message,
+                });
+
+        return ToolOutcome.From(opened);
     }
 
     private static ToolOutcome ReadGuide(ToolArgs args)

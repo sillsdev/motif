@@ -20,9 +20,10 @@ connect, inspect its MCP launch log instead. Do not substitute direct FieldWorks
 ## Find the project
 
 1. Call `motif_list_projects` and show the Known project names and paths.
-2. Ask which project to use when the intended project is unclear. Never guess from a workspace folder,
-   a recent conversation, or a project name that is not listed.
-3. Pass the chosen project's `project` value to every project tool call. There is no current project.
+2. If the intended project is not Known, call `motif_open` with its exact existing `.fwdata` path; ask
+   for the path only if it was not provided. Never guess from a workspace folder, a recent conversation, or an unlisted project name.
+3. Ask which project to use when the choice is unclear. Pass the chosen project's path as `project` to
+   every later project tool call. There is no current project.
 
 ## Read before drafting
 
