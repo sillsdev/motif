@@ -18,7 +18,8 @@ public class ConformanceVectorTests
 {
     static ConformanceVectorTests()
     {
-        // Contract vectors test hashing without referencing Runner, so register this slice's kinds here.
+        // Frozen vectors include owning-create kinds registered explicitly for contract-only readers.
+        OperationKindRegistry.Register("lexical/lexEntry/createAlternateForms");
         OperationKindRegistry.Register("grammar/fsFeatureSystem/createFeatures");
         OperationKindRegistry.Register("grammar/fsClosedFeature/createValues");
         OperationKindRegistry.Register("grammar/partOfSpeech/createInflectionClasses");

@@ -75,6 +75,8 @@ public static partial class ProposalCommands
             AuthorInflectionClassComposer.Build(cache, AuthorInflectionClassIntentParser.Parse(input))),
         new("compose-author-stem-name", "AuthorStemName", (cache, input, _) =>
             AuthorStemNameComposer.Build(cache, AuthorStemNameIntentParser.Parse(input))),
+        new("compose-author-alternate-form", "AuthorAlternateForm", (cache, input, _) =>
+            AuthorAlternateFormComposer.Build(cache, AuthorAlternateFormIntentParser.Parse(input))),
         new("compose-author-affix-slot", "AuthorAffixSlot", (cache, input, _) =>
             AuthorAffixSlotComposer.Build(cache, AuthorAffixSlotIntentParser.Parse(input))),
         new("compose-author-affix-template", "AuthorAffixTemplate", (cache, input, _) =>

@@ -1,0 +1,22 @@
+{
+  "contractVersions": {
+    "lexical": "1.0"
+  },
+  "operations": [
+    {
+      "operationId": "AAAAAAAAAAAAAAAAAAAADw",
+      "kind": "lexical/lexEntry/createAlternateForms",
+      "target": "AAAAAAAAAAAAAAAAAAAABg",
+      "entityId": "AAAAAAAAAAAAAAAAAAAABw",
+      "after": {
+        "morphType": "AAAAAAAAAAAAAAAAAAAACA",
+        "ws": "sw",
+        "text": "mw"
+      },
+      "placement": {
+        "before": "AAAAAAAAAAAAAAAAAAAACQ"
+      }
+    }
+  ],
+  "proposalId": "AAAAAAAAAAAAAAAAAAAAAA"
+}

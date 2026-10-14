@@ -75,6 +75,11 @@ public static partial class ProposalCommands
         ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
             DraftComposers["compose-author-lexical-entry"]);
 
+    public static CommandOutcome<ComposedOperationsResponse> ComposeAuthorAlternateForm(
+        ComposeAuthorAlternateFormRequest request) =>
+        ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
+            DraftComposers["compose-author-alternate-form"]);
+
     public static CommandOutcome<ComposedOperationsResponse> ComposeAuthorAffixSlot(ComposeAuthorAffixSlotRequest request) =>
         ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
             DraftComposers["compose-author-affix-slot"]);

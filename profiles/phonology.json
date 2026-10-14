@@ -51,6 +51,9 @@
       "tool": "motif_add_lexical_entry"
     },
     {
+      "tool": "motif_add_alternate_form"
+    },
+    {
       "tool": "motif_add_feature_structure"
     },
     {

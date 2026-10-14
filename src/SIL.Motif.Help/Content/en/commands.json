@@ -131,7 +131,12 @@
   },
   "compose-author-lexical-entry": {
     "title": "Author a dictionary entry",
-    "description": "Stages one new dictionary entry with its lexeme form, one sense with gloss and optional definition, and grammatical info: a stem, or an inflectional, derivational or unclassified affix. Inspect its Dry Run and try words with it before a person Applies the Proposal.",
+    "description": "Stages one new dictionary entry with its lexeme form, one sense with gloss and optional definition, and grammatical info: a stem, or an inflectional, derivational or unclassified affix. Each form can name environments, and an affix can name the inflection classes it attaches to. Inspect its Dry Run and try words with it before a person Applies the Proposal.",
+    "source": "Hand-written from command behavior."
+  },
+  "compose-author-alternate-form": {
+    "title": "Author an alternate form",
+    "description": "Stages one more stem or affix form on an existing or earlier-staged entry, with its own environments and, for an affix, inflection classes. It adds no entry, sense or grammatical info and copies no condition from the lexeme form.",
     "source": "Hand-written from command behavior."
   },
   "compose-author-part-of-speech": {

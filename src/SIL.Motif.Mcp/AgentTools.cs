@@ -407,6 +407,8 @@ internal static class AgentTools
                 ("gloss", Schema.String("The sense's gloss."), true),
                 ("analysisWs", Schema.String("Analysis writing system tag of the gloss and definition."), true),
                 ("definition", Schema.String("Optional definition of the sense."), false),
+                ("inflectionClasses", Schema.StringArray("Affix only: canonical ids of the inflection classes of the stems this form attaches to; omit for no restriction."), false),
+                ("environments", Schema.StringArray("Canonical ids of the phonological environments this form occurs in; omit for any."), false),
                 ("msa", Schema.Object(
                     ("kind", Schema.String("Grammatical info (MSA) kind; must match the morph type.",
                         "stem", "inflectional", "derivational", "unclassified"), true),
@@ -421,8 +423,33 @@ internal static class AgentTools
             true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalCommands.ComposeAuthorLexicalEntry(new(
                 c.ProjectPath, c.ProductVersion, a.Required("draft"),
-                a.IntentJson("form", "formWs", "morphType", "gloss", "analysisWs", "definition", "msa"))),
+                a.IntentJson("form", "formWs", "morphType", "gloss", "analysisWs", "definition", "msa", "inflectionClasses",
+                    "environments"))),
                 r => $"Draft now has {r.OperationCount} changes. Dry Run, try the new word with motif_try_word, then Finalize; only a person can Apply."))) { Requests = [typeof(ComposeAuthorLexicalEntryRequest)] },
+
+        new("motif_add_alternate_form",
+            string.Empty,
+            AgentClass.Draft,
+            Schema.Object(
+                ("draft", Schema.String("The draft name from motif_start_proposal."), true),
+                ("entry", Schema.String("Canonical id of an existing entry, or one added earlier in this Draft."), true),
+                ("form", Schema.String("The alternate form, without affix hyphens."), true),
+                ("formWs", Schema.String("Vernacular writing system tag of the form."), true),
+                ("morphType", Schema.String("Canonical id of the morph type; stem-like for a stem entry, affix-like for an affix entry."), true),
+                ("environments", Schema.StringArray("Canonical ids of the phonological environments this form occurs in; omit for any."), false),
+                ("inflectionClasses", Schema.StringArray("Affix entries only: canonical ids of the inflection classes of the stems this form attaches to; omit for no restriction."), false),
+                ("placement", Schema.Object(
+                    ("after", Schema.String("Existing alternate form before the insertion gap."), false),
+                    ("before", Schema.String("Existing alternate form after the insertion gap."), false)), false)),
+            false,
+            false,
+            false,
+            false,
+            true,
+            (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalCommands.ComposeAuthorAlternateForm(new(
+                c.ProjectPath, c.ProductVersion, a.Required("draft"),
+                a.IntentJson("entry", "form", "formWs", "morphType", "environments", "inflectionClasses", "placement"))),
+                r => $"Draft now has {r.OperationCount} changes. Dry Run, try the affected words with motif_try_word, then Finalize; only a person can Apply."))) { Requests = [typeof(ComposeAuthorAlternateFormRequest)] },
 
         new("motif_add_part_of_speech",
             string.Empty,

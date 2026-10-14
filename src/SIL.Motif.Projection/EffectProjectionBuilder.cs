@@ -44,7 +44,8 @@ public static class EffectProjectionBuilder
             candidates = candidates.Where(operation => operation.Kind == "analysis/wfiMorphBundle/setMorph");
         else if (effect.Field == "lexical/lexEntry/alternateForms")
             candidates = candidates.Where(operation => operation.Kind is
-                "lexical/lexEntry/deleteAlternateForm" or "lexical/lexEntry/moveAlternateForms");
+                "lexical/lexEntry/deleteAlternateForm" or "lexical/lexEntry/moveAlternateForms" or
+                "lexical/lexEntry/createAlternateForms");
         return candidates.Select(operation => operation.OperationId.Value)
             .OrderBy(id => id, System.StringComparer.Ordinal).ToArray();
     }

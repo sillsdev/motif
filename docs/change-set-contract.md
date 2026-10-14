@@ -175,6 +175,36 @@ refuses a morph type whose shape disagrees with the grammatical info (a stem mor
 the reverse), a form in a writing system that is not vernacular, and a slot or inflection class outside the
 category or its ancestors.
 
+Authors can restrict each ordinary stem or affix form and add another form to an existing entry without
+recreating its grammatical information. Each form carries only the conditions the caller explicitly states.
+
+`AuthorLexicalEntry` accepts optional nonempty `environments` (unordered `PhEnvironment` identities) and,
+for affix forms only, `inflectionClasses` (unordered `MoInflClass` identities). A class must belong to the
+MSA's input category or an ancestor. Stem `msa.inflectionClass` remains distinct and is refused on every
+affix MSA. Unknown properties, duplicate decoded identities and foreign references are refused. New
+authors normalize reference and minted identity spelling locally before emitting operations.
+
+`AuthorAlternateForm` is closed to `entry`, `form`, `formWs`, `morphType`, optional `environments`,
+`inflectionClasses` and `placement`. It accepts an existing or earlier-staged entry and creates one ordinary
+`MoStemAllomorph` or `MoAffixAllomorph` according to the same supported morph-type table as lexical-entry
+authoring. Its kind must match the entry's incumbent lexeme form; process forms and mixed process graph
+scope are refused. It adds no entry, sense or MSA, and copies no restrictions. Stem alternates refuse
+`inflectionClasses`. Disjunctive precedence is explicit: adding a conditioned alternate does not make an
+unrestricted base complementary. Authors state both forms' intended conditions through separate intents
+in one atomic Proposal, including `EditAllomorphCondition` where needed.
+
+`lexical/lexEntry/createAlternateForms` has the closed `{morphType, ws, text}` payload and inserts a fresh
+nonzero authored identity into the ordered sequence. Placement is absent for the first alternate and
+required for a nonempty sequence, naming decoded-GUID adjacent neighbors. An occupied lexeme form is
+preserved. Zero identities, reuse/conflicts and storage overrides are refused.
+
+All dependent writes declare their creates through `dependsOn`. Apply is atomic across forms and links.
+Read-only prerequisites bind category/class ownership,
+conditions and their sound context even on earlier-staged targets; they are not changed effects.
+Refreshing a Dry Run preserves targets, identities, dependencies, form values and declared order.
+Changed prerequisites or occupied owning slots require fresh evidence; an obsolete projection version is
+refused and recaptured, never migrated.
+
 Inflection authoring creates the named grammar pieces that stems can refer to. It keeps categories,
 inflection classes, feature choices and stem names explicit, so creating a piece never silently changes
 an existing entry or a category's default class.

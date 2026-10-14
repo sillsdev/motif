@@ -77,6 +77,8 @@ public sealed class HelpCatalogTests
                      "compose-author-phonological-rule",
                      "compose-author-affix-slot",
                      "compose-author-affix-template",
+                     "compose-author-lexical-entry",
+                     "compose-author-alternate-form",
                      "compose-edit-allomorph-condition",
                      "order-allomorphs",
                      "compose-batch",
@@ -126,6 +128,23 @@ public sealed class HelpCatalogTests
             Assert.Contains("label", page, StringComparison.OrdinalIgnoreCase);
             Assert.Contains("comment", page, StringComparison.OrdinalIgnoreCase);
         }
+    }
+
+    [Fact]
+    public void AffixAuthoringHelpDescribesConditionsOnEachForm()
+    {
+        var catalog = HelpCatalog.Load(System.Globalization.CultureInfo.GetCultureInfo("en"));
+        var entry = Assert.IsType<HelpEntry>(catalog.Find(HelpEntryKind.Command, "compose-author-lexical-entry"));
+        var entryPage = catalog.GetHelpPage(HelpEntryKind.Command, "compose-author-lexical-entry")!;
+        Assert.Contains("inflection classes it attaches to", entry.Description, StringComparison.Ordinal);
+        Assert.Contains("Empty lists, repeated ids", entryPage, StringComparison.Ordinal);
+
+        var alternate = Assert.IsType<HelpEntry>(catalog.Find(HelpEntryKind.Command, "compose-author-alternate-form"));
+        var alternatePage = catalog.GetHelpPage(HelpEntryKind.Command, "compose-author-alternate-form")!;
+        Assert.InRange(alternate.Title.Length, 1, 30);
+        Assert.Contains("own environments", alternate.Description, StringComparison.Ordinal);
+        Assert.Contains("none are copied", alternatePage, StringComparison.Ordinal);
+        Assert.Contains("placement", alternatePage, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -54,7 +54,7 @@ internal sealed class OwningCreateHandler<TOwner>(
         if (sequence && !positionMatters && operation.Placement is not null)
             throw new InvalidOperationException($"'{kind}': placement is not defined for this unordered sequence.");
         var index = sequence
-            ? positionMatters ? InsertionIndex(existing, operation.Placement) : existing.Length
+            ? positionMatters ? InsertionIndex(kind, existing, operation.Placement) : existing.Length
             : 0;
         var before = Read(cache, owner, entityId);
         create(cache, owner, entityId.ToGuid(), index, concreteClass);
@@ -94,7 +94,7 @@ internal sealed class OwningCreateHandler<TOwner>(
         return result;
     }
 
-    private int InsertionIndex(ICmObject[] existing, Placement? placement)
+    internal static int InsertionIndex(string kind, ICmObject[] existing, Placement? placement)
     {
         if (placement is null)
         {

@@ -1,0 +1,280 @@
+{
+  "contract": "affix-authoring/v1",
+  "vectors": [
+    {
+      "shape": "AuthorLexicalEntry",
+      "input": {
+        "form": "m",
+        "formWs": "sw",
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "gloss": "class one",
+        "analysisWs": "en",
+        "msa": {
+          "kind": "inflectional",
+          "category": "AAAAAAAAAAAAAAAAAAAAAg"
+        },
+        "inflectionClasses": [
+          "AAAAAAAAAAAAAAAAAAAABQ"
+        ],
+        "environments": [
+          "AAAAAAAAAAAAAAAAAAAABg"
+        ]
+      },
+      "valid": true
+    },
+    {
+      "shape": "AuthorAlternateForm",
+      "input": {
+        "entry": "AAAAAAAAAAAAAAAAAAAABw",
+        "form": "mw",
+        "formWs": "sw",
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "environments": [
+          "AAAAAAAAAAAAAAAAAAAABg"
+        ],
+        "inflectionClasses": [
+          "AAAAAAAAAAAAAAAAAAAABQ"
+        ]
+      },
+      "valid": true
+    },
+    {
+      "shape": "AlternateFormsPayload",
+      "input": {
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "ws": "sw",
+        "text": "mw"
+      },
+      "valid": true
+    },
+    {
+      "shape": "AuthorAlternateForm",
+      "input": {
+        "entry": "AAAAAAAAAAAAAAAAAAAABw",
+        "form": "mw",
+        "formWs": "sw",
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "environments": [],
+        "inflectionClasses": [
+          "AAAAAAAAAAAAAAAAAAAABQ"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "shape": "AuthorLexicalEntry",
+      "input": {
+        "form": "m",
+        "formWs": "sw",
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "gloss": "class one",
+        "analysisWs": "en",
+        "msa": {
+          "kind": "inflectional",
+          "category": "AAAAAAAAAAAAAAAAAAAAAg"
+        },
+        "inflectionClasses": [
+          "AAAAAAAAAAAAAAAAAAAABQ"
+        ],
+        "environments": [
+          "AAAAAAAAAAAAAAAAAAAABQ",
+          "alias:AAAAAAAAAAAAAAAAAAAABQ"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "shape": "AuthorAlternateForm",
+      "input": {
+        "entry": "AAAAAAAAAAAAAAAAAAAABw",
+        "form": "mw",
+        "formWs": "sw",
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "environments": [
+          "AAAAAAAAAAAAAAAAAAAABg"
+        ],
+        "inflectionClasses": []
+      },
+      "valid": false
+    },
+    {
+      "shape": "AuthorLexicalEntry",
+      "input": {
+        "form": "m",
+        "formWs": "sw",
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "gloss": "class one",
+        "analysisWs": "en",
+        "msa": {
+          "kind": "inflectional",
+          "category": "AAAAAAAAAAAAAAAAAAAAAg"
+        },
+        "inflectionClasses": [
+          "AAAAAAAAAAAAAAAAAAAABQ",
+          "alias:AAAAAAAAAAAAAAAAAAAABQ"
+        ],
+        "environments": [
+          "AAAAAAAAAAAAAAAAAAAABg"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "shape": "AuthorAlternateForm",
+      "input": {
+        "entry": "AAAAAAAAAAAAAAAAAAAABw",
+        "form": "mw",
+        "formWs": "sw",
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "environments": [
+          "AAAAAAAAAAAAAAAAAAAABg"
+        ],
+        "inflectionClasses": [
+          "AAAAAAAAAAAAAAAAAAAABQ"
+        ],
+        "placement": {}
+      },
+      "valid": false
+    },
+    {
+      "shape": "AuthorAlternateForm",
+      "input": {
+        "entry": "AAAAAAAAAAAAAAAAAAAABw",
+        "form": "mw",
+        "formWs": "sw",
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "environments": [
+          "AAAAAAAAAAAAAAAAAAAABg"
+        ],
+        "inflectionClasses": [
+          "AAAAAAAAAAAAAAAAAAAABQ"
+        ],
+        "placement": {
+          "after": "AAAAAAAAAAAAAAAAAAAACA",
+          "index": 0
+        }
+      },
+      "valid": false
+    },
+    {
+      "shape": "AuthorAlternateForm",
+      "input": {
+        "entry": "AAAAAAAAAAAAAAAAAAAABw",
+        "form": "mw",
+        "formWs": "sw",
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "environments": [
+          "AAAAAAAAAAAAAAAAAAAABg"
+        ],
+        "inflectionClasses": [
+          "AAAAAAAAAAAAAAAAAAAABQ"
+        ],
+        "msa": {}
+      },
+      "valid": false
+    },
+    {
+      "shape": "AuthorLexicalEntry",
+      "input": {
+        "form": "m",
+        "formWs": "sw",
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "gloss": "class one",
+        "analysisWs": "en",
+        "msa": {
+          "kind": "inflectional",
+          "category": "AAAAAAAAAAAAAAAAAAAAAg",
+          "inflectionClass": "AAAAAAAAAAAAAAAAAAAABQ"
+        },
+        "inflectionClasses": [
+          "AAAAAAAAAAAAAAAAAAAABQ"
+        ],
+        "environments": [
+          "AAAAAAAAAAAAAAAAAAAABg"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "shape": "AuthorLexicalEntry",
+      "input": {
+        "form": "m",
+        "formWs": "sw",
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "gloss": "class one",
+        "analysisWs": "en",
+        "msa": {
+          "kind": "inflectional",
+          "category": "AAAAAAAAAAAAAAAAAAAAAg",
+          "inflectionFeatures": []
+        },
+        "inflectionClasses": [
+          "AAAAAAAAAAAAAAAAAAAABQ"
+        ],
+        "environments": [
+          "AAAAAAAAAAAAAAAAAAAABg"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "shape": "AuthorLexicalEntry",
+      "input": {
+        "form": "m",
+        "formWs": "sw",
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "gloss": "class one",
+        "analysisWs": "en",
+        "msa": {
+          "kind": "inflectional",
+          "category": "AAAAAAAAAAAAAAAAAAAAAg",
+          "inflectionFeatures": [
+            {
+              "feature": "AAAAAAAAAAAAAAAAAAAAAw",
+              "value": "AAAAAAAAAAAAAAAAAAAABA",
+              "extra": 1
+            }
+          ]
+        },
+        "inflectionClasses": [
+          "AAAAAAAAAAAAAAAAAAAABQ"
+        ],
+        "environments": [
+          "AAAAAAAAAAAAAAAAAAAABg"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "shape": "AlternateFormsPayload",
+      "input": {
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "ws": "sw",
+        "text": "mw",
+        "isAbstract": false
+      },
+      "valid": false
+    },
+    {
+      "shape": "AlternateFormsPayload",
+      "input": {
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "ws": "sw"
+      },
+      "valid": false
+    },
+    {
+      "shape": "AuthorAlternateForm",
+      "input": {
+        "entry": "AAAAAAAAAAAAAAAAAAAABw",
+        "form": "mw",
+        "formWs": "sw",
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "placement": {
+          "before": "AAAAAAAAAAAAAAAAAAAACA"
+        }
+      },
+      "valid": true
+    }
+  ]
+}

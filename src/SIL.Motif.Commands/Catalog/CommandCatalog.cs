@@ -95,6 +95,8 @@ public static class CommandCatalog
             typeof(ComposedOperationsResponse), CommandSurface.AdvancedAi, AgentClass.Draft),
         new CommandDescriptor("compose-author-lexical-entry", typeof(ComposeAuthorLexicalEntryRequest),
             typeof(ComposedOperationsResponse), CommandSurface.AdvancedAi, AgentClass.Draft),
+        new CommandDescriptor("compose-author-alternate-form", typeof(ComposeAuthorAlternateFormRequest),
+            typeof(ComposedOperationsResponse), CommandSurface.AdvancedAi, AgentClass.Draft),
         new CommandDescriptor("compose-author-affix-slot", typeof(ComposeAuthorAffixSlotRequest),
             typeof(ComposedOperationsResponse), CommandSurface.AdvancedAi, AgentClass.Draft),
         new CommandDescriptor("compose-author-affix-template", typeof(ComposeAuthorAffixTemplateRequest),

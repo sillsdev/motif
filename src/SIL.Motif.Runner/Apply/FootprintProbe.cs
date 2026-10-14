@@ -35,6 +35,7 @@ public static class FootprintProbe
             entries.AddRange(OperationEffectCapture.ReadFootprint(handler, cache, operation));
         }
 
+        entries.AddRange(AffixAuthoringPrerequisites.Read(cache, proposal));
         return FootprintDigest.Compute(entries);
     }
 }

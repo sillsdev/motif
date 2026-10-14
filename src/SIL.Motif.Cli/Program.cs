@@ -281,6 +281,7 @@ try
         case "compose-author-inflection-class":
         case "compose-author-stem-name":
         case "compose-author-lexical-entry":
+        case "compose-author-alternate-form":
         case "compose-author-affix-template":
         case "compose-edit-natural-class":
         case "compose-relink-natural-class":
@@ -302,6 +303,8 @@ try
                 "compose-author-stem-name" => ProposalCommands.ComposeAuthorStemName(
                     new(soundProject, CliProductVersion(), soundDraft, soundIntent)),
                 "compose-author-lexical-entry" => ProposalCommands.ComposeAuthorLexicalEntry(
+                    new(soundProject, CliProductVersion(), soundDraft, soundIntent)),
+                "compose-author-alternate-form" => ProposalCommands.ComposeAuthorAlternateForm(
                     new(soundProject, CliProductVersion(), soundDraft, soundIntent)),
                 "compose-author-part-of-speech" => ProposalCommands.ComposeAuthorPartOfSpeech(
                     new(soundProject, CliProductVersion(), soundDraft, soundIntent)),

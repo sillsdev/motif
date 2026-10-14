@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Text.Json;
 using SIL.LCModel;
 using SIL.Motif.Contract.Ids;
@@ -45,6 +44,10 @@ public sealed record LexicalEntryMsa(
 /// <param name="AnalysisWritingSystem">The writing system tag of the gloss and definition.</param>
 /// <param name="Msa">The sense's grammatical info.</param>
 /// <param name="Definition">The sense's optional definition.</param>
+/// <param name="InflectionClasses">
+/// For an affix form only, the inflection classes of the stems it may attach to; absent means unrestricted.
+/// </param>
+/// <param name="Environments">The phonological environments the lexeme form occurs in; absent means any.</param>
 public sealed record AuthorLexicalEntryIntent(
     string Form,
     string FormWritingSystem,
@@ -52,7 +55,9 @@ public sealed record AuthorLexicalEntryIntent(
     string Gloss,
     string AnalysisWritingSystem,
     LexicalEntryMsa Msa,
-    string? Definition = null);
+    string? Definition = null,
+    IReadOnlyList<CanonicalId>? InflectionClasses = null,
+    IReadOnlyList<CanonicalId>? Environments = null);
 
 /// <summary>Parses the closed JSON intent for creating one dictionary entry.</summary>
 public static class AuthorLexicalEntryIntentParser
@@ -63,7 +68,8 @@ public static class AuthorLexicalEntryIntentParser
     public static AuthorLexicalEntryIntent Parse(JsonElement authored)
     {
         SoundSystemIntentParsing.Object(authored, ConstructName,
-            "form", "formWs", "morphType", "gloss", "analysisWs", "definition", "msa");
+            "form", "formWs", "morphType", "gloss", "analysisWs", "definition", "msa", "inflectionClasses",
+            "environments");
         if (!authored.TryGetProperty("msa", out var msa))
             throw new ContractParseException($"'{ConstructName}': 'msa' is required.");
         SoundSystemIntentParsing.Object(msa, ConstructName + ".msa",
@@ -88,7 +94,6 @@ public static class AuthorLexicalEntryIntentParser
             throw new ContractParseException($"'{ConstructName}': only an inflectional msa takes 'slots'.");
         if (inflectionClass is not null && kind != LexicalEntryMsaKind.Stem)
             throw new ContractParseException($"'{ConstructName}': only a stem msa takes 'inflectionClass'.");
-
         return new AuthorLexicalEntryIntent(
             SoundSystemIntentParsing.Text(authored, "form"),
             SoundSystemIntentParsing.Text(authored, "formWs"),
@@ -96,7 +101,19 @@ public static class AuthorLexicalEntryIntentParser
             SoundSystemIntentParsing.Text(authored, "gloss"),
             SoundSystemIntentParsing.Text(authored, "analysisWs"),
             new LexicalEntryMsa(kind, SoundSystemIntentParsing.Id(msa, "category"), toCategory, slots, inflectionClass),
-            authored.TryGetProperty("definition", out _) ? SoundSystemIntentParsing.Text(authored, "definition") : null);
+            authored.TryGetProperty("definition", out _) ? SoundSystemIntentParsing.Text(authored, "definition") : null,
+            NonEmptyIds(authored, "inflectionClasses"), NonEmptyIds(authored, "environments"));
+    }
+
+    /// <summary>Reads an optional unordered identity list; present means nonempty and free of repeats.</summary>
+    internal static IReadOnlyList<CanonicalId>? NonEmptyIds(JsonElement element, string name)
+    {
+        if (!element.TryGetProperty(name, out _)) return null;
+        var ids = SoundSystemIntentParsing.Ids(element, name, ordered: false);
+        if (ids.Length == 0) throw new ContractParseException($"'{name}' must name at least one identity when present.");
+        if (ids.Select(id => id.ToGuid()).Distinct().Count() != ids.Length)
+            throw new ContractParseException($"'{name}' must not repeat an identity.");
+        return ids;
     }
 
     private static CanonicalId? Optional(JsonElement element, string name) =>
@@ -123,51 +140,75 @@ public static class AuthorLexicalEntryComposer
         ArgumentNullException.ThrowIfNull(cache);
         ArgumentNullException.ThrowIfNull(intent);
         ArgumentNullException.ThrowIfNull(intent.Msa);
+        intent = intent with
+        {
+            MorphType = LexicalFormAuthoring.Normalize(intent.MorphType),
+            InflectionClasses = LexicalFormAuthoring.Normalize(intent.InflectionClasses),
+            Environments = LexicalFormAuthoring.Normalize(intent.Environments),
+            Msa = intent.Msa with
+            {
+                Category = LexicalFormAuthoring.Normalize(intent.Msa.Category),
+                ToCategory = intent.Msa.ToCategory is { } to ? LexicalFormAuthoring.Normalize(to) : null,
+                InflectionClass = intent.Msa.InflectionClass is { } cls ? LexicalFormAuthoring.Normalize(cls) : null,
+                Slots = LexicalFormAuthoring.Normalize(intent.Msa.Slots),
+            },
+        };
         RequireMsaShape(intent.Msa);
-        var form = RequireText(intent.Form, "form");
-        var gloss = RequireText(intent.Gloss, "gloss");
-        var definition = intent.Definition is null ? null : RequireText(intent.Definition, "definition");
-        RequireWritingSystem(cache, intent.FormWritingSystem, vernacular: true);
-        RequireWritingSystem(cache, intent.AnalysisWritingSystem, vernacular: false);
+        var form = LexicalFormAuthoring.RequireText(intent.Form, "form", ConstructName);
+        var gloss = LexicalFormAuthoring.RequireText(intent.Gloss, "gloss", ConstructName);
+        var definition = intent.Definition is null
+            ? null : LexicalFormAuthoring.RequireText(intent.Definition, "definition", ConstructName);
+        LexicalFormAuthoring.RequireWritingSystem(cache, intent.FormWritingSystem, vernacular: true, ConstructName);
+        LexicalFormAuthoring.RequireWritingSystem(cache, intent.AnalysisWritingSystem, vernacular: false, ConstructName);
 
-        var morphType = ReferenceFieldLowering.Resolve<IMoMorphType>(cache, intent.MorphType, ConstructName);
+        var morphType = LexicalFormAuthoring.Resolve<IMoMorphType>(cache, intent.MorphType, ConstructName);
         var formClass = MoFormConcreteClassSelection.ClassFor(morphType, ConstructName);
         var msa = intent.Msa;
         if ((formClass == MoFormConcreteClass.StemAllomorph) != (msa.Kind == LexicalEntryMsaKind.Stem))
             throw new InvalidOperationException(
                 $"'{ConstructName}': morph type '{morphType.Name.BestAnalysisAlternative.Text}' needs " +
                 (formClass == MoFormConcreteClass.StemAllomorph ? "a stem msa." : "an affix msa, not a stem msa."));
+        if (intent.InflectionClasses is not null && formClass != MoFormConcreteClass.AffixAllomorph)
+            throw new InvalidOperationException($"'{ConstructName}': only an affix form takes 'inflectionClasses'.");
         var category = Category(cache, msa.Category);
         if (msa.ToCategory is { } toCategory) Category(cache, toCategory);
         var slots = msa.Slots ?? [];
-        if (slots.Distinct().Count() != slots.Count)
+        if (slots.Select(id => id.ToGuid()).Distinct().Count() != slots.Count)
             throw new InvalidOperationException($"'{ConstructName}': slots must not repeat.");
         foreach (var slotId in slots)
         {
-            var slot = ReferenceFieldLowering.Resolve<IMoInflAffixSlot>(cache, slotId, ConstructName);
-            if (!InCategoryOrAncestor(slot.Owner as IPartOfSpeech, category))
+            var slot = LexicalFormAuthoring.Resolve<IMoInflAffixSlot>(cache, slotId, ConstructName);
+            if (!LexicalFormAuthoring.InCategoryOrAncestor(slot.Owner as IPartOfSpeech, category))
                 throw new InvalidOperationException(
                     $"'{ConstructName}': slot '{slotId.Value}' does not belong to the category or one of its ancestors.");
         }
         if (msa.InflectionClass is { } classId)
         {
-            var inflectionClass = ReferenceFieldLowering.Resolve<IMoInflClass>(cache, classId, ConstructName);
-            if (!InCategoryOrAncestor(OwningCategory(inflectionClass), category))
+            var inflectionClass = LexicalFormAuthoring.Resolve<IMoInflClass>(cache, classId, ConstructName);
+            if (!LexicalFormAuthoring.InCategoryOrAncestor(LexicalFormAuthoring.OwningCategory(inflectionClass), category))
                 throw new InvalidOperationException(
                     $"'{ConstructName}': inflection class '{classId.Value}' does not belong to the category.");
         }
+        IReadOnlyList<CanonicalId> environments = intent.Environments is null ? []
+            : LexicalFormAuthoring.RequireEnvironments(cache, intent.Environments, ConstructName);
+        IReadOnlyList<CanonicalId> restrictedClasses = intent.InflectionClasses is null ? []
+            : LexicalFormAuthoring.RequireInflectionClasses(cache, intent.InflectionClasses, [category], ConstructName);
 
-        var mint = mintId ?? (() => CanonicalId.Mint());
+        var source = mintId ?? (() => CanonicalId.Mint());
+        CanonicalId Mint() => LexicalFormAuthoring.Normalize(source());
         var operations = new List<OperationEnvelope>();
-        var entryId = mint();
+        var entryId = Mint();
         var createEntry = Add(LexDbEntriesOperationKinds.Create, CanonicalId.FromGuid(cache.LangProject.LexDbOA.Guid),
             new { }, entityId: entryId);
         var afterEntry = new[] { new OperationDependency(createEntry) };
-        Add(LexEntryLexemeFormOperationKinds.CreateLexemeForm, entryId,
+        var formId = Mint();
+        var createForm = Add(LexEntryLexemeFormOperationKinds.CreateLexemeForm, entryId,
             new { morphType = intent.MorphType.Value, ws = intent.FormWritingSystem, text = form },
-            entityId: mint(), dependsOn: afterEntry);
+            entityId: formId, dependsOn: afterEntry);
+        foreach (var (kind, member) in LexicalFormAuthoring.Links(formClass, environments, restrictedClasses))
+            Add(kind, formId, new { member = member.Value }, dependsOn: [new OperationDependency(createForm)]);
 
-        var msaId = mint();
+        var msaId = Mint();
         var createMsa = Add(LexEntryMorphoSyntaxAnalysesOperationKinds.Create, entryId,
             new { @class = MsaClass(msa.Kind) }, entityId: msaId, dependsOn: afterEntry);
         var afterMsa = new[] { new OperationDependency(createMsa) };
@@ -199,7 +240,7 @@ public static class AuthorLexicalEntryComposer
                 break;
         }
 
-        var senseId = mint();
+        var senseId = Mint();
         var createSense = Add(LexEntrySensesOperationKinds.Create, entryId, new { }, entityId: senseId,
             dependsOn: afterEntry);
         var afterSense = new[] { new OperationDependency(createSense) };
@@ -215,7 +256,7 @@ public static class AuthorLexicalEntryComposer
         CanonicalId Add(string kind, CanonicalId target, object after, CanonicalId? entityId = null,
             IReadOnlyList<OperationDependency>? dependsOn = null)
         {
-            var operationId = mint();
+            var operationId = Mint();
             operations.Add(new OperationEnvelope(operationId, kind, entityId: entityId, target: target,
                 after: JsonSerializer.SerializeToElement(after), dependsOn: dependsOn, rationale: Rationale));
             return operationId;
@@ -246,38 +287,5 @@ public static class AuthorLexicalEntryComposer
     };
 
     private static IPartOfSpeech Category(LcmCache cache, CanonicalId id) =>
-        ReferenceFieldLowering.Resolve<IPartOfSpeech>(cache, id, ConstructName);
-
-    private static IPartOfSpeech? OwningCategory(IMoInflClass inflectionClass)
-    {
-        ICmObject? current = inflectionClass.Owner;
-        while (current is IMoInflClass) current = current.Owner;
-        return current as IPartOfSpeech;
-    }
-
-    private static bool InCategoryOrAncestor(IPartOfSpeech? owner, IPartOfSpeech category)
-    {
-        if (owner is null) return false;
-        for (var current = category; current is not null; current = current.Owner as IPartOfSpeech)
-            if (owner.Guid == current.Guid) return true;
-        return false;
-    }
-
-    private static string RequireText(string text, string name)
-    {
-        if (string.IsNullOrWhiteSpace(text))
-            throw new InvalidOperationException($"'{ConstructName}': '{name}' must not be blank.");
-        return text.Trim().Normalize(NormalizationForm.FormD);
-    }
-
-    private static void RequireWritingSystem(LcmCache cache, string tag, bool vernacular)
-    {
-        var systems = vernacular
-            ? cache.ServiceLocator.WritingSystems.VernacularWritingSystems
-            : cache.ServiceLocator.WritingSystems.AnalysisWritingSystems;
-        if (!systems.Any(system => system.Id == tag))
-            throw new InvalidOperationException(
-                $"'{ConstructName}': '{tag}' is not one of this project's " +
-                (vernacular ? "vernacular" : "analysis") + " writing systems.");
-    }
+        LexicalFormAuthoring.Resolve<IPartOfSpeech>(cache, id, ConstructName);
 }

@@ -929,7 +929,7 @@
   },
   {
     "name": "motif_add_lexical_entry",
-    "description": "Author a dictionary entry. Stages one new dictionary entry with its lexeme form, one sense with gloss and optional definition, and grammatical info: a stem, or an inflectional, derivational or unclassified affix. Inspect its Dry Run and try words with it before a person Applies the Proposal.\nCommand: compose-author-lexical-entry. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+    "description": "Author a dictionary entry. Stages one new dictionary entry with its lexeme form, one sense with gloss and optional definition, and grammatical info: a stem, or an inflectional, derivational or unclassified affix. Each form can name environments, and an affix can name the inflection classes it attaches to. Inspect its Dry Run and try words with it before a person Applies the Proposal.\nCommand: compose-author-lexical-entry. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -960,6 +960,20 @@
         "definition": {
           "type": "string",
           "description": "Optional definition of the sense."
+        },
+        "inflectionClasses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Affix only: canonical ids of the inflection classes of the stems this form attaches to; omit for no restriction."
+        },
+        "environments": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Canonical ids of the phonological environments this form occurs in; omit for any."
         },
         "msa": {
           "type": "object",
@@ -1013,6 +1027,79 @@
         "gloss",
         "analysisWs",
         "msa",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_add_alternate_form",
+    "description": "Author an alternate form. Stages one more stem or affix form on an existing or earlier-staged entry, with its own environments and, for an affix, inflection classes. It adds no entry, sense or grammatical info and copies no condition from the lexeme form.\nCommand: compose-author-alternate-form. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "The draft name from motif_start_proposal."
+        },
+        "entry": {
+          "type": "string",
+          "description": "Canonical id of an existing entry, or one added earlier in this Draft."
+        },
+        "form": {
+          "type": "string",
+          "description": "The alternate form, without affix hyphens."
+        },
+        "formWs": {
+          "type": "string",
+          "description": "Vernacular writing system tag of the form."
+        },
+        "morphType": {
+          "type": "string",
+          "description": "Canonical id of the morph type; stem-like for a stem entry, affix-like for an affix entry."
+        },
+        "environments": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Canonical ids of the phonological environments this form occurs in; omit for any."
+        },
+        "inflectionClasses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Affix entries only: canonical ids of the inflection classes of the stems this form attaches to; omit for no restriction."
+        },
+        "placement": {
+          "type": "object",
+          "properties": {
+            "after": {
+              "type": "string",
+              "description": "Existing alternate form before the insertion gap."
+            },
+            "before": {
+              "type": "string",
+              "description": "Existing alternate form after the insertion gap."
+            }
+          },
+          "additionalProperties": false
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "entry",
+        "form",
+        "formWs",
+        "morphType",
         "project"
       ],
       "additionalProperties": false

@@ -123,6 +123,8 @@ public static class CliVerbCatalog
             new[] { "compose-author-stem-name --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
         new CliVerbDescriptor("Commands", "compose-author-lexical-entry", "compose-author-lexical-entry",
             new[] { "compose-author-lexical-entry --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
+        new CliVerbDescriptor("Commands", "compose-author-alternate-form", "compose-author-alternate-form",
+            new[] { "compose-author-alternate-form --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
         new CliVerbDescriptor("Commands", "compose-author-affix-slot", "compose-author-affix-slot",
             new[] { "compose-author-affix-slot --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
         new CliVerbDescriptor("Commands", "compose-author-affix-template", "compose-author-affix-template",

@@ -63,6 +63,68 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public async Task AffixAuthoringToolsRouteEntryConditionsAndAnAlternateForm()
+    {
+        using var project = new WalkthroughProject(pristine);
+        var projectHash = HashProject(project.FwDataPath);
+        await using var session = await Session.StartAsync(project.FwDataPath,
+            new McpLaunchOptions(Profile: "phonology"));
+        await session.CallAsync("motif_start_proposal", ("draft", "affix-authoring"),
+            ("label", "Author a conditioned prefix"), ("comment", "Each form names its conditions."));
+
+        var category = CanonicalId.FromGuid(project.Seed.PartOfSpeechId).Value;
+        var inflectionClass = await session.CallAsync("motif_add_inflection_class", ("draft", "affix-authoring"),
+            ("category", category), ("name", "1/2"), ("ws", "en"));
+        Assert.True(inflectionClass.GetProperty("ok").GetBoolean(), inflectionClass.ToString());
+        var classCreate = Assert.Single(inflectionClass.GetProperty("result").GetProperty("operations").EnumerateArray(),
+            operation => operation.GetProperty("kind").GetString() == "grammar/partOfSpeech/createInflectionClasses");
+        var classId = classCreate.GetProperty("entityId").GetString()!;
+
+        var phoneme = await session.CallAsync("motif_add_phoneme", ("draft", "affix-authoring"),
+            ("name", "z"), ("representations", new[] { "z" }));
+        Assert.True(phoneme.GetProperty("ok").GetBoolean(), phoneme.ToString());
+        var phonemeCreate = Assert.Single(phoneme.GetProperty("result").GetProperty("operations").EnumerateArray(),
+            operation => operation.GetProperty("kind").GetString()!.EndsWith("/createPhonemes", StringComparison.Ordinal));
+        var phonemeId = phonemeCreate.GetProperty("entityId").GetString()!;
+
+        var environment = await session.CallAsync("motif_add_environment", ("draft", "affix-authoring"),
+            ("name", "after a"), ("left", new[] { new { phoneme = phonemeId } }),
+            ("right", Array.Empty<object>()));
+        Assert.True(environment.GetProperty("ok").GetBoolean(), environment.ToString());
+        var environmentCreate = Assert.Single(environment.GetProperty("result").GetProperty("operations").EnumerateArray(),
+            operation => operation.GetProperty("kind").GetString()!.EndsWith("/createEnvironments", StringComparison.Ordinal));
+        var environmentId = environmentCreate.GetProperty("entityId").GetString()!;
+        var prefix = CanonicalId.FromGuid(MoMorphTypeTags.kguidMorphPrefix).Value;
+
+        var entry = await session.CallAsync("motif_add_lexical_entry", ("draft", "affix-authoring"),
+            ("form", "m"), ("formWs", "fr"), ("morphType", prefix), ("gloss", "class 1/2"),
+            ("analysisWs", "en"), ("msa", new { kind = "inflectional", category }),
+            ("inflectionClasses", new[] { classId }), ("environments", new[] { environmentId }));
+        Assert.True(entry.GetProperty("ok").GetBoolean(), entry.ToString());
+        var entryOperations = entry.GetProperty("result").GetProperty("operations").EnumerateArray().ToArray();
+        Assert.Contains(entryOperations, operation =>
+            operation.GetProperty("kind").GetString() == "grammar/moAffixForm/addRefInflectionClasses");
+        Assert.Contains(entryOperations, operation =>
+            operation.GetProperty("kind").GetString() == "grammar/moAffixAllomorph/addRefPhoneEnv");
+        var entryCreate = Assert.Single(entryOperations, operation =>
+            operation.GetProperty("kind").GetString() == "lexical/lexDb/createEntries");
+        var entryId = entryCreate.GetProperty("entityId").GetString()!;
+
+        var alternate = await session.CallAsync("motif_add_alternate_form", ("draft", "affix-authoring"),
+            ("entry", "entry:" + entryId), ("form", "mw"), ("formWs", "fr"), ("morphType", prefix),
+            ("inflectionClasses", new[] { classId }), ("environments", new[] { environmentId }));
+        Assert.True(alternate.GetProperty("ok").GetBoolean(), alternate.ToString());
+        var alternateOperations = alternate.GetProperty("result").GetProperty("operations").EnumerateArray().ToArray();
+        Assert.Contains(alternateOperations, operation =>
+            operation.GetProperty("kind").GetString() == "lexical/lexEntry/createAlternateForms");
+        Assert.Contains(alternateOperations, operation =>
+            operation.GetProperty("kind").GetString() == "grammar/moAffixForm/addRefInflectionClasses");
+        Assert.Contains(alternateOperations, operation =>
+            operation.GetProperty("kind").GetString() == "grammar/moAffixAllomorph/addRefPhoneEnv");
+        Assert.Equal(projectHash, HashProject(project.FwDataPath));
+    }
+
+    [Fact]
     public async Task KnownProjectSelectorsKeepDraftsInTheirOwnProjectsInOneSession()
     {
         using var first = new WalkthroughProject(pristine);

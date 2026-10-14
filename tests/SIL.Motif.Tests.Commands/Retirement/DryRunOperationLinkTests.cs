@@ -49,6 +49,27 @@ public sealed class DryRunOperationLinkTests
         Assert.Empty(Assert.Single(projection.Effects, item => item.Field == "unclassified/field").OperationIds);
     }
 
+    [Fact]
+    public void AlternateFormCreateIsLinkedToItsPreviewEffect()
+    {
+        var entry = Id(1);
+        var form = Id(2);
+        var create = Id(3);
+        var proposal = new Proposal(
+            new Dictionary<string, string> { ["lexical"] = "1.0" },
+            Id(4), null,
+            [new OperationEnvelope(create, LexEntryAlternateFormsCreateOperationKinds.CreateAlternateForms,
+                entityId: form, target: entry,
+                after: JsonSerializer.SerializeToElement(new { morphType = Id(5).Value, ws = "fr", text = "mw" }))]);
+        var dryRun = new DryRun("intent", "baseline",
+            [Effect(entry, "lexical/lexEntry/alternateForms")], "effects", Anchor());
+
+        var projection = DryRunProjectionBuilder.Build(proposal.ProposalId.Value, dryRun, proposal);
+
+        Assert.Equal(new[] { create.Value }, Assert.Single(projection.Effects,
+            item => item.Field == "lexical/lexEntry/alternateForms").OperationIds);
+    }
+
     private static CanonicalId Id(int value) => CanonicalId.FromGuid(Guid.Parse(
         $"00000000-0000-0000-0000-{value:D12}"));
 

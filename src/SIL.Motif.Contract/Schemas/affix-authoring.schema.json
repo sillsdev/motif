@@ -1,0 +1,262 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://motif.sil.org/contracts/affix-authoring/v1",
+  "title": "Ordinary lexical form authoring",
+  "description": "Closed ordinary stem/affix form intents. Live ownership, decoded identity uniqueness and placement are checked against LibLCM. Restrictions are explicit per form.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/AuthorLexicalEntry"
+    },
+    {
+      "$ref": "#/$defs/AuthorAlternateForm"
+    },
+    {
+      "$ref": "#/$defs/AlternateFormsPayload"
+    }
+  ],
+  "$defs": {
+    "CanonicalId": {
+      "type": "string",
+      "pattern": "^[\\s\\S]*[A-Za-z0-9_-]{22}$",
+      "description": "An optional prefix and 22-character suffix decoding to 128 bits. New authors emit the normalized unprefixed spelling and compare decoded GUIDs."
+    },
+    "IdentitySet": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/CanonicalId"
+      }
+    },
+    "Placement": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "after": {
+          "$ref": "#/$defs/CanonicalId"
+        },
+        "before": {
+          "$ref": "#/$defs/CanonicalId"
+        }
+      },
+      "required": [],
+      "anyOf": [
+        {
+          "required": [
+            "after"
+          ]
+        },
+        {
+          "required": [
+            "before"
+          ]
+        }
+      ]
+    },
+    "LexicalEntryMsa": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "stem",
+            "inflectional",
+            "derivational",
+            "unclassified"
+          ]
+        },
+        "category": {
+          "$ref": "#/$defs/CanonicalId"
+        },
+        "toCategory": {
+          "$ref": "#/$defs/CanonicalId"
+        },
+        "slots": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/CanonicalId"
+          }
+        },
+        "inflectionClass": {
+          "$ref": "#/$defs/CanonicalId"
+        }
+      },
+      "required": [
+        "kind",
+        "category"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "derivational"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "toCategory"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "toCategory"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "inflectional"
+              }
+            }
+          },
+          "else": {
+            "not": {
+              "required": [
+                "slots"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "stem"
+              }
+            }
+          },
+          "else": {
+            "not": {
+              "required": [
+                "inflectionClass"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "AuthorLexicalEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "form": {
+          "type": "string"
+        },
+        "formWs": {
+          "type": "string"
+        },
+        "morphType": {
+          "$ref": "#/$defs/CanonicalId"
+        },
+        "gloss": {
+          "type": "string"
+        },
+        "analysisWs": {
+          "type": "string"
+        },
+        "definition": {
+          "type": "string"
+        },
+        "msa": {
+          "$ref": "#/$defs/LexicalEntryMsa"
+        },
+        "environments": {
+          "$ref": "#/$defs/IdentitySet"
+        },
+        "inflectionClasses": {
+          "$ref": "#/$defs/IdentitySet"
+        }
+      },
+      "required": [
+        "form",
+        "formWs",
+        "morphType",
+        "gloss",
+        "analysisWs",
+        "msa"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "msa": {
+                "properties": {
+                  "kind": {
+                    "const": "stem"
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "required": [
+                "inflectionClasses"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "AuthorAlternateForm": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "entry": {
+          "$ref": "#/$defs/CanonicalId"
+        },
+        "form": {
+          "type": "string"
+        },
+        "formWs": {
+          "type": "string"
+        },
+        "morphType": {
+          "$ref": "#/$defs/CanonicalId"
+        },
+        "environments": {
+          "$ref": "#/$defs/IdentitySet"
+        },
+        "inflectionClasses": {
+          "$ref": "#/$defs/IdentitySet"
+        },
+        "placement": {
+          "$ref": "#/$defs/Placement"
+        }
+      },
+      "required": [
+        "entry",
+        "form",
+        "formWs",
+        "morphType"
+      ]
+    },
+    "AlternateFormsPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "morphType": {
+          "$ref": "#/$defs/CanonicalId"
+        },
+        "ws": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "morphType",
+        "ws",
+        "text"
+      ]
+    }
+  }
+}
