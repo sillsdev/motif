@@ -1,0 +1,62 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             x:Class="SIL.Motif.App.Views.Shell.WorkspaceLayoutHost">
+  <Grid x:Name="PaneGrid" ColumnDefinitions="Auto,0,*,Auto">
+    <ContentControl x:Name="RailHost" />
+    <Border x:Name="SidePanelBorder" Grid.Column="1" Classes="workspaceSidePanel" IsVisible="False">
+      <Grid RowDefinitions="Auto,*">
+        <Border Classes="workspacePaneHeader">
+          <DockPanel>
+            <Button x:Name="SidePanelCollapseButton" DockPanel.Dock="Right" Classes="workspacePaneButton" Content="‹" Click="OnCollapseSidePanel"
+                    AutomationProperties.Name="Collapse side bar" ToolTip.Tip="Collapse side bar" />
+            <views:CopyableTextBlock x:Name="SidePanelTitle" Classes="workspacePaneLabel" VerticalAlignment="Center" />
+          </DockPanel>
+        </Border>
+        <ContentControl x:Name="SidePanelContent" Grid.Row="1" />
+      </Grid>
+    </Border>
+    <Grid x:Name="WorkingPageRegion" Grid.Column="2" RowDefinitions="Auto,*,Auto">
+      <Button x:Name="SidePanelRevealButton" Classes="workspaceSidePanelReveal" IsVisible="False"
+              HorizontalAlignment="Left" Click="OnRevealSidePanel" AutomationProperties.Name="Show side bar">
+        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
+          <TextBlock Classes="workspacePaneLabel" Text="{ReflectionBinding #SidePanelTitle.Text}" />
+          <TextBlock Classes="workspacePaneLabel" Text="›" />
+        </StackPanel>
+      </Button>
+      <ContentControl x:Name="WorkingPageHost" Grid.Row="1" />
+      <ScrollViewer x:Name="PageActionFooterViewport" Grid.Row="2"
+                    HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <ContentControl x:Name="PageActionFooterHost" />
+      </ScrollViewer>
+    </Grid>
+    <Border x:Name="InspectorPane" Grid.Column="3" Classes="workspaceInspector" IsVisible="False">
+      <Grid RowDefinitions="Auto,*,Auto">
+        <Border Classes="workspacePaneHeader">
+          <DockPanel>
+            <Button x:Name="InspectorHideButton" DockPanel.Dock="Right" Classes="workspacePaneButton" Content="›" Click="OnHideInspector"
+                    AutomationProperties.Name="Hide Inspector" ToolTip.Tip="Hide Inspector" />
+            <views:CopyableTextBlock Classes="workspacePaneLabel" Text="INSPECTOR" VerticalAlignment="Center" />
+          </DockPanel>
+        </Border>
+        <Grid Grid.Row="1">
+          <ContentControl x:Name="ObjectInspectorHost" />
+          <ContentControl x:Name="PageInspectorHost" IsVisible="False" />
+          <views:CopyableTextBlock x:Name="InspectorEmpty" Classes="muted workspaceEmpty" Text="Select an item to inspect." />
+        </Grid>
+        <ScrollViewer x:Name="InspectorFooterViewport" Grid.Row="2"
+                      HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+          <ContentControl x:Name="InspectorFooterHost" />
+        </ScrollViewer>
+      </Grid>
+    </Border>
+    <Button x:Name="InspectorStrip" Grid.Column="3" Classes="workspaceInspectorStrip" Click="OnShowInspector"
+            Height="{ReflectionBinding $parent[Grid].Bounds.Height}"
+            AutomationProperties.Name="Show Inspector" ToolTip.Tip="Show Inspector">
+      <LayoutTransformControl VerticalAlignment="Top">
+        <LayoutTransformControl.LayoutTransform><RotateTransform Angle="90" /></LayoutTransformControl.LayoutTransform>
+        <TextBlock Classes="workspacePaneLabel" Text="INSPECTOR" />
+      </LayoutTransformControl>
+    </Button>
+  </Grid>
+</UserControl>

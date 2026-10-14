@@ -120,7 +120,7 @@
                 <StackPanel VerticalAlignment="Center" Spacing="{DynamicResource Intent.Space.Minimal}">
                   <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Compact}">
                     <controls:OpinionMark Kind="{Binding OpinionMark}" IsVisible="{Binding IsOpinionMarkVisible}" />
-                    <TextBlock Grid.Column="1" Text="{Binding OpinionLabel}" TextWrapping="Wrap" FontWeight="SemiBold" AutomationProperties.AutomationId="{x:Static app:AutomationIds.MatrixRowOpinionLabel}" />
+                    <TextBlock Grid.Column="1" Text="{Binding OpinionLabel}" TextWrapping="Wrap" FontWeight="{DynamicResource Intent.Weight.Strong}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.MatrixRowOpinionLabel}" />
                   </Grid>
                   <TextBlock Classes="muted" Text="{Binding CountText}" FontSize="{DynamicResource Intent.Type.Label}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.MatrixRowCount}" />
                 </StackPanel>
@@ -152,7 +152,7 @@
             <views:CopyableTextBlock DockPanel.Dock="Right" Classes="muted" Text="{Binding Compare.FixFirstSummary}"
                                      FontSize="{DynamicResource Intent.Type.Small}"
                                      AutomationProperties.Name="Fix these first count" />
-            <views:CopyableTextBlock Text="Fix these first" FontWeight="SemiBold" />
+            <views:CopyableTextBlock Text="Fix these first" FontWeight="{DynamicResource Intent.Weight.Section}" />
           </DockPanel>
         </Expander.Header>
         <views:WordListSlot Schema="{x:Static word:WordListSchemas.FixFirst}"
@@ -187,7 +187,7 @@
                           IsVisible="{Binding $parent[views:ComparePanel].Compare.ChosenCell, Converter={x:Static ObjectConverters.IsNotNull}}">
                 <controls:OpinionMark Kind="{Binding OpinionMark}" IsVisible="{Binding IsOpinionMarkVisible}"
                                       VerticalAlignment="Center" />
-                <TextBlock Classes="matrixChosenWord" Text="{Binding RowLabel}" FontWeight="SemiBold" />
+                <TextBlock Classes="matrixChosenWord" Text="{Binding RowLabel}" FontWeight="{DynamicResource Intent.Weight.Section}" />
                 <TextBlock Classes="matrixChosenWord muted" Text="×" />
                 <views:MarkGlyph Classes="inline bodyText matrixChosenWord" Mark="{Binding OutcomeMark}" />
                 <TextBlock Classes="matrixChosenWord outcomeMark" views:MarkClasses.Mark="{Binding OutcomeMark}"
@@ -196,7 +196,7 @@
               </StackPanel>
               <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}"
                           IsVisible="{Binding Compare.ChosenCell, Converter={x:Static ObjectConverters.IsNull}}">
-                <TextBlock Classes="matrixChosenWord" Text="{Binding Compare.ListHeading}" FontWeight="SemiBold" AutomationProperties.AutomationId="{x:Static app:AutomationIds.MatrixListHeading}" />
+                <TextBlock Classes="matrixChosenWord" Text="{Binding Compare.ListHeading}" FontWeight="{DynamicResource Intent.Weight.Section}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.MatrixListHeading}" />
                 <views:MarkChip Classes="matrixListMeaning" Mark="{Binding Compare.ListMeaningMark}"
                                 Text="{Binding Compare.ListMeaning}" Compact="True"
                                 IsVisible="{Binding Compare.ListMeaning, Converter={x:Static ObjectConverters.IsNotNull}}" />

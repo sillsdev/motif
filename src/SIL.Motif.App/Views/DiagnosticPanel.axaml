@@ -16,12 +16,13 @@
         <DockPanel LastChildFill="False">
           <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}"
                       IsVisible="{Binding $parent[views:DiagnosticPanel].ShowResultSummary}">
-            <views:CopyableTextBlock Text="{Binding Result.Word}" FontSize="{DynamicResource Intent.Type.Title}" FontWeight="SemiBold"
+            <views:CopyableTextBlock Text="{Binding Result.Word}" FontSize="{DynamicResource Intent.Type.Title}" FontWeight="{DynamicResource Intent.Weight.Section}"
                                      IsVisible="{Binding ShowsOtherWord}" AutomationProperties.Name="Diagnostic word" />
             <views:MarkChip Mark="{Binding AnswerMark}" Text="{Binding AnswerText}"
                                IsVisible="{Binding HasResult}" />
           </StackPanel>
-          <Button DockPanel.Dock="Right" Content="&#x22ef;" FontSize="{DynamicResource Intent.Type.Section}" Padding="{DynamicResource Component.TryWord.ToolButtonInset}"
+          <Button DockPanel.Dock="Right" Content="&#x22ef;" FontSize="{DynamicResource Intent.Type.Section}"
+                  FontWeight="{DynamicResource Intent.Weight.Section}" Padding="{DynamicResource Component.TryWord.ToolButtonInset}"
                   IsVisible="{Binding $parent[views:DiagnosticPanel].ShowResultSummary}"
                   AutomationProperties.Name="Diagnostic tools">
             <Button.Flyout>
@@ -68,7 +69,7 @@
 
       <Border Classes="card" IsVisible="{Binding HasNoParseReasons}" AutomationProperties.Name="Why it did not parse">
         <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
-          <views:CopyableTextBlock Text="{Binding StopGroupsHeading}" FontWeight="SemiBold" />
+          <views:CopyableTextBlock Text="{Binding StopGroupsHeading}" FontWeight="{DynamicResource Intent.Weight.Section}" />
           <ItemsControl x:Name="DiagnosticPanelNoParseReasonsItems" ItemsSource="{Binding NoParseReasons}">
             <ItemsControl.ItemsPanel>
               <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
@@ -92,7 +93,8 @@
       <Border Classes="card" IsVisible="{Binding ShowsStopGroups}" AutomationProperties.Name="Why it did not parse">
         <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
           <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-            <views:CopyableTextBlock Text="{Binding StopGroupsHeading}" FontSize="{DynamicResource Intent.Type.Section}" FontWeight="SemiBold" />
+            <views:CopyableTextBlock Text="{Binding StopGroupsHeading}" FontSize="{DynamicResource Intent.Type.Section}"
+                                     FontWeight="{DynamicResource Intent.Weight.Section}" />
             <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Small}" TextWrapping="Wrap" Text="{Binding StopGroupsSummary}" />
           </StackPanel>
           <ItemsControl x:Name="DiagnosticPanelStopGroupsItems" ItemsSource="{Binding StopGroups}" AutomationProperties.Name="Recorded stopped attempts">
@@ -112,9 +114,9 @@
                       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Snug}" VerticalAlignment="Center">
                         <ProgressBar Width="{DynamicResource Component.TryWord.ProgressWidth}" MinWidth="{DynamicResource Component.TryWord.ProgressWidth}" Height="{DynamicResource Intent.Space.Snug}" Minimum="0" Maximum="1" Value="{Binding Share}"
                                      IsHitTestVisible="False" IsVisible="{Binding ShowsShare}" />
-                        <TextBlock Text="{Binding CountText}" FontWeight="SemiBold" TextAlignment="Right" />
+                        <TextBlock Text="{Binding CountText}" FontWeight="{DynamicResource Intent.Weight.Strong}" TextAlignment="Right" />
                       </StackPanel>
-                      <TextBlock Text="{Binding RuleText}" IsVisible="{Binding HasRule}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+                      <TextBlock Text="{Binding RuleText}" IsVisible="{Binding HasRule}" FontWeight="{DynamicResource Intent.Weight.Strong}" TextTrimming="CharacterEllipsis"
                                  VerticalAlignment="Center" />
                     </DockPanel>
                     <TextBlock Classes="stopReason" Text="{Binding ReasonText}" TextWrapping="Wrap" />
@@ -130,7 +132,8 @@
       <!-- The attempts that came closest, each as its own story. -->
       <StackPanel Spacing="{DynamicResource Intent.Space.Snug}" IsVisible="{Binding ShowsClosestAttempts}">
         <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-          <views:CopyableTextBlock Text="{Binding ClosestAttemptsHeading}" FontSize="{DynamicResource Intent.Type.Section}" FontWeight="SemiBold" />
+          <views:CopyableTextBlock Text="{Binding ClosestAttemptsHeading}" FontSize="{DynamicResource Intent.Type.Section}"
+                                   FontWeight="{DynamicResource Intent.Weight.Section}" />
           <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Small}" Text="Sorted by how many morphemes they built before the attempt ended." TextWrapping="Wrap" />
         </StackPanel>
         <ItemsControl x:Name="DiagnosticPanelClosestAttemptsItems" ItemsSource="{Binding ClosestAttempts}" AutomationProperties.Name="Attempts that got furthest">
@@ -148,7 +151,7 @@
                   <views:CopyableTextBlock Classes="muted" Text="The parser recorded no morphemes for this attempt."
                              IsVisible="{Binding !HasMorphs}" FontSize="{DynamicResource Intent.Type.Small}"
                              TextWrapping="Wrap" />
-                  <views:CopyableTextBlock Text="{Binding StopHeadline}" Classes="failed" FontWeight="SemiBold"
+                  <views:CopyableTextBlock Text="{Binding StopHeadline}" Classes="failed" FontWeight="{DynamicResource Intent.Weight.Section}"
                              TextWrapping="Wrap" AutomationProperties.Name="What stopped the attempt" />
                   <views:CopyableTextBlock Text="{Binding StopReason}" TextWrapping="Wrap" FontSize="{DynamicResource Intent.Type.Small}"
                                            AutomationProperties.Name="Why the attempt stopped" />
@@ -319,9 +322,10 @@
             <Border x:Name="DetailHost" Grid.Column="1" Classes="card"
                     IsVisible="{Binding SelectedStep, Converter={x:Static conv:ObjectConverters.IsNotNull}}">
               <StackPanel Spacing="{DynamicResource Intent.Space.Snug}" DataContext="{Binding SelectedStep}">
-                <views:CopyableTextBlock Text="Selected step" FontSize="{DynamicResource Intent.Type.Section}" FontWeight="SemiBold" />
+                <views:CopyableTextBlock Text="Selected step" FontSize="{DynamicResource Intent.Type.Section}"
+                                         FontWeight="{DynamicResource Intent.Weight.Section}" />
                 <views:CopyableTextBlock Text="{Binding RecordedOutcomeText}" Classes="status" TextWrapping="WrapWithOverflow" />
-                <views:CopyableTextBlock Text="{Binding Type}" FontWeight="SemiBold" />
+                <views:CopyableTextBlock Text="{Binding Type}" FontWeight="{DynamicResource Intent.Weight.Strong}" />
                 <views:CopyableTextBlock Text="{Binding ProducerSourceText}" Classes="traceNotation"
                            IsVisible="{Binding ProducerSourceText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" TextWrapping="Wrap" />
                 <views:CopyableTextBlock Text="{Binding CapturedSourceText}"
@@ -346,7 +350,7 @@
                     <DataTemplate x:DataType="vm:TraceMorphViewModel">
                       <Border Classes="card" Margin="{DynamicResource Component.TryWord.SmallRowInset}">
                         <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-                          <views:CopyableTextBlock Text="{Binding Form}" FontWeight="SemiBold" TextWrapping="Wrap"
+                          <views:CopyableTextBlock Text="{Binding Form}" FontWeight="{DynamicResource Intent.Weight.Strong}" TextWrapping="Wrap"
                                                    controls:WritingSystemText.Id="{Binding FormWritingSystem}" controls:WritingSystemText.StyleName="Normal" />
                           <views:CopyableTextBlock Text="{Binding Headword}" Classes="muted" TextWrapping="Wrap"
                                                    controls:WritingSystemText.Id="{Binding HeadwordWritingSystem}" controls:WritingSystemText.StyleName="Normal" />

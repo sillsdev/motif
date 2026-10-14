@@ -13,7 +13,7 @@ public enum UserTheme
     Dark,
 }
 
-/// <summary>The Settings group to reopen after the person opens the popup.</summary>
+/// <summary>The Settings section selected when the person opens the page.</summary>
 public enum SettingsGroup
 {
     Display,
@@ -23,6 +23,7 @@ public enum SettingsGroup
     WritingSystems,
     Help,
     About,
+    Texts,
 }
 
 /// <summary>The trace detail choice stored for this Motif installation.</summary>

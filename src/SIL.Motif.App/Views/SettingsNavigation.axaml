@@ -1,0 +1,25 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             xmlns:req="clr-namespace:SIL.Motif.Contract.Requests;assembly=SIL.Motif.Contract"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:controls="clr-namespace:SIL.Motif.App.Controls"
+             x:Class="SIL.Motif.App.Views.SettingsNavigation"
+             x:DataType="vm:SettingsViewModel"
+             controls:WritingSystemText.Resolver="{Binding WritingSystemTextStyles}">
+  <ListBox x:Name="SettingsGroups" Classes="settingsRailList" ItemsSource="{Binding PageGroupOptions}"
+                   Focusable="True" IsTabStop="True"
+                   SelectedItem="{Binding SelectedNavigationEntry, Mode=TwoWay}"
+                   AutomationProperties.Name="Settings groups">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:SettingsGroupOption">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Compact}">
+                  <views:CopyableTextBlock Text="{Binding Title}" TextWrapping="Wrap" />
+                  <views:MarkGlyph Grid.Column="1" Classes="inline" Mark="{x:Static vm:Mark.Warning}"
+                                   IsVisible="{Binding HasWarning}"
+                                   AutomationProperties.Name="A font is missing" />
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+</UserControl>

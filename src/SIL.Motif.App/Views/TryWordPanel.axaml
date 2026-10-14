@@ -19,7 +19,7 @@
             <Button.Flyout>
               <Flyout Placement="BottomEdgeAlignedRight">
                 <StackPanel Spacing="{DynamicResource Intent.Space.Compact}" MinWidth="{DynamicResource Component.TryWord.SidebarWidth}">
-                  <TextBlock Text="Recent words" FontWeight="SemiBold" />
+                  <TextBlock Text="Recent words" FontWeight="{DynamicResource Intent.Weight.Section}" />
                   <ItemsControl x:Name="TryWordPanelRecentWordsItems" ItemsSource="{Binding RecentWords}" AutomationProperties.Name="Recent words">
                     <ItemsControl.ItemsPanel>
                       <ItemsPanelTemplate>
@@ -75,30 +75,29 @@
               HorizontalAlignment="Left" AutomationProperties.Name="Try the Proposal again" />
       <Border Classes="hoverReveal" Background="{DynamicResource Intent.Clear}" IsVisible="{Binding Trace.HasResult}">
         <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
-          <DockPanel LastChildFill="True">
-            <WrapPanel DockPanel.Dock="Right" ItemSpacing="{DynamicResource Intent.Space.Related}"
-                       LineSpacing="{DynamicResource Intent.Space.Related}">
-              <Button Content="Analyze texts" Command="{Binding OpenInTextsCommand}" Theme="{DynamicResource BorderlessButton}" Classes="revealControl revealOnHover" AutomationProperties.Name="Open in Analyze texts" />
-              <Button Content="Timing" Command="{Binding OpenTimingCommand}" Theme="{DynamicResource BorderlessButton}" Classes="revealControl revealOnHover" AutomationProperties.Name="Timing for this word" />
-      <Button Content="{x:Static vm:WindowCopy.AiHandoffForThisWord}" Command="{Binding HandOffCommand}" Theme="{DynamicResource BorderlessButton}" Classes="revealControl revealOnHover" AutomationProperties.Name="{x:Static vm:WindowCopy.AiHandoffForThisWord}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.TryWordHandOff}" />
-            </WrapPanel>
-            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
-              <views:CopyableTextBlock Text="{Binding Trace.Result.Word}" FontSize="{DynamicResource Intent.Type.Title}" FontWeight="SemiBold" AutomationProperties.Name="Try a Word result" AutomationProperties.AutomationId="{x:Static app:AutomationIds.TryWordResult}" />
-              <views:MarkChip Mark="{Binding ResultOutcomeMark}" Text="{Binding ResultOutcomeText}" />
-              <ItemsControl x:Name="TryWordPanelResultOpinionsItems" ItemsSource="{Binding ResultOpinions}">
-                <ItemsControl.ItemsPanel>
-                  <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}" /></ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="vm:TryWordOpinion">
-                    <views:MarkChip Mark="{Binding Mark}" Text="{Binding Label}" />
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-              <views:MarkChip Mark="{Binding ResultMeaningMark}" Text="{Binding ResultMeaning}"
-                              IsVisible="{Binding ResultMeaning, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
-            </StackPanel>
-          </DockPanel>
+          <WrapPanel ItemSpacing="{DynamicResource Intent.Space.Related}"
+                     LineSpacing="{DynamicResource Intent.Space.Related}">
+            <views:CopyableTextBlock Text="{Binding Trace.Result.Word}" FontSize="{DynamicResource Intent.Type.Title}" FontWeight="{DynamicResource Intent.Weight.Section}" AutomationProperties.Name="Try a Word result" AutomationProperties.AutomationId="{x:Static app:AutomationIds.TryWordResult}" />
+            <views:MarkChip Mark="{Binding ResultOutcomeMark}" Text="{Binding ResultOutcomeText}" />
+            <ItemsControl x:Name="TryWordPanelResultOpinionsItems" ItemsSource="{Binding ResultOpinions}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><WrapPanel ItemSpacing="{DynamicResource Intent.Space.Related}" LineSpacing="{DynamicResource Intent.Space.Related}" /></ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:TryWordOpinion">
+                  <views:MarkChip Mark="{Binding Mark}" Text="{Binding Label}" />
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <views:MarkChip Mark="{Binding ResultMeaningMark}" Text="{Binding ResultMeaning}"
+                            IsVisible="{Binding ResultMeaning, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+          </WrapPanel>
+          <WrapPanel ItemSpacing="{DynamicResource Intent.Space.Related}"
+                     LineSpacing="{DynamicResource Intent.Space.Related}">
+            <Button Content="Analyze texts" Command="{Binding OpenInTextsCommand}" Theme="{DynamicResource BorderlessButton}" Classes="revealControl revealOnHover" AutomationProperties.Name="Open in Analyze texts" />
+            <Button Content="Timing" Command="{Binding OpenTimingCommand}" Theme="{DynamicResource BorderlessButton}" Classes="revealControl revealOnHover" AutomationProperties.Name="Timing for this word" />
+            <Button Content="{x:Static vm:WindowCopy.AiHandoffForThisWord}" Command="{Binding HandOffCommand}" Theme="{DynamicResource BorderlessButton}" Classes="revealControl revealOnHover" AutomationProperties.Name="{x:Static vm:WindowCopy.AiHandoffForThisWord}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.TryWordHandOff}" />
+          </WrapPanel>
           <views:CopyableTextBlock Text="{Binding Trace.PageSummaryText, StringFormat='In this traced search: {0}'}" Classes="muted" TextWrapping="Wrap" AutomationProperties.Name="Try a Word summary" />
           <views:CopyableTextBlock Text="{Binding Trace.SearchStatusText}" Classes="status" TextWrapping="Wrap" IsVisible="{Binding !Trace.Result.Complete}" AutomationProperties.Name="Search completeness" />
           <views:CopyableTextBlock Text="{Binding TracedGrammarText}" Classes="muted" TextWrapping="Wrap" />
@@ -108,13 +107,13 @@
       </Border>
       <Border Classes="card" IsVisible="{Binding HasLastParseRefusal}" AutomationProperties.Name="Why it did not parse in the last parse">
         <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
-          <views:CopyableTextBlock Text="Why it did not parse in the last parse" FontWeight="SemiBold" />
+          <views:CopyableTextBlock Text="Why it did not parse in the last parse" FontWeight="{DynamicResource Intent.Weight.Section}" />
           <views:CopyableTextBlock Text="{Binding LastParseRefusalReason}" TextWrapping="Wrap" />
         </StackPanel>
       </Border>
       <Border Classes="card" IsVisible="{Binding Trace.HasResult}" AutomationProperties.Name="FieldWorks beside the parser">
         <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
-          <TextBlock Text="FieldWorks beside the parser" FontWeight="SemiBold" />
+          <TextBlock Text="FieldWorks beside the parser" FontWeight="{DynamicResource Intent.Weight.Section}" />
           <views:CopyableTextBlock Text="{Binding FieldWorksContextStatus}" Classes="muted" TextWrapping="Wrap" />
           <ItemsControl x:Name="TryWordPanelFieldWorksAnalysesItems" ItemsSource="{Binding FieldWorksAnalyses}" AutomationProperties.Name="Every stored FieldWorks analysis">
             <ItemsControl.ItemsPanel>
@@ -164,7 +163,8 @@
       <views:ExpertTracePanel DataContext="{Binding Trace}" IsVisible="{Binding ShowsExpertTrace}" />
       <Border Classes="card" IsVisible="{Binding Trace.ShowsPlainTrace}" AutomationProperties.Name="Recorded trace context">
         <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
-          <TextBlock Text="Recorded trace" FontSize="{DynamicResource Intent.Type.Section}" FontWeight="SemiBold" />
+          <TextBlock Text="Recorded trace" FontSize="{DynamicResource Intent.Type.Section}"
+                     FontWeight="{DynamicResource Intent.Weight.Section}" />
           <ListBox x:Name="TryWordPanelPlainStepsItems" ItemsSource="{Binding Trace.PlainSteps}" SelectedItem="{Binding Trace.PlainSelectedStep, Mode=TwoWay}"
                    AutomationProperties.Name="Plain trace steps">
             <ListBox.Template>
@@ -196,12 +196,13 @@
       </Border>
       <Border Classes="card bestPath" IsVisible="{Binding HasEarlierTiming}" AutomationProperties.Name="Time from an earlier parse">
         <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
-          <TextBlock Text="{Binding EarlierTimingTitle}" FontSize="{DynamicResource Intent.Type.Section}" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding EarlierTimingTitle}" FontSize="{DynamicResource Intent.Type.Section}"
+                     FontWeight="{DynamicResource Intent.Weight.Section}" />
           <views:CopyableTextBlock Classes="muted" Text="{Binding EarlierTimingSource}" TextWrapping="Wrap" />
           <Grid ColumnDefinitions="2*,*,*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
-            <TextBlock Classes="muted" Text="Measured object" FontWeight="SemiBold" />
-            <TextBlock Grid.Column="1" Classes="muted" Text="Time" FontWeight="SemiBold" TextAlignment="Right" />
-            <TextBlock Grid.Column="2" Classes="muted" Text="{Binding EarlierShareHeader}" FontWeight="SemiBold" TextAlignment="Right" IsVisible="{Binding HasEarlierShares}" />
+            <TextBlock Classes="muted" Text="Measured object" FontWeight="{DynamicResource Intent.Weight.Section}" />
+            <TextBlock Grid.Column="1" Classes="muted" Text="Time" FontWeight="{DynamicResource Intent.Weight.Section}" TextAlignment="Right" />
+            <TextBlock Grid.Column="2" Classes="muted" Text="{Binding EarlierShareHeader}" FontWeight="{DynamicResource Intent.Weight.Strong}" TextAlignment="Right" IsVisible="{Binding HasEarlierShares}" />
           </Grid>
           <ItemsControl x:Name="TryWordPanelEarlierRuleTimesItems" ItemsSource="{Binding EarlierRuleTimes}" AutomationProperties.Name="Earlier rule times">
             <ItemsControl.ItemsPanel>
@@ -211,7 +212,7 @@
               <DataTemplate x:DataType="vm:TryWordEarlierRuleTime">
                 <Border BorderBrush="{DynamicResource Intent.Border}" BorderThickness="{DynamicResource Intent.Stroke.DividerBottom}" Padding="{DynamicResource Component.TryWord.SmallInset}">
                   <Grid ColumnDefinitions="2*,*,*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
-                    <TextBlock Text="{Binding Rule}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Classes.muted="{Binding IsOtherTime}" ToolTip.Tip="{Binding KindTip}" />
+                    <TextBlock Text="{Binding Rule}" FontWeight="{DynamicResource Intent.Weight.Strong}" TextTrimming="CharacterEllipsis" Classes.muted="{Binding IsOtherTime}" ToolTip.Tip="{Binding KindTip}" />
                     <TextBlock Grid.Column="1" Text="{Binding TimeText}" TextAlignment="Right" />
                     <TextBlock Grid.Column="2" Classes="share" Text="{Binding ShareText}" TextAlignment="Right" />
                   </Grid>

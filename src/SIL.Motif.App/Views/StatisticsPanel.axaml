@@ -13,13 +13,13 @@
           IsVisible="{Binding Statistics.HasWordRows}">
       <Border Grid.Column="0" Classes="card">
         <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
-          <views:CopyableTextBlock Text="{Binding Statistics.IncompleteHeadline}" FontWeight="SemiBold" TextWrapping="Wrap" />
+          <views:CopyableTextBlock Text="{Binding Statistics.IncompleteHeadline}" FontWeight="{DynamicResource Intent.Weight.Section}" TextWrapping="Wrap" />
           <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding Statistics.IncompleteDetail}" />
         </StackPanel>
       </Border>
       <Border Grid.Column="1" Classes="card">
         <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
-          <views:CopyableTextBlock Text="{Binding Statistics.AnalysesHeadline}" FontWeight="SemiBold" TextWrapping="Wrap" />
+          <views:CopyableTextBlock Text="{Binding Statistics.AnalysesHeadline}" FontWeight="{DynamicResource Intent.Weight.Section}" TextWrapping="Wrap" />
           <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding Statistics.AnalysesDetail}" />
         </StackPanel>
       </Border>

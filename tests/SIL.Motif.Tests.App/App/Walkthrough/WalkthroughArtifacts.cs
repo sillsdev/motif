@@ -632,8 +632,9 @@ internal static class WalkthroughArtifacts
             var labelWidth = Math.Min(maximumLabelWidth, Math.Max(84, textWidth + horizontalPadding));
             var labelHeight = lines.Count == 1 ? 30 : 14 + lines.Count * lineHeight;
             var target = callout.Bounds;
-            var maximumX = canvasWidth - margin - labelWidth;
-            var maximumY = canvasHeight - margin - labelHeight;
+            // A close-up of a narrow control can be narrower than its label; the label then starts at the margin.
+            var maximumX = Math.Max(margin, canvasWidth - margin - labelWidth);
+            var maximumY = Math.Max(margin, canvasHeight - margin - labelHeight);
             var aboveY = target.Top - labelHeight - gap;
             var belowY = target.Bottom + gap;
             var positions = new List<Rect>
@@ -898,6 +899,16 @@ internal static class WalkthroughArtifacts
         WalkthroughCapture Capture, string Caption, byte[] AnnotatedPng, int Width, int Height,
         int AnnotatedWidth, int AnnotatedHeight);
 
+    private const int MinimumCropSide = 192;
+
+    private static (int Start, int End) Widen(int start, int end, int limit, int minimum)
+    {
+        if (end - start >= minimum) return (start, end);
+        end = Math.Min(limit, start + minimum);
+        start = Math.Max(0, end - minimum);
+        return (start, end);
+    }
+
     internal static WalkthroughCapture Crop(WalkthroughCapture capture, int padding)
     {
         if (padding is < 0 or > 256) throw new ArgumentOutOfRangeException(nameof(padding));
@@ -908,6 +919,9 @@ internal static class WalkthroughArtifacts
         var top = Math.Max(0, (int)Math.Floor(capture.Callouts.Min(callout => callout.Bounds.Y) - padding));
         var right = Math.Min(source.Width, (int)Math.Ceiling(capture.Callouts.Max(callout => callout.Bounds.Right) + padding));
         var bottom = Math.Min(source.Height, (int)Math.Ceiling(capture.Callouts.Max(callout => callout.Bounds.Bottom) + padding));
+        // A close-up of a narrow control, such as the page rail, still leaves room for its caption beside it.
+        (left, right) = Widen(left, right, source.Width, MinimumCropSide);
+        (top, bottom) = Widen(top, bottom, source.Height, MinimumCropSide);
         if (left >= source.Width || top >= source.Height || right <= left || bottom <= top)
             throw new InvalidDataException($"Walkthrough crop '{capture.Id}' lies outside its {source.Width}x{source.Height} frame: " +
                 $"left={left}, top={top}, right={right}, bottom={bottom}.");

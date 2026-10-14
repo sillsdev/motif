@@ -67,19 +67,22 @@ public sealed class WorkspacePageTests
         new(word, outcome, false, "Search completed", 10, null) { ProjectStanding = standing };
 
     [Fact]
-    public void TheSidebarListsEveryPageInOrderAndOpensOnOverview()
+    public void TheWorkspaceRegistersEveryPageInOrderAndOpensOnOverview()
     {
         var (_, _, workspace) = NewWorkspace();
 
         Assert.Equal(
             [WorkspacePage.Overview, WorkspacePage.Proposals, WorkspacePage.Texts, WorkspacePage.TryAWord,
                 WorkspacePage.Timing, WorkspacePage.Warnings, WorkspacePage.Parsimony, WorkspacePage.Review,
-                WorkspacePage.AiHandoff, WorkspacePage.AiAssistants],
+                WorkspacePage.AiHandoff, WorkspacePage.AiAssistants, WorkspacePage.Settings],
             workspace.Pages.Select(page => page.Page));
         Assert.Equal(
             ["Overview", "Proposals", "Texts", "Try a Word", "Timing", "Warnings", "Parsimony", "Review changes",
-                "AI Handoff", "AI assistants"],
+                "AI Handoff", "AI assistants", "Settings"],
             workspace.Pages.Select(page => page.Title));
+        Assert.DoesNotContain(workspace.VisiblePages, page => page.Page == WorkspacePage.Settings);
+        Assert.Equal(workspace.Pages.Where(page => page.IsAvailable && page.Page != WorkspacePage.Settings),
+            workspace.VisiblePages);
         Assert.Equal(WorkspacePage.Overview, workspace.CurrentPage);
         Assert.All(workspace.Pages, page => Assert.False(page.HasBadge));
     }

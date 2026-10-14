@@ -1,0 +1,64 @@
+<!--
+  The fixed status line: notices, Selection, pending changes, warnings and parse progress.
+  Colours come from Intent keys only; sizes and gaps from Intent keys or this file's own Component keys.
+-->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="clr-namespace:SIL.Motif.App.Views">
+  <Styles.Resources>
+    <StaticResource x:Key="Component.StatusBar.Height" ResourceKey="Primitive.Size.24" />
+    <StaticResource x:Key="Component.StatusBar.Padding" ResourceKey="Primitive.Inset.12_0_8_0" />
+    <StaticResource x:Key="Component.StatusBar.CompactWidth" ResourceKey="Primitive.Size.1100" />
+    <StaticResource x:Key="Component.StatusBar.ActionPadding" ResourceKey="Primitive.Inset.6_0_6_0" />
+    <StaticResource x:Key="Component.StatusBar.ActionHeight" ResourceKey="Primitive.Size.22" />
+    <StaticResource x:Key="Component.StatusBar.ProgressWidth" ResourceKey="Primitive.Size.60" />
+    <StaticResource x:Key="Component.StatusBar.ProgressTextWidth" ResourceKey="Primitive.Size.150" />
+    <StaticResource x:Key="Component.StatusBar.ProgressHeight" ResourceKey="Primitive.Size.4" />
+  </Styles.Resources>
+  <Style Selector="Border.statusBar">
+    <Setter Property="Height" Value="{DynamicResource Component.StatusBar.Height}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.StatusBar.Padding}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Neutral.Fill}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerTop}" />
+    <Setter Property="ClipToBounds" Value="True" />
+  </Style>
+  <Style Selector="Border.statusBar :is(Control)">
+    <Setter Property="views:ClearTipPlacement.IsEnabled" Value="True" />
+    <Setter Property="views:ClearTipPlacement.Anchor" Value="{ReflectionBinding $parent[Panel]}" />
+  </Style>
+  <Style Selector="Border.statusBar :is(TextBlock)">
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Status}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextSecondary}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="StackPanel.statusGroup">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Group}" />
+  </Style>
+  <Style Selector="Border.statusBar :is(Button)">
+    <Setter Property="Theme" Value="{DynamicResource BorderlessButton}" />
+    <Setter Property="Height" Value="{DynamicResource Component.StatusBar.ActionHeight}" />
+    <Setter Property="MinHeight" Value="{DynamicResource Component.StatusBar.ActionHeight}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.StatusBar.ActionPadding}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.None}" />
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Status}" />
+  </Style>
+  <Style Selector="Border.statusBar HyperlinkButton">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Accent}" />
+  </Style>
+  <Style Selector="Border.statusBar.compact :is(Control).statusFull">
+    <Setter Property="IsVisible" Value="False" />
+  </Style>
+  <Style Selector=":is(Control).statusCompact">
+    <Setter Property="IsVisible" Value="False" />
+  </Style>
+  <Style Selector="Border.statusBar.compact :is(Control).statusCompact">
+    <Setter Property="IsVisible" Value="True" />
+  </Style>
+  <Style Selector="ProgressBar.statusProgress">
+    <Setter Property="Width" Value="{DynamicResource Component.StatusBar.ProgressWidth}" />
+    <Setter Property="MinWidth" Value="{DynamicResource Component.StatusBar.ProgressWidth}" />
+    <Setter Property="Height" Value="{DynamicResource Component.StatusBar.ProgressHeight}" />
+  </Style>
+</Styles>

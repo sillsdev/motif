@@ -13,7 +13,7 @@
     <StaticResource x:Key="Component.Mark.GlyphSize" ResourceKey="Primitive.Size.14" />
     <StaticResource x:Key="Component.Mark.InlineGlyphSize" ResourceKey="Primitive.Size.8" />
     <StaticResource x:Key="Component.Mark.BodyGlyphSize" ResourceKey="Primitive.Size.9" />
-    <StaticResource x:Key="Component.Mark.GlyphRadius" ResourceKey="Primitive.Radius.7" />
+    <StaticResource x:Key="Component.Mark.GlyphRadius" ResourceKey="Intent.Radius.Control" />
     <StaticResource x:Key="Component.Mark.GlyphType" ResourceKey="Primitive.Type.9" />
     <StaticResource x:Key="Component.Mark.WarningIconSize" ResourceKey="Primitive.Size.10" />
   </Styles.Resources>

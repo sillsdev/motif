@@ -1,15 +1,17 @@
 <!--
-  The opening and smallest sizes of the main window, the diagnostic window and the error window, and the error window's inset.
+  Window bounds, pane headers and the single notice line around the working page.
   Colours come from Intent keys only; sizes and gaps from Intent keys or this file's own Component keys.
 -->
 <Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="clr-namespace:SIL.Motif.App.Views">
   <Styles.Resources>
     <StaticResource x:Key="Component.Shell.Width" ResourceKey="Primitive.Size.1240" />
     <StaticResource x:Key="Component.Shell.Height" ResourceKey="Primitive.Size.780" />
-    <StaticResource x:Key="Component.Shell.MinWidth" ResourceKey="Primitive.Size.820" />
+    <StaticResource x:Key="Component.Shell.MinWidth" ResourceKey="Primitive.Size.640" />
     <StaticResource x:Key="Component.Shell.MinHeight" ResourceKey="Primitive.Size.600" />
     <StaticResource x:Key="Component.Shell.ParseStoppedMaxHeight" ResourceKey="Primitive.Size.150" />
+    <StaticResource x:Key="Component.Shell.FooterMaxHeight" ResourceKey="Primitive.Size.240" />
     <StaticResource x:Key="Component.Shell.DiagnosticWidth" ResourceKey="Primitive.Size.1100" />
     <StaticResource x:Key="Component.Shell.DiagnosticHeight" ResourceKey="Primitive.Size.760" />
     <StaticResource x:Key="Component.Shell.DiagnosticMinWidth" ResourceKey="Primitive.Size.640" />
@@ -22,5 +24,81 @@
     <StaticResource x:Key="Component.Shell.CrashInset" ResourceKey="Primitive.Inset.16_16_16_16" />
     <StaticResource x:Key="Component.Shell.HelpWidth" ResourceKey="Primitive.Size.760" />
     <StaticResource x:Key="Component.Shell.HelpHeight" ResourceKey="Primitive.Size.600" />
+    <StaticResource x:Key="Component.Shell.SidePanelWidth" ResourceKey="Primitive.Size.248" />
+    <StaticResource x:Key="Component.Shell.WorkingPageMinWidth" ResourceKey="Primitive.Size.320" />
+    <StaticResource x:Key="Component.Shell.SidePanelCollapseWidth" ResourceKey="Primitive.Size.1200" />
+    <StaticResource x:Key="Component.Shell.InspectorCollapseWidth" ResourceKey="Primitive.Size.1000" />
+    <StaticResource x:Key="Component.Shell.PaneHeaderHeight" ResourceKey="Primitive.Size.28" />
+    <StaticResource x:Key="Component.Shell.PaneButtonSize" ResourceKey="Primitive.Size.22" />
+    <StaticResource x:Key="Component.Shell.PaneHeaderInset" ResourceKey="Primitive.Inset.12_0_4_0" />
+    <StaticResource x:Key="Component.Shell.InspectorStripWidth" ResourceKey="Primitive.Size.24" />
+    <StaticResource x:Key="Component.Shell.InspectorTipClearance" ResourceKey="Intent.Space.Section" />
   </Styles.Resources>
+  <Style Selector="Border.workspaceSidePanel, Border.workspaceInspector">
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface.Subtle}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerEnd}" />
+  </Style>
+  <Style Selector="Border.workspaceInspector">
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Component.Inspector.Edge}" />
+  </Style>
+  <Style Selector="Border.workspacePaneHeader">
+    <Setter Property="Height" Value="{DynamicResource Component.Shell.PaneHeaderHeight}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.Shell.PaneHeaderInset}" />
+  </Style>
+  <Style Selector=":is(TextBlock).workspacePaneLabel">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Caption}" />
+    <Setter Property="FontWeight" Value="{DynamicResource Intent.Weight.Section}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+  </Style>
+  <Style Selector="Button.workspacePaneButton">
+    <Setter Property="views:ClearTipPlacement.IsEnabled" Value="True" />
+    <Setter Property="Theme" Value="{DynamicResource BorderlessButton}" />
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+    <Setter Property="Height" Value="{DynamicResource Component.Shell.PaneButtonSize}" />
+    <Setter Property="MinHeight" Value="{DynamicResource Component.Shell.PaneButtonSize}" />
+    <Setter Property="MinWidth" Value="{DynamicResource Component.Shell.PaneButtonSize}" />
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Caption}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Button.workspacePaneButton:not(.focusedInspectorReturn)">
+    <Setter Property="Width" Value="{DynamicResource Component.Shell.PaneButtonSize}" />
+  </Style>
+  <Style Selector="Button.workspacePaneButton.focusedInspectorReturn">
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.Chip}" />
+  </Style>
+  <Style Selector="Button.workspaceSidePanelReveal">
+    <Setter Property="Theme" Value="{DynamicResource BorderlessButton}" />
+    <Setter Property="Height" Value="{DynamicResource Component.Shell.PaneHeaderHeight}" />
+    <Setter Property="MinHeight" Value="{DynamicResource Component.Shell.PaneHeaderHeight}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.Shell.PaneHeaderInset}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.None}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface.Subtle}" />
+  </Style>
+  <Style Selector="Button.workspaceInspectorStrip">
+    <Setter Property="views:ClearTipPlacement.IsEnabled" Value="True" />
+    <Setter Property="views:ClearTipPlacement.Anchor" Value="{ReflectionBinding $self.Content}" />
+    <Setter Property="views:ClearTipPlacement.Clearance" Value="{StaticResource Component.Shell.InspectorTipClearance}" />
+    <Setter Property="Theme" Value="{DynamicResource BorderlessButton}" />
+    <Setter Property="Width" Value="{DynamicResource Component.Shell.InspectorStripWidth}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.None}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface.Subtle}" />
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+    <Setter Property="VerticalContentAlignment" Value="Top" />
+  </Style>
+  <Style Selector=":is(TextBlock).workspaceEmpty">
+    <Setter Property="Margin" Value="{DynamicResource Intent.Inset.Page}" />
+  </Style>
+  <Style Selector="Border.workspaceNoticeBand">
+    <Setter Property="Height" Value="{DynamicResource Component.Shell.PaneHeaderHeight}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.Shell.PaneHeaderInset}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Warning.Fill}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerBottom}" />
+  </Style>
+  <Style Selector="Border.workspaceNoticeBand :is(TextBlock)">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Status}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Warning.Text}" />
+  </Style>
 </Styles>

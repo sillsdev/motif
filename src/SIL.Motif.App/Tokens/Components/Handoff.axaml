@@ -5,8 +5,8 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Styles.Resources>
-    <StaticResource x:Key="Component.Handoff.HeaderPadding" ResourceKey="Primitive.Inset.20_8_20_8" />
-    <StaticResource x:Key="Component.Handoff.PageMargin" ResourceKey="Primitive.Inset.24_16_24_20" />
+    <StaticResource x:Key="Component.Handoff.HeaderPadding" ResourceKey="Intent.Inset.Panel" />
+    <StaticResource x:Key="Component.Handoff.PageMargin" ResourceKey="Intent.Inset.Page" />
     <StaticResource x:Key="Component.Handoff.ColumnGap" ResourceKey="Primitive.Space.20" />
     <StaticResource x:Key="Component.Handoff.GuideWidth" ResourceKey="Primitive.Size.420" />
     <StaticResource x:Key="Component.Handoff.SectionGap" ResourceKey="Primitive.Space.14" />
@@ -23,12 +23,12 @@
     <StaticResource x:Key="Component.Handoff.FileEdge" ResourceKey="Primitive.Inset.0_1_0_0" />
     <StaticResource x:Key="Component.Handoff.KindMinWidth" ResourceKey="Primitive.Size.48" />
     <StaticResource x:Key="Component.Handoff.KindPadding" ResourceKey="Primitive.Inset.6_4_6_4" />
-    <StaticResource x:Key="Component.Handoff.FirstStepMargin" ResourceKey="Primitive.Inset.0_8_0_0" />
-    <StaticResource x:Key="Component.Handoff.StepMargin" ResourceKey="Primitive.Inset.0_10_0_0" />
-    <StaticResource x:Key="Component.Handoff.AskMargin" ResourceKey="Primitive.Inset.0_16_0_0" />
+    <StaticResource x:Key="Component.Handoff.FirstStepMargin" ResourceKey="Intent.Gap.BeforeGroup" />
+    <StaticResource x:Key="Component.Handoff.StepMargin" ResourceKey="Intent.Gap.BeforeRelated" />
+    <StaticResource x:Key="Component.Handoff.AskMargin" ResourceKey="Intent.Gap.BeforeGroup" />
     <StaticResource x:Key="Component.Handoff.QuestionInset" ResourceKey="Primitive.Inset.0_2_0_2" />
     <StaticResource x:Key="Component.Handoff.StepMarkSize" ResourceKey="Primitive.Size.24" />
-    <StaticResource x:Key="Component.Handoff.StepMarkRadius" ResourceKey="Primitive.Radius.12" />
+    <StaticResource x:Key="Component.Handoff.StepMarkRadius" ResourceKey="Intent.Radius.Control" />
   </Styles.Resources>
 
   <Style Selector="Border.handoffHeader">

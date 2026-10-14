@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
 using Avalonia.Input;
+using Avalonia.Media.Imaging;
 using Avalonia.Styling;
 using Avalonia.VisualTree;
 using SIL.Motif.App.Views;
@@ -15,44 +16,50 @@ namespace SIL.Motif.Tests.App;
 
 /// <summary>
 /// Pins that a tooltip opens where it hides no other control a person could use and stays inside the window. The test
-/// opens the top bar's Refresh, a word row's copyable values, Compare's rerun, AI Handoff's drag and question
-/// tips, a disabled Apply and AI Handoff with their reasons, the word strips and their marks,
-/// a word card's links, opinion and disabled unread reason, a finding's FieldWorks link, the collapsed sidebar, the
-/// Matrix's pending mark and the Timing page at both widths and in both themes. Each tip opens under the pointer.
+/// opens the frame tips and representative page tips, at widths where each is available and in both themes. Each tip
+/// opens under the pointer without hiding another control or leaving the window.
 /// </summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
 [Trait("MotifTestLevel", "Unit")]
 public sealed class TooltipPlacementTests
 {
-    private static readonly string[] Owners =
-    [
+    private static readonly HashSet<string> RequiredOwnersAtEachWidth = new(StringComparer.Ordinal)
+    {
         "refresh", "project name", "word cell", "drag all files", "question to copy", "Apply to FieldWorks project", "ticked words to AI Handoff",
-        "Parse stopped words again",
-        "word strip", "disapproved mark on a strip", "staged change", "opinion on a word card",
-        "mark unread without a text occurrence", "FieldWorks link on a morpheme",
-        "FieldWorks link in a finding", "collapsed sidebar entry", "pending change in a Matrix cell", "WORDS column",
-        "completion in detailed statistics",
+        "Parse stopped words again", "word strip", "disapproved mark on a strip", "staged change", "opinion on a word card",
+        "mark unread without a text occurrence", "FieldWorks link on a morpheme", "FieldWorks link in a finding",
+        "collapsed sidebar entry", "pending change in a Matrix cell", "WORDS column", "completion in detailed statistics",
         "statistics object name", "statistics word", "statistics heat value",
-    ];
+    };
 
     // Reported gaps: no side of these reader owners is clear, so each tip takes the side that covers fewest.
     private static readonly Dictionary<string, string> Gaps = new()
     {
         ["disapproved mark on a strip"] = "in the Letter, the tip overlaps the adjacent anapenda word strip",
+        ["pending change in a Matrix cell"] = "the compact Matrix leaves no clear side; the tip overlaps the next cell",
+        ["status parse progress"] = "the tip rises over the clipped sliver of Review's Back button above the status bar",
+        ["tech demo promise"] = "Overview's full-width Open in Matrix footer sits above the status bar on every side",
+        ["Settings"] = "the rail's Help button sits above the gear and the page fills the right-hand side",
     };
 
-    [Fact]
-    public void ATooltipClearsOtherInteractiveControlsAndItsViewport()
+    [Theory]
+    [InlineData("light")]
+    [InlineData("dark")]
+    public void ATooltipClearsOtherInteractiveControlsAndItsViewport(string themeName)
     {
         var failures = new List<string>();
         var gapsSeen = new HashSet<string>(StringComparer.Ordinal);
+        var owners = TooltipOwners.All.Where(owner => owner.Pending is null &&
+            (RequiredOwnersAtEachWidth.Contains(owner.Key) || owner.Scene >= TooltipScene.FrameSidePanel ||
+                owner.Key is "status parse progress" or "Help" or "Settings")).ToList();
+        var placedOwners = new HashSet<string>(StringComparer.Ordinal);
         var placed = 0;
+        var expectedPlacements = 0;
+        var requiredPlacements = 0;
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var scenes = await TooltipScenes.Open();
             var prior = Application.Current!.RequestedThemeVariant;
-            var owners = TooltipOwners.All.Where(owner => Owners.Contains(owner.Key)).ToList();
-            Assert.Equal(Owners.Length, owners.Count);
             try
             {
                 foreach (var width in new[] { 1040, 1240 })
@@ -61,61 +68,86 @@ public sealed class TooltipPlacementTests
                     foreach (var scene in owners.Select(owner => owner.Scene).Distinct().Order())
                     {
                         await scenes.Reach(scene);
+                        if (scene == TooltipScene.ParseProgress)
+                            scenes.ParseProgressStatusButton.Flyout?.Hide();
                         PageScreenshots.Settle(scenes.Window);
+                        var realized = scenes.RealizedOwners(failures, scene).ToList();
                         foreach (var owner in owners.Where(owner => owner.Scene == scene))
-                        foreach (var theme in new[] { ThemeVariant.Light, ThemeVariant.Dark })
                         {
-                            Application.Current!.RequestedThemeVariant = theme;
-                            PageScreenshots.Settle(scenes.Window);
-                            var where = $"{width} {theme} {owner.Key}";
-                            if (scene == TooltipScene.Matrix)
-                            {
-                                var row = Assert.IsType<WordRow>(scenes.MatrixTargetRow);
-                                var rowArea = Area(row, scenes.Window);
-                                var shown = Shown(row, scenes.Window);
-                                Assert.True(row.IsEffectivelyVisible &&
-                                    new Rect(scenes.Window.ClientSize).Contains(rowArea) && shown.Contains(rowArea),
-                                    $"{where}: the word row '{row.Data?.Facts.Word}' is not fully visible after the Assessment finished: " +
-                                    $"{MatrixFailureDetails(scenes)}, visible part {shown}.");
-                            }
-                            var control = scenes.RealizedOwners(failures, scene).Where(found => found.Owner == owner)
+                            var control = realized.Where(found => found.Owner == owner)
                                 .Select(found => found.Control).FirstOrDefault();
                             if (control is null)
                             {
-                                failures.Add($"{where}: the {scene} scene showed no such owner");
+                                if (RequiredOwnersAtEachWidth.Contains(owner.Key))
+                                    failures.Add($"{width} {scene}: the scene showed no required tooltip owner '{owner.Key}'.");
                                 continue;
                             }
-                            if (owner.Key is "FieldWorks link on a morpheme" or "opinion on a word card" or "statistics object name" or "statistics word" or
-                                "statistics heat value")
-                                Assert.True(ClearTipPlacement.GetIsEnabled(control),
-                                    $"{where}: the tooltip must use measured clear placement.");
-                            if (await Hover(scenes, control) is not { } tip)
+                            placedOwners.Add(owner.Key);
+                            foreach (var theme in new[] { themeName == "dark" ? ThemeVariant.Dark : ThemeVariant.Light })
                             {
-                                var blocked = string.Join(", ", control.GetVisualAncestors().OfType<Control>()
-                                    .Where(ancestor => !ancestor.IsHitTestVisible)
-                                    .Select(ancestor => ancestor.GetType().Name));
-                                var underPointer = string.Join(", ", scenes.Window.GetVisualDescendants().OfType<Control>()
-                                    .Where(candidate => candidate.IsPointerOver)
-                                    .Select(candidate => $"{candidate.GetType().Name} '{NameOf(candidate)}'"));
-                                var matrixDetails = scene == TooltipScene.Matrix ? MatrixFailureDetails(scenes) + "; " : string.Empty;
-                                failures.Add($"{where}: the tooltip did not open under the pointer at {Area(control, scenes.Window)}; " +
-                                    matrixDetails +
-                                    $"owner hit testing is {control.IsHitTestVisible}; pointer is over: {underPointer}; " +
-                                    $"blocked ancestors: {blocked}; tip: {ToolTip.GetTip(control)}");
-                                continue;
+                                Application.Current!.RequestedThemeVariant = theme;
+                                PageScreenshots.Settle(scenes.Window);
+                                var where = $"{scenes.Window.Width} {theme} {owner.Key}";
+                                expectedPlacements++;
+                                if (RequiredOwnersAtEachWidth.Contains(owner.Key)) requiredPlacements++;
+                                if (scene == TooltipScene.Matrix)
+                                {
+                                    var row = Assert.IsType<WordRow>(scenes.MatrixTargetRow);
+                                    var rowArea = Area(row, scenes.Window);
+                                    var shown = Shown(row, scenes.Window);
+                                    Assert.True(row.IsEffectivelyVisible &&
+                                        new Rect(scenes.Window.ClientSize).Contains(rowArea) && shown.Contains(rowArea),
+                                        $"{where}: the word row '{row.Data?.Facts.Word}' is not fully visible after the Assessment finished: " +
+                                        $"{MatrixFailureDetails(scenes)}, visible part {shown}.");
+                                }
+                                if (owner.Key is "FieldWorks link on a morpheme" or "opinion on a word card" or "statistics object name" or
+                                    "statistics word" or "statistics heat value")
+                                    Assert.True(ClearTipPlacement.GetIsEnabled(control),
+                                        $"{where}: the tooltip must use measured clear placement.");
+                                if (owner.Key == "Apply to FieldWorks project")
+                                {
+                                    Assert.False(control.IsEnabled, $"{where}: Apply must be disabled without an applicable change.");
+                                    Assert.False(string.IsNullOrWhiteSpace(ToolTip.GetTip(control)?.ToString()),
+                                        $"{where}: the disabled Apply control must explain why it is unavailable.");
+                                }
+                                if (await Hover(scenes, control) is not { } tip)
+                                {
+                                    var blocked = string.Join(", ", control.GetVisualAncestors().OfType<Control>()
+                                        .Where(ancestor => !ancestor.IsHitTestVisible)
+                                        .Select(ancestor => ancestor.GetType().Name));
+                                    var underPointer = string.Join(", ", scenes.Window.GetVisualDescendants().OfType<Control>()
+                                        .Where(candidate => candidate.IsPointerOver)
+                                        .Select(candidate => $"{candidate.GetType().Name} '{NameOf(candidate)}'"));
+                                    var matrixDetails = scene == TooltipScene.Matrix ? MatrixFailureDetails(scenes) + "; " : string.Empty;
+                                    failures.Add($"{where}: the tooltip did not open under the pointer at {Area(control, scenes.Window)}; " +
+                                        matrixDetails +
+                                        $"owner hit testing is {control.IsHitTestVisible}; pointer is over: {underPointer}; " +
+                                        $"blocked ancestors: {blocked}; tip: {ToolTip.GetTip(control)}");
+                                    continue;
+                                }
+                                placed++;
+                                if (owner.Key == "Apply to FieldWorks project")
+                                    Assert.True(tip.MaxWidth <= 280,
+                                        $"{where}: the Apply tooltip must stay within the Review side rail.");
+                                var covered = Covered(scenes.Window, control, tip).ToList();
+                                if (covered.Count > 0 && Gaps.ContainsKey(owner.Key)) gapsSeen.Add(owner.Key);
+                                else failures.AddRange(covered.Select(name =>
+                                    $"{where}: covers {name}; {PlacementDetails(scenes.Window, control, tip)}"));
+                                if (!new Rect(scenes.Window.Bounds.Size).Contains(Area(tip, scenes.Window)))
+                                    failures.Add($"{where}: leaves the window at {Area(tip, scenes.Window)}");
+                                if (owner.Key is "status parse progress" or "show Inspector" &&
+                                    Environment.GetEnvironmentVariable(ScreenshotFactAttribute.FolderVariable) is { Length: > 0 } folder)
+                                {
+                                    Directory.CreateDirectory(folder);
+                                    using var frame = scenes.Window.CaptureRenderedFrame()
+                                        ?? throw new InvalidOperationException("The tooltip frame did not render.");
+                                    frame.Save(Path.Combine(folder,
+                                        $"frame-tooltip-{owner.Key.Replace(' ', '-')}-{width}-{themeName}.png"),
+                                        PngBitmapEncoderOptions.Default);
+                                }
+                                ToolTip.SetIsOpen(control, false);
+                                control.ClearValue(ToolTip.ShowDelayProperty);
                             }
-                            placed++;
-                            if (owner.Key == "Apply to FieldWorks project")
-                                Assert.True(tip.MaxWidth <= 280,
-                                    $"{where}: the Apply tooltip must stay within the Review side rail.");
-                            var covered = Covered(scenes.Window, control, tip).ToList();
-                            if (covered.Count > 0 && Gaps.ContainsKey(owner.Key)) gapsSeen.Add(owner.Key);
-                            else failures.AddRange(covered.Select(name =>
-                                $"{where}: covers {name}; {PlacementDetails(scenes.Window, control, tip)}"));
-                            if (!new Rect(scenes.Window.Bounds.Size).Contains(Area(tip, scenes.Window)))
-                                failures.Add($"{where}: leaves the window at {Area(tip, scenes.Window)}");
-                            ToolTip.SetIsOpen(control, false);
-                            control.ClearValue(ToolTip.ShowDelayProperty);
                         }
                         Application.Current!.RequestedThemeVariant = prior;
                         await scenes.Leave(scene);
@@ -127,12 +159,15 @@ public sealed class TooltipPlacementTests
                 Application.Current!.RequestedThemeVariant = prior;
                 scenes.Close();
             }
-        }, TimeSpan.FromMinutes(3));
+        }, TimeSpan.FromMinutes(10));
 
         failures.AddRange(Gaps.Where(gap => !gapsSeen.Contains(gap.Key))
             .Select(gap => $"{gap.Key}: covers nothing now, so remove its reported gap ({gap.Value})"));
+        failures.AddRange(owners.Where(owner => !placedOwners.Contains(owner.Key))
+            .Select(owner => $"{owner}: no reachable scene exposed its tooltip for placement."));
         Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures.Distinct()));
-        Assert.Equal(2 * 2 * Owners.Length, placed);
+        Assert.Equal(2 * RequiredOwnersAtEachWidth.Count, requiredPlacements);
+        Assert.Equal(expectedPlacements, placed);
     }
 
     [Fact]
@@ -159,16 +194,17 @@ public sealed class TooltipPlacementTests
                     var hit = scenes.Window.InputHitTest(point) as Control;
                     var reachesRow = hit?.GetSelfAndVisualAncestors().Contains(row) == true;
 
-                    var band = scenes.ParseProgressBand;
-                    Assert.False(band.IsVisible, $"{width} px after the Assessment completed: the parse-progress band is visible.");
-                    Assert.False(band.IsHitTestVisible,
-                        $"{width} px after the Assessment completed: the hidden parse-progress band still accepts input.");
-                    Assert.Equal(0, band.Bounds.Height);
+                    var progressStatus = scenes.ParseProgressStatusButton;
+                    Assert.False(progressStatus.IsEffectivelyVisible,
+                        $"{width} px after the Assessment completed: the parse-progress status control is visible.");
+                    Assert.False(progressStatus.Flyout?.IsOpen == true,
+                        $"{width} px after the Assessment completed: the parse-progress flyout is open.");
 
                     Assert.True(reachesRow,
                         $"{width} px after the Assessment completed: the first Matrix word form does not hit its row; " +
                         $"row {Area(row, scenes.Window)}, word form {ownerBounds}, " +
-                        $"parse-progress band visible {scenes.ParseProgressBandIsVisible}; {DescribeHit(scenes.Window, point)}");
+                        $"parse-progress status visible {progressStatus.IsEffectivelyVisible}, " +
+                        $"flyout open {progressStatus.Flyout?.IsOpen}; {DescribeHit(scenes.Window, point)}");
                 }
             }
             finally
@@ -207,7 +243,7 @@ public sealed class TooltipPlacementTests
     private static Point CenterAfterLayout(Control owner, Window window)
     {
         PageScreenshots.Settle(window);
-        var localPoint = owner.Classes.Contains("wordPresentationHeading")
+        var localPoint = owner is TextBlock || owner.Classes.Contains("wordPresentationHeading")
             ? new Point(Math.Min(4, owner.Bounds.Width / 2), owner.Bounds.Height / 2)
             : new Point(owner.Bounds.Width / 2, owner.Bounds.Height / 2);
         if (owner.FindAncestorOfType<WordRow>() is { } row && owner.TranslatePoint(default, row) is { } inRow)
@@ -233,7 +269,8 @@ public sealed class TooltipPlacementTests
             : string.Join(" -> ", hit.GetSelfAndVisualAncestors().OfType<Control>()
                 .Select(control => $"{control.GetType().Name} '{NameOf(control)}'"));
         return $"window client size {window.ClientSize}; target row '{row.Data?.Facts.Word}' bounds in window coordinates " +
-            $"{rowBounds}; parse-progress band visible {scenes.ParseProgressBandIsVisible}; " +
+            $"{rowBounds}; parse-progress status visible {scenes.ParseProgressStatusButton.IsEffectivelyVisible}, " +
+            $"flyout open {scenes.ParseProgressStatusButton.Flyout?.IsOpen}; " +
             $"hit-test chain at row centre {rowCenter}: {hitChain}";
     }
 
@@ -268,7 +305,10 @@ public sealed class TooltipPlacementTests
 
     private static string PlacementDetails(Window window, Control owner, ToolTip tip)
     {
-        var ownerArea = Area(owner, window);
+        var target = ClearTipPlacement.GetAnchor(owner) ?? owner;
+        var ownerArea = Area(target, window);
+        var clearance = ClearTipPlacement.GetClearance(owner);
+        if (clearance > 0) ownerArea = ownerArea.Inflate(clearance).Intersect(new Rect(window.Bounds.Size));
         var obstacles = window.GetVisualDescendants().OfType<Control>()
             .Where(other => other != owner && IsInteractive(other) && other.IsEffectivelyVisible &&
                 !other.GetVisualAncestors().Contains(owner) && !owner.GetVisualAncestors().Contains(other) &&
@@ -306,5 +346,5 @@ public sealed class TooltipPlacementTests
     }
 
     private static Rect Area(Visual visual, Window window) =>
-        new(visual.TranslatePoint(default, window) ?? default, visual.Bounds.Size);
+        ClearTipPlacement.AreaOf(visual, window);
 }

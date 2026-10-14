@@ -5,11 +5,11 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Styles.Resources>
-    <StaticResource x:Key="Component.Overview.PageMargin" ResourceKey="Primitive.Inset.16_16_16_16" />
-    <StaticResource x:Key="Component.Overview.HeaderPadding" ResourceKey="Primitive.Inset.16_16_16_16" />
-    <StaticResource x:Key="Component.Overview.TilePadding" ResourceKey="Primitive.Inset.16_16_16_16" />
-    <StaticResource x:Key="Component.Overview.HandoffPadding" ResourceKey="Primitive.Inset.12_4_12_4" />
-    <StaticResource x:Key="Component.Overview.CardRadius" ResourceKey="Primitive.Radius.12" />
+    <StaticResource x:Key="Component.Overview.PageMargin" ResourceKey="Intent.Inset.Page" />
+    <StaticResource x:Key="Component.Overview.HeaderPadding" ResourceKey="Intent.Inset.Panel" />
+    <StaticResource x:Key="Component.Overview.TilePadding" ResourceKey="Intent.Inset.Panel" />
+    <StaticResource x:Key="Component.Overview.HandoffPadding" ResourceKey="Intent.Inset.Row" />
+    <StaticResource x:Key="Component.Overview.CardRadius" ResourceKey="Intent.Radius.None" />
     <StaticResource x:Key="Component.Overview.HandoffGap" ResourceKey="Primitive.Space.12" />
     <StaticResource x:Key="Component.Overview.CountMargin" ResourceKey="Primitive.Inset.0_8_0_8" />
     <StaticResource x:Key="Component.Overview.HistoryEntryPadding" ResourceKey="Primitive.Inset.0_8_0_8" />
@@ -61,7 +61,7 @@
   </Style>
   <Style Selector=":is(TextBlock).overviewCountValue">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Section}" />
-    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="FontWeight" Value="{DynamicResource Intent.Weight.Section}" />
   </Style>
   <Style Selector=":is(TextBlock).overviewProjectName">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Title}" />

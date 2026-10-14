@@ -23,7 +23,7 @@ public sealed class SizeMatrixReachabilityTests
             try
             {
                 Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
-                var sizesToInspect = new[] { ("thin", 100), ("short", 100), ("half", 150) };
+                var sizesToInspect = new[] { ("thin", 100), ("thin", 150), ("short", 100), ("half", 150) };
                 var selection = new MatrixCaptureSelection(
                     PageScreenshots.Views().Select(view => view.Name).ToHashSet(StringComparer.Ordinal),
                     sizesToInspect.Select(point => new MatrixSelectionPoint(point.Item1, point.Item2, "light")).ToArray(),

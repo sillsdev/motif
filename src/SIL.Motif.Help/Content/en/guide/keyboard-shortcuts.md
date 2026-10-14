@@ -111,6 +111,12 @@ Inside text inputs, Ctrl+C/X/V and Ctrl+Z/Y use the control's own copy, cut, pas
 | ↑ | ↑ | ↑ | Diagnostic tree | Move to the previous diagnostic item |
 | ↓ | ↓ | ↓ | Diagnostic tree | Move to the next diagnostic item |
 
+## Pages rail
+
+| Key | Windows / Linux | macOS | Page or scope | Action |
+| --- | --- | --- | --- | --- |
+| Enter or Space | Enter or Space | Enter or Space | Pages rail | Show or hide the side panel |
+
 ## Window
 
 | Key | Windows / Linux | macOS | Page or scope | Action |
@@ -130,9 +136,9 @@ Inside text inputs, Ctrl+C/X/V and Ctrl+Z/Y use the control's own copy, cut, pas
 
 | Key | Windows / Linux | macOS | Page or scope | Action |
 | --- | --- | --- | --- | --- |
-| Escape | Esc | Esc | Settings | Close Settings |
+| Escape | Esc | Esc | Settings | Return from Settings |
 | Enter | Enter | Enter | Settings | Save parsing limits |
 | Escape | Esc | Esc | Settings | Cancel parsing limit edits |
 | ← or → | ← or → | ← or → | Settings | Move between theme choices |
-| Tab | Shift+Tab | Shift+Tab | Settings | Move focus to Close |
+| Tab | Shift+Tab | Shift+Tab | Settings | Move focus to Back |
 | Tab | Tab | Tab | Settings | Move focus to Settings groups |

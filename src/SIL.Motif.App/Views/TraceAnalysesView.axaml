@@ -10,7 +10,8 @@
   <!-- A word that parses leads with its analyses, each once, before anything the parser dropped. -->
   <StackPanel Spacing="{DynamicResource Intent.Space.Snug}" IsVisible="{Binding HasAnalyses}"
               AutomationProperties.Name="Analyses">
-    <views:CopyableTextBlock Text="{Binding AnalysesHeading}" FontSize="{DynamicResource Intent.Type.Section}" FontWeight="SemiBold" />
+    <views:CopyableTextBlock Text="{Binding AnalysesHeading}" FontSize="{DynamicResource Intent.Type.Section}"
+                             FontWeight="{DynamicResource Intent.Weight.Section}" />
     <ItemsControl x:Name="TraceAnalysesViewAnalysesItems" ItemsSource="{Binding Analyses}" AutomationProperties.Name="Recorded analyses">
       <ItemsControl.ItemsPanel>
         <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
@@ -20,7 +21,7 @@
           <Border Classes="card" Margin="{DynamicResource Component.TryWord.SmallBottomInset}">
             <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
               <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
-                <views:CopyableTextBlock Text="{Binding Label}" FontWeight="SemiBold" />
+                <views:CopyableTextBlock Text="{Binding Label}" FontWeight="{DynamicResource Intent.Weight.Section}" />
                 <views:CopyableTextBlock Grid.Column="1" Text="{Binding Surface}" ToolTip.Tip="{Binding LegacyMorphemesTip}" />
                 <views:CopyableTextBlock Grid.Column="2" Classes="muted" Text="{Binding RecordedCountText}"
                                          IsVisible="{Binding HasRepeatedRecords}"
@@ -41,10 +42,10 @@
                     <Border Classes="card" Margin="{DynamicResource Intent.Gap.AfterRelated}">
                       <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
                         <views:InspectLink Subject="{Binding InspectSubject}" Captured="{Binding Captured}" IsVisible="{Binding CanInspect}">
-                          <controls:WritingSystemTextBlock Text="{Binding Form}" FontWeight="SemiBold"
+                          <controls:WritingSystemTextBlock Text="{Binding Form}" FontWeight="{DynamicResource Intent.Weight.Strong}"
                                      controls:WritingSystemText.Id="{Binding FormWritingSystem}" controls:WritingSystemText.StyleName="Normal" />
                         </views:InspectLink>
-                        <views:CopyableTextBlock Text="{Binding Form}" FontWeight="SemiBold" IsVisible="{Binding CannotInspect}"
+                        <views:CopyableTextBlock Text="{Binding Form}" FontWeight="{DynamicResource Intent.Weight.Strong}" IsVisible="{Binding CannotInspect}"
                                                  controls:WritingSystemText.Id="{Binding FormWritingSystem}" controls:WritingSystemText.StyleName="Normal" />
                         <views:CopyableTextBlock Text="{Binding Headword}" Classes="muted"
                                                  controls:WritingSystemText.Id="{Binding HeadwordWritingSystem}" controls:WritingSystemText.StyleName="Normal" />

@@ -20,6 +20,7 @@ internal enum KeyboardShortcutScope
     MiniMatrix,
     Morpheme,
     DiagnosticTree,
+    NavigationRail,
 }
 
 internal enum KeyboardShortcutBehavior
@@ -68,6 +69,7 @@ internal enum KeyboardShortcutBehavior
     NextEntry,
     KeepEntry,
     UndoEntry,
+    ToggleSidePanel,
 }
 
 public sealed record KeyboardShortcutEntry(string Key, string Gesture, string Scope, string Action);
@@ -257,6 +259,7 @@ public static class KeyboardShortcutRegistry
         ShortcutScope.DiagnosticTree => KeyboardShortcutScope.DiagnosticTree,
         ShortcutScope.MiniMatrix => KeyboardShortcutScope.MiniMatrix,
         ShortcutScope.Morpheme => KeyboardShortcutScope.Morpheme,
+        ShortcutScope.NavigationRail => KeyboardShortcutScope.NavigationRail,
         _ => throw new InvalidOperationException($"Shortcut scope '{scope}' has no App route."),
     };
 

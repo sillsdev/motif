@@ -9,26 +9,10 @@
     <Border BorderBrush="{DynamicResource Intent.Border}" BorderThickness="{DynamicResource Intent.Stroke.DividerBottom}"
             Padding="{DynamicResource Intent.Inset.None}">
       <StackPanel>
-        <DockPanel>
-          <Button DockPanel.Dock="Right" Classes="pendingStrip" Margin="{DynamicResource Intent.Gap.AfterGroup}" VerticalAlignment="Center"
-                IsVisible="{Binding Changes.HasItems}"
-                Command="{Binding ShowPageCommand}" CommandParameter="{x:Static vm:WorkspacePage.Review}"
-                AutomationProperties.Name="Review the changes not applied yet"
-                AutomationProperties.AutomationId="{x:Static app:AutomationIds.ReviewChanges}">
-            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Snug}">
-              <Ellipse Width="{DynamicResource Component.MatrixCell.MarkerSize}"
-                     Height="{DynamicResource Component.MatrixCell.MarkerSize}"
-                     Fill="{DynamicResource Intent.Warning.Text}" VerticalAlignment="Center" />
-              <TextBlock Text="{Binding Changes.CountText}" FontWeight="SemiBold" VerticalAlignment="Center" />
-              <TextBlock Text="&#183; Review changes" Foreground="{DynamicResource Intent.Accent}" VerticalAlignment="Center" />
-            </StackPanel>
-          </Button>
-          <Button DockPanel.Dock="Right" Content="Parse all words" Command="{Binding Assess.RunCommand}"
-                VerticalAlignment="Center" Margin="{DynamicResource Intent.Gap.AfterGroup}"
-                IsVisible="{Binding !Context.NeedsAssessment}"
-                AutomationProperties.Name="Parse all words in the Selection"
-                AutomationProperties.AutomationId="{x:Static app:AutomationIds.RunAssessment}" />
-          <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
+        <Grid x:Name="TextsPageHeader" RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto"
+              ColumnSpacing="{DynamicResource Intent.Space.Related}"
+              RowSpacing="{DynamicResource Intent.Space.Compact}">
+          <WrapPanel x:Name="TextsHeaderTabs">
             <Button Content="Matrix" Classes="tab" Classes.active="{Binding ShowMatrix}"
                   Theme="{DynamicResource BorderlessButton}" Command="{Binding ShowTabCommand}"
                   CommandParameter="{x:Static vm:TextsTab.Matrix}" AutomationProperties.Name="Matrix tab" />
@@ -42,9 +26,32 @@
             <Button Content="What changed" Classes="tab" Classes.active="{Binding ShowWhatChanged}"
                   Theme="{DynamicResource BorderlessButton}" Command="{Binding ShowTabCommand}"
                   CommandParameter="{x:Static vm:TextsTab.WhatChanged}" AutomationProperties.Name="What changed tab" />
+          </WrapPanel>
+          <StackPanel x:Name="TextsHeaderActions" Grid.Column="1" Orientation="Horizontal"
+                      HorizontalAlignment="Right">
+            <Button Classes="pendingStrip" Margin="{DynamicResource Intent.Gap.AfterGroup}"
+                    VerticalAlignment="Center" IsVisible="{Binding Changes.HasItems}"
+                    Command="{Binding ShowPageCommand}" CommandParameter="{x:Static vm:WorkspacePage.Review}"
+                    AutomationProperties.Name="Review the changes not applied yet"
+                    AutomationProperties.AutomationId="{x:Static app:AutomationIds.ReviewChanges}">
+              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Snug}">
+                <Ellipse Width="{DynamicResource Component.MatrixCell.MarkerSize}"
+                         Height="{DynamicResource Component.MatrixCell.MarkerSize}"
+                         Fill="{DynamicResource Intent.Warning.Text}" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding Changes.CountText}" FontWeight="{DynamicResource Intent.Weight.Strong}"
+                           VerticalAlignment="Center" />
+                <TextBlock Text="&#183; Review changes" Foreground="{DynamicResource Intent.Accent}"
+                           VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+            <Button Content="Parse all words" Command="{Binding Assess.RunCommand}"
+                    VerticalAlignment="Center" Margin="{DynamicResource Intent.Gap.AfterGroup}"
+                    IsVisible="{Binding !Context.NeedsAssessment}"
+                    AutomationProperties.Name="Parse all words in the Selection"
+                    AutomationProperties.AutomationId="{x:Static app:AutomationIds.RunAssessment}" />
           </StackPanel>
-        </DockPanel>
-        <!-- The top bar carries the run's one progress bar and Cancel; this line says what the page still shows. -->
+        </Grid>
+        <!-- The status bar carries the run's one progress bar and Cancel; this line says what the page still shows. -->
         <ScrollViewer x:Name="TextsParseStatusScroll" IsVisible="{Binding ShowAssessStatus}"
                       MaxHeight="{DynamicResource Component.TextsPage.AssessmentStatusMaxHeight}"
                       HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"

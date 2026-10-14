@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Styles.Resources>
     <StaticResource x:Key="Component.Selection.CountMargin" ResourceKey="Primitive.Inset.0_0_0_2" />
-    <StaticResource x:Key="Component.Selection.ChipPadding" ResourceKey="Primitive.Inset.12_4_12_4" />
+    <StaticResource x:Key="Component.Selection.ChipPadding" ResourceKey="Intent.Inset.Row" />
   </Styles.Resources>
   <Style Selector=":is(TextBlock).columnHeader">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />

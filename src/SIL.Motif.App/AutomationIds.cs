@@ -91,8 +91,7 @@ public static class AutomationIds
     /// <summary>The "words in Selection" caption under the Overview's first count.</summary>
     public const string OverviewSelectionLabel = "motif-overview-selection-label";
 
-    /// <summary>The Settings pop-up's presenter and the project menu's, which carry no content of their own to name.</summary>
-    public const string SettingsFlyout = "motif-settings-flyout";
+    /// <summary>The project menu presenter, which carries no content of its own to name.</summary>
     public const string ProjectMenuFlyout = "motif-project-menu-flyout";
 
     /// <summary>The Analyze texts reader's Read menu button.</summary>
@@ -211,6 +210,7 @@ public static class AutomationIds
         WorkspacePage.Review => "motif-page-review",
         WorkspacePage.AiHandoff => "motif-page-ai-handoff",
         WorkspacePage.AiAssistants => "motif-page-ai-assistants",
+        WorkspacePage.Settings => "motif-page-settings",
         _ => throw new ArgumentOutOfRangeException(nameof(page), page, "Unknown workspace page."),
     };
 

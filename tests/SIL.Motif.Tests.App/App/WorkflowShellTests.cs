@@ -234,10 +234,10 @@ public sealed class WorkflowShellTests
                 window.UpdateLayout();
 
                 var sidebar = window.FindControl<Border>("Sidebar")!;
-                Assert.False(workspace.IsSidebarCollapsed);
-                Assert.Equal(204, sidebar.Bounds.Width);
-                Assert.All(SidebarEntries(window), entry => Assert.True(Label(entry).IsEffectivelyVisible));
-                Assert.All(SidebarEntries(window), entry => Assert.Null(ToolTip.GetTip(entry)));
+                Assert.True(workspace.IsSidebarCollapsed);
+                Assert.Equal(44, sidebar.Bounds.Width);
+                Assert.All(SidebarEntries(window), entry => Assert.False(Label(entry).IsEffectivelyVisible));
+                Assert.Equal(workspace.Pages.Select(page => (object)page.Title), SidebarEntries(window).Select(entry => ToolTip.GetTip(entry)));
 
                 window.Width = 900;
                 window.UpdateLayout();
@@ -245,7 +245,7 @@ public sealed class WorkflowShellTests
                 window.UpdateLayout();
 
                 Assert.True(workspace.IsSidebarCollapsed);
-                Assert.Equal(52, sidebar.Bounds.Width);
+                Assert.Equal(44, sidebar.Bounds.Width);
                 var entries = SidebarEntries(window);
                 Assert.All(entries, entry => Assert.False(Label(entry).IsEffectivelyVisible));
                 Assert.Equal(workspace.Pages.Select(page => (object)page.Title), entries.Select(entry => ToolTip.GetTip(entry)));
@@ -272,11 +272,11 @@ public sealed class WorkflowShellTests
             try
             {
                 window.Show();
-                Assert.Equal((1240d, 780d, 820d, 600d), (window.Width, window.Height, window.MinWidth, window.MinHeight));
+                Assert.Equal((1240d, 780d, 640d, 600d), (window.Width, window.Height, window.MinWidth, window.MinHeight));
                 var topBar = window.GetLogicalDescendants().OfType<Border>().Single(border => border.Classes.Contains("topBar"));
                 var chromePadding = OperatingSystem.IsWindows() ? new Thickness(18, 0, 138, 0)
                     : OperatingSystem.IsMacOS() ? new Thickness(76, 0, 18, 0)
-                    : new Thickness(18, 0, 18, 0);
+                    : new Thickness(12, 0, 8, 0);
                 Assert.Equal(chromePadding, topBar.Padding);
 
                 var menuButton = window.FindControl<Button>("ProjectMenuButton")!;
@@ -284,7 +284,7 @@ public sealed class WorkflowShellTests
                 flyout.ShowAt(menuButton);
                 Avalonia.Threading.Dispatcher.UIThread.RunJobs();
                 var texts = Assert.IsAssignableFrom<Panel>(flyout.Content).GetLogicalDescendants().OfType<TextBlock>().ToList();
-                Assert.All(texts.Where(text => text.Classes.Contains("menuTitle")), text => Assert.Equal(13.5, text.FontSize));
+                Assert.All(texts.Where(text => text.Classes.Contains("menuTitle")), text => Assert.Equal(13d, text.FontSize));
                 Assert.True(Application.Current!.TryGetResource("SemiColorText2", window.ActualThemeVariant, out var muted));
                 Assert.All(texts.Where(text => text.Classes.Contains("menuDetail")), text => Assert.Same(muted, text.Foreground));
                 flyout.Hide();

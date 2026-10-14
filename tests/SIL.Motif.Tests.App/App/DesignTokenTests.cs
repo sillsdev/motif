@@ -4,6 +4,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Styling;
+using Avalonia.Threading;
 using SIL.Motif.App;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.Views;
@@ -146,6 +147,144 @@ public sealed class DesignTokenTests
             Assert.True(Application.Current!.TryGetResource("SemiSpacingExtraTight", null, out var theirs));
             Assert.Equal(theirs, ours);
         });
+    }
+
+    [Fact]
+    public void CompactScaleUsesTheSpecifiedSpacingInsetsRadiiAndTypeSizes()
+    {
+        _avalonia.Invoke(() =>
+        {
+            foreach (var (key, value) in new[]
+            {
+                ("Intent.Space.Minimal", 2d),
+                ("Intent.Space.Compact", 4d),
+                ("Intent.Space.Snug", 4d),
+                ("Intent.Space.Related", 6d),
+                ("Intent.Space.Group", 8d),
+                ("Intent.Space.Section", 12d),
+                ("Intent.Type.Title", 16d),
+                ("Intent.Type.Section", 13d),
+                ("Intent.Type.Body", 13d),
+                ("Intent.Type.Navigation", 13d),
+                ("Intent.Type.Status", 12d),
+                ("Intent.Type.Small", 12d),
+                ("Intent.Type.Caption", 11d),
+                ("Intent.Type.Label", 11d),
+                ("Intent.Type.Dense", 10.5d),
+                ("Intent.Type.Micro", 10.5d),
+            })
+            {
+                Assert.True(Application.Current!.TryGetResource(key, null, out var resource), $"{key} is missing.");
+                Assert.Equal(value, Assert.IsType<double>(resource));
+            }
+
+            Assert.True(Application.Current!.TryGetResource("Intent.Inset.Page", null, out var page));
+            Assert.Equal(new Thickness(8), Assert.IsType<Thickness>(page));
+            Assert.True(Application.Current.TryGetResource("Intent.Inset.Panel", null, out var panel));
+            Assert.Equal(new Thickness(8), Assert.IsType<Thickness>(panel));
+            Assert.True(Application.Current.TryGetResource("Intent.Inset.Row", null, out var row));
+            Assert.Equal(new Thickness(6, 4, 6, 4), Assert.IsType<Thickness>(row));
+            Assert.True(Application.Current.TryGetResource("Intent.Inset.Chip", null, out var chip));
+            Assert.Equal(new Thickness(6, 2, 6, 2), Assert.IsType<Thickness>(chip));
+            Assert.True(Application.Current.TryGetResource("Intent.Inset.Notice", null, out var notice));
+            Assert.Equal(new Thickness(6, 4, 6, 4), Assert.IsType<Thickness>(notice));
+            Assert.True(Application.Current.TryGetResource("Intent.Inset.Tooltip", null, out var tooltip));
+            Assert.Equal(new Thickness(8, 4, 8, 4), Assert.IsType<Thickness>(tooltip));
+            Assert.False(Application.Current.TryGetResource("Intent.Inset.Footer", null, out _));
+            Assert.True(Application.Current.TryGetResource("Component.StatusBar.Padding", null, out var footer));
+            Assert.Equal(new Thickness(12, 0, 8, 0), Assert.IsType<Thickness>(footer));
+            Assert.True(Application.Current.TryGetResource("Intent.Radius.Control", null, out var radius));
+            Assert.Equal(new CornerRadius(3), Assert.IsType<CornerRadius>(radius));
+            Assert.True(Application.Current.TryGetResource("Intent.Weight.Section", null, out var sectionWeight));
+            Assert.Equal(FontWeight.SemiBold, Assert.IsType<FontWeight>(sectionWeight));
+
+            Assert.True(Application.Current.TryGetResource("Component.Card.Padding", null, out var cardPadding));
+            Assert.Equal(new Thickness(8), Assert.IsType<Thickness>(cardPadding));
+            Assert.True(Application.Current.TryGetResource("Component.MarkChip.Padding", null, out var markChipPadding));
+            Assert.Equal(new Thickness(7, 1, 7, 1), Assert.IsType<Thickness>(markChipPadding));
+            Assert.True(Application.Current.TryGetResource("Component.Overview.PageMargin", null, out var pageMargin));
+            Assert.Equal(new Thickness(8), Assert.IsType<Thickness>(pageMargin));
+
+            foreach (var (key, value) in new[]
+            {
+                ("SemiHeightControlSmall", 26d),
+                ("SemiHeightControlDefault", 28d),
+                ("SemiHeightControlLarge", 28d),
+                ("ButtonSmallHeight", 26d),
+                ("ButtonDefaultHeight", 28d),
+                ("ButtonLargeHeight", 28d),
+                ("TextBoxSmallHeight", 26d),
+                ("TextBoxDefaultHeight", 28d),
+                ("TextBoxLargeHeight", 28d),
+                ("ComboBoxSmallHeight", 26d),
+                ("ComboBoxDefaultHeight", 28d),
+                ("ComboBoxLargeHeight", 28d),
+            })
+            {
+                Assert.True(Application.Current.TryGetResource(key, null, out var height), $"{key} is missing.");
+                Assert.Equal(value, Assert.IsType<double>(height));
+            }
+        });
+    }
+
+    [Fact]
+    public void CompactSemiControlsStayWithinTheTargetHeight()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var button = new Button { Content = "Apply" };
+            var textBox = new TextBox { Text = "Text" };
+            var window = new Window
+            {
+                Content = new StackPanel { Children = { button, textBox } },
+                Width = 240,
+                Height = 100,
+            };
+            try
+            {
+                Assert.True(Application.Current!.TryGetResource("SemiHeightControlDefault", null, out var semiHeight));
+                Assert.Equal(28d, Assert.IsType<double>(semiHeight));
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+
+                Assert.True(button.Bounds.Height is >= 22 and <= 28,
+                    $"Button is {button.Bounds.Height:0.#} px high (Height={button.Height}, MinHeight={button.MinHeight}, Padding={button.Padding}).");
+                Assert.True(textBox.Bounds.Height is >= 22 and <= 28,
+                    $"TextBox is {textBox.Bounds.Height:0.#} px high (Height={textBox.Height}, MinHeight={textBox.MinHeight}, Padding={textBox.Padding}).");
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void RaisedPopupElevationSeparatesItInBothThemes()
+    {
+        _avalonia.Invoke(() =>
+        {
+            foreach (var variant in Variants)
+            {
+                Assert.True(Application.Current!.TryGetResource("Intent.Shadow.Raised", variant, out var value));
+                Assert.True(Assert.IsType<BoxShadows>(value).Count > 0, $"Raised surfaces have no elevation in {variant}.");
+            }
+        });
+    }
+
+    [Fact]
+    public void ComponentRadiusAliasesDoNotNameLargePrimitives()
+    {
+        var directory = Path.Combine(AppDirectory(), "Tokens", "Components");
+        var largeRadiusAliases = Directory.EnumerateFiles(directory, "*.axaml")
+            .SelectMany(file => XDocument.Load(file).Descendants()
+                .Where(element => element.Name.LocalName == "StaticResource")
+                .Select(element => (string?)element.Attribute("ResourceKey")))
+            .Where(key => key is not null && Regex.IsMatch(key,
+                @"^Primitive\.Radius\.(?:[6-9]|1[0-2])(?:_|$)", RegexOptions.CultureInvariant));
+
+        Assert.Empty(largeRadiusAliases);
     }
 
     [Fact]
@@ -294,6 +433,32 @@ public sealed class DesignTokenTests
     {
         Assert.All(AppSources("*.axaml"), text =>
             Assert.DoesNotContain("stage-title", text, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ViewsUseIntentTokensForFontWeight()
+    {
+        var views = Path.Combine(AppDirectory(), "Views");
+        var offenders = Directory.EnumerateFiles(views, "*", SearchOption.AllDirectories)
+            .Where(path => Path.GetExtension(path) is ".axaml" or ".cs")
+            .SelectMany(path =>
+            {
+                var source = File.ReadAllText(path);
+                var literalMarkup = Regex.Matches(source, @"\bFontWeight\s*=\s*""([^""]+)""")
+                    .Cast<Match>()
+                    .Where(match => !match.Groups[1].Value.StartsWith(
+                        "{DynamicResource Intent.Weight.", StringComparison.Ordinal))
+                    .Select(match => match.Value);
+                var literalCode = Regex.Matches(source,
+                        @"(?:FontWeight\s*=|\.FontWeight\s*=)\s*(?:Avalonia\.Media\.)?FontWeight\.(?:Normal|SemiBold|Bold|Medium|Light)")
+                    .Cast<Match>()
+                    .Select(match => match.Value);
+                return literalMarkup.Concat(literalCode)
+                    .Select(value => $"{Path.GetRelativePath(views, path)}: {value}");
+            })
+            .ToList();
+
+        Assert.Empty(offenders);
     }
 
     [Theory]

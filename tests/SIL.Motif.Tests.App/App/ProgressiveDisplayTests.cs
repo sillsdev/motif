@@ -33,7 +33,8 @@ public sealed class ProgressiveDisplayTests
     private const int WordRowDepthCeiling = 10;
     private const int WordCardControlCeiling = 64;
     private const int WordCardDepthCeiling = 18;
-    private const int WordStripControlCeiling = 40;
+    // The strip shows a five-morpheme word's complete morphology on both lines, an owner decision.
+    private const int WordStripControlCeiling = 45;
     private const int WordStripDepthCeiling = 9;
     private readonly ITestOutputHelper _output;
 
@@ -45,7 +46,7 @@ public sealed class ProgressiveDisplayTests
         "Inspector", "MainWindow", "MiniMatrix", "Pages/AssistantConnectionsPage", "Pages/OverviewPage", "Pages/ParsimonyPage",
         "Pages/ProposalsPage", "Pages/TimingPage",
         "RefusalBlock", "ResultsInTextPanel", "ReviewWordRow",
-        "RetirementProposalReviewPanel", "ReviewPanel", "SelectionPanel", "SettingsPopupView", "SetupDialog", "StatisticsPanel", "TextWordsPanel", "TextsListsPanel",
+        "RetirementProposalReviewPanel", "ReviewPanel", "SelectionPanel", "SettingsPage", "SettingsNavigation", "SetupDialog", "StatisticsPanel", "TextWordsPanel", "TextsListsPanel",
         "TraceAnalysesView", "TryWordPanel", "WordCard", "WordDispositionButtons",
     ];
 
@@ -81,7 +82,7 @@ public sealed class ProgressiveDisplayTests
                     if (entry.Mode is "finite" or "inline")
                     {
                         Assert.InRange(items.ItemCount, 0, entry.Mode == "finite" ? 32 : 128);
-                        if (entry.View == "SettingsPopupView" && entry.Mode == "finite")
+                        if (entry.View == "SettingsPage" && entry.Mode == "finite")
                             Assert.False(string.IsNullOrWhiteSpace(entry.Reason),
                                 $"{entry.View}/{entry.Source}: a finite collection needs a bound reason.");
                         _output.WriteLine($"{entry.View}/{entry.Source}: fixed collection, {items.ItemCount} items");
@@ -995,7 +996,8 @@ public sealed class ProgressiveDisplayTests
             "GrammarPanel" => new GrammarPanel(workspace.PageModel<WarningsPageModel>().Grammar),
             "HandoffPanel" => new HandoffPanel(workspace.PageModel<AiHandoffPageModel>().Handoff),
             "Inspector" => new Inspector { DataContext = workspace.Inspector },
-            "SettingsPopupView" => BuildSettingsPopup(workspace),
+            "SettingsPage" => BuildSettingsPage(workspace),
+            "SettingsNavigation" => BuildSettingsPage(workspace).Navigation,
             "MiniMatrix" => new MiniMatrix { DataContext = workspace.Assess.Compare },
             "Pages/AssistantConnectionsPage" => new AssistantConnectionsPage(
                 workspace.PageModel<AssistantConnectionsPageModel>()),
@@ -1071,11 +1073,12 @@ public sealed class ProgressiveDisplayTests
                 "PanGloss can't use this grammar.", issues, "Fatal grammar issues")));
     }
 
-    private static Control BuildSettingsPopup(WorkspaceShellViewModel workspace)
+    private static SettingsPage BuildSettingsPage(WorkspaceShellViewModel workspace)
     {
-        var viewModel = new SettingsViewModel(workspace);
+        var viewModel = Assert.IsType<SettingsViewModel>(workspace.PageModel<SettingsPageModel>().Settings);
         viewModel.OpenGroup(SettingsGroup.KeyboardShortcuts);
-        return new SettingsPopupView { DataContext = viewModel };
+        return Assert.IsType<SettingsPage>(PageRegistry.For(WorkspacePage.Settings)
+            .CreateView(workspace.PageModel<SettingsPageModel>()));
     }
 
     private static IEnumerable<Control> Fragments(Control root, int depth = 0)

@@ -798,7 +798,14 @@ internal static class WalkthroughReplay
         var control = step.Kind == WalkthroughStepKind.WaitFor
             ? window.FindOptionalByAutomationId(step.AutomationId!)
             : window.FindByAutomationId(step.AutomationId!);
-        if (control is null) return false;
+        // Parse progress lives in a status-bar flyout, so a finished parse leaves no progress control to find.
+        if (control is null)
+            return step.Condition switch
+            {
+                "hidden" => true,
+                "parseProgressVisibleOrCompleted" => window.Workspace.Assess.State == RunState.Completed,
+                _ => false,
+            };
         return step.Condition switch
         {
             "visible" => control.IsEffectivelyVisible && control.Bounds.Width > 0 && control.Bounds.Height > 0,

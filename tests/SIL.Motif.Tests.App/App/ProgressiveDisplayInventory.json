@@ -273,7 +273,7 @@
     "control": "ItemsControl"
   },
   {
-    "view": "SettingsPopupView",
+    "view": "SettingsPage",
     "name": "SettingsAnalysisWritingSystemsItems",
     "source": "AnalysisWritingSystems",
     "mode": "finite",
@@ -281,7 +281,7 @@
     "reason": "This is a configured project writing-system list, not an unbounded result feed."
   },
   {
-    "view": "SettingsPopupView",
+    "view": "SettingsPage",
     "name": "SettingsVernacularWritingSystemsItems",
     "source": "VernacularWritingSystems",
     "mode": "finite",
@@ -289,15 +289,15 @@
     "reason": "This is a configured project writing-system list, not an unbounded result feed."
   },
   {
-    "view": "SettingsPopupView",
+    "view": "SettingsNavigation",
     "name": "SettingsGroups",
-    "source": "GroupOptions",
+    "source": "PageGroupOptions",
     "mode": "rows",
     "control": "ListBox"
   },
   {
-    "view": "SettingsPopupView",
-    "name": "SettingsPopupViewShortcutsItems",
+    "view": "SettingsPage",
+    "name": "SettingsShortcutsItems",
     "source": "ShortcutEntries",
     "mode": "inline",
     "control": "ItemsControl"

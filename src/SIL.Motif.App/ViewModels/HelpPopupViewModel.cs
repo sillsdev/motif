@@ -185,6 +185,7 @@ public sealed partial class HelpPopupViewModel : ObservableObject
             WorkspacePage.Review => "ReviewPage",
             WorkspacePage.AiHandoff => "AiHandoffPage",
             WorkspacePage.AiAssistants => "AiAssistantsPage",
+            WorkspacePage.Settings => "SettingsPage",
             _ => throw new ArgumentOutOfRangeException(nameof(page)),
         };
 
@@ -199,6 +200,7 @@ public sealed partial class HelpPopupViewModel : ObservableObject
             WorkspacePage.Review => "review-changes",
             WorkspacePage.AiHandoff => "ai-handoff",
             WorkspacePage.AiAssistants => "ai-assistants",
+            WorkspacePage.Settings => "settings",
             _ => throw new ArgumentOutOfRangeException(nameof(page)),
         };
     }

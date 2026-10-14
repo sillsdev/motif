@@ -10,7 +10,7 @@
   <UserControl.Resources>
     <DataTemplate x:Key="InspectorWords" x:DataType="vm:InspectorWordsViewModel">
       <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-        <views:CopyableTextBlock Text="{Binding Heading}" FontWeight="SemiBold" TextWrapping="Wrap" IsVisible="{Binding HasHeading}" />
+        <views:CopyableTextBlock Text="{Binding Heading}" FontWeight="{DynamicResource Intent.Weight.Section}" TextWrapping="Wrap" IsVisible="{Binding HasHeading}" />
         <views:CopyableTextBlock Classes="muted" Text="{Binding Meanings}" TextWrapping="Wrap" IsVisible="{Binding HasMeanings}" />
         <views:CopyableTextBlock Classes="muted" Text="{Binding NotCountingText}" TextWrapping="Wrap" IsVisible="{Binding HasNotCounting}" />
         <views:CopyableTextBlock Classes="muted" Text="{Binding EmptyText}" TextWrapping="Wrap" IsVisible="{Binding IsEmpty}" />
@@ -21,7 +21,7 @@
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:InspectorWordViewModel">
               <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Snug}">
-                <views:CopyableTextBlock Text="{Binding Word}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+                <views:CopyableTextBlock Text="{Binding Word}" FontWeight="{DynamicResource Intent.Weight.Strong}" TextTrimming="CharacterEllipsis"
                                          controls:WritingSystemText.Id="{Binding WordWritingSystem}" controls:WritingSystemText.StyleName="Normal" />
                 <views:CopyableTextBlock Grid.Column="1" Classes="inspectorMeaning" Classes.fine="{Binding IsFine}"
                                          Classes.look="{Binding IsLook}" Classes.problem="{Binding IsProblem}"
@@ -34,7 +34,7 @@
           </ItemsControl.ItemTemplate>
         </ItemsControl>
         <HyperlinkButton Classes="inspectorAction revealControl revealLink revealOnHover" Content="{Binding ShowAllText}" Command="{Binding ShowAllCommand}"
-                IsVisible="{Binding CanShowAll}" />
+                IsVisible="{Binding CanShowAll, FallbackValue=False}" />
       </StackPanel>
     </DataTemplate>
   </UserControl.Resources>
@@ -151,7 +151,7 @@
                   <DataTemplate x:DataType="vm:InspectorWarningViewModel">
                     <Border Classes="inspectorWarning" Margin="{DynamicResource Intent.Gap.AfterRelated}">
                       <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-                        <views:CopyableTextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                        <views:CopyableTextBlock Text="{Binding Title}" FontWeight="{DynamicResource Intent.Weight.Section}" TextWrapping="Wrap" />
                         <views:CopyableTextBlock Text="{Binding Text}" TextWrapping="Wrap" IsVisible="{Binding HasText}" />
                       </StackPanel>
                     </Border>
@@ -160,7 +160,7 @@
               </ItemsControl>
               <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
                 <HyperlinkButton Classes="inspectorAction revealControl revealLink revealOnHover" Content="{Binding ShowAllWarningsText}" Command="{Binding ShowAllWarningsCommand}"
-                        IsVisible="{Binding CanShowAllWarnings}" />
+                        IsVisible="{Binding CanShowAllWarnings, FallbackValue=False}" />
                 <HyperlinkButton Classes="inspectorAction revealControl revealLink revealOnHover" Content="Open Warnings" Command="{Binding OpenWarningsCommand}" />
               </StackPanel>
             </StackPanel>
@@ -188,7 +188,7 @@
                       <views:CopyableTextBlock Classes="inspectorFactLabel" Text="{Binding Label}" TextWrapping="Wrap" />
                       <StackPanel Grid.Column="1">
                         <views:InspectLink Subject="{Binding InspectSubject}" IsVisible="{Binding CanInspect}" HorizontalAlignment="Left">
-                          <controls:WritingSystemTextBlock Text="{Binding Value}" TextWrapping="Wrap" FontWeight="Normal"
+                          <controls:WritingSystemTextBlock Text="{Binding Value}" TextWrapping="Wrap" FontWeight="{DynamicResource Intent.Weight.Normal}"
                                      controls:WritingSystemText.Id="{Binding WritingSystem}" controls:WritingSystemText.StyleName="Normal" />
                         </views:InspectLink>
                         <views:CopyableTextBlock Text="{Binding Value}" TextWrapping="Wrap" IsVisible="{Binding CannotInspect}"

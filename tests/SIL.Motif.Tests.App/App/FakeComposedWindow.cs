@@ -20,13 +20,13 @@ internal static class FakeComposedWindow
     public static (WorkspaceShellViewModel Workspace, MainWindow Window) Create(FakeCommandClient? fake = null,
         string? settingsFilePath = null, IUriLauncher? uriLauncher = null,
         SIL.Motif.Host.Preferences.IDefaultProposalChecksStore? defaultProposalChecks = null,
-        ApplicationFacts? applicationFacts = null)
+        ApplicationFacts? applicationFacts = null, IUserPreferencesStore? preferencesStore = null)
     {
         fake ??= new FakeCommandClient();
         var selection = new SelectionViewModel(fake);
-        IUserPreferencesStore preferences = settingsFilePath is null
+        IUserPreferencesStore preferences = preferencesStore ?? (settingsFilePath is null
             ? new MemoryUserPreferencesStore()
-            : new FileUserPreferencesStore(settingsFilePath);
+            : new FileUserPreferencesStore(settingsFilePath));
         var window = new MainWindow(rememberBounds: false, uriLauncher: uriLauncher,
             preferencesStore: preferences, applicationFacts: applicationFacts);
         var workspace = new WorkspaceShellViewModel(

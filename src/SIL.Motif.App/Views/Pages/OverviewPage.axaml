@@ -175,7 +175,7 @@
                   <StackPanel Classes="outcomeLegendEntry" Orientation="Horizontal">
                     <Border Classes="outcomeSegment swatch" Background="{Binding Brush}" />
                     <TextBlock Classes="outcomeLegendText" Text="{Binding Row.Label}" />
-                    <TextBlock Classes="outcomeLegendText" FontWeight="SemiBold" Text="{Binding Row.ShareText}" />
+                    <TextBlock Classes="outcomeLegendText" FontWeight="{DynamicResource Intent.Weight.Strong}" Text="{Binding Row.ShareText}" />
                     <TextBlock Classes="overviewMuted" Text="{Binding Row.TimeText, StringFormat='{}{0}'}" />
                   </StackPanel>
                 </DataTemplate>

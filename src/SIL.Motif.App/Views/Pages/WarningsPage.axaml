@@ -13,7 +13,7 @@
                 Theme="{DynamicResource SolidButton}"
                 Command="{Binding CheckGrammarCommand}" AutomationProperties.Name="Check the grammar" />
         <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-          <views:CopyableTextBlock Text="Not checked yet" FontWeight="SemiBold" />
+          <views:CopyableTextBlock Text="Not checked yet" FontWeight="{DynamicResource Intent.Weight.Section}" />
           <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap"
                                    Text="Checking reads the whole grammar, so it can take a minute on a large project. It runs only when you ask." />
         </StackPanel>

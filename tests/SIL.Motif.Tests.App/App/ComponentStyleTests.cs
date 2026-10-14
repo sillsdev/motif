@@ -146,7 +146,7 @@ public sealed partial class ComponentStyleTests
     }
 
     [Fact]
-    public void AHiddenRevealStaysVisibleToKeyboardAndAutomation()
+    public void ActionLinksStayVisibleToPointerKeyboardAndAutomation()
     {
         _avalonia.Invoke(() =>
         {
@@ -160,7 +160,8 @@ public sealed partial class ComponentStyleTests
                 Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();
 
-                Assert.Equal(0, button.Opacity);
+                Assert.Equal(1, button.Opacity);
+                Assert.True(button.IsHitTestVisible);
                 Assert.True(button.IsVisible);
                 Assert.True(button.IsTabStop);
                 Assert.Equal("Open the word", AutomationProperties.GetName(button));
@@ -505,6 +506,8 @@ public sealed partial class ComponentStyleTests
             Border.BackgroundProperty, "Intent.Consequence.Look.Edge");
         yield return new("OutcomeBar", "a built-something-else segment", host => Add(host, Box("outcomeSegment", "meaning", "problem")),
             Border.BackgroundProperty, "Intent.Consequence.Problem.Edge");
+        yield return new("OutcomeBar", "a count", host => Add(host, Text("outcomeLegendCount")),
+            TextBlock.FontWeightProperty, "Intent.Weight.Strong");
 
         yield return new("WordVerdict", "a word", host => Add(host, Box("wordVerdict")), Border.BackgroundProperty, "Intent.Clear");
         yield return new("WordVerdict", "a word", host => Add(host, Box("wordVerdict")), Border.PaddingProperty, "Component.WordVerdict.Padding");
@@ -517,6 +520,8 @@ public sealed partial class ComponentStyleTests
 
         yield return new("FilterChip", "a chip", host => Add(host, Press("filterChip")), Button.BackgroundProperty, "Intent.Clear");
         yield return new("FilterChip", "a chip", host => Add(host, Press("filterChip")), Button.MarginProperty, "Intent.Gap.CompactItem");
+        yield return new("FilterChip", "a count", host => InsideButton(host, Press("filterChip"), "chipCount"),
+            TextBlock.FontWeightProperty, "Intent.Weight.Strong");
         yield return new("FilterChip", "a compact chip", host => Add(host, Press("filterChip", "compact")),
             Button.PaddingProperty, "Component.FilterChip.CompactPadding");
         yield return new("FilterChip", "an active chip", host => Add(host, Press("filterChip", "active")),
@@ -636,6 +641,9 @@ public sealed partial class ComponentStyleTests
         yield return new("Handoff", "the page header", host => Add(host, Box("handoffHeader")), Border.PaddingProperty,
             "Component.Handoff.HeaderPadding");
 
+        yield return new("Shell", "a pane header", host => Add(host, Box("workspacePaneHeader")), Border.HeightProperty, "Component.Shell.PaneHeaderHeight");
+        yield return new("StatusBar", "the fixed status line", host => Add(host, Box("statusBar")), Border.HeightProperty, "Component.StatusBar.Height");
+        yield return new("StatusBar", "the fixed status line", host => Add(host, Box("statusBar")), Border.BackgroundProperty, "Intent.Neutral.Fill");
         yield return new("TopBar", "the top bar", host => Add(host, Box("topBar")), Border.MinHeightProperty, "Component.TopBar.Height");
         yield return new("TopBar", "the top bar", host => Add(host, Box("topBar")), Border.PaddingProperty, "Component.TopBar.Padding");
         yield return new("TopBar", "the Windows caption inset", host => Add(host, Box("topBar", "windowsChrome")),
@@ -682,7 +690,7 @@ public sealed partial class ComponentStyleTests
         yield return new("Sidebar", "a collapsed entry", host => Entry(host, collapsed: true, selected: false),
             ListBoxItem.PaddingProperty, "Component.Sidebar.ItemPaddingCollapsed");
         yield return new("Sidebar", "the selected collapsed entry", host => Entry(host, collapsed: true, selected: true),
-            ListBoxItem.BorderBrushProperty, "Intent.Emphasis.Fill");
+            ListBoxItem.BorderBrushProperty, "Intent.Accent");
         yield return new("Sidebar", "the footer", host => Add(host, Stack("sidebarFooter")),
             StackPanel.MarginProperty, "Component.Sidebar.FooterMargin");
         yield return new("Sidebar", "the collapsed footer", host => Add(host, Stack("sidebarFooter", "collapsed")),
@@ -690,7 +698,7 @@ public sealed partial class ComponentStyleTests
         yield return new("Sidebar", "a utility button", host => Add(host, Press("sidebarUtility")),
             Button.HeightProperty, "Component.Menu.ButtonHeight");
         yield return new("Sidebar", "a collapsed utility button", host => SidebarUtility(host, collapsed: true),
-            Button.WidthProperty, "Component.Menu.ButtonHeight");
+            Button.WidthProperty, "Component.Sidebar.ItemWidth");
         yield return new("Sidebar", "the help glyph", host => Add(host, Text("sidebarUtilityGlyph")),
             TextBlock.FontSizeProperty, "Intent.Type.Navigation");
         yield return new("Sidebar", "the help label", host => Add(host, Text("sidebarUtilityLabel")),
@@ -699,11 +707,11 @@ public sealed partial class ComponentStyleTests
         yield return new("Badge", "a badge", host => Add(host, Box("pageBadge")), Border.BackgroundProperty, "Intent.Neutral.Fill");
         yield return new("Badge", "a badge", host => Add(host, Box("pageBadge")), Border.PaddingProperty, "Component.Badge.Padding");
         yield return new("Badge", "a collapsed badge", host => InCollapsedList(host, Box("pageBadge")),
-            Border.BackgroundProperty, "Intent.Emphasis.Fill");
+            Border.BackgroundProperty, "Intent.Neutral.Fill");
         yield return new("Badge", "a collapsed badge", host => InCollapsedList(host, Box("pageBadge")),
-            Border.MarginProperty, "Component.Badge.MarginCollapsed");
+            Border.MarginProperty, "Component.Sidebar.BadgeMargin");
         yield return new("Badge", "a collapsed badge's count", host => Inside(InCollapsedListHost(host), Box("pageBadge")),
-            TextBlock.ForegroundProperty, "Intent.Emphasis.Text");
+            TextBlock.ForegroundProperty, "Intent.TextSecondary");
 
         yield return new("TabStrip", "a tab", host => Add(host, Press("tab")), Button.PaddingProperty, "Component.TabStrip.TabPadding");
         yield return new("TabStrip", "a tab", host => Add(host, Press("tab")), Button.BorderBrushProperty, "Intent.Clear");
@@ -773,6 +781,8 @@ public sealed partial class ComponentStyleTests
             Border.BackgroundProperty, "Intent.Warning.Fill");
         yield return new("Review", "a changed sentence word", host => Add(host, Box("reviewSentenceToken", "changed")),
             Border.BorderThicknessProperty, "Intent.Stroke.Box");
+        yield return new("Review", "the current entry edge", host => Add(host, Box("reviewCurrentFrame", "current")),
+            Border.BorderBrushProperty, "Intent.Accent");
         yield return new("TryWord", "a failed diagnostic", host => Add(host, Text("failed")),
             TextBlock.ForegroundProperty, "Intent.Danger.Text");
         yield return new("Timing", "the page", host => Add(host, Box("timingPage")), Border.PaddingProperty,
@@ -1007,8 +1017,6 @@ public sealed partial class ComponentStyleTests
             Border.BackgroundProperty, "Intent.Change.Fill");
         yield return new("Inspector", "the inspector's surface", host => Add(host, Box("inspector")),
             Border.BackgroundProperty, "Intent.Surface.Raised");
-        yield return new("Inspector", "the inspector's width", host => Add(host, Box("inspector")),
-            Control.WidthProperty, "Component.Inspector.Width");
         yield return new("Inspector", "the breadcrumb strip", host => Add(host, Box("inspectorCrumbs")),
             Border.BackgroundProperty, "Intent.Selected.Fill");
         yield return new("Inspector", "a section's source", host => Add(host, Text("inspectorSource")),
@@ -1077,8 +1085,8 @@ public sealed partial class ComponentStyleTests
             Border.BorderBrushProperty, "Intent.Marking.Divider");
         yield return new("UnreadMark", "the unread dot alone", host => Add(host, Box("unreadMark", "dotOnly")),
             Border.BackgroundProperty, "Intent.Clear");
-        yield return new("HoverReveal", "a hidden secondary action", RevealControl,
-            Control.OpacityProperty, "Component.HoverReveal.HiddenOpacity");
+        yield return new("HoverReveal", "a visible secondary action", RevealControl,
+            Control.OpacityProperty, "Component.HoverReveal.VisibleOpacity");
         yield return new("HoverReveal", "the staged button height", host => Add(host, Press("revealControl", "revealButton")),
             Button.MinHeightProperty, "Component.HoverReveal.Height");
         yield return new("HoverReveal", "the FieldWorks link", host => Add(host, Press("revealControl", "revealLink")),

@@ -15,6 +15,7 @@ using System.Reflection;
 using SIL.Motif.App;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
+using SIL.Motif.App.Views.Shell;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
@@ -133,6 +134,7 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
             ("K", "Alt+K", "Review changes"), ("U", "Alt+Shift+U", "Review changes"),
             ("Enter or Space", "Enter or Space", "Matrix preview"),
             ("Enter or Space", "Enter or Space", "Morpheme"),
+            ("Enter or Space", "Enter or Space", "Pages rail"),
             ("F1", "F1", "Window"), ("Escape", "Esc", "Window"), ("?", "Shift+/", "Window"),
             (",", "Ctrl+,", "Window"),
             ("= or Keypad +", "Ctrl+= or Ctrl+Shift+= or Ctrl+Keypad +", "Window"),
@@ -235,6 +237,102 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
         }
         Assert.Null(KeyboardShortcutRegistry.Find(KeyboardShortcutScope.Window, Key.V, KeyModifiers.Control,
             ShortcutPlatform.Windows));
+    }
+
+    [Theory]
+    [InlineData(960, 100)]
+    [InlineData(640, 150)]
+    public void CurrentRailItemReopensItsSidePanelWithEnterAndSpaceWithoutInterceptingNavigation(int width, int zoom)
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData(parse: false);
+            try
+            {
+                window.Width = width;
+                window.Height = 600;
+                SettingsTestAccess.Model(window)
+                    .ZoomPercent = zoom;
+                workspace.CurrentPage = WorkspacePage.Texts;
+                PageScreenshots.Settle(window);
+                Assert.Equal(width, window.ClientSize.Width);
+                var host = window.FindControl<WorkspaceLayoutHost>("WorkspaceLayout")!;
+                var side = host.FindControl<Border>("SidePanelBorder")!;
+                var item = window.GetVisualDescendants().OfType<ListBoxItem>().Single(control =>
+                    control.DataContext is PageViewModel { Page: WorkspacePage.Texts });
+                Assert.True(item.Focus());
+                Assert.True(item.IsEffectivelyVisible);
+                Assert.False(side.IsVisible);
+                Capture("collapsed");
+
+                window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.None, null);
+                window.KeyRelease(Key.Enter, RawInputModifiers.None, PhysicalKey.None, null);
+                PageScreenshots.Settle(window);
+                Assert.True(side.IsVisible);
+                Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
+                Capture("enter-reopened");
+
+                KeyModifiers? receivedModifiers = null;
+                window.FindControl<ListBox>("PageList")!.AddHandler(InputElement.KeyDownEvent,
+                    (_, e) => receivedModifiers = e.KeyModifiers,
+                    Avalonia.Interactivity.RoutingStrategies.Tunnel, handledEventsToo: true);
+                window.KeyPress(Key.Space, RawInputModifiers.Control, PhysicalKey.Space, null);
+                Assert.Equal(KeyModifiers.Control, receivedModifiers);
+                window.KeyRelease(Key.Space, RawInputModifiers.Control, PhysicalKey.Space, null);
+                PageScreenshots.Settle(window);
+                Assert.True(side.IsVisible);
+                window.KeyPress(Key.Space, RawInputModifiers.None, PhysicalKey.Space, null);
+                window.KeyRelease(Key.Space, RawInputModifiers.None, PhysicalKey.Space, null);
+                PageScreenshots.Settle(window);
+                Assert.False(side.IsVisible);
+                window.KeyPress(Key.Space, RawInputModifiers.None, PhysicalKey.Space, null);
+                window.KeyRelease(Key.Space, RawInputModifiers.None, PhysicalKey.Space, null);
+                PageScreenshots.Settle(window);
+                Assert.True(side.IsVisible);
+                Capture("space-reopened");
+                window.KeyPress(Key.Space, RawInputModifiers.None, PhysicalKey.Space, null);
+                window.KeyRelease(Key.Space, RawInputModifiers.None, PhysicalKey.Space, null);
+                PageScreenshots.Settle(window);
+                Assert.False(side.IsVisible);
+
+                window.KeyPress(Key.Down, RawInputModifiers.None, PhysicalKey.None, null);
+                window.KeyRelease(Key.Down, RawInputModifiers.None, PhysicalKey.None, null);
+                PageScreenshots.Settle(window);
+                Assert.NotEqual(WorkspacePage.Texts, workspace.CurrentPage);
+                Assert.False(side.IsVisible);
+
+                workspace.CurrentPage = WorkspacePage.Texts;
+                PageScreenshots.Settle(window);
+                Assert.True(window.FindControl<Button>("HelpButton")!.Focus());
+                window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.None, null);
+                window.KeyRelease(Key.Enter, RawInputModifiers.None, PhysicalKey.None, null);
+                PageScreenshots.Settle(window);
+                Assert.False(side.IsVisible);
+
+                void Capture(string state)
+                {
+                    if (Environment.GetEnvironmentVariable(ScreenshotFactAttribute.FolderVariable) is not { Length: > 0 } folder)
+                        return;
+                    Directory.CreateDirectory(folder);
+                    var size = window.ClientSize;
+                    var sideVisible = side.IsVisible;
+                    // Capture this viewport so crossing a collapse threshold cannot erase the manual panel choice.
+                    PageScreenshots.Settle(window);
+                    using var frame = window.CaptureRenderedFrame()
+                        ?? throw new InvalidOperationException("The rail state has no rendered frame.");
+                    frame.Save(Path.Combine(folder, $"keyboard-rail-{width}-{zoom}-{state}.png"),
+                        Avalonia.Media.Imaging.PngBitmapEncoderOptions.Default);
+                    Assert.Equal(size, window.ClientSize);
+                    Assert.Equal(sideVisible, side.IsVisible);
+                }
+            }
+            finally
+            {
+                WindowZoomPolicy.Apply(Application.Current!, ZoomPolicy.DefaultPercent);
+                window.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromMinutes(1));
     }
 
     [Fact]
@@ -566,13 +664,11 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
 
                 window.KeyPress(Key.OemQuestion, RawInputModifiers.Shift, PhysicalKey.None, null);
                 AnalyzeTextsLayoutTests.Settle(window);
-                var settingsButton = Assert.IsType<Button>(window.FindControl<Button>("SettingsButton"));
-                var settingsFlyout = Assert.IsType<Flyout>(settingsButton.Flyout);
-                Assert.True(settingsFlyout.IsOpen);
-                var settingsPopup = Assert.IsType<SettingsPopupView>(settingsFlyout.Content);
-                var settings = Assert.IsType<SettingsViewModel>(settingsPopup.DataContext);
+                Assert.Equal(WorkspacePage.Settings, workspace.CurrentPage);
+                var settingsPage = SettingsTestAccess.Page(window);
+                var settings = SettingsTestAccess.Model(window);
                 Assert.True(settings.IsKeyboardShortcutsSelected);
-                Assert.True(settingsPopup.FindControl<TextBox>("ShortcutSearchBox")!.IsFocused);
+                Assert.True(settingsPage.FindControl<TextBox>("ShortcutSearchBox")!.IsFocused);
             }
             finally
             {

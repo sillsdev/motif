@@ -1,6 +1,8 @@
 # Settings
 
-Open **Settings** from the bottom of the left sidebar to change how Motif looks and to find its keyboard shortcuts, project parsing limits, grammar-check defaults, problem reports, and version information. **Help** beside it opens guidance for the current page. Display choices are remembered for this user on this computer; a project's parsing limits are saved with that project's [Default Selection](term:default-selection).
+Open **Settings** from the bottom of the left navigation rail to change how Motif looks and to find its keyboard shortcuts, project parsing limits, grammar-check defaults, problem reports, and version information. **Help** beside it opens guidance for the current page. Display choices are remembered for this user on this computer; a project's parsing limits are saved with that project's [Default Selection](term:default-selection).
+
+Settings opens as a page. **Back** returns to the page you were using; Escape does the same after handling any field edit. The section navigator collapses in a narrow window. Select **Settings** again to open it, then choose a section or collapse the side bar to use the page's full width.
 
 ## Display
 
@@ -31,6 +33,10 @@ The choice is remembered for this user on this computer and applies to the next 
 ## Writing systems
 
 For the project's writing-system settings and how to change them in FieldWorks, see [Writing systems in the window](guide:writing-systems).
+
+## Texts
+
+**Use all texts** saves every Text in the current project as its Default Selection. Parsing limits and added words keep their saved values.
 
 ## Help and reports
 

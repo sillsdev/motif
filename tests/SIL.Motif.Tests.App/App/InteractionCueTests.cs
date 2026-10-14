@@ -42,6 +42,8 @@ public sealed class InteractionCueTests(AvaloniaHeadlessFixture avalonia)
                 {
                     window.Show();
                     Dispatcher.UIThread.RunJobs();
+                    if (RingAround(target) is not null)
+                        failures.Add($"{theme} {which}: resting control already has a focus ring");
                     Assert.True(target.Focus(NavigationMethod.Tab), $"{which} took no focus");
                     Dispatcher.UIThread.RunJobs();
                     window.UpdateLayout();
@@ -150,20 +152,20 @@ public sealed class InteractionCueTests(AvaloniaHeadlessFixture avalonia)
                     Dispatcher.UIThread.RunJobs();
                     window.UpdateLayout();
                     var warning = Resource(edge, variant);
+                    var restingBrush = cell.BorderBrush;
                     var resting = cell.BorderThickness;
                     var centre = cell.TranslatePoint(new Point(80, 30), window)!.Value;
                     window.MouseMove(centre);
                     Dispatcher.UIThread.RunJobs();
                     if (!Equals(warning, cell.BorderBrush)) failures.Add($"{variant} hover: edge is {cell.BorderBrush}, not the warning");
-                    if (!Equals(Resource("Intent.Shadow.Hover", variant), cell.BoxShadow))
-                        failures.Add($"{variant} hover: no raised cue ('{cell.BoxShadow}')");
+                    if (cell.BorderThickness == resting && Equals(cell.BorderBrush, restingBrush))
+                        failures.Add($"{variant} hover: the cell looks the same as it does at rest");
                     window.MouseMove(new Point(290, 110));
                     cell.Classes.Add("selected");
                     Dispatcher.UIThread.RunJobs();
                     if (!Equals(warning, cell.BorderBrush)) failures.Add($"{variant} selected: edge is {cell.BorderBrush}, not the warning");
-                    if (cell.BorderThickness != resting) failures.Add($"{variant} selected: edge became {cell.BorderThickness}");
-                    if (!Equals(Resource("Intent.Shadow.Selected", variant), cell.BoxShadow))
-                        failures.Add($"{variant} selected: no ring round the cell ('{cell.BoxShadow}')");
+                    if (cell.BorderThickness == resting)
+                        failures.Add($"{variant} selected: the cell looks the same as it does at rest");
                 }
                 finally
                 {

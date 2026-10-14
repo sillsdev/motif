@@ -1,5 +1,6 @@
 using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.LogicalTree;
 using Avalonia.Threading;
@@ -8,6 +9,7 @@ using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Tests.App.Walkthrough;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -51,22 +53,29 @@ public sealed class StoreDeletionButtonTests
                 await workspace.OpenRecentProjectCommand.ExecuteAsync(new RecentProjectViewModel(Project));
                 Settle(window);
 
-                var refusalComponent = Assert.Single(window.GetLogicalDescendants().OfType<StoreRefusalBlock>());
+                Assert.NotNull(workspace.Baseline.ShownRefusal);
+                var opener = window.FindControl<Button>("NoticeDetailsButton")!;
+                Assert.True(opener.IsEffectivelyVisible);
+                HeadlessClick.Click(window, opener, "See project notices");
+                var flyout = Assert.IsType<Flyout>(opener.Flyout);
+                Assert.True(flyout.IsOpen);
+                var details = Assert.IsAssignableFrom<Control>(flyout.Content);
+                var refusalComponent = Assert.Single(details.GetLogicalDescendants().OfType<StoreRefusalBlock>());
                 Assert.IsType<StoreRefusalBlockViewModel>(refusalComponent.DataContext);
 
-                var block = window.GetLogicalDescendants().OfType<RefusalBlock>()
+                var block = details.GetLogicalDescendants().OfType<RefusalBlock>()
                     .Single(candidate => AutomationProperties.GetName(candidate) == "Refresh refusal");
                 Assert.True(block.IsEffectivelyVisible);
                 var button = DeleteButton(block);
                 Assert.Equal(offered, button.IsEffectivelyVisible);
                 if (!offered) return;
 
-                var question = window.GetLogicalDescendants().OfType<Border>()
+                var question = details.GetLogicalDescendants().OfType<Border>()
                     .Single(border => border.Name == "StoreDeletionQuestion");
                 Assert.False(question.IsEffectivelyVisible);
                 Assert.True(button.IsEffectivelyEnabled);
 
-                button.Command!.Execute(button.CommandParameter);
+                HeadlessClick.Click(TopLevel.GetTopLevel(button) ?? window, button, DeleteButtonText);
                 Settle(window);
 
                 Assert.True(question.IsEffectivelyVisible);

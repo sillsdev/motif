@@ -24,9 +24,14 @@
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:ParserReadingMorphViewModel">
                   <StackPanel>
-                    <views:CopyableTextBlock Classes="reviewMorphForm" Text="{Binding Form}"
-                                             controls:WritingSystemText.Id="{Binding FormWritingSystem}"
-                                             controls:WritingSystemText.StyleName="Normal" />
+                    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}">
+                      <views:CopyableTextBlock Classes="reviewMorphForm" Text="{Binding Form}"
+                                               controls:WritingSystemText.Id="{Binding FormWritingSystem}"
+                                               controls:WritingSystemText.StyleName="Normal" />
+                      <views:InspectLink Content="Inspect" Subject="{Binding InspectSubject}"
+                                         Captured="{Binding Captured}"
+                                         IsVisible="{Binding InspectSubject, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+                    </StackPanel>
                     <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding GlossOrPlaceholder}"
                                              controls:WritingSystemText.Id="{Binding GlossWritingSystem}"
                                              controls:WritingSystemText.StyleName="Normal" />
@@ -171,7 +176,7 @@
                   <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
                     <views:CopyableTextBlock Classes="wordPresentationCardHeading" Text="{Binding WarningSectionHeading}" />
                     <views:CopyableTextBlock Classes="muted" Text="No stored warning names this word."
-                                             IsVisible="{Binding HasNoNamedWarning}" />
+                                             TextWrapping="Wrap" IsVisible="{Binding HasNoNamedWarning}" />
                     <views:ProgressiveItemsControl x:Name="WordCardNamedWarningDetailsItems"
                                                    FullItemsSource="{Binding NamedWarningDetails}"
                                                    IsVisible="{Binding HasNamedWarning}">

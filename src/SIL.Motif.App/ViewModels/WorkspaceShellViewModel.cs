@@ -109,7 +109,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
                 IsAvailable = Context.CanOpenPage(entry.Page),
             })
             .ToArray();
-        VisiblePages = Pages.Where(page => page.IsAvailable).ToArray();
+        VisiblePages = Pages.Where(page => page.IsAvailable && PageRegistry.For(page.Page).ShowInRail).ToArray();
         Inspector = new InspectorViewModel(Context, page => PageOf(page).Title);
         var setup = new SetupViewModel(Context, PageModel<TextsPageModel>().Words);
         Context.AttachSetup(setup);
@@ -207,10 +207,10 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     /// <summary>What every page is built from: the project, its evidence, and the pages' navigation actions.</summary>
     public WorkspaceContext Context { get; }
 
-    /// <summary>The sidebar's entries, in the order <see cref="WorkspacePage"/> declares them.</summary>
+    /// <summary>All registered pages, including those opened outside the primary rail, in registry order.</summary>
     public IReadOnlyList<PageViewModel> Pages { get; }
 
-    /// <summary>The pages the sidebar lists: <see cref="Pages"/> less any this window does not offer.</summary>
+    /// <summary>The available registered pages whose entries belong in the primary rail.</summary>
     public IReadOnlyList<PageViewModel> VisiblePages { get; }
 
     /// <summary>The model of type <typeparamref name="TModel"/> the page registry built for this window.</summary>
@@ -241,6 +241,11 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsSidebarExpanded))]
     private bool _isSidebarCollapsed;
+
+    /// <summary>Whether the frame uses shorter labels for the available window width.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(FreshnessDetail))]
+    private bool _isChromeCompact;
 
     /// <summary>The negation of <see cref="IsSidebarCollapsed"/>, so a view never composes <c>!</c> itself.</summary>
     public bool IsSidebarExpanded => !IsSidebarCollapsed;
@@ -512,7 +517,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     private string SavedSinceText()
     {
         var evidence = Context.Evidence;
-        var baseline = Baseline.CapturedUtc is { } captured ? $"Baseline of {When(captured)}" : "Baseline";
+        var baseline = BaselineText();
         if (evidence.AppliedSinceRefresh)
             return $"{baseline} · changes applied after it.";
 
@@ -526,7 +531,8 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     }
 
     private string BaselineText() => Baseline.CapturedUtc is { } captured
-        ? $"Baseline of {When(captured)}" : "Baseline";
+        ? IsChromeCompact ? When(captured) : $"Baseline of {When(captured)}"
+        : "Baseline";
 
     private string When(DateTimeOffset at) => WindowTimeText.Format(at, Context.Clock);
 

@@ -67,6 +67,7 @@ public sealed class MainWindowSmokeTests
                     StoppedWords = Enumerable.Range(0, 30).Select(index =>
                         new SIL.Motif.Contract.Jobs.StoppedParseWord($"stopped-{index}", "TIMEOUT", 1000)).ToArray(),
                 });
+                window.FindControl<Button>("StatusParseProgress")!.Flyout!.ShowAt(window.FindControl<Button>("StatusParseProgress")!);
                 var stopped = window.GetVisualDescendants().OfType<Expander>().Single(expander =>
                     AutomationProperties.GetAutomationId(expander) == SIL.Motif.App.AutomationIds.ParseStoppedWords);
                 stopped.IsExpanded = true;
@@ -107,6 +108,8 @@ public sealed class MainWindowSmokeTests
                 clock.Advance(TimeSpan.FromSeconds(12));
                 progress.Report(new AssessmentProgress(AssessmentStage.Parsing, 0, 1, "Parsing held")
                     { CurrentWord = "held", PerWordLimitMs = 1000 });
+                PageScreenshots.Settle(window);
+                window.FindControl<Button>("StatusParseProgress")!.Flyout!.ShowAt(window.FindControl<Button>("StatusParseProgress")!);
                 PageScreenshots.Settle(window);
                 var report = Assert.Single(window.GetVisualDescendants().OfType<Button>(), button =>
                     AutomationProperties.GetName(button) == "Report a problem with parsing");
@@ -396,6 +399,8 @@ public sealed class MainWindowSmokeTests
             Assert.Same(workspace.PageModel<OverviewPageModel>(),
                 Assert.Single(window.GetLogicalDescendants().OfType<OverviewPage>()).DataContext);
             Assert.Same(workspace.PageModel<WarningsPageModel>().Grammar, Assert.Single(window.GetLogicalDescendants().OfType<GrammarPanel>()).Grammar);
+            // The frame attaches only the current page's side panel, which holds the Texts selection.
+            workspace.CurrentPage = WorkspacePage.Texts;
             Assert.Same(workspace.Selection, Assert.Single(window.GetLogicalDescendants().OfType<SelectionPanel>()).Selection);
             Assert.Same(workspace.PageModel<TextsPageModel>().Words, Assert.Single(window.GetLogicalDescendants().OfType<SelectionPanel>()).Words);
             Assert.Same(workspace.PageModel<TextsPageModel>().Assess.Compare,
@@ -429,7 +434,33 @@ public sealed class MainWindowSmokeTests
     }
 
     [Fact]
-    public void FirstRunNoticeIsVisibleInTheWindow()
+    public void TechDemoPromiseAndProblemReportRemainVisibleInTheStatusBar()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var notice = new TechDemoNoticeViewModel(new MemoryTechDemoNoticePreferences(), new SucceedingUriLauncher());
+            var (_, window, _) = NewComposedWindow(notice);
+            try
+            {
+                window.Show();
+                window.UpdateLayout();
+
+                var status = Assert.IsType<Border>(window.FindControl<Border>("StatusBar"));
+                Assert.True(status.IsEffectivelyVisible);
+                Assert.Contains("Tech demo: writes nothing until you press Apply",
+                    status.GetVisualDescendants().OfType<TextBlock>().Select(text => text.Text));
+                Assert.Contains(status.GetVisualDescendants().OfType<Button>(), button =>
+                    button.IsEffectivelyVisible && AutomationProperties.GetName(button) == "Report a problem");
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void TheFirstRunTechDemoNoticeShowsAboveThePageUntilItIsAcknowledged()
     {
         _avalonia.Invoke(() =>
         {
@@ -441,13 +472,19 @@ public sealed class MainWindowSmokeTests
                 window.UpdateLayout();
 
                 var banner = Assert.IsType<Border>(window.FindControl<Border>("TechDemoNotice"));
-                Assert.True(banner.IsVisible);
+                Assert.True(banner.IsEffectivelyVisible);
                 Assert.Contains(TechDemoNoticeViewModel.NoticeText,
-                    window.GetLogicalDescendants().OfType<TextBlock>().Select(text => text.Text));
-                Assert.Contains("Got it", window.GetLogicalDescendants().OfType<Button>()
-                    .Select(button => button.Content as string));
-                Assert.Contains(window.GetLogicalDescendants().OfType<Button>(), button =>
+                    banner.GetVisualDescendants().OfType<TextBlock>().Select(text => text.Text));
+                var pageHost = Assert.IsType<Panel>(window.FindControl<Panel>("PageHost"));
+                Assert.True(banner.TranslatePoint(new Point(0, banner.Bounds.Height), window)!.Value.Y <=
+                    pageHost.TranslatePoint(new Point(0, 0), window)!.Value.Y + 0.5, "The notice sits above the page.");
+                var gotIt = Assert.Single(banner.GetVisualDescendants().OfType<Button>(), button =>
                     AutomationProperties.GetName(button) == "Acknowledge the tech demo notice");
+                Assert.True(gotIt.IsEffectivelyVisible);
+
+                gotIt.Command!.Execute(gotIt.CommandParameter);
+                window.UpdateLayout();
+                Assert.False(banner.IsEffectivelyVisible);
             }
             finally
             {
@@ -481,6 +518,8 @@ public sealed class MainWindowSmokeTests
                 await workspace.Context.OpenProjectAsync(projectPath);
                 Assert.Empty(fake.AssessRequests);
                 Assert.Equal(ProjectFreshness.SavedSince, workspace.Freshness);
+                await workspace.Context.Setup!.SkipCommand.ExecuteAsync(null);
+                Assert.False(workspace.Context.Setup.IsOpen);
                 window.Show();
                 window.ApplyTemplate();
                 window.UpdateLayout();
@@ -527,16 +566,30 @@ public sealed class MainWindowSmokeTests
                             "2026-09-01T00:00:00Z", "sha256:" + new string('b', 64)),
                         projectPath, DateTimeOffset.UtcNow, false, false),
                     new SelectionProjection([], []), [], "summary"), DateTimeOffset.UtcNow, WasRerun: false));
+                PageScreenshots.Settle(window);
                 workspace.Baseline.FieldWorksHeldProject = true;
                 workspace.Baseline.ShownRefusal = WindowRefusal.Plain("FieldWorks still has the project open.");
                 window.UpdateLayout();
+                var noticeBand = window.FindControl<Border>("NoticeBand")!;
+                Assert.True(noticeBand.IsEffectivelyVisible);
+                Assert.Equal(28, noticeBand.Bounds.Height);
+                Assert.Equal(workspace.Baseline.ShownRefusal.Sentence,
+                    window.FindControl<TextBlock>("NoticeSummary")!.Text);
+                PageScreenshots.Settle(window);
+                Assert.True(noticeBand.IsEffectivelyVisible,
+                    $"Refusal after settling: {workspace.Baseline.ShownRefusal?.Sentence ?? "none"}");
+                var detailsButton = window.FindControl<Button>("NoticeDetailsButton")!;
+                ClickButton(window, detailsButton);
+                PageScreenshots.Settle(window);
+                Assert.True(detailsButton.Flyout!.IsOpen);
+                var detail = Assert.IsAssignableFrom<Control>(Assert.IsType<Flyout>(detailsButton.Flyout).Content);
                 var refusalText = string.Join("\n", window.GetVisualDescendants().OfType<TextBlock>().Select(item => item.Text));
                 Assert.Contains("Refresh refused", refusalText);
                 Assert.Contains("FieldWorks still has the project open.", refusalText);
                 Assert.Equal("Refresh refused", workspace.FreshnessLabel);
                 Assert.Empty(workspace.FreshnessDetail);
                 Assert.DoesNotContain("FieldWorks holds this project open right now.", refusalText);
-                var visibleText = window.GetVisualDescendants().OfType<CopyableTextBlock>()
+                var visibleText = detail.GetVisualDescendants().OfType<CopyableTextBlock>()
                     .Where(item => item.IsEffectivelyVisible).Select(item => item.Text).ToArray();
                 Assert.Equal(1, visibleText.Count(item => item?.Contains(
                     "FieldWorks still has the project open.", StringComparison.Ordinal) == true));
@@ -656,13 +709,14 @@ public sealed class MainWindowSmokeTests
                 Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();
                 var controls = window.GetLogicalDescendants().OfType<Control>()
-                    .Where(control => control.IsEffectivelyVisible && control is
+                    .Where(control => control.IsAttachedToVisualTree() && control.IsEffectivelyVisible && control is
                         Button or HyperlinkButton or CheckBox or ComboBox or TextBox or NumericUpDown or DataGrid)
                     .ToList();
                 Assert.NotEmpty(controls);
                 foreach (var control in controls)
                     Assert.False(string.IsNullOrWhiteSpace(EffectiveAccessibleName(control)),
-                        $"{page}/{tab}: {control.GetType().Name} (content '{(control as ContentControl)?.Content}') has no accessible name.");
+                        $"{page}/{tab}: {control.GetType().Name} (content '{(control as ContentControl)?.Content}') has no accessible name. " +
+                        string.Join(" <- ", control.GetLogicalAncestors().OfType<Control>().Select(parent => $"{parent.GetType().Name}#{parent.Name}")));
             }
 
             workspace.Context.ProjectPath = @"C:\projects\one.fwdata";

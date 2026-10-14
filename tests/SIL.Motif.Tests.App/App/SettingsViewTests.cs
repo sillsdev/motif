@@ -22,6 +22,7 @@ using SIL.Motif.Host.Preferences;
 using SIL.Motif.Tests.App.Walkthrough;
 using SIL.Motif.Worker;
 using Xunit;
+using SettingsGroup = SIL.Motif.App.ViewModels.SettingsGroup;
 
 namespace SIL.Motif.Tests.App;
 
@@ -54,7 +55,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                     foreach (var text in workspace.Selection.Texts)
                         text.IsChecked = allBoxesAlreadyChecked || text.Id == SampleTextId;
                     var popup = OpenSettings(window);
-                    popup.FindControl<ListBox>("SettingsGroups")!.SelectedIndex = 2;
+                    SettingsTestAccess.Select(popup, SettingsGroup.Texts);
                     PageScreenshots.Settle(window);
                     var settings = Assert.IsType<SettingsViewModel>(popup.DataContext);
                     var useAllTexts = popup.FindControl<Button>("UseAllTextsButton")!;
@@ -67,7 +68,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                         settings.TextSelectionSummary);
                     workspace.Selection.SearchText = string.Empty;
                     Assert.True(useAllTexts.IsEnabled);
-                    if (!string.IsNullOrWhiteSpace(folder)) SavePopupState(window, popup, folder, "settings-text-selection-all-before.png");
+                    if (!string.IsNullOrWhiteSpace(folder)) SavePageState(window, popup, folder, "settings-text-selection-all-before.png");
 
                     HeadlessClick.Click(window, useAllTexts, "Use all texts");
                     await settings.UseAllTextsCommand.ExecutionTask!;
@@ -88,7 +89,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                     await workspace.Context.Setup!.ProjectOpenedAsync(workspace.Context.ProjectPath!);
                     Assert.Equal(expectedTextIds, workspace.Selection.ChosenTextIds.Order());
                     Assert.False(useAllTexts.IsEnabled);
-                    if (!string.IsNullOrWhiteSpace(folder)) SavePopupState(window, popup, folder, "settings-text-selection-all-after.png");
+                    if (!string.IsNullOrWhiteSpace(folder)) SavePageState(window, popup, folder, "settings-text-selection-all-after.png");
                 }
                 finally
                 {
@@ -125,7 +126,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                 {
                     workspace.Selection.SelectAllTexts();
                     var popup = OpenSettings(window);
-                    popup.FindControl<ListBox>("SettingsGroups")!.SelectedIndex = 2;
+                    SettingsTestAccess.Select(popup, SettingsGroup.Texts);
                     PageScreenshots.Settle(window);
                     var settings = Assert.IsType<SettingsViewModel>(popup.DataContext);
                     Assert.Equal("1 of 1 Text selected", settings.TextSelectionSummary);
@@ -133,7 +134,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                     if (!string.IsNullOrWhiteSpace(folder))
                     {
                         Directory.CreateDirectory(folder);
-                        SavePopupState(window, popup, folder, "settings-one-text.png");
+                        SavePageState(window, popup, folder, "settings-one-text.png");
                     }
                 }
                 finally
@@ -163,27 +164,28 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                 {
                     window.Show();
                     PageScreenshots.Settle(window);
-                    var popup = OpenSettings(window);
-                    Assert.Equal("Display", ActiveGroupHeading(popup));
-                    HeadlessClick.Click(window, Button(popup, "Zoom in"), "Zoom in");
-                    HeadlessClick.Click(window, Button(popup, "Dark theme"), "Dark theme");
+                    var page = OpenSettings(window);
+                    Assert.Equal("Display", ActiveGroupHeading(page));
+                    HeadlessClick.Click(window, Button(page, "Zoom in"), "Zoom in");
+                    HeadlessClick.Click(window, Button(page, "Dark theme"), "Dark theme");
 
-                    var groups = popup.FindControl<ListBox>("SettingsGroups")!;
-                    groups.SelectedIndex = 1;
+                    var groups = page.Navigation.FindControl<ListBox>("SettingsGroups")!;
+                    SettingsTestAccess.Select(page, SettingsGroup.KeyboardShortcuts);
                     PageScreenshots.Settle(window);
-                    var search = popup.FindControl<TextBox>("ShortcutSearchBox")!;
+                    var search = page.FindControl<TextBox>("ShortcutSearchBox")!;
                     search.Text = "zoom";
                     PageScreenshots.Settle(window);
-                    var clear = Button(popup, "Clear shortcut search");
+                    var clear = Button(page, "Clear shortcut search");
                     Assert.True(clear.IsEffectivelyVisible);
                     HeadlessClick.Click(window, clear, "Clear shortcut search");
                     Assert.Equal(string.Empty, search.Text);
 
-                    groups.SelectedIndex = 5;
+                    SettingsTestAccess.Select(page, SettingsGroup.HelpAndReports);
                     PageScreenshots.Settle(window);
-                    var details = Assert.Single(popup.GetVisualDescendants().OfType<Expander>());
+                    var details = Assert.Single(page.GetVisualDescendants().OfType<Expander>(),
+                        control => AutomationProperties.GetName(control) == "What a report includes");
                     Assert.False(details.IsExpanded);
-                    HeadlessClick.Click(window, details, "What a report includes");
+                    ClickControl(window, details, "What a report includes");
                     PageScreenshots.Settle(window);
                     Assert.True(details.IsExpanded);
                     var reportDescription = Assert.Single(details.GetVisualDescendants().OfType<TextBlock>(),
@@ -205,9 +207,10 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                     Assert.Contains("Safe failure facts", reportDescription, StringComparison.Ordinal);
                     Assert.Contains("Failure fact parserNotFound: true", reportText, StringComparison.Ordinal);
 
-                    var openHelp = Button(popup, "Open Help");
+                    var openHelp = Button(page, "Open Help");
                     HeadlessClick.Click(window, openHelp, "Open Help");
-                    Assert.False(Assert.IsType<Flyout>(Button(window, "Settings").Flyout).IsOpen);
+                    Assert.Equal(WorkspacePage.Settings, workspace.CurrentPage);
+                    Assert.True(page.IsEffectivelyVisible);
                     Assert.True(Assert.IsType<Flyout>(Button(window, "Help for the current page").Flyout).IsOpen);
                 }
                 finally
@@ -239,25 +242,25 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                 try
                 {
                     window.Show();
-                    var popup = OpenSettings(window);
-                    var groups = popup.FindControl<ListBox>("SettingsGroups")!;
-                    Assert.Equal(0, groups.SelectedIndex);
+                    var page = OpenSettings(window);
+                    var groups = page.Navigation.FindControl<ListBox>("SettingsGroups")!;
+                    Assert.Equal(SettingsGroup.Display, Assert.IsType<SettingsGroupOption>(groups.SelectedItem).Group);
                     Assert.True(groups.Focus());
 
                     window.KeyPress(Key.Down, RawInputModifiers.None, PhysicalKey.ArrowDown, null);
                     PageScreenshots.Settle(window);
-                    Assert.Equal(1, groups.SelectedIndex);
-                    Assert.Equal("Keyboard shortcuts", ActiveGroupHeading(popup));
+                    Assert.Equal(SettingsGroup.KeyboardShortcuts, Assert.IsType<SettingsGroupOption>(groups.SelectedItem).Group);
+                    Assert.Equal("Keyboard shortcuts", ActiveGroupHeading(page));
 
                     window.KeyPress(Key.End, RawInputModifiers.None, PhysicalKey.End, null);
                     PageScreenshots.Settle(window);
-                    Assert.Equal(6, groups.SelectedIndex);
-                    Assert.Equal("About Motif", ActiveGroupHeading(popup));
+                    Assert.Equal(SettingsGroup.About, Assert.IsType<SettingsGroupOption>(groups.SelectedItem).Group);
+                    Assert.Equal("About Motif", ActiveGroupHeading(page));
 
                     window.KeyPress(Key.Home, RawInputModifiers.None, PhysicalKey.Home, null);
                     PageScreenshots.Settle(window);
-                    Assert.Equal(0, groups.SelectedIndex);
-                    Assert.Equal("Display", ActiveGroupHeading(popup));
+                    Assert.Equal(SettingsGroup.Display, Assert.IsType<SettingsGroupOption>(groups.SelectedItem).Group);
+                    Assert.Equal("Display", ActiveGroupHeading(page));
                 }
                 finally
                 {
@@ -296,35 +299,44 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                 workspace.PageModel<OverviewPageModel>().Overview = overview with { WritingSystems = systems };
                 PageScreenshots.Settle(window);
 
-                var popup = OpenSettings(window);
-                var viewModel = Assert.IsType<SettingsViewModel>(popup.DataContext);
+                var page = OpenSettings(window);
+                var viewModel = Assert.IsType<SettingsViewModel>(page.DataContext);
                 Assert.Equal(new[] { "v-0", "v-1", "v-2", "v-3", "v-4", "v-5", "v-6", "v-7" },
                     viewModel.VernacularWritingSystems.Select(row => row.Id));
-                Assert.True(viewModel.GroupOptions.Single(option =>
+                Assert.True(viewModel.PageGroupOptions.Single(option =>
                     option.Group == SIL.Motif.App.ViewModels.SettingsGroup.WritingSystems)
                     .HasWarning);
 
-                var groups = popup.FindControl<ListBox>("SettingsGroups")!;
-                groups.SelectedIndex = 4;
+                var groups = page.Navigation.FindControl<ListBox>("SettingsGroups")!;
+                SettingsTestAccess.Select(page, SettingsGroup.WritingSystems);
                 PageScreenshots.Settle(window);
-                Assert.Equal("Writing systems in Sample", ActiveGroupHeading(popup));
-                Assert.Contains(popup.GetVisualDescendants().OfType<TextBlock>(), text =>
+                Assert.Equal("Writing systems in Sample", ActiveGroupHeading(page));
+                var details = Assert.Single(page.GetVisualDescendants().OfType<Expander>(),
+                    control => AutomationProperties.GetName(control) == "Writing system details for Vernacular 7");
+                Assert.False(details.IsExpanded);
+                ClickControl(window, details, "Writing system details for Vernacular 7");
+                Assert.True(details.IsExpanded);
+                Assert.Contains(page.GetVisualDescendants().OfType<TextBlock>(), text =>
                     text.IsEffectivelyVisible && text.Text == "11 pt (Normal)");
-                Assert.Contains(popup.GetVisualDescendants().OfType<MarkGlyph>(), mark =>
+                Assert.Contains(page.GetVisualDescendants().OfType<MarkGlyph>(), mark =>
                     mark.IsEffectivelyVisible && AutomationProperties.GetName(mark) == "A font is missing");
                 Assert.DoesNotContain(workspace.Context.TextStyles.MissingFontNotices,
                     notice => notice.WritingSystemId == "v-7");
 
-                HeadlessClick.Click(window, Button(popup, "Close Settings"), "Close Settings");
+                HeadlessClick.Click(window, Button(page, "Leave Settings"), "Leave Settings");
                 workspace.Context.TextStyles.MissingFontNotices.Add(
                     new WritingSystemFontNotice("v-7", "FieldWorks asks for a missing font."));
                 PageScreenshots.Settle(window);
-                HeadlessClick.Click(window, Button(window, "See writing systems"), "See writing systems");
+                var noticeOpener = window.FindControl<Button>("NoticeDetailsButton")!;
+                HeadlessClick.Click(window, noticeOpener, "See project notices");
+                var noticeFlyout = Assert.IsType<Flyout>(noticeOpener.Flyout);
+                Assert.True(noticeFlyout.IsOpen);
+                var noticeDetails = Assert.IsAssignableFrom<Control>(noticeFlyout.Content);
+                ClickControl(window, Button(noticeDetails, "See writing systems"), "See writing systems");
                 PageScreenshots.Settle(window);
 
                 Assert.Equal(SIL.Motif.App.ViewModels.SettingsGroup.WritingSystems, viewModel.SelectedGroup);
-                var writingSystemScroll = popup.GetVisualDescendants().OfType<ScrollViewer>()
-                    .Single(scroll => scroll.Classes.Contains("settingsContentScroll"));
+                var writingSystemScroll = page.FindControl<ScrollViewer>("SettingsListScroll")!;
                 Assert.True(writingSystemScroll.Offset.Y > 0);
             }
             finally
@@ -348,10 +360,10 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                 try
                 {
                     window.Show();
-                    var popup = OpenSettings(window);
-                    var light = Button(popup, "Light theme");
-                    var dark = Button(popup, "Dark theme");
-                    var system = Button(popup, "Match the operating system theme");
+                    var page = OpenSettings(window);
+                    var light = Button(page, "Light theme");
+                    var dark = Button(page, "Dark theme");
+                    var system = Button(page, "Match the operating system theme");
                     Assert.Equal(-1, light.TabIndex);
                     Assert.Equal(-1, dark.TabIndex);
                     Assert.Equal(0, system.TabIndex);
@@ -371,7 +383,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                     Assert.Equal(-1, dark.TabIndex);
                     Assert.Equal(ThemeVariant.Light, Application.Current!.RequestedThemeVariant);
 
-                    Assert.IsType<SettingsViewModel>(popup.DataContext).ThemeChoice = WindowThemeChoice.System;
+                    Assert.IsType<SettingsViewModel>(page.DataContext).ThemeChoice = WindowThemeChoice.System;
                     Assert.Equal(ThemeVariant.Default, Application.Current.RequestedThemeVariant);
                 }
                 finally
@@ -402,10 +414,10 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                 try
                 {
                     window.Show();
-                    var popup = OpenSettings(window);
-                    popup.FindControl<ListBox>("SettingsGroups")!.SelectedIndex = 6;
+                    var page = OpenSettings(window);
+                    SettingsTestAccess.Select(page, SettingsGroup.About);
                     PageScreenshots.Settle(window);
-                    var copy = Button(popup, "Copy versions");
+                    var copy = Button(page, "Copy versions");
                     HeadlessClick.Click(window, copy, "Copy versions");
                     for (var pass = 0; pass < 4; pass++)
                     {
@@ -443,10 +455,10 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                 try
                 {
                     window.Show();
-                    var popup = OpenSettings(window);
-                    popup.FindControl<ListBox>("SettingsGroups")!.SelectedIndex = 5;
+                    var page = OpenSettings(window);
+                    SettingsTestAccess.Select(page, SettingsGroup.HelpAndReports);
                     PageScreenshots.Settle(window);
-                    HeadlessClick.Click(window, Button(popup, "Report a problem"), "Report a problem");
+                    HeadlessClick.Click(window, Button(page, "Report a problem"), "Report a problem");
                     for (var pass = 0; pass < 4; pass++)
                     {
                         await Task.Yield();
@@ -485,10 +497,10 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                 try
                 {
                     window.Show();
-                    var popup = OpenSettings(window);
-                    popup.FindControl<ListBox>("SettingsGroups")!.SelectedIndex = 5;
+                    var page = OpenSettings(window);
+                    SettingsTestAccess.Select(page, SettingsGroup.HelpAndReports);
                     PageScreenshots.Settle(window);
-                    ClickFlyout(window, Button(popup, "Open the Motif site"), "Open the Motif site");
+                    ClickControl(window, Button(page, "Open the Motif site"), "Open the Motif site");
                     for (var pass = 0; pass < 4; pass++)
                     {
                         await Task.Yield();
@@ -496,11 +508,11 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                     }
                     Assert.Equal(new Uri("https://motif-docs.pages.dev"), Assert.Single(launcher.Launches));
 
-                    popup = OpenSettings(window);
-                    popup.FindControl<ListBox>("SettingsGroups")!.SelectedIndex = 6;
+                    page = OpenSettings(window);
+                    SettingsTestAccess.Select(page, SettingsGroup.About);
                     PageScreenshots.Settle(window);
                     await Task.Delay(300);
-                    ClickFlyout(window, Button(popup, "Open Motif data folder"), "Open Motif data folder");
+                    ClickControl(window, Button(page, "Open Motif data folder"), "Open Motif data folder");
                     for (var pass = 0; pass < 4; pass++)
                     {
                         await Task.Yield();
@@ -535,15 +547,15 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                 try
                 {
                     window.Show();
-                    var popup = OpenSettings(window);
-                    var refusal = Assert.Single(popup.GetVisualDescendants().OfType<TextBlock>(), text =>
+                    var page = OpenSettings(window);
+                    var refusal = Assert.Single(page.GetVisualDescendants().OfType<TextBlock>(), text =>
                         text.IsEffectivelyVisible && text.Text?.Contains("delete user-preferences.json", StringComparison.Ordinal) == true);
                     Assert.True(refusal.IsEffectivelyVisible);
-                    HeadlessClick.Click(window, Button(popup, "Zoom in"), "Zoom in");
-                    Assert.Equal("110%", Assert.Single(popup.GetVisualDescendants().OfType<TextBlock>(), text =>
+                    HeadlessClick.Click(window, Button(page, "Zoom in"), "Zoom in");
+                    Assert.Equal("110%", Assert.Single(page.GetVisualDescendants().OfType<TextBlock>(), text =>
                         text.Classes.Contains("settingsZoomValue")).Text);
                     Assert.Equal(original, File.ReadAllText(settingsPath));
-                    HeadlessClick.Click(window, Button(popup, "Reset saved preferences"), "Reset saved preferences");
+                    HeadlessClick.Click(window, Button(page, "Reset saved preferences"), "Reset saved preferences");
                     Assert.Equal(100, new FileUserPreferencesStore(settingsPath).Current.ZoomPercent);
                     Assert.Equal(PreferenceState.Ready, new FileUserPreferencesStore(settingsPath).State);
                 }
@@ -640,23 +652,23 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                 try
                 {
                     Assert.True(workspace.Context.Setup?.CanRunDefaultSelection);
-                    var popup = OpenSettings(window);
-                    var groups = popup.FindControl<ListBox>("SettingsGroups")!;
-                    groups.SelectedIndex = 2;
+                    var page = OpenSettings(window);
+                    var groups = page.Navigation.FindControl<ListBox>("SettingsGroups")!;
+                    SettingsTestAccess.Select(page, SettingsGroup.Parsing);
                     PageScreenshots.Settle(window);
 
-                    var stepLimit = popup.GetVisualDescendants().OfType<NumericUpDown>()
+                    var stepLimit = page.GetVisualDescendants().OfType<NumericUpDown>()
                         .Single(control => AutomationProperties.GetName(control) == "Step limit per word");
-                    var timeLimit = popup.GetVisualDescendants().OfType<NumericUpDown>()
+                    var timeLimit = page.GetVisualDescendants().OfType<NumericUpDown>()
                         .Single(control => AutomationProperties.GetName(control) == "Time limit per word in seconds");
-                    var useEstimate = Button(popup, "Use Motif's estimate");
-                    var noStepLimit = Assert.Single(popup.GetVisualDescendants().OfType<CheckBox>());
+                    var useEstimate = Button(page, "Use Motif's estimate");
+                    var noStepLimit = Assert.Single(page.GetVisualDescendants().OfType<CheckBox>());
                     Assert.Equal(workspace.Selection.PerWordStepLimit, stepLimit.Value);
                     Assert.Equal(workspace.Selection.PerWordStepLimitUnbounded, noStepLimit.IsChecked);
 
                     Assert.False(useEstimate.IsEffectivelyVisible);
                     timeLimit.Value = 10m;
-                    ClickFlyout(window, timeLimit, "Time limit per word in seconds");
+                    ClickControl(window, timeLimit, "Time limit per word in seconds");
                     PressEnter(window, timeLimit);
                     for (var pass = 0; pass < 4; pass++)
                     {
@@ -665,10 +677,10 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                     }
                     Assert.True(useEstimate.IsEffectivelyVisible);
 
-                    ClickFlyout(window, useEstimate, "Use Motif's estimate");
+                    ClickControl(window, useEstimate, "Use Motif's estimate");
                     Assert.Equal(8m, workspace.Selection.PerWordTimeLimitSeconds);
                     timeLimit.Value = 1m;
-                    ClickFlyout(window, timeLimit, "Time limit per word in seconds");
+                    ClickControl(window, timeLimit, "Time limit per word in seconds");
                     PressEnter(window, timeLimit);
                     for (var pass = 0; pass < 4; pass++)
                     {
@@ -678,7 +690,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                     Assert.Equal(1m, workspace.Selection.PerWordTimeLimitSeconds);
                     Assert.True(useEstimate.IsEffectivelyVisible);
 
-                    var settings = Assert.IsType<SettingsViewModel>(popup.DataContext);
+                    var settings = Assert.IsType<SettingsViewModel>(page.DataContext);
                     settings.StepLimit = 300000m;
                     Assert.False(settings.IsUsingMotifEstimate);
                     Assert.Equal(1m, settings.TimeLimitSeconds);
@@ -688,7 +700,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                     settings.StepLimit = 200000m;
                     Assert.Null(await settings.CommitParsingLimitsAsync());
 
-                    ClickFlyout(window, noStepLimit, "No step limit");
+                    ClickControl(window, noStepLimit, "No step limit");
                     for (var pass = 0; pass < 4; pass++)
                     {
                         await Task.Yield();
@@ -701,17 +713,17 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                     Assert.False(useEstimate.IsEffectivelyVisible);
                     Assert.NotEmpty(fake!.SetSelectionLimitsRequests);
 
-                    groups.SelectedIndex = 0;
-                    groups.SelectedIndex = 2;
+                    SettingsTestAccess.Select(page, SettingsGroup.Display);
+                    SettingsTestAccess.Select(page, SettingsGroup.Parsing);
                     PageScreenshots.Settle(window);
-                    ClickFlyout(window, noStepLimit, "No step limit");
+                    ClickControl(window, noStepLimit, "No step limit");
                     for (var pass = 0; pass < 4; pass++)
                     {
                         await Task.Yield();
                         PageScreenshots.Settle(window);
                     }
                     var lastLimitSave = fake!.SetSelectionLimitsRequests.LastOrDefault();
-                    var visibleRefusals = string.Join(" | ", popup.GetVisualDescendants().OfType<TextBlock>()
+                    var visibleRefusals = string.Join(" | ", page.GetVisualDescendants().OfType<TextBlock>()
                         .Where(text => text.IsEffectivelyVisible && text.Classes.Contains("settingsRefusal"))
                         .Select(text => text.Text));
                     Assert.False(noStepLimit.IsChecked,
@@ -724,18 +736,18 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                     Assert.True(timeLimit.IsEnabled);
                     Assert.Equal(1m, workspace.Selection.PerWordTimeLimitSeconds);
                     timeLimit.Value = null;
-                    ClickFlyout(window, timeLimit, "Time limit per word in seconds");
+                    ClickControl(window, timeLimit, "Time limit per word in seconds");
                     PressEnter(window, timeLimit);
                     for (var pass = 0; pass < 4; pass++)
                     {
                         await Task.Yield();
                         PageScreenshots.Settle(window);
                     }
-                    Assert.Contains(popup.GetVisualDescendants().OfType<TextBlock>(), text =>
+                    Assert.Contains(page.GetVisualDescendants().OfType<TextBlock>(), text =>
                         text.IsEffectivelyVisible && text.Text == "Enter a per-word time limit greater than zero.");
                     Assert.Equal(1m, workspace.Selection.PerWordTimeLimitSeconds);
 
-                    ClickFlyout(window, stepLimit, "Step limit per word");
+                    ClickControl(window, stepLimit, "Step limit per word");
                     stepLimit.Value = 100000.5m;
                     PressEnter(window, stepLimit);
                     for (var pass = 0; pass < 4; pass++)
@@ -744,7 +756,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                         PageScreenshots.Settle(window);
                     }
 
-                    var refusal = popup.GetVisualDescendants().OfType<TextBlock>().SingleOrDefault(text =>
+                    var refusal = page.GetVisualDescendants().OfType<TextBlock>().SingleOrDefault(text =>
                         text.IsEffectivelyVisible && text.Text ==
                         "The per-word step limit must be a positive whole number.");
                     Assert.True(refusal?.IsEffectivelyVisible == true,
@@ -754,7 +766,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                         $"save count={fake.SetSelectionLimitsRequests.Count}; " +
                         $"last={fake.SetSelectionLimitsRequests.LastOrDefault()?.Limits.PerWordStepLimit}/" +
                         $"{fake.SetSelectionLimitsRequests.LastOrDefault()?.Limits.ExplicitPerWordLimitMs}; " +
-                        $"visible refusals={string.Join(" | ", popup.GetVisualDescendants().OfType<TextBlock>()
+                        $"visible refusals={string.Join(" | ", page.GetVisualDescendants().OfType<TextBlock>()
                             .Where(text => text.IsEffectivelyVisible && text.Classes.Contains("settingsRefusal"))
                             .Select(text => text.Text))}");
                     Assert.Equal(200000m, workspace.Selection.PerWordStepLimit);
@@ -809,7 +821,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                     var stepLimit = panel.GetVisualDescendants().OfType<NumericUpDown>()
                         .Single(control => AutomationProperties.GetName(control) == "Selection step limit per word");
                     stepLimit.Value = 300000m;
-                    ClickFlyout(window, stepLimit, "Selection step limit per word");
+                    ClickControl(window, stepLimit, "Selection step limit per word");
                     PressEnter(window, stepLimit);
                     for (var pass = 0; pass < 4; pass++)
                     {
@@ -823,7 +835,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                     var timeLimit = panel.GetVisualDescendants().OfType<NumericUpDown>()
                         .Single(control => AutomationProperties.GetName(control) == "Selection time limit per word in seconds");
                     timeLimit.Value = 1m;
-                    ClickFlyout(window, timeLimit, "Selection time limit per word in seconds");
+                    ClickControl(window, timeLimit, "Selection time limit per word in seconds");
                     PressEnter(window, timeLimit);
                     for (var pass = 0; pass < 4; pass++)
                     {
@@ -831,7 +843,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                         PageScreenshots.Settle(window);
                     }
                     Assert.True(useEstimate.IsEffectivelyVisible);
-                    ClickFlyout(window, useEstimate, "Use Motif's estimated time limit");
+                    ClickControl(window, useEstimate, "Use Motif's estimated time limit");
                     for (var pass = 0; pass < 4; pass++)
                     {
                         await Task.Yield();
@@ -841,7 +853,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                         fake.SetSelectionLimitsRequests.Last().Limits.TimeMode);
                     var noStepLimit = panel.GetVisualDescendants().OfType<CheckBox>()
                         .Single(control => AutomationProperties.GetName(control) == "Selection has no step limit");
-                    ClickFlyout(window, noStepLimit, "Selection has no step limit");
+                    ClickControl(window, noStepLimit, "Selection has no step limit");
                     for (var pass = 0; pass < 4; pass++)
                     {
                         await Task.Yield();
@@ -849,10 +861,10 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                     }
                     Assert.True(fake.SetSelectionLimitsRequests.Last().Limits.PerWordStepLimit.IsUnbounded);
 
-                    var popup = OpenSettings(window);
-                    popup.FindControl<ListBox>("SettingsGroups")!.SelectedIndex = 2;
+                    var page = OpenSettings(window);
+                    SettingsTestAccess.Select(page, SettingsGroup.Parsing);
                     PageScreenshots.Settle(window);
-                    var settingsStep = popup.GetVisualDescendants().OfType<NumericUpDown>()
+                    var settingsStep = page.GetVisualDescendants().OfType<NumericUpDown>()
                         .Single(control => AutomationProperties.GetName(control) == "Step limit per word");
                     Assert.Equal(300000m, settingsStep.Value);
                 }
@@ -882,15 +894,14 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                 try
                 {
                     var sidebarFooter = window.FindControl<StackPanel>("SidebarFooter")!;
-                    var selectionSummary = sidebarFooter.Children.OfType<CopyableTextBlock>().Last();
+                    var selectionSummary = window.FindControl<CopyableTextBlock>("StatusSelectionSummary")!;
                     Assert.True(double.IsNaN(sidebarFooter.Height));
-                    Assert.Equal(TextWrapping.Wrap, selectionSummary.TextWrapping);
+                    Assert.Equal(TextWrapping.NoWrap, selectionSummary.TextWrapping);
+                    Assert.Equal(TextTrimming.CharacterEllipsis, selectionSummary.TextTrimming);
                     window.Width = 1240;
                     window.Height = 780;
-                    var popup = OpenSettings(window);
-                    var zoomIn = Button(popup, "Zoom in");
-                    var gear = Button(window, "Settings");
-                    var flyout = Assert.IsType<Flyout>(gear.Flyout);
+                    var page = OpenSettings(window);
+                    var zoomIn = Button(page, "Zoom in");
                     var zoomRoot = window.FindControl<LayoutTransformControl>("RootLayoutTransform")!;
                     var zooms = new[] { (Percent: 100, Clicks: 0), (Percent: 125, Clicks: 2), (Percent: 150, Clicks: 1) };
 
@@ -899,26 +910,21 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                         for (var click = 0; click < zoom.Clicks; click++)
                             HeadlessClick.Click(window, zoomIn, "Zoom in");
                         PageScreenshots.Settle(window);
-                        Assert.Equal(zoom.Percent / 100d, Assert.IsType<ScaleTransform>(zoomRoot.LayoutTransform).ScaleX,
-                            precision: 2);
-                        Assert.True(flyout.Popup.InheritsTransform);
-                        if (zoom.Percent == 150)
-                        {
-                            var surface = popup.FindControl<Border>("SettingsSurface")!;
-                            Assert.True(surface.Bounds.Height <= 452.1);
-                        }
-                        flyout.Hide();
-                        PageScreenshots.Settle(window);
+                        var zoomScale = Assert.IsType<ScaleTransform>(zoomRoot.LayoutTransform).ScaleX;
+                        Assert.Equal(zoom.Percent / 100d, zoomScale, precision: 2);
+                        Assert.Same(SettingsTestAccess.Model(window), page.DataContext);
+                        SettingsTestAccess.AssertReachable(window, page.FindControl<Button>("SettingsClose")!);
+                        SettingsTestAccess.AssertReachable(window, zoomIn);
 
-                        foreach (var (name, page, tab) in PageScreenshots.Views())
+                        foreach (var (name, route, tab) in PageScreenshots.Views())
                         {
                             workspace.PageModel<SIL.Motif.App.ViewModels.TextsPageModel>().Tab = tab;
-                            if (page == SIL.Motif.App.ViewModels.WorkspacePage.TryAWord)
+                            if (route == SIL.Motif.App.ViewModels.WorkspacePage.TryAWord)
                             {
                                 workspace.Context.TryWord("hawajafika");
                                 await workspace.Assess.Trace.TryCommand.ExecutionTask!;
                             }
-                            workspace.CurrentPage = page;
+                            workspace.CurrentPage = route;
                             PageScreenshots.Settle(window);
                             try
                             {
@@ -933,8 +939,8 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
 
                         if (zoom.Percent != 150)
                         {
-                            popup = OpenSettings(window);
-                            zoomIn = Button(popup, "Zoom in");
+                            page = OpenSettings(window);
+                            zoomIn = Button(page, "Zoom in");
                         }
                     }
                 }
@@ -952,8 +958,10 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
         }
     }
 
-    [Fact]
-    public void AboutGroupFitsLongRuntimeValuesAt1040And150PercentZoom()
+    [Theory]
+    [InlineData(640)]
+    [InlineData(1040)]
+    public void AboutGroupFitsLongRuntimeValuesAtCompactWidthsAnd150PercentZoom(int width)
     {
         const string operatingSystem = "Microsoft Windows 10.0.26300";
         var dataRoot = Path.Combine(Path.GetTempPath(), "linguist", "projects", "motif", "managed",
@@ -968,13 +976,13 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                     applicationFacts: facts);
                 try
                 {
-                    window.Width = 1040;
+                    window.Width = width;
                     window.Height = 780;
                     window.Show();
-                    var popup = OpenSettings(window);
-                    var settings = Assert.IsType<SettingsViewModel>(popup.DataContext);
-                    var groups = popup.FindControl<ListBox>("SettingsGroups")!;
-                    groups.SelectedIndex = GroupSlugs.Length - 1;
+                    var page = OpenSettings(window);
+                    var settings = Assert.IsType<SettingsViewModel>(page.DataContext);
+                    var groups = page.Navigation.FindControl<ListBox>("SettingsGroups")!;
+                    SettingsTestAccess.Select(page, SettingsGroup.About);
                     settings.ZoomPercent = 150;
 
                     foreach (var (theme, themeName) in new[]
@@ -986,9 +994,8 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                         settings.ThemeChoice = theme;
                         PageScreenshots.Settle(window);
 
-                        var scroll = popup.GetVisualDescendants().OfType<ScrollViewer>()
-                            .Single(item => item.Classes.Contains("settingsContentScroll"));
-                        var visibleText = popup.GetVisualDescendants().OfType<TextBlock>()
+                        var scroll = page.FindControl<ScrollViewer>("SettingsListScroll")!;
+                        var visibleText = page.GetVisualDescendants().OfType<TextBlock>()
                             .Where(text => text.IsEffectivelyVisible).ToArray();
                         var operatingSystemLabel = Assert.Single(visibleText,
                             text => text.Text == "Operating system");
@@ -998,7 +1005,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                             text => text.Text == "Where Motif keeps its data");
                         var dataRootValue = Assert.Single(visibleText,
                             text => text.Text?.Replace("\u200B", "", StringComparison.Ordinal) == dataRoot);
-                        var openFolder = Button(popup, "Open Motif data folder");
+                        var openFolder = Button(page, "Open Motif data folder");
 
                         Assert.Equal(TextWrapping.Wrap, operatingSystemValue.TextWrapping);
                         LayoutAssertions.AssertTextFits(operatingSystemValue);
@@ -1006,35 +1013,43 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                             "The About group overflows the Settings page horizontally.");
                         var operatingSystemLabelPoint = operatingSystemLabel.TranslatePoint(default, scroll);
                         var operatingSystemValuePoint = operatingSystemValue.TranslatePoint(default, scroll);
-                        Assert.True(operatingSystemValuePoint!.Value.Y >= operatingSystemLabelPoint!.Value.Y +
-                            operatingSystemLabel.Bounds.Height - 0.5,
-                            $"The operating-system value should follow its label when the page is narrow. " +
-                            $"Content width={popup.FindControl<Grid>("SettingsContent")!.Bounds.Width:0.#}; " +
-                            $"label={operatingSystemLabelPoint.Value}; value={operatingSystemValuePoint.Value}; " +
-                            $"compact={operatingSystemLabel.Classes.Contains("compact")}; " +
-                            $"breakpoint={Application.Current!.FindResource("Component.Settings.AboutStackBreakpoint")}.");
-
-                        var dataRootLabelPoint = dataRootLabel.TranslatePoint(default, scroll);
-                        var dataRootValuePoint = dataRootValue.TranslatePoint(default, scroll);
-                        var openFolderPoint = openFolder.TranslatePoint(default, scroll);
-                        Assert.True(dataRootValuePoint!.Value.Y >= dataRootLabelPoint!.Value.Y +
-                            dataRootLabel.Bounds.Height - 0.5,
-                            "The data-folder path should follow its label when the page is narrow.");
-                        Assert.True(openFolderPoint!.Value.Y >= dataRootValuePoint.Value.Y +
-                            dataRootValue.Bounds.Height - 0.5,
-                            "The folder action should appear below the path.");
-                        Assert.True(openFolderPoint.Value.X >= -0.5 &&
-                            openFolderPoint.Value.X + openFolder.Bounds.Width <= scroll.Viewport.Width + 0.5,
+                        var compact = scroll.Viewport.Width <
+                            (double)Application.Current!.FindResource("Component.Settings.AboutStackBreakpoint")!;
+                        var dataRootLabelPoint = dataRootLabel.TranslatePoint(default, scroll)!.Value;
+                        var dataRootValuePoint = dataRootValue.TranslatePoint(default, scroll)!.Value;
+                        var openFolderPoint = openFolder.TranslatePoint(default, scroll)!.Value;
+                        if (compact)
+                        {
+                            Assert.True(operatingSystemValuePoint!.Value.Y >= operatingSystemLabelPoint!.Value.Y +
+                                operatingSystemLabel.Bounds.Height - 0.5,
+                                "The operating-system value should follow its label when the page is narrow.");
+                            Assert.True(dataRootValuePoint.Y >= dataRootLabelPoint.Y + dataRootLabel.Bounds.Height - 0.5,
+                                "The data-folder path should follow its label when the page is narrow.");
+                            Assert.True(openFolderPoint.Y >= dataRootValuePoint.Y + dataRootValue.Bounds.Height - 0.5,
+                                "The folder action should appear below the path.");
+                        }
+                        else
+                        {
+                            Assert.True(operatingSystemValuePoint!.Value.X >= operatingSystemLabelPoint!.Value.X +
+                                operatingSystemLabel.Bounds.Width - 0.5,
+                                "The operating-system value should follow its label across the wide row.");
+                            Assert.True(dataRootValuePoint.X >= dataRootLabelPoint.X + dataRootLabel.Bounds.Width - 0.5,
+                                "The data-folder path should follow its label across the wide row.");
+                            Assert.True(openFolderPoint.X >= dataRootValuePoint.X + dataRootValue.Bounds.Width - 0.5,
+                                "The folder action should follow the path across the wide row.");
+                        }
+                        Assert.True(openFolderPoint.X >= -0.5 &&
+                            openFolderPoint.X + openFolder.Bounds.Width <= scroll.Viewport.Width + 0.5,
                             "The folder action is clipped horizontally.");
-                        LayoutAssertions.AssertCurrent(popup);
+                        LayoutAssertions.AssertCurrent(page);
 
                         if (Environment.GetEnvironmentVariable(ScreenshotFactAttribute.FolderVariable) is { Length: > 0 } folder)
                         {
                             Directory.CreateDirectory(folder);
-                            using var frame = TopLevel.GetTopLevel(popup)?.CaptureRenderedFrame() ??
+                            using var frame = TopLevel.GetTopLevel(page)?.CaptureRenderedFrame() ??
                                 throw new InvalidOperationException("No Settings frame rendered for the About capture.");
                             frame.Save(Path.Combine(folder,
-                                $"settings-about-long-values-1040-150-{themeName}.png"),
+                                $"settings-about-long-values-{width}-150-{themeName}.png"),
                                 PngBitmapEncoderOptions.Default);
                         }
                     }
@@ -1068,28 +1083,28 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                 try
                 {
                     window.Show();
-                    var popup = OpenSettings(window);
-                    var groups = popup.FindControl<ListBox>("SettingsGroups")!;
+                    var page = OpenSettings(window);
+                    var groups = page.Navigation.FindControl<ListBox>("SettingsGroups")!;
                     Assert.Contains(groups.Items.OfType<SettingsGroupOption>(),
                         option => option.Title == "Default proposal checks");
-                    groups.SelectedIndex = 3;
+                    SettingsTestAccess.Select(page, SettingsGroup.ProposalChecks);
                     PageScreenshots.Settle(window);
-                    Assert.Equal("Default proposal checks", ActiveGroupHeading(popup));
+                    Assert.Equal("Default proposal checks", ActiveGroupHeading(page));
 
-                    var budget = popup.FindControl<Button>("StoredAnalysesBudgetChoice")!;
-                    var all = popup.FindControl<Button>("StoredAnalysesAllChoice")!;
-                    var off = popup.FindControl<Button>("StoredAnalysesOffChoice")!;
+                    var budget = page.FindControl<RadioButton>("StoredAnalysesBudgetChoice")!;
+                    var all = page.FindControl<RadioButton>("StoredAnalysesAllChoice")!;
+                    var off = page.FindControl<RadioButton>("StoredAnalysesOffChoice")!;
                     Assert.All(new[] { budget, all, off }, choice => Assert.True(choice.IsEffectivelyVisible));
-                    Assert.True(budget.Classes.Contains("selected"));
+                    Assert.True(budget.IsChecked == true);
                     Assert.Equal(StoredAnalysisComparison.Budget, store.StoredAnalyses);
 
-                    HeadlessClick.Click(window, off, "Off");
+                    ClickControl(window, off, "Off");
                     PageScreenshots.Settle(window);
-                    Assert.True(off.Classes.Contains("selected"));
-                    Assert.False(budget.Classes.Contains("selected"));
+                    Assert.True(off.IsChecked == true);
+                    Assert.False(budget.IsChecked == true);
                     Assert.Equal(StoredAnalysisComparison.Off, store.StoredAnalyses);
 
-                    HeadlessClick.Click(window, all, "Every word");
+                    ClickControl(window, all, "Every word");
                     PageScreenshots.Settle(window);
                     Assert.Equal(StoredAnalysisComparison.All, store.StoredAnalyses);
                 }
@@ -1109,11 +1124,11 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                 try
                 {
                     window.Show();
-                    var popup = OpenSettings(window);
+                    var page = OpenSettings(window);
                     PageScreenshots.Settle(window);
-                    var settings = Assert.IsType<SettingsViewModel>(popup.DataContext);
+                    var settings = Assert.IsType<SettingsViewModel>(page.DataContext);
                     Assert.Equal(SIL.Motif.App.ViewModels.SettingsGroup.ProposalChecks, settings.SelectedGroup);
-                    Assert.True(popup.FindControl<Button>("StoredAnalysesAllChoice")!.Classes.Contains("selected"));
+                    Assert.True(page.FindControl<RadioButton>("StoredAnalysesAllChoice")!.IsChecked == true);
                 }
                 finally
                 {
@@ -1144,9 +1159,9 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                     window.Width = 1040;
                     window.Height = 780;
                     window.Show();
-                    var popup = OpenSettings(window);
-                    var settings = Assert.IsType<SettingsViewModel>(popup.DataContext);
-                    popup.FindControl<ListBox>("SettingsGroups")!.SelectedIndex = 3;
+                    var page = OpenSettings(window);
+                    var settings = Assert.IsType<SettingsViewModel>(page.DataContext);
+                    SettingsTestAccess.Select(page, SettingsGroup.ProposalChecks);
                     foreach (var theme in new[] { WindowThemeChoice.Light, WindowThemeChoice.Dark })
                     {
                         settings.ThemeChoice = theme;
@@ -1154,8 +1169,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                         {
                             settings.ZoomPercent = zoom;
                             PageScreenshots.Settle(window);
-                            var scroll = popup.GetVisualDescendants().OfType<ScrollViewer>()
-                                .Single(item => item.Classes.Contains("settingsContentScroll"));
+                            var scroll = page.FindControl<ScrollViewer>("SettingsListScroll")!;
                             Assert.True(scroll.Extent.Width <= scroll.Viewport.Width + 0.5,
                                 $"The group overflows sideways at {zoom}% in {theme}.");
                             foreach (var name in new[]
@@ -1163,7 +1177,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                                 "StoredAnalysesBudgetChoice", "StoredAnalysesAllChoice", "StoredAnalysesOffChoice",
                             })
                             {
-                                var choice = popup.FindControl<Button>(name)!;
+                                var choice = page.FindControl<RadioButton>(name)!;
                                 var bounds = choice.TranslatePoint(default, scroll);
                                 Assert.NotNull(bounds);
                                 Assert.True(bounds!.Value.X >= -0.5 && bounds.Value.X + choice.Bounds.Width <=
@@ -1209,9 +1223,9 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                         WritingSystems = WritingSystemCaptureData(),
                     };
                     window.Height = 780;
-                    var popup = OpenSettings(window);
-                    var groups = popup.FindControl<ListBox>("SettingsGroups")!;
-                    var settings = Assert.IsType<SettingsViewModel>(popup.DataContext);
+                    var page = OpenSettings(window);
+                    var groups = page.Navigation.FindControl<ListBox>("SettingsGroups")!;
+                    var settings = Assert.IsType<SettingsViewModel>(page.DataContext);
                     foreach (var (themeName, theme, automationName) in new[]
                     {
                         ("light", ThemeVariant.Light, "Light theme"),
@@ -1226,37 +1240,37 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                         {
                             window.Width = width;
                             PageScreenshots.Settle(window);
-                            for (var index = 0; index < GroupSlugs.Length; index++)
+                            for (var index = 0; index < GroupStates.Length; index++)
                             {
-                                groups.SelectedIndex = index;
+                                SettingsTestAccess.Select(page, GroupStates[index].Group);
                                 PageScreenshots.Settle(window);
-                                SavePopupState(window, popup, folder,
-                                    $"settings-{GroupSlugs[index]}-{width}-{themeName}.png");
+                                SavePageState(window, page, folder,
+                                    $"settings-{GroupStates[index].Slug}-{width}-{themeName}.png");
                             }
 
                             if (themeName == "light" && width == 1240)
                             {
-                                groups.SelectedIndex = 0;
+                                SettingsTestAccess.Select(page, SettingsGroup.Display);
                                 PageScreenshots.Settle(window);
-                                SavePopupState(window, popup, folder, "settings-display-reset-default.png");
+                                SavePageState(window, page, folder, "settings-display-reset-default.png");
                                 settings.ZoomPercent = 125;
-                                SavePopupState(window, popup, folder, "settings-display-reset-available.png");
-                                HeadlessClick.Click(window, Button(popup, "Reset zoom to 100%"), "Reset zoom to 100%");
-                                SavePopupState(window, popup, folder, "settings-display-reset-disabled.png");
+                                SavePageState(window, page, folder, "settings-display-reset-available.png");
+                                HeadlessClick.Click(window, Button(page, "Reset zoom to 100%"), "Reset zoom to 100%");
+                                SavePageState(window, page, folder, "settings-display-reset-disabled.png");
                             }
 
-                            groups.SelectedIndex = 1;
-                            var search = popup.FindControl<TextBox>("ShortcutSearchBox")!;
+                            SettingsTestAccess.Select(page, SettingsGroup.KeyboardShortcuts);
+                            var search = page.FindControl<TextBox>("ShortcutSearchBox")!;
                             search.Text = "zoom";
                             PageScreenshots.Settle(window);
-                            SavePopupState(window, popup, folder, $"settings-shortcut-search-{width}-{themeName}.png");
+                            SavePageState(window, page, folder, $"settings-shortcut-search-{width}-{themeName}.png");
                             search.Text = "no matching shortcut";
                             PageScreenshots.Settle(window);
-                            SavePopupState(window, popup, folder,
+                            SavePageState(window, page, folder,
                                 $"settings-shortcut-no-results-{width}-{themeName}.png");
                             search.Text = string.Empty;
 
-                            groups.SelectedIndex = 2;
+                            SettingsTestAccess.Select(page, SettingsGroup.Parsing);
                             PageScreenshots.Settle(window);
                             settings.StepLimit = 100000.5m;
                             await settings.CommitParsingLimitsAsync();
@@ -1265,10 +1279,10 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                                 await Task.Yield();
                                 PageScreenshots.Settle(window);
                             }
-                            Assert.Contains(popup.GetVisualDescendants().OfType<TextBlock>(), text =>
+                            Assert.Contains(page.GetVisualDescendants().OfType<TextBlock>(), text =>
                                 text.IsEffectivelyVisible && text.Text ==
                                 "The per-word step limit must be a positive whole number.");
-                            SavePopupState(window, popup, folder,
+                            SavePageState(window, page, folder,
                                 $"settings-parsing-refused-{width}-{themeName}.png");
                             settings.CancelParsingLimitEdit();
 
@@ -1277,39 +1291,41 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                             settings.TimeLimitSeconds = null;
                             await settings.CommitParsingLimitsAsync();
                             PageScreenshots.Settle(window);
-                            SavePopupState(window, popup, folder, "settings-time-refused.png");
+                            SavePageState(window, page, folder, "settings-time-refused.png");
                             settings.CancelParsingLimitEdit();
 
                             settings.TimeLimitSeconds = 2.5m;
                             await settings.CommitParsingLimitsAsync();
                             PageScreenshots.Settle(window);
-                            SavePopupState(window, popup, folder, "settings-time-explicit.png");
+                            SavePageState(window, page, folder, "settings-time-explicit.png");
                             settings.UseMotifEstimate();
                             await settings.CommitParsingLimitsAsync();
                             PageScreenshots.Settle(window);
-                            SavePopupState(window, popup, folder, "settings-time-estimate-reset.png");
+                            SavePageState(window, page, folder, "settings-time-estimate-reset.png");
 
                             settings.IsNoStepLimit = true;
                             await settings.CommitParsingLimitsAsync();
                             PageScreenshots.Settle(window);
-                            SavePopupState(window, popup, folder, "settings-unbounded-limits.png");
+                            SavePageState(window, page, folder, "settings-unbounded-limits.png");
                             settings.IsNoStepLimit = false;
                             await settings.CommitParsingLimitsAsync();
 
-                            groups.SelectedIndex = 0;
+                            SettingsTestAccess.Select(page, SettingsGroup.About);
                             PageScreenshots.Settle(window);
                             settings.MarkVersionsCopied();
                             Assert.Equal("Copied", settings.CopyVersionsText);
                             PageScreenshots.Settle(window);
-                            SavePopupState(window, popup, folder, "settings-copy-acknowledgement.png");
+                            SavePageState(window, page, folder, "settings-copy-acknowledgement.png");
 
+                            SettingsTestAccess.Select(page, SettingsGroup.Display);
                             settings.ZoomPercent = 150;
                             settings.ThemeChoice = WindowThemeChoice.Dark;
                             PageScreenshots.Settle(window);
-                            var zoomButton = Button(popup, "Zoom in");
-                            ToolTip.SetIsOpen(zoomButton, true);
+                            var zoomButton = Button(page, "Zoom in");
+                            ToolTip.SetTip(zoomButton, "Increase zoom");
+                    ToolTip.SetIsOpen(zoomButton, true);
                             PageScreenshots.Settle(window);
-                            SavePopupState(window, popup, folder, "settings-open-tooltip-150-dark.png");
+                            SavePageState(window, page, folder, "settings-open-tooltip-150-dark.png");
                             ToolTip.SetIsOpen(zoomButton, false);
                             settings.ZoomPercent = UserPreferences.Defaults.ZoomPercent;
                             settings.ThemeChoice = WindowThemeChoice.Light;
@@ -1330,7 +1346,64 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
         }
     }
 
-    internal static readonly string[] GroupSlugs = ["display", "keyboard", "parsing", "proposal-checks", "writing-systems", "help", "about"];
+    internal static void CaptureDarkSettingsWithTooltip()
+    {
+        var folder = Environment.GetEnvironmentVariable(ScreenshotFactAttribute.FolderVariable)!;
+        Directory.CreateDirectory(folder);
+        var settingsPath = NewSettingsPath();
+        var priorTheme = ReadTheme();
+        try
+        {
+            AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+            {
+                var (workspace, window) = await PageScreenshots.OpenOverSampleData(parse: false,
+                    settingsFilePath: settingsPath);
+                try
+                {
+                    window.Height = 780;
+                    var page = OpenSettings(window);
+                    var settings = Assert.IsType<SettingsViewModel>(page.DataContext);
+                    settings.ZoomPercent = 150;
+                    settings.ThemeChoice = WindowThemeChoice.Dark;
+                    PageScreenshots.Settle(window);
+                    SavePageState(window, page, folder, "p3fix-dark-settings.png");
+
+                    var zoom = Button(page, "Zoom in");
+                    ToolTip.SetTip(zoom, "Increase zoom");
+                    ToolTip.SetShowDelay(zoom, 0);
+                    ToolTip.SetIsOpen(zoom, true);
+                    PageScreenshots.Settle(window);
+                    Assert.True(ToolTip.GetIsOpen(zoom));
+                    var tip = Assert.Single(window.GetVisualDescendants().OfType<ToolTip>()
+                        .Where(candidate => candidate.IsEffectivelyVisible));
+                    var captureRoot = TopLevel.GetTopLevel(tip) ?? window;
+                    using var frame = captureRoot.CaptureRenderedFrame() ??
+                        throw new InvalidOperationException("No dark tooltip frame rendered.");
+                    frame.Save(Path.Combine(folder, "p3fix-dark-tooltip.png"),
+                        Avalonia.Media.Imaging.PngBitmapEncoderOptions.Default);
+                    ToolTip.SetIsOpen(zoom, false);
+                }
+                finally
+                {
+                    window.Close();
+                    await workspace.DisposeAsync();
+                }
+            }, TimeSpan.FromMinutes(2));
+        }
+        finally
+        {
+            RestoreTheme(priorTheme);
+            DeleteSettingsPath(settingsPath);
+        }
+    }
+
+    internal static readonly (SettingsGroup Group, string Slug)[] GroupStates =
+    [
+        (SettingsGroup.Display, "display"), (SettingsGroup.KeyboardShortcuts, "keyboard"),
+        (SettingsGroup.Parsing, "parsing"), (SettingsGroup.ProposalChecks, "proposal-checks"),
+        (SettingsGroup.WritingSystems, "writing-systems"), (SettingsGroup.Texts, "texts"),
+        (SettingsGroup.HelpAndReports, "help"), (SettingsGroup.About, "about"),
+    ];
     internal static readonly Guid SampleTextId = Guid.Parse("11111111-0000-0000-0000-000000000001");
 
     private static WritingSystemDisplay[] WritingSystemCaptureData() =>
@@ -1348,36 +1421,41 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
             "", "", true, new Dictionary<string, double> { ["Normal"] = 12d }),
     ];
 
-    internal static SettingsPopupView OpenSettings(MainWindow window)
-    {
-        var gear = Button(window, "Settings");
-        if (gear.Flyout is not Flyout { IsOpen: true }) HeadlessClick.Click(window, gear, "Settings");
-        var flyout = Assert.IsType<Flyout>(gear.Flyout);
-        Assert.True(flyout.IsOpen);
-        PageScreenshots.Settle(window);
-        return Assert.IsType<SettingsPopupView>(flyout.Content);
-    }
+    internal static SettingsPage OpenSettings(MainWindow window) => SettingsTestAccess.Open(window);
 
-    private static void ClickFlyout(Window window, Control control, string accessibleName) =>
+    private static void ClickControl(Window window, Control control, string accessibleName)
+    {
+        control.BringIntoView();
+        PageScreenshots.Settle(window);
         HeadlessClick.Click(TopLevel.GetTopLevel(control) ?? window, control, accessibleName);
+    }
 
     private static void PressEnter(Window window, Control control) =>
         (TopLevel.GetTopLevel(control) ?? window).KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
 
-    internal static Button Button(Control root, string accessibleName) =>
-        root.GetVisualDescendants().OfType<Button>().Single(button =>
-            AutomationProperties.GetName(button) == accessibleName);
+    internal static Button Button(Control root, string accessibleName)
+    {
+        var button = root.GetVisualDescendants().OfType<Button>().Single(candidate =>
+            AutomationProperties.GetName(candidate) == accessibleName);
+        if (root is SettingsPage && TopLevel.GetTopLevel(root) is MainWindow window)
+        {
+            button.BringIntoView();
+            PageScreenshots.Settle(window);
+        }
+        return button;
+    }
 
-    private static string? ActiveGroupHeading(SettingsPopupView popup) => popup.GetVisualDescendants()
-        .OfType<TextBlock>().Single(text => text.IsEffectivelyVisible && text.Classes.Contains("settingsGroupHeading")).Text;
+    private static string? ActiveGroupHeading(SettingsPage page) => SettingsTestAccess.Section(page)
+        .GetVisualDescendants().OfType<TextBlock>()
+        .Single(text => text.Classes.Contains("settingsGroupHeading")).Text;
 
-    internal static void SavePopupState(MainWindow window, SettingsPopupView popup, string folder, string fileName)
+    internal static void SavePageState(MainWindow window, SettingsPage page, string folder, string fileName)
     {
         PageScreenshots.Settle(window);
         LayoutAssertions.BeforeCapture(window);
         PageScreenshots.Settle(window);
         LayoutAssertions.AssertCurrent(window);
-        var captureRoot = TopLevel.GetTopLevel(popup) ?? window;
+        var captureRoot = TopLevel.GetTopLevel(page) ?? window;
         using var frame = captureRoot.CaptureRenderedFrame() ??
             throw new InvalidOperationException($"No settings frame rendered for {fileName}.");
         frame.Save(Path.Combine(folder, fileName), Avalonia.Media.Imaging.PngBitmapEncoderOptions.Default);
@@ -1434,4 +1512,7 @@ public sealed class SettingsScreenshotTests
     [ScreenshotFact]
     public void SettingsGroupsCaptureBothThemesAndWidthsWithSearchAndRefusal() =>
         SettingsViewTests.CaptureSettingsGroupsBothThemesAndWidthsWithSearchAndRefusal();
+
+    [ScreenshotFact]
+    public void DarkSettingsAndTooltipCapture() => SettingsViewTests.CaptureDarkSettingsWithTooltip();
 }

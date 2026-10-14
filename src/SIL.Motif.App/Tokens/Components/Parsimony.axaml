@@ -1,9 +1,9 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Styles.Resources>
-    <StaticResource x:Key="Component.Parsimony.PageMargin" ResourceKey="Primitive.Inset.16_16_16_16" />
-    <StaticResource x:Key="Component.Parsimony.NoticePadding" ResourceKey="Primitive.Inset.14_10_14_10" />
-    <StaticResource x:Key="Component.Parsimony.BannerPadding" ResourceKey="Primitive.Inset.10_8_10_8" />
+    <StaticResource x:Key="Component.Parsimony.PageMargin" ResourceKey="Intent.Inset.Page" />
+    <StaticResource x:Key="Component.Parsimony.NoticePadding" ResourceKey="Intent.Inset.Notice" />
+    <StaticResource x:Key="Component.Parsimony.BannerPadding" ResourceKey="Intent.Inset.Notice" />
     <StaticResource x:Key="Component.Parsimony.GroupMargin" ResourceKey="Intent.Gap.AfterGroup" />
     <StaticResource x:Key="Component.Parsimony.RowPadding" ResourceKey="Primitive.Inset.6_4_6_4" />
   </Styles.Resources>

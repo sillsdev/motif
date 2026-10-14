@@ -119,11 +119,9 @@ public sealed class ChromeLayoutTests
                 window.Height = 600;
                 PageScreenshots.Settle(window);
                 var popup = SettingsViewTests.OpenSettings(window);
-                var groups = Assert.IsType<ListBox>(popup.FindControl<ListBox>("SettingsGroups"));
-
-                for (var index = 0; index < SettingsViewTests.GroupSlugs.Length; index++)
+                for (var index = 0; index < SettingsViewTests.GroupStates.Length; index++)
                 {
-                    groups.SelectedIndex = index;
+                    SettingsTestAccess.Select(popup, SettingsViewTests.GroupStates[index].Group);
                     PageScreenshots.Settle(window);
                     var targets = popup.GetVisualDescendants().OfType<Control>()
                         .Where(IsSettingsControl)
@@ -139,7 +137,7 @@ public sealed class ChromeLayoutTests
                             .FirstOrDefault(viewer => viewer.IsEffectivelyVisible);
                         AssertInside(target, scroll is null ? popup : scroll,
                             scroll is null ? popup.Bounds.Size : scroll.Viewport,
-                            $"{SettingsViewTests.GroupSlugs[index]} / {ControlName(target)}");
+                            $"{SettingsViewTests.GroupStates[index].Slug} / {ControlName(target)}");
                     }
                 }
             }

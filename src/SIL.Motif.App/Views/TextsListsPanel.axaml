@@ -21,7 +21,7 @@
                   AutomationProperties.Name="{Binding Name, StringFormat='Open the {0} word list'}">
             <StackPanel Classes="filterChipRow" Orientation="Horizontal">
               <TextBlock Text="{Binding Name}" />
-              <TextBlock Classes="chipCount" Text="{Binding WordCount}" FontWeight="SemiBold" />
+              <TextBlock Classes="chipCount" Text="{Binding WordCount}" FontWeight="{DynamicResource Intent.Weight.Strong}" />
               <Ellipse Classes="freshDot" IsVisible="{Binding HasPendingChanges}" VerticalAlignment="Center"
                        ToolTip.Tip="{Binding PendingChangeStatus}" />
             </StackPanel>

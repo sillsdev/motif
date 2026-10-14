@@ -169,7 +169,7 @@
             <StackPanel Grid.Column="0" Spacing="{DynamicResource Intent.Space.Group}">
               <Border Classes="card">
                 <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
-                  <views:CopyableTextBlock Classes="section-title" Text="{Binding ScopeLabel}" />
+                  <views:CopyableTextBlock Classes="section-title" Text="{Binding ScopeLabel}" TextWrapping="Wrap" />
                   <views:CopyableTextBlock Classes="muted" Text="{Binding ShareDenominatorText}" TextWrapping="Wrap"
                                            AutomationProperties.Name="What every share is of" />
                   <views:TimingKindBar x:Name="KindBar" Rows="{Binding KindShares}"
@@ -189,7 +189,7 @@
                                       Spacing="{DynamicResource Intent.Space.Compact}">
                             <Border Classes="outcomeSegment swatch" Background="{Binding Brush}" />
                             <views:CopyableTextBlock Text="{Binding Row.Label}" />
-                            <views:CopyableTextBlock Text="{Binding Row.ShareText}" FontWeight="SemiBold" />
+                            <views:CopyableTextBlock Text="{Binding Row.ShareText}" FontWeight="{DynamicResource Intent.Weight.Strong}" />
                             <views:CopyableTextBlock Classes="muted" Text="{Binding Row.TimeText, StringFormat='{}· {0}'}" />
                           </StackPanel>
                         </DataTemplate>
@@ -265,7 +265,8 @@
                             <Button Grid.ColumnSpan="5" Classes="timingRuleRow" Classes.chosen="{Binding IsChosen}"
                                     HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
                                     Command="{Binding $parent[views:TimingPage].Page.ChooseRuleCommand}"
-                                    CommandParameter="{Binding Row}">
+                                    CommandParameter="{Binding Row}"
+                                    AutomationProperties.Name="{Binding Share.Label, StringFormat='Show words timed under {0}'}">
                               <Grid Classes="timingColumns">
                               <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="2*" />
@@ -276,7 +277,7 @@
                               </Grid.ColumnDefinitions>
                               <Grid Grid.Column="0" ColumnDefinitions="*,Auto"
                                     ColumnSpacing="{DynamicResource Intent.Space.Compact}">
-                                <views:CopyableTextBlock Grid.Column="0" Text="{Binding Share.Label}" FontWeight="SemiBold"
+                                <views:CopyableTextBlock Grid.Column="0" Text="{Binding Share.Label}" FontWeight="{DynamicResource Intent.Weight.Strong}"
                                                          TextTrimming="CharacterEllipsis" />
                                 <views:InspectLink Grid.Column="1" Subject="{Binding InspectSubject}"
                                                    Classes="revealControl revealLink revealOnHover"

@@ -34,10 +34,8 @@ internal static class LayoutAssertions
         var originalTheme = window.RequestedThemeVariant;
         var application = Application.Current ?? throw new InvalidOperationException("The App is not initialized.");
         var originalApplicationTheme = application.RequestedThemeVariant;
-        var settingsButton = window.GetVisualDescendants().OfType<Button>()
-            .FirstOrDefault(button => button.Name == "SettingsButton");
-        var settings = settingsButton?.Flyout is Flyout flyout &&
-            flyout.Content is SettingsPopupView popup ? popup.DataContext as SettingsViewModel : null;
+        var settings = window.DataContext is WorkspaceShellViewModel workspace
+            ? workspace.PageModel<SettingsPageModel>().Settings : null;
         var originalZoom = settings?.ZoomPercent ?? ZoomPolicy.DefaultPercent;
         var scrollOffsets = window.GetVisualDescendants().OfType<ScrollViewer>()
             .ToDictionary(scroll => scroll, scroll => scroll.Offset);

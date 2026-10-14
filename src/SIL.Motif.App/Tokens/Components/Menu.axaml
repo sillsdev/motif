@@ -10,7 +10,7 @@
   <Styles.Resources>
     <StaticResource x:Key="Component.Menu.Width" ResourceKey="Primitive.Size.280" />
     <StaticResource x:Key="Component.Menu.ProjectMenuWidth" ResourceKey="Primitive.Size.210" />
-    <StaticResource x:Key="Component.Menu.EntryPadding" ResourceKey="Primitive.Inset.10_8_10_8" />
+    <StaticResource x:Key="Component.Menu.EntryPadding" ResourceKey="Intent.Inset.Row" />
     <StaticResource x:Key="Component.Menu.ButtonPadding" ResourceKey="Primitive.Inset.6_2_6_2" />
     <StaticResource x:Key="Component.Menu.ButtonHeight" ResourceKey="Primitive.Size.24" />
     <StaticResource x:Key="Component.Menu.HelpMaxWidth" ResourceKey="Primitive.Size.780" />

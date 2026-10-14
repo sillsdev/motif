@@ -1,10 +1,10 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Styles.Resources>
-    <StaticResource x:Key="Component.TextsPage.PageInset" ResourceKey="Primitive.Inset.16_16_16_16" />
-    <StaticResource x:Key="Component.TextsPage.ShortPageInset" ResourceKey="Primitive.Inset.16_4_16_4" />
+    <StaticResource x:Key="Component.TextsPage.PageInset" ResourceKey="Intent.Inset.Page" />
+    <StaticResource x:Key="Component.TextsPage.ShortPageInset" ResourceKey="Intent.Inset.Page" />
     <StaticResource x:Key="Component.TextsPage.ShortRowSpacing" ResourceKey="Primitive.Space.0" />
-    <StaticResource x:Key="Component.TextsPage.ReaderInset" ResourceKey="Primitive.Inset.0_12_8_12" />
+    <StaticResource x:Key="Component.TextsPage.ReaderInset" ResourceKey="Intent.Inset.Panel" />
     <StaticResource x:Key="Component.TextsPage.HeaderButtonPadding" ResourceKey="Primitive.Inset.6_2_6_2" />
     <StaticResource x:Key="Component.TextsPage.ShortLabelMargin" ResourceKey="Primitive.Inset.6_0_6_0" />
     <StaticResource x:Key="Component.TextsPage.CompareControlMargin" ResourceKey="Primitive.Inset.0_0_2_0" />
@@ -26,7 +26,8 @@
     <StaticResource x:Key="Component.TextsPage.SelectionPanelWidth" ResourceKey="Primitive.Size.230" />
     <StaticResource x:Key="Component.TextsPage.TextPickerWidth" ResourceKey="Primitive.Size.150" />
     <StaticResource x:Key="Component.TextsPage.TextPickerMaxWidth" ResourceKey="Primitive.Size.210" />
-    <StaticResource x:Key="Component.TextsPage.ReaderSearchWidth" ResourceKey="Primitive.Size.90" />
+    <StaticResource x:Key="Component.TextsPage.ReaderSearchMinWidth" ResourceKey="Primitive.Size.140" />
+    <StaticResource x:Key="Component.TextsPage.ReaderSearchMaxWidth" ResourceKey="Primitive.Size.220" />
     <StaticResource x:Key="Component.TextsPage.TextPickerGap" ResourceKey="Primitive.Inset.0_0_4_0" />
     <StaticResource x:Key="Component.TextsPage.ReaderActionPadding" ResourceKey="Primitive.Inset.4_2_4_2" />
     <StaticResource x:Key="Component.TextsPage.ReaderActionGap" ResourceKey="Primitive.Inset.0_0_4_0" />

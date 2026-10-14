@@ -11,7 +11,7 @@
   <Grid ColumnDefinitions="*"
         Margin="{DynamicResource Component.TextsPage.ReaderInset}">
     <Grid Grid.Column="0" RowDefinitions="Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}">
-      <Grid x:Name="ReaderToolbar" ColumnDefinitions="Auto,*,*,Auto,Auto" RowDefinitions="Auto,Auto">
+      <Grid x:Name="ReaderToolbar" ColumnDefinitions="Auto,*,Auto,Auto,3*" RowDefinitions="Auto,Auto,Auto">
         <ComboBox x:Name="ResultsInTextPanelTextsItems" Grid.Column="0" ItemsSource="{Binding InText.Texts}" SelectedItem="{Binding InText.SelectedText}"
                   IsVisible="{Binding InText.HasTexts}" VerticalAlignment="Center"
                   MinWidth="{DynamicResource Component.TextsPage.TextPickerWidth}"
@@ -26,16 +26,17 @@
           </ComboBox.ItemTemplate>
         </ComboBox>
         <TextBox x:Name="ReaderWordSearch" Grid.Column="1" Text="{Binding InText.SearchText}"
-                 PlaceholderText="Search words..." MaxWidth="{DynamicResource Component.TextsPage.ReaderSearchWidth}"
+                 PlaceholderText="Search words..." MinWidth="{DynamicResource Component.TextsPage.ReaderSearchMinWidth}"
+                 MaxWidth="{DynamicResource Component.TextsPage.ReaderSearchMaxWidth}"
                  IsVisible="{Binding InText.HasTexts}" AutomationProperties.Name="Search words in Analyze texts" />
-        <Button Grid.Column="4" Classes="menuButton" Content="{Binding InText.SelectMenuLabel}" VerticalAlignment="Center"
+        <Button x:Name="ReaderSelectMenu" Grid.Column="3" Classes="menuButton" Content="{Binding InText.SelectMenuLabel}" VerticalAlignment="Center"
                 Padding="{DynamicResource Component.TextsPage.ReaderActionPadding}"
                 IsVisible="{Binding InText.HasResults}" AutomationProperties.Name="Select words for actions">
           <Button.Flyout>
             <Flyout Placement="BottomEdgeAlignedRight">
               <StackPanel Spacing="{DynamicResource Intent.Space.Snug}"
                           MaxWidth="{DynamicResource Component.TextsPage.ActionMenuWidth}">
-                <views:CopyableTextBlock Text="{Binding InText.CheckedWordCountLabel}" FontWeight="SemiBold" />
+                <views:CopyableTextBlock Text="{Binding InText.CheckedWordCountLabel}" FontWeight="{DynamicResource Intent.Weight.Strong}" />
                 <views:CopyableTextBlock Classes="muted" Text="{Binding InText.ScopeCountSummary}" />
                 <StackPanel>
                   <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="{Binding InText.ChooseWordsLabel}" Command="{Binding InText.ChooseWordsCommand}"
@@ -106,7 +107,7 @@
             </Flyout>
           </Button.Flyout>
         </Button>
-        <Button Grid.Column="3" Classes="menuButton" Content="Read ▾" VerticalAlignment="Center" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ReaderReadMenu}"
+        <Button x:Name="ReaderReadMenu" Grid.Column="2" Classes="menuButton" Content="Read ▾" VerticalAlignment="Center" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ReaderReadMenu}"
                 Margin="{DynamicResource Component.TextsPage.ReaderActionGap}"
                 Padding="{DynamicResource Component.TextsPage.ReaderActionPadding}"
                 IsVisible="{Binding InText.HasResults}" AutomationProperties.Name="Mark read or unread">
@@ -130,7 +131,7 @@
             </Flyout>
           </Button.Flyout>
         </Button>
-        <WrapPanel x:Name="ResultsInTextFilterChips" Grid.Column="2" VerticalAlignment="Center"
+        <WrapPanel x:Name="ResultsInTextFilterChips" Grid.Column="4" VerticalAlignment="Center"
                    IsVisible="{Binding InText.HasResults}">
           <views:FilterChip Classes="compact" Label="All" Count="{Binding InText.AllCount}"
                             IsActive="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.All}}"
@@ -235,7 +236,7 @@
                         <Border Classes="wordPresentationCardHeader hoverReveal">
                           <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
                             <WrapPanel VerticalAlignment="Center">
-                              <views:CopyableTextBlock Text="{Binding Text}" FontWeight="Bold" VerticalAlignment="Center"
+                              <views:CopyableTextBlock Text="{Binding Text}" FontWeight="{DynamicResource Intent.Weight.Strong}" VerticalAlignment="Center"
                                                        controls:WritingSystemText.Id="{Binding TextWritingSystem}" controls:WritingSystemText.StyleName="Normal" />
                               <controls:OpinionMark Kind="{Binding PrimaryOpinionMarkKind}" VerticalAlignment="Center"
                                                     Margin="{DynamicResource Component.TextsPage.ShortLabelMargin}" />

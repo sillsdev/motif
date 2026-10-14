@@ -10,7 +10,8 @@
         IsVisible="{Binding Difference.HasDifference}">
     <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
       <views:CopyableTextBlock Text="{Binding Difference.Summary}"
-                               FontSize="{DynamicResource Intent.Type.Section}" FontWeight="SemiBold" />
+                               FontSize="{DynamicResource Intent.Type.Section}"
+                               FontWeight="{DynamicResource Intent.Weight.Section}" />
       <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Small}"
                                Text="{Binding Difference.OnlyInOneText}" />
       <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Small}"
@@ -27,7 +28,7 @@
                             HorizontalAlignment="Left" />
             <views:CopyableTextBlock Grid.Column="1" Text="{Binding TransitionText}"
                                      TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-            <views:CopyableTextBlock Grid.Column="2" Text="{Binding CountText}" FontWeight="SemiBold"
+            <views:CopyableTextBlock Grid.Column="2" Text="{Binding CountText}" FontWeight="{DynamicResource Intent.Weight.Strong}"
                                      HorizontalAlignment="Right" VerticalAlignment="Center" />
           </Grid>
         </DataTemplate>

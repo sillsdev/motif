@@ -5,8 +5,8 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Styles.Resources>
-    <StaticResource x:Key="Component.FilterChip.Padding" ResourceKey="Primitive.Inset.9_3_9_3" />
-    <StaticResource x:Key="Component.FilterChip.Radius" ResourceKey="Primitive.Radius.12" />
+    <StaticResource x:Key="Component.FilterChip.Padding" ResourceKey="Intent.Inset.Chip" />
+    <StaticResource x:Key="Component.FilterChip.Radius" ResourceKey="Intent.Radius.Control" />
     <StaticResource x:Key="Component.FilterChip.CompactPadding" ResourceKey="Primitive.Inset.5_1_5_1" />
     <StaticResource x:Key="Component.FilterChip.CompactMargin" ResourceKey="Primitive.Inset.0_0_2_0" />
     <StaticResource x:Key="Component.FilterChip.CompactHeight" ResourceKey="Primitive.Size.24" />
@@ -54,6 +54,7 @@
   </Style>
   <Style Selector="Button.filterChip TextBlock.chipCount">
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+    <Setter Property="FontWeight" Value="{DynamicResource Intent.Weight.Strong}" />
   </Style>
   <Style Selector="Button.filterChip.active TextBlock.chipCount">
     <Setter Property="Foreground" Value="{DynamicResource Intent.Primary}" />

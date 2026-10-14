@@ -6,9 +6,9 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Styles.Resources>
-    <StaticResource x:Key="Component.Inspector.Width" ResourceKey="Primitive.Size.320" />
-    <StaticResource x:Key="Component.Inspector.CrumbPadding" ResourceKey="Primitive.Inset.10_7_10_7" />
-    <StaticResource x:Key="Component.Inspector.BodyPadding" ResourceKey="Primitive.Inset.14_10_14_10" />
+    <StaticResource x:Key="Component.Inspector.Width" ResourceKey="Primitive.Size.360" />
+    <StaticResource x:Key="Component.Inspector.CrumbPadding" ResourceKey="Intent.Inset.Row" />
+    <StaticResource x:Key="Component.Inspector.BodyPadding" ResourceKey="Intent.Inset.Panel" />
     <StaticResource x:Key="Component.Inspector.SectionPadding" ResourceKey="Primitive.Inset.0_8_0_8" />
     <StaticResource x:Key="Component.Inspector.WarningPadding" ResourceKey="Primitive.Inset.8_4_8_4" />
     <StaticResource x:Key="Component.Inspector.LabelWidth" ResourceKey="Primitive.Size.110" />
@@ -16,7 +16,7 @@
   </Styles.Resources>
 
   <Style Selector="Border.inspector">
-    <Setter Property="Width" Value="{DynamicResource Component.Inspector.Width}" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
     <Setter Property="Background" Value="{DynamicResource Intent.Surface.Raised}" />
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
     <Setter Property="BorderThickness" Value="{DynamicResource Component.Inspector.Edge}" />

@@ -136,6 +136,8 @@ public enum ShortcutScope
     DiagnosticTree,
     /// <summary>The Settings popup.</summary>
     Settings,
+    /// <summary>The Pages rail.</summary>
+    NavigationRail,
 }
 
 /// <summary>The focus condition required before a shortcut can run.</summary>

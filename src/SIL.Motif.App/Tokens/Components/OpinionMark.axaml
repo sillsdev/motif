@@ -7,7 +7,7 @@
     <StaticResource x:Key="Component.OpinionMark.StrokeWidth" ResourceKey="Primitive.Stroke.1p2" />
     <StaticResource x:Key="Component.OpinionMark.Type" ResourceKey="Primitive.Type.8" />
     <StaticResource x:Key="Component.OpinionMark.Radius" ResourceKey="Primitive.Radius.0" />
-    <StaticResource x:Key="Component.OpinionMark.UnknownRadius" ResourceKey="Primitive.Radius.7" />
+    <StaticResource x:Key="Component.OpinionMark.UnknownRadius" ResourceKey="Intent.Radius.OpinionUnknown" />
     <StaticResource x:Key="Component.OpinionMark.Dash" ResourceKey="Primitive.Dash.3_2" />
   </Styles.Resources>
   <Style Selector="Border.opinionMark, controls|OpinionMark.opinionMark">

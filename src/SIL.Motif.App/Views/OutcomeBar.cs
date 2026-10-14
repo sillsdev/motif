@@ -126,7 +126,7 @@ public sealed class OutcomeBar : StackPanel
                 var segment = parts[index];
                 var separator = index < parts.Count - 1 ? "," : string.Empty;
                 var count = Words(segment.CountText, "outcomeLegendText");
-                count.FontWeight = Avalonia.Media.FontWeight.SemiBold;
+                count.Classes.Add("outcomeLegendCount");
                 entry.Children.Add(count);
                 if (!ShowShares)
                 {

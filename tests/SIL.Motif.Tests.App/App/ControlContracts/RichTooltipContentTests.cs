@@ -5,6 +5,7 @@ using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Headless;
+using Avalonia.Input;
 using Avalonia.Styling;
 using Avalonia.VisualTree;
 using SIL.Motif.App;
@@ -167,10 +168,7 @@ internal sealed class TooltipScenes
     private Task<bool>? _parseProgressTask;
     public WordRow? MatrixTargetRow { get; private set; }
 
-    public bool ParseProgressBandIsVisible => Visible<Control>()
-        .Where(control => AutomationProperties.GetAutomationId(control) == AutomationIds.ParseProgressDetails)
-        .SelectMany(control => control.GetVisualAncestors().OfType<Border>())
-        .Any(border => border.Classes.Contains("notice") && border.IsEffectivelyVisible);
+    public Button ParseProgressStatusButton => Window.FindControl<Button>("StatusParseProgress")!;
 
     private TooltipScenes(WorkspaceShellViewModel workspace, MainWindow window, FakeCommandClient client)
     {
@@ -182,10 +180,6 @@ internal sealed class TooltipScenes
     public WorkspaceShellViewModel Workspace { get; }
 
     public MainWindow Window { get; }
-
-    public Border ParseProgressBand => Window.GetVisualDescendants().OfType<Control>()
-        .Single(control => AutomationProperties.GetAutomationId(control) == AutomationIds.ParseProgressDetails)
-        .GetVisualAncestors().OfType<Border>().First(border => border.Classes.Contains("notice"));
 
     private ResultsInTextViewModel InText => Workspace.PageModel<TextsPageModel>().ResultsInText;
 
@@ -283,6 +277,24 @@ internal sealed class TooltipScenes
                 Window.Width = WorkspaceShellViewModel.SidebarCollapseWidth - 100;
                 Show(WorkspacePage.Overview);
                 await Until(() => Workspace.IsSidebarCollapsed, "the collapsed sidebar");
+                break;
+            case TooltipScene.FrameSidePanel:
+                Show(WorkspacePage.Texts, TextsTab.Matrix);
+                if (Window.Width >= (double)Window.FindResource("Component.Shell.SidePanelCollapseWidth")!)
+                    await Until(() => Visible<Button>().Any(button => button.Name == "SidePanelCollapseButton"),
+                        "the Texts side panel");
+                break;
+            case TooltipScene.FrameInspectorStrip:
+                Show(WorkspacePage.Overview);
+                await Until(() => Visible<Button>().Any(button => button.Name == "InspectorStrip"),
+                    "the Inspector strip");
+                break;
+            case TooltipScene.FrameInspectorOpen:
+                Show(WorkspacePage.Overview);
+                var inspectorStrip = Visible<Button>().Single(button => button.Name == "InspectorStrip");
+                HeadlessClick.Click(Window, inspectorStrip, "the Inspector strip");
+                await Until(() => Visible<Button>().Any(button => button.Name == "InspectorHideButton"),
+                    "the open Inspector");
                 break;
             case TooltipScene.Matrix:
                 Show(WorkspacePage.Texts, TextsTab.Matrix);
@@ -435,6 +447,52 @@ internal sealed class TooltipScenes
                 break;
             case TooltipScene.Handoff: Show(WorkspacePage.AiHandoff); break;
             case TooltipScene.ReviewStaged: Show(WorkspacePage.Review); break;
+            case TooltipScene.FrameStatus:
+                Show(WorkspacePage.Texts, TextsTab.AnalyzeTexts);
+                await AnalyzeTextsLayoutTests.SettleReaderAsync(Workspace, Window);
+                await StageChakula();
+                Show(WorkspacePage.Warnings);
+                await Until(() => !Grammar.IsLoading && Grammar.HasChecked &&
+                    Visible<Button>().Any(button => AutomationProperties.GetName(button) == "Review changes not applied yet") &&
+                    Visible<Button>().Any(button => AutomationProperties.GetName(button) == "Open Warnings") &&
+                    Visible<CopyableTextBlock>().Any(control =>
+                        AutomationProperties.GetAutomationId(control) == AutomationIds.SidebarSelectionSummary),
+                    "the status counts and selection summary");
+                break;
+            case TooltipScene.FrameCompactStatus:
+                Window.Width = (double)Window.FindResource("Component.StatusBar.CompactWidth")! - 1;
+                Show(WorkspacePage.Overview);
+                await Until(() => Visible<Button>().Any(button => button.Classes.Contains("statusCompact") &&
+                    AutomationProperties.GetName(button) == "Report a problem"), "the compact status line");
+                break;
+            case TooltipScene.FrameNotice:
+                Show(WorkspacePage.Overview);
+                var refusal = new Refusal("baseline.capture-refused", FailureReason.Refused,
+                    "FieldWorks has not saved a current Baseline.");
+                var noticeSentence = WindowRefusal.From(refusal).Sentence;
+                if (Visible<CopyableTextBlock>().Any(control => control.Name == "NoticeSummary" &&
+                    ToolTip.GetTip(control) as string == noticeSentence))
+                    break;
+                _client.CaptureBaselineRefusesWith(refusal);
+                var refresh = Visible<Button>().Single(button =>
+                    AutomationProperties.GetName(button) == "Refresh the project");
+                HeadlessClick.Click(Window, refresh, "Refresh the project");
+                await Until(() => Visible<CopyableTextBlock>().Any(control => control.Name == "NoticeSummary" &&
+                    ToolTip.GetTip(control) as string == noticeSentence), "the notice summary");
+                break;
+            case TooltipScene.FrameKeyboardStatus:
+                Show(WorkspacePage.Texts, TextsTab.AnalyzeTexts);
+                await AnalyzeTextsLayoutTests.SettleReaderAsync(Workspace, Window);
+                var inText = Workspace.PageModel<TextsPageModel>().ResultsInText;
+                inText.SearchText = string.Empty;
+                var sungura = AnalyzeTextsLayoutTests.StripOf(AnalyzeTextsLayoutTests.Panel(Window), "Sungura");
+                Assert.True(sungura.Focus());
+                Window.KeyPress(Key.A, RawInputModifiers.None, PhysicalKey.None, null);
+                var status = Window.FindControl<TextBlock>("KeyboardShortcutStatusLine")!;
+                await Until(() => status.IsEffectivelyVisible && status.Text == "Sungura is already Approved." &&
+                    ToolTip.GetTip(status) as string == status.Text,
+                    "the keyboard shortcut status message");
+                break;
             case TooltipScene.ParseProgress:
                 _parseProgressRelease = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
                 _parseProgressTask = Workspace.Assess.Trace.ParseProgress.TrackAsync(async () =>
@@ -445,8 +503,13 @@ internal sealed class TooltipScenes
                 Workspace.Assess.Trace.ParseProgress.Report(
                     new AssessmentProgress(AssessmentStage.Parsing, 1, 3, "Parsing"));
                 await Until(() => Visible<Button>().Any(button =>
+                    AutomationProperties.GetName(button) == "See parse progress"), "parse progress status");
+                HeadlessClick.Click(Window, ParseProgressStatusButton, "parse progress status");
+                await Until(() => ParseProgressStatusButton.Flyout?.IsOpen == true,
+                    "the parse progress flyout");
+                await Until(() => Visible<Button>().Any(button =>
                     AutomationProperties.GetName(button) == "Cancel parsing all words"),
-                    "parse progress and its Cancel button");
+                    "the parse progress Cancel button");
                 break;
         }
     }
@@ -463,6 +526,12 @@ internal sealed class TooltipScenes
                 Workspace.PageModel<TextsPageModel>().ShowAnalyzeViewCommand.Execute(AnalyzeTextsView.TextReader);
                 break;
             case TooltipScene.ExpertTrace: Workspace.Assess.Trace.IsExpert = false; Window.Height = 780; break;
+            case TooltipScene.FrameInspectorOpen:
+                HeadlessClick.Click(Window, Visible<Button>().Single(button => button.Name == "InspectorHideButton"), "Hide Inspector");
+                break;
+            case TooltipScene.FrameKeyboardStatus:
+                Window.ShowKeyboardStatus(null);
+                break;
             case TooltipScene.OpenRecent:
                 foreach (var name in new[] { "OpenRecentButton", "ProjectMenuButton" }) Window.FindControl<Button>(name)!.Flyout!.Hide();
                 break;
@@ -471,6 +540,7 @@ internal sealed class TooltipScenes
             case TooltipScene.WordCard: InText.CloseTokenCard(); break;
             case TooltipScene.WordCardWithoutOccurrence: InText.CloseTokenCard(); break;
             case TooltipScene.ParseProgress:
+                ParseProgressStatusButton.Flyout?.Hide();
                 _parseProgressRelease!.SetResult(true);
                 await _parseProgressTask!;
                 break;

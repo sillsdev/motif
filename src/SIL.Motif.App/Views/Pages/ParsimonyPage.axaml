@@ -28,7 +28,7 @@
       </Border>
       <Border Classes="parsimonyBanner" IsVisible="{Binding HasIncomplete}" AutomationProperties.Name="Incomplete Report">
         <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-          <views:CopyableTextBlock TextWrapping="Wrap" FontWeight="SemiBold" Text="{Binding MissingInputsText}" />
+          <views:CopyableTextBlock TextWrapping="Wrap" FontWeight="{DynamicResource Intent.Weight.Section}" Text="{Binding MissingInputsText}" />
           <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding IncompleteNote}" />
         </StackPanel>
       </Border>

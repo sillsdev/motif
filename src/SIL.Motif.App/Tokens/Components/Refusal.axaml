@@ -7,8 +7,8 @@
   <Styles.Resources>
     <StaticResource x:Key="Component.Refusal.ContentMaxHeight" ResourceKey="Primitive.Size.240" />
     <StaticResource x:Key="Component.Refusal.BlockMaxHeight" ResourceKey="Primitive.Size.320" />
-    <StaticResource x:Key="Component.Refusal.RecoveryPadding" ResourceKey="Primitive.Inset.14_10_14_10" />
-    <StaticResource x:Key="Component.Refusal.RecoveryRadius" ResourceKey="Primitive.Radius.8" />
+    <StaticResource x:Key="Component.Refusal.RecoveryPadding" ResourceKey="Intent.Inset.Panel" />
+    <StaticResource x:Key="Component.Refusal.RecoveryRadius" ResourceKey="Intent.Radius.Control" />
   </Styles.Resources>
   <Style Selector="ScrollViewer.refusalBlockViewport">
     <Setter Property="MaxHeight" Value="{DynamicResource Component.Refusal.BlockMaxHeight}" />

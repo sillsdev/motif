@@ -46,8 +46,35 @@ public sealed class WordRowOpenLayoutSystemTests(ITestOutputHelper output)
                 var rowIndex = texts.Words.Rows.Select((item, index) => (item, index))
                     .Single(pair => pair.item.Presentation.Facts.Word == "hawajafika").index;
                 var pageList = window.FindControl<ListBox>("PageList")!;
-                Assert.Equal(ScrollBarVisibility.Visible,
+                Assert.Equal(ScrollBarVisibility.Auto,
                     ScrollViewer.GetVerticalScrollBarVisibility(pageList));
+                var lastPage = workspace.VisiblePages[^1];
+                var textsPage = workspace.VisiblePages.Single(page => page.Page == WorkspacePage.Texts);
+                foreach (var zoom in new[] { 100, 125, 150 })
+                foreach (var width in new[] { 640, 1040, 1240 })
+                {
+                    WindowZoomPolicy.Apply(application, zoom);
+                    window.Width = width;
+                    window.Height = 600;
+                    pageList.ScrollIntoView(lastPage);
+                    PageScreenshots.Settle(window);
+                    var lastEntry = Assert.IsType<ListBoxItem>(
+                        pageList.ContainerFromItem(lastPage));
+                    Assert.True(lastEntry.IsEffectivelyVisible,
+                        $"'{lastPage.AutomationName}' is not reachable at {width}px and {zoom}% zoom.");
+                    HeadlessClick.Click(window, lastEntry, lastPage.AutomationName);
+                    Assert.Equal(lastPage.Page, workspace.CurrentPage);
+
+                    pageList.ScrollIntoView(textsPage);
+                    PageScreenshots.Settle(window);
+                    var textsEntry = Assert.IsType<ListBoxItem>(
+                        pageList.ContainerFromItem(textsPage));
+                    Assert.True(textsEntry.IsEffectivelyVisible,
+                        $"'{textsPage.AutomationName}' is not reachable at {width}px and {zoom}% zoom.");
+                    HeadlessClick.Click(window, textsEntry, textsPage.AutomationName);
+                    Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
+                }
+                WindowZoomPolicy.Apply(application, 100);
                 var wordsList = window.GetVisualDescendants().OfType<ListBox>()
                     .Single(list => list.Name == "TextWordsPanelRowsItems");
                 foreach (var theme in new[] { ThemeVariant.Light, ThemeVariant.Dark })
@@ -58,6 +85,7 @@ public sealed class WordRowOpenLayoutSystemTests(ITestOutputHelper output)
                     window.RequestedThemeVariant = theme;
                     WindowZoomPolicy.Apply(application, zoom);
                     window.Width = width;
+                    window.Height = 1600;
                     wordsList.ScrollIntoView(rowIndex);
                     PageScreenshots.Settle(window);
 

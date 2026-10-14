@@ -36,7 +36,6 @@ internal enum StatePart
     Ring,
     Text,
     Glyph,
-    NextHost,
 }
 
 /// <summary>
@@ -154,7 +153,7 @@ internal static class ComponentStateContractCases
         const string revealOnFocus = ":is(Control).hoverReveal:focus-within :is(Button).revealOnHover";
         const string revealWhenOpen = ":is(Control).hoverReveal.open :is(Button).revealOnHover";
         yield return new(revealAtRest, "at rest", () => RevealOwner(), StateStimulus.None,
-            StatePart.Self, Visual.OpacityProperty, "Component.HoverReveal.HiddenOpacity");
+            StatePart.Self, Visual.OpacityProperty, "Component.HoverReveal.VisibleOpacity");
         yield return new(revealOnPointer, "revealed by pointer hover", () => RevealOwner(), StateStimulus.Pointer,
             StatePart.Self, Visual.OpacityProperty, "Component.HoverReveal.VisibleOpacity");
         yield return new(revealOnFocus, "revealed by keyboard focus", () => RevealOwner(), StateStimulus.KeyboardFocusInside,
@@ -189,7 +188,7 @@ internal static class ComponentStateContractCases
         yield return new("Border.matrixCell:pointerover", "hover", () => Alone(Cell()), StateStimulus.Pointer,
             StatePart.Self, Border.BorderBrushProperty, "Intent.Primary");
         yield return new("Border.matrixCell:pointerover", "hover", () => Alone(Cell()), StateStimulus.Pointer,
-            StatePart.Self, Border.BoxShadowProperty, "Intent.Shadow.Hover");
+            StatePart.Self, Border.BorderThicknessProperty, "Component.MatrixCell.HoverThickness");
         yield return new("Border.matrixCell:pointerover", "keyboard focus", () => Alone(Cell()), StateStimulus.KeyboardFocus,
             StatePart.Ring, Border.BorderBrushProperty, "Intent.Focus");
         yield return new("Border.overviewTile:pointerover", "hover", () => Alone(new Border
@@ -199,12 +198,11 @@ internal static class ComponentStateContractCases
         }),
             StateStimulus.Pointer, StatePart.Self, Border.BackgroundProperty, "Intent.Surface.Hover");
         yield return new("Border.matrixCell.selected", "selected", () => Alone(Cell("selected")), StateStimulus.None,
-            StatePart.Self, Border.BoxShadowProperty, "Intent.Shadow.Selected");
+            StatePart.Self, Border.BorderThicknessProperty, "Component.MatrixCell.SelectedThickness");
         yield return new("Border.matrixCell.selected", "selected under the pointer", () => Alone(Cell("selected")),
-            StateStimulus.Pointer, StatePart.Self, Border.BoxShadowProperty, "Intent.Shadow.Selected");
+            StateStimulus.Pointer, StatePart.Self, Border.BorderThicknessProperty, "Component.MatrixCell.SelectedThickness");
         yield return new("Border.matrixCell.selected", "selected and keyboard focus", () => Alone(Cell("selected")),
-            StateStimulus.KeyboardFocus, StatePart.Self, Border.BoxShadowProperty, "Intent.Shadow.Selected");
-
+            StateStimulus.KeyboardFocus, StatePart.Ring, Border.BorderBrushProperty, "Intent.Focus");
         foreach (var (how, stimulus) in Hovers)
         {
             yield return new($"Button.overviewTile:{how}" + face, how, () => Alone(Press("overviewTile")), stimulus,
@@ -238,7 +236,7 @@ internal static class ComponentStateContractCases
         yield return new("ListBox.sidebar ListBoxItem:selected", "selected and keyboard focus", () => Entry(collapsed: false, selected: true),
             StateStimulus.KeyboardFocus, StatePart.Ring, Border.BorderBrushProperty, "Intent.Focus");
         yield return new("ListBox.sidebar.collapsed ListBoxItem:selected", "collapsed and selected", () => Entry(collapsed: true, selected: true),
-            StateStimulus.None, StatePart.Self, ListBoxItem.BorderBrushProperty, "Intent.Emphasis.Fill");
+            StateStimulus.None, StatePart.Self, ListBoxItem.BorderBrushProperty, "Intent.Accent");
         yield return new("ListBox.sidebar.collapsed ListBoxItem:selected" + face, "collapsed and selected",
             () => Entry(collapsed: true, selected: true), StateStimulus.None, StatePart.Face,
             ContentPresenter.BackgroundProperty, "Intent.Clear");
@@ -345,16 +343,6 @@ internal static class ComponentStateContractCases
         yield return new("CheckBox.wordPresentationTick:focus-visible", "keyboard focus", () => PresentationTick(),
             StateStimulus.KeyboardFocus, StatePart.Self, TemplatedControl.BorderBrushProperty, "Intent.Focus");
 
-        const string nextHostHover = "Border.wordPresentationFrame:pointerover Grid.wordPresentationNextHost";
-        const string nextHostFocus = "Border.wordPresentationFrame:focus-within Grid.wordPresentationNextHost";
-        const string nextHostOpen = "Border.wordPresentationFrame.open Grid.wordPresentationNextHost";
-        yield return new(nextHostHover, "next actions shown on hover", () => PresentationNextHost(), StateStimulus.Pointer,
-            StatePart.NextHost, Grid.MaxHeightProperty, "Component.WordPresentation.MinHeight");
-        yield return new(nextHostFocus, "next actions shown on keyboard focus", () => PresentationNextHost(), StateStimulus.KeyboardFocus,
-            StatePart.NextHost, Grid.MaxHeightProperty, "Component.WordPresentation.MinHeight");
-        yield return new(nextHostOpen, "next actions shown on an open row", () => PresentationNextHost(), StateStimulus.None,
-            StatePart.NextHost, Grid.MaxHeightProperty, "Component.WordPresentation.MinHeight");
-
         const string nextActionHover = "Border.wordPresentationFrame:pointerover Button.wordPresentationNextAction";
         const string nextActionFocus = "Border.wordPresentationFrame:focus-within Button.wordPresentationNextAction";
         const string nextActionOpen = "Border.wordPresentationFrame.open Button.wordPresentationNextAction";
@@ -409,8 +397,6 @@ internal static class ComponentStateContractCases
         StatePart.Face => target.GetVisualDescendants().OfType<ContentPresenter>().FirstOrDefault(face => face.Name == "PART_ContentPresenter"),
         StatePart.Ring => RingAround(target),
         StatePart.Text => target is TextBlock ? target : target.GetVisualDescendants().OfType<TextBlock>().FirstOrDefault(),
-        StatePart.NextHost => target.GetVisualAncestors().OfType<Grid>()
-            .FirstOrDefault(grid => grid.Classes.Contains("wordPresentationNextHost")),
         StatePart.Glyph => target is ShapePath ? target : target.GetVisualDescendants().OfType<ShapePath>()
             .FirstOrDefault(path => path.Classes.Contains("settingsGearGlyph")),
         _ => null,
@@ -449,12 +435,6 @@ internal static class ComponentStateContractCases
     {
         var (row, _) = PresentationRow();
         return (row, RowShell(row).Children.OfType<CheckBox>().Single());
-    }
-
-    private static (Control, Control) PresentationNextHost()
-    {
-        var (row, _) = PresentationRow(open: true);
-        return (row, NextAction(row));
     }
 
     private static (Control, Control) PresentationNextAction()
@@ -613,6 +593,13 @@ internal enum TooltipScene
     WordCardWithoutOccurrence,
     ReviewStaged,
     ParseProgress,
+    FrameSidePanel,
+    FrameInspectorStrip,
+    FrameInspectorOpen,
+    FrameStatus,
+    FrameCompactStatus,
+    FrameNotice,
+    FrameKeyboardStatus,
 }
 
 /// <summary>
@@ -644,6 +631,33 @@ internal static class TooltipOwners
             control => control is Button && Name(control) == "Refresh the project"),
         new("project name", "Views/MainWindow.axaml", "{Binding ProjectName}", TooltipScene.Overview,
             control => control is TextBlock && control.Classes.Contains("projectName")),
+        new("backup promise", "Views/MainWindow.axaml", "Keep a FieldWorks backup. Motif writes only when you press Apply.",
+            TooltipScene.FrameStatus, control => control is CopyableTextBlock &&
+                ToolTip.GetTip(control) as string == "Keep a FieldWorks backup. Motif writes only when you press Apply."),
+        new("project notice", "Views/MainWindow.axaml", "See project notices", TooltipScene.FrameNotice,
+            control => control is Button && Name(control) == "See project notices"),
+        new("tech demo promise", "Views/MainWindow.axaml", "Tech demo: writes nothing until you press Apply. Report a problem.",
+            TooltipScene.FrameCompactStatus, control => control is Button && control.Classes.Contains("statusCompact") &&
+                Name(control) == "Report a problem"),
+        new("status selection summary", "Views/MainWindow.axaml", "{Binding SelectionSummaryText}", TooltipScene.FrameStatus,
+            control => control is CopyableTextBlock &&
+                AutomationProperties.GetAutomationId(control) == AutomationIds.SidebarSelectionSummary),
+        new("status changes", "Views/MainWindow.axaml", "{Binding Badge, StringFormat='{}{0} changes not applied yet'}",
+            TooltipScene.FrameStatus, control => control is Button && Name(control) == "Review changes not applied yet"),
+        new("status warnings", "Views/MainWindow.axaml", "{Binding Badge, StringFormat='{}{0} warnings'}",
+            TooltipScene.FrameStatus, control => control is Button && Name(control) == "Open Warnings"),
+        new("status parse progress", "Views/MainWindow.axaml", "{Binding ActiveParseProgress.StatusText}",
+            TooltipScene.ParseProgress, control => control is Button && Name(control) == "See parse progress"),
+        new("project notice summary", "Views/MainWindow.axaml.cs", "message", TooltipScene.FrameNotice,
+            control => control is CopyableTextBlock { Name: "NoticeSummary" }),
+        new("keyboard shortcut status", "Views/MainWindow.axaml.cs", "message", TooltipScene.FrameKeyboardStatus,
+            control => control is TextBlock { Name: "KeyboardShortcutStatusLine" }),
+        new("collapse side bar", "Views/Shell/WorkspaceLayoutHost.axaml", "Collapse side bar", TooltipScene.FrameSidePanel,
+            control => control is Button { Name: "SidePanelCollapseButton" }),
+        new("hide Inspector", "Views/Shell/WorkspaceLayoutHost.axaml", "Hide Inspector", TooltipScene.FrameInspectorOpen,
+            control => control is Button { Name: "InspectorHideButton" }),
+        new("show Inspector", "Views/Shell/WorkspaceLayoutHost.axaml", "Show Inspector", TooltipScene.FrameInspectorStrip,
+            control => control is Button { Name: "InspectorStrip" }),
         new("Help", "Views/MainWindow.axaml", "Help for the current page (F1)", TooltipScene.CollapsedSidebar,
             control => control is Button && AutomationProperties.GetAutomationId(control) == AutomationIds.HelpButton),
         new("Settings", "Views/MainWindow.axaml", "Settings (Ctrl+,)", TooltipScene.CollapsedSidebar,

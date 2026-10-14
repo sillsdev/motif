@@ -571,7 +571,8 @@ public sealed class SelectionWordRowsTests
             PageScreenshots.Settle(window);
             Assert.Same(list.DisplayRows, rows.ItemsSource);
             list.Rows[0].IsChecked = true;
-            for (var offset = 0; offset < list.Rows.Count; offset += 15)
+            // Each step stays within one viewport of rows, which keep their actions visible and are taller.
+            for (var offset = 0; offset < list.Rows.Count; offset += 10)
             {
                 rows.ScrollIntoView(offset);
                 SettleRowLayout(window);

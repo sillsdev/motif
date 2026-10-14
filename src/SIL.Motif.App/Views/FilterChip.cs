@@ -86,8 +86,7 @@ public sealed class FilterChip : Button
         var label = new TextBlock { Text = Label, TextTrimming = TextTrimming.CharacterEllipsis };
         row.Children.Add(label);
         Grid.SetColumn(label, 1);
-        var count = new TextBlock { Text = Count.ToString("N0"), FontWeight = FontWeight.SemiBold };
-        count.Classes.Add("chipCount");
+        var count = new TextBlock { Text = Count.ToString("N0"), Classes = { "chipCount" } };
         row.Children.Add(count);
         Grid.SetColumn(count, 2);
         Content = row;

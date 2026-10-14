@@ -14,7 +14,7 @@
     <Panel Grid.Row="1">
       <StackPanel IsVisible="{Binding Grammar.ShowLoading}" Spacing="{DynamicResource Intent.Space.Related}">
         <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Group}">
-          <views:CopyableTextBlock Text="Checking the grammar..." FontWeight="SemiBold" />
+          <views:CopyableTextBlock Text="Checking the grammar..." FontWeight="{DynamicResource Intent.Weight.Section}" />
           <views:CopyableTextBlock Classes="muted" Text="{Binding Grammar.ElapsedText}" />
         </StackPanel>
         <ProgressBar IsIndeterminate="True" AutomationProperties.Name="Grammar loading" />
@@ -41,7 +41,7 @@
 
       <StackPanel Classes="warningEmpty" IsVisible="{Binding Grammar.ShowNoFindings}"
                   HorizontalAlignment="Center" VerticalAlignment="Center">
-        <views:CopyableTextBlock Text="No grammar findings were reported." FontWeight="SemiBold" HorizontalAlignment="Center" />
+        <views:CopyableTextBlock Text="No grammar findings were reported." FontWeight="{DynamicResource Intent.Weight.Section}" HorizontalAlignment="Center" />
         <Button Content="Check the grammar again" HorizontalAlignment="Center"
                 Command="{Binding Grammar.CheckCommand}" AutomationProperties.Name="Check the grammar again" />
       </StackPanel>
@@ -136,7 +136,7 @@
                                   <views:CopyableTextBlock Text="{Binding Explanation}" TextWrapping="Wrap" />
                                 </StackPanel>
                                 <StackPanel IsVisible="{Binding HasWordforms}" Spacing="{DynamicResource Intent.Space.Minimal}">
-                                  <views:CopyableTextBlock Text="Wordforms not compared" FontWeight="SemiBold" />
+                                  <views:CopyableTextBlock Text="Wordforms not compared" FontWeight="{DynamicResource Intent.Weight.Section}" />
                                   <views:CopyableTextBlock Text="{Binding WordformsText}" TextWrapping="Wrap" />
                                 </StackPanel>
                                 <StackPanel IsVisible="{Binding HasProblemParts}" Spacing="{DynamicResource Intent.Space.Minimal}">
@@ -159,7 +159,7 @@
                                   </ItemsControl.ItemTemplate>
                                 </ItemsControl>
                                 <StackPanel IsVisible="{Binding HasGuidance}" Spacing="{DynamicResource Intent.Space.Minimal}">
-                                  <views:CopyableTextBlock Classes="muted" Text="What to do in FieldWorks" FontWeight="SemiBold" />
+                                  <views:CopyableTextBlock Classes="muted" Text="What to do in FieldWorks" FontWeight="{DynamicResource Intent.Weight.Section}" />
                                   <views:CopyableTextBlock Text="{Binding Guidance}" TextWrapping="Wrap" />
                                 </StackPanel>
                                 <views:CopyableTextBlock Classes="muted" Text="PanGloss gives no advice for this kind yet"
@@ -175,7 +175,7 @@
                       </ItemsControl>
 
                       <StackPanel IsVisible="{Binding HasAnyWordRows}" Spacing="{DynamicResource Intent.Space.Minimal}">
-                        <views:CopyableTextBlock Text="{Binding ExactWordsHeading}" FontWeight="SemiBold"
+                        <views:CopyableTextBlock Text="{Binding ExactWordsHeading}" FontWeight="{DynamicResource Intent.Weight.Section}"
                                                  IsVisible="{Binding HasExactRows}" />
                         <views:WordListSlot Schema="{x:Static word:WordListSchemas.Warnings}">
                         <Grid RowDefinitions="Auto,Auto" RowSpacing="{DynamicResource Intent.Space.Minimal}">
@@ -248,7 +248,7 @@
 
                       <Border Classes="warningWorkflow" IsVisible="{Binding HasYourWords}">
                         <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-                          <views:CopyableTextBlock Text="After you fix it" FontWeight="SemiBold" />
+                          <views:CopyableTextBlock Text="After you fix it" FontWeight="{DynamicResource Intent.Weight.Section}" />
                           <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap"
                                                     Text="Save in FieldWorks, refresh Motif, then parse these words again." />
                         </StackPanel>

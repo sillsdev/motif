@@ -45,7 +45,6 @@
                                 Morphs="{Binding PrimaryFieldWorksMorphs}"
                                 WarningMarkedMorphIndices="{Binding WarningMarkedFieldWorksMorphIndices}"
                                 ShowCategory="False" WrapParts="True" ShowLinks="False"
-                                MaxVisibleMorphs="2"
                                 IsVisible="{Binding HasFieldWorksAnalyses}" />
             <Border x:Name="MoreFieldWorks" Classes="panGlossExtra" VerticalAlignment="Top" IsVisible="{Binding HasMoreFieldWorksAnalyses}">
               <TextBlock Text="{Binding MoreFieldWorksLabel}" />
@@ -61,7 +60,7 @@
                 ColumnSpacing="{DynamicResource Intent.Space.Compact}">
             <word:MorphemePanel x:Name="PanGlossMorphology" Classes="stripMorphology"
                                 Morphs="{Binding PanGlossReadingMorphs}" ShowCategory="False"
-                                WrapParts="True" ShowLinks="False" MaxVisibleMorphs="2"
+                                WrapParts="True" ShowLinks="False"
                                 IsVisible="{Binding ShowsPanGlossReading}" />
             <Border x:Name="MorePanGloss" Classes="panGlossExtra" VerticalAlignment="Top" IsVisible="{Binding HasMorePanGlossReadings}">
               <TextBlock Text="{Binding MorePanGlossLabel}" />

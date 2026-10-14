@@ -23,9 +23,14 @@ public static class ClearTipPlacement
     public static readonly AttachedProperty<bool> IsEnabledProperty =
         AvaloniaProperty.RegisterAttached<Control, bool>("IsEnabled", typeof(ClearTipPlacement));
 
-    /// <summary>The containing control whose edges the tooltip clears, when larger than its clickable owner.</summary>
+    /// <summary>The control whose edges the tooltip clears instead of its clickable owner.</summary>
     public static readonly AttachedProperty<Control?> AnchorProperty =
         AvaloniaProperty.RegisterAttached<Control, Control?>("Anchor", typeof(ClearTipPlacement));
+
+    /// <summary>Additional nonnegative space around the anchor, in device-independent pixels.</summary>
+    public static readonly AttachedProperty<double> ClearanceProperty =
+        AvaloniaProperty.RegisterAttached<Control, double>("Clearance", typeof(ClearTipPlacement),
+            validate: value => double.IsFinite(value) && value >= 0);
 
     /// <summary>The sides tried, in order: the anchor edge or corner of the owner, and the way the tip grows from it.</summary>
     internal static IReadOnlyList<(PopupAnchor Anchor, PopupGravity Gravity)> Sides { get; } =
@@ -67,11 +72,17 @@ public static class ClearTipPlacement
     /// <summary>Sets whether <paramref name="owner"/>'s tooltip opens where it covers no other control.</summary>
     public static void SetIsEnabled(Control owner, bool value) => owner.SetValue(IsEnabledProperty, value);
 
-    /// <summary>Gets the containing control used for placement, or null to use the tooltip owner.</summary>
+    /// <summary>Gets the control used for placement, or null to use the tooltip owner.</summary>
     public static Control? GetAnchor(Control owner) => owner.GetValue(AnchorProperty);
 
-    /// <summary>Sets the containing control whose edges the tooltip clears.</summary>
+    /// <summary>Sets the control whose edges the tooltip clears.</summary>
     public static void SetAnchor(Control owner, Control? anchor) => owner.SetValue(AnchorProperty, anchor);
+
+    /// <summary>Gets the additional space the tooltip leaves around its anchor.</summary>
+    public static double GetClearance(Control owner) => owner.GetValue(ClearanceProperty);
+
+    /// <summary>Sets finite, nonnegative space the tooltip leaves around its anchor.</summary>
+    public static void SetClearance(Control owner, double value) => owner.SetValue(ClearanceProperty, value);
 
     /// <summary>
     /// The first of <see cref="Sides"/> whose tip, of <paramref name="tip"/> size beside <paramref name="owner"/>,
@@ -108,8 +119,11 @@ public static class ClearTipPlacement
             .Where(shown => shown.Width > 0 && shown.Height > 0)
             .ToList();
         var target = GetAnchor(owner) ?? owner;
-        if (target != owner) placement.AnchorRectangle = AreaOf(target, window);
-        var (anchor, gravity) = Choose(AreaOf(target, window), placement.PopupSize, new Rect(window.Bounds.Size), obstacles);
+        var area = AreaOf(target, window);
+        var clearance = GetClearance(owner);
+        if (clearance > 0) area = area.Inflate(clearance).Intersect(new Rect(window.Bounds.Size));
+        if (target != owner || clearance > 0) placement.AnchorRectangle = area;
+        var (anchor, gravity) = Choose(area, placement.PopupSize, new Rect(window.Bounds.Size), obstacles);
         placement.Anchor = anchor;
         placement.Gravity = gravity;
         // The tooltip's own offset would push the tip back onto what the chosen side was clear of.

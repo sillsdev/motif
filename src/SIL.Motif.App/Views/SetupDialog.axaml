@@ -78,7 +78,7 @@
                       <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
                         <CheckBox IsChecked="{Binding IsChecked}" VerticalAlignment="Center"
                                   AutomationProperties.Name="{Binding Title}" />
-                        <TextBlock Grid.Column="1" Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="1" Text="{Binding Title}" FontWeight="{DynamicResource Intent.Weight.Section}" TextWrapping="Wrap" VerticalAlignment="Center" />
                         <TextBlock Grid.Column="2" Classes="setupMuted" Text="{Binding DistinctCountText}"
                                    TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                         <TextBlock Grid.Column="3" Classes="setupCoverage" Text="{Binding InterlinearizedText}" VerticalAlignment="Center" />
@@ -92,7 +92,7 @@
                        IsVisible="{Binding Selection.TextsEmptyMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}"
                        TextWrapping="Wrap" />
             <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
-              <TextBlock Text="Add words:" FontWeight="SemiBold" VerticalAlignment="Top" />
+              <TextBlock Text="Add words:" FontWeight="{DynamicResource Intent.Weight.Section}" VerticalAlignment="Top" />
               <TextBox Grid.Column="1" Text="{Binding Selection.PastedWords}" AcceptsReturn="True"
                        TextWrapping="Wrap" MinHeight="{DynamicResource Component.Setup.AddedWordsHeight}"
                        MaxHeight="{DynamicResource Component.Setup.AddedWordsMaxHeight}"
@@ -108,7 +108,7 @@
           <StackPanel IsVisible="{Binding IsLimitsStep}" Spacing="{DynamicResource Intent.Space.Group}" VerticalAlignment="Center">
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Group}">
               <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
-                <TextBlock Text="Analysis attempt limit per word" FontWeight="SemiBold" />
+                <TextBlock Text="Analysis attempt limit per word" FontWeight="{DynamicResource Intent.Weight.Section}" />
                 <TextBlock Classes="setupMuted" Text="200,000 attempts is the default. Choose no attempt limit to let parsing continue until it finishes." TextWrapping="Wrap" />
               </StackPanel>
               <NumericUpDown Grid.Column="1" Classes="setupNumber" Value="{Binding StepLimitSteps}"

@@ -6,11 +6,19 @@
   that differs between light and dark is two primitives, and Intent's theme dictionaries choose between them.
 
   Where Semi.Avalonia's own scale holds the same value, the primitive aliases Semi's key, so the two
-  scales cannot drift apart. Semi's colour ramp is not aliased: its light and dark palettes give one key
-  two values, and a primitive has one.
+  scales cannot drift apart. Semi has no density mode, so these height aliases are overridden here:
+  SemiHeightControlSmall/Default/Large, ButtonSmall/Default/LargeHeight, TextBoxSmall/Default/LargeHeight and
+  ComboBoxSmall/Default/LargeHeight. Small controls are 26 high; default and large controls are 28 high. The padding
+  aliases are ButtonSmall/Default/LargePadding, TextBoxContentPadding, TextBoxTextAreaContentPadding,
+  TextBoxInnerLeft/RightContentPadding, ComboBoxSelectorDefaultPadding, ComboBoxItemDefaultPadding and
+  ComboBoxPopupBorderPadding. Semi's colour ramp is not aliased: its light and dark palettes give one key two values,
+  and a primitive has one.
+
+  Shadow values are for popup surfaces, menus and tooltips; panels do not cast shadows.
 
   Key shapes: Primitive.Color.<Hue><Step>, Primitive.Space.<px>, Primitive.Inset.<left>_<top>_<right>_<bottom>,
-  Primitive.Radius.<px>, Primitive.Type.<px>, Primitive.Size.<px>, Primitive.GridLength.<px>, Primitive.Stroke.<px>,
+  Primitive.Radius.<px>, Primitive.Type.<px>, Primitive.FontWeight.<weight>, Primitive.Size.<px>,
+  Primitive.GridLength.<px>, Primitive.Stroke.<px>,
   Primitive.Dash.<on>_<off>, Primitive.Opacity.<percent>, Primitive.Font.<family>.
   A decimal point in a value is written as p (13p5 is 13.5).
 -->
@@ -92,10 +100,6 @@
 
   <BoxShadows x:Key="Primitive.Shadow.Inset2.Blue650">inset 2 0 0 #215CC7</BoxShadows>
   <BoxShadows x:Key="Primitive.Shadow.Inset2.Blue350">inset 2 0 0 #83ADFF</BoxShadows>
-  <BoxShadows x:Key="Primitive.Shadow.InsetRing2.Blue700">inset 0 0 0 2 #0B4FC4</BoxShadows>
-  <BoxShadows x:Key="Primitive.Shadow.InsetRing1.Blue500">inset 0 0 0 1 #0064FA</BoxShadows>
-  <BoxShadows x:Key="Primitive.Shadow.InsetRing1.Blue350">inset 0 0 0 1 #83ADFF</BoxShadows>
-  <BoxShadows x:Key="Primitive.Shadow.InsetRing2.Blue200">inset 0 0 0 2 #8DB8FF</BoxShadows>
   <BoxShadows x:Key="Primitive.Shadow.Drop3_10.Slate950A10">0 3 10 0 #1A202833</BoxShadows>
   <BoxShadows x:Key="Primitive.Shadow.Drop4_14.BlackA45">0 4 14 0 #73000000</BoxShadows>
 
@@ -106,63 +110,55 @@
   <StaticResource x:Key="Primitive.Space.8" ResourceKey="SemiSpacingTight" />
   <StaticResource x:Key="Primitive.Space.12" ResourceKey="SemiSpacingBaseTight" />
   <x:Double x:Key="Primitive.Space.14">14</x:Double>
-  <StaticResource x:Key="Primitive.Space.16" ResourceKey="SemiSpacingBase" />
   <x:Double x:Key="Primitive.Space.1">1</x:Double>
   <x:Double x:Key="Primitive.Space.10">10</x:Double>
   <x:Double x:Key="Primitive.Space.20">20</x:Double>
-  <x:Double x:Key="Primitive.Space.28">28</x:Double>
 
+  <x:Double x:Key="Primitive.Size.26">26</x:Double>
+
+  <Thickness x:Key="Primitive.Inset.12_4_12_4">12,4</Thickness>
   <Thickness x:Key="Primitive.Inset.0_0_0_0">0</Thickness>
+  <Thickness x:Key="Primitive.Inset.8_8_8_8">8</Thickness>
+  <Thickness x:Key="Primitive.Inset.8_0_8_0">8,0</Thickness>
+  <Thickness x:Key="Primitive.Inset.8_0_0_0">8,0,0,0</Thickness>
+  <Thickness x:Key="Primitive.Inset.0_6_0_0">0,6,0,0</Thickness>
+  <Thickness x:Key="Primitive.Inset.6_0_0_0">6,0,0,0</Thickness>
   <Thickness x:Key="Primitive.Inset.0_0_0_8">0,0,0,8</Thickness>
   <Thickness x:Key="Primitive.Inset.1_1_1_1">1</Thickness>
   <Thickness x:Key="Primitive.Inset.1_1_1_0">1,1,1,0</Thickness>
   <Thickness x:Key="Primitive.Inset.1_0_1_0">1,0,1,0</Thickness>
   <Thickness x:Key="Primitive.Inset.1_0_1_1">1,0,1,1</Thickness>
   <Thickness x:Key="Primitive.Inset.2_2_2_2">2</Thickness>
+  <Thickness x:Key="Primitive.Inset.3_3_3_3">3</Thickness>
   <Thickness x:Key="Primitive.Inset.1p2_1p2_1p2_1p2">1.2</Thickness>
   <Thickness x:Key="Primitive.Inset.16_16_16_16">16</Thickness>
-  <Thickness x:Key="Primitive.Inset.16_4_16_4">16,4,16,4</Thickness>
   <Thickness x:Key="Primitive.Inset.8_2_8_2">8,2,8,2</Thickness>
-  <Thickness x:Key="Primitive.Inset.14_10_14_10">14,10</Thickness>
   <Thickness x:Key="Primitive.Inset.5_1_5_1">5,1,5,1</Thickness>
   <Thickness x:Key="Primitive.Inset.0_0_2_0">0,0,2,0</Thickness>
-  <Thickness x:Key="Primitive.Inset.0_12_8_12">0,12,8,12</Thickness>
   <Thickness x:Key="Primitive.Inset.1_0_0_0">1,0,0,0</Thickness>
   <Thickness x:Key="Primitive.Inset.0_5_0_0">0,5,0,0</Thickness>
   <Thickness x:Key="Primitive.Inset.0_1_6_0">0,1,6,0</Thickness>
   <Thickness x:Key="Primitive.Inset.66_6_0_2">66,6,0,2</Thickness>
   <Thickness x:Key="Primitive.Inset.36_4_8_8">36,4,8,8</Thickness>
   <Thickness x:Key="Primitive.Inset.7_1_7_1">7,1</Thickness>
-  <Thickness x:Key="Primitive.Inset.9_3_9_3">9,3</Thickness>
-  <Thickness x:Key="Primitive.Inset.12_4_12_4">12,4</Thickness>
   <Thickness x:Key="Primitive.Inset.6_0_6_0">6,0</Thickness>
   <Thickness x:Key="Primitive.Inset.4_0_4_0">4,0</Thickness>
   <Thickness x:Key="Primitive.Inset.4_2_4_2">4,2</Thickness>
-  <Thickness x:Key="Primitive.Inset.8_12_8_12">8,12</Thickness>
-  <Thickness x:Key="Primitive.Inset.0_12_0_12">0,12</Thickness>
-  <Thickness x:Key="Primitive.Inset.10_7_10_7">10,7</Thickness>
-  <Thickness x:Key="Primitive.Inset.0_10_0_10">0,10</Thickness>
-  <Thickness x:Key="Primitive.Inset.10_8_10_8">10,8</Thickness>
-  <Thickness x:Key="Primitive.Inset.18_0_18_0">18,0</Thickness>
   <Thickness x:Key="Primitive.Inset.18_0_138_0">18,0,138,0</Thickness>
   <Thickness x:Key="Primitive.Inset.76_0_18_0">76,0,18,0</Thickness>
   <Thickness x:Key="Primitive.Inset.0_8_0_8">0,8</Thickness>
-  <Thickness x:Key="Primitive.Inset.18_8_8_14">18,8,8,14</Thickness>
-  <Thickness x:Key="Primitive.Inset.0_0_12_0">0,0,12,0</Thickness>
   <Thickness x:Key="Primitive.Inset.0_0_8_0">0,0,8,0</Thickness>
   <Thickness x:Key="Primitive.Inset.0_0_8_8">0,0,8,8</Thickness>
   <Thickness x:Key="Primitive.Inset.0_0_20_0">0,0,20,0</Thickness>
   <Thickness x:Key="Primitive.Inset.0_0_0_2">0,0,0,2</Thickness>
   <Thickness x:Key="Primitive.Inset.0_0_4_4">0,0,4,4</Thickness>
   <Thickness x:Key="Primitive.Inset.10_0_0_0">10,0,0,0</Thickness>
-  <Thickness x:Key="Primitive.Inset.16_12_16_0">16,12,16,0</Thickness>
   <Thickness x:Key="Primitive.Inset.0_-4_-6_0">0,-4,-6,0</Thickness>
   <Thickness x:Key="Primitive.Inset.0_0_1_0">0,0,1,0</Thickness>
   <Thickness x:Key="Primitive.Inset.0_0_0_1">0,0,0,1</Thickness>
   <Thickness x:Key="Primitive.Inset.0_0_0_3">0,0,0,3</Thickness>
   <Thickness x:Key="Primitive.Inset.2_0_0_0">2,0,0,0</Thickness>
   <Thickness x:Key="Primitive.Inset.8_3_8_3">8,3,8,3</Thickness>
-  <Thickness x:Key="Primitive.Inset.16_10_16_16">16,10,16,16</Thickness>
   <Thickness x:Key="Primitive.Inset.6_2_6_2">6,2</Thickness>
   <Thickness x:Key="Primitive.Inset.0_4_0_4">0,4</Thickness>
   <Thickness x:Key="Primitive.Inset.26_0_0_4">26,0,0,4</Thickness>
@@ -178,11 +174,7 @@
   <Thickness x:Key="Primitive.Inset.0_2_0_2">0,2</Thickness>
   <Thickness x:Key="Primitive.Inset.0_3_0_3">0,3</Thickness>
   <Thickness x:Key="Primitive.Inset.0_8_0_0">0,8,0,0</Thickness>
-  <Thickness x:Key="Primitive.Inset.0_10_0_0">0,10,0,0</Thickness>
-  <Thickness x:Key="Primitive.Inset.0_16_0_0">0,16,0,0</Thickness>
   <Thickness x:Key="Primitive.Inset.6_4_6_4">6,4</Thickness>
-  <Thickness x:Key="Primitive.Inset.20_8_20_8">20,8</Thickness>
-  <Thickness x:Key="Primitive.Inset.24_16_24_20">24,16,24,20</Thickness>
   <Thickness x:Key="Primitive.Inset.3_0_3_0">3,0</Thickness>
   <Thickness x:Key="Primitive.Inset.3_0_0_0">3,0,0,0</Thickness>
   <Thickness x:Key="Primitive.Inset.5_0_5_0">5,0</Thickness>
@@ -190,27 +182,18 @@
   <CornerRadius x:Key="Primitive.Radius.0">0</CornerRadius>
   <CornerRadius x:Key="Primitive.Radius.2">2</CornerRadius>
   <CornerRadius x:Key="Primitive.Radius.3">3</CornerRadius>
-  <StaticResource x:Key="Primitive.Radius.6" ResourceKey="SemiBorderRadiusMedium" />
-  <CornerRadius x:Key="Primitive.Radius.6_6_0_0">6,6,0,0</CornerRadius>
-  <CornerRadius x:Key="Primitive.Radius.0_0_6_6">0,0,6,6</CornerRadius>
-  <CornerRadius x:Key="Primitive.Radius.8">8</CornerRadius>
-  <CornerRadius x:Key="Primitive.Radius.9">9</CornerRadius>
-  <CornerRadius x:Key="Primitive.Radius.10">10</CornerRadius>
-  <StaticResource x:Key="Primitive.Radius.12" ResourceKey="SemiBorderRadiusLarge" />
-  <CornerRadius x:Key="Primitive.Radius.99">99</CornerRadius>
-  <CornerRadius x:Key="Primitive.Radius.7">7</CornerRadius>
 
   <x:Double x:Key="Primitive.Type.10p5">10.5</x:Double>
   <x:Double x:Key="Primitive.Type.11">11</x:Double>
   <FontFamily x:Key="Primitive.Font.UI">fonts:Motif#Andika</FontFamily>
+  <FontWeight x:Key="Primitive.FontWeight.Bold">Bold</FontWeight>
+  <FontWeight x:Key="Primitive.FontWeight.Normal">Normal</FontWeight>
+  <FontWeight x:Key="Primitive.FontWeight.SemiBold">SemiBold</FontWeight>
   <StaticResource x:Key="Primitive.Type.12" ResourceKey="SemiFontSizeSmall" />
-  <x:Double x:Key="Primitive.Type.12p5">12.5</x:Double>
   <FontFamily x:Key="Primitive.Font.Mono">Cascadia Mono, Consolas, Menlo, DejaVu Sans Mono, monospace</FontFamily>
   <x:Double x:Key="Primitive.Type.13">13</x:Double>
-  <x:Double x:Key="Primitive.Type.13p5">13.5</x:Double>
   <x:Double x:Key="Primitive.Type.15">15</x:Double>
   <StaticResource x:Key="Primitive.Type.16" ResourceKey="SemiFontSizeHeader6" />
-  <x:Double x:Key="Primitive.Type.22">22</x:Double>
   <x:Double x:Key="Primitive.Type.8">8</x:Double>
   <x:Double x:Key="Primitive.Type.8p5">8.5</x:Double>
   <x:Double x:Key="Primitive.Type.9">9</x:Double>
@@ -239,8 +222,6 @@
   <x:Double x:Key="Primitive.Size.156">156</x:Double>
   <x:Double x:Key="Primitive.Size.170">170</x:Double>
   <x:Double x:Key="Primitive.Size.176">176</x:Double>
-  <GridLength x:Key="Primitive.GridLength.140">140</GridLength>
-  <GridLength x:Key="Primitive.GridLength.176">176</GridLength>
   <x:Double x:Key="Primitive.Size.190">190</x:Double>
   <x:Double x:Key="Primitive.Size.204">204</x:Double>
   <x:Double x:Key="Primitive.Size.220">220</x:Double>
@@ -252,7 +233,6 @@
   <x:Double x:Key="Primitive.Size.360">360</x:Double>
   <x:Double x:Key="Primitive.Size.600">600</x:Double>
   <x:Double x:Key="Primitive.Size.780">780</x:Double>
-  <x:Double x:Key="Primitive.Size.820">820</x:Double>
   <x:Double x:Key="Primitive.Size.1240">1240</x:Double>
   <x:Double x:Key="Primitive.Size.10">10</x:Double>
   <x:Double x:Key="Primitive.Size.14">14</x:Double>
@@ -288,4 +268,39 @@
   <ScaleTransform x:Key="Primitive.Transform.Scale96" ScaleX="0.96" ScaleY="0.96" />
   <x:Double x:Key="Primitive.Opacity.0">0</x:Double>
   <x:Double x:Key="Primitive.Opacity.100">1</x:Double>
+
+  <StaticResource x:Key="SemiHeightControlSmall" ResourceKey="Primitive.Size.26" />
+  <StaticResource x:Key="SemiHeightControlDefault" ResourceKey="Primitive.Size.28" />
+  <StaticResource x:Key="SemiHeightControlLarge" ResourceKey="Primitive.Size.28" />
+  <StaticResource x:Key="ButtonSmallHeight" ResourceKey="Primitive.Size.26" />
+  <StaticResource x:Key="ButtonDefaultHeight" ResourceKey="Primitive.Size.28" />
+  <StaticResource x:Key="ButtonLargeHeight" ResourceKey="Primitive.Size.28" />
+  <StaticResource x:Key="TextBoxSmallHeight" ResourceKey="Primitive.Size.26" />
+  <StaticResource x:Key="TextBoxDefaultHeight" ResourceKey="Primitive.Size.28" />
+  <StaticResource x:Key="TextBoxLargeHeight" ResourceKey="Primitive.Size.28" />
+  <StaticResource x:Key="ComboBoxSmallHeight" ResourceKey="Primitive.Size.26" />
+  <StaticResource x:Key="ComboBoxDefaultHeight" ResourceKey="Primitive.Size.28" />
+  <StaticResource x:Key="ComboBoxLargeHeight" ResourceKey="Primitive.Size.28" />
+  <StaticResource x:Key="ButtonSmallPadding" ResourceKey="Primitive.Inset.4_0_4_0" />
+  <StaticResource x:Key="ButtonDefaultPadding" ResourceKey="Primitive.Inset.8_0_8_0" />
+  <StaticResource x:Key="ButtonLargePadding" ResourceKey="Primitive.Inset.8_0_8_0" />
+  <StaticResource x:Key="TextBoxContentPadding" ResourceKey="Primitive.Inset.8_0_8_0" />
+  <StaticResource x:Key="TextBoxTextAreaContentPadding" ResourceKey="Primitive.Inset.8_2_8_2" />
+  <StaticResource x:Key="TextBoxInnerLeftContentPadding" ResourceKey="Primitive.Inset.8_0_0_0" />
+  <StaticResource x:Key="TextBoxInnerRightContentPadding" ResourceKey="Primitive.Inset.0_0_8_0" />
+  <StaticResource x:Key="ComboBoxSelectorDefaultPadding" ResourceKey="Primitive.Inset.8_0_8_0" />
+  <StaticResource x:Key="ComboBoxItemDefaultPadding" ResourceKey="Primitive.Inset.8_4_8_4" />
+  <StaticResource x:Key="ComboBoxPopupBorderPadding" ResourceKey="Primitive.Inset.8_8_8_8" />
+
+  <x:Double x:Key="Primitive.Size.4">4</x:Double>
+  <x:Double x:Key="Primitive.Size.34">34</x:Double>
+  <x:Double x:Key="Primitive.Size.43">43</x:Double>
+  <x:Double x:Key="Primitive.Size.44">44</x:Double>
+  <x:Double x:Key="Primitive.Size.248">248</x:Double>
+  <x:Double x:Key="Primitive.Size.1000">1000</x:Double>
+  <x:Double x:Key="Primitive.Size.1200">1200</x:Double>
+  <Thickness x:Key="Primitive.Inset.12_0_8_0">12,0,8,0</Thickness>
+  <Thickness x:Key="Primitive.Inset.12_0_4_0">12,0,4,0</Thickness>
+  <Thickness x:Key="Primitive.Inset.0_3_2_0">0,3,2,0</Thickness>
+  <CornerRadius x:Key="Primitive.Radius.7">7</CornerRadius>
 </ResourceDictionary>

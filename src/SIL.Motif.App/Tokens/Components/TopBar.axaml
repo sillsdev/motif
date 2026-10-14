@@ -5,11 +5,12 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Styles.Resources>
-    <StaticResource x:Key="Component.TopBar.Padding" ResourceKey="Primitive.Inset.18_0_18_0" />
+    <StaticResource x:Key="Component.TopBar.Padding" ResourceKey="Primitive.Inset.12_0_8_0" />
     <StaticResource x:Key="Component.TopBar.WindowsChromePadding" ResourceKey="Primitive.Inset.18_0_138_0" />
     <StaticResource x:Key="Component.TopBar.MacChromePadding" ResourceKey="Primitive.Inset.76_0_18_0" />
-    <StaticResource x:Key="Component.TopBar.Height" ResourceKey="Primitive.Size.52" />
-    <StaticResource x:Key="Component.TopBar.LogoSize" ResourceKey="Primitive.Size.22" />
+    <StaticResource x:Key="Component.TopBar.Height" ResourceKey="Primitive.Size.34" />
+    <StaticResource x:Key="Component.TopBar.CompactWidth" ResourceKey="Primitive.Size.1100" />
+    <StaticResource x:Key="Component.TopBar.LogoSize" ResourceKey="Primitive.Size.16" />
     <StaticResource x:Key="Component.TopBar.ProjectMenuMaxWidth" ResourceKey="Primitive.Size.240" />
     <StaticResource x:Key="Component.TopBar.ProjectNameMaxWidth" ResourceKey="Primitive.Size.190" />
     <StaticResource x:Key="Component.TopBar.ParseProgressWidth" ResourceKey="Primitive.Size.190" />

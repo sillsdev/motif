@@ -9,7 +9,8 @@
   <ScrollViewer Margin="{DynamicResource Component.TextsPage.PageInset}">
     <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
       <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-        <views:CopyableTextBlock Text="Texts" FontSize="{DynamicResource Intent.Type.Section}" FontWeight="SemiBold" />
+        <views:CopyableTextBlock Text="Texts" FontSize="{DynamicResource Intent.Type.Section}"
+                                 FontWeight="{DynamicResource Intent.Weight.Section}" />
         <views:CopyableTextBlock Classes="muted" Text="{Binding Selection.SummaryText}" TextWrapping="Wrap" />
       </StackPanel>
 

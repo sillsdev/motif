@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:app="clr-namespace:SIL.Motif.App"
         xmlns:views="clr-namespace:SIL.Motif.App.Views"
+        xmlns:shell="clr-namespace:SIL.Motif.App.Views.Shell"
         xmlns:controls="using:SIL.Motif.App.Controls"
         xmlns:chrome="using:Avalonia.Controls.Chrome"
         xmlns:services="clr-namespace:SIL.Motif.App.Services"
@@ -16,29 +17,35 @@
         MinHeight="{DynamicResource Component.Shell.MinHeight}"
         WindowDecorations="Full">
   <LayoutTransformControl x:Name="RootLayoutTransform" ClipToBounds="True">
-  <Grid RowDefinitions="Auto,Auto,*">
+  <Grid RowDefinitions="Auto,*,Auto">
 
     <!-- Top bar: the project menu, how fresh the numbers are, and Refresh. -->
     <Border x:Name="TopBar" Classes="topBar"
             chrome:WindowDecorationProperties.ElementRole="TitleBar">
-      <DockPanel LastChildFill="True" VerticalAlignment="Center">
+      <Grid VerticalAlignment="Center">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="*" MaxWidth="{DynamicResource Component.TopBar.ProjectMenuMaxWidth}" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
 
-        <StackPanel Classes="topBarGroup brand" DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
+        <StackPanel Classes="topBarGroup brand" Orientation="Horizontal" VerticalAlignment="Center">
           <Image Classes="brandLogo" Source="avares://SIL.Motif.App/Assets/motif-icon.png" />
           <views:CopyableTextBlock Classes="brandName" Text="Motif" VerticalAlignment="Center" />
         </StackPanel>
 
-        <Button x:Name="ProjectMenuButton" DockPanel.Dock="Left" VerticalAlignment="Center"
+        <Button x:Name="ProjectMenuButton" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left"
                 Theme="{DynamicResource OutlineButton}" Classes="Tertiary projectMenu"
                 chrome:WindowDecorationProperties.ElementRole="User"
                 IsEnabled="{Binding ProjectSwitchEnabled}"
                 AutomationProperties.Name="Project menu"
                 AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProjectMenu}">
-          <StackPanel Classes="topBarGroup" Orientation="Horizontal">
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
             <TextBlock Classes="projectName" Text="{Binding ProjectName}" TextTrimming="CharacterEllipsis"
                        ToolTip.Tip="{Binding ProjectName}" />
-            <TextBlock Classes="disclosure" Text="&#x25BE;" VerticalAlignment="Center" />
-          </StackPanel>
+            <TextBlock Grid.Column="1" Classes="disclosure" Text="&#x25BE;" VerticalAlignment="Center" />
+          </Grid>
           <Button.Flyout>
             <Flyout Placement="BottomEdgeAlignedLeft" FlyoutPresenterClasses="projectMenu">
               <StackPanel Classes="menu projectMenu">
@@ -81,7 +88,7 @@
           </Button.Flyout>
         </Button>
 
-        <StackPanel x:Name="TopBarActions" Classes="topBarGroup" DockPanel.Dock="Right" Orientation="Horizontal"
+        <StackPanel x:Name="TopBarActions" Grid.Column="3" Classes="topBarGroup" Orientation="Horizontal"
                     VerticalAlignment="Center">
           <Button Content="See what changed" Command="{Binding SeeWhatChangedCommand}"
                   Theme="{DynamicResource OutlineButton}" Classes="Tertiary"
@@ -107,7 +114,7 @@
                   ToolTip.Tip="Capture a new Baseline from FieldWorks' last save." />
         </StackPanel>
 
-        <DockPanel x:Name="FreshnessLine" Classes="freshness" VerticalAlignment="Center"
+        <DockPanel x:Name="FreshnessLine" Grid.Column="2" Classes="freshness" VerticalAlignment="Center"
                    IsVisible="{Binding HasFreshness}">
           <Ellipse DockPanel.Dock="Left" Classes="freshDot" Classes.current="{Binding FreshnessIsCurrent}"
                    Classes.stale="{Binding FreshnessIsStale}" Classes.busy="{Binding FreshnessIsBusy}"
@@ -122,30 +129,113 @@
                                    VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                                    AutomationProperties.AutomationId="{x:Static app:AutomationIds.FreshnessDetail}" />
         </DockPanel>
-      </DockPanel>
+      </Grid>
     </Border>
 
-    <Grid Grid.Row="1" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto">
-      <Border x:Name="TechDemoNotice" Grid.Row="0" IsVisible="{Binding ShowsTechDemoNotice}" Classes="notice">
-        <DockPanel LastChildFill="True">
-          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
-            <HyperlinkButton Classes="reviewLink" Content="Report a problem"
-                             Command="{Binding TechDemoNotice.ReportProblemCommand}"
-                             AutomationProperties.Name="Report a problem" />
-            <Button Content="Got it" Command="{Binding TechDemoNotice.GotItCommand}"
-                    AutomationProperties.Name="Acknowledge the tech demo notice" />
+    <shell:WorkspaceLayoutHost x:Name="WorkspaceLayout" Grid.Row="1">
+      <shell:WorkspaceLayoutHost.Rail>
+<Border x:Name="Sidebar" Classes="sidebar collapsed">
+        <Grid RowDefinitions="*,Auto">
+          <ListBox x:Name="PageList"
+                   Classes="sidebar collapsed"
+                   ItemsSource="{Binding VisiblePages}"
+                   SelectedItem="{Binding SelectedPage}"
+                   ScrollViewer.VerticalScrollBarVisibility="Auto"
+                   ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                   AutomationProperties.Name="Pages"
+                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.Pages}">
+            <ListBox.Styles>
+              <Style Selector="ListBoxItem" x:DataType="vm:PageViewModel">
+                <Setter Property="AutomationProperties.Name" Value="{Binding AutomationName}" />
+                <Setter Property="AutomationProperties.AutomationId" Value="{Binding AutomationId}" />
+              </Style>
+              <Style Selector="ListBox.collapsed ListBoxItem" x:DataType="vm:PageViewModel">
+                <Setter Property="ToolTip.Tip" Value="{Binding Title}" />
+                <Setter Property="views:ClearTipPlacement.IsEnabled" Value="True" />
+              </Style>
+            </ListBox.Styles>
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:PageViewModel">
+                <Grid ColumnDefinitions="*">
+                  <Viewbox Classes="pageIcon" VerticalAlignment="Center">
+                    <Canvas Width="{DynamicResource Component.Sidebar.IconCanvasSize}"
+                            Height="{DynamicResource Component.Sidebar.IconCanvasSize}">
+                      <Path Classes="pageIcon" Data="{Binding Icon, Converter={x:Static views:PageIcons.Geometry}}"
+                            Stroke="{Binding $parent[ListBoxItem].Foreground}" />
+                    </Canvas>
+                  </Viewbox>
+                  <views:CopyableTextBlock Classes="pageLabel" Text="{Binding Title}"
+                                           AutomationProperties.AutomationId="{x:Static app:AutomationIds.SidebarPageLabel}"
+                                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                  <Border Classes="pageBadge" IsVisible="{Binding HasBadge}">
+                    <views:CopyableTextBlock Text="{Binding Badge}" />
+                  </Border>
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+          <StackPanel x:Name="SidebarFooter" Grid.Row="1" Classes="sidebarFooter collapsed">
+            <StackPanel x:Name="SidebarUtilities" Classes="sidebarUtilities collapsed">
+              <Button x:Name="HelpButton" Theme="{DynamicResource BorderlessButton}"
+                      Classes="Tertiary sidebarUtility"
+                      AutomationProperties.Name="Help for the current page"
+                      AutomationProperties.AutomationId="{x:Static app:AutomationIds.HelpButton}"
+                      ToolTip.Tip="Help for the current page (F1)" views:ClearTipPlacement.IsEnabled="True">
+                <StackPanel Classes="sidebarUtilityContent" Orientation="Horizontal">
+                  <TextBlock Classes="sidebarUtilityGlyph" Text="?" />
+                  <TextBlock x:Name="SidebarHelpLabel" Classes="sidebarUtilityLabel" Text="Help" />
+                </StackPanel>
+                <Button.Flyout>
+                  <Flyout Placement="RightEdgeAlignedBottom" FlyoutPresenterClasses="help"
+                          Opened="OnHelpFlyoutOpened">
+                    <views:HelpPopupView x:Name="HelpPopupView" />
+                  </Flyout>
+                </Button.Flyout>
+              </Button>
+              <Button x:Name="SettingsButton" Theme="{DynamicResource BorderlessButton}"
+                      Classes="Tertiary settingsGear sidebarUtility"
+                      AutomationProperties.Name="Settings"
+                      AutomationProperties.AutomationId="{x:Static app:AutomationIds.SettingsButton}"
+                      ToolTip.Tip="Settings (Ctrl+,)" views:ClearTipPlacement.IsEnabled="True" Click="OnSettingsClick">
+                <Path Classes="settingsGearGlyph"
+                      Data="M19.73 9.93 L21.98 9.88 L21.98 14.12 L19.73 14.07 L18.93 16.0 L20.55 17.56 L17.56 20.55 L16.0 18.93 L14.07 19.73 L14.12 21.98 L9.88 21.98 L9.93 19.73 L8.0 18.93 L6.44 20.55 L3.45 17.56 L5.07 16.0 L4.27 14.07 L2.02 14.12 L2.02 9.88 L4.27 9.93 L5.07 8.0 L3.45 6.44 L6.44 3.45 L8.0 5.07 L9.93 4.27 L9.88 2.02 L14.12 2.02 L14.07 4.27 L16.0 5.07 L17.56 3.45 L20.55 6.44 L18.93 8.0 Z M12 8.5 A3.5 3.5 0 1 0 12 15.5 A3.5 3.5 0 1 0 12 8.5 Z" />
+              </Button>
+            </StackPanel>
           </StackPanel>
-          <views:CopyableTextBlock Text="{x:Static vm:TechDemoNoticeViewModel.NoticeText}"
-                                   VerticalAlignment="Center" TextWrapping="Wrap" />
-        </DockPanel>
+        </Grid>
       </Border>
-      <views:StoreRefusalBlock Grid.Row="1" DataContext="{Binding StoreRefusalBlock}" />
-      <Border Grid.Row="2" IsVisible="{Binding HasOpenRefusal}" Classes="notice">
+      </shell:WorkspaceLayoutHost.Rail>
+      <shell:WorkspaceLayoutHost.Page>
+        <Grid RowDefinitions="Auto,Auto,*">
+          <Border x:Name="TechDemoNotice" IsVisible="{Binding ShowsTechDemoNotice}" Classes="notice">
+            <DockPanel LastChildFill="True">
+              <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
+                <HyperlinkButton Classes="reviewLink" Content="Report a problem"
+                                 Command="{Binding TechDemoNotice.ReportProblemCommand}"
+                                 AutomationProperties.Name="Report a problem" />
+                <Button Content="Got it" Command="{Binding TechDemoNotice.GotItCommand}"
+                        AutomationProperties.Name="Acknowledge the tech demo notice" />
+              </StackPanel>
+              <views:CopyableTextBlock Text="{x:Static vm:TechDemoNoticeViewModel.NoticeText}"
+                                       VerticalAlignment="Center" TextWrapping="Wrap" />
+            </DockPanel>
+          </Border>
+          <Border x:Name="NoticeBand" Grid.Row="1" Classes="workspaceNoticeBand" IsVisible="False">
+            <DockPanel>
+              <Button DockPanel.Dock="Right" Content="⋯" Classes="workspacePaneButton" ToolTip.Tip="See project notices"
+                      AutomationProperties.Name="See project notices" x:Name="NoticeDetailsButton">
+                <Button.Flyout>
+                  <Flyout Placement="BottomEdgeAlignedRight">
+                    <ScrollViewer MaxHeight="{DynamicResource Component.Shell.ParseStoppedMaxHeight}"
+                                  HorizontalScrollBarVisibility="Disabled">
+<Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto">
+      <views:StoreRefusalBlock Grid.Row="0" DataContext="{Binding StoreRefusalBlock}" />
+      <Border Grid.Row="1" IsVisible="{Binding HasOpenRefusal}" Classes="notice">
         <StackPanel>
           <views:RefusalBlock DataContext="{Binding OpenRefusal}" />
         </StackPanel>
       </Border>
-      <Border Grid.Row="3" IsVisible="{Binding Project.HasMachineStoreRecovery}" Classes="notice">
+      <Border Grid.Row="2" IsVisible="{Binding Project.HasMachineStoreRecovery}" Classes="notice">
         <DockPanel LastChildFill="True">
           <Button DockPanel.Dock="Right" Content="Report a problem" Click="OnMachineStoreReportProblemClick"
                   AutomationProperties.Name="Review a machine store problem report" />
@@ -153,10 +243,7 @@
                                    AutomationProperties.Name="Machine store recovery instructions" />
         </DockPanel>
       </Border>
-      <TextBlock x:Name="KeyboardShortcutStatusLine" Grid.Row="4" Classes="muted noticeText"
-                 IsVisible="False" AutomationProperties.LiveSetting="Polite"
-                 AutomationProperties.Name="Keyboard shortcut status" />
-      <ItemsControl x:Name="MainWindowWritingSystemNoticesItems" Grid.Row="5"
+      <ItemsControl x:Name="MainWindowWritingSystemNoticesItems" Grid.Row="3"
                     ItemsSource="{Binding Context.TextStyles.MissingFontNotices}">
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="services:WritingSystemFontNotice">
@@ -171,10 +258,72 @@
         </ItemsControl.ItemTemplate>
       </ItemsControl>
     </Grid>
+                    </ScrollViewer>
+                  </Flyout>
+                </Button.Flyout>
+              </Button>
+              <views:CopyableTextBlock x:Name="NoticeSummary" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                       Background="{DynamicResource Intent.Clear}" views:ClearTipPlacement.IsEnabled="True" />
+            </DockPanel>
+          </Border>
+          <Panel x:Name="PageHost" Grid.Row="2" ClipToBounds="True" />
+        </Grid>
+      </shell:WorkspaceLayoutHost.Page>
+      <shell:WorkspaceLayoutHost.ObjectInspector>
+        <views:Inspector x:Name="Inspector" DataContext="{Binding Inspector}" />
+      </shell:WorkspaceLayoutHost.ObjectInspector>
+    </shell:WorkspaceLayoutHost>
 
-    <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,*">
-
-      <Border Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2" Classes="notice"
+    <Border x:Name="StatusBar" Grid.Row="2" Classes="statusBar">
+      <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Group}">
+        <StackPanel Classes="statusGroup" Orientation="Horizontal">
+          <views:CopyableTextBlock Classes="statusFull" Text="Tech demo: writes nothing until you press Apply"
+                     ToolTip.Tip="Keep a FieldWorks backup. Motif writes only when you press Apply." />
+          <Button Classes="statusCompact" Content="Tech demo" Click="OnStatusReportProblemClick"
+                  AutomationProperties.Name="Report a problem"
+                  ToolTip.Tip="Tech demo: writes nothing until you press Apply. Report a problem." />
+          <HyperlinkButton Content="Report a problem" Classes="statusFull" Click="OnStatusReportProblemClick"
+                           AutomationProperties.Name="Report a problem" />
+        </StackPanel>
+        <Grid Grid.Column="1">
+          <views:CopyableTextBlock x:Name="StatusSelectionSummary"
+                     AutomationProperties.AutomationId="{x:Static app:AutomationIds.SidebarSelectionSummary}" Text="{Binding SelectionSummaryText}"
+                     TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding SelectionSummaryText}" />
+          <TextBlock x:Name="KeyboardShortcutStatusLine" IsVisible="False" TextTrimming="CharacterEllipsis"
+                     AutomationProperties.LiveSetting="Polite" AutomationProperties.Name="Keyboard shortcut status" />
+        </Grid>
+        <StackPanel Grid.Column="2" Classes="statusGroup" Orientation="Horizontal">
+          <Button x:Name="StatusChanges" x:DataType="vm:PageViewModel" IsVisible="{Binding HasBadge}"
+                  Command="{Binding Model.ShowPageCommand}" CommandParameter="{x:Static vm:WorkspacePage.Review}"
+                  AutomationProperties.Name="Review changes not applied yet"
+                  ToolTip.Tip="{Binding Badge, StringFormat='{}{0} changes not applied yet'}">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Text="{Binding Badge}" />
+              <TextBlock Classes="statusFull" Text=" changes not applied yet" />
+            </StackPanel>
+          </Button>
+          <Button x:Name="StatusWarnings" x:DataType="vm:PageViewModel" IsVisible="{Binding HasBadge}"
+                  Command="{Binding Model.ShowPageCommand}" CommandParameter="{x:Static vm:WorkspacePage.Warnings}"
+                  AutomationProperties.Name="Open Warnings" ToolTip.Tip="{Binding Badge, StringFormat='{}{0} warnings'}">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Text="⚠ " />
+              <TextBlock Text="{Binding Badge}" />
+              <TextBlock Classes="statusFull" Text=" warnings" />
+            </StackPanel>
+          </Button>
+          <Button x:Name="StatusParseProgress" IsVisible="{Binding ShowsParseAllWordsProgress}"
+                  AutomationProperties.Name="See parse progress" ToolTip.Tip="{Binding ActiveParseProgress.StatusText}">
+            <StackPanel Classes="statusGroup" Orientation="Horizontal">
+              <TextBlock Text="{Binding ActiveParseProgress.StatusText}" Classes="statusFull"
+                         MaxWidth="{DynamicResource Component.StatusBar.ProgressTextWidth}" TextTrimming="CharacterEllipsis" />
+              <TextBlock Text="Parsing" Classes="statusCompact" />
+              <ProgressBar Classes="statusProgress" Minimum="0" Maximum="1"
+                           Value="{Binding ActiveParseProgress.Fraction}"
+                           IsIndeterminate="{Binding ActiveParseProgress.IsIndeterminate}" />
+            </StackPanel>
+            <Button.Flyout>
+              <Flyout Placement="TopEdgeAlignedRight">
+<Border Classes="notice"
               IsVisible="{Binding ShowsParseAllWordsProgress}"
               IsHitTestVisible="{Binding ShowsParseAllWordsProgress}">
         <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
@@ -223,95 +372,12 @@
                                    AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParseNoProgress}" />
         </StackPanel>
       </Border>
-
-      <Border x:Name="Sidebar" Grid.RowSpan="2" Classes="sidebar" Classes.collapsed="{Binding IsSidebarCollapsed}">
-        <Grid RowDefinitions="*,Auto">
-          <ListBox x:Name="PageList"
-                   Classes="sidebar" Classes.collapsed="{Binding IsSidebarCollapsed}"
-                   ItemsSource="{Binding VisiblePages}"
-                   SelectedItem="{Binding SelectedPage}"
-                   ScrollViewer.VerticalScrollBarVisibility="Visible"
-                   ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                   AutomationProperties.Name="Pages"
-                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.Pages}">
-            <ListBox.Styles>
-              <Style Selector="ListBoxItem" x:DataType="vm:PageViewModel">
-                <Setter Property="AutomationProperties.Name" Value="{Binding AutomationName}" />
-                <Setter Property="AutomationProperties.AutomationId" Value="{Binding AutomationId}" />
-              </Style>
-              <Style Selector="ListBox.collapsed ListBoxItem" x:DataType="vm:PageViewModel">
-                <Setter Property="ToolTip.Tip" Value="{Binding Title}" />
-                <Setter Property="views:ClearTipPlacement.IsEnabled" Value="True" />
-              </Style>
-            </ListBox.Styles>
-            <ListBox.ItemTemplate>
-              <DataTemplate x:DataType="vm:PageViewModel">
-                <Grid ColumnDefinitions="Auto,*,Auto">
-                  <Viewbox Classes="pageIcon" VerticalAlignment="Center">
-                    <Canvas Width="{DynamicResource Component.Sidebar.IconCanvasSize}"
-                            Height="{DynamicResource Component.Sidebar.IconCanvasSize}">
-                      <Path Classes="pageIcon" Data="{Binding Icon, Converter={x:Static views:PageIcons.Geometry}}"
-                            Stroke="{Binding $parent[ListBoxItem].Foreground}" />
-                    </Canvas>
-                  </Viewbox>
-                  <views:CopyableTextBlock Grid.Column="1" Classes="pageLabel" Text="{Binding Title}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.SidebarPageLabel}"
-                                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                  <Border Grid.Column="2" Classes="pageBadge" IsVisible="{Binding HasBadge}">
-                    <views:CopyableTextBlock Text="{Binding Badge}" />
-                  </Border>
-                </Grid>
-              </DataTemplate>
-            </ListBox.ItemTemplate>
-          </ListBox>
-          <StackPanel x:Name="SidebarFooter" Grid.Row="1" Classes="sidebarFooter"
-                      Classes.collapsed="{Binding IsSidebarCollapsed}">
-            <StackPanel x:Name="SidebarUtilities" Classes="sidebarUtilities"
-                        Classes.collapsed="{Binding IsSidebarCollapsed}">
-              <Button x:Name="HelpButton" Theme="{DynamicResource OutlineButton}"
-                      Classes="Tertiary sidebarUtility"
-                      AutomationProperties.Name="Help for the current page"
-                      AutomationProperties.AutomationId="{x:Static app:AutomationIds.HelpButton}"
-                      ToolTip.Tip="Help for the current page (F1)" ToolTip.Placement="Right">
-                <StackPanel Classes="sidebarUtilityContent" Orientation="Horizontal">
-                  <TextBlock Classes="sidebarUtilityGlyph" Text="?" />
-                  <TextBlock x:Name="SidebarHelpLabel" Classes="sidebarUtilityLabel" Text="Help" />
-                </StackPanel>
-                <Button.Flyout>
-                  <Flyout Placement="RightEdgeAlignedBottom" FlyoutPresenterClasses="help"
-                          Opened="OnHelpFlyoutOpened">
-                    <views:HelpPopupView x:Name="HelpPopupView" />
-                  </Flyout>
-                </Button.Flyout>
-              </Button>
-              <Button x:Name="SettingsButton" Theme="{DynamicResource OutlineButton}"
-                      Classes="Tertiary settingsGear sidebarUtility"
-                      AutomationProperties.Name="Settings"
-                      AutomationProperties.AutomationId="{x:Static app:AutomationIds.SettingsButton}"
-                      ToolTip.Tip="Settings (Ctrl+,)" ToolTip.Placement="Right">
-                <Path Classes="settingsGearGlyph"
-                      Data="M19.73 9.93 L21.98 9.88 L21.98 14.12 L19.73 14.07 L18.93 16.0 L20.55 17.56 L17.56 20.55 L16.0 18.93 L14.07 19.73 L14.12 21.98 L9.88 21.98 L9.93 19.73 L8.0 18.93 L6.44 20.55 L3.45 17.56 L5.07 16.0 L4.27 14.07 L2.02 14.12 L2.02 9.88 L4.27 9.93 L5.07 8.0 L3.45 6.44 L6.44 3.45 L8.0 5.07 L9.93 4.27 L9.88 2.02 L14.12 2.02 L14.07 4.27 L16.0 5.07 L17.56 3.45 L20.55 6.44 L18.93 8.0 Z M12 8.5 A3.5 3.5 0 1 0 12 15.5 A3.5 3.5 0 1 0 12 8.5 Z" />
-                <Button.Flyout>
-                  <Flyout Placement="RightEdgeAlignedBottom" FlyoutPresenterClasses="settings"
-                          Opened="OnSettingsFlyoutOpened" Closed="OnSettingsFlyoutClosed">
-                    <views:SettingsPopupView x:Name="SettingsPopupView" />
-                  </Flyout>
-                </Button.Flyout>
-              </Button>
-            </StackPanel>
-            <views:CopyableTextBlock Classes="muted sidebarSelectionSummary" Text="Selection"
-                                     IsVisible="{Binding IsSidebarExpanded}" />
-            <views:CopyableTextBlock Classes="sidebarSelectionSummary" FontWeight="Bold" AutomationProperties.AutomationId="{x:Static app:AutomationIds.SidebarSelectionSummary}" TextWrapping="Wrap"
-                                     Text="{Binding SelectionSummaryText}" IsVisible="{Binding IsSidebarExpanded}" />
-          </StackPanel>
-        </Grid>
-      </Border>
-
-      <!-- Every page's own view, built from the page registry; only the current one shows. -->
-      <Panel x:Name="PageHost" Grid.Row="1" Grid.Column="1" />
-
-      <!-- The inspector sits beside the page rather than over it, so the page stays where it is. -->
-      <views:Inspector x:Name="Inspector" Grid.Row="1" Grid.Column="2" DataContext="{Binding Inspector}" />
-    </Grid>
+              </Flyout>
+            </Button.Flyout>
+          </Button>
+        </StackPanel>
+      </Grid>
+    </Border>
 
     <views:SetupDialog x:Name="SetupDialogView" Grid.RowSpan="3" DataContext="{Binding Context.Setup}" />
   </Grid>

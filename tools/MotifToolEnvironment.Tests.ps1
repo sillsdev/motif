@@ -8,9 +8,16 @@ function Assert-Equal {
     if ($Expected -ne $Actual) { throw "$Message Expected '$Expected', got '$Actual'." }
 }
 
-$saved = @{ TEMP = $env:TEMP; TMP = $env:TMP; MOTIF_TEST_TEMP = $env:MOTIF_TEST_TEMP }
+$saved = @{ TEMP = $env:TEMP; TMP = $env:TMP; MOTIF_TEST_TEMP = $env:MOTIF_TEST_TEMP;
+    MSBUILDTELEMETRYOPTOUT = $env:MSBUILDTELEMETRYOPTOUT }
 $root = Join-Path ([IO.Path]::GetTempPath()) ('motif-tool-environment-' + [guid]::NewGuid().ToString('N'))
 try {
+    $env:MSBUILDTELEMETRYOPTOUT = $null
+    Initialize-MotifToolEnvironment -RepoRoot $root
+    Assert-Equal '1' $env:MSBUILDTELEMETRYOPTOUT 'MSBuild telemetry is off by default.'
+    $env:MSBUILDTELEMETRYOPTOUT = 'caller-choice'
+    Initialize-MotifToolEnvironment -RepoRoot $root
+    Assert-Equal 'caller-choice' $env:MSBUILDTELEMETRYOPTOUT 'The caller keeps its MSBuild telemetry choice.'
     $env:MOTIF_TEST_TEMP = $null
     $env:TEMP = 'unchanged-temp'
     $env:TMP = 'unchanged-tmp'
@@ -37,5 +44,6 @@ finally {
     $env:TEMP = $saved.TEMP
     $env:TMP = $saved.TMP
     $env:MOTIF_TEST_TEMP = $saved.MOTIF_TEST_TEMP
+    $env:MSBUILDTELEMETRYOPTOUT = $saved.MSBUILDTELEMETRYOPTOUT
     if (Test-Path -LiteralPath $root) { Remove-Item -LiteralPath $root -Recurse -Force }
 }

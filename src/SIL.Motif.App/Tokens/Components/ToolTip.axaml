@@ -10,8 +10,8 @@
   <Styles.Resources>
     <StaticResource x:Key="Component.ToolTip.MaxWidth" ResourceKey="Primitive.Size.320" />
     <StaticResource x:Key="Component.ToolTip.ApplyReasonWidth" ResourceKey="Primitive.Size.280" />
-    <StaticResource x:Key="Component.ToolTip.Padding" ResourceKey="Primitive.Inset.10_7_10_7" />
-    <StaticResource x:Key="Component.ToolTip.Radius" ResourceKey="Primitive.Radius.6" />
+    <StaticResource x:Key="Component.ToolTip.Padding" ResourceKey="Intent.Inset.Tooltip" />
+    <StaticResource x:Key="Component.ToolTip.Radius" ResourceKey="Intent.Radius.Control" />
   </Styles.Resources>
   <Style Selector="ToolTip">
     <Setter Property="MaxWidth" Value="{DynamicResource Component.ToolTip.MaxWidth}" />
@@ -21,6 +21,8 @@
           <Border Background="{DynamicResource Intent.Tooltip.Background}"
                   CornerRadius="{DynamicResource Component.ToolTip.Radius}"
                   Padding="{DynamicResource Component.ToolTip.Padding}"
+                  BorderBrush="{DynamicResource Intent.Border}"
+                  BorderThickness="{DynamicResource Intent.Stroke.Box}"
                   BoxShadow="{DynamicResource Intent.Shadow.Raised}">
             <ContentPresenter Name="PART_ContentPresenter"
                               Content="{TemplateBinding Content}"

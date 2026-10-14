@@ -28,11 +28,12 @@
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Handoff.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Shell.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/TopBar.axaml" />
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/StatusBar.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Menu.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Settings.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Freshness.axaml" />
-    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Sidebar.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Badge.axaml" />
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Sidebar.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/TabStrip.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Warnings.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Parsimony.axaml" />

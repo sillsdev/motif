@@ -14,7 +14,7 @@
                                Text="{Binding DryRunSummaryText}" TextWrapping="Wrap" />
       <StackPanel IsVisible="{Binding HasCompleteReview}" Classes="reviewCompact">
       <WrapPanel>
-        <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding AffectedWordsText}" FontWeight="SemiBold" />
+        <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding AffectedWordsText}" FontWeight="{DynamicResource Intent.Weight.Strong}" />
         <views:CopyableTextBlock Classes="reviewSmall reviewGap" Text="{Binding AffectedFormCasesText}" />
       </WrapPanel>
       <ItemsControl x:Name="RetirementReviewStatisticsRows" ItemsSource="{Binding StatisticsRows}">
@@ -64,10 +64,10 @@
                 <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto">
                   <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Snug}">
                     <views:CopyableTextBlock Text="{Binding OpinionGlyph}" AutomationProperties.Name="{Binding Opinion}" />
-                    <views:CopyableTextBlock Text="{Binding Opinion}" FontWeight="SemiBold" />
+                    <views:CopyableTextBlock Text="{Binding Opinion}" FontWeight="{DynamicResource Intent.Weight.Strong}" />
                     <views:CopyableTextBlock Text="{Binding Word}" />
                   </StackPanel>
-                  <views:CopyableTextBlock Grid.Column="1" Text="{Binding Verification}" FontWeight="SemiBold" />
+                  <views:CopyableTextBlock Grid.Column="1" Text="{Binding Verification}" FontWeight="{DynamicResource Intent.Weight.Strong}" />
                   <views:CopyableTextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding SurfaceText}"
                                            Classes="reviewSmall" />
                   <views:CopyableTextBlock Grid.Row="2" Grid.ColumnSpan="2" Text="{Binding RuleAttribution}"
@@ -79,7 +79,7 @@
           <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding FindingCountsText}" />
           <WrapPanel>
             <views:CopyableTextBlock Text="Problem: " />
-            <views:CopyableTextBlock Text="{Binding FindingState}" FontWeight="SemiBold" />
+            <views:CopyableTextBlock Text="{Binding FindingState}" FontWeight="{DynamicResource Intent.Weight.Strong}" />
           </WrapPanel>
         </StackPanel>
       </Border>

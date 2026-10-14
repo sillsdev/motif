@@ -22,10 +22,8 @@
     Intent.Surface.Subtle         a panel set just apart from the window, such as the sidebar
     Intent.Surface.Hover          what a row shows under the pointer (Semi's Fill0)
     Intent.Surface.Neutral        a chip or tag with no verdict of its own (Semi's Fill1)
-    Intent.Surface.Raised         a card lifted above the page, such as an open word card
-    Intent.Shadow.Raised          the elevation shadow under Intent.Surface.Raised
-    Intent.Shadow.Hover           a thin ring drawn just inside a cell's own edge under the pointer
-    Intent.Shadow.Selected        a ring in Intent.Accent drawn just inside a chosen cell's own edge
+    Intent.Surface.Raised         a popup surface
+    Intent.Shadow.Raised          elevation for popups, menus and tooltips; panels have no shadows
     Intent.Clear                  no fill at all, where a style must set a brush but show nothing
     Intent.Scrim                  the dark layer that dims a window beneath a modal
     Intent.Text                   body text (Semi's Text0)
@@ -115,17 +113,25 @@
     Intent.Space.None             0
     Intent.Space.Minimal          2, between lines of one item
     Intent.Space.Compact          4, inside a dense group
-    Intent.Space.Snug             6, a dot beside its label
-    Intent.Space.Related          8, between related controls
-    Intent.Space.Group            12, between groups
-    Intent.Space.Section          16, between sections
+    Intent.Space.Snug             4, a dot beside its label
+    Intent.Space.Related          6, between related controls
+    Intent.Space.Group            8, between groups
+    Intent.Space.Section          12, between sections
 
   Insets (Thickness, for Padding):
     Intent.Inset.None             no padding
+    Intent.Inset.Page             8 on each side of a page
+    Intent.Inset.Panel            8 on each side of a panel
+    Intent.Inset.Row              6 horizontally and 4 vertically for a compact row
+    Intent.Inset.Chip             6 horizontally and 2 vertically for a compact chip
+    Intent.Inset.Notice           6 horizontally and 4 vertically for a notice
+    Intent.Inset.Tooltip          8 horizontally and 4 vertically for a tooltip
 
   Gaps (Thickness, for Margin):
     Intent.Gap.AfterGroup         after an item, before the next group
     Intent.Gap.AfterRelated       after an item, before a related one
+    Intent.Gap.BeforeGroup        before a group
+    Intent.Gap.BeforeRelated      before a related item
     Intent.Gap.CompactItem        right and bottom gaps between items in a compact group
 
   Strokes (Thickness for BorderThickness; double for StrokeThickness):
@@ -133,6 +139,7 @@
     Intent.Stroke.Box             a border all round
     Intent.Stroke.Focus           the keyboard focus ring
     Intent.Stroke.DividerEnd      a divider on the trailing edge
+    Intent.Stroke.DividerTop       the top edge of the fixed status line
     Intent.Stroke.DividerBottom   a divider along the bottom
     Intent.Stroke.Underline       an active tab's underline
     Intent.Stroke.UnderlineHeavy  a word's verdict underline
@@ -141,21 +148,24 @@
 
   Radii (CornerRadius):
     Intent.Radius.None            square
-    Intent.Radius.Control         a list entry or small control
-    Intent.Radius.Pill            fully rounded ends
+    Intent.Radius.OpinionUnknown    the rounded U shape, independent of control corners
+    Intent.Radius.Control         a list entry, chip or small control, at 3
 
   Type sizes (double, for FontSize):
-    Intent.Type.Title             a page's title
-    Intent.Type.Section           a section's heading
+    Intent.Type.Title             a page's title, 16 and semibold
+    Intent.Type.Section           a section's heading, 13
+    Intent.Weight.Section         semibold weight for section headings
+    Intent.Weight.Strong          bold weight for emphasized values
+    Intent.Weight.Normal          normal weight where emphasis must be reset
     Intent.Type.Brand             the Motif wordmark
-    Intent.Type.Navigation        sidebar entries and menu entries
-    Intent.Type.Body              ordinary control text
-    Intent.Type.Status            the freshness line
-    Intent.Type.Small             chips and filter chips
-    Intent.Type.Caption           a secondary label or a line label in Analyze texts
-    Intent.Type.Label             badges, compact chips, the sidebar footer, disclosure marks
-    Intent.Type.Dense             glosses in an interlinear word strip
-    Intent.Type.Micro             a badge on the collapsed sidebar
+    Intent.Type.Navigation        sidebar entries and menu entries, 13
+    Intent.Type.Body              ordinary control text, 13
+    Intent.Type.Status            the freshness line, 12
+    Intent.Type.Small             chips and filter chips, 12
+    Intent.Type.Caption           a secondary label or a line label in Analyze texts, 11
+    Intent.Type.Label             badges, compact chips, sidebar footer, disclosure marks, 11
+    Intent.Type.Dense             glosses in an interlinear word strip, 10.5
+    Intent.Type.Micro             a badge on the collapsed sidebar, 10.5
 
   Transforms:
     Intent.Transform.Pressed      a button held down, drawn a little smaller so it reads as pushed in
@@ -195,21 +205,30 @@
   <StaticResource x:Key="Intent.Space.None" ResourceKey="Primitive.Space.0" />
   <StaticResource x:Key="Intent.Space.Minimal" ResourceKey="Primitive.Space.2" />
   <StaticResource x:Key="Intent.Space.Compact" ResourceKey="Primitive.Space.4" />
-  <StaticResource x:Key="Intent.Space.Snug" ResourceKey="Primitive.Space.6" />
-  <StaticResource x:Key="Intent.Space.Related" ResourceKey="Primitive.Space.8" />
-  <StaticResource x:Key="Intent.Space.Group" ResourceKey="Primitive.Space.12" />
-  <StaticResource x:Key="Intent.Space.Section" ResourceKey="Primitive.Space.16" />
+  <StaticResource x:Key="Intent.Space.Snug" ResourceKey="Primitive.Space.4" />
+  <StaticResource x:Key="Intent.Space.Related" ResourceKey="Primitive.Space.6" />
+  <StaticResource x:Key="Intent.Space.Group" ResourceKey="Primitive.Space.8" />
+  <StaticResource x:Key="Intent.Space.Section" ResourceKey="Primitive.Space.12" />
 
   <StaticResource x:Key="Intent.Inset.None" ResourceKey="Primitive.Inset.0_0_0_0" />
+  <StaticResource x:Key="Intent.Inset.Page" ResourceKey="Primitive.Inset.8_8_8_8" />
+  <StaticResource x:Key="Intent.Inset.Panel" ResourceKey="Primitive.Inset.8_8_8_8" />
+  <StaticResource x:Key="Intent.Inset.Row" ResourceKey="Primitive.Inset.6_4_6_4" />
+  <StaticResource x:Key="Intent.Inset.Chip" ResourceKey="Primitive.Inset.6_2_6_2" />
+  <StaticResource x:Key="Intent.Inset.Notice" ResourceKey="Primitive.Inset.6_4_6_4" />
+  <StaticResource x:Key="Intent.Inset.Tooltip" ResourceKey="Primitive.Inset.8_4_8_4" />
 
-  <StaticResource x:Key="Intent.Gap.AfterGroup" ResourceKey="Primitive.Inset.0_0_12_0" />
-  <StaticResource x:Key="Intent.Gap.AfterRelated" ResourceKey="Primitive.Inset.0_0_8_0" />
+  <StaticResource x:Key="Intent.Gap.AfterGroup" ResourceKey="Primitive.Inset.0_0_8_0" />
+  <StaticResource x:Key="Intent.Gap.AfterRelated" ResourceKey="Primitive.Inset.0_0_6_0" />
+  <StaticResource x:Key="Intent.Gap.BeforeGroup" ResourceKey="Primitive.Inset.0_8_0_0" />
+  <StaticResource x:Key="Intent.Gap.BeforeRelated" ResourceKey="Primitive.Inset.0_6_0_0" />
   <StaticResource x:Key="Intent.Gap.CompactItem" ResourceKey="Primitive.Inset.0_0_4_4" />
 
   <StaticResource x:Key="Intent.Stroke.None" ResourceKey="Primitive.Inset.0_0_0_0" />
   <StaticResource x:Key="Intent.Stroke.Box" ResourceKey="Primitive.Inset.1_1_1_1" />
   <StaticResource x:Key="Intent.Stroke.Focus" ResourceKey="Primitive.Inset.2_2_2_2" />
   <StaticResource x:Key="Intent.Stroke.DividerEnd" ResourceKey="Primitive.Inset.0_0_1_0" />
+  <StaticResource x:Key="Intent.Stroke.DividerTop" ResourceKey="Primitive.Inset.0_1_0_0" />
   <StaticResource x:Key="Intent.Stroke.DividerBottom" ResourceKey="Primitive.Inset.0_0_0_1" />
   <StaticResource x:Key="Intent.Stroke.Underline" ResourceKey="Primitive.Inset.0_0_0_2" />
   <StaticResource x:Key="Intent.Stroke.UnderlineHeavy" ResourceKey="Primitive.Inset.0_0_0_3" />
@@ -217,22 +236,23 @@
   <StaticResource x:Key="Intent.Stroke.Icon" ResourceKey="Primitive.Stroke.1p8" />
 
   <StaticResource x:Key="Intent.Radius.None" ResourceKey="Primitive.Radius.0" />
-  <StaticResource x:Key="Intent.Radius.Control" ResourceKey="Primitive.Radius.6" />
-  <StaticResource x:Key="Intent.Radius.Pill" ResourceKey="Primitive.Radius.99" />
+  <StaticResource x:Key="Intent.Radius.OpinionUnknown" ResourceKey="Primitive.Radius.7" />
+  <StaticResource x:Key="Intent.Radius.Control" ResourceKey="Primitive.Radius.3" />
 
-  <StaticResource x:Key="Intent.Type.Title" ResourceKey="Primitive.Type.22" />
-  <StaticResource x:Key="Intent.Type.Section" ResourceKey="Primitive.Type.16" />
-  <StaticResource x:Key="Intent.Type.Brand" ResourceKey="Primitive.Type.15" />
-  <StaticResource x:Key="Intent.Type.Navigation" ResourceKey="Primitive.Type.13p5" />
+  <StaticResource x:Key="Intent.Type.Title" ResourceKey="Primitive.Type.16" />
+  <StaticResource x:Key="Intent.Type.Section" ResourceKey="Primitive.Type.13" />
+  <StaticResource x:Key="Intent.Weight.Section" ResourceKey="Primitive.FontWeight.SemiBold" />
+  <StaticResource x:Key="Intent.Weight.Strong" ResourceKey="Primitive.FontWeight.Bold" />
+  <StaticResource x:Key="Intent.Weight.Normal" ResourceKey="Primitive.FontWeight.Normal" />
+  <StaticResource x:Key="Intent.Type.Brand" ResourceKey="Primitive.Type.13" />
+  <StaticResource x:Key="Intent.Type.Navigation" ResourceKey="Primitive.Type.13" />
   <StaticResource x:Key="Intent.Type.Body" ResourceKey="Primitive.Type.13" />
-  <StaticResource x:Key="Intent.Type.Status" ResourceKey="Primitive.Type.12p5" />
+  <StaticResource x:Key="Intent.Type.Status" ResourceKey="Primitive.Type.12" />
   <StaticResource x:Key="Intent.Type.Small" ResourceKey="Primitive.Type.12" />
   <StaticResource x:Key="Intent.Type.Caption" ResourceKey="Primitive.Type.11" />
   <StaticResource x:Key="Intent.Type.Label" ResourceKey="Primitive.Type.11" />
   <StaticResource x:Key="Intent.Type.Dense" ResourceKey="Primitive.Type.10p5" />
   <StaticResource x:Key="Intent.Type.Micro" ResourceKey="Primitive.Type.10p5" />
-
-
   <StaticResource x:Key="Intent.Opacity.Dimmed" ResourceKey="Primitive.Opacity.35" />
   <StaticResource x:Key="Intent.Transform.Pressed" ResourceKey="Primitive.Transform.Scale96" />
   <StaticResource x:Key="Intent.Opacity.Waiting" ResourceKey="Primitive.Opacity.60" />
@@ -247,8 +267,6 @@
       <StaticResource x:Key="Intent.Surface.Neutral" ResourceKey="SemiColorFill1" />
       <SolidColorBrush x:Key="Intent.Surface.Raised" Color="{StaticResource Primitive.Color.Grey0}" />
       <StaticResource x:Key="Intent.Shadow.Raised" ResourceKey="Primitive.Shadow.Drop3_10.Slate950A10" />
-      <StaticResource x:Key="Intent.Shadow.Hover" ResourceKey="Primitive.Shadow.InsetRing1.Blue500" />
-      <StaticResource x:Key="Intent.Shadow.Selected" ResourceKey="Primitive.Shadow.InsetRing2.Blue700" />
       <StaticResource x:Key="Intent.Text" ResourceKey="SemiColorText0" />
       <SolidColorBrush x:Key="Intent.TextSecondary" Color="{StaticResource Primitive.Color.Grey700}" />
       <StaticResource x:Key="Intent.TextMuted" ResourceKey="SemiColorText2" />
@@ -342,8 +360,6 @@
       <StaticResource x:Key="Intent.Surface.Neutral" ResourceKey="SemiColorFill1" />
       <SolidColorBrush x:Key="Intent.Surface.Raised" Color="{StaticResource Primitive.Color.Grey800}" />
       <StaticResource x:Key="Intent.Shadow.Raised" ResourceKey="Primitive.Shadow.Drop4_14.BlackA45" />
-      <StaticResource x:Key="Intent.Shadow.Hover" ResourceKey="Primitive.Shadow.InsetRing1.Blue350" />
-      <StaticResource x:Key="Intent.Shadow.Selected" ResourceKey="Primitive.Shadow.InsetRing2.Blue200" />
       <StaticResource x:Key="Intent.Text" ResourceKey="SemiColorText0" />
       <SolidColorBrush x:Key="Intent.TextSecondary" Color="{StaticResource Primitive.Color.Grey300}" />
       <StaticResource x:Key="Intent.TextMuted" ResourceKey="SemiColorText2" />

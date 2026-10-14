@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.VisualTree;
@@ -105,8 +104,7 @@ public sealed class ParseProgressWalkthroughTests(PristineProjectFixture pristin
                 window.WaitUntil(() => Details(window).Contains("No word has finished", StringComparison.Ordinal),
                     WalkthroughSteps.Remaining(deadline), "the worker stopped reporting without a warning");
                 Assert.True(window.Find<Button>("Cancel parsing all words").IsEffectivelyEnabled);
-                Assert.Contains(window.Window.GetVisualDescendants().OfType<Button>(), button =>
-                    button.IsEffectivelyVisible && AutomationProperties.GetName(button) == "Report a problem with parsing");
+                Assert.True(window.Find<Button>("Report a problem with parsing").IsEffectivelyVisible);
                 InteractiveControlSweep.AssertScene(window, "parse with no progress",
                     InteractiveControlFamily.Progress, InteractiveControlFamily.Action);
                 Capture(window, "parse-no-progress");
@@ -202,9 +200,7 @@ public sealed class ParseProgressWalkthroughTests(PristineProjectFixture pristin
         }, WalkthroughSteps.Remaining(deadline));
     }
 
-    private static string Details(WalkthroughWindow window) => string.Join(" ",
-        window.Window.GetVisualDescendants().OfType<TextBlock>()
-            .Where(block => block.IsEffectivelyVisible).Select(block => block.Text));
+    private static string Details(WalkthroughWindow window) => window.VisibleTextWithParseProgress();
 
     private static void Capture(WalkthroughWindow window, string name)
     {

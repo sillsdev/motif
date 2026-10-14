@@ -1,19 +1,15 @@
-<!-- The Settings flyout and its rail, rows, key caps and controls use shared Intent colours and component sizes. -->
+<!-- The Settings page, popup, section navigation, rows, key caps and controls use shared Intent colours and component sizes. -->
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:app="clr-namespace:SIL.Motif.App">
   <Styles.Resources>
-    <StaticResource x:Key="Component.Settings.Width" ResourceKey="Primitive.Size.760" />
-    <StaticResource x:Key="Component.Settings.MaxHeight" ResourceKey="Primitive.Size.640" />
-    <StaticResource x:Key="Component.Settings.Radius" ResourceKey="Primitive.Radius.12" />
+    <StaticResource x:Key="Component.Settings.Radius" ResourceKey="Intent.Radius.Control" />
     <StaticResource x:Key="Component.Settings.GearSize" ResourceKey="Primitive.Size.18" />
-    <StaticResource x:Key="Component.Settings.RailWidth" ResourceKey="Primitive.GridLength.176" />
-    <StaticResource x:Key="Component.Settings.ContentPadding" ResourceKey="Primitive.Inset.24_16_24_20" />
-    <StaticResource x:Key="Component.Settings.HeaderPadding" ResourceKey="Primitive.Inset.16_12_16_0" />
+    <StaticResource x:Key="Component.Settings.ContentPadding" ResourceKey="Intent.Inset.Page" />
+    <StaticResource x:Key="Component.Settings.HeaderPadding" ResourceKey="Intent.Inset.Panel" />
     <StaticResource x:Key="Component.Settings.LabelColumnWidth" ResourceKey="Primitive.Size.240" />
     <StaticResource x:Key="Component.Settings.CompactLabelMinWidth" ResourceKey="Primitive.Size.1" />
     <StaticResource x:Key="Component.Settings.AboutStackBreakpoint" ResourceKey="Primitive.Size.520" />
-    <StaticResource x:Key="Component.Settings.KeyColumnWidth" ResourceKey="Primitive.GridLength.140" />
     <StaticResource x:Key="Component.Settings.KeyRadius" ResourceKey="Primitive.Radius.3" />
     <StaticResource x:Key="Component.Settings.KeyPadding" ResourceKey="Primitive.Inset.6_0_6_0" />
     <StaticResource x:Key="Component.Settings.StepperWidth" ResourceKey="Primitive.Size.110" />
@@ -21,15 +17,12 @@
     <StaticResource x:Key="Component.Settings.WsSampleWidth" ResourceKey="Primitive.Size.170" />
     <StaticResource x:Key="Component.Settings.WsLabelWidth" ResourceKey="Primitive.Size.90" />
     <StaticResource x:Key="Component.Settings.WsSampleMinHeight" ResourceKey="Primitive.Size.56" />
-    <StaticResource x:Key="Component.Settings.WsSamplePadding" ResourceKey="Primitive.Inset.10_8_10_8" />
-    <StaticResource x:Key="Component.Settings.WritingSystemsFooterPadding" ResourceKey="Primitive.Inset.0_12_8_12" />
+    <StaticResource x:Key="Component.Settings.WsSamplePadding" ResourceKey="Intent.Inset.Row" />
+    <StaticResource x:Key="Component.Settings.WritingSystemsFooterPadding" ResourceKey="Intent.Inset.Panel" />
+    <StaticResource x:Key="Component.Settings.PageInset" ResourceKey="Primitive.Inset.12_4_12_4" />
+    <StaticResource x:Key="Component.Settings.RowInset" ResourceKey="Primitive.Inset.8_4_8_4" />
+    <StaticResource x:Key="Component.Settings.PageStepperWidth" ResourceKey="Primitive.Size.90" />
   </Styles.Resources>
-  <Style Selector="FlyoutPresenter.settings">
-    <Setter Property="AutomationProperties.AutomationId" Value="{x:Static app:AutomationIds.SettingsFlyout}" />
-    <Setter Property="MaxWidth" Value="{DynamicResource Component.Settings.Width}" />
-    <Setter Property="MaxHeight" Value="{DynamicResource Component.Settings.MaxHeight}" />
-    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
-  </Style>
   <Style Selector="Button.settingsGear">
     <Setter Property="Width" Value="{DynamicResource Component.Menu.ButtonHeight}" />
     <Setter Property="Height" Value="{DynamicResource Component.Menu.ButtonHeight}" />
@@ -71,9 +64,9 @@
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
     <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerBottom}" />
   </Style>
-  <Style Selector="TextBlock.settingsHeaderTitle">
+  <Style Selector=":is(TextBlock).settingsHeaderTitle">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Section}" />
-    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="FontWeight" Value="{DynamicResource Intent.Weight.Section}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.Text}" />
   </Style>
   <Style Selector="Button.settingsClose">
@@ -130,16 +123,16 @@
   <Style Selector="StackPanel.settingsPage">
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Section}" />
   </Style>
-  <Style Selector="TextBlock.settingsGroupHeading">
+  <Style Selector=":is(TextBlock).settingsGroupHeading">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Section}" />
-    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="FontWeight" Value="{DynamicResource Intent.Weight.Section}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.Text}" />
   </Style>
-  <Style Selector="TextBlock.settingsLead">
+  <Style Selector=":is(TextBlock).settingsLead">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Body}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
   </Style>
-  <Style Selector="TextBlock.settingsPersistenceRefusal">
+  <Style Selector=":is(TextBlock).settingsPersistenceRefusal">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Caption}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.Danger.Text}" />
   </Style>
@@ -158,12 +151,12 @@
   <Style Selector="StackPanel.settingsLabel">
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Minimal}" />
   </Style>
-  <Style Selector="TextBlock.settingsLabelText">
+  <Style Selector=":is(TextBlock).settingsLabelText">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Body}" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.Text}" />
   </Style>
-  <Style Selector="TextBlock.settingsCaption">
+  <Style Selector=":is(TextBlock).settingsCaption">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Caption}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
   </Style>
@@ -191,7 +184,7 @@
     <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextSecondary}" />
   </Style>
-  <Style Selector="TextBlock.settingsZoomValue">
+  <Style Selector=":is(TextBlock).settingsZoomValue">
     <Setter Property="MinWidth" Value="{DynamicResource Component.Settings.StepperWidth}" />
     <Setter Property="TextAlignment" Value="Center" />
     <Setter Property="FontWeight" Value="SemiBold" />
@@ -215,7 +208,7 @@
   <Style Selector="TextBox.settingsSearch">
     <Setter Property="Watermark" Value="Search shortcuts" />
   </Style>
-  <Style Selector="TextBlock.settingsPlaceholder, TextBlock.settingsNoMatch">
+  <Style Selector=":is(TextBlock).settingsPlaceholder, :is(TextBlock).settingsNoMatch">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Body}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
   </Style>
@@ -232,12 +225,12 @@
     <Setter Property="CornerRadius" Value="{DynamicResource Component.Settings.KeyRadius}" />
     <Setter Property="Padding" Value="{DynamicResource Component.Settings.KeyPadding}" />
   </Style>
-  <Style Selector="Border.settingsKeyCap TextBlock">
+  <Style Selector="Border.settingsKeyCap :is(TextBlock)">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextSecondary}" />
   </Style>
-  <Style Selector="TextBlock.settingsShortcutAction">
+  <Style Selector=":is(TextBlock).settingsShortcutAction">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Body}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.Text}" />
   </Style>
@@ -251,14 +244,14 @@
   <Style Selector="CheckBox.settingsCheck">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Body}" />
   </Style>
-  <Style Selector="TextBlock.settingsRefusal">
+  <Style Selector=":is(TextBlock).settingsRefusal">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Caption}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.Danger.Text}" />
   </Style>
   <Style Selector="Expander.settingsReportDetails">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
   </Style>
-  <Style Selector="TextBlock.settingsReportList">
+  <Style Selector=":is(TextBlock).settingsReportList">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
   </Style>
@@ -270,20 +263,20 @@
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
     <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerBottom}" />
   </Style>
-  <Style Selector="TextBlock.settingsAboutLabel">
+  <Style Selector=":is(TextBlock).settingsAboutLabel">
     <Setter Property="MinWidth" Value="{DynamicResource Component.Settings.LabelColumnWidth}" />
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Body}" />
     <Setter Property="FontWeight" Value="SemiBold" />
   </Style>
-  <Style Selector="TextBlock.settingsAboutLabel.compact">
+  <Style Selector=":is(TextBlock).settingsAboutLabel.compact">
     <Setter Property="MinWidth" Value="{DynamicResource Component.Settings.CompactLabelMinWidth}" />
   </Style>
-  <Style Selector="TextBlock.settingsAboutValue">
+  <Style Selector=":is(TextBlock).settingsAboutValue">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Body}" />
     <Setter Property="FontFamily" Value="{DynamicResource Component.Settings.ValueFont}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.Text}" />
   </Style>
-  <Style Selector="TextBlock.settingsAboutValue.warning">
+  <Style Selector=":is(TextBlock).settingsAboutValue.warning">
     <Setter Property="Foreground" Value="{DynamicResource Intent.Warning.Text}" />
   </Style>
   <Style Selector="Border.settingsFooter">
@@ -295,7 +288,7 @@
   <Style Selector="Border.settingsFooter.writingSystems">
     <Setter Property="Padding" Value="{DynamicResource Component.Settings.WritingSystemsFooterPadding}" />
   </Style>
-  <Style Selector="TextBlock.settingsFooterText">
+  <Style Selector=":is(TextBlock).settingsFooterText">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Caption}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.Severity.Info}" />
   </Style>
@@ -305,7 +298,7 @@
   <Style Selector="StackPanel.settingsWritingSystemList">
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Section}" />
   </Style>
-  <Style Selector="TextBlock.settingsWritingSystemSection">
+  <Style Selector=":is(TextBlock).settingsWritingSystemSection">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Caption}" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
@@ -315,7 +308,7 @@
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
     <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerBottom}" />
   </Style>
-  <Style Selector="TextBlock.settingsWritingSystemName">
+  <Style Selector=":is(TextBlock).settingsWritingSystemName">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Body}" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.Text}" />
@@ -323,19 +316,19 @@
   <Style Selector="Border.settingsWritingSystemAbbreviation">
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
     <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
-    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.Pill}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.Control}" />
     <Setter Property="Padding" Value="{DynamicResource Component.Settings.KeyPadding}" />
   </Style>
-  <Style Selector="Border.settingsWritingSystemAbbreviation TextBlock">
+  <Style Selector="Border.settingsWritingSystemAbbreviation :is(TextBlock)">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextSecondary}" />
   </Style>
-  <Style Selector="TextBlock.settingsWritingSystemTag">
+  <Style Selector=":is(TextBlock).settingsWritingSystemTag">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Caption}" />
     <Setter Property="FontFamily" Value="{DynamicResource Component.Settings.ValueFont}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
   </Style>
-  <Style Selector="TextBlock.settingsWritingSystemDefault">
+  <Style Selector=":is(TextBlock).settingsWritingSystemDefault">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Caption}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
     <Setter Property="HorizontalAlignment" Value="Right" />
@@ -347,40 +340,73 @@
     <Setter Property="Background" Value="{DynamicResource Intent.Surface.Subtle}" />
     <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.Control}" />
   </Style>
-  <Style Selector="TextBlock.settingsWritingSystemSample">
+  <Style Selector=":is(TextBlock).settingsWritingSystemSample">
     <Setter Property="Foreground" Value="{DynamicResource Intent.Text}" />
     <Setter Property="FontWeight" Value="Medium" />
   </Style>
-  <Style Selector="TextBlock.settingsWritingSystemSampleCaption">
+  <Style Selector=":is(TextBlock).settingsWritingSystemSampleCaption">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Caption}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
   </Style>
-  <Style Selector="TextBlock.settingsWritingSystemDuplicate">
+  <Style Selector=":is(TextBlock).settingsWritingSystemDuplicate">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Body}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
   </Style>
-  <Style Selector="TextBlock.settingsWritingSystemFactLabel">
+  <Style Selector=":is(TextBlock).settingsWritingSystemFactLabel">
     <Setter Property="Width" Value="{DynamicResource Component.Settings.WsLabelWidth}" />
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
   </Style>
-  <Style Selector="TextBlock.settingsWritingSystemFactValue">
+  <Style Selector=":is(TextBlock).settingsWritingSystemFactValue">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Body}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.Text}" />
   </Style>
-  <Style Selector="TextBlock.settingsWritingSystemFactCaption">
+  <Style Selector=":is(TextBlock).settingsWritingSystemFactCaption">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Caption}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
   </Style>
-  <Style Selector="TextBlock.settingsWritingSystemFootnote">
+  <Style Selector=":is(TextBlock).settingsWritingSystemFootnote">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
   </Style>
-  <Style Selector="TextBlock.settingsFooterText">
+  <Style Selector=":is(TextBlock).settingsFooterText">
     <Setter Property="Foreground" Value="{DynamicResource Intent.Text}" />
   </Style>
-  <Style Selector="TextBlock.settingsFooterMark">
+  <Style Selector=":is(TextBlock).settingsFooterMark">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Caption}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.Severity.Info}" />
+  </Style>
+  <Style Selector=":is(UserControl).settingsPageView StackPanel.settingsList">
+    <Setter Property="Margin" Value="{DynamicResource Component.Settings.PageInset}" />
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Related}" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+  </Style>
+  <Style Selector=":is(UserControl).settingsPageView StackPanel.settingsPage">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Minimal}" />
+  </Style>
+  <Style Selector=":is(UserControl).settingsPageView :is(TextBlock).settingsGroupHeading">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextSecondary}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface.Subtle}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.Settings.RowInset}" />
+  </Style>
+  <Style Selector=":is(UserControl).settingsPageView Border.settingsHeader">
+    <Setter Property="Padding" Value="{DynamicResource Component.Settings.RowInset}" />
+    <Setter Property="Margin" Value="{DynamicResource Intent.Inset.None}" />
+  </Style>
+  <Style Selector=":is(UserControl).settingsPageView Border.settingsRow, :is(UserControl).settingsPageView Border.settingsShortcutRow">
+    <Setter Property="Padding" Value="{DynamicResource Component.Settings.RowInset}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerBottom}" />
+  </Style>
+  <Style Selector=":is(UserControl).settingsPageView :is(TextBlock).settingsZoomValue">
+    <Setter Property="MinWidth" Value="{DynamicResource Component.Settings.PageStepperWidth}" />
+  </Style>
+  <Style Selector=":is(UserControl).settingsPageView StackPanel.settingsDisplayControls">
+    <Setter Property="Orientation" Value="Horizontal" />
+  </Style>
+  <Style Selector=":is(UserControl).settingsPageView RadioButton.settingsChoice">
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
   </Style>
 </Styles>

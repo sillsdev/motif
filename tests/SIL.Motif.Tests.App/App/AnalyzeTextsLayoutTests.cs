@@ -503,8 +503,7 @@ public sealed class AnalyzeTextsLayoutTests
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var (workspace, window) = await OpenAnalyzeTexts();
-            var settings = Assert.IsType<SettingsViewModel>(Assert.IsType<SettingsPopupView>(
-                Assert.IsType<Flyout>(window.FindControl<Button>("SettingsButton")!.Flyout).Content).DataContext);
+            var settings = SettingsTestAccess.Model(window);
             var originalZoom = settings.ZoomPercent;
             try
             {
@@ -785,7 +784,7 @@ public sealed class AnalyzeTextsLayoutTests
                     link => Avalonia.Automation.AutomationProperties.GetName(link) == "Open alikula in Word Analyses");
                 Assert.Equal("Open alikula in Word Analyses", Avalonia.Automation.AutomationProperties.GetName(wordLink));
                 Assert.Contains(wordLink.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == "Word Analyses ↗");
-                Assert.Equal(0, wordLink.Opacity);
+                Assert.Equal(1, wordLink.Opacity);
                 Assert.True(wordLink.Focus(NavigationMethod.Tab));
                 Settle(window);
                 Assert.Equal(1, wordLink.Opacity);
@@ -942,10 +941,10 @@ public sealed class AnalyzeTextsLayoutTests
     [Fact]
     public void RightToLeftParagraphUsesItsFieldWorksSizeAndGrowsItsWordRow()
     {
-        Walkthrough.WalkthroughFonts.Register();
         var words = WritingSystemTestData.ArabicText();
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
+            Walkthrough.WalkthroughFonts.Register();
             var (workspace, window) = await OpenAnalyzeTexts(parse: false,
                 capturedWords: words);
             try

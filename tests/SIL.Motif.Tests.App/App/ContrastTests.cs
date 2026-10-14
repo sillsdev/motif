@@ -211,7 +211,7 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
     }
 
     [Fact]
-    public void TheTechDemoBannersButtonsAreLiveAndReadableInBothThemes()
+    public void TheStatusBarsProblemReportIsLiveAndReadableInBothThemes()
     {
         var failures = new List<string>();
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
@@ -220,15 +220,15 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
             var (_, window) = await PageScreenshots.OpenOverSampleData(parse: false);
             try
             {
-                var banner = window.FindControl<Border>("TechDemoNotice")!;
+                var banner = window.FindControl<Border>("StatusBar")!;
                 foreach (var theme in Themes)
                 {
                     Application.Current!.RequestedThemeVariant = theme;
                     PageScreenshots.Settle(window);
-                    foreach (var name in new[] { "Report a problem", "Acknowledge the tech demo notice" })
+                    foreach (var name in new[] { "Report a problem" })
                     {
-                        var button = banner.GetLogicalDescendants().OfType<Button>()
-                            .Single(candidate => AutomationProperties.GetName(candidate) == name);
+                        var button = banner.GetVisualDescendants().OfType<Button>()
+                            .Single(candidate => candidate.IsEffectivelyVisible && AutomationProperties.GetName(candidate) == name);
                         if (!button.IsEffectivelyEnabled) failures.Add($"{theme} '{name}' is disabled");
                         var text = button.GetVisualDescendants().OfType<TextBlock>().First();
                         var ratio = Effective(text);

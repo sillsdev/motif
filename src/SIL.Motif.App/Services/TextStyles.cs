@@ -271,6 +271,10 @@ public sealed partial class TextStyles
         return ResolveRequestedFontFamily(family) is not null;
     }
 
+    /// <summary>Whether the requested family resolves to a font in Motif's registered bundled collection.</summary>
+    internal bool RequestedFontIsBundled(string? family) =>
+        ResolveRequestedFontFamily(family)?.StartsWith(EmbeddedFontCollectionKey + "#", StringComparison.Ordinal) == true;
+
     private string? ResolveRequestedFontFamily(string? family)
     {
         if (string.IsNullOrWhiteSpace(family)) return null;

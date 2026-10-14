@@ -144,7 +144,7 @@ public sealed class MarkingsGalleryTests
     }
 
     [Fact]
-    public void SecondaryActionsRevealOnHoverAndFocusAndRemainKeyboardReachable()
+    public void SecondaryActionsStayVisibleAndClickableAndRemainKeyboardReachable()
     {
         _avalonia.Invoke(() =>
         {
@@ -152,14 +152,14 @@ public sealed class MarkingsGalleryTests
             var window = Show(gallery, ThemeVariant.Light);
             try
             {
-                Assert.Equal(0d, gallery.StagedUndo.Opacity);
-                Assert.Equal(0d, gallery.FieldWorksLink.Opacity);
+                Assert.Equal(1d, gallery.StagedUndo.Opacity);
+                Assert.Equal(1d, gallery.FieldWorksLink.Opacity);
                 Assert.True(gallery.StagedUndo.IsVisible);
                 Assert.True(gallery.FieldWorksLink.IsVisible);
                 Assert.True(gallery.StagedUndo.IsTabStop);
                 Assert.True(gallery.FieldWorksLink.IsTabStop);
-                Assert.False(gallery.StagedUndo.IsHitTestVisible);
-                Assert.False(gallery.FieldWorksLink.IsHitTestVisible);
+                Assert.True(gallery.StagedUndo.IsHitTestVisible);
+                Assert.True(gallery.FieldWorksLink.IsHitTestVisible);
                 Assert.Equal("Undo staged approval", ControlAutomationPeer.CreatePeerForElement(gallery.StagedUndo).GetName());
                 Assert.Equal("Open in FieldWorks", ControlAutomationPeer.CreatePeerForElement(gallery.FieldWorksLink).GetName());
 
@@ -170,7 +170,7 @@ public sealed class MarkingsGalleryTests
 
                 window.MouseMove(new Point(1, 1));
                 Dispatcher.UIThread.RunJobs();
-                Assert.Equal(0d, gallery.StagedUndo.Opacity);
+                Assert.Equal(1d, gallery.StagedUndo.Opacity);
 
                 for (var tab = 0; tab < 8 && !gallery.StagedUndo.IsFocused; tab++)
                     window.KeyPress(Key.Tab, RawInputModifiers.None, PhysicalKey.None, null);
@@ -180,7 +180,7 @@ public sealed class MarkingsGalleryTests
                 Assert.True(gallery.StagedUndo.IsVisible);
                 Assert.True(gallery.FieldWorksLink.IsVisible);
                 Assert.True(gallery.StagedUndo.IsHitTestVisible);
-                Assert.Equal(0d, gallery.FieldWorksLink.Opacity);
+                Assert.Equal(1d, gallery.FieldWorksLink.Opacity);
 
                 for (var tab = 0; tab < 8 && !gallery.FieldWorksLink.IsFocused; tab++)
                     window.KeyPress(Key.Tab, RawInputModifiers.None, PhysicalKey.None, null);

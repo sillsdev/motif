@@ -65,17 +65,56 @@ public sealed partial class ResultsInTextPanel : UserControl
 
     private static void SetFilterChipRow(Grid toolbar, WrapPanel filterChips)
     {
-        var inlineWidth = toolbar.ColumnDefinitions[2].ActualWidth;
-        var requiredWidth = filterChips.Children.OfType<Control>().Where(chip => chip.IsVisible)
-            .Sum(chip => chip.DesiredSize.Width);
-        var row = inlineWidth > 0 && requiredWidth <= inlineWidth ? 0 : 1;
-        var column = row == 1 ? 0 : 2;
-        var columnSpan = row == 1 ? 5 : 1;
-        if (Grid.GetRow(filterChips) == row && Grid.GetColumn(filterChips) == column &&
-            Grid.GetColumnSpan(filterChips) == columnSpan) return;
-        Grid.SetRow(filterChips, row);
-        Grid.SetColumn(filterChips, column);
-        Grid.SetColumnSpan(filterChips, columnSpan);
+        if (toolbar.Bounds.Width <= 0) return;
+        var search = toolbar.FindControl<Control>("ReaderWordSearch")!;
+        var picker = toolbar.FindControl<Control>("ResultsInTextPanelTextsItems")!;
+        var read = toolbar.FindControl<Control>("ReaderReadMenu")!;
+        var select = toolbar.FindControl<Control>("ReaderSelectMenu")!;
+        const double searchTrackWeight = 1;
+        const double filterTrackWeight = 3;
+        var flexibleWidth = Math.Max(
+            search.MinWidth * (searchTrackWeight + filterTrackWeight) / searchTrackWeight,
+            filterChips.Children.OfType<Control>().Where(chip => chip.IsVisible)
+                .Sum(chip => chip.DesiredSize.Width) * (searchTrackWeight + filterTrackWeight) / filterTrackWeight);
+        var requiredWidth = picker.DesiredSize.Width + read.DesiredSize.Width + select.DesiredSize.Width + flexibleWidth;
+        var filterColumn = toolbar.ColumnDefinitions[4];
+        if (toolbar.Bounds.Width >= requiredWidth)
+        {
+            filterColumn.Width = new GridLength(filterTrackWeight, GridUnitType.Star);
+            Place(search, 0, 1, 1);
+            Place(filterChips, 0, 4, 1);
+            return;
+        }
+
+        if (filterColumn.Width.GridUnitType != GridUnitType.Pixel || filterColumn.Width.Value != 0)
+        {
+            filterColumn.Width = new GridLength(0);
+            Place(search, 0, 1, 1);
+            Place(filterChips, 1, 0, 5);
+            return;
+        }
+
+        var searchWidth = toolbar.Bounds.Width - toolbar.ColumnDefinitions[0].ActualWidth -
+            toolbar.ColumnDefinitions[2].ActualWidth - toolbar.ColumnDefinitions[3].ActualWidth;
+        if (searchWidth >= search.MinWidth)
+        {
+            Place(search, 0, 1, 1);
+            Place(filterChips, 1, 0, 5);
+        }
+        else
+        {
+            Place(search, 1, 0, 5);
+            Place(filterChips, 2, 0, 5);
+        }
+    }
+
+    private static void Place(Control control, int row, int column, int columnSpan)
+    {
+        if (Grid.GetRow(control) == row && Grid.GetColumn(control) == column &&
+            Grid.GetColumnSpan(control) == columnSpan) return;
+        Grid.SetRow(control, row);
+        Grid.SetColumn(control, column);
+        Grid.SetColumnSpan(control, columnSpan);
     }
 
     private void OnGoToTextsClick(object? sender, RoutedEventArgs e) => InText.OpenTexts?.Invoke();

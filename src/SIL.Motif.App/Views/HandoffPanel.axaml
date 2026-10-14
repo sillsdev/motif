@@ -61,7 +61,7 @@
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="views:PlannedHandoffFile">
                   <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Component.Handoff.PlannedGap}" Margin="{DynamicResource Component.Handoff.PlannedMargin}">
-                    <views:CopyableTextBlock Text="{Binding Name}" FontWeight="SemiBold" Width="{DynamicResource Component.Handoff.PlannedNameWidth}" />
+                    <views:CopyableTextBlock Text="{Binding Name}" FontWeight="{DynamicResource Intent.Weight.Section}" Width="{DynamicResource Component.Handoff.PlannedNameWidth}" />
                     <views:CopyableTextBlock Grid.Column="1" Classes="muted" Text="{Binding Purpose}" TextWrapping="Wrap" />
                   </Grid>
                 </DataTemplate>
@@ -112,7 +112,7 @@
                         <views:CopyableTextBlock Text="{Binding KindLabel}" />
                       </Border>
                       <StackPanel Grid.Column="1" Spacing="{DynamicResource Component.Handoff.LineGap}" VerticalAlignment="Center">
-                        <views:CopyableTextBlock Text="{Binding RelativePath}" TextWrapping="Wrap" FontWeight="SemiBold" />
+                        <views:CopyableTextBlock Text="{Binding RelativePath}" TextWrapping="Wrap" FontWeight="{DynamicResource Intent.Weight.Strong}" />
                         <views:CopyableTextBlock Classes="muted" Text="{Binding Purpose}" FontSize="{DynamicResource Intent.Type.Small}" TextWrapping="Wrap"
                                    IsVisible="{Binding HasPurpose}" />
                       </StackPanel>
@@ -143,7 +143,7 @@
         <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Group}" Margin="{DynamicResource Component.Handoff.FirstStepMargin}">
           <Border Classes="stepMark"><views:CopyableTextBlock Text="1" /></Border>
           <StackPanel Grid.Column="1" Spacing="{DynamicResource Intent.Space.Snug}">
-            <views:CopyableTextBlock Text="Copy the starter prompt" FontWeight="SemiBold" />
+            <views:CopyableTextBlock Text="Copy the starter prompt" FontWeight="{DynamicResource Intent.Weight.Section}" />
             <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Small}" TextWrapping="Wrap"
                        Text="It tells the model what the files are and how to read them." />
             <Button Content="Copy starter prompt" Classes="Primary" Theme="{DynamicResource SolidButton}"
@@ -155,7 +155,7 @@
         <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Group}" Margin="{DynamicResource Component.Handoff.StepMargin}">
           <Border Classes="stepMark"><views:CopyableTextBlock Text="2" /></Border>
           <StackPanel Grid.Column="1" Spacing="{DynamicResource Intent.Space.Minimal}">
-            <views:CopyableTextBlock Text="Open a chat" FontWeight="SemiBold" />
+            <views:CopyableTextBlock Text="Open a chat" FontWeight="{DynamicResource Intent.Weight.Section}" />
             <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Small}" Text="Claude, ChatGPT or Gemini." TextWrapping="Wrap" />
           </StackPanel>
         </Grid>
@@ -163,7 +163,7 @@
         <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Group}" Margin="{DynamicResource Component.Handoff.StepMargin}">
           <Border Classes="stepMark"><views:CopyableTextBlock Text="3" /></Border>
           <StackPanel Grid.Column="1" Spacing="{DynamicResource Intent.Space.Minimal}">
-            <views:CopyableTextBlock Text="Add the files, then paste" FontWeight="SemiBold" />
+            <views:CopyableTextBlock Text="Add the files, then paste" FontWeight="{DynamicResource Intent.Weight.Section}" />
             <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Small}" TextWrapping="Wrap"
                        Text="Drag the files into the chat, then paste the prompt." />
           </StackPanel>
@@ -171,7 +171,7 @@
 
         <Border Classes="card" Margin="{DynamicResource Component.Handoff.AskMargin}">
           <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
-            <views:CopyableTextBlock Text="Try asking" FontWeight="SemiBold" />
+            <views:CopyableTextBlock Text="Try asking" FontWeight="{DynamicResource Intent.Weight.Section}" />
             <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Label}" Text="Click a question to copy it." />
             <ItemsControl x:Name="HandoffPanelQuestionsItems" ItemsSource="{Binding Questions}">
               <ItemsControl.ItemsPanel>

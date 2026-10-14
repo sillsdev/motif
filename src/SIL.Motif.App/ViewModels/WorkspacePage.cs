@@ -38,6 +38,9 @@ public enum WorkspacePage
 
     /// <summary>Choosing assistants that may use Motif's tools.</summary>
     AiAssistants,
+
+    /// <summary>Display choices, project parsing limits, writing systems, Texts, Help and product information.</summary>
+    Settings,
 }
 
 /// <summary>Which pages exist only while Advanced AI mode is on; the sidebar omits them and opening one does nothing.</summary>

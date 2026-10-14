@@ -65,7 +65,7 @@
     <Setter Property="MinHeight" Value="{DynamicResource Component.OutcomeBar.LegendLineHeight}" />
   </Style>
   <Style Selector=":is(TextBlock).outcomeLegendCount">
-    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="FontWeight" Value="{DynamicResource Intent.Weight.Strong}" />
   </Style>
   <Style Selector=":is(TextBlock).outcomeLegendLabelText">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />

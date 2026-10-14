@@ -466,8 +466,8 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
                 Assert.Contains("hoverReveal", kat.Classes);
                 var link = Assert.Single(kat.GetVisualDescendants().OfType<HyperlinkButton>());
                 Assert.Contains("revealLink", link.Classes);
-                Assert.Equal(0, link.Opacity);
-                Assert.False(link.IsHitTestVisible);
+                Assert.Equal(1, link.Opacity);
+                Assert.True(link.IsHitTestVisible);
                 var katMorph = Assert.IsType<ParserReadingMorphViewModel>(kat.Tag);
                 var requested = new List<InspectorSubject>();
                 window.AddHandler(InspectLink.RequestedEvent, (_, e) => requested.Add(e.Subject));

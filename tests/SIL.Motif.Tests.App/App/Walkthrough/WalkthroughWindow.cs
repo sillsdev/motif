@@ -26,6 +26,39 @@ namespace SIL.Motif.Tests.App.Walkthrough;
 
 public sealed class WalkthroughWindow : IDisposable
 {
+    private static readonly HashSet<string> ParseProgressFlyoutNames =
+    [
+        "Parse progress details",
+        "Parse all words progress",
+        "Cancel parsing all words",
+        "Report a problem with parsing",
+        "See stopped words while parsing",
+    ];
+
+    private static readonly HashSet<string> ParseProgressFlyoutAutomationIds =
+    [
+        AutomationIds.ParseProgressDetails,
+        AutomationIds.ParseAllWordsProgress,
+        AutomationIds.CancelAssessment,
+        AutomationIds.ParseReportProblem,
+        AutomationIds.ParseStoppedWords,
+        AutomationIds.ParseNoProgress,
+    ];
+
+    private static readonly HashSet<string> NoticeFlyoutNames =
+    [
+        "Refresh refusal",
+        "Review a problem report",
+        "Delete Motif's file for this project and reopen it",
+        "Refusal details",
+        "Delete and reopen",
+        "Delete Motif's file and reopen the project",
+        "Keep Motif's file",
+        "See writing systems",
+        "Review a machine store problem report",
+        "Machine store recovery instructions",
+    ];
+
     private readonly string _managedRoot;
     private readonly string? _parserPath;
     private readonly ScriptedProjectPicker _projectPicker;
@@ -241,26 +274,118 @@ public sealed class WalkthroughWindow : IDisposable
 
     /// <summary>The one control named <paramref name="name"/>, wherever it sits: each page's view has names of its own.</summary>
     public T Named<T>(string name) where T : Control =>
-        Window.GetLogicalDescendants().OfType<T>().Single(control => control.Name == name);
+        FindNamed<T>(name);
+
+    private T FindNamed<T>(string name) where T : Control
+    {
+        var control = AllControls().OfType<T>().SingleOrDefault(candidate => candidate.Name == name);
+        if (control is null && name == "SelectionHost")
+        {
+            ShowPage(WorkspacePage.Texts);
+            ShowTextsTab(TextsTab.AnalyzeTexts);
+            control = AllControls().OfType<T>().SingleOrDefault(candidate => candidate.Name == name);
+        }
+        if (control is null && name == "StoreDeletionQuestion")
+        {
+            OpenNoticeDetailsFlyoutIfAvailable();
+            control = AllControls().OfType<T>().SingleOrDefault(candidate => candidate.Name == name);
+        }
+
+        return control ?? throw new InvalidOperationException($"No window control is named '{name}'.");
+    }
 
     public T Find<T>(string accessibleName) where T : Control
     {
-        var control = Window.GetLogicalDescendants().OfType<T>().Single(candidate =>
+        var control = AllControls().OfType<T>().SingleOrDefault(candidate =>
             string.Equals(Avalonia.Automation.AutomationProperties.GetName(candidate), accessibleName,
-                StringComparison.Ordinal));
+                StringComparison.Ordinal) &&
+            (!ParseProgressFlyoutNames.Contains(accessibleName) || candidate.IsEffectivelyVisible));
+        if (control is null && ParseProgressFlyoutNames.Contains(accessibleName))
+        {
+            OpenParseProgressFlyoutIfAvailable();
+            control = AllControls().OfType<T>().SingleOrDefault(candidate =>
+                string.Equals(Avalonia.Automation.AutomationProperties.GetName(candidate), accessibleName,
+                    StringComparison.Ordinal) && candidate.IsEffectivelyVisible);
+        }
+        if (control is null && NoticeFlyoutNames.Contains(accessibleName))
+        {
+            OpenNoticeDetailsFlyoutIfAvailable();
+            control = AllControls().OfType<T>().SingleOrDefault(candidate =>
+                string.Equals(Avalonia.Automation.AutomationProperties.GetName(candidate), accessibleName,
+                    StringComparison.Ordinal) && candidate.IsEffectivelyVisible);
+        }
+
+        if (control is null)
+            throw new InvalidOperationException($"No visible window control is named '{accessibleName}'.");
         ShowStageOwning(control);
         return control;
     }
 
-    internal Control FindByAutomationId(string automationId)
+    public void OpenParseProgressFlyout()
     {
-        return AllControls().Single(control =>
-            string.Equals(AutomationProperties.GetAutomationId(control), automationId, StringComparison.Ordinal));
+        var opener = Window.FindControl<Button>("StatusParseProgress")
+            ?? throw new InvalidOperationException("The window has no parse-progress status button.");
+        var flyout = opener.Flyout as Flyout
+            ?? throw new InvalidOperationException("The parse-progress status button has no flyout.");
+        if (!flyout.IsOpen)
+        {
+            if (!opener.IsEffectivelyVisible)
+                throw new InvalidOperationException("Parse progress is not visible in the status bar.");
+            ClickControl(opener, "See parse progress");
+        }
+
+        Assert.True(flyout.IsOpen, "Clicking 'See parse progress' did not open its details.");
     }
 
-    internal Control? FindOptionalByAutomationId(string automationId) =>
-        AllControls().SingleOrDefault(control =>
-            string.Equals(AutomationProperties.GetAutomationId(control), automationId, StringComparison.Ordinal));
+    /// <summary>The visible text of the window and of the parse-progress details, which the status bar opens.</summary>
+    public string VisibleTextWithParseProgress()
+    {
+        OpenParseProgressFlyoutIfAvailable();
+        IEnumerable<Visual> roots = [Window];
+        if (Window.FindControl<Button>("StatusParseProgress")?.Flyout is Flyout { IsOpen: true, Content: Control progress })
+            roots = roots.Append(progress);
+        return string.Join(" ", roots.SelectMany(root => root.GetVisualDescendants()).OfType<TextBlock>()
+            .Where(block => block.IsEffectivelyVisible).Select(block => block.Text));
+    }
+
+    public void DismissParseProgressFlyout()
+    {
+        var opener = Window.FindControl<Button>("StatusParseProgress")
+            ?? throw new InvalidOperationException("The window has no parse-progress status button.");
+        var flyout = opener.Flyout as Flyout
+            ?? throw new InvalidOperationException("The parse-progress status button has no flyout.");
+        if (!flyout.IsOpen) return;
+
+        var currentPage = Workspace.CurrentPage;
+        var pageName = Workspace.PageOf(currentPage).AutomationName;
+        var currentPageEntry = Window.GetLogicalDescendants().OfType<ListBoxItem>().Single(item =>
+            string.Equals(AutomationProperties.GetName(item), pageName, StringComparison.Ordinal));
+        HeadlessClick.PressOver(Window, currentPageEntry, pageName);
+        Assert.False(flyout.IsOpen, "Clicking outside the parse-progress details did not close them.");
+        Assert.Equal(currentPage, Workspace.CurrentPage);
+    }
+
+    internal Control FindByAutomationId(string automationId)
+    {
+        return FindOptionalByAutomationId(automationId)
+            ?? throw new InvalidOperationException($"AutomationId '{automationId}' is missing.");
+    }
+
+    internal Control? FindOptionalByAutomationId(string automationId)
+    {
+        var control = AllControls().SingleOrDefault(candidate =>
+            string.Equals(AutomationProperties.GetAutomationId(candidate), automationId, StringComparison.Ordinal) &&
+            (!ParseProgressFlyoutAutomationIds.Contains(automationId) || candidate.IsEffectivelyVisible));
+        if (control is null && ParseProgressFlyoutAutomationIds.Contains(automationId))
+        {
+            OpenParseProgressFlyoutIfAvailable();
+            control = AllControls().SingleOrDefault(candidate =>
+                string.Equals(AutomationProperties.GetAutomationId(candidate), automationId, StringComparison.Ordinal) &&
+                candidate.IsEffectivelyVisible);
+        }
+
+        return control;
+    }
 
     internal string DescribeAutomationId(string automationId)
     {
@@ -432,17 +557,61 @@ public sealed class WalkthroughWindow : IDisposable
 
     private IEnumerable<Control> AllControls()
     {
-        yield return Window;
-        foreach (var control in Window.GetLogicalDescendants().OfType<Control>()) yield return control;
+        var seen = new HashSet<Control>(ReferenceEqualityComparer.Instance);
+        foreach (var control in ControlsFrom(Window))
+            if (seen.Add(control)) yield return control;
+        if (ProjectMenuFlyout.Content is Control projectMenu)
+            foreach (var control in ControlsFrom(projectMenu))
+                if (seen.Add(control)) yield return control;
+        if (Window.FindControl<Button>("StatusParseProgress")?.Flyout is Flyout { IsOpen: true, Content: Control progress })
+            foreach (var control in ControlsFrom(progress))
+                if (seen.Add(control)) yield return control;
+        if (Window.FindControl<Button>("NoticeDetailsButton")?.Flyout is Flyout { IsOpen: true, Content: Control notices })
+            foreach (var control in ControlsFrom(notices))
+                if (seen.Add(control)) yield return control;
         foreach (var ownedWindow in Window.OwnedWindows)
         {
-            yield return ownedWindow;
-            foreach (var control in ownedWindow.GetLogicalDescendants().OfType<Control>()) yield return control;
+            foreach (var control in ControlsFrom(ownedWindow))
+                if (seen.Add(control)) yield return control;
         }
-        if (ProjectMenuFlyout.Content is Control content)
+    }
+
+    private static IEnumerable<Control> ControlsFrom(Control root)
+    {
+        yield return root;
+        foreach (var control in root.GetLogicalDescendants().OfType<Control>()) yield return control;
+    }
+
+    /// <summary>Closes a status flyout the harness opened to read, as a person would before pressing elsewhere.</summary>
+    internal void CloseStatusFlyoutsNotOwning(Control control)
+    {
+        foreach (var opener in new[] { "StatusParseProgress", "NoticeDetailsButton" })
         {
-            yield return content;
-            foreach (var control in content.GetLogicalDescendants().OfType<Control>()) yield return control;
+            if (Window.FindControl<Button>(opener)?.Flyout is not Flyout { IsOpen: true } flyout) continue;
+            if (flyout.Content is Control content && (ReferenceEquals(content, control) ||
+                    content.IsLogicalAncestorOf(control) || content.IsVisualAncestorOf(control)))
+                continue;
+            flyout.Hide();
+            Window.UpdateLayout();
+            Pump();
+        }
+    }
+
+    private void OpenParseProgressFlyoutIfAvailable()
+    {
+        var opener = Window.FindControl<Button>("StatusParseProgress");
+        if (opener?.IsEffectivelyVisible == true && opener.Flyout is Flyout { IsOpen: false })
+            OpenParseProgressFlyout();
+    }
+
+    private void OpenNoticeDetailsFlyoutIfAvailable()
+    {
+        var opener = Window.FindControl<Button>("NoticeDetailsButton");
+        if (opener?.IsEffectivelyVisible == true && opener.Flyout is Flyout { IsOpen: false })
+        {
+            ClickControl(opener, "See project notices");
+            Assert.True(Assert.IsType<Flyout>(opener.Flyout).IsOpen,
+                "Clicking 'See project notices' did not open its details.");
         }
     }
 
@@ -628,6 +797,7 @@ public sealed class WalkthroughWindow : IDisposable
 
     private void ClickControl(Control control, string accessibleName, TopLevel? topLevel = null)
     {
+        CloseStatusFlyoutsNotOwning(control);
         // Let open settle, then recalculate bounds on each dispatcher pass before clicking.
         if (Workspace.HasProject)
             WaitUntilProjectOpened(
@@ -636,7 +806,7 @@ public sealed class WalkthroughWindow : IDisposable
             WaitUntil(() => !Workspace.IsProjectOpening &&
                     Workspace.Context.EvidencePublication.IsCompleted && !Workspace.RefreshCommand.IsRunning,
                 TimeSpan.FromSeconds(60), $"the project chooser was still loading when '{accessibleName}' was to be clicked");
-        var root = topLevel ?? Window;
+        var root = topLevel ?? TopLevel.GetTopLevel(control) ?? Window;
         Rect? previousBounds = null;
         var stablePasses = 0;
         var settleStarted = Stopwatch.GetTimestamp();

@@ -11,7 +11,7 @@
   </Styles.Resources>
   <Style Selector="Border.pageBadge">
     <Setter Property="Background" Value="{DynamicResource Intent.Neutral.Fill}" />
-    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.Pill}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.Control}" />
     <Setter Property="Padding" Value="{DynamicResource Component.Badge.Padding}" />
     <Setter Property="VerticalAlignment" Value="Center" />
     <Setter Property="HorizontalAlignment" Value="Right" />

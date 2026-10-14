@@ -104,6 +104,8 @@ internal static class InteractiveMarkupContracts
             [InteractiveControlFamily.Choice] = [new(typeof(KeyboardInteractionContractTests),
                 nameof(KeyboardInteractionContractTests.WordCardArrowsRespectOccurrenceBoundariesAndChildInputs)),
                 new(typeof(SettingsViewTests), nameof(SettingsViewTests.ThemeSegmentsMoveWithArrowsAndShareOneTabStop))],
+            [InteractiveControlFamily.Radio] = [new(typeof(SettingsViewTests),
+                nameof(SettingsViewTests.DefaultProposalChecksGroupShowsTheSavedChoiceAndSavesAChange))],
             [InteractiveControlFamily.Check] = [new(typeof(TextsListsPanelTests),
                 nameof(TextsListsPanelTests.TickingARowTicksTheWordForTheListsHandoff)),
                 new(typeof(SettingsViewTests), nameof(SettingsViewTests.AnalysisOptionsEditTheSameSavedSelectionLimitsAsSettings)),

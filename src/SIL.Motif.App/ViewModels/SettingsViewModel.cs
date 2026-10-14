@@ -17,7 +17,11 @@ using SIL.Motif.Host.Preferences;
 
 namespace SIL.Motif.App.ViewModels;
 
-internal sealed record ShortcutEntry(string Group, string Keys, string Action, string SearchText);
+internal sealed record ShortcutEntry(string Group, string Keys, string Action, string SearchText)
+{
+    /// <summary>The action with the page or context in which its gesture works.</summary>
+    public string ScopedAction => $"{Group} · {Action}";
+}
 
 internal enum SettingsGroup
 {
@@ -28,6 +32,7 @@ internal enum SettingsGroup
     WritingSystems,
     HelpAndReports,
     About,
+    Texts,
 }
 
 internal enum WindowThemeChoice
@@ -63,6 +68,10 @@ internal sealed class WritingSystemSettingsRow
         bool isAlsoInVernacular = false)
     {
         WritingSystem = writingSystem;
+        var normal = resolver.Resolve(TextStyleRequest.Linguistic(writingSystem.Id));
+        FontSourceText = !normal.RequestedFontInstalled ? "Fallback" :
+            resolver.RequestedFontIsBundled(normal.RequestedFontFamily)
+                ? "Bundled with Motif" : "Installed";
         IsAlsoInVernacular = isAlsoInVernacular;
         var missingFonts = isAlsoInVernacular ? [] : writingSystem.StyleFonts
             .Select(pair => (pair.Key, pair.Value.FontFamily))
@@ -85,6 +94,7 @@ internal sealed class WritingSystemSettingsRow
     public bool IsAlsoInVernacular { get; }
     public string AlsoInVernacularText => "Also in Vernacular, with the same settings.";
     public string FontFamily => ResolveStyleFont("Normal").FontFamily;
+    public string FontSourceText { get; }
     public string FontLabel => string.IsNullOrWhiteSpace(FontFamily) ? "None set" : FontFamily;
     public string Features => string.IsNullOrWhiteSpace(ResolveStyleFont("Normal").FontFeatures)
         ? "None" : ResolveStyleFont("Normal").FontFeatures;
@@ -153,6 +163,10 @@ internal sealed partial class SettingsViewModel : ObservableObject
         ZoomInCommand = new RelayCommand(ZoomIn, () => ZoomPercent < ZoomPolicy.Percentages[^1]);
         ZoomOutCommand = new RelayCommand(ZoomOut, () => ZoomPercent > ZoomPolicy.Percentages[0]);
         ResetZoomCommand = new RelayCommand(() => ZoomPercent = 100, () => ZoomPercent != 100);
+        ResetThemeCommand = new RelayCommand(() => ThemeChoice = WindowThemeChoice.System, () => CanResetTheme);
+        ResetStoredAnalysesCommand = new RelayCommand(() => ChooseStoredAnalyses(StoredAnalysisComparison.Budget),
+            () => CanResetStoredAnalyses);
+        ResetStepLimitCommand = new AsyncRelayCommand(ResetStepLimitAsync, () => CanResetStepLimit);
         ResetPreferencesCommand = new RelayCommand(ResetPreferences, () => _preferences.State == PreferenceState.Refused);
         UseAllTextsCommand = new AsyncRelayCommand(UseAllTextsCommandAsync,
             () => CanUseAllTexts);
@@ -161,12 +175,13 @@ internal sealed partial class SettingsViewModel : ObservableObject
         ClearShortcutSearchCommand = new RelayCommand(() => ShortcutSearch = string.Empty,
             () => !string.IsNullOrEmpty(ShortcutSearch));
         SelectThemeCommand = new RelayCommand<WindowThemeChoice>(choice => ThemeChoice = choice);
-        GroupOptions = new ObservableCollection<SettingsGroupOption>([
+        PageGroupOptions = new ObservableCollection<SettingsGroupOption>([
             new(SettingsGroup.Display, "Display"),
             new(SettingsGroup.KeyboardShortcuts, "Keyboard shortcuts"),
             new(SettingsGroup.Parsing, "Parsing"),
             new(SettingsGroup.ProposalChecks, "Default proposal checks"),
             new(SettingsGroup.WritingSystems, "Writing systems"),
+            new(SettingsGroup.Texts, "Texts"),
             new(SettingsGroup.HelpAndReports, "Help and problem reports"),
             new(SettingsGroup.About, "About Motif"),
         ]);
@@ -180,6 +195,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
         _workspace.Context.PropertyChanged += OnContextChanged;
         ObserveSetup(_workspace.Context.Setup);
         RefreshWritingSystems();
+        RefreshShortcutList();
         IsUsingEstimate = _observedSetup?.CurrentSelectionLimits.TimeMode != SelectionTimeLimitMode.Explicit;
         RememberGoodValues();
     }
@@ -187,12 +203,19 @@ internal sealed partial class SettingsViewModel : ObservableObject
     public IRelayCommand ZoomInCommand { get; }
     public IRelayCommand ZoomOutCommand { get; }
     public IRelayCommand ResetZoomCommand { get; }
+    public IRelayCommand ResetThemeCommand { get; }
+    public IRelayCommand ResetStoredAnalysesCommand { get; }
+    public IAsyncRelayCommand ResetStepLimitCommand { get; }
+    public bool CanResetTheme => ThemeChoice != WindowThemeChoice.System;
+    public bool CanResetStoredAnalyses => !IsStoredAnalysesBudget;
+    public bool CanResetStepLimit => HasSavedSelection && (IsNoStepLimit || StepLimit != StepCap.DefaultSteps);
+
     public IRelayCommand ResetPreferencesCommand { get; }
     public IAsyncRelayCommand UseAllTextsCommand { get; }
     public IRelayCommand<SettingsGroup> SelectGroupCommand { get; }
     public IRelayCommand<WindowThemeChoice> SelectThemeCommand { get; }
     public IRelayCommand ClearShortcutSearchCommand { get; }
-    public ObservableCollection<SettingsGroupOption> GroupOptions { get; }
+    public ObservableCollection<SettingsGroupOption> PageGroupOptions { get; }
     public ObservableCollection<WritingSystemSettingsRow> VernacularWritingSystems { get; } = [];
     public ObservableCollection<WritingSystemSettingsRow> AnalysisWritingSystems { get; } = [];
     public TextStyles WritingSystemTextStyles => _workspace.Context.TextStyles;
@@ -398,7 +421,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
     public SettingsGroup[] Groups => Enum.GetValues<SettingsGroup>();
     public SettingsGroupOption? SelectedNavigationEntry
     {
-        get => GroupOptions.FirstOrDefault(option => option.Group == SelectedGroup);
+        get => PageGroupOptions.FirstOrDefault(option => option.Group == SelectedGroup);
         set
         {
             if (value is not null) OpenGroup(value.Group);
@@ -412,12 +435,14 @@ internal sealed partial class SettingsViewModel : ObservableObject
         ZoomOutCommand.NotifyCanExecuteChanged();
         ResetZoomCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(CanResetZoom));
+        NotifyResetChoices();
     }
 
     partial void OnThemeChoiceChanged(WindowThemeChoice value)
     {
         ApplyTheme();
         Persist(preferences => preferences with { Theme = ToUserTheme(value) });
+        NotifyResetChoices();
     }
 
     partial void OnSelectedGroupChanged(SettingsGroup value)
@@ -463,6 +488,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
         OnPropertyChanged(nameof(IsStoredAnalysesOff));
         OnPropertyChanged(nameof(StoredAnalysesRefusal));
         OnPropertyChanged(nameof(HasStoredAnalysesRefusal));
+        NotifyResetChoices();
     }
 
     partial void OnShortcutSearchChanged(string value)
@@ -496,7 +522,11 @@ internal sealed partial class SettingsViewModel : ObservableObject
         return target;
     }
 
-    partial void OnIsUsingEstimateChanged(bool value) => OnPropertyChanged(nameof(ShowUseEstimate));
+    partial void OnIsUsingEstimateChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ShowUseEstimate));
+        NotifyResetChoices();
+    }
 
     public void SelectTheme(WindowThemeChoice choice) => ThemeChoice = choice;
 
@@ -584,6 +614,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
         UseAllTextsCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(CanUseAllTexts));
         OnPropertyChanged(nameof(TextSelectionSummary));
+        NotifyResetChoices();
         return refusal;
     }
 
@@ -650,7 +681,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
 
     private void RefreshNavigationOptions(SettingsGroup selected)
     {
-        foreach (var option in GroupOptions)
+        foreach (var option in PageGroupOptions)
         {
             option.IsSelected = option.Group == selected;
             if (option.Group == SettingsGroup.Parsing) option.Title = GroupParsingLabel;
@@ -782,6 +813,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
         SIL.Motif.App.Services.SettingsGroup.Parsing => SettingsGroup.Parsing,
         SIL.Motif.App.Services.SettingsGroup.ProposalChecks => SettingsGroup.ProposalChecks,
         SIL.Motif.App.Services.SettingsGroup.WritingSystems => SettingsGroup.WritingSystems,
+        SIL.Motif.App.Services.SettingsGroup.Texts => SettingsGroup.Texts,
         SIL.Motif.App.Services.SettingsGroup.Help => SettingsGroup.HelpAndReports,
         SIL.Motif.App.Services.SettingsGroup.About => SettingsGroup.About,
         _ => SettingsGroup.Display,
@@ -793,6 +825,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
         SettingsGroup.Parsing => SIL.Motif.App.Services.SettingsGroup.Parsing,
         SettingsGroup.ProposalChecks => SIL.Motif.App.Services.SettingsGroup.ProposalChecks,
         SettingsGroup.WritingSystems => SIL.Motif.App.Services.SettingsGroup.WritingSystems,
+        SettingsGroup.Texts => SIL.Motif.App.Services.SettingsGroup.Texts,
         SettingsGroup.HelpAndReports => SIL.Motif.App.Services.SettingsGroup.Help,
         SettingsGroup.About => SIL.Motif.App.Services.SettingsGroup.About,
         _ => SIL.Motif.App.Services.SettingsGroup.Display,
@@ -807,6 +840,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
             OnPropertyChanged(nameof(TextSelectionSummary));
             OnPropertyChanged(nameof(CanUseAllTexts));
             UseAllTextsCommand.NotifyCanExecuteChanged();
+            NotifyResetChoices();
         }
         if (args.PropertyName is nameof(SelectionViewModel.PerWordStepLimit) or
             nameof(SelectionViewModel.PerWordStepLimitUnbounded))
@@ -834,6 +868,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
         }
         OnPropertyChanged(nameof(HasUncommittedParsingLimitChanges));
         OnPropertyChanged(nameof(ParsingFooter));
+        NotifyResetChoices();
     }
 
     private void OnSetupChanged(object? sender, PropertyChangedEventArgs args)
@@ -845,6 +880,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
             OnPropertyChanged(nameof(IsTimeLimitEnabled));
             OnPropertyChanged(nameof(CanUseAllTexts));
             UseAllTextsCommand.NotifyCanExecuteChanged();
+            NotifyResetChoices();
         }
         if (args.PropertyName == nameof(SetupViewModel.CurrentSelectionLimits))
         {
@@ -885,6 +921,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
             OnPropertyChanged(nameof(HasProjectWithoutSelection));
             OnPropertyChanged(nameof(CanUseAllTexts));
             UseAllTextsCommand.NotifyCanExecuteChanged();
+            NotifyResetChoices();
             OnPropertyChanged(nameof(IsTimeLimitEnabled));
             OnPropertyChanged(nameof(GroupParsingLabel));
             OnPropertyChanged(nameof(ParsingLead));
@@ -895,7 +932,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
             OnPropertyChanged(nameof(ShowSettingsFooter));
             OnPropertyChanged(nameof(IsTimeLimitEnabled));
             OnPropertyChanged(nameof(ParsingFooter));
-            foreach (var option in GroupOptions.Where(option => option.Group == SettingsGroup.Parsing))
+            foreach (var option in PageGroupOptions.Where(option => option.Group == SettingsGroup.Parsing))
                 option.Title = GroupParsingLabel;
         }
     }
@@ -906,6 +943,23 @@ internal sealed partial class SettingsViewModel : ObservableObject
         if (_observedSetup is not null) _observedSetup.PropertyChanged -= OnSetupChanged;
         _observedSetup = setup;
         if (_observedSetup is not null) _observedSetup.PropertyChanged += OnSetupChanged;
+    }
+
+    private void NotifyResetChoices()
+    {
+        OnPropertyChanged(nameof(CanResetTheme));
+        OnPropertyChanged(nameof(CanResetStoredAnalyses));
+        OnPropertyChanged(nameof(CanResetStepLimit));
+        ResetThemeCommand.NotifyCanExecuteChanged();
+        ResetStoredAnalysesCommand.NotifyCanExecuteChanged();
+        ResetStepLimitCommand.NotifyCanExecuteChanged();
+    }
+
+    private async Task ResetStepLimitAsync()
+    {
+        IsNoStepLimit = false;
+        StepLimit = StepCap.DefaultSteps;
+        await CommitParsingLimitsAsync().ConfigureAwait(true);
     }
 
     private async Task UseAllTextsCommandAsync()

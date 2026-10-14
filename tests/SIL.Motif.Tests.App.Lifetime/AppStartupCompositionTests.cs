@@ -434,18 +434,18 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
                 Assert.Contains(session.Window.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
                     AutomationProperties.GetAutomationId(text) == SIL.Motif.App.AutomationIds.ParsePromptText &&
                     text.Text == workspace.Context.ParsePromptText && text.IsEffectivelyVisible);
-                await Until(() => session.Window.GetVisualDescendants().OfType<CopyableTextBlock>().Any(text =>
+                await Until(() => ParseProgressControls(session.Window).OfType<CopyableTextBlock>().Any(text =>
                     AutomationProperties.GetAutomationId(text) == SIL.Motif.App.AutomationIds.ParseProgressDetails &&
                     text.Text == "Parsing · 0 of 1 words · estimating time" && text.IsEffectivelyVisible),
                     () => $"top-row parse progress did not appear; active={workspace.ShowsParseAllWordsProgress}, " +
                         $"presenter='{workspace.ActiveParseProgress.ProgressText}', rendered='" +
-                        string.Join(" | ", session.Window.GetVisualDescendants().OfType<CopyableTextBlock>()
+                        string.Join(" | ", ParseProgressControls(session.Window).OfType<CopyableTextBlock>()
                             .Where(text => AutomationProperties.GetAutomationId(text) ==
                                 SIL.Motif.App.AutomationIds.ParseProgressDetails)
                             .Select(text => $"{text.Text} (visible={text.IsEffectivelyVisible})")) + "'");
                 Assert.True(workspace.ShowsParseAllWordsProgress);
                 Assert.Same(workspace.Assess.ParseProgress, workspace.ActiveParseProgress);
-                Assert.Contains(session.Window.GetLogicalDescendants().OfType<Button>(), button =>
+                Assert.Contains(ParseProgressControls(session.Window).OfType<Button>(), button =>
                     AutomationProperties.GetName(button) == "Cancel parsing all words" &&
                     button.IsEffectivelyVisible && button.IsEffectivelyEnabled);
 
@@ -465,6 +465,17 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
                 await host.StopAsync();
             }
         }, () => "current stage: " + stage);
+    }
+
+    // The frame shows parse progress in the status bar; its details and Cancel live in that button's flyout.
+    private static IEnumerable<Visual> ParseProgressControls(Window window)
+    {
+        if (window.FindControl<Button>("StatusParseProgress") is not { Flyout: Flyout flyout } status)
+            return window.GetVisualDescendants();
+        if (!flyout.IsOpen && status.IsEffectivelyVisible) flyout.ShowAt(status);
+        return flyout is { IsOpen: true, Content: Control details }
+            ? window.GetVisualDescendants().Concat(details.GetVisualDescendants())
+            : window.GetVisualDescendants();
     }
 
     private static string SeedPendingChange(WalkthroughProject project, string word)

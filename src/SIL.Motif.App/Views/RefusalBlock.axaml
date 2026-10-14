@@ -25,7 +25,7 @@
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="contract:ParserCompileIssue">
               <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-                <views:CopyableTextBlock Text="{Binding Code}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                <views:CopyableTextBlock Text="{Binding Code}" FontWeight="{DynamicResource Intent.Weight.Strong}" TextWrapping="Wrap" />
                 <views:CopyableTextBlock Text="{Binding Kind}" TextWrapping="Wrap" />
                 <views:CopyableTextBlock Text="{Binding ObjectKind}" TextWrapping="Wrap" />
                 <views:CopyableTextBlock Text="{Binding ObjectGuid}" TextWrapping="Wrap" />

@@ -31,6 +31,7 @@ internal static class SetupWalkthroughActions
         var texts = Assert.Single(walkthrough.Window.GetLogicalDescendants().OfType<TextsPage>());
         var button = Assert.Single(texts.GetLogicalDescendants().OfType<Button>(), candidate =>
             Avalonia.Automation.AutomationProperties.GetName(candidate) == "Parse all words");
+        walkthrough.CloseStatusFlyoutsNotOwning(button);
         HeadlessClick.Click(walkthrough.Window, button, "Parse all words");
     }
 
@@ -134,9 +135,11 @@ internal static class SetupWalkthroughActions
         Assert.True(File.Exists(heartbeat), "Finish completed without holding the batch parser.");
         Assert.False(setup.IsOpen);
         Assert.Equal(SIL.Motif.Contract.Responses.AssessmentStage.Capturing, stageWhenSetupClosed);
+        walkthrough.OpenParseProgressFlyout();
         walkthrough.Click("Cancel parsing all words");
         walkthrough.WaitUntil(() => walkthrough.Workspace.Assess.State == RunState.Cancelled,
             timeout, "the held first run did not cancel");
+        walkthrough.DismissParseProgressFlyout();
         walkthrough.SetFakeParserBehavior(new
         {
             subcommands = new Dictionary<string, object>

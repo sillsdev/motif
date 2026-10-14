@@ -345,7 +345,12 @@ public sealed class PageScreenshots
                                 var renderedText = window.GetVisualDescendants().OfType<CopyableTextBlock>()
                                     .Where(text => text.IsEffectivelyVisible)
                                     .Select(text => text.Text?.Replace('\u202f', ' ')).ToArray();
-                                Assert.Contains(renderedText, text => text?.Contains("Baseline of", StringComparison.Ordinal) == true);
+                                var baselineDate = WindowTimeText.Format(BaselineSaveAt, workspace.Context.Clock).Replace('\u202f', ' ');
+                                Assert.Contains(renderedText, text => text?.Contains(baselineDate, StringComparison.Ordinal) == true);
+                                if (width == 1240)
+                                    Assert.Contains(renderedText, text => text?.Contains($"Baseline of {baselineDate}", StringComparison.Ordinal) == true);
+                                else
+                                    Assert.DoesNotContain(renderedText, text => text?.Contains("Baseline of", StringComparison.Ordinal) == true);
                                 Assert.Contains(renderedText, text => text?.Contains("saved Fri 2 Oct, 6:47 PM", StringComparison.Ordinal) == true);
                                 Assert.DoesNotContain(renderedText, text => text?.Contains(
                                     "FieldWorks has changed since the Baseline behind these numbers", StringComparison.Ordinal) == true);
@@ -447,6 +452,7 @@ public sealed class PageScreenshots
         ("7-ai-handoff", WorkspacePage.AiHandoff, TextsTab.Matrix),
         ("8-ai-assistants", WorkspacePage.AiAssistants, TextsTab.Matrix),
         ("9-proposals", WorkspacePage.Proposals, TextsTab.Matrix),
+        ("10-settings", WorkspacePage.Settings, TextsTab.Matrix),
     ];
 
     [Fact]
@@ -780,7 +786,7 @@ public sealed class PageScreenshots
     internal static async Task<(WorkspaceShellViewModel Workspace, MainWindow Window)> OpenOverSampleData(
         bool parse = true, Action<FakeCommandClient, AssessCommandResponse>? configure = null, bool leaveSetupOpen = false,
         string? settingsFilePath = null, TextWordsResponse? capturedWords = null,
-        AssessCommandResponse? capturedAssessment = null, bool advancedAiModeEnabled = false)
+        AssessCommandResponse? capturedAssessment = null, bool advancedAiModeEnabled = false, IUserPreferencesStore? preferencesStore = null)
     {
         var fake = new FakeCommandClient();
         var clock = NewCaptureClock();
@@ -852,9 +858,9 @@ public sealed class PageScreenshots
             selection, new AssessViewModel(fake, selection),
             new Folder(), new Drag(),
             fake, clock, techDemoNotice: FirstRunNotice(), advancedAiModeEnabled: advancedAiModeEnabled);
-        IUserPreferencesStore preferences = settingsFilePath is null
+        IUserPreferencesStore preferences = preferencesStore ?? (settingsFilePath is null
             ? new MemoryUserPreferencesStore()
-            : new FileUserPreferencesStore(settingsFilePath);
+            : new FileUserPreferencesStore(settingsFilePath));
         var window = new MainWindow(rememberBounds: false, uriLauncher: null, preferencesStore: preferences);
         window.Compose(workspace);
         window.Closed += async (_, _) =>

@@ -16,6 +16,7 @@ using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Tests.App.Walkthrough;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -75,7 +76,7 @@ public sealed class SizeMatrixScreenshots
                         PageScreenshots.Settle(window);
                         await CaptureScene(run, window, "settings-parsing", sizes, selection);
                     }
-                    CloseFlyout(window.FindControl<Button>("SettingsButton")!);
+                    HeadlessClick.Click(window, settings.FindControl<Button>("SettingsClose")!, "Leave Settings");
                 }
 
                 if (selection.Contains("open-recent-projects"))
@@ -209,13 +210,7 @@ public sealed class SizeMatrixScreenshots
         await Task.Yield();
     }
 
-    private static SettingsPopupView OpenSettings(MainWindow window)
-    {
-        var button = Assert.IsType<Button>(window.FindControl<Button>("SettingsButton"));
-        Assert.IsType<Flyout>(button.Flyout).ShowAt(button);
-        PageScreenshots.Settle(window);
-        return Assert.IsType<SettingsPopupView>(((Flyout)button.Flyout!).Content);
-    }
+    private static SettingsPage OpenSettings(MainWindow window) => SettingsTestAccess.Open(window);
 
     private static void OpenRecentProjects(MainWindow window)
     {
@@ -263,7 +258,7 @@ public sealed class SizeMatrixScreenshots
 
     internal static void ApplySize(MainWindow window, MatrixSize size, int zoom)
     {
-        WindowZoomPolicy.Apply(Application.Current!, zoom);
+        SettingsTestAccess.Model(window).ZoomPercent = zoom;
         window.Width = size.Width;
         window.Height = size.Height;
     }
@@ -462,12 +457,6 @@ internal static class ExpectedMatrixFindings
             "V05", "result table wider than the page", "LD"),
         new("6-review", "page-horizontal-scroll", new("Grid", Name: "motif-review-words-grid"), null, [new("half", 150, "light")], "The review list extends beyond the page body at this zoom.", "matrix/6-review-half-150-light.png",
             "V05", "result table wider than the page", "LD"),
-        new("settings-open", "unreachable-control", new("Button", Name: "SettingsClose"), null, [new("half", 150, "light")], "Settings navigation and controls extend beyond the flyout viewport.", "matrix/settings-open-half-150-light.png",
-            "V02", "settings panel does not fit the window", "UF"),
-        new("settings-open", "unreachable-control", new("ListBox", Name: "SettingsGroups"), null, [new("half", 150, "light")], "Settings navigation and controls extend beyond the flyout viewport.", "matrix/settings-open-half-150-light.png",
-            "V02", "settings panel does not fit the window", "UF"),
-        new("settings-open", "popup-outside-window", new("FlyoutPresenter", Name: "motif-settings-flyout"), null, [new("short", 100, "light"), new("half", 150, "light")], "The settings panel overlaps the top bar or reaches past the window at these sizes.", "matrix/settings-open-short-100-light.png",
-            "V02", "settings panel does not fit the window", "UF"),
         new("open-recent-projects", "popup-outside-window", new("FlyoutPresenter", Name: "motif-project-menu-flyout"), null, [new("thin", 100, "light"), new("half", 100, "light"), new("full", 100, "light"), new("short", 100, "light"), new("half", 150, "light"), new("thin", 100, "dark"), new("full", 100, "dark")], "The recent-project menu overlaps the top bar at these sizes.", "matrix/open-recent-projects-thin-100-light.png",
             "V25", "recent-projects menu overlaps the top bar", "UF"),
         new("open-recent-projects", "text-own-box-overflow", new("CopyableTextBlock", Name: "motif-overview-selection-label"), null, [new("half", 150, "light")], "The overview subtitle is wider than its text box behind the open menu.", "matrix/open-recent-projects-half-150-light.png",
@@ -486,14 +475,6 @@ internal static class ExpectedMatrixFindings
             "V35", "word row Next action off-screen", "UF"),
         new("review-pending-changes", "unreachable-control", new("Button", Name: "motif-word-undo-change"), null, [new("thin", 100, "light"), new("half", 100, "light"), new("half", 150, "light"), new("thin", 100, "dark")], "Pending change actions extend beyond the visible review area.", "matrix/review-pending-changes-thin-100-light.png",
             "V03", "review panel text and actions overlap", "LD"),
-        new("settings-parsing", "unreachable-control", new("Button", Name: "SettingsClose"), null, [new("half", 150, "light")], "Settings navigation and controls extend beyond the flyout viewport.", "matrix/settings-parsing-half-150-light.png",
-            "V02", "settings panel does not fit the window", "UF"),
-        new("settings-parsing", "unreachable-control", new("ListBox", Name: "SettingsGroups"), null, [new("half", 150, "light")], "Settings navigation and controls extend beyond the flyout viewport.", "matrix/settings-parsing-half-150-light.png",
-            "V02", "settings panel does not fit the window", "UF"),
-        new("settings-parsing", "popup-outside-window", new("FlyoutPresenter", Name: "motif-settings-flyout"), null, [new("short", 100, "light"), new("half", 150, "light")], "The settings panel overlaps the top bar or reaches past the window at these sizes.", "matrix/settings-parsing-short-100-light.png",
-            "V02", "settings panel does not fit the window", "UF"),
-        new("settings-parsing", "missing-glyph", new("TextBlock", Name: "SettingsFooterMark"), null, [new("thin", 100, "light"), new("half", 100, "light"), new("full", 100, "light"), new("short", 100, "light"), new("half", 150, "light"), new("thin", 100, "dark"), new("full", 100, "dark")], "The circled info character has no glyph in the chosen Andika typeface.", "matrix/settings-parsing-full-100-light.png",
-            "V36", "Settings footer info character renders as tofu", "UF"),
     ];
 
     internal static void AssertNoUnexpected(IEnumerable<LayoutFinding> source, bool requireAllExpected,

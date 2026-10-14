@@ -309,6 +309,8 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
                 Assert.True(button.IsEffectivelyEnabled);
                 Assert.Same(walkthrough.Workspace.ConfigureCommand, button.Command);
             });
+            // Overview, Texts and Review offer the action in the page; other pages offer it in the top row.
+            walkthrough.ShowPage(WorkspacePage.Timing);
             var topAction = walkthrough.Window.FindControl<Button>("ChooseWhatToParseButton");
             Assert.NotNull(topAction);
             Assert.True(topAction.IsEffectivelyVisible);
