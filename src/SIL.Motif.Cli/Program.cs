@@ -1,3 +1,4 @@
+using SIL.Motif.Projection;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host;
 using SIL.Motif.Host.Installation;
@@ -1798,6 +1799,16 @@ try
         ? ProjectionJson.Serialize(new FailureEnvelope(reason, result.Output.Trim())) + Environment.NewLine
         : result.Output);
     return result.ExitCode;
+}
+catch (ProjectWritingSystemsUnavailableException ex)
+{
+    // A setup problem the message explains, never an unexpected failure, even outside a project-store command.
+    if (asJson)
+        error.WriteLine(ProjectionJson.Serialize(
+            new FailureEnvelope(FailureReason.Refused, ex.Message, code: "project.writing-system-missing")));
+    else
+        error.WriteLine($"project.writing-system-missing: {ex.Message}");
+    return FailureEnvelope.ExitCodeFor(FailureReason.Refused);
 }
 catch (OperationCanceledException ex)
 {

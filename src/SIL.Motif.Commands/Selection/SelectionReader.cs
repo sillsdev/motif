@@ -1,3 +1,4 @@
+using SIL.Motif.Projection;
 using SIL.Motif.Host;
 using System.Buffers.Binary;
 using SIL.LCModel;
@@ -2028,7 +2029,7 @@ public sealed class SelectionReader : IDisposable, IAsyncDisposable
             if (_ownsDatabase) _database.Dispose();
             _disposeCompletion.TrySetResult();
         }
-        catch (Exception exception)
+        catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)
         {
             _disposeCompletion.TrySetException(exception);
         }

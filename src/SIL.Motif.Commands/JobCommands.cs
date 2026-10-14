@@ -82,7 +82,7 @@ public static class JobCommands
                 record = repository.Get(CanonicalId.Parse(id));
                 if (record.DraftName is null) (record, _) = repository.GetFinalized(CanonicalId.Parse(id));
             }
-            catch (Exception exception)
+            catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)
             {
                 return CommandOutcome<JobEnqueuedResponse>.Refused(ProposalCommands.ProposalLoadRefusal(exception));
             }
@@ -94,7 +94,7 @@ public static class JobCommands
             {
                 prerequisites = repository.FreezePrerequisites(proposal);
             }
-            catch (Exception exception)
+            catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)
             {
                 return CommandOutcome<JobEnqueuedResponse>.Refused(ProposalCommands.ProposalLoadRefusal(exception));
             }
@@ -138,7 +138,7 @@ public static class JobCommands
                 record = repository.Get(CanonicalId.Parse(id));
                 if (record.DraftName is null) (record, _) = repository.GetFinalized(CanonicalId.Parse(id));
             }
-            catch (Exception exception)
+            catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)
             {
                 return CommandOutcome<JobEnqueuedResponse>.Refused(ProposalCommands.ProposalLoadRefusal(exception));
             }
@@ -160,7 +160,7 @@ public static class JobCommands
             {
                 prerequisites = repository.FreezePrerequisites(proposal);
             }
-            catch (Exception exception)
+            catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)
             {
                 return CommandOutcome<JobEnqueuedResponse>.Refused(ProposalCommands.ProposalLoadRefusal(exception));
             }

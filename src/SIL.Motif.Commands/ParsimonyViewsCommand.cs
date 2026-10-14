@@ -1,3 +1,4 @@
+using SIL.Motif.Projection;
 using System.Text.Json;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract;
@@ -106,7 +107,7 @@ public static class ParsimonyViewsCommand
                     exception.Message);
             }
             // Cancellation and out-of-memory propagate; every other failure is classified, and unknown ones mark nothing.
-            catch (Exception exception) when (exception is not (OperationCanceledException or OutOfMemoryException))
+            catch (Exception exception) when (exception is not (ProjectWritingSystemsUnavailableException or OperationCanceledException or OutOfMemoryException))
             {
                 if (exception is ArgumentException)
                     return Refused<ParsimonyNamedViewResponse>(ParsimonyRefusalCodes.InvalidViewRequest,

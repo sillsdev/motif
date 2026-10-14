@@ -99,7 +99,7 @@ public static partial class ProposalCommands
             return CommandOutcome<ProjectSummaryProjection>.Success(ProjectSummaryReader.Read(reader.Cache) with
             { WritingSystems = SIL.Motif.Host.WritingSystems.WritingSystemDisplayReader.Read(reader.Cache) });
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException)
         {
             return CommandOutcome<ProjectSummaryProjection>.Refused(ProjectFileRefusal(ex));
         }
@@ -194,7 +194,7 @@ public static partial class ProposalCommands
                 "assessment.invalid-id", FailureReason.InvalidArgument, ex.Message,
                 Fact(("assessmentId", assessmentId))));
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException)
         {
             return CommandOutcome<AnalysisAggregateProjection>.Refused(ProjectFileRefusal(ex));
         }
@@ -235,7 +235,7 @@ public static partial class ProposalCommands
             return CommandOutcome<AnalysisAggregateProjection>.Success(ManualAnalysisProjectionQuery.Read(reader.Cache)
                 with { ProjectContext = new AnalysisProjectContext("saved-project", null, saved) });
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException)
         {
             return CommandOutcome<AnalysisAggregateProjection>.Refused(ProjectFileRefusal(ex));
         }
@@ -273,7 +273,7 @@ public static partial class ProposalCommands
                 return CommandOutcome<DraftCreatedResponse>.Success(
                     new DraftCreatedResponse(request.DraftName, draft.ProposalId, request.Label));
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException)
             {
                 return CommandOutcome<DraftCreatedResponse>.Refused(
                     DraftInvalid(ex.Message, ("draftName", request.DraftName)));
@@ -345,7 +345,7 @@ public static partial class ProposalCommands
                     request.DraftName, operationId.Value, targetId.Value, request.Ws, request.Text,
                     resolvedDependsOn, draft.Operations.Count, previous is not null));
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException)
             {
                 return CommandOutcome<SetGlossAddedResponse>.Refused(
                     DraftInvalid(ex.Message, ("draftName", request.DraftName)));
@@ -397,7 +397,7 @@ public static partial class ProposalCommands
                 return CommandOutcome<DeleteLexemeFormAddedResponse>.Success(new DeleteLexemeFormAddedResponse(
                     request.DraftName, operationId.Value, targetId.Value, draft.Operations.Count));
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException)
             {
                 return CommandOutcome<DeleteLexemeFormAddedResponse>.Refused(
                     DraftInvalid(ex.Message, ("draftName", request.DraftName)));
@@ -527,7 +527,7 @@ public static partial class ProposalCommands
                     request.DraftName, operationId.Value, targetId.Value, request.Ws, request.Text,
                     request.CorpusId, origin.Licence, draft.Operations.Count));
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException)
             {
                 return CommandOutcome<PromoteGlossAddedResponse>.Refused(
                     DraftInvalid(ex.Message, ("draftName", request.DraftName)));
@@ -594,7 +594,7 @@ public static partial class ProposalCommands
                 return CommandOutcome<DraftFieldChangedResponse>.Success(
                     new DraftFieldChangedResponse(draftName, fieldName, value));
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException)
             {
                 return CommandOutcome<DraftFieldChangedResponse>.Refused(
                     DraftInvalid(ex.Message, ("draftName", draftName)));
@@ -663,7 +663,7 @@ public static partial class ProposalCommands
                     request.DraftName, draft.ProposalId, intentDigest, envelope.Operations.Count,
                     finalization == DraftFinalizationResult.Amended));
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException)
             {
                 return CommandOutcome<ProposalFinalizedResponse>.Refused(
                     DraftInvalid(ex.Message, ("draftName", request.DraftName)));
@@ -707,7 +707,7 @@ public static partial class ProposalCommands
             {
                 return CommandOutcome<DraftDiscardedResponse>.Refused(DraftRevisionConflict(request.DraftName));
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException)
             {
                 return CommandOutcome<DraftDiscardedResponse>.Refused(
                     DraftInvalid(ex.Message, ("draftName", request.DraftName)));
@@ -780,7 +780,7 @@ public static partial class ProposalCommands
                     "proposal.invalid-id", FailureReason.InvalidArgument, ex.Message,
                     Fact(("proposalId", id))));
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException)
             {
                 return CommandOutcome<ReopenedResponse>.Refused(new Refusal(
                     "proposal.inconsistent", FailureReason.Refused, ex.Message, Fact(("proposalId", id))));
@@ -919,7 +919,7 @@ public static partial class ProposalCommands
                     "proposal.not-found", FailureReason.NotFound, ex.Message,
                     Fact(("proposalId", proposalId))));
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException)
             {
                 return CommandOutcome<ProposalStatusChangedResponse>.Refused(new Refusal(
                     "proposal.inconsistent", FailureReason.Refused, ex.Message, Fact(("proposalId", proposalId))));
@@ -1058,7 +1058,7 @@ public static partial class ProposalCommands
                     "proposal.invalid-id", FailureReason.InvalidArgument, ex.Message,
                     Fact(("proposalId", sourceId))));
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException)
             {
                 return CommandOutcome<DuplicatedResponse>.Refused(new Refusal(
                     "proposal.inconsistent", FailureReason.Refused, ex.Message, Fact(("proposalId", sourceId))));
@@ -1178,7 +1178,7 @@ public static partial class ProposalCommands
                     consequences.Select(e => new RemovedDependent(e.DependentOperationId, e.DependentKind)).ToList(),
                     draft.Operations.Count));
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException)
             {
                 return CommandOutcome<OperationsRemovedResponse>.Refused(
                     DraftInvalid(ex.Message, ("draftName", request.DraftName)));
@@ -1368,7 +1368,7 @@ public static partial class ProposalCommands
                     "proposal.invalid-id", FailureReason.InvalidArgument, ex.Message,
                     Fact(("sourceProposalId", sourceId))));
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException)
             {
                 return CommandOutcome<ProposalSplitResponse>.Refused(new Refusal(
                     "proposal.inconsistent", FailureReason.Refused, ex.Message,
@@ -1403,7 +1403,7 @@ public static partial class ProposalCommands
                 .ToList();
             return CommandOutcome<ProposalListProjection>.Success(ProposalListProjectionBuilder.Build(manifests));
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException)
         {
             return CommandOutcome<ProposalListProjection>.Refused(ProposalLoadRefusal(ex));
         }
@@ -1438,7 +1438,7 @@ public static partial class ProposalCommands
             return CommandOutcome<ProposalDetailProjection>.Success(
                 ProposalDetailProjectionBuilder.Build(canonicalId.Value, manifest, envelope));
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException)
         {
             return CommandOutcome<ProposalDetailProjection>.Refused(ProposalLoadRefusal(ex));
         }
@@ -1753,7 +1753,7 @@ public static partial class ProposalCommands
                 if (!receipt.AlreadyApplied)
                 {
                     try { loader.Save(cache); }
-                    catch (Exception ex)
+                    catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException)
                     {
                         throw new NeedsReconciliationException(
                             ReconciliationBoundary.Save,
@@ -1771,7 +1771,7 @@ public static partial class ProposalCommands
                         throw new IOException("Injected receipt write failure.");
                     repository.RecordAppliedReceipt(receipt);
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException)
                 {
                     throw new NeedsReconciliationException(
                         ReconciliationBoundary.ReceiptRecording,
@@ -1797,7 +1797,7 @@ public static partial class ProposalCommands
                 void TryPostApplyStep(string action, Action work)
                 {
                     try { work(); }
-                    catch (Exception exception)
+                    catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)
                     {
                         NotePostApplyFailure($"Apply completed, but {action} could not be completed.", exception);
                     }
@@ -1839,7 +1839,7 @@ public static partial class ProposalCommands
                     projection = ApplyProjectionBuilder.Build(id, receipt, readinessProjection,
                         citations.Length == 0 ? null : citations);
                 }
-                catch (Exception exception)
+                catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)
                 {
                     NotePostApplyFailure("The Apply result could not include its complete effect summary.", exception);
                     projection = new ApplyProjection(id, receipt.AlreadyApplied, receipt.ResultNote, [],
@@ -1856,7 +1856,7 @@ public static partial class ProposalCommands
                         throw new IOException("Injected cache disposal failure.");
                     cache.Dispose();
                 }
-                catch (Exception exception)
+                catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)
                 {
                     NotePostApplyFailure("Apply completed, but Motif could not close the project cleanly.", exception);
                 }
@@ -1873,7 +1873,7 @@ public static partial class ProposalCommands
                     else
                     {
                         try { cache.Dispose(); }
-                        catch (Exception exception)
+                        catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)
                         {
                             ProjectDiagnosticLog.Append(project.FullFwDataPath,
                                 $"Apply of Proposal {proposalId} recorded its receipt, but closing the project failed.",
@@ -1921,7 +1921,7 @@ public static partial class ProposalCommands
                 "proposal.not-found", FailureReason.NotFound, ex.Message,
                 Fact(("proposalId", proposalId))));
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException)
         {
             // A failed apply rolled back, not Undo: derived caches may be stale (ADR 0016) -- see the remarks above.
             return CommandOutcome<ApplyProjection>.Refused(new Refusal(
@@ -1977,7 +1977,7 @@ public static partial class ProposalCommands
                     AppliedLogProjectionBuilder.Build(fullFwDataPath, entries, diagnostics));
             });
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException)
         {
             return CommandOutcome<AppliedLogProjection>.Refused(ProjectFileRefusal(ex));
         }

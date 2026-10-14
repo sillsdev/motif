@@ -1,3 +1,4 @@
+using SIL.Motif.Projection;
 using System.Globalization;
 using System.Text;
 using SIL.LCModel;
@@ -111,7 +112,7 @@ public static class ProjectCreateCommand
             }
             return Verify(loader, fwDataPath, request.Name);
         }
-        catch (Exception exception)
+        catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)
         {
             RemoveCreatedFolder(projectFolder);
             return Refused("project-create.failed", FailureReason.Refused,

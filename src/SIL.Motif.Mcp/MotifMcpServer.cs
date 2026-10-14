@@ -185,6 +185,10 @@ public static class MotifMcpServer
         {
             return ToolOutcome.Refused("project.unknown", FailureReason.InvalidArgument, exception.Message);
         }
+        catch (SIL.Motif.Projection.ProjectWritingSystemsUnavailableException exception)
+        {
+            return ToolOutcome.Refused("project.writing-system-missing", FailureReason.Refused, exception.Message);
+        }
         catch (ToolArgumentException exception)
         {
             return ToolOutcome.Refused(exception.Code, exception.Reason, exception.Message);

@@ -1,3 +1,4 @@
+using SIL.Motif.Projection;
 using System.Text.Json;
 using System.Globalization;
 using SIL.Motif.Commands.Requests;
@@ -34,7 +35,7 @@ public static partial class ProposalCommands
                 return Single(ComposeStepsIntoDraft(database, project, draftName,
                     [ComposeStep.From(composer, document.RootElement.Clone(), citation)]));
             }
-            catch (Exception exception)
+            catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)
             {
                 return CommandOutcome<ComposedOperationsResponse>.Refused(
                     DraftInvalid(exception.Message, ("draftName", draftName)));

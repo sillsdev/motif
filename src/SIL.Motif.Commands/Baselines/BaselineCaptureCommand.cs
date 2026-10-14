@@ -1,3 +1,4 @@
+using ProjectWritingSystemsUnavailableException = SIL.Motif.Projection.ProjectWritingSystemsUnavailableException;
 using SIL.Motif.Host;
 using System;
 using System.Collections.Generic;
@@ -93,7 +94,7 @@ public static class BaselineCaptureCommand
                     {
                         textWordsProjection = TextWordsProjectionBuilder.Build(cache, CancellationToken.None);
                     }
-                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    catch (Exception ex) when (ex is not (OperationCanceledException or ProjectWritingSystemsUnavailableException))
                     {
                         return CommandOutcome<BaselineCaptureResponse>.Refused(new Refusal(
                             "baseline.text-words-unreadable", FailureReason.Refused,
@@ -101,7 +102,7 @@ public static class BaselineCaptureCommand
                             Fact(("projectPath", request.ProjectPath))));
                     }
                 }
-                catch (Exception ex) when (ex is not OperationCanceledException)
+                catch (Exception ex) when (ex is not (OperationCanceledException or ProjectWritingSystemsUnavailableException))
                 {
                     return CommandOutcome<BaselineCaptureResponse>.Refused(new Refusal(
                         "baseline.copy-unloadable", FailureReason.InvalidArgument, ex.Message,

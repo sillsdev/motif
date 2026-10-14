@@ -44,7 +44,7 @@ public static class FrozenExpectationCapture
                     StringComparison.Ordinal))
                 unavailable.Add("baseline-semantic-mismatch: the loaded source differs from the Baseline snapshot.");
         }
-        catch (Exception exception) when (exception is not OperationCanceledException)
+        catch (Exception exception) when (exception is not (OperationCanceledException or ProjectWritingSystemsUnavailableException))
         {
             unavailable.Add("baseline-semantic-unavailable: " + exception.Message);
         }

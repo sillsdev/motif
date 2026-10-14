@@ -311,6 +311,8 @@ public class FwDataProjectLoader
         var progress = new LcmThreadedProgress();
         try
         {
+            if (FailsWritingSystemLoadForTest(fwDataFilePath))
+                throw new KeyNotFoundException("The writing system qaa-x-test was not found in this manager.");
             return LcmCache.CreateCacheFromLocalProjectFile(
                 fwDataFilePath,
                 null,
@@ -325,6 +327,11 @@ public class FwDataProjectLoader
             throw explained;
         }
     }
+
+    // Test seam: names a .fwdata file name whose every open, copies included, fails as LibLCM's missing tag does.
+    private static bool FailsWritingSystemLoadForTest(string fwDataFilePath) =>
+        Environment.GetEnvironmentVariable("MOTIF_TEST_FAIL_WRITING_SYSTEM_FOR") is { Length: > 0 } name &&
+        string.Equals(Path.GetFileName(fwDataFilePath), name, StringComparison.Ordinal);
 
     // The folder the installed shared repository reads, for a message that must name it.
     private static string? SharedWritingSystemRepositoryPath() =>

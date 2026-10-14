@@ -1,3 +1,4 @@
+using SIL.Motif.Projection;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -36,7 +37,7 @@ public static partial class ProposalCommands
                 return CommandOutcome<CitationTraceResponse>.Success(
                     new CitationTraceResponse(applied.Length, rows.Count, cited, shown));
             }
-            catch (Exception exception)
+            catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)
             {
                 return CommandOutcome<CitationTraceResponse>.Refused(ProposalLoadRefusal(exception));
             }

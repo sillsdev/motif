@@ -1,3 +1,4 @@
+using SIL.Motif.Projection;
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -194,7 +195,7 @@ public static partial class ProposalCommands
                     return (input, RecordParsimonyDispositionComposer.Build(cache, intent, proposalId));
                 });
         }
-        catch (Exception exception)
+        catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)
         {
             return CommandOutcome<ComposedOperationsResponse>.Refused(
                 DraftInvalid(exception.Message, ("draftName", request.DraftName)));
@@ -237,7 +238,7 @@ public static partial class ProposalCommands
             return ComposeIntoDraft(database, project, draftName, composer, (cache, proposalId) =>
                 (document.RootElement.Clone(), build(cache, document.RootElement, proposalId)));
         }
-        catch (Exception exception)
+        catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)
         {
             return CommandOutcome<ComposedOperationsResponse>.Refused(
                 DraftInvalid(exception.Message, ("draftName", draftName)));
@@ -254,7 +255,7 @@ public static partial class ProposalCommands
                 return Single(ComposeStepsIntoDraft(database, project, draftName,
                     [ComposeStep.From(composer, document.RootElement.Clone())]));
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException)
             {
                 return CommandOutcome<ComposedOperationsResponse>.Refused(DraftInvalid(ex.Message, ("draftName", draftName)));
             }
@@ -388,7 +389,7 @@ public static partial class ProposalCommands
                         if (step.Label is { } label && labeledEntity is { } entityId)
                             availableLabels.Add(label, entityId);
                     }
-                    catch (Exception exception)
+                    catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)
                     {
                         throw new ComposeStepException(index, exception);
                     }
@@ -444,7 +445,7 @@ public static partial class ProposalCommands
                 ("draftName", draftName), ("intentIndex", exception.Index.ToString(CultureInfo.InvariantCulture)),
                 ("verb", verb)));
         }
-        catch (Exception exception)
+        catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)
         {
             return CommandOutcome<ComposedOperationsResponse[]>.Refused(
                 DraftInvalid(exception.Message, ("draftName", draftName)));

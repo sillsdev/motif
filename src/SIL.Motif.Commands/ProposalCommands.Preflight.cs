@@ -1,3 +1,4 @@
+using SIL.Motif.Projection;
 using SIL.LCModel;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
@@ -49,7 +50,7 @@ public static partial class ProposalCommands
                     });
             }
             // A save interrupted while copying remains retryable at the store boundary.
-            catch (Exception ex) when (ex is not (LcmFileLockedException or ProjectSavingException
+            catch (Exception ex) when (ex is not (ProjectWritingSystemsUnavailableException or LcmFileLockedException or ProjectSavingException
                 or ProjectBaselineBusyException))
             {
                 return CommandOutcome<PreflightResponse>.Refused(new Refusal(
