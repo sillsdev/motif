@@ -66,7 +66,7 @@ public sealed class WritingSystemMissingArgvTests(PristineProjectFixture pristin
         var path = UniquelyNamedProject();
         var root = Path.Combine(Path.GetDirectoryName(path)!, "writing-system-capture-worker");
 
-        var start = CliProcess.Start(IsolatedRunner.Options(root), "baseline", "capture", path, "--json");
+        var start = CliProcess.Start(IsolatedRunner.Options(root), "baseline", "capture", "--project", path, "--json");
         start.Environment[SeamVariable] = Path.GetFileName(path);
         var (exitCode, output, error) = await CliProcess.RunAsync(start);
 
