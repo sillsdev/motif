@@ -166,7 +166,8 @@ internal static class CatalogTools
         var parameters = method.GetParameters().Select((parameter, index) => index == 0 ? request :
             parameter.ParameterType == typeof(CancellationToken) ? cancellation :
             parameter.Name == "parserPath" ? context.ParserPath : parameter.DefaultValue).ToArray();
-        var outcome = await Task.Run(() => method.Invoke(null, parameters)!, cancellation);
+        var outcome = await Task.Run(() => method.Invoke(null, BindingFlags.DoNotWrapExceptions,
+            binder: null, parameters: parameters, culture: null)!, cancellation);
         var refusal = outcome.GetType().GetProperty("Refusal")!.GetValue(outcome) as Refusal;
         if (refusal is not null) return ToolOutcome.Refused(refusal);
         var value = outcome.GetType().GetProperty("Value")!.GetValue(outcome);

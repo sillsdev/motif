@@ -146,9 +146,17 @@ internal static class TrialResults
         return ToolOutcome.From(ProjectStoreCommand.Run(context.ProjectPath, context.ProductVersion, (database, _) =>
         {
             var assessments = new AssessmentRepository(database);
-            var difference = assessments.Get(args.Required("difference"));
+            var differenceId = args.Required("difference");
+            AssessmentRecord difference;
+            try { difference = assessments.Get(differenceId); }
+            catch (KeyNotFoundException)
+            {
+                throw new ToolArgumentException("tool.not-found",
+                    $"There is no Difference '{differenceId}'. Use the difference id a Trial returned.", FailureReason.NotFound);
+            }
             if (difference.Kind != "Difference" || difference.Pipeline != "trial-difference/v1")
-                throw new InvalidDataException("This is not a stored Trial Difference.");
+                throw new ToolArgumentException("tool.invalid-argument",
+                    $"'{differenceId}' is not a Trial Difference. Use the difference id a Trial returned.");
             var scope = ScopeCodec.ReadDifference(difference.ScopeJson, "difference");
             var before = assessments.Get(scope.FromAssessmentId).Words!.ToDictionary(row => row.Word);
             var after = assessments.Get(scope.ToAssessmentId).Words!.ToDictionary(row => row.Word);

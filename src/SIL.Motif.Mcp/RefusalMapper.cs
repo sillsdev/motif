@@ -35,6 +35,8 @@ internal static class RefusalMapper
         ["grammarcheck.parser-unavailable"] = "The parser is not installed here. Tell the linguist; evaluation tools cannot run.",
         ["tool.unknown-argument"] = "Remove the argument the message names, or check this tool's input schema.",
         ["tool.missing-argument"] = "Add the argument the message names, then call again.",
+        ["tool.failed"] = "This failed unexpectedly; the diagnostic log has 'tool {toolName} failed'. Repeat the call once; " +
+            "if it fails again, stop and tell the linguist.",
     };
 
     private static readonly IReadOnlyDictionary<FailureReason, string> ReasonHints = new Dictionary<FailureReason, string>

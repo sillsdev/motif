@@ -1,10 +1,15 @@
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using SIL.Motif.Commands;
+using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Host.Store;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Mcp;
+using SIL.Motif.Worker;
+using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker.Store;
 using Xunit;
 
@@ -13,6 +18,40 @@ namespace SIL.Motif.Tests.Mcp;
 [Trait("MotifTestLevel", "Unit")]
 public sealed class DifferencePagingTests
 {
+    [Fact]
+    public async Task UnknownDifferenceIsReportedAsNotFoundInsteadOfDamagedStore()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "motif-difference-not-found-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        var project = Path.Combine(directory, "project.fwdata");
+        File.WriteAllText(project, "");
+        try
+        {
+            using (var machine = MachineDatabase.Open(RunnerOptions.ResolveRoot()))
+                new KnownProjectRegistry(machine).Record(ProjectWorkspaceKey.Compute(
+                    new ProjectLocator(project, "project")), project, DateTimeOffset.UtcNow);
+            var context = new ServerContext(project, "1.0", new NoRunnerLauncher(
+                new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(null),
+                ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
+            var arguments = new Dictionary<string, JsonElement>
+            {
+                ["project"] = JsonSerializer.SerializeToElement(project),
+                ["difference"] = JsonSerializer.SerializeToElement("assessment/not-found"),
+                ["category"] = JsonSerializer.SerializeToElement("other-changes"),
+            };
+
+            var result = await MotifMcpServer.CallAsync(context, MotifMcpServer.Expose(ToolProfile.Builtin),
+                "motif_difference", arguments, CancellationToken.None);
+
+            Assert.True(result.IsError);
+            Assert.Equal("tool.not-found", result.StructuredContent!.Value.GetProperty("code").GetString());
+            Assert.Equal("NotFound", result.StructuredContent.Value.GetProperty("reason").GetString());
+            Assert.DoesNotContain("damaged", ((ModelContextProtocol.Protocol.TextContentBlock)result.Content[0]).Text,
+                StringComparison.OrdinalIgnoreCase);
+        }
+        finally { Directory.Delete(directory, true); }
+    }
+
     [Fact]
     public void PagesKeepTheExactBeforeAndAfterAnalysesAndDoNotMixCategories()
     {

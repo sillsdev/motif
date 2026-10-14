@@ -130,9 +130,8 @@ public static class MotifMcpServer
         var gated = tool.Tool.Serialized;
         try
         {
-            if (tool.Tool.ArgumentNames.Contains("detail") && args["detail"] is null)
-                args["detail"] = tool.DefaultDetail;
             var toolArgs = new ToolArgs(args, tool.Tool.ArgumentNames);
+            ValidateDetailAndLimit(tool, args);
             if (tool.Tool.ArgumentNames.Contains("project"))
                 context = context.ForProject(ProjectResolver.Resolve(toolArgs.Required("project"),
                     SIL.Motif.Worker.RunnerOptions.ResolveRoot()));
@@ -146,7 +145,7 @@ public static class MotifMcpServer
         }
         catch (ToolArgumentException exception)
         {
-            return ToolOutcome.Refused(exception.Code, FailureReason.InvalidArgument, exception.Message);
+            return ToolOutcome.Refused(exception.Code, exception.Reason, exception.Message);
         }
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
         {
@@ -154,9 +153,11 @@ public static class MotifMcpServer
         }
         catch (Exception exception)
         {
+            // Busy, not Refused: an unexpected failure may be transient, and the code's hint caps the retry at one.
             await context.Log.WriteLineAsync($"tool {tool.Name} failed: {exception}");
-            return ToolOutcome.Refused("tool.failed", FailureReason.StoreInconsistent,
-                $"The tool failed unexpectedly: {exception.Message}");
+            return ToolOutcome.Refused("tool.failed", FailureReason.Busy,
+                $"The tool failed unexpectedly: {exception.Message}",
+                new Dictionary<string, string> { ["toolName"] = tool.Name });
         }
     }
 
@@ -173,6 +174,35 @@ public static class MotifMcpServer
             Content = [new TextContentBlock { Text = outcome.Next is null ? text : text + "\nNext: " + outcome.Next }],
             StructuredContent = JsonSerializer.SerializeToElement(envelope),
         };
+    }
+
+    private static void ValidateDetailAndLimit(ExposedTool tool, JsonObject args)
+    {
+        if (tool.Tool.ArgumentNames.Contains("detail"))
+        {
+            if (!args.TryGetPropertyValue("detail", out var detailNode))
+                args["detail"] = tool.DefaultDetail;
+            else
+            {
+                var choices = (tool.Tool.InputSchema["properties"]?["detail"]?["enum"] as JsonArray)?
+                    .Select(choice => choice?.GetValue<string>() ?? string.Empty).ToArray() ?? [];
+                if (detailNode is not JsonValue detailValue || !detailValue.TryGetValue<string>(out var detail) ||
+                    !choices.Contains(detail, StringComparer.Ordinal))
+                    throw new ToolArgumentException("tool.invalid-argument",
+                        $"Argument 'detail' must be one of: {string.Join(", ", choices)}.");
+            }
+        }
+
+        if (tool.Tool.InputSchema["properties"]?["limit"] is JsonObject limitSchema &&
+            args.TryGetPropertyValue("limit", out var limitNode))
+        {
+            var minimum = limitSchema["minimum"]?.GetValue<int>() ?? 1;
+            var maximum = limitSchema["maximum"]?.GetValue<int>() ?? 200;
+            if (limitNode is not JsonValue limitValue || !limitValue.TryGetValue<int>(out var limit) ||
+                limit < minimum || limit > maximum)
+                throw new ToolArgumentException("tool.invalid-argument",
+                    $"Argument 'limit' must be an integer from {minimum} to {maximum}.");
+        }
     }
 
     private static int ResultBytes(CallToolResult result) =>

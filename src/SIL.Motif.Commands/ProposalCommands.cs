@@ -1590,6 +1590,7 @@ public static partial class ProposalCommands
         MotifDatabase database, ProjectLocator project, string proposalId, bool force = false)
     {
         LcmCache? cache = null;
+        var receiptRecorded = false;
         try
         {
             var repository = new ProposalRepository(database);
@@ -1749,9 +1750,42 @@ public static partial class ProposalCommands
                         ex);
                 }
 
-                // Promotion happens before the sweep; the promoted Assessment is excluded from it by identity.
-                if (candidate is not null) assessments.PromoteToCurrent(candidate.AssessmentId);
-                if (configuration.PurgeOnApply) assessments.DeleteByProposal(canonicalId, candidate?.AssessmentId);
+                receiptRecorded = true;
+                var postApplyNotes = new List<string>();
+                var logged = false;
+                void NotePostApplyFailure(string note, Exception exception)
+                {
+                    postApplyNotes.Add(note);
+                    if (logged) return;
+                    logged = ProjectDiagnosticLog.Append(project.FullFwDataPath,
+                        $"Apply of Proposal {id} completed, but: {note}", exception);
+                    if (logged)
+                        postApplyNotes.Add($"Details are in {ProjectDiagnosticLog.PathFor(project.FullFwDataPath)}.");
+                }
+                void TryPostApplyStep(string action, Action work)
+                {
+                    try { work(); }
+                    catch (Exception exception)
+                    {
+                        NotePostApplyFailure($"Apply completed, but {action} could not be completed.", exception);
+                    }
+                }
+
+                TryPostApplyStep("post-receipt housekeeping", () =>
+                {
+                    if (ShouldFailAfterReceiptForTest(project.FullFwDataPath))
+                        throw new IOException("Injected post-receipt failure.");
+                });
+                if (candidate is not null)
+                {
+                    TryPostApplyStep("Assessment promotion", () =>
+                        assessments.PromoteToCurrent(candidate.AssessmentId));
+                }
+                if (configuration.PurgeOnApply)
+                {
+                    TryPostApplyStep("Assessment cleanup", () =>
+                        assessments.DeleteByProposal(canonicalId, candidate?.AssessmentId));
+                }
 
                 var readinessProjection = new ReadinessProjection(
                     IsReady: readiness.Reasons.Count == 0,
@@ -1760,25 +1794,61 @@ public static partial class ProposalCommands
                     CorrectnessAssessmentExemptionReason: readiness.CorrectnessAssessmentExemptionReason,
                     Reasons: readiness.Reasons,
                     Forced: force && readiness.Reasons.Count > 0);
-                var citations = envelope.Operations
-                    .Select(operation => (Operation: operation, Citation: CitationView.Of(operation)))
-                    .Where(item => item.Citation is not null)
-                    .Select(item => new CitedOperationRow(id, manifest.Label, item.Operation.OperationId.Value,
-                        item.Operation.Kind, item.Operation.Target?.Value, item.Operation.EntityId?.Value,
-                        item.Citation))
-                    .ToArray();
-                var projection = ApplyProjectionBuilder.Build(id, receipt, readinessProjection,
-                    citations.Length == 0 ? null : citations);
+                ApplyProjection projection;
+                try
+                {
+                    var citations = envelope.Operations
+                        .Select(operation => (Operation: operation, Citation: CitationView.Of(operation)))
+                        .Where(item => item.Citation is not null)
+                        .Select(item => new CitedOperationRow(id, manifest.Label, item.Operation.OperationId.Value,
+                            item.Operation.Kind, item.Operation.Target?.Value, item.Operation.EntityId?.Value,
+                            item.Citation))
+                        .ToArray();
+                    projection = ApplyProjectionBuilder.Build(id, receipt, readinessProjection,
+                        citations.Length == 0 ? null : citations);
+                }
+                catch (Exception exception)
+                {
+                    NotePostApplyFailure("The Apply result could not include its complete effect summary.", exception);
+                    projection = new ApplyProjection(id, receipt.AlreadyApplied, receipt.ResultNote, [],
+                        receipt.EffectDigest, new AppliedLogEntrySummary(
+                            receipt.AppliedLogEntry.ProposalId.ToString("D"), receipt.AppliedLogEntry.TimestampUtc,
+                            receipt.AppliedLogEntry.User, receipt.AppliedLogEntry.IntentDigest), readinessProjection);
+                }
                 if (readiness.CorrectnessAssessmentExemptionReason is { } reason)
-                    projection = projection with
-                    {
-                        ResultNote = projection.ResultNote + " Correctness Assessment not required: " + reason,
-                    };
+                    postApplyNotes.Add("Correctness Assessment not required: " + reason);
+                // Disposed here rather than in the finally so a failure can still reach the result's note.
+                try
+                {
+                    if (ShouldFailCacheDisposeForTest(project.FullFwDataPath))
+                        throw new IOException("Injected cache disposal failure.");
+                    cache.Dispose();
+                }
+                catch (Exception exception)
+                {
+                    NotePostApplyFailure("Apply completed, but Motif could not close the project cleanly.", exception);
+                }
+                if (postApplyNotes.Count > 0)
+                    projection = projection with { ResultNote = projection.ResultNote + " " +
+                        string.Join(" ", postApplyNotes) };
                 return CommandOutcome<ApplyProjection>.Success(projection);
             }
             finally
             {
-                if (cache is { IsDisposed: false }) cache.Dispose();
+                if (cache is { IsDisposed: false })
+                {
+                    if (!receiptRecorded) cache.Dispose();
+                    else
+                    {
+                        try { cache.Dispose(); }
+                        catch (Exception exception)
+                        {
+                            ProjectDiagnosticLog.Append(project.FullFwDataPath,
+                                $"Apply of Proposal {proposalId} recorded its receipt, but closing the project failed.",
+                                exception);
+                        }
+                    }
+                }
             }
         }
         catch (LcmFileLockedException)
@@ -1834,6 +1904,22 @@ public static partial class ProposalCommands
     private static bool ShouldFailReceiptWriteForTest(string fwDataPath)
     {
         var requestedPath = Environment.GetEnvironmentVariable("MOTIF_TEST_FAIL_RECEIPT_WRITE_FOR");
+        if (requestedPath is null) return false;
+        var comparison = OperatingSystem.IsWindows()
+            ? StringComparison.OrdinalIgnoreCase
+            : StringComparison.Ordinal;
+        return string.Equals(Path.GetFullPath(requestedPath), Path.GetFullPath(fwDataPath), comparison);
+    }
+
+    private static bool ShouldFailCacheDisposeForTest(string fwDataPath) =>
+        IsTestTarget("MOTIF_TEST_FAIL_CACHE_DISPOSE_FOR", fwDataPath);
+
+    private static bool ShouldFailAfterReceiptForTest(string fwDataPath) =>
+        IsTestTarget("MOTIF_TEST_FAIL_AFTER_RECEIPT_FOR", fwDataPath);
+
+    private static bool IsTestTarget(string variable, string fwDataPath)
+    {
+        var requestedPath = Environment.GetEnvironmentVariable(variable);
         if (requestedPath is null) return false;
         var comparison = OperatingSystem.IsWindows()
             ? StringComparison.OrdinalIgnoreCase

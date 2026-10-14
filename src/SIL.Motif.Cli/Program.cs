@@ -122,6 +122,7 @@ if (args.Length == 0)
 
 var verb = args[0];
 var rest = args[1..];
+var asJson = Array.IndexOf(args, "--json") >= 0;
 
 try
 {
@@ -136,7 +137,7 @@ try
         RecordKnownProject(projectForRegistry, ResolveRoot(), error);
 
     // Every migrated read surface renders both ways from one projection (ADR 0021 decision 2).
-    var asJson = flags.ContainsKey("json");
+    asJson = flags.ContainsKey("json");
     CommandResult result;
     // RenderProposal below already fully renders text or JSON; the bottom printer must not wrap it again.
     var alreadyRendered = false;
@@ -1755,10 +1756,25 @@ try
         : result.Output);
     return result.ExitCode;
 }
+catch (OperationCanceledException ex)
+{
+    var message = string.IsNullOrWhiteSpace(ex.Message) ? "The CLI operation was cancelled." : ex.Message;
+    if (asJson)
+        error.WriteLine(ProjectionJson.Serialize(
+            new FailureEnvelope(FailureReason.Cancelled, message, code: "cli.cancelled")));
+    else
+        error.WriteLine($"cli.cancelled: {message}");
+    return FailureEnvelope.ExitCodeFor(FailureReason.Cancelled);
+}
 catch (Exception ex)
 {
     // Nothing decided this; it escaped. That is a bug, not a refusal, and it gets its own code.
-    error.WriteLine($"error: {ex.Message}");
+    var message = string.IsNullOrWhiteSpace(ex.Message) ? "An unexpected CLI failure occurred." : ex.Message;
+    if (asJson)
+        error.WriteLine(ProjectionJson.Serialize(
+            new FailureEnvelope(FailureReason.StoreInconsistent, message, code: "cli.unexpected")));
+    else
+        error.WriteLine($"error: {message}");
     return FailureEnvelope.ExitCodeFor(FailureReason.StoreInconsistent);
 }
 

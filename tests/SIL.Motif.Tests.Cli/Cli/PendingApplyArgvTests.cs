@@ -259,8 +259,10 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
         Assert.Equal("Refused", failure.RootElement.GetProperty("reason").GetString());
     }
 
-    [Fact]
-    public async Task ReleasedPendingApplyReportsReconciliationExitFourWithDeveloperCommandsUnset()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ReleasedPendingApplyReportsReceiptBoundaryOutcome(bool failAfterReceipt)
     {
         var (path, wordformId) = ReleasedProjectWithWord("reconciliation-word");
         var root = Path.Combine(Path.GetDirectoryName(path)!, "reconciliation-pending-worker");
@@ -283,7 +285,7 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
             databasePath = database.FullPath;
         var apply = CliProcess.Start(runner.Options, "apply", "--all-pending", "--project", path, "--json");
         apply.Environment[ProcessRunnerLauncher.SuppressVariable] = "1";
-        apply.Environment["MOTIF_TEST_FAIL_RECEIPT_WRITE_FOR"] = path;
+        apply.Environment[failAfterReceipt ? "MOTIF_TEST_FAIL_AFTER_RECEIPT_FOR" : "MOTIF_TEST_FAIL_RECEIPT_WRITE_FOR"] = path;
         using var process = Process.Start(apply)!;
         var outputTask = process.StandardOutput.ReadToEndAsync();
         var errorTask = process.StandardError.ReadToEndAsync();
@@ -307,16 +309,29 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
             var output = await outputTask;
             var error = await errorTask;
 
-            Assert.True(process.ExitCode == 4,
-                $"Expected reconciliation exit 4, got {process.ExitCode}. stderr: {error} stdout: {output}");
-            ApplyAllPendingContract.Match("reconciliation-needed", process.ExitCode, output, error);
-            Assert.Empty(output);
-            using var failure = JsonDocument.Parse(error);
-            Assert.Equal("apply.reconciliation-needed", failure.RootElement.GetProperty("code").GetString());
-            Assert.Equal("StoreInconsistent", failure.RootElement.GetProperty("reason").GetString());
-            Assert.Contains("applied and saved to the project", failure.RootElement.GetProperty("message").GetString());
-            Assert.Contains("recording that in the proposal store failed",
-                failure.RootElement.GetProperty("message").GetString());
+            if (failAfterReceipt)
+            {
+                Assert.True(process.ExitCode == 0,
+                    $"Expected successful Apply exit 0, got {process.ExitCode}. stderr: {error} stdout: {output}");
+                ApplyAllPendingContract.Match("applied", process.ExitCode, output, error);
+                using var success = JsonDocument.Parse(output);
+                Assert.True(success.RootElement.GetProperty("ok").GetBoolean());
+                Assert.True(success.RootElement.GetProperty("applied").GetBoolean());
+                Assert.Empty(error);
+            }
+            else
+            {
+                Assert.True(process.ExitCode == 4,
+                    $"Expected reconciliation exit 4, got {process.ExitCode}. stderr: {error} stdout: {output}");
+                ApplyAllPendingContract.Match("reconciliation-needed", process.ExitCode, output, error);
+                Assert.Empty(output);
+                using var failure = JsonDocument.Parse(error);
+                Assert.Equal("apply.reconciliation-needed", failure.RootElement.GetProperty("code").GetString());
+                Assert.Equal("StoreInconsistent", failure.RootElement.GetProperty("reason").GetString());
+                Assert.Contains("applied and saved to the project", failure.RootElement.GetProperty("message").GetString());
+                Assert.Contains("recording that in the proposal store failed",
+                    failure.RootElement.GetProperty("message").GetString());
+            }
 
             using (var cache = new FwDataProjectLoader().LoadScratchCache(path))
                 Assert.Contains("reconciliation-word", ApprovedMorphologyReader.ReadIncorrectSpellings(cache));
@@ -325,9 +340,13 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
             using var command = connection.CreateCommand();
             command.CommandText = "SELECT COUNT(*) FROM Receipts WHERE ProposalId = $proposal;";
             command.Parameters.AddWithValue("$proposal", added.Value.DraftId);
-            Assert.Equal(0L, (long)command.ExecuteScalar()!);
-            Assert.True(ProjectReconciliationMarker.Exists(path));
-            Assert.True(ProjectReconciliationMarker.Clear(path));
+            Assert.Equal(failAfterReceipt ? 1L : 0L, (long)command.ExecuteScalar()!);
+            Assert.Equal(!failAfterReceipt, ProjectReconciliationMarker.Exists(path));
+            Assert.Empty(PendingChanges.Load(new PendingChangesRequest(path, "1.0")).Value!.Changes);
+            if (failAfterReceipt)
+                Assert.Equal("applied",
+                    new ProposalRepository(store).Get(CanonicalId.Parse(added.Value.DraftId!)).Status);
+            if (!failAfterReceipt) Assert.True(ProjectReconciliationMarker.Clear(path));
         }
         finally
         {

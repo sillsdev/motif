@@ -684,7 +684,7 @@ internal static class AgentTools
             false,
             true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalCommands.RemoveOperations(new RemoveOperationsRequest(
-                c.ProjectPath, c.ProductVersion, a.Required("draft"), a.List("operation_ids"), Force: false))))) { Requests = [typeof(RemoveOperationsRequest)] },
+                c.ProjectPath, c.ProductVersion, a.Required("draft"), a.RequiredList("operation_ids"), Force: false))))) { Requests = [typeof(RemoveOperationsRequest)] },
 
         // Evaluate
         new("motif_dry_run",
@@ -939,10 +939,10 @@ internal static class AgentTools
     private static string EditAffixTemplateIntent(ToolArgs args) => new JsonObject
     {
         ["target"] = args.Required("target"),
-        ["expectedPrefixSlots"] = new JsonArray(args.List("expected_prefix_slots").Select(value => (JsonNode)value).ToArray()),
-        ["prefixSlots"] = new JsonArray(args.List("prefix_slots").Select(value => (JsonNode)value).ToArray()),
-        ["expectedSuffixSlots"] = new JsonArray(args.List("expected_suffix_slots").Select(value => (JsonNode)value).ToArray()),
-        ["suffixSlots"] = new JsonArray(args.List("suffix_slots").Select(value => (JsonNode)value).ToArray()),
+        ["expectedPrefixSlots"] = new JsonArray(args.RequiredList("expected_prefix_slots").Select(value => (JsonNode)value).ToArray()),
+        ["prefixSlots"] = new JsonArray(args.RequiredList("prefix_slots").Select(value => (JsonNode)value).ToArray()),
+        ["expectedSuffixSlots"] = new JsonArray(args.RequiredList("expected_suffix_slots").Select(value => (JsonNode)value).ToArray()),
+        ["suffixSlots"] = new JsonArray(args.RequiredList("suffix_slots").Select(value => (JsonNode)value).ToArray()),
     }.ToJsonString();
 
     private static string AuthorAffixTemplateIntent(ToolArgs args) => new JsonObject
@@ -958,8 +958,8 @@ internal static class AgentTools
     private static string EditInflectionalAffixIntent(ToolArgs args) => new JsonObject
     {
         ["target"] = args.Required("target"),
-        ["expectedSlots"] = new JsonArray(args.List("expected_slots").Select(value => (JsonNode)value).ToArray()),
-        ["slots"] = new JsonArray(args.List("slots").Select(value => (JsonNode)value).ToArray()),
+        ["expectedSlots"] = new JsonArray(args.RequiredList("expected_slots").Select(value => (JsonNode)value).ToArray()),
+        ["slots"] = new JsonArray(args.RequiredList("slots").Select(value => (JsonNode)value).ToArray()),
     }.ToJsonString();
 
     private static async Task<ToolOutcome> DryRun(ServerContext context, ToolArgs args, CancellationToken cancellation)

@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
@@ -119,6 +120,87 @@ public sealed class ApplyReconciliationTests(PristineProjectFixture pristine)
         command.CommandText = "SELECT COUNT(*) FROM Receipts WHERE ProposalId = $proposal;";
         command.Parameters.AddWithValue("$proposal", proposalId);
         Assert.Equal(0L, (long)command.ExecuteScalar()!);
+    }
+
+    [Fact]
+    public void FailureAfterReceiptRecordingStillReturnsAppliedSuccess()
+    {
+        var seed = pristine.Seed;
+        var gloss = SeededProject.FirstGloss + " post-receipt failure";
+        string projectPath;
+        using (var scratch = pristine.NewScratch())
+            projectPath = scratch.ProjectId.Path;
+
+        var proposalId = CreateMeasuredProposal(projectPath, "post-receipt-demo",
+            CanonicalId.FromGuid(seed.FirstSenseId).Value, gloss);
+        var previousFailurePath = Environment.GetEnvironmentVariable("MOTIF_TEST_FAIL_AFTER_RECEIPT_FOR");
+        try
+        {
+            Environment.SetEnvironmentVariable("MOTIF_TEST_FAIL_AFTER_RECEIPT_FOR", projectPath);
+            var outcome = ProposalCommands.Apply(new ApplyRequest(
+                projectPath, "1.0", proposalId, Force: true));
+
+            Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+            Assert.Equal(proposalId, outcome.Value!.ProposalId);
+            Assert.Contains("post-receipt housekeeping could not be completed", outcome.Value.ResultNote,
+                StringComparison.Ordinal);
+            var log = ProjectDiagnosticLog.PathFor(projectPath);
+            Assert.Contains(log, outcome.Value.ResultNote, StringComparison.Ordinal);
+            Assert.Contains("Injected post-receipt failure.", File.ReadAllText(log), StringComparison.Ordinal);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("MOTIF_TEST_FAIL_AFTER_RECEIPT_FOR", previousFailurePath);
+        }
+
+        AssertGlossOnDisk(projectPath, seed.FirstSenseId, NewLangProjFixture.AnalysisTag, gloss);
+        using var store = ProjectMotifDatabase.Open(projectPath);
+        using var connection = store.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT COUNT(*) FROM Receipts WHERE ProposalId = $proposal;";
+        command.Parameters.AddWithValue("$proposal", proposalId);
+        Assert.Equal(1L, (long)command.ExecuteScalar()!);
+    }
+
+    [Fact]
+    public void ACacheThatFailsToCloseAfterApplyStillReturnsAppliedSuccessWithANote()
+    {
+        var seed = pristine.Seed;
+        var gloss = SeededProject.FirstGloss + " dispose failure";
+        string projectPath;
+        using (var scratch = pristine.NewScratch())
+            projectPath = scratch.ProjectId.Path;
+
+        var proposalId = CreateMeasuredProposal(projectPath, "dispose-failure-demo",
+            CanonicalId.FromGuid(seed.FirstSenseId).Value, gloss);
+        var previousFailurePath = Environment.GetEnvironmentVariable("MOTIF_TEST_FAIL_CACHE_DISPOSE_FOR");
+        try
+        {
+            Environment.SetEnvironmentVariable("MOTIF_TEST_FAIL_CACHE_DISPOSE_FOR", projectPath);
+            var outcome = ProposalCommands.Apply(new ApplyRequest(projectPath, "1.0", proposalId, Force: true));
+
+            Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+            Assert.Contains("could not close the project cleanly", outcome.Value!.ResultNote, StringComparison.Ordinal);
+            Assert.Contains("Injected cache disposal failure.",
+                File.ReadAllText(ProjectDiagnosticLog.PathFor(projectPath)), StringComparison.Ordinal);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("MOTIF_TEST_FAIL_CACHE_DISPOSE_FOR", previousFailurePath);
+        }
+
+        AssertGlossOnDisk(projectPath, seed.FirstSenseId, NewLangProjFixture.AnalysisTag, gloss);
+    }
+
+    [Fact]
+    public void ApplysUnitOfWorkCannotBeCancelledByCtrlC()
+    {
+        // The CLI's Ctrl+C token reaches the Dry Run wait only; a cancelled Apply would be half a unit of work.
+        var applies = typeof(ProposalCommands).GetMethods().Where(method => method.Name == "Apply").ToArray();
+
+        Assert.NotEmpty(applies);
+        Assert.All(applies, method => Assert.DoesNotContain(method.GetParameters(),
+            parameter => parameter.ParameterType == typeof(System.Threading.CancellationToken)));
     }
 
     private static string CreateMeasuredProposal(string projectPath, string draftName, string target, string gloss)

@@ -81,21 +81,42 @@ internal sealed class ToolArgs
 
     public JsonObject Copy() => _arguments.DeepClone().AsObject();
 
-    public bool Flag(string name) =>
-        _arguments.TryGetPropertyValue(name, out var node) && node is JsonValue value && value.TryGetValue<bool>(out var flag) && flag;
+    public bool Flag(string name)
+    {
+        if (!_arguments.TryGetPropertyValue(name, out var node)) return false;
+        if (node is JsonValue value && value.TryGetValue<bool>(out var flag)) return flag;
+        throw new ToolArgumentException("tool.invalid-argument", $"Argument '{name}' must be a Boolean.");
+    }
 
-    public int Int(string name, int fallback) =>
-        _arguments.TryGetPropertyValue(name, out var node) && node is JsonValue value && value.TryGetValue<int>(out var number)
-            ? number : fallback;
+    public int Int(string name, int fallback)
+    {
+        if (!_arguments.TryGetPropertyValue(name, out var node)) return fallback;
+        if (node is JsonValue value && value.TryGetValue<int>(out var number)) return number;
+        throw new ToolArgumentException("tool.invalid-argument", $"Argument '{name}' must be an integer.");
+    }
 
-    public IReadOnlyList<string> List(string name) =>
-        _arguments.TryGetPropertyValue(name, out var node) && node is JsonArray array
-            ? array.Select(item => item?.GetValue<string>() ?? string.Empty).Where(text => text.Length > 0).ToList() : [];
+    public IReadOnlyList<string> List(string name)
+    {
+        if (!_arguments.TryGetPropertyValue(name, out var node)) return [];
+        if (node is not JsonArray array)
+            throw new ToolArgumentException("tool.invalid-argument", $"Argument '{name}' must be an array of strings.");
+        var values = new List<string>(array.Count);
+        foreach (var item in array)
+        {
+            if (item is JsonValue value && value.TryGetValue<string>(out var text) && !string.IsNullOrWhiteSpace(text))
+                values.Add(text);
+            else
+                throw new ToolArgumentException("tool.invalid-argument", $"Every item in '{name}' must be a nonempty string.");
+        }
+        return values;
+    }
 
     public IReadOnlyList<string> RequiredList(string name)
     {
-        if (!_arguments.TryGetPropertyValue(name, out var node) || node is not JsonArray array)
+        if (!_arguments.TryGetPropertyValue(name, out var node))
             throw new ToolArgumentException("tool.missing-argument", $"Argument '{name}' is required and must be an array of strings.");
+        if (node is not JsonArray array)
+            throw new ToolArgumentException("tool.invalid-argument", $"Argument '{name}' must be an array of strings.");
         var values = new List<string>(array.Count);
         foreach (var item in array)
         {
@@ -109,9 +130,12 @@ internal sealed class ToolArgs
 }
 
 /// <summary>A tool call whose arguments cannot be used; reported as a refusal the model can fix.</summary>
-internal sealed class ToolArgumentException(string code, string message) : Exception(message)
+internal sealed class ToolArgumentException(string code, string message,
+    FailureReason reason = FailureReason.InvalidArgument) : Exception(message)
 {
     public string Code { get; } = code;
+
+    public FailureReason Reason { get; } = reason;
 }
 
 /// <summary>One thing the model can call: its text, input schema, hints, and how it runs.</summary>
