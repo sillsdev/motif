@@ -1,6 +1,6 @@
 # Capture a Baseline
 
-`baseline capture` reads the saved `.fwdata` file and creates or reuses a file-backed Baseline for the project. The capture represents the project as of FieldWorks' last save.
+`baseline capture --project` reads a saved `.fwdata` file and creates or reuses a file-backed Baseline. You can name a Known project by its name or pass its `.fwdata` path. The capture represents the project as of FieldWorks' last save.
 
 ## When to use it
 
@@ -9,7 +9,7 @@ Use this when a later Dry Run or Assessment should be measured against the lates
 ## Example
 
 ```powershell
-motif baseline capture "C:\FieldWorks\Projects\Koro\Koro.fwdata" --json
+motif baseline capture --project "C:\FieldWorks\Projects\Koro\Koro.fwdata" --json
 ```
 
 ## What it prints

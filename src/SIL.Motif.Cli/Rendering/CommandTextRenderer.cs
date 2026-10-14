@@ -495,7 +495,7 @@ public static class CommandTextRenderer
         if (!response.HasBaseline)
         {
             text.AppendLine("No Baseline has been captured; word membership and stored analyses are unknown.");
-            text.AppendLine("Run: motif baseline capture <fwdata>");
+            text.AppendLine("Run: motif baseline capture --project <fwdata>");
             return text.ToString();
         }
         text.AppendLine($"Baseline: {response.Baseline?.BundleDigest ?? "identity not recorded"}");
@@ -528,7 +528,7 @@ public static class CommandTextRenderer
     private static string RenderWarnings(WarningsResponse response)
     {
         if (!response.HasBaseline)
-            return "No Baseline has been captured. Run: motif baseline capture <fwdata>" + Environment.NewLine;
+            return "No Baseline has been captured. Run: motif baseline capture --project <fwdata>" + Environment.NewLine;
         if (!response.HasCheck)
             return "Grammar not checked yet for this Baseline. Run: motif grammar check --project <fwdata>" +
                 Environment.NewLine;
@@ -657,7 +657,7 @@ public static class CommandTextRenderer
     private static string RenderGrammarCheck(GrammarCheckResponse response)
     {
         if (!response.HasBaseline)
-            return "No Baseline has been captured. Run: motif baseline capture <fwdata>" + Environment.NewLine;
+            return "No Baseline has been captured. Run: motif baseline capture --project <fwdata>" + Environment.NewLine;
 
         var errorCount = response.Findings.Count(finding => finding.Severity == GrammarDiagnosticLevel.Error);
         var warningCount = response.Findings.Count(finding => finding.Severity == GrammarDiagnosticLevel.Warning);

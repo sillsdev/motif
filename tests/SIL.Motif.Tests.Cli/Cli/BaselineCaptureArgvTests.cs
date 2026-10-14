@@ -35,7 +35,7 @@ public sealed class BaselineCaptureArgvTests : IDisposable
     {
         var fwDataPath = _pristine.CopyProjectFile();
 
-        var result = Run($"baseline capture \"{fwDataPath}\"");
+        var result = Run($"baseline capture --project \"{fwDataPath}\"");
 
         Assert.True(result.ExitCode == 0, $"exit {result.ExitCode}: {result.Error}{result.Output}");
         Assert.Equal(string.Empty, result.Error);
@@ -47,7 +47,7 @@ public sealed class BaselineCaptureArgvTests : IDisposable
     {
         var fwDataPath = _pristine.CopyProjectFile();
 
-        var result = Run($"baseline capture \"{fwDataPath}\" --json");
+        var result = Run($"baseline capture --project \"{fwDataPath}\" --json");
 
         Assert.True(result.ExitCode == 0, $"exit {result.ExitCode}: {result.Error}{result.Output}");
         var response = ProjectionJson.Deserialize<BaselineCaptureResponse>(result.Output);
@@ -63,7 +63,7 @@ public sealed class BaselineCaptureArgvTests : IDisposable
         var result = Run("baseline capture");
 
         Assert.Equal(1, result.ExitCode);
-        Assert.Contains("Usage: motif baseline capture <project>", result.Error, StringComparison.Ordinal);
+        Assert.Contains("Usage: motif baseline capture --project <fwdata>", result.Error, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -72,7 +72,7 @@ public sealed class BaselineCaptureArgvTests : IDisposable
         var result = Run("baseline refresh-please");
 
         Assert.Equal(1, result.ExitCode);
-        Assert.Contains("Usage: motif baseline capture <project>", result.Error, StringComparison.Ordinal);
+        Assert.Contains("Usage: motif baseline capture --project <fwdata>", result.Error, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -80,13 +80,33 @@ public sealed class BaselineCaptureArgvTests : IDisposable
     {
         var missing = Path.Combine(_workerRoot, "absent.fwdata");
 
-        var result = Run($"baseline capture \"{missing}\" --json");
+        var result = Run($"baseline capture --project \"{missing}\" --json");
 
         var envelope = Envelope(result.Error);
         // Code carries not-found; reason carries retry class. Pinned for other verbs by FailureContractTests.
         Assert.Equal("project.not-found", envelope.Code);
         Assert.Equal(FailureReason.InvalidArgument, envelope.Reason);
         Assert.Equal(1, result.ExitCode);
+    }
+
+    [Fact]
+    public void AKnownProjectNameCanBeCapturedAndTheOldPositionalFormIsRefused()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        var capture = Run($"baseline capture --project \"{fwDataPath}\" --json");
+        Assert.Equal(0, capture.ExitCode);
+
+        var projectName = Path.GetFileNameWithoutExtension(fwDataPath);
+        var byName = Run($"baseline capture --project \"{projectName}\" --json");
+        Assert.Equal(0, byName.ExitCode);
+        Assert.NotNull(ProjectionJson.Deserialize<BaselineCaptureResponse>(byName.Output));
+
+        var oldForm = Run($"baseline capture \"{fwDataPath}\" --json");
+        Assert.Equal(1, oldForm.ExitCode);
+        Assert.Empty(oldForm.Output);
+        var refusal = Envelope(oldForm.Error);
+        Assert.Contains("Usage: motif baseline capture --project <fwdata>", refusal.Message,
+            StringComparison.Ordinal);
     }
 
     private static FailureEnvelope Envelope(string stderr) =>

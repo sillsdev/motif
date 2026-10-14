@@ -60,11 +60,18 @@ public sealed class WarningsArgvTests(PristineProjectFixture pristine) : IDispos
         Directory.CreateDirectory(_root);
         var project = pristine.CopyProjectFile();
 
-        var noBaseline = Run("warnings", "--project", project);
+        var noBaseline = Run("warnings", "--project", project, "--json");
 
-        Assert.Equal(0, noBaseline.ExitCode);
-        Assert.Contains("No Baseline has been captured.", noBaseline.Output, StringComparison.Ordinal);
-        Assert.Contains("motif baseline capture <fwdata>", noBaseline.Output, StringComparison.Ordinal);
+        Assert.Equal(2, noBaseline.ExitCode);
+        Assert.Empty(noBaseline.Output);
+        var refusal = ProjectionJson.Deserialize<FailureEnvelope>(noBaseline.Error)!;
+        Assert.Equal("baseline.missing", refusal.Code);
+        Assert.Contains("motif baseline capture --project <fwdata>", refusal.Message, StringComparison.Ordinal);
+
+        var noBaselineText = Run("warnings", "--project", project);
+        Assert.Equal(2, noBaselineText.ExitCode);
+        Assert.Empty(noBaselineText.Output);
+        Assert.Contains("motif baseline capture --project <fwdata>", noBaselineText.Error, StringComparison.Ordinal);
 
         var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(project), _root);
         Assert.True(captured.Succeeded, captured.Refusal?.Message);

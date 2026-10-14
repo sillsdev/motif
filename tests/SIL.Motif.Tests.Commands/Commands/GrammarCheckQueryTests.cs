@@ -213,7 +213,7 @@ public sealed class GrammarCheckQueryTests : IDisposable
     }
 
     [Fact]
-    public void NoBaselineIsASuccessfulEmptyAnswer_AndNeverReachesTheParser()
+    public void NoBaselineRefuses_AndNeverReachesTheParser()
     {
         var fwDataPath = _pristine.CopyProjectFile();
         var invoker = new FakeInvoker
@@ -223,9 +223,9 @@ public sealed class GrammarCheckQueryTests : IDisposable
 
         var outcome = GrammarCheckQuery.Query(new GrammarCheckRequest(fwDataPath), invoker, CancellationToken.None);
 
-        Assert.True(outcome.Succeeded);
-        Assert.False(outcome.Value!.HasBaseline);
-        Assert.Empty(outcome.Value.Findings);
+        Assert.False(outcome.Succeeded);
+        Assert.Equal("baseline.missing", outcome.Refusal!.Code);
+        Assert.Contains("motif baseline capture --project <fwdata>", outcome.Refusal.Message, StringComparison.Ordinal);
         Assert.Empty(invoker.Requests);
     }
 

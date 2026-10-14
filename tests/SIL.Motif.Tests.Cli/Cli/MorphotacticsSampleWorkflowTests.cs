@@ -64,7 +64,7 @@ public sealed class MorphotacticsSampleWorkflowTests(ITestOutputHelper output)
             File.WriteAllLines(wordsPath, words);
 
             var baseline = await RunAsync(runner, preferencePath,
-                "baseline", "capture", projectPath, "--json");
+                "baseline", "capture", "--project", projectPath, "--json");
             Assert.True(baseline.ExitCode == 0, baseline.Error + Environment.NewLine + baseline.Output);
             var before = await RunAsync(runner, preferencePath,
                 "assess", projectPath, "--words", wordsPath, "--json");
@@ -207,7 +207,7 @@ public sealed class MorphotacticsSampleWorkflowTests(ITestOutputHelper output)
             File.WriteAllLines(wordsPath, words);
 
             var baseline = await RunAsync(runner, preferencePath,
-                "baseline", "capture", projectPath, "--json");
+                "baseline", "capture", "--project", projectPath, "--json");
             Assert.True(baseline.ExitCode == 0, baseline.Error + Environment.NewLine + baseline.Output);
             var before = await RunAsync(runner, preferencePath,
                 "assess", projectPath, "--words", wordsPath, "--json");
@@ -356,7 +356,7 @@ public sealed class MorphotacticsSampleWorkflowTests(ITestOutputHelper output)
             Assert.NotEmpty(words);
             File.WriteAllLines(wordsPath, words);
             var baseline = await RunAsync(runner, preferencePath,
-                "baseline", "capture", projectPath, "--json");
+                "baseline", "capture", "--project", projectPath, "--json");
             Assert.True(baseline.ExitCode == 0, baseline.Error + Environment.NewLine + baseline.Output);
             var before = await RunAsync(runner, preferencePath,
                 "assess", projectPath, "--words", wordsPath, "--json");

@@ -55,7 +55,8 @@ public sealed class BlankProjectFirstProposalTests(ITestOutputHelper output)
             Assert.True(created.ExitCode == 0, created.Error);
             var projectPath = JsonDocument.Parse(created.Output).RootElement.GetProperty("fwDataPath").GetString()!;
 
-            var baseline = await RunAsync(runner, preferencePath, "baseline", "capture", projectPath, "--json");
+            var baseline = await RunAsync(runner, preferencePath,
+                "baseline", "capture", "--project", projectPath, "--json");
             Report("baseline capture", baseline);
             Assert.True(baseline.ExitCode == 0, baseline.Error + Environment.NewLine + baseline.Output);
 

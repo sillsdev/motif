@@ -35,6 +35,7 @@ using SIL.Motif.Projection.Usage;
 using SIL.Motif.Worker;
 using SIL.Motif.Worker.Projects;
 using SIL.Motif.Help;
+using SIL.Motif.Mcp;
 
 namespace SIL.Motif.Cli;
 
@@ -1305,9 +1306,10 @@ try
             switch (positionals[0])
             {
                 case "capture":
-                    if (positionals.Count != 2)
+                    if (positionals.Count != 1 || !flags.TryGetValue("project", out var captureProject) ||
+                        string.IsNullOrWhiteSpace(captureProject))
                         return Usage(BaselineUsage(), asJson);
-                    result = RenderCommand(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(positionals[1])));
+                    result = RenderCommand(CaptureBaseline(captureProject, ResolveRoot()));
                     break;
 
                 default:
@@ -1876,6 +1878,25 @@ static string ReportUsage() => UsageLineFor("report");
 static string CompareUsage() => UsageLineFor("compare");
 
 static string BaselineUsage() => "Usage: motif " + UsageLineFor("baseline capture");
+
+static CommandOutcome<BaselineCaptureResponse> CaptureBaseline(string selector, string managedRoot)
+{
+    var selectorIsPath = Path.IsPathRooted(selector) || selector.EndsWith(".fwdata", StringComparison.OrdinalIgnoreCase) ||
+                         selector.Contains(Path.DirectorySeparatorChar) || selector.Contains(Path.AltDirectorySeparatorChar);
+    if (selectorIsPath)
+        return BaselineCaptureCommand.Capture(new BaselineCaptureRequest(selector));
+
+    try
+    {
+        var projectPath = ProjectResolver.Resolve(selector, managedRoot);
+        return BaselineCaptureCommand.Capture(new BaselineCaptureRequest(projectPath));
+    }
+    catch (ProfileException exception)
+    {
+        return CommandOutcome<BaselineCaptureResponse>.Refused(new Refusal(
+            "project.unknown", FailureReason.InvalidArgument, exception.Message));
+    }
+}
 
 static string AssessUsage() => "Usage: motif " + UsageLineFor("assess");
 

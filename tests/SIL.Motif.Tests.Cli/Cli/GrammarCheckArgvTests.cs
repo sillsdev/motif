@@ -56,11 +56,15 @@ public sealed class GrammarCheckArgvTests(PristineProjectFixture pristine) : IDi
         var json = Run("grammar", "check", "--project", project, "--json");
         var text = Run("grammar", "check", "--project", project);
 
-        Assert.Equal(0, json.ExitCode);
-        Assert.False(ProjectionJson.Deserialize<GrammarCheckResponse>(json.Output)!.HasBaseline);
-        Assert.Equal(0, text.ExitCode);
-        Assert.Contains("No Baseline has been captured.", text.Output, StringComparison.Ordinal);
-        Assert.Contains("motif baseline capture <fwdata>", text.Output, StringComparison.Ordinal);
+        Assert.Equal(2, json.ExitCode);
+        Assert.Empty(json.Output);
+        var refusal = ProjectionJson.Deserialize<FailureEnvelope>(json.Error)!;
+        Assert.Equal("baseline.missing", refusal.Code);
+        Assert.Contains("motif baseline capture --project <fwdata>", refusal.Message, StringComparison.Ordinal);
+        Assert.Equal(2, text.ExitCode);
+        Assert.Empty(text.Output);
+        Assert.Contains("A Baseline is required", text.Error, StringComparison.Ordinal);
+        Assert.Contains("motif baseline capture --project <fwdata>", text.Error, StringComparison.Ordinal);
     }
 
     [Theory]

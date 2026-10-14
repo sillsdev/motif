@@ -162,14 +162,16 @@ public sealed class StoredGrammarCheckQueryTests : IDisposable
     }
 
     [Fact]
-    public void NoBaselineIsAnEmptyCheckThatSaysSo()
+    public void NoBaselineRefusesWhenReadingStoredFindings()
     {
         var fwDataPath = _pristine.CopyProjectFile();
 
         var stored = StoredGrammarCheckQuery.Query(new GrammarCheckRequest(fwDataPath));
 
-        Assert.True(stored.Succeeded, stored.Refusal?.Message);
-        Assert.False(stored.Value!.Check!.HasBaseline);
+        Assert.False(stored.Succeeded);
+        Assert.Equal("baseline.missing", stored.Refusal!.Code);
+        Assert.Contains("motif baseline capture --project <fwdata>", stored.Refusal.Message,
+            StringComparison.Ordinal);
     }
 
     [Fact]

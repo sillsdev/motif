@@ -59,6 +59,18 @@ public sealed class WarningsCommandTests(PristineProjectFixture pristine) : IDis
     }
 
     [Fact]
+    public void WarningsRefusesWhenTheProjectHasNoBaseline()
+    {
+        var project = pristine.CopyProjectFile();
+
+        var warnings = WarningsCommand.Warnings(new WarningsRequest(project));
+
+        Assert.False(warnings.Succeeded);
+        Assert.Equal("baseline.missing", warnings.Refusal!.Code);
+        Assert.Contains("motif baseline capture --project <fwdata>", warnings.Refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void StoredAnalysisNoLongerParsesFindingIsShownAsInformation()
     {
         Directory.CreateDirectory(_root);

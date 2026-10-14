@@ -22,7 +22,7 @@ public sealed class NoTextProjectArgvTests : IDisposable
     {
         var project = _pristine.CopyProjectFile();
         var captured = await CliProcess.RunAsync(
-            _workerRoot, null, developerCommands: false, "baseline", "capture", project, "--json");
+            _workerRoot, null, developerCommands: false, "baseline", "capture", "--project", project, "--json");
 
         Assert.True(captured.ExitCode == 0, captured.FailureDetails);
 

@@ -95,8 +95,8 @@ public static class StoredGrammarCheckQuery
     {
         var baseline = new BaselineRepository(database).GetCurrent(ProjectWorkspaceKey.Compute(project));
         if (baseline is null)
-            return CommandOutcome<StoredGrammarCheckResponse>.Success(
-                new(new GrammarCheckResponse([], HasBaseline: false)));
+            return CommandOutcome<StoredGrammarCheckResponse>.Refused(
+                BaselineMissingRefusal.ForProject(project.FullFwDataPath));
         var token = JsonSerializer.Serialize(baseline.Token, MotifJson.CreateOptions());
         var check = new GrammarCheckRepository(database).GetLatest(token);
         return CommandOutcome<StoredGrammarCheckResponse>.Success(new(

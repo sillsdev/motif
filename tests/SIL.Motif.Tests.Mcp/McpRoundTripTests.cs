@@ -1,4 +1,5 @@
 using System.IO.Pipelines;
+using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -38,6 +39,29 @@ namespace SIL.Motif.Tests.Mcp;
 [Collection(LcmCacheParallelCollections.Group3)]
 public sealed class McpRoundTripTests(PristineProjectFixture pristine)
 {
+    [Fact]
+    public async Task GrammarCheckAndWarningsReturnMcpErrorsWithoutABaseline()
+    {
+        using var project = new WalkthroughProject(pristine);
+        var profile = Path.Combine(project.ManagedRoot, "grammar-tools.json");
+        File.WriteAllText(profile, """
+            {"name":"grammar-tools","tools":[{"tool":"motif_check_grammar"},{"tool":"motif_findings"}]}
+            """);
+        await using var session = await Session.StartAsync(project.FwDataPath,
+            new McpLaunchOptions(Profile: profile));
+        var arguments = new Dictionary<string, object?> { ["project"] = project.FwDataPath };
+
+        foreach (var tool in new[] { "motif_check_grammar", "motif_findings" })
+        {
+            var result = await session.Client.CallToolAsync(tool, arguments);
+
+            Assert.True(result.IsError);
+            Assert.Equal("baseline.missing", result.StructuredContent!.Value.GetProperty("code").GetString());
+            Assert.Contains("motif_capture_baseline",
+                ((TextContentBlock)Assert.Single(result.Content)).Text, StringComparison.Ordinal);
+        }
+    }
+
     [Fact]
     public async Task KnownProjectSelectorsKeepDraftsInTheirOwnProjectsInOneSession()
     {

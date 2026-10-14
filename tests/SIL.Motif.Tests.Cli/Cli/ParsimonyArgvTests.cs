@@ -48,7 +48,7 @@ public sealed class ParsimonyArgvTests : IDisposable
         new FileAdvancedAiModePreferenceStore(_preferencePath).SetEnabled(true);
         var project = _pristine.CopyProjectFile();
         var captured = await CliProcess.RunAsync(StartWithParser(_preferencePath, null,
-            "baseline", "capture", project, "--json"));
+            "baseline", "capture", "--project", project, "--json"));
         Assert.Equal(0, captured.ExitCode);
         var parserPath = FactsParser();
 
@@ -88,7 +88,7 @@ public sealed class ParsimonyArgvTests : IDisposable
         new FileAdvancedAiModePreferenceStore(_preferencePath).SetEnabled(true);
         var project = _pristine.CopyProjectFile();
         var captureStart = StartWithParser(_preferencePath, null,
-            "baseline", "capture", project, "--json");
+            "baseline", "capture", "--project", project, "--json");
         var captured = await CliProcess.RunAsync(captureStart);
         Assert.Equal(0, captured.ExitCode);
         Assert.Empty(captured.Error);

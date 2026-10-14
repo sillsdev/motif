@@ -25,7 +25,7 @@ public sealed class AgentHandoffArgvTests : IDisposable
     {
         var project = _pristine.CopyProjectFile();
         var baseline = await CliProcess.RunAsync(_workerRoot, null, false,
-            "baseline", "capture", project, "--json");
+            "baseline", "capture", "--project", project, "--json");
         Assert.True(baseline.ExitCode == 0, baseline.FailureDetails);
         var selection = await CliProcess.RunAsync(_workerRoot, null, false, "selection", "set-default", "--project", project,
             "--name", "Default", "--add-words", "motifa", "--json");
@@ -110,7 +110,7 @@ public sealed class AgentHandoffArgvTests : IDisposable
             new FwDataProjectLoader().Save(cache);
         }
         var capture = await CliProcess.RunAsync(_workerRoot, null, false,
-            "baseline", "capture", project, "--json");
+            "baseline", "capture", "--project", project, "--json");
         Assert.True(capture.ExitCode == 0, capture.FailureDetails);
         var baseline = ProjectionJson.Deserialize<BaselineCaptureResponse>(capture.Output)!;
         var original = File.ReadAllBytes(baseline.FwDataPath);

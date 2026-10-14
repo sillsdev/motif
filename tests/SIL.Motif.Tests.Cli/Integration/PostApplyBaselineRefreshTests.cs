@@ -57,7 +57,7 @@ public sealed class PostApplyBaselineRefreshTests(PristineProjectFixture pristin
 
         if (captureInitialBaseline)
         {
-            var captured = await Run("baseline", "capture", path, "--json");
+            var captured = await Run("baseline", "capture", "--project", path, "--json");
             Assert.True(captured.ExitCode == 0, captured.Error);
         }
         var first = await Author("first", "p");
@@ -88,7 +88,7 @@ public sealed class PostApplyBaselineRefreshTests(PristineProjectFixture pristin
                     .Select(index => rows.IsDBNull(index) ? "null" : rows.GetValue(index).ToString())));
         }
 
-        var manual = await Run("baseline", "capture", path, "--json");
+        var manual = await Run("baseline", "capture", "--project", path, "--json");
         Assert.True(manual.ExitCode == 0, manual.Error);
         var control = await DryRun(second);
         Assert.True(control.ExitCode == 0, control.Error);

@@ -1,6 +1,6 @@
 # Check a grammar
 
-`grammar check` runs the grammar checker against the project's current Baseline and stores its findings. If the project has no Baseline, the command returns successfully with no findings.
+`grammar check` runs the grammar checker against the project's current Baseline and stores its findings. If the project has no Baseline, the command refuses the request; run `motif baseline capture --project <fwdata>` and try again.
 
 ## When to use it
 

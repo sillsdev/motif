@@ -5,7 +5,7 @@ These commands answer different questions. `grammar check` asks PanGloss to insp
 Capture a Baseline explicitly with [baseline capture](cmd:baseline%20capture) when you want to name that step:
 
 ```powershell
-motif baseline capture "C:\Projects\Sena.fwdata" --json
+motif baseline capture --project "C:\Projects\Sena.fwdata" --json
 ```
 
 Then use [assess](cmd:assess) to measure the saved Default Selection, or name a source such as all wordforms. Read stored summaries with [overview](cmd:overview) and query statistics by replaying the retained parser evidence and cache for a stored Assessment with [stats](cmd:stats):
@@ -43,4 +43,4 @@ motif grammar check --project "C:\Projects\Sena.fwdata" --json
 motif warnings --project "C:\Projects\Sena.fwdata" --json
 ```
 
-`warnings` reads findings already stored for that Baseline; it does not rerun the check. Without a Baseline, `grammar check` succeeds with `hasBaseline: false` and no findings. Use **Working with jobs** for commands that enqueue background work.
+`warnings` reads findings already stored for that Baseline; it does not rerun the check. Without a Baseline, `grammar check` refuses and tells you to run `motif baseline capture --project <fwdata>`. Use **Working with jobs** for commands that enqueue background work.

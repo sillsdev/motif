@@ -74,8 +74,8 @@ public static class GrammarCheckQuery
             var workspaceKey = ProjectWorkspaceKey.Compute(project);
             var baseline = new BaselineRepository(database).GetCurrent(workspaceKey);
             if (baseline is null)
-                return CommandOutcome<GrammarCheckResponse>.Success(
-                    new GrammarCheckResponse(Array.Empty<GrammarWarning>(), HasBaseline: false));
+                return CommandOutcome<GrammarCheckResponse>.Refused(
+                    BaselineMissingRefusal.ForProject(request.ProjectPath));
 
             var storedAnalyses = request.StoredAnalyses ??
                 (defaultChecks ?? FileDefaultProposalChecksStore.ForInstallation()).StoredAnalyses;

@@ -80,7 +80,7 @@ public sealed class ParsimonySampleSurveySystemTests
             new FileAdvancedAiModePreferenceStore(preferencePath).SetEnabled(true);
 
             var capture = await RunMotifAsync(workerRoot, parserPath, preferencePath,
-                "baseline", "capture", projectPath, "--json");
+                "baseline", "capture", "--project", projectPath, "--json");
             Assert.True(capture.ExitCode == 0, capture.FailureDetails);
 
             var measures = MeasureCatalog.All.Where(measure => MeasureRunner.Supports(measure.Id) &&

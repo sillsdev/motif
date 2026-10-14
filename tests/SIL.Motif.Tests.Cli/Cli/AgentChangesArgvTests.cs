@@ -301,7 +301,7 @@ public sealed class AgentChangesArgvTests : IDisposable
     private Task CaptureBaseline(string project)
     {
         var result = CliInProcess.Run(_workerRoot, null, false,
-            "baseline", "capture", project, "--json");
+            "baseline", "capture", "--project", project, "--json");
         Assert.True(result.ExitCode == 0, result.FailureDetails);
         return Task.CompletedTask;
     }

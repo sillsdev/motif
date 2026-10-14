@@ -305,7 +305,7 @@ public static class CliVerbCatalog
 
         new CliVerbDescriptor(
             "Baseline", "baseline", "baseline capture",
-            new[] { "baseline capture <project> [--json]" }),
+            new[] { "baseline capture --project <fwdata> [--json]" }),
 
         new CliVerbDescriptor(
             "Assess", "assess", "assess",
