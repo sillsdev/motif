@@ -283,7 +283,7 @@
     "AuthorFeatureValue": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Adds a closed specification; value is optional. InflFeats selections require morphosyntactic definitions and exact feature-owned values.",
+      "description": "Requires a closed specification; value is optional. InflFeats selections require morphosyntactic definitions and exact feature-owned values.",
       "properties": {
         "featStruc": {
           "$ref": "#/$defs/CanonicalId"
