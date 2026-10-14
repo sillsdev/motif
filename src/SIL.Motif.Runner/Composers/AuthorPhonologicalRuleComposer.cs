@@ -229,9 +229,9 @@ public static class AuthorPhonologicalRuleComposer
         }
         if (placement is null)
             throw new InvalidOperationException("A nonempty rule sequence requires declared placement beside existing rules.");
-        var rules = data.PhonRulesOS.Select(rule => CanonicalId.FromGuid(rule.Guid)).ToArray();
-        var afterIndex = placement.After is { } after ? Array.IndexOf(rules, after) : -1;
-        var beforeIndex = placement.Before is { } before ? Array.IndexOf(rules, before) : rules.Length;
+        var rules = data.PhonRulesOS.Select(rule => rule.Guid).ToArray();
+        var afterIndex = placement.After is { } after ? Array.IndexOf(rules, after.ToGuid()) : -1;
+        var beforeIndex = placement.Before is { } before ? Array.IndexOf(rules, before.ToGuid()) : rules.Length;
         if ((placement.After is not null && afterIndex < 0) || (placement.Before is not null && beforeIndex < 0) ||
             beforeIndex != afterIndex + 1)
             throw new InvalidOperationException("Rule placement anchors are stale or are not adjacent in the current order.");
