@@ -30,6 +30,14 @@ public static class FootprintProbe
         {
             // A target this Proposal mints does not exist yet, and has no prior state to have drifted from.
             if (!FootprintPlan.ParticipatesInFootprint(operation, mintedTargets)) continue;
+            // Checked here, not caught from the handler, so a handler defect is never reported as stale evidence.
+            if (operation.Target is { } target &&
+                !cache.ServiceLocator.ObjectRepository.TryGetObject(target.ToGuid(), out _))
+            {
+                throw new ApplyPreconditionException(
+                    $"Operation {operation.OperationId.Value} ({operation.Kind}) targets {target.Value}, which the Dry Run " +
+                    "found but which no longer exists in the project. Run a fresh Dry Run before applying.");
+            }
 
             var handler = OperationHandlerRegistry.Resolve(operation.Kind, "Apply's footprint pre-flight");
             entries.AddRange(OperationEffectCapture.ReadFootprint(handler, cache, operation));
