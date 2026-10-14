@@ -1411,16 +1411,15 @@ public static partial class ProposalCommands
 
     public static CommandOutcome<ProposalDetailProjection> Show(ShowProposalRequest request) =>
         ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
-            BuildProposalDetail(database, request.ProposalId));
+            BuildProposalDetail(new ProposalRepository(database), request.ProposalId));
 
-    private static CommandOutcome<ProposalDetailProjection> BuildProposalDetail(
-        MotifDatabase database, string proposalSelector)
+    internal static CommandOutcome<ProposalDetailProjection> BuildProposalDetail(
+        IProposalRepository repository, string proposalSelector)
     {
         try
         {
-            var repository = new ProposalRepository(database);
             if (!CanonicalId.TryParse(proposalSelector, out var canonicalId))
-                return BuildDraftDetail(GetDraftByName(repository, proposalSelector));
+                return BuildDraftDetail(repository.GetDraft(proposalSelector));
 
             ProposalRecord current;
             try
@@ -1429,7 +1428,7 @@ public static partial class ProposalCommands
             }
             catch (KeyNotFoundException) when (repository.DraftNameExists(proposalSelector))
             {
-                return BuildDraftDetail(GetDraftByName(repository, proposalSelector));
+                return BuildDraftDetail(repository.GetDraft(proposalSelector));
             }
             if (current.DraftName is not null)
                 return BuildDraftDetail(current);
@@ -1444,9 +1443,6 @@ public static partial class ProposalCommands
             return CommandOutcome<ProposalDetailProjection>.Refused(ProposalLoadRefusal(ex));
         }
     }
-
-    private static ProposalRecord GetDraftByName(ProposalRepository repository, string draftName) =>
-        repository.Get(repository.GetDraft(draftName).ProposalId);
 
     private static CommandOutcome<ProposalDetailProjection> BuildDraftDetail(ProposalRecord record)
     {

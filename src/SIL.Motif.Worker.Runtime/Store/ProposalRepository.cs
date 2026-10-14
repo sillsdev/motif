@@ -56,7 +56,7 @@ public interface IProposalRepository
     bool TryCreateDraft(string draftName, CanonicalId proposalId, string draftJson, string? role = null);
     /// <summary>Gets the Draft that holds the pending changes, or <see langword="null"/> when none is open.</summary>
     ProposalRecord? FindPendingChangesDraft();
-    /// <summary>Gets one Draft by name.</summary>
+    /// <summary>Reads one named Draft and its prior committed identity in one snapshot.</summary>
     ProposalRecord GetDraft(string draftName);
     /// <summary>Lists every Draft, ordered by name.</summary>
     IReadOnlyList<ProposalRecord> ListDrafts();
@@ -141,9 +141,9 @@ public interface IProposalRepository
 }
 
 /// <summary>
-/// The current pointer and review state of a Proposal. <see cref="DraftName"/> non-null marks a Draft: it has
-/// no committed revision, so <see cref="IntentDigest"/> is null and <see cref="ProposalJson"/> is its
-/// in-progress content rather than an immutable revision's bytes.
+/// The current pointer and review state of a Proposal. A non-null <see cref="DraftName"/> marks editable
+/// content in <see cref="ProposalJson"/>. A reopened Draft retains its prior committed <see cref="IntentDigest"/>;
+/// a never-finalized Draft has no committed digest.
 /// </summary>
 public sealed record ProposalRecord(
     CanonicalId ProposalId, string? IntentDigest, string? ProposalJson, string Status, string? Label,
@@ -195,14 +195,7 @@ public sealed class ProposalRepository : IProposalRepository
     {
         using var connection = _database.OpenConnection();
         using var command = connection.CreateCommand();
-        command.CommandText = """
-            SELECT p.ProposalId, p.CurrentIntentDigest, r.ProposalJson,
-                   p.Status, p.Label, p.Comment, p.SupersededBy,
-                   p.AnchorJson, p.ArchivedUtc, p.DraftName, p.DraftJson, p.Role
-            FROM Proposals p LEFT JOIN ProposalRevisions r ON r.ProposalId = p.ProposalId
-                AND r.IntentDigest = p.CurrentIntentDigest
-            WHERE p.ProposalId = $id;
-            """;
+        command.CommandText = CurrentSelectSql + " WHERE p.ProposalId = $id;";
         command.Parameters.AddWithValue("$id", proposalId.Value);
         using var reader = command.ExecuteReader();
         return reader.Read()
@@ -531,13 +524,13 @@ public sealed class ProposalRepository : IProposalRepository
     {
         using var connection = _database.OpenConnection();
         using var command = connection.CreateCommand();
-        command.CommandText = DraftSelectSql + " WHERE DraftName = $name;";
+        command.CommandText = CurrentSelectSql + " WHERE p.DraftName = $name;";
         command.Parameters.AddWithValue("$name", draftName);
         RepositoryReadCounters.QueryExecuted();
         using var reader = command.ExecuteReader();
         if (!reader.Read()) throw new KeyNotFoundException($"Draft '{draftName}' was not found.");
         RepositoryReadCounters.RecordDeserialized();
-        return ReadDraftRecord(reader);
+        return ReadRecord(reader);
     }
 
     /// <inheritdoc />
@@ -942,6 +935,14 @@ public sealed class ProposalRepository : IProposalRepository
         return wasReopened;
     }
 
+    private const string CurrentSelectSql = """
+        SELECT p.ProposalId, p.CurrentIntentDigest, r.ProposalJson,
+               p.Status, p.Label, p.Comment, p.SupersededBy,
+               p.AnchorJson, p.ArchivedUtc, p.DraftName, p.DraftJson, p.Role
+        FROM Proposals p LEFT JOIN ProposalRevisions r ON r.ProposalId = p.ProposalId
+            AND r.IntentDigest = p.CurrentIntentDigest
+        """;
+
     private const string DraftSelectSql =
         "SELECT ProposalId, Status, Label, Comment, SupersededBy, AnchorJson, ArchivedUtc, DraftName, DraftJson, Role " +
         "FROM Proposals";
@@ -965,13 +966,13 @@ public sealed class ProposalRepository : IProposalRepository
         byte[]? bytes = null;
         if (draftName is not null)
         {
-            // A draft has no committed revision yet; its content is the working DraftJson, not a BLOB.
+            // A reopened Draft keeps its committed digest, but reads must show its editable content.
             json = reader.IsDBNull(10) ? null : reader.GetString(10);
         }
         else
         {
             if (reader.IsDBNull(2) || reader[2] is not byte[] committedBytes)
-                throw new InvalidDataException("Stored Proposal JSON must be a non-null BLOB.");
+                throw new InvalidDataException("Stored Proposal JSON must be a non-null BLOB (store inconsistency).");
             bytes = committedBytes;
             try
             {
