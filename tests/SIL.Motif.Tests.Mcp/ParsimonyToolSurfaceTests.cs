@@ -52,7 +52,7 @@ public sealed class ParsimonyToolSurfaceTests
     }
 
     [Fact]
-    public void ParsimonyToolsStayOutOfDefaultAndPhonologyProfiles()
+    public void ExperimentalParsimonyStaysRestrictedWhileDefaultCanAuthorSlotsAndTemplates()
     {
         foreach (var profileName in new[] { "default", "phonology" })
         {
@@ -60,8 +60,16 @@ public sealed class ParsimonyToolSurfaceTests
 
             Assert.DoesNotContain(tools, tool => tool.Name.StartsWith("motif_parsimony", StringComparison.Ordinal));
             Assert.DoesNotContain(tools, tool => tool.Name == "motif_run_parsimony_measure");
-            Assert.DoesNotContain(tools, tool => tool.Name == "motif_add_affix_slot");
-            Assert.DoesNotContain(tools, tool => tool.Name == "motif_add_affix_template");
+            if (profileName == "default")
+            {
+                Assert.Contains(tools, tool => tool.Name == "motif_add_affix_slot");
+                Assert.Contains(tools, tool => tool.Name == "motif_add_affix_template");
+            }
+            else
+            {
+                Assert.DoesNotContain(tools, tool => tool.Name == "motif_add_affix_slot");
+                Assert.DoesNotContain(tools, tool => tool.Name == "motif_add_affix_template");
+            }
             Assert.DoesNotContain(tools, tool => tool.Name is "motif_edit_natural_class" or "motif_relink_natural_class");
         }
     }
