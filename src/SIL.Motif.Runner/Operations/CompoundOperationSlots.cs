@@ -32,7 +32,7 @@ internal static class CompoundOperationSlots
             {
                 var changed = field.Before.Zip(field.After).Where(pair => pair.First != pair.Second);
                 foreach (var member in changed.SelectMany(pair => new[] { pair.First, pair.Second }).Distinct())
-                    slots.Add(new OperationSlot(target, name, member.Value));
+                    slots.Add(new OperationSlot(target, name, OperationSlotRegistry.MemberKey(member)));
             }
         }
         return slots;
@@ -43,6 +43,6 @@ internal static class CompoundOperationSlots
         var target = OperationSlotRegistry.Target(operation);
         var payload = AlternateFormDeletePayload.Parse(OperationSlotRegistry.After(operation));
         return payload.Forms.Select(form =>
-            new OperationSlot(target, SnapshotFields.LexEntryAlternateForms, form.Value)).ToArray();
+            new OperationSlot(target, SnapshotFields.LexEntryAlternateForms, OperationSlotRegistry.MemberKey(form))).ToArray();
     }
 }

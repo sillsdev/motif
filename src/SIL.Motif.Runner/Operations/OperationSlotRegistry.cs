@@ -37,8 +37,17 @@ public static class OperationSlotRegistry
     {
         if (!Policies.TryGetValue(operation.Kind, out var policy))
             throw new ContractParseException($"Operation kind '{operation.Kind}' has no registered slot policy.");
-        return policy.Select(operation);
+        return policy.Select(operation).Select(slot => slot with { Target = ByGuid(slot.Target) }).ToArray();
     }
+
+    /// <summary>
+    /// The form two ids of one object share: design rule 8 makes the prefix optional and unenforced, so only the
+    /// GUID the suffix encodes identifies a slot's target or member.
+    /// </summary>
+    public static CanonicalId ByGuid(CanonicalId id) => CanonicalId.FromGuid(id.ToGuid());
+
+    /// <summary>A member discriminator that compares by GUID, for the same reason as <see cref="ByGuid"/>.</summary>
+    public static string MemberKey(CanonicalId member) => ByGuid(member).Value;
 
     public static string? ExemptionReason(string kind) => Policies.TryGetValue(kind, out var policy)
         ? policy.Exemption : null;
@@ -52,13 +61,13 @@ public static class OperationSlotRegistry
 
     public static void RegisterMember(string kind, string field) =>
         Register(kind, operation => new OperationSlot(Target(operation), field,
-            ClosedPayloadParsing.GetRequiredCanonicalId(After(operation), "member", kind).Value));
+            MemberKey(ClosedPayloadParsing.GetRequiredCanonicalId(After(operation), "member", kind))));
 
     public static void RegisterOwningCreate(string kind, string field, bool atomic) =>
         RegisterMany(kind, operation =>
         {
             var member = operation.EntityId ?? throw new ContractParseException($"'{kind}' requires 'entityId'.");
-            return [new OperationSlot(Target(operation), field, atomic ? null : member.Value),
+            return [new OperationSlot(Target(operation), field, atomic ? null : MemberKey(member)),
                 new OperationSlot(member, "$identity")];
         });
 

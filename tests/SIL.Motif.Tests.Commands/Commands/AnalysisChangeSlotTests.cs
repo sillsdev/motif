@@ -28,6 +28,40 @@ public sealed class AnalysisChangeSlotTests
     }
 
     [Fact]
+    public void TwoSpellingsOfOneSenseIdAddressOneGlossSlot()
+    {
+        // The prefix is optional and unenforced (design rule 8), so only the GUID identifies the target.
+        var guid = Guid.NewGuid();
+        var operations = new[]
+        {
+            new OperationEnvelope(CanonicalId.Mint(), LexicalSenseOperationKinds.SetGloss,
+                target: CanonicalId.FromGuid(guid, "sense/"),
+                after: JsonSerializer.SerializeToElement(new { ws = "en", text = "first" })),
+            new OperationEnvelope(CanonicalId.Mint(), LexicalSenseOperationKinds.SetGloss,
+                target: CanonicalId.FromGuid(guid),
+                after: JsonSerializer.SerializeToElement(new { ws = "en", text = "second" })),
+        };
+
+        Assert.NotNull(ProposalOperationSlotValidator.FindConflict(operations));
+    }
+
+    [Fact]
+    public void TwoSpellingsOfOneMemberIdAddressOneMemberSlot()
+    {
+        var template = CanonicalId.Mint();
+        var guid = Guid.NewGuid();
+        var operations = new[]
+        {
+            OrderedOperation(MoInflAffixTemplatePrefixSlotsOperationKinds.AddRefPrefixSlots, template,
+                CanonicalId.FromGuid(guid, "slot/")),
+            OrderedOperation(MoInflAffixTemplatePrefixSlotsOperationKinds.RemoveRefPrefixSlots, template,
+                CanonicalId.FromGuid(guid)),
+        };
+
+        Assert.NotNull(ProposalOperationSlotValidator.FindConflict(operations));
+    }
+
+    [Fact]
     public void GlossOperationsForDifferentWritingSystemsHaveDistinctSlots()
     {
         var sense = CanonicalId.Mint();
