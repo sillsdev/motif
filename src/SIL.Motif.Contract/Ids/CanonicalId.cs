@@ -37,6 +37,12 @@ public readonly struct CanonicalId : IEquatable<CanonicalId>, IComparable<Canoni
     /// <summary>The structurally-enforced trailing 22-character base64url suffix.</summary>
     public string Suffix => _suffix ?? throw new InvalidOperationException(UninitializedMessage);
 
+    /// <summary>
+    /// The suffix this identity's GUID encodes to with its unused trailing bits clear, so every accepted spelling of
+    /// one GUID has the same key; sorting by it orders identities the same way however they were spelled.
+    /// </summary>
+    public string CanonicalSuffix => FromGuid(ToGuid()).Suffix;
+
     /// <summary>The full textual canonical id: <see cref="Prefix"/> + <see cref="Suffix"/>.</summary>
     public string Value => Prefix + Suffix;
 

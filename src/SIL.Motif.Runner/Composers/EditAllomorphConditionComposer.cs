@@ -128,8 +128,8 @@ public static class EditAllomorphConditionComposer
         new(CanonicalId.Mint(), kind, target: target,
             after: JsonSerializer.SerializeToElement(new { member = member.Value }), rationale: Rationale);
 
-    // Ordered by the identity the suffix encodes, so a prefixed spelling sorts with its unprefixed twin.
-    private static string IdKey(CanonicalId id) => id.Suffix;
+    // Ordered by the GUID's canonical encoding, so every accepted spelling of one identity sorts in one place.
+    private static string IdKey(CanonicalId id) => id.CanonicalSuffix;
 
     private static InvalidOperationException WrongTarget(EditAllomorphConditionIntent intent, string expected) =>
         new($"'{ConstructName}': target '{intent.Target.Value}' must be {expected} for field '{intent.Field}'.");

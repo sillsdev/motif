@@ -42,6 +42,20 @@ public sealed class OrderedSequenceDiffTests
         Assert.Throws<ArgumentException>(() => OrderedSequenceDiff.Create([], target));
     }
 
+    // Raw text sorts an alternate suffix before a smaller identity; the canonical key does not.
+    [Fact]
+    public void AnAlternateSuffixSortsWithTheIdentityItEncodes()
+    {
+        var smaller = CanonicalId.Parse("AAAAAAAAAAAAAAAAAAABAA");
+        var larger = CanonicalId.Parse("AAAAAAAAAAAAAAAAAAABAw");
+        var alias = CanonicalId.Parse("AAAAAAAAAAAAAAAAAAABA0");
+        Assert.Equal(larger.ToGuid(), alias.ToGuid());
+
+        Assert.Equal(larger.CanonicalSuffix, alias.CanonicalSuffix);
+        Assert.Equal(new[] { smaller, alias },
+            new[] { alias, smaller }.OrderBy(id => id.CanonicalSuffix, StringComparer.Ordinal));
+    }
+
     [Fact]
     public void ReversalsUseDeterministicLisTieBreakingAndPlacementAnchors()
     {

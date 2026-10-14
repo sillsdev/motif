@@ -47,6 +47,10 @@ public static class OrderedSequenceDiff
         ArgumentNullException.ThrowIfNull(target);
         RequireUnique(source, nameof(source));
         RequireUnique(target, nameof(target));
+        // One member spelled two ways is one member: it takes the target's spelling, which every edit then carries.
+        var authored = target.ToDictionary(member => member.ToGuid());
+        source = source.Select(member => authored.TryGetValue(member.ToGuid(), out var spelled) ? spelled : member)
+            .ToArray();
 
         var targetIndices = target.Select((member, index) => (member, index))
             .ToDictionary(item => item.member, item => item.index);
@@ -163,7 +167,7 @@ public static class OrderedSequenceDiff
 
     private static void RequireUnique(IReadOnlyList<CanonicalId> members, string parameterName)
     {
-        if (members.Distinct().Count() != members.Count)
+        if (members.Distinct(CanonicalId.ByGuid).Count() != members.Count)
             throw new ArgumentException("An ordered sequence must contain unique member identities.", parameterName);
     }
 }
