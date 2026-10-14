@@ -67,6 +67,51 @@ public sealed class ToolSurfaceTests
     }
 
     [Fact]
+    public void DefaultProfileOffersTypedToolsForBuildingALanguageGrammar()
+    {
+        var tools = MotifMcpServer.Expose(ToolProfile.Builtin);
+        var names = tools.Select(tool => tool.Name).ToHashSet(StringComparer.Ordinal);
+
+        Assert.All(new[]
+        {
+            "motif_add_part_of_speech",
+            "motif_add_lexical_entry",
+            "motif_add_feature_structure",
+            "motif_add_feature_value",
+            "motif_add_phoneme",
+            "motif_add_natural_class",
+            "motif_add_environment",
+            "motif_add_phonological_rule",
+            "motif_add_inflection_feature",
+            "motif_add_inflection_class",
+            "motif_add_stem_name",
+            "motif_add_affix_slot",
+            "motif_add_affix_template",
+            "motif_compose_batch",
+        }, name => Assert.Contains(name, names));
+
+        var entry = tools.Single(tool => tool.Name == "motif_add_lexical_entry");
+        Assert.Equal("object", entry.Tool.InputSchema["properties"]!["msa"]!["type"]!.GetValue<string>());
+        var batch = tools.Single(tool => tool.Name == "motif_compose_batch");
+        var intents = batch.Tool.InputSchema["properties"]!["intents"]!;
+        Assert.Equal("array", intents["type"]!.GetValue<string>());
+        Assert.DoesNotContain("intentsJson", batch.Tool.ArgumentNames);
+        var branches = intents["items"]!["oneOf"]!.AsArray();
+        var template = branches.Single(branch => branch!["properties"]!["verb"]!["enum"]![0]!.GetValue<string>() ==
+            "compose-author-affix-template");
+        var templateIntent = template!["properties"]!["intent"]!["properties"]!;
+        Assert.Contains("prefixSlots", templateIntent.AsObject().Select(pair => pair.Key));
+        Assert.Contains("suffixSlots", templateIntent.AsObject().Select(pair => pair.Key));
+        Assert.DoesNotContain("prefix_slots", templateIntent.AsObject().Select(pair => pair.Key));
+
+        var lexicalForm = branches.Single(branch => branch!["properties"]!["verb"]!["enum"]![0]!.GetValue<string>() ==
+            "compose-author-lexeme-form");
+        var lexicalFormIntent = lexicalForm!["properties"]!["intent"]!["properties"]!;
+        Assert.Contains("morphType", lexicalFormIntent.AsObject().Select(pair => pair.Key));
+        Assert.DoesNotContain("morph_type", lexicalFormIntent.AsObject().Select(pair => pair.Key));
+    }
+
+    [Fact]
     public void ProjectToolsRequireAKnownProjectSelector()
     {
         foreach (var tool in AgentTools.All.Where(tool => tool.NeedsProject && tool.Name != "motif_guide"))

@@ -150,6 +150,105 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public async Task DefaultMcpToolsAuthorStructuredLexicalAndGrammarIntentsThroughFinalizeAndDryRun()
+    {
+        using var project = new WalkthroughProject(pristine);
+        Assert.True(BaselineCaptureCommand.Capture(
+            new BaselineCaptureRequest(project.FwDataPath), project.ManagedRoot).Succeeded);
+        await using var runner = new InProcessRunnerLauncher(
+            new JobRunnerLaunchOptions(project.ManagedRoot, FakeParser.ExecutablePath));
+        await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions(Runner: runner));
+
+        var listed = await session.Client.ListToolsAsync();
+        Assert.All(new[]
+        {
+            "motif_add_part_of_speech",
+            "motif_add_lexical_entry",
+            "motif_compose_batch",
+        }, name => Assert.Contains(listed, tool => tool.Name == name));
+
+        var started = await session.CallAsync("motif_start_proposal", ("draft", "author-grammar"),
+            ("label", "Add a noun and a short sound inventory"),
+            ("comment", "The synthetic grammar needs one new noun entry."));
+        var proposalId = started.GetProperty("result").GetProperty("proposalId").GetString()!;
+
+        var morphTypes = await session.CallAsync("motif_grammar", ("kind", "morph_types"), ("detail", "detailed"));
+        var stemTypeId = morphTypes.GetProperty("result").GetProperty("items").EnumerateArray()
+            .Single(item => string.Equals(item.GetProperty("name").GetString(), "stem", StringComparison.OrdinalIgnoreCase))
+            .GetProperty("id").GetString()!;
+
+        var partOfSpeech = await session.CallAsync("motif_add_part_of_speech", ("draft", "author-grammar"),
+            ("name", "McpNoun"), ("ws", "en"), ("abbreviation", "mcpn"));
+        var categoryId = partOfSpeech.GetProperty("result").GetProperty("operations").EnumerateArray()
+            .First(operation => operation.TryGetProperty("entityId", out _))
+            .GetProperty("entityId").GetString()!;
+
+        var affixSlot = await session.CallAsync("motif_add_affix_slot", ("draft", "author-grammar"),
+            ("category", categoryId), ("name", "McpSuffixSlot"), ("ws", "en"), ("optional", false));
+        var slotId = affixSlot.GetProperty("result").GetProperty("operations").EnumerateArray()
+            .First(operation => operation.TryGetProperty("entityId", out _))
+            .GetProperty("entityId").GetString()!;
+
+        var entry = await session.CallAsync("motif_add_lexical_entry", ("draft", "author-grammar"),
+            ("form", "mcpnoun"), ("formWs", "fr"), ("morphType", stemTypeId),
+            ("gloss", "MCP noun"), ("analysisWs", "en"),
+            ("msa", new { kind = "stem", category = categoryId }));
+        Assert.True(entry.GetProperty("result").GetProperty("operationCount").GetInt32() > 0);
+
+        var batch = await session.CallAsync("motif_compose_batch", ("draft", "author-grammar"), ("intents", new object[]
+        {
+            new { verb = "compose-author-affix-template", intent = new
+            {
+                category = categoryId,
+                name = "McpTemplate",
+                ws = "en",
+                prefixSlots = Array.Empty<string>(),
+                suffixSlots = new[] { slotId },
+                final = true,
+            } },
+            new { verb = "compose-author-phoneme", intent = new { name = "McpZ", representations = new[] { "z" } } },
+            new { verb = "compose-author-phoneme", intent = new { name = "McpQ", representations = new[] { "q" } } },
+        }));
+        Assert.Equal(3, batch.GetProperty("result").GetProperty("intents").GetArrayLength());
+        Assert.True(batch.GetProperty("result").GetProperty("operationCount").GetInt32() > 0);
+
+        var suffixTypeId = morphTypes.GetProperty("result").GetProperty("items").EnumerateArray()
+            .Single(item => string.Equals(item.GetProperty("name").GetString(), "suffix", StringComparison.OrdinalIgnoreCase))
+            .GetProperty("id").GetString()!;
+        var affix = await session.CallAsync("motif_add_lexical_entry", ("draft", "author-grammar"),
+            ("form", "mcp-sfx"), ("formWs", "fr"), ("morphType", suffixTypeId),
+            ("gloss", "MCP suffix"), ("analysisWs", "en"),
+            ("msa", new { kind = "inflectional", category = categoryId, slots = new[] { slotId } }));
+        Assert.True(affix.GetProperty("result").GetProperty("operationCount").GetInt32() > 0);
+
+        var dryRun = await session.CallAsync("motif_dry_run", ("proposal", proposalId), ("wait_seconds", 120));
+        Assert.True(dryRun.GetProperty("ok").GetBoolean(), dryRun.ToString());
+        Assert.True(dryRun.GetProperty("result").GetProperty("evidenceCurrent").GetBoolean());
+
+        var finalized = await session.CallAsync("motif_finalize_proposal", ("draft", "author-grammar"));
+        Assert.Equal(proposalId, finalized.GetProperty("result").GetProperty("proposalId").GetString());
+    }
+
+    [Fact]
+    public async Task AnEmptyDraftCanBeWithdrawnThroughMcp()
+    {
+        using var project = new WalkthroughProject(pristine);
+        await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions());
+
+        var started = await session.CallAsync("motif_start_proposal", ("draft", "empty-draft"),
+            ("label", "An empty draft"), ("comment", "No change was needed."));
+        var proposalId = started.GetProperty("result").GetProperty("proposalId").GetString()!;
+
+        var withdrawn = await session.CallAsync("motif_withdraw_proposal", ("proposal", proposalId));
+
+        Assert.Equal("withdrawn", withdrawn.GetProperty("result").GetProperty("status").GetString());
+
+        var reused = await session.CallAsync("motif_start_proposal", ("draft", "empty-draft"),
+            ("label", "A replacement draft"), ("comment", "The same short name is available again."));
+        Assert.NotEqual(proposalId, reused.GetProperty("result").GetProperty("proposalId").GetString());
+    }
+
+    [Fact]
     public async Task AnAgentMeasuresADraftBeforeFinalizingItsUnchangedContent()
     {
         using var project = new WalkthroughProject(pristine);

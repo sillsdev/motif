@@ -59,6 +59,27 @@ public sealed class ProposalLifecycleTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public void AnEmptyDraftCanBeWithdrawnWithoutFinalizingAnEmptyProposal()
+    {
+        var path = NewProject();
+        var created = ProposalCommands.New(new NewDraftRequest(path, Version, "empty-withdrawal", "Empty draft"));
+        Assert.True(created.Succeeded, created.Refusal?.Message);
+        Assert.True(ProposalCommands.Comment(new CommentRequest(path, Version, "empty-withdrawal", "No change was needed.")).Succeeded);
+
+        var withdrawn = ProposalLifecycleCommand.Withdraw(
+            new WithdrawProposalRequest(path, created.Value!.ProposalId));
+
+        Assert.True(withdrawn.Succeeded, withdrawn.Refusal?.Message);
+        Assert.Equal("withdrawn", withdrawn.Value!.Status);
+        using (var database = ProjectMotifDatabase.Open(path))
+            Assert.Throws<KeyNotFoundException>(() => new ProposalRepository(database).GetDraft("empty-withdrawal"));
+
+        var reused = ProposalCommands.New(new NewDraftRequest(path, Version, "empty-withdrawal", "A replacement draft"));
+        Assert.True(reused.Succeeded, reused.Refusal?.Message);
+        Assert.NotEqual(created.Value.ProposalId, reused.Value!.ProposalId);
+    }
+
+    [Fact]
     public void ASupersededProposalNamesItsReplacementInsteadOfReopening()
     {
         var (path, id) = Finalized("old");

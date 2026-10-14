@@ -11,11 +11,11 @@ A linguist sees prefixes or suffixes recurring in the same grammatical order acr
 
 ## Motif support
 
-`motif_lexicon` can read existing affix entries. `motif_grammar` can read templates and slots. `motif_add_lexeme_form` can change the written form of an existing entry, including an affix entry, but cannot create an entry or its grammatical analysis. Motif has no composer yet for affix entries, slots, templates or their links.
+`motif_grammar` can read categories, templates and slots. `motif_add_lexical_entry` creates one entry and one sense with a structured MSA: use an inflectional MSA for a slot-filling affix, or a derivational MSA with both its source and destination categories. `motif_add_affix_slot` creates a category-owned slot and can assign existing inflectional MSAs; `motif_add_affix_template` creates the ordered prefix and suffix slots. Use the returned entity ids when a later intent in `motif_compose_batch` depends on an object created earlier in that batch.
 
 ## Check with a Trial
 
-After a composer can express the change, include words that should take each affix and words that should not. Check that the affixes appear in the intended order, that required slots are filled, and that unrelated words do not gain extra parses. A Trial can check a proposal, but cannot create these grammar objects today.
+Include words that should take each affix and words that should not. Check that the affixes appear in the intended order, that required slots are filled, and that unrelated words do not gain extra parses. A Trial checks the Proposal; it does not create grammar objects.
 
 ## Ask the linguist
 

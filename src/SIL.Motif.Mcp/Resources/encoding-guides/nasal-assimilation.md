@@ -12,7 +12,7 @@ A linguist sees a nasal change its sound near another consonant, while the morph
 
 ## Motif support
 
-`motif_grammar` can read phonemes, natural classes and phonological rules. When exposed by this server, the wave-1 tools `motif_add_phoneme`, `motif_add_natural_class` and `motif_add_environment` can create the sound inventory and context. Motif still needs a composer for phonological feature definitions and regular phonological rules. `motif_guide(topic="conditioned-allomorphs")` describes the related case where the evidence instead supports stored conditioned variants.
+`motif_grammar` can read phonemes, natural classes and phonological rules. `motif_add_phoneme`, `motif_add_natural_class` and `motif_add_phonological_rule` create the sound inventory, reusable sound classes and regular rules. A rule intent names existing phonemes or natural classes in its input, output and contexts. Motif still needs a composer for declaring phonological feature definitions. `motif_guide(topic="conditioned-allomorphs")` describes the related case where the evidence instead supports stored conditioned variants.
 
 ## Check with a Trial
 

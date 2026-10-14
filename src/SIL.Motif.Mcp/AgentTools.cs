@@ -20,8 +20,37 @@ namespace SIL.Motif.Mcp;
 internal static class AgentTools
 {
     private static readonly (string, JsonObject, bool)[] NoArguments = [];
+    private static readonly HashSet<string> DefaultAuthoringTools = new(StringComparer.Ordinal)
+    {
+        "motif_add_lexeme_form",
+        "motif_add_feature_structure",
+        "motif_add_feature_value",
+        "motif_add_phoneme",
+        "motif_add_natural_class",
+        "motif_add_environment",
+        "motif_add_phonological_rule",
+        "motif_add_part_of_speech",
+        "motif_add_lexical_entry",
+        "motif_add_inflection_feature",
+        "motif_add_inflection_class",
+        "motif_add_stem_name",
+        "motif_add_affix_slot",
+        "motif_add_affix_template",
+        "motif_compose_batch",
+    };
 
-    public static IReadOnlyList<AgentTool> All { get; } = CatalogTools.Build(BuildAdapters());
+    public static IReadOnlyList<AgentTool> All { get; } = BuildAll();
+
+    private static IReadOnlyList<AgentTool> BuildAll()
+    {
+        var tools = CatalogTools.Build(BuildAdapters());
+        var batchSchema = ComposeBatchSchema(tools);
+        return tools.Select(tool => tool.Name == "motif_compose_batch"
+                ? tool with { InputSchema = batchSchema }
+                : tool)
+            .Select(tool => DefaultAuthoringTools.Contains(tool.Name) ? tool with { OnByDefault = true } : tool)
+            .ToArray();
+    }
 
     /// <summary>Every tool name, which a profile may select.</summary>
     public static IReadOnlySet<string> Names { get; } = All.Select(tool => tool.Name).ToHashSet(StringComparer.Ordinal);
@@ -490,6 +519,20 @@ internal static class AgentTools
                 c.ProjectPath, c.ProductVersion, a.Required("draft"), AuthorAffixTemplateIntent(a))),
                 r => $"Draft now has {r.OperationCount} operations. Run motif_dry_run and a bounded motif_trial, revise, then Finalize; only a person can Apply."))) { Requests = [typeof(ComposeAuthorAffixTemplateRequest)] },
 
+        new("motif_compose_batch",
+            string.Empty,
+            AgentClass.Draft,
+            ComposeBatchSchema(Array.Empty<AgentTool>()),
+            false,
+            false,
+            true,
+            false,
+            true,
+            (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalCommands.ComposeBatch(new(
+                c.ProjectPath, c.ProductVersion, a.Required("draft"), a.IntentJson("intents"))),
+                r => $"Draft now has {r.OperationCount} changes from {r.Intents.Count} intents. Dry Run the Draft, then Finalize for a person to Apply.")))
+            { Requests = [typeof(ComposeBatchRequest)] },
+
         new("motif_retire_allomorph",
             string.Empty,
             AgentClass.Draft,
@@ -858,6 +901,95 @@ internal static class AgentTools
             ("right", contexts.DeepClone().AsObject(), true),
             ("placement", Schema.Object(("after", Schema.String("Adjacent existing rule before the insertion gap."), false),
                 ("before", Schema.String("Adjacent existing rule after the insertion gap."), false)), false));
+    }
+
+    private static JsonObject ComposeBatchSchema(IReadOnlyList<AgentTool> tools)
+    {
+        var supportedIntents = CommandCatalog.All
+            .Where(command => command.ResponseType == typeof(ComposedOperationsResponse))
+            .Select(command => (Command: command, Tool: tools.SingleOrDefault(tool => tool.Requests.Contains(command.RequestType))))
+            .Where(pair => pair.Tool is not null)
+            .Select(pair => BatchIntentSchema(pair.Command.Name, pair.Tool!.InputSchema))
+            .Where(pair => pair is not null)
+            .Select(pair => pair!.Value)
+            .ToArray();
+        var citation = Schema.Object(
+            ("source", Schema.String("Where this change came from."), true),
+            ("locator", Schema.String("Optional page, section or other source location."), false));
+        var itemBranches = new JsonArray(supportedIntents.Select(pair => (JsonNode)Schema.Object(
+            ("verb", Schema.String("Composing verb for this intent.", pair.Verb), true),
+            ("intent", pair.Schema.DeepClone().AsObject(), true),
+            ("citation", citation.DeepClone().AsObject(), false))).ToArray());
+        var item = new JsonObject
+        {
+            ["type"] = "object",
+            ["description"] = "One structured semantic intent. Its verb selects the matching intent fields.",
+            ["oneOf"] = itemBranches,
+        };
+        return Schema.Object(
+            ("draft", Schema.String("Draft name from motif_start_proposal."), true),
+            ("intents", Schema.Array("Ordered semantic composer intents. Each later intent can refer to objects created earlier in this batch.",
+                item), true),
+            ("project", Schema.String("Known project name or recorded .fwdata path."), true));
+    }
+
+    private static (string Verb, JsonObject Schema)? BatchIntentSchema(string verb, JsonObject toolSchema)
+    {
+        var sourceProperties = toolSchema["properties"]?.AsObject();
+        if (sourceProperties is null || sourceProperties.ContainsKey("intent_json") || sourceProperties.ContainsKey("intentJson"))
+            return null;
+        var canonicalToolSchema = CanonicalizeSchema(toolSchema);
+        sourceProperties = canonicalToolSchema["properties"]!.AsObject();
+        var properties = new JsonObject();
+        foreach (var (name, schema) in sourceProperties)
+            if (name is not ("draft" or "project"))
+                properties[name] = schema?.DeepClone();
+        if (properties.Count == 0) return null;
+
+        var required = new JsonArray();
+        if (canonicalToolSchema["required"] is JsonArray requiredProperties)
+            foreach (var name in requiredProperties.Select(value => value?.GetValue<string>())
+                         .Where(name => name is not null and not ("draft" or "project")))
+                required.Add(name);
+        var intent = new JsonObject
+        {
+            ["type"] = "object",
+            ["description"] = $"Structured intent for {verb}.",
+            ["properties"] = properties,
+            ["additionalProperties"] = false,
+        };
+        if (required.Count > 0) intent["required"] = required;
+        return (verb, intent);
+    }
+
+    private static JsonObject CanonicalizeSchema(JsonObject schema)
+    {
+        var canonical = schema.DeepClone().AsObject();
+        if (canonical["properties"] is JsonObject sourceProperties)
+        {
+            var properties = new JsonObject();
+            foreach (var (name, value) in sourceProperties)
+                properties[CanonicalIntentName(name)] = value is JsonObject propertySchema
+                    ? CanonicalizeSchema(propertySchema)
+                    : value?.DeepClone();
+            canonical["properties"] = properties;
+        }
+        if (canonical["required"] is JsonArray required)
+            canonical["required"] = new JsonArray(required.Select(value =>
+                (JsonNode?)JsonValue.Create(CanonicalIntentName(value!.GetValue<string>()))).ToArray());
+        if (canonical["items"] is JsonObject items) canonical["items"] = CanonicalizeSchema(items);
+        if (canonical["oneOf"] is JsonArray oneOf)
+            canonical["oneOf"] = new JsonArray(oneOf.Select(value =>
+                (JsonNode?)CanonicalizeSchema(value!.AsObject())).ToArray());
+        return canonical;
+    }
+
+    private static string CanonicalIntentName(string name)
+    {
+        var parts = name.Split('_', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length < 2
+            ? name
+            : parts[0] + string.Concat(parts.Skip(1).Select(part => char.ToUpperInvariant(part[0]) + part[1..]));
     }
 
     private static JsonObject NaturalClassRelinkContexts()

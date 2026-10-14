@@ -335,6 +335,3276 @@
     "idempotentHint": false
   },
   {
+    "name": "motif_add_feature_structure",
+    "description": "Author grammatical features. Stages an empty feature structure on the specified stem grammatical information in a Draft. Use its created identity when authoring feature values. Only a person can Apply.\nCommand: compose-author-feature-structure. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "The draft name from motif_start_proposal."
+        },
+        "msa": {
+          "type": "string",
+          "description": "Id of the stem\u0027s grammatical info."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "msa",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_add_feature_value",
+    "description": "Author a feature value. Stages a closed feature specification in an existing or Draft-created feature structure. The feature and optional symbolic value must belong to the project. Only a person can Apply.\nCommand: compose-author-feature-value. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "featStruc": {
+          "type": "string",
+          "description": "Feature structure id."
+        },
+        "feature": {
+          "type": "string",
+          "description": "Feature id."
+        },
+        "value": {
+          "type": "string",
+          "description": "Optional symbolic value id."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "featStruc",
+        "feature",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_add_phoneme",
+    "description": "Author a phoneme. Stages a phoneme with explicitly authored name and representations in a Draft. Use its created identity in later natural classes or phonological rules. Only a person can Apply.\nCommand: compose-author-phoneme. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "name": {
+          "type": "string",
+          "description": "Phoneme name."
+        },
+        "representations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Explicit grapheme codes, such as [\u0027a\u0027] or [\u0027sh\u0027, \u0027\u0161\u0027]."
+        },
+        "features": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "feature": {
+                "type": "string",
+                "description": "Closed feature id in the phonological feature system."
+              },
+              "value": {
+                "type": "string",
+                "description": "Symbolic value belonging to that feature."
+              }
+            },
+            "required": [
+              "feature",
+              "value"
+            ],
+            "additionalProperties": false
+          },
+          "description": "Closed phonological feature/value pairs; copy ids from motif_grammar."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "name",
+        "representations",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_add_natural_class",
+    "description": "Author a natural class. Stages a named segment natural class with explicitly declared phoneme members in a Draft. Members may name existing phonemes or phonemes created earlier through declared dependencies. Only a person can Apply.\nCommand: compose-author-natural-class. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "name": {
+          "type": "string",
+          "description": "Natural class name."
+        },
+        "abbreviation": {
+          "type": "string",
+          "description": "Unique environment abbreviation, such as V."
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Phoneme ids in the first set."
+        },
+        "features": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "feature": {
+                "type": "string",
+                "description": "Closed feature id in the phonological feature system."
+              },
+              "value": {
+                "type": "string",
+                "description": "Symbolic value belonging to that feature."
+              }
+            },
+            "required": [
+              "feature",
+              "value"
+            ],
+            "additionalProperties": false
+          },
+          "description": "Closed phonological feature/value pairs; copy ids from motif_grammar."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "name",
+        "abbreviation",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_add_environment",
+    "description": "Author an environment. Stages an environment with explicitly declared left and right contexts in a Draft. Contexts use project phonemes, natural classes or boundaries. Only a person can Apply.\nCommand: compose-author-environment. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "name": {
+          "type": "string",
+          "description": "Environment name."
+        },
+        "left": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "phoneme": {
+                "type": "string",
+                "description": "Phoneme id in the first phoneme set."
+              },
+              "naturalClass": {
+                "type": "string",
+                "description": "Natural class id with a unique abbreviation."
+              },
+              "boundary": {
+                "type": "string",
+                "description": "Word edge or declared morpheme boundary.",
+                "enum": [
+                  "word",
+                  "morpheme"
+                ]
+              },
+              "boundaryMarker": {
+                "type": "string",
+                "description": "Stored boundary-marker id. Rule contexts preserve its literal identity, even when its code is #."
+              }
+            },
+            "additionalProperties": false
+          },
+          "description": "Context items in linguistic order, from the outer left to outer right. Each names exactly one reference."
+        },
+        "right": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "phoneme": {
+                "type": "string",
+                "description": "Phoneme id in the first phoneme set."
+              },
+              "naturalClass": {
+                "type": "string",
+                "description": "Natural class id with a unique abbreviation."
+              },
+              "boundary": {
+                "type": "string",
+                "description": "Word edge or declared morpheme boundary.",
+                "enum": [
+                  "word",
+                  "morpheme"
+                ]
+              },
+              "boundaryMarker": {
+                "type": "string",
+                "description": "Stored boundary-marker id. Rule contexts preserve its literal identity, even when its code is #."
+              }
+            },
+            "additionalProperties": false
+          },
+          "description": "Context items in linguistic order, from the outer left to outer right. Each names exactly one reference."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "name",
+        "left",
+        "right",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_add_phonological_rule",
+    "description": "Author a sound rule. Stages one simple rewrite rule in a Draft, using existing phonemes and natural classes with explicit context and rule placement. Empty input or output means insertion or deletion; unsupported alpha variables and metathesis are refused. Only a person can Apply.\nCommand: compose-author-phonological-rule. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "name": {
+          "type": "string",
+          "description": "Rule name."
+        },
+        "direction": {
+          "type": "string",
+          "description": "Rule scan direction or application mode.",
+          "enum": [
+            "left-to-right",
+            "right-to-left",
+            "simultaneous"
+          ]
+        },
+        "input": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "phoneme": {
+                "type": "string",
+                "description": "Phoneme id in the first phoneme set."
+              },
+              "naturalClass": {
+                "type": "string",
+                "description": "Natural class id owned by this project\u0027s phonological data."
+              }
+            },
+            "additionalProperties": false
+          },
+          "description": "Zero or one explicit phoneme or natural-class items.",
+          "maxItems": 1
+        },
+        "output": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "phoneme": {
+                "type": "string",
+                "description": "Phoneme id in the first phoneme set."
+              },
+              "naturalClass": {
+                "type": "string",
+                "description": "Natural class id owned by this project\u0027s phonological data."
+              }
+            },
+            "additionalProperties": false
+          },
+          "description": "Zero or one explicit phoneme or natural-class items.",
+          "maxItems": 1
+        },
+        "left": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "phoneme": {
+                "type": "string",
+                "description": "Phoneme id in the first phoneme set."
+              },
+              "naturalClass": {
+                "type": "string",
+                "description": "Natural class id with a unique abbreviation."
+              },
+              "boundary": {
+                "type": "string",
+                "description": "Word edge or declared morpheme boundary.",
+                "enum": [
+                  "word",
+                  "morpheme"
+                ]
+              },
+              "boundaryMarker": {
+                "type": "string",
+                "description": "Stored boundary-marker id. Rule contexts preserve its literal identity, even when its code is #."
+              }
+            },
+            "additionalProperties": false
+          },
+          "description": "Context items in linguistic order, from the outer left to outer right. Each names exactly one reference.",
+          "maxItems": 8
+        },
+        "right": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "phoneme": {
+                "type": "string",
+                "description": "Phoneme id in the first phoneme set."
+              },
+              "naturalClass": {
+                "type": "string",
+                "description": "Natural class id with a unique abbreviation."
+              },
+              "boundary": {
+                "type": "string",
+                "description": "Word edge or declared morpheme boundary.",
+                "enum": [
+                  "word",
+                  "morpheme"
+                ]
+              },
+              "boundaryMarker": {
+                "type": "string",
+                "description": "Stored boundary-marker id. Rule contexts preserve its literal identity, even when its code is #."
+              }
+            },
+            "additionalProperties": false
+          },
+          "description": "Context items in linguistic order, from the outer left to outer right. Each names exactly one reference.",
+          "maxItems": 8
+        },
+        "placement": {
+          "type": "object",
+          "properties": {
+            "after": {
+              "type": "string",
+              "description": "Adjacent existing rule before the insertion gap."
+            },
+            "before": {
+              "type": "string",
+              "description": "Adjacent existing rule after the insertion gap."
+            }
+          },
+          "additionalProperties": false
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "name",
+        "direction",
+        "input",
+        "output",
+        "left",
+        "right",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_add_affix_slot",
+    "description": "Author an affix slot. Stages a named inflectional affix slot owned by an existing category and can assign existing inflectional affixes to it in the same Draft. Inspect its Dry Run and Trial before a person Applies the Proposal.\nCommand: compose-author-affix-slot. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "The draft name from motif_start_proposal."
+        },
+        "category": {
+          "type": "string",
+          "description": "Canonical id of the existing category that owns the new slot."
+        },
+        "name": {
+          "type": "string",
+          "description": "Slot name in the project\u0027s writing system."
+        },
+        "ws": {
+          "type": "string",
+          "description": "Writing system tag for the slot name."
+        },
+        "optional": {
+          "type": "boolean",
+          "description": "Whether forms may omit this slot."
+        },
+        "assignments": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Optional canonical ids of existing inflectional affix MSAs to assign."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "category",
+        "name",
+        "ws",
+        "optional",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_add_inflection_feature",
+    "description": "Author inflection feature. Adds a closed morphosyntactic feature and its named values to a Draft. Use the created ids in feature-structure and stem-name authoring, then Dry Run and Trial the Draft before Finalize.\nCommand: compose-author-inflection-feature. Agent class: Draft.\nDraftName: The Draft to append the authored operations to.\nIntentJson: The closed inflection feature input, resolved against the prepared Draft.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "The Draft name from motif_start_proposal."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the closed morphosyntactic feature."
+        },
+        "ws": {
+          "type": "string",
+          "description": "Writing system tag for the feature and value names."
+        },
+        "abbreviation": {
+          "type": "string",
+          "description": "Optional short feature label."
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Value name; distinct within this feature."
+              },
+              "abbreviation": {
+                "type": "string",
+                "description": "Optional short value label."
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          "description": "Nonempty named choices for this feature."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "name",
+        "ws",
+        "values",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_add_inflection_class",
+    "description": "Author inflection class. Adds an inflection class or subclass, such as a noun class, to a Draft. Its owner is explicit and the category\u0027s default is unchanged; use the created id when authoring a stem.\nCommand: compose-author-inflection-class. Agent class: Draft.\nDraftName: The Draft to append the authored operations to.\nIntentJson: The closed inflection class input, resolved against the prepared Draft.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "The Draft name from motif_start_proposal."
+        },
+        "category": {
+          "type": "string",
+          "description": "Canonical id of the category owning this class tree."
+        },
+        "name": {
+          "type": "string",
+          "description": "Inflection class name, such as a noun class."
+        },
+        "ws": {
+          "type": "string",
+          "description": "Writing system tag for the name and abbreviation."
+        },
+        "abbreviation": {
+          "type": "string",
+          "description": "Optional short class label."
+        },
+        "parent": {
+          "type": "string",
+          "description": "Optional existing parent class in the declared category."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "category",
+        "name",
+        "ws",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_add_stem_name",
+    "description": "Author a stem name. Adds a category-owned stem name with explicit feature regions to a Draft. Each region states where an allomorph bearing this stem name is eligible; attaching it to an allomorph is a separate operation.\nCommand: compose-author-stem-name. Agent class: Draft.\nDraftName: The Draft to append the authored operations to.\nIntentJson: The closed stem name input, resolved against the prepared Draft.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "The Draft name from motif_start_proposal."
+        },
+        "category": {
+          "type": "string",
+          "description": "Canonical id of the category owning this stem name."
+        },
+        "name": {
+          "type": "string",
+          "description": "Stem name label."
+        },
+        "ws": {
+          "type": "string",
+          "description": "Writing system tag for the name and abbreviation."
+        },
+        "abbreviation": {
+          "type": "string",
+          "description": "Optional short stem name label."
+        },
+        "regions": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "feature": {
+                  "type": "string",
+                  "description": "Closed feature id in the morphosyntactic system."
+                },
+                "value": {
+                  "type": "string",
+                  "description": "Value id belonging to that feature."
+                }
+              },
+              "required": [
+                "feature",
+                "value"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Nonempty choices; one value for each feature."
+          },
+          "description": "Nonempty feature regions permitting the named stem."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "category",
+        "name",
+        "ws",
+        "regions",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_add_lexical_entry",
+    "description": "Author a dictionary entry. Stages one new dictionary entry with its lexeme form, one sense with gloss and optional definition, and grammatical info: a stem, or an inflectional, derivational or unclassified affix. Inspect its Dry Run and try words with it before a person Applies the Proposal.\nCommand: compose-author-lexical-entry. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "The draft name from motif_start_proposal."
+        },
+        "form": {
+          "type": "string",
+          "description": "The lexeme form, without affix hyphens."
+        },
+        "formWs": {
+          "type": "string",
+          "description": "Vernacular writing system tag of the form."
+        },
+        "morphType": {
+          "type": "string",
+          "description": "Canonical id of the morph type, such as stem, root, prefix or suffix."
+        },
+        "gloss": {
+          "type": "string",
+          "description": "The sense\u0027s gloss."
+        },
+        "analysisWs": {
+          "type": "string",
+          "description": "Analysis writing system tag of the gloss and definition."
+        },
+        "definition": {
+          "type": "string",
+          "description": "Optional definition of the sense."
+        },
+        "msa": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "description": "Grammatical info (MSA) kind; must match the morph type.",
+              "enum": [
+                "stem",
+                "inflectional",
+                "derivational",
+                "unclassified"
+              ]
+            },
+            "category": {
+              "type": "string",
+              "description": "Canonical id of the part of speech; for a derivational affix, the one it attaches to."
+            },
+            "toCategory": {
+              "type": "string",
+              "description": "Derivational only: canonical id of the part of speech it makes."
+            },
+            "slots": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Inflectional only: canonical ids of existing slots the affix fills."
+            },
+            "inflectionClass": {
+              "type": "string",
+              "description": "Stem only: canonical id of its inflection class, such as a noun class."
+            }
+          },
+          "required": [
+            "kind",
+            "category"
+          ],
+          "additionalProperties": false
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "form",
+        "formWs",
+        "morphType",
+        "gloss",
+        "analysisWs",
+        "msa",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_add_part_of_speech",
+    "description": "Author a part of speech. Stages a new part of speech, at the top of the category list or under an existing category, with its name and optional abbreviation. Later composer calls in the same Draft can use it as the category of entries, slots and affixes.\nCommand: compose-author-part-of-speech. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "The draft name from motif_start_proposal."
+        },
+        "name": {
+          "type": "string",
+          "description": "Category name, such as noun; unique among the project\u0027s categories."
+        },
+        "ws": {
+          "type": "string",
+          "description": "Writing system tag for the name and abbreviation."
+        },
+        "abbreviation": {
+          "type": "string",
+          "description": "Optional short label, such as n."
+        },
+        "parent": {
+          "type": "string",
+          "description": "Optional canonical id of an existing category to place this one under."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "name",
+        "ws",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_add_affix_template",
+    "description": "Author an affix template. Stages an active alternative template on an existing category, using ordered prefix and suffix slots that belong to the category or an ancestor. It preserves existing template order and records whether this template requires further derivation. Only a person can Apply.\nCommand: compose-author-affix-template. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "The draft name from motif_start_proposal."
+        },
+        "category": {
+          "type": "string",
+          "description": "Canonical id of the existing category that owns the template."
+        },
+        "name": {
+          "type": "string",
+          "description": "Template name in the project\u0027s writing system."
+        },
+        "ws": {
+          "type": "string",
+          "description": "Writing system tag for the template name."
+        },
+        "prefix_slots": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Ordered canonical ids of prefix slots."
+        },
+        "suffix_slots": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Ordered canonical ids of suffix slots."
+        },
+        "final": {
+          "type": "boolean",
+          "description": "Whether the template requires further derivation."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "category",
+        "name",
+        "ws",
+        "prefix_slots",
+        "suffix_slots",
+        "final",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_compose_batch",
+    "description": "Compose many intents. Stages every intent in a JSON file in one Draft with one project load, through the same checks as each composing command alone. If any intent is refused, nothing is added. Only a person can Apply.\nCommand: compose-batch. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentsJson: {\u0022intents\u0022:[{\u0022verb\u0022:\u0022compose-author-phoneme\u0022,\u0022intent\u0022:{...},\u0022citation\u0022:{\u0022source\u0022:\u0022Grammar\u0022,\u0022locator\u0022:\u0022\u00A7 3\u0022}}, ...]}: each entry names a composing verb, carries exactly the closed intent that verb\u0027s --intent takes, and may include one citation beside that intent.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name from motif_start_proposal."
+        },
+        "intents": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "description": "One structured semantic intent. Its verb selects the matching intent fields.",
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "compose-author-lexeme-form"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-author-lexeme-form.",
+                    "properties": {
+                      "entry": {
+                        "type": "string",
+                        "description": "Id of the existing entry."
+                      },
+                      "morphType": {
+                        "type": "string",
+                        "description": "Id of the morph type of the new form."
+                      },
+                      "ws": {
+                        "type": "string",
+                        "description": "Writing system tag the form is written in."
+                      },
+                      "text": {
+                        "type": "string",
+                        "description": "The form\u0027s written text."
+                      },
+                      "environments": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Optional environment ids restricting the new form."
+                      },
+                      "isAbstract": {
+                        "type": "boolean",
+                        "description": "True for a root-and-pattern form with no fixed segments."
+                      },
+                      "sense": {
+                        "type": "string",
+                        "description": "Id of an existing sense of the entry to gloss. Needs gloss_ws and gloss_text."
+                      },
+                      "glossWs": {
+                        "type": "string",
+                        "description": "Writing system tag of the gloss."
+                      },
+                      "glossText": {
+                        "type": "string",
+                        "description": "The gloss text."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "entry",
+                      "morphType",
+                      "ws",
+                      "text"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "compose-author-feature-structure"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-author-feature-structure.",
+                    "properties": {
+                      "msa": {
+                        "type": "string",
+                        "description": "Id of the stem\u0027s grammatical info."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "msa"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "compose-author-feature-value"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-author-feature-value.",
+                    "properties": {
+                      "featStruc": {
+                        "type": "string",
+                        "description": "Feature structure id."
+                      },
+                      "feature": {
+                        "type": "string",
+                        "description": "Feature id."
+                      },
+                      "value": {
+                        "type": "string",
+                        "description": "Optional symbolic value id."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "featStruc",
+                      "feature"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "compose-author-phoneme"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-author-phoneme.",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "description": "Phoneme name."
+                      },
+                      "representations": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Explicit grapheme codes, such as [\u0027a\u0027] or [\u0027sh\u0027, \u0027\u0161\u0027]."
+                      },
+                      "features": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "feature": {
+                              "type": "string",
+                              "description": "Closed feature id in the phonological feature system."
+                            },
+                            "value": {
+                              "type": "string",
+                              "description": "Symbolic value belonging to that feature."
+                            }
+                          },
+                          "required": [
+                            "feature",
+                            "value"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "description": "Closed phonological feature/value pairs; copy ids from motif_grammar."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "name",
+                      "representations"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "compose-author-natural-class"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-author-natural-class.",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "description": "Natural class name."
+                      },
+                      "abbreviation": {
+                        "type": "string",
+                        "description": "Unique environment abbreviation, such as V."
+                      },
+                      "members": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Phoneme ids in the first set."
+                      },
+                      "features": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "feature": {
+                              "type": "string",
+                              "description": "Closed feature id in the phonological feature system."
+                            },
+                            "value": {
+                              "type": "string",
+                              "description": "Symbolic value belonging to that feature."
+                            }
+                          },
+                          "required": [
+                            "feature",
+                            "value"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "description": "Closed phonological feature/value pairs; copy ids from motif_grammar."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "name",
+                      "abbreviation"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "compose-edit-natural-class"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-edit-natural-class.",
+                    "properties": {
+                      "target": {
+                        "type": "string",
+                        "description": "Canonical id of the existing segment natural class."
+                      },
+                      "expectedMembers": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Exact current phoneme ids in the class."
+                      },
+                      "members": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Requested distinct phoneme ids; the class must remain nonempty."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "target",
+                      "expectedMembers",
+                      "members"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "compose-relink-natural-class"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-relink-natural-class.",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Canonical id of the class users currently reference."
+                      },
+                      "replacement": {
+                        "type": "string",
+                        "description": "Canonical id of the replacement class."
+                      },
+                      "replacementCreationOperation": {
+                        "type": "string",
+                        "description": "Operation id returned by the class create earlier in this Draft."
+                      },
+                      "environments": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "target": {
+                              "type": "string",
+                              "description": "Environment id."
+                            },
+                            "expectedLeft": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "phoneme": {
+                                    "type": "string",
+                                    "description": "Phoneme id in the first phoneme set."
+                                  },
+                                  "naturalClass": {
+                                    "type": "string",
+                                    "description": "Natural class id with a unique abbreviation."
+                                  },
+                                  "boundary": {
+                                    "type": "string",
+                                    "description": "Word edge or declared morpheme boundary.",
+                                    "enum": [
+                                      "word",
+                                      "morpheme"
+                                    ]
+                                  },
+                                  "boundaryMarker": {
+                                    "type": "string",
+                                    "description": "Declared morpheme-boundary marker id."
+                                  }
+                                },
+                                "additionalProperties": false
+                              },
+                              "description": "Context items in linguistic order, from the outer left to outer right. Each names exactly one reference."
+                            },
+                            "expectedRight": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "phoneme": {
+                                    "type": "string",
+                                    "description": "Phoneme id in the first phoneme set."
+                                  },
+                                  "naturalClass": {
+                                    "type": "string",
+                                    "description": "Natural class id with a unique abbreviation."
+                                  },
+                                  "boundary": {
+                                    "type": "string",
+                                    "description": "Word edge or declared morpheme boundary.",
+                                    "enum": [
+                                      "word",
+                                      "morpheme"
+                                    ]
+                                  },
+                                  "boundaryMarker": {
+                                    "type": "string",
+                                    "description": "Declared morpheme-boundary marker id."
+                                  }
+                                },
+                                "additionalProperties": false
+                              },
+                              "description": "Context items in linguistic order, from the outer left to outer right. Each names exactly one reference."
+                            }
+                          },
+                          "required": [
+                            "target",
+                            "expectedLeft",
+                            "expectedRight"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "description": "Explicit environment users and their exact current typed contexts."
+                      },
+                      "ruleContexts": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Explicit rewrite-rule context object ids using the source class."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "source",
+                      "replacement",
+                      "replacementCreationOperation",
+                      "environments",
+                      "ruleContexts"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "compose-author-environment"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-author-environment.",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "description": "Environment name."
+                      },
+                      "left": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "phoneme": {
+                              "type": "string",
+                              "description": "Phoneme id in the first phoneme set."
+                            },
+                            "naturalClass": {
+                              "type": "string",
+                              "description": "Natural class id with a unique abbreviation."
+                            },
+                            "boundary": {
+                              "type": "string",
+                              "description": "Word edge or declared morpheme boundary.",
+                              "enum": [
+                                "word",
+                                "morpheme"
+                              ]
+                            },
+                            "boundaryMarker": {
+                              "type": "string",
+                              "description": "Stored boundary-marker id. Rule contexts preserve its literal identity, even when its code is #."
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "description": "Context items in linguistic order, from the outer left to outer right. Each names exactly one reference."
+                      },
+                      "right": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "phoneme": {
+                              "type": "string",
+                              "description": "Phoneme id in the first phoneme set."
+                            },
+                            "naturalClass": {
+                              "type": "string",
+                              "description": "Natural class id with a unique abbreviation."
+                            },
+                            "boundary": {
+                              "type": "string",
+                              "description": "Word edge or declared morpheme boundary.",
+                              "enum": [
+                                "word",
+                                "morpheme"
+                              ]
+                            },
+                            "boundaryMarker": {
+                              "type": "string",
+                              "description": "Stored boundary-marker id. Rule contexts preserve its literal identity, even when its code is #."
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "description": "Context items in linguistic order, from the outer left to outer right. Each names exactly one reference."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "name",
+                      "left",
+                      "right"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "compose-author-phonological-rule"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-author-phonological-rule.",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "description": "Rule name."
+                      },
+                      "direction": {
+                        "type": "string",
+                        "description": "Rule scan direction or application mode.",
+                        "enum": [
+                          "left-to-right",
+                          "right-to-left",
+                          "simultaneous"
+                        ]
+                      },
+                      "input": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "phoneme": {
+                              "type": "string",
+                              "description": "Phoneme id in the first phoneme set."
+                            },
+                            "naturalClass": {
+                              "type": "string",
+                              "description": "Natural class id owned by this project\u0027s phonological data."
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "description": "Zero or one explicit phoneme or natural-class items.",
+                        "maxItems": 1
+                      },
+                      "output": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "phoneme": {
+                              "type": "string",
+                              "description": "Phoneme id in the first phoneme set."
+                            },
+                            "naturalClass": {
+                              "type": "string",
+                              "description": "Natural class id owned by this project\u0027s phonological data."
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "description": "Zero or one explicit phoneme or natural-class items.",
+                        "maxItems": 1
+                      },
+                      "left": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "phoneme": {
+                              "type": "string",
+                              "description": "Phoneme id in the first phoneme set."
+                            },
+                            "naturalClass": {
+                              "type": "string",
+                              "description": "Natural class id with a unique abbreviation."
+                            },
+                            "boundary": {
+                              "type": "string",
+                              "description": "Word edge or declared morpheme boundary.",
+                              "enum": [
+                                "word",
+                                "morpheme"
+                              ]
+                            },
+                            "boundaryMarker": {
+                              "type": "string",
+                              "description": "Stored boundary-marker id. Rule contexts preserve its literal identity, even when its code is #."
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "description": "Context items in linguistic order, from the outer left to outer right. Each names exactly one reference.",
+                        "maxItems": 8
+                      },
+                      "right": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "phoneme": {
+                              "type": "string",
+                              "description": "Phoneme id in the first phoneme set."
+                            },
+                            "naturalClass": {
+                              "type": "string",
+                              "description": "Natural class id with a unique abbreviation."
+                            },
+                            "boundary": {
+                              "type": "string",
+                              "description": "Word edge or declared morpheme boundary.",
+                              "enum": [
+                                "word",
+                                "morpheme"
+                              ]
+                            },
+                            "boundaryMarker": {
+                              "type": "string",
+                              "description": "Stored boundary-marker id. Rule contexts preserve its literal identity, even when its code is #."
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "description": "Context items in linguistic order, from the outer left to outer right. Each names exactly one reference.",
+                        "maxItems": 8
+                      },
+                      "placement": {
+                        "type": "object",
+                        "properties": {
+                          "after": {
+                            "type": "string",
+                            "description": "Adjacent existing rule before the insertion gap."
+                          },
+                          "before": {
+                            "type": "string",
+                            "description": "Adjacent existing rule after the insertion gap."
+                          }
+                        },
+                        "additionalProperties": false
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "name",
+                      "direction",
+                      "input",
+                      "output",
+                      "left",
+                      "right"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "compose-author-part-of-speech"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-author-part-of-speech.",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "description": "Category name, such as noun; unique among the project\u0027s categories."
+                      },
+                      "ws": {
+                        "type": "string",
+                        "description": "Writing system tag for the name and abbreviation."
+                      },
+                      "abbreviation": {
+                        "type": "string",
+                        "description": "Optional short label, such as n."
+                      },
+                      "parent": {
+                        "type": "string",
+                        "description": "Optional canonical id of an existing category to place this one under."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "name",
+                      "ws"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "compose-author-inflection-feature"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-author-inflection-feature.",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "description": "Name of the closed morphosyntactic feature."
+                      },
+                      "ws": {
+                        "type": "string",
+                        "description": "Writing system tag for the feature and value names."
+                      },
+                      "abbreviation": {
+                        "type": "string",
+                        "description": "Optional short feature label."
+                      },
+                      "values": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string",
+                              "description": "Value name; distinct within this feature."
+                            },
+                            "abbreviation": {
+                              "type": "string",
+                              "description": "Optional short value label."
+                            }
+                          },
+                          "required": [
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "description": "Nonempty named choices for this feature."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "name",
+                      "ws",
+                      "values"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "compose-author-inflection-class"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-author-inflection-class.",
+                    "properties": {
+                      "category": {
+                        "type": "string",
+                        "description": "Canonical id of the category owning this class tree."
+                      },
+                      "name": {
+                        "type": "string",
+                        "description": "Inflection class name, such as a noun class."
+                      },
+                      "ws": {
+                        "type": "string",
+                        "description": "Writing system tag for the name and abbreviation."
+                      },
+                      "abbreviation": {
+                        "type": "string",
+                        "description": "Optional short class label."
+                      },
+                      "parent": {
+                        "type": "string",
+                        "description": "Optional existing parent class in the declared category."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "category",
+                      "name",
+                      "ws"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "compose-author-stem-name"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-author-stem-name.",
+                    "properties": {
+                      "category": {
+                        "type": "string",
+                        "description": "Canonical id of the category owning this stem name."
+                      },
+                      "name": {
+                        "type": "string",
+                        "description": "Stem name label."
+                      },
+                      "ws": {
+                        "type": "string",
+                        "description": "Writing system tag for the name and abbreviation."
+                      },
+                      "abbreviation": {
+                        "type": "string",
+                        "description": "Optional short stem name label."
+                      },
+                      "regions": {
+                        "type": "array",
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "feature": {
+                                "type": "string",
+                                "description": "Closed feature id in the morphosyntactic system."
+                              },
+                              "value": {
+                                "type": "string",
+                                "description": "Value id belonging to that feature."
+                              }
+                            },
+                            "required": [
+                              "feature",
+                              "value"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Nonempty choices; one value for each feature."
+                        },
+                        "description": "Nonempty feature regions permitting the named stem."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "category",
+                      "name",
+                      "ws",
+                      "regions"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "compose-author-lexical-entry"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-author-lexical-entry.",
+                    "properties": {
+                      "form": {
+                        "type": "string",
+                        "description": "The lexeme form, without affix hyphens."
+                      },
+                      "formWs": {
+                        "type": "string",
+                        "description": "Vernacular writing system tag of the form."
+                      },
+                      "morphType": {
+                        "type": "string",
+                        "description": "Canonical id of the morph type, such as stem, root, prefix or suffix."
+                      },
+                      "gloss": {
+                        "type": "string",
+                        "description": "The sense\u0027s gloss."
+                      },
+                      "analysisWs": {
+                        "type": "string",
+                        "description": "Analysis writing system tag of the gloss and definition."
+                      },
+                      "definition": {
+                        "type": "string",
+                        "description": "Optional definition of the sense."
+                      },
+                      "msa": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "description": "Grammatical info (MSA) kind; must match the morph type.",
+                            "enum": [
+                              "stem",
+                              "inflectional",
+                              "derivational",
+                              "unclassified"
+                            ]
+                          },
+                          "category": {
+                            "type": "string",
+                            "description": "Canonical id of the part of speech; for a derivational affix, the one it attaches to."
+                          },
+                          "toCategory": {
+                            "type": "string",
+                            "description": "Derivational only: canonical id of the part of speech it makes."
+                          },
+                          "slots": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            },
+                            "description": "Inflectional only: canonical ids of existing slots the affix fills."
+                          },
+                          "inflectionClass": {
+                            "type": "string",
+                            "description": "Stem only: canonical id of its inflection class, such as a noun class."
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "category"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "form",
+                      "formWs",
+                      "morphType",
+                      "gloss",
+                      "analysisWs",
+                      "msa"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "compose-author-affix-slot"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-author-affix-slot.",
+                    "properties": {
+                      "category": {
+                        "type": "string",
+                        "description": "Canonical id of the existing category that owns the new slot."
+                      },
+                      "name": {
+                        "type": "string",
+                        "description": "Slot name in the project\u0027s writing system."
+                      },
+                      "ws": {
+                        "type": "string",
+                        "description": "Writing system tag for the slot name."
+                      },
+                      "optional": {
+                        "type": "boolean",
+                        "description": "Whether forms may omit this slot."
+                      },
+                      "assignments": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Optional canonical ids of existing inflectional affix MSAs to assign."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "category",
+                      "name",
+                      "ws",
+                      "optional"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "compose-author-affix-template"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-author-affix-template.",
+                    "properties": {
+                      "category": {
+                        "type": "string",
+                        "description": "Canonical id of the existing category that owns the template."
+                      },
+                      "name": {
+                        "type": "string",
+                        "description": "Template name in the project\u0027s writing system."
+                      },
+                      "ws": {
+                        "type": "string",
+                        "description": "Writing system tag for the template name."
+                      },
+                      "prefixSlots": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Ordered canonical ids of prefix slots."
+                      },
+                      "suffixSlots": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Ordered canonical ids of suffix slots."
+                      },
+                      "final": {
+                        "type": "boolean",
+                        "description": "Whether the template requires further derivation."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "category",
+                      "name",
+                      "ws",
+                      "prefixSlots",
+                      "suffixSlots",
+                      "final"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "compose-edit-adhoc-prohibition"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-edit-adhoc-prohibition.",
+                    "properties": {
+                      "target": {
+                        "type": "string",
+                        "description": "Canonical id of one flat allomorph or morpheme prohibition."
+                      },
+                      "expectedDisabled": {
+                        "type": "boolean",
+                        "description": "The value the target must currently have."
+                      },
+                      "disabled": {
+                        "type": "boolean",
+                        "description": "The explicit Disabled value to write."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "target",
+                      "expectedDisabled",
+                      "disabled"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "compose-edit-affix-slot"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-edit-affix-slot.",
+                    "properties": {
+                      "target": {
+                        "type": "string",
+                        "description": "Canonical id of the existing affix slot."
+                      },
+                      "expectedOptional": {
+                        "type": "boolean",
+                        "description": "The optionality the project must currently have."
+                      },
+                      "optional": {
+                        "type": "boolean",
+                        "description": "The requested optionality."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "target",
+                      "expectedOptional",
+                      "optional"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "compose-edit-affix-template"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-edit-affix-template.",
+                    "properties": {
+                      "target": {
+                        "type": "string",
+                        "description": "Canonical id of the existing affix template."
+                      },
+                      "expectedPrefixSlots": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Current prefix slot ids in project order."
+                      },
+                      "prefixSlots": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Requested prefix slot ids in explicit order."
+                      },
+                      "expectedSuffixSlots": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Current suffix slot ids in project order."
+                      },
+                      "suffixSlots": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Requested suffix slot ids in explicit order."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "target",
+                      "expectedPrefixSlots",
+                      "prefixSlots",
+                      "expectedSuffixSlots",
+                      "suffixSlots"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "compose-edit-inflectional-affix"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-edit-inflectional-affix.",
+                    "properties": {
+                      "target": {
+                        "type": "string",
+                        "description": "Canonical id of the existing inflectional affix MSA."
+                      },
+                      "expectedSlots": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Current slot ids assigned to the MSA."
+                      },
+                      "slots": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Requested slot ids; order has no meaning."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "target",
+                      "expectedSlots",
+                      "slots"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "compose-edit-allomorph-condition"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-edit-allomorph-condition.",
+                    "properties": {
+                      "target": {
+                        "type": "string",
+                        "description": "Canonical id of the existing stem or affix allomorph."
+                      },
+                      "field": {
+                        "type": "string",
+                        "description": "LibLCM condition field.",
+                        "enum": [
+                          "phoneEnv",
+                          "position"
+                        ]
+                      },
+                      "expectedEnvironments": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Current environment ids; order matters only for position."
+                      },
+                      "environments": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Requested environment ids; order matters only for position."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "target",
+                      "field",
+                      "expectedEnvironments",
+                      "environments"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "order-allomorphs"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for order-allomorphs.",
+                    "properties": {
+                      "target": {
+                        "type": "string",
+                        "description": "Canonical id of the owning lexical entry."
+                      },
+                      "expectedAlternates": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Current alternate-form ids in project order."
+                      },
+                      "alternates": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Requested order of those same alternate forms."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "target",
+                      "expectedAlternates",
+                      "alternates"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "parsimony dispose"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for parsimony dispose.",
+                    "properties": {
+                      "reportId": {
+                        "type": "string",
+                        "description": "Id of a stored Parsimony Report from this project."
+                      },
+                      "findingId": {
+                        "type": "string",
+                        "description": "Exact finding id returned by that Report."
+                      },
+                      "disposition": {
+                        "type": "string",
+                        "description": "The proposed decision.",
+                        "enum": [
+                          "fix",
+                          "keep",
+                          "ask",
+                          "defer"
+                        ]
+                      },
+                      "recordTypeId": {
+                        "type": "string",
+                        "description": "Portable id from motif_parsimony_record_types."
+                      },
+                      "reason": {
+                        "type": "string",
+                        "description": "Optional explanation, stored with the readable record."
+                      },
+                      "question": {
+                        "type": "string",
+                        "description": "Required only when disposition is ask."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "reportId",
+                      "findingId",
+                      "disposition",
+                      "recordTypeId"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "parsimony revise"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for parsimony revise.",
+                    "properties": {
+                      "recordId": {
+                        "type": "string",
+                        "description": "Notebook record id of a current disposition head."
+                      },
+                      "expectedHeads": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "revisionId": {
+                              "type": "string",
+                              "description": "Portable id of the current revision."
+                            },
+                            "contentDigest": {
+                              "type": "string",
+                              "description": "Canonical sha256 digest read with the revision."
+                            }
+                          },
+                          "required": [
+                            "revisionId",
+                            "contentDigest"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "description": "Every current head with its exact content digest."
+                      },
+                      "disposition": {
+                        "type": "string",
+                        "description": "The revised choice.",
+                        "enum": [
+                          "fix",
+                          "keep",
+                          "ask",
+                          "defer"
+                        ]
+                      },
+                      "reason": {
+                        "type": "string",
+                        "description": "Replacement reason; omit to preserve the current reason."
+                      },
+                      "clearReason": {
+                        "type": "boolean",
+                        "description": "Clear the current optional reason."
+                      },
+                      "question": {
+                        "type": "string",
+                        "description": "Required when disposition is ask."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "recordId",
+                      "expectedHeads",
+                      "disposition"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "parsimony retract"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for parsimony retract.",
+                    "properties": {
+                      "recordId": {
+                        "type": "string",
+                        "description": "Notebook record id of a current disposition head."
+                      },
+                      "expectedHeads": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "revisionId": {
+                              "type": "string",
+                              "description": "Portable id of the current revision."
+                            },
+                            "contentDigest": {
+                              "type": "string",
+                              "description": "Canonical sha256 digest read with the revision."
+                            }
+                          },
+                          "required": [
+                            "revisionId",
+                            "contentDigest"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "description": "Every current head with its exact content digest."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "recordId",
+                      "expectedHeads"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "compose-record-parsimony-disposition"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-record-parsimony-disposition.",
+                    "properties": {
+                      "recordTypeId": {
+                        "type": "string",
+                        "description": "Id of an existing possibility in the Notebook record type list."
+                      },
+                      "measureId": {
+                        "type": "string",
+                        "description": "The registered Parsimony measure id."
+                      },
+                      "subject": {
+                        "description": "One closed project, object, relationship or computed-group identity.",
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "description": "Subject discriminator.",
+                                "enum": [
+                                  "object"
+                                ]
+                              },
+                              "object": {
+                                "type": "object",
+                                "properties": {
+                                  "class": {
+                                    "type": "string",
+                                    "description": "Exact FieldWorks model class."
+                                  },
+                                  "id": {
+                                    "type": "string",
+                                    "description": "Portable identity of the model object."
+                                  },
+                                  "owningEntryId": {
+                                    "type": "string",
+                                    "description": "Owning entry identity, required for an MSA."
+                                  }
+                                },
+                                "required": [
+                                  "class",
+                                  "id"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "object"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "description": "Subject discriminator.",
+                                "enum": [
+                                  "project"
+                                ]
+                              },
+                              "id": {
+                                "type": "string",
+                                "description": "Project identity."
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "id"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "description": "Subject discriminator.",
+                                "enum": [
+                                  "edge"
+                                ]
+                              },
+                              "role": {
+                                "type": "string",
+                                "description": "Directed relationship role.",
+                                "enum": [
+                                  "membership",
+                                  "precedence",
+                                  "rhs",
+                                  "left-context",
+                                  "right-context",
+                                  "constraint-use"
+                                ]
+                              },
+                              "owner": {
+                                "type": "object",
+                                "properties": {
+                                  "class": {
+                                    "type": "string",
+                                    "description": "Exact FieldWorks model class."
+                                  },
+                                  "id": {
+                                    "type": "string",
+                                    "description": "Portable identity of the model object."
+                                  },
+                                  "owningEntryId": {
+                                    "type": "string",
+                                    "description": "Owning entry identity, required for an MSA."
+                                  }
+                                },
+                                "required": [
+                                  "class",
+                                  "id"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "from": {
+                                "type": "object",
+                                "properties": {
+                                  "class": {
+                                    "type": "string",
+                                    "description": "Exact FieldWorks model class."
+                                  },
+                                  "id": {
+                                    "type": "string",
+                                    "description": "Portable identity of the model object."
+                                  },
+                                  "owningEntryId": {
+                                    "type": "string",
+                                    "description": "Owning entry identity, required for an MSA."
+                                  }
+                                },
+                                "required": [
+                                  "class",
+                                  "id"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "to": {
+                                "type": "object",
+                                "properties": {
+                                  "class": {
+                                    "type": "string",
+                                    "description": "Exact FieldWorks model class."
+                                  },
+                                  "id": {
+                                    "type": "string",
+                                    "description": "Portable identity of the model object."
+                                  },
+                                  "owningEntryId": {
+                                    "type": "string",
+                                    "description": "Owning entry identity, required for an MSA."
+                                  }
+                                },
+                                "required": [
+                                  "class",
+                                  "id"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "role",
+                              "owner",
+                              "from",
+                              "to"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "description": "Subject discriminator.",
+                                "enum": [
+                                  "computed-group"
+                                ]
+                              },
+                              "measureId": {
+                                "type": "string",
+                                "description": "Measure defining the group."
+                              },
+                              "role": {
+                                "type": "string",
+                                "description": "Computed group role.",
+                                "enum": [
+                                  "alternation-family",
+                                  "duplicate-pair",
+                                  "adhoc-cluster",
+                                  "adhoc-slot-order"
+                                ]
+                              },
+                              "members": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "class": {
+                                      "type": "string",
+                                      "description": "Exact FieldWorks model class."
+                                    },
+                                    "id": {
+                                      "type": "string",
+                                      "description": "Portable identity of the model object."
+                                    },
+                                    "owningEntryId": {
+                                      "type": "string",
+                                      "description": "Owning entry identity, required for an MSA."
+                                    }
+                                  },
+                                  "required": [
+                                    "class",
+                                    "id"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "description": "Exact typed group members."
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "measureId",
+                              "role",
+                              "members"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      },
+                      "disposition": {
+                        "type": "string",
+                        "description": "The proposed decision.",
+                        "enum": [
+                          "fix",
+                          "keep",
+                          "ask",
+                          "defer"
+                        ]
+                      },
+                      "evidenceDigest": {
+                        "type": "string",
+                        "description": "Canonical sha256 digest from the exact finding."
+                      },
+                      "evidenceContract": {
+                        "type": "string",
+                        "description": "Versioned evidence contract for the finding."
+                      },
+                      "subjectCaption": {
+                        "type": "string",
+                        "description": "Readable name for the exact finding subject."
+                      },
+                      "measureCaption": {
+                        "type": "string",
+                        "description": "Readable name for the Parsimony measure."
+                      },
+                      "reason": {
+                        "type": "string",
+                        "description": "Optional explanation, stored with the readable record."
+                      },
+                      "question": {
+                        "type": "string",
+                        "description": "Required only when disposition is ask."
+                      },
+                      "reportId": {
+                        "type": "string",
+                        "description": "Optional source Parsimony Report id."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "recordTypeId",
+                      "measureId",
+                      "subject",
+                      "disposition",
+                      "evidenceDigest",
+                      "evidenceContract",
+                      "subjectCaption",
+                      "measureCaption"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "description": "Ordered semantic composer intents. Each later intent can refer to objects created earlier in this batch."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "intents",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
     "name": "motif_set_gloss",
     "description": "Set a sense gloss. Stages the explicitly authored gloss of one sense in one writing system in a Draft. Dry Run and Trial the Draft before Finalize; only a person can Apply.\nCommand: add-set-gloss. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nTarget: The exact canonical identity of the existing object.\nWs: The project writing system tag for this value.\nText: The authored Unicode text.\nDependsOn: Explicit operation dependencies; array position implies no dependency.",
     "inputSchema": {

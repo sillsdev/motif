@@ -1,3 +1,4 @@
+using System.Text.Json;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
@@ -80,7 +81,7 @@ public static class ProposalLifecycleCommand
         return Close(request.ProjectPath, request.ProposalId, ManifestStatus.Rejected);
     }
 
-    /// <summary>Withdraws a Proposal for its author, finalizing it first when it is a Draft.</summary>
+    /// <summary>Withdraws a Proposal, finalizing a nonempty Draft and discarding an empty one first.</summary>
     public static CommandOutcome<ProposalStatusChangedResponse> Withdraw(WithdrawProposalRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -125,6 +126,15 @@ public static class ProposalLifecycleCommand
                 "These are your own changes. Undo them on Review changes instead.");
         if (record.DraftName is { } draftName)
         {
+            if (status == ManifestStatus.Withdrawn && IsNeverFinalizedEmptyDraft(record))
+            {
+                var discarded = ProposalCommands.DiscardDraft(new DiscardDraftRequest(projectPath, version, draftName,
+                    DraftRevision.Compute(record.ProposalJson)));
+                if (!discarded.Succeeded) return CommandOutcome<ProposalStatusChangedResponse>.Refused(discarded.Refusal!);
+                return CommandOutcome<ProposalStatusChangedResponse>.Success(
+                    new ProposalStatusChangedResponse(id, ManifestStatus.Withdrawn, null));
+            }
+
             var finalized = ProposalCommands.Finalize(new FinalizeRequest(projectPath, version, draftName));
             if (!finalized.Succeeded) return CommandOutcome<ProposalStatusChangedResponse>.Refused(finalized.Refusal!);
         }
@@ -132,6 +142,19 @@ public static class ProposalLifecycleCommand
         return status == ManifestStatus.Rejected
             ? ProposalCommands.Reject(rejectRequest)
             : ProposalCommands.Withdraw(rejectRequest);
+    }
+
+    private static bool IsNeverFinalizedEmptyDraft(ProposalRecord record)
+    {
+        if (record.IntentDigest is not null || record.ProposalJson is null) return false;
+        try
+        {
+            return ProposalCommands.DeserializeDraft(record.ProposalJson).Operations.Count == 0;
+        }
+        catch (Exception exception) when (exception is JsonException or InvalidOperationException)
+        {
+            return false;
+        }
     }
 
     private static CommandOutcome<ProposalRecord> ReadRecord(string projectPath, string proposalId) =>

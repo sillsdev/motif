@@ -40,10 +40,20 @@ connect, inspect its MCP launch log instead. Do not substitute direct FieldWorks
 2. Use the semantic composer tool whose description matches the intended operation. For example,
    `motif_set_gloss` changes a gloss; it does not authorize a raw property write. Keep each operation
    grounded in ids and current values returned by Motif.
-3. Call `motif_dry_run` on the Draft. Read the effects and any refusal before continuing.
-4. Call `motif_trial` with representative positive words and, when available, attested negative words.
+   For new grammar objects, use `motif_add_part_of_speech`, `motif_add_inflection_feature`,
+   `motif_add_inflection_class`, `motif_add_stem_name`, `motif_add_affix_slot`,
+   `motif_add_affix_template` and `motif_add_lexical_entry` for grammatical objects, and
+   `motif_add_phoneme`, `motif_add_natural_class`, `motif_add_environment` and
+   `motif_add_phonological_rule` for sound patterns. A lexical-entry intent creates one entry, one
+   sense and its structured MSA; choose the morph type and MSA kind together, and give affixes their
+   category and any applicable slots or derivational destination.
+3. For related composer calls, `motif_compose_batch` takes an `intents` array of `{verb, intent,
+   citation?}` objects. Each `intent` is structured semantic input, and later intents can refer to
+   entity ids created earlier in the batch. Never supply low-level operations as a batch.
+4. Call `motif_dry_run` on the Draft. Read the effects and any refusal before continuing.
+5. Call `motif_trial` with representative positive words and, when available, attested negative words.
    Read its summary, including unfinished searches, without treating an incomplete search as rejection.
-5. Use the Trial's Difference id with `motif_difference` to page through the relevant categories. Read
+6. Use the Trial's Difference id with `motif_difference` to page through the relevant categories. Read
    every lost positive and newly parsing negative before deciding whether to revise.
 
 ## Revise and Finalize
