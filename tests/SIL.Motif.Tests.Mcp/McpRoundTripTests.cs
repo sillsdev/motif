@@ -197,6 +197,9 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
             ("gloss", "MCP noun"), ("analysisWs", "en"),
             ("msa", new { kind = "stem", category = categoryId }));
         Assert.True(entry.GetProperty("result").GetProperty("operationCount").GetInt32() > 0);
+        var entryId = Assert.Single(entry.GetProperty("result").GetProperty("operations").EnumerateArray(),
+            operation => operation.GetProperty("kind").GetString() == "lexical/lexDb/createEntries")
+            .GetProperty("entityId").GetString()!;
 
         var batch = await session.CallAsync("motif_compose_batch", ("draft", "author-grammar"), ("intents", new object[]
         {
@@ -211,8 +214,20 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
             } },
             new { verb = "compose-author-phoneme", intent = new { name = "McpZ", representations = new[] { "z" } } },
             new { verb = "compose-author-phoneme", intent = new { name = "McpQ", representations = new[] { "q" } } },
+            new { verb = "compose-author-alternate-form", intent = new
+            {
+                entry = "entry:" + entryId,
+                form = "mcpnoun-alt",
+                formWs = "fr",
+                morphType = stemTypeId,
+            } },
         }));
-        Assert.Equal(3, batch.GetProperty("result").GetProperty("intents").GetArrayLength());
+        var batchIntents = batch.GetProperty("result").GetProperty("intents");
+        Assert.Equal(4, batchIntents.GetArrayLength());
+        var alternateIntent = batchIntents.EnumerateArray()
+            .Single(intent => intent.GetProperty("verb").GetString() == "compose-author-alternate-form");
+        Assert.Contains(alternateIntent.GetProperty("operations").EnumerateArray(), operation =>
+            operation.GetProperty("kind").GetString() == "lexical/lexEntry/createAlternateForms");
         Assert.True(batch.GetProperty("result").GetProperty("operationCount").GetInt32() > 0);
 
         var suffixTypeId = morphTypes.GetProperty("result").GetProperty("items").EnumerateArray()

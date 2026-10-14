@@ -21,6 +21,7 @@
     { "name": "motif_add_inflection_class", "class": "Draft" },
     { "name": "motif_add_stem_name", "class": "Draft" },
     { "name": "motif_add_lexical_entry", "class": "Draft" },
+    { "name": "motif_add_alternate_form", "class": "Draft" },
     { "name": "motif_add_part_of_speech", "class": "Draft" },
     { "name": "motif_add_affix_template", "class": "Draft" },
     { "name": "motif_compose_batch", "class": "Draft" },

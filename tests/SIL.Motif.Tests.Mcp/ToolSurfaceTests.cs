@@ -86,19 +86,47 @@ public sealed class ToolSurfaceTests
             "motif_add_inflection_class",
             "motif_add_stem_name",
             "motif_add_affix_slot",
+            "motif_add_alternate_form",
             "motif_add_affix_template",
             "motif_compose_batch",
         }, name => Assert.Contains(name, names));
 
         var entry = tools.Single(tool => tool.Name == "motif_add_lexical_entry");
         Assert.Equal("object", entry.Tool.InputSchema["properties"]!["msa"]!["type"]!.GetValue<string>());
+        var entryProperties = entry.Tool.InputSchema["properties"]!.AsObject();
+        Assert.Contains("environments", entryProperties.Select(property => property.Key));
+        Assert.Contains("inflectionClasses", entryProperties.Select(property => property.Key));
+        Assert.Equal("array", entryProperties["environments"]!["type"]!.GetValue<string>());
+        Assert.Equal("array", entryProperties["inflectionClasses"]!["type"]!.GetValue<string>());
+        Assert.Equal("string", entryProperties["environments"]!["items"]!["type"]!.GetValue<string>());
+        Assert.Equal("string", entryProperties["inflectionClasses"]!["items"]!["type"]!.GetValue<string>());
+        Assert.DoesNotContain(entry.Tool.InputSchema["required"]!.AsArray(), value =>
+            value!.GetValue<string>() is "environments" or "inflectionClasses");
+
+        var alternate = tools.Single(tool => tool.Name == "motif_add_alternate_form").Tool.InputSchema;
+        var alternateProperties = alternate["properties"]!.AsObject();
+        Assert.Equal(new[]
+        {
+            "draft", "entry", "form", "formWs", "morphType", "environments", "inflectionClasses", "placement", "project",
+        }, alternateProperties.Select(property => property.Key));
+        Assert.Equal(new[] { "draft", "entry", "form", "formWs", "morphType", "project" },
+            alternate["required"]!.AsArray().Select(value => value!.GetValue<string>()));
+        Assert.False(alternate["additionalProperties"]!.GetValue<bool>());
+        foreach (var field in new[] { "environments", "inflectionClasses", "placement" })
+            Assert.DoesNotContain(alternate["required"]!.AsArray(), value => value!.GetValue<string>() == field);
+        foreach (var field in new[] { "environments", "inflectionClasses" })
+        {
+            Assert.Equal("array", alternateProperties[field]!["type"]!.GetValue<string>());
+            Assert.Equal("string", alternateProperties[field]!["items"]!["type"]!.GetValue<string>());
+        }
+
         var batch = tools.Single(tool => tool.Name == "motif_compose_batch");
         var intents = batch.Tool.InputSchema["properties"]!["intents"]!;
         Assert.Equal("array", intents["type"]!.GetValue<string>());
         Assert.DoesNotContain("intentsJson", batch.Tool.ArgumentNames);
         var branches = intents["items"]!["oneOf"]!.AsArray();
         var verbs = branches.Select(branch => branch!["properties"]!["verb"]!["enum"]![0]!.GetValue<string>()).ToArray();
-        Assert.Equal(22, verbs.Length);
+        Assert.Equal(23, verbs.Length);
         Assert.Equal(new[]
         {
             "compose-author-lexeme-form",
@@ -115,6 +143,7 @@ public sealed class ToolSurfaceTests
             "compose-author-inflection-class",
             "compose-author-stem-name",
             "compose-author-lexical-entry",
+            "compose-author-alternate-form",
             "compose-author-affix-slot",
             "compose-author-affix-template",
             "compose-edit-adhoc-prohibition",
@@ -133,6 +162,31 @@ public sealed class ToolSurfaceTests
         Assert.DoesNotContain("parsimony dispose", verbs);
         Assert.DoesNotContain("parsimony revise", verbs);
         Assert.DoesNotContain("parsimony retract", verbs);
+
+        var alternateBranch = branches.Single(branch =>
+            branch!["properties"]!["verb"]!["enum"]![0]!.GetValue<string>() == "compose-author-alternate-form")!;
+        var alternateBranchProperties = alternateBranch["properties"]!.AsObject();
+        Assert.Equal(new[] { "verb", "intent", "citation" }, alternateBranchProperties.Select(property => property.Key));
+        Assert.False(alternateBranch["additionalProperties"]!.GetValue<bool>());
+        var alternateIntent = alternateBranchProperties["intent"]!;
+        var alternateIntentProperties = alternateIntent["properties"]!.AsObject();
+        Assert.Equal(new[] { "entry", "form", "formWs", "morphType", "environments", "inflectionClasses", "placement" },
+            alternateIntentProperties.Select(property => property.Key));
+        Assert.Equal(new[] { "entry", "form", "formWs", "morphType" },
+            alternateIntent["required"]!.AsArray().Select(value => value!.GetValue<string>()));
+        Assert.False(alternateIntent["additionalProperties"]!.GetValue<bool>());
+        Assert.Equal(new[] { "compose-author-alternate-form" },
+            alternateBranchProperties["verb"]!["enum"]!.AsArray().Select(value => value!.GetValue<string>()));
+        foreach (var field in new[] { "environments", "inflectionClasses" })
+        {
+            Assert.Equal("array", alternateIntentProperties[field]!["type"]!.GetValue<string>());
+            Assert.Equal("string", alternateIntentProperties[field]!["items"]!["type"]!.GetValue<string>());
+        }
+        var placement = alternateIntentProperties["placement"]!;
+        Assert.Equal("object", placement["type"]!.GetValue<string>());
+        Assert.Equal(new[] { "after", "before" }, placement["properties"]!.AsObject().Select(property => property.Key));
+        Assert.False(placement["additionalProperties"]!.GetValue<bool>());
+        Assert.False(placement.AsObject().ContainsKey("required"));
 
         var batchOnly = MotifMcpServer.Expose(new ToolProfile("batch-only", null, null, "concise",
             [new ToolSelection("motif_compose_batch", null, null, null)]));
