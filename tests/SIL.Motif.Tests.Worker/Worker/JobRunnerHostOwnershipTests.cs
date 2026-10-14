@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host.Store;
@@ -18,17 +19,114 @@ namespace SIL.Motif.Tests.Worker;
 /// </summary>
 public sealed class JobRunnerHostOwnershipTests
 {
+    private const string CrossTempRootVariable = "MOTIF_TEST_CROSS_TEMP_ROOT";
+    private const string CrossTempOwnerVariable = "MOTIF_TEST_CROSS_TEMP_OWNER";
+
     [Fact]
-    public void CurrentOwnerNameUsesThePlatformUserNamespace()
+    public void CurrentOwnerNameIncludesThePlatformUserAndConfiguredRoot()
     {
         var name = JobRunnerHost.GetOwnerMutexName();
 
         if (OperatingSystem.IsWindows())
             Assert.StartsWith(@"Local\SIL.Motif.Worker.Owner.", name, StringComparison.Ordinal);
         else
-        {
             Assert.Matches("^uid-[0-9]+$", WorkerIdentity.GetCurrentUserNamespace());
-            Assert.EndsWith(WorkerIdentity.GetCurrentUserNamespace(), name, StringComparison.Ordinal);
+        Assert.Contains(WorkerIdentity.GetCurrentUserNamespace(), name, StringComparison.Ordinal);
+        Assert.Contains(".Root.", name, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void DifferentRootsCanOwnRunnersAtTheSameTimeForOneUser()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "motif-owner-roots-" + Guid.NewGuid().ToString("N"));
+        var firstRoot = Path.Combine(root, "first");
+        var secondRoot = Path.Combine(root, "second");
+        var identity = "test-owner-" + Guid.NewGuid().ToString("N");
+        using var first = JobRunnerHost.ForRoot(firstRoot, identity);
+        using var second = JobRunnerHost.ForRoot(secondRoot, identity);
+        using var duplicate = JobRunnerHost.ForRoot(firstRoot, identity);
+
+        Assert.NotEqual(first.OwnerName, second.OwnerName);
+        Assert.Equal(first.OwnerName, duplicate.OwnerName);
+        Assert.True(first.TryAcquireOwnership());
+        Assert.True(second.TryAcquireOwnership());
+        Assert.False(duplicate.TryAcquireOwnership());
+    }
+
+    [UnixWorkerLockFact]
+    public void PhysicalAliasesShareOneRunnerOwner()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "motif-owner-physical-alias-" + Guid.NewGuid().ToString("N"));
+        var realParent = Path.Combine(root, "real");
+        var aliasParent = Path.Combine(root, "alias");
+        var realRoot = Path.Combine(realParent, "installation");
+        var aliasRoot = Path.Combine(aliasParent, "installation");
+        var ownerNamespace = "physical-alias-" + Guid.NewGuid().ToString("N");
+        try
+        {
+            Directory.CreateDirectory(realRoot);
+            Directory.CreateSymbolicLink(aliasParent, realParent);
+            using var first = JobRunnerHost.ForRoot(realRoot, ownerNamespace);
+            using var alias = JobRunnerHost.ForRoot(aliasRoot, ownerNamespace);
+
+            Assert.Equal(first.OwnerName, alias.OwnerName);
+            Assert.True(first.TryAcquireOwnership());
+            Assert.False(alias.TryAcquireOwnership());
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [UnixWorkerLockFact]
+    public async Task SameRootOwnerIsSharedAcrossDifferentTempDirectories()
+    {
+        if (Environment.GetEnvironmentVariable(CrossTempRootVariable) is { Length: > 0 } childRoot &&
+            Environment.GetEnvironmentVariable(CrossTempOwnerVariable) is { Length: > 0 } childNamespace)
+        {
+            using var childOwner = JobRunnerHost.ForRoot(childRoot, childNamespace);
+            Assert.False(childOwner.TryAcquireOwnership());
+            return;
+        }
+
+        var baseRoot = Path.Combine(Path.GetTempPath(), "motif-owner-cross-temp-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(baseRoot);
+        var alternateTemp = Path.Combine(baseRoot, "alternate-temp");
+        Directory.CreateDirectory(alternateTemp);
+        var workerRoot = Path.Combine(baseRoot, "worker-root");
+        var ownerNamespace = "cross-temp-test-" + Guid.NewGuid().ToString("N");
+        using var owner = JobRunnerHost.ForRoot(workerRoot, ownerNamespace);
+        Assert.True(owner.TryAcquireOwnership());
+
+        var projectPath = Path.Combine(FindRepositoryRoot(), "tests", "SIL.Motif.Tests.Worker",
+            "SIL.Motif.Tests.Worker.csproj");
+        var childStart = DotnetTestProcess.CreateTestStartInfo(projectPath,
+            "FullyQualifiedName=SIL.Motif.Tests.Worker.JobRunnerHostOwnershipTests." +
+            "SameRootOwnerIsSharedAcrossDifferentTempDirectories");
+        childStart.Environment[CrossTempRootVariable] = workerRoot;
+        childStart.Environment[CrossTempOwnerVariable] = ownerNamespace;
+        childStart.Environment["TMPDIR"] = alternateTemp;
+        childStart.Environment["TMP"] = alternateTemp;
+        childStart.Environment["TEMP"] = alternateTemp;
+        using var child = Process.Start(childStart)
+            ?? throw new InvalidOperationException("Could not start the cross-temp-root test process.");
+        var output = child.StandardOutput.ReadToEndAsync();
+        var error = child.StandardError.ReadToEndAsync();
+        try
+        {
+            await child.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(45));
+            Assert.True(child.ExitCode == 0,
+                "Child test failed. stdout: " + await output + " stderr: " + await error);
+        }
+        finally
+        {
+            if (!child.HasExited)
+            {
+                child.Kill(entireProcessTree: true);
+                await child.WaitForExitAsync();
+            }
+            Directory.Delete(baseRoot, recursive: true);
         }
     }
 
@@ -248,6 +346,14 @@ public sealed class JobRunnerHostOwnershipTests
         Assert.True(attempts > 0);
         Assert.Single(warnings);
         Assert.Contains("queued work", warnings[0], StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string FindRepositoryRoot()
+    {
+        var current = new DirectoryInfo(AppContext.BaseDirectory);
+        while (current is not null && !File.Exists(Path.Combine(current.FullName, "Motif.sln")))
+            current = current.Parent;
+        return current?.FullName ?? throw new DirectoryNotFoundException("Could not find Motif.sln.");
     }
 
     private sealed class RetryTimeProvider(DateTimeOffset now) : TimeProvider

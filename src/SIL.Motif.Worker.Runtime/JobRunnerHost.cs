@@ -3,7 +3,9 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.Security.Cryptography;
 using System.Security.Principal;
+using System.Text;
 using System.Threading;
 using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Host.PanGloss;
@@ -16,14 +18,14 @@ using SIL.Motif.Worker.Store;
 namespace SIL.Motif.Worker;
 
 /// <summary>
-/// The composition root of the per-user job runner: one owner lock, one runtime registry, and the
+/// The composition root of one user's job runner for one root: one owner lock, one runtime registry, and the
 /// per-project lanes its work is scheduled through.
 /// </summary>
 /// <remarks>
 /// <para>
 /// It answers no requests. Coordination with a <c>motif</c> invocation is the paired database and the
 /// database's own owner lock, not a message, so this type has no endpoint, no connections, and no
-/// protocol. What it owns is singularity — one runner per platform user, enforced by an owner lock —
+/// protocol. What it owns is singularity — one runner per platform user and worker root, enforced by an owner lock —
 /// and the lifetime of everything scheduled work needs.
 /// </para>
 /// <para>
@@ -52,29 +54,42 @@ public sealed class JobRunnerHost : IDisposable
 
     /// <summary>Creates a runner host for the current user.</summary>
     public JobRunnerHost()
-        : this(WorkerIdentity.GetCurrentUserNamespace())
+        : this(WorkerIdentity.GetCurrentUserNamespace(), RunnerOptions.ResolveRoot())
     {
     }
 
-    internal JobRunnerHost(string userNamespace)
+    internal JobRunnerHost(string userNamespace, string? workerRoot = null)
     {
-        OwnerName = GetOwnerMutexNameForNamespace(
-            string.IsNullOrWhiteSpace(userNamespace) ? "unknown-user" : userNamespace);
-        _ownerMutex = new WorkerMutexOwner(OwnerName);
+        var identity = string.IsNullOrWhiteSpace(userNamespace) ? "unknown-user" : userNamespace;
+        OwnerName = workerRoot is null
+            ? GetOwnerMutexNameForNamespace(identity)
+            : GetOwnerMutexNameForRoot(workerRoot, identity);
+        _ownerMutex = workerRoot is null
+            ? new WorkerMutexOwner(OwnerName)
+            : WorkerMutexOwner.ForRoot(OwnerName);
         _hostRegistry = new ProjectHostRegistry();
         _hostReleases = new ProjectHostReleaseCoordinator();
     }
 
-    /// <summary>Creates a runner whose owner lock is isolated to the given namespace.</summary>
+    /// <summary>Creates a test runner whose owner lock is isolated to the given namespace.</summary>
     /// <remarks>
-    /// Only a test has a reason to call this. Two real installations are separated by where they work,
-    /// not by who may run, so an operator relocating a runner changes its root rather than its namespace.
+    /// Product runners use <see cref="ForRoot"/> so ownership follows the root. Tests can use this method
+    /// to keep their owner lock away from a developer's default installation.
     /// </remarks>
     public static JobRunnerHost ForNamespace(string ownerNamespace)
     {
         if (string.IsNullOrWhiteSpace(ownerNamespace))
             throw new ArgumentException("A runner namespace is required.", nameof(ownerNamespace));
         return new JobRunnerHost(ownerNamespace);
+    }
+
+    /// <summary>Creates a runner whose owner lock is scoped to this user's worker root.</summary>
+    /// <param name="workerRoot">The directory whose queue, Baselines, and parser artifacts this runner owns.</param>
+    /// <param name="ownerNamespace">An optional identity override for tests that must avoid a user's normal lock.</param>
+    public static JobRunnerHost ForRoot(string workerRoot, string? ownerNamespace = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(workerRoot);
+        return new JobRunnerHost(ownerNamespace ?? WorkerIdentity.GetCurrentUserNamespace(), workerRoot);
     }
 
     /// <summary>Creates an isolated runner identity for tests only.</summary>
@@ -97,10 +112,10 @@ public sealed class JobRunnerHost : IDisposable
         return host;
     }
 
-    /// <summary>The platform lock name which serializes runner ownership for one user.</summary>
+    /// <summary>The platform lock name which serializes runner ownership for one user and worker root.</summary>
     public string OwnerName { get; }
 
-    /// <summary>Whether this process currently owns the user-scoped runner lock.</summary>
+    /// <summary>Whether this process currently owns the runner lock for its worker root.</summary>
     public bool IsOwner { get; private set; }
 
     internal ProjectLaneRegistry ProjectLanes => _projectLanes ??
@@ -110,7 +125,7 @@ public sealed class JobRunnerHost : IDisposable
 
     internal ProjectHostRegistry HostRegistry => _hostRegistry;
 
-    /// <summary>Takes the user-scoped lock, making this process the one runner.</summary>
+    /// <summary>Takes the root-scoped lock, making this process the one runner for that root.</summary>
     public bool TryAcquireOwnership()
     {
         lock (_gate)
@@ -183,8 +198,37 @@ public sealed class JobRunnerHost : IDisposable
         }
     }
 
-    /// <summary>Derives the runner owner lock name for the current user.</summary>
-    public static string GetOwnerMutexName() => GetOwnerMutexNameForNamespace(WorkerIdentity.GetCurrentUserNamespace());
+    /// <summary>Derives the runner owner lock name for the current user and configured root.</summary>
+    public static string GetOwnerMutexName() => GetOwnerMutexNameForRoot(
+        RunnerOptions.ResolveRoot(), WorkerIdentity.GetCurrentUserNamespace());
+
+    internal static string GetOwnerMutexNameForRoot(string workerRoot, string userNamespace)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(workerRoot);
+        ArgumentException.ThrowIfNullOrWhiteSpace(userNamespace);
+        var root = ResolvePhysicalPath(workerRoot);
+        if (OperatingSystem.IsWindows() || OperatingSystem.IsMacOS())
+            root = root.ToUpperInvariant();
+        var rootDigest = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(root)));
+        return GetOwnerMutexNameForNamespace(userNamespace) + ".Root." + rootDigest;
+    }
+
+    private static string ResolvePhysicalPath(string path)
+    {
+        var fullPath = Path.GetFullPath(path);
+        var pathRoot = Path.GetPathRoot(fullPath) ?? throw new ArgumentException("The root path is invalid.", nameof(path));
+        var current = pathRoot;
+        var segments = fullPath[pathRoot.Length..].Split(
+            [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar], StringSplitOptions.RemoveEmptyEntries);
+        foreach (var segment in segments)
+        {
+            var candidate = Path.Combine(current, segment);
+            FileSystemInfo entry = Directory.Exists(candidate) ? new DirectoryInfo(candidate) : new FileInfo(candidate);
+            var target = entry.Exists ? entry.ResolveLinkTarget(returnFinalTarget: true) : null;
+            current = Path.GetFullPath(target?.FullName ?? candidate);
+        }
+        return Path.TrimEndingDirectorySeparator(current);
+    }
 
     internal static string GetOwnerMutexNameForNamespace(string userNamespace) => OperatingSystem.IsWindows()
         ? @"Local\SIL.Motif.Worker.Owner." + userNamespace

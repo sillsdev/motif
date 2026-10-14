@@ -8,8 +8,8 @@ namespace SIL.Motif.Worker;
 /// <summary>What one job runner process was told about where to work and how long to hold a job.</summary>
 /// <remarks>
 /// Launch arguments configure the runner that a launch starts, and win over the environment, which stays
-/// the default for a runner started by hand. The runner is a per-user singleton: a launch that finds one
-/// already running starts nothing, and the running one keeps the settings it started with.
+/// the default for a runner started by hand. One owner serves a user and root: a launch that finds that
+/// owner's runner starts nothing, and the running one keeps the settings it started with.
 /// <see cref="Read"/> and <see cref="ResolveRoot"/> consult the environment, pinned by
 /// `ResolveRootAndReadTakeTheRootVariable`, and an argument wins over it, pinned by
 /// `ExplicitArgumentsSelectTheRootParserNamespaceIdleAndLease`. Options built in code carry exactly what they
@@ -48,10 +48,8 @@ public sealed record RunnerOptions
     /// Isolates this runner's owner mutex. <b>Test-only.</b>
     /// </summary>
     /// <remarks>
-    /// It exists because a runner started by a test would otherwise contend for the same per-user mutex as
-    /// the developer's real runner, and two concurrent test runs would contend with each other. No
-    /// operator has a reason to set it: two real installations are separated by
-    /// <see cref="RootVariable"/>, which is about where work happens rather than who may do it.
+    /// It lets tests avoid both the developer's normal owner lock and other test runs. Product ownership
+    /// always includes <see cref="RootVariable"/>, so two roots can drain independently for one user.
     /// </remarks>
     public const string NamespaceVariable = "MOTIF_RUNNER_NAMESPACE";
 

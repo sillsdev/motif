@@ -65,9 +65,7 @@ internal static class WorkerRuntime
     private static async Task<int> RunWorkerAsync(string[] args)
     {
         var options = RunnerOptions.Read(args);
-        using var host = options.OwnerNamespace is { } isolated
-            ? JobRunnerHost.ForNamespace(isolated)
-            : new JobRunnerHost();
+        using var host = JobRunnerHost.ForRoot(options.Root, options.OwnerNamespace);
         var ownership = WorkspaceOwnership.Bootstrap(options.Root);
         host.ConfigureWorkspaces(ownership);
         var ownerId = "runner-" + Environment.ProcessId.ToString();

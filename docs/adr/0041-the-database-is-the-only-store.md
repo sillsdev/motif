@@ -105,8 +105,11 @@ since decision 2 gives every verb a project, each invocation upserts it on the w
 dropped by the next sweep rather than raising an error.
 
 **What does not move into it.** PanGloss machine capacity stays two OS named mutexes
-(`Global\MotifPanGlossSlot-0`, `-1`), and the runner singleton stays a named mutex. The kernel releases a
-mutex when its holder dies; a database row would need a lease and an expiry sweep, which is strictly more
+(`Global\MotifPanGlossSlot-0`, `-1`). Runner ownership stays an OS lock, scoped to one platform user and
+physically resolved worker root, so a private installation can drain its own queue while another root's
+runner is alive. Absolute paths resolve ancestor links; Windows and macOS comparisons ignore case, while
+Linux preserves it. The lock location is independent of temporary-directory overrides. The kernel releases
+the lock when its holder dies; a database row would need a lease and an expiry sweep, which is strictly more
 machinery for a weaker guarantee.
 
 ### 5. The runner sweeps every known project, and stays a pseudo-daemon

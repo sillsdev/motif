@@ -20,6 +20,9 @@ public sealed class WorkerMutexOwner : IDisposable
     {
     }
 
+    /// <summary>Creates a root owner that uses a lock file shared across temporary-directory overrides.</summary>
+    public static WorkerMutexOwner ForRoot(string name) => new(name, machineWide: true);
+
     internal WorkerMutexOwner(string name, bool machineWide)
     {
         if (OperatingSystem.IsWindows()) _mutex = new Mutex(false, name);
