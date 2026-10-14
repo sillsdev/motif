@@ -40,8 +40,17 @@ internal static class ProjectReadCache
             {
                 throw new ProjectSavingException();
             }
-            using var cache = new FwDataProjectLoader().LoadScratchCache(copy.FwDataPath);
-            return action(copy, cache);
+            LcmCache cache;
+            try
+            {
+                cache = new FwDataProjectLoader().LoadScratchCache(copy.FwDataPath);
+            }
+            catch (SIL.Motif.Projection.ProjectWritingSystemsUnavailableException exception)
+            {
+                // The copy is deleted below, so the remedy names the project it was made from.
+                throw exception.ForProject(project.FullFwDataPath);
+            }
+            using (cache) return action(copy, cache);
         }
         finally
         {

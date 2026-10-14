@@ -187,7 +187,8 @@ public static class MotifMcpServer
         }
         catch (SIL.Motif.Projection.ProjectWritingSystemsUnavailableException exception)
         {
-            return ToolOutcome.Refused("project.writing-system-missing", FailureReason.Refused, exception.Message);
+            // A read opens a private copy; the remedy must name the project's own folder, not that deleted copy.
+            return ToolOutcome.Refused(ProjectStoreCommand.WritingSystemRefusal(exception, context.ProjectPath));
         }
         catch (ToolArgumentException exception)
         {

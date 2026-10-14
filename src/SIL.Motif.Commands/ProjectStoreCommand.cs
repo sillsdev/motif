@@ -133,16 +133,7 @@ public static class ProjectStoreCommand
         }
         catch (ProjectWritingSystemsUnavailableException failure)
         {
-            var exception = failure.ForProject(fwDataPath);
-            // Configuration, not damage: the message names the store, the repository and the remedy.
-            var facts = new Dictionary<string, string>(Fact(fwDataPath), StringComparer.Ordinal)
-            {
-                ["projectWritingSystemStore"] = exception.ProjectStore,
-            };
-            if (exception.WritingSystem is { } tag) facts["writingSystem"] = tag;
-            if (exception.Repository is { } repository) facts["writingSystemRepository"] = repository;
-            return CommandOutcome<T>.Refused(new Refusal("project.writing-system-missing", FailureReason.Refused,
-                exception.Message, facts));
+            return CommandOutcome<T>.Refused(WritingSystemRefusal(failure, fwDataPath));
         }
         catch (ProjectSavingException)
         {
@@ -226,6 +217,26 @@ public static class ProjectStoreCommand
         MotifProductVersion.CompatibilityVersion(productVersion);
 
     /// The file must exist: an unresolvable path would key a second, empty workspace instead of the real one.
+    /// <summary>
+    /// The setup refusal for a project whose writing system cannot be loaded, explained for
+    /// <paramref name="fwDataPath"/> when the caller named one, so a failure met in a private copy names the
+    /// project's own <c>WritingSystemStore</c>. Configuration, not damage: the message names the store, the
+    /// repository and the remedy.
+    /// </summary>
+    public static Refusal WritingSystemRefusal(ProjectWritingSystemsUnavailableException failure, string? fwDataPath)
+    {
+        ArgumentNullException.ThrowIfNull(failure);
+        var exception = string.IsNullOrWhiteSpace(fwDataPath) ? failure : failure.ForProject(fwDataPath);
+        var facts = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["projectWritingSystemStore"] = exception.ProjectStore,
+        };
+        if (!string.IsNullOrWhiteSpace(fwDataPath)) facts["fwDataPath"] = fwDataPath;
+        if (exception.WritingSystem is { } tag) facts["writingSystem"] = tag;
+        if (exception.Repository is { } repository) facts["writingSystemRepository"] = repository;
+        return new Refusal("project.writing-system-missing", FailureReason.Refused, exception.Message, facts);
+    }
+
     internal static ProjectLocator Locate(string fwDataPath)
     {
         var full = Path.GetFullPath(fwDataPath);

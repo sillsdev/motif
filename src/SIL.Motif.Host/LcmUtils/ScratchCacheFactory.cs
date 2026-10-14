@@ -131,7 +131,15 @@ public class ScratchCacheFactory
         if (!System.IO.File.Exists(destFwData))
             throw new System.IO.FileNotFoundException($"Copy did not produce the expected project file.", destFwData);
 
-        return _loader.LoadScratchCache(destFwData);
+        try
+        {
+            return _loader.LoadScratchCache(destFwData);
+        }
+        catch (SIL.Motif.Projection.ProjectWritingSystemsUnavailableException exception)
+        {
+            // The copy is the caller's to delete, so the remedy names the project it was made from.
+            throw exception.ForProject(sourceFwDataPath);
+        }
     }
 
     private static void CopyDirectory(string sourceDir, string destDir, string projectName)

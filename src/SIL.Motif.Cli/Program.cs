@@ -125,10 +125,13 @@ if (args.Length == 0)
 var verb = args[0];
 var rest = args[1..];
 var asJson = Array.IndexOf(args, "--json") >= 0;
+string? namedProject = null;
 
 try
 {
     var (flags, positionals, forwardedArguments) = ParseArgs(rest);
+    namedProject = flags.TryGetValue("project", out var flaggedProject) ? flaggedProject
+        : verb == "open" && positionals.Count == 1 ? positionals[0] : null;
     var commandName = ResolveCommandName(verb, flags, positionals);
     var command = CommandCatalog.All.FirstOrDefault(item => item.Name == commandName);
     if (command is not null && !commandPolicy.IsAvailable(command))
@@ -1803,12 +1806,13 @@ try
 catch (ProjectWritingSystemsUnavailableException ex)
 {
     // A setup problem the message explains, never an unexpected failure, even outside a project-store command.
+    var refusal = ProjectStoreCommand.WritingSystemRefusal(ex, namedProject);
     if (asJson)
         error.WriteLine(ProjectionJson.Serialize(
-            new FailureEnvelope(FailureReason.Refused, ex.Message, code: "project.writing-system-missing")));
+            new FailureEnvelope(refusal.Reason, refusal.Message, refusal.Facts, refusal.Code)));
     else
-        error.WriteLine($"project.writing-system-missing: {ex.Message}");
-    return FailureEnvelope.ExitCodeFor(FailureReason.Refused);
+        error.WriteLine($"{refusal.Code}: {refusal.Message}");
+    return FailureEnvelope.ExitCodeFor(refusal.Reason);
 }
 catch (OperationCanceledException ex)
 {
