@@ -114,9 +114,10 @@ public sealed class InflectionClassEditingTests(PristineProjectFixture pristine)
         NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
             Get<IPartOfSpeech>(cache, foreign).InflectionClassesOC.Add(Get<IMoInflClass>(cache, cls)));
         var before = BaselineSemanticDigest.Compute(cache);
-        Assert.Throws<InvalidOperationException>(() => ScratchDryRun.Of(cache, proposal));
+        var refusal = Record.Exception(() => { _ = ScratchDryRun.Of(cache, proposal); });
         Assert.Null(Get<IPartOfSpeech>(cache, category).DefaultInflectionClassRA);
         Assert.Equal(before, BaselineSemanticDigest.Compute(cache));
+        Assert.IsType<InvalidOperationException>(refusal);
     }
 
     [Fact]
