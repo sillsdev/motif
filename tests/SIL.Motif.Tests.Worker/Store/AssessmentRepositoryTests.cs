@@ -537,23 +537,25 @@ public sealed class AssessmentRepositoryTests : IDisposable
     }
 
     [Fact]
-    public void SweepKeepsAReportOnTheProposalAndClearsItsLinkToTheSweptAssessment()
+    public void SweepKeepsAnAssessmentAReportCitesAndTheReportsBinding()
     {
         var repository = NewRepository("sweep-report.fwdata", out var database);
         var proposal = CanonicalId.Mint("proposal/");
         SeedProposal(database, proposal.Value);
         repository.Record(NewAssessment("reported", proposal, "sha256:intent", "Correctness"));
+        repository.Record(NewAssessment("loose", proposal, "sha256:intent", "ParseTime"));
         Execute(database, "INSERT INTO Reports (ReportId, ProposalId, AssessmentId, ReportJson, CreatedUtc) " +
             "VALUES ('report/1', $proposal, 'reported', '{}', '2026-10-13T00:00:00Z');", proposal.Value);
 
         repository.DeleteByProposal(proposal, exceptAssessmentId: null);
 
-        Assert.Throws<KeyNotFoundException>(() => repository.Get("reported"));
-        Assert.Equal("null", Scalar(database, "SELECT IFNULL(AssessmentId, 'null') FROM Reports WHERE ReportId = 'report/1';"));
+        Assert.Equal("reported", repository.Get("reported").AssessmentId);
+        Assert.Equal("reported", Scalar(database, "SELECT AssessmentId FROM Reports WHERE ReportId = 'report/1';"));
+        Assert.Throws<KeyNotFoundException>(() => repository.Get("loose"));
     }
 
     [Fact]
-    public void SweepRemovesAPinnedAssessmentWithItsPin()
+    public void SweepKeepsAPinnedAssessment()
     {
         var repository = NewRepository("sweep-pinned.fwdata", out var database);
         var proposal = CanonicalId.Mint("proposal/");
@@ -564,59 +566,105 @@ public sealed class AssessmentRepositoryTests : IDisposable
 
         repository.DeleteByProposal(proposal, exceptAssessmentId: null);
 
-        Assert.Throws<KeyNotFoundException>(() => repository.Get("pinned"));
-        Assert.Equal("0", Scalar(database, "SELECT CAST(COUNT(*) AS TEXT) FROM AssessmentPins;"));
+        Assert.Equal("pinned", repository.Get("pinned").AssessmentId);
     }
 
     [Fact]
-    public void SweepClearsAnotherAssessmentsReplacementLinkToASweptOne()
+    public void SweepKeepsARetainedMemberAndTakesALooseNeighbour()
+    {
+        var repository = NewRepository("sweep-retained.fwdata", out var database);
+        var proposal = CanonicalId.Mint("proposal/");
+        SeedProposal(database, proposal.Value);
+        repository.Record(NewAssessment("retained", proposal, "sha256:intent", "Correctness"));
+        repository.Record(NewAssessment("loose", proposal, "sha256:intent", "ParseTime"));
+        // Membership is what the sweep reads; the aggregate's own rows are not needed to show it is honoured.
+        Execute(database, "PRAGMA foreign_keys = OFF; INSERT INTO RetainedInvocationMembers (InvocationId, Kind, " +
+            "AssessmentId) VALUES ('invocation/1', 'Correctness', 'retained'); PRAGMA foreign_keys = ON;", proposal.Value);
+
+        repository.DeleteByProposal(proposal, exceptAssessmentId: null);
+
+        Assert.Equal("retained", repository.Get("retained").AssessmentId);
+        Assert.Equal("retained", Scalar(database, "SELECT AssessmentId FROM RetainedInvocationMembers;"));
+        Assert.Throws<KeyNotFoundException>(() => repository.Get("loose"));
+    }
+
+    [Fact]
+    public void SweepKeepsEveryRootASurvivingReplacementNeedsWithItsLineageUnchanged()
     {
         var repository = NewRepository("sweep-replaced.fwdata", out var database);
         var swept = CanonicalId.Mint("proposal/");
         var other = CanonicalId.Mint("proposal/");
         SeedProposal(database, swept.Value);
         SeedProposal(database, other.Value);
-        repository.Record(NewAssessment("old", swept, "sha256:intent", "Correctness"));
-        repository.Record(NewAssessment("newer", other, "sha256:intent", "Correctness"));
-        Execute(database, "UPDATE Assessments SET ReplacesAssessmentId = 'old' WHERE AssessmentId = 'newer';", swept.Value);
+        repository.Record(NewAssessment("root", swept, "sha256:intent", "Correctness"));
+        repository.Record(NewAssessment("middle", swept, "sha256:intent", "Correctness"));
+        repository.Record(NewAssessment("survivor", other, "sha256:intent", "Correctness"));
+        Execute(database, "UPDATE Assessments SET ReplacesAssessmentId = 'root' WHERE AssessmentId = 'middle';", swept.Value);
+        Execute(database, "UPDATE Assessments SET ReplacesAssessmentId = 'middle' WHERE AssessmentId = 'survivor';", swept.Value);
+        var before = Scalar(database, "SELECT group_concat(AssessmentId || '>' || IFNULL(ReplacesAssessmentId, '-'), ',') " +
+            "FROM (SELECT * FROM Assessments ORDER BY AssessmentId);");
 
         repository.DeleteByProposal(swept, exceptAssessmentId: null);
 
-        Assert.Throws<KeyNotFoundException>(() => repository.Get("old"));
-        Assert.Equal("null", Scalar(database, "SELECT IFNULL(ReplacesAssessmentId, 'null') FROM Assessments WHERE AssessmentId = 'newer';"));
+        Assert.Equal(before, Scalar(database, "SELECT group_concat(AssessmentId || '>' || IFNULL(ReplacesAssessmentId, '-'), ',') " +
+            "FROM (SELECT * FROM Assessments ORDER BY AssessmentId);"));
     }
 
     [Fact]
-    public void DeletingAClosedProposalNeverTurnsItsAssessmentsIntoBaselineEvidence()
+    public void ASweepThatFailsLateLeavesEveryRowItHadTouched()
     {
-        // An Assessment with no Proposal is Baseline evidence, so a deleted Proposal's Trial must never become one.
+        var repository = NewRepository("sweep-rollback.fwdata", out var database);
+        var proposal = CanonicalId.Mint("proposal/");
+        SeedProposal(database, proposal.Value);
+        repository.Record(NewAssessment("first", proposal, "sha256:intent", "Correctness"));
+        repository.Record(NewAssessment("second", proposal, "sha256:intent", "ParseTime"));
+        var words = Scalar(database, "SELECT CAST(COUNT(*) AS TEXT) FROM AssessedWords;");
+        Execute(database, "CREATE TRIGGER FailLateSweep BEFORE DELETE ON Assessments " +
+            "BEGIN SELECT RAISE(ABORT, 'injected late failure'); END;", proposal.Value);
+
+        Assert.ThrowsAny<SqliteException>(() => repository.DeleteByProposal(proposal, exceptAssessmentId: null));
+
+        Assert.Equal("first", repository.Get("first").AssessmentId);
+        Assert.Equal("second", repository.Get("second").AssessmentId);
+        Assert.Equal(words, Scalar(database, "SELECT CAST(COUNT(*) AS TEXT) FROM AssessedWords;"));
+    }
+
+    [Fact]
+    public void DeletingAProposalWithAPinnedTrialLeavesCurrentEvidenceOnTheRealBaseline()
+    {
         var repository = NewRepository("delete-pinned.fwdata", out var database);
         var proposal = CanonicalId.Mint("proposal/");
         SeedProposal(database, proposal.Value);
         Execute(database, "UPDATE Proposals SET Status = 'rejected' WHERE ProposalId = $proposal;", proposal.Value);
-        repository.Record(NewAssessment("pinned", proposal, "sha256:intent", "Correctness"));
+        repository.Record(NewAssessment("baseline", null, null, "ParseTime", savedUtc: "2026-10-13T00:00:00Z"));
+        repository.Record(NewAssessment("trial", proposal, "sha256:intent", "ParseTime", savedUtc: "2026-10-13T01:00:00Z"));
         Execute(database, "INSERT INTO AssessmentPins (AssessmentId, PinnedBy, PinnedUtc) " +
-            "VALUES ('pinned', 'linguist', '2026-10-13T00:00:00Z');", proposal.Value);
-
-        repository.DeleteByProposal(proposal, exceptAssessmentId: null);
-        new ProposalRepository(database).DeleteArchived(proposal);
-
-        Assert.Equal("0", Scalar(database, "SELECT CAST(COUNT(*) AS TEXT) FROM Assessments;"));
-        Assert.Equal("0", Scalar(database, "SELECT CAST(COUNT(*) AS TEXT) FROM Proposals;"));
-    }
-
-    [Fact]
-    public void AProposalWhoseAssessmentIsStillKeptIsNotDeletedAndKeepsTheAssessmentItsOwn()
-    {
-        var repository = NewRepository("delete-kept.fwdata", out var database);
-        var proposal = CanonicalId.Mint("proposal/");
-        SeedProposal(database, proposal.Value);
-        Execute(database, "UPDATE Proposals SET Status = 'rejected' WHERE ProposalId = $proposal;", proposal.Value);
-        repository.Record(NewAssessment("kept", proposal, "sha256:intent", "Correctness"));
+            "VALUES ('trial', 'linguist', '2026-10-13T00:00:00Z');", proposal.Value);
+        var selection = Selection.Create("selection-1", ["bo", "za"]);
 
         Assert.Throws<InvalidOperationException>(() => new ProposalRepository(database).DeleteArchived(proposal));
 
-        Assert.Equal(proposal.Value, Scalar(database, "SELECT ProposalId FROM Assessments WHERE AssessmentId = 'kept';"));
+        Assert.Equal("baseline", repository.FindLatestBaselineAssessment(
+            "ParseTime", "{\"baseline\":true}", selection.Sha256, selection.Words)!.AssessmentId);
+        Assert.Equal(proposal, repository.Get("trial").ProposalId);
+    }
+
+    [Fact]
+    public void DeletingAClosedProposalTakesItsOwnReportsAndUnneededAssessmentsWithIt()
+    {
+        var repository = NewRepository("delete-closed.fwdata", out var database);
+        var proposal = CanonicalId.Mint("proposal/");
+        SeedProposal(database, proposal.Value);
+        Execute(database, "UPDATE Proposals SET Status = 'rejected' WHERE ProposalId = $proposal;", proposal.Value);
+        repository.Record(NewAssessment("reported", proposal, "sha256:intent", "Correctness"));
+        Execute(database, "INSERT INTO Reports (ReportId, ProposalId, AssessmentId, ReportJson, CreatedUtc) " +
+            "VALUES ('report/1', $proposal, 'reported', '{}', '2026-10-13T00:00:00Z');", proposal.Value);
+
+        new ProposalRepository(database).DeleteArchived(proposal);
+
+        Assert.Equal("0", Scalar(database, "SELECT CAST(COUNT(*) AS TEXT) FROM Assessments;"));
+        Assert.Equal("0", Scalar(database, "SELECT CAST(COUNT(*) AS TEXT) FROM Reports;"));
+        Assert.Equal("0", Scalar(database, "SELECT CAST(COUNT(*) AS TEXT) FROM Proposals;"));
     }
 
     private static void Execute(MotifDatabase database, string sql, string proposalId)

@@ -78,10 +78,11 @@ public interface IAssessmentRepository
     AssessmentRecord? GetCurrent();
 
     /// <summary>
-    /// Deletes every Assessment recorded against one Proposal, except <paramref name="exceptAssessmentId"/> —
-    /// the sweep purge-on-apply drives (ADR 0042's Trial amendment). A promoted candidate must always be
-    /// named here by its exact id: this call, not the order it runs in relative to promotion, is what keeps
-    /// it out of the sweep.
+    /// Deletes the Assessments recorded against one Proposal that nothing else still needs, except
+    /// <paramref name="exceptAssessmentId"/> — the sweep purge-on-apply drives (ADR 0042's Trial amendment). A
+    /// promoted candidate must always be named here by its exact id: this call, not the order it runs in relative
+    /// to promotion, is what keeps it out of the sweep. An Assessment a Report cites, a pin or retained invocation
+    /// holds, that is current, or that a surviving Assessment replaces is kept, and no surviving row is rewritten.
     /// </summary>
     void DeleteByProposal(CanonicalId proposalId, string? exceptAssessmentId);
 }
@@ -549,41 +550,12 @@ public sealed class AssessmentRepository : IAssessmentRepository
         };
     }
 
-    // A retained invocation is an immutable aggregate, so a sweep never takes one of its members.
-    private const string SweptAssessments = """
-        SELECT AssessmentId FROM Assessments
-        WHERE ProposalId = $proposalId AND ($exceptId IS NULL OR AssessmentId != $exceptId)
-            AND AssessmentId NOT IN (SELECT AssessmentId FROM RetainedInvocationMembers)
-        """;
-
     /// <inheritdoc />
     public void DeleteByProposal(CanonicalId proposalId, string? exceptAssessmentId)
     {
         using var connection = _database.OpenConnection();
         using var transaction = connection.BeginTransaction();
-
-        foreach (var sql in new[]
-        {
-            // Reports and replacement links outlive a swept Assessment; they lose only the link.
-            $"UPDATE Reports SET AssessmentId = NULL WHERE AssessmentId IN ({SweptAssessments});",
-            $"UPDATE Assessments SET ReplacesAssessmentId = NULL WHERE ReplacesAssessmentId IN ({SweptAssessments});",
-            $"DELETE FROM AssessmentPins WHERE AssessmentId IN ({SweptAssessments});",
-            $"DELETE FROM AssessmentObjectTimings WHERE AssessmentId IN ({SweptAssessments});",
-            $"""
-            DELETE FROM ParsedAnalyses WHERE AssessedWordId IN (
-                SELECT AssessedWordId FROM AssessedWords WHERE AssessmentId IN ({SweptAssessments}));
-            """,
-            $"DELETE FROM AssessedWords WHERE AssessmentId IN ({SweptAssessments});",
-            $"DELETE FROM Assessments WHERE AssessmentId IN ({SweptAssessments});",
-        })
-        {
-            using var command = connection.CreateCommand();
-            command.Transaction = transaction;
-            command.CommandText = sql;
-            command.Parameters.AddWithValue("$proposalId", proposalId.Value);
-            command.Parameters.AddWithValue("$exceptId", (object?)exceptAssessmentId ?? DBNull.Value);
-            command.ExecuteNonQuery();
-        }
+        AssessmentRetention.SweepProposal(connection, transaction, proposalId.Value, exceptAssessmentId);
         transaction.Commit();
     }
 
