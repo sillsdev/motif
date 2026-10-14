@@ -1,0 +1,12 @@
+{
+  "AaE28rpEzrUmGYqFyaKXnQ": { "kind": "phoneme", "name": "n", "representations": ["n"] },
+  "AaE28q0DuqCWj5gs0lWY6w": { "kind": "phoneme", "name": "m", "representations": ["m"] },
+  "AaE28vNteYlfFp7kL8Vb3w": { "kind": "phoneme", "name": "w", "representations": ["w"] },
+  "AaE2r7am9vE14eTIyQb27g": { "kind": "phoneme", "name": "b", "representations": ["b"] },
+  "AaE2r9tfXeMbkCgNtWtwqA": { "kind": "phoneme", "name": "l", "representations": ["l"] },
+  "AaE28sWyvnSIzUfmjNwKjg": { "kind": "phoneme", "name": "j", "representations": ["j"] },
+  "AaE3UhB3K0hLe7PdQeOkgg": { "kind": "naturalClass", "name": "nasal source context", "abbreviation": "NSC", "members": ["AaE28rpEzrUmGYqFyaKXnQ"] },
+  "AaE3UcqFb-LNOjVvwkukgw": { "kind": "naturalClass", "name": "shared context", "abbreviation": "SHC", "members": ["AaE28q0DuqCWj5gs0lWY6w", "AaE28vNteYlfFp7kL8Vb3w"] },
+  "AaE3Uh_O7OmNjG0G7J0nKw": { "kind": "naturalClass", "name": "labial context", "abbreviation": "LBC", "members": ["AaE28q0DuqCWj5gs0lWY6w", "AaE2r7am9vE14eTIyQb27g"] },
+  "AaE3Uiyx3zou5ukX2zL1Pg": { "kind": "naturalClass", "name": "liquid input", "abbreviation": "LIQ", "members": ["AaE2r9tfXeMbkCgNtWtwqA"] }
+}

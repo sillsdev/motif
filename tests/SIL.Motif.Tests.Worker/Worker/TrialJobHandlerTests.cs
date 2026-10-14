@@ -55,6 +55,7 @@ public sealed class TrialJobHandlerTests : IDisposable
     private readonly BaselineToken _token;
     private readonly SeededProject _seed;
     private readonly Guid _opinionAnalysisId;
+    private readonly Guid _phonologicalDataId;
 
     public TrialJobHandlerTests(PristineProjectFixture pristine)
     {
@@ -63,6 +64,7 @@ public sealed class TrialJobHandlerTests : IDisposable
         using var master = pristine.NewScratch();
         _seed = pristine.Seed;
         _opinionAnalysisId = SeedWordformsForSelectionTests(master);
+        _phonologicalDataId = master.LangProject.PhonologicalDataOA.Guid;
         _loader.Save(master);
 
         _publishedRoot = Path.Combine(_root, "published");
@@ -111,6 +113,33 @@ public sealed class TrialJobHandlerTests : IDisposable
         Assert.Equal(JobStatus.Completed, completed.Status);
         Assert.True(completed.DryRunPublished);
         Assert.Equal(1, _loader.LoadScratchCacheCount);
+    }
+
+    [Fact]
+    public void AReversedTrialOperationArrayPreparesItsScratchInDeclaredRuleOrder()
+    {
+        using var lanes = new ProjectLaneRegistry(_ => _token);
+        var proposalId = CanonicalId.Mint("proposal/");
+        var proposal = BuildOrderedRuleCreateProposalJson(proposalId, _phonologicalDataId);
+        var authoredRuleOrder = ProposalJsonParser.Parse(proposal.Json).Operations
+            .Select(operation => operation.EntityId!.Value).ToArray();
+        Assert.Equal(proposal.RuleIds.Reverse().ToArray(), authoredRuleOrder);
+        SaveCommittedProposal(proposalId, proposal.Json);
+        var job = CreateTrialJob(proposal.Json);
+        IReadOnlyList<Guid>? preparedRuleOrder = null;
+        var handler = BuildHandler(lanes, new FakeAssessor("pangloss", [AssessmentKind.Correctness]),
+            prepareForAssessment: (cache, ct) =>
+            {
+                preparedRuleOrder = cache!.LangProject.PhonologicalDataOA.PhonRulesOS
+                    .Select(rule => rule.Guid).ToArray();
+                return DefaultPrepareForAssessment(cache, ct);
+            });
+
+        var completed = RunAndFinish(handler, job.JobId);
+
+        Assert.Equal(JobStatus.Completed, completed.Status);
+        Assert.NotNull(preparedRuleOrder);
+        Assert.Equal(proposal.RuleIds.Select(id => id.ToGuid()), preparedRuleOrder);
     }
 
     [Fact]
@@ -720,6 +749,23 @@ public sealed class TrialJobHandlerTests : IDisposable
               ]
             }
             """;
+    }
+
+    private static (string Json, CanonicalId[] RuleIds) BuildOrderedRuleCreateProposalJson(
+        CanonicalId proposalId, Guid phonologicalDataId)
+    {
+        var operationIds = Enumerable.Range(0, 6).Select(_ => CanonicalId.Mint("operation/")).ToArray();
+        var ruleIds = Enumerable.Range(0, 6).Select(_ => CanonicalId.Mint("entity/")).ToArray();
+        var target = CanonicalId.FromGuid(phonologicalDataId).Value;
+        var operations = Enumerable.Range(0, ruleIds.Length).Select(index =>
+        {
+            var placementAndDependency = index == 0 ? string.Empty :
+                $",\"placement\":{{\"after\":{JsonSerializer.Serialize(ruleIds[index - 1].Value)}}}," +
+                $"\"dependsOn\":[{JsonSerializer.Serialize(operationIds[index - 1].Value)}]";
+            return $$"""{"operationId":{{JsonSerializer.Serialize(operationIds[index].Value)}},"kind":"grammar/phPhonData/createPhonRules","entityId":{{JsonSerializer.Serialize(ruleIds[index].Value)}},"target":{{JsonSerializer.Serialize(target)}},"after":{"class":"PhRegularRule"}{{placementAndDependency}}}""";
+        }).Reverse();
+        var json = $$"""{"contractVersions":{"grammar":"1.0"},"proposalId":{{JsonSerializer.Serialize(proposalId.Value)}},"operations":[{{string.Join(",", operations)}}]}""";
+        return (json, ruleIds);
     }
 
     private static string Sha256Of(string path)

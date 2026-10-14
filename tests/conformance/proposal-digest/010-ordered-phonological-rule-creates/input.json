@@ -1,0 +1,92 @@
+{
+  "contractVersions": {
+    "grammar": "1.0"
+  },
+  "proposalId": "agent_yMnKy8zNzs_Q0dLT1NXW1w",
+  "operations": [
+    {
+      "operationId": "agent_AAECAwQFBgcICQoLDA0ODw",
+      "kind": "grammar/phPhonData/createPhonRules",
+      "entityId": "agent_UFFSU1RVVldYWVpbXF1eXw",
+      "target": "agent_AgMEBQYHCAkKCwwNDg8QEQ",
+      "after": {
+        "class": "PhRegularRule"
+      }
+    },
+    {
+      "operationId": "agent_BAUGBwgJCgsMDQ4PEBESEw",
+      "kind": "grammar/phPhonData/createPhonRules",
+      "entityId": "agent_YGFiY2RlZmdoaWprbG1ubw",
+      "target": "agent_AgMEBQYHCAkKCwwNDg8QEQ",
+      "after": {
+        "class": "PhRegularRule"
+      },
+      "placement": {
+        "after": "agent_UFFSU1RVVldYWVpbXF1eXw"
+      },
+      "dependsOn": [
+        "agent_AAECAwQFBgcICQoLDA0ODw"
+      ]
+    },
+    {
+      "operationId": "agent_EBESExQVFhcYGRobHB0eHw",
+      "kind": "grammar/phPhonData/createPhonRules",
+      "entityId": "agent_cHFyc3R1dnd4eXp7fH1-fw",
+      "target": "agent_AgMEBQYHCAkKCwwNDg8QEQ",
+      "after": {
+        "class": "PhRegularRule"
+      },
+      "placement": {
+        "after": "agent_YGFiY2RlZmdoaWprbG1ubw"
+      },
+      "dependsOn": [
+        "agent_BAUGBwgJCgsMDQ4PEBESEw"
+      ]
+    },
+    {
+      "operationId": "agent_ICEiIyQlJicoKSorLC0uLw",
+      "kind": "grammar/phPhonData/createPhonRules",
+      "entityId": "agent_gIGCg4SFhoeIiYqLjI2Ojw",
+      "target": "agent_AgMEBQYHCAkKCwwNDg8QEQ",
+      "after": {
+        "class": "PhRegularRule"
+      },
+      "placement": {
+        "after": "agent_cHFyc3R1dnd4eXp7fH1-fw"
+      },
+      "dependsOn": [
+        "agent_EBESExQVFhcYGRobHB0eHw"
+      ]
+    },
+    {
+      "operationId": "agent_MDEyMzQ1Njc4OTo7PD0-Pw",
+      "kind": "grammar/phPhonData/createPhonRules",
+      "entityId": "agent_kJGSk5SVlpeYmZqbnJ2enw",
+      "target": "agent_AgMEBQYHCAkKCwwNDg8QEQ",
+      "after": {
+        "class": "PhRegularRule"
+      },
+      "placement": {
+        "after": "agent_gIGCg4SFhoeIiYqLjI2Ojw"
+      },
+      "dependsOn": [
+        "agent_ICEiIyQlJicoKSorLC0uLw"
+      ]
+    },
+    {
+      "operationId": "agent_QEFCQ0RFRkdISUpLTE1OTw",
+      "kind": "grammar/phPhonData/createPhonRules",
+      "entityId": "agent_oKGio6SlpqeoqaqrrK2urw",
+      "target": "agent_AgMEBQYHCAkKCwwNDg8QEQ",
+      "after": {
+        "class": "PhRegularRule"
+      },
+      "placement": {
+        "after": "agent_kJGSk5SVlpeYmZqbnJ2enw"
+      },
+      "dependsOn": [
+        "agent_MDEyMzQ1Njc4OTo7PD0-Pw"
+      ]
+    }
+  ]
+}
