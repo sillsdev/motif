@@ -536,6 +536,92 @@ public sealed class AssessmentRepositoryTests : IDisposable
         Assert.Equal("kept-1", repository.Get("kept-1").AssessmentId);
     }
 
+    [Fact]
+    public void SweepKeepsAReportOnTheProposalAndClearsItsLinkToTheSweptAssessment()
+    {
+        var repository = NewRepository("sweep-report.fwdata", out var database);
+        var proposal = CanonicalId.Mint("proposal/");
+        SeedProposal(database, proposal.Value);
+        repository.Record(NewAssessment("reported", proposal, "sha256:intent", "Correctness"));
+        Execute(database, "INSERT INTO Reports (ReportId, ProposalId, AssessmentId, ReportJson, CreatedUtc) " +
+            "VALUES ('report/1', $proposal, 'reported', '{}', '2026-10-13T00:00:00Z');", proposal.Value);
+
+        repository.DeleteByProposal(proposal, exceptAssessmentId: null);
+
+        Assert.Throws<KeyNotFoundException>(() => repository.Get("reported"));
+        Assert.Equal("null", Scalar(database, "SELECT IFNULL(AssessmentId, 'null') FROM Reports WHERE ReportId = 'report/1';"));
+    }
+
+    [Fact]
+    public void SweepKeepsAPinnedAssessment()
+    {
+        var repository = NewRepository("sweep-pinned.fwdata", out var database);
+        var proposal = CanonicalId.Mint("proposal/");
+        SeedProposal(database, proposal.Value);
+        repository.Record(NewAssessment("pinned", proposal, "sha256:intent", "Correctness"));
+        repository.Record(NewAssessment("loose", proposal, "sha256:intent", "ParseTime"));
+        Execute(database, "INSERT INTO AssessmentPins (AssessmentId, PinnedBy, PinnedUtc) " +
+            "VALUES ('pinned', 'linguist', '2026-10-13T00:00:00Z');", proposal.Value);
+
+        repository.DeleteByProposal(proposal, exceptAssessmentId: null);
+
+        Assert.Equal("pinned", repository.Get("pinned").AssessmentId);
+        Assert.Throws<KeyNotFoundException>(() => repository.Get("loose"));
+    }
+
+    [Fact]
+    public void SweepClearsAnotherAssessmentsReplacementLinkToASweptOne()
+    {
+        var repository = NewRepository("sweep-replaced.fwdata", out var database);
+        var swept = CanonicalId.Mint("proposal/");
+        var other = CanonicalId.Mint("proposal/");
+        SeedProposal(database, swept.Value);
+        SeedProposal(database, other.Value);
+        repository.Record(NewAssessment("old", swept, "sha256:intent", "Correctness"));
+        repository.Record(NewAssessment("newer", other, "sha256:intent", "Correctness"));
+        Execute(database, "UPDATE Assessments SET ReplacesAssessmentId = 'old' WHERE AssessmentId = 'newer';", swept.Value);
+
+        repository.DeleteByProposal(swept, exceptAssessmentId: null);
+
+        Assert.Throws<KeyNotFoundException>(() => repository.Get("old"));
+        Assert.Equal("null", Scalar(database, "SELECT IFNULL(ReplacesAssessmentId, 'null') FROM Assessments WHERE AssessmentId = 'newer';"));
+    }
+
+    [Fact]
+    public void DeletingAClosedProposalKeepsItsPinnedAssessmentWithoutTheProposal()
+    {
+        var repository = NewRepository("delete-pinned.fwdata", out var database);
+        var proposal = CanonicalId.Mint("proposal/");
+        SeedProposal(database, proposal.Value);
+        Execute(database, "UPDATE Proposals SET Status = 'rejected' WHERE ProposalId = $proposal;", proposal.Value);
+        repository.Record(NewAssessment("pinned", proposal, "sha256:intent", "Correctness"));
+        Execute(database, "INSERT INTO AssessmentPins (AssessmentId, PinnedBy, PinnedUtc) " +
+            "VALUES ('pinned', 'linguist', '2026-10-13T00:00:00Z');", proposal.Value);
+
+        repository.DeleteByProposal(proposal, exceptAssessmentId: null);
+        new ProposalRepository(database).DeleteArchived(proposal);
+
+        Assert.Equal("null", Scalar(database, "SELECT IFNULL(ProposalId, 'null') FROM Assessments WHERE AssessmentId = 'pinned';"));
+        Assert.Equal("0", Scalar(database, "SELECT CAST(COUNT(*) AS TEXT) FROM Proposals;"));
+    }
+
+    private static void Execute(MotifDatabase database, string sql, string proposalId)
+    {
+        using var connection = database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        command.Parameters.AddWithValue("$proposal", proposalId);
+        command.ExecuteNonQuery();
+    }
+
+    private static string Scalar(MotifDatabase database, string sql)
+    {
+        using var connection = database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        return (string)command.ExecuteScalar()!;
+    }
+
     private IAssessmentRepository NewRepository(string fileName, out MotifDatabase database)
     {
         var project = new ProjectLocator(Path.Combine(_root, fileName), Path.GetFileNameWithoutExtension(fileName));

@@ -549,6 +549,14 @@ public sealed class AssessmentRepository : IAssessmentRepository
         };
     }
 
+    // A pinned or retained Assessment is one somebody chose to keep, so a Proposal's sweep leaves it in place.
+    private const string SweptAssessments = """
+        SELECT AssessmentId FROM Assessments
+        WHERE ProposalId = $proposalId AND ($exceptId IS NULL OR AssessmentId != $exceptId)
+            AND AssessmentId NOT IN (SELECT AssessmentId FROM AssessmentPins)
+            AND AssessmentId NOT IN (SELECT AssessmentId FROM RetainedInvocationMembers)
+        """;
+
     /// <inheritdoc />
     public void DeleteByProposal(CanonicalId proposalId, string? exceptAssessmentId)
     {
@@ -557,26 +565,16 @@ public sealed class AssessmentRepository : IAssessmentRepository
 
         foreach (var sql in new[]
         {
-            """
-            DELETE FROM AssessmentObjectTimings WHERE AssessmentId IN (
-                SELECT AssessmentId FROM Assessments
-                WHERE ProposalId = $proposalId AND ($exceptId IS NULL OR AssessmentId != $exceptId));
-            """,
-            """
+            // Reports and replacement links outlive a swept Assessment; they lose only the link.
+            $"UPDATE Reports SET AssessmentId = NULL WHERE AssessmentId IN ({SweptAssessments});",
+            $"UPDATE Assessments SET ReplacesAssessmentId = NULL WHERE ReplacesAssessmentId IN ({SweptAssessments});",
+            $"DELETE FROM AssessmentObjectTimings WHERE AssessmentId IN ({SweptAssessments});",
+            $"""
             DELETE FROM ParsedAnalyses WHERE AssessedWordId IN (
-                SELECT AssessedWordId FROM AssessedWords WHERE AssessmentId IN (
-                    SELECT AssessmentId FROM Assessments
-                    WHERE ProposalId = $proposalId AND ($exceptId IS NULL OR AssessmentId != $exceptId)));
+                SELECT AssessedWordId FROM AssessedWords WHERE AssessmentId IN ({SweptAssessments}));
             """,
-            """
-            DELETE FROM AssessedWords WHERE AssessmentId IN (
-                SELECT AssessmentId FROM Assessments
-                WHERE ProposalId = $proposalId AND ($exceptId IS NULL OR AssessmentId != $exceptId));
-            """,
-            """
-            DELETE FROM Assessments
-            WHERE ProposalId = $proposalId AND ($exceptId IS NULL OR AssessmentId != $exceptId);
-            """,
+            $"DELETE FROM AssessedWords WHERE AssessmentId IN ({SweptAssessments});",
+            $"DELETE FROM Assessments WHERE AssessmentId IN ({SweptAssessments});",
         })
         {
             using var command = connection.CreateCommand();

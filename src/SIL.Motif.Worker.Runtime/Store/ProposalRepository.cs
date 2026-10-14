@@ -323,7 +323,9 @@ public sealed class ProposalRepository : IProposalRepository
             if ((long)check.ExecuteScalar()! > 0)
                 throw new InvalidOperationException("A Proposal with a Receipt is final: it and its Receipts are kept.");
         }
-        foreach (var sql in new[] { "DELETE FROM Reports WHERE ProposalId = $id;",
+        // An Assessment somebody pinned or retained outlives its Proposal, detached from it.
+        foreach (var sql in new[] { "UPDATE Assessments SET ProposalId = NULL WHERE ProposalId = $id;",
+            "DELETE FROM Reports WHERE ProposalId = $id;",
             "DELETE FROM GrammarChecks WHERE ProposalId = $id;", "DELETE FROM ProposalRevisions WHERE ProposalId = $id;" })
         {
             using var command = connection.CreateCommand();
