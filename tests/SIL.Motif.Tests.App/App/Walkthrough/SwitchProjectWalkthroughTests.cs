@@ -1,11 +1,9 @@
 using System.Diagnostics;
 using Avalonia.Controls;
 using SIL.Motif.App.ViewModels;
-using SIL.Motif.Contract.Responses;
 using SIL.Motif.Tests.Parser;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
-using Xunit.Sdk;
 
 namespace SIL.Motif.Tests.App.Walkthrough;
 
@@ -29,25 +27,25 @@ public sealed class SwitchProjectWalkthroughTests(PristineProjectFixture pristin
 
             var existing = PanglossProcesses.Snapshot(parserPath);
             var appeared = new HashSet<int>();
-            WalkthroughSteps.StartSlowAssessment(walkthrough, deadline, firstProject.Words);
+            WalkthroughSteps.StartSlowAssessment(walkthrough, deadline, firstProject.Words, () =>
+            {
+                var progress = walkthrough.Workspace.Assess.Progress!;
+                Assert.Equal(firstProject.Words.Count, progress.Total);
+                Assert.InRange(progress.Completed, 0, firstProject.Words.Count - 1);
+                Assert.False(walkthrough.Find<Button>("Project menu").IsEffectivelyEnabled);
+                Assert.False(walkthrough.Named<ContentControl>("SelectionHost").IsEffectivelyEnabled);
+                Assert.True(walkthrough.Find<Button>("Cancel parsing all words").IsEffectivelyEnabled);
+                PanglossProcesses.TrackNew(parserPath, existing, appeared);
+                walkthrough.Workspace.Assess.CancelCommand.Execute(null);
+            });
+            Assert.NotEmpty(appeared);
             Assert.Equal(firstProject.Words.Count, walkthrough.Workspace.Selection.PastedWordEntries.Count);
             walkthrough.WaitUntil(() =>
             {
                 PanglossProcesses.TrackNew(parserPath, existing, appeared);
-                if (walkthrough.Workspace.Assess.State is RunState.Completed or RunState.Cancelled or RunState.Refused)
-                    throw new XunitException("The slow Assessment finished before cancellation could be requested; " +
-                        $"state={walkthrough.Workspace.Assess.State}, progress={walkthrough.Workspace.Assess.Progress}, " +
-                        $"refusal={walkthrough.Workspace.Assess.Refusal}");
-
-                var progress = walkthrough.Workspace.Assess.Progress;
-                return walkthrough.Workspace.Assess.State == RunState.Running &&
-                    progress is { Stage: AssessmentStage.Parsing } &&
-                    progress.Total == firstProject.Words.Count && progress.Completed < progress.Total;
-            }, WalkthroughSteps.Remaining(deadline), "the real parser did not reach Parsing with work still running");
-
-            Assert.False(walkthrough.Find<Button>("Project menu").IsEffectivelyEnabled);
-
-            walkthrough.Click("Cancel parsing all words");
+                return walkthrough.Workspace.Assess.State == RunState.Cancelling ||
+                    walkthrough.Workspace.Assess.State == RunState.Cancelled;
+            }, WalkthroughSteps.Remaining(deadline), "the Assessment cancellation was not requested");
             walkthrough.WaitUntil(() =>
             {
                 PanglossProcesses.TrackNew(parserPath, existing, appeared);

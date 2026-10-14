@@ -1,7 +1,9 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using Avalonia.Controls;
 using Avalonia.LogicalTree;
 using SIL.Motif.App.ViewModels;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 using Xunit.Sdk;
@@ -120,22 +122,63 @@ internal static class WalkthroughSteps
     }
 
     internal static void StartSlowAssessment(
-        WalkthroughWindow walkthrough, long deadline, IReadOnlyList<string> words)
+        WalkthroughWindow walkthrough, long deadline, IReadOnlyList<string> words,
+        Action? cancelWhenParsingHasPendingWords = null)
     {
         walkthrough.TypePastedWords(string.Join(Environment.NewLine, words));
         Assert.True(walkthrough.Find<Button>("Parse all words in the Selection").IsEffectivelyEnabled);
 
-        walkthrough.Click("Parse all words in the Selection");
-        Assert.False(walkthrough.Find<Button>("Project menu").IsEffectivelyEnabled);
-        Assert.False(walkthrough.Named<ContentControl>("SelectionHost").IsEffectivelyEnabled);
-        walkthrough.WaitUntil(() =>
+        var assess = walkthrough.Workspace.Assess;
+        var pendingParsingObserved = false;
+        PropertyChangedEventHandler? progressChanged = null;
+        if (cancelWhenParsingHasPendingWords is not null)
         {
-            if (walkthrough.Workspace.Assess.State is RunState.Completed or RunState.Cancelled or RunState.Refused)
-                throw new XunitException("The slow Assessment finished before its cancellable state appeared.");
+            progressChanged = (_, args) =>
+            {
+                if (args.PropertyName != nameof(AssessViewModel.Progress)) return;
+                if (pendingParsingObserved ||
+                    assess.State != RunState.Running ||
+                    assess.Progress is not { Stage: AssessmentStage.Parsing, Total: { } total } progress ||
+                    progress.Completed >= total)
+                    return;
 
-            return walkthrough.Workspace.Assess.State == RunState.Running &&
-                walkthrough.Find<Button>("Cancel parsing all words").IsEffectivelyEnabled;
-        }, Remaining(deadline), "the slow Assessment did not reach its cancellable Running state");
+                pendingParsingObserved = true;
+                cancelWhenParsingHasPendingWords();
+            };
+            assess.PropertyChanged += progressChanged;
+        }
+
+        try
+        {
+            walkthrough.Click("Parse all words in the Selection");
+            if (cancelWhenParsingHasPendingWords is null)
+            {
+                Assert.False(walkthrough.Find<Button>("Project menu").IsEffectivelyEnabled);
+                Assert.False(walkthrough.Named<ContentControl>("SelectionHost").IsEffectivelyEnabled);
+                walkthrough.WaitUntil(() =>
+                {
+                    if (assess.State is RunState.Completed or RunState.Cancelled or RunState.Refused)
+                        throw new XunitException("The slow Assessment finished before its cancellable state appeared.");
+
+                    return assess.State == RunState.Running &&
+                        walkthrough.Find<Button>("Cancel parsing all words").IsEffectivelyEnabled;
+                }, Remaining(deadline), "the slow Assessment did not reach its cancellable Running state");
+                return;
+            }
+
+            walkthrough.WaitUntil(
+                () => pendingParsingObserved ||
+                    assess.State is RunState.Completed or RunState.Cancelled or RunState.Refused,
+                Remaining(deadline), "the Assessment did not publish Parsing progress with work still pending",
+                () => $"state={assess.State}, progress={assess.Progress}, refusal={assess.Refusal}");
+            Assert.True(pendingParsingObserved,
+                $"The Assessment ended before pending Parsing progress was observed; " +
+                $"state={assess.State}, progress={assess.Progress}, refusal={assess.Refusal}");
+        }
+        finally
+        {
+            if (progressChanged is not null) assess.PropertyChanged -= progressChanged;
+        }
     }
 
     internal static void StartAssessmentOverPastedWords(
