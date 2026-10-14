@@ -43,6 +43,58 @@ namespace SIL.Motif.Tests.Mcp;
 public sealed class McpRoundTripTests(PristineProjectFixture pristine)
 {
     [Fact]
+    public async Task LexiconRowsAndSourceStayBoundToTheCaptureUntilAReplacementBaseline()
+    {
+        using var project = new WalkthroughProject(pristine,
+            sourceLastWriteUtc: new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+        var capture = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(project.FwDataPath), project.ManagedRoot);
+        Assert.True(capture.Succeeded, capture.Refusal?.Message);
+        await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions());
+        var evidence = SIL.Motif.Commands.Queries.CurrentEvidenceQuery.ReadCurrentEvidence(project.FwDataPath);
+        Assert.True(evidence.Succeeded, evidence.Refusal?.Message);
+        var baseline = evidence.Value!.Baseline!;
+        var lexicon = (await session.CallAsync("motif_lexicon")).GetProperty("result");
+        var source = lexicon.GetProperty("source");
+        Assert.Equal(baseline.Token, ProjectionJson.Deserialize<SIL.Motif.Contract.Baselines.BaselineToken>(
+            source.GetProperty("token").GetRawText()));
+        Assert.Equal(baseline.SourceLastWriteUtc, source.GetProperty("sourceLastWriteUtc").GetDateTimeOffset());
+        Assert.Equal(baseline.PublishedUtc, source.GetProperty("publishedUtc").GetDateTimeOffset());
+        Assert.Equal(evidence.Value.ProjectSummary!.LexemeCount, lexicon.GetProperty("total").GetInt32());
+        Assert.Equal(new BaselineReadSource(baseline.Token, baseline.SourceLastWriteUtc, baseline.PublishedUtc),
+            ProjectionJson.Deserialize<BaselineReadSource>(source.GetRawText()));
+        var overview = SIL.Motif.Commands.Catalog.OverviewCommand.Overview(new OverviewRequest(project.FwDataPath));
+        Assert.True(overview.Succeeded, overview.Refusal?.Message);
+        Assert.Equal(baseline.Token, overview.Value!.BaselineToken);
+        Assert.Equal(overview.Value.LexemeCount, lexicon.GetProperty("total").GetInt32());
+
+        var loader = new FwDataProjectLoader();
+        using (var cache = loader.LoadCache(project.FwDataPath))
+        {
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                cache.ServiceLocator.GetInstance<ILexEntryRepository>().GetObject(project.Seed.SecondEntryId).Delete());
+            loader.Save(cache);
+        }
+        File.SetLastWriteTimeUtc(project.FwDataPath, baseline.SourceLastWriteUtc.UtcDateTime.AddMinutes(1));
+
+        var stale = (await session.CallAsync("motif_lexicon")).GetProperty("result");
+        Assert.True(JsonElement.DeepEquals(lexicon, stale));
+        var filtered = (await session.CallAsync("motif_lexicon", ("query", SeededProject.FirstForm),
+            ("detail", "detailed"), ("limit", 1))).GetProperty("result");
+        Assert.True(JsonElement.DeepEquals(source, filtered.GetProperty("source")));
+        Assert.Equal(1, filtered.GetProperty("total").GetInt32());
+
+        var replacement = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(project.FwDataPath), project.ManagedRoot);
+        Assert.True(replacement.Succeeded, replacement.Refusal?.Message);
+        Assert.NotEqual(capture.Value!.Token, replacement.Value!.Token);
+        var refreshed = (await session.CallAsync("motif_lexicon")).GetProperty("result");
+        Assert.Equal(replacement.Value.Token, ProjectionJson.Deserialize<SIL.Motif.Contract.Baselines.BaselineToken>(
+            refreshed.GetProperty("source").GetProperty("token").GetRawText()));
+        Assert.Equal(replacement.Value.SourceLastWriteUtc,
+            refreshed.GetProperty("source").GetProperty("sourceLastWriteUtc").GetDateTimeOffset());
+        Assert.Equal(lexicon.GetProperty("total").GetInt32() - 1, refreshed.GetProperty("total").GetInt32());
+    }
+
+    [Fact]
     public async Task GrammarCheckAndWarningsReturnMcpErrorsWithoutABaseline()
     {
         using var project = new WalkthroughProject(pristine);
@@ -497,13 +549,15 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         Assert.False(conciseLexicon.GetProperty("result").GetProperty("entries")[0].TryGetProperty("alternateForms", out _));
     }
 
-    [Fact]
-    public async Task AReadBeforeAnyBaselineIsAToolErrorThatSaysHowToTakeOne()
+    [Theory]
+    [InlineData("motif_grammar")]
+    [InlineData("motif_lexicon")]
+    public async Task AReadBeforeAnyBaselineIsAToolErrorThatSaysHowToTakeOne(string tool)
     {
         using var project = new WalkthroughProject(pristine);
         await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions());
 
-        var result = await session.Client.CallToolAsync("motif_grammar", new Dictionary<string, object?> { ["project"] = project.FwDataPath });
+        var result = await session.Client.CallToolAsync(tool, new Dictionary<string, object?> { ["project"] = project.FwDataPath });
 
         Assert.True(result.IsError);
         var text = ((TextContentBlock)result.Content[0]).Text;

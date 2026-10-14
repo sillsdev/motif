@@ -1121,8 +1121,8 @@ internal static class AgentTools
     private static ToolOutcome ReadLexicon(ServerContext context, ToolArgs args)
     {
         var detailed = args.Optional("detail") == "detailed";
-        var outcome = BaselineReads.Read(context.ProjectPath, cache => LexiconReader.Read(cache, args.Optional("query"),
-            args.Optional("morph_type"), args.Int("limit", 25), args.Int("offset", 0), detailed));
+        var outcome = BaselineReads.ReadLexicon(context.ProjectPath, args.Optional("query"),
+            args.Optional("morph_type"), args.Int("limit", 25), args.Int("offset", 0), detailed);
         return ToolOutcome.From(outcome, "Use the entry, sense and grammatical info ids in changes. Page on with offset.");
     }
 

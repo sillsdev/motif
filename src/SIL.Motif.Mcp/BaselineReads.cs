@@ -18,6 +18,20 @@ internal static class BaselineReads
 {
     /// <summary>Opens the current Baseline privately, runs <paramref name="read"/>, and disposes the copy.</summary>
     public static CommandOutcome<JsonObject> Read(string projectPath, Func<LcmCache, JsonObject> read) =>
+        Read(projectPath, (cache, _) => read(cache));
+
+    /// <summary>A lexicon page with the captured source of its entries and filtered count.</summary>
+    public static CommandOutcome<JsonObject> ReadLexicon(string projectPath, string? query, string? morphType,
+        int limit, int offset, bool detailed) =>
+        Read(projectPath, (cache, baseline) =>
+        {
+            var result = LexiconReader.Read(cache, query, morphType, limit, offset, detailed);
+            result["source"] = JsonNode.Parse(ProjectionJson.Serialize(new BaselineReadSource(
+                baseline.Token, baseline.SourceLastWriteUtc, baseline.PublishedUtc)));
+            return result;
+        });
+
+    private static CommandOutcome<JsonObject> Read(string projectPath, Func<LcmCache, BaselineRecord, JsonObject> read) =>
         ProjectStoreCommand.Run(projectPath, MotifProductVersion.CurrentText, (database, project) =>
         {
             var baseline = new BaselineRepository(database).GetCurrent(ProjectWorkspaceKey.Compute(project));
@@ -28,7 +42,7 @@ internal static class BaselineReads
                 return Refused("baseline.unavailable", FailureReason.StoreInconsistent,
                     "Motif's saved copy of this project is missing from disk.");
             using var reader = BaselineReadCache.Open(baseline.FwDataPath);
-            return CommandOutcome<JsonObject>.Success(read(reader.Cache));
+            return CommandOutcome<JsonObject>.Success(read(reader.Cache, baseline));
         });
 
     private static CommandOutcome<JsonObject> Refused(string code, FailureReason reason, string message) =>
