@@ -42,6 +42,7 @@ internal static class TraceDiagnosticCapture
             wallElapsedMs, systems)
         {
             Baseline = baselineSource,
+            LexiconEntryCount = cache.ServiceLocator.GetInstance<ILexEntryRepository>().Count,
         };
         var navigation = SavedProjectNavigation.Read(project.FullFwDataPath, baseline.Token.ProjectIdentity);
         var baselineMatches = Guid.TryParse(baseline.Token.ProjectIdentity, out var baselineIdentity) &&
@@ -99,7 +100,11 @@ internal static class TraceDiagnosticCapture
                 FieldWorks = navigation.TargetFor(cache, found),
             };
         }
-        reading = reading with { Refs = reading.Refs.Select(Link).ToArray() };
+        reading = reading with
+        {
+            Refs = reading.Refs.Select(Link).ToArray(),
+            NoParseReasons = response.Reading.NoParseReasons,
+        };
         capture = capture with
         {
             TraceLabels = reading.Refs.Where(reference => reference.CapturedFieldWorksLabel is not null)
@@ -110,13 +115,13 @@ internal static class TraceDiagnosticCapture
         var captured = JsonSerializer.SerializeToNode(capture, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase })!.AsObject();
         foreach (var field in captured) host[field.Key] = field.Value?.DeepClone();
         if (json["hostCapture"] is not JsonObject) json["hostCapture"] = host;
-        return response with
+        return TraceReadingBuilder.WithCapturedEvidence(response with
         {
             HostCapture = capture,
             Provenance = comparison,
             DiagnosticJson = json.ToJsonString(new JsonSerializerOptions { MaxDepth = 512 }),
             Reading = reading,
-        };
+        });
     }
 
     // An affix rule is known by its entry, as FieldWorks shows it: headword, then the sense gloss if any.

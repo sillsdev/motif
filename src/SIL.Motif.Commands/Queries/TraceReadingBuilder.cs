@@ -45,6 +45,22 @@ public static class TraceReadingBuilder
     /// <summary>Returns the response's authoritative display reading, including its captured enrichment.</summary>
     public static WordTraceReading Build(WordTraceResponse response) => response.Reading;
 
+    internal static WordTraceResponse WithCapturedEvidence(WordTraceResponse response)
+    {
+        if (response.Parsed || response.InvalidShape) return response;
+        var reading = response.Reading;
+        if (reading.Attempts.Count == 0)
+            reading = reading with { NoParseReasons = RecordedReasons(reading.Root, new TraceDisplayLabels(reading.Refs)) };
+        if (response.Complete && response.HostCapture is { Baseline: not null, LexiconEntryCount: 0 })
+        {
+            reading = reading with
+            {
+                NoParseReasons = [$"No lexical root matched '{response.Word}'; the traced grammar's lexicon has 0 entries."],
+            };
+        }
+        return response with { Reading = reading };
+    }
+
     /// <summary>Projects a tree and its recorded attempts and analyses into one authoritative display reading.</summary>
     public static WordTraceReading Build(string word, TraceStep root,
         IReadOnlyList<TraceCandidate> attempts, IReadOnlyList<TraceAnalysis> analyses) => Summarize(word, root, attempts, analyses);
@@ -73,15 +89,20 @@ public static class TraceReadingBuilder
         };
     }
 
-    private static IReadOnlyList<string> RecordedReasons(TraceStep root)
+    private static IReadOnlyList<string> RecordedReasons(TraceStep root, TraceDisplayLabels? labels = null)
     {
         var steps = Flatten(root).ToArray();
-        var reasons = steps.Where(step => step.EventEvidence?.LookupResult is { Completed: true, MatchCount: 0 })
-            .Select(step => $"No lexical root matched '{step.Input ?? step.Output ?? "?"}'" +
-                (step.Source is { Length: > 0 } source ? $" in {source}." : "."))
+        var foundRoot = steps.Any(step => step.EventEvidence?.LookupResult is { Mode: "lexicon", MatchCount: > 0 });
+        var reasons = steps.Where(step => step.EventEvidence?.LookupResult is { Completed: true, MatchCount: 0 } lookup &&
+                (lookup.Mode != "lexicon" || !foundRoot))
+            .Select(step => (step.EventEvidence!.LookupResult!.Mode == "guesser" ? "No guessed root matched '" : "No lexical root matched '") +
+                (step.Input ?? step.Output ?? "?") + "'" +
+                ((labels?.Resolve(step.RefId, step.Source) ?? step.Source) is { Length: > 0 } source ? $" in {source}." : "."))
             .Concat(steps.Where(step => step.FailureReason is { Length: > 0 }).Select(step =>
                 step.FailureEvidence?.RecordedExplanation ??
-                TraceFailureSentences.Explain(step.FailureReason, step.Source))).Distinct().ToList();
+                TraceFailureSentences.Explain(step.FailureReason, labels?.Resolve(step.RefId, step.Source) ?? step.Source)))
+            .Concat(steps.Where(step => step.EventEvidence?.PartialParseCause == "ApplicableTemplatesNotApplied")
+                .Select(_ => "An applicable affix template was not applied.")).Distinct().ToList();
         if (reasons.Count > 0 && !steps.Any(step => step.Type.Contains("MorphologicalRuleSynthesis", StringComparison.Ordinal)))
             reasons.Add("No affix-building step was recorded.");
         return reasons;

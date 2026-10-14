@@ -7,6 +7,10 @@ using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Contract.Responses;
+using SIL.LCModel;
+using SIL.LCModel.Infrastructure;
+using SIL.Motif.Host.LcmUtils;
+using System.Text.Json;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
@@ -68,7 +72,80 @@ public sealed class WordTraceQueryTests : IDisposable
 
         Assert.False(outcome.Succeeded);
         Assert.Equal("wordtrace.no-baseline", outcome.Refusal!.Code);
+        Assert.Contains("motif baseline capture", outcome.Refusal.Message);
         Assert.Empty(invoker.Requests);
+    }
+
+    [Fact]
+    public void CapturingAnInvalidShapeRetainsTheParserRefusalWhenReloaded()
+    {
+        var path = _pristine.CopyProjectFile();
+        Capture(path);
+        var invoker = new FakeInvoker
+        {
+            Respond = _ => new PanGlossOutcome.Completed(TraceEnvelope.Of("-", null, invalidShape: true),
+                string.Empty, TimeSpan.Zero),
+        };
+
+        var response = WordTraceQuery.Query(new WordTraceRequest(path, "sagd"),
+            new PanGlossTracer(invoker), CancellationToken.None).Value!;
+
+        Assert.True(response.InvalidShape);
+        Assert.Equal([ParserRefusals.InvalidShape.Reason], response.Reading.NoParseReasons);
+        var reloaded = WordTraceQuery.LoadDiagnostic(response.DiagnosticJson!).Value!;
+        Assert.Equal(response.Reading.NoParseReasons, reloaded.Reading.NoParseReasons);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    public void CapturedLexiconSizeExplainsOnlyAnEmptyBaselineAndSurvivesReload(int count)
+    {
+        string path;
+        using (var cache = _pristine.NewScratch())
+        {
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                foreach (var entry in cache.ServiceLocator.GetInstance<ILexEntryRepository>().AllInstances().Skip(count).ToArray())
+                    entry.Delete();
+            });
+            new FwDataProjectLoader().Save(cache);
+            path = cache.ProjectId.Path;
+        }
+        var captured = BaselineCaptureCommand.Capture(new(path), NewManagedRoot());
+        Assert.True(captured.Succeeded, captured.Refusal?.Message);
+        var baseline = captured.Value!;
+        using (var live = new FwDataProjectLoader().LoadScratchCache(path))
+        {
+            NonUndoableUnitOfWorkHelper.Do(live.ActionHandlerAccessor, () =>
+                live.ServiceLocator.GetInstance<ILexEntryFactory>().Create(Guid.NewGuid(), live.LangProject.LexDbOA));
+            new FwDataProjectLoader().Save(live);
+            Assert.Equal(count + 1, live.ServiceLocator.GetInstance<ILexEntryRepository>().Count);
+        }
+        var json = TraceEnvelope.Of("-", """
+            {"type":"WordAnalysis","inputShape":"mtu","children":[
+              {"type":"LexicalLookup","source":"Morphology","inputShape":"mtu",
+               "lookupResult":{"completed":true,"matchCount":0,"mode":"lexicon","status":"zeroMatches"},
+               "children":[]}]}
+            """).Replace("\"word\":\"sagd\"", "\"word\":\"mtu\"");
+        var invoker = new FakeInvoker
+        {
+            Respond = _ => new PanGlossOutcome.Completed(json, string.Empty, TimeSpan.Zero),
+        };
+        var response = WordTraceQuery.Query(new WordTraceRequest(path, "mtu"),
+            new PanGlossTracer(invoker), CancellationToken.None).Value!;
+
+        using var rendered = JsonDocument.Parse(ProjectionJson.Serialize(response));
+        var host = rendered.RootElement.GetProperty("hostCapture");
+        Assert.True(host.TryGetProperty("lexiconEntryCount", out var entries), "The diagnostic must retain its frozen lexicon count.");
+        Assert.Equal(count, entries.GetInt32());
+        Assert.Equal(baseline.Token, response.HostCapture!.Baseline!.Token);
+        Assert.Equal(count == 0, response.Reading.NoParseReasons.Any(reason => reason.Contains("lexicon has 0 entries")));
+        Assert.Contains(response.Reading.NoParseReasons, reason => reason.Contains("No lexical root matched 'mtu'"));
+        var reloaded = WordTraceQuery.LoadDiagnostic(response.DiagnosticJson!).Value!;
+        Assert.Equal(response.Reading.NoParseReasons, reloaded.Reading.NoParseReasons);
+        using var saved = JsonDocument.Parse(reloaded.DiagnosticJson!);
+        Assert.Equal(count, saved.RootElement.GetProperty("hostCapture").GetProperty("lexiconEntryCount").GetInt32());
     }
 
     [Fact]

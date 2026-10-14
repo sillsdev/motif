@@ -433,6 +433,13 @@ public sealed record TraceHostCapture(
 
     /// <summary>The exact selected Baseline; diagnostic capture time remains CapturedUtc.</summary>
     public TraceBaselineSource? Baseline { get; init; }
+
+    /// <summary>
+    /// All lexical entries, including affixes, counted in the exact grammar copy used for the trace.
+    /// Its source Baseline and captured GrammarHash identify that copy; a Trial may differ from its Baseline.
+    /// A missing count is unknown; zero is a measured empty lexicon, independent of search completion.
+    /// </summary>
+    public int? LexiconEntryCount { get; init; }
 }
 
 public sealed record TraceWritingSystem(

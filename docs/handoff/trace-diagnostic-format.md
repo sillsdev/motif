@@ -67,6 +67,8 @@ Template output `slots` retain slot index, identity, name, status and selected r
 
 `search.elapsedNs` measures the parser search. It excludes process startup and grammar loading. `hostCapture.wallElapsedMs`, when present, records Motif's elapsed parser invocation, including those costs. Missing overall time is unknown, not zero.
 
+`hostCapture.lexiconEntryCount`, when present alongside `hostCapture.baseline`, counts lexical entries in the exact Baseline or Trial copy used for the trace. Zero is measured; an absent count is unknown. Motif may explain a completed, unparsed valid word with that frozen empty-lexicon fact. It never uses the current project's entries to explain a saved diagnostic or replaces an invalid-shape refusal or an incomplete search with an empty-lexicon diagnosis.
+
 For every category, retain `attempts`, `work`, `outputs`, `notApplied`, `noRoot`, `surfaceMismatch`, and `uses`. Categories include `morphRule`, `phonRule`, `lexEntry`, `rootIndex`, `guesser`, and `overlay`. Preserve unknown categories too.
 
 `timingAvailable=false` requires `selfElapsedNs=null`. Zero with available timing is a real measurement. Category self time is an aggregate over the category's work; it is not a duration for an individual trace node or detour. Do not divide category totals into invented per-step timings. Counter definitions belong to the producer's existing statistics architecture.

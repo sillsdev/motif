@@ -12,6 +12,43 @@ namespace SIL.Motif.Tests.Commands;
 
 public sealed class TraceEvidenceBoundaryTests
 {
+    [Fact]
+    public void AFoundStemIsNotExplainedAwayByZeroLookupsInOtherStrata()
+    {
+        var response = WordTraceQuery.LoadDiagnostic(TraceEnvelope.Of("-", """
+            {"type":"WordAnalysis","inputShape":"baya","children":[
+              {"type":"LexicalLookup","source":"Morphology","inputShape":"baya",
+               "lookupResult":{"completed":true,"matchCount":1,"mode":"lexicon","status":"matches"},"children":[]},
+              {"type":"StratumSynthesisOutput","source":"Morphology","inputShape":"baya",
+               "failureReason":"PartialParse","partialParseCause":"ApplicableTemplatesNotApplied","children":[]},
+              {"type":"LexicalLookup","source":"Surface","inputShape":"baya",
+               "lookupResult":{"completed":true,"matchCount":0,"mode":"lexicon","status":"zeroMatches"},"children":[]}]}
+            """)).Value!;
+
+        Assert.Empty(response.Reading.Attempts);
+        Assert.DoesNotContain(response.Reading.NoParseReasons, reason => reason.Contains("No lexical root matched"));
+        Assert.Contains(response.Reading.NoParseReasons, reason => reason.Contains("applicable affix template was not applied"));
+    }
+
+    [Fact]
+    public void RequiredSlotAndSurfaceMismatchDisplayTheirRecordedOperands()
+    {
+        var reading = Read("""
+            {"type":"WordAnalysis","children":[
+              {"type":"TemplateSynthesisOutput","source":"Adjective template","slots":[
+                {"name":"Class prefix","status":"RequiredUnfilled","slotIndex":0}],"children":[]},
+              {"type":"Failed","failureReason":"SurfaceFormMismatch","failureContext":{
+                "status":"captured","kind":"surfaceMismatch","source":"rejection-owner",
+                "required":"nbaya","actual":"m+?baya"},"children":[]}]}
+            """);
+
+        var details = string.Join("\n", Walk(reading.Root).SelectMany(TraceEvidenceDisplay.Details));
+        Assert.Contains("Required template slot 'Class prefix' was not filled.", details);
+        Assert.Contains("Requested surface: 'nbaya'; built surface: 'm+?baya'.", details);
+        Assert.Contains("\"status\":\"RequiredUnfilled\"", details);
+        Assert.Equal(TraceEvidenceAvailability.NotRecorded, Assert.Single(reading.Attempts).ExplanationAvailability);
+    }
+
     [Theory]
     [InlineData("step-11")]
     [InlineData("step-12")]

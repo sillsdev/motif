@@ -57,7 +57,7 @@ internal static class TraceDiagnosticProjection
         }
         var labels = capture?.TraceLabels.Where(label => label is not null && !string.IsNullOrEmpty(label.RefId))
             .ToLookup(label => label.RefId, StringComparer.Ordinal);
-        return response with
+        return TraceReadingBuilder.WithCapturedEvidence(response with
         {
             Reading = response.Reading with
             {
@@ -74,7 +74,7 @@ internal static class TraceDiagnosticProjection
             GrammarSource = NestedString(root, "provenance", "grammar", "sourceKind"),
             GrammarHash = NestedString(root, "provenance", "grammar", "grammarHash"),
             GrammarHashSemantics = NestedString(root, "provenance", "grammar", "grammarHashSemantics"),
-        };
+        });
     }
 
     private static string? NestedString(JsonElement owner, params string[] names)

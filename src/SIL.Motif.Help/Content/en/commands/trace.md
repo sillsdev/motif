@@ -10,6 +10,12 @@ motif trace --project "C:\FieldWorks\Projects\Koro\Koro.fwdata" --word mirusi
 
 Add `--json` to get the typed response, including the shared `reading` and the diagnostic's recorded provenance. A clean process exit does not establish that the parser's search limit was not reached; when the diagnostic cannot report that, completion is unknown.
 
+If the project has no Baseline, capture one with `motif baseline capture <project>` before tracing. Trace uses that saved grammar; it does not inspect unsaved FieldWorks changes.
+
+For an unparsed word, text output names the shape whose recorded lexical lookup found no root and explains recorded refusal codes. A stem that reaches an unapplied required template has a different reason from an attempt that builds the wrong surface. A recorded code can be explained without an owner's detailed explanation; absent details remain unavailable. A trace without recorded reasons says so, and an unfinished search cannot establish that the word has no analysis.
+
+When Motif captures a trace, `hostCapture.lexiconEntryCount` records the number of lexical entries in the exact Baseline or Trial copy used. A completed trace with an empty lexicon names that fact and the word, instead of guessing which affix or spelling is wrong. A missing count is unknown. Saved traces retain this count and their recorded reasons without opening the current project.
+
 ## Read a saved trace
 
 ```powershell
