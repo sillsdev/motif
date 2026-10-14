@@ -956,10 +956,17 @@ public static class CommandTextRenderer
             text.AppendLine("  Warning: " + provenance.Warning);
         if (response.HostCapture?.Baseline is { } baseline)
             text.AppendLine($"  Baseline: {baseline.Token.BundleDigest}, captured {baseline.Token.CapturedUtc}, " +
-                $"source saved {baseline.SourceLastWriteUtc:O}. {baseline.CaptureDescription}");
+                $"source saved {baseline.SourceLastWriteUtc:O}.");
         else text.AppendLine("  Baseline source not recorded");
         if (response.GrammarSourceAvailability == TraceEvidenceAvailability.NotRecorded)
             text.AppendLine("  Grammar source not recorded");
+        if (!response.Parsed)
+        {
+            foreach (var reason in reading.NoParseReasons)
+                text.AppendLine("  No parse reason: " + reason);
+            if (reading.NoParseReasons.Count == 0 && reading.StopGroups.Count == 0)
+                text.AppendLine("  No reason for the lack of a parse was recorded.");
+        }
         foreach (var analysis in reading.Analyses)
         {
             text.AppendLine("  Analysis: " + string.Join(" + ", analysis.Morphs.Select(MorphText)));
@@ -968,7 +975,9 @@ public static class CommandTextRenderer
         foreach (var group in reading.StopGroups)
             text.AppendLine($"  Stopped {group.Count:N0} attempt(s): " +
                 (labels.Resolve(group.RuleRefId, group.Rule) is { } name ? name + ": " : "") +
-                (group.Explanation ?? (group.ReasonCode is { } code ? $"Explanation not recorded (reason code: {code})." : "Reason not recorded")));
+                (group.Explanation ?? (group.ReasonCode is { } code
+                    ? $"Recorded reason code {code}: {TraceFailureSentences.Explain(code)} Owner explanation not recorded."
+                    : "Reason not recorded. Owner explanation not recorded.")));
         if (reading.RulesOnBestPath.Count > 0)
         {
             text.AppendLine(response.Parsed ? "  Rules on the parse:" : "  Rules on the closest attempt:");
@@ -983,7 +992,7 @@ public static class CommandTextRenderer
         {
             text.AppendLine("  Names:");
             foreach (var reference in reading.Refs)
-                text.AppendLine($"    {reference.Id}  {reference.Kind} {labels.Resolve(reference.Id, reference.Label)} [{reference.IdentityQuality}]" +
+                text.AppendLine($"    {reference.Kind} {labels.Resolve(reference.Id, reference.Label)} [{reference.IdentityQuality}]" +
                     (reference.FieldWorks is { } fieldWorks ? $"  opens in {fieldWorks.ToolName}: {fieldWorks.Link}" : ""));
         }
         return text.ToString();
