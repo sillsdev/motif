@@ -28,7 +28,7 @@
           <StackPanel>
             <views:CopyableTextBlock Classes="section-title" Text="Choose assistants" />
             <views:CopyableTextBlock Text="Motif found these supported assistants. Check each one you want to connect." />
-            <views:CopyableTextBlock Text="{Binding EmptyAssistantText}" IsVisible="{Binding HasNoAssistants}" />
+            <views:CopyableTextBlock Text="{Binding EmptyAssistantText}" IsVisible="{Binding HasNoAssistants}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.AssistantsEmptyText}" />
             <ItemsControl x:Name="AssistantConnectionsItems" ItemsSource="{Binding Assistants}" IsVisible="{Binding HasAssistants}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:AssistantChoiceViewModel">

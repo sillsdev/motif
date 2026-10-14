@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Controls.Shapes;
@@ -52,6 +53,7 @@ public sealed class MarkGlyph : Decorator
         }
         else glyph = new TextBlock { Text = mark.Glyph, Classes = { "markGlyph" } };
         glyph.Classes.AddRange(classes);
+        AutomationProperties.SetAutomationId(glyph, AutomationIds.MarkGlyph);
         glyph.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center;
         glyph.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center;
         Child = glyph;

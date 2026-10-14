@@ -23,16 +23,7 @@ public sealed class ProposalsPageScreenshots
         {
             using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
             var fake = new FakeCommandClient();
-            fake.ProposalStandingsCompleteWith(new ProposalStandings(
-            [
-                Card("proposal/sound", "Sound change", ProposalGroup.WaitingForYou, Summary(TrialFreshness.Current),
-                    [new("rule", 2, "2 rules"), new("allomorph", 1, "1 allomorph")]),
-                Card("proposal/gloss", "Gloss for sense", ProposalGroup.NeedsAnotherTry,
-                    Summary(TrialFreshness.BaselineMoved), [new("gloss", 1, "1 gloss")]),
-                Card("proposal/new", "Plural prefix", ProposalGroup.NotTried, null, [new("affix", 1, "1 affix")]),
-                Card("proposal/mine", "Your changes", ProposalGroup.NotAppliedYet, null, [new("parse-approved", 3, "3 parses approved")],
-                    pending: true),
-            ], 2));
+            fake.ProposalStandingsCompleteWith(Standings());
             var (workspace, window) = await ReviewScreenshots.OpenAsync(fake);
             try
             {
@@ -47,6 +38,17 @@ public sealed class ProposalsPageScreenshots
             }
         }, TimeSpan.FromMinutes(3));
     }
+
+    internal static ProposalStandings Standings() => new ProposalStandings(
+    [
+        Card("proposal/sound", "Sound change", ProposalGroup.WaitingForYou, Summary(TrialFreshness.Current),
+            [new("rule", 2, "2 rules"), new("allomorph", 1, "1 allomorph")]),
+        Card("proposal/gloss", "Gloss for sense", ProposalGroup.NeedsAnotherTry,
+            Summary(TrialFreshness.BaselineMoved), [new("gloss", 1, "1 gloss")]),
+        Card("proposal/new", "Plural prefix", ProposalGroup.NotTried, null, [new("affix", 1, "1 affix")]),
+        Card("proposal/mine", "Your changes", ProposalGroup.NotAppliedYet, null, [new("parse-approved", 3, "3 parses approved")],
+            pending: true),
+    ], 2);
 
     private static ProposalCard Card(string id, string label, ProposalGroup group, TrialSummary? trial,
         IReadOnlyList<ChangeKindCount> kinds, bool pending = false) =>

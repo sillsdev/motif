@@ -74,8 +74,9 @@
     </DockPanel>
 
     <views:WordListSlot Grid.Row="3" Schema="{x:Static word:WordListSchemas.All}"
-                        ShowsMeaning="{Binding Lists.ShowsMeaning}" IsVisible="{Binding Lists.HasSelectedList}">
-      <Grid RowDefinitions="Auto,*">
+                        ShowsMeaning="{Binding Lists.ShowsMeaning}" IsVisible="{Binding Lists.HasSelectedList}"
+                        AutomationProperties.AutomationId="{x:Static app:AutomationIds.ListsWordsSlot}">
+      <Grid RowDefinitions="Auto,*" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ListsWordsGrid}">
       <word:WordRowHeader />
       <ListBox x:Name="TextsListsPanelWordsItems" Grid.Row="1" Classes="wordRows" ItemsSource="{Binding Lists.Compare.Words}"
                KeyboardNavigation.TabNavigation="Continue"

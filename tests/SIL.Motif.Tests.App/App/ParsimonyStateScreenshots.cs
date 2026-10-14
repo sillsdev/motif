@@ -76,7 +76,7 @@ public sealed class ParsimonyStateScreenshots(ITestOutputHelper output)
     ];
 
     // Each decision state is reached through the page's own selection and action, not by setting its fields.
-    private static async Task DriveAsync(string state, ParsimonyPageModel page)
+    internal static async Task DriveAsync(string state, ParsimonyPageModel page)
     {
         switch (state)
         {

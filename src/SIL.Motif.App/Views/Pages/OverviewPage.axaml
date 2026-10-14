@@ -38,7 +38,7 @@
             <StackPanel Classes="overviewCount">
               <views:CopyableTextBlock Classes="overviewCountValue" Text="{Binding SelectionWordCountText}"
                                        AutomationProperties.AutomationId="{x:Static app:AutomationIds.OverviewSelectionWordCount}" />
-              <views:CopyableTextBlock Classes="overviewMuted" Text="words in Selection" />
+              <views:CopyableTextBlock Classes="overviewMuted" Text="words in Selection" AutomationProperties.AutomationId="{x:Static app:AutomationIds.OverviewSelectionLabel}" />
             </StackPanel>
             <StackPanel Classes="overviewCount">
               <views:CopyableTextBlock Classes="overviewCountValue" Text="{Binding TextOccurrenceCountText}" />

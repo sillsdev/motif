@@ -266,6 +266,7 @@ public sealed class WordRow : UserControl
             {
                 var detail = (CopyableTextBlock)Text(data.Note, "reviewSmall reviewGapEnd");
                 detail.TextWrapping = TextWrapping.Wrap;
+                AutomationProperties.SetAutomationId(detail, AutomationIds.WordNote);
                 actions.Children.Add(detail);
             }
             if (pending.StillFits)
@@ -484,6 +485,8 @@ public sealed class WordRow : UserControl
     {
         var button = new Button { Content = label, Classes = { "reviewAction" } };
         AutomationProperties.SetName(button, automationName);
+        if (action == WordAction.UndoChange) AutomationProperties.SetAutomationId(button, AutomationIds.WordUndoChange);
+        if (action == WordAction.KeepChange) AutomationProperties.SetAutomationId(button, AutomationIds.WordKeepChange);
         button.Click += async (_, _) => await SendAsync(new WordRequest(data.Key, data.EvidenceRevision, action));
         return button;
     }
@@ -500,6 +503,8 @@ public sealed class WordRow : UserControl
             : new Button { Content = label };
         button.IsEnabled = enabled;
         button.Classes.Add("wordPresentationAction");
+        if (action == WordAction.OpenInText) AutomationProperties.SetAutomationId(button, AutomationIds.WordOpenInText);
+        if (action == WordAction.TryWord) AutomationProperties.SetAutomationId(button, AutomationIds.WordTryAWord);
         AutomationProperties.SetName(button, automationName ?? action switch
         {
             WordAction.OpenInText => data.Facts.OpenInTextAutomationName,

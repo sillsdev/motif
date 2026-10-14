@@ -51,6 +51,8 @@ public sealed class NamedMark : StackPanel
             Children.Add(new MarkGlyph { Mark = mark, Classes = { "inline" } });
         if (Text is { Length: > 0 } text)
             Children.Add(new CopyableTextBlock { Text = text, Classes = { "namedMarkText", "muted" } });
+        if (Children.OfType<CopyableTextBlock>().FirstOrDefault() is { } words)
+            AutomationProperties.SetAutomationId(words, AutomationIds.NamedMarkText);
         AutomationProperties.SetName(this,
             Mark is { } current && Text is { Length: > 0 } label ? $"{current.Word}: {label}" : Mark?.Word ?? Text ?? string.Empty);
     }

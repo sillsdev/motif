@@ -91,21 +91,29 @@ public sealed class AutomationIdsTests
         Assert.Equal(constants.Count, constants.Values.Distinct(StringComparer.Ordinal).Count());
         Assert.All(constants.Values, value => Assert.Matches("^[a-z][a-z0-9-]*$", value));
 
-        var views = Directory.GetFiles(Path.Combine(appRoot, "Views"), "*.axaml*", SearchOption.AllDirectories);
+        var appSources = Directory.GetFiles(appRoot, "*.axaml*", SearchOption.AllDirectories)
+            .Concat(Directory.GetFiles(appRoot, "*.cs", SearchOption.AllDirectories))
+            .Where(path => !Path.GetRelativePath(appRoot, path).Split(Path.DirectorySeparatorChar)
+                .Any(segment => segment is "obj" or "bin"));
+        var members = typeof(AutomationIds).GetMembers(System.Reflection.BindingFlags.Public |
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)
+            .Select(member => member.Name).ToHashSet(StringComparer.Ordinal);
         var mainWindow = File.ReadAllText(Path.Combine(appRoot, "Views", "MainWindow.axaml"));
         Assert.Contains("Setter Property=\"AutomationProperties.AutomationId\" Value=\"{Binding AutomationId}\"",
             mainWindow, StringComparison.Ordinal);
         var references = new List<string>();
-        foreach (var view in views)
+        foreach (var view in appSources)
         {
             var source = File.ReadAllText(view);
             foreach (Match reference in Regex.Matches(source, @"AutomationIds\.(?<name>\w+)"))
             {
                 var name = reference.Groups["name"].Value;
-                Assert.Contains(name, constants.Keys);
+                Assert.Contains(name, members);
                 references.Add(name);
             }
 
+            if (!Path.GetRelativePath(appRoot, view).StartsWith("Views" + Path.DirectorySeparatorChar,
+                    StringComparison.Ordinal)) continue;
             var assignments = Regex.Matches(source,
                 @"(?:AutomationProperties\.AutomationId\s*=\s*""|Setter\s+Property=""AutomationProperties\.AutomationId""\s+Value="")(?<value>[^""]+)""");
             foreach (Match assignment in assignments)

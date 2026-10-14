@@ -373,6 +373,7 @@ public sealed class MorphemePanel : Decorator
         var formIsLink = FormLinks && morph.HasLink;
         Control form = formIsLink ? FormLink(morph) : new CopyableTextBlock
             { Text = morph.Form, FontWeight = FontWeight.SemiBold, Classes = { "morphemePanelForm" } };
+        if (!formIsLink) AutomationProperties.SetAutomationId(form, AutomationIds.MorphemePanelForm);
         if (form is TextBlock formText)
         {
             if (OverflowRequest is not null)

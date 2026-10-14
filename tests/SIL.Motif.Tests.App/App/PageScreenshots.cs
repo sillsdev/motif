@@ -440,12 +440,14 @@ public sealed class PageScreenshots
         ("2a-texts-matrix", WorkspacePage.Texts, TextsTab.Matrix),
         ("2b-texts-analyze", WorkspacePage.Texts, TextsTab.AnalyzeTexts),
         ("2c-texts-lists", WorkspacePage.Texts, TextsTab.Lists),
+        ("2d-texts-what-changed", WorkspacePage.Texts, TextsTab.WhatChanged),
         ("3-try-a-word", WorkspacePage.TryAWord, TextsTab.Matrix),
         ("4-timing", WorkspacePage.Timing, TextsTab.Matrix),
         ("5-warnings", WorkspacePage.Warnings, TextsTab.Matrix),
         ("6-review", WorkspacePage.Review, TextsTab.Matrix),
         ("7-ai-handoff", WorkspacePage.AiHandoff, TextsTab.Matrix),
         ("8-ai-assistants", WorkspacePage.AiAssistants, TextsTab.Matrix),
+        ("9-proposals", WorkspacePage.Proposals, TextsTab.Matrix),
     ];
 
     [Fact]
@@ -729,7 +731,7 @@ public sealed class PageScreenshots
         }, TimeSpan.FromSeconds(15));
     }
 
-    private static async Task TryTheSampleWord(WorkspaceShellViewModel workspace)
+    internal static async Task TryTheSampleWord(WorkspaceShellViewModel workspace)
     {
         workspace.Context.TryWord("hawajafika");
         await workspace.Assess.Trace.TryCommand.ExecutionTask!;

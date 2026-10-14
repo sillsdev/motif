@@ -203,6 +203,17 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
+if ($All) {
+    $phaseClocks['capture screen regression'] = [Diagnostics.Stopwatch]::StartNew()
+    Write-Step 'capture screenshot tooling regression'
+    & pwsh -NoProfile -File (Join-Path $repoRoot 'tools/Capture-Screens.Tests.ps1')
+    Write-PhaseDuration 'capture screen regression'
+    if ($LASTEXITCODE -ne 0) {
+        Write-PhaseDuration 'whole gate'
+        exit 1
+    }
+}
+
 $solutionProjectPaths = @{}
 foreach ($line in Get-Content $solution) {
     if ($line -match '^Project\("[^"]+"\)\s*=\s*"[^"]+",\s*"([^"]+\.csproj)"') {

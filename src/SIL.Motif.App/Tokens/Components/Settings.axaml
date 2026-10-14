@@ -1,6 +1,7 @@
 <!-- The Settings flyout and its rail, rows, key caps and controls use shared Intent colours and component sizes. -->
 <Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:app="clr-namespace:SIL.Motif.App">
   <Styles.Resources>
     <StaticResource x:Key="Component.Settings.Width" ResourceKey="Primitive.Size.760" />
     <StaticResource x:Key="Component.Settings.MaxHeight" ResourceKey="Primitive.Size.640" />
@@ -24,6 +25,7 @@
     <StaticResource x:Key="Component.Settings.WritingSystemsFooterPadding" ResourceKey="Primitive.Inset.0_12_8_12" />
   </Styles.Resources>
   <Style Selector="FlyoutPresenter.settings">
+    <Setter Property="AutomationProperties.AutomationId" Value="{x:Static app:AutomationIds.SettingsFlyout}" />
     <Setter Property="MaxWidth" Value="{DynamicResource Component.Settings.Width}" />
     <Setter Property="MaxHeight" Value="{DynamicResource Component.Settings.MaxHeight}" />
     <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />

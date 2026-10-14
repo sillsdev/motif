@@ -560,7 +560,7 @@ public sealed class ReviewScreenshots
         return (workspace, window);
     }
 
-    private static PendingChangesSnapshot Blocked()
+    internal static PendingChangesSnapshot Blocked()
     {
         var kitabu = Change("kitabu", ChangeKinds.Approve, "analysis/kitabu", Stored(("ki-", "7"), ("tabu", "book")));
         var anapenda = Change("anapenda", ChangeKinds.Approve, "analysis/anapenda",

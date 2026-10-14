@@ -79,6 +79,7 @@ public sealed class WordRowHeader : UserControl
             },
         };
         if (column == WordListColumn.Warnings) AutomationProperties.SetName(heading, "Warnings");
+        if (heading is CopyableTextBlock) AutomationProperties.SetAutomationId(heading, AutomationIds.ForWordHeading(column.ToString()));
         return heading;
     }
 

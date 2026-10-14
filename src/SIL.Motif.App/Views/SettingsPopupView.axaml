@@ -495,7 +495,7 @@
           <Border Grid.Row="1" Classes="settingsFooter" Classes.writingSystems="{Binding IsWritingSystemsSelected}"
                   IsVisible="{Binding ShowSettingsFooter}">
             <Grid ColumnDefinitions="Auto,*" Classes="settingsFooterContent">
-              <TextBlock Classes="settingsFooterMark" Text="ⓘ" />
+              <TextBlock x:Name="SettingsFooterMark" Classes="settingsFooterMark" Text="ⓘ" />
               <TextBlock Grid.Column="1" Classes="settingsFooterText" Text="{Binding ParsingFooter}"
                          IsVisible="{Binding IsParsingSelected}" TextWrapping="Wrap" />
               <StackPanel Grid.Column="1" IsVisible="{Binding IsWritingSystemsSelected}">

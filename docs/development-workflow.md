@@ -93,6 +93,30 @@ checks run, and report every skipped test category. Record the tested source SHA
 and capture states, parser path/version, and any required Windows-only follow-up. A missing parser,
 skipped capture run, failed gate, or missing final result means validation is incomplete.
 
+Use `pwsh ./tools/Capture-Screens.ps1 -All -Configuration Release` to capture every screenshot class
+and the full size matrix. Without `-All`, only the size-matrix class runs, capturing each scene in 7 cells (thin, half, full
+and short at 100% light; half at 150% light; thin and full at 100% dark). `-All` captures every scene
+at all 4 sizes x 2 zooms (100, 150) x 2 themes, may fail on real defects in cells the expected list
+does not name, and still writes the PNGs, `findings.json` and the sheet. `-Scenes 1-overview` captures one
+matrix scene, and `-Sizes thin` captures one size; use `-Zooms 100,150` or `-Themes light,dark` to select both zooms or themes.
+With any selector supplied, omitted zoom and theme default to 100% and light. Each run writes PNGs,
+`index.html`, `diff.csv`, and pixel diffs under `bin/captures/<run>/`; the `bin/captures/latest` text
+file names the newest completed run. A normal run compares with the previous latest run automatically.
+Use `-Output <new-folder> -Previous <old-folder>` to choose both paths, or `-NoRun -Output <folder>`
+to rebuild that folder's sheet and diff without recapturing screenshots. Without `-Output` every run
+writes a fresh dated folder (a `-NN` suffix when the name is taken). Naming an existing `-Output` folder
+reruns into it after deleting the previous capture files there (`*.png`, `matrix/`, `diff/`,
+`index.html`, `diff.csv`); other files stay. `-NoDiff` skips the compiled pixel-diff tool and builds
+only the sheet.
+
+For a design comparison, pass `-ReferenceMap <json-file>`: a JSON object maps matrix scene names to
+artboard PNG paths, absolute or relative to the map file, for example
+`{"1-overview":"H/Overview.png","6-review":"H/Review.png"}`. The sheet copies references into its
+`references/` folder and pairs each artboard with the actual capture; scenes without a mapped board
+say so. Reference geometry stays as supplied: a full-size board beside a thin capture describes the
+design, while responsive validation still comes from the actual size matrix. The same option works
+with `-NoRun`.
+
 ## Jira and external systems
 
 When a Jira issue is named, read it first through the installed `atlassian-readonly-skills` skill and

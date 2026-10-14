@@ -14,6 +14,7 @@
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="12.1.2" />
     <Compile Include="..\..\tools\TokenHygiene\token-hygiene.cs" Link="TokenHygiene\token-hygiene.cs" />
+    <Compile Include="..\..\tools\CaptureScreens\CaptureDiff.Core.cs" Link="CaptureScreens\CaptureDiff.Core.cs" />
   </ItemGroup>
 
   <ItemGroup>

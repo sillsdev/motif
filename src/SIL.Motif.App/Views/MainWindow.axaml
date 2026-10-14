@@ -40,7 +40,7 @@
             <TextBlock Classes="disclosure" Text="&#x25BE;" VerticalAlignment="Center" />
           </StackPanel>
           <Button.Flyout>
-            <Flyout Placement="BottomEdgeAlignedLeft">
+            <Flyout Placement="BottomEdgeAlignedLeft" FlyoutPresenterClasses="projectMenu">
               <StackPanel Classes="menu projectMenu">
                 <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" Click="OnProjectMenuEntryClick"
                         Command="{Binding SelectNewProjectCommand}" AutomationProperties.Name="Select a new project"
@@ -254,7 +254,7 @@
                             Stroke="{Binding $parent[ListBoxItem].Foreground}" />
                     </Canvas>
                   </Viewbox>
-                  <views:CopyableTextBlock Grid.Column="1" Classes="pageLabel" Text="{Binding Title}"
+                  <views:CopyableTextBlock Grid.Column="1" Classes="pageLabel" Text="{Binding Title}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.SidebarPageLabel}"
                                            VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                   <Border Grid.Column="2" Classes="pageBadge" IsVisible="{Binding HasBadge}">
                     <views:CopyableTextBlock Text="{Binding Badge}" />
@@ -300,7 +300,7 @@
             </StackPanel>
             <views:CopyableTextBlock Classes="muted sidebarSelectionSummary" Text="Selection"
                                      IsVisible="{Binding IsSidebarExpanded}" />
-            <views:CopyableTextBlock Classes="sidebarSelectionSummary" FontWeight="Bold" TextWrapping="Wrap"
+            <views:CopyableTextBlock Classes="sidebarSelectionSummary" FontWeight="Bold" AutomationProperties.AutomationId="{x:Static app:AutomationIds.SidebarSelectionSummary}" TextWrapping="Wrap"
                                      Text="{Binding SelectionSummaryText}" IsVisible="{Binding IsSidebarExpanded}" />
           </StackPanel>
         </Grid>

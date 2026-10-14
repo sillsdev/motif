@@ -88,6 +88,75 @@ public static class AutomationIds
     public const string Pages = "motif-pages";
     public const string ProposalsSetAside = "motif-proposals-set-aside";
 
+    /// <summary>The "words in Selection" caption under the Overview's first count.</summary>
+    public const string OverviewSelectionLabel = "motif-overview-selection-label";
+
+    /// <summary>The Settings pop-up's presenter and the project menu's, which carry no content of their own to name.</summary>
+    public const string SettingsFlyout = "motif-settings-flyout";
+    public const string ProjectMenuFlyout = "motif-project-menu-flyout";
+
+    /// <summary>The Analyze texts reader's Read menu button.</summary>
+    public const string ReaderReadMenu = "motif-reader-read-menu";
+
+    /// <summary>The sidebar's page-name label, one per page, and its Selection summary line.</summary>
+    public const string SidebarPageLabel = "motif-sidebar-page-label";
+    public const string SidebarSelectionSummary = "motif-sidebar-selection-summary";
+
+    /// <summary>The text the AI assistants page shows when it finds no supported assistant.</summary>
+    public const string AssistantsEmptyText = "motif-assistants-empty-text";
+
+    /// <summary>The word list and its content grid on the Texts matrix, Lists and Review pages and Timing.</summary>
+    public const string MatrixWordsGrid = "motif-matrix-words-grid";
+    public const string ListsWordsSlot = "motif-lists-words-slot";
+    public const string ListsWordsGrid = "motif-lists-words-grid";
+    public const string TimingWordsGrid = "motif-timing-words-grid";
+    public const string ReviewWordsSlot = "motif-review-words-slot";
+    public const string ReviewWordsGrid = "motif-review-words-grid";
+
+    /// <summary>The Review changes page's count heading, and the Apply card's heading and count.</summary>
+    public const string ReviewCountTitle = "motif-review-count-title";
+    public const string ReviewApplyTitle = "motif-review-apply-title";
+    public const string ReviewApplyCount = "motif-review-apply-count";
+
+    /// <summary>The parts of the Texts matrix: a row's label and count, a cell's three lines, the list heading.</summary>
+    public const string MatrixRowOpinionLabel = "motif-matrix-row-opinion-label";
+    public const string MatrixRowCount = "motif-matrix-row-count";
+    public const string MatrixCellCount = "motif-matrix-cell-count";
+    public const string MatrixCellPlaces = "motif-matrix-cell-places";
+    public const string MatrixCellLabel = "motif-matrix-cell-label";
+    public const string MatrixListHeading = "motif-matrix-list-heading";
+    public const string MatrixListSummary = "motif-matrix-list-summary";
+    public const string MatrixListExplanation = "motif-matrix-list-explanation";
+    public const string MatrixSortChoice = "motif-matrix-sort-choice";
+    public const string MatrixParseAgain = "motif-matrix-parse-again";
+
+    /// <summary>A word row's Open in text and Try a Word buttons, and the Keep and Undo buttons on a row in the review list.</summary>
+    public const string WordOpenInText = "motif-word-open-in-text";
+    public const string WordUndoChange = "motif-word-undo-change";
+    public const string WordTryAWord = "motif-word-try-a-word";
+    public const string WordKeepChange = "motif-word-keep-change";
+
+    /// <summary>The sentence a pending-change row gives about its word.</summary>
+    public const string WordNote = "motif-word-note";
+
+    /// <summary>The Review page's group note, its Back button and the group header's Remove button.</summary>
+    public const string ReviewGroupNote = "motif-review-group-note";
+    public const string ReviewBack = "motif-review-back";
+    public const string ReviewGroupUndoAll = "motif-review-group-undo-all";
+
+    /// <summary>The letter drawn inside an opinion mark.</summary>
+    public const string OpinionMarkLetter = "motif-opinion-mark-letter";
+
+    /// <summary>The words shown beside a mark, a morpheme panel's form and a mark's own sign, one id per role.</summary>
+    public const string NamedMarkText = "motif-named-mark-text";
+    public const string MorphemePanelForm = "motif-morpheme-panel-form";
+    public const string MarkGlyph = "motif-mark-glyph";
+
+    /// <summary>Creates the identifier of one column's heading in a word list.</summary>
+    /// <param name="column">The column's name, such as <c>FieldWorks</c>.</param>
+    /// <returns>An identifier shared by that column's heading in every word list.</returns>
+    public static string ForWordHeading(string column) => "motif-word-heading-" + column.ToLowerInvariant();
+
     /// <summary>The Review changes action that declines the open Proposal.</summary>
     public const string DeclineProposal = "motif-review-decline";
 

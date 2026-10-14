@@ -23,7 +23,7 @@ namespace SIL.Motif.Tests.App;
 
 internal static class LayoutAssertions
 {
-    private const double Tolerance = 2;
+    internal const double Tolerance = 2;
     private static readonly int[] Widths = [1040, 1240];
     private static readonly int[] Zooms = [100, 125, 150];
     private static readonly ThemeVariant[] Themes = [ThemeVariant.Light, ThemeVariant.Dark];
@@ -347,7 +347,7 @@ internal static class LayoutAssertions
     private static bool IsSeverityGlyph(TextBlock text) =>
         text.GetVisualAncestors().OfType<Border>().Any(border => border.Classes.Contains("severityGlyph"));
 
-    private static Size MeasureUntrimmed(TextBlock text)
+    internal static Size MeasureUntrimmed(TextBlock text)
     {
         var measure = new TextBlock
         {
@@ -365,6 +365,26 @@ internal static class LayoutAssertions
         };
         measure.Measure(new Size(text.Bounds.Width, double.PositiveInfinity));
         return measure.DesiredSize;
+    }
+
+    internal static double MeasureWithoutWrapping(TextBlock text)
+    {
+        var measure = new TextBlock
+        {
+            Text = text.Text,
+            FontFamily = text.FontFamily,
+            FontSize = text.FontSize,
+            FontStyle = text.FontStyle,
+            FontWeight = text.FontWeight,
+            FontStretch = text.FontStretch,
+            FlowDirection = text.FlowDirection,
+            TextAlignment = text.TextAlignment,
+            TextWrapping = TextWrapping.NoWrap,
+            LineHeight = text.LineHeight,
+            TextTrimming = TextTrimming.None,
+        };
+        measure.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        return measure.DesiredSize.Width;
     }
 
     private static void AssertGridChildrenStayInTheirColumns(Visual root)

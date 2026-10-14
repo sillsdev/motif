@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              xmlns:word="clr-namespace:SIL.Motif.App.Controls.WordPresentation"
@@ -332,7 +333,7 @@
             <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
               <views:CopyableTextBlock Classes="section-title" Text="{Binding RuleWordsTitle}" />
               <views:WordListSlot Schema="{x:Static word:WordListSchemas.Timing}">
-                <Grid RowDefinitions="Auto,Auto">
+                <Grid RowDefinitions="Auto,Auto" AutomationProperties.AutomationId="{x:Static app:AutomationIds.TimingWordsGrid}">
                   <word:WordRowHeader />
                   <ItemsControl Grid.Row="1" x:Name="TimingPageCostliestRuleWordRowsItems"
                                 ItemsSource="{Binding CostliestRuleWordRows}"

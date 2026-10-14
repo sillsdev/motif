@@ -77,8 +77,15 @@ public sealed class OpinionMark : Border
         Letter = letter;
         Classes.Add(shape);
         Child = letter is { } value
-            ? new TextBlock { Text = value.ToString() }
+            ? LetterBlock(value)
             : new Grid { Children = { new Rectangle { Classes = { "opinionDash" } } } };
         AutomationProperties.SetName(this, name);
+    }
+
+    private static TextBlock LetterBlock(char letter)
+    {
+        var block = new TextBlock { Text = letter.ToString() };
+        AutomationProperties.SetAutomationId(block, AutomationIds.OpinionMarkLetter);
+        return block;
     }
 }

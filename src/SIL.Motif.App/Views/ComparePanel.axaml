@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
              xmlns:controls="clr-namespace:SIL.Motif.App.Controls"
              xmlns:word="clr-namespace:SIL.Motif.App.Controls.WordPresentation"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
@@ -119,9 +120,9 @@
                 <StackPanel VerticalAlignment="Center" Spacing="{DynamicResource Intent.Space.Minimal}">
                   <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Compact}">
                     <controls:OpinionMark Kind="{Binding OpinionMark}" IsVisible="{Binding IsOpinionMarkVisible}" />
-                    <TextBlock Grid.Column="1" Text="{Binding OpinionLabel}" TextWrapping="Wrap" FontWeight="SemiBold" />
+                    <TextBlock Grid.Column="1" Text="{Binding OpinionLabel}" TextWrapping="Wrap" FontWeight="SemiBold" AutomationProperties.AutomationId="{x:Static app:AutomationIds.MatrixRowOpinionLabel}" />
                   </Grid>
-                  <TextBlock Classes="muted" Text="{Binding CountText}" FontSize="{DynamicResource Intent.Type.Label}" />
+                  <TextBlock Classes="muted" Text="{Binding CountText}" FontSize="{DynamicResource Intent.Type.Label}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.MatrixRowCount}" />
                 </StackPanel>
               </Button>
               <ItemsControl x:Name="ComparePanelCellsItems" Grid.Column="1" ItemsSource="{Binding Cells}">
@@ -195,16 +196,16 @@
               </StackPanel>
               <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}"
                           IsVisible="{Binding Compare.ChosenCell, Converter={x:Static ObjectConverters.IsNull}}">
-                <TextBlock Classes="matrixChosenWord" Text="{Binding Compare.ListHeading}" FontWeight="SemiBold" />
+                <TextBlock Classes="matrixChosenWord" Text="{Binding Compare.ListHeading}" FontWeight="SemiBold" AutomationProperties.AutomationId="{x:Static app:AutomationIds.MatrixListHeading}" />
                 <views:MarkChip Classes="matrixListMeaning" Mark="{Binding Compare.ListMeaningMark}"
                                 Text="{Binding Compare.ListMeaning}" Compact="True"
                                 IsVisible="{Binding Compare.ListMeaning, Converter={x:Static ObjectConverters.IsNotNull}}" />
               </StackPanel>
             </StackPanel>
             <DockPanel VerticalAlignment="Center">
-              <views:CopyableTextBlock DockPanel.Dock="Left" Text="{Binding Compare.ListSummary}"
+              <views:CopyableTextBlock DockPanel.Dock="Left" Text="{Binding Compare.ListSummary}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.MatrixListSummary}"
                                        Margin="{DynamicResource Intent.Gap.AfterRelated}" />
-              <views:CopyableTextBlock Classes="muted" Text="{Binding Compare.ListExplanation}"
+              <views:CopyableTextBlock Classes="muted" Text="{Binding Compare.ListExplanation}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.MatrixListExplanation}"
                                        TextTrimming="CharacterEllipsis" />
             </DockPanel>
           </DockPanel>
@@ -245,7 +246,7 @@
                       AutomationProperties.Name="Order the listed words">
               <ComboBox.ItemTemplate>
                 <DataTemplate x:DataType="vm:CompareSort">
-                  <TextBlock Text="{Binding Converter={x:Static views:ComparePanel.SortLabel}}" />
+                  <TextBlock Text="{Binding Converter={x:Static views:ComparePanel.SortLabel}}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.MatrixSortChoice}" />
                 </DataTemplate>
               </ComboBox.ItemTemplate>
             </ComboBox>
@@ -254,7 +255,7 @@
                      Text="{Binding Compare.SearchText}" PlaceholderText="Search words…"
                      AutomationProperties.Name="Search the listed words" />
             <WrapPanel HorizontalAlignment="Right">
-              <SplitButton Content="Parse again" Command="{Binding Compare.RerunCommand}"
+              <SplitButton Content="Parse again" Command="{Binding Compare.RerunCommand}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.MatrixParseAgain}"
                            IsVisible="{Binding Compare.CanRerun}" Margin="{DynamicResource Component.TextsPage.CompareControlMargin}"
                            ToolTip.Tip="Parse the stopped and unparsed words again"
                            views:ClearTipPlacement.IsEnabled="True"
@@ -294,7 +295,7 @@
 
           <views:WordListSlot Grid.Row="4" Schema="{x:Static word:WordListSchemas.All}"
                               ShowsMeaning="{Binding Compare.ShowsMeaning}">
-            <Grid RowDefinitions="Auto,*">
+            <Grid RowDefinitions="Auto,*" AutomationProperties.AutomationId="{x:Static app:AutomationIds.MatrixWordsGrid}">
             <word:WordRowHeader MeaningHeader="Meaning" />
             <ListBox x:Name="ComparePanelWordsItems" Grid.Row="1" Classes="wordRows" ItemsSource="{Binding Compare.Words}"
                      MaxHeight="{DynamicResource Component.TextsPage.CompareWordsListHeight}"

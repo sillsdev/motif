@@ -231,6 +231,8 @@ internal static class InteractiveControlSweep
         MatrixCell => InteractiveControlFamily.MatrixCell,
         CopyableTextBlock => InteractiveControlFamily.SelectableText,
         OpinionMark or UnreadMark or MarkChip or MarkGlyph => InteractiveControlFamily.Mark,
+        PathIcon icon when AutomationProperties.GetAutomationId(icon) == AutomationIds.MarkGlyph =>
+            InteractiveControlFamily.Mark,
         HyperlinkButton => InteractiveControlFamily.Link,
         SplitButton => InteractiveControlFamily.Action,
         RadioButton => InteractiveControlFamily.Radio,
@@ -249,6 +251,7 @@ internal static class InteractiveControlSweep
         TreeView or TreeViewItem => InteractiveControlFamily.Tree,
         MorphemePanel => InteractiveControlFamily.Morpheme,
         NamedMark => InteractiveControlFamily.Mark,
+        WordListSlot => InteractiveControlFamily.Container,
         WordRow or WordStripToken => InteractiveControlFamily.Occurrence,
         ScrollViewer { Classes: var classes } when classes.Contains("refusalViewport") =>
             InteractiveControlFamily.ScrollViewport,
@@ -275,6 +278,9 @@ internal static class InteractiveControlSweep
         UserControl named when !string.IsNullOrWhiteSpace(AutomationProperties.GetName(named)) =>
             InteractiveControlFamily.Container,
         StackPanel panel when panel.Focusable ||
+            !string.IsNullOrWhiteSpace(AutomationProperties.GetName(panel)) ||
+            !string.IsNullOrWhiteSpace(AutomationProperties.GetAutomationId(panel)) => InteractiveControlFamily.Container,
+        Grid panel when panel.Focusable ||
             !string.IsNullOrWhiteSpace(AutomationProperties.GetName(panel)) ||
             !string.IsNullOrWhiteSpace(AutomationProperties.GetAutomationId(panel)) => InteractiveControlFamily.Container,
         _ => null,

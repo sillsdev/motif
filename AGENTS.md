@@ -199,8 +199,8 @@ records, not counter-examples.
 Run `pwsh ./test.ps1 -All -Configuration Release` with `MOTIF_PANGLOSS_EXE` set to the pinned executable
 from `pangloss-release.json`, and set `MOTIF_SCREENSHOTS` so page and state captures run too. Report the
 tested source SHA, parser path/version, completed capture states, all skipped test categories, and any
-Windows-only follow-up. A missing parser, skipped capture run, failed gate, or missing final result means
-validation is incomplete.
+Windows-only follow-up. Use `pwsh ./tools/Capture-Screens.ps1` to regenerate, review, and diff the captures.
+A missing parser, skipped capture run, failed gate, or missing final result means validation is incomplete.
 
 ## Comments
 
