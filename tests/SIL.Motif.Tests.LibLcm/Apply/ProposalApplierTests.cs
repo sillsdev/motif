@@ -231,6 +231,25 @@ public sealed class ProposalApplierTests : IDisposable
             senseRepo.GetObject(senseGuid).Gloss.get_String(wsHandle).Text);
     }
 
+    // A target the Dry Run found that is gone by Apply is stale evidence, refused before any unit of work opens.
+    [Fact]
+    public void Apply_WhenABoundTargetWasDeletedAfterTheDryRun_RefusesBeforeMutation()
+    {
+        var (senseGuid, wsTag, originalGloss) = FindSenseWithKnownGloss(_cache);
+        var target = CanonicalId.FromGuid(senseGuid);
+        var proposal = BuildSetGlossProposal(target, wsTag, originalGloss + " (deleted before Apply)");
+        var dryRun = ScratchDryRun.Of(_cache, proposal);
+        var sense = _cache.ServiceLocator.GetInstance<ILexSenseRepository>().GetObject(senseGuid);
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () => sense.Delete());
+
+        var ex = Assert.Throws<ApplyPreconditionException>(
+            () => ProposalApplier.Apply(_cache, proposal, dryRun.Anchor, "motif-tests"));
+
+        Assert.Contains(target.Value, ex.Message, StringComparison.Ordinal);
+        Assert.Contains("fresh Dry Run", ex.Message, StringComparison.Ordinal);
+        Assert.Empty(ProjectAppliedLog.ReadAll(_cache));
+    }
+
     // --- Defect 2 (ADR 0004 §3): apply is bound to a prior DryRun. ---
 
     [Fact]
