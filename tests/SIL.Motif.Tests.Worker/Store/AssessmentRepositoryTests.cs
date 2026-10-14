@@ -676,6 +676,34 @@ public sealed class AssessmentRepositoryTests : IDisposable
         command.ExecuteNonQuery();
     }
 
+    // A wall-clock bound flakes under load; the statement count inside the write lock does not.
+    [Fact]
+    public void RecordingATrialSizedAssessmentRunsAFewStatementsPerHundredWordsWhileItHoldsTheWriteLock()
+    {
+        _ = NewRepository("statement-budget.fwdata", out var database);
+        using var ownedDatabase = database;
+        var words = Enumerable.Range(0, 1000).Select(index => new AssessedWord("w" + index, "analysed",
+            Enumerable.Range(0, 3).Select(analysis => new ParsedAnalysis("cat-guid",
+                ["root-" + index, "suffix-" + analysis], 0, $"sha256:{index}-{analysis}")).ToArray())).ToArray();
+        var record = NewAssessment("assessment/statement-budget", null, null, "Correctness", words);
+        using var connection = database.OpenConnection();
+        var statements = 0;
+        SQLitePCL.raw.sqlite3_trace(connection.Handle, (_, sql) =>
+        {
+            if (!sql.StartsWith("--", StringComparison.Ordinal)) statements++;
+        }, null);
+
+        using (var transaction = connection.BeginTransaction())
+        {
+            AssessmentRepository.InsertRecords(connection, transaction, [record]);
+            transaction.Commit();
+        }
+
+        Assert.True(statements <= 40, $"{statements} statements recorded 1,000 words and 3,000 analyses.");
+        Assert.Equal(1000L, long.Parse(Scalar(database, "SELECT CAST(COUNT(*) AS TEXT) FROM AssessedWords")));
+        Assert.Equal(3000L, long.Parse(Scalar(database, "SELECT CAST(COUNT(*) AS TEXT) FROM ParsedAnalyses")));
+    }
+
     private static string Scalar(MotifDatabase database, string sql)
     {
         using var connection = database.OpenConnection();

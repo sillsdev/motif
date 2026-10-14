@@ -1771,6 +1771,8 @@ public static partial class ProposalCommands
                 {
                     if (ShouldFailReceiptWriteForTest(project.FullFwDataPath))
                         throw new IOException("Injected receipt write failure.");
+                    if (IsTestTarget("MOTIF_TEST_BUSY_RECEIPT_WRITE_FOR", project.FullFwDataPath))
+                        throw new Microsoft.Data.Sqlite.SqliteException("database is locked", 5);
                     repository.RecordAppliedReceipt(receipt);
                 }
                 catch (Exception ex)

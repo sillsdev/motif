@@ -122,6 +122,35 @@ public sealed class ApplyReconciliationTests(PristineProjectFixture pristine)
         Assert.Equal(0L, (long)command.ExecuteScalar()!);
     }
 
+    // After the project is saved, a busy store is an unknown outcome to reconcile, never a Busy to retry.
+    [Fact]
+    public void ABusyStoreAfterApplySavedTheProjectNeedsReconciliationNotARetry()
+    {
+        var seed = pristine.Seed;
+        var gloss = SeededProject.FirstGloss + " busy receipt";
+        string projectPath;
+        using (var scratch = pristine.NewScratch())
+            projectPath = scratch.ProjectId.Path;
+
+        var proposalId = CreateMeasuredProposal(projectPath, "busy-receipt-demo",
+            CanonicalId.FromGuid(seed.FirstSenseId).Value, gloss);
+        var previous = Environment.GetEnvironmentVariable("MOTIF_TEST_BUSY_RECEIPT_WRITE_FOR");
+        try
+        {
+            Environment.SetEnvironmentVariable("MOTIF_TEST_BUSY_RECEIPT_WRITE_FOR", projectPath);
+            var outcome = ProposalCommands.Apply(new ApplyRequest(projectPath, "1.0", proposalId, Force: true));
+
+            Assert.False(outcome.Succeeded);
+            Assert.Equal("apply.reconciliation-needed", outcome.Refusal!.Code);
+            Assert.Equal(FailureReason.StoreInconsistent, outcome.Refusal.Reason);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("MOTIF_TEST_BUSY_RECEIPT_WRITE_FOR", previous);
+        }
+        AssertGlossOnDisk(projectPath, seed.FirstSenseId, NewLangProjFixture.AnalysisTag, gloss);
+    }
+
     [Fact]
     public void FailureAfterReceiptRecordingStillReturnsAppliedSuccess()
     {
