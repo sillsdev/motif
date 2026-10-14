@@ -97,6 +97,10 @@ public sealed class ToolSurfaceTests
         Assert.Equal("array", intents["type"]!.GetValue<string>());
         Assert.DoesNotContain("intentsJson", batch.Tool.ArgumentNames);
         var branches = intents["items"]!["oneOf"]!.AsArray();
+        var verbs = branches.Select(branch => branch!["properties"]!["verb"]!["enum"]![0]!.GetValue<string>()).ToArray();
+        Assert.DoesNotContain("parsimony dispose", verbs);
+        Assert.DoesNotContain("parsimony revise", verbs);
+        Assert.DoesNotContain("parsimony retract", verbs);
         var template = branches.Single(branch => branch!["properties"]!["verb"]!["enum"]![0]!.GetValue<string>() ==
             "compose-author-affix-template");
         var templateIntent = template!["properties"]!["intent"]!["properties"]!;

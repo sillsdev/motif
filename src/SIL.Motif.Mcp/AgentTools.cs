@@ -906,7 +906,8 @@ internal static class AgentTools
     private static JsonObject ComposeBatchSchema(IReadOnlyList<AgentTool> tools)
     {
         var supportedIntents = CommandCatalog.All
-            .Where(command => command.ResponseType == typeof(ComposedOperationsResponse))
+            .Where(command => command.ResponseType == typeof(ComposedOperationsResponse) &&
+                !command.Name.StartsWith("parsimony ", StringComparison.Ordinal))
             .Select(command => (Command: command, Tool: tools.SingleOrDefault(tool => tool.Requests.Contains(command.RequestType))))
             .Where(pair => pair.Tool is not null)
             .Select(pair => BatchIntentSchema(pair.Command.Name, pair.Tool!.InputSchema))
