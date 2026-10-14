@@ -112,6 +112,22 @@ public static class PendingChangesWorkflow
         CancellationToken cancellationToken, TimeSpan? dryRunTimeout, IJobRunnerLauncher? runnerLauncher)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        // A missing project has no folder to hold a lease in.
+        if (!File.Exists(target.ProjectPath))
+            return ApplyLeased(target, cancellationToken, dryRunTimeout, runnerLauncher);
+        using var lease = ProjectApplyLease.TryAcquire(target.ProjectPath);
+        if (lease is null)
+        {
+            return CommandOutcome<ApplyPendingResult>.Refused(new Refusal("apply.in-progress", FailureReason.Busy,
+                "Another Apply is already running for this project. Try again when it finishes.",
+                new Dictionary<string, string>(StringComparer.Ordinal) { ["fwDataPath"] = target.ProjectPath }));
+        }
+        return ApplyLeased(target, cancellationToken, dryRunTimeout, runnerLauncher);
+    }
+
+    private static CommandOutcome<ApplyPendingResult> ApplyLeased(ApplyTarget target,
+        CancellationToken cancellationToken, TimeSpan? dryRunTimeout, IJobRunnerLauncher? runnerLauncher)
+    {
         var version = MotifProductVersion.CurrentText;
         var read = ProjectStoreCommand.Run(target.ProjectPath, version, (database, project) =>
             ReadApplyIdentity(database, project, target));

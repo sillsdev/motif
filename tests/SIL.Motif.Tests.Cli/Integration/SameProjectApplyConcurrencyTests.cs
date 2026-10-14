@@ -104,7 +104,7 @@ public sealed class SameProjectApplyConcurrencyTests(PristineProjectFixture pris
         using var failure = JsonDocument.Parse(error);
         Assert.Equal("Busy", failure.RootElement.GetProperty("reason").GetString());
         var code = failure.RootElement.GetProperty("code").GetString();
-        Assert.True(code is "project.in-use" or "apply.project-in-use",
+        Assert.True(code is "project.in-use" or "apply.project-in-use" or "apply.in-progress",
             $"Unexpected Busy refusal code: {code}");
         return 0;
     }
