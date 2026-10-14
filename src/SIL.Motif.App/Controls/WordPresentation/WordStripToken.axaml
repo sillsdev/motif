@@ -24,7 +24,12 @@
                                AutomationProperties.AutomationId="{Binding UnreadAutomationId}" />
           <views:CopyableTextBlock Classes="stripWord" Text="{Binding Text}" VerticalAlignment="Center"
                                    controls:WritingSystemText.Id="{Binding TextWritingSystem}" controls:WritingSystemText.StyleName="Normal"
+                                   Classes.differentVerdict="{Binding HasDifferentVerdictCue}"
+                                   Classes.noParseVerdict="{Binding HasNoParseVerdictCue}"
+                                   Classes.stoppedVerdict="{Binding HasStoppedVerdictCue}"
                                    AutomationProperties.AutomationId="{Binding WordAutomationId}" />
+          <views:MarkGlyph Classes.inline="True" Mark="{Binding WordVerdictMark}"
+                           AutomationProperties.Name="{Binding WordVerdictMark.Word}" />
           <StackPanel x:Name="NamedWarning" Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Minimal}"
                       IsVisible="{Binding HasNamedWarning}"
                       AutomationProperties.Name="{Binding WarningMarkCount, StringFormat='Named in {0}'}">
@@ -67,7 +72,6 @@
             </Border>
             <StackPanel x:Name="PanGlossNote" Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Minimal}"
                         IsVisible="{Binding ShowsPanGlossNote}">
-              <views:MarkGlyph Classes.inline="True" Mark="{Binding PanGlossNoteMark}" />
               <TextBlock Classes="f stripNote" Classes.outcomeMark="{Binding IsPanGlossCapped}"
                          Classes.stopped="{Binding IsPanGlossCapped}" Text="{Binding PanGlossNote}" />
             </StackPanel>

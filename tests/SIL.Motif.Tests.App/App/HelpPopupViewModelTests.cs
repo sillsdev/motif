@@ -167,7 +167,7 @@ public sealed class HelpPopupViewModelTests
             Assert.Contains("A means Approved", viewModel.Markdown);
             Assert.Contains("U means Unknown", viewModel.Markdown);
             Assert.Contains("D means Disapproved", viewModel.Markdown);
-            Assert.Contains("Blue means PanGloss found a new or different analysis", viewModel.Markdown);
+            Assert.Contains("≠ with a solid underline marks a new or different PanGloss result", viewModel.Markdown);
             Assert.Contains("The compact word strip for geldi", viewModel.Markdown);
             Assert.DoesNotContain("shot:explained-word-card/approved-agrees", viewModel.Markdown);
         });

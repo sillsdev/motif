@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Automation;
+using Avalonia.Automation.Peers;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Controls.Shapes;
@@ -30,6 +31,22 @@ public sealed class MarkGlyph : Decorator
     {
         get => GetValue(MarkProperty);
         set => SetValue(MarkProperty, value);
+    }
+
+    /// <summary>Exposes a named sign as one image; unnamed signs and their children remain decorative.</summary>
+    protected override AutomationPeer OnCreateAutomationPeer() => new MarkGlyphAutomationPeer(this);
+
+    private sealed class MarkGlyphAutomationPeer(MarkGlyph owner) : ControlAutomationPeer(owner)
+    {
+        protected override AutomationControlType GetAutomationControlTypeCore() => AutomationControlType.Image;
+
+        protected override bool IsContentElementCore() => owner.IsVisible && owner.Mark is { Glyph.Length: > 0 } &&
+            !string.IsNullOrWhiteSpace(AutomationProperties.GetName(owner));
+
+        protected override bool IsControlElementCore() => IsContentElementCore();
+
+        // The child draws the symbol itself; announcing it would speak the symbol instead of the outcome name.
+        protected override IReadOnlyList<AutomationPeer>? GetChildrenCore() => [];
     }
 
     private void Rebuild()

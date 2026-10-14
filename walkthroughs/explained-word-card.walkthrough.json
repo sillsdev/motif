@@ -11,27 +11,23 @@
 
     { "id": "highlight-geldi-word", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67656c6469-word" },
     { "id": "highlight-geldi-fieldworks", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67656c6469-fieldworks" },
-    { "id": "highlight-geldi-pangloss", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67656c6469-pangloss" },
     { "id": "highlight-geldi-fix", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67656c6469-fix" },
     { "id": "highlight-geldi-unread", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67656c6469-unread" },
     { "id": "approved-agrees", "kind": "capture", "durationMs": 400, "cropPadding": 4, "scale": 2.5, "callouts": [
       { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67656c6469-word" },
       { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67656c6469-fieldworks" },
-      { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67656c6469-pangloss" },
       { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67656c6469-fix" },
       { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67656c6469-unread" }
     ] },
 
     { "id": "highlight-evler-word", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-word" },
     { "id": "highlight-evler-fieldworks", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-fieldworks" },
-    { "id": "highlight-evler-pangloss", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-pangloss" },
     { "id": "highlight-evler-action", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-action" },
     { "id": "highlight-evler-fix", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-fix" },
     { "id": "highlight-evler-unread", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-unread" },
     { "id": "unknown-agrees", "kind": "capture", "durationMs": 400, "cropPadding": 4, "scale": 2.5, "callouts": [
       { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-word" },
       { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-fieldworks" },
-      { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-pangloss" },
       { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-action" },
       { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-fix" },
       { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-unread" }

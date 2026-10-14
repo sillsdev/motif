@@ -1,11 +1,11 @@
 <!--
-  One word of a text in Analyze texts, as Round 4 draws it: the word with its mark, then a FieldWorks line
-  and a PanGloss line whose heights match the line's gutter labels, then its action or its Staged note.
-  The strip itself has no verdict colour; it shows an edge only under the pointer or while its card is open.
-  Colours come from Intent keys only; sizes and gaps from Intent keys or this file's own Component keys.
+  An outcome mark and underline identify words that differ from FieldWorks.
+  The PanGloss line appears only when the verdict is not Matches.
+  Colours come from Intent keys only; sizes and gaps come from Intent or Component keys.
 -->
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:media="using:Avalonia.Media"
         xmlns:word="clr-namespace:SIL.Motif.App.Controls.WordPresentation">
   <Styles.Resources>
     <StaticResource x:Key="Component.WordStrip.Padding" ResourceKey="Primitive.Inset.4_0_4_0" />
@@ -24,6 +24,21 @@
     <StaticResource x:Key="Component.WordStrip.GutterWordPadding" ResourceKey="Primitive.Inset.0_5_0_0" />
     <StaticResource x:Key="Component.WordStrip.MorphType" ResourceKey="Primitive.Type.11" />
     <StaticResource x:Key="Component.WordStrip.NoteType" ResourceKey="Primitive.Type.10" />
+    <StaticResource x:Key="Component.WordStrip.VerdictUnderlineThickness" ResourceKey="Primitive.Stroke.2" />
+    <media:TextDecorationCollection x:Key="Component.WordStrip.DifferentUnderline">
+      <media:TextDecoration Location="Underline" Stroke="{DynamicResource Intent.Outcome.Different}"
+                            StrokeThickness="{DynamicResource Component.WordStrip.VerdictUnderlineThickness}" />
+    </media:TextDecorationCollection>
+    <media:TextDecorationCollection x:Key="Component.WordStrip.NoParseUnderline">
+      <media:TextDecoration Location="Underline" Stroke="{DynamicResource Intent.Outcome.NoParse}"
+                            StrokeThickness="{DynamicResource Component.WordStrip.VerdictUnderlineThickness}"
+                            StrokeDashArray="{StaticResource Primitive.Dash.3_2}" />
+    </media:TextDecorationCollection>
+    <media:TextDecorationCollection x:Key="Component.WordStrip.StoppedUnderline">
+      <media:TextDecoration Location="Underline" Stroke="{DynamicResource Intent.Outcome.Stopped}"
+                            StrokeThickness="{DynamicResource Component.WordStrip.VerdictUnderlineThickness}"
+                            StrokeDashArray="{StaticResource Primitive.Dash.1_2}" StrokeLineCap="Round" />
+    </media:TextDecorationCollection>
   </Styles.Resources>
   <Style Selector=":is(Border).wordStrip">
     <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
@@ -77,6 +92,15 @@
   <Style Selector=":is(TextBlock).stripWord">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Body}" />
     <Setter Property="FontWeight" Value="Bold" />
+  </Style>
+  <Style Selector=":is(TextBlock).stripWord.differentVerdict">
+    <Setter Property="TextDecorations" Value="{DynamicResource Component.WordStrip.DifferentUnderline}" />
+  </Style>
+  <Style Selector=":is(TextBlock).stripWord.noParseVerdict">
+    <Setter Property="TextDecorations" Value="{DynamicResource Component.WordStrip.NoParseUnderline}" />
+  </Style>
+  <Style Selector=":is(TextBlock).stripWord.stoppedVerdict">
+    <Setter Property="TextDecorations" Value="{DynamicResource Component.WordStrip.StoppedUnderline}" />
   </Style>
   <Style Selector="CheckBox.stripCheck">
     <Setter Property="MinHeight" Value="{DynamicResource Component.WordStrip.WordRowHeight}" />

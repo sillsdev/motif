@@ -312,7 +312,7 @@ public sealed partial class ResultsTokenViewModel : ObservableObject, IDisposabl
     /// <summary>Whether the word has a primary action available in its strip.</summary>
     public bool HasPrimaryAction => Marking.PrimaryAction is not null;
 
-    /// <summary>The strip's one-click action, marked with a tick as Round 4 draws it.</summary>
+    /// <summary>The strip's one-click action label, prefixed by its mark.</summary>
     public string PrimaryActionLabel => Marking.PrimaryAction is { } action ? $"✓ {action.Label}" : string.Empty;
 
     /// <summary>The first stored analysis, which the strip's FieldWorks line shows; the card shows them all.</summary>
@@ -528,12 +528,7 @@ public sealed partial class ResultsTokenViewModel : ObservableObject, IDisposabl
     /// <summary>How many PanGloss readings the strip leaves to the card.</summary>
     public string MorePanGlossLabel => $"+{Readings.Count - 1}";
 
-    /// <summary>The strip's PanGloss line when it shows no reading, in Round 4's short words.</summary>
-    public Mark? PanGlossNoteMark => IsPanGlossCapped ? Mark.Stopped
-        : IsPanGlossSame ? Mark.Same
-        : IsPanGlossNone ? Mark.NoParse
-        : null;
-
+    /// <summary>The PanGloss line's short label when it shows no reading.</summary>
     public string PanGlossNote => IsPanGlossCapped
         ? Mark.Stopped.Word
         : IsPanGlossSame ? "same"
@@ -685,6 +680,24 @@ public sealed partial class ResultsTokenViewModel : ObservableObject, IDisposabl
     public bool IsNew => Verdict == OccurrenceVerdict.New;
     public bool IsNoParse => Verdict is OccurrenceVerdict.NoParse or OccurrenceVerdict.Limit;
 
+    /// <summary>The mark shown beside a word when its PanGloss result does not match FieldWorks.</summary>
+    public Mark? WordVerdictMark => Verdict switch
+    {
+        OccurrenceVerdict.Differs or OccurrenceVerdict.New => Mark.Different,
+        OccurrenceVerdict.NoParse => Mark.NoParse,
+        OccurrenceVerdict.Limit => Mark.Stopped,
+        _ => null,
+    };
+
+    /// <summary>Whether this word needs the solid different-outcome underline.</summary>
+    public bool HasDifferentVerdictCue => Verdict is OccurrenceVerdict.Differs or OccurrenceVerdict.New;
+
+    /// <summary>Whether this word needs the dashed no-parse underline.</summary>
+    public bool HasNoParseVerdictCue => Verdict == OccurrenceVerdict.NoParse;
+
+    /// <summary>Whether this word needs the dotted stopped-outcome underline.</summary>
+    public bool HasStoppedVerdictCue => Verdict == OccurrenceVerdict.Limit;
+
     /// <summary>The Proposal's own reading for this word: nothing before a Trial, the Trial's block after.</summary>
     public Paired<ProposalReadingBlock?> ProposalReading { get; private set; }
 
@@ -802,7 +815,7 @@ public sealed partial class ResultsTokenViewModel : ObservableObject, IDisposabl
                  {
                      nameof(Marking), nameof(ShowUnread), nameof(IsPanGlossSame), nameof(IsPanGlossDifferent),
                      nameof(IsPanGlossExtra), nameof(IsPanGlossNone), nameof(IsPanGlossCapped), nameof(PanGlossSummary),
-                     nameof(PanGlossNote), nameof(PanGlossNoteMark), nameof(ShowsPanGlossReading), nameof(ShowsPanGlossNote),
+                     nameof(PanGlossNote), nameof(ShowsPanGlossReading), nameof(ShowsPanGlossNote),
                      nameof(HasMorePanGlossReadings), nameof(HasPrimaryAction), nameof(PrimaryActionLabel), nameof(BoundPrimaryAction),
                      nameof(TooltipSummary), nameof(HoverSummary), nameof(Disposition),
                  })

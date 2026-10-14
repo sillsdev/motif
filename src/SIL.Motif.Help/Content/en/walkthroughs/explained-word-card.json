@@ -1,29 +1,27 @@
 {
   "id": "explained-word-card",
   "title": "Read the word marks",
-  "description": "A means Approved, U Unknown, D Disapproved, and a dashed mark means no reading is stored. Blue means PanGloss found a new or different reading. Staged means a choice is waiting for Apply to FieldWorks project.",
+  "description": "A, U and D mean Approved, Unknown and Disapproved. Only differing Analyze texts results show an outcome cue and PanGloss line: ≠ with a solid underline for a new or different reading, ∅ with a dashed underline for no parse, and ◖ with a dotted underline for a stopped search. Staged means a choice is waiting for Apply to FieldWorks project.",
   "steps": {
-    "approved-agrees": "A marks the approved FieldWorks reading. PanGloss built the same reading, so no decision is needed. A, U and D mean Approved, Unknown and Disapproved; dashed means no reading is stored. Blue means PanGloss found a new or different reading.",
-    "unknown-agrees": "U means the reading is stored but not yet approved. PanGloss built the same reading, and Approve changes U to A.",
+    "approved-agrees": "A marks the approved FieldWorks reading. PanGloss built the same reading, so no decision is needed; matching results have no outcome mark or PanGloss line. A, U and D mean Approved, Unknown and Disapproved.",
+    "unknown-agrees": "U means the reading is stored but not yet approved. PanGloss built the same reading, so there is no outcome mark or PanGloss line. Approve changes U to A.",
     "unknown-staged": "The Staged note records a choice waiting for Apply to FieldWorks project. Undo removes it.",
-    "no-stored-new-reading": "The dashed mark means FieldWorks has no reading stored. Blue shows the new reading PanGloss found.",
+    "no-stored-new-reading": "The dashed mark means FieldWorks has no reading stored. A solid ≠ and underline mark the new reading PanGloss found.",
     "disapproved-conflict": "D marks the stored reading as Disapproved. PanGloss still builds it, so the reading conflicts with that opinion.",
     "no-parse": "There is no reading stored in FieldWorks, and PanGloss found no complete reading.",
-    "capped": "PanGloss stopped before finishing its search. Other readings may still exist.",
+    "capped": "PanGloss stopped before finishing its search. The dotted ◖ and underline mark the unfinished search; other readings may still exist.",
     "word-list-results": "The Word list shows the parsed wordforms for the selected Text."
   },
   "callouts": {
     "approved-agrees": {
-      "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67656c6469-word": "The word as it appears in the text.",
+      "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67656c6469-word": "The word matches its approved FieldWorks reading, so it has no outcome mark or PanGloss line.",
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67656c6469-fieldworks": "FieldWorks shows its morphemes with a gloss below each one.",
-      "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67656c6469-pangloss": "PanGloss built the same reading.",
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67656c6469-fix": "A means FieldWorks approved this reading. Choose it to change what FieldWorks holds.",
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67656c6469-unread": "Unread marks a word whose current reading has not been reviewed."
     },
     "unknown-agrees": {
-      "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-word": "The word as it appears in the text.",
+      "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-word": "PanGloss matches this stored reading, so the word has no outcome mark or PanGloss line.",
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-fieldworks": "FieldWorks shows its morphemes with a gloss below each one.",
-      "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-pangloss": "PanGloss built the same reading.",
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-action": "Approve changes this reading from Unknown to Approved.",
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-fix": "U means FieldWorks stored this reading but it has not been approved. Choose it to change what FieldWorks holds.",
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-unread": "Unread marks a word whose current reading has not been reviewed."

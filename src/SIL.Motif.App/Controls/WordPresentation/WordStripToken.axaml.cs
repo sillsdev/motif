@@ -197,6 +197,7 @@ public sealed partial class WordStripToken : Border
     private void SyncOptionalControls()
     {
         var data = Data;
+        _panGlossLine.IsVisible = data is { Verdict: not OccurrenceVerdict.Matches };
         Place(_wordLinePanel, _selectionCheckBox, ShowsSelectionCheckBox, 0);
         var hasUnread = data?.ShowUnread == true;
         Place(_wordLinePanel, _unreadMark, hasUnread, ShowsSelectionCheckBox ? 1 : 0);

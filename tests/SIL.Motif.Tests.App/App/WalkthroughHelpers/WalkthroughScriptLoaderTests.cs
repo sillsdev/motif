@@ -91,6 +91,14 @@ public sealed class WalkthroughScriptLoaderTests
         Assert.All(captures, step => Assert.True(step.Scale >= 2));
         Assert.Contains(captures.Single(step => step.Id == "approved-agrees").Callouts!, callout =>
             callout.AutomationId.EndsWith("-unread", StringComparison.Ordinal));
+        Assert.Contains("motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67656c6469-word", targets);
+        Assert.Contains("motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-word", targets);
+        Assert.DoesNotContain("motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67656c6469-pangloss", targets);
+        Assert.DoesNotContain("motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-pangloss", targets);
+        Assert.DoesNotContain(script.Steps, step => step.AutomationId ==
+            "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67656c6469-pangloss");
+        Assert.DoesNotContain(script.Steps, step => step.AutomationId ==
+            "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-pangloss");
         Assert.Contains("motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67656c6469-fix", targets);
         Assert.Contains("motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-action", targets);
         Assert.Contains("motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6b6564697965-fix", targets);

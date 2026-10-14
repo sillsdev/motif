@@ -1090,6 +1090,15 @@ public sealed partial class ComponentStyleTests
             Control.MarginProperty, "Component.WordStrip.AnalysisRowGap");
         yield return new("WordStrip", "an analysis row rule", host => Add(host, Box("stripRow")),
             Border.BorderBrushProperty, "Intent.Marking.Divider");
+        yield return new("WordStrip", "a different outcome underline",
+            host => Add(host, Text("stripWord", "differentVerdict")), TextBlock.TextDecorationsProperty,
+            "Component.WordStrip.DifferentUnderline");
+        yield return new("WordStrip", "a no-parse outcome underline",
+            host => Add(host, Text("stripWord", "noParseVerdict")), TextBlock.TextDecorationsProperty,
+            "Component.WordStrip.NoParseUnderline");
+        yield return new("WordStrip", "a stopped outcome underline",
+            host => Add(host, Text("stripWord", "stoppedVerdict")), TextBlock.TextDecorationsProperty,
+            "Component.WordStrip.StoppedUnderline");
         yield return new("UnreadMark", "the unread dot alone", host => Add(host, Box("unreadMark", "dotOnly")),
             Border.BackgroundProperty, "Intent.Clear");
         yield return new("HoverReveal", "a visible secondary action", RevealControl,

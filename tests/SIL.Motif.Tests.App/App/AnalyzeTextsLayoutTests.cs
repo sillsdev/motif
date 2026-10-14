@@ -1,6 +1,8 @@
 using Avalonia;
 using Avalonia.Automation;
+using Avalonia.Automation.Peers;
 using Avalonia.Controls;
+using Avalonia.Controls.Documents;
 using Avalonia.Controls.Presenters;
 using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
@@ -24,9 +26,8 @@ using Xunit;
 namespace SIL.Motif.Tests.App;
 
 /// <summary>
-/// Renders Analyze texts over the sample project and checks the layout claims Round 4 makes for it: the word
-/// card is a raised surface opened under its own line, the controls share one row, the text shows before the
-/// first parse, and each word strip carries the Word, FieldWorks and PanGloss lines with one action and one Fix.
+/// Renders Analyze texts over the sample project to check outcome marks, word underlines, PanGloss lines,
+/// word cards and actions against each occurrence's evidence.
 /// </summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
 [Trait("MotifTestLevel", "Unit")]
@@ -701,6 +702,152 @@ public sealed class AnalyzeTextsLayoutTests
     }
 
     [Fact]
+    public void AnalyzeTextOutcomeCueMarksDifferencesAndHidesMatchingPanGlossLines() => CheckOutcomeCues(false);
+
+    /// <summary>Checks all five outcome cues and optionally records the same fixture at four window sizes.</summary>
+    internal static void CheckOutcomeCues(bool capture)
+    {
+        var assessment = PageScreenshots.Assessment();
+        ProjectAnalysis Stored(ParserReading reading) => new(reading.StoredAnalysisId!, reading.Morphs)
+        {
+            StoredAnalysisId = reading.StoredAnalysisId,
+            StoredAnalysisOpinion = reading.StoredAnalysisOpinion,
+            Identity = reading.Identity,
+        };
+        TextToken Token(string form)
+        {
+            var word = assessment.Words.Single(result => result.Word == form);
+            var stored = word.StoredAnalyses.Select(Stored).ToArray();
+            if (form == "Sungura")
+            {
+                var source = word.StoredAnalyses.Single();
+                var reading = word.Readings!.Single();
+                var identity = new ApprovedMorphology(reading.Morphs.Select(morph => new ApprovedMorph(
+                    morph.AllomorphId, morph.GrammaticalInfoId, morph.InflectionType, [morph.Form])).ToArray());
+                stored =
+                [
+                    new ProjectAnalysis(source.StoredAnalysisId!, reading.Morphs)
+                    {
+                        StoredAnalysisId = source.StoredAnalysisId,
+                        StoredAnalysisOpinion = ReadingGrade.Approved,
+                        Identity = identity,
+                    },
+                ];
+            }
+            return new TextToken(form, form, null, stored.FirstOrDefault()?.StoredAnalysisOpinion ?? "unanalysed")
+            {
+                Analysis = stored.FirstOrDefault(),
+                StoredAnalyses = stored,
+            };
+        }
+        var forms = new[] { "Sungura", "walikula", "chakula", "hawajafika", "mwalimu" };
+        var capturedWords = new TextWordsResponse([], [new TextLines(Guid.NewGuid(), "Outcome cues",
+            [new TextLine(1, forms.Select(Token).ToArray())])], HasBaseline: true, OccurrenceCount: forms.Length);
+
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = await OpenAnalyzeTexts(capturedWords: capturedWords,
+                capturedAssessment: assessment);
+            try
+            {
+                workspace.PageModel<TextsPageModel>().ResultsInText.CloseTokenCard();
+                Settle(window);
+                if (capture)
+                {
+                    var folder = Environment.GetEnvironmentVariable(ScreenshotFactAttribute.FolderVariable)!;
+                    Directory.CreateDirectory(folder);
+                    foreach (var (size, width, height) in new[]
+                             { ("thin", 820, 600), ("half", 960, 780), ("full", 1920, 1080), ("short", 960, 600) })
+                    {
+                        window.Width = width;
+                        window.Height = height;
+                        PageScreenshots.Save(window, Path.Combine(folder, $"outcome-cue-{size}.png"));
+                    }
+                }
+                var strips = Strips(Panel(window)).ToArray();
+                var tokens = strips.Select(strip => ResultsInTextPanel.TokenOf(strip)!).ToArray();
+                var verdicts = tokens.Select(token => token.Verdict).ToHashSet();
+                Assert.True(verdicts.Contains(OccurrenceVerdict.Matches),
+                    string.Join(", ", tokens.Select(token => $"{token.Form}: {token.Verdict}")));
+                Assert.Contains(OccurrenceVerdict.Differs, verdicts);
+                Assert.Contains(OccurrenceVerdict.New, verdicts);
+                Assert.Contains(OccurrenceVerdict.NoParse, verdicts);
+                Assert.Contains(OccurrenceVerdict.Limit, verdicts);
+
+                foreach (var strip in strips)
+                {
+                    var token = ResultsInTextPanel.TokenOf(strip)!;
+                    var word = Assert.Single(strip.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
+                        text.Classes.Contains("stripWord"));
+                    var outcomeMark = strip.FindControl<Control>("WordLine")!.GetVisualDescendants()
+                        .OfType<MarkGlyph>()
+                        .SingleOrDefault(glyph => MarkClasses.GetMark(glyph)?.Kind == MarkKind.Outcome);
+                    var panGlossLine = strip.FindControl<Control>("PanGlossLine")!;
+
+                    if (token.Verdict == OccurrenceVerdict.Matches)
+                    {
+                        Assert.Null(outcomeMark);
+                        Assert.Empty(word.TextDecorations ?? new TextDecorationCollection());
+                        Assert.False(panGlossLine.IsVisible);
+                        foreach (var hidden in strip.FindControl<Control>("WordLine")!.GetVisualDescendants()
+                                     .OfType<MarkGlyph>().Where(glyph =>
+                                         string.IsNullOrWhiteSpace(AutomationProperties.GetName(glyph))))
+                        {
+                            var hiddenPeer = ControlAutomationPeer.CreatePeerForElement(hidden);
+                            Assert.False(hiddenPeer.IsContentElement());
+                            Assert.False(hiddenPeer.IsControlElement());
+                        }
+                        continue;
+                    }
+
+                    Assert.True(panGlossLine.IsVisible, $"{token.Form} has {token.Verdict}.");
+                    var expected = token.Verdict switch
+                    {
+                        OccurrenceVerdict.Differs or OccurrenceVerdict.New =>
+                            (Mark.Different, "Different", "Intent.Outcome.Different", Array.Empty<double>(), PenLineCap.Flat),
+                        OccurrenceVerdict.NoParse =>
+                            (Mark.NoParse, "No parse", "Intent.Outcome.NoParse", new[] { 3d, 2d }, PenLineCap.Flat),
+                        OccurrenceVerdict.Limit =>
+                            (Mark.Stopped, "Stopped", "Intent.Outcome.Stopped", new[] { 1d, 2d }, PenLineCap.Round),
+                        _ => ((Mark?)null, string.Empty, string.Empty, Array.Empty<double>(), PenLineCap.Flat),
+                    };
+                    if (expected.Item1 is null)
+                    {
+                        Assert.Null(outcomeMark);
+                        Assert.Empty(word.TextDecorations ?? new TextDecorationCollection());
+                        continue;
+                    }
+
+                    var markGlyph = Assert.IsType<MarkGlyph>(outcomeMark);
+                    var mark = Assert.IsType<Mark>(MarkClasses.GetMark(markGlyph));
+                    Assert.Equal(expected.Item1, mark);
+                    Assert.Equal(expected.Item2, AutomationProperties.GetName(markGlyph));
+                    var peer = ControlAutomationPeer.CreatePeerForElement(markGlyph);
+                    Assert.Equal(expected.Item2, peer.GetName());
+                    Assert.Equal(AutomationControlType.Image, peer.GetAutomationControlType());
+                    Assert.True(peer.IsContentElement());
+                    Assert.True(peer.IsControlElement());
+                    Assert.Empty(peer.GetChildren());
+                    var decoration = Assert.Single(word.TextDecorations ?? new TextDecorationCollection());
+                    Assert.Equal(TextDecorationLocation.Underline, decoration.Location);
+                    Assert.Equal(expected.Item5, decoration.StrokeLineCap);
+                    Assert.Equal(expected.Item4, decoration.StrokeDashArray?.ToArray() ?? []);
+                    Assert.True(Application.Current!.TryGetResource(expected.Item3, window.ActualThemeVariant,
+                        out var expectedResource));
+                    var expectedBrush = Assert.IsType<SolidColorBrush>(expectedResource);
+                    Assert.Equal(expectedBrush.Color, Assert.IsType<SolidColorBrush>(decoration.Stroke).Color);
+                    Assert.Equal(expectedBrush.Color,
+                        Assert.IsType<SolidColorBrush>(TextElement.GetForeground(markGlyph)).Color);
+                }
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, Deadline);
+    }
+
+    [Fact]
     public void OpeningTheInspectorFoldsTheTextSelectionListButLeavesTheTextPickerVisible()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
@@ -728,7 +875,7 @@ public sealed class AnalyzeTextsLayoutTests
     }
 
     [Fact]
-    public void StripsReadAsRoundFour()
+    public void StripsShowOutcomeCuesAndPanGlossNotes()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -739,10 +886,12 @@ public sealed class AnalyzeTextsLayoutTests
                 Settle(window);
                 var panel = Panel(window);
                 Assert.Contains("wa- 2 toto child", VisibleText(Part(StripOf(panel, "watoto"), "pangloss")));
-                Assert.Equal("∅ No parse", VisibleText(Part(StripOf(panel, "hawajafika"), "pangloss")));
+                Assert.Equal("No parse", VisibleText(Part(StripOf(panel, "hawajafika"), "pangloss")));
                 var stopped = Part(StripOf(panel, "mwalimu"), "pangloss");
                 Assert.Equal("Stopped", VisibleText(stopped));
-                Assert.Contains(stopped.GetVisualDescendants().OfType<MarkGlyph>(), glyph => glyph.Mark == Mark.Stopped);
+                var stoppedWordLine = StripOf(panel, "mwalimu").FindControl<Control>("WordLine")!;
+                Assert.Contains(stoppedWordLine.GetVisualDescendants().OfType<MarkGlyph>(),
+                    glyph => glyph.Mark == Mark.Stopped);
                 Assert.StartsWith("Nothing in FieldWorks", VisibleText(Part(StripOf(panel, "chakula"), "fieldworks")), StringComparison.Ordinal);
                 Assert.Equal("ch- 7 akula food", VisibleText(Part(StripOf(panel, "chakula"), "pangloss")));
                 Assert.DoesNotContain(panel.GetVisualDescendants().OfType<TextBlock>(), text =>
@@ -1032,13 +1181,10 @@ public sealed class AnalyzeTextsLayoutTests
                     showing["Named in a warning"] += strips.Count(strip => ResultsInTextPanel.TokenOf(strip)!.HasNamedWarning);
                     showing["Different"] += strips.Count(strip => ShowsReading(strip) && !HoldsNothing(strip));
                     showing["Not in FieldWorks"] += strips.Count(strip => ShowsReading(strip) && HoldsNothing(strip));
-                    showing["No parse"] += strips.Count(strip => VisibleText(Part(strip, "pangloss")) == "∅ No parse");
+                    showing["No parse"] += strips.Count(strip =>
+                        ResultsInTextPanel.TokenOf(strip)!.Verdict == OccurrenceVerdict.NoParse);
                     showing["Stopped"] += strips.Count(strip =>
-                    {
-                        var pangloss = Part(strip, "pangloss");
-                        return VisibleText(pangloss) == "Stopped" &&
-                            pangloss.GetVisualDescendants().OfType<MarkGlyph>().Any(glyph => glyph.Mark == Mark.Stopped);
-                    });
+                        ResultsInTextPanel.TokenOf(strip)!.Verdict == OccurrenceVerdict.Limit);
                 }
 
                 var chips = panel.GetVisualDescendants().OfType<FilterChip>()
@@ -1079,10 +1225,11 @@ public sealed class AnalyzeTextsLayoutTests
 
     internal static async Task<(WorkspaceShellViewModel Workspace, MainWindow Window)> OpenAnalyzeTexts(
         int width = 1240, bool parse = true,
-        Action<FakeCommandClient, AssessCommandResponse>? configure = null, TextWordsResponse? capturedWords = null)
+        Action<FakeCommandClient, AssessCommandResponse>? configure = null, TextWordsResponse? capturedWords = null,
+        AssessCommandResponse? capturedAssessment = null)
     {
         var (workspace, window) = await PageScreenshots.OpenOverSampleData(
-            parse: parse, configure: configure, capturedWords: capturedWords);
+            parse: parse, configure: configure, capturedWords: capturedWords, capturedAssessment: capturedAssessment);
         window.Width = width;
         window.Height = 780;
         workspace.PageModel<TextsPageModel>().Tab = TextsTab.AnalyzeTexts;

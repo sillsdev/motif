@@ -1,9 +1,11 @@
 using System.Text;
 using Avalonia;
 using Avalonia.Automation;
+using Avalonia.Automation.Peers;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Headless;
+using Avalonia.LogicalTree;
 using Avalonia.Media;
 using Avalonia.Media.Fonts;
 using Avalonia.Threading;
@@ -20,6 +22,31 @@ public sealed class MarkGlyphRenderingTests
     private readonly AvaloniaHeadlessFixture _avalonia;
 
     public MarkGlyphRenderingTests(AvaloniaHeadlessFixture avalonia) => _avalonia = avalonia;
+
+    [Fact]
+    public void OnlyNamedGlyphsAreAnnouncedAndChipGlyphsStayDecorative()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var chip = new MarkChip { Mark = Mark.NoParse, Text = Mark.NoParse.Word };
+            var decorative = Assert.Single(chip.GetLogicalDescendants().OfType<MarkGlyph>());
+            var decorativePeer = ControlAutomationPeer.CreatePeerForElement(decorative);
+            Assert.False(decorativePeer.IsContentElement());
+            Assert.False(decorativePeer.IsControlElement());
+            Assert.Empty(decorativePeer.GetChildren());
+
+            var named = new MarkGlyph { Mark = Mark.NoParse };
+            AutomationProperties.SetName(named, Mark.NoParse.Word);
+            var namedPeer = ControlAutomationPeer.CreatePeerForElement(named);
+            Assert.Equal(Mark.NoParse.Word, namedPeer.GetName());
+            Assert.True(namedPeer.IsContentElement());
+            Assert.True(namedPeer.IsControlElement());
+            AutomationProperties.SetName(named, string.Empty);
+            Assert.False(namedPeer.IsContentElement());
+            Assert.False(namedPeer.IsControlElement());
+            Assert.Empty(namedPeer.GetChildren());
+        });
+    }
 
     [Fact]
     public void EveryMarkGlyphHasAPathIconOrAnAndikaGlyph()
