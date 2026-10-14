@@ -36,6 +36,8 @@ internal static class RefusalMapper
         ["parse.already-running"] = "A parse is already running. Wait a minute, then repeat the call.",
         ["assess.parser-unavailable"] = "The parser is not installed here. Tell the linguist; evaluation tools cannot run.",
         ["grammarcheck.parser-unavailable"] = "The parser is not installed here. Tell the linguist; evaluation tools cannot run.",
+        ["project.writing-system-missing"] = "This is a setup problem, not damaged data. Tell the linguist what the " +
+            "message says to fix; do not retry unchanged.",
         ["tool.unknown-argument"] = "Remove the argument the message names, or check this tool's input schema.",
         ["tool.missing-argument"] = "Add the argument the message names, then call again.",
         ["tool.failed"] = "This failed unexpectedly; the diagnostic log has 'tool {toolName} failed'. Repeat the call once; " +

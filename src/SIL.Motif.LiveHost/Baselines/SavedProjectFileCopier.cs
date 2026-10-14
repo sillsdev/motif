@@ -1,3 +1,4 @@
+using SIL.Motif.Projection;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -66,7 +67,9 @@ public sealed class SavedProjectFileCopier
 
         var writingSystemPaths = new List<string>();
         var sourceWritingSystemFolder = Path.Combine(Path.GetDirectoryName(sourceFwDataPath)!, WritingSystemStore);
-        if (Directory.Exists(sourceWritingSystemFolder))
+        if (!Directory.Exists(sourceWritingSystemFolder) ||
+            !Directory.EnumerateFiles(sourceWritingSystemFolder, "*.ldml", SearchOption.TopDirectoryOnly).Any())
+            throw ProjectWritingSystemsUnavailableException.MissingStore(sourceFwDataPath);
         {
             var destinationWritingSystemFolder = Path.Combine(destinationDirectory, WritingSystemStore);
             Directory.CreateDirectory(destinationWritingSystemFolder);

@@ -142,7 +142,7 @@ public sealed class CommandCatalogParityTests
         "parsimony.retirement-expectations-unavailable", "parsimony.selection-unavailable",
         "parsimony.view-item-not-found",
         "project.busy", "project.in-use", "project.invalid", "project.not-found", "project.operation-io", "project.refused",
-        "project.saving", "project.unloadable", "project.unreadable",
+        "project.saving", "project.unloadable", "project.unreadable", "project.writing-system-missing",
         "project.store-io",
         "project-create.exists", "project-create.failed", "project-create.folder-not-found", "project-create.invalid-folder",
         "project-create.invalid-name", "project-create.invalid-word-forming", "project-create.invalid-writing-system",

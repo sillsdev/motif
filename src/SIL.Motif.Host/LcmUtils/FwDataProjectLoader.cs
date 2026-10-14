@@ -1,5 +1,6 @@
 // Adapted from languageforge-lexbox's FwDataMiniLcmBridge/LcmUtils/ProjectLoader.cs (SIL Global, MIT).
 
+using SIL.Motif.Projection;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using SIL.LCModel;
@@ -308,14 +309,27 @@ public class FwDataProjectLoader
 
         var lcmDirectories = new LcmDirectories(projectsPath, templatesFolder);
         var progress = new LcmThreadedProgress();
-        return LcmCache.CreateCacheFromLocalProjectFile(
-            fwDataFilePath,
-            null,
-            new HeadlessLcmUi(progress.SynchronizeInvoke),
-            lcmDirectories,
-            new LcmSettings(),
-            progress);
+        try
+        {
+            return LcmCache.CreateCacheFromLocalProjectFile(
+                fwDataFilePath,
+                null,
+                new HeadlessLcmUi(progress.SynchronizeInvoke),
+                lcmDirectories,
+                new LcmSettings(),
+                progress);
+        }
+        catch (KeyNotFoundException failure) when (ProjectWritingSystemsUnavailableException.FromLoadFailure(
+            failure, fwDataFilePath, SharedWritingSystemRepositoryPath()) is { } explained)
+        {
+            throw explained;
+        }
     }
+
+    // The folder the installed shared repository reads, for a message that must name it.
+    private static string? SharedWritingSystemRepositoryPath() =>
+        (SingletonsContainer.Item(typeof(CoreGlobalWritingSystemRepository).FullName!) as
+            CoreGlobalWritingSystemRepository)?.PathToWritingSystems;
 
     /// <summary>
     /// Creates a new, blank <c>.fwdata</c> project through LibLCM and returns it open; the caller saves and disposes it.

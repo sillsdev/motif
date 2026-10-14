@@ -1,3 +1,4 @@
+using SIL.Motif.Projection;
 using SIL.Motif.LiveHost.Baselines;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
@@ -39,6 +40,20 @@ public sealed class SavedProjectFileCopierTests : IDisposable
         foreach (var sourceSettings in WritingSystemSettingsFiles.Find(Path.GetDirectoryName(fwDataPath)!))
             Assert.Equal(File.ReadAllBytes(sourceSettings), File.ReadAllBytes(Path.Combine(destination,
                 "SharedSettings", Path.GetFileName(sourceSettings))));
+    }
+
+    [Fact]
+    public async Task CopyAsync_NamesTheMissingWritingSystemStore_WhenOnlyTheFwDataWasCopied()
+    {
+        var lonely = Path.Combine(_root, "lonely", Path.GetFileName(_fwDataPath));
+        Directory.CreateDirectory(Path.GetDirectoryName(lonely)!);
+        File.Copy(_fwDataPath, lonely);
+
+        var failure = await Assert.ThrowsAsync<SIL.Motif.Projection.ProjectWritingSystemsUnavailableException>(
+            () => new SavedProjectFileCopier().CopyAsync(lonely, Path.Combine(_root, "captured"), CancellationToken.None));
+
+        Assert.Contains("WritingSystemStore", failure.Message, StringComparison.Ordinal);
+        Assert.Contains("copy its WritingSystemStore folder along with", failure.Message, StringComparison.Ordinal);
     }
 
     [Fact]

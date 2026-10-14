@@ -1,3 +1,4 @@
+using SIL.Motif.Projection;
 using SIL.Motif.Host;
 using System;
 using System.Collections.Generic;
@@ -9,6 +10,7 @@ using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Worker.Store;
+using SIL.Motif.Host.LcmUtils;
 
 namespace SIL.Motif.Commands;
 
@@ -128,6 +130,19 @@ public static class ProjectStoreCommand
         {
             return CommandOutcome<T>.Refused(new Refusal("project.busy", FailureReason.Busy,
                 "Another Motif task is using this project's Baseline. Try again in a moment.", Fact(fwDataPath)));
+        }
+        catch (ProjectWritingSystemsUnavailableException failure)
+        {
+            var exception = failure.ForProject(fwDataPath);
+            // Configuration, not damage: the message names the store, the repository and the remedy.
+            var facts = new Dictionary<string, string>(Fact(fwDataPath), StringComparer.Ordinal)
+            {
+                ["projectWritingSystemStore"] = exception.ProjectStore,
+            };
+            if (exception.WritingSystem is { } tag) facts["writingSystem"] = tag;
+            if (exception.Repository is { } repository) facts["writingSystemRepository"] = repository;
+            return CommandOutcome<T>.Refused(new Refusal("project.writing-system-missing", FailureReason.Refused,
+                exception.Message, facts));
         }
         catch (ProjectSavingException)
         {
