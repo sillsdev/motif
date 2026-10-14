@@ -10,6 +10,39 @@ public sealed class OrderedSequenceDiffTests
         .Select(_ => CanonicalId.Mint()).ToArray();
 
     [Fact]
+    public void APrefixedSpellingOfTheSameMembersInTheSameOrderIsNoEdit()
+    {
+        var source = Members[..3];
+        var target = source.Select(member => CanonicalId.Parse("environment/" + member.Suffix)).ToArray();
+
+        Assert.Empty(OrderedSequenceDiff.Create(source, target));
+    }
+
+    [Fact]
+    public void APrefixedReorderMovesMembersAndAnchorsByTheSpellingTheCallerAuthored()
+    {
+        var source = Members[..3];
+        var target = new[] { Members[2], Members[1], Members[0] }
+            .Select(member => CanonicalId.Parse("environment/" + member.Suffix)).ToArray();
+
+        var edits = OrderedSequenceDiff.Create(source, target);
+
+        Assert.All(edits, edit => Assert.Equal(OrderedSequenceEditKind.Move, edit.Kind));
+        Assert.All(edits, edit => Assert.StartsWith("environment/", edit.Member.Value, StringComparison.Ordinal));
+        Assert.All(edits.Select(edit => edit.Placement!), placement =>
+            Assert.All(new[] { placement.After, placement.Before }.OfType<CanonicalId>(),
+                anchor => Assert.StartsWith("environment/", anchor.Value, StringComparison.Ordinal)));
+    }
+
+    [Fact]
+    public void TwoSpellingsOfOneMemberAreADuplicate()
+    {
+        var target = new[] { Members[0], CanonicalId.Parse("environment/" + Members[0].Suffix) };
+
+        Assert.Throws<ArgumentException>(() => OrderedSequenceDiff.Create([], target));
+    }
+
+    [Fact]
     public void ReversalsUseDeterministicLisTieBreakingAndPlacementAnchors()
     {
         var source = Members[..3];

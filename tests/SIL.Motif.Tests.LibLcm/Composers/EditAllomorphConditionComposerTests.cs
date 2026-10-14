@@ -102,6 +102,75 @@ public sealed class EditAllomorphConditionComposerTests : IDisposable
     }
 
     [Fact]
+    public void APrefixedPositionWithTheSameOrderComposesNothing()
+    {
+        var affix = CreateAffixAlternate();
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            affix.PositionRS.Add(_firstEnvironment);
+            affix.PositionRS.Add(_secondEnvironment);
+        });
+        var intent = new EditAllomorphConditionIntent(Id(affix), AllomorphConditionField.Position,
+            [Id(_firstEnvironment), Id(_secondEnvironment)],
+            [Prefixed(_firstEnvironment), Prefixed(_secondEnvironment)]);
+
+        Assert.Empty(EditAllomorphConditionComposer.Build(_cache, intent));
+    }
+
+    [Fact]
+    public void APrefixedPositionReorderValidatesDryRunsAndAppliesWithTheAuthoredSpelling()
+    {
+        var affix = CreateAffixAlternate();
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            affix.PositionRS.Add(_firstEnvironment);
+            affix.PositionRS.Add(_secondEnvironment);
+        });
+        var intent = new EditAllomorphConditionIntent(Id(affix), AllomorphConditionField.Position,
+            [Id(_firstEnvironment), Id(_secondEnvironment)],
+            [Prefixed(_secondEnvironment), Prefixed(_firstEnvironment)]);
+
+        var operation = Assert.Single(EditAllomorphConditionComposer.Build(_cache, intent));
+        Assert.Equal(MoAffixAllomorphPositionOperationKinds.MovePosition, operation.Kind);
+        Assert.StartsWith("environment/", operation.After!.Value.GetProperty("member").GetString(), StringComparison.Ordinal);
+        var proposal = AffixTestSupport.Proposal([operation]);
+        ProposalOperationSlotValidator.Validate(proposal);
+        ProposalApplier.Apply(_cache, proposal, ScratchDryRun.Of(_cache, proposal).Anchor, "allomorph composer tests");
+
+        Assert.Equal([_secondEnvironment.Guid, _firstEnvironment.Guid], affix.PositionRS.Select(item => item.Guid));
+    }
+
+    [Fact]
+    public void AnUnchangedPhoneEnvSetSpelledWithAnAlternateSuffixIsNotStale()
+    {
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            _stem.PhoneEnvRC.Add(_firstEnvironment);
+            _stem.PhoneEnvRC.Add(_secondEnvironment);
+        });
+        var expected = new[] { Alias(_firstEnvironment), Alias(_secondEnvironment) };
+        var intent = new EditAllomorphConditionIntent(Id(_stem), AllomorphConditionField.PhoneEnv,
+            expected, [Id(_firstEnvironment), Id(_secondEnvironment)]);
+
+        Assert.Empty(EditAllomorphConditionComposer.Build(_cache, intent));
+        Assert.Throws<InvalidOperationException>(() => EditAllomorphConditionComposer.Build(_cache,
+            intent with { ExpectedEnvironments = [Id(_firstEnvironment), Alias(_firstEnvironment)] }));
+    }
+
+    private static CanonicalId Prefixed(ICmObject value) => CanonicalId.Parse("environment/" + Id(value).Suffix);
+
+    // The last suffix character has four bits past the identity's 128; flipping one spells the same GUID.
+    private static CanonicalId Alias(ICmObject value)
+    {
+        const string alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+        var suffix = Id(value).Suffix;
+        var last = alphabet.IndexOf(suffix[^1]);
+        var alias = CanonicalId.Parse(suffix[..^1] + alphabet[last ^ 1]);
+        Assert.Equal(value.Guid, alias.ToGuid());
+        return alias;
+    }
+
+    [Fact]
     public void StaleCurrentConditionsAndWrongAllomorphFieldsAreRefused()
     {
         NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () => _stem.PhoneEnvRC.Add(_firstEnvironment));
