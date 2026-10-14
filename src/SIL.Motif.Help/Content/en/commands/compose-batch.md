@@ -15,6 +15,22 @@ Add an optional `citation` beside `intent`; Motif records it as operation proven
 ]}
 ```
 
-Intents run in file order, and each one sees the changes of the intents before it, so the Draft ends as it would after the same commands run one at a time. An intent cannot name something an earlier intent in the same file creates, because that identity is made only when the intent runs: put such intents in a second file and use the identities the first one reports. A refusal names the failing intent's position and command.
+Phonological-rule entries may add an `as` label and a later rule may use `@label` in `placement.after` or `placement.before`:
+
+```json
+{"intents": [
+  {"verb": "compose-author-phonological-rule", "as": "r1",
+   "intent": {"name": "first rule", "direction": "left-to-right", "input": [{"phoneme": "<phoneme id>"}],
+     "output": [], "left": [{"boundary": "word"}], "right": [{"boundary": "morpheme"}]}},
+  {"verb": "compose-author-phonological-rule", "as": "r2",
+   "intent": {"name": "second rule", "direction": "left-to-right", "input": [{"phoneme": "<phoneme id>"}],
+     "output": [], "left": [{"boundary": "word"}], "right": [{"boundary": "morpheme"}],
+     "placement": {"after": "@r1"}}}
+]}
+```
+
+Labels must match `[A-Za-z][A-Za-z0-9_-]{0,20}` (1–21 ASCII characters). They are case-sensitive, unique within the file, and supported only for phonological rules. Motif resolves them to the earlier rule's canonical ID before composing and declaring dependencies. They are not saved as intent data; names, citations, and IDs in other fields keep their normal meaning.
+
+Intents run in file order, and each one sees the changes of the intents before it, so the Draft ends as it would after the same commands run one at a time. Other composers cannot refer to entities created earlier in the same file; put those intents in a second file and use the identities the first one reports. A refusal names the failing intent's position and command.
 
 There is no limit by intent or operation count. A subsequent Dry Run or Trial needs the Proposal's frozen job input to fit within 1 MiB of UTF-8 JSON; an oversized input is refused with `job.input-too-large` and advice to split the Proposal.

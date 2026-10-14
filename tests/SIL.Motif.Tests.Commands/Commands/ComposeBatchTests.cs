@@ -191,6 +191,7 @@ public sealed class ComposeBatchTests(PristineProjectFixture pristine)
     [InlineData("""{"intents":[{"verb":"compose-author-phoneme","intent":{},"note":"x"}]}""", "each entry has 'verb'")]
     [InlineData("""{"intents":[],"draft":"x"}""", "one property, 'intents'")]
     [InlineData("""[{"verb":"compose-author-phoneme","intent":{}}]""", "one property, 'intents'")]
+    [InlineData("""{"intents":[],"intents":[{"verb":"compose-author-phoneme","intent":{"name":"a","representations":["a"]}}]}""", "one property, 'intents'")]
     public void ABatchFileIsClosed(string json, string expected)
     {
         using var cache = pristine.NewScratch();

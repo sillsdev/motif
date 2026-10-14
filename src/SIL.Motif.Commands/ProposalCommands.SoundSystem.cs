@@ -268,13 +268,17 @@ public static partial class ProposalCommands
         Func<JsonElement, OperationEnvelope, bool>? ReplacePrevious = null,
         Func<LcmCache, JsonElement, IReadOnlyList<ComposedRelatedObject>>? RelatedObjects = null,
         JsonElement? Authored = null,
-        OperationCitation? Citation = null)
+        OperationCitation? Citation = null,
+        string? Label = null,
+        DraftComposer? Definition = null,
+        bool ResolvePlacementLabels = false)
     {
         internal static ComposeStep From(DraftComposer composer, JsonElement authored,
-            OperationCitation? citation = null) =>
+            OperationCitation? citation = null, string? label = null, bool resolvePlacementLabels = false) =>
             new(composer.Verb, composer.Composer,
                 (cache, proposalId) => (authored, composer.Build(cache, authored, proposalId)),
-                composer.ValidateAppend, composer.ReplacePrevious, composer.RelatedObjects, authored, citation);
+                composer.ValidateAppend, composer.ReplacePrevious, composer.RelatedObjects, authored, citation,
+                label, composer, resolvePlacementLabels);
     }
 
     private sealed class ComposeStepException(int index, Exception inner) : Exception(inner.Message, inner)
@@ -294,6 +298,9 @@ public static partial class ProposalCommands
                 return CommandOutcome<ComposedOperationsResponse[]>.Refused(DraftNotFound(draftName));
             var previous = ProposalJsonParser.Parse(BuildProposalJson(draft));
             var proposalId = CanonicalId.Parse(draft.ProposalId);
+            var declaredLabels = steps.Select((step, index) => (step.Label, index))
+                .Where(item => item.Label is not null)
+                .ToDictionary(item => item.Label!, item => item.index, StringComparer.Ordinal);
             var replacedSet = steps
                 .SelectMany(step => step.Authored is { } authored && step.ReplacePrevious is { } replaces
                     ? previous.Operations.Where(operation => replaces(authored, operation))
@@ -317,6 +324,7 @@ public static partial class ProposalCommands
                 var staged = new List<OperationEnvelope>(retained);
                 var validated = new List<OperationEnvelope>(previous.Operations);
                 var batchAdded = new List<OperationEnvelope>();
+                var availableLabels = new Dictionary<string, CanonicalId>(StringComparer.Ordinal);
                 var results = new List<(JsonElement Input, OperationEnvelope[] Added,
                     IReadOnlyList<ComposedRelatedObject>? Related)>();
                 for (var index = 0; index < steps.Count; index++)
@@ -329,7 +337,29 @@ public static partial class ProposalCommands
                             batchAdded.Any(operation => replaces(authored, operation)))
                             throw new InvalidOperationException(
                                 "An earlier intent in this batch already edits the same target; author one edit.");
-                        var (input, operations) = step.Build(cache, proposalId);
+                        JsonElement input;
+                        IReadOnlyList<OperationEnvelope> operations;
+                        if (step.ResolvePlacementLabels && step.Definition is { } definition &&
+                            definition.Verb == PhonologicalRuleComposerVerb && step.Authored is { } authoredInput)
+                        {
+                            input = ResolveRulePlacementLabels(authoredInput, availableLabels, declaredLabels,
+                                index);
+                            operations = definition.Build(cache, input, proposalId);
+                        }
+                        else
+                        {
+                            (input, operations) = step.Build(cache, proposalId);
+                        }
+                        CanonicalId? labeledEntity = null;
+                        if (step.Label is { } labelForPrincipal)
+                        {
+                            var principals = operations.Where(operation =>
+                                operation.Kind == CreatePhonologicalRuleKind).ToArray();
+                            if (principals.Length != 1 || principals[0].EntityId is not { } principal)
+                                throw new InvalidOperationException(
+                                    $"Label '{labelForPrincipal}' requires exactly one {CreatePhonologicalRuleKind} creation.");
+                            labeledEntity = principal;
+                        }
                         var related = step.RelatedObjects?.Invoke(cache, input);
                         step.ValidateAppend?.Invoke(validated, input, operations);
                         var added = DeclareDependencies(input, operations, staged);
@@ -340,6 +370,8 @@ public static partial class ProposalCommands
                         validated.AddRange(added);
                         batchAdded.AddRange(added);
                         results.Add((input, added, related));
+                        if (step.Label is { } label && labeledEntity is { } entityId)
+                            availableLabels.Add(label, entityId);
                     }
                     catch (Exception exception)
                     {
@@ -414,20 +446,20 @@ public static partial class ProposalCommands
     private static OperationEnvelope[] DeclareDependencies(JsonElement input,
         IReadOnlyList<OperationEnvelope> operations, IReadOnlyList<OperationEnvelope> staged)
     {
-        var authoredReferences = new HashSet<CanonicalId>();
+        var authoredReferences = new HashSet<Guid>();
         CollectIds(input, authoredReferences);
         var positions = new Dictionary<CanonicalId, int>();
         for (var index = 0; index < staged.Count; index++) positions[staged[index].OperationId] = index;
         return operations.Select(operation =>
         {
-            var references = new HashSet<CanonicalId>(authoredReferences);
-            if (operation.Target is { } target) references.Add(target);
-            if (operation.Placement?.After is { } left) references.Add(left);
-            if (operation.Placement?.Before is { } right) references.Add(right);
+            var references = new HashSet<Guid>(authoredReferences);
+            if (operation.Target is { } target) references.Add(target.ToGuid());
+            if (operation.Placement?.After is { } left) references.Add(left.ToGuid());
+            if (operation.Placement?.Before is { } right) references.Add(right.ToGuid());
             if (operation.After is { } after) CollectIds(after, references);
-            var creators = staged.Where(prior => prior.EntityId is { } created && references.Contains(created))
+            var creators = staged.Where(prior => prior.EntityId is { } created && references.Contains(created.ToGuid()))
                 .Select(prior => prior.OperationId).ToArray();
-            var editors = staged.Where(prior => prior.Target is { } modified && references.Contains(modified))
+            var editors = staged.Where(prior => prior.Target is { } modified && references.Contains(modified.ToGuid()))
                 .Select(prior => prior.OperationId).Except(creators).ToArray();
             var dependencies = operation.DependsOn.Select(dependency => dependency.OperationId)
                 .Concat(creators)
@@ -505,9 +537,10 @@ public static partial class ProposalCommands
                 "A Draft may contain only one write to an ad hoc prohibition's Disabled field.");
     }
 
-    private static void CollectIds(JsonElement value, HashSet<CanonicalId> ids, bool reference = false)
+    private static void CollectIds(JsonElement value, HashSet<Guid> ids, bool reference = false)
     {
-        if (reference && value.ValueKind == JsonValueKind.String && CanonicalId.TryParse(value.GetString(), out var id)) ids.Add(id);
+        if (reference && value.ValueKind == JsonValueKind.String && CanonicalId.TryParse(value.GetString(), out var id))
+            ids.Add(id.ToGuid());
         else if (value.ValueKind == JsonValueKind.Object)
             foreach (var property in value.EnumerateObject())
                 CollectIds(property.Value, ids, property.Name is "msa" or "featStruc" or "feature" or "value" or

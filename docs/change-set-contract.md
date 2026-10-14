@@ -232,6 +232,15 @@ context side. An empty input is insertion; an empty output is deletion. The comp
 complete regular rule and turns it on only after all right-hand sides pass the typed-context guard.
 Alpha variables, metathesis, empty or foreign natural classes, and allomorph `PhEnvironment` objects
 are outside this operation set.
+
+`compose-batch` also accepts a file-local `as` label on phonological-rule entries. A later rule may
+use `@label` only in `placement.after` or `placement.before`; Motif resolves that reference to the
+earlier `createPhonRules` canonical entity ID before composing the intent and declaring dependencies.
+The label is authoring syntax, not stored semantic data. Labels are case-sensitive and unique within
+one batch, and must match `[A-Za-z][A-Za-z0-9_-]{0,20}` (1–21 ASCII characters). A valid canonical ID
+is recognized before `@label` syntax and is preserved as authored, including its prefix. Dependency
+matching uses the ID's GUID, so different valid prefixes still refer to the same entity. The ordinary
+placement adjacency and operation-slot rules still apply.
 - **`ensure`** — tri-state idempotent creation for constructs whose durable identity is not a
   canonical GUID: absent → create; present and structurally compatible → reuse; present and
   incompatible → conflict. See [`ensure`](#ensure) below.
