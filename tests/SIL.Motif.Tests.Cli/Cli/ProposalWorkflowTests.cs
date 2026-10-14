@@ -10,6 +10,7 @@ using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Preferences;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Requests;
@@ -151,6 +152,62 @@ public sealed class ProposalWorkflowTests : IDisposable
         Assert.Equal([declined], Listed(status: "rejected"));
         Assert.Equal("proposal.unknown-status", ProposalCommands.List(
             new ListProposalsRequest(_fwDataPath, ProductVersion, Status: "declined")).Refusal?.Code);
+    }
+
+    [Fact]
+    public void ProposalsRendersTheTypedStandingsInTextAndKeepsTheirJsonShape()
+    {
+        var empty = ProposalStandingsCommand.Read(new ProposalStandingsRequest(_fwDataPath));
+        Assert.True(empty.Succeeded, empty.Refusal?.Message);
+        Assert.Empty(empty.Value!.Proposals);
+        Assert.Equal(0, empty.Value.SetAsideCount);
+        var emptyText = RunCli("proposals", "--project", _fwDataPath);
+        Assert.True(emptyText.ExitCode == 0, emptyText.Error + emptyText.Output);
+        Assert.Contains("No Proposals yet.", emptyText.Output, StringComparison.Ordinal);
+
+        const string draft = "standings-render";
+        Assert.True(ProposalCommands.New(new NewDraftRequest(_fwDataPath, ProductVersion, draft, "Rendered proposal"))
+            .Succeeded);
+        Assert.True(ProposalCommands.AddSetGloss(new AddSetGlossRequest(_fwDataPath, ProductVersion, draft,
+            CanonicalId.FromGuid(_seed.FirstSenseId).Value, NewLangProjFixture.AnalysisTag, "rendered gloss"))
+            .Succeeded);
+        DraftRationale.Author(_fwDataPath, draft, "Rendered proposal", "Why this Proposal is right.");
+        Assert.True(ProposalCommands.Finalize(new FinalizeRequest(_fwDataPath, ProductVersion, draft)).Succeeded);
+
+        var typed = ProposalStandingsCommand.Read(new ProposalStandingsRequest(_fwDataPath));
+        Assert.True(typed.Succeeded, typed.Refusal?.Message);
+        var card = Assert.Single(typed.Value!.Proposals);
+        Assert.Equal("Rendered proposal", card.Label);
+        Assert.Equal("proposed", card.Status);
+        Assert.Equal(ProposalGroup.NotTried, card.Group);
+
+        var text = RunCli("proposals", "--project", _fwDataPath);
+        Assert.True(text.ExitCode == 0, text.Error + text.Output);
+        Assert.Contains("Not tried yet", text.Output, StringComparison.Ordinal);
+        Assert.Contains("Rendered proposal", text.Output, StringComparison.Ordinal);
+        Assert.Contains("proposed", text.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("ready", text.Output, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("pending", text.Output, StringComparison.OrdinalIgnoreCase);
+
+        var json = RunCli("proposals", "--project", _fwDataPath, "--json");
+        Assert.True(json.ExitCode == 0, json.Error + json.Output);
+        var rendered = ProjectionJson.Deserialize<ProposalStandings>(json.Output)!;
+        var jsonCard = Assert.Single(rendered.Proposals);
+        Assert.Equal((card.Label, card.Status, card.Group), (jsonCard.Label, jsonCard.Status, jsonCard.Group));
+
+        (int ExitCode, string Output, string Error) RunCli(params string[] arguments)
+        {
+            using var output = new StringWriter();
+            using var error = new StringWriter();
+            var environment = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+            {
+                [FileAdvancedAiModePreferenceStore.PathEnvironmentVariable] = Path.Combine(_workerRoot, "advanced-ai.json"),
+                [RunnerOptions.RootVariable] = _workerRoot,
+            };
+            var exitCode = global::SIL.Motif.Cli.Program.Run(arguments, output, error, environment,
+                static (_, _) => { });
+            return (exitCode, output.ToString(), error.ToString());
+        }
     }
 
     [Fact]

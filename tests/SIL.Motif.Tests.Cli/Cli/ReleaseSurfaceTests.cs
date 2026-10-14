@@ -182,12 +182,15 @@ public sealed class ReleaseSurfaceTests : IDisposable
                      .Where(command => command.Surface == CommandSurface.Developer)
                      .Select(command => command.Name))
         {
+            var descriptor = CommandCatalog.All.Single(command => command.Name == name);
             var text = Run(name, developerCommands: false);
             var expectedExitCode = FailureEnvelope.ExitCodeFor(FailureReason.Refused);
             Assert.True(text.ExitCode == expectedExitCode,
                 $"Expected exit code {expectedExitCode}; got {text.ExitCode}.{Environment.NewLine}{text.Error}");
             Assert.Contains(name, text.Error, StringComparison.Ordinal);
             Assert.Contains("MOTIF_DEVELOPER_COMMANDS=1", text.Error, StringComparison.Ordinal);
+            if (descriptor.Agent == AgentClass.HumanOnly)
+                Assert.Contains("human-only", text.Error, StringComparison.Ordinal);
 
             var json = Run(name + " --json", developerCommands: false);
             Assert.True(json.ExitCode == expectedExitCode,
@@ -198,7 +201,25 @@ public sealed class ReleaseSurfaceTests : IDisposable
             Assert.Equal("command.developer-commands-required", envelope.Code);
             Assert.Contains(name, envelope.Message, StringComparison.Ordinal);
             Assert.Contains("MOTIF_DEVELOPER_COMMANDS=1", envelope.Message, StringComparison.Ordinal);
+            if (descriptor.Agent == AgentClass.HumanOnly)
+                Assert.Contains("human-only", envelope.Message, StringComparison.Ordinal);
         }
+    }
+
+    [Fact]
+    public void AdvancedAiHelpIdentifiesHumanOnlyCommands()
+    {
+        var result = Run("help \"project initialize\"", developerCommands: false);
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Contains("Advanced AI mode", result.Output, StringComparison.Ordinal);
+        Assert.Contains("MOTIF_ADVANCED_AI_MODE_PATH", result.Output, StringComparison.Ordinal);
+        Assert.Contains("human-only", result.Output, StringComparison.Ordinal);
+        Assert.Contains("MCP tool", result.Output, StringComparison.Ordinal);
+        var json = Run("help \"project initialize\" --json", developerCommands: false);
+        var enablement = System.Text.Json.Nodes.JsonNode.Parse(json.Output)!["enablement"]!.GetValue<string>();
+        Assert.Contains("human-only", enablement, StringComparison.Ordinal);
+        Assert.Contains("MOTIF_ADVANCED_AI_MODE_PATH", enablement, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -235,6 +256,13 @@ public sealed class ReleaseSurfaceTests : IDisposable
         Assert.Equal("command.advanced-ai-mode-required", envelope.Code);
         Assert.Contains("motif settings advanced-ai on", envelope.Message, StringComparison.Ordinal);
         Assert.Contains("MOTIF_ADVANCED_AI_MODE_PATH", envelope.Message, StringComparison.Ordinal);
+        var humanOnly = Run("project initialize --project p --confirm x", developerCommands: false);
+        Assert.Contains("human-only", humanOnly.Error, StringComparison.Ordinal);
+        Assert.Contains("MOTIF_ADVANCED_AI_MODE_PATH", humanOnly.Error, StringComparison.Ordinal);
+        var humanOnlyJson = Run("project initialize --project p --confirm x --json", developerCommands: false);
+        var humanOnlyEnvelope = ProjectionJson.Deserialize<FailureEnvelope>(humanOnlyJson.Error)!;
+        Assert.Contains("human-only", humanOnlyEnvelope.Message, StringComparison.Ordinal);
+        Assert.Contains("MOTIF_ADVANCED_AI_MODE_PATH", humanOnlyEnvelope.Message, StringComparison.Ordinal);
     }
 
     [Fact]

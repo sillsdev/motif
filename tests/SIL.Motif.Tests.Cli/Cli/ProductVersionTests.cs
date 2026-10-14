@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using SIL.Motif.Host;
 using SIL.Motif.Tests.TestFixtures;
@@ -28,10 +29,25 @@ public sealed class ProductVersionTests
         var start = new ProcessStartInfo(BuildOutput.Cli);
         start.ArgumentList.Add("--version");
         var result = ToolProcess.Run(start);
+        var informational = typeof(MotifProductVersion).Assembly
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()!.InformationalVersion;
+        var sourceSha = Regex.Match(informational, @"\+((?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64}))$")
+            .Groups[1].Value;
+        var expected = sourceSha.Length == 0
+            ? MotifProductVersion.CurrentText
+            : $"{MotifProductVersion.CurrentText} (source SHA {sourceSha})";
+
         Assert.Equal(0, result.ExitCode);
-        Assert.Equal(MotifProductVersion.CurrentText, result.Output.Trim());
+        Assert.Equal(expected, result.Output.Trim());
         Assert.Equal(string.Empty, result.Error);
     }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("source-build")]
+    public void VersionDisplayFallsBackToTheProductVersionWithoutAFullSourceSha(string? sourceSha) =>
+        Assert.Equal(MotifProductVersion.CurrentText,
+            MotifProductVersion.FormatDisplayText(MotifProductVersion.CurrentText, sourceSha));
 
     [Theory]
     [InlineData("99.2.3-beta001")]

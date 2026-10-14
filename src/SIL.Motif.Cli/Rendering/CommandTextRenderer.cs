@@ -89,10 +89,67 @@ public static class CommandTextRenderer
             WordTraceResponse r => RenderTrace(r),
             WritingSystemsResponse r => RenderWritingSystems(r),
             WordContextResponse r => RenderWordContext(r),
+            ProposalStandings r => RenderProposalStandings(r),
             _ => throw new NotSupportedException($"No text rendering registered for '{typeof(T)}'."),
         };
         return new CommandResult(0, text);
     }
+
+    private static string RenderProposalStandings(ProposalStandings standings)
+    {
+        if (standings.Proposals.Count == 0)
+            return standings.SetAsideCount == 0
+                ? "No Proposals yet." + Environment.NewLine
+                : "No open Proposals. " + ClosedProposalHint(standings.SetAsideCount);
+
+        var text = new StringBuilder("Proposals" + Environment.NewLine);
+        foreach (var group in standings.Proposals.GroupBy(card => card.Group).OrderBy(group => group.Key))
+        {
+            text.AppendLine();
+            text.AppendLine(ProposalGroupText(group.Key) + " (" + group.Count().ToString(CultureInfo.CurrentCulture) + ")");
+            foreach (var card in group)
+            {
+                text.AppendLine("  " + card.Label + " — " + card.Status);
+                text.AppendLine("    Trial: " + TrialStandingText(card.Standing));
+                if (card.ChangeKinds.Count > 0)
+                    text.AppendLine("    Changes: " + string.Join(", ", card.ChangeKinds.Select(kind => kind.Text)));
+            }
+        }
+
+        var closedShown = standings.Proposals.Count(card => card.Group == ProposalGroup.SetAside);
+        if (closedShown < standings.SetAsideCount)
+        {
+            text.AppendLine();
+            text.AppendLine(ClosedProposalHint(standings.SetAsideCount - closedShown));
+        }
+        return text.ToString();
+    }
+
+    private static string ProposalGroupText(ProposalGroup group) => group switch
+    {
+        ProposalGroup.WaitingForYou => "Waiting for you",
+        ProposalGroup.NeedsAnotherTry => "Needs another try",
+        ProposalGroup.NotTried => "Not tried yet",
+        ProposalGroup.NotAppliedYet => "Your changes not applied yet",
+        ProposalGroup.SetAside => "Closed",
+        _ => throw new ArgumentOutOfRangeException(nameof(group), group, null),
+    };
+
+    private static string TrialStandingText(TrialStanding standing) => standing.Kind switch
+    {
+        TrialStandingKind.NotTried => "Not tried yet",
+        TrialStandingKind.Trying => "In progress",
+        TrialStandingKind.Failed => "Did not finish",
+        TrialStandingKind.Current => "Current",
+        TrialStandingKind.NeedsAnotherTry when standing.Reason == TrialStaleReason.BaselineMoved =>
+            "Needs another try because the project changed",
+        TrialStandingKind.NeedsAnotherTry => "Needs another try because the Proposal changed",
+        _ => throw new ArgumentOutOfRangeException(nameof(standing), standing.Kind, null),
+    };
+
+    private static string ClosedProposalHint(int count) =>
+        count.ToString(CultureInfo.CurrentCulture) + " closed Proposal" + (count == 1 ? " is" : "s are") +
+        " hidden. Use --include-set-aside to show them.";
 
     // Corpus's own refusals never carried an "error: " prefix before they were typed; preserved verbatim.
     private static CommandResult RenderRefusal(Refusal refusal, bool asJson)

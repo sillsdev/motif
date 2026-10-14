@@ -99,7 +99,7 @@ public static class HelpCommand
             output.WriteLine(command.Name);
             foreach (var usage in UsageLines(command.Name))
                 output.WriteLine(NormalizeUsage(usage));
-            output.WriteLine(EnablementText(command.Surface));
+            output.WriteLine(EnablementText(command));
             return 0;
         }
         if (entry is null)
@@ -113,7 +113,7 @@ public static class HelpCommand
         {
             var helpEntry = BuildEntry(entry, entryKind == HelpEntryKind.Command);
             output.WriteLine(JsonSerializer.Serialize(unavailable
-                ? new { entry = helpEntry, available = false, enablement = EnablementText(command!.Surface) }
+                ? new { entry = helpEntry, available = false, enablement = EnablementText(command!) }
                 : helpEntry, JsonOptions));
             return 0;
         }
@@ -122,7 +122,7 @@ public static class HelpCommand
         if (unavailable)
         {
             output.WriteLine();
-            output.WriteLine(EnablementText(command!.Surface));
+            output.WriteLine(EnablementText(command!));
         }
         if (full)
         {
@@ -198,14 +198,20 @@ public static class HelpCommand
         output.WriteLine(string.Join("  ", commands));
     }
 
-    private static string EnablementText(CommandSurface surface) => surface switch
+    private static string EnablementText(CommandDescriptor command)
     {
-        CommandSurface.AdvancedAi => "This command requires Advanced AI mode. " +
-            SIL.Motif.Commands.Preferences.FileAdvancedAiModePreferenceStore.DisabledMessage,
-        CommandSurface.Developer => "This command requires Developer commands. " +
-            "Set MOTIF_DEVELOPER_COMMANDS=1 to enable them.",
-        _ => string.Empty,
-    };
+        var enablement = command.Surface switch
+        {
+            CommandSurface.AdvancedAi => "This command requires Advanced AI mode. " +
+                SIL.Motif.Commands.Preferences.FileAdvancedAiModePreferenceStore.DisabledMessage,
+            CommandSurface.Developer => "This command requires Developer commands. " +
+                "Set MOTIF_DEVELOPER_COMMANDS=1 to enable them.",
+            _ => string.Empty,
+        };
+        return command.Agent == AgentClass.HumanOnly
+            ? enablement + " This command is human-only and is never exposed as an MCP tool."
+            : enablement;
+    }
 
     private static object BuildEntry(HelpEntry entry, bool command)
     {

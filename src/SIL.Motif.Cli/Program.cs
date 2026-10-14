@@ -63,7 +63,7 @@ public static int Main(string[] args)
 
     if (args.Length == 1 && args[0] == "--version")
     {
-        Console.WriteLine(MotifProductVersion.CurrentText);
+        Console.WriteLine(MotifProductVersion.DisplayText);
         return 0;
     }
 
@@ -2188,6 +2188,8 @@ static int RefuseUnavailableCommand(
         ? $"Command '{commandName}' requires Advanced AI mode. " +
           FileAdvancedAiModePreferenceStore.DisabledMessage
         : $"Command '{commandName}' requires Developer commands. Set MOTIF_DEVELOPER_COMMANDS=1 to enable them.";
+    if (command.Agent == AgentClass.HumanOnly)
+        message += " This command is human-only and is never exposed as an MCP tool.";
     if (asJson)
     {
         error.WriteLine(ProjectionJson.Serialize(
