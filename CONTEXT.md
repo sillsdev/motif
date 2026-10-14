@@ -55,8 +55,9 @@ likes.
 _Avoid_: finish, submit, commit, publish
 
 **Citation**:
-The source a Motif operation was taken from — a section of a published grammar, a dictionary entry, a corpus
-passage — recorded as a `source` and an optional `locator` such as a page or section. It is review metadata:
+The source a Motif operation or phonology example was taken from — a section of a published grammar, a
+dictionary entry, a corpus passage — recorded as a `source` and an optional `locator` such as a page or
+section. It is review metadata:
 citing a source, or a different one, never changes what a Proposal does or its intent digest. It names where a
 change came from, never who made it ([ADR 0064](docs/adr/0064-every-operation-can-cite-its-source.md)).
 _Avoid_: author, attribution, reference (for a cited source), provenance (the contract field that holds it)
@@ -98,8 +99,9 @@ back or why nothing did. What an Assessor uses, not what it is.
 _Avoid_: process, subprocess, launch, parser run, shell-out
 
 **Assessment scope**:
-What a run was told to do: which words, which Assessor, what to collect, and what limits to
-apply — a per-word limit defaulting to about a second, or an equivalent cap on attempts. Declared per
+What a run was told to do: which words or explicit phonology examples, which Assessor, what to collect,
+and what limits to apply — a per-word limit defaulting to about a second, or an equivalent cap on attempts.
+Declared per
 project and embedded in each Assessment by content, so editing the declaration cannot reinterpret a
 measurement already taken. A scope is **context, not a gate**: two Assessments compare by joining on the
 word, and a differing engine or corpus annotates that comparison rather than forbidding it.
@@ -355,6 +357,27 @@ A word may be typed rather than found: it need not occur anywhere in the languag
 and measured like any other. A list can be exported from an Assessment, but what is kept is the words, so
 nothing has to be re-derived.
 _Avoid_: query, sample, filter, scope, subset, test set, corpus descriptor
+
+**Phonology Example Set**:
+A named, immutable revision of explicit underlying forms paired with expected surface forms, declared
+generation context and optional Citations. Stored in the project database and embedded by exact revision
+and executable content in a Phonology Check. It is distinct from a Selection of words to parse; it adds no
+permanent lexical entries ([ADR 0065](docs/adr/0065-phonology-example-sets-are-advisory-evidence.md)).
+_Avoid_: word list, corpus, Selection, gold analyses
+
+**Phonology Check**:
+An explicit Worker job that measures a frozen Baseline or candidate against a Phonology Example Set
+revision and produces a real PhonologyExamples Assessment. Per-example results are agree, disagree or
+unavailable, with completion and source binding recorded separately. A missing expectation is a
+disagreement only after a supported check finishes. Stored reads never run a check automatically.
+_Avoid_: Trial, grammar check, Readiness check
+
+**PhonologyExamples Assessment**:
+An immutable advisory Assessment of supplied underlying forms and authored surface expectations under
+recorded generation context, grammar, parser and limits. Agreement measures expected-form membership,
+not linguistic correctness or exhaustiveness. Missing context, an empty lexicon, zero examples and
+incomplete generation cannot pass. It never satisfies Readiness or changes Apply.
+_Avoid_: Correctness, verdict, approved analysis, Apply gate
 
 **Default Selection**:
 The Selection a project measures when nobody names another: chosen Texts plus any added words, stored in
