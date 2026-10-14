@@ -71,7 +71,7 @@ public sealed class KnownProjectsQueryTests : IDisposable
     }
 
     [Fact]
-    public void CopiesWithOneLangProjectIdentityShowTheMostRecentlySeenPath()
+    public void CopiesWithOneLangProjectIdentityKeepEveryKnownPath()
     {
         var identity = Guid.Parse("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
         var olderCopy = NewProjectFile("older-copy.fwdata", identity);
@@ -83,10 +83,13 @@ public sealed class KnownProjectsQueryTests : IDisposable
             registry.Record("recent-copy", recentCopy, DateTimeOffset.UtcNow);
         }
 
-        var project = Assert.Single(KnownProjectsQuery.List(_root));
+        var projects = KnownProjectsQuery.List(_root);
 
-        Assert.Equal(recentCopy, project.FullFwDataPath);
-        Assert.Equal(identity.ToString("D"), project.ProjectIdentity);
+        Assert.Equal([recentCopy, olderCopy], projects.Select(project => project.FullFwDataPath));
+        Assert.All(projects, project => Assert.Equal(identity.ToString("D"), project.ProjectIdentity));
+        using var reopened = MachineDatabase.Open(_root);
+        Assert.Equal([recentCopy, olderCopy], new KnownProjectRegistry(reopened).List()
+            .OrderByDescending(project => project.LastSeenUtc).Select(project => project.FullFwDataPath));
     }
 
     [Fact]

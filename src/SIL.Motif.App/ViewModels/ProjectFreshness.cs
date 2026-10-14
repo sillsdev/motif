@@ -78,6 +78,15 @@ public sealed record RecentProjectViewModel(string FullFwDataPath)
     public static IReadOnlyList<RecentProjectViewModel> MostRecentlySeenCopies(
         IEnumerable<KnownProjectSummary> knownProjects)
     {
-        return KnownProjectsQuery.MostRecentlySeenCopies(knownProjects).Select(FromKnownProject).ToArray();
+        ArgumentNullException.ThrowIfNull(knownProjects);
+        var pathComparer = OperatingSystem.IsLinux() ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
+        return knownProjects
+            .GroupBy(project => project.ProjectIdentity is { Length: > 0 } identity
+                ? "identity:" + identity.ToUpperInvariant()
+                : "path:" + Path.GetFullPath(project.FullFwDataPath), pathComparer)
+            .Select(group => group.MaxBy(project => project.LastSeenUtc)!)
+            .OrderByDescending(project => project.LastSeenUtc)
+            .Select(FromKnownProject)
+            .ToArray();
     }
 }

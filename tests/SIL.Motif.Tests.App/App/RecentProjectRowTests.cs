@@ -9,6 +9,26 @@ namespace SIL.Motif.Tests.App;
 public sealed class RecentProjectRowTests
 {
     [Fact]
+    public async Task ARecentRefreshPublishesOnlyTheCompleteProjectList()
+    {
+        var projects = Enumerable.Range(0, 3).Select(index => new KnownProjectSummary(
+            Path.Combine(Path.GetTempPath(), $"recent-{index}.fwdata"),
+            DateTimeOffset.UnixEpoch.AddMinutes(-index))).ToArray();
+        var fake = new FakeCommandClient();
+        fake.KnownProjectsListIs([]);
+        await using var workspace = NewWorkspace(fake, new RecordingLauncher());
+        var observed = new List<string[]>();
+        workspace.RecentProjects.CollectionChanged += (_, _) =>
+            observed.Add(workspace.RecentProjects.Select(project => project.FullFwDataPath).ToArray());
+
+        fake.KnownProjectsListIs(projects);
+        await workspace.Project.LoadKnownProjectsAsync();
+
+        Assert.NotEmpty(observed);
+        Assert.All(observed, paths => Assert.Equal(projects.Select(project => project.FullFwDataPath), paths));
+    }
+
+    [Fact]
     public void ProjectNameUsesWindowsPathSeparatorsOnUnix()
     {
         var recent = new RecentProjectViewModel(
@@ -55,9 +75,9 @@ public sealed class RecentProjectRowTests
             Assert.Equal(104, recent.WordformCount);
             Assert.Equal("104 wordforms", recent.WordformCountText);
             Assert.True(recent.CanOpenFolder);
-            Assert.True(workspace.OpenRecentProjectFolderCommand.CanExecute(recent));
+            Assert.True(workspace.OpenRecentProjectFolderCommand.CanExecute(recent.FolderPath));
 
-            await workspace.OpenRecentProjectFolderCommand.ExecuteAsync(recent);
+            await workspace.OpenRecentProjectFolderCommand.ExecuteAsync(recent.FolderPath);
 
             Assert.Equal(new Uri(folder), launcher.LastUri);
         }
@@ -83,8 +103,8 @@ public sealed class RecentProjectRowTests
             var recent = Assert.Single(workspace.PageModel<OverviewPageModel>().ChooseProjectRows);
 
             Assert.False(recent.CanOpenFolder);
-            Assert.False(workspace.OpenRecentProjectFolderCommand.CanExecute(recent));
-            await workspace.OpenRecentProjectFolderCommand.ExecuteAsync(recent);
+            Assert.False(workspace.OpenRecentProjectFolderCommand.CanExecute(recent.FolderPath));
+            await workspace.OpenRecentProjectFolderCommand.ExecuteAsync(recent.FolderPath);
             Assert.Null(launcher.LastUri);
         }
         finally

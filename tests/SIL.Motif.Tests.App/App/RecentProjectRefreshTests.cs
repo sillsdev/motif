@@ -175,31 +175,34 @@ public sealed class RecentProjectRefreshTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            using var files = new ProjectFiles();
-            var fake = NewClient();
-            fake.KnownProjectsListIs([files.CopyOf(files.FirstIdentity, "copy.fwdata")]);
-            var dispatcherThread = Environment.CurrentManagedThreadId;
-            var threads = new ConcurrentQueue<int>();
-            var lookups = 0;
-            var workspace = NewWorkspace(fake, path =>
+            for (var iteration = 0; iteration < 200; iteration++)
             {
-                threads.Enqueue(Environment.CurrentManagedThreadId);
-                return Interlocked.Increment(ref lookups) == 1 ? null : KnownProjectsQuery.ReadProjectIdentity(path);
-            });
-            try
-            {
-                await workspace.Project.LoadKnownProjectsAsync();
-                await workspace.SetProjectAsync(files.FirstPath, captureFreshProject: false);
-                Assert.Single(workspace.RecentProjects);
-                Assert.Equal(1, lookups);
+                using var files = new ProjectFiles();
+                var fake = NewClient();
+                fake.KnownProjectsListIs([files.CopyOf(files.FirstIdentity, "copy.fwdata")]);
+                var dispatcherThread = Environment.CurrentManagedThreadId;
+                var threads = new ConcurrentQueue<int>();
+                var lookups = 0;
+                var workspace = NewWorkspace(fake, path =>
+                {
+                    threads.Enqueue(Environment.CurrentManagedThreadId);
+                    return Interlocked.Increment(ref lookups) == 1 ? null : KnownProjectsQuery.ReadProjectIdentity(path);
+                });
+                try
+                {
+                    await workspace.Project.LoadKnownProjectsAsync();
+                    await workspace.SetProjectAsync(files.FirstPath, captureFreshProject: false);
+                    Assert.Single(workspace.RecentProjects);
+                    Assert.Equal(1, lookups);
 
-                await workspace.RefreshKnownProjectsAsync();
+                    await workspace.RefreshKnownProjectsAsync();
 
-                Assert.Empty(workspace.RecentProjects);
-                Assert.Equal(2, lookups);
-                Assert.DoesNotContain(dispatcherThread, threads);
+                    Assert.Empty(workspace.RecentProjects);
+                    Assert.Equal(2, lookups);
+                    Assert.DoesNotContain(dispatcherThread, threads);
+                }
+                finally { await workspace.DisposeAsync(); }
             }
-            finally { await workspace.DisposeAsync(); }
         }, TimeSpan.FromMinutes(2));
     }
 

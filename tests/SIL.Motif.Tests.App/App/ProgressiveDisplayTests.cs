@@ -826,16 +826,19 @@ public sealed class ProgressiveDisplayTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await PageScreenshots.OpenOverSampleData();
+            var projects = Enumerable.Range(0, 2000).Select(index =>
+                new SIL.Motif.Commands.Queries.KnownProjectSummary(
+                    Path.Combine(Path.GetTempPath(), $"project-{index}.fwdata"), PageScreenshots.CaptureStartAt)).ToArray();
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData(
+                configure: (fake, _) => fake.KnownProjectsListIs(projects));
             try
             {
-                workspace.RecentProjects.Clear();
-                for (var index = 0; index < 2000; index++)
-                    workspace.RecentProjects.Add(new RecentProjectViewModel(Path.Combine(Path.GetTempPath(), $"project-{index}.fwdata")));
                 var button = window.FindControl<Button>("OpenRecentButton")!;
                 var menu = Assert.IsType<MenuFlyout>(button.Flyout);
                 var projectButton = window.FindControl<Button>("ProjectMenuButton")!;
                 projectButton.Flyout!.ShowAt(projectButton);
+                await workspace.RefreshKnownProjectsAsync();
+                Assert.Equal(2000, workspace.RecentProjects.Count);
                 PageScreenshots.Settle(window);
                 menu.ShowAt(button);
                 PageScreenshots.Settle(window);

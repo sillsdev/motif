@@ -3,6 +3,8 @@ using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using SIL.Motif.App.Views;
+using SIL.Motif.Commands.Queries;
+using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
@@ -15,7 +17,12 @@ public sealed class KnownProjectsRefreshWalkthroughTests(PristineProjectFixture 
     public void NewProjectsAppearAndMissingProjectsLeaveOpenRecent()
     {
         using var firstProject = new WalkthroughProject(pristine);
-        using var secondProject = new WalkthroughProject(pristine);
+        using var secondProject = new IndependentProject();
+        var firstIdentity = KnownProjectsQuery.ReadProjectIdentity(firstProject.FwDataPath);
+        var secondIdentity = KnownProjectsQuery.ReadProjectIdentity(secondProject.FwDataPath);
+        Assert.NotNull(firstIdentity);
+        Assert.NotNull(secondIdentity);
+        Assert.NotEqual(Guid.Parse(firstIdentity), Guid.Parse(secondIdentity));
         var deadline = Stopwatch.GetTimestamp() + 120 * Stopwatch.Frequency;
 
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
@@ -66,6 +73,26 @@ public sealed class KnownProjectsRefreshWalkthroughTests(PristineProjectFixture 
 
             return Task.CompletedTask;
         }, WalkthroughSteps.Remaining(deadline));
+    }
+
+    private sealed class IndependentProject : IDisposable
+    {
+        private readonly string _root = Path.Combine(Path.GetTempPath(), "MotifKnownProject", Guid.NewGuid().ToString("N"));
+
+        public IndependentProject()
+        {
+            using var cache = NewLangProjFixture.CreateCache(_root);
+            var seed = SeededProject.Seed(cache);
+            SeededProject.SeedText(cache, seed);
+            RealParserProject.PrepareForParsing(
+                cache, "m", "o", "t", "i", "f", "a", "n", "l", "y", "s", "e", "d", "u", "b");
+            new FwDataProjectLoader().Save(cache);
+            FwDataPath = cache.ProjectId.Path;
+        }
+
+        public string FwDataPath { get; }
+
+        public void Dispose() => Directory.Delete(_root, recursive: true);
     }
 
     private static void SelectNewProject(WalkthroughWindow walkthrough, string projectPath)

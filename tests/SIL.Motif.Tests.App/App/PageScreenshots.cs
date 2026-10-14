@@ -207,8 +207,7 @@ public sealed class PageScreenshots
                 var menuFolderLink = Assert.Single(menuRow.GetVisualDescendants().OfType<HyperlinkButton>());
                 Assert.True(menuFolderLink.IsEffectivelyEnabled);
                 Assert.Same(workspace.OpenRecentProjectFolderCommand, menuFolderLink.Command);
-                Assert.Equal(recent.FullFwDataPath,
-                    Assert.IsType<RecentProjectViewModel>(menuFolderLink.CommandParameter).FullFwDataPath);
+                Assert.Equal(recent.FolderPath, Assert.IsType<string>(menuFolderLink.CommandParameter));
                 Settle(window);
                 using (var frame = window.CaptureRenderedFrame()
                     ?? throw new InvalidOperationException("No frame rendered for recent-menu-after.png."))

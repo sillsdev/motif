@@ -90,7 +90,7 @@
                     </StackPanel>
                     <HyperlinkButton Grid.Column="1" Classes="overviewTileLink" Content="Open folder"
                                      Command="{Binding $parent[views:OverviewPage].Page.Context.OpenProjectFolderCommand}"
-                                     CommandParameter="{Binding}" IsEnabled="{Binding CanOpenFolder}"
+                                     CommandParameter="{Binding FolderPath}" IsEnabled="{Binding CanOpenFolder}"
                                      AutomationProperties.Name="Open project folder" />
                   </Grid>
                 </Border>

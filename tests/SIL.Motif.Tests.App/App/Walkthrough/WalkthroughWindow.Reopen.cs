@@ -1,6 +1,7 @@
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Threading;
+using SIL.Motif.App.ViewModels;
 using Xunit;
 
 namespace SIL.Motif.Tests.App.Walkthrough;
@@ -12,18 +13,19 @@ internal static class WalkthroughWindowReopen
         ArgumentNullException.ThrowIfNull(walkthrough);
         ArgumentException.ThrowIfNullOrWhiteSpace(projectPath);
 
+        var pathComparison = OperatingSystem.IsLinux() ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
         walkthrough.OpenProjectMenu();
         var automationName = $"Open {Path.GetFileNameWithoutExtension(projectPath)}";
         walkthrough.WaitUntil(() => walkthrough.Workspace.RecentProjects.Any(candidate =>
                 string.Equals(candidate.AutomationName, automationName, StringComparison.Ordinal)),
             TimeSpan.FromSeconds(10), $"'{automationName}' did not appear under Open recent");
-        var project = walkthrough.Workspace.RecentProjects.Single(known =>
-            string.Equals(known.FullFwDataPath, projectPath, StringComparison.OrdinalIgnoreCase));
         var openRecent = walkthrough.FindProjectMenuEntry<Button>("Open a recent project");
         var recentMenu = Assert.IsType<MenuFlyout>(openRecent.Flyout);
         HeadlessClick.Click(TopLevel.GetTopLevel(openRecent)!, openRecent, "Open a recent project");
         Assert.True(recentMenu.IsOpen, "Clicking 'Open a recent project' did not open its list.");
-        while (!walkthrough.Window.RecentProjectItems.Any(candidate => ReferenceEquals(candidate.CommandParameter, project)))
+        while (!walkthrough.Window.RecentProjectItems.Any(candidate =>
+                   candidate.CommandParameter is RecentProjectViewModel recent &&
+                   string.Equals(recent.FullFwDataPath, projectPath, pathComparison)))
         {
             var next = Assert.Single(recentMenu.Items.OfType<MenuItem>(), candidate =>
                 candidate.Header is string header && header.StartsWith("Show ", StringComparison.Ordinal));
@@ -32,8 +34,12 @@ internal static class WalkthroughWindowReopen
             HeadlessClick.Click(TopLevel.GetTopLevel(next)!, next, next.Header!.ToString()!);
             Dispatcher.UIThread.RunJobs();
         }
+        var project = walkthrough.Workspace.RecentProjects.Single(known =>
+            string.Equals(known.FullFwDataPath, projectPath, pathComparison));
         var item = walkthrough.Window.RecentProjectItems.Single(candidate =>
-            string.Equals(AutomationProperties.GetName(candidate), project.AutomationName, StringComparison.Ordinal));
+            candidate.CommandParameter is RecentProjectViewModel recent &&
+            string.Equals(recent.FullFwDataPath, projectPath, pathComparison));
+        Assert.Equal(project.AutomationName, AutomationProperties.GetName(item));
         var command = walkthrough.Workspace.OpenRecentProjectCommand;
         Assert.Same(command, item.Command);
         Assert.Same(project, item.CommandParameter);

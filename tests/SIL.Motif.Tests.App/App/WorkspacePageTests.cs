@@ -16,6 +16,7 @@ namespace SIL.Motif.Tests.App;
 /// entries, badges and collapsed mode, the project menu, the freshness line, and the one changes list every page
 /// shares.
 /// </summary>
+[Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class WorkspacePageTests
 {
     private static readonly string ProjectPath = Path.Combine(Path.GetTempPath(), "projects", "one.fwdata");
@@ -292,44 +293,54 @@ public sealed class WorkspacePageTests
     }
 
     [Fact]
-    public async Task OpenRecentListsTheKnownProjectsOtherThanTheOpenOneAndOpensTheChosenOne()
+    public void OpenRecentListsTheKnownProjectsOtherThanTheOpenOneAndOpensTheChosenOne()
     {
-        var (fake, projectPicker, workspace) = NewWorkspace();
-        var other = Path.Combine(Path.GetTempPath(), "projects", "two.fwdata");
-        fake.KnownProjectsListIs(
-        [
-            new KnownProjectSummary(other, Saved),
-            new KnownProjectSummary(ProjectPath, Saved),
-        ]);
-        await workspace.Project.LoadKnownProjectsAsync();
-        await ChooseProjectAsync(fake, projectPicker, workspace);
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (fake, projectPicker, workspace) = NewWorkspace();
+            await using var ownedWorkspace = workspace;
+            var other = Path.Combine(Path.GetTempPath(), "projects", "two.fwdata");
+            fake.KnownProjectsListIs(
+            [
+                new KnownProjectSummary(other, Saved),
+                new KnownProjectSummary(ProjectPath, Saved),
+            ]);
+            await workspace.Project.LoadKnownProjectsAsync();
+            await ChooseProjectAsync(fake, projectPicker, workspace);
+            await workspace.RefreshKnownProjectsAsync();
 
-        var recent = Assert.Single(workspace.RecentProjects);
-        Assert.Equal(other, recent.FullFwDataPath);
-        Assert.Equal("two", recent.Name);
-        Assert.Equal("two", workspace.RecentProjectsText);
+            var recent = Assert.Single(workspace.RecentProjects);
+            Assert.Equal(other, recent.FullFwDataPath);
+            Assert.Equal("two", recent.Name);
+            Assert.Equal("two", workspace.RecentProjectsText);
 
-        await workspace.OpenRecentProjectCommand.ExecuteAsync(recent);
+            await workspace.OpenRecentProjectCommand.ExecuteAsync(recent);
 
-        Assert.Equal("two.fwdata", workspace.ProjectName);
-        Assert.Equal(["one"], workspace.RecentProjects.Select(project => project.Name));
+            Assert.Equal("two.fwdata", workspace.ProjectName);
+            Assert.Equal(["one"], workspace.RecentProjects.Select(project => project.Name));
+        }, TimeSpan.FromSeconds(30));
     }
 
     [Fact]
-    public async Task TheProjectMenuOpensAnotherKnownProjectFromTheOverview()
+    public void TheProjectMenuOpensAnotherKnownProjectFromTheOverview()
     {
-        var (fake, projectPicker, workspace) = NewWorkspace();
-        var other = Path.Combine(Path.GetTempPath(), "projects", "two.fwdata");
-        fake.KnownProjectsListIs([new KnownProjectSummary(other, Saved)]);
-        await workspace.Project.LoadKnownProjectsAsync();
-        await ChooseProjectAsync(fake, projectPicker, workspace);
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (fake, projectPicker, workspace) = NewWorkspace();
+            await using var ownedWorkspace = workspace;
+            var other = Path.Combine(Path.GetTempPath(), "projects", "two.fwdata");
+            fake.KnownProjectsListIs([new KnownProjectSummary(other, Saved)]);
+            await workspace.Project.LoadKnownProjectsAsync();
+            await ChooseProjectAsync(fake, projectPicker, workspace);
+            await workspace.RefreshKnownProjectsAsync();
 
-        var recent = Assert.Single(workspace.RecentProjects);
-        Assert.Equal(other, recent.FullFwDataPath);
-        await workspace.OpenRecentProjectCommand.ExecuteAsync(recent);
+            var recent = Assert.Single(workspace.RecentProjects);
+            Assert.Equal(other, recent.FullFwDataPath);
+            await workspace.OpenRecentProjectCommand.ExecuteAsync(recent);
 
-        Assert.Equal("two.fwdata", workspace.ProjectName);
-        Assert.Equal(other, workspace.Context.ProjectPath);
+            Assert.Equal("two.fwdata", workspace.ProjectName);
+            Assert.Equal(other, workspace.Context.ProjectPath);
+        }, TimeSpan.FromSeconds(30));
     }
 
     [Fact]

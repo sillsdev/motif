@@ -308,7 +308,7 @@ public sealed partial class MainWindow : Window
             Classes = { "recentProjectMenuFolder" },
             Content = "Open folder",
             Command = workspace.OpenRecentProjectFolderCommand,
-            CommandParameter = recent,
+            CommandParameter = recent.FolderPath,
             IsEnabled = recent.CanOpenFolder,
         };
         Avalonia.Automation.AutomationProperties.SetName(folder, $"Open {recent.Name} folder");

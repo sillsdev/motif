@@ -39,6 +39,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     public const double SidebarCollapseWidth = 1100;
 
     private readonly ICommandClient _commandClient;
+    private readonly ReplacingObservableCollection<RecentProjectViewModel> _recentProjects = [];
     private string? _storeDeletionProject;
     private Task _reloadAfterRefresh = Task.CompletedTask;
     private Task? _freshnessCheckTask;
@@ -86,7 +87,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
                     OnPropertyChanged(nameof(ShowsTechDemoNotice));
             };
         }
-        OpenRecentProjectFolderCommand = new AsyncRelayCommand<RecentProjectViewModel>(OpenRecentProjectFolderAsync,
+        OpenRecentProjectFolderCommand = new AsyncRelayCommand<string>(OpenRecentProjectFolderAsync,
             CanOpenRecentProjectFolder);
         Context = new WorkspaceContext(selection, assess, new ChangesViewModel(commandClient), commandClient, folderPicker,
             dragSource, baseline, clock, clipboard, diagnosticFiles, diagnosticDialogs,
@@ -301,7 +302,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     public IAsyncRelayCommand SelectNewProjectCommand { get; }
 
     /// <summary>The machine's Known projects other than the open one, most recently seen first.</summary>
-    public ObservableCollection<RecentProjectViewModel> RecentProjects { get; } = [];
+    public ObservableCollection<RecentProjectViewModel> RecentProjects => _recentProjects;
 
     /// <summary>The recent projects' names in one line, for the project menu's Open recent entry.</summary>
     public string RecentProjectsText => RecentProjects.Count == 0
@@ -315,7 +316,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     public IAsyncRelayCommand<RecentProjectViewModel> OpenRecentProjectCommand { get; }
 
     /// <summary>Opens a recent project's containing folder in the system file manager.</summary>
-    public IAsyncRelayCommand<RecentProjectViewModel> OpenRecentProjectFolderCommand { get; }
+    public IAsyncRelayCommand<string> OpenRecentProjectFolderCommand { get; }
 
     /// <summary>Runs <see cref="OpenConfiguration"/>: the project menu's Configure.</summary>
     public IRelayCommand ConfigureCommand { get; }
@@ -807,28 +808,28 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     private void RefreshRecentProjects(bool resolveIdentity = true)
     {
         if (_isDisposed) return;
+        if (resolveIdentity && Context.ProjectPath is not null)
+            _ = ResolveOpenProjectIdentityAsync();
         var openIdentity = _projectIdentityRead is { } read && IsCurrentProjectIdentityRead(read)
             ? read.Identity : null;
-        if (resolveIdentity && openIdentity is null && Context.ProjectPath is not null)
-            _ = ResolveOpenProjectIdentityAsync();
         openIdentity ??= Context.ProjectPath is not null ? Context.Baseline?.Token?.ProjectIdentity : null;
-        RecentProjects.Clear();
-        foreach (var recent in RecentProjectViewModel.MostRecentlySeenCopies(Project.KnownProjects)
+        var recentProjects = RecentProjectViewModel.MostRecentlySeenCopies(Project.KnownProjects)
                      .Where(recent => !string.Equals(recent.FullFwDataPath, Context.ProjectPath,
                          OperatingSystem.IsLinux() ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase) &&
                          (openIdentity is null ||
-                          !string.Equals(recent.ProjectIdentity, openIdentity, StringComparison.OrdinalIgnoreCase))))
-            RecentProjects.Add(recent);
+                          !string.Equals(recent.ProjectIdentity, openIdentity, StringComparison.OrdinalIgnoreCase)))
+            .ToArray();
+        _recentProjects.ReplaceWith(recentProjects);
         OnPropertyChanged(nameof(RecentProjectsText));
         OnPropertyChanged(nameof(HasRecentProjects));
     }
 
-    private bool CanOpenRecentProjectFolder(RecentProjectViewModel? recent) =>
-        recent is { CanOpenFolder: true } && Context.UriLauncher is not null;
+    private bool CanOpenRecentProjectFolder(string? folder) =>
+        folder is not null && Directory.Exists(folder) && Context.UriLauncher is not null;
 
-    private async Task OpenRecentProjectFolderAsync(RecentProjectViewModel? recent)
+    private async Task OpenRecentProjectFolderAsync(string? folder)
     {
-        if (!CanOpenRecentProjectFolder(recent) || recent?.FolderPath is not { } folder ||
+        if (!CanOpenRecentProjectFolder(folder) || folder is null ||
             Context.UriLauncher is not { } launcher) return;
         await launcher.LaunchAsync(new Uri(folder)).ConfigureAwait(true);
     }

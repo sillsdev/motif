@@ -47,12 +47,14 @@ public static class KnownProjectsQuery
         using var machine = MachineDatabase.Open(managedRoot);
         var registry = new KnownProjectRegistry(machine);
         var kept = new List<KnownProjectSummary>();
+        var pathComparer = OperatingSystem.IsLinux() ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
+        var listedPaths = new HashSet<string>(pathComparer);
         var metadataTime = TimeSpan.Zero;
         var metadataBlocked = false;
         foreach (var known in registry.List().OrderByDescending(project => project.LastSeenUtc))
         {
             // An unavailable file can return, so browsing Recent never forgets its registry entry.
-            if (!File.Exists(known.FullFwDataPath)) continue;
+            if (!File.Exists(known.FullFwDataPath) || !listedPaths.Add(Path.GetFullPath(known.FullFwDataPath))) continue;
             var summary = new KnownProjectSummary(known.FullFwDataPath, known.LastSeenUtc);
             if (!metadataBlocked && metadataTime < TimeSpan.FromMilliseconds(250))
             {
@@ -65,27 +67,13 @@ public static class KnownProjectsQuery
                 ProjectIdentity = summary.ProjectIdentity ?? ProjectFileIdentityReader.Read(summary.FullFwDataPath),
             });
         }
-        return MostRecentlySeenCopies(kept);
+        return kept;
     }
 
     /// <summary>Reads the saved LangProject GUID, reusing an unchanged file's successful cached identity.</summary>
     /// <param name="path">The project data-file path.</param>
     /// <returns>The saved GUID, or null when the file cannot currently supply one.</returns>
     public static string? ReadProjectIdentity(string path) => ProjectFileIdentityReader.Read(path);
-
-    /// <summary>Returns each project's newest copy, matching GUIDs without case and paths by platform rules.</summary>
-    public static IReadOnlyList<KnownProjectSummary> MostRecentlySeenCopies(IEnumerable<KnownProjectSummary> projects)
-    {
-        ArgumentNullException.ThrowIfNull(projects);
-        var pathComparer = OperatingSystem.IsLinux() ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
-        return projects
-            .GroupBy(project => project.ProjectIdentity is { Length: > 0 } identity
-                ? "identity:" + identity.ToUpperInvariant()
-                : "path:" + Path.GetFullPath(project.FullFwDataPath), pathComparer)
-            .Select(group => group.MaxBy(project => project.LastSeenUtc)!)
-            .OrderByDescending(project => project.LastSeenUtc)
-            .ToArray();
-    }
 
     private static KnownProjectSummary ReadProjectStoreSummary(KnownProjectSummary known, out bool blocked)
     {

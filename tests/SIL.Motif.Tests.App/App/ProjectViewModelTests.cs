@@ -15,6 +15,23 @@ namespace SIL.Motif.Tests.App;
 public sealed class ProjectViewModelTests
 {
     [Fact]
+    public async Task AQueryResultNeverPublishesAPartialKnownProjectList()
+    {
+        var fake = new FakeCommandClient();
+        var projects = Enumerable.Range(0, 3).Select(index => new KnownProjectSummary(
+            Path.Combine(Path.GetTempPath(), $"known-{index}.fwdata"), DateTimeOffset.UnixEpoch)).ToArray();
+        fake.KnownProjectsListIs(projects);
+        var viewModel = new ProjectViewModel(fake, new FakeProjectPicker());
+        var observed = new List<KnownProjectSummary[]>();
+        viewModel.KnownProjects.CollectionChanged += (_, _) => observed.Add(viewModel.KnownProjects.ToArray());
+
+        await viewModel.LoadKnownProjectsAsync();
+
+        Assert.NotEmpty(observed);
+        Assert.All(observed, list => Assert.Equal(projects, list));
+    }
+
+    [Fact]
     public async Task LoadKnownProjectsAsyncPopulatesKnownProjectsInQueryOrder()
     {
         var fake = new FakeCommandClient();

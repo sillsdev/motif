@@ -18,6 +18,7 @@ public sealed partial class ProjectViewModel : ObservableObject
     private readonly ICommandClient _commandClient;
     private readonly IProjectPicker _projectPicker;
     private readonly string? _managedRoot;
+    private readonly ReplacingObservableCollection<KnownProjectSummary> _knownProjects = [];
 
     /// <summary>Lets a person browse for a project while reading Known projects from the optional machine root.</summary>
     /// <param name="commandClient">The command adapter used by the project chooser.</param>
@@ -34,7 +35,7 @@ public sealed partial class ProjectViewModel : ObservableObject
     }
 
     /// <summary>The machine's Known projects, most-recently-seen first.</summary>
-    public ObservableCollection<KnownProjectSummary> KnownProjects { get; } = [];
+    public ObservableCollection<KnownProjectSummary> KnownProjects => _knownProjects;
 
     /// <summary>The local instructions shown when Motif's machine store has a refused shape.</summary>
     [ObservableProperty]
@@ -74,8 +75,7 @@ public sealed partial class ProjectViewModel : ObservableObject
         MachineStoreRecoveryMessage = null;
         MachineStoreProblemReport = null;
         if (KnownProjects.SequenceEqual(projects)) return;
-        KnownProjects.Clear();
-        foreach (var project in projects) KnownProjects.Add(project);
+        _knownProjects.ReplaceWith(projects);
     }
 
     partial void OnSelectedKnownProjectChanged(KnownProjectSummary? value)
