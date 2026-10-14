@@ -220,18 +220,27 @@ public sealed class SelectionWordRowsTests
                 PageScreenshots.Settle(window);
                 // A detail batch legitimately rewrites a word's data, so a build is owed per word and revision shown.
                 var shown = new HashSet<string>();
+                var shownWords = new HashSet<string>();
                 var scroll = window.GetVisualDescendants().OfType<ScrollViewer>()
                     .First(viewer => viewer.Extent.Height > viewer.Viewport.Height);
-                for (var offset = 0d; offset < scroll.Extent.Height - scroll.Viewport.Height; offset += scroll.Viewport.Height / 2)
+                async Task ShowOffsetAsync(double offset)
                 {
                     scroll.Offset = scroll.Offset.WithY(offset);
                     SettleRowLayout(window);
                     await list.SettleVisibleDetailsAsync();
                     SettleRowLayout(window);
                     foreach (var row in window.GetVisualDescendants().OfType<WordRow>().Where(row => row.Data is not null))
+                    {
                         shown.Add($"{row.Data!.Key.Value}@{row.Data.EvidenceRevision}");
+                        shownWords.Add(row.Data.Key.Value);
+                    }
                 }
+                for (var offset = 0d; offset < scroll.Extent.Height - scroll.Viewport.Height; offset += scroll.Viewport.Height)
+                    await ShowOffsetAsync(offset);
+                await ShowOffsetAsync(Math.Max(0, scroll.Extent.Height - scroll.Viewport.Height));
+                await ShowOffsetAsync(0);
                 var builds = WordRow.TotalCellBuilds - before;
+                Assert.Equal(words.Length, shownWords.Count);
                 Assert.True(shown.Count > 20, $"Only {shown.Count} word revisions were shown.");
                 Assert.True(builds <= shown.Count * 2.1,
                     $"{builds} cell builds for {shown.Count} shown word revisions is {(double)builds / shown.Count:0.00} per word.");
