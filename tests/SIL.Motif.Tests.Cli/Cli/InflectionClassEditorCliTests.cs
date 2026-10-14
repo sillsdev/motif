@@ -1,6 +1,8 @@
 using System;
 using System.IO;
+using System.Reflection;
 using SIL.Motif.Commands.Catalog;
+using System.Text.Json.Serialization;
 using Xunit;
 
 namespace SIL.Motif.Tests.Cli;
@@ -11,11 +13,16 @@ public sealed class InflectionClassEditorCliTests
     [Theory]
     [InlineData("compose-edit-part-of-speech-inflection-class-default")]
     [InlineData("compose-edit-affix-inflection-classes")]
-    public void EditorVerbsAreAdvancedAiDraftCommandsAndReachTheirUsage(string verb)
+    public void EditorVerbsRemainDraftCommandsButAreNotAgentToolsAndReachCliUsage(string verb)
     {
         var descriptor = Assert.Single(CommandCatalog.All, command => command.Name == verb);
         Assert.Equal(CommandSurface.AdvancedAi, descriptor.Surface);
         Assert.Equal(AgentClass.Draft, descriptor.Agent);
+        Assert.False(descriptor.ExposeAsAgentTool);
+        Assert.False(descriptor.IsAgentTool);
+
+        Assert.NotNull(typeof(CommandDescriptor).GetProperty(nameof(CommandDescriptor.ExposeAsAgentTool))?
+            .GetCustomAttribute<JsonIgnoreAttribute>());
 
         var root = Path.Combine(Path.GetTempPath(), "motif-inflection-editor-cli", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
@@ -30,5 +37,15 @@ public sealed class InflectionClassEditorCliTests
         {
             if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
         }
+    }
+
+    [Fact]
+    public void ExistingAdvancedAiDraftCommandsKeepDefaultAgentExposure()
+    {
+        var descriptor = new CommandDescriptor("existing", typeof(string), typeof(string),
+            CommandSurface.AdvancedAi, AgentClass.Draft);
+
+        Assert.True(descriptor.ExposeAsAgentTool);
+        Assert.True(descriptor.IsAgentTool);
     }
 }

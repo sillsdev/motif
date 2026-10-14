@@ -9,6 +9,8 @@ motif compose-edit-part-of-speech-inflection-class-default --project language.fw
 
 All three intent fields are required. `expectedInflectionClass` and `inflectionClass` are each either a canonical id or `null`. The desired class must belong to the target category or one of its ancestors. Setting the desired value to `null` clears the explicit reference; an inherited default may then apply.
 
+This editor is available through the CLI. Agent-tool exposure is deferred.
+
 Use a class id returned by an earlier composition in the same Draft directly in `inflectionClass`. The Draft composer declares the dependency from that reference. This edit creates no class.
 
 Add `--cite-source <text>` and optionally `--cite-locator <text>` to cite every operation this command produces. Review the Dry Run effects and run a Trial on affected words before Finalize; only a person can Apply the Proposal.

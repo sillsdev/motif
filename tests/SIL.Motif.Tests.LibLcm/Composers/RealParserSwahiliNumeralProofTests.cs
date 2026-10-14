@@ -133,6 +133,10 @@ public sealed class RealParserSwahiliNumeralProofTests(PristineProjectFixture pr
         Assert.True(zeroPrefix.Succeeded, zeroPrefix.Refusal?.Message);
         var zero = MorphFrom(zeroPrefix.Value!, fixture.Invariable);
 
+        Assert.True(ProposalCommands.Label(new LabelRequest(projectPath, ProductVersion, draftName,
+            "Swahili numeral class editors")).Succeeded);
+        Assert.True(ProposalCommands.Comment(new CommentRequest(projectPath, ProductVersion, draftName,
+            "Use the confirmed numeral classes for category defaults and concord prefix restrictions.")).Succeeded);
         var finalized = ProposalCommands.Finalize(new FinalizeRequest(projectPath, ProductVersion, draftName));
         Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
         var proposalId = CanonicalId.Parse(finalized.Value!.ProposalId);

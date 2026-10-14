@@ -1,4 +1,5 @@
 using System;
+using System.Text.Json.Serialization;
 
 namespace SIL.Motif.Commands.Catalog;
 
@@ -52,7 +53,12 @@ public enum AgentClass
 public sealed record CommandDescriptor(
     string Name, Type RequestType, Type ResponseType, CommandSurface Surface, AgentClass Agent)
 {
+    /// <summary>Whether the catalog permits registering this command as an agent tool; defaults to true.</summary>
+    [JsonIgnore]
+    public bool ExposeAsAgentTool { get; init; } = true;
+
     /// <summary>Whether this command is available to agents under Advanced AI mode.</summary>
-    public bool IsAgentTool => Surface is CommandSurface.AdvancedAi or CommandSurface.Released &&
+    public bool IsAgentTool => ExposeAsAgentTool &&
+        Surface is CommandSurface.AdvancedAi or CommandSurface.Released &&
         Agent != AgentClass.HumanOnly;
 }
