@@ -464,6 +464,7 @@ internal static class Program
         if (File.Exists(outputPath)) return FailFacts("output_exists", "the output path already exists");
 
         var behaviour = Behaviour.Read(directory, "facts");
+        if (behaviour.StartupDelayMilliseconds > 0) Thread.Sleep(behaviour.StartupDelayMilliseconds);
         if (behaviour.HeartbeatPath is { } heartbeat) return Tick(heartbeat, behaviour.ProcessIdPath);
         if (behaviour.DelayMilliseconds > 0) Thread.Sleep(behaviour.DelayMilliseconds);
         if (behaviour.Mode == "noReport") return behaviour.ExitCode;
@@ -824,6 +825,8 @@ internal static class Program
         public string Mode { get; init; } = "succeed";
         public int ExitCode { get; init; }
         public int DelayMilliseconds { get; init; }
+        // Facts only: a pause before the first heartbeat, standing in for a loaded host's slow process start.
+        public int StartupDelayMilliseconds { get; init; }
         public bool StreamProgress { get; init; }
         public string? HeartbeatPath { get; init; }
         public string? StartedPath { get; init; }

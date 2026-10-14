@@ -837,15 +837,33 @@ public sealed class PanGlossInvokerTests : IDisposable
         var snapshot = Snapshot("facts-timeout");
         var outputDirectory = Path.Combine(_root, "facts-timeout-artifacts");
         var heartbeat = Path.Combine(_root, "facts-timeout-heartbeat");
-        FakeParser.Behave(_root, new { HeartbeatPath = heartbeat });
+        FakeParser.Behave(_root, new { HeartbeatPath = heartbeat, StartupDelayMilliseconds = 1500 });
         using var invoker = Invoker();
 
+        var readiness = await MeasureTimeToHeartbeatAsync(invoker, snapshot, heartbeat);
+        File.Delete(heartbeat);
+
         var outcome = await invoker.RunAsync(FactsRequest(snapshot, outputDirectory), "test:facts-timeout",
-            CancellationToken.None, wallClockCap: TimeSpan.FromMilliseconds(500));
+            CancellationToken.None, wallClockCap: readiness * 3 + TimeSpan.FromSeconds(1));
 
         Assert.True(File.Exists(heartbeat));
         Assert.IsType<PanGlossOutcome.TimedOut>(outcome);
         Assert.False(Directory.Exists(outputDirectory));
+    }
+
+    // The cap must open after the fake is running, however slowly this host starts a process.
+    private async Task<TimeSpan> MeasureTimeToHeartbeatAsync(PanGlossInvoker invoker, string snapshot, string heartbeat)
+    {
+        using var probe = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        var started = System.Diagnostics.Stopwatch.StartNew();
+        var run = invoker.RunAsync(FactsRequest(snapshot, Path.Combine(_root, "facts-timeout-probe")),
+            "test:facts-timeout-probe", probe.Token);
+        while (!File.Exists(heartbeat) && !run.IsCompleted) await Task.Delay(10);
+        var readiness = started.Elapsed;
+        Assert.True(File.Exists(heartbeat), "the fake parser never reached its heartbeat");
+        probe.Cancel();
+        await run;
+        return readiness;
     }
 
     [Fact]
