@@ -1,6 +1,6 @@
 # Read grammar warnings
 
-`warnings` reads grammar-check findings and allomorph refusals already recorded by parsing for a project. It can filter by diagnostic code or show only findings at warning level. Add `--proposal <id>` to read the check stored with that Proposal's latest Trial.
+`warnings` reads grammar-check findings and allomorph refusals already recorded by parsing for a project. It can filter by diagnostic code or show only findings at warning level. Add `--proposal <id>` to read the check stored with that Proposal's latest Trial. When the current Baseline has not been checked, `warnings` refuses and tells you to run `grammar check`; it does not return an empty findings list.
 
 PanGloss reports an unreadable phonological environment as a warning. Roots ignore that restriction but keep valid ones; ordinary affixes add an unrestricted pass beside valid passes; an infix with no valid position is skipped.
 
@@ -16,7 +16,9 @@ motif warnings --project "C:\FieldWorks\Projects\Koro\Koro.fwdata" --left-out --
 
 ## What it prints
 
-The response includes separate error, warning, and information counts, plus findings with PanGloss-owned titles, explanations, guidance, optional background, verified FieldWorks places, subjects, and links where available. Information can identify a stored analysis that PanGloss no longer reproduces, name the rule that changed its surface, or explain why the loss could not be attributed. Each finding retains the report locale. Missing references and project settings have explicit statuses and unavailable-link reasons. `--left-out` keeps warning-level findings only. Without a Baseline, the command refuses and tells you to run `motif baseline capture --project <fwdata>`. When a Baseline has no stored check, it says the grammar has not been checked yet.
+The response includes separate error, warning, and information counts, plus findings with PanGloss-owned titles, explanations, guidance, optional background, verified FieldWorks places, subjects, and links where available. Information can identify a stored analysis that PanGloss no longer reproduces, name the rule that changed its surface, or explain why the loss could not be attributed. Each finding retains the report locale. Missing references and project settings have explicit statuses and unavailable-link reasons. `--left-out` keeps warning-level findings only. Without a Baseline, the command refuses and tells you to run `motif baseline capture --project <fwdata>`. When a Baseline has no stored check, it refuses and tells you to run `motif grammar check --project <fwdata>`.
+
+The response includes the Baseline's lexical entry and rule counts when that inventory is available. Motif advisories are listed separately from parser findings.
 
 When a stored Assessment matches the Baseline and Selection, all recorded allomorph segmentation refusals are included under `parse.allomorph.unsegmentable`, labelled **Parse all words**. Their descriptions preserve the parser's reason, without truncating the allomorph list or inventing guidance. These findings can differ from the whole-grammar check's findings.
 

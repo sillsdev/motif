@@ -77,10 +77,16 @@ public sealed class WarningsArgvTests(PristineProjectFixture pristine) : IDispos
         Assert.True(captured.Succeeded, captured.Refusal?.Message);
 
         var noCheck = Run("warnings", "--project", project);
+        var noCheckJson = Run("warnings", "--project", project, "--json");
 
-        Assert.Equal(0, noCheck.ExitCode);
-        Assert.Contains("Grammar not checked yet for this Baseline.", noCheck.Output, StringComparison.Ordinal);
-        Assert.Contains("motif grammar check --project <fwdata>", noCheck.Output, StringComparison.Ordinal);
+        Assert.Equal(2, noCheck.ExitCode);
+        Assert.Empty(noCheck.Output);
+        Assert.Contains("motif grammar check --project <fwdata>", noCheck.Error, StringComparison.Ordinal);
+        Assert.Equal(2, noCheckJson.ExitCode);
+        Assert.Empty(noCheckJson.Output);
+        var notRunRefusal = ProjectionJson.Deserialize<FailureEnvelope>(noCheckJson.Error)!;
+        Assert.Equal("grammarcheck.not-run", notRunRefusal.Code);
+        Assert.Contains("motif grammar check --project <fwdata>", notRunRefusal.Message, StringComparison.Ordinal);
     }
 
     public void Dispose()

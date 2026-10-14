@@ -71,6 +71,24 @@ public sealed class WarningsCommandTests(PristineProjectFixture pristine) : IDis
     }
 
     [Fact]
+    public void WarningsRefusesWhenTheCurrentBaselineHasNotBeenChecked()
+    {
+        Directory.CreateDirectory(_root);
+        var project = pristine.CopyProjectFile();
+        var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(project), _root);
+        Assert.True(captured.Succeeded, captured.Refusal?.Message);
+
+        var warnings = WarningsCommand.Warnings(new WarningsRequest(project));
+        var stored = StoredGrammarCheckQuery.Query(new SIL.Motif.Contract.Requests.GrammarCheckRequest(project));
+
+        Assert.False(warnings.Succeeded);
+        Assert.Equal("grammarcheck.not-run", warnings.Refusal!.Code);
+        Assert.Contains("motif grammar check --project <fwdata>", warnings.Refusal.Message, StringComparison.Ordinal);
+        Assert.True(stored.Succeeded, stored.Refusal?.Message);
+        Assert.Null(stored.Value!.Check);
+    }
+
+    [Fact]
     public void StoredAnalysisNoLongerParsesFindingIsShownAsInformation()
     {
         Directory.CreateDirectory(_root);

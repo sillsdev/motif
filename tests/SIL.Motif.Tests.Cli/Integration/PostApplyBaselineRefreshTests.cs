@@ -72,6 +72,15 @@ public sealed class PostApplyBaselineRefreshTests(PristineProjectFixture pristin
 
         var second = await Author("second", "k");
         var automatic = await DryRun(second);
+        var warnings = await Run("warnings", "--project", path, "--json");
+        Assert.Equal(2, warnings.ExitCode);
+        Assert.Empty(warnings.Output);
+        using (var refusal = JsonDocument.Parse(warnings.Error))
+        {
+            Assert.Equal("grammarcheck.not-run", refusal.RootElement.GetProperty("code").GetString());
+            Assert.Contains("motif grammar check --project <fwdata>",
+                refusal.RootElement.GetProperty("message").GetString(), StringComparison.Ordinal);
+        }
         using (var connection = new SqliteConnection(new SqliteConnectionStringBuilder
                {
                    DataSource = Path.ChangeExtension(path, ".motif.db"),

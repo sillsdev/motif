@@ -170,7 +170,7 @@ public sealed class CommandCatalogParityTests
         "texts.words-cancelled",
         "texts.evidence-changed", "texts.occurrence-not-found",
         "grammarcheck.cancelled", "grammarcheck.malformed-findings", "grammarcheck.unsupported-schema", "grammarcheck.parser-refused",
-        "grammarcheck.parser-unavailable", "grammarcheck.timed-out",
+        "grammarcheck.not-run", "grammarcheck.parser-unavailable", "grammarcheck.timed-out",
         "wordtrace.cancelled", "wordtrace.diagnostic-unreadable", "wordtrace.malformed-diagnostic", "wordtrace.malformed-output", "wordtrace.no-baseline", "wordtrace.parser-refused",
         "wordtrace.parser-unavailable",
         "word.read-state-cancelled",

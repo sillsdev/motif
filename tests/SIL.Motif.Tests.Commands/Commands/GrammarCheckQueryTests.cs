@@ -267,6 +267,12 @@ public sealed class GrammarCheckQueryTests : IDisposable
         Assert.Equal(2, response.Findings.Count);
         Assert.Equal(2, response.Summary.Count);
         Assert.DoesNotContain(response.Findings, finding => finding.Text.Contains("stderr-only", StringComparison.Ordinal));
+        using (var checkJson = JsonDocument.Parse(JsonSerializer.Serialize(response)))
+        {
+            Assert.Equal(2, checkJson.RootElement.GetProperty("CheckedLexemeCount").GetInt32());
+            Assert.Equal(0, checkJson.RootElement.GetProperty("CheckedRuleCount").GetInt32());
+            Assert.Empty(checkJson.RootElement.GetProperty("Advisories").EnumerateArray());
+        }
 
         var warning = response.Findings[0];
         Assert.Equal(GrammarDiagnosticLevel.Warning, warning.Severity);

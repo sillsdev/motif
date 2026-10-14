@@ -24,6 +24,17 @@ public sealed record WarningsResponse(
     /// </summary>
     public WarningWordsTouched? YourWords { get; init; }
 
+    /// <summary>The Baseline inventory counts recorded with the completed check, or null when unknown.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public int? CheckedLexemeCount { get; init; }
+
+    /// <summary>The Baseline rule count recorded with the completed check, or null when unknown.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public int? CheckedRuleCount { get; init; }
+
+    /// <summary>Motif advisories recorded with the completed check, separate from parser findings.</summary>
+    public IReadOnlyList<GrammarCheckAdvisory> Advisories { get; init; } = [];
+
     /// <summary>The number of findings after the requested filters.</summary>
     public int TotalCount => Findings.Count;
 }

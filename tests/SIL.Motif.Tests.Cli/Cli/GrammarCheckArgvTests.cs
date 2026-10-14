@@ -32,11 +32,15 @@ public sealed class GrammarCheckArgvTests(PristineProjectFixture pristine) : IDi
         var check = ProjectionJson.Deserialize<GrammarCheckResponse>(checkedGrammar.Output)!;
         Assert.True(check.HasBaseline);
         Assert.NotEmpty(check.Findings);
+        Assert.Equal(2, check.CheckedLexemeCount);
+        Assert.Equal(0, check.CheckedRuleCount);
+        Assert.Empty(check.Advisories);
 
         var human = Run("grammar", "check", "--project", project);
 
         Assert.Equal(0, human.ExitCode);
         Assert.Contains($"Grammar findings: {check.Findings.Count}", human.Output, StringComparison.Ordinal);
+        Assert.Contains("Checked 2 lexemes and 0 rules", human.Output, StringComparison.Ordinal);
         Assert.Empty(human.Error);
 
         var warnings = Run("warnings", "--project", project, "--json");
@@ -45,6 +49,8 @@ public sealed class GrammarCheckArgvTests(PristineProjectFixture pristine) : IDi
         var response = ProjectionJson.Deserialize<WarningsResponse>(warnings.Output)!;
         Assert.True(response.HasCheck);
         Assert.Equal(check.Findings.Count, response.TotalCount);
+        Assert.Equal(check.CheckedLexemeCount, response.CheckedLexemeCount);
+        Assert.Equal(check.CheckedRuleCount, response.CheckedRuleCount);
     }
 
     [Fact]

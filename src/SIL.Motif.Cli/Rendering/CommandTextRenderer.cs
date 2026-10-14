@@ -594,6 +594,9 @@ public static class CommandTextRenderer
         text.AppendLine($"Grammar findings: {response.TotalCount:N0} " +
             $"({CountLabel(response.ErrorCount, "error", "errors")}, {CountLabel(response.WarningCount, "warning", "warnings")}, " +
             $"{response.InformationCount:N0} information)");
+        text.AppendLine(CheckedInventory(response.CheckedLexemeCount, response.CheckedRuleCount));
+        foreach (var advisory in response.Advisories)
+            text.AppendLine($"Advisory: {advisory.Message}");
         if (response.YourWords is { } touched)
         {
             text.AppendLine(TouchedLine(touched));
@@ -724,6 +727,9 @@ public static class CommandTextRenderer
         text.AppendLine($"Grammar findings: {response.Findings.Count:N0} " +
             $"({CountLabel(errorCount, "error", "errors")}, {CountLabel(warningCount, "warning", "warnings")}, " +
             $"{informationCount:N0} information)");
+        text.AppendLine(CheckedInventory(response.CheckedLexemeCount, response.CheckedRuleCount));
+        foreach (var advisory in response.Advisories)
+            text.AppendLine($"Advisory: {advisory.Message}");
         foreach (var summary in response.Summary)
             text.AppendLine($"  {summary.Code}: {summary.Count:N0} {summary.Level.ToWireValue()}");
         foreach (var finding in response.Findings)
@@ -890,6 +896,9 @@ public static class CommandTextRenderer
     private static string CountLabel(int? count, string singular, string plural) => count is { } value
         ? $"{value:N0} {(value == 1 ? singular : plural)}"
         : "unknown";
+
+    private static string CheckedInventory(int? lexemeCount, int? ruleCount) =>
+        $"Checked {CountLabel(lexemeCount, "lexeme", "lexemes")} and {CountLabel(ruleCount, "rule", "rules")}";
 
     private static string FormatPercent(double? value) => value is { } percent
         ? percent.ToString("N0", CultureInfo.CurrentCulture) + "%"

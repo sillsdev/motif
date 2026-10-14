@@ -24,7 +24,7 @@ Without the flag, the check follows the **Compare stored analyses** choice under
 
 ## What it prints
 
-The response reports whether a Baseline was available and includes grammar findings when a check ran. Error-level findings appear separately from warnings and information. PanGloss can exit nonzero after writing a report with errors; Motif still reads and stores that report. A nonzero exit without a report is a refusal.
+The response includes the Baseline's lexical entry and rule counts when that inventory is available. Motif advisories are separate from PanGloss findings, so an empty-lexicon note does not change parser severity or Assessment readiness. Error-level findings appear separately from warnings and information. PanGloss can exit nonzero after writing a report with errors; Motif still reads and stores that report. A nonzero exit without a report is a refusal.
 
 ## Related commands
 

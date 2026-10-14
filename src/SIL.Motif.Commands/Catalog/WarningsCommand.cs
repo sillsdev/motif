@@ -13,10 +13,15 @@ public static class WarningsCommand
     {
         ArgumentNullException.ThrowIfNull(request);
         var stored = StoredGrammarCheckQuery.Query(new GrammarCheckRequest(request.ProjectPath, request.ProposalId));
-        return stored.Succeeded
-            ? CommandOutcome<WarningsResponse>.Success(FromCheck(stored.Value!.Check, request.Kind, request.LeftOut) with
-            { LastParserRefusal = stored.Value.LastParserRefusal })
-            : CommandOutcome<WarningsResponse>.Refused(stored.Refusal!);
+        if (!stored.Succeeded) return CommandOutcome<WarningsResponse>.Refused(stored.Refusal!);
+        if (stored.Value!.Check is not { } check)
+            return CommandOutcome<WarningsResponse>.Refused(new Refusal(
+                "grammarcheck.not-run", FailureReason.Refused,
+                request.ProposalId is null
+                    ? "The current Baseline has not been checked. Run: motif grammar check --project <fwdata>"
+                    : "The latest Trial for this Proposal has no grammar check to read."));
+        return CommandOutcome<WarningsResponse>.Success(FromCheck(check, request.Kind, request.LeftOut) with
+        { LastParserRefusal = stored.Value.LastParserRefusal });
     }
 
     internal static WarningsResponse FromCheck(GrammarCheckResponse? check, string? kind = null, bool leftOut = false)
@@ -49,6 +54,9 @@ public static class WarningsCommand
         {
             ErrorCount = findings.Count(finding => finding.Severity == GrammarDiagnosticLevel.Error),
             YourWords = check is null ? null : WarningWordsQuery.TouchedNamed(findings),
+            CheckedLexemeCount = check?.CheckedLexemeCount,
+            CheckedRuleCount = check?.CheckedRuleCount,
+            Advisories = check?.Advisories ?? [],
         };
     }
 }
