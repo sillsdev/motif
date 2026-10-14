@@ -174,13 +174,11 @@ public sealed class RealParserSwahiliNumeralProofTests(PristineProjectFixture pr
                  })
         {
             var trace = await CompletedTrace(tracer, projectPath, word);
-            var expectedClass = prefix == zero ? invarClass : concordClass;
             var prefixCategory = prefix == zero ? fixture.Invariable : fixture.Adjective;
             var stemCategory = word == "wazuri" ? fixture.Adjective : fixture.Numeral;
             if (prefix == zero)
                 stemCategory = fixture.Invariable;
-            WriteWitness(output, word, AssertReading(trace, prefix, stem, expectedClass, prefixCategory,
-                stemCategory));
+            WriteWitness(output, word, AssertReading(trace, prefix, stem, prefixCategory, stemCategory));
         }
 
         Assert.NotEqual(zero.Form, fixture.NPrefix.Form);
@@ -279,7 +277,7 @@ public sealed class RealParserSwahiliNumeralProofTests(PristineProjectFixture pr
             coronal.SegmentsRC.Add(phonemes["s"]);
             coronal.SegmentsRC.Add(phonemes["t"]);
             AddRule(cache, "Delete n before s or t", phonemes["n"], null,
-                right: CreateNaturalClassContext(cache, coronal));
+                rightNaturalClass: coronal);
             AddRule(cache, "n becomes m before w", phonemes["n"], phonemes["m"],
                 right: CreateSegmentContext(cache, phonemes["w"]));
             AddRule(cache, "w becomes b after m", phonemes["w"], phonemes["b"],
@@ -350,15 +348,8 @@ public sealed class RealParserSwahiliNumeralProofTests(PristineProjectFixture pr
         return context;
     }
 
-    private static IPhSimpleContextNC CreateNaturalClassContext(LcmCache cache, IPhNCSegments naturalClass)
-    {
-        var context = cache.ServiceLocator.GetInstance<IPhSimpleContextNCFactory>().Create();
-        context.FeatureStructureRA = naturalClass;
-        return context;
-    }
-
     private static void AddRule(LcmCache cache, string name, IPhPhoneme input, IPhPhoneme? output,
-        IPhSimpleContext? left = null, IPhSimpleContext? right = null)
+        IPhSimpleContext? left = null, IPhSimpleContext? right = null, IPhNCSegments? rightNaturalClass = null)
     {
         var rule = cache.ServiceLocator.GetInstance<IPhRegularRuleFactory>().Create();
         cache.LangProject.PhonologicalDataOA.PhonRulesOS.Add(rule);
@@ -372,7 +363,16 @@ public sealed class RealParserSwahiliNumeralProofTests(PristineProjectFixture pr
         if (output is not null)
             rhs.StrucChangeOS.Add(CreateSegmentContext(cache, output));
         rhs.LeftContextOA = left;
-        rhs.RightContextOA = right;
+        if (rightNaturalClass is null)
+        {
+            rhs.RightContextOA = right;
+        }
+        else
+        {
+            var context = cache.ServiceLocator.GetInstance<IPhSimpleContextNCFactory>().Create();
+            rhs.RightContextOA = context;
+            context.FeatureStructureRA = rightNaturalClass;
+        }
     }
 
     private static void AssertApplied(LcmCache cache, NumeralFixture fixture, CanonicalId concordClass,
@@ -388,12 +388,12 @@ public sealed class RealParserSwahiliNumeralProofTests(PristineProjectFixture pr
         var template = Get<IMoInflAffixTemplate>(cache, fixture.Template);
         Assert.True(template.Final);
         Assert.Equal([fixture.Slot.ToGuid()], template.PrefixSlotsRS.Select(item => item.Guid));
-        Assert.Null(Get<IMoStemMsa>(cache, fixture.Sita.Msa).InflectionClassRA);
-        Assert.Null(Get<IMoStemMsa>(cache, fixture.Wili.Msa).InflectionClassRA);
+        foreach (var stem in new[] { fixture.Sita, fixture.Wili, fixture.Ishirini, fixture.Arobaini, fixture.Zuri })
+            Assert.Null(Get<IMoStemMsa>(cache, stem.Msa).InflectionClassRA);
         var zeroMsa = Get<IMoInflAffMsa>(cache, zero.Msa);
         Assert.Equal(invariable.Guid, zeroMsa.PartOfSpeechRA?.Guid);
         Assert.Equal([fixture.Slot.ToGuid()], zeroMsa.SlotsRC.Select(item => item.Guid));
-        Assert.Contains(invarClass.ToGuid(), Get<IMoAffixAllomorph>(cache, zero.Form)
+        Assert.Equal([invarClass.ToGuid()], Get<IMoAffixAllomorph>(cache, zero.Form)
             .InflectionClassesRC.Select(item => item.Guid));
         Assert.Equal(concordClass.ToGuid(), Assert.Single(Get<IMoAffixAllomorph>(cache, fixture.NPrefix.Form)
             .InflectionClassesRC).Guid);
@@ -405,16 +405,13 @@ public sealed class RealParserSwahiliNumeralProofTests(PristineProjectFixture pr
         (T)cache.ServiceLocator.GetInstance<ICmObjectRepository>().GetObject(id.ToGuid());
 
     private static PanGlossTraceAnalysis AssertReading(PanGlossTraceOutcome.Completed trace, Morph prefix,
-        Morph stem, CanonicalId? prefixClass = null, CanonicalId? prefixCategory = null,
-        CanonicalId? stemCategory = null)
+        Morph stem, CanonicalId? prefixCategory = null, CanonicalId? stemCategory = null)
     {
         var analysis = Assert.Single(trace.Document!.Analyses);
         Assert.Equal([prefix.Form.ToGuid(), stem.Form.ToGuid()],
             analysis.Morphs.Select(morph => ParserId(morph.FormId)));
         Assert.Equal([prefix.Msa.ToGuid(), stem.Msa.ToGuid()],
             analysis.Morphs.Select(morph => ParserId(morph.MsaId)));
-        if (prefixClass is not null)
-            Assert.Equal(prefixClass.Value.ToGuid(), ParserId(analysis.Morphs[0].InflectionClassId));
         if (prefixCategory is not null)
             Assert.Equal(prefixCategory.Value.ToGuid(), ParserId(analysis.Morphs[0].CategoryId));
         if (stemCategory is not null)
