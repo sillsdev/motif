@@ -60,7 +60,7 @@ public static class InflectionSnapshots
         }
         foreach (var category in cache.LangProject.PartsOfSpeechOA.ReallyReallyAllPossibilities.OfType<IPartOfSpeech>())
         {
-            Add(category, Snapshot(cache, category));
+            Add(category, Snapshot(cache, category), PartOfSpeechRelationsSnapshotter.Snapshot(cache, category));
             foreach (var inflectionClass in category.InflectionClassesOC) Class(inflectionClass);
             foreach (var stemName in category.StemNamesOC)
             {

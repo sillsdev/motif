@@ -236,6 +236,47 @@ system in the morphosyntactic feature system. `AuthorInflectionClass` accepts cl
 list; its optional parent must belong to that exact category, and its name must be unused throughout
 that category's class tree. Neither composer assigns grammatical info or edits a default class.
 
+The inflection class editors change existing grammar choices without recreating entries or categories.
+A category can supply the default class for stems beneath it, and an ordinary affix can restrict which
+classes it attaches to; clearing either choice is explicit.
+
+`EditPartOfSpeechInflectionClassDefault` accepts closed
+`{target, expectedInflectionClass, inflectionClass}` with all three properties required. The two class
+identities are nullable: expected null means the category has no explicit default, even if it inherits
+one; desired null clears its explicit default. The target must be in the project's parts-of-speech
+list. A desired class must belong to that category or an ancestor, including nested subclasses.
+An exact expected-current mismatch is refused. Equal decoded identities emit no operations.
+Setting lowers `grammar/partOfSpeech/setDefaultInflectionClass` with closed `{ref}`; clearing lowers
+`grammar/partOfSpeech/clearDefaultInflectionClass` with closed `{}`, never a null reference SET.
+
+`EditAffixInflectionClasses` accepts closed `{target, expectedInflectionClasses, inflectionClasses}`
+with all properties required. Both lists are exact unordered sets; empty is permitted, and an empty
+desired set removes all restrictions. The target is an existing ordinary inflectional affix allomorph,
+either lexeme or alternate, carrying a nonabstract prefix, suffix or prefixing/suffixing interfix form
+in the default vernacular writing system, in an ordinary affix entry with at least one grammatical-info object and
+only inflectional grammatical info, each with a usable project category. Process forms and mixed or
+noninflectional grammatical-info scopes are refused even for an empty or unchanged desired set.
+Circumfix entries, abstract or blank forms, and other morph types are outside this editor's scope.
+Each desired class must belong to an applicable category or an ancestor. Both editors decode optional
+identity prefixes before comparisons; decoded aliases in a set are duplicates and are refused.
+Membership edits lower existing `grammar/moAffixForm/addRefInflectionClasses` and
+`grammar/moAffixForm/removeRefInflectionClasses` kinds with closed `{member}` payloads. Incumbent
+form text, identities, grammatical info and unrelated restrictions remain intact.
+
+The expected state is checked during composition and never carried as conditional low-level input.
+Dry Run binds the written fields and read-only prerequisites: classes and their ownership, category
+ancestors and explicit defaults including inherited default definitions, relevant class descendants,
+and the ordinary affix's
+forms and grammatical-info scope. Removal-only and clear operations bind these reads too. They are
+footprint evidence, never changed effects. Apply refuses drift atomically; fresh Dry Run evidence may
+refresh those reads without altering target, verb, identity, value or declared dependencies. Unrelated
+lexical edits remain permitted. Same-Draft references declare their class-create dependencies through
+`dependsOn`; operation array order carries no dependency. Preview, read-back, semantic snapshots and
+mechanical diff reuse the existing default-reference and class-membership field mappings. Coverage
+uses the existing `PartOfSpeech.DefaultInflectionClass` and `MoAffixForm.InflectionClasses` inventory
+rows; no new operation kind or contract version is introduced. The closed editor schemas and portable
+vectors are in `inflection-class-editing.schema.json` and `inflection-class-editing.vectors.json`.
+
 `AuthorStemName` accepts closed `{category, name, ws, regions:[[{feature, value}]], abbreviation?}`.
 It requires at least one nonempty region, each feature at most once per region, each feature a closed
 morphosyntactic feature and each value owned by that feature. Names are unique within the category

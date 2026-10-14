@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://motif.sil.org/contracts/inflection-class-editing/v1",
+  "title": "Inflection class editors",
+  "description": "Closed explicit default and ordinary inflectional affix restriction edits. Null clears the explicit default; empty removes restrictions. Live expected state, type and ancestor ownership are checked against LibLCM.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/EditPartOfSpeechInflectionClassDefault"
+    },
+    {
+      "$ref": "#/$defs/EditAffixInflectionClasses"
+    }
+  ],
+  "$defs": {
+    "CanonicalId": {
+      "type": "string",
+      "pattern": "^[\\s\\S]*[A-Za-z0-9_-]{22}$",
+      "description": "Optional prefix plus 22-character unpadded base64url suffix decoding to 128 bits."
+    },
+    "EditPartOfSpeechInflectionClassDefault": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "target": {
+          "$ref": "#/$defs/CanonicalId"
+        },
+        "expectedInflectionClass": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CanonicalId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "inflectionClass": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CanonicalId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "target",
+        "expectedInflectionClass",
+        "inflectionClass"
+      ]
+    },
+    "EditAffixInflectionClasses": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "target": {
+          "$ref": "#/$defs/CanonicalId"
+        },
+        "expectedInflectionClasses": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/CanonicalId"
+          },
+          "description": "An unordered set compared by decoded GUID; empty is permitted. Decoded aliases are duplicates."
+        },
+        "inflectionClasses": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/CanonicalId"
+          },
+          "description": "An unordered set compared by decoded GUID; empty is permitted. Decoded aliases are duplicates."
+        }
+      },
+      "required": [
+        "target",
+        "expectedInflectionClasses",
+        "inflectionClasses"
+      ]
+    }
+  }
+}

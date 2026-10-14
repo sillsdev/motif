@@ -1,0 +1,277 @@
+{
+  "contract": "inflection-class-editing/v1",
+  "vectors": [
+    {
+      "shape": "EditPartOfSpeechInflectionClassDefault",
+      "input": {
+        "target": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "expectedInflectionClass": null,
+        "inflectionClass": "AAAAAAAAAAAAAAAAAAAAAg"
+      },
+      "valid": true
+    },
+    {
+      "shape": "EditPartOfSpeechInflectionClassDefault",
+      "input": {
+        "expectedInflectionClass": null,
+        "inflectionClass": "AAAAAAAAAAAAAAAAAAAAAg"
+      },
+      "valid": false
+    },
+    {
+      "shape": "EditPartOfSpeechInflectionClassDefault",
+      "input": {
+        "target": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "inflectionClass": "AAAAAAAAAAAAAAAAAAAAAg"
+      },
+      "valid": false
+    },
+    {
+      "shape": "EditPartOfSpeechInflectionClassDefault",
+      "input": {
+        "target": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "expectedInflectionClass": null
+      },
+      "valid": false
+    },
+    {
+      "shape": "EditPartOfSpeechInflectionClassDefault",
+      "input": {
+        "target": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "expectedInflectionClass": null,
+        "inflectionClass": "AAAAAAAAAAAAAAAAAAAAAg",
+        "unknown": true
+      },
+      "valid": false
+    },
+    {
+      "shape": "EditPartOfSpeechInflectionClassDefault",
+      "input": {
+        "target": 42,
+        "expectedInflectionClass": null,
+        "inflectionClass": "AAAAAAAAAAAAAAAAAAAAAg"
+      },
+      "valid": false
+    },
+    {
+      "shape": "EditPartOfSpeechInflectionClassDefault",
+      "input": {
+        "target": "bad",
+        "expectedInflectionClass": null,
+        "inflectionClass": "AAAAAAAAAAAAAAAAAAAAAg"
+      },
+      "valid": false
+    },
+    {
+      "shape": "EditPartOfSpeechInflectionClassDefault",
+      "input": {
+        "target": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "expectedInflectionClass": "AAAAAAAAAAAAAAAAAAAAAg",
+        "inflectionClass": null
+      },
+      "valid": true
+    },
+    {
+      "shape": "EditPartOfSpeechInflectionClassDefault",
+      "input": {
+        "target": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "expectedInflectionClass": null,
+        "inflectionClass": null
+      },
+      "valid": true
+    },
+    {
+      "shape": "EditPartOfSpeechInflectionClassDefault",
+      "input": {
+        "target": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "expectedInflectionClass": 17,
+        "inflectionClass": "AAAAAAAAAAAAAAAAAAAAAg"
+      },
+      "valid": false
+    },
+    {
+      "shape": "EditPartOfSpeechInflectionClassDefault",
+      "input": {
+        "target": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "expectedInflectionClass": null,
+        "inflectionClass": []
+      },
+      "valid": false
+    },
+    {
+      "shape": "EditAffixInflectionClasses",
+      "input": {
+        "target": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "expectedInflectionClasses": [],
+        "inflectionClasses": [
+          "AAAAAAAAAAAAAAAAAAAAAg",
+          "AAAAAAAAAAAAAAAAAAAAAw"
+        ]
+      },
+      "valid": true
+    },
+    {
+      "shape": "EditAffixInflectionClasses",
+      "input": {
+        "expectedInflectionClasses": [],
+        "inflectionClasses": [
+          "AAAAAAAAAAAAAAAAAAAAAg",
+          "AAAAAAAAAAAAAAAAAAAAAw"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "shape": "EditAffixInflectionClasses",
+      "input": {
+        "target": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "inflectionClasses": [
+          "AAAAAAAAAAAAAAAAAAAAAg",
+          "AAAAAAAAAAAAAAAAAAAAAw"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "shape": "EditAffixInflectionClasses",
+      "input": {
+        "target": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "expectedInflectionClasses": []
+      },
+      "valid": false
+    },
+    {
+      "shape": "EditAffixInflectionClasses",
+      "input": {
+        "target": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "expectedInflectionClasses": [],
+        "inflectionClasses": [
+          "AAAAAAAAAAAAAAAAAAAAAg",
+          "AAAAAAAAAAAAAAAAAAAAAw"
+        ],
+        "unknown": true
+      },
+      "valid": false
+    },
+    {
+      "shape": "EditAffixInflectionClasses",
+      "input": {
+        "target": 42,
+        "expectedInflectionClasses": [],
+        "inflectionClasses": [
+          "AAAAAAAAAAAAAAAAAAAAAg",
+          "AAAAAAAAAAAAAAAAAAAAAw"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "shape": "EditAffixInflectionClasses",
+      "input": {
+        "target": "bad",
+        "expectedInflectionClasses": [],
+        "inflectionClasses": [
+          "AAAAAAAAAAAAAAAAAAAAAg",
+          "AAAAAAAAAAAAAAAAAAAAAw"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "shape": "EditAffixInflectionClasses",
+      "input": {
+        "target": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "expectedInflectionClasses": [
+          "AAAAAAAAAAAAAAAAAAAAAw",
+          "AAAAAAAAAAAAAAAAAAAAAg"
+        ],
+        "inflectionClasses": []
+      },
+      "valid": true
+    },
+    {
+      "shape": "EditAffixInflectionClasses",
+      "input": {
+        "target": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "expectedInflectionClasses": [],
+        "inflectionClasses": []
+      },
+      "valid": true
+    },
+    {
+      "shape": "EditAffixInflectionClasses",
+      "input": {
+        "target": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "expectedInflectionClasses": null,
+        "inflectionClasses": [
+          "AAAAAAAAAAAAAAAAAAAAAg",
+          "AAAAAAAAAAAAAAAAAAAAAw"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "shape": "EditAffixInflectionClasses",
+      "input": {
+        "target": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "expectedInflectionClasses": [
+          "AAAAAAAAAAAAAAAAAAAAAw",
+          "class:AAAAAAAAAAAAAAAAAAAAAx"
+        ],
+        "inflectionClasses": [
+          "AAAAAAAAAAAAAAAAAAAAAg",
+          "AAAAAAAAAAAAAAAAAAAAAw"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "shape": "EditAffixInflectionClasses",
+      "input": {
+        "target": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "expectedInflectionClasses": [
+          "AAAAAAAAAAAAAAAAAAAAAg",
+          "AAAAAAAAAAAAAAAAAAAAAg"
+        ],
+        "inflectionClasses": [
+          "AAAAAAAAAAAAAAAAAAAAAg",
+          "AAAAAAAAAAAAAAAAAAAAAw"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "shape": "EditAffixInflectionClasses",
+      "input": {
+        "target": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "expectedInflectionClasses": [],
+        "inflectionClasses": null
+      },
+      "valid": false
+    },
+    {
+      "shape": "EditAffixInflectionClasses",
+      "input": {
+        "target": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "expectedInflectionClasses": [],
+        "inflectionClasses": [
+          "AAAAAAAAAAAAAAAAAAAAAw",
+          "class:AAAAAAAAAAAAAAAAAAAAAx"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "shape": "EditAffixInflectionClasses",
+      "input": {
+        "target": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "expectedInflectionClasses": [],
+        "inflectionClasses": [
+          "AAAAAAAAAAAAAAAAAAAAAg",
+          "AAAAAAAAAAAAAAAAAAAAAg"
+        ]
+      },
+      "valid": false
+    }
+  ]
+}

@@ -23,6 +23,9 @@ internal static class AffixAuthoringPrerequisites
     private static readonly HashSet<string> ReferenceKinds = new(StringComparer.Ordinal)
     {
         MoAffixFormInflectionClassesOperationKinds.AddRefInflectionClasses,
+        MoAffixFormInflectionClassesOperationKinds.RemoveRefInflectionClasses,
+        PartOfSpeechDefaultInflectionClassOperationKinds.SetDefaultInflectionClass,
+        PartOfSpeechDefaultInflectionClassOperationKinds.ClearDefaultInflectionClass,
         MoStemAllomorphPhoneEnvOperationKinds.AddRefPhoneEnv,
         MoAffixAllomorphPhoneEnvOperationKinds.AddRefPhoneEnv,
         MoInflAffMsaPartOfSpeechOperationKinds.SetPartOfSpeech,
@@ -64,8 +67,24 @@ internal static class AffixAuthoringPrerequisites
                     foreach (var msa in entry.MorphoSyntaxAnalysesOC) IncludeMsa(msa);
                 }
                 else if (owner is IMoAffixForm form && form.Owner is ILexEntry formEntry)
+                {
+                    Include(formEntry.Guid);
+                    var entryFields = snapshots[formEntry.Guid].AlternativesFields.ToDictionary(field => field.Key, field => field.Value);
+                    var membership = LexiconOwningSnapshots.Snapshot(cache, formEntry);
+                    entryFields[SnapshotFields.LexEntryMorphoSyntaxAnalyses] =
+                        membership.AlternativesFields.GetValueOrDefault(
+                            SnapshotFields.LexEntryMorphoSyntaxAnalyses, new Dictionary<string, string>());
+                    entryFields[SnapshotFields.LexEntryLexemeForm] = ReferenceFieldSnapshotting.ReadAlternatives(formEntry.LexemeFormOA);
+                    entryFields[SnapshotFields.LexEntryAlternateForms] =
+                        LexEntryAlternateFormsSnapshotter.Snapshot(cache, formEntry).AlternativesFields
+                            .GetValueOrDefault(SnapshotFields.LexEntryAlternateForms, new Dictionary<string, string>());
+                    snapshots[formEntry.Guid] = new(CanonicalId.FromGuid(formEntry.Guid), entryFields);
+                    IncludeForm(formEntry.LexemeFormOA);
+                    foreach (var alternate in formEntry.AlternateFormsOS) IncludeForm(alternate);
                     foreach (var msa in formEntry.MorphoSyntaxAnalysesOC) IncludeMsa(msa);
+                }
                 else if (owner is IMoInflAffMsa msa) IncludeMsa(msa);
+                else if (owner is IPartOfSpeech category) Include(category.Guid);
             }
         }
         return snapshots.Values.OrderBy(snapshot => snapshot.CanonicalId.Value, StringComparer.Ordinal)
@@ -94,12 +113,18 @@ internal static class AffixAuthoringPrerequisites
                 case IMoInflClass cls:
                     Add(MoInflClassSnapshotter.Snapshot(cache, cls));
                     Add(MoInflClassAuthoringSnapshotter.Snapshot(cache, cls));
+                    fields[SnapshotFields.MoInflClassSubclasses] = InflectionSnapshots.Snapshot(cache, cls)
+                        .AlternativesFields.GetValueOrDefault(SnapshotFields.MoInflClassSubclasses, new Dictionary<string, string>());
                     if (cls.Owner is { } clsOwner) Include(clsOwner.Guid);
+                    foreach (var subclass in cls.SubclassesOC) Include(subclass.Guid);
                     break;
                 case IPartOfSpeech category:
                     Add(CmPossibilitySnapshotter.Snapshot(cache, category));
                     Add(CmPossibilityAuthoringSnapshotter.Snapshot(cache, category));
+                    fields[SnapshotFields.PartOfSpeechDefaultInflectionClass] =
+                        ReferenceFieldSnapshotting.ReadAlternatives(category.DefaultInflectionClassRA);
                     if (category.Owner is IPartOfSpeech ancestor) Include(ancestor.Guid);
+                    if (category.DefaultInflectionClassRA is { } defaultClass) Include(defaultClass.Guid);
                     break;
                 case IMoInflAffixSlot slot:
                     Add(MoInflAffixSlotSnapshotter.Snapshot(cache, slot));
