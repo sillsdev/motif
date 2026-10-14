@@ -148,6 +148,59 @@ public sealed class WarningsCommandTests(PristineProjectFixture pristine) : IDis
     }
 
     [Fact]
+    public void MissingSummaryClearsStoredYourWordsAndKeepsTheCheckedInventoryAndProvenance()
+    {
+        Directory.CreateDirectory(_root);
+        var project = pristine.CopyProjectFile();
+        var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(project), _root);
+        Assert.True(captured.Succeeded, captured.Refusal?.Message);
+        var knownWords = new WarningWords(WarningWordsMatch.Identity,
+            [new ObjectUseWord(new WordRow("known", WordRowOutcome.NoParse, "Lost", WordRowTone.Problem))], []);
+        var finding = new GrammarWarning(GrammarDiagnosticLevel.Warning, "known finding", [], [], "Known finding")
+        {
+            Code = "grammar.known",
+            YourWords = knownWords,
+        };
+        var response = new GrammarCheckResponse([finding], HasBaseline: true)
+        {
+            CheckedLexemeCount = 41,
+            CheckedRuleCount = 7,
+        };
+        var token = JsonSerializer.Serialize(captured.Value!.Token, SIL.Motif.Contract.MotifJson.CreateOptions());
+        var saved = ProjectStoreCommand.Run(project, MotifProductVersion.CurrentText, (database, locator) =>
+        {
+            new GrammarCheckRepository(database).Save(token, "selection-sha256", "parser-stamp", response,
+                captured.Value.SourceLastWriteUtc);
+            using var connection = database.OpenConnection();
+            using var command = connection.CreateCommand();
+            command.CommandText = "DELETE FROM BaselineSummaries WHERE ProjectKey = $project;";
+            command.Parameters.AddWithValue("$project",
+                SIL.Motif.Worker.Projects.ProjectWorkspaceKey.Compute(locator));
+            command.ExecuteNonQuery();
+            return CommandOutcome<string>.Success("seeded check and removed summary");
+        });
+        Assert.True(saved.Succeeded, saved.Refusal?.Message);
+        Assert.Single(knownWords.Words);
+
+        var warnings = WarningsCommand.Warnings(new WarningsRequest(project));
+
+        Assert.True(warnings.Succeeded, warnings.Refusal?.Message);
+        Assert.True(warnings.Value!.HasCheck);
+        Assert.Equal(1, warnings.Value.TotalCount);
+        var storedFinding = Assert.Single(warnings.Value.Findings);
+        Assert.Equal("grammar.known", storedFinding.Code);
+        Assert.Null(storedFinding.YourWords);
+        Assert.Null(warnings.Value.YourWords);
+        Assert.Null(Assert.Single(warnings.Value.ByKind).YourWords);
+        Assert.Equal(41, warnings.Value.CheckedLexemeCount);
+        Assert.Equal(7, warnings.Value.CheckedRuleCount);
+        Assert.Equal(captured.Value.Token, warnings.Value.Provenance!.BaselineToken);
+        Assert.Equal("selection-sha256", warnings.Value.Provenance.SelectionSha256);
+        Assert.Equal("parser-stamp", warnings.Value.Provenance.ParserStamp);
+        Assert.Equal(captured.Value.SourceLastWriteUtc, warnings.Value.Provenance.SourceLastWriteUtc);
+    }
+
+    [Fact]
     public void StoredAnalysisNoLongerParsesFindingIsShownAsInformation()
     {
         Directory.CreateDirectory(_root);

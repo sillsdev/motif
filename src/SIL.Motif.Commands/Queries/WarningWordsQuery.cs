@@ -29,7 +29,10 @@ public static class WarningWordsQuery
         }
         catch (BaselineSummaryMissingException)
         {
-            return check;
+            return check with
+            {
+                Findings = check.Findings.Select(finding => finding with { YourWords = null }).ToArray(),
+            };
         }
         var navigation = current.Succeeded && current.Value!.Baseline?.Token == checkedBaseline
             ? current.Value.Navigation : null;

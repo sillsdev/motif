@@ -1,8 +1,12 @@
 using System.Security.Cryptography;
 using SIL.LCModel;
 using SIL.LCModel.Infrastructure;
+using SIL.Motif.Commands;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Texts;
 using SIL.Motif.Tests.TestFixtures;
@@ -43,6 +47,31 @@ public sealed class TextInventoryQueryTests : IDisposable
 
         Assert.True(outcome.Succeeded);
         Assert.Empty(outcome.Value!.Texts);
+    }
+
+    [Fact]
+    public void MissingCurrentBaselineSummaryIsReturnedAsStoreInconsistentRefusal()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(fwDataPath), NewManagedRoot());
+        Assert.True(captured.Succeeded, captured.Refusal?.Message);
+        var removed = ProjectStoreCommand.Run(fwDataPath, MotifProductVersion.CurrentText, (database, project) =>
+        {
+            using var connection = database.OpenConnection();
+            using var command = connection.CreateCommand();
+            command.CommandText = "DELETE FROM BaselineSummaries WHERE ProjectKey = $project;";
+            command.Parameters.AddWithValue("$project",
+                SIL.Motif.Worker.Projects.ProjectWorkspaceKey.Compute(project));
+            command.ExecuteNonQuery();
+            return CommandOutcome<string>.Success("removed summary");
+        });
+        Assert.True(removed.Succeeded, removed.Refusal?.Message);
+
+        var outcome = TextInventoryQuery.Query(new TextInventoryRequest(fwDataPath));
+
+        Assert.False(outcome.Succeeded);
+        Assert.Equal("store.inconsistent", outcome.Refusal!.Code);
+        Assert.Equal(FailureReason.StoreInconsistent, outcome.Refusal.Reason);
     }
 
     [Fact]
