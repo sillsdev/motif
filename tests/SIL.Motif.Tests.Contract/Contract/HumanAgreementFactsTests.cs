@@ -119,4 +119,99 @@ public sealed class HumanAgreementFactsTests
     {
         Assert.Equal($"\"{expected}\"", JsonSerializer.Serialize(value, MotifJson.CreateOptions()));
     }
+
+    [Theory]
+    [InlineData(HumanAgreementSpellingAcceptance.AcceptedMisspelling, "accepted-misspelling")]
+    [InlineData(HumanAgreementSpellingAcceptance.RejectedMisspelling, "rejected-misspelling")]
+    [InlineData(HumanAgreementSpellingAcceptance.Incomplete, "incomplete")]
+    [InlineData(HumanAgreementSpellingAcceptance.NotApplicable, "not-applicable")]
+    [InlineData(HumanAgreementSpellingAcceptance.Unavailable, "unavailable")]
+    public void SpellingAcceptanceWireNamesArePinned(HumanAgreementSpellingAcceptance value, string expected)
+    {
+        Assert.Equal($"\"{expected}\"", JsonSerializer.Serialize(value, MotifJson.CreateOptions()));
+    }
+
+    [Theory]
+    [InlineData(HumanAgreementLimitation.Capped, "capped")]
+    [InlineData(HumanAgreementLimitation.TimedOut, "timed-out")]
+    [InlineData(HumanAgreementLimitation.ProjectionUnavailable, "projection-unavailable")]
+    [InlineData(HumanAgreementLimitation.ParserRefused, "parser-refused")]
+    [InlineData(HumanAgreementLimitation.InvalidShape, "invalid-shape")]
+    [InlineData(HumanAgreementLimitation.MalformedEvidence, "malformed-evidence")]
+    [InlineData(HumanAgreementLimitation.InvalidExpectedMorphology, "invalid-expected-morphology")]
+    public void LimitationWireNamesArePinned(HumanAgreementLimitation value, string expected)
+    {
+        Assert.Equal($"\"{expected}\"", JsonSerializer.Serialize(value, MotifJson.CreateOptions()));
+    }
+
+    [Fact]
+    public void ConflictNegativeEvidenceAndNfdVectorReproducesFrozenCanonicalBytesAndDigest()
+    {
+        var dir = Path.Combine(RepoRoot(), "tests", "conformance", "human-agreement-facts",
+            "001-conflicts-negative-nfd");
+        var input = File.ReadAllText(Path.Combine(dir, "input.json"));
+        var options = MotifJson.CreateOptions();
+
+        var facts = JsonSerializer.Deserialize<HumanAgreementFacts>(input, options);
+        var canonical = CanonicalJson.Canonicalize(JsonSerializer.Serialize(facts, options));
+
+        Assert.Equal(File.ReadAllText(Path.Combine(dir, "canonical.json")), canonical);
+        Assert.Equal(File.ReadAllText(Path.Combine(dir, "digest.txt")),
+            IntentDigest.Sha256Of(Encoding.UTF8.GetBytes(canonical)));
+        Assert.Equal("ma\u0301tu", facts!.UnmatchedProducedIdentities[0].Morphs[0].GuessedStringNfd);
+    }
+
+    [Fact]
+    public void AnExtraMemberIsRefused()
+    {
+        var json = ValidFactsJson().Replace("{\"Availability\"", "{\"Surprise\":1,\"Availability\"");
+
+        Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<HumanAgreementFacts>(json, MotifJson.CreateOptions()));
+    }
+
+    [Fact]
+    public void AMissingListIsRefused()
+    {
+        var json = ValidFactsJson().Replace("\"Limitations\":[],", "");
+
+        Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<HumanAgreementFacts>(json, MotifJson.CreateOptions()));
+    }
+
+    [Fact]
+    public void ANullListIsRefused()
+    {
+        var json = ValidFactsJson().Replace("\"Conflicts\":[]", "\"Conflicts\":null");
+
+        Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<HumanAgreementFacts>(json, MotifJson.CreateOptions()));
+    }
+
+    [Fact]
+    public void ANestedRecordRefusesExtraMembersAndMissingMembers()
+    {
+        var options = MotifJson.CreateOptions();
+
+        Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<HumanAgreementConflict>(
+            "{\"Kind\":\"opposed-opinions\",\"AnalysisIds\":[],\"Extra\":1}", options));
+        Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<HumanAgreementNegativeEvidence>(
+            "{\"Kind\":\"misspelled-parse\"}", options));
+        Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<HumanAgreementProducedMorph>(
+            "{\"Form\":\"a\",\"Msa\":\"b\",\"InflType\":null}", options));
+        Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<HumanAgreementProducedMorph>(
+            "{\"Form\":null,\"Msa\":\"b\",\"InflType\":null,\"GuessedStringNfd\":null}", options));
+    }
+
+    private static string ValidFactsJson() =>
+        "{\"Availability\":\"available\",\"Completion\":\"complete\",\"Limitations\":[],\"ApprovedState\":\"approved-unique\"," +
+        "\"ProducedIdentityCount\":1,\"ApprovedExpectedMorphologyCount\":1,\"MatchedApprovedMorphologyCount\":1," +
+        "\"ObservedUnmatchedExpectedAnalysisIds\":[],\"ProvenMissingApprovedAnalysisIds\":[]," +
+        "\"MatchedApprovedAnalysisIds\":[],\"MatchedDisapprovedAnalysisIds\":[],\"MatchedUnknownAnalysisIds\":[]," +
+        "\"UnmatchedProducedIdentities\":[],\"Conflicts\":[],\"SpellingAcceptance\":\"not-applicable\",\"NegativeEvidence\":[]}";
+
+    private static string RepoRoot()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "Motif.sln")))
+            dir = dir.Parent;
+        return dir?.FullName ?? throw new InvalidOperationException("Motif.sln was not found above the test binaries.");
+    }
 }

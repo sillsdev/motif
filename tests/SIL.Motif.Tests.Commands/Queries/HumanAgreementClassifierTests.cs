@@ -69,6 +69,7 @@ public sealed class HumanAgreementClassifierTests
             Decision(IdB, ReadingGrade.Approved, Morph(FormB)))
             .Classify(Evidence(Analysis(FormA)));
 
+        Assert.Equal(HumanAgreementApprovalState.ApprovedUnique, facts.ApprovedState);
         Assert.Equal(2, facts.ApprovedExpectedMorphologyCount);
         Assert.Equal(1, facts.MatchedApprovedMorphologyCount);
         Assert.Equal([IdB], facts.ObservedUnmatchedExpectedAnalysisIds);
@@ -371,6 +372,118 @@ public sealed class HumanAgreementClassifierTests
         Assert.Equal(HumanAgreementApprovalState.Unavailable, facts.ApprovedState);
         Assert.Contains(HumanAgreementLimitation.MalformedEvidence, facts.Limitations);
         Assert.Empty(facts.ProvenMissingApprovedAnalysisIds);
+    }
+
+    [Fact]
+    public void TimedOutEvidenceIsIncompleteAndCannotProveAbsence()
+    {
+        var evidence = Evidence(Analysis(FormA)) with { TimedOut = true };
+        var facts = Compile(Decision(IdA, ReadingGrade.Approved, Morph(FormA)),
+            Decision(IdB, ReadingGrade.Approved, Morph(FormB))).Classify(evidence);
+
+        Assert.Equal(HumanAgreementSearchCompletion.Incomplete, facts.Completion);
+        Assert.Equal(HumanAgreementApprovalState.Incomplete, facts.ApprovedState);
+        Assert.Contains(HumanAgreementLimitation.TimedOut, facts.Limitations);
+        Assert.Empty(facts.ProvenMissingApprovedAnalysisIds);
+        Assert.Equal([IdA], facts.MatchedApprovedAnalysisIds);
+    }
+
+    [Fact]
+    public void UnavailableProjectionKeepsObservedMatchesButReportsUnavailable()
+    {
+        var evidence = Evidence(Analysis(FormA)) with { Unavailable = ["morphology projection failed"] };
+        var facts = Compile(Decision(IdA, ReadingGrade.Approved, Morph(FormA))).Classify(evidence);
+
+        Assert.Equal(HumanAgreementApprovalState.Unavailable, facts.ApprovedState);
+        Assert.Contains(HumanAgreementLimitation.ProjectionUnavailable, facts.Limitations);
+        Assert.Equal([IdA], facts.MatchedApprovedAnalysisIds);
+        Assert.Empty(facts.ProvenMissingApprovedAnalysisIds);
+    }
+
+    [Fact]
+    public void CorrectAndUndecidedSpellingNeverCreateMisspellingEvidence()
+    {
+        foreach (var status in new[] { CapturedSpellingStatus.Correct, CapturedSpellingStatus.Undecided })
+        {
+            var facts = Compile([], status).Classify(Evidence(Analysis(FormA)));
+
+            Assert.Equal(HumanAgreementSpellingAcceptance.NotApplicable, facts.SpellingAcceptance);
+            Assert.DoesNotContain(facts.NegativeEvidence,
+                item => item.Kind == HumanAgreementNegativeEvidenceKind.MisspelledParse);
+        }
+    }
+
+    [Fact]
+    public void ApprovedAndDisapprovedOnDifferentMorphologiesAreNotAConflict()
+    {
+        var facts = Compile(
+            Decision(IdA, ReadingGrade.Approved, Morph(FormA)),
+            Decision(IdB, ReadingGrade.Disapproved, Morph(FormB)))
+            .Classify(Evidence(Analysis(FormA)));
+
+        Assert.Equal(HumanAgreementApprovalState.ApprovedUnique, facts.ApprovedState);
+        Assert.Empty(facts.Conflicts);
+        Assert.Empty(facts.MatchedDisapprovedAnalysisIds);
+    }
+
+    [Fact]
+    public void ADisapprovedMatchSurvivesCappedEvidenceAsNegativeEvidence()
+    {
+        var facts = Compile(Decision(IdB, ReadingGrade.Disapproved, Morph(FormA)))
+            .Classify(EvidenceCapped(Analysis(FormA)));
+
+        Assert.Equal(HumanAgreementSearchCompletion.Incomplete, facts.Completion);
+        Assert.Equal([IdB], facts.MatchedDisapprovedAnalysisIds);
+        Assert.Contains(facts.NegativeEvidence, item => item.Kind == HumanAgreementNegativeEvidenceKind.DisapprovedParse &&
+            item.AnalysisIds.SequenceEqual([IdB]));
+    }
+
+    [Fact]
+    public void NegativeAttemptsAndElapsedTimeAreMalformedEvidence()
+    {
+        var classifier = Compile(Decision(IdA, ReadingGrade.Approved, Morph(FormA)));
+        foreach (var evidence in new[]
+                 {
+                     Evidence(Analysis(FormA)) with { Attempts = -1 },
+                     Evidence(Analysis(FormA)) with { ElapsedMs = -1 }
+                 })
+        {
+            var facts = classifier.Classify(evidence);
+
+            Assert.Equal(HumanAgreementApprovalState.Unavailable, facts.ApprovedState);
+            Assert.Contains(HumanAgreementLimitation.MalformedEvidence, facts.Limitations);
+            Assert.Empty(facts.ProvenMissingApprovedAnalysisIds);
+        }
+    }
+
+    [Fact]
+    public void ARefusalWithABlankCodeIsMalformedEvidence()
+    {
+        var evidence = Evidence() with { Refusal = new ParserRefusal(" ", "refused") };
+        var facts = Compile(Decision(IdA, ReadingGrade.Approved, Morph(FormA))).Classify(evidence);
+
+        Assert.Equal(HumanAgreementApprovalState.Unavailable, facts.ApprovedState);
+        Assert.Contains(HumanAgreementLimitation.MalformedEvidence, facts.Limitations);
+    }
+
+    [Fact]
+    public void ANullDecisionAndANoOpinionAreRefusedAtCompile()
+    {
+        Assert.Throws<ArgumentException>(() => HumanAgreementClassifier.Compile(
+            new HumanAnalysisDecision[] { null! }, CapturedSpellingStatus.Undecided));
+        Assert.Throws<ArgumentException>(() => Compile(Decision(IdA, "no-opinion", Morph(FormA))));
+    }
+
+    [Fact]
+    public void AWordWithoutApprovedDecisionsStillReportsItsObservedParseCount()
+    {
+        var parsed = Compile([]).Classify(Evidence(Analysis(FormA), Analysis(FormB)));
+        var unparsed = Compile([]).Classify(Evidence());
+
+        Assert.Equal(HumanAgreementApprovalState.NoApprovedExpectations, parsed.ApprovedState);
+        Assert.Equal(2, parsed.ProducedIdentityCount);
+        Assert.Equal(HumanAgreementApprovalState.NoApprovedExpectations, unparsed.ApprovedState);
+        Assert.Equal(0, unparsed.ProducedIdentityCount);
     }
 
     private static CompiledHumanDecisions Compile(params HumanAnalysisDecision[] decisions) =>

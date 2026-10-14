@@ -5,7 +5,16 @@ using System.Text.Json.Serialization;
 namespace SIL.Motif.Contract.Responses;
 
 /// <summary>One captured human Opinion and its source analysis identity.</summary>
-public sealed record HumanAnalysisDecision(string AnalysisId, string Opinion, ApprovedMorphology Morphology);
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+public sealed record HumanAnalysisDecision(
+    [property: JsonRequired] string AnalysisId,
+    [property: JsonRequired] string Opinion,
+    [property: JsonRequired] ApprovedMorphology Morphology) : IJsonOnDeserialized
+{
+    void IJsonOnDeserialized.OnDeserialized() =>
+        ClosedShape.RequireNonNull(nameof(HumanAnalysisDecision), (nameof(AnalysisId), AnalysisId),
+            (nameof(Opinion), Opinion), (nameof(Morphology), Morphology));
+}
 
 /// <summary>The spelling decision captured from the FieldWorks wordform.</summary>
 [JsonConverter(typeof(StrictStringEnumConverter<CapturedSpellingStatus>))]
@@ -118,10 +127,25 @@ public enum HumanAgreementOpinion
 }
 
 /// <summary>A produced morphology identity that did not match any captured human decision.</summary>
-public sealed record HumanAgreementProducedIdentity(IReadOnlyList<HumanAgreementProducedMorph> Morphs);
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+public sealed record HumanAgreementProducedIdentity(
+    [property: JsonRequired] IReadOnlyList<HumanAgreementProducedMorph> Morphs) : IJsonOnDeserialized
+{
+    void IJsonOnDeserialized.OnDeserialized() =>
+        ClosedShape.RequireNonNull(nameof(HumanAgreementProducedIdentity), (nameof(Morphs), Morphs));
+}
 
 /// <summary>One ordered morph in a produced parser identity.</summary>
-public sealed record HumanAgreementProducedMorph(string Form, string Msa, string? InflType, string? GuessedStringNfd);
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+public sealed record HumanAgreementProducedMorph(
+    [property: JsonRequired] string Form,
+    [property: JsonRequired] string Msa,
+    [property: JsonRequired] string? InflType,
+    [property: JsonRequired] string? GuessedStringNfd) : IJsonOnDeserialized
+{
+    void IJsonOnDeserialized.OnDeserialized() =>
+        ClosedShape.RequireNonNull(nameof(HumanAgreementProducedMorph), (nameof(Form), Form), (nameof(Msa), Msa));
+}
 
 /// <summary>The kind of disagreement retained in the classification.</summary>
 [JsonConverter(typeof(StrictStringEnumConverter<HumanAgreementConflictKind>))]
@@ -134,10 +158,16 @@ public enum HumanAgreementConflictKind
 }
 
 /// <summary>A disagreement and every source analysis that witnesses it.</summary>
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record HumanAgreementConflict(
+    [property: JsonRequired]
     [property: JsonConverter(typeof(StrictStringEnumConverter<HumanAgreementConflictKind>))]
     HumanAgreementConflictKind Kind,
-    IReadOnlyList<string> AnalysisIds);
+    [property: JsonRequired] IReadOnlyList<string> AnalysisIds) : IJsonOnDeserialized
+{
+    void IJsonOnDeserialized.OnDeserialized() =>
+        ClosedShape.RequireNonNull(nameof(HumanAgreementConflict), (nameof(AnalysisIds), AnalysisIds));
+}
 
 /// <summary>A negative observation made by a produced reading.</summary>
 [JsonConverter(typeof(StrictStringEnumConverter<HumanAgreementNegativeEvidenceKind>))]
@@ -150,34 +180,57 @@ public enum HumanAgreementNegativeEvidenceKind
 }
 
 /// <summary>A negative observation and its matched source witnesses.</summary>
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record HumanAgreementNegativeEvidence(
+    [property: JsonRequired]
     [property: JsonConverter(typeof(StrictStringEnumConverter<HumanAgreementNegativeEvidenceKind>))]
     HumanAgreementNegativeEvidenceKind Kind,
-    IReadOnlyList<string> AnalysisIds);
+    [property: JsonRequired] IReadOnlyList<string> AnalysisIds) : IJsonOnDeserialized
+{
+    void IJsonOnDeserialized.OnDeserialized() =>
+        ClosedShape.RequireNonNull(nameof(HumanAgreementNegativeEvidence), (nameof(AnalysisIds), AnalysisIds));
+}
 
 /// <summary>The immutable classification of one parser result against captured human decisions.</summary>
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record HumanAgreementFacts(
+    [property: JsonRequired]
     [property: JsonConverter(typeof(StrictStringEnumConverter<HumanAgreementEvidenceAvailability>))]
     HumanAgreementEvidenceAvailability Availability,
+    [property: JsonRequired]
     [property: JsonConverter(typeof(StrictStringEnumConverter<HumanAgreementSearchCompletion>))]
     HumanAgreementSearchCompletion Completion,
+    [property: JsonRequired]
     [property: JsonConverter(typeof(StrictStringEnumListConverter<HumanAgreementLimitation>))]
     IReadOnlyList<HumanAgreementLimitation> Limitations,
+    [property: JsonRequired]
     [property: JsonConverter(typeof(StrictNullableStringEnumConverter<HumanAgreementApprovalState>))]
     HumanAgreementApprovalState? ApprovedState,
-    int ProducedIdentityCount,
-    int ApprovedExpectedMorphologyCount,
-    int MatchedApprovedMorphologyCount,
-    IReadOnlyList<string> ObservedUnmatchedExpectedAnalysisIds,
-    IReadOnlyList<string> ProvenMissingApprovedAnalysisIds,
-    IReadOnlyList<string> MatchedApprovedAnalysisIds,
-    IReadOnlyList<string> MatchedDisapprovedAnalysisIds,
-    IReadOnlyList<string> MatchedUnknownAnalysisIds,
-    IReadOnlyList<HumanAgreementProducedIdentity> UnmatchedProducedIdentities,
-    IReadOnlyList<HumanAgreementConflict> Conflicts,
+    [property: JsonRequired] int ProducedIdentityCount,
+    [property: JsonRequired] int ApprovedExpectedMorphologyCount,
+    [property: JsonRequired] int MatchedApprovedMorphologyCount,
+    [property: JsonRequired] IReadOnlyList<string> ObservedUnmatchedExpectedAnalysisIds,
+    [property: JsonRequired] IReadOnlyList<string> ProvenMissingApprovedAnalysisIds,
+    [property: JsonRequired] IReadOnlyList<string> MatchedApprovedAnalysisIds,
+    [property: JsonRequired] IReadOnlyList<string> MatchedDisapprovedAnalysisIds,
+    [property: JsonRequired] IReadOnlyList<string> MatchedUnknownAnalysisIds,
+    [property: JsonRequired] IReadOnlyList<HumanAgreementProducedIdentity> UnmatchedProducedIdentities,
+    [property: JsonRequired] IReadOnlyList<HumanAgreementConflict> Conflicts,
+    [property: JsonRequired]
     [property: JsonConverter(typeof(StrictStringEnumConverter<HumanAgreementSpellingAcceptance>))]
     HumanAgreementSpellingAcceptance SpellingAcceptance,
-    IReadOnlyList<HumanAgreementNegativeEvidence> NegativeEvidence);
+    [property: JsonRequired] IReadOnlyList<HumanAgreementNegativeEvidence> NegativeEvidence) : IJsonOnDeserialized
+{
+    void IJsonOnDeserialized.OnDeserialized() =>
+        ClosedShape.RequireNonNull(nameof(HumanAgreementFacts), (nameof(Limitations), Limitations),
+            (nameof(ObservedUnmatchedExpectedAnalysisIds), ObservedUnmatchedExpectedAnalysisIds),
+            (nameof(ProvenMissingApprovedAnalysisIds), ProvenMissingApprovedAnalysisIds),
+            (nameof(MatchedApprovedAnalysisIds), MatchedApprovedAnalysisIds),
+            (nameof(MatchedDisapprovedAnalysisIds), MatchedDisapprovedAnalysisIds),
+            (nameof(MatchedUnknownAnalysisIds), MatchedUnknownAnalysisIds),
+            (nameof(UnmatchedProducedIdentities), UnmatchedProducedIdentities),
+            (nameof(Conflicts), Conflicts), (nameof(NegativeEvidence), NegativeEvidence));
+}
 
 /// <summary>Reads and writes only declared JSON string names for one enum.</summary>
 public sealed class StrictStringEnumConverter<TEnum> : JsonConverter<TEnum> where TEnum : struct, Enum
@@ -259,5 +312,15 @@ public sealed class StrictStringEnumListConverter<TEnum> : JsonConverter<IReadOn
         writer.WriteStartArray();
         foreach (var value in values) ValueConverter.Write(writer, value, options);
         writer.WriteEndArray();
+    }
+}
+
+/// <summary>Throws when a required member of a deserialized record is null.</summary>
+internal static class ClosedShape
+{
+    public static void RequireNonNull(string record, params (string Name, object? Value)[] members)
+    {
+        foreach (var (name, value) in members)
+            if (value is null) throw new JsonException($"{record}.{name} must not be null.");
     }
 }
