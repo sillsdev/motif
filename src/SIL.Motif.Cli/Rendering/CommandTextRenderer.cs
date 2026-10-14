@@ -109,7 +109,8 @@ public static class CommandTextRenderer
             text.AppendLine(ProposalGroupText(group.Key) + " (" + group.Count().ToString(CultureInfo.CurrentCulture) + ")");
             foreach (var card in group)
             {
-                text.AppendLine("  " + card.Label + " — " + card.Status);
+                text.AppendLine("  " + card.Label + " — " + card.Status + (card.IsDraft ? " (Draft)" : string.Empty));
+                text.AppendLine("    " + card.ProposalId);
                 text.AppendLine("    Trial: " + TrialStandingText(card.Standing));
                 if (card.ChangeKinds.Count > 0)
                     text.AppendLine("    Changes: " + string.Join(", ", card.ChangeKinds.Select(kind => kind.Text)));

@@ -81,8 +81,8 @@ public sealed class GrammarCheckStoredAnalysesTests : IDisposable
             new GrammarCheckRequest(_pristine.CopyProjectFile(), StoredAnalyses: StoredAnalysisComparison.All),
             invoker, CancellationToken.None, defaultChecks: new MemoryDefaultProposalChecksStore());
 
-        Assert.True(result.Succeeded);
-        Assert.False(result.Value!.HasBaseline);
+        Assert.False(result.Succeeded);
+        Assert.Equal("baseline.missing", result.Refusal!.Code);
         Assert.Empty(invoker.Requests);
     }
 

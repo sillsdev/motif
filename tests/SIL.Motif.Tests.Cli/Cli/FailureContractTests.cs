@@ -82,10 +82,21 @@ public sealed class FailureContractTests : IDisposable
     [Fact]
     public void AMalformedProposalIdIsAnInvocationErrorAndEnveloped()
     {
-        var result = Run($"show proposal/short --project \"{_fwDataPath}\" --json");
+        var result = Run($"apply proposal/short --project \"{_fwDataPath}\" --json");
 
         Assert.Equal(1, result.ExitCode);
         Assert.Equal(FailureReason.InvalidArgument, Envelope(result.Error).Reason);
+    }
+
+    [Fact]
+    public void AShowSelectorThatIsNotAnIdIsAnOrdinaryMissingDraft()
+    {
+        var result = Run($"show proposal/short --project \"{_fwDataPath}\" --json");
+
+        Assert.Equal(2, result.ExitCode);
+        Assert.Equal(FailureReason.NotFound, Envelope(result.Error).Reason);
+        Assert.Equal("proposal.not-found", Envelope(result.Error).Code);
+        Assert.Empty(result.Output);
     }
 
     [Fact]

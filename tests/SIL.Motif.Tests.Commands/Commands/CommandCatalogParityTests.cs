@@ -88,6 +88,7 @@ public sealed class CommandCatalogParityTests
         "grammar-read.baseline-missing", "grammar-read.baseline-unavailable", "grammar-read.invalid-request",
         "baseline.busy", "baseline.copy-unloadable", "baseline.missing", "baseline.owned-root-violation",
         "baseline.source-incomplete", "baseline.text-words-unreadable",
+        "command.advanced-ai-mode-required", "command.developer-commands-required",
         "change.analysis-identity-required", "change.analysis-owner-invalid",
         "change.assessment-incomplete", "change.assessment-kind", "change.assessment-missing",
         "change.assessment-required",

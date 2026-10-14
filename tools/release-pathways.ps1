@@ -64,7 +64,7 @@ function Build-Sample {
 
 function Seed-Selection {
     param([Parameter(Mandatory = $true)] [string] $Project, [Parameter(Mandatory = $true)] [string] $TextId)
-    [void] (Invoke-CliJson @('baseline', 'capture', $Project))
+    [void] (Invoke-CliJson @('baseline', 'capture', '--project', $Project))
     [void] (Invoke-CliJson @('texts', 'list', '--project', $Project))
     [void] (Invoke-CliJson @('selection', 'set-default', '--project', $Project,
         '--name', 'Default', '--texts', $TextId))
@@ -264,8 +264,9 @@ try {
         throw "The installed CLI did not print '$proposalMarker' for the release authoring Draft: $($createdAuthoringDraft.Output)"
     }
     $authoringProposalId = $createdAuthoringDraft.Output.Substring($proposalMarkerStart + $proposalMarker.Length).Trim()
-    [void] (Invoke-CliJson @('compose-batch', '--project', $first.ProjectPath, '--draft', $authoringDraft,
-        '--intents', $authoringIntents))
+    $authored = Invoke-CliJson @('compose-batch', '--project', $first.ProjectPath, '--draft', $authoringDraft,
+        '--intents', $authoringIntents)
+    $authoredPhonemeId = [string] $authored.intents[0].createdObjects[0].id
     [void] (Invoke-CliJson @('label', '--project', $first.ProjectPath, '--draft', $authoringDraft,
         'Release pathway authoring'))
     [void] (Invoke-CliJson @('comment', '--project', $first.ProjectPath, '--draft', $authoringDraft,
@@ -273,6 +274,46 @@ try {
     [void] (Invoke-CliJson @('dry-run', '--project', $first.ProjectPath, $authoringProposalId, '--wait'))
     [void] (Invoke-CliJson @('trial', '--project', $first.ProjectPath, $authoringProposalId, '--wait'))
     [void] (Invoke-CliJson @('finalize', '--project', $first.ProjectPath, '--draft', $authoringDraft))
+    $authoringApply = Invoke-CliJson @('apply', $authoringProposalId, '--project', $first.ProjectPath)
+    if (-not $authoringApply.ok -or -not $authoringApply.applied -or
+        $authoringApply.receipt.proposalId -ne $authoringProposalId) {
+        throw 'The installed plain Apply did not return the authored Proposal Receipt.'
+    }
+    $authoredRead = Invoke-CliJson @('grammar', 'read', '--project', $first.ProjectPath,
+        '--kind', 'phoneme', '--id', $authoredPhonemeId)
+    if ($authoredRead.returned -ne 1 -or $authoredRead.items[0].id -ne $authoredPhonemeId -or
+        $authoredRead.items[0].name -ne 'motifDiscoveryProbe') {
+        throw 'The installed plain Apply did not persist the authored phoneme.'
+    }
+
+    $forceDraft = 'release-readiness-override'
+    [void] (Invoke-Cli @('new', '--project', $first.ProjectPath, '--draft', $forceDraft))
+    $forceIntent = @{ name = 'motifForceProbe'; representations = @('ɬ') } | ConvertTo-Json -Compress
+    $forceComposed = Invoke-CliJson @('compose-author-phoneme', '--project', $first.ProjectPath,
+        '--draft', $forceDraft, '--intent', $forceIntent)
+    [void] (Invoke-CliJson @('label', '--project', $first.ProjectPath, '--draft', $forceDraft,
+        'Deliberate Readiness override'))
+    [void] (Invoke-CliJson @('comment', '--project', $first.ProjectPath, '--draft', $forceDraft,
+        'No Trial is recorded for this Proposal; the release pathway exercises the human override.'))
+    $forceFinalized = Invoke-CliJson @('finalize', '--project', $first.ProjectPath, '--draft', $forceDraft)
+    $forceId = [string] $forceFinalized.proposalId
+    [void] (Invoke-CliJson @('dry-run', '--project', $first.ProjectPath, $forceId, '--wait'))
+    $notReady = Invoke-Process -Executable $script:CliPath -Arguments @('apply', $forceId,
+        '--project', $first.ProjectPath, '--json') -AllowFailure
+    $notReadyFailure = $notReady.Error | ConvertFrom-Json
+    if ($notReady.ExitCode -ne 2 -or $notReady.Output -or $notReadyFailure.code -ne 'apply.not-ready') {
+        throw 'The installed plain Apply did not refuse a deliberately untried Proposal.'
+    }
+    $forced = Invoke-CliJson @('apply', $forceId, '--project', $first.ProjectPath, '--force')
+    if (-not $forced.ok -or -not $forced.applied -or -not $forced.receipt.readiness.forced -or
+        $forced.receipt.proposalId -ne $forceId) {
+        throw 'The installed plain Apply did not record the deliberate Readiness override.'
+    }
+    $forcedRead = Invoke-CliJson @('grammar', 'read', '--project', $first.ProjectPath,
+        '--kind', 'phoneme', '--id', ([string] $forceComposed.createdObjects[0].id))
+    if ($forcedRead.returned -ne 1 -or $forcedRead.items[0].name -ne 'motifForceProbe') {
+        throw 'The installed forced Apply did not persist the authored phoneme.'
+    }
 }
 finally {
     if ($null -eq $previousAdvancedAiPath) { Remove-Item Env:MOTIF_ADVANCED_AI_MODE_PATH -ErrorAction SilentlyContinue }
@@ -302,7 +343,7 @@ Seed-Selection $review.ProjectPath $review.TextId
 Seed-IncorrectSpelling $review.ProjectPath
 $applied = Invoke-CliJson @('apply', '--all-pending', '--project', $review.ProjectPath)
 if (-not $applied.ok -or -not $applied.applied) { throw 'The installed CLI did not apply the staged change.' }
-[void] (Invoke-CliJson @('baseline', 'capture', $review.ProjectPath))
+[void] (Invoke-CliJson @('baseline', 'capture', '--project', $review.ProjectPath))
 [void] (Invoke-Cli @('assess', $review.ProjectPath, '--texts', $review.TextId))
 [void] (Invoke-CliJson @('overview', '--project', $review.ProjectPath))
 

@@ -2181,19 +2181,12 @@ static string UsageParameterName(string source)
 static int RefuseUnavailableCommand(
     string commandName, bool asJson, TextWriter error, CommandDescriptor command)
 {
-    var code = command.Surface == CommandSurface.AdvancedAi
-        ? "command.advanced-ai-mode-required"
-        : "command.developer-commands-required";
-    var message = command.Surface == CommandSurface.AdvancedAi
-        ? $"Command '{commandName}' requires Advanced AI mode. " +
-          FileAdvancedAiModePreferenceStore.DisabledMessage
-        : $"Command '{commandName}' requires Developer commands. Set MOTIF_DEVELOPER_COMMANDS=1 to enable them.";
-    if (command.Agent == AgentClass.HumanOnly)
-        message += " This command is human-only and is never exposed as an MCP tool.";
+    var facts = CommandAvailabilityFacts.For(command);
+    var message = CommandAvailabilityText.Render(facts);
     if (asJson)
     {
         error.WriteLine(ProjectionJson.Serialize(
-            new FailureEnvelope(FailureReason.Refused, message, code: code)));
+            new FailureEnvelope(FailureReason.Refused, message, facts.RefusalFacts(), facts.RefusalCode)));
     }
     else
     {

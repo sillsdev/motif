@@ -198,20 +198,8 @@ public static class HelpCommand
         output.WriteLine(string.Join("  ", commands));
     }
 
-    private static string EnablementText(CommandDescriptor command)
-    {
-        var enablement = command.Surface switch
-        {
-            CommandSurface.AdvancedAi => "This command requires Advanced AI mode. " +
-                SIL.Motif.Commands.Preferences.FileAdvancedAiModePreferenceStore.DisabledMessage,
-            CommandSurface.Developer => "This command requires Developer commands. " +
-                "Set MOTIF_DEVELOPER_COMMANDS=1 to enable them.",
-            _ => string.Empty,
-        };
-        return command.Agent == AgentClass.HumanOnly
-            ? enablement + " This command is human-only and is never exposed as an MCP tool."
-            : enablement;
-    }
+    private static string EnablementText(CommandDescriptor command) =>
+        CommandAvailabilityText.Render(CommandAvailabilityFacts.For(command));
 
     private static object BuildEntry(HelpEntry entry, bool command)
     {

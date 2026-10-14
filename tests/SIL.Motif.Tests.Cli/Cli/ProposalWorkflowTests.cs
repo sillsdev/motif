@@ -185,6 +185,7 @@ public sealed class ProposalWorkflowTests : IDisposable
         Assert.True(text.ExitCode == 0, text.Error + text.Output);
         Assert.Contains("Not tried yet", text.Output, StringComparison.Ordinal);
         Assert.Contains("Rendered proposal", text.Output, StringComparison.Ordinal);
+        Assert.Contains(card.ProposalId, text.Output, StringComparison.Ordinal);
         Assert.Contains("proposed", text.Output, StringComparison.Ordinal);
         Assert.DoesNotContain("ready", text.Output, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("pending", text.Output, StringComparison.OrdinalIgnoreCase);
@@ -709,7 +710,7 @@ public sealed class ProposalWorkflowTests : IDisposable
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void MissingChangeFingerprintBlocksApplyEvenWithForce(bool removeExtensions)
+    public async Task MissingChangeFingerprintBlocksApplyEvenWithForce(bool removeExtensions)
     {
         var loader = new FwDataProjectLoader();
         Guid wordformGuid;
@@ -765,6 +766,13 @@ public sealed class ProposalWorkflowTests : IDisposable
         var apply = ProposalCommands.Apply(new ApplyRequest(
             _fwDataPath, ProductVersion, created.Value.ProposalId, Force: true));
         Assert.Equal("apply.change-no-longer-fits", apply.Refusal?.Code);
+        var bytes = File.ReadAllBytes(_fwDataPath);
+        var cli = await CliProcess.RunAsync(_workerRoot, null, developerCommands: false,
+            "apply", created.Value.ProposalId, "--project", _fwDataPath, "--force", "--json");
+        Assert.Equal(2, cli.ExitCode);
+        Assert.Empty(cli.Output);
+        Assert.Equal("apply.change-no-longer-fits", ProjectionJson.Deserialize<FailureEnvelope>(cli.Error)!.Code);
+        Assert.Equal(bytes, File.ReadAllBytes(_fwDataPath));
     }
 
     [Fact]

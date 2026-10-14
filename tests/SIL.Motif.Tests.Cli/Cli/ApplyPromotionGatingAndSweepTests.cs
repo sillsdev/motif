@@ -13,6 +13,10 @@ using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Config;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.Parser;
+using SIL.Motif.Host.LcmUtils;
+using SIL.LCModel;
+using SIL.LCModel.Infrastructure;
+using SIL.LCModel.Core.Text;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Projects;
@@ -228,6 +232,75 @@ public sealed class ApplyPromotionGatingAndSweepTests
         Assert.True(result.Succeeded);
         Assert.Equal("applied", GetRecord(proposalId).Status);
         Assert.Equal(candidateId, GetCurrentAssessmentId());
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ReleasedPlainApplyProcessConsumesBoundDryRunAndPersistsItsReceipt(bool force)
+    {
+        var gloss = force ? "human readiness override" : "reviewed human apply";
+        var id = FinalizeAndTrial("released-plain-apply", gloss);
+        var digest = GetRecord(id).IntentDigest!;
+        if (!force)
+            RecordAssessment(id, digest, "Correctness", ("alpha", true));
+        var root = Path.Combine(Path.GetDirectoryName(_fwDataPath)!, "released-plain-apply-worker");
+        var arguments = new List<string> { "apply", id, "--project", _fwDataPath, "--json" };
+        if (force)
+        {
+            var notReady = await CliProcess.RunAsync(root, null, developerCommands: false, arguments.ToArray());
+            Assert.Equal(2, notReady.ExitCode);
+            Assert.Empty(notReady.Output);
+            Assert.Equal("apply.not-ready", ProjectionJson.Deserialize<FailureEnvelope>(notReady.Error)!.Code);
+            arguments.Add("--force");
+        }
+
+        var applied = await CliProcess.RunAsync(root, null, developerCommands: false, arguments.ToArray());
+
+        Assert.True(applied.ExitCode == 0, applied.Error + applied.Output);
+        Assert.Empty(applied.Error);
+        var response = ProjectionJson.Deserialize<ApplyPendingResult>(applied.Output)!;
+        Assert.True(response.Ok);
+        Assert.True(response.Applied);
+        Assert.Equal(id, response.Receipt!.ProposalId);
+        Assert.Equal(force, response.Receipt.Readiness!.Forced);
+        Assert.Equal("applied", GetRecord(id).Status);
+        using var cache = new FwDataProjectLoader().LoadScratchCache(_fwDataPath);
+        Assert.Equal(gloss, cache.ServiceLocator.GetInstance<ILexSenseRepository>().GetObject(_seed.FirstSenseId)
+            .Gloss.get_String(cache.WritingSystemFactory.GetWsFromStr(NewLangProjFixture.AnalysisTag)).Text);
+        using var database = ProjectMotifDatabase.Open(_fwDataPath);
+        using var connection = database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT COUNT(*) FROM Receipts WHERE ProposalId = $id;";
+        command.Parameters.AddWithValue("$id", id);
+        Assert.Equal(1L, command.ExecuteScalar());
+    }
+
+    [Fact]
+    public async Task ReleasedPlainApplyForceCannotOverrideProjectDrift()
+    {
+        var id = FinalizeAndTrial("released-drift-apply", "proposal gloss");
+        var loader = new FwDataProjectLoader();
+        using (var cache = loader.LoadCache(_fwDataPath))
+        {
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                cache.ServiceLocator.GetInstance<ILexSenseRepository>().GetObject(_seed.FirstSenseId).Gloss
+                    .set_String(cache.WritingSystemFactory.GetWsFromStr(NewLangProjFixture.AnalysisTag),
+                        TsStringUtils.MakeString("FieldWorks edit after Dry Run", cache.DefaultAnalWs)));
+            loader.Save(cache);
+        }
+        var bytes = File.ReadAllBytes(_fwDataPath);
+        var root = Path.Combine(Path.GetDirectoryName(_fwDataPath)!, "released-drift-worker");
+
+        var refused = await CliProcess.RunAsync(root, null, developerCommands: false,
+            "apply", id, "--project", _fwDataPath, "--force", "--json");
+
+        Assert.NotEqual(0, refused.ExitCode);
+        Assert.Empty(refused.Output);
+        var failure = ProjectionJson.Deserialize<FailureEnvelope>(refused.Error)!;
+        Assert.Equal("apply.drift", failure.Code);
+        Assert.Equal(bytes, File.ReadAllBytes(_fwDataPath));
+        Assert.Equal("proposed", GetRecord(id).Status);
     }
 
     // --- helpers ---

@@ -26,7 +26,17 @@ public sealed class ProjectCreateArgvTests : IDisposable
 
         Assert.NotEqual(0, result.ExitCode);
         using var refusal = JsonDocument.Parse(result.Error);
-        Assert.Equal("command.not-in-release", refusal.RootElement.GetProperty("code").GetString());
+        Assert.Equal("command.developer-commands-required", refusal.RootElement.GetProperty("code").GetString());
+        var message = refusal.RootElement.GetProperty("message").GetString()!;
+        Assert.Contains("Developer", message);
+        Assert.Contains("human-only", message);
+        Assert.Contains("MOTIF_DEVELOPER_COMMANDS=1", message);
+        var facts = refusal.RootElement.GetProperty("detail");
+        Assert.Equal("project create", facts.GetProperty("command").GetString());
+        Assert.Equal("Developer", facts.GetProperty("surface").GetString());
+        Assert.Equal("HumanOnly", facts.GetProperty("agentClass").GetString());
+        Assert.Equal("MOTIF_DEVELOPER_COMMANDS", facts.GetProperty("setting").GetString());
+        Assert.Contains("MOTIF_DEVELOPER_COMMANDS=1", facts.GetProperty("remedy").GetString());
         Assert.Empty(Directory.GetFileSystemEntries(Projects));
     }
 
