@@ -167,29 +167,21 @@ public sealed class StatsCommandTests : IDisposable
         Assert.Empty(fake.Requests);
     }
 
-    /// <summary>
-    /// PanGloss 0.8.3 names the wrong allomorph on every per-allomorph row, so the grouping is refused before any
-    /// parser runs. When the pin moves past it, this test fails on purpose: check the new release's rows, then lift
-    /// the guard.
-    /// </summary>
     [Theory]
     [InlineData("--group allomorph")]
     [InlineData("--group=allomorph")]
-    [InlineData("--top 5 --group allomorph")]
-    public void AllomorphGroupingIsRefusedWhileThePinnedParserMislabelsIt(string arguments)
+    public void AllomorphGroupingArgumentsAreForwardedForBothFlagSpellings(string arguments)
     {
         var forwarded = arguments.Split(' ');
-        Assert.Equal("v0.8.3", PanGlossInterfaceVersions.SourceTag);
         var fwDataPath = _pristine.CopyProjectFile();
         CaptureBaseline(fwDataPath);
         RecordAssessment(fwDataPath, proposalId: null, cachePath: "cache.sqlite");
-        var fake = new FakeInvoker();
+        var fake = Completing("group    key    count" + Environment.NewLine);
 
         var outcome = Run(fwDataPath, null, StatsOutputKind.Text, forwarded, fake);
 
-        Assert.False(outcome.Succeeded);
-        Assert.Equal("stats.allomorph-unreliable", outcome.Refusal!.Code);
-        Assert.Empty(fake.Requests);
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        Assert.Equal(forwarded, SeenStats(fake).ForwardedArguments);
     }
 
     [Fact]

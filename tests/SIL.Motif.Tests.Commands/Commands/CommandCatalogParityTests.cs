@@ -155,7 +155,7 @@ public sealed class CommandCatalogParityTests
         "retirement-review.evidence-inconsistent", "retirement-review.invalid-draft", "retirement-review.stale-dry-run",
         "selection.empty", "selection.invalid-limits", "selection.revision-conflict", "selection.text-not-found",
         "stats.invalid-evidence", "stats.no-evidence", "stats.wrong-kind",
-        "stats.allomorph-unreliable", "stats.cancelled", "stats.format-conflict", "stats.no-assessment",
+        "stats.cancelled", "stats.format-conflict", "stats.no-assessment",
         "stats.no-cache", "stats.parser-refused", "stats.parser-unavailable",
         "stats.timed-out", "stats.wrong-assessment",
         "timing.invalid-override", "timing.invalid-request", "timing.invalid-word-set",

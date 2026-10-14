@@ -25,12 +25,10 @@ namespace SIL.Motif.Commands.Assess;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Motif never parses, reshapes, or second-guesses PanGloss's stats vocabulary, with one exception.</b> This
+/// <b>Motif never parses, reshapes, or second-guesses PanGloss's stats vocabulary.</b> This
 /// command contributes exactly two arguments of its own — the grammar path and the cache path — and hands
 /// <see cref="StatsRequest.ForwardedArguments"/> to the invocation untouched. A new PanGloss filter or
-/// grouping is usable through Motif the day it ships, with no change here. The exception is
-/// <c>--group allomorph</c>, refused while <see cref="AllomorphStatisticsAreReliable"/> is false because the pinned
-/// parser labels those rows with the wrong allomorph.
+/// grouping is usable through Motif the day it ships, with no change here.
 /// </para>
 /// Retained invocation evidence supplies the exact source and cache; verified copies protect those artifacts.
 /// </remarks>
@@ -73,16 +71,6 @@ public static class StatsCommand
                 "stats.format-conflict", FailureReason.InvalidArgument,
                 "The forwarded arguments already name --format; --json requests PanGloss's JSONL rows " +
                 "itself and cannot override the caller's own choice.",
-                Fact(("projectPath", request.ProjectPath))));
-        }
-
-        if (!AllomorphStatisticsAreReliable && GroupsByAllomorph(request.ForwardedArguments))
-        {
-            return CommandOutcome<StatsCommandResponse>.Refused(new Refusal(
-                "stats.allomorph-unreliable", FailureReason.Refused,
-                $"PanGloss {PanGlossInterfaceVersions.SourceTag} labels every per-allomorph statistics row with the " +
-                "wrong allomorph, so Motif does not show them. Group by object, morpheme or word instead; the " +
-                "timings and counts per object are correct.",
                 Fact(("projectPath", request.ProjectPath))));
         }
 
@@ -192,20 +180,6 @@ public static class StatsCommand
             }
         });
     }
-
-    /// <summary>
-    /// Whether the pinned PanGloss attributes per-allomorph statistics rows to the right allomorph. PanGloss 0.8.3 reads a
-    /// row's position within its own entry or rule as a global allomorph id, so a row names some other allomorph, or
-    /// the run panics on a grammar with at most one allomorph; pinned by
-    /// <c>AllomorphGroupingIsRefusedWhileThePinnedParserMislabelsIt</c>.
-    /// </summary>
-    internal const bool AllomorphStatisticsAreReliable = false;
-
-    private static bool GroupsByAllomorph(IReadOnlyList<string> forwardedArguments) =>
-        forwardedArguments.Where((argument, index) =>
-                argument == "--group=allomorph" ||
-                argument == "--group" && index + 1 < forwardedArguments.Count && forwardedArguments[index + 1] == "allomorph")
-            .Any();
 
     // PanGloss owns --format's meaning; Motif checks only for its presence, to refuse rather than override.
     private static bool ContainsFormatFlag(IReadOnlyList<string> forwardedArguments) =>

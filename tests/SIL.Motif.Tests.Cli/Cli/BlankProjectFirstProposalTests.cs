@@ -93,13 +93,22 @@ public sealed class BlankProjectFirstProposalTests(ITestOutputHelper output)
             Report("trial", trial);
             Assert.True(trial.ExitCode == 0, trial.Error + Environment.NewLine + trial.Output);
             var trialStatus = ProjectionJson.Deserialize<JobStatusResponse>(trial.Output)!;
-            string? failure;
+            Assert.Equal(JobStatus.Completed, trialStatus.Status);
+            Assert.Equal(4, trialStatus.TrialProgress?.Completed);
+            Assert.Equal(4, trialStatus.TrialProgress?.Total);
+
             using (var database = ProjectMotifDatabase.Open(projectPath))
-                failure = new JobRepository(database).Get(trialStatus.JobId)!.ResultJson;
-            // PanGloss 0.8.3's --stats reads a per-entry allomorph position as a global id and panics on a tiny grammar.
-            Assert.True(trialStatus.Status == JobStatus.CompletedWithAssessmentFailure &&
-                failure!.Contains("has no registry owner", StringComparison.Ordinal),
-                "The pinned PanGloss now completes this Trial: assert Completed here instead. " + trial.Output + failure);
+            {
+                using var completion = JsonDocument.Parse(new JobRepository(database).Get(trialStatus.JobId)!.ResultJson!);
+                var assessmentIds = completion.RootElement.GetProperty("assessmentIds")
+                    .EnumerateArray().Select(value => value.GetString()!).ToArray();
+                Assert.NotEmpty(assessmentIds);
+                Assert.Equal(assessmentIds.Length, assessmentIds.Distinct(StringComparer.Ordinal).Count());
+
+                var assessments = new AssessmentRepository(database);
+                var receipts = assessmentIds.Select(assessments.Get).ToArray();
+                Assert.All(receipts, receipt => Assert.Equal(proposalId, receipt.ProposalId?.Value));
+            }
 
             using var reopened = new FwDataProjectLoader().LoadScratchCache(projectPath);
             Assert.Empty(Assert.Single(reopened.LangProject.PhonologicalDataOA.PhonemeSetsOS).PhonemesOC);
