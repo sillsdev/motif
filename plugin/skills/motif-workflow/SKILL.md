@@ -12,7 +12,7 @@ If the Motif tools are missing, check the MCP connection status first. If the cl
 server started and connected successfully but Advanced AI mode is OFF and zero tools are exposed, this
 is the mode gate: in Motif, turn on Advanced AI mode, or run `motif settings advanced-ai on`. In a
 sandbox, set `MOTIF_ADVANCED_AI_MODE_PATH` to a writable preference file before changing the setting.
-If available, use the inert `motif_advanced_ai_setup` prompt for these first-enable steps; it does not
+If your MCP client supports prompts, open Motif's inert setup prompt for these first-enable steps; it does not
 read project data or change settings. Then restart the Motif MCP server and reconnect this assistant so
 the server reads the setting at startup. If the client reports that the server failed to start or
 connect, inspect its MCP launch log instead. Do not substitute direct FieldWorks, SQL, XML, or file edits.

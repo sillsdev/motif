@@ -1,7 +1,7 @@
 [
   {
     "name": "motif_start_proposal",
-    "description": "Start a Proposal. Starts a named Draft holding one related set of semantic changes. Measure it and revise it before Finalize. Only a person can Apply.\nCommand: new. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nLabel: The short description a person reads while reviewing the Proposal.",
+    "description": "Start a Proposal. Starts a named Draft holding one related set of semantic changes. Set a short label and a comment before Finalize, then measure and revise the Draft. Only a person can Apply.\nCommand: new. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nLabel: The short description a person reads while reviewing the Proposal.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -992,7 +992,7 @@
   },
   {
     "name": "motif_finalize_proposal",
-    "description": "Finalize a Proposal. Finalizes a Draft as an immutable Proposal revision for a person to review. Evidence for unchanged content on the same Baseline remains current.\nCommand: finalize. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nExpectedRevision: The required Draft revision for this write.",
+    "description": "Finalize a Proposal. Finalizes a Draft as an immutable Proposal revision for a person to review. The Draft needs both a short label and a comment. Evidence for unchanged content on the same Baseline remains current.\nCommand: finalize. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nExpectedRevision: The required Draft revision for this write.",
     "inputSchema": {
       "type": "object",
       "properties": {
