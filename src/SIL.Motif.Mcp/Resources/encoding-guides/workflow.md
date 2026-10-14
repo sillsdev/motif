@@ -13,7 +13,7 @@ Start by learning what the saved project and words already show. Make one small 
 
 - State one linguistic claim and the project evidence for it.
 - Use `motif_start_proposal` and the available semantic composers that fit the claim. New grammar objects include parts of speech, lexical entries with one sense and MSA, inflection features and classes, stem names, affix slots and templates, plus phonemes, natural classes, environments and phonological rules.
-- Use `motif_compose_batch` for related intents that depend on each other. Supply each as a `verb` and structured `intent` object, with an optional `citation`; later intents can refer to entity ids created earlier in the batch.
+- Use `motif_compose_batch` to stage related intents together. Supply each as a `verb` and structured `intent` object, with an optional `citation`. Use entity ids returned by earlier completed calls or batches; an intent that needs a newly created entity's returned id belongs in a later call or batch.
 - Keep the Proposal to one related change. If a required composer is missing, say which encoding cannot be made and why; do not approximate it with unrelated edits.
 
 ## Try it, then ask or defer

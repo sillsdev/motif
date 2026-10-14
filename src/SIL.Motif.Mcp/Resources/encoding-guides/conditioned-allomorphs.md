@@ -12,7 +12,7 @@ A linguist sees one morpheme with different spoken or written forms in different
 
 ## Motif support
 
-`motif_lexicon` with detailed results can read existing allomorphs and their environments. `motif_grammar` can read natural classes and environments. `motif_add_phoneme`, `motif_add_natural_class` and `motif_add_environment` create the sound inventory and context. `motif_add_lexeme_form` changes an existing lexeme form. Motif has no composer to create an alternate allomorph; `motif_edit_allomorph_condition`, when selected by the profile, can link an environment to an existing allomorph.
+`motif_lexicon` with detailed results can read existing allomorphs and their environments. `motif_grammar` can read natural classes and environments. `motif_add_phoneme`, `motif_add_natural_class` and `motif_add_environment` create the sound inventory and context. `motif_add_lexeme_form` changes an existing lexeme form. `motif_add_alternate_form` creates a stem or affix alternate under an existing entry. It accepts optional sound `environments` and, for affix forms, optional `inflectionClasses`. When alternates already exist, supply an exact `placement` gap. `motif_edit_allomorph_condition`, when selected by the profile, can link an environment to an existing allomorph.
 
 ## Check with a Trial
 
