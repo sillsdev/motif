@@ -2,7 +2,7 @@
 
 Stages every intent in a JSON file in one Draft with one project load, through the same checks as each composing command alone. If any intent is refused, nothing is added. Only a person can Apply.
 
-Composing operations does not set the Draft's review text. Before Finalize, add both a short label with [label](cmd:label) and a comment with [comment](cmd:comment).
+Composing operations does not set the Draft's review text. Before Finalize, add both a short label with `motif label` and a comment with `motif comment`.
 
 The file names each intent's composing command and carries the same closed intent that command's `--intent` takes.
 Add an optional `citation` beside `intent`; Motif records it as operation provenance without changing the intent or its digest.

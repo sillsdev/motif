@@ -18,7 +18,7 @@ The JSON response has `ok`, `applied`, and a one-line `summary`, as `apply --all
 
 ## Readiness
 
-Apply can be refused with `apply.not-ready` when the current Trial has no Correctness Assessment for this revision. A project with no stems, or no approved morphology comparisons in the Trial, may have no Correctness result to satisfy Readiness; timing-only evidence is not enough. This Released command has no `--force` option, so collect the required evidence before applying.
+Apply can be refused with `apply.not-ready` when the current Trial has no Correctness Assessment for this revision. A timing-only Trial supplies no Correctness Assessment. A Correctness result with zero approved expectations supplies no comparison of approved readings. In a project with no stems, inspect the recorded parse results and comparisons. This Released command has no `--force` option, so collect the required evidence before applying.
 
 ## Related commands
 

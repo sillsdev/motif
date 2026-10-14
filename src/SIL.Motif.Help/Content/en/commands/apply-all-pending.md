@@ -8,7 +8,7 @@ Use this command after reviewing the pending Proposal and while FieldWorks has r
 
 A Proposal made only of the bounded Notebook judgment writes can be ready without a Correctness Assessment when its current bound Dry Run shows only Notebook record, owned-text and reserved-field effects. Mixed Proposals still need normal Readiness evidence. The Apply result records whether Correctness was exempt and why; Dry Run, Preflight and Apply still apply.
 
-When Apply is refused with `apply.not-ready`, the current evidence does not satisfy Readiness. A project with no stems or no approved morphology comparisons may have no Correctness Assessment for the Proposal; timing-only evidence is not enough. This Released command has no `--force` option.
+When Apply is refused with `apply.not-ready`, the current evidence does not satisfy Readiness. A timing-only Trial supplies no Correctness Assessment. A Correctness result with zero approved expectations supplies no comparison of approved readings. In a project with no stems, inspect the recorded parse results and comparisons. This Released command has no `--force` option.
 
 ## Example
 
