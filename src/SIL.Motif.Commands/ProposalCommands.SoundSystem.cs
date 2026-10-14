@@ -195,7 +195,8 @@ public static partial class ProposalCommands
                     return (input, RecordParsimonyDispositionComposer.Build(cache, intent, proposalId));
                 });
         }
-        catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)
+        catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException &&
+            !SqliteConnections.IsBusy(exception))
         {
             return CommandOutcome<ComposedOperationsResponse>.Refused(
                 DraftInvalid(exception.Message, ("draftName", request.DraftName)));
@@ -238,7 +239,8 @@ public static partial class ProposalCommands
             return ComposeIntoDraft(database, project, draftName, composer, (cache, proposalId) =>
                 (document.RootElement.Clone(), build(cache, document.RootElement, proposalId)));
         }
-        catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)
+        catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException &&
+            !SqliteConnections.IsBusy(exception))
         {
             return CommandOutcome<ComposedOperationsResponse>.Refused(
                 DraftInvalid(exception.Message, ("draftName", draftName)));
@@ -255,7 +257,8 @@ public static partial class ProposalCommands
                 return Single(ComposeStepsIntoDraft(database, project, draftName,
                     [ComposeStep.From(composer, document.RootElement.Clone())]));
             }
-            catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException)
+            catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException &&
+                !SqliteConnections.IsBusy(ex))
             {
                 return CommandOutcome<ComposedOperationsResponse>.Refused(DraftInvalid(ex.Message, ("draftName", draftName)));
             }
@@ -445,7 +448,8 @@ public static partial class ProposalCommands
                 ("draftName", draftName), ("intentIndex", exception.Index.ToString(CultureInfo.InvariantCulture)),
                 ("verb", verb)));
         }
-        catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)
+        catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException &&
+            !SqliteConnections.IsBusy(exception))
         {
             return CommandOutcome<ComposedOperationsResponse[]>.Refused(
                 DraftInvalid(exception.Message, ("draftName", draftName)));

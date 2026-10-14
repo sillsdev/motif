@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Data.Sqlite;
@@ -219,9 +220,11 @@ public sealed class AssessmentRepository : IAssessmentRepository
     {
         ArgumentNullException.ThrowIfNull(assessments);
         foreach (var assessment in assessments) ValidateRecord(assessment);
+        // Serialized before the write lock is taken, so a large Trial holds it only for its inserts.
+        var prepared = assessments.Select(Prepare).ToArray();
         using var connection = _database.OpenConnection();
         using var transaction = connection.BeginTransaction();
-        InsertRecords(connection, transaction, assessments);
+        InsertPrepared(connection, transaction, prepared);
         transaction.Commit();
     }
 
@@ -233,15 +236,91 @@ public sealed class AssessmentRepository : IAssessmentRepository
 
     internal static void InsertRecords(
         SqliteConnection connection, SqliteTransaction transaction,
-        IReadOnlyList<NewAssessmentRecord> assessments)
+        IReadOnlyList<NewAssessmentRecord> assessments) =>
+        InsertPrepared(connection, transaction, assessments.Select(Prepare).ToArray());
+
+    private static void InsertPrepared(
+        SqliteConnection connection, SqliteTransaction transaction, IReadOnlyList<PreparedAssessment> assessments)
     {
-        foreach (var assessment in assessments)
+        foreach (var prepared in assessments)
         {
-            if (assessment.Invocation is { } invocation) InsertInvocation(connection, transaction, invocation);
-            InsertHeader(connection, transaction, assessment);
-            InsertWordsAndAnalyses(connection, transaction, assessment.AssessmentId, assessment.Words);
-            InsertObjectTimings(connection, transaction, assessment.AssessmentId, assessment.ObjectTimings);
+            var assessment = prepared.Record;
+            if (assessment.Invocation is { } invocation)
+                InsertInvocation(connection, transaction, invocation, prepared.InvocationJson!);
+            InsertHeader(connection, transaction, prepared);
+            InsertWordsAndAnalyses(connection, transaction, prepared);
+            InsertRows(connection, transaction, "AssessmentObjectTimings", ObjectTimingColumns,
+                prepared.ObjectTimings);
         }
+    }
+
+    // Every value a row needs, computed outside the transaction; word rows leave their id to be assigned inside it.
+    private sealed record PreparedAssessment(
+        NewAssessmentRecord Record,
+        string? InvocationJson,
+        string SelectionWordsJson,
+        string? SelectionProvenanceJson,
+        IReadOnlyList<object?[]> Words,
+        IReadOnlyList<(int Word, object?[] Values)> Analyses,
+        IReadOnlyList<object?[]> ObjectTimings);
+
+    private static readonly string[] WordColumns =
+    [
+        "AssessedWordId", "AssessmentId", "OrdinalIndex", "Word", "Outcome", "ElapsedMs", "ElapsedNs", "RawSignature",
+        "MorphologyJson", "CorrectnessJson", "ProjectStanding", "OccurrenceCount", "ReadingGradesJson",
+        "MissedApprovedCount", "MissedApprovedJson", "IsIncomplete", "Attempts", "Passes", "AnalysisComparisonJson",
+    ];
+
+    private static readonly string[] AnalysisColumns =
+        ["AssessedWordId", "OrdinalIndex", "CategoryGuid", "MorphemeGuidsJson", "RootIndex", "IdentityDigest"];
+
+    private static readonly string[] ObjectTimingColumns =
+    [
+        "AssessmentId", "OrdinalIndex", "Kind", "Key", "IdentityQuality", "Direction", "Object", "Word", "Attempts",
+        "Passes", "ElapsedNs",
+    ];
+
+    private static PreparedAssessment Prepare(NewAssessmentRecord assessment)
+    {
+        var words = new List<object?[]>(assessment.Words.Count);
+        var analyses = new List<(int, object?[])>();
+        for (var wordIndex = 0; wordIndex < assessment.Words.Count; wordIndex++)
+        {
+            var word = assessment.Words[wordIndex];
+            words.Add(
+            [
+                null, assessment.AssessmentId, wordIndex, word.Word, word.Outcome, word.ElapsedMs, word.ElapsedNs,
+                word.RawSignature,
+                word.Morphology is null ? null : JsonSerializer.Serialize(word.Morphology, ParseMorphEvidence.JsonOptions),
+                word.Correctness is null ? null : JsonSerializer.Serialize(word.Correctness, ParseMorphEvidence.JsonOptions),
+                word.ProjectStanding, word.OccurrenceCount,
+                word.ReadingGrades is null ? null : JsonSerializer.Serialize(word.ReadingGrades),
+                word.MissedApprovedCount,
+                word.MissedApproved is null ? null : JsonSerializer.Serialize(word.MissedApproved, ParseMorphEvidence.JsonOptions),
+                word.IsIncomplete ? 1 : 0, word.Attempts, word.Passes,
+                word.AnalysisComparison is null ? null
+                    : JsonSerializer.Serialize(word.AnalysisComparison, ParseMorphEvidence.JsonOptions),
+            ]);
+            for (var analysisIndex = 0; analysisIndex < word.Analyses.Count; analysisIndex++)
+            {
+                var analysis = word.Analyses[analysisIndex];
+                analyses.Add((wordIndex,
+                [
+                    null, analysisIndex, analysis.CategoryGuid, JsonSerializer.Serialize(analysis.MorphemeGuids),
+                    analysis.RootIndex, analysis.IdentityDigest,
+                ]));
+            }
+        }
+        var timings = assessment.ObjectTimings.Select((row, index) => new object?[]
+        {
+            assessment.AssessmentId, index, row.Kind, row.Key, row.IdentityQuality, row.Direction, row.Object,
+            row.Word, row.Attempts, row.Passes, row.ElapsedNs,
+        }).ToArray();
+        return new PreparedAssessment(assessment,
+            assessment.Invocation is null ? null : JsonSerializer.Serialize(assessment.Invocation, InvocationJsonOptions),
+            JsonSerializer.Serialize(assessment.Selection.Words),
+            assessment.Selection.Provenance is null ? null : JsonSerializer.Serialize(assessment.Selection.Provenance),
+            words, analyses, timings);
     }
 
     private static void ValidateRecord(NewAssessmentRecord assessment)
@@ -560,7 +639,8 @@ public sealed class AssessmentRepository : IAssessmentRepository
     }
 
     private static void InsertInvocation(
-        SqliteConnection connection, SqliteTransaction transaction, BatchInvocationEvidence invocation)
+        SqliteConnection connection, SqliteTransaction transaction, BatchInvocationEvidence invocation,
+        string invocationJson)
     {
         if (string.IsNullOrWhiteSpace(invocation.InvocationId))
             throw new ArgumentException("An invocation id is required.", nameof(invocation));
@@ -578,13 +658,14 @@ public sealed class AssessmentRepository : IAssessmentRepository
         insert.Transaction = transaction;
         insert.CommandText = "INSERT INTO AssessmentInvocations (InvocationId, EvidenceJson) VALUES ($id, $evidence);";
         insert.Parameters.AddWithValue("$id", invocation.InvocationId);
-        insert.Parameters.AddWithValue("$evidence", JsonSerializer.Serialize(invocation, InvocationJsonOptions));
+        insert.Parameters.AddWithValue("$evidence", invocationJson);
         insert.ExecuteNonQuery();
     }
 
     private static void InsertHeader(
-        SqliteConnection connection, SqliteTransaction transaction, NewAssessmentRecord assessment)
+        SqliteConnection connection, SqliteTransaction transaction, PreparedAssessment prepared)
     {
+        var assessment = prepared.Record;
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
         command.CommandText = """
@@ -601,10 +682,9 @@ public sealed class AssessmentRepository : IAssessmentRepository
             """;
         command.Parameters.AddWithValue("$id", assessment.AssessmentId);
         command.Parameters.AddWithValue("$selectionName", assessment.Selection.Name);
-        command.Parameters.AddWithValue("$selectionWords", JsonSerializer.Serialize(assessment.Selection.Words));
+        command.Parameters.AddWithValue("$selectionWords", prepared.SelectionWordsJson);
         command.Parameters.AddWithValue("$selectionSha", assessment.Selection.Sha256);
-        command.Parameters.AddWithValue("$selectionProvenance",
-            assessment.Selection.Provenance is null ? DBNull.Value : JsonSerializer.Serialize(assessment.Selection.Provenance));
+        command.Parameters.AddWithValue("$selectionProvenance", (object?)prepared.SelectionProvenanceJson ?? DBNull.Value);
         command.Parameters.AddWithValue("$outcomeDigest", (object?)assessment.OutcomeDigest ?? DBNull.Value);
         command.Parameters.AddWithValue("$semanticDigest", (object?)assessment.SemanticDigest ?? DBNull.Value);
         command.Parameters.AddWithValue("$grammarSha", assessment.GrammarSourceSha256);
@@ -630,137 +710,50 @@ public sealed class AssessmentRepository : IAssessmentRepository
     }
 
     private static void InsertWordsAndAnalyses(
-        SqliteConnection connection, SqliteTransaction transaction, string assessmentId,
-        IReadOnlyList<AssessedWord> words)
+        SqliteConnection connection, SqliteTransaction transaction, PreparedAssessment prepared)
     {
-        using var insertWord = connection.CreateCommand();
-        insertWord.Transaction = transaction;
-        insertWord.CommandText = """
-            INSERT INTO AssessedWords
-                (AssessmentId, OrdinalIndex, Word, Outcome, ElapsedMs, ElapsedNs, RawSignature, MorphologyJson, CorrectnessJson,
-                 ProjectStanding, OccurrenceCount, ReadingGradesJson, MissedApprovedCount, MissedApprovedJson,
-                 IsIncomplete, Attempts, Passes, AnalysisComparisonJson)
-            VALUES
-                ($id, $ordinal, $word, $outcome, $elapsed, $elapsedNs, $signature, $morphology, $correctness,
-                 $standing, $occurrences, $grades, $missed, $missedReadings, $incomplete, $attempts, $passes, $analysisComparison);
+        if (prepared.Words.Count == 0) return;
+        // AUTOINCREMENT never reuses an id, so the next one is past both the sequence and the table.
+        using var next = connection.CreateCommand();
+        next.Transaction = transaction;
+        next.CommandText = """
+            SELECT MAX(COALESCE((SELECT seq FROM sqlite_sequence WHERE name = 'AssessedWords'), 0),
+                       COALESCE((SELECT MAX(AssessedWordId) FROM AssessedWords), 0)) + 1;
             """;
-        var assessmentIdParam = insertWord.Parameters.Add("$id", SqliteType.Text);
-        var wordOrdinalParam = insertWord.Parameters.Add("$ordinal", SqliteType.Integer);
-        var wordTextParam = insertWord.Parameters.Add("$word", SqliteType.Text);
-        var wordOutcomeParam = insertWord.Parameters.Add("$outcome", SqliteType.Text);
-        var wordElapsedParam = insertWord.Parameters.Add("$elapsed", SqliteType.Integer);
-        var wordElapsedNsParam = insertWord.Parameters.Add("$elapsedNs", SqliteType.Integer);
-        var wordSignatureParam = insertWord.Parameters.Add("$signature", SqliteType.Text);
-        var morphologyParam = insertWord.Parameters.Add("$morphology", SqliteType.Text);
-        var correctnessParam = insertWord.Parameters.Add("$correctness", SqliteType.Text);
-        var standingParam = insertWord.Parameters.Add("$standing", SqliteType.Text);
-        var occurrenceParam = insertWord.Parameters.Add("$occurrences", SqliteType.Integer);
-        var gradesParam = insertWord.Parameters.Add("$grades", SqliteType.Text);
-        var comparisonParam = insertWord.Parameters.Add("$analysisComparison", SqliteType.Text);
-        var missedParam = insertWord.Parameters.Add("$missed", SqliteType.Integer);
-        var missedReadingsParam = insertWord.Parameters.Add("$missedReadings", SqliteType.Text);
-        var incompleteParam = insertWord.Parameters.Add("$incomplete", SqliteType.Integer);
-        var attemptsParam = insertWord.Parameters.Add("$attempts", SqliteType.Integer);
-        var passesParam = insertWord.Parameters.Add("$passes", SqliteType.Integer);
-
-        using var lastRowId = connection.CreateCommand();
-        lastRowId.Transaction = transaction;
-        lastRowId.CommandText = "SELECT last_insert_rowid();";
-
-        using var insertAnalysis = connection.CreateCommand();
-        insertAnalysis.Transaction = transaction;
-        insertAnalysis.CommandText = """
-            INSERT INTO ParsedAnalyses (AssessedWordId, OrdinalIndex, CategoryGuid, MorphemeGuidsJson, RootIndex, IdentityDigest)
-            VALUES ($wordId, $ordinal, $category, $morphemes, $rootIndex, $identity);
-            """;
-        var analysisWordIdParam = insertAnalysis.Parameters.Add("$wordId", SqliteType.Integer);
-        var analysisOrdinalParam = insertAnalysis.Parameters.Add("$ordinal", SqliteType.Integer);
-        var analysisCategoryParam = insertAnalysis.Parameters.Add("$category", SqliteType.Text);
-        var analysisMorphemesParam = insertAnalysis.Parameters.Add("$morphemes", SqliteType.Text);
-        var analysisRootIndexParam = insertAnalysis.Parameters.Add("$rootIndex", SqliteType.Integer);
-        var analysisIdentityParam = insertAnalysis.Parameters.Add("$identity", SqliteType.Text);
-
-        for (var wordIndex = 0; wordIndex < words.Count; wordIndex++)
-        {
-            var word = words[wordIndex];
-            assessmentIdParam.Value = assessmentId;
-            wordOrdinalParam.Value = wordIndex;
-            wordTextParam.Value = word.Word;
-            wordOutcomeParam.Value = word.Outcome;
-            wordElapsedParam.Value = (object?)word.ElapsedMs ?? DBNull.Value;
-            wordElapsedNsParam.Value = (object?)word.ElapsedNs ?? DBNull.Value;
-            wordSignatureParam.Value = (object?)word.RawSignature ?? DBNull.Value;
-            morphologyParam.Value = word.Morphology is null ? DBNull.Value
-                : JsonSerializer.Serialize(word.Morphology, ParseMorphEvidence.JsonOptions);
-            correctnessParam.Value = word.Correctness is null ? DBNull.Value
-                : JsonSerializer.Serialize(word.Correctness, ParseMorphEvidence.JsonOptions);
-            standingParam.Value = (object?)word.ProjectStanding ?? DBNull.Value;
-            occurrenceParam.Value = (object?)word.OccurrenceCount ?? DBNull.Value;
-            gradesParam.Value = word.ReadingGrades is null ? DBNull.Value : JsonSerializer.Serialize(word.ReadingGrades);
-            comparisonParam.Value = word.AnalysisComparison is null ? DBNull.Value
-                : JsonSerializer.Serialize(word.AnalysisComparison, ParseMorphEvidence.JsonOptions);
-            missedParam.Value = (object?)word.MissedApprovedCount ?? DBNull.Value;
-            missedReadingsParam.Value = word.MissedApproved is null ? DBNull.Value
-                : JsonSerializer.Serialize(word.MissedApproved, ParseMorphEvidence.JsonOptions);
-            incompleteParam.Value = word.IsIncomplete ? 1 : 0;
-            attemptsParam.Value = (object?)word.Attempts ?? DBNull.Value;
-            passesParam.Value = (object?)word.Passes ?? DBNull.Value;
-            insertWord.ExecuteNonQuery();
-
-            var assessedWordId = (long)lastRowId.ExecuteScalar()!;
-
-            for (var analysisIndex = 0; analysisIndex < word.Analyses.Count; analysisIndex++)
-            {
-                var analysis = word.Analyses[analysisIndex];
-                analysisWordIdParam.Value = assessedWordId;
-                analysisOrdinalParam.Value = analysisIndex;
-                analysisCategoryParam.Value = (object?)analysis.CategoryGuid ?? DBNull.Value;
-                analysisMorphemesParam.Value = JsonSerializer.Serialize(analysis.MorphemeGuids);
-                analysisRootIndexParam.Value = analysis.RootIndex;
-                analysisIdentityParam.Value = analysis.IdentityDigest;
-                insertAnalysis.ExecuteNonQuery();
-            }
-        }
+        var firstId = (long)next.ExecuteScalar()!;
+        for (var index = 0; index < prepared.Words.Count; index++) prepared.Words[index][0] = firstId + index;
+        InsertRows(connection, transaction, "AssessedWords", WordColumns, prepared.Words);
+        foreach (var (word, values) in prepared.Analyses) values[0] = firstId + word;
+        InsertRows(connection, transaction, "ParsedAnalyses", AnalysisColumns,
+            prepared.Analyses.Select(analysis => analysis.Values).ToArray());
     }
 
-    private static void InsertObjectTimings(
-        SqliteConnection connection, SqliteTransaction transaction, string assessmentId,
-        IReadOnlyList<AssessmentObjectTiming> rows)
+    // Many rows per statement keep the write lock to a few statements per hundred words.
+    private const int RowsPerStatement = 100;
+
+    private static void InsertRows(SqliteConnection connection, SqliteTransaction transaction, string table,
+        IReadOnlyList<string> columns, IReadOnlyList<object?[]> rows)
     {
-        using var command = connection.CreateCommand();
-        command.Transaction = transaction;
-        command.CommandText = """
-            INSERT INTO AssessmentObjectTimings
-                (AssessmentId, OrdinalIndex, Kind, Key, IdentityQuality, Direction, Object, Word,
-                 Attempts, Passes, ElapsedNs)
-            VALUES ($assessment, $ordinal, $kind, $key, $identityQuality, $direction, $object, $word,
-                    $attempts, $passes, $elapsedNs);
-            """;
-        var assessment = command.Parameters.Add("$assessment", SqliteType.Text);
-        var ordinal = command.Parameters.Add("$ordinal", SqliteType.Integer);
-        var kind = command.Parameters.Add("$kind", SqliteType.Text);
-        var key = command.Parameters.Add("$key", SqliteType.Text);
-        var identityQuality = command.Parameters.Add("$identityQuality", SqliteType.Text);
-        var direction = command.Parameters.Add("$direction", SqliteType.Text);
-        var item = command.Parameters.Add("$object", SqliteType.Text);
-        var word = command.Parameters.Add("$word", SqliteType.Text);
-        var attempts = command.Parameters.Add("$attempts", SqliteType.Integer);
-        var passes = command.Parameters.Add("$passes", SqliteType.Integer);
-        var elapsedNs = command.Parameters.Add("$elapsedNs", SqliteType.Integer);
-        for (var index = 0; index < rows.Count; index++)
+        for (var start = 0; start < rows.Count; start += RowsPerStatement)
         {
-            var row = rows[index];
-            assessment.Value = assessmentId;
-            ordinal.Value = index;
-            kind.Value = row.Kind;
-            key.Value = row.Key;
-            identityQuality.Value = row.IdentityQuality;
-            direction.Value = row.Direction;
-            item.Value = row.Object;
-            word.Value = row.Word;
-            attempts.Value = (object?)row.Attempts ?? DBNull.Value;
-            passes.Value = (object?)row.Passes ?? DBNull.Value;
-            elapsedNs.Value = (object?)row.ElapsedNs ?? DBNull.Value;
+            var count = Math.Min(RowsPerStatement, rows.Count - start);
+            using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            var sql = new StringBuilder("INSERT INTO ").Append(table).Append(" (")
+                .AppendJoin(", ", columns).Append(") VALUES ");
+            for (var row = 0; row < count; row++)
+            {
+                sql.Append(row == 0 ? "(" : ", (");
+                for (var column = 0; column < columns.Count; column++)
+                {
+                    var name = "$p" + row.ToString(CultureInfo.InvariantCulture) + "_" +
+                        column.ToString(CultureInfo.InvariantCulture);
+                    sql.Append(column == 0 ? name : ", " + name);
+                    command.Parameters.AddWithValue(name, rows[start + row][column] ?? DBNull.Value);
+                }
+                sql.Append(')');
+            }
+            command.CommandText = sql.Append(';').ToString();
             command.ExecuteNonQuery();
         }
     }

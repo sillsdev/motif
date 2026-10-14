@@ -126,6 +126,12 @@ public static class ProjectStoreCommand
         {
             return operation();
         }
+        catch (Exception exception) when (SqliteConnections.IsBusy(exception))
+        {
+            // Reaches here only from a step that saved nothing; a step past a save maps its own failures first.
+            return CommandOutcome<T>.Refused(new Refusal("project.busy", FailureReason.Busy,
+                "Another Motif task is writing to this project's data. Try again in a moment.", Fact(fwDataPath)));
+        }
         catch (ProjectBaselineBusyException)
         {
             return CommandOutcome<T>.Refused(new Refusal("project.busy", FailureReason.Busy,

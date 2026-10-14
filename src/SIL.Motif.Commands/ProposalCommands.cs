@@ -273,7 +273,8 @@ public static partial class ProposalCommands
                 return CommandOutcome<DraftCreatedResponse>.Success(
                     new DraftCreatedResponse(request.DraftName, draft.ProposalId, request.Label));
             }
-            catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException)
+            catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException &&
+                !SqliteConnections.IsBusy(ex))
             {
                 return CommandOutcome<DraftCreatedResponse>.Refused(
                     DraftInvalid(ex.Message, ("draftName", request.DraftName)));
@@ -345,7 +346,8 @@ public static partial class ProposalCommands
                     request.DraftName, operationId.Value, targetId.Value, request.Ws, request.Text,
                     resolvedDependsOn, draft.Operations.Count, previous is not null));
             }
-            catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException)
+            catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException &&
+                !SqliteConnections.IsBusy(ex))
             {
                 return CommandOutcome<SetGlossAddedResponse>.Refused(
                     DraftInvalid(ex.Message, ("draftName", request.DraftName)));
@@ -397,7 +399,8 @@ public static partial class ProposalCommands
                 return CommandOutcome<DeleteLexemeFormAddedResponse>.Success(new DeleteLexemeFormAddedResponse(
                     request.DraftName, operationId.Value, targetId.Value, draft.Operations.Count));
             }
-            catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException)
+            catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException &&
+                !SqliteConnections.IsBusy(ex))
             {
                 return CommandOutcome<DeleteLexemeFormAddedResponse>.Refused(
                     DraftInvalid(ex.Message, ("draftName", request.DraftName)));
@@ -527,7 +530,8 @@ public static partial class ProposalCommands
                     request.DraftName, operationId.Value, targetId.Value, request.Ws, request.Text,
                     request.CorpusId, origin.Licence, draft.Operations.Count));
             }
-            catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException)
+            catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException &&
+                !SqliteConnections.IsBusy(ex))
             {
                 return CommandOutcome<PromoteGlossAddedResponse>.Refused(
                     DraftInvalid(ex.Message, ("draftName", request.DraftName)));
@@ -594,7 +598,8 @@ public static partial class ProposalCommands
                 return CommandOutcome<DraftFieldChangedResponse>.Success(
                     new DraftFieldChangedResponse(draftName, fieldName, value));
             }
-            catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException)
+            catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException &&
+                !SqliteConnections.IsBusy(ex))
             {
                 return CommandOutcome<DraftFieldChangedResponse>.Refused(
                     DraftInvalid(ex.Message, ("draftName", draftName)));
@@ -663,7 +668,8 @@ public static partial class ProposalCommands
                     request.DraftName, draft.ProposalId, intentDigest, envelope.Operations.Count,
                     finalization == DraftFinalizationResult.Amended));
             }
-            catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException)
+            catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException &&
+                !SqliteConnections.IsBusy(ex))
             {
                 return CommandOutcome<ProposalFinalizedResponse>.Refused(
                     DraftInvalid(ex.Message, ("draftName", request.DraftName)));
@@ -707,7 +713,8 @@ public static partial class ProposalCommands
             {
                 return CommandOutcome<DraftDiscardedResponse>.Refused(DraftRevisionConflict(request.DraftName));
             }
-            catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException)
+            catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException &&
+                !SqliteConnections.IsBusy(ex))
             {
                 return CommandOutcome<DraftDiscardedResponse>.Refused(
                     DraftInvalid(ex.Message, ("draftName", request.DraftName)));
@@ -1178,7 +1185,8 @@ public static partial class ProposalCommands
                     consequences.Select(e => new RemovedDependent(e.DependentOperationId, e.DependentKind)).ToList(),
                     draft.Operations.Count));
             }
-            catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException)
+            catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException &&
+                !SqliteConnections.IsBusy(ex))
             {
                 return CommandOutcome<OperationsRemovedResponse>.Refused(
                     DraftInvalid(ex.Message, ("draftName", request.DraftName)));

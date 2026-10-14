@@ -39,6 +39,12 @@ public static class SqliteConnections
         command.ExecuteNonQuery();
     }
 
+    /// <summary>
+    /// Whether <paramref name="exception"/> is SQLite reporting another connection's lock (BUSY or LOCKED) after the
+    /// busy timeout ran out, which a step that has saved nothing may refuse as retryable.
+    /// </summary>
+    public static bool IsBusy(Exception exception) => exception is SqliteException { SqliteErrorCode: 5 or 6 };
+
     internal static bool IsCorruption(SqliteException exception) => IsCorruptionCode(exception.SqliteErrorCode);
 
     internal static bool IsCorruptionCode(int errorCode) => errorCode is 11 or 26;
