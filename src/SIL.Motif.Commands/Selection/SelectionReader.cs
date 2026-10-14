@@ -2029,7 +2029,7 @@ public sealed class SelectionReader : IDisposable, IAsyncDisposable
             if (_ownsDatabase) _database.Dispose();
             _disposeCompletion.TrySetResult();
         }
-        catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)
+        catch (Exception exception)
         {
             _disposeCompletion.TrySetException(exception);
         }

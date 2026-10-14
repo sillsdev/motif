@@ -1755,7 +1755,7 @@ public static partial class ProposalCommands
                 if (!receipt.AlreadyApplied)
                 {
                     try { loader.Save(cache); }
-                    catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException)
+                    catch (Exception ex)
                     {
                         throw new NeedsReconciliationException(
                             ReconciliationBoundary.Save,
@@ -1773,7 +1773,7 @@ public static partial class ProposalCommands
                         throw new IOException("Injected receipt write failure.");
                     repository.RecordAppliedReceipt(receipt);
                 }
-                catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException)
+                catch (Exception ex)
                 {
                     throw new NeedsReconciliationException(
                         ReconciliationBoundary.ReceiptRecording,
@@ -1799,7 +1799,7 @@ public static partial class ProposalCommands
                 void TryPostApplyStep(string action, Action work)
                 {
                     try { work(); }
-                    catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)
+                    catch (Exception exception)
                     {
                         NotePostApplyFailure($"Apply completed, but {action} could not be completed.", exception);
                     }
@@ -1841,7 +1841,7 @@ public static partial class ProposalCommands
                     projection = ApplyProjectionBuilder.Build(id, receipt, readinessProjection,
                         citations.Length == 0 ? null : citations);
                 }
-                catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)
+                catch (Exception exception)
                 {
                     NotePostApplyFailure("The Apply result could not include its complete effect summary.", exception);
                     projection = new ApplyProjection(id, receipt.AlreadyApplied, receipt.ResultNote, [],
@@ -1858,7 +1858,7 @@ public static partial class ProposalCommands
                         throw new IOException("Injected cache disposal failure.");
                     cache.Dispose();
                 }
-                catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)
+                catch (Exception exception)
                 {
                     NotePostApplyFailure("Apply completed, but Motif could not close the project cleanly.", exception);
                 }
@@ -1875,7 +1875,7 @@ public static partial class ProposalCommands
                     else
                     {
                         try { cache.Dispose(); }
-                        catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)
+                        catch (Exception exception)
                         {
                             ProjectDiagnosticLog.Append(project.FullFwDataPath,
                                 $"Apply of Proposal {proposalId} recorded its receipt, but closing the project failed.",
