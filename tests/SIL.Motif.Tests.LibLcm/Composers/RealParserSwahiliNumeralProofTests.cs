@@ -279,9 +279,9 @@ public sealed class RealParserSwahiliNumeralProofTests(PristineProjectFixture pr
             AddRule(cache, "Delete n before s or t", phonemes["n"], null,
                 rightNaturalClass: coronal);
             AddRule(cache, "n becomes m before w", phonemes["n"], phonemes["m"],
-                right: CreateSegmentContext(cache, phonemes["w"]));
+                rightPhoneme: phonemes["w"]);
             AddRule(cache, "w becomes b after m", phonemes["w"], phonemes["b"],
-                left: CreateSegmentContext(cache, phonemes["m"]));
+                leftPhoneme: phonemes["m"]);
         });
 
         return new NumeralFixture(CanonicalId.FromGuid(adjective.Guid), CanonicalId.FromGuid(numeral.Guid),
@@ -341,15 +341,9 @@ public sealed class RealParserSwahiliNumeralProofTests(PristineProjectFixture pr
             .Where(item => item.Text is not null)
             .ToDictionary(item => item.Text!, item => item.Phoneme, StringComparer.Ordinal);
 
-    private static IPhSimpleContextSeg CreateSegmentContext(LcmCache cache, IPhPhoneme phoneme)
-    {
-        var context = cache.ServiceLocator.GetInstance<IPhSimpleContextSegFactory>().Create();
-        context.FeatureStructureRA = phoneme;
-        return context;
-    }
-
     private static void AddRule(LcmCache cache, string name, IPhPhoneme input, IPhPhoneme? output,
-        IPhSimpleContext? left = null, IPhSimpleContext? right = null, IPhNCSegments? rightNaturalClass = null)
+        IPhPhoneme? leftPhoneme = null, IPhPhoneme? rightPhoneme = null,
+        IPhNCSegments? rightNaturalClass = null)
     {
         var rule = cache.ServiceLocator.GetInstance<IPhRegularRuleFactory>().Create();
         cache.LangProject.PhonologicalDataOA.PhonRulesOS.Add(rule);
@@ -361,11 +355,25 @@ public sealed class RealParserSwahiliNumeralProofTests(PristineProjectFixture pr
         inputContext.FeatureStructureRA = input;
         var rhs = Assert.Single(rule.RightHandSidesOS);
         if (output is not null)
-            rhs.StrucChangeOS.Add(CreateSegmentContext(cache, output));
-        rhs.LeftContextOA = left;
+        {
+            var outputContext = cache.ServiceLocator.GetInstance<IPhSimpleContextSegFactory>().Create();
+            rhs.StrucChangeOS.Add(outputContext);
+            outputContext.FeatureStructureRA = output;
+        }
+        if (leftPhoneme is not null)
+        {
+            var leftContext = cache.ServiceLocator.GetInstance<IPhSimpleContextSegFactory>().Create();
+            rhs.LeftContextOA = leftContext;
+            leftContext.FeatureStructureRA = leftPhoneme;
+        }
         if (rightNaturalClass is null)
         {
-            rhs.RightContextOA = right;
+            if (rightPhoneme is not null)
+            {
+                var rightContext = cache.ServiceLocator.GetInstance<IPhSimpleContextSegFactory>().Create();
+                rhs.RightContextOA = rightContext;
+                rightContext.FeatureStructureRA = rightPhoneme;
+            }
         }
         else
         {
