@@ -167,13 +167,19 @@ public sealed class ProjectionRenderingTests
             Label: "Revise gloss",
             Comment: null,
             CurrentIntentDigest: null,
-            Operations: System.Array.Empty<ProposalOperationView>());
+            Operations: System.Array.Empty<ProposalOperationView>(),
+            DraftName: "edit-gloss",
+            DraftRevision: "sha256:" + new string('b', 64));
 
         var text = CommandTextRenderer.Render(projection);
         var json = ProjectionJson.Serialize(projection);
 
         Assert.DoesNotContain("currentIntentDigest", text);
         Assert.DoesNotContain("currentIntentDigest", json);
+        Assert.Contains("draftName:           edit-gloss", text);
+        Assert.Contains("draftRevision:       sha256:" + new string('b', 64), text);
+        Assert.Contains("\"draftName\": \"edit-gloss\"", json);
+        Assert.Contains("\"draftRevision\": \"sha256:" + new string('b', 64) + "\"", json);
     }
 
     [Fact]

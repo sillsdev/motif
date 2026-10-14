@@ -63,7 +63,10 @@ public static partial class ProposalCommands
             var results = outcome.Value!;
             return CommandOutcome<ComposedBatchResponse>.Success(new ComposedBatchResponse(request.DraftName,
                 results.Select((result, index) => new ComposedIntentResult(index, steps[index].Verb!,
-                    result.ComposerName, result.Operations, result.RelatedObjects)).ToArray(),
+                    result.ComposerName, result.Operations, result.RelatedObjects)
+                {
+                    CreatedObjects = result.CreatedObjects,
+                }).ToArray(),
                 results.Length == 0 ? 0 : results[^1].OperationCount));
         });
 

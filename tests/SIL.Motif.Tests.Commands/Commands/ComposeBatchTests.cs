@@ -7,7 +7,6 @@ using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Responses;
-using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Runner.DryRun;
 using SIL.Motif.Tests.TestFixtures;
@@ -35,14 +34,16 @@ public sealed class ComposeBatchTests(PristineProjectFixture pristine)
         {
             var single = RunSingle(path, "one-at-a-time", verb, intent);
             Assert.True(single.Succeeded, single.Refusal?.Message);
+            AssertCreatedObjectsMatch(single.Value!);
         }
         var batch = ProposalCommands.ComposeBatch(new(path, Version, "batched", BatchJson(Intents(batchPhoneme))));
         Assert.True(batch.Succeeded, batch.Refusal?.Message);
 
         Assert.Equal(Normalized(path, "one-at-a-time"), Normalized(path, "batched"));
-        Assert.Equal(4, batch.Value!.Intents.Count);
+        Assert.Equal(5, batch.Value!.Intents.Count);
         Assert.Equal(["compose-author-phoneme", "compose-author-natural-class", "compose-author-environment",
-            "compose-author-phoneme"], batch.Value.Intents.Select(intent => intent.Verb));
+            "compose-author-phoneme", "compose-author-phonological-rule"], batch.Value.Intents.Select(intent => intent.Verb));
+        Assert.All(batch.Value.Intents, AssertCreatedObjectsMatch);
         Assert.Equal(ReadDraft(path, "batched").Operations.Count, batch.Value.OperationCount);
     }
 
@@ -104,6 +105,7 @@ public sealed class ComposeBatchTests(PristineProjectFixture pristine)
         var batch = ProposalCommands.ComposeBatch(new(path, Version, "chained", BatchJson(intents)));
 
         Assert.True(batch.Succeeded, batch.Refusal?.Message);
+        Assert.All(batch.Value!.Intents, AssertCreatedObjectsMatch);
         var operations = ReadDraft(path, "chained").Operations;
         var byId = operations.ToDictionary(operation => operation.OperationId);
         var creates = operations.Where(operation => operation.Kind.EndsWith("/createPhonemes", StringComparison.Ordinal))
@@ -295,6 +297,15 @@ public sealed class ComposeBatchTests(PristineProjectFixture pristine)
             name = "after a", left = new[] { new { phoneme } }, right = Array.Empty<object>(),
         }),
         ("compose-author-phoneme", new { name = "u", representations = new[] { "u" } }),
+        ("compose-author-phonological-rule", new
+        {
+            name = "round a",
+            direction = "simultaneous",
+            input = new[] { new { phoneme } },
+            output = new[] { new { phoneme } },
+            left = new[] { new { phoneme } },
+            right = new[] { new { phoneme } },
+        }),
     ];
 
     private static string BatchJson((string Verb, object Intent)[] intents) =>
@@ -309,6 +320,8 @@ public sealed class ComposeBatchTests(PristineProjectFixture pristine)
             "compose-author-phoneme" => ProposalCommands.ComposeAuthorPhoneme(new(path, Version, draft, json)),
             "compose-author-natural-class" => ProposalCommands.ComposeAuthorNaturalClass(new(path, Version, draft, json)),
             "compose-author-environment" => ProposalCommands.ComposeAuthorEnvironment(new(path, Version, draft, json)),
+            "compose-author-phonological-rule" => ProposalCommands.ComposeAuthorPhonologicalRule(
+                new(path, Version, draft, json)),
             _ => throw new ArgumentOutOfRangeException(nameof(verb), verb, null),
         };
     }
@@ -320,6 +333,20 @@ public sealed class ComposeBatchTests(PristineProjectFixture pristine)
                 new ProposalRepository(database).GetDraft(draft).ProposalJson!)));
         Assert.True(loaded.Succeeded, loaded.Refusal?.Message);
         return loaded.Value!;
+    }
+
+    private static void AssertCreatedObjectsMatch(ComposedOperationsResponse response)
+    {
+        var expected = response.Operations.Where(operation => operation.EntityId is not null)
+            .Select(operation => new CreatedObject(operation.EntityId!, operation.Kind)).ToArray();
+        Assert.Equal(expected, response.CreatedObjects);
+    }
+
+    private static void AssertCreatedObjectsMatch(ComposedIntentResult result)
+    {
+        var expected = result.Operations.Where(operation => operation.EntityId is not null)
+            .Select(operation => new CreatedObject(operation.EntityId!, operation.Kind)).ToArray();
+        Assert.Equal(expected, result.CreatedObjects);
     }
 
     // Minted identities differ between the two Drafts, so each is replaced by its first-appearance order.

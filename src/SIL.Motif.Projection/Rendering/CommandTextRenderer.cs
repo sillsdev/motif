@@ -42,6 +42,10 @@ public static class CommandTextRenderer
         sb.AppendLine($"  status:              {projection.Status}");
         sb.AppendLine($"  label:               {projection.Label}");
         sb.AppendLine($"  comment:             {projection.Comment}");
+        if (projection.DraftName is not null)
+            sb.AppendLine($"  draftName:           {projection.DraftName}");
+        if (projection.DraftRevision is not null)
+            sb.AppendLine($"  draftRevision:       {projection.DraftRevision}");
         if (projection.CurrentIntentDigest is not null)
             sb.AppendLine($"  currentIntentDigest: {projection.CurrentIntentDigest}");
         if (projection.SupersededBy is not null)

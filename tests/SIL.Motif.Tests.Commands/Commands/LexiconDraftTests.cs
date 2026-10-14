@@ -5,6 +5,7 @@ using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Parsing;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Runner.DryRun;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Store;
@@ -30,11 +31,13 @@ public sealed class LexiconDraftTests(PristineProjectFixture pristine)
         var feature = ProposalCommands.ComposeAuthorInflectionFeature(new(path, version, draft,
             JsonSerializer.Serialize(new { name = "Number", ws, values = new[] { new { name = "Plural", abbreviation = "pl" } } })));
         Assert.True(feature.Succeeded, feature.Refusal?.Message);
+        AssertCreatedObjectsMatch(feature.Value!);
         var featureCreate = feature.Value!.Operations.Single(op => op.Kind == "grammar/fsFeatureSystem/createFeatures");
         var valueCreate = feature.Value.Operations.Single(op => op.Kind == "grammar/fsClosedFeature/createValues");
         var cls = ProposalCommands.ComposeAuthorInflectionClass(new(path, version, draft,
             JsonSerializer.Serialize(new { category = category.Value, name = "Class Seven", ws })));
         Assert.True(cls.Succeeded, cls.Refusal?.Message);
+        AssertCreatedObjectsMatch(cls.Value!);
         var classCreate = cls.Value!.Operations.Single(op => op.Kind == "grammar/partOfSpeech/createInflectionClasses");
         var stem = ProposalCommands.ComposeAuthorStemName(new(path, version, draft, JsonSerializer.Serialize(new
         {
@@ -42,12 +45,15 @@ public sealed class LexiconDraftTests(PristineProjectFixture pristine)
             regions = new[] { new[] { new { feature = featureCreate.EntityId, value = valueCreate.EntityId } } },
         })));
         Assert.True(stem.Succeeded, stem.Refusal?.Message);
+        AssertCreatedObjectsMatch(stem.Value!);
         var entry = ProposalCommands.ComposeAuthorLexicalEntry(new(path, version, draft, JsonSerializer.Serialize(new
         {
             form = "vitabu", formWs = vernacular, morphType = CanonicalId.FromGuid(MoMorphTypeTags.kguidMorphStem).Value,
             gloss = "books", analysisWs = ws, msa = new { kind = "stem", category = category.Value, inflectionClass = classCreate.EntityId },
         })));
         Assert.True(entry.Succeeded, entry.Refusal?.Message);
+        AssertCreatedObjectsMatch(entry.Value!);
+        Assert.Equal(4, entry.Value!.CreatedObjects.Count);
         Assert.True(ProposalCommands.Label(new(path, version, draft, "Add an inflected noun")).Succeeded);
         Assert.True(ProposalCommands.Comment(new(path, version, draft, "Explicit grammar pieces and a noun.")).Succeeded);
         var finalized = ProposalCommands.Finalize(new(path, version, draft));
@@ -86,6 +92,7 @@ public sealed class LexiconDraftTests(PristineProjectFixture pristine)
         var category = ProposalCommands.ComposeAuthorPartOfSpeech(new(path, version, draft,
             JsonSerializer.Serialize(new { name = "Nomino", ws = analysis, abbreviation = "n" })));
         Assert.True(category.Succeeded, category.Refusal?.Message);
+        AssertCreatedObjectsMatch(category.Value!);
         var categoryCreate = category.Value!.Operations.Single(operation => operation.EntityId is not null);
 
         var entry = ProposalCommands.ComposeAuthorLexicalEntry(new(path, version, draft, JsonSerializer.Serialize(new
@@ -99,6 +106,7 @@ public sealed class LexiconDraftTests(PristineProjectFixture pristine)
             msa = new { kind = "stem", category = categoryCreate.EntityId },
         })));
         Assert.True(entry.Succeeded, entry.Refusal?.Message);
+        AssertCreatedObjectsMatch(entry.Value!);
 
         var duplicate = ProposalCommands.ComposeAuthorPartOfSpeech(new(path, version, draft,
             JsonSerializer.Serialize(new { name = "Nomino", ws = analysis })));
@@ -124,5 +132,12 @@ public sealed class LexiconDraftTests(PristineProjectFixture pristine)
         var effects = ProposalDryRunner.Run(scratch, proposal).ExpectedEffects;
         Assert.Contains(effects, effect => effect.Field == "lexical/lexDb/entries");
         Assert.Contains(effects, effect => effect.Field == "lexical/lexSense/definition");
+    }
+
+    private static void AssertCreatedObjectsMatch(ComposedOperationsResponse response)
+    {
+        var expected = response.Operations.Where(operation => operation.EntityId is not null)
+            .Select(operation => new CreatedObject(operation.EntityId!, operation.Kind)).ToArray();
+        Assert.Equal(expected, response.CreatedObjects);
     }
 }

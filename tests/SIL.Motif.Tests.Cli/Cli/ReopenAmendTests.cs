@@ -103,6 +103,59 @@ public sealed class ReopenAmendTests
         Assert.Equal(1, CountProposalRows(proposalId));
     }
 
+    [Theory]
+    [InlineData("rejected")]
+    [InlineData("withdrawn")]
+    public void Show_ReopenedClosedDraftIdentifiesItsEditedRevisionWithoutChangingHistory(string status)
+    {
+        const string initialDraftName = "closed-source";
+        const string reopenedDraftName = "closed-edit";
+        var target = CanonicalId.FromGuid(_seed.FirstSenseId).Value;
+        Assert.True(ProposalCommands.New(new NewDraftRequest(_fwDataPath, ProductVersion,
+            initialDraftName, "Closed source")).Succeeded);
+        Assert.True(ProposalCommands.AddSetGloss(new AddSetGlossRequest(_fwDataPath, ProductVersion,
+            initialDraftName, target, "en", "original gloss")).Succeeded);
+        Assert.True(ProposalCommands.Comment(new CommentRequest(_fwDataPath, ProductVersion,
+            initialDraftName, "Keep the original proposal as review history.")).Succeeded);
+        var finalized = ProposalCommands.Finalize(new FinalizeRequest(_fwDataPath, ProductVersion, initialDraftName));
+        Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
+        var proposalId = finalized.Value!.ProposalId;
+        var committedDigest = finalized.Value.IntentDigest;
+        var closed = status == "rejected"
+            ? ProposalCommands.Reject(new RejectRequest(_fwDataPath, ProductVersion, proposalId))
+            : ProposalCommands.Withdraw(new RejectRequest(_fwDataPath, ProductVersion, proposalId));
+        Assert.True(closed.Succeeded, closed.Refusal?.Message);
+
+        var closedDetail = ProposalCommands.Show(new ShowProposalRequest(_fwDataPath, ProductVersion, proposalId));
+        Assert.True(closedDetail.Succeeded, closedDetail.Refusal?.Message);
+        Assert.Equal(status, closedDetail.Value!.Status);
+        Assert.Equal(committedDigest, closedDetail.Value.CurrentIntentDigest);
+        Assert.Null(closedDetail.Value.DraftName);
+        Assert.Null(closedDetail.Value.DraftRevision);
+
+        var reopened = ProposalCommands.Reopen(new ReopenRequest(_fwDataPath, ProductVersion,
+            reopenedDraftName, proposalId));
+        Assert.True(reopened.Succeeded, reopened.Refusal?.Message);
+        Assert.True(ProposalCommands.AddSetGloss(new AddSetGlossRequest(_fwDataPath, ProductVersion,
+            reopenedDraftName, target, "en", "edited gloss")).Succeeded);
+        var draftJson = ReadDraftJson(reopenedDraftName);
+        var draftRevision = DraftRevision.Compute(draftJson);
+
+        var byName = ProposalCommands.Show(new ShowProposalRequest(
+            _fwDataPath, ProductVersion, reopenedDraftName));
+        var byId = ProposalCommands.Show(new ShowProposalRequest(_fwDataPath, ProductVersion, proposalId));
+
+        Assert.True(byName.Succeeded, byName.Refusal?.Message);
+        Assert.True(byId.Succeeded, byId.Refusal?.Message);
+        Assert.Equal(status, byName.Value!.Status);
+        Assert.Equal(committedDigest, byName.Value.CurrentIntentDigest);
+        Assert.Equal(reopenedDraftName, byName.Value.DraftName);
+        Assert.Equal(draftRevision, byName.Value.DraftRevision);
+        Assert.Contains("edited gloss", Assert.Single(byName.Value.Operations).AfterJson!);
+        Assert.Equal(ProjectionJson.Serialize(byName.Value), ProjectionJson.Serialize(byId.Value));
+        Assert.Equal(draftJson, ReadDraftJson(reopenedDraftName));
+    }
+
     [Fact]
     public void ReopenAppliedProposalRefusesBeforeCreatingDraft()
     {
@@ -201,6 +254,12 @@ public sealed class ReopenAmendTests
         var json = new ProposalRepository(database).GetDraft(draftName).ProposalJson!;
         return JsonSerializer.Deserialize<DraftDocument>(
             json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
+    }
+
+    private string ReadDraftJson(string draftName)
+    {
+        using var database = ProjectMotifDatabase.Open(_fwDataPath);
+        return new ProposalRepository(database).GetDraft(draftName).ProposalJson!;
     }
 
     /// <summary>Sets a Proposal's status directly, bypassing the transition rules.</summary>

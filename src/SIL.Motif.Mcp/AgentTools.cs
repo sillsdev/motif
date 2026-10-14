@@ -222,7 +222,7 @@ internal static class AgentTools
             true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalCommands.ComposeAuthorFeatureValue(
                 new(c.ProjectPath, c.ProductVersion, a.Required("draft"), a.IntentJson("featStruc", "feature", "value"))),
-                r => "Use created entityId values in later composer calls; Dry Run and Trial the Draft, then Finalize."))) { Requests = [typeof(ComposeAuthorFeatureValueRequest)] },
+                r => "Use createdObjects[].id values in later composer calls; Dry Run and Trial the Draft, then Finalize."))) { Requests = [typeof(ComposeAuthorFeatureValueRequest)] },
 
         new("motif_add_phoneme",
             string.Empty,
@@ -238,7 +238,7 @@ internal static class AgentTools
             true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalCommands.ComposeAuthorPhoneme(
                 new(c.ProjectPath, c.ProductVersion, a.Required("draft"), a.IntentJson("name", "representations", "features"))),
-                r => "Use the phoneme create's entityId in motif_add_natural_class or motif_add_environment."))) { Requests = [typeof(ComposeAuthorPhonemeRequest)] },
+                r => "Use a createdObjects[].id from this response in motif_add_natural_class or motif_add_environment."))) { Requests = [typeof(ComposeAuthorPhonemeRequest)] },
 
         new("motif_add_natural_class",
             string.Empty,
@@ -253,7 +253,7 @@ internal static class AgentTools
             true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalCommands.ComposeAuthorNaturalClass(
                 new(c.ProjectPath, c.ProductVersion, a.Required("draft"), a.IntentJson("name", "abbreviation", "members", "features"))),
-                r => "Use the natural class create's entityId in motif_add_environment."))) { Requests = [typeof(ComposeAuthorNaturalClassRequest)] },
+                r => "Use a createdObjects[].id from this response in motif_add_environment."))) { Requests = [typeof(ComposeAuthorNaturalClassRequest)] },
 
         new("motif_edit_natural_class",
             string.Empty,
@@ -358,7 +358,7 @@ internal static class AgentTools
             false, false, false, false, true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalCommands.ComposeAuthorInflectionFeature(new(
                 c.ProjectPath, c.ProductVersion, a.Required("draft"), a.IntentJson("name", "ws", "abbreviation", "values"))),
-                r => "Use the feature and value create entityIds in later composer calls; Dry Run and Trial before Finalize.")))
+                r => "Use the feature and value createdObjects[].id values in later composer calls; Dry Run and Trial before Finalize.")))
             { Requests = [typeof(ComposeAuthorInflectionFeatureRequest)] },
 
         new("motif_add_inflection_class",
@@ -374,7 +374,7 @@ internal static class AgentTools
             false, false, false, false, true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalCommands.ComposeAuthorInflectionClass(new(
                 c.ProjectPath, c.ProductVersion, a.Required("draft"), a.IntentJson("category", "name", "ws", "abbreviation", "parent"))),
-                r => "Use the created class entityId when authoring a stem; Dry Run and Trial before Finalize.")))
+                r => "Use a createdObjects[].id from this response when authoring a stem; Dry Run and Trial before Finalize.")))
             { Requests = [typeof(ComposeAuthorInflectionClassRequest)] },
 
         new("motif_add_stem_name",
@@ -441,7 +441,7 @@ internal static class AgentTools
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalCommands.ComposeAuthorPartOfSpeech(new(
                 c.ProjectPath, c.ProductVersion, a.Required("draft"),
                 a.IntentJson("name", "ws", "abbreviation", "parent"))),
-                r => $"Draft now has {r.OperationCount} changes. Use the created entityId as the category of new entries, slots and affixes; Dry Run, then Finalize; only a person can Apply."))) { Requests = [typeof(ComposeAuthorPartOfSpeechRequest)] },
+                r => $"Draft now has {r.OperationCount} changes. Use a createdObjects[].id as the category of new entries, slots and affixes; Dry Run, then Finalize; only a person can Apply."))) { Requests = [typeof(ComposeAuthorPartOfSpeechRequest)] },
 
         new("motif_add_affix_template",
             string.Empty,
@@ -772,7 +772,7 @@ internal static class AgentTools
         new("motif_proposals",
             string.Empty,
             AgentClass.Read,
-            Schema.Object([("proposal", Schema.String("A proposal id to show in full. Omit to list."), false),
+            Schema.Object([("proposal", Schema.String("A Draft name or Proposal id to show in full. Omit to list."), false),
                 ("include_set_aside", Schema.Boolean("Also list applied, rejected, superseded and deferred."), false),
                 ..Schema.Verbosity()]),
             true,

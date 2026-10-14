@@ -45,10 +45,12 @@ public sealed class SoundSystemDraftTests(PristineProjectFixture pristine)
         var structure = ProposalCommands.ComposeAuthorFeatureStructure(new(path, version, draft,
             JsonSerializer.Serialize(new { msa = msaId })));
         Assert.True(structure.Succeeded, structure.Refusal?.Message);
+        AssertCreatedObjectsMatch(structure.Value!);
         var created = structure.Value!.Operations.Single(o => o.EntityId is not null);
         var selected = ProposalCommands.ComposeAuthorFeatureValue(new(path, version, draft,
             JsonSerializer.Serialize(new { featStruc = created.EntityId, feature = featureId, value = valueId })));
         Assert.True(selected.Succeeded, selected.Refusal?.Message);
+        AssertCreatedObjectsMatch(selected.Value!);
         Assert.Contains(selected.Value!.Operations, o => o.Kind.EndsWith("/setValue", StringComparison.Ordinal));
         var duplicate = ProposalCommands.ComposeAuthorFeatureValue(new(path, version, draft,
             JsonSerializer.Serialize(new { featStruc = created.EntityId, feature = featureId, value = valueId })));
@@ -69,17 +71,21 @@ public sealed class SoundSystemDraftTests(PristineProjectFixture pristine)
         var phoneme = ProposalCommands.ComposeAuthorPhoneme(new(path, version, draft,
             JsonSerializer.Serialize(new { name = "a", representations = new[] { "a" } })));
         Assert.True(phoneme.Succeeded, phoneme.Refusal?.Message);
+        AssertCreatedObjectsMatch(phoneme.Value!);
         var createdPhoneme = phoneme.Value!.Operations.Single(o => o.Kind.EndsWith("/createPhonemes", StringComparison.Ordinal));
         var second = ProposalCommands.ComposeAuthorPhoneme(new(path, version, draft,
             JsonSerializer.Serialize(new { name = "i", representations = new[] { "i" } })));
         Assert.True(second.Succeeded, second.Refusal?.Message);
+        AssertCreatedObjectsMatch(second.Value!);
         var naturalClass = ProposalCommands.ComposeAuthorNaturalClass(new(path, version, draft,
             JsonSerializer.Serialize(new { name = "vowels", abbreviation = "V", members = new[] { createdPhoneme.EntityId } })));
         Assert.True(naturalClass.Succeeded, naturalClass.Refusal?.Message);
+        AssertCreatedObjectsMatch(naturalClass.Value!);
         var createdClass = naturalClass.Value!.Operations.Single(o => o.Kind.EndsWith("/createNaturalClasses", StringComparison.Ordinal));
         var environment = ProposalCommands.ComposeAuthorEnvironment(new(path, version, draft,
             JsonSerializer.Serialize(new { name = "after a vowel", left = new[] { new { naturalClass = createdClass.EntityId } }, right = Array.Empty<object>() })));
         Assert.True(environment.Succeeded, environment.Refusal?.Message);
+        AssertCreatedObjectsMatch(environment.Value!);
         var bad = ProposalCommands.ComposeAuthorNaturalClass(new(path, version, draft,
             JsonSerializer.Serialize(new { name = "duplicate", abbreviation = "V", members = new[] { createdPhoneme.EntityId } })));
         Assert.False(bad.Succeeded);
@@ -122,6 +128,7 @@ public sealed class SoundSystemDraftTests(PristineProjectFixture pristine)
         var phoneme = ProposalCommands.ComposeAuthorPhoneme(new(path, version, draft,
             JsonSerializer.Serialize(new { name = "a\u0301", representations = new[] { "á" } })));
         Assert.True(phoneme.Succeeded, phoneme.Refusal?.Message);
+        AssertCreatedObjectsMatch(phoneme.Value!);
         var phonemeCreate = Assert.Single(phoneme.Value!.Operations,
             operation => operation.Kind.EndsWith("/createPhonemes", StringComparison.Ordinal));
 
@@ -133,6 +140,7 @@ public sealed class SoundSystemDraftTests(PristineProjectFixture pristine)
                 right = Array.Empty<object>(),
             })));
         Assert.True(environment.Succeeded, environment.Refusal?.Message);
+        AssertCreatedObjectsMatch(environment.Value!);
         var environmentCreate = Assert.Single(environment.Value!.Operations,
             operation => operation.Kind.EndsWith("/createEnvironments", StringComparison.Ordinal));
 
@@ -145,6 +153,8 @@ public sealed class SoundSystemDraftTests(PristineProjectFixture pristine)
                 environments = new[] { environmentCreate.EntityId! },
             })));
         Assert.True(condition.Succeeded, condition.Refusal?.Message);
+        AssertCreatedObjectsMatch(condition.Value!);
+        Assert.Empty(condition.Value!.CreatedObjects);
         var attachment = Assert.Single(condition.Value!.Operations,
             operation => operation.Kind == MoStemAllomorphPhoneEnvOperationKinds.AddRefPhoneEnv);
 
@@ -229,6 +239,8 @@ public sealed class SoundSystemDraftTests(PristineProjectFixture pristine)
             })));
 
         Assert.True(edit.Succeeded, edit.Refusal?.Message);
+        AssertCreatedObjectsMatch(edit.Value!);
+        Assert.Empty(edit.Value!.CreatedObjects);
         Assert.Contains(edit.Value!.Operations, operation => operation.Kind == PhNCSegmentsSegmentsOperationKinds.RemoveRefSegments);
         Assert.Contains(edit.Value.RelatedObjects!, user => user.Kind == "environment" && user.Id == environmentId.Value);
         Assert.Contains(edit.Value.RelatedObjects!, user => user.Name == "after a vowel");
@@ -293,6 +305,7 @@ public sealed class SoundSystemDraftTests(PristineProjectFixture pristine)
         var replacement = ProposalCommands.ComposeAuthorNaturalClass(new(path, version, draft,
             JsonSerializer.Serialize(new { name = "corrected class", abbreviation = "NEW", members = new[] { aId.Value } })));
         Assert.True(replacement.Succeeded, replacement.Refusal?.Message);
+        AssertCreatedObjectsMatch(replacement.Value!);
         var replacementCreate = replacement.Value!.Operations.Single(operation =>
             operation.Kind == PhPhonDataNaturalClassesOperationKinds.Create);
 
@@ -315,6 +328,8 @@ public sealed class SoundSystemDraftTests(PristineProjectFixture pristine)
             })));
 
         Assert.True(relink.Succeeded, relink.Refusal?.Message);
+        AssertCreatedObjectsMatch(relink.Value!);
+        Assert.Empty(relink.Value!.CreatedObjects);
         Assert.Equal(2, relink.Value!.Operations.Count);
         Assert.Contains(relink.Value.RelatedObjects!, user => user.Kind == "environment");
         Assert.Contains(relink.Value.RelatedObjects!, user => user.Kind == "phonological-rule");
@@ -362,6 +377,7 @@ public sealed class SoundSystemDraftTests(PristineProjectFixture pristine)
             new ComposeAuthorAffixSlotRequest(path, version, draft, intent));
 
         Assert.True(composed.Succeeded, composed.Refusal?.Message);
+        AssertCreatedObjectsMatch(composed.Value!);
         Assert.Contains(composed.Value!.Operations,
             operation => operation.Kind.EndsWith("/createAffixSlots", StringComparison.Ordinal));
     }
@@ -386,6 +402,7 @@ public sealed class SoundSystemDraftTests(PristineProjectFixture pristine)
                 optional = false,
             })));
         Assert.True(slot.Succeeded, slot.Refusal?.Message);
+        AssertCreatedObjectsMatch(slot.Value!);
         var slotCreate = slot.Value!.Operations.Single(operation =>
             operation.Kind.EndsWith("/createAffixSlots", StringComparison.Ordinal));
 
@@ -400,6 +417,7 @@ public sealed class SoundSystemDraftTests(PristineProjectFixture pristine)
                 final = false,
             })));
         Assert.True(template.Succeeded, template.Refusal?.Message);
+        AssertCreatedObjectsMatch(template.Value!);
 
         Assert.True(ProposalCommands.Label(new(path, version, draft, "Add alternative template")).Succeeded);
         Assert.True(ProposalCommands.Comment(new(path, version, draft,
@@ -442,4 +460,11 @@ public sealed class SoundSystemDraftTests(PristineProjectFixture pristine)
                 OperationHandlerRegistry.Resolve(operation.Kind, "sound-system test setup")
                     .ApplyAndCaptureEffect(cache, operation, []);
         });
+
+    private static void AssertCreatedObjectsMatch(ComposedOperationsResponse response)
+    {
+        var expected = response.Operations.Where(operation => operation.EntityId is not null)
+            .Select(operation => new CreatedObject(operation.EntityId!, operation.Kind)).ToArray();
+        Assert.Equal(expected, response.CreatedObjects);
+    }
 }

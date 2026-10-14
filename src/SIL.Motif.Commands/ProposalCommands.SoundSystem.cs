@@ -379,10 +379,15 @@ public static partial class ProposalCommands
             if (!TrySaveLoadedDraft(repository, draftName, loadedJson, draft))
                 return CommandOutcome<ComposedOperationsResponse[]>.Refused(DraftRevisionConflict(draftName));
             return CommandOutcome<ComposedOperationsResponse[]>.Success(steps.Zip(composed, (step, result) =>
-                new ComposedOperationsResponse(draftName, step.Composer,
-                    result.Added.Select(operation => new OperationSummary(
-                        operation.OperationId.Value, operation.Kind, operation.EntityId?.Value)).ToArray(),
-                    draft.Operations.Count, result.Related)).ToArray());
+            {
+                var operations = result.Added.Select(operation => new OperationSummary(
+                    operation.OperationId.Value, operation.Kind, operation.EntityId?.Value)).ToArray();
+                return new ComposedOperationsResponse(draftName, step.Composer, operations,
+                    draft.Operations.Count, result.Related)
+                {
+                    CreatedObjects = CreatedObjectsForOperations(operations),
+                };
+            }).ToArray());
         }
         catch (ComposeStepException exception) when (describeBatchFailure)
         {
@@ -398,6 +403,12 @@ public static partial class ProposalCommands
                 DraftInvalid(exception.Message, ("draftName", draftName)));
         }
     }
+
+    private static IReadOnlyList<CreatedObject> CreatedObjectsForOperations(
+        IReadOnlyList<OperationSummary> operations) => operations
+        .Where(operation => operation.EntityId is not null)
+        .Select(operation => new CreatedObject(operation.EntityId!, operation.Kind))
+        .ToArray();
 
     /// <summary>Adds an ordering edge from each new operation to every staged one that made what it names.</summary>
     private static OperationEnvelope[] DeclareDependencies(JsonElement input,

@@ -143,6 +143,62 @@ public sealed class ProposalWorkflowTests : IDisposable
     }
 
     [Fact]
+    public void ShowReadsADraftByNameOrProposalIdWithoutChangingItAndPreservesFinalizedDetails()
+    {
+        const string draftName = "show-before-finalize";
+        var newDraft = ProposalCommands.New(new NewDraftRequest(_fwDataPath, ProductVersion, draftName,
+            "A visible Draft"));
+        Assert.True(newDraft.Succeeded, newDraft.Refusal?.Message);
+        var created = ProposalCommands.ComposeAuthorPhoneme(new ComposeAuthorPhonemeRequest(
+            _fwDataPath, ProductVersion, draftName,
+            JsonSerializer.Serialize(new { name = "x", representations = new[] { "x" } })));
+        Assert.True(created.Succeeded, created.Refusal?.Message);
+        Assert.True(ProposalCommands.Comment(new CommentRequest(_fwDataPath, ProductVersion, draftName,
+            "Inspect this before Finalize.")).Succeeded);
+        var draftId = newDraft.Value!.ProposalId;
+        var beforeShow = ReadDraftJson(draftName);
+        var byName = ProposalCommands.Show(new ShowProposalRequest(_fwDataPath, ProductVersion, draftName));
+        var byId = ProposalCommands.Show(new ShowProposalRequest(_fwDataPath, ProductVersion, draftId));
+
+        Assert.True(byName.Succeeded, byName.Refusal?.Message);
+        Assert.True(byId.Succeeded, byId.Refusal?.Message);
+        Assert.Equal("draft", byName.Value!.Status);
+        Assert.Null(byName.Value.CurrentIntentDigest);
+        Assert.Equal(draftName, byName.Value.DraftName);
+        Assert.Equal(DraftRevision.Compute(beforeShow), byName.Value.DraftRevision);
+        Assert.Equal("A visible Draft", byName.Value.Label);
+        Assert.Equal("Inspect this before Finalize.", byName.Value.Comment);
+        Assert.Equal(ProjectionJson.Serialize(byName.Value), ProjectionJson.Serialize(byId.Value));
+        Assert.Equal(created.Value!.CreatedObjects.Select(item => item.Id),
+            byName.Value.Operations.Where(operation => operation.EntityId is not null)
+                .Select(operation => operation.EntityId));
+        Assert.Equal(beforeShow, ReadDraftJson(draftName));
+
+        var finalized = ProposalCommands.Finalize(new FinalizeRequest(_fwDataPath, ProductVersion, draftName));
+        Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
+        var finalizedShow = ProposalCommands.Show(new ShowProposalRequest(
+            _fwDataPath, ProductVersion, finalized.Value!.ProposalId));
+
+        Assert.True(finalizedShow.Succeeded, finalizedShow.Refusal?.Message);
+        Assert.Equal("proposed", finalizedShow.Value!.Status);
+        Assert.Equal(finalized.Value.IntentDigest, finalizedShow.Value.CurrentIntentDigest);
+        Assert.Null(finalizedShow.Value.DraftName);
+        Assert.Null(finalizedShow.Value.DraftRevision);
+        Assert.Equal("A visible Draft", finalizedShow.Value.Label);
+        Assert.Equal("Inspect this before Finalize.", finalizedShow.Value.Comment);
+        Assert.Equal(byName.Value.Operations.Select(operation => (operation.Kind, operation.Target,
+                operation.EntityId, operation.Citation)),
+            finalizedShow.Value.Operations.Select(operation => (operation.Kind, operation.Target,
+                operation.EntityId, operation.Citation)));
+    }
+
+    private string ReadDraftJson(string draftName)
+    {
+        using var database = ProjectMotifDatabase.Open(_fwDataPath);
+        return new ProposalRepository(database).GetDraft(draftName).ProposalJson!;
+    }
+
+    [Fact]
     public void Citations_ListsEveryAppliedOperationWithItsSource_AndCanListOnlyTheUncitedOnes()
     {
         var first = CanonicalId.FromGuid(_seed.FirstSenseId).Value;

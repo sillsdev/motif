@@ -1414,21 +1414,55 @@ public static partial class ProposalCommands
             BuildProposalDetail(database, request.ProposalId));
 
     private static CommandOutcome<ProposalDetailProjection> BuildProposalDetail(
-        MotifDatabase database, string proposalId)
+        MotifDatabase database, string proposalSelector)
     {
         try
         {
             var repository = new ProposalRepository(database);
-            var id = NormalizeId(proposalId);
-            var (record, envelope) = repository.GetFinalized(CanonicalId.Parse(id));
+            if (!CanonicalId.TryParse(proposalSelector, out var canonicalId))
+                return BuildDraftDetail(GetDraftByName(repository, proposalSelector));
+
+            ProposalRecord current;
+            try
+            {
+                current = repository.Get(canonicalId);
+            }
+            catch (KeyNotFoundException) when (repository.DraftNameExists(proposalSelector))
+            {
+                return BuildDraftDetail(GetDraftByName(repository, proposalSelector));
+            }
+            if (current.DraftName is not null)
+                return BuildDraftDetail(current);
+
+            var (record, envelope) = repository.GetFinalized(canonicalId);
             var manifest = ProposalRecordMapping.ToManifest(record);
             return CommandOutcome<ProposalDetailProjection>.Success(
-                ProposalDetailProjectionBuilder.Build(id, manifest, envelope));
+                ProposalDetailProjectionBuilder.Build(canonicalId.Value, manifest, envelope));
         }
         catch (Exception ex)
         {
             return CommandOutcome<ProposalDetailProjection>.Refused(ProposalLoadRefusal(ex));
         }
+    }
+
+    private static ProposalRecord GetDraftByName(ProposalRepository repository, string draftName) =>
+        repository.Get(repository.GetDraft(draftName).ProposalId);
+
+    private static CommandOutcome<ProposalDetailProjection> BuildDraftDetail(ProposalRecord record)
+    {
+        var draftJson = record.ProposalJson ??
+            throw new InvalidDataException("Stored Draft content must not be empty.");
+        var draftName = record.DraftName ??
+            throw new InvalidDataException("Stored Draft name must not be empty.");
+        var draft = DeserializeDraft(draftJson);
+        var proposal = ProposalJsonParser.Parse(BuildProposalJson(draft));
+        var manifest = ProposalRecordMapping.ToManifest(record with { Label = draft.Label, Comment = draft.Comment });
+        var detail = ProposalDetailProjectionBuilder.Build(record.ProposalId.Value, manifest, proposal);
+        return CommandOutcome<ProposalDetailProjection>.Success(detail with
+        {
+            DraftName = draftName,
+            DraftRevision = DraftRevision.Compute(draftJson),
+        });
     }
 
     /// <remarks>

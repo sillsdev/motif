@@ -324,7 +324,7 @@ public sealed record ListProposalsRequest(string FwDataPath, string ProductVersi
 
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
-/// <param name="ProposalId">The exact canonical Proposal identity.</param>
+/// <param name="ProposalId">A Draft name or the exact canonical identity of a Draft or finalized Proposal.</param>
 public sealed record ShowProposalRequest(string FwDataPath, string ProductVersion, string ProposalId);
 
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>

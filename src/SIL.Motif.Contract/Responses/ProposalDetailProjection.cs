@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json.Serialization;
 
 namespace SIL.Motif.Contract.Responses;
 
@@ -41,11 +42,13 @@ public sealed record CitationView(string Source, string? Locator)
 /// <param name="Label">The optional name shown for this Proposal.</param>
 /// <param name="Comment">The optional explanatory comment attached to this Proposal.</param>
 /// <param name="CurrentIntentDigest">
-/// <c>null</c> for a Draft: it has no committed revision yet, so it has no digest.
+/// <c>null</c> when the Proposal has no committed revision. A reopened Draft keeps the digest of its prior revision.
 /// </param>
 /// <param name="Operations">The operation views included in the report.</param>
 /// <param name="SupersededBy">The replacement Proposal's identity, or <c>null</c> when there is none.</param>
 /// <param name="ExtensionsJson">Optional JSON containing non-semantic extension data.</param>
+/// <param name="DraftName">The name of the Draft whose operations are shown, or <c>null</c> for a committed revision.</param>
+/// <param name="DraftRevision">The SHA-256 revision of the exact stored Draft JSON bytes, or <c>null</c> for a committed revision.</param>
 public sealed record ProposalDetailProjection(
     string ProposalId,
     string Status,
@@ -54,4 +57,8 @@ public sealed record ProposalDetailProjection(
     string? CurrentIntentDigest,
     IReadOnlyList<ProposalOperationView> Operations,
     string? SupersededBy = null,
-    string? ExtensionsJson = null);
+    string? ExtensionsJson = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    string? DraftName = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    string? DraftRevision = null);

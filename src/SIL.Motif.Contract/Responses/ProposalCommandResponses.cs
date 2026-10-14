@@ -27,6 +27,11 @@ public sealed record DeleteLexemeFormAddedResponse(
 /// <summary>One existing grammar object affected by a composed slot change.</summary>
 public sealed record ComposedRelatedObject(string Kind, string Id, string Name);
 
+/// <summary>One language-project object a composer actually creates.</summary>
+/// <param name="Id">The object's canonical identity, taken from its creating operation.</param>
+/// <param name="Kind">The semantic kind of the operation that creates the object.</param>
+public sealed record CreatedObject(string Id, string Kind);
+
 /// <summary>
 /// The operations one composer resolved and appended to a Draft. <c>Outcome</c> is written only when
 /// nothing was staged because the request was already recorded (<c>already-recorded</c>).
@@ -36,13 +41,21 @@ public sealed record ComposedOperationsResponse(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     IReadOnlyList<ComposedRelatedObject>? RelatedObjects = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    string? Outcome = null);
+    string? Outcome = null)
+{
+    /// <summary>The canonical identities of objects the returned operations create.</summary>
+    public IReadOnlyList<CreatedObject> CreatedObjects { get; init; } = [];
+}
 
 /// <summary>The operations one intent of a batch resolved to, by its position in the batch.</summary>
 public sealed record ComposedIntentResult(
     int Index, string Verb, string ComposerName, IReadOnlyList<OperationSummary> Operations,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    IReadOnlyList<ComposedRelatedObject>? RelatedObjects = null);
+    IReadOnlyList<ComposedRelatedObject>? RelatedObjects = null)
+{
+    /// <summary>The canonical identities this batch intent's operations create.</summary>
+    public IReadOnlyList<CreatedObject> CreatedObjects { get; init; } = [];
+}
 
 /// <summary>
 /// Every intent of one <c>compose-batch</c> call, all appended to the Draft together; <c>OperationCount</c> is the

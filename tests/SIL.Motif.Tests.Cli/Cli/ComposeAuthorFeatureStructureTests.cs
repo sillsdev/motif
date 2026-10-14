@@ -90,6 +90,9 @@ public sealed class ComposeAuthorFeatureStructureTests
 
         Assert.True(result.Succeeded);
         Assert.Single(result.Value!.Operations);
+        Assert.Equal(result.Value.Operations.Where(operation => operation.EntityId is not null)
+            .Select(operation => new CreatedObject(operation.EntityId!, operation.Kind)), result.Value.CreatedObjects);
+        Assert.Single(result.Value.CreatedObjects);
         Assert.Equal(1, result.Value.OperationCount);
         DraftRationale.Author(
             _fwDataPath, "d", "Author a feature structure", "Represent the selected grammatical analysis on the target MSA.");

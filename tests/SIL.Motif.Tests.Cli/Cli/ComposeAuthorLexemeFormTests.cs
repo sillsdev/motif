@@ -109,6 +109,9 @@ public sealed class ComposeAuthorLexemeFormTests
             _fwDataPath, ProductVersion, "d", IntentJson(entryId, includeGloss: true));
 
         Assert.True(result.Succeeded);
+        Assert.Equal(result.Value!.Operations.Where(operation => operation.EntityId is not null)
+            .Select(operation => new CreatedObject(operation.EntityId!, operation.Kind)), result.Value.CreatedObjects);
+        Assert.Single(result.Value.CreatedObjects);
         Assert.Equal(2, result.Value!.Operations.Count);
         Assert.Equal(2, result.Value.OperationCount);
         DraftRationale.Author(

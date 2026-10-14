@@ -1,6 +1,7 @@
 using System.Text.Json;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Requests;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Store;
 using Xunit;
@@ -25,6 +26,9 @@ public sealed class ComposerProvenanceTests(PristineProjectFixture pristine)
             JsonSerializer.Serialize(new { name = "a", representations = new[] { "a" } })));
 
         Assert.True(composed.Succeeded, composed.Refusal?.Message);
+        Assert.Equal(composed.Value!.Operations.Where(operation => operation.EntityId is not null)
+            .Select(operation => new CreatedObject(operation.EntityId!, operation.Kind)), composed.Value.CreatedObjects);
+        Assert.NotEmpty(composed.Value.CreatedObjects);
         using var database = ProjectMotifDatabase.Open(projectPath);
         var draft = new ProposalRepository(database).GetDraft(draftName);
         using var document = JsonDocument.Parse(draft.ProposalJson!);
