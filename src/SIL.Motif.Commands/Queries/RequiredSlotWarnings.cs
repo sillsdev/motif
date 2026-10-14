@@ -76,7 +76,7 @@ internal static class RequiredSlotWarnings
             Group = "Required inflectional slots",
             Title = "Required slot has no affixes",
             Description = description,
-            Explanation = "FieldWorks treats this required slot as obligatory, but it has no affixes to fill it.",
+            Explanation = "This slot is marked required but has no affixes. FieldWorks and PanGloss currently treat an empty required slot as optional.",
             Guidance = "Add an inflectional affix to this slot, or mark the slot optional if it may be empty.",
             Origin = GrammarFindingOrigin.Check,
             Scope = GrammarSubjectStatus.Object,

@@ -59,6 +59,8 @@ public sealed class GrammarCheckQueryTests : IDisposable
             IPartOfSpeech category = null!;
             IMoInflAffixTemplate template = null!;
             IMoInflAffixSlot slot = null!;
+            IMoInflAffixSlot optionalSlot = null!;
+            IMoInflAffixSlot unattachedSlot = null!;
             NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
             {
                 category = services.GetInstance<IPartOfSpeechFactory>().Create();
@@ -71,6 +73,14 @@ public sealed class GrammarCheckQueryTests : IDisposable
                 category.AffixSlotsOC.Add(slot);
                 slot.Name.set_String(cache.DefaultAnalWs, "Tense");
                 template.SuffixSlotsRS.Add(slot);
+                optionalSlot = services.GetInstance<IMoInflAffixSlotFactory>().Create();
+                category.AffixSlotsOC.Add(optionalSlot);
+                optionalSlot.Name.set_String(cache.DefaultAnalWs, "Optional aspect");
+                optionalSlot.Optional = true;
+                template.SuffixSlotsRS.Add(optionalSlot);
+                unattachedSlot = services.GetInstance<IMoInflAffixSlotFactory>().Create();
+                category.AffixSlotsOC.Add(unattachedSlot);
+                unattachedSlot.Name.set_String(cache.DefaultAnalWs, "Unused");
             });
             categoryGuid = category.Guid;
             slotGuid = slot.Guid;
@@ -84,6 +94,8 @@ public sealed class GrammarCheckQueryTests : IDisposable
         Assert.Contains("Conjugation", warning.Description, StringComparison.Ordinal);
         Assert.Contains("Verb", warning.Description, StringComparison.Ordinal);
         Assert.Contains("Tense", warning.Description, StringComparison.Ordinal);
+        Assert.Contains("FieldWorks and PanGloss currently treat an empty required slot as optional",
+            warning.Explanation, StringComparison.Ordinal);
         Assert.Equal(CanonicalId.FromGuid(slotGuid).Value, Assert.Single(warning.Subject).ObjectId);
         Assert.Equal(GrammarFindingCodes.RequiredSlotEmpty,
             Assert.Single(before.Summary, item => item.Code == GrammarFindingCodes.RequiredSlotEmpty).Code);
