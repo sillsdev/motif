@@ -404,6 +404,11 @@
     "description": "Searches Baseline entries, senses, forms and glosses. Detailed results include allomorphs and their environments.",
     "source": "Authored from the agent read contract."
   },
+  "grammar read": {
+    "title": "Read grammar objects",
+    "description": "Reads phonemes, natural classes, environments, parts of speech, inflection features or lexical entries from the current Baseline. Use an exact canonical id or a name query, and page through larger lists.",
+    "source": "Authored from the typed grammar read contract."
+  },
   "motif_activity": {
     "title": "Read agent activity",
     "description": "Reads calls, Proposals and jobs from this conversation and the selected project.",

@@ -1388,6 +1388,37 @@ try
             break;
 
         case "grammar":
+            if (positionals.Count == 1 && positionals[0] == "read")
+            {
+                if (flags.Keys.Any(name => name is not ("project" or "kind" or "id" or "query" or "offset" or "limit" or "json")) ||
+                    !flags.TryGetValue("project", out var grammarReadProject) ||
+                    !flags.TryGetValue("kind", out var grammarReadKindText) ||
+                    !Enum.TryParse<GrammarReadKind>(grammarReadKindText, ignoreCase: false, out var grammarReadKind) ||
+                    !Enum.IsDefined(grammarReadKind))
+                    return Usage(UsageLineFor("grammar read"), asJson);
+                var grammarReadOffset = 0;
+                var grammarReadLimit = 25;
+                if (flags.TryGetValue("offset", out var grammarReadOffsetText) &&
+                    !int.TryParse(grammarReadOffsetText, NumberStyles.None, CultureInfo.InvariantCulture, out grammarReadOffset) ||
+                    flags.TryGetValue("limit", out var grammarReadLimitText) &&
+                    !int.TryParse(grammarReadLimitText, NumberStyles.None, CultureInfo.InvariantCulture, out grammarReadLimit))
+                    return Usage(UsageLineFor("grammar read"), asJson);
+                var grammarRead = GrammarReadQuery.Query(new GrammarReadRequest(
+                    grammarReadProject,
+                    grammarReadKind,
+                    flags.GetValueOrDefault("id"),
+                    flags.GetValueOrDefault("query"),
+                    grammarReadOffset,
+                    grammarReadLimit));
+                if (asJson || !grammarRead.Succeeded)
+                    result = RenderCommand(grammarRead, asJson);
+                else
+                {
+                    alreadyRendered = true;
+                    result = new CommandResult(0, GrammarReadTextRenderer.Render(grammarRead.Value!));
+                }
+                break;
+            }
             if (positionals.Count != 1 || positionals[0] != "check" ||
                 !flags.TryGetValue("project", out var grammarProject))
                 return Usage(UsageLineFor("grammar check"), asJson);

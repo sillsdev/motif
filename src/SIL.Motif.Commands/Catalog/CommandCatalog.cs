@@ -18,7 +18,8 @@ namespace SIL.Motif.Commands.Catalog;
 /// <see cref="BaselineCaptureCommand"/>,
 /// <see cref="Assess.AssessCommand"/>, <see cref="Assess.StatsCommand"/>, <see cref="SelectionCommands"/>,
 /// <see cref="ProjectSetupCommands"/>, <see cref="Queries.TextInventoryQuery"/>, <see cref="OverviewCommand"/>,
-/// <see cref="TimingCommand"/>, <see cref="Queries.GrammarCheckQuery"/>, <see cref="HandoffCommand"/>,
+/// <see cref="TimingCommand"/>, <see cref="Queries.GrammarCheckQuery"/>, <see cref="Queries.GrammarReadQuery"/>,
+/// <see cref="HandoffCommand"/>,
 /// <see cref="JobCommands"/>, <see cref="PendingChangesWorkflow"/>, <see cref="ReadStateCommands"/>,
 /// <see cref="Queries.WordContextQuery"/>, <see cref="Queries.WordTraceQuery"/>, <see cref="Queries.ObjectUsesQuery"/>, and <see cref="Queries.InspectQuery"/>.
 /// The project setup group reaches <see cref="ProjectCreateCommand"/> and <see cref="ProjectInitializationCommand"/>.
@@ -209,6 +210,7 @@ public static class CommandCatalog
         new CommandDescriptor("proposal trial", typeof(ReadTrialRequest), typeof(TrialRecord), CommandSurface.Developer, AgentClass.Read),
         new CommandDescriptor("warnings", typeof(WarningsRequest), typeof(WarningsResponse), CommandSurface.Released, AgentClass.Read),
         new CommandDescriptor("grammar check", typeof(GrammarCheckRequest), typeof(GrammarCheckResponse), CommandSurface.Released, AgentClass.Evaluate),
+        new CommandDescriptor("grammar read", typeof(GrammarReadRequest), typeof(GrammarReadResponse), CommandSurface.AdvancedAi, AgentClass.Read),
         new CommandDescriptor("timing", typeof(TimingRequest), typeof(TimingResponse), CommandSurface.Released, AgentClass.Read),
 
         // ObjectUsesQuery: the words that use an object, the words it ran in, and what a set of words shares

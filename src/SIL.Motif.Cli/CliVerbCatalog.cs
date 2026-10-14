@@ -370,6 +370,13 @@ public static class CliVerbCatalog
             "Project", "grammar", "grammar check",
             new[] { "grammar check --project <fwdata> [--stored-analyses budget|all|off] [--json]" }),
         new CliVerbDescriptor(
+            "Project", "grammar", "grammar read",
+            new[]
+            {
+                "grammar read --project <fwdata> --kind <phoneme|natural_class|environment|part_of_speech|inflection_feature|lexical_entry> " +
+                "[--id <canonicalId> | --query <text>] [--offset <n>] [--limit <n>] [--json]",
+            }),
+        new CliVerbDescriptor(
             "Project", "timing", "timing",
             new[]
             {
