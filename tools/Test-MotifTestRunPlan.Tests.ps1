@@ -21,17 +21,25 @@ function Assert-Requirements {
     }
 }
 
-Assert-Requirements @('SIL.Motif.Tests.Cli') '' $true $false
+Assert-Requirements @('SIL.Motif.Tests.Cli') '' $false $false
 Assert-Requirements @('SIL.Motif.Tests.App') '' $false $false
-Assert-Requirements @('SIL.Motif.Tests.App', 'SIL.Motif.Tests.Cli') '' $true $false
+Assert-Requirements @('SIL.Motif.Tests.App', 'SIL.Motif.Tests.Cli') '' $false $false
 Assert-Requirements @('SIL.Motif.Tests.Cli') 'FullyQualifiedName~HelpCatalogTests' $false $false
 Assert-Requirements @('SIL.Motif.Tests.App') 'FullyQualifiedName~KeyboardInteractionContractTests' $false $false
-Assert-Requirements @('SIL.Motif.Tests.Cli') 'FullyQualifiedName~PortableWorkerPackageTests' $true $false
+Assert-Requirements @('SIL.Motif.Tests.Cli') 'FullyQualifiedName~PortableWorkerPackageTests' $false $false
 Assert-Requirements @('SIL.Motif.Tests.Cli') '' $true $false -All
 Assert-Requirements @('SIL.Motif.Tests.App') '' $false $true -All
 Assert-Requirements @('SIL.Motif.Tests.App', 'SIL.Motif.Tests.Cli') '' $true $true -All
 Assert-Requirements @('SIL.Motif.Tests.App') 'FullyQualifiedName~ExplainedWordCard' $false $false
-Assert-Requirements @('SIL.Motif.Tests.App', 'SIL.Motif.Tests.Cli') 'Trait=System' $false $true -System
+Assert-Requirements @('SIL.Motif.Tests.App', 'SIL.Motif.Tests.Cli') 'Trait=System' $true $true -System
 Assert-Requirements @('SIL.Motif.Tests.App') 'FullyQualifiedName~UnrelatedTest' $false $false -System
+
+Assert-Requirements @('SIL.Motif.Tests.Cli') '' $true $false -System
+Assert-Requirements @('SIL.Motif.Tests.Cli') 'FullyQualifiedName~PortableWorkerPackageTests' $true $false -All
+Assert-Requirements @('SIL.Motif.Tests.Cli') 'FullyQualifiedName~PortableWorkerPackageTests' $true $false -System
+Assert-Requirements @('SIL.Motif.Tests.Cli') 'FullyQualifiedName~HelpCatalogTests' $false $false -All
+Assert-Requirements @('SIL.Motif.Tests.Cli') 'FullyQualifiedName~HelpCatalogTests' $false $false -System
+Assert-Requirements @('SIL.Motif.Tests.Cli') 'Name~PortablePackage' $true $false -All
+Assert-Requirements @('SIL.Motif.Tests.Cli') 'Name~PortablePackage' $false $false
 
 Write-Host 'Test artifact selection checks passed.' -ForegroundColor Green

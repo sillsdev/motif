@@ -94,7 +94,7 @@ public sealed class NoTestBuildCommandsTests
         var startup = File.ReadAllText(Path.Combine(repositoryRoot, "tests", "SIL.Motif.Tests.App",
             "App", "EntryPointStartupTests.cs"));
 
-        Assert.Contains("[Trait(\"MotifTestLevel\", \"Integration\")]", portablePackage, StringComparison.Ordinal);
+        Assert.Contains("[Trait(\"MotifTestLevel\", \"System\")]", portablePackage, StringComparison.Ordinal);
         Assert.Contains("[Trait(\"MotifTestLevel\", \"System\")]", explainedWordCard, StringComparison.Ordinal);
         Assert.Contains("[Trait(\"MotifTestLevel\", \"System\")]\npublic sealed class AppStartupSmokeSystemTests",
             startup, StringComparison.Ordinal);

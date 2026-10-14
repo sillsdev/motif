@@ -45,7 +45,9 @@ $workerAssets = @(
     'SIL.Motif.Worker.deps.json',
     'SIL.Motif.Worker.runtimeconfig.json'
 )
-$offlineRestoreConfig = Join-Path $workRoot 'offline-nuget.config'
+# Reusing compiler state avoids recompilation; fresh package staging keeps removed assets from surviving.
+$publishBuildRoot = Join-Path $repositoryRoot "bin/.cache/test-artifacts/$Configuration/$runtimeIdentifier"
+$offlineRestoreConfig = Join-Path $publishBuildRoot 'offline-nuget.config'
 
 function Get-WorkerAssetHashes {
     param([string[]] $Assets)
@@ -82,7 +84,7 @@ function Publish-Project {
     )
 
     [System.IO.Directory]::CreateDirectory($Destination) | Out-Null
-    $motifBinRoot = [System.IO.Path]::GetFullPath((Join-Path $workRoot 'isolated-bin')) +
+    $motifBinRoot = [System.IO.Path]::GetFullPath((Join-Path $publishBuildRoot 'bin')) +
         [System.IO.Path]::DirectorySeparatorChar
     $publishArguments = @(
         'publish', $ProjectPath,
@@ -235,13 +237,17 @@ function Write-JsonFile {
     [System.IO.File]::WriteAllText($Path, $json, [System.Text.UTF8Encoding]::new($false))
 }
 
+Import-Module (Join-Path $repositoryRoot 'tools/MotifProcessHygiene.psm1') -Force
+$artifactLock = Enter-MotifWorktreeLock -RepoRoot $repositoryRoot -Context 'Motif test artifact preparation'
+try {
 Push-Location $repositoryRoot
 try {
     [System.IO.Directory]::CreateDirectory($testOutputRoot) | Out-Null
     [System.IO.Directory]::CreateDirectory($workRoot) | Out-Null
+    [System.IO.Directory]::CreateDirectory($publishBuildRoot) | Out-Null
     if ($preparePortableWorkerPackage) { [System.IO.Directory]::CreateDirectory($packageRoot) | Out-Null }
     if ($prepareExplainedWordCardFixture) { [System.IO.Directory]::CreateDirectory($walkthroughRoot) | Out-Null }
-    $env:MOTIF_PACKAGE_INTERMEDIATE_ROOT = Join-Path $workRoot 'intermediate'
+    $env:MOTIF_PACKAGE_INTERMEDIATE_ROOT = Join-Path $publishBuildRoot 'obj'
     $env:MOTIF_TEST_SLDR_OFFLINE = '1'
     $env:MOTIF_TEST_SLDR_CACHE_PATH = Join-Path $workRoot 'sldr-cache'
     $env:MOTIF_WRITING_SYSTEM_REPOSITORY_PATH = Join-Path $workRoot 'writing-systems'
@@ -252,7 +258,10 @@ try {
         $localPackageSource = "<add key=`"local-override`" value=`"$escapedSource`" />"
     }
     $nugetConfig = "<?xml version=`"1.0`" encoding=`"utf-8`"?><configuration><packageSources><clear />$localPackageSource</packageSources></configuration>"
-    [System.IO.File]::WriteAllText($offlineRestoreConfig, $nugetConfig, [System.Text.UTF8Encoding]::new($false))
+    if (-not (Test-Path -LiteralPath $offlineRestoreConfig -PathType Leaf) -or
+        [System.IO.File]::ReadAllText($offlineRestoreConfig) -cne $nugetConfig) {
+        [System.IO.File]::WriteAllText($offlineRestoreConfig, $nugetConfig, [System.Text.UTF8Encoding]::new($false))
+    }
 
     if ($preparePortableWorkerPackage) {
         $sharedWorkerAssetsBefore = Get-WorkerAssetHashes $workerAssets
@@ -424,3 +433,5 @@ finally {
     if (Test-Path -LiteralPath $stageRoot) { Remove-ArtifactDirectory $stageRoot }
     Pop-Location
 }
+}
+finally { Exit-MotifWorktreeLock -LockHandle $artifactLock }

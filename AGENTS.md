@@ -197,10 +197,17 @@ records, not counter-examples.
 
 **DONE for UI, layout, progress, shared-control, or window-copy work requires final-source validation.**
 Run `pwsh ./test.ps1 -All -Configuration Release` with `MOTIF_PANGLOSS_EXE` set to the pinned executable
-from `pangloss-release.json`, and set `MOTIF_SCREENSHOTS` so page and state captures run too. Report the
-tested source SHA, parser path/version, completed capture states, all skipped test categories, and any
-Windows-only follow-up. Use `pwsh ./tools/Capture-Screens.ps1` to regenerate, review, and diff the captures.
-A missing parser, skipped capture run, failed gate, or missing final result means validation is incomplete.
+from `pangloss-release.json`. Headless layout invariants are the layout gate: the quick tier runs in the
+default developer loop, and the full grid runs at System level.
+
+Screenshots are optional and default off. Leave `MOTIF_SCREENSHOTS` unset for batch gates and READY
+validation. Keep the capture harness, matrix and walkthrough infrastructure; set `MOTIF_SCREENSHOTS`
+when making a new design, publishing website media or recording walkthrough video, and use
+`pwsh ./tools/Capture-Screens.ps1` to regenerate, review, and diff the captures.
+
+Report the tested source SHA, parser path/version, all skipped test categories and any Windows-only
+follow-up. When captures are requested, also report the completed capture states. A missing parser,
+failed gate or missing final result means validation is incomplete.
 
 ## Comments
 

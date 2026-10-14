@@ -46,7 +46,7 @@ public sealed class TestLevelGuardTests
         new("SIL.Motif.Tests.App", "SettingsViewTests", TestBoundary.FakeOnly, "Unit"),
         new("SIL.Motif.Tests.App", "EntryPointStartupTests", TestBoundary.Deterministic, "Unit"),
         new("SIL.Motif.Tests.Cli", "RunnerSpineTests", TestBoundary.Process, "Integration"),
-        new("SIL.Motif.Tests.Cli", "PortableWorkerPackageTests", TestBoundary.Process, "Integration"),
+        new("SIL.Motif.Tests.Cli", "PortableWorkerPackageTests", TestBoundary.Process, "System"),
         new("SIL.Motif.Tests.Cli", "MorphotacticsSampleWorkflowTests", TestBoundary.RealParser, "System"),
         new("SIL.Motif.Tests.Cli", "RewriteRuleSampleTrialTests", TestBoundary.RealParser, "System"),
         new("SIL.Motif.Tests.Cli", "ParsimonySampleSurveySystemTests", TestBoundary.RealParser, "System"),
