@@ -56,17 +56,27 @@ public sealed record AddDeleteLexemeFormRequest(
 public sealed record ComposeAuthorLexemeFormRequest(
     string FwDataPath, string ProductVersion, string DraftName, string IntentJson);
 
+/// <summary>Requests an empty feature structure on an existing or earlier-staged stem or inflectional affix MSA.</summary>
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
 /// <param name="DraftName">The name of the Draft being authored.</param>
-/// <param name="IntentJson">The closed semantic intent JSON accepted by this composer.</param>
+/// <param name="IntentJson">
+/// Closed <c>{msa}</c> input naming the exact canonical MSA identity. Its MsFeatures or InflFeats owning slot
+/// must be unoccupied; a present structure is refused even with no selections. Inflectional affix features
+/// are word requirements. Use the returned structure identity for selections.
+/// </param>
 public sealed record ComposeAuthorFeatureStructureRequest(
     string FwDataPath, string ProductVersion, string DraftName, string IntentJson);
 
+/// <summary>Requests a closed feature selection on an existing or earlier-staged feature structure.</summary>
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
 /// <param name="DraftName">The name of the Draft being authored.</param>
-/// <param name="IntentJson">The closed semantic intent JSON accepted by this composer.</param>
+/// <param name="IntentJson">
+/// Closed <c>{featStruc, feature, value?}</c> input using exact canonical identities. Omit value when unchosen;
+/// a supplied value belongs to the exact closed feature. InflFeats selections use the current morphosyntactic
+/// domain and any declared structure type, and are word requirements.
+/// </param>
 public sealed record ComposeAuthorFeatureValueRequest(
     string FwDataPath, string ProductVersion, string DraftName, string IntentJson);
 

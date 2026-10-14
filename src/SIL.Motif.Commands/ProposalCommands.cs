@@ -435,13 +435,15 @@ public static partial class ProposalCommands
     }
 
     /// <summary>
-    /// Runs <see cref="AuthorFeatureStructureComposer"/> against a live project and appends the one
-    /// operation it resolves to a draft — Motif's first grammar Layer-1 construct, alongside the
-    /// lexical <see cref="ComposeAuthorLexemeForm"/>.
+    /// Appends an empty feature-structure create for an existing or earlier-staged stem or inflectional affix
+    /// MSA to a Draft. An occupied owning slot is refused; the existing structure is preserved.
     /// </summary>
     /// <remarks>
-    /// <see cref="ComposeAuthorFeatureStructureRequest.IntentJson"/> is <c>{ "msa": "..." }</c> — see
-    /// <see cref="AuthorFeatureStructureIntentParser"/>.
+    /// Closed input is <c>{ "msa": "&lt;canonical ID&gt;" }</c>. The exact MSA identity selects
+    /// <c>grammar/moStemMsa/createMsFeatures</c> or <c>grammar/moInflAffMsa/createInflFeats</c>.
+    /// Inflectional affix features are word requirements. The returned
+    /// <see cref="ComposedOperationsResponse.CreatedObjects"/> entry carries the actual dispatched create
+    /// kind and structure identity to use in <see cref="ComposeAuthorFeatureValue"/>.
     /// </remarks>
     public static CommandOutcome<ComposedOperationsResponse> ComposeAuthorFeatureStructure(
         ComposeAuthorFeatureStructureRequest request)

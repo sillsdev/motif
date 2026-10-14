@@ -257,7 +257,7 @@ internal static class AgentTools
             string.Empty,
             AgentClass.Draft,
             Schema.Object([("draft", Schema.String("The draft name from motif_start_proposal."), true),
-                ("msa", Schema.String("Id of the stem's grammatical info."), true)]),
+                ("msa", Schema.String("Id of a stem or inflectional affix MSA with no existing feature structure."), true)]),
             false,
             false,
             false,

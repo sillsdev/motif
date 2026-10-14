@@ -11,11 +11,11 @@ A linguist sees an affix change with a grammatical value such as person, number 
 
 ## Motif support
 
-`motif_grammar` can read features, feature values, inflection classes and templates. `motif_add_inflection_feature` declares a closed morphosyntactic feature with its named values, and `motif_add_inflection_class` creates a category-owned class that can be assigned to a stem MSA through `motif_add_lexical_entry`. `motif_add_affix_slot` and `motif_add_affix_template` create the category-owned positions and their order. `motif_add_feature_structure` creates an empty feature structure on an existing stem MSA. `motif_add_feature_value` adds a closed-feature specification to that structure and can assign an existing named value of that feature. There is not yet a composer for adding feature restrictions to an affix MSA.
+`motif_grammar` can read features, feature values, inflection classes and templates. `motif_add_inflection_feature` declares a closed morphosyntactic feature with its named values, and `motif_add_inflection_class` creates a category-owned class that can be assigned to a stem MSA through `motif_add_lexical_entry`. `motif_add_affix_slot` and `motif_add_affix_template` create the category-owned positions and their order. `motif_add_feature_structure` creates an empty feature structure on an existing or earlier-staged stem or inflectional affix MSA, refusing an occupied slot. Use its returned exact structure identity with `motif_add_feature_value` to add a closed-feature specification, optionally selecting an existing value belonging to that exact feature. Inflectional affix selections are requirements on the word, not output features; their definitions must belong to the current morphosyntactic feature system and any declared structure type. A stem's values remain separate from the affix's requirements.
 
 ## Check with a Trial
 
-After a composer can express the change, try words with each attested value and a contrasting value. Confirm the right affix appears for each value, the wrong affix does not, and a word with missing or incompatible information does not acquire an unsupported analysis. Include negative words and any known exceptions.
+Try words with each attested value and a contrasting value. Confirm the right affix appears for each value, the wrong affix does not, and a word with missing or incompatible information does not acquire an unsupported analysis. Include negative words and any known exceptions.
 
 ## Ask the linguist
 

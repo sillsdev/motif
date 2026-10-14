@@ -86,7 +86,7 @@ public sealed class AuthorFeatureStructureComposerTests : IDisposable
         var intent = new AuthorFeatureStructureIntent(CanonicalId.FromGuid(_seed.FirstEntryId));
 
         var ex = Assert.Throws<InvalidOperationException>(() => AuthorFeatureStructureComposer.Build(_cache, intent));
-        Assert.Contains("not a MoStemMsa", ex.Message);
+        Assert.Contains("not a MoMorphSynAnalysis", ex.Message);
     }
 
     [Fact]
@@ -106,6 +106,37 @@ public sealed class AuthorFeatureStructureComposerTests : IDisposable
             Assert.Equal(first[i].EntityId, second[i].EntityId);
             Assert.Equal(first[i].Target, second[i].Target);
         }
+    }
+
+
+    [Theory]
+    [InlineData("derivational")]
+    [InlineData("unclassified")]
+    public void BuildRefusesOtherMsaKindsBeforeMinting(string kind)
+    {
+        IMoMorphSynAnalysis msa = null!;
+        SIL.LCModel.Infrastructure.NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            msa = kind == "derivational"
+                ? _cache.ServiceLocator.GetInstance<IMoDerivAffMsaFactory>().Create()
+                : _cache.ServiceLocator.GetInstance<IMoUnclassifiedAffixMsaFactory>().Create();
+            _cache.ServiceLocator.GetInstance<ILexEntryRepository>().GetObject(_seed.FirstEntryId)
+                .MorphoSyntaxAnalysesOC.Add(msa);
+        });
+        var minted = 0;
+        var error = Assert.Throws<InvalidOperationException>(() => AuthorFeatureStructureComposer.Build(_cache,
+            new(CanonicalId.FromGuid(msa.Guid)), () => { minted++; return CanonicalId.Mint(); }));
+        Assert.Contains("not a MoStemMsa or MoInflAffMsa", error.Message);
+        Assert.Equal(0, minted);
+    }
+
+    [Fact]
+    public void BuildRefusesZeroMsaIdentityBeforeMinting()
+    {
+        var minted = 0;
+        Assert.ThrowsAny<Exception>(() => AuthorFeatureStructureComposer.Build(_cache,
+            new(CanonicalId.FromGuid(Guid.Empty)), () => { minted++; return CanonicalId.Mint(); }));
+        Assert.Equal(0, minted);
     }
 
     private static Func<CanonicalId> DeterministicMinter(IReadOnlyList<CanonicalId> ids)

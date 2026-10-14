@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://motif.sil.org/contracts/affix-authoring/v1",
-  "title": "Ordinary lexical form authoring",
-  "description": "Closed ordinary stem/affix form intents. Live ownership, decoded identity uniqueness and placement are checked against LibLCM. Restrictions are explicit per form.",
+  "title": "Ordinary forms and affix feature authoring",
+  "description": "Closed ordinary stem/affix form intents. Live ownership, decoded identity uniqueness and placement are checked against LibLCM. Restrictions are explicit per form. Feature structures use exact stem or inflectional MSA identity; feature values are optional. Duplicate JSON keys are refused by the runtime parsers.",
   "oneOf": [
     {
       "$ref": "#/$defs/AuthorLexicalEntry"
@@ -12,6 +12,15 @@
     },
     {
       "$ref": "#/$defs/AlternateFormsPayload"
+    },
+    {
+      "$ref": "#/$defs/AuthorFeatureStructure"
+    },
+    {
+      "$ref": "#/$defs/AuthorFeatureValue"
+    },
+    {
+      "$ref": "#/$defs/InflFeatsPayload"
     }
   ],
   "$defs": {
@@ -257,6 +266,46 @@
         "ws",
         "text"
       ]
+    },
+    "AuthorFeatureStructure": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Creates an empty MsFeatures or InflFeats structure on an exact stem or inflectional MSA with an empty owning slot.",
+      "properties": {
+        "msa": {
+          "$ref": "#/$defs/CanonicalId"
+        }
+      },
+      "required": [
+        "msa"
+      ]
+    },
+    "AuthorFeatureValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Adds a closed specification; value is optional. InflFeats selections require morphosyntactic definitions and exact feature-owned values.",
+      "properties": {
+        "featStruc": {
+          "$ref": "#/$defs/CanonicalId"
+        },
+        "feature": {
+          "$ref": "#/$defs/CanonicalId"
+        },
+        "value": {
+          "$ref": "#/$defs/CanonicalId"
+        }
+      },
+      "required": [
+        "featStruc",
+        "feature"
+      ]
+    },
+    "InflFeatsPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Empty payload for grammar/moInflAffMsa/createInflFeats; target and nonzero entityId are required in the envelope. Placement and storage overrides are refused.",
+      "properties": {},
+      "required": []
     }
   }
 }

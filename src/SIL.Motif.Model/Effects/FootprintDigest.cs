@@ -21,15 +21,14 @@ namespace SIL.Motif.Model.Effects;
 /// footprint digest even though their effect digests differ — exactly the property Apply's drift
 /// check needs (it recomputes the current "before" independent of what any particular Proposal
 /// proposes, and compares only that against the anchor).
+/// Equal identity/field keys sort by canonical UTF-8 before and optional preview bytes. After values
+/// participate in neither the serialized footprint nor its ordering.
 /// </remarks>
 public static class FootprintDigest
 {
     public static string Compute(IEnumerable<ExpectedEffect> effects)
     {
-        var ordered = effects
-            .OrderBy(e => e.CanonicalId)
-            .ThenBy(e => e.Field, StringComparer.Ordinal)
-            .ToList();
+        var ordered = EffectTupleOrdering.Sort(effects, includeAfter: false, includePreview: true);
 
         using var stream = new MemoryStream();
         using (var writer = new Utf8JsonWriter(stream))

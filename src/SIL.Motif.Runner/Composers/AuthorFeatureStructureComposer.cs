@@ -9,20 +9,10 @@ using SIL.LCModel;
 namespace SIL.Motif.Runner.Composers;
 
 /// <summary>
-/// Lowers one <see cref="AuthorFeatureStructureIntent"/> into the single, closed-schema Layer-0
-/// operation that realizes it — Motif's first grammar composer (ADR 0009 decision 1), alongside the
-/// lexical <see cref="AuthorLexemeFormComposer"/>. One authored construct becomes exactly one
-/// <c>grammar/moStemMsa/createMsFeatures</c> operation.
+/// Authors one empty feature structure on an existing stem or inflectional affix MSA. Stems use
+/// MsFeatures; inflectional affixes use InflFeats for the inflection features required on the word.
+/// An occupied structure is preserved: this intent creates one and never replaces one.
 /// </summary>
-/// <remarks>
-/// <b>Composer, not primitive.</b> <see cref="Build"/> takes <c>(cache, intent)</c> because it must
-/// resolve the intent's reference and refuse an already-occupied slot before authoring anything — the
-/// same "project-reading composer, pure primitive builder" split <see cref="AuthorLexemeFormComposer"/>
-/// follows. Refusing here, rather than letting a create-into-occupied slot silently replace the
-/// existing feature structure, is deliberate: unlike <c>LexemeForm</c> (a single required value with no
-/// prior meaning worth preserving), an existing <c>FsFeatStruc</c> may already carry authored feature
-/// values that a silent replacement would destroy.
-/// </remarks>
 public static class AuthorFeatureStructureComposer
 {
     private const string ConstructName = "AuthorFeatureStructure";
@@ -41,13 +31,18 @@ public static class AuthorFeatureStructureComposer
 
         var mint = mintId ?? (() => CanonicalId.Mint());
 
-        var msa = ReferenceFieldLowering.Resolve<IMoStemMsa>(cache, intent.Msa, ConstructName);
-        if (msa.MsFeaturesOA is not null)
+        var msa = ReferenceFieldLowering.Resolve<IMoMorphSynAnalysis>(cache, intent.Msa, ConstructName);
+        var (kind, structure) = msa switch
         {
+            IMoStemMsa stem => (MoStemMsaMsFeaturesOperationKinds.CreateMsFeatures, stem.MsFeaturesOA),
+            IMoInflAffMsa inflectional => (MoInflAffMsaInflFeatsOperationKinds.CreateInflFeats, inflectional.InflFeatsOA),
+            _ => throw new InvalidOperationException(
+                $"'{ConstructName}': MSA '{intent.Msa.Value}' is not a MoStemMsa or MoInflAffMsa."),
+        };
+        if (structure is not null)
             throw new InvalidOperationException(
                 $"'{ConstructName}': MSA '{intent.Msa.Value}' already has a feature structure; " +
                 "this construct authors one, it does not replace one.");
-        }
 
         var operationId = mint();
         var newFeatStrucId = mint();
@@ -56,7 +51,7 @@ public static class AuthorFeatureStructureComposer
         {
             new OperationEnvelope(
                 operationId: operationId,
-                kind: MoStemMsaMsFeaturesOperationKinds.CreateMsFeatures,
+                kind: kind,
                 entityId: newFeatStrucId,
                 target: intent.Msa,
                 after: EmptyAfter(),

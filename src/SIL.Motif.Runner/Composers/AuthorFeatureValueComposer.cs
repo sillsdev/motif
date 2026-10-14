@@ -67,6 +67,8 @@ public static class AuthorFeatureValueComposer
         if (feature is not IFsClosedFeature closedFeature)
             throw new InvalidOperationException("AuthorFeatureValue requires a closed feature for its closed-value specification.");
 
+        InflFeatsSemanticValidator.RequireSelection(cache, featStruc, closedFeature);
+
         if (featStruc.FeatureSpecsOC.Any(spec => spec.FeatureRA is { } existing && existing.Guid == feature.Guid))
         {
             throw new InvalidOperationException(

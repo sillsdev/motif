@@ -306,7 +306,7 @@
   },
   {
     "name": "motif_add_feature_structure",
-    "description": "Author grammatical features. Stages an empty feature structure on the specified stem grammatical information in a Draft. Use its created identity when authoring feature values. Only a person can Apply.\nCommand: compose-author-feature-structure. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+    "description": "Author grammatical features. Stages an empty feature structure on an existing or earlier-staged stem or inflectional affix MSA in a Draft, refusing an occupied slot even when its structure has no selections. Inflectional affix features are word requirements; use the returned exact structure identity to author selections. Only a person can Apply.\nCommand: compose-author-feature-structure. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: Closed {msa} input naming the exact canonical MSA identity. Its MsFeatures or InflFeats owning slot must be unoccupied; a present structure is refused even with no selections. Inflectional affix features are word requirements. Use the returned structure identity for selections.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -316,7 +316,7 @@
         },
         "msa": {
           "type": "string",
-          "description": "Id of the stem\u0027s grammatical info."
+          "description": "Id of a stem or inflectional affix MSA with no existing feature structure."
         },
         "project": {
           "type": "string",
@@ -336,7 +336,7 @@
   },
   {
     "name": "motif_add_feature_value",
-    "description": "Author a feature value. Stages a closed feature specification in an existing or Draft-created feature structure. The feature and optional symbolic value must belong to the project. Only a person can Apply.\nCommand: compose-author-feature-value. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+    "description": "Author a feature value. Stages a closed feature specification in an existing or earlier-staged structure, with value omitted when unchosen. Inflectional affix requirements use current morphosyntactic definitions, and any supplied value must belong to the exact feature. Only a person can Apply.\nCommand: compose-author-feature-value. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: Closed {featStruc, feature, value?} input using exact canonical identities. Omit value when unchosen; a supplied value belongs to the exact closed feature. InflFeats selections use the current morphosyntactic domain and any declared structure type, and are word requirements.",
     "inputSchema": {
       "type": "object",
       "properties": {

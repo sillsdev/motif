@@ -205,6 +205,41 @@ Refreshing a Dry Run preserves targets, identities, dependencies, form values an
 Changed prerequisites or occupied owning slots require fresh evidence; an obsolete projection version is
 refused and recaptured, never migrated.
 
+Authors can give an existing inflectional affix grammatical feature requirements while retaining its
+entry, forms and analysis identities. An empty structure is valid, and assigning a feature does not
+require choosing a value in the same Proposal.
+
+`AuthorFeatureStructure` accepts closed `{msa}` and resolves exactly `MoStemMsa.MsFeatures` or
+`MoInflAffMsa.InflFeats`. Unknown or duplicate properties, other MSA types and occupied owning slots
+are refused before minting. Earlier-staged analyses are resolved against the declared Proposal graph.
+`grammar/moInflAffMsa/createInflFeats` requires the exact target, a fresh nonzero `entityId` and closed
+`after: {}`. It creates a native `FsFeatStruc` into an empty atomic owning slot, never replacing an
+incumbent; placement, storage overrides and identity reuse/conflicts are refused. No owning delete
+is supplied by this family.
+
+`AuthorFeatureValue` retains closed `{featStruc, feature, value?}`. It creates an exact native
+`FsClosedValue` under the structure and separately declares its feature and optional value references.
+Feature selections on InflFeats use closed definitions in the current morphosyntactic feature system,
+values owned by that exact feature, and any declared morphosyntactic structure type's feature list.
+The complete Proposal graph refuses duplicate features or a value without a feature; empty structures
+and feature-only specifications are valid. Phonological structures retain their existing feature domain.
+Native InflFeats is a requirement: FieldWorks HCLoader builds RequiredSyntacticFeatureStruct from it,
+and PanGloss compiles it into required_syn_fs. This does not author an output-feature setter or prove
+cross-word agreement; source-MSA trace metadata does not expose the final analysis feature structure.
+
+The feature structure's exact identity is the authored target, without a composition-time owner
+expectation. A valid move between valid MSA owners before Dry Run is evaluated under its current
+owner and domain. The Dry Run binds that owner; later ownership drift refuses Apply.
+
+At the Dry Run baseline, read-only evidence binds feature/value definitions, structure/spec ownership, MSA/category identity,
+declared type membership and existing external anchors of staged feature objects. Proposed feature
+identities bind absence or collision even when their owners are staged. These reads participate in
+preflight without becoming changed effects. One complete Proposal remains one atomic unit of work;
+all creation and reference ordering uses explicit dependencies. Native owning links, spec membership
+and exact feature/value references participate in mechanical snapshots and diff. The InflFeats owning
+link advances the semantic projection to version 8. Evidence from version 7 is refused and must be
+recaptured with a fresh Dry Run; no old shape is migrated.
+
 Inflection authoring creates the named grammar pieces that stems can refer to. It keeps categories,
 inflection classes, feature choices and stem names explicit, so creating a piece never silently changes
 an existing entry or a category's default class.

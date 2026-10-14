@@ -469,7 +469,7 @@
       "token": {
         "projectIdentity": "{ProjectIdentity}",
         "semanticSnapshotDigest": "<varies>",
-        "projectionVersion": "7",
+        "projectionVersion": "8",
         "capturedUtc": "<varies>",
         "bundleDigest": "<varies>"
       },

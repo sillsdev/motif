@@ -121,6 +121,86 @@ public class SnapshotAndEffectJsonTests
             .GetProperty("index").GetInt32());
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void IndependentCollectionMemberEffectsIgnoreInputOrderWhenTheirIdentityAndFieldTie(bool removal)
+    {
+        var firstMember = CanonicalId.FromGuid(Guid.ParseExact("10111213-1415-1617-1819-1a1b1c1d1e1f", "D"));
+        var secondMember = CanonicalId.FromGuid(Guid.ParseExact("20212223-2425-2627-2829-2a2b2c2d2e2f", "D"));
+        var empty = new Dictionary<string, string>();
+        var firstReference = new Dictionary<string, string> { ["ref"] = firstMember.Value };
+        var secondReference = new Dictionary<string, string> { ["ref"] = secondMember.Value };
+        var first = new ExpectedEffect(SenseId, "grammar/fsClosedFeature/values",
+            removal ? firstReference : empty, removal ? empty : firstReference);
+        var second = new ExpectedEffect(SenseId, "grammar/fsClosedFeature/values",
+            removal ? secondReference : empty, removal ? empty : secondReference);
+        ExpectedEffect[] forward = [first, second];
+        ExpectedEffect[] reversed = [second, first];
+
+        Assert.Equal(ExpectedEffectSetJsonWriter.WriteJson(forward), ExpectedEffectSetJsonWriter.WriteJson(reversed));
+        Assert.Equal(ExpectedEffectSetDigest.Compute(forward), ExpectedEffectSetDigest.Compute(reversed));
+        using var rendered = JsonDocument.Parse(ExpectedEffectSetJsonWriter.WriteJson(forward));
+        Assert.Equal(2, rendered.RootElement.GetArrayLength());
+    }
+
+    [Fact]
+    public void TiedEffectMapsUseCanonicalMemberOrderAndUtf8ValueOrder()
+    {
+        var bmp = "\uE000";
+        var supplementary = "\U00010000";
+        var bmpFirst = new ExpectedEffect(SenseId, SnapshotFields.LexSenseGloss,
+            new Dictionary<string, string>(),
+            new Dictionary<string, string> { [bmp] = "shared", [supplementary] = bmp });
+        var supplementaryFirst = bmpFirst with
+        {
+            After = new Dictionary<string, string> { [supplementary] = supplementary, [bmp] = "shared" },
+        };
+        var bmpReordered = bmpFirst with
+        {
+            After = new Dictionary<string, string> { [supplementary] = bmp, [bmp] = "shared" },
+        };
+        var forward = ExpectedEffectSetJsonWriter.WriteJson([bmpFirst, supplementaryFirst]);
+        var reversed = ExpectedEffectSetJsonWriter.WriteJson([supplementaryFirst, bmpReordered]);
+
+        Assert.Equal(forward, reversed);
+        Assert.Equal(ExpectedEffectSetDigest.Compute([bmpFirst, supplementaryFirst]),
+            ExpectedEffectSetDigest.Compute([supplementaryFirst, bmpReordered]));
+        using var rendered = JsonDocument.Parse(forward);
+        var firstAfter = rendered.RootElement[0].GetProperty("after");
+        Assert.Equal(bmp, firstAfter.GetProperty(supplementary).GetString());
+        Assert.Equal(new[] { supplementary, bmp }, firstAfter.EnumerateObject().Select(property => property.Name));
+    }
+
+    [Fact]
+    public void TiedPreviewEvidenceKeepsDestinationOutOfFootprintOrdering()
+    {
+        using var firstPreview = JsonDocument.Parse("{\"witness\":\"first\"}");
+        using var secondPreview = JsonDocument.Parse("{\"witness\":\"second\"}");
+        using var changedPreview = JsonDocument.Parse("{\"witness\":\"changed\"}");
+        var before = new Dictionary<string, string> { ["en"] = "same baseline" };
+        var first = new ExpectedEffect(SenseId, SnapshotFields.LexSenseGloss, before,
+            new Dictionary<string, string> { ["en"] = "z" }, firstPreview.RootElement.Clone());
+        var second = first with
+        {
+            After = new Dictionary<string, string> { ["en"] = "a" },
+            Preview = secondPreview.RootElement.Clone(),
+        };
+        var destinationChanged = first with { After = new Dictionary<string, string> { ["en"] = "0" } };
+        var previewChanged = first with { Preview = changedPreview.RootElement.Clone() };
+
+        Assert.Equal(ExpectedEffectSetJsonWriter.WritePublishedJson([first, second]),
+            ExpectedEffectSetJsonWriter.WritePublishedJson([second, first]));
+        Assert.Equal(FootprintDigest.Compute([first, second]), FootprintDigest.Compute([second, first]));
+        Assert.Equal(FootprintDigest.Compute([first, second]), FootprintDigest.Compute([destinationChanged, second]));
+        Assert.Equal(ExpectedEffectSetDigest.Compute([first, second]),
+            ExpectedEffectSetDigest.Compute([previewChanged, second]));
+        Assert.NotEqual(FootprintDigest.Compute([first, second]), FootprintDigest.Compute([previewChanged, second]));
+        var sameDestination = second with { After = first.After };
+        Assert.Equal(ExpectedEffectSetJsonWriter.WritePublishedJson([first, sameDestination]),
+            ExpectedEffectSetJsonWriter.WritePublishedJson([sameDestination, first]));
+    }
+
     [Fact]
     public void ExpectedEffectSetDigest_IsOrderIndependentOverTheEffectSet()
     {

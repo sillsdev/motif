@@ -4,15 +4,10 @@ using SIL.Motif.Contract.Parsing;
 
 namespace SIL.Motif.Runner.Composers;
 
-/// <summary>
-/// The authored input to <see cref="AuthorFeatureStructureComposer"/>: give an existing stem's
-/// morphosyntactic analysis an (initially empty) feature structure to record morphosyntactic features
-/// against — Motif's first grammar construct, alongside the lexical
-/// <see cref="AuthorLexemeFormComposer"/>.
-/// </summary>
+/// <summary>Gives a stem or inflectional affix MSA an initially empty feature structure.</summary>
 /// <param name="Msa">
-/// The existing <c>MoStemMsa</c> to attach a feature structure to. Must not already have one — this
-/// construct authors the structure itself, never overwrites an occupied slot.
+/// An existing MoStemMsa or MoInflAffMsa with an empty MsFeatures or InflFeats slot respectively.
+/// Inflectional affix features are requirements on the word. Other MSA kinds and occupied slots are refused.
 /// </param>
 public sealed record AuthorFeatureStructureIntent(CanonicalId Msa);
 
@@ -27,15 +22,7 @@ public static class AuthorFeatureStructureIntentParser
 
     public static AuthorFeatureStructureIntent Parse(JsonElement authored)
     {
-        if (authored.ValueKind != JsonValueKind.Object)
-            throw new ContractParseException($"'{ConstructName}': the authored construct must be a JSON object.");
-
-        foreach (var property in authored.EnumerateObject())
-        {
-            if (property.Name != "msa")
-                throw new ContractParseException($"'{ConstructName}': unknown property '{property.Name}'.");
-        }
-
+        SoundSystemIntentParsing.Object(authored, ConstructName, AllowedProperties);
         if (!authored.TryGetProperty("msa", out var msaElement) || msaElement.ValueKind != JsonValueKind.String)
             throw new ContractParseException($"'{ConstructName}': 'msa' is required and must be a string.");
 

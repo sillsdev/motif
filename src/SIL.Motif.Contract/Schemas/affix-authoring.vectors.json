@@ -275,6 +275,93 @@
         }
       },
       "valid": true
+    },
+    {
+      "shape": "AuthorFeatureStructure",
+      "input": {
+        "msa": "AAAAAAAAAAAAAAAAAAAAAQ"
+      },
+      "valid": true
+    },
+    {
+      "shape": "AuthorFeatureStructure",
+      "input": {
+        "msa": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "type": "AAAAAAAAAAAAAAAAAAAAAg"
+      },
+      "valid": false
+    },
+    {
+      "shape": "AuthorFeatureStructure",
+      "input": {},
+      "valid": false
+    },
+    {
+      "shape": "AuthorFeatureStructure",
+      "input": {
+        "msa": 0
+      },
+      "valid": false
+    },
+    {
+      "shape": "AuthorFeatureValue",
+      "input": {
+        "featStruc": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "feature": "AAAAAAAAAAAAAAAAAAAAAg"
+      },
+      "valid": true
+    },
+    {
+      "shape": "AuthorFeatureValue",
+      "input": {
+        "featStruc": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "feature": "AAAAAAAAAAAAAAAAAAAAAg",
+        "value": "AAAAAAAAAAAAAAAAAAAAAw"
+      },
+      "valid": true
+    },
+    {
+      "shape": "AuthorFeatureValue",
+      "input": {
+        "featStruc": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "feature": "AAAAAAAAAAAAAAAAAAAAAg",
+        "value": null
+      },
+      "valid": false
+    },
+    {
+      "shape": "AuthorFeatureValue",
+      "input": {
+        "featStruc": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "value": "AAAAAAAAAAAAAAAAAAAAAw"
+      },
+      "valid": false
+    },
+    {
+      "shape": "AuthorFeatureValue",
+      "input": {
+        "featStruc": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "feature": "AAAAAAAAAAAAAAAAAAAAAg",
+        "properties": {}
+      },
+      "valid": false
+    },
+    {
+      "shape": "InflFeatsPayload",
+      "input": {},
+      "valid": true
+    },
+    {
+      "shape": "InflFeatsPayload",
+      "input": {
+        "type": "AAAAAAAAAAAAAAAAAAAAAQ"
+      },
+      "valid": false
+    },
+    {
+      "shape": "InflFeatsPayload",
+      "input": [],
+      "valid": false
     }
   ]
 }

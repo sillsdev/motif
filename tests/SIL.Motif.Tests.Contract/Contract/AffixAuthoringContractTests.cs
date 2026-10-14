@@ -38,6 +38,9 @@ public sealed class AffixAuthoringContractTests
                 {
                     case "AuthorLexicalEntry": _ = AuthorLexicalEntryIntentParser.Parse(input); break;
                     case "AuthorAlternateForm": _ = AuthorAlternateFormIntentParser.Parse(input); break;
+                    case "AuthorFeatureStructure": _ = AuthorFeatureStructureIntentParser.Parse(input); break;
+                    case "AuthorFeatureValue": _ = AuthorFeatureValueIntentParser.Parse(input); break;
+                    case "InflFeatsPayload": MoInflAffMsaInflFeatsPayload.Parse(input, MoInflAffMsaInflFeatsOperationKinds.CreateInflFeats); break;
                     case "AlternateFormsPayload": _ = LexEntryAlternateFormsCreatePayload.Parse(input); break;
                     default: throw new InvalidOperationException("Unknown vector shape.");
                 }
@@ -63,6 +66,7 @@ public sealed class AffixAuthoringContractTests
 
     [Theory]
     [InlineData("LexEntry", "AlternateForms", "MoForm", "Seq", "feeding", "lexical/lexEntry/createAlternateForms")]
+    [InlineData("MoInflAffMsa", "InflFeats", "FsFeatStruc", "Atomic", "unordered", "grammar/moInflAffMsa/createInflFeats")]
     public void OwningFamiliesMatchTheGeneratedModelClassification(string owner, string field, string signature,
         string cardinality, string comparison, string kind)
     {
@@ -84,6 +88,30 @@ public sealed class AffixAuthoringContractTests
             {"morphType":"AAAAAAAAAAAAAAAAAAAAAQ","ws":"sw","text":"m","text":"mw"}
             """);
         Assert.ThrowsAny<Exception>(() => LexEntryAlternateFormsCreatePayload.Parse(document.RootElement));
+    }
+
+    [Theory]
+    [InlineData("{\"msa\":\"AAAAAAAAAAAAAAAAAAAAAQ\",\"msa\":\"AAAAAAAAAAAAAAAAAAAAAg\"}")]
+    [InlineData("{\"msa\":\"AAAAAAAAAAAAAAAAAAAAAQ\",\"unknown\":false}")]
+    public void FeatureStructureInputRefusesDuplicateAndUnknownProperties(string input)
+    {
+        using var document = JsonDocument.Parse(input);
+        Assert.ThrowsAny<Exception>(() => AuthorFeatureStructureIntentParser.Parse(document.RootElement));
+    }
+
+    [Fact]
+    public void InflectionalOwningCreateHasARegisteredHandlerAndAtomicSlot()
+    {
+        const string kind = MoInflAffMsaInflFeatsOperationKinds.CreateInflFeats;
+        Assert.NotNull(OperationHandlerRegistry.Resolve(kind, "contract coverage"));
+        var owner = CanonicalId.Mint();
+        var entity = CanonicalId.Mint();
+        var operation = new SIL.Motif.Contract.Model.OperationEnvelope(CanonicalId.Mint(), kind,
+            target: owner, entityId: entity, after: JsonSerializer.SerializeToElement(new { }));
+        var slots = OperationSlotRegistry.Resolve(operation);
+        Assert.Contains(slots, slot => slot.Target == owner &&
+            slot.Field == SIL.Motif.Model.Snapshot.SnapshotFields.MoInflAffMsaInflFeats && slot.Discriminator is null);
+        Assert.Contains(slots, slot => slot.Target == entity && slot.Field == "$identity");
     }
 
 }

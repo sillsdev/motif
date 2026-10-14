@@ -321,8 +321,8 @@ public sealed class InflectionAuthoringTests : IDisposable
             if (moveFeature) _cache.LangProject.PhFeatureSystemOA.FeaturesOC.Add((IFsClosedFeature)Objects.GetObject(feature.ToGuid()));
             else ((IFsClosedFeature)Objects.GetObject(other.ToGuid())).ValuesOC.Add((IFsSymFeatVal)Objects.GetObject(value.ToGuid()));
         });
-        var refusal = Assert.Throws<InvalidOperationException>(() => ProposalApplier.Apply(_cache, proposal, evidence.Anchor, "inflection-tests"));
-        Assert.Contains("morphosyntactic feature", refusal.Message, StringComparison.Ordinal);
+        var refusal = Assert.Throws<ApplyPreconditionException>(() => ProposalApplier.Apply(_cache, proposal, evidence.Anchor, "inflection-tests"));
+        Assert.Contains("Footprint drift", refusal.Message, StringComparison.Ordinal);
         Assert.All(operations.Where(op => op.EntityId is not null), op => Assert.False(Objects.IsValidObjectId(op.EntityId!.Value.ToGuid())));
     }
 

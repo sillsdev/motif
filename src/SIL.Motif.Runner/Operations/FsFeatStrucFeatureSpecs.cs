@@ -90,8 +90,12 @@ public static class FsFeatStrucFeatureSpecsCreateLowering
 {
     public static IFsFeatureSpecification Apply(LcmCache cache, IFsFeatStruc featStruc, Guid newSpecId)
     {
+        CreateIdentity.RequireFresh(cache, CanonicalId.FromGuid(newSpecId),
+            FsFeatStrucFeatureSpecsOperationKinds.CreateFeatureSpecs, "FsClosedValue");
         var newSpec = cache.ServiceLocator.GetInstance<IFsClosedValueFactory>().Create(newSpecId);
         featStruc.FeatureSpecsOC.Add(newSpec);
+        if (newSpec.Guid != newSpecId || newSpec.Owner?.Guid != featStruc.Guid)
+            throw new InvalidOperationException("Native closed specification creation did not preserve its authored identity and owner.");
         return newSpec;
     }
 }
@@ -114,6 +118,8 @@ internal sealed class FsFeatStrucFeatureSpecsCreateHandler : IOperationHandler
 
     public ExpectedEffect ApplyAndCaptureEffect(LcmCache cache, OperationEnvelope operation, List<CanonicalId> touchedTargets)
     {
+        if (operation.StorageIdOverride is not null || operation.Placement is not null)
+            throw new InvalidOperationException("Feature specification creation rejects storage overrides and placement.");
         var entityId = RequireEntityId(operation);
 
         if (operation.After is not { } after)
@@ -129,7 +135,7 @@ internal sealed class FsFeatStrucFeatureSpecsCreateHandler : IOperationHandler
 
         var before = MembershipSnapshotting.ReadAlternatives(featStruc, entityId.ToGuid());
         FsFeatStrucFeatureSpecsCreateLowering.Apply(cache, featStruc, entityId.ToGuid());
-        var afterValue = ReferenceFieldAlternatives.ToAlternatives(entityId);
+        var afterValue = MembershipSnapshotting.ReadAlternatives(featStruc, entityId.ToGuid());
 
         return new ExpectedEffect(id, SnapshotFields.FsFeatStrucFeatureSpecs, before, afterValue);
     }
@@ -138,7 +144,9 @@ internal sealed class FsFeatStrucFeatureSpecsCreateHandler : IOperationHandler
     {
         var entityId = RequireEntityId(operation);
         var (id, featStruc) = TargetResolution.Resolve<IFsFeatStruc>(cache, operation, FsFeatStrucFeatureSpecsOperationKinds.CreateFeatureSpecs);
-        var current = MembershipSnapshotting.ReadAlternatives(featStruc, entityId.ToGuid());
+        var current = new Dictionary<string, string>(MembershipSnapshotting.ReadAlternatives(featStruc, entityId.ToGuid()));
+        CreateIdentity.AddCollision(cache, entityId, featStruc.FeatureSpecsOC.Any(spec => spec.Guid == entityId.ToGuid())
+            ? entityId.ToGuid() : null, current);
         return new ExpectedEffect(id, SnapshotFields.FsFeatStrucFeatureSpecs, current, current);
     }
 

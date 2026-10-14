@@ -9,7 +9,7 @@ namespace SIL.Motif.Model.Effects;
 
 /// <summary>
 /// Renders a set of <see cref="ExpectedEffect"/>s as (pre-canonicalization) JSON text: the preimage
-/// for the effect digest — the Change Set contract's "Expected effects" rule 4: "the effect
+/// for the effect digest — the Proposal contract's "Expected effects" rule 4: "the effect
 /// digest is the RFC 8785 hash of the full set of <c>(canonicalId, field, before, after)</c> deltas".
 /// </summary>
 /// <remarks>
@@ -18,8 +18,9 @@ namespace SIL.Motif.Model.Effects;
 /// presort deterministically itself, the same discipline
 /// <see cref="SIL.Motif.Contract.Canonicalization.IntentProjectionWriter"/> applies to
 /// <c>requires</c>/<c>dependsOn</c>. Effects sort by canonical id first (via <c>CanonicalId</c>'s
-/// own byte-ordinal <see cref="IComparable{T}"/>), then by field name (ordinal), which is stable
-/// even when one canonical id has several changed fields.
+/// own byte-ordinal <see cref="IComparable{T}"/>), then by field name (ordinal), then canonical UTF-8
+/// bytes of before and after. Published output also uses preview bytes to break remaining ties;
+/// preview evidence never participates in semantic ordering or the effect digest.
 /// </remarks>
 public static class ExpectedEffectSetJsonWriter
 {
@@ -31,10 +32,7 @@ public static class ExpectedEffectSetJsonWriter
 
     private static string WriteJson(IEnumerable<ExpectedEffect> effects, bool includePreview)
     {
-        var ordered = effects
-            .OrderBy(e => e.CanonicalId)
-            .ThenBy(e => e.Field, StringComparer.Ordinal)
-            .ToList();
+        var ordered = EffectTupleOrdering.Sort(effects, includeAfter: true, includePreview: includePreview);
 
         using var stream = new MemoryStream();
         using (var writer = new Utf8JsonWriter(stream))
@@ -63,7 +61,7 @@ public static class ExpectedEffectSetJsonWriter
         Utf8JsonWriter writer, string propertyName, IReadOnlyDictionary<string, string> alternatives)
     {
         writer.WriteStartObject(propertyName);
-        foreach (var alternative in alternatives)
+        foreach (var alternative in alternatives.OrderBy(item => item.Key, StringComparer.Ordinal))
             writer.WriteString(alternative.Key, alternative.Value);
         writer.WriteEndObject();
     }

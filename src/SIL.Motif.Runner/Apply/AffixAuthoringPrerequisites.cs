@@ -37,9 +37,23 @@ internal static class AffixAuthoringPrerequisites
         MoInflAffMsaSlotsOperationKinds.AddRefSlots,
     };
 
+    private static readonly HashSet<string> FeatureKinds = new(StringComparer.Ordinal)
+    {
+        FsFeatureSystemFeaturesOperationKinds.Create,
+        FsClosedFeatureValuesOperationKinds.Create,
+        MoInflAffMsaInflFeatsOperationKinds.CreateInflFeats,
+        MoStemMsaMsFeaturesOperationKinds.CreateMsFeatures,
+        FsFeatStrucFeatureSpecsOperationKinds.CreateFeatureSpecs,
+        FsFeatStrucFeatureSpecsOperationKinds.DeleteFeatureSpecs,
+        FsFeatureSpecificationFeatureOperationKinds.SetFeature,
+        FsFeatureSpecificationFeatureOperationKinds.ClearFeature,
+        FsClosedValueValueOperationKinds.SetValue,
+        FsClosedValueValueOperationKinds.ClearValue,
+    };
+
     internal static IReadOnlyList<ExpectedEffect> Read(LcmCache cache, Proposal proposal)
     {
-        var relevant = proposal.Operations.Where(operation => ReferenceKinds.Contains(operation.Kind) ||
+        var relevant = proposal.Operations.Where(operation => ReferenceKinds.Contains(operation.Kind) || FeatureKinds.Contains(operation.Kind) ||
             operation.Kind == LexEntryAlternateFormsCreateOperationKinds.CreateAlternateForms ||
             operation.Kind == LexEntryLexemeFormOperationKinds.CreateLexemeForm).ToArray();
         if (relevant.Length == 0) return [];
@@ -52,6 +66,14 @@ internal static class AffixAuthoringPrerequisites
         IReadOnlyDictionary<CanonicalId, ObjectSnapshot>? sound = null;
         foreach (var operation in relevant)
         {
+            if (FeatureKinds.Contains(operation.Kind))
+            {
+                if (operation.Kind is FsFeatureSpecificationFeatureOperationKinds.SetFeature or FsClosedValueValueOperationKinds.SetValue &&
+                    operation.After is { } featureAfter)
+                    SoundSystemIntentParsing.Object(featureAfter, operation.Kind, "ref");
+                if (operation.Target is { } featureTarget) Include(featureTarget.ToGuid());
+                if (operation.EntityId is { } featureEntity) Include(featureEntity.ToGuid());
+            }
             if (operation.After is { } after)
                 foreach (var key in new[] { "member", "ref", "morphType" })
                     if (after.TryGetProperty(key, out var value) && value.ValueKind == System.Text.Json.JsonValueKind.String &&
@@ -87,9 +109,17 @@ internal static class AffixAuthoringPrerequisites
                 else if (owner is IPartOfSpeech category) Include(category.Guid);
             }
         }
+        var identityReads = (relevant.Any(operation => FeatureKinds.Contains(operation.Kind)) ? stagedReads : new HashSet<Guid>()).Select(guid =>
+            {
+                var current = new Dictionary<string, string>
+                {
+                    ["class"] = repository.IsValidObjectId(guid) ? repository.GetObject(guid).ClassName : "missing",
+                };
+                return new ExpectedEffect(CanonicalId.FromGuid(guid), "proposedFeatureIdentity", current, current);
+            });
         return snapshots.Values.OrderBy(snapshot => snapshot.CanonicalId.Value, StringComparer.Ordinal)
             .SelectMany(snapshot => snapshot.AlternativesFields.Select(field =>
-                new ExpectedEffect(snapshot.CanonicalId, field.Key, field.Value, field.Value))).ToArray();
+                new ExpectedEffect(snapshot.CanonicalId, field.Key, field.Value, field.Value))).Concat(identityReads).ToArray();
 
         void Include(Guid guid)
         {
@@ -134,11 +164,54 @@ internal static class AffixAuthoringPrerequisites
                 case IFsFeatDefn feature:
                     Add(FsFeatDefnSnapshotter.Snapshot(cache, feature));
                     Add(FsFeatDefnAuthoringSnapshotter.Snapshot(cache, feature));
+                    if (feature is IFsClosedFeature closedFeature)
+                    {
+                        Add(InflectionSnapshots.Snapshot(cache, closedFeature));
+                        foreach (var domainValue in closedFeature.ValuesOC) Include(domainValue.Guid);
+                    }
+                    if (feature.Owner is { } systemOwner) Include(systemOwner.Guid);
                     break;
                 case IFsSymFeatVal value:
                     Add(FsSymFeatValSnapshotter.Snapshot(cache, value));
                     Add(FsSymFeatValAuthoringSnapshotter.Snapshot(cache, value));
                     if (value.Owner is { } featureOwner) Include(featureOwner.Guid);
+                    break;
+                case IFsFeatureSystem system when system.Guid == cache.LangProject.MsFeatureSystemOA?.Guid:
+                    AddProjectField("morphosyntacticFeatureSystem", ReferenceFieldSnapshotting.ReadAlternatives(system));
+                    break;
+                case IFsFeatStrucType type:
+                    Add(FsFeatStrucTypeSnapshotter.Snapshot(cache, type));
+                    fields[SnapshotFields.FsFeatStrucTypeFeatures] = ReferenceSequenceFieldSnapshotting.ReadAlternatives(type.FeaturesRS);
+                    if (type.Owner is { } typeOwner) Include(typeOwner.Guid);
+                    foreach (var member in type.FeaturesRS) Include(member.Guid);
+                    break;
+                case IFsFeatStruc structure:
+                    fields[SnapshotFields.FsFeatStrucFeatureSpecs] = InflectionSnapshots.Snapshot(cache, structure)
+                        .AlternativesFields.GetValueOrDefault(SnapshotFields.FsFeatStrucFeatureSpecs, new Dictionary<string, string>());
+                    fields["featureStructureType"] = ReferenceFieldSnapshotting.ReadAlternatives(structure.TypeRA);
+                    if (structure.TypeRA is { } structureType) Include(structureType.Guid);
+                    if (structure.Owner is IMoInflAffMsa structureMsa) IncludeMsa(structureMsa);
+                    else if (structure.Owner is { } structureOwner) Include(structureOwner.Guid);
+                    foreach (var spec in structure.FeatureSpecsOC) Include(spec.Guid);
+                    break;
+                case IFsFeatureSpecification specification:
+                    Add(FsFeatureSpecificationRelationsSnapshotter.Snapshot(cache, specification));
+                    if (specification is IFsClosedValue closed)
+                    {
+                        Add(FsClosedValueRelationsSnapshotter.Snapshot(cache, closed));
+                        if (closed.ValueRA is { } selectedValue) Include(selectedValue.Guid);
+                    }
+                    if (specification.FeatureRA is { } selectedFeature) Include(selectedFeature.Guid);
+                    if (specification.Owner is { } specificationOwner) Include(specificationOwner.Guid);
+                    break;
+                case IMoInflAffMsa inflectional:
+                    AddProjectField("morphosyntacticFeatureSystem", ReferenceFieldSnapshotting.ReadAlternatives(cache.LangProject.MsFeatureSystemOA));
+                    fields["category"] = ReferenceFieldSnapshotting.ReadAlternatives(inflectional.PartOfSpeechRA);
+                    fields[SnapshotFields.MoInflAffMsaInflFeats] = ReferenceFieldSnapshotting.ReadAlternatives(inflectional.InflFeatsOA);
+                    Add(MoInflAffMsaRelationsSnapshotter.Snapshot(cache, inflectional));
+                    if (inflectional.PartOfSpeechRA is { } msaCategory) Include(msaCategory.Guid);
+                    if (inflectional.Owner is { } msaOwner) Include(msaOwner.Guid);
+                    if (inflectional.InflFeatsOA is { } inflStructure) Include(inflStructure.Guid);
                     break;
                 case IPhEnvironment environment:
                     sound ??= SoundSystemSnapshots.Read(cache);
@@ -161,19 +234,25 @@ internal static class AffixAuthoringPrerequisites
             }
         }
 
+        void AddProjectField(string key, IReadOnlyDictionary<string, string> value)
+        {
+            var id = CanonicalId.FromGuid(cache.LangProject.Guid);
+            var fields = snapshots.TryGetValue(id.ToGuid(), out var existing)
+                ? existing.AlternativesFields.ToDictionary(field => field.Key, field => field.Value)
+                : new Dictionary<string, IReadOnlyDictionary<string, string>>(StringComparer.Ordinal);
+            fields[key] = value;
+            snapshots[id.ToGuid()] = new(id, fields);
+        }
+
         void ReadSoundScope()
         {
             if (soundScopeRead) return;
             soundScopeRead = true;
             var firstSet = cache.LangProject.PhonologicalDataOA.PhonemeSetsOS.FirstOrDefault();
-            var projectId = CanonicalId.FromGuid(cache.LangProject.Guid);
-            snapshots[projectId.ToGuid()] = new(projectId, new Dictionary<string, IReadOnlyDictionary<string, string>>
+            AddProjectField("environmentSoundScope", new Dictionary<string, string>
             {
-                ["environmentSoundScope"] = new Dictionary<string, string>
-                {
-                    ["firstPhonemeSet"] = firstSet is null ? string.Empty : CanonicalId.FromGuid(firstSet.Guid).Value,
-                    ["defaultVernacular"] = cache.WritingSystemFactory.GetStrFromWs(cache.DefaultVernWs),
-                },
+                ["firstPhonemeSet"] = firstSet is null ? string.Empty : CanonicalId.FromGuid(firstSet.Guid).Value,
+                ["defaultVernacular"] = cache.WritingSystemFactory.GetStrFromWs(cache.DefaultVernWs),
             });
             // The first alphabet defines segmentation, so a new overlapping code can change an environment.
             if (firstSet is not null) IncludeSound(firstSet.Guid);
@@ -184,10 +263,18 @@ internal static class AffixAuthoringPrerequisites
             if (!stagedReads.Add(guid)) return;
             var create = proposal.Operations.FirstOrDefault(operation => operation.EntityId?.ToGuid() == guid);
             if (create is not null && create.Target is { } target &&
-                create.Kind is PartOfSpeechInflectionClassesOperationKinds.Create or MoInflClassSubclassesOperationKinds.Create)
+                (create.Kind is PartOfSpeechInflectionClassesOperationKinds.Create or MoInflClassSubclassesOperationKinds.Create or
+                    FsFeatureSystemFeaturesOperationKinds.Create or FsClosedFeatureValuesOperationKinds.Create or
+                    LexEntryMorphoSyntaxAnalysesOperationKinds.Create || FeatureKinds.Contains(create.Kind)))
                 Include(target.ToGuid());
             foreach (var operation in proposal.Operations.Where(operation => operation.Target?.ToGuid() == guid))
             {
+                if (FeatureKinds.Contains(operation.Kind))
+                {
+                    if (operation.EntityId is { } featureChild) Include(featureChild.ToGuid());
+                    if (operation.After is { } featureAfter && featureAfter.TryGetProperty("ref", out var selected))
+                        Include(CanonicalId.Parse(selected.GetString()!).ToGuid());
+                }
                 if (operation.Kind is PhNCFeaturesFeaturesOperationKinds.Create or
                     PhPhonemeFeaturesOperationKinds.Create or FsFeatStrucFeatureSpecsOperationKinds.CreateFeatureSpecs &&
                     operation.EntityId is { } child)

@@ -18,6 +18,9 @@ public static partial class SnapshotFields
     /// <summary>A <c>LexSense</c>'s <c>Gloss</c> MultiUnicode field.</summary>
     public const string LexSenseGloss = "lexical/sense/gloss";
 
+    /// <summary>The owning link to an inflectional affix's required grammatical feature structure.</summary>
+    public const string MoInflAffMsaInflFeats = "grammar/moInflAffMsa/inflFeats";
+
     /// <summary>
     /// A <c>MoStemMsa</c>'s <c>MsFeatures</c> owning/atomic <c>FsFeatStruc</c> field — hand-written
     /// like <see cref="LexSenseGloss"/> above, because <c>owning/atomic</c> beyond one already-built
@@ -66,5 +69,5 @@ public static partial class SnapshotFields
     /// only when the snapshot/effect shape changes in a way that could alter a digest for otherwise
     /// unchanged content.
     /// </summary>
-    public const string ProjectionVersion = "7";
+    public const string ProjectionVersion = "8";
 }

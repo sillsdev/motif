@@ -366,12 +366,12 @@
   },
   "compose-author-feature-structure": {
     "title": "Author grammatical features",
-    "description": "Stages an empty feature structure on the specified stem grammatical information in a Draft. Use its created identity when authoring feature values. Only a person can Apply.",
+    "description": "Stages an empty feature structure on an existing or earlier-staged stem or inflectional affix MSA in a Draft, refusing an occupied slot even when its structure has no selections. Inflectional affix features are word requirements; use the returned exact structure identity to author selections. Only a person can Apply.",
     "source": "Authored from the typed command contract."
   },
   "compose-author-feature-value": {
     "title": "Author a feature value",
-    "description": "Stages a closed feature specification in an existing or Draft-created feature structure. The feature and optional symbolic value must belong to the project. Only a person can Apply.",
+    "description": "Stages a closed feature specification in an existing or earlier-staged structure, with value omitted when unchosen. Inflectional affix requirements use current morphosyntactic definitions, and any supplied value must belong to the exact feature. Only a person can Apply.",
     "source": "Authored from the typed command contract."
   },
   "compose-author-phoneme": {

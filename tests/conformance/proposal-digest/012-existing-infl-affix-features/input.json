@@ -1,0 +1,48 @@
+{
+  "contractVersions": {
+    "grammar": "1.0"
+  },
+  "operations": [
+    {
+      "operationId": "AAAAAAAAAAAAAAAAAAAAAQ",
+      "kind": "grammar/moInflAffMsa/createInflFeats",
+      "target": "AAAAAAAAAAAAAAAAAAAAFA",
+      "entityId": "AAAAAAAAAAAAAAAAAAAAFQ",
+      "after": {}
+    },
+    {
+      "operationId": "AAAAAAAAAAAAAAAAAAAAAg",
+      "kind": "grammar/fsFeatStruc/createFeatureSpecs",
+      "target": "AAAAAAAAAAAAAAAAAAAAFQ",
+      "entityId": "AAAAAAAAAAAAAAAAAAAAFg",
+      "after": {},
+      "dependsOn": [
+        "AAAAAAAAAAAAAAAAAAAAAQ"
+      ]
+    },
+    {
+      "operationId": "AAAAAAAAAAAAAAAAAAAAAw",
+      "kind": "grammar/fsFeatureSpecification/setFeature",
+      "target": "AAAAAAAAAAAAAAAAAAAAFg",
+      "after": {
+        "ref": "AAAAAAAAAAAAAAAAAAAAFw"
+      },
+      "dependsOn": [
+        "AAAAAAAAAAAAAAAAAAAAAg"
+      ]
+    },
+    {
+      "operationId": "AAAAAAAAAAAAAAAAAAAABA",
+      "kind": "grammar/fsClosedValue/setValue",
+      "target": "AAAAAAAAAAAAAAAAAAAAFg",
+      "after": {
+        "ref": "AAAAAAAAAAAAAAAAAAAAGA"
+      },
+      "dependsOn": [
+        "AAAAAAAAAAAAAAAAAAAAAg"
+      ]
+    }
+  ],
+  "proposalId": "AAAAAAAAAAAAAAAAAAAAHg",
+  "requires": []
+}
