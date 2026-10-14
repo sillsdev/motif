@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Reflection;
 using System.Text;
@@ -2970,6 +2971,36 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
             new RunnerOptions { Root = Path.Combine(_root, "worker"), ParserPath = parserPath }, invoker, null,
             checks ?? EvidenceBundleChecks.Create(), FileDigestCache.Shared, observer);
 
+    private async Task<JobStageProgress?> WaitForStageProgressAsync(string jobId, string expectedStage)
+    {
+        var started = Stopwatch.StartNew();
+        while (started.Elapsed < TimeSpan.FromSeconds(10))
+        {
+            var progressJson = _jobs.Get(jobId)?.ProgressJson;
+            if (!string.IsNullOrWhiteSpace(progressJson))
+            {
+                try
+                {
+                    var progress = JsonSerializer.Deserialize<JobStageProgress>(progressJson,
+                        SIL.Motif.Contract.MotifJson.CreateOptions());
+                    if (progress?.Stage == expectedStage) return progress;
+                }
+                catch (JsonException) { }
+            }
+            await Task.Delay(TimeSpan.FromMilliseconds(10));
+        }
+        return null;
+    }
+
+    private static string[] UniqueParserSlotNames(string purpose)
+    {
+        var processNamespace = Environment.GetEnvironmentVariable(MachinePanGlossQueue.TestSlotNamespaceVariable)
+            ?? "unscoped";
+        var unique = Guid.NewGuid().ToString("N");
+        var prefix = $"Global\\MotifPanGlossSlot-{processNamespace}-{purpose}-{unique}";
+        return [$"{prefix}-0", $"{prefix}-1"];
+    }
+
     [Fact]
     public async Task AFreshJobPublishesEachStageInOrderAndTheJobRowHoldsTheLast()
     {
@@ -2992,6 +3023,68 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         var stored = JsonSerializer.Deserialize<JobStageProgress>(_jobs.Get(job.JobId)!.ProgressJson!,
             SIL.Motif.Contract.MotifJson.CreateOptions());
         Assert.Equal("publish", stored!.Stage);
+    }
+
+    [Fact]
+    public async Task ParsimonyWaitingForImportCapacityPublishesStageWithoutAdvancingSteps()
+    {
+        await PublishBaselineAsync(_pristine);
+        var parserPath = FactsParser(_pristine.Seed);
+        var slotNames = UniqueParserSlotNames("parsimony-import-wait");
+        using var firstSlot = new WorkerMutexOwner(slotNames[0], machineWide: true);
+        using var secondSlot = new WorkerMutexOwner(slotNames[1], machineWide: true);
+        Assert.True(firstSlot.TryAcquire());
+        Assert.True(secondSlot.TryAcquire());
+
+        using var cancellation = new CancellationTokenSource();
+        using var queue = new MachinePanGlossQueue(slotNames);
+        var waitStarted = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        queue.SlotWaitStarted = label =>
+        {
+            if (label == "parsimony-import") waitStarted.TrySetResult(label);
+        };
+        using var invoker = new PanGlossInvoker(parserPath, queue);
+        var importStageStarted = new TaskCompletionSource<JobStageProgress>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var observed = new List<JobStageProgress>();
+        var handler = ObservedHandler(parserPath, invoker, progress =>
+        {
+            observed.Add(progress);
+            if (progress.Stage == "import") importStageStarted.TrySetResult(progress);
+        });
+        var job = CreateJob("P-adhoc-duplicate");
+        var claim = Claim(job.JobId);
+        Assert.False(string.IsNullOrWhiteSpace(claim.Job.ClaimToken));
+
+        Task<JobOutcome?>? pending = null;
+        try
+        {
+            pending = handler.RunAsync(claim, cancellation.Token);
+            var importStage = await importStageStarted.Task.WaitAsync(TimeSpan.FromSeconds(60));
+            Assert.Equal("import", importStage.Stage);
+            Assert.Equal("parsimony-import", await waitStarted.Task.WaitAsync(TimeSpan.FromSeconds(60)));
+
+            var waiting = await WaitForStageProgressAsync(job.JobId, "waiting-for-parser-slot");
+
+            Assert.True(waiting is not null,
+                "SlotWaitStarted confirmed a failed parser-slot acquisition, but the Parsimony row did not publish a durable waiting stage.");
+            Assert.Equal("waiting-for-parser-slot", waiting!.Stage);
+            Assert.Contains("import", waiting.Detail, StringComparison.OrdinalIgnoreCase);
+            Assert.Equal(importStage.Step, waiting.Step);
+            Assert.Equal(importStage.Steps, waiting.Steps);
+            Assert.DoesNotContain(observed, progress => progress.Stage == "facts");
+            Assert.Empty(FakeParser.Invocations(parserPath));
+        }
+        finally
+        {
+            cancellation.Cancel();
+            firstSlot.Release();
+            secondSlot.Release();
+            if (pending is not null)
+            {
+                try { await pending.WaitAsync(TimeSpan.FromSeconds(60)); }
+                catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
+            }
+        }
     }
 
     [Fact]

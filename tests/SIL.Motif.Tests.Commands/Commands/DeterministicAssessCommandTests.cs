@@ -1445,6 +1445,27 @@ public sealed class DeterministicAssessCommandTests : IDisposable
         Assert.Equal(slowest, forwarded.SlowestWord);
     }
 
+    [Fact]
+    public void ProgressReportsParserCapacityWaitAndEndWithTheLatestWordCounts()
+    {
+        using var seeded = NewSeededScratch();
+        var assessor = new LazyPanGlossAssessor(() => new AdmissionWaitAssessor(NewAssessor()));
+        var progress = new List<AssessmentProgress>();
+
+        var outcome = AssessCommand.Run(new AssessRequest(seeded.FwDataPath, AllWordforms,
+                PerWordLimitMs: 700), NewManagedRoot(), assessor, NewInvoker(), progress.Add, CancellationToken.None);
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        var wait = Assert.Single(progress, item => item.Message == "Waiting for parser capacity.");
+        var end = Assert.Single(progress, item => item.Message == "Parser capacity wait ended.");
+        Assert.Equal(AssessmentStage.Parsing, wait.Stage);
+        Assert.Equal((0, 2, null), (wait.Completed, wait.Total, wait.CurrentWord));
+        Assert.Equal(700, wait.PerWordLimitMs);
+        Assert.Equal(AssessmentStage.Parsing, end.Stage);
+        Assert.Equal((wait.Completed, wait.Total, wait.CurrentWord),
+            (end.Completed, end.Total, end.CurrentWord));
+    }
+
     // The parser existing is not the parser working: a subcommand it lacks must refuse, not kill the app.
     [Fact]
     public void AParserThatFailsOnceRunningIsRefusedRatherThanEscapingAsAnException()
@@ -1542,6 +1563,29 @@ public sealed class DeterministicAssessCommandTests : IDisposable
         CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(
             _managedRootsParent, scope, candidate),
     };
+
+    private sealed class AdmissionWaitAssessor(IAssessor inner) : IAssessor
+    {
+        public string Name => inner.Name;
+        public IReadOnlyList<AssessmentKind> SupportedKinds => inner.SupportedKinds;
+
+        public Task<IReadOnlyList<ProducedAssessment>> ProduceAsync(AssessmentScope scope,
+            string exportedCandidate, CancellationToken cancellationToken) =>
+            inner.ProduceAsync(scope, exportedCandidate, cancellationToken);
+
+        public Task<IReadOnlyList<ProducedAssessment>> ProduceAsync(AssessmentScope scope,
+            string exportedCandidate, Action<TrialWordProgress> onProgress, CancellationToken cancellationToken) =>
+            inner.ProduceAsync(scope, exportedCandidate, onProgress, cancellationToken);
+
+        public Task<IReadOnlyList<ProducedAssessment>> ProduceAsync(AssessmentScope scope,
+            string exportedCandidate, Action<TrialWordProgress> onProgress, Action<bool>? onAdmissionWait,
+            CancellationToken cancellationToken)
+        {
+            onAdmissionWait?.Invoke(true);
+            try { return inner.ProduceAsync(scope, exportedCandidate, onProgress, cancellationToken); }
+            finally { onAdmissionWait?.Invoke(false); }
+        }
+    }
 
     // Answers every stats request with fixed rows; no test here asserts on the summary's content.
     private static FakeInvoker NewInvoker() => new()

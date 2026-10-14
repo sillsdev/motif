@@ -88,7 +88,7 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                         return new PanGlossOutcome.Cancelled() { Containment = containment.Report };
                     }
                 },
-                cancellationToken).ConfigureAwait(false);
+                cancellationToken, request.OnAdmissionWait).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {

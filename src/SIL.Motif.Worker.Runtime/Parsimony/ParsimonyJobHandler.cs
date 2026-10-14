@@ -94,10 +94,10 @@ public sealed class ParsimonyJobHandler
             cancellationToken);
         if (reused is not null) return Completed(reused.ReportIds, reused.BundleId, assessmentIds);
         var stages = StagesFor(claimed, ParsimonyStages.FreshSteps(measureIds.Count));
-        void Enter(string stage)
+        JobStageProgress Enter(string stage)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            stages.Enter(stage);
+            return stages.Enter(stage);
         }
         var bundleId = "parsimony-bundle-" + Guid.NewGuid().ToString("N");
         var working = _publisher.WorkingDirectory(bundleId);
@@ -119,9 +119,12 @@ public sealed class ParsimonyJobHandler
 
             var snapshotPath = Path.Combine(working, "grammar-snapshot.json");
             var parserIdentity = _pipeline.ParserIdentity();
-            Enter("import");
-            var imported = await _invoker.RunAsync(new PanGlossRequest.Import(privateProjectPath, snapshotPath),
-                "parsimony-import", cancellationToken).ConfigureAwait(false);
+            var importPhase = Enter("import");
+            var importWait = claimed.ObserveParserWait(importPhase);
+            var imported = await _invoker.RunAsync(new PanGlossRequest.Import(privateProjectPath, snapshotPath)
+                {
+                    OnAdmissionWait = importWait.Observe,
+                }, "parsimony-import", cancellationToken).ConfigureAwait(false);
             if (imported is not PanGlossOutcome.Completed)
                 return Failure(CategoryOf(imported), imported.Message);
 
@@ -134,9 +137,13 @@ public sealed class ParsimonyJobHandler
                 inputKind = "baseline",
                 dryRunDigest = (string?)null,
             }, new JsonSerializerOptions(JsonSerializerDefaults.Web));
-            Enter("facts");
+            var factsPhase = Enter("facts");
+            var factsWait = claimed.ObserveParserWait(factsPhase);
             var factsOutcome = await _invoker.RunAsync(
-                new PanGlossRequest.Facts(snapshotPath, contextJson),
+                new PanGlossRequest.Facts(snapshotPath, contextJson)
+                {
+                    OnAdmissionWait = factsWait.Observe,
+                },
                 "parsimony-facts", cancellationToken).ConfigureAwait(false);
             if (factsOutcome is not PanGlossOutcome.Completed completed || completed.Facts is null)
                 return Failure(CategoryOf(factsOutcome), factsOutcome.Message);

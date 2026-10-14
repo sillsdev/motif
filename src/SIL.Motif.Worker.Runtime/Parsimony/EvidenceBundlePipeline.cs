@@ -22,13 +22,25 @@ namespace SIL.Motif.Worker.Parsimony;
 /// Publishes the stage a job enters, once per stage, so a waiting caller sees where a long job is. The step
 /// count is fixed when the job learns how many measures it runs; the observer lets a test read every stage.
 /// </summary>
+/// <param name="publish">Writes each entered stage to the job's progress row.</param>
+/// <param name="steps">The expected number of stages for the operation.</param>
 internal sealed class ParsimonyStages(Action<JobStageProgress> publish, int steps)
 {
     private int _step;
 
+    /// <summary>The most recently entered stage, used by invocation-scoped capacity observers.</summary>
+    public JobStageProgress? Current { get; private set; }
+
     /// <summary>Records that the job has entered <paramref name="stage"/>.</summary>
-    public void Enter(string stage, string? detail = null) =>
-        publish(new JobStageProgress(stage, ++_step, Math.Max(steps, _step), detail));
+    /// <param name="stage">The stage name.</param>
+    /// <param name="detail">Optional context for the stage.</param>
+    /// <returns>The same stage payload published to the job row.</returns>
+    public JobStageProgress Enter(string stage, string? detail = null)
+    {
+        Current = new JobStageProgress(stage, ++_step, Math.Max(steps, _step), detail);
+        publish(Current);
+        return Current;
+    }
 
     /// <summary>Steps of a fresh Baseline build that runs <paramref name="measures"/> measures.</summary>
     public static int FreshSteps(int measures) => 7 + measures;

@@ -244,11 +244,26 @@ public static class AssessCommand
                             ReadParserStepRate(assessments)).PerWordTimeLimitMs!.Value)
                         : EstimatePerWordTimeLimit(assessments, stepLimit);
                 scope = new AssessmentScope(composition.Selection.Words, collected, timeLimit, stepLimit);
+                var latestWordProgress = new TrialWordProgress(0, scope.Words.Count, null);
                 onProgress?.Invoke(new AssessmentProgress(
                     AssessmentStage.Parsing, 0, composition.Selection.Words.Count, "Parsing the Selection...")
                     { PerWordLimitMs = timeLimit is { } wordLimit ? (int)wordLimit.TotalMilliseconds : null });
+                Action<bool>? onAdmissionWait = onProgress is null ? null : waiting =>
+                {
+                    var wordProgress = latestWordProgress;
+                    onProgress(new AssessmentProgress(AssessmentStage.Parsing,
+                        wordProgress.Completed, wordProgress.Total,
+                        waiting ? "Waiting for parser capacity." : "Parser capacity wait ended.")
+                    {
+                        CurrentWord = wordProgress.CurrentWord,
+                        PerWordLimitMs = scope.PerWordLimit is { } limit ? (int)limit.TotalMilliseconds : null,
+                        StoppedWords = wordProgress.StoppedWords,
+                        SlowestWord = wordProgress.SlowestWord,
+                    });
+                };
                 produced = assessor.ProduceAsync(scope, exportedCandidate, wordProgress =>
                 {
+                    latestWordProgress = wordProgress;
                     onProgress?.Invoke(new AssessmentProgress(AssessmentStage.Parsing,
                         wordProgress.Completed, wordProgress.Total,
                         wordProgress.CurrentWord is { } word ? $"Parsing {word}" : "Reading word results...")
@@ -258,7 +273,7 @@ public static class AssessCommand
                         StoppedWords = wordProgress.StoppedWords,
                         SlowestWord = wordProgress.SlowestWord,
                     });
-                }, cancellationToken).GetAwaiter().GetResult();
+                }, onAdmissionWait, cancellationToken).GetAwaiter().GetResult();
             }
             catch (OperationCanceledException)
             {
@@ -674,6 +689,11 @@ internal sealed class LazyPanGlossAssessor : IAssessor
         AssessmentScope scope, string exportedCandidate, Action<TrialWordProgress> onProgress,
         CancellationToken cancellationToken) =>
         Resolve().ProduceAsync(scope, exportedCandidate, onProgress, cancellationToken);
+
+    public Task<IReadOnlyList<ProducedAssessment>> ProduceAsync(
+        AssessmentScope scope, string exportedCandidate, Action<TrialWordProgress> onProgress,
+        Action<bool>? onAdmissionWait, CancellationToken cancellationToken) =>
+        Resolve().ProduceAsync(scope, exportedCandidate, onProgress, onAdmissionWait, cancellationToken);
 
     // A missing parser is the Assessor's own unavailability, not a fresh failure mode this wrapper invents.
     private IAssessor Resolve()

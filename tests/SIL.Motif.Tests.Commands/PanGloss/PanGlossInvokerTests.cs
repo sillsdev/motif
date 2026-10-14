@@ -951,6 +951,28 @@ public sealed class PanGlossInvokerTests : IDisposable
     }
 
     [Fact]
+    public async Task AdmissionWaitCallbackIsNotSerializedOrCalledForInvalidOrMissingParserRequests()
+    {
+        var events = new List<bool>();
+        var valid = new PanGlossRequest.Import(Project("wait-callback"), Path.Combine(_root, "grammar.json"))
+        {
+            OnAdmissionWait = events.Add,
+        };
+        Assert.DoesNotContain("OnAdmissionWait", JsonSerializer.Serialize(valid), StringComparison.Ordinal);
+
+        using var missingParser = new PanGlossInvoker(null);
+        var unavailable = await missingParser.RunAsync(valid, "missing-parser", CancellationToken.None);
+        Assert.IsType<PanGlossOutcome.Unavailable>(unavailable);
+        Assert.Empty(events);
+
+        var invalid = new PanGlossRequest.Import(Path.Combine(_root, "missing.fwdata"),
+            Path.Combine(_root, "invalid-grammar.json")) { OnAdmissionWait = events.Add };
+        await Assert.ThrowsAsync<FileNotFoundException>(() =>
+            missingParser.RunAsync(invalid, "invalid-project", CancellationToken.None));
+        Assert.Empty(events);
+    }
+
+    [Fact]
     public async Task Import_FatalSourceProblemsAreReturnedAsCompileErrorRefusal()
     {
         const string compileError = """

@@ -92,7 +92,7 @@ internal sealed class TrialJobHandler
         Task<(IReadOnlyCollection<Guid> AppliedProposalIds, DryRunScratch? Scratch)>> _openScratch;
     private readonly Func<DryRunScratch?, PrerequisiteExecutionPlan, CancellationToken, Task<DryRunModel>> _runDryRun;
     private readonly Func<LcmCache?, CancellationToken, Task<string>> _prepareForAssessment;
-    private readonly Func<string, string, CancellationToken, Task<GrammarCheckResponse?>>? _grammarHealth;
+    private readonly Func<string, string, Action<bool>?, CancellationToken, Task<GrammarCheckResponse?>>? _grammarHealth;
 
     /// <param name="baselines">This project's published-Baseline store.</param>
     /// <param name="proposals">
@@ -119,7 +119,7 @@ internal sealed class TrialJobHandler
             Task<(IReadOnlyCollection<Guid> AppliedProposalIds, DryRunScratch? Scratch)>> openScratch,
         Func<DryRunScratch?, PrerequisiteExecutionPlan, CancellationToken, Task<DryRunModel>> runDryRun,
         Func<LcmCache?, CancellationToken, Task<string>> prepareForAssessment, string workerRoot,
-        Func<string, string, CancellationToken, Task<GrammarCheckResponse?>>? grammarHealth = null)
+        Func<string, string, Action<bool>?, CancellationToken, Task<GrammarCheckResponse?>>? grammarHealth = null)
     {
         _baselines = baselines ?? throw new ArgumentNullException(nameof(baselines));
         ArgumentNullException.ThrowIfNull(proposals);
@@ -200,10 +200,13 @@ internal sealed class TrialJobHandler
             string? grammarCheckWarning = null;
             if (_grammarHealth is not null)
             {
+                var grammarPhase = new JobStageProgress("grammar-health", 1, 2, "grammar-health");
+                claim.PublishStageProgress(grammarPhase);
+                var grammarWait = claim.ObserveParserWait(grammarPhase);
                 try
                 {
                     var grammarCheck = await _grammarHealth(candidate.GrammarPath,
-                        project.FieldWorksProjectIdentity, cancellationToken).ConfigureAwait(false);
+                        project.FieldWorksProjectIdentity, grammarWait.Observe, cancellationToken).ConfigureAwait(false);
                     if (grammarCheck is null)
                     {
                         grammarCheckWarning = "The grammar check did not return a report.";
@@ -221,10 +224,15 @@ internal sealed class TrialJobHandler
                 }
             }
             var limitMs = candidate.Scope.PerWordLimit is { } limit ? (int?)limit.TotalMilliseconds : null;
-            claim.PublishTrialProgress(new TrialWordProgress(0, candidate.Scope.Words.Count, null)
-                { PerWordLimitMs = limitMs });
+            var initialProgress = new TrialWordProgress(0, candidate.Scope.Words.Count, null)
+                { PerWordLimitMs = limitMs };
+            claim.PublishTrialProgress(initialProgress);
+            var batchPhase = new JobStageProgress("batch", _grammarHealth is null ? 1 : 2,
+                _grammarHealth is null ? 1 : 2, "assessment");
+            var batchWait = claim.ObserveParserWait(batchPhase);
             var produced = await assessor.ProduceAsync(candidate.Scope, candidate.ExportedDirectory,
-                    progress => claim.PublishTrialProgress(progress with { PerWordLimitMs = limitMs }), cancellationToken)
+                    progress => claim.PublishTrialProgress(progress with { PerWordLimitMs = limitMs }),
+                    batchWait.Observe, cancellationToken)
                 .ConfigureAwait(false);
             var artifactLeases = produced.Select(item => item.ArtifactLease).OfType<AssessmentArtifactLease>().Distinct().ToArray();
             try

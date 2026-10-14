@@ -238,4 +238,16 @@ public interface IAssessor
     Task<IReadOnlyList<ProducedAssessment>> ProduceAsync(
         AssessmentScope scope, string exportedCandidate, Action<TrialWordProgress> onProgress,
         CancellationToken cancellationToken) => ProduceAsync(scope, exportedCandidate, cancellationToken);
+
+    /// <summary>Reports word progress and machine parser-capacity wait changes for this Assessment.</summary>
+    /// <param name="scope">What this run was told to do.</param>
+    /// <param name="exportedCandidate">A directory holding exactly the grammar to measure.</param>
+    /// <param name="onProgress">Receives word results as the batch flushes them.</param>
+    /// <param name="onAdmissionWait">Receives true while waiting for capacity and false when the wait ends.</param>
+    /// <param name="cancellationToken">Cancels the run.</param>
+    /// <returns>The produced Assessments.</returns>
+    Task<IReadOnlyList<ProducedAssessment>> ProduceAsync(
+        AssessmentScope scope, string exportedCandidate, Action<TrialWordProgress> onProgress,
+        Action<bool>? onAdmissionWait, CancellationToken cancellationToken) =>
+        ProduceAsync(scope, exportedCandidate, onProgress, cancellationToken);
 }

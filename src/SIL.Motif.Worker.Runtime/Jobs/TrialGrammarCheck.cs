@@ -14,12 +14,17 @@ internal static class TrialGrammarCheck
     /// <param name="grammarPath">The scratch project the check reads.</param>
     /// <param name="projectName">The FieldWorks project name PanGloss puts in its deep links.</param>
     /// <param name="cancellationToken">Cancels the check.</param>
+    /// <param name="onAdmissionWait">Reports actual waits for machine parser capacity.</param>
+    /// <returns>The grammar-health response, or null when the parser reports no response.</returns>
     internal static async Task<GrammarCheckResponse?> RunAsync(IPanGlossInvoker invoker, string label,
         StoredAnalysisComparison storedAnalyses, string grammarPath, string projectName,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, Action<bool>? onAdmissionWait = null)
     {
         var outcome = await invoker.RunAsync(
-            new PanGlossRequest.GrammarHealth(grammarPath, projectName, storedAnalyses), label, cancellationToken)
+            new PanGlossRequest.GrammarHealth(grammarPath, projectName, storedAnalyses)
+            {
+                OnAdmissionWait = onAdmissionWait,
+            }, label, cancellationToken)
             .ConfigureAwait(false);
         var output = outcome switch
         {

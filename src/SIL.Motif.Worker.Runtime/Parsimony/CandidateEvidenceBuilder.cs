@@ -145,10 +145,13 @@ public sealed class ParsimonyCandidateEvidenceBuilder
                 Path.Combine(afterWorking, "project-copies"), input.ScopeBinding!, assessmentSource,
                 cancellationToken)
                 .ConfigureAwait(false);
+            var stages = new ParsimonyStages(claim.PublishStageProgress, 4);
             var baselineFacts = await BuildFactsAsync(prepared.BaselineProjectPath, source.Token, false, null,
-                Path.Combine(beforeWorking, "facts"), cancellationToken).ConfigureAwait(false);
+                Path.Combine(beforeWorking, "facts"), claim, stages, "baseline", cancellationToken)
+                .ConfigureAwait(false);
             var candidateFacts = await BuildFactsAsync(prepared.CandidateProjectPath, source.Token, true,
-                prepared.DryRun.EffectDigest, Path.Combine(afterWorking, "facts"), cancellationToken)
+                prepared.DryRun.EffectDigest, Path.Combine(afterWorking, "facts"), claim, stages, "candidate",
+                cancellationToken)
                 .ConfigureAwait(false);
             if (_pipeline.ParserIdentity(fresh: true) != parserBefore || baselineFacts.SchemaVersion != candidateFacts.SchemaVersion)
                 return Failure(JobFailureCategory.Semantic,
@@ -395,11 +398,17 @@ public sealed class ParsimonyCandidateEvidenceBuilder
     }
 
     private async Task<FactsResult> BuildFactsAsync(string projectPath, BaselineToken token, bool candidate,
-        string? dryRunEffectDigest, string outputDirectory, CancellationToken cancellationToken)
+        string? dryRunEffectDigest, string outputDirectory, ClaimedJob claim, ParsimonyStages stages,
+        string inputName, CancellationToken cancellationToken)
     {
         var snapshotPath = Path.Combine(outputDirectory, "grammar-snapshot.json");
         Directory.CreateDirectory(outputDirectory);
-        var imported = await _invoker.RunAsync(new PanGlossRequest.Import(projectPath, snapshotPath),
+        var importPhase = stages.Enter("import", inputName);
+        var importWait = claim.ObserveParserWait(importPhase);
+        var imported = await _invoker.RunAsync(new PanGlossRequest.Import(projectPath, snapshotPath)
+            {
+                OnAdmissionWait = importWait.Observe,
+            },
             "parsimony-candidate-import", cancellationToken).ConfigureAwait(false);
         if (imported is not PanGlossOutcome.Completed)
             throw new PanGlossInvocationException(CategoryOf(imported), imported.Message);
@@ -412,7 +421,12 @@ public sealed class ParsimonyCandidateEvidenceBuilder
             dryRunDigest = candidate ? dryRunEffectDigest : null,
         }, new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var factsDirectory = Path.Combine(outputDirectory, "facts-output");
-        var outcome = await _invoker.RunAsync(new PanGlossRequest.Facts(snapshotPath, contextJson, factsDirectory),
+        var factsPhase = stages.Enter("facts", inputName);
+        var factsWait = claim.ObserveParserWait(factsPhase);
+        var outcome = await _invoker.RunAsync(new PanGlossRequest.Facts(snapshotPath, contextJson, factsDirectory)
+            {
+                OnAdmissionWait = factsWait.Observe,
+            },
             "parsimony-candidate-facts", cancellationToken).ConfigureAwait(false);
         if (outcome is not PanGlossOutcome.Completed completed || completed.Facts is null)
             throw new PanGlossInvocationException(CategoryOf(outcome), outcome.Message);

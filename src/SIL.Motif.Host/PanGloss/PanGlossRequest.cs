@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Globalization;
+using System.Text.Json.Serialization;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Jobs;
@@ -17,6 +18,10 @@ public abstract record PanGlossRequest
     public const long DefaultPerWordStepLimit = StepCap.DefaultSteps;
 
     private PanGlossRequest() { }
+
+    /// <summary>Receives whether this request is waiting for machine parser capacity.</summary>
+    [JsonIgnore]
+    public Action<bool>? OnAdmissionWait { get; init; }
 
     /// <summary>The subcommand this request runs, as the binary spells it.</summary>
     public abstract string Subcommand { get; }

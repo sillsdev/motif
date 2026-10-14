@@ -296,6 +296,56 @@ public sealed class JobRepository
         return changed;
     }
 
+    /// <summary>
+    /// Updates progress only when the row still matches the captured claim, version and displaced payload.
+    /// Null means a concurrent change, cancellation, or inactive row rejected this advisory write.
+    /// </summary>
+    /// <param name="jobId">The durable job row to update.</param>
+    /// <param name="capturedClaimToken">The nullable claim token captured when the handle was created.</param>
+    /// <param name="expectedVersion">The exact row Version the caller read.</param>
+    /// <param name="expectedProgressJson">The exact payload being displaced, including SQL null.</param>
+    /// <param name="nextProgressJson">The replacement payload, or SQL null when restoring absence.</param>
+    /// <returns>The row changed in this transaction, or null when any compare-and-swap guard failed.</returns>
+    internal JobRecord? TryUpdateClaimProgress(string jobId, string? capturedClaimToken,
+        long expectedVersion, string? expectedProgressJson, string? nextProgressJson)
+    {
+        using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction();
+        var current = ReadOptional(connection, transaction, jobId);
+        if (current is null || current.ClaimToken != capturedClaimToken || current.Version != expectedVersion ||
+            current.ProgressJson != expectedProgressJson || current.CancellationRequested ||
+            current.Status is not (JobStatus.Running or JobStatus.WaitingForBaseline or
+                JobStatus.WaitingForProjectHost))
+        {
+            transaction.Rollback();
+            return null;
+        }
+
+        var changed = _stateMachine.UpdateClaimProgress(current, nextProgressJson);
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = "UPDATE Jobs SET ProgressJson = $progress, UpdatedUtc = $updated, Version = $version " +
+            "WHERE JobId = $id AND ClaimToken IS $claimToken AND Version = $expected " +
+            "AND ProgressJson IS $expectedProgress " +
+            "AND Status IN ('running','waiting-for-baseline','waiting-for-project-host') " +
+            "AND CancellationRequested = 0;";
+        command.Parameters.AddWithValue("$progress", (object?)changed.ProgressJson ?? DBNull.Value);
+        command.Parameters.AddWithValue("$updated", changed.UpdatedUtc);
+        command.Parameters.AddWithValue("$version", changed.Version);
+        command.Parameters.AddWithValue("$id", changed.JobId);
+        command.Parameters.AddWithValue("$claimToken", (object?)capturedClaimToken ?? DBNull.Value);
+        command.Parameters.AddWithValue("$expected", expectedVersion);
+        command.Parameters.AddWithValue("$expectedProgress", (object?)expectedProgressJson ?? DBNull.Value);
+        if (command.ExecuteNonQuery() != 1)
+        {
+            transaction.Rollback();
+            return null;
+        }
+
+        transaction.Commit();
+        return changed;
+    }
+
     public JobRecord PublishDryRun(string jobId, string dryRunJson, long expectedVersion)
     {
         using var connection = _database.OpenConnection();
@@ -706,6 +756,16 @@ public sealed class JobRepository
         using var reader = command.ExecuteReader();
         if (!reader.Read()) throw new KeyNotFoundException($"Job '{jobId}' was not found.");
         return Read(reader);
+    }
+
+    private static JobRecord? ReadOptional(SqliteConnection connection, SqliteTransaction transaction, string jobId)
+    {
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = SelectSql + " WHERE JobId = $id;";
+        command.Parameters.AddWithValue("$id", jobId);
+        using var reader = command.ExecuteReader();
+        return reader.Read() ? Read(reader) : null;
     }
 
     private JobRecord GetRequired(string jobId) => Get(jobId) ?? throw new KeyNotFoundException($"Job '{jobId}' was not found.");

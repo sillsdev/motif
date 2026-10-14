@@ -296,17 +296,178 @@ public static class JobCommands
             if (entry is null) return CommandOutcome<JobStatusResponse>.Refused(JobNotFound(request.JobId));
 
             var job = entry.Value.Job;
+            var (trialProgress, stageProgress) = DecodeProgress(job.ProgressJson);
+            if (JobStateMachine.IsTerminal(job.Status) && stageProgress?.Stage == "waiting-for-parser-slot")
+                stageProgress = null;
             return CommandOutcome<JobStatusResponse>.Success(new JobStatusResponse(job.JobId, job.ProjectKey, true,
                 job.Kind, job.Status, job.Attempt, job.UpdatedUtc, job.CancellationRequested, job.FailureCategory,
                 job.Version, entry.Value.QueueOrder)
             {
-                TrialProgress = job.Kind == TrialKind && job.ProgressJson is { } progress
-                    ? JsonSerializer.Deserialize<TrialWordProgress>(progress, MotifJson.CreateOptions()) : null,
-                StageProgress = job.Kind != TrialKind && job.ProgressJson is { } stage
-                    ? JsonSerializer.Deserialize<JobStageProgress>(stage, MotifJson.CreateOptions()) : null,
+                TrialProgress = trialProgress,
+                StageProgress = stageProgress,
             });
         });
     }
+
+    private static (TrialWordProgress? TrialProgress, JobStageProgress? StageProgress) DecodeProgress(
+        string? progressJson)
+    {
+        if (progressJson is null) return (null, null);
+
+        JsonDocument document;
+        try
+        {
+            document = JsonDocument.Parse(progressJson);
+        }
+        catch (JsonException exception)
+        {
+            throw new InvalidDataException("Stored job progress JSON is malformed.", exception);
+        }
+
+        using (document)
+        {
+            var root = document.RootElement;
+            EnsureUniqueProperties(root);
+            if (root.ValueKind != JsonValueKind.Object)
+                throw InvalidProgress("the root must be an object");
+
+            var properties = root.EnumerateObject().ToDictionary(item => item.Name, item => item.Value,
+                StringComparer.Ordinal);
+            var stageFields = new HashSet<string>(StringComparer.Ordinal)
+                { "Stage", "Step", "Steps", "Detail" };
+            var wordFields = new HashSet<string>(StringComparer.Ordinal)
+                { "Completed", "Total", "CurrentWord", "StoppedWords", "SlowestWord", "PerWordLimitMs" };
+            var hasStageFields = properties.Keys.Any(stageFields.Contains);
+            var hasWordFields = properties.Keys.Any(wordFields.Contains);
+            if (hasStageFields == hasWordFields)
+                throw InvalidProgress("the object must match exactly one supported progress shape");
+
+            var allowedFields = hasStageFields ? stageFields : wordFields;
+            if (properties.Keys.Any(name => !allowedFields.Contains(name)))
+                throw InvalidProgress("the object contains an unsupported progress field");
+
+            if (hasStageFields)
+            {
+                var stage = ReadRequiredString(properties, "Stage");
+                var step = ReadRequiredInt32(properties, "Step");
+                var steps = ReadRequiredInt32(properties, "Steps");
+                var detail = properties.TryGetValue("Detail", out var detailElement)
+                    ? ReadNullableString(detailElement, "Detail") : null;
+                if (string.IsNullOrWhiteSpace(stage) || step < 1 || steps < step)
+                    throw InvalidProgress("the stage position is incoherent");
+                return (null, new JobStageProgress(stage, step, steps, detail));
+            }
+
+            var completed = ReadRequiredInt32(properties, "Completed");
+            var total = ReadRequiredInt32(properties, "Total");
+            string? currentWord = properties.TryGetValue("CurrentWord", out var currentWordElement)
+                ? ReadNullableString(currentWordElement, "CurrentWord") : null;
+            if (completed < 0 || total < 0 || completed > total)
+                throw InvalidProgress("the word counts are incoherent");
+            ValidateWordProgressOptions(properties);
+            try
+            {
+                var trial = JsonSerializer.Deserialize<TrialWordProgress>(progressJson, MotifJson.CreateOptions())
+                    ?? throw InvalidProgress("the word progress is empty");
+                return (trial with { CurrentWord = currentWord }, null);
+            }
+            catch (JsonException exception)
+            {
+                throw new InvalidDataException("Stored word progress has an invalid shape.", exception);
+            }
+        }
+    }
+
+    private static void ValidateWordProgressOptions(IReadOnlyDictionary<string, JsonElement> properties)
+    {
+        if (properties.TryGetValue("StoppedWords", out var stoppedWords))
+        {
+            if (stoppedWords.ValueKind != JsonValueKind.Array)
+                throw InvalidProgress("StoppedWords must be an array");
+            foreach (var stopped in stoppedWords.EnumerateArray())
+            {
+                EnsureUniqueProperties(stopped);
+                if (stopped.ValueKind != JsonValueKind.Object)
+                    throw InvalidProgress("a stopped word must be an object");
+                var fields = stopped.EnumerateObject().ToDictionary(item => item.Name, item => item.Value,
+                    StringComparer.Ordinal);
+                if (fields.Keys.Any(name => name is not ("Word" or "Reason" or "ElapsedMs")))
+                    throw InvalidProgress("a stopped word contains an unsupported field");
+                _ = ReadRequiredString(fields, "Word");
+                _ = ReadRequiredString(fields, "Reason");
+                _ = ReadRequiredDouble(fields, "ElapsedMs");
+            }
+        }
+
+        if (properties.TryGetValue("SlowestWord", out var slowest) && slowest.ValueKind != JsonValueKind.Null)
+        {
+            EnsureUniqueProperties(slowest);
+            if (slowest.ValueKind != JsonValueKind.Object)
+                throw InvalidProgress("SlowestWord must be an object or null");
+            var fields = slowest.EnumerateObject().ToDictionary(item => item.Name, item => item.Value,
+                StringComparer.Ordinal);
+            if (fields.Keys.Any(name => name is not ("Word" or "ElapsedMs")))
+                throw InvalidProgress("SlowestWord contains an unsupported field");
+            _ = ReadRequiredString(fields, "Word");
+            _ = ReadRequiredDouble(fields, "ElapsedMs");
+        }
+
+        if (properties.TryGetValue("PerWordLimitMs", out var limit) && limit.ValueKind != JsonValueKind.Null &&
+            (limit.ValueKind != JsonValueKind.Number || !limit.TryGetInt32(out var milliseconds) || milliseconds <= 0))
+            throw InvalidProgress("PerWordLimitMs must be a positive integer or null");
+    }
+
+    private static string ReadRequiredString(IReadOnlyDictionary<string, JsonElement> properties, string name)
+    {
+        if (!properties.TryGetValue(name, out var value) || value.ValueKind != JsonValueKind.String)
+            throw InvalidProgress(name + " must be a string");
+        return value.GetString()!;
+    }
+
+    private static string? ReadNullableString(JsonElement value, string name) => value.ValueKind switch
+    {
+        JsonValueKind.Null => null,
+        JsonValueKind.String => value.GetString(),
+        _ => throw InvalidProgress(name + " must be a string or null"),
+    };
+
+    private static int ReadRequiredInt32(IReadOnlyDictionary<string, JsonElement> properties, string name)
+    {
+        if (!properties.TryGetValue(name, out var value) || value.ValueKind != JsonValueKind.Number ||
+            !value.TryGetInt32(out var result))
+            throw InvalidProgress(name + " must be a 32-bit integer");
+        return result;
+    }
+
+    private static double ReadRequiredDouble(IReadOnlyDictionary<string, JsonElement> properties, string name)
+    {
+        if (!properties.TryGetValue(name, out var value) || value.ValueKind != JsonValueKind.Number ||
+            !value.TryGetDouble(out var result) ||
+            !double.IsFinite(result) || result < 0)
+            throw InvalidProgress(name + " must be a finite nonnegative number");
+        return result;
+    }
+
+    private static void EnsureUniqueProperties(JsonElement value)
+    {
+        if (value.ValueKind == JsonValueKind.Object)
+        {
+            var names = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var property in value.EnumerateObject())
+            {
+                if (!names.Add(property.Name))
+                    throw InvalidProgress("the object repeats field " + property.Name);
+                EnsureUniqueProperties(property.Value);
+            }
+        }
+        else if (value.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in value.EnumerateArray()) EnsureUniqueProperties(item);
+        }
+    }
+
+    private static InvalidDataException InvalidProgress(string reason) =>
+        new("Stored job progress is invalid: " + reason + ".");
 
     /// <summary>
     /// The Assessments one job produced — the lookup an agent needs when it holds a Trial's job id and

@@ -120,6 +120,7 @@ public static class JobWait
         };
         var message = "Timed out after " + timeout + " waiting for job '" + jobId + "' to finish; ";
         var checkAgain = "Check again with 'jobs show " + jobId + " --project <fwdata>'.";
+        AddObservedStage(status, facts);
         if (!cancelOnTimeout)
         {
             message += "it was " + statusText + ". " + checkAgain;
@@ -140,7 +141,17 @@ public static class JobWait
                     ? "Motif cancelled the job."
                     : "Motif requested cancellation of the job.";
         }
+        if (status.StageProgress is { } stage)
+            message += " The last observed stage was '" + stage.Stage + "'" +
+                (string.IsNullOrWhiteSpace(stage.Detail) ? "." : " (" + stage.Detail + ").");
         return CommandOutcome<JobStatusResponse>.Refused(new Refusal(
             "job.wait-timeout", FailureReason.Busy, message, facts));
+    }
+
+    private static void AddObservedStage(JobStatusResponse status, IDictionary<string, string> facts)
+    {
+        if (status.StageProgress is not { } stage) return;
+        facts["stage"] = stage.Stage;
+        if (stage.Detail is not null) facts["stageDetail"] = stage.Detail;
     }
 }

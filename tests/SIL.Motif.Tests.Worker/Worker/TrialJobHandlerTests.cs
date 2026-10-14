@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text.Json;
 using SIL.LCModel;
@@ -148,7 +149,7 @@ public sealed class TrialJobHandlerTests : IDisposable
         using var lanes = new ProjectLaneRegistry(_ => _token);
         string? checkedPath = null;
         var handler = BuildHandler(lanes, new FakeAssessor("pangloss", [AssessmentKind.Correctness]),
-            grammarHealth: (path, _, _) =>
+            grammarHealth: (path, _, _, _) =>
             {
                 checkedPath = path;
                 return Task.FromResult<GrammarCheckResponse?>(new GrammarCheckResponse([], HasBaseline: true));
@@ -207,7 +208,7 @@ public sealed class TrialJobHandlerTests : IDisposable
     {
         using var lanes = new ProjectLaneRegistry(_ => _token);
         var handler = BuildHandler(lanes, new FakeAssessor("pangloss", [AssessmentKind.Correctness]),
-            grammarHealth: (_, _, _) => throw new IOException("grammar-health unavailable"));
+            grammarHealth: (_, _, _, _) => throw new IOException("grammar-health unavailable"));
         var proposalId = CanonicalId.Mint("proposal/");
         var proposalJson = BuildSetGlossProposalJson(proposalId, _seed.FirstSenseId, "grammar warning");
         SaveCommittedProposal(proposalId, proposalJson);
@@ -286,6 +287,86 @@ public sealed class TrialJobHandlerTests : IDisposable
         Assert.Equal(UnanalysedWordform, whileRunning?.CurrentWord);
         Assert.Equal(0, whileRunning?.Completed);
         Assert.Equal(1, JsonSerializer.Deserialize<TrialWordProgress>(completed.ProgressJson!)?.Completed);
+    }
+
+    [Fact]
+    public async Task TrialWaitingForParserCapacityPublishesStageBeforeAnyWordStarts()
+    {
+        var parserPath = FakeParser.CopyRecordingInvocations(Path.Combine(_root, "trial-parser-wait"));
+        var slotNames = UniqueParserSlotNames("trial-wait");
+        using var firstSlot = new WorkerMutexOwner(slotNames[0], machineWide: true);
+        using var secondSlot = new WorkerMutexOwner(slotNames[1], machineWide: true);
+        Assert.True(firstSlot.TryAcquire());
+        Assert.True(secondSlot.TryAcquire());
+
+        using var cancellation = new CancellationTokenSource();
+        using var queue = new MachinePanGlossQueue(slotNames);
+        var waitStarted = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        queue.SlotWaitStarted = label =>
+        {
+            if (label == "trial-grammar-slot-wait") waitStarted.TrySetResult(label);
+        };
+        using var invoker = new PanGlossInvoker(parserPath, queue);
+        using var lanes = new ProjectLaneRegistry(_ => _token);
+        var grammarHealthStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var wordsStarted = 0;
+        var assessor = new FakeAssessor("pangloss", [AssessmentKind.Correctness])
+        {
+            EmitProgress = _ => Interlocked.Exchange(ref wordsStarted, 1),
+        };
+        var handler = BuildHandler(lanes, assessor, grammarHealth: async
+            (grammarPath, projectName, onAdmissionWait, token) =>
+        {
+            grammarHealthStarted.TrySetResult();
+            try
+            {
+                return await TrialGrammarCheck.RunAsync(invoker, "trial-grammar-slot-wait",
+                    StoredAnalysisComparison.Budget, grammarPath, projectName, token, onAdmissionWait);
+            }
+            catch (Exception) when (token.IsCancellationRequested)
+            {
+                throw new OperationCanceledException(token);
+            }
+        });
+        var proposalId = CanonicalId.Mint("proposal/");
+        var proposalJson = BuildSetGlossProposalJson(proposalId, _seed.FirstSenseId, "trial waiting");
+        SaveCommittedProposal(proposalId, proposalJson);
+        var job = CreateTrialJob(proposalJson, [UnanalysedWordform], startRunning: false);
+        var claimed = new JobClaims(_database).Claim(ProjectWorkspaceKey.Compute(_project), "trial-wait-worker",
+            JobTimestamp.FormatUtc(DateTimeOffset.UtcNow), TimeSpan.FromMinutes(5));
+        Assert.NotNull(claimed);
+        Assert.Equal(job.JobId, claimed!.JobId);
+        Assert.False(string.IsNullOrWhiteSpace(claimed.ClaimToken));
+        var claim = new ClaimedJob(_jobs, claimed);
+
+        Task<JobOutcome?>? pending = null;
+        try
+        {
+            pending = handler.RunAsync(claim, _project, cancellation.Token);
+            await grammarHealthStarted.Task.WaitAsync(TimeSpan.FromSeconds(60));
+            Assert.Equal("trial-grammar-slot-wait",
+                await waitStarted.Task.WaitAsync(TimeSpan.FromSeconds(60)));
+
+            var waiting = await WaitForStageProgressAsync(job.JobId, "waiting-for-parser-slot");
+
+            Assert.True(waiting is not null,
+                "SlotWaitStarted confirmed a failed parser-slot acquisition, but the Trial row did not publish a durable waiting stage.");
+            Assert.Equal("waiting-for-parser-slot", waiting!.Stage);
+            Assert.Contains("grammar-health", waiting.Detail, StringComparison.OrdinalIgnoreCase);
+            Assert.Equal(0, Volatile.Read(ref wordsStarted));
+            Assert.Empty(FakeParser.Invocations(parserPath));
+        }
+        finally
+        {
+            cancellation.Cancel();
+            firstSlot.Release();
+            secondSlot.Release();
+            if (pending is not null)
+            {
+                try { await pending.WaitAsync(TimeSpan.FromSeconds(60)); }
+                catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
+            }
+        }
     }
 
     [Fact]
@@ -674,6 +755,36 @@ public sealed class TrialJobHandlerTests : IDisposable
         return job;
     }
 
+    private async Task<JobStageProgress?> WaitForStageProgressAsync(string jobId, string expectedStage)
+    {
+        var started = Stopwatch.StartNew();
+        while (started.Elapsed < TimeSpan.FromSeconds(10))
+        {
+            var progressJson = _jobs.Get(jobId)?.ProgressJson;
+            if (!string.IsNullOrWhiteSpace(progressJson))
+            {
+                try
+                {
+                    var progress = JsonSerializer.Deserialize<JobStageProgress>(progressJson,
+                        SIL.Motif.Contract.MotifJson.CreateOptions());
+                    if (progress?.Stage == expectedStage) return progress;
+                }
+                catch (JsonException) { }
+            }
+            await Task.Delay(TimeSpan.FromMilliseconds(10));
+        }
+        return null;
+    }
+
+    private static string[] UniqueParserSlotNames(string purpose)
+    {
+        var processNamespace = Environment.GetEnvironmentVariable(MachinePanGlossQueue.TestSlotNamespaceVariable)
+            ?? "unscoped";
+        var unique = Guid.NewGuid().ToString("N");
+        var prefix = $"Global\\MotifPanGlossSlot-{processNamespace}-{purpose}-{unique}";
+        return [$"{prefix}-0", $"{prefix}-1"];
+    }
+
     private JobRecord RunAndFinish(TrialJobHandler handler, string jobId)
     {
         var claim = ClaimedJob.Of(_jobs, jobId);
@@ -685,7 +796,7 @@ public sealed class TrialJobHandlerTests : IDisposable
     private TrialJobHandler BuildHandler(ProjectLaneRegistry lanes, IAssessor assessor,
         Func<LcmCache?, CancellationToken, Task<string>>? prepareForAssessment = null,
         IProjectConfigurationReader? configuration = null,
-        Func<string, string, CancellationToken, Task<GrammarCheckResponse?>>? grammarHealth = null)
+        Func<string, string, Action<bool>?, CancellationToken, Task<GrammarCheckResponse?>>? grammarHealth = null)
     {
         var catalog = new AssessorCatalog(new[] { assessor });
         var factory = new ScratchCacheFactory(_loader);

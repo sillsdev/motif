@@ -238,6 +238,52 @@ public sealed class JobRunnerLoopTests : IDisposable
     }
 
     [Fact]
+    public async Task TrialProgressAfterStoredCancellationIsRejectedAsCancellationAndFinishesTheClaim()
+    {
+        var jobs = new JobRepository(_database);
+        jobs.Create("job-1", Project, "demo", "{}", Stamp());
+        using var clock = new ManualTimeProvider(DateTimeOffset.Parse(Stamp()));
+        Exception? publicationFailure = null;
+
+        var loop = Loop((job, token) =>
+        {
+            Assert.False(token.IsCancellationRequested);
+            var cancelled = jobs.RequestCancellation(job.JobId);
+            Assert.True(cancelled.CancellationRequested);
+            Assert.False(token.IsCancellationRequested);
+
+            try
+            {
+                job.PublishTrialProgress(new TrialWordProgress(1, 2, "held-trial"));
+            }
+            catch (OperationCanceledException exception)
+            {
+                publicationFailure = exception;
+                throw;
+            }
+            catch (InvalidOperationException exception)
+            {
+                publicationFailure = exception;
+                throw;
+            }
+            finally
+            {
+                Assert.Equal(cancelled, jobs.Get(job.JobId));
+            }
+
+            return Task.FromResult<JobOutcome?>(JobOutcome.Completed);
+        }, timeProvider: clock);
+
+        await loop.RunUntilIdleAsync(CancellationToken.None);
+
+        var result = jobs.Get("job-1")!;
+        Assert.Equal(JobStatus.Cancelled, result.Status);
+        Assert.Equal(JobFailureCategory.Cancellation, result.FailureCategory);
+        Assert.IsType<OperationCanceledException>(publicationFailure);
+        Assert.Null(result.ProgressJson);
+    }
+
+    [Fact]
     public async Task AHandlerStoppedWhileItsRowWaitsBehindTheLaneLandsItCancelled()
     {
         var jobs = new JobRepository(_database);

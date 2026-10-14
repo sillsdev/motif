@@ -2,6 +2,9 @@ using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Worker.Jobs;
+using System.Text.Json;
+using SIL.Motif.Contract;
+using SIL.Motif.Contract.Ids;
 using Xunit;
 
 namespace SIL.Motif.Tests.Worker;
@@ -53,8 +56,77 @@ public sealed class ClaimedJobTests : IDisposable
         Assert.Throws<InvalidOperationException>(() => claim.PublishDryRun("{}"));
     }
 
+    [Fact]
+    public void AReclaimedJobRejectsStageProgressFromItsOriginalClaim()
+    {
+        var (jobs, original, successor) = ReclaimedTrial();
+        var successorProgress = new JobStageProgress("measure", 2, 3, "successor phase");
+        var successorToken = successor.Job.ClaimToken;
+        var beforeMatching = jobs.Get(successor.JobId)!;
+
+        successor.PublishStageProgress(successorProgress);
+
+        var afterMatching = jobs.Get(successor.JobId)!;
+        Assert.Equal(JsonSerializer.Serialize(successorProgress, MotifJson.CreateOptions()), afterMatching.ProgressJson);
+        Assert.Equal(beforeMatching.Version + 1, afterMatching.Version);
+        Assert.Equal(JobStatus.Running, afterMatching.Status);
+        Assert.Equal(successorToken, afterMatching.ClaimToken);
+
+        original.PublishStageProgress(new JobStageProgress("waiting-for-parser-slot", 1, 3, "stale phase"));
+
+        Assert.Equal(afterMatching, jobs.Get(successor.JobId));
+    }
+
+    [Fact]
+    public void AReclaimedJobRejectsTrialProgressFromItsOriginalClaim()
+    {
+        var (jobs, original, successor) = ReclaimedTrial();
+        var successorProgress = new TrialWordProgress(1, 2, "dog");
+        var successorToken = successor.Job.ClaimToken;
+        var beforeMatching = jobs.Get(successor.JobId)!;
+
+        successor.PublishTrialProgress(successorProgress);
+
+        var afterMatching = jobs.Get(successor.JobId)!;
+        Assert.Equal(JsonSerializer.Serialize(successorProgress, MotifJson.CreateOptions()), afterMatching.ProgressJson);
+        Assert.Equal(beforeMatching.Version + 1, afterMatching.Version);
+        Assert.Equal(JobStatus.Running, afterMatching.Status);
+        Assert.Equal(successorToken, afterMatching.ClaimToken);
+
+        Assert.Throws<InvalidOperationException>(() =>
+            original.PublishTrialProgress(new TrialWordProgress(2, 2, null)));
+        Assert.Equal(afterMatching, jobs.Get(successor.JobId));
+    }
+
+    private (JobRepository Jobs, ClaimedJob Original, ClaimedJob Successor) ReclaimedTrial()
+    {
+        var jobs = new JobRepository(_database);
+        var claims = new JobClaims(_database);
+        var jobId = CanonicalId.Mint("job/").Value;
+        var input = JsonSerializer.Serialize(new TrialJobInput("{}", null, ["cat"]), MotifJson.CreateOptions());
+        jobs.Create(jobId, Project, "trial", input, Now());
+
+        var first = claims.Claim(Project, "runner-original", Now(), TimeSpan.FromSeconds(1));
+        Assert.NotNull(first);
+        Assert.Equal(jobId, first!.JobId);
+        Assert.False(string.IsNullOrWhiteSpace(first.ClaimToken));
+        var original = new ClaimedJob(jobs, first);
+
+        var reclaimAt = DateTimeOffset.Parse(first.LeaseUntilUtc!).AddSeconds(1);
+        var reclaimed = claims.Claim(Project, "runner-successor", Stamp(reclaimAt), Lease());
+        Assert.NotNull(reclaimed);
+        Assert.Equal(jobId, reclaimed!.JobId);
+        Assert.NotEqual(first.ClaimToken, reclaimed.ClaimToken);
+
+        return (jobs, original, new ClaimedJob(jobs, reclaimed));
+    }
+
     private static string Now() =>
         JobTimestamp.FormatUtc(DateTimeOffset.UtcNow);
+
+    private static string Stamp(DateTimeOffset moment) => JobTimestamp.FormatUtc(moment);
+
+    private static TimeSpan Lease() => TimeSpan.FromMinutes(5);
 
     public void Dispose()
     {

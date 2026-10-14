@@ -76,14 +76,19 @@ public sealed class MachinePanGlossQueue : IDisposable
     /// Queues <paramref name="work"/> under <paramref name="jobId"/> and returns its result once the
     /// job has been admitted to a machine slot and has run to completion.
     /// </summary>
+    /// <param name="jobId">The diagnostic label for this queued invocation.</param>
+    /// <param name="work">The invocation to run after acquiring every configured machine slot.</param>
+    /// <param name="cancellationToken">Cancels the queued or admitted invocation.</param>
+    /// <param name="onAdmissionWait">Receives one balanced pair after an actual failed slot acquisition.</param>
+    /// <returns>The invocation result, or its cancellation or failure.</returns>
     public Task<T> RunAsync<T>(string jobId, Func<PanGlossContainmentJob, CancellationToken, Task<T>> work,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, Action<bool>? onAdmissionWait = null)
     {
         if (string.IsNullOrWhiteSpace(jobId))
             throw new ArgumentException("Required.", nameof(jobId));
         ArgumentNullException.ThrowIfNull(work);
         var completion = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var job = new QueuedJob<T>(jobId, work, cancellationToken, completion);
+        var job = new QueuedJob<T>(jobId, work, cancellationToken, onAdmissionWait, completion);
         lock (_gate)
         {
             ThrowIfDisposed();
@@ -142,7 +147,8 @@ public sealed class MachinePanGlossQueue : IDisposable
             MachineSlotLease lease;
             try
             {
-                lease = await AcquireMachineCapacityAsync(job.JobId, linked.Token).ConfigureAwait(false);
+                lease = await AcquireMachineCapacityAsync(job.JobId, linked.Token, job.OnAdmissionWait)
+                    .ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -176,7 +182,8 @@ public sealed class MachinePanGlossQueue : IDisposable
         }
     }
 
-    private async Task<MachineSlotLease> AcquireMachineCapacityAsync(string jobId, CancellationToken cancellationToken)
+    private async Task<MachineSlotLease> AcquireMachineCapacityAsync(string jobId, CancellationToken cancellationToken,
+        Action<bool>? onAdmissionWait)
     {
         // One owner per slot per wait: ownership is per-thread, and per-poll owners would churn threads.
         var owners = new List<WorkerMutexOwner>(_slotNames.Count);
@@ -202,21 +209,41 @@ public sealed class MachinePanGlossQueue : IDisposable
                         released => _slotOwnership.TryRemove(released, out _));
                     foreach (var index in acquired) _slotOwnership[index] = jobId;
                     transferred = true;
+                    if (waitReported)
+                    {
+                        waitReported = false;
+                        NotifyAdmissionWait(onAdmissionWait, waiting: false);
+                    }
                     return lease;
                 }
                 foreach (var index in acquired) owners[index].Release();
                 if (!waitReported)
                 {
-                    SlotWaitStarted?.Invoke(jobId);
                     waitReported = true;
+                    NotifyAdmissionWait(onAdmissionWait, waiting: true);
+                    SlotWaitStarted?.Invoke(jobId);
                 }
                 await Task.Delay(SlotPollInterval, cancellationToken).ConfigureAwait(false);
             }
         }
         finally
         {
+            if (waitReported) NotifyAdmissionWait(onAdmissionWait, waiting: false);
             if (!transferred)
                 foreach (var owner in owners) owner.Dispose();
+        }
+    }
+
+    private static void NotifyAdmissionWait(Action<bool>? observer, bool waiting)
+    {
+        if (observer is null) return;
+        try
+        {
+            observer(waiting);
+        }
+        catch (Exception exception)
+        {
+            System.Diagnostics.Trace.TraceWarning("Parser capacity observer failed: {0}", exception.Message);
         }
     }
 
@@ -240,14 +267,16 @@ public sealed class MachinePanGlossQueue : IDisposable
 
     private abstract class QueuedJob
     {
-        protected QueuedJob(string jobId, CancellationToken cancellationToken)
+        protected QueuedJob(string jobId, CancellationToken cancellationToken, Action<bool>? onAdmissionWait)
         {
             JobId = jobId;
             CancellationToken = cancellationToken;
+            OnAdmissionWait = onAdmissionWait;
         }
 
         public string JobId { get; }
         public CancellationToken CancellationToken { get; }
+        public Action<bool>? OnAdmissionWait { get; }
         public LinkedListNode<QueuedJob>? Node { get; set; }
         public CancellationTokenRegistration Registration { get; set; }
 
@@ -262,8 +291,8 @@ public sealed class MachinePanGlossQueue : IDisposable
         private readonly TaskCompletionSource<T> _completion;
 
         public QueuedJob(string jobId, Func<PanGlossContainmentJob, CancellationToken, Task<T>> work,
-            CancellationToken cancellationToken, TaskCompletionSource<T> completion)
-            : base(jobId, cancellationToken)
+            CancellationToken cancellationToken, Action<bool>? onAdmissionWait, TaskCompletionSource<T> completion)
+            : base(jobId, cancellationToken, onAdmissionWait)
         {
             _work = work;
             _completion = completion;

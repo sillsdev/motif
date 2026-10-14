@@ -80,6 +80,28 @@ public sealed class PanGlossAssessorTests : IDisposable
     }
 
     [Fact]
+    public async Task PanGlossAssessorForwardsAdmissionWaitAndEndCallbacks()
+    {
+        var events = new List<bool>();
+        var invoker = new FakeInvoker
+        {
+            Respond = request =>
+            {
+                var batch = Assert.IsType<PanGlossRequest.Batch>(request);
+                batch.OnAdmissionWait?.Invoke(true);
+                batch.OnAdmissionWait?.Invoke(false);
+                return new PanGlossOutcome.Unavailable("The test stops after observing admission callbacks.");
+            },
+        };
+        var assessor = new PanGlossAssessor(_paths, invoker);
+
+        await Assert.ThrowsAsync<AssessorUnavailableException>(() => assessor.ProduceAsync(
+            Scope(AssessmentKind.ParseTime), _candidate, _ => { }, events.Add, CancellationToken.None));
+
+        Assert.Equal([true, false], events);
+    }
+
+    [Fact]
     public async Task FlushedRowsReachTheAssessorBeforeTheNextWordIsReleased()
     {
         var release = Path.Combine(_root, "assessor-progress-release");

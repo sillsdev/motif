@@ -60,6 +60,18 @@ public sealed class PanGlossAssessor : IAssessor
     public async Task<IReadOnlyList<ProducedAssessment>> ProduceAsync(
         AssessmentScope scope, string exportedCandidate, Action<TrialWordProgress>? onProgress,
         CancellationToken cancellationToken)
+        => await ProduceAsync(scope, exportedCandidate, onProgress, null, cancellationToken).ConfigureAwait(false);
+
+    /// <summary>Runs the batch with word progress and machine-capacity wait callbacks.</summary>
+    /// <param name="scope">The words and measurements requested.</param>
+    /// <param name="exportedCandidate">A directory holding exactly the grammar to measure.</param>
+    /// <param name="onProgress">Receives word results as the batch flushes them.</param>
+    /// <param name="onAdmissionWait">Receives true while waiting for capacity and false when the wait ends.</param>
+    /// <param name="cancellationToken">Cancels the run.</param>
+    /// <returns>The produced Assessments.</returns>
+    public async Task<IReadOnlyList<ProducedAssessment>> ProduceAsync(
+        AssessmentScope scope, string exportedCandidate, Action<TrialWordProgress>? onProgress,
+        Action<bool>? onAdmissionWait, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(scope);
         var wanted = scope.Collect.Count == 0 ? Supported : scope.Collect;
@@ -83,7 +95,7 @@ public sealed class PanGlossAssessor : IAssessor
         {
             var batch = new PanGlossRequest.Batch(
                 sources[0], requestedWords, scope.PerWordLimit, cachePath, scope.PerWordStepLimit, directory)
-                { CollectAnalyses = true, OnProgress = onProgress };
+                { CollectAnalyses = true, OnProgress = onProgress, OnAdmissionWait = onAdmissionWait };
             var outcome = await _invoker.RunAsync(batch,
                 "assess:batch", cancellationToken).ConfigureAwait(false);
             artifactLease = (outcome as PanGlossOutcome.Completed)?.ArtifactLease;

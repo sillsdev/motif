@@ -38,12 +38,15 @@ public sealed class MachinePanGlossQueueTests
         {
             File.SetUnixFileMode(path, UnixFileMode.None);
             using var queue = new MachinePanGlossQueue(new[] { name });
+            var waitEvents = new ConcurrentQueue<bool>();
             var error = await Assert.ThrowsAsync<IOException>(() => queue.RunAsync("denied",
-                (_, _) => Task.FromResult(0), CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(5)));
+                (_, _) => Task.FromResult(0), CancellationToken.None, waitEvents.Enqueue)
+                .WaitAsync(TimeSpan.FromSeconds(5)));
 
             Assert.Contains(path, error.Message);
             Assert.Contains("read/write permissions", error.Message);
             Assert.Contains("only if it is stale", error.Message);
+            Assert.Empty(waitEvents);
         }
         finally
         {
@@ -107,6 +110,286 @@ public sealed class MachinePanGlossQueueTests
 
         Assert.Equal(1, peak);
         Assert.Equal(0, running);
+    }
+
+    [RequiresUnixFact]
+    public async Task RunAsync_AdmissionObserverBracketsARealWaitBeforeOneQueuedInvocation()
+    {
+        var slotNames = UniqueSlotNames(2);
+        using var firstSlot = new WorkerMutexOwner(slotNames[0], machineWide: true);
+        using var secondSlot = new WorkerMutexOwner(slotNames[1], machineWide: true);
+        Assert.True(firstSlot.TryAcquire());
+        Assert.True(secondSlot.TryAcquire());
+
+        var parserDirectory = Path.Combine(Path.GetTempPath(), "MotifPanGlossWait-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(parserDirectory);
+        var executable = FakeParser.CopyRecordingInvocations(Path.Combine(parserDirectory, "parser"));
+        var fwdata = Path.Combine(parserDirectory, "scratch.fwdata");
+        var grammar = Path.Combine(parserDirectory, "grammar.json");
+        await File.WriteAllTextAsync(fwdata, "scratch grammar bytes");
+        using var queue = new MachinePanGlossQueue(slotNames);
+        using var invoker = new PanGlossInvoker(executable, queue);
+        var waitStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        queue.SlotWaitStarted = _ => waitStarted.TrySetResult();
+        var events = new ConcurrentQueue<bool>();
+        var request = new PanGlossRequest.Import(fwdata, grammar)
+        {
+            OnAdmissionWait = waiting => events.Enqueue(waiting),
+        };
+
+        var pending = invoker.RunAsync(request, "wait-before-describe", CancellationToken.None);
+        try
+        {
+            await waitStarted.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            Assert.Equal([true], events.ToArray());
+            Assert.Empty(FakeParser.Invocations(executable));
+
+            firstSlot.Release();
+            secondSlot.Release();
+            Assert.IsType<PanGlossOutcome.Completed>(await pending.WaitAsync(TimeSpan.FromSeconds(20)));
+
+            Assert.Equal([true, false], events.ToArray());
+            Assert.Equal(["describe", "import"], FakeParser.Invocations(executable));
+            Assert.True(File.Exists(grammar));
+        }
+        finally
+        {
+            firstSlot.Release();
+            secondSlot.Release();
+            if (!pending.IsCompleted)
+            {
+                try { await pending.WaitAsync(TimeSpan.FromSeconds(20)); }
+                catch (OperationCanceledException) { }
+            }
+            try { Directory.Delete(parserDirectory, recursive: true); }
+            catch (IOException) { }
+        }
+    }
+
+    [RequiresUnixFact]
+    public async Task RunAsync_CancellingAnInvokerWhileWaitingDoesNotStartDescribeOrImport()
+    {
+        var slotNames = UniqueSlotNames(2);
+        using var firstSlot = new WorkerMutexOwner(slotNames[0], machineWide: true);
+        using var secondSlot = new WorkerMutexOwner(slotNames[1], machineWide: true);
+        Assert.True(firstSlot.TryAcquire());
+        Assert.True(secondSlot.TryAcquire());
+
+        var parserDirectory = Path.Combine(Path.GetTempPath(), "MotifPanGlossCancelWait-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(parserDirectory);
+        var executable = FakeParser.CopyRecordingInvocations(Path.Combine(parserDirectory, "parser"));
+        var fwdata = Path.Combine(parserDirectory, "scratch.fwdata");
+        await File.WriteAllTextAsync(fwdata, "scratch grammar bytes");
+        using var queue = new MachinePanGlossQueue(slotNames);
+        using var invoker = new PanGlossInvoker(executable, queue);
+        using var cancellation = new CancellationTokenSource();
+        var waitStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        queue.SlotWaitStarted = _ => waitStarted.TrySetResult();
+        var events = new ConcurrentQueue<bool>();
+        var request = new PanGlossRequest.Import(fwdata, Path.Combine(parserDirectory, "grammar.json"))
+        {
+            OnAdmissionWait = waiting => events.Enqueue(waiting),
+        };
+
+        var pending = invoker.RunAsync(request, "cancel-before-describe", cancellation.Token);
+        try
+        {
+            await waitStarted.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            Assert.Equal([true], events.ToArray());
+            Assert.Empty(FakeParser.Invocations(executable));
+            cancellation.Cancel();
+            Assert.IsType<PanGlossOutcome.Cancelled>(await pending.WaitAsync(TimeSpan.FromSeconds(10)));
+
+            Assert.Equal([true, false], events.ToArray());
+            Assert.Empty(FakeParser.Invocations(executable));
+        }
+        finally
+        {
+            cancellation.Cancel();
+            firstSlot.Release();
+            secondSlot.Release();
+            if (!pending.IsCompleted)
+            {
+                try { await pending.WaitAsync(TimeSpan.FromSeconds(20)); }
+                catch (OperationCanceledException) { }
+            }
+            try { Directory.Delete(parserDirectory, recursive: true); }
+            catch (IOException) { }
+        }
+    }
+
+    [RequiresUnixFact]
+    public async Task RunAsync_CancellationAndThrowingObserverDoNotStrandTheNextCaller()
+    {
+        var slotNames = UniqueSlotNames(2);
+        using var firstSlot = new WorkerMutexOwner(slotNames[0], machineWide: true);
+        using var secondSlot = new WorkerMutexOwner(slotNames[1], machineWide: true);
+        Assert.True(firstSlot.TryAcquire());
+        Assert.True(secondSlot.TryAcquire());
+
+        using var queue = new MachinePanGlossQueue(slotNames);
+        using var cancellation = new CancellationTokenSource();
+        var waitStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        queue.SlotWaitStarted = _ => waitStarted.TrySetResult();
+        var events = new ConcurrentQueue<bool>();
+        var waiting = queue.RunAsync("cancel-with-observer", (_, _) => Task.FromResult(1), cancellation.Token,
+            value =>
+            {
+                events.Enqueue(value);
+                throw new InvalidOperationException("An advisory observer must not own admission.");
+            });
+
+        try
+        {
+            await waitStarted.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            Assert.Equal([true], events.ToArray());
+            cancellation.Cancel();
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => waiting)
+                .WaitAsync(TimeSpan.FromSeconds(10));
+            Assert.Equal([true, false], events.ToArray());
+
+            firstSlot.Release();
+            secondSlot.Release();
+            Assert.Equal(19, await queue.RunAsync("next-caller", (_, _) => Task.FromResult(19),
+                CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(10)));
+        }
+        finally
+        {
+            cancellation.Cancel();
+            firstSlot.Release();
+            secondSlot.Release();
+            if (!waiting.IsCompleted)
+            {
+                try { await waiting.WaitAsync(TimeSpan.FromSeconds(10)); }
+                catch (OperationCanceledException) { }
+            }
+        }
+    }
+
+    [RequiresUnixFact]
+    public async Task RunAsync_WorkFailureAfterAWaitStillEndsTheObserverAndQueueContinues()
+    {
+        var slotNames = UniqueSlotNames(2);
+        using var firstSlot = new WorkerMutexOwner(slotNames[0], machineWide: true);
+        using var secondSlot = new WorkerMutexOwner(slotNames[1], machineWide: true);
+        Assert.True(firstSlot.TryAcquire());
+        Assert.True(secondSlot.TryAcquire());
+
+        using var queue = new MachinePanGlossQueue(slotNames);
+        var waitStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        queue.SlotWaitStarted = _ => waitStarted.TrySetResult();
+        var events = new ConcurrentQueue<bool>();
+        var failed = queue.RunAsync("wait-then-fail", (_, _) =>
+                Task.FromException<int>(new InvalidOperationException("The admitted work failed.")),
+            CancellationToken.None, events.Enqueue);
+
+        try
+        {
+            await waitStarted.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            Assert.Equal([true], events.ToArray());
+            firstSlot.Release();
+            secondSlot.Release();
+
+            var error = await Assert.ThrowsAsync<InvalidOperationException>(() => failed)
+                .WaitAsync(TimeSpan.FromSeconds(10));
+            Assert.Equal("The admitted work failed.", error.Message);
+            Assert.Equal([true, false], events.ToArray());
+            Assert.Equal(29, await queue.RunAsync("after-failure", (_, _) => Task.FromResult(29),
+                CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(10)));
+        }
+        finally
+        {
+            firstSlot.Release();
+            secondSlot.Release();
+            if (!failed.IsCompleted)
+            {
+                try { await failed.WaitAsync(TimeSpan.FromSeconds(10)); }
+                catch (InvalidOperationException) { }
+            }
+        }
+    }
+
+    [RequiresUnixFact]
+    public async Task RunAsync_AcquisitionErrorAfterWaitReleasesPartialCapacityAndContinues()
+    {
+        var slotNames = UniqueSlotNames(2);
+        using var secondSlot = new WorkerMutexOwner(slotNames[1], machineWide: true);
+        Assert.True(secondSlot.TryAcquire());
+
+        using var queue = new MachinePanGlossQueue(slotNames);
+        using var cancellation = new CancellationTokenSource();
+        var waitStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var events = new ConcurrentQueue<bool>();
+        var intendedError = new IOException("The test interrupted machine-slot acquisition.");
+        queue.SlotWaitStarted = _ =>
+        {
+            waitStarted.TrySetResult();
+            throw intendedError;
+        };
+        var admittedCount = 0;
+        var workCount = 0;
+        queue.JobAdmitted = _ => Interlocked.Increment(ref admittedCount);
+        var failed = queue.RunAsync("wait-then-acquire-error", (_, _) =>
+        {
+            Interlocked.Increment(ref workCount);
+            return Task.FromResult(31);
+        }, cancellation.Token, events.Enqueue);
+        Task<int>? next = null;
+
+        try
+        {
+            await waitStarted.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            var error = await Assert.ThrowsAsync<IOException>(() => failed)
+                .WaitAsync(TimeSpan.FromSeconds(10));
+            Assert.Same(intendedError, error);
+            Assert.Equal([true, false], events.ToArray());
+            Assert.Equal(0, Volatile.Read(ref admittedCount));
+            Assert.Equal(0, Volatile.Read(ref workCount));
+
+            using (var firstProbe = new WorkerMutexOwner(slotNames[0], machineWide: true))
+            {
+                Assert.True(firstProbe.TryAcquire());
+                firstProbe.Release();
+            }
+            using (var secondProbe = new WorkerMutexOwner(slotNames[1], machineWide: true))
+                Assert.False(secondProbe.TryAcquire());
+
+            queue.SlotWaitStarted = null;
+            secondSlot.Release();
+            next = queue.RunAsync("after-acquisition-error", (_, _) =>
+            {
+                Interlocked.Increment(ref workCount);
+                return Task.FromResult(32);
+            }, CancellationToken.None);
+            Assert.Equal(32, await next.WaitAsync(TimeSpan.FromSeconds(10)));
+            Assert.Equal(1, Volatile.Read(ref admittedCount));
+            Assert.Equal(1, Volatile.Read(ref workCount));
+        }
+        finally
+        {
+            queue.SlotWaitStarted = null;
+            cancellation.Cancel();
+            secondSlot.Release();
+            try { await failed.WaitAsync(TimeSpan.FromSeconds(10)); }
+            catch (IOException) { }
+            catch (OperationCanceledException) { }
+            if (next is { IsCompleted: false })
+                await next.WaitAsync(TimeSpan.FromSeconds(10));
+        }
+    }
+
+    [Fact]
+    public async Task RunAsync_AnUncontendedJobDoesNotPublishAWaitEvent()
+    {
+        var slotNames = UniqueSlotNames(2);
+        using var queue = new MachinePanGlossQueue(slotNames);
+        var events = new ConcurrentQueue<bool>();
+
+        var result = await queue.RunAsync("uncontended", (_, _) => Task.FromResult(7),
+            CancellationToken.None, events.Enqueue).WaitAsync(TimeSpan.FromSeconds(10));
+
+        Assert.Equal(7, result);
+        Assert.Empty(events);
     }
 
     [RequiresUnixFact]

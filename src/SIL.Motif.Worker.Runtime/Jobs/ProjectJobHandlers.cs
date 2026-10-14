@@ -135,8 +135,8 @@ public static class ProjectJobHandlers
                 loader.Save(cache);
                 var directory = Path.GetDirectoryName(Path.GetFullPath(cache.ProjectId.Path))!;
                 return Task.FromResult(directory);
-            }, options.Root, (grammarPath, projectName, cancellationToken) =>
+            }, options.Root, (grammarPath, projectName, onAdmissionWait, cancellationToken) =>
                 TrialGrammarCheck.RunAsync(invoker, "trial-grammar:" + ProjectWorkspaceKey.Compute(project),
-                    defaultChecks.StoredAnalyses, grammarPath, projectName, cancellationToken));
+                    defaultChecks.StoredAnalyses, grammarPath, projectName, cancellationToken, onAdmissionWait));
     }
 }

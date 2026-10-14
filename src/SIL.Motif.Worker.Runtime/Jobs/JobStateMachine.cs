@@ -73,10 +73,35 @@ public sealed class JobStateMachine
 
     public JobRecord UpdateProgress(JobRecord current, string progressJson)
     {
-        JobJson.ValidateStructured(progressJson, nameof(progressJson));
+        ArgumentNullException.ThrowIfNull(progressJson);
+        return UpdateProgressCore(current, progressJson);
+    }
+
+    /// <summary>Applies the timestamp and version rules to a claim-owned nullable progress write.</summary>
+    /// <param name="current">The active, uncancelled row protected by the repository compare-and-swap.</param>
+    /// <param name="progressJson">The new structured payload, or null to restore SQL null.</param>
+    /// <returns>The changed row.</returns>
+    internal JobRecord UpdateClaimProgress(JobRecord current, string? progressJson)
+    {
+        if (current.Status is not (JobStatus.Running or JobStatus.WaitingForBaseline or
+                JobStatus.WaitingForProjectHost))
+            throw new InvalidOperationException("Only an active claim can update progress.");
+        if (current.CancellationRequested)
+            throw new InvalidOperationException("A cancellation-requested job cannot update progress.");
+        return UpdateProgressCore(current, progressJson);
+    }
+
+    private JobRecord UpdateProgressCore(JobRecord current, string? progressJson)
+    {
+        if (progressJson is not null) JobJson.ValidateStructured(progressJson, nameof(progressJson));
         if (current.Status == JobStatus.Queued) throw new InvalidOperationException("A queued job cannot update progress.");
         if (IsTerminal(current.Status)) throw new InvalidOperationException("A terminal job cannot update progress.");
-        return current with { ProgressJson = progressJson, UpdatedUtc = LaterUtc(current.UpdatedUtc), Version = checked(current.Version + 1) };
+        return current with
+        {
+            ProgressJson = progressJson,
+            UpdatedUtc = LaterUtc(current.UpdatedUtc),
+            Version = checked(current.Version + 1),
+        };
     }
 
     public JobRecord PublishDryRun(JobRecord current, string resultJson)
