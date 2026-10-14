@@ -113,6 +113,29 @@ public sealed class WritingSystemMissingArgvTests(PristineProjectFixture pristin
         Assert.Equal(receiptsBefore, ReceiptCount(path));
     }
 
+    // These reads open a private copy that is deleted before the refusal reaches the caller.
+    [Theory]
+    [InlineData("open")]
+    [InlineData("analyses")]
+    [InlineData("log")]
+    public async Task AReadNamesTheProjectsOwnStoreNeverItsDeletedCopy(string verb)
+    {
+        var path = UniquelyNamedProject();
+        var root = Path.Combine(Path.GetDirectoryName(path)!, "writing-system-read-worker");
+        var start = verb == "open"
+            ? CliProcess.Start(IsolatedRunner.Options(root), "open", path, "--json")
+            : CliProcess.Start(IsolatedRunner.Options(root), verb, "--project", path, "--json");
+        start.Environment[ProcessRunnerLauncher.SuppressVariable] = "1";
+        start.Environment[CommandSurfacePolicy.DeveloperCommandsEnvironmentVariable] = "1";
+        start.Environment[SeamVariable] = Path.GetFileName(path);
+        var (exitCode, output, error) = await CliProcess.RunAsync(start);
+
+        Assert.True(exitCode == 2, $"exit {exitCode}; stderr: {error}; stdout: {output}");
+        AssertSetupRefusal(error, path);
+        Assert.DoesNotContain("SIL.Motif.BaselineRead", error, StringComparison.Ordinal);
+        Assert.DoesNotContain("SIL.Motif.ProjectRead", error, StringComparison.Ordinal);
+    }
+
     private static void AssertSetupRefusal(string error, string path)
     {
         var failure = ProjectionJson.Deserialize<FailureEnvelope>(error)!;
