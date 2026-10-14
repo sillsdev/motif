@@ -32,7 +32,7 @@ public sealed class JobRunnerLoop
     public delegate Task<JobOutcome?> Handler(ClaimedJob job, CancellationToken cancellationToken);
 
     private static readonly TimeSpan HeartbeatShare = TimeSpan.FromSeconds(1);
-    private readonly JobClaims _claims;
+    private readonly IJobClaimProtocol _claims;
     private readonly string _projectKey;
     private readonly string _ownerId;
     private readonly TimeSpan _lease;
@@ -44,6 +44,12 @@ public sealed class JobRunnerLoop
     /// <summary>Creates a loop bound to one project's queue and the kinds it can run.</summary>
     /// <param name="timeProvider">Clock used by claims and delays; defaults to system time.</param>
     public JobRunnerLoop(JobClaims claims, string projectKey, string ownerId, TimeSpan lease,
+        TimeSpan poll, IReadOnlyDictionary<string, Handler> handlers, TimeProvider? timeProvider = null)
+        : this((IJobClaimProtocol)claims, projectKey, ownerId, lease, poll, handlers, timeProvider)
+    {
+    }
+
+    internal JobRunnerLoop(IJobClaimProtocol claims, string projectKey, string ownerId, TimeSpan lease,
         TimeSpan poll, IReadOnlyDictionary<string, Handler> handlers, TimeProvider? timeProvider = null)
     {
         _claims = claims ?? throw new ArgumentNullException(nameof(claims));
@@ -94,39 +100,64 @@ public sealed class JobRunnerLoop
 
         using var beating = new CancellationTokenSource();
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        var heartbeat = HeartbeatAsync(claimed, beating.Token, linked);
+        var claimLost = 0;
+        var heartbeat = HeartbeatAsync(claimed, beating.Token, linked,
+            () => Interlocked.Exchange(ref claimLost, 1));
         try
         {
             var outcome = await handler(_claims.Wrap(claimed), linked.Token).ConfigureAwait(false);
-            if (outcome is not null) Finish(claimed, outcome.Status, outcome.Category, outcome.ResultJson);
+            if (outcome is not null && Volatile.Read(ref claimLost) == 0)
+                Finish(claimed, outcome.Status, outcome.Category, outcome.ResultJson);
         }
         catch (OperationCanceledException)
         {
-            FinishWithDetail(claimed, JobStatus.Cancelled, JobFailureCategory.Cancellation, "The runner stopped.");
+            if (Volatile.Read(ref claimLost) == 0)
+                FinishWithDetail(claimed, JobStatus.Cancelled, JobFailureCategory.Cancellation, "The runner stopped.");
         }
         catch (Exception exception)
         {
-            FinishWithDetail(claimed, JobStatus.Failed, JobFailureCategory.Unknown, exception.Message);
+            if (Volatile.Read(ref claimLost) == 0)
+                FinishWithDetail(claimed, JobStatus.Failed, JobFailureCategory.Unknown, exception.Message);
         }
         finally
         {
             beating.Cancel();
             try { await heartbeat.ConfigureAwait(false); } catch (OperationCanceledException) { }
+            catch (Exception exception) { ReportHeartbeatFailure(claimed, exception); }
         }
     }
 
     /// Cancels <paramref name="cancelIfRequested"/> the first heartbeat after <c>jobs cancel</c> sets the flag.
     private async Task HeartbeatAsync(JobRecord claimed, CancellationToken stopping,
-        CancellationTokenSource cancelIfRequested)
+        CancellationTokenSource cancelIfRequested, Action claimLost)
     {
         var interval = _lease < HeartbeatShare * 3 ? _lease / 3 : HeartbeatShare;
         while (!stopping.IsCancellationRequested)
         {
             try { await Task.Delay(interval, _timeProvider, stopping).ConfigureAwait(false); }
             catch (OperationCanceledException) { return; }
-            _claims.Renew(claimed.JobId, claimed.ClaimToken!, Now(), _lease);
-            if (_claims.IsCancellationRequested(claimed.JobId)) cancelIfRequested.Cancel();
+            try
+            {
+                if (!_claims.Renew(claimed.JobId, claimed.ClaimToken!, Now(), _lease))
+                {
+                    claimLost();
+                    ReportHeartbeatFailure(claimed, new InvalidOperationException("The job lease is no longer held."));
+                    cancelIfRequested.Cancel();
+                    return;
+                }
+                if (_claims.IsCancellationRequested(claimed.JobId)) cancelIfRequested.Cancel();
+            }
+            catch (Exception exception)
+            {
+                ReportHeartbeatFailure(claimed, exception);
+            }
         }
+    }
+
+    private static void ReportHeartbeatFailure(JobRecord claimed, Exception exception)
+    {
+        try { Console.Error.WriteLine("warning: heartbeat for job '" + claimed.JobId + "' failed: " + exception.Message); }
+        catch (Exception) { }
     }
 
     /// A handler's own <see cref="JobOutcome.ResultJson"/> is already structured JSON; write it as-is.

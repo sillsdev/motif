@@ -345,6 +345,39 @@ public sealed class RunnerSweepTests : IDisposable
         Assert.Contains(known.List(), record => record.WorkspaceKey == corruptKey);
     }
 
+    [Fact]
+    public async Task AProjectDatabaseBusyForOneSweepIsSkippedWhileHealthyProjectsContinue()
+    {
+        using var machine = MachineDatabase.Open(_options.Root);
+        var known = new KnownProjectRegistry(machine);
+        var busy = SeedProject(known, "busy-once");
+        var healthy = SeedProject(known, "healthy-after-busy");
+        SeedJob(busy, "busy-job", queueOrder: 1.0);
+        SeedJob(healthy, "healthy-job", queueOrder: 2.0);
+        var failedOnce = false;
+        var warnings = new List<string>();
+
+        var outcome = await SIL.Motif.Worker.WorkerRuntime.SweepOnceAsync(known, _runtimes, _lanes, _options,
+            new FakeInvoker(), OwnerId, CancellationToken.None,
+            runClaimedAsync: (_, _) => Task.CompletedTask,
+            listActive: runtime =>
+            {
+                if (runtime.WorkspaceKey == busy.WorkspaceKey && !failedOnce)
+                {
+                    failedOnce = true;
+                    throw new Microsoft.Data.Sqlite.SqliteException("database is locked", 5);
+                }
+                return runtime.Jobs.ListActive(runtime.WorkspaceKey);
+            },
+            reportWarning: warnings.Add);
+
+        Assert.Equal("healthy-job", outcome.JobId);
+        Assert.Equal(JobStatus.Queued, busy.Jobs.Get("busy-job")!.Status);
+        Assert.Equal(JobStatus.Running, healthy.Jobs.Get("healthy-job")!.Status);
+        Assert.Contains(warnings, warning => warning.Contains(busy.Project.FullFwDataPath, StringComparison.Ordinal) &&
+            warning.Contains("database is locked", StringComparison.Ordinal));
+    }
+
     private ProjectRuntime SeedProject(KnownProjectRegistry known, string identity)
     {
         var path = Path.Combine(_root, identity + ".fwdata");

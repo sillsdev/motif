@@ -329,7 +329,9 @@ internal static class WorkerRuntime
         IPanGlossInvoker invoker, string ownerId, CancellationToken cancellationToken,
         SweepActivity? activity = null,
         Func<JobRecord, CancellationToken, Task>? runClaimedAsync = null,
-        Func<Task>? scannedAsync = null)
+        Func<Task>? scannedAsync = null,
+        Func<Projects.ProjectRuntime, IReadOnlyList<JobRecord>>? listActive = null,
+        Action<string>? reportWarning = null)
     {
         activity ??= new SweepActivity();
         // A retired runner starts nothing: the row stays queued for the runner its enqueue kicked.
@@ -338,7 +340,8 @@ internal static class WorkerRuntime
         try
         {
             outcome = await SweepCoreAsync(knownProjects, runtimes, lanes, options, invoker, ownerId,
-                cancellationToken, activity, runClaimedAsync, scannedAsync).ConfigureAwait(false);
+                cancellationToken, activity, runClaimedAsync, scannedAsync, listActive,
+                reportWarning ?? Console.Error.WriteLine).ConfigureAwait(false);
             return outcome;
         }
         finally
@@ -350,7 +353,8 @@ internal static class WorkerRuntime
     private static async Task<SweepOutcome> SweepCoreAsync(KnownProjectRegistry knownProjects,
         Projects.ProjectRuntimeRegistry runtimes, Scheduling.ProjectLaneRegistry lanes, RunnerOptions options,
         IPanGlossInvoker invoker, string ownerId, CancellationToken cancellationToken, SweepActivity activity,
-        Func<JobRecord, CancellationToken, Task>? runClaimedAsync, Func<Task>? scannedAsync)
+        Func<JobRecord, CancellationToken, Task>? runClaimedAsync, Func<Task>? scannedAsync,
+        Func<Projects.ProjectRuntime, IReadOnlyList<JobRecord>>? listActive, Action<string> reportWarning)
     {
         var opened = new List<(Projects.ProjectRuntime Runtime, JobRunnerLoop Loop)>();
         var hasActiveWork = false;
@@ -363,37 +367,25 @@ internal static class WorkerRuntime
                 continue;
             }
 
-            Projects.ProjectRuntime runtime;
-            ProjectLocator project;
             try
             {
-                project = new ProjectLocator(known.FullFwDataPath,
+                var project = new ProjectLocator(known.FullFwDataPath,
                     Path.GetFileNameWithoutExtension(known.FullFwDataPath));
-                runtime = runtimes.GetOrOpen(project);
+                var runtime = runtimes.GetOrOpen(project);
+                ReconcileParkedJobs(runtime, DateTimeOffset.UtcNow, listActive);
+                if ((listActive?.Invoke(runtime) ?? runtime.Jobs.ListActive(runtime.WorkspaceKey)).Count != 0)
+                    hasActiveWork = true;
+                else
+                    runtime.Jobs.PurgeArchived(ArchivePolicy.Default);
+                opened.Add((runtime, ProjectJobHandlers.CreateLoop(runtime.Database, runtime.Baselines,
+                    runtime.WorkspaceKey, project, options, invoker, ownerId, lanes)));
             }
             catch (Exception exception)
             {
-                // Not forgotten: an operator watching this log must still see the project, not lose it silently.
-                Console.Error.WriteLine("warning: Known project '" + known.FullFwDataPath +
-                    "' could not be opened for sweeping (" + exception.Message + "). It will be retried later.");
                 allKnownProjectsOpened = false;
-                continue;
+                hasActiveWork = true;
+                ReportProjectSweepFailure(known.FullFwDataPath, "be swept", exception, reportWarning);
             }
-
-            try
-            {
-                ReconcileParkedJobs(runtime, DateTimeOffset.UtcNow);
-            }
-            catch (Exception exception)
-            {
-                Console.Error.WriteLine("warning: parked job reconciliation failed for '" +
-                    known.FullFwDataPath + "' (" + exception.Message + ").");
-            }
-            if (runtime.Jobs.ListActive(runtime.WorkspaceKey).Count != 0) hasActiveWork = true;
-            else runtime.Jobs.PurgeArchived(ArchivePolicy.Default);
-
-            opened.Add((runtime, ProjectJobHandlers.CreateLoop(runtime.Database, runtime.Baselines, runtime.WorkspaceKey,
-                project, options, invoker, ownerId, lanes)));
         }
 
         if (allKnownProjectsOpened && Interlocked.CompareExchange(ref _trialScratchSweepComplete, 1, 0) == 0)
@@ -415,33 +407,55 @@ internal static class WorkerRuntime
         if (scannedAsync is not null) await scannedAsync().ConfigureAwait(false);
         if (opened.Count == 0) return new SweepOutcome(null, hasActiveWork);
 
-        (Projects.ProjectRuntime Runtime, JobRunnerLoop Loop)? chosen = null;
-        var chosenHead = default(JobQueueHead);
+        var candidates = new List<(Projects.ProjectRuntime Runtime, JobRunnerLoop Loop, JobQueueHead Head)>();
         foreach (var candidate in opened)
         {
-            if (candidate.Loop.PeekHead() is not { } head) continue;
-            if (chosen is null || IsEarlier(head, chosenHead))
+            try
             {
-                chosen = candidate;
-                chosenHead = head;
+                if (candidate.Loop.PeekHead() is { } head)
+                    candidates.Add((candidate.Runtime, candidate.Loop, head));
+            }
+            catch (Exception exception)
+            {
+                hasActiveWork = true;
+                ReportProjectSweepFailure(candidate.Runtime.Project.FullFwDataPath,
+                    "read its next job", exception, reportWarning);
             }
         }
-        if (chosen is not { } winner) return new SweepOutcome(null, hasActiveWork);
+        candidates.Sort((left, right) => IsEarlier(left.Head, right.Head) ? -1 :
+            IsEarlier(right.Head, left.Head) ? 1 : 0);
+        if (candidates.Count == 0) return new SweepOutcome(null, hasActiveWork);
 
         // A stopping runner leaves the row queued for the runner its enqueue kicked.
         if (cancellationToken.IsCancellationRequested) return new SweepOutcome(null, hasActiveWork);
         using var activityLease = MotifUpdateGate.TryAcquire();
         if (activityLease is null) return new SweepOutcome(null, hasActiveWork);
 
-        var claimed = winner.Loop.TryClaim();
-        if (claimed is null) return new SweepOutcome(null, hasActiveWork);
-        activity.Set(true);
-        if (runClaimedAsync is null)
-            await winner.Loop.RunClaimedAsync(claimed, cancellationToken).ConfigureAwait(false);
-        else
-            await runClaimedAsync(claimed, cancellationToken).ConfigureAwait(false);
-        return new SweepOutcome(claimed.JobId, true);
+        foreach (var candidate in candidates)
+        {
+            JobRecord? claimed;
+            try { claimed = candidate.Loop.TryClaim(); }
+            catch (Exception exception)
+            {
+                hasActiveWork = true;
+                ReportProjectSweepFailure(candidate.Runtime.Project.FullFwDataPath,
+                    "claim its next job", exception, reportWarning);
+                continue;
+            }
+            if (claimed is null) continue;
+            activity.Set(true);
+            if (runClaimedAsync is null)
+                await candidate.Loop.RunClaimedAsync(claimed, cancellationToken).ConfigureAwait(false);
+            else
+                await runClaimedAsync(claimed, cancellationToken).ConfigureAwait(false);
+            return new SweepOutcome(claimed.JobId, true);
+        }
+        return new SweepOutcome(null, hasActiveWork);
     }
+
+    private static void ReportProjectSweepFailure(string path, string step, Exception exception,
+        Action<string> reportWarning) => reportWarning("warning: Known project '" + path + "' could not " +
+        step + " for this sweep (" + exception.Message + "). It will be retried next sweep.");
 
     /// <summary>
     /// Runs one read or write against the machine database, reporting any failure of it as the loss of that
@@ -489,9 +503,10 @@ internal static class WorkerRuntime
     /// row parked at <c>waiting-for-project-host</c> is queued again outright, pinned by
     /// `AProjectHostWaitLeftByAStoppedRunnerIsQueuedAgain`.
     /// </remarks>
-    internal static void ReconcileParkedJobs(Projects.ProjectRuntime runtime, DateTimeOffset now)
+    internal static void ReconcileParkedJobs(Projects.ProjectRuntime runtime, DateTimeOffset now,
+        Func<Projects.ProjectRuntime, IReadOnlyList<JobRecord>>? listActive = null)
     {
-        var active = runtime.Jobs.ListActive(runtime.WorkspaceKey);
+        var active = listActive?.Invoke(runtime) ?? runtime.Jobs.ListActive(runtime.WorkspaceKey);
         foreach (var job in active.Where(job => job.Status == JobStatus.WaitingForProjectHost))
             runtime.Jobs.Transition(job.JobId, JobStatus.Queued, job.Version);
         var parked = active

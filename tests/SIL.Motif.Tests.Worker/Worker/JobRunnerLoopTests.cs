@@ -109,6 +109,96 @@ public sealed class JobRunnerLoopTests : IDisposable
     }
 
     [Fact]
+    public async Task AFailedHeartbeatTickDoesNotStopRenewalsOrEscapeAfterTheHandlerCompletes()
+    {
+        var jobs = new JobRepository(_database);
+        jobs.Create("job-1", Project, "demo", "{}", Stamp());
+        var realClaims = new JobClaims(_database);
+        var claims = new ScriptedClaims(realClaims, (jobId, token, now, lease, attempt) =>
+        {
+            if (attempt == 1) throw new InvalidOperationException("transient lease write failure");
+            return realClaims.Renew(jobId, token, now, lease);
+        });
+        var initialTime = DateTimeOffset.Parse(Stamp());
+        using var clock = new ManualTimeProvider(initialTime);
+        var handlerStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseHandler = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var loop = Loop(claims, async (_, _) =>
+        {
+            handlerStarted.SetResult();
+            await releaseHandler.Task;
+            return JobOutcome.Completed;
+        }, lease: TimeSpan.FromSeconds(6), timeProvider: clock);
+        var running = loop.RunUntilIdleAsync(CancellationToken.None);
+        Exception? runFailure = null;
+
+        try
+        {
+            await handlerStarted.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            await clock.WaitForTimerCountAsync(1);
+            clock.Advance(TimeSpan.FromSeconds(1));
+            try
+            {
+                await clock.WaitForTimerCountAsync(2);
+                clock.Advance(TimeSpan.FromSeconds(1));
+                await clock.WaitForTimerCountAsync(3);
+            }
+            catch (TimeoutException) { }
+        }
+        finally
+        {
+            releaseHandler.TrySetResult();
+            try { await running; }
+            catch (Exception exception) { runFailure = exception; }
+        }
+
+        Assert.Equal(2, claims.RenewCount);
+        Assert.Null(runFailure);
+        Assert.Equal(JobStatus.Completed, jobs.Get("job-1")!.Status);
+    }
+
+    [Fact]
+    public async Task AFailedRenewalCancelsTheHandlerAndDoesNotFinishTheJob()
+    {
+        var jobs = new JobRepository(_database);
+        jobs.Create("job-1", Project, "demo", "{}", Stamp());
+        var claims = new ScriptedClaims(new JobClaims(_database), (_, _, _, _, _) => false);
+        var initialTime = DateTimeOffset.Parse(Stamp());
+        using var clock = new ManualTimeProvider(initialTime);
+        var handlerStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var handlerCancelled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var callerCancellation = new CancellationTokenSource();
+        var loop = Loop(claims, async (_, token) =>
+        {
+            handlerStarted.SetResult();
+            try { await Task.Delay(Timeout.InfiniteTimeSpan, token); }
+            catch (OperationCanceledException)
+            {
+                handlerCancelled.TrySetResult();
+                throw;
+            }
+            return JobOutcome.Completed;
+        }, lease: TimeSpan.FromSeconds(6), timeProvider: clock);
+        var running = loop.RunUntilIdleAsync(callerCancellation.Token);
+
+        try
+        {
+            await handlerStarted.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            await clock.WaitForTimerCountAsync(1);
+            clock.Advance(TimeSpan.FromSeconds(1));
+            await handlerCancelled.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        }
+        finally
+        {
+            callerCancellation.Cancel();
+            await running;
+        }
+
+        Assert.Equal(0, claims.FinishCount);
+        Assert.Equal(JobStatus.Running, jobs.Get("job-1")!.Status);
+    }
+
+    [Fact]
     public async Task TheLoopDoesNotAbandonALeasedJobWhenItStops()
     {
         var jobs = new JobRepository(_database);
@@ -195,8 +285,40 @@ public sealed class JobRunnerLoopTests : IDisposable
         new(new JobClaims(_database), Project, "runner-a", lease ?? TimeSpan.FromMinutes(5), TimeSpan.Zero,
             new Dictionary<string, JobRunnerLoop.Handler>(StringComparer.Ordinal) { ["demo"] = handler }, timeProvider);
 
+    private JobRunnerLoop Loop(IJobClaimProtocol claims, JobRunnerLoop.Handler handler, TimeSpan? lease = null,
+        TimeProvider? timeProvider = null) =>
+        new(claims, Project, "runner-a", lease ?? TimeSpan.FromMinutes(5), TimeSpan.Zero,
+            new Dictionary<string, JobRunnerLoop.Handler>(StringComparer.Ordinal) { ["demo"] = handler }, timeProvider);
+
     private static string Stamp() =>
         JobTimestamp.FormatUtc(DateTimeOffset.UtcNow);
+
+    private sealed class ScriptedClaims(JobClaims inner,
+        Func<string, string, string, TimeSpan, int, bool> renew) : IJobClaimProtocol
+    {
+        public int RenewCount { get; private set; }
+
+        public int FinishCount { get; private set; }
+
+        public JobQueueHead? PeekHead(string projectKey, string nowUtc) => inner.PeekHead(projectKey, nowUtc);
+
+        public JobRecord? Claim(string projectKey, string ownerId, string nowUtc, TimeSpan lease) =>
+            inner.Claim(projectKey, ownerId, nowUtc, lease);
+
+        public bool IsCancellationRequested(string jobId) => inner.IsCancellationRequested(jobId);
+
+        public ClaimedJob Wrap(JobRecord claimed) => inner.Wrap(claimed);
+
+        public bool Renew(string jobId, string claimToken, string nowUtc, TimeSpan lease) =>
+            renew(jobId, claimToken, nowUtc, lease, ++RenewCount);
+
+        public bool Finish(string jobId, string claimToken, JobStatus status, JobFailureCategory category,
+            string? resultJson)
+        {
+            FinishCount++;
+            return inner.Finish(jobId, claimToken, status, category, resultJson);
+        }
+    }
 
     public void Dispose()
     {

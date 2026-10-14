@@ -174,8 +174,8 @@ internal static class CatalogTools
         if (value is JobEnqueuedResponse job)
         {
             context.StartRunner();
-            return ToolOutcome.Ok(JsonSerializer.SerializeToNode(job, Json)!, jobId: job.JobId);
+            return ToolOutcome.Ok(JsonNode.Parse(ProjectionJson.Serialize(job))!, jobId: job.JobId);
         }
-        return ToolOutcome.Ok(JsonSerializer.SerializeToNode(value, Json)!);
+        return ToolOutcome.Ok(JsonNode.Parse(ProjectionJson.Serialize(value))!);
     }
 }

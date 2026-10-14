@@ -23,7 +23,7 @@ namespace SIL.Motif.Worker.Jobs;
 /// between. Affecting zero rows is an ordinary outcome, not an error.
 /// </para>
 /// </remarks>
-public sealed class JobClaims
+public sealed class JobClaims : IJobClaimProtocol
 {
     private const string QueuedAndDue = "(Status = 'queued' AND (NotBeforeUtc IS NULL OR NotBeforeUtc <= $now))";
     private const string RunningAndExpired = "(Status = 'running' AND (LeaseUntilUtc IS NULL OR LeaseUntilUtc <= $now))";
@@ -127,6 +127,8 @@ public sealed class JobClaims
     /// <summary>Wraps an already-claimed row so a handler can drive it without ever seeing its version.</summary>
     internal ClaimedJob Wrap(JobRecord claimed) => new(_jobs, claimed);
 
+    ClaimedJob IJobClaimProtocol.Wrap(JobRecord claimed) => Wrap(claimed);
+
     /// <summary>Pushes one held job lease forward, refusing a token that no longer owns the row.</summary>
     /// <remarks>
     /// The token, not the owner identity, is what authorises this. A runner can stall past its lease, lose
@@ -190,6 +192,21 @@ public sealed class JobClaims
     private static string Stamp(string nowUtc, TimeSpan lease) =>
         JobTimestamp.FormatUtc(DateTimeOffset.Parse(nowUtc, CultureInfo.InvariantCulture,
             DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal) + lease);
+}
+
+internal interface IJobClaimProtocol
+{
+    JobQueueHead? PeekHead(string projectKey, string nowUtc);
+
+    JobRecord? Claim(string projectKey, string ownerId, string nowUtc, TimeSpan lease);
+
+    bool IsCancellationRequested(string jobId);
+
+    ClaimedJob Wrap(JobRecord claimed);
+
+    bool Renew(string jobId, string claimToken, string nowUtc, TimeSpan lease);
+
+    bool Finish(string jobId, string claimToken, JobStatus status, JobFailureCategory category, string? resultJson);
 }
 
 /// <summary>

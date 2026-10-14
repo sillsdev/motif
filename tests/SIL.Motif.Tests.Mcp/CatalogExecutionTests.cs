@@ -1,16 +1,29 @@
 using System.Reflection;
+using System.Text;
 using System.Text.Json.Nodes;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Catalog;
-using SIL.Motif.Contract.Commands;
+using SIL.Motif.Commands.Requests;
+using SIL.Motif.Contract.Projects;
+using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host.Store;
 using SIL.Motif.Mcp;
+using SIL.Motif.Worker;
+using SIL.Motif.Worker.Jobs;
+using SIL.Motif.Worker.Projects;
+using SIL.Motif.Worker.Store;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace SIL.Motif.Tests.Mcp;
 
 [Trait("MotifTestLevel", "Unit")]
 public sealed class CatalogExecutionTests
 {
+    private readonly ITestOutputHelper _output;
+
+    public CatalogExecutionTests(ITestOutputHelper output) => _output = output;
+
     [Fact]
     public async Task CatalogHandlerArgumentExceptionKeepsItsOriginalMessage()
     {
@@ -50,6 +63,50 @@ public sealed class CatalogExecutionTests
         var next = result.StructuredContent.Value.GetProperty("next").GetString()!;
         Assert.Contains("Repeat the call once", next, StringComparison.Ordinal);
         Assert.DoesNotContain("damaged", next, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task CatalogJobResponsesUseProjectionJsonEnumAndNullConventions()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "motif-catalog-json-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        var projectPath = Path.Combine(root, "project.fwdata");
+        File.WriteAllText(projectPath, "");
+        try
+        {
+            var locator = new ProjectLocator(projectPath, "project");
+            var workspaceKey = ProjectWorkspaceKey.Compute(locator);
+            var catalog = new ProjectDatabaseCatalog(MotifSchema.CurrentSchema, new Version(1, 0));
+            using (var database = catalog.OpenOwned(locator))
+                new JobRepository(database).Create("job-1", workspaceKey, "baseline-refresh", "{}",
+                    JobTimestamp.FormatUtc(DateTimeOffset.UtcNow));
+            using (var machine = MachineDatabase.Open(RunnerOptions.ResolveRoot()))
+                new KnownProjectRegistry(machine).Record(workspaceKey, projectPath, DateTimeOffset.UtcNow);
+
+            var expected = JobCommands.Show(new ShowJobRequest(projectPath, "job-1", "1.0"));
+            Assert.True(expected.Succeeded);
+            var expectedJson = JsonNode.Parse(ProjectionJson.Serialize(expected.Value!));
+            var context = new ServerContext(projectPath, "1.0", new NoRunnerLauncher(
+                new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(null),
+                ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
+            var arguments = new JsonObject { ["jobId"] = "job-1" };
+            var command = CommandCatalog.All.Single(item => item.Name == "jobs show");
+            var invoke = typeof(CatalogTools).GetMethod("Invoke", BindingFlags.Static | BindingFlags.NonPublic)!;
+            var task = Assert.IsAssignableFrom<Task<ToolOutcome>>(
+                invoke.Invoke(null, [command, context, new ToolArgs(arguments, ["jobId"]), CancellationToken.None]));
+            var outcome = await task;
+
+            Assert.Null(outcome.Refusal);
+            var actualJson = outcome.Value!;
+            var actualEnvelope = new JsonObject { ["ok"] = true, ["result"] = actualJson.DeepClone() };
+            var projectedEnvelope = new JsonObject { ["ok"] = true, ["result"] = expectedJson!.DeepClone() };
+            _output.WriteLine("Catalog response bytes before: " + Encoding.UTF8.GetByteCount(actualEnvelope.ToJsonString()));
+            _output.WriteLine("ProjectionJson response bytes after: " + Encoding.UTF8.GetByteCount(projectedEnvelope.ToJsonString()));
+            Assert.True(JsonNode.DeepEquals(expectedJson, actualJson),
+                "Catalog MCP JSON should match the project contract's projection JSON. Actual: " +
+                actualJson.ToJsonString() + " Expected: " + expectedJson.ToJsonString());
+        }
+        finally { Directory.Delete(root, true); }
     }
 
     [Fact]
