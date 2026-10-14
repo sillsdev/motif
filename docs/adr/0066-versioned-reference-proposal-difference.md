@@ -1,0 +1,27 @@
+# ADR 0066 — Proposal Differences use captured FieldWorks decisions
+
+People trying a grammar change can see which words still match an approved analysis and which acquire readings worth checking. Every front end shows the same evidence from the human decisions saved in FieldWorks, and an older result keeps the project state it described.
+
+**Status:** proposed; independent design review and director decisions pending. No schema or projection change is approved for landing by this draft.
+
+## Decision
+
+A comparison records which texts' human decisions count and the saved Baseline that supplied them. Its summary and detailed pages describe one frozen result, while its findings advise the person without changing permission to Apply.
+
+1. Extend the existing **Difference** measurement with a Proposal view. Requested `delta.*` bucket codes are wire identifiers; no separate truth store, reference role or second comparison concept is introduced. Current CONTEXT and ADR 0042 govern Assessment vocabulary.
+2. Read approved/disapproved analyses through LibLCM's default-human Opinion properties, spelling through WfiWordform.SpellingStatus, and only explicitly supported human judgments through ADR 0056's saved project records. Unknown is not Disapproved; Correct spelling is not an approved analysis; a disapproved reading is not a forbidden whole word.
+3. Freeze the full pre-Proposal Baseline, selected Text/Selection identities, Wordform and writing-system bindings, occurrence ledger and human-decision witnesses. Both parser checkpoints use the same captured decisions. Candidate Opinion changes remain separate effects and cannot improve their own agreement score. Changed decisions require a new capture and result.
+4. Agreement uses ADR 0027's ordered Form/MSA/InflType identities and guessed-string rule. Lemma, segmentation, POS, class and gloss explain exact objects but never guess identity or broaden approval agreement. Current native morphology is sufficient; no surface segmentation extension or label scorer is required for this feature.
+5. On complete decidable evidence show no parse, no Approved match, an Approved match with alternatives, or one Approved match. Keep expected/matched/missing Approved counts, returned Disapproved identities and spelling as independent axes. Finding one approved reading never hides another missing one. Incomplete searches cannot establish absence, uniqueness or rejection; observed forbidden parses remain counterexamples.
+6. Store matrices, checkpoint metrics, input/policy bindings and classified Difference rows in the paired workflow database under ADR 0041. Human decisions remain project data under ADR 0056. Retained historical results preserve their source dependencies. New store/projection generations are director-coordinated, incompatible shapes are refused and no migration is written.
+7. Produce the comparison explicitly from existing Baseline and Trial evidence using a linear streamed pass and bounded publication transactions. Proposal Finalize does not do this work. One Commands query returns summaries and matrices before indexed, bounded pages; CLI, MCP and the UI program consume it without parsing or reopening live project data.
+8. Findings are advisory under ADR 0060. Neither suspicious buckets nor thresholds change Readiness, Apply Authorization or Apply. Missing or conflicting human decisions and incomplete measurements are visible limitations, not clean zero findings.
+9. Research annotations enter FieldWorks through semantic Intents staged in Proposals and Applied by a person. Reuse existing analysis-create, evaluation and spelling families. Missing Wordform creation or Text/Segment authoring requires a separate complete operation family with closed schema, vectors, coverage, lowering, preview, Apply/read-back, rollback and conflict/diff behavior. An importer never calls LibLCM factories outside that contract or matches entries by gloss/lemma similarity.
+
+## Consequences and alternatives
+
+Existing human decisions enable the first useful slice on one Selection without waiting for a broad importer. Frozen comparison data gives later readers the same answer after Opinions change.
+
+A live-Opinion read on every page would reinterpret historical results. A spelling-only join would transfer decisions between different Wordforms, while a separate external truth store contradicts the owner's decision and ADR 0056 ownership.
+
+The first acceptance slice compares one explicit Trial over a small frozen Selection through a shared Commands query, CLI and MCP. Classifier groundwork precedes it; later slices generalize matrices/grouping and supply the data contract to the window program. Published pages retain their frozen occurrences, human decisions and native case detail independently of current indexes or named Selection rows. Missing sample-authoring families remain required work; research's actual sita and deliberately bad mutu acceptance must pass through CLI and MCP before the effort is complete. Thresholds, full spelling/occurrence capture, persistence/retention integration and domain expansion for Text/Segment authoring remain director decisions.
