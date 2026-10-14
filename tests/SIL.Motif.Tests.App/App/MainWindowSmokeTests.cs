@@ -492,12 +492,14 @@ public sealed class MainWindowSmokeTests
                 var refusalText = string.Join("\n", window.GetVisualDescendants().OfType<TextBlock>().Select(item => item.Text));
                 Assert.Contains("Refresh refused", refusalText);
                 Assert.Contains("FieldWorks still has the project open.", refusalText);
-                Assert.Contains("FieldWorks holds this project open right now.", refusalText);
+                Assert.Equal("Refresh refused", workspace.FreshnessLabel);
+                Assert.Empty(workspace.FreshnessDetail);
+                Assert.DoesNotContain("FieldWorks holds this project open right now.", refusalText);
                 var visibleText = window.GetVisualDescendants().OfType<CopyableTextBlock>()
                     .Where(item => item.IsEffectivelyVisible).Select(item => item.Text).ToArray();
                 Assert.Equal(1, visibleText.Count(item => item?.Contains(
                     "FieldWorks still has the project open.", StringComparison.Ordinal) == true));
-                Assert.Equal(1, visibleText.Count(item => item == "FieldWorks holds this project open right now."));
+                Assert.DoesNotContain("FieldWorks holds this project open right now.", visibleText);
                 Assert.Empty(fake.AssessRequests);
             }
             finally
