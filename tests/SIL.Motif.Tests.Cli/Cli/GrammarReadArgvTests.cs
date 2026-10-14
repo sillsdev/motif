@@ -241,6 +241,38 @@ public sealed class GrammarReadArgvTests(PristineProjectFixture pristine) : IDis
     }
 
     [Fact]
+    public void CanonicallyEquivalentQueriesFindNamesAndRichForms()
+    {
+        const string decomposed = "cafe\u0301";
+        using var project = new WalkthroughProject(pristine, _root, configure: (cache, seed, _) =>
+        {
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                var category = cache.ServiceLocator.GetInstance<IPartOfSpeechRepository>().GetObject(seed.PartOfSpeechId);
+                category.Name.set_String(cache.DefaultAnalWs, decomposed);
+                var entry = cache.ServiceLocator.GetInstance<ILexEntryRepository>().GetObject(seed.FirstEntryId);
+                entry.LexemeFormOA.Form.set_String(cache.DefaultVernWs, decomposed);
+            });
+        });
+        var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(project.FwDataPath), _root);
+        Assert.True(captured.Succeeded, captured.Refusal?.Message);
+
+        foreach (var (kind, id) in new[]
+                 {
+                     ("part_of_speech", project.Seed.PartOfSpeechId),
+                     ("lexical_entry", project.Seed.FirstEntryId),
+                 })
+        {
+            using var composed = Read(project.FwDataPath, kind, query: "caf\u00e9");
+            using var normalized = Read(project.FwDataPath, kind, query: decomposed);
+            OnlyItem(composed, kind, id);
+            OnlyItem(normalized, kind, id);
+            Assert.Equal(normalized.RootElement.GetProperty("items").GetRawText(),
+                composed.RootElement.GetProperty("items").GetRawText());
+        }
+    }
+
+    [Fact]
     public void EmptyProjectReturnsAnEmptyPageForAllSixKinds()
     {
         Directory.CreateDirectory(_root);

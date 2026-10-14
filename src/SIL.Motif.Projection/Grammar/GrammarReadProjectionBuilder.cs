@@ -1,3 +1,4 @@
+using System.Text;
 using SIL.LCModel;
 using SIL.LCModel.Core.KernelInterfaces;
 using SIL.Motif.Contract.Ids;
@@ -141,8 +142,9 @@ public static class GrammarReadProjectionBuilder
     private static bool Matches(GrammarReadItem item, string? query)
     {
         if (string.IsNullOrWhiteSpace(query)) return true;
-        var text = query.Trim();
-        return SearchTerms(item).Any(term => term?.Contains(text, StringComparison.OrdinalIgnoreCase) == true);
+        var text = query.Trim().Normalize(NormalizationForm.FormD);
+        return SearchTerms(item).Any(term =>
+            term?.Normalize(NormalizationForm.FormD).Contains(text, StringComparison.OrdinalIgnoreCase) == true);
     }
 
     private static IEnumerable<string?> SearchTerms(GrammarReadItem item) => item switch
