@@ -62,6 +62,7 @@ internal static class ReachabilityAssertions
                 .Where(_ => !modalCoversSurface)
                 .Where(text => popupOverlays.All(overlay =>
                     !Contains(overlay.Bounds, BoundsIn(text, topLevel)))).ToArray();
+            var paintedBounds = texts.ToDictionary(text => text, PaintedBounds);
             for (var firstIndex = 0; firstIndex < texts.Length; firstIndex++)
             for (var secondIndex = firstIndex + 1; secondIndex < texts.Length; secondIndex++)
             {
@@ -70,8 +71,8 @@ internal static class ReachabilityAssertions
                 if (IsAncestor(first, second) || IsAncestor(second, first) || IntentionallyLayered(first, second))
                     continue;
 
-                var firstBounds = BoundsIn(first, topLevel);
-                var secondBounds = BoundsIn(second, topLevel);
+                var firstBounds = paintedBounds[first];
+                var secondBounds = paintedBounds[second];
                 if (!OverlapsBeyondTolerance(firstBounds, secondBounds, out var overlap)) continue;
                 findings.Add(new LayoutFinding(context.Scene, context.Size, context.Zoom, context.Theme,
                     LayoutCheckNames.OverlappingText, Describe(first), LayoutBounds.From(firstBounds),
@@ -490,6 +491,11 @@ internal static class ReachabilityAssertions
         overlap = right > left && bottom > top ? new Rect(left, top, right - left, bottom - top) : default;
         return overlap.Width > Tolerance && overlap.Height > Tolerance;
     }
+
+    private static Rect PaintedBounds(Visual visual) =>
+        visual.GetTransformedBounds() is { } bounds
+            ? bounds.Bounds.TransformToAABB(bounds.Transform).Intersect(bounds.Clip)
+            : default;
 
     private static Rect BoundsIn(Visual visual, Visual root)
     {

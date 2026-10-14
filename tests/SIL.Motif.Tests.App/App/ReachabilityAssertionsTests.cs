@@ -685,6 +685,97 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
         }
     }
 
+    [Theory]
+    [InlineData(64, 64, false)]
+    [InlineData(50, 64, false)]
+    [InlineData(50, 54, true)]
+    [InlineData(20, 24, true)]
+    public void ScrolledTextOnlyOverlapsAPinnedLabelWhereBothArePainted(
+        double textTop, double pinnedTop, bool expectedOverlap)
+    {
+        avalonia.Invoke(() =>
+        {
+            var text = new TextBlock { Name = "ScrolledLabel", Text = "Scrolled label", Width = 140, Height = 24 };
+            Canvas.SetTop(text, textTop + 40);
+            var scroll = new ScrollViewer
+            {
+                Width = 160, Height = 60,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Hidden,
+                Content = new Canvas { Width = 160, Height = 200, Children = { text } },
+            };
+            var pinned = new TextBlock { Name = "PinnedLabel", Text = "Pinned label", Width = 140, Height = 24 };
+            Canvas.SetTop(pinned, pinnedTop);
+            var window = new Window
+            {
+                Content = new Canvas { Children = { scroll, pinned } }, Width = 180, Height = 120,
+            };
+            try
+            {
+                window.Show();
+                PageScreenshots.Settle(window);
+                scroll.Offset = new Vector(0, 40);
+                PageScreenshots.Settle(window);
+
+                Assert.Equal(40, scroll.Offset.Y);
+                Assert.Equal(textTop, text.TranslatePoint(default, window)!.Value.Y);
+                Assert.Equal(60, scroll.Viewport.Height);
+                Assert.True(Math.Min(textTop + 24, pinnedTop + 24) - Math.Max(textTop, pinnedTop) >
+                    ReachabilityAssertions.Tolerance);
+                var overlaps = ReachabilityAssertions.Inspect(window,
+                    new LayoutFindingContext("synthetic", "short", 100, "light"))
+                    .Where(finding => finding.Check == LayoutCheckNames.OverlappingText).ToArray();
+
+                if (expectedOverlap)
+                {
+                    var finding = Assert.Single(overlaps);
+                    Assert.Equal("ScrolledLabel", finding.Control.Name);
+                    Assert.Equal("PinnedLabel", finding.RelatedControl?.Name);
+                }
+                else Assert.Empty(overlaps);
+            }
+            finally { window.Close(); }
+        });
+    }
+
+    [Fact]
+    public void ClippedTextStillReportsMissingGlyphsAndOwnBoxOverflow()
+    {
+        avalonia.Invoke(() =>
+        {
+            var text = new TextBlock
+            {
+                Name = "ClippedLabel", Text = "Long label with a missing glyph \u0378", Width = 40, Height = 24,
+                TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.None,
+            };
+            Canvas.SetTop(text, 80);
+            var scroll = new ScrollViewer
+            {
+                Width = 160, Height = 60,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Hidden,
+                Content = new Canvas { Width = 160, Height = 200, Children = { text } },
+            };
+            var window = new Window { Content = scroll, Width = 180, Height = 120 };
+            try
+            {
+                window.Show();
+                PageScreenshots.Settle(window);
+                var transformed = text.GetTransformedBounds()!.Value;
+                Assert.Equal(default, transformed.Bounds.TransformToAABB(transformed.Transform)
+                    .Intersect(transformed.Clip));
+
+                var findings = ReachabilityAssertions.Inspect(window,
+                    new LayoutFindingContext("synthetic", "short", 100, "light"));
+
+                Assert.Contains(findings, finding => finding.Check == LayoutCheckNames.MissingGlyph &&
+                    finding.Control.Name == "ClippedLabel" && finding.Identity == "U+0378");
+                Assert.Contains(findings, finding => finding.Check == LayoutCheckNames.TextBoxOverflow &&
+                    finding.Control.Name == "ClippedLabel");
+            }
+            finally { window.Close(); }
+        });
+    }
+
     [Fact]
     public void TextInSeparateRowsDoesNotOverlap()
     {
