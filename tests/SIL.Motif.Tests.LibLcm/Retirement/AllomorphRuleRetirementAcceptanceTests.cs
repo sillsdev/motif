@@ -931,7 +931,7 @@ public sealed partial class AllomorphRuleRetirementAcceptanceTests(
         var ruleId = CanonicalId.Mint();
         var boundaryId = wordEdge
             ? CanonicalId.FromGuid(LangProjectTags.kguidPhRuleWordBdry)
-            : AddBoundaryMarker(cache, Guid.NewGuid(), "#");
+            : AddBoundaryMarker(cache, Guid.NewGuid(), "!");
         var root = cache.ServiceLocator.GetInstance<ILexEntryRepository>().GetObject(seed.FirstEntryId);
         var ws = cache.WritingSystemFactory.GetStrFromWs(cache.DefaultVernWs);
         Apply(cache, AuthorLexemeFormComposer.Build(cache,
@@ -963,6 +963,15 @@ public sealed partial class AllomorphRuleRetirementAcceptanceTests(
         var intent = PrefixRetirementIntent(classId, ruleId, r, t, a, boundaryId, retirement);
         var operations = ReplaceListedAllomorphsWithRuleComposer.Build(cache, intent,
             () => CanonicalId.FromGuid(Guid.NewGuid()));
+        if (!wordEdge)
+        {
+            var literalHash = Assert.IsAssignableFrom<IPhBdryMarker>(cache.ServiceLocator.ObjectRepository
+                .GetObject(boundaryId.ToGuid()));
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                literalHash.CodesOS.Single().Representation.set_String(cache.DefaultVernWs, "#"));
+            Assert.Equal("literal hash marker", literalHash.Name.get_String(cache.DefaultVernWs)?.Text);
+            Assert.Equal("#", literalHash.CodesOS.Single().Representation.get_String(cache.DefaultVernWs)?.Text);
+        }
         var proposal = new Proposal(new Dictionary<string, string>
             { ["analysis"] = "1.0", ["lexical"] = "1.0", ["phonology"] = "1.0" },
             CanonicalId.Mint(), null, operations.Reverse().ToArray());

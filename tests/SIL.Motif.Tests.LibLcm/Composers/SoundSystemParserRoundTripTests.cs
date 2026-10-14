@@ -133,12 +133,7 @@ public sealed class SoundSystemParserRoundTripTests(PristineProjectFixture prist
             cache.LangProject.MorphologicalDataOA.ParserParameters =
                 "<ParserParameters><HC><NoDefaultCompounding>true</NoDefaultCompounding><Strata /></HC></ParserParameters>";
             var set = cache.LangProject.PhonologicalDataOA.PhonemeSetsOS.Single();
-            var boundary = cache.ServiceLocator.GetInstance<IPhBdryMarkerFactory>().Create();
-            set.BoundaryMarkersOC.Add(boundary);
-            boundary.Name.set_String(cache.DefaultVernWs, "+");
-            var code = cache.ServiceLocator.GetInstance<IPhCodeFactory>().Create();
-            boundary.CodesOS.Add(code);
-            code.Representation.set_String(cache.DefaultVernWs, "+");
+            OwnedBoundaryMarkerFixture.EnsureReservedMarkers(cache, set);
         });
     }
 

@@ -1105,15 +1105,25 @@ internal static class SampleBuilder
             phoneme.CodesOS.Add(code);
             code.Representation.set_String(cache.DefaultVernWs, phonemeText);
         }
-        var boundary = services.GetInstance<IPhBdryMarkerFactory>().Create(
-            Ids.Create(spec.Id, "phonology/morpheme-boundary"));
-        phonemeSet.BoundaryMarkersOC.Add(boundary);
-        boundary.Name.set_String(cache.DefaultVernWs, "+");
-        var boundaryCode = services.GetInstance<IPhCodeFactory>().Create(
-            Ids.Create(spec.Id, "phonology/morpheme-boundary/code"));
-        boundary.CodesOS.Add(boundaryCode);
-        boundaryCode.Representation.set_String(cache.DefaultVernWs, "+");
+        EnsureBoundaryMarker(cache, spec.Id, phonemeSet, LangProjectTags.kguidPhRuleWordBdry,
+            "phonology/word-boundary", "#");
+        EnsureBoundaryMarker(cache, spec.Id, phonemeSet, LangProjectTags.kguidPhRuleMorphBdry,
+            "phonology/morpheme-boundary", "+");
         return result;
+    }
+
+    private static void EnsureBoundaryMarker(LcmCache cache, string sampleId, IPhPhonemeSet phonemeSet,
+        Guid markerId, string codeId, string representation)
+    {
+        if (phonemeSet.BoundaryMarkersOC.Any(marker => marker.Guid == markerId))
+            return;
+
+        var marker = cache.ServiceLocator.GetInstance<IPhBdryMarkerFactory>().Create(markerId);
+        phonemeSet.BoundaryMarkersOC.Add(marker);
+        marker.Name.set_String(cache.DefaultVernWs, representation);
+        var code = cache.ServiceLocator.GetInstance<IPhCodeFactory>().Create(Ids.Create(sampleId, codeId + "/code"));
+        marker.CodesOS.Add(code);
+        code.Representation.set_String(cache.DefaultVernWs, representation);
     }
 
     private static Dictionary<string, IPhNCSegments> AddNaturalClasses(

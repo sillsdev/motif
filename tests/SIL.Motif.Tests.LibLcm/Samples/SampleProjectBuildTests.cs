@@ -1,7 +1,14 @@
 using System.Diagnostics;
 using System.IO.Compression;
 using System.Text.Json;
+using SIL.LCModel;
+using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Model;
 using SIL.Motif.Host.LcmUtils;
+using SIL.Motif.Runner.Apply;
+using SIL.Motif.Runner.Composers;
+using SIL.Motif.Runner.DryRun;
+using SIL.Motif.Runner.Operations;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
@@ -34,6 +41,96 @@ public sealed class SampleProjectBuildTests
 
         SampleJsonSchemaValidator.AssertValid(
             expected.RootElement, schema.RootElement.GetProperty("$defs").GetProperty("sampleExpected"), schema.RootElement);
+    }
+
+    [Fact]
+    public async Task GenesisBuildReopensWithFieldWorksBoundariesAndOneFirstRule()
+    {
+        var root = Path.Combine(BuildOutput.ProductDirectory, "SampleGenesis", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var specPath = Path.Combine(root, "genesis.json");
+            await File.WriteAllTextAsync(specPath, """
+                {
+                  "id": "t17-boundary-genesis",
+                  "title": "Boundary genesis fixture",
+                  "teaches": ["FieldWorks boundaries"],
+                  "summary": "A minimal generated project for boundary authoring.",
+                  "disclaimer": "Synthetic test data.",
+                  "description": "Boundary genesis fixture.",
+                  "language": { "name": "French", "tag": "fr" },
+                  "phonemes": ["a", "b"],
+                  "naturalClasses": [
+                    { "id": "vowels", "name": "Vowels", "abbreviation": "V", "phonemes": ["a"] }
+                  ],
+                  "partsOfSpeech": [{ "id": "noun", "name": "Noun" }],
+                  "stems": [{ "id": "stem", "form": "a", "partOfSpeech": "noun", "gloss": "a" }],
+                  "texts": [{ "id": "text", "title": "Fixture text", "sentences": ["a"] }]
+                }
+                """);
+
+            var builder = Path.Combine(BuildOutput.ProductDirectory,
+                OperatingSystem.IsWindows() ? "SIL.Motif.SampleProjects.exe" : "SIL.Motif.SampleProjects");
+            var start = new ProcessStartInfo(builder);
+            start.ArgumentList.Add("build");
+            start.ArgumentList.Add(specPath);
+            start.ArgumentList.Add(Path.Combine(root, "output"));
+            var result = ToolProcess.Run(start);
+            Assert.True(result.ExitCode == 0, result.Error);
+            using var build = JsonDocument.Parse(result.Output);
+            var projectPath = build.RootElement.GetProperty("projectPath").GetString()!;
+
+            var loader = new FwDataProjectLoader();
+            using (var live = loader.LoadCache(projectPath))
+            {
+                var set = Assert.Single(live.LangProject.PhonologicalDataOA.PhonemeSetsOS);
+                var a = Assert.Single(set.PhonemesOC, phoneme =>
+                    phoneme.Name.get_String(live.DefaultVernWs)?.Text == "a");
+                var b = Assert.Single(set.PhonemesOC, phoneme =>
+                    phoneme.Name.get_String(live.DefaultVernWs)?.Text == "b");
+                var ruleOperations = AuthorPhonologicalRuleComposer.Build(live,
+                    new AuthorPhonologicalRuleIntent("First rule", PhonologicalRuleDirection.Simultaneous,
+                        [new(Phoneme: CanonicalId.FromGuid(a.Guid))], [new(Phoneme: CanonicalId.FromGuid(b.Guid))],
+                        [new(Boundary: "word"), new(Boundary: "morpheme")],
+                        [new(Boundary: "morpheme"), new(Boundary: "word")]));
+                Assert.DoesNotContain(ruleOperations,
+                    operation => operation.Kind == PhPhonemeSetBoundaryMarkersOperationKinds.Create);
+                var proposal = new Proposal(new Dictionary<string, string> { ["grammar"] = "1.0" },
+                    CanonicalId.Mint(), null, ruleOperations);
+                using var dryScratch = DryRunScratch.Adopt(loader.LoadScratchCache(projectPath), "genesis rule preview");
+                var dryRun = ProposalDryRunner.Run(dryScratch, proposal);
+                Assert.NotEmpty(dryRun.ExpectedEffects);
+                Assert.Equal(2, dryScratch.PeekCache().LangProject.PhonologicalDataOA.PhonemeSetsOS.Single()
+                    .BoundaryMarkersOC.Count);
+                var receipt = ProposalApplier.Apply(live, proposal, dryRun.Anchor, "genesis tests", "Add first rule");
+                Assert.False(receipt.AlreadyApplied);
+                loader.Save(live);
+            }
+
+            using var cache = loader.LoadCache(projectPath);
+            var reopenedSet = Assert.Single(cache.LangProject.PhonologicalDataOA.PhonemeSetsOS);
+            Assert.Equal(2, reopenedSet.BoundaryMarkersOC.Count);
+            Assert.Single(cache.LangProject.PhonologicalDataOA.PhonRulesOS);
+            foreach (var (id, representation) in new[]
+                     {
+                         (LangProjectTags.kguidPhRuleWordBdry, "#"),
+                         (LangProjectTags.kguidPhRuleMorphBdry, "+"),
+                     })
+            {
+                var marker = Assert.Single(reopenedSet.BoundaryMarkersOC, item => item.Guid == id);
+                Assert.Equal(reopenedSet.Guid, marker.Owner?.Guid);
+                Assert.Equal(representation, marker.Name.get_String(cache.DefaultVernWs)?.Text);
+                Assert.Equal(representation, Assert.Single(marker.CodesOS).Representation
+                    .get_String(cache.DefaultVernWs)?.Text);
+            }
+        }
+        finally
+        {
+            try { Directory.Delete(root, recursive: true); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
     }
 
     [Fact]

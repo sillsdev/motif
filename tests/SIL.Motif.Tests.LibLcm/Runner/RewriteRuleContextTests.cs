@@ -198,11 +198,14 @@ public sealed class RewriteRuleContextTests(PristineProjectFixture pristine)
         Assert.Equal(morphemeBoundary.ToGuid(), Assert.IsAssignableFrom<IPhSimpleContextBdry>(
             Assert.Single(morphemeRule.RightHandSidesOS).LeftContextOA).FeatureStructureRA.Guid);
 
-        var literalHash = AddBoundaryMarker(cache, Guid.NewGuid(), "#");
-        var literalOperations = AuthorPhonologicalRuleComposer.Build(cache, new("literal hash rule",
+        var literalMarker = AddBoundaryMarker(cache, Guid.NewGuid(), "!");
+        var prefixedLiteralMarker = CanonicalId.FromGuid(literalMarker.ToGuid(), "fieldworks/");
+        var literalOperations = AuthorPhonologicalRuleComposer.Build(cache, new("literal marker rule",
             PhonologicalRuleDirection.Simultaneous, [new(Phoneme: sound.PhonemeN)], [new(Phoneme: sound.PhonemeM)],
-            [new(BoundaryMarker: literalHash)], [new(NaturalClass: sound.NaturalClass)],
+            [new(BoundaryMarker: prefixedLiteralMarker)], [new(NaturalClass: sound.NaturalClass)],
             new(morphemeRuleId, null)));
+        Assert.Contains(literalOperations, operation => operation.After is { } after &&
+            after.TryGetProperty("ref", out var reference) && reference.GetString() == prefixedLiteralMarker.Value);
         var literalRuleId = literalOperations.Single(operation =>
             operation.Kind == PhPhonDataPhonRulesOperationKinds.Create).EntityId!.Value;
         Execute(cache, literalOperations);
@@ -210,7 +213,7 @@ public sealed class RewriteRuleContextTests(PristineProjectFixture pristine)
             .GetInstance<ICmObjectRepository>().GetObject(literalRuleId.ToGuid()));
         var actualMarker = Assert.IsAssignableFrom<IPhSimpleContextBdry>(
             Assert.Single(literalRule.RightHandSidesOS).LeftContextOA).FeatureStructureRA;
-        Assert.Equal(literalHash.ToGuid(), actualMarker.Guid);
+        Assert.Equal(literalMarker.ToGuid(), actualMarker.Guid);
         Assert.NotEqual(LangProjectTags.kguidPhRuleWordBdry, actualMarker.Guid);
 
         var snapshot = SoundSystemSnapshots.Read(cache);
@@ -222,7 +225,7 @@ public sealed class RewriteRuleContextTests(PristineProjectFixture pristine)
                  {
                      (wordRuleId, LangProjectTags.kguidPhRuleWordBdry),
                      (morphemeRuleId, LangProjectTags.kguidPhRuleMorphBdry),
-                     (literalRuleId, literalHash.ToGuid()),
+                     (literalRuleId, literalMarker.ToGuid()),
                  })
         {
             var reopenedRule = Assert.IsAssignableFrom<IPhRegularRule>(repository.GetObject(ruleId.ToGuid()));

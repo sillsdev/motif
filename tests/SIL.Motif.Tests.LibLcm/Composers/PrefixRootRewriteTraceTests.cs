@@ -220,7 +220,7 @@ public sealed class PrefixRootRewriteTraceTests(PristineProjectFixture pristine,
     {
         using var cache = pristine.NewScratch();
         var prefix = BuildPrefixRootCandidate(cache, pristine.Seed);
-        var literalHash = AddBoundaryMarker(cache, Guid.NewGuid(), "#");
+        var literalHash = AddBoundaryMarker(cache, Guid.NewGuid(), "!");
         var operations = AuthorPhonologicalRuleComposer.Build(cache, new(
             "r becomes t next to a literal hash marker",
             PhonologicalRuleDirection.Simultaneous,
@@ -231,6 +231,12 @@ public sealed class PrefixRootRewriteTraceTests(PristineProjectFixture pristine,
         var ruleId = operations.Single(operation =>
             operation.Kind == PhPhonDataPhonRulesOperationKinds.Create).EntityId!.Value;
         Apply(cache, operations);
+        var marker = Assert.IsAssignableFrom<IPhBdryMarker>(cache.ServiceLocator.ObjectRepository
+            .GetObject(literalHash.ToGuid()));
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            marker.CodesOS.Single().Representation.set_String(cache.DefaultVernWs, "#"));
+        Assert.Equal("literal hash marker", marker.Name.get_String(cache.DefaultVernWs)?.Text);
+        Assert.Equal("#", marker.CodesOS.Single().Representation.get_String(cache.DefaultVernWs)?.Text);
         NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () => prefix.Alternate.Delete());
         new FwDataProjectLoader().Save(cache);
 
@@ -265,9 +271,9 @@ public sealed class PrefixRootRewriteTraceTests(PristineProjectFixture pristine,
         using var result = JsonDocument.Parse(trace);
         Assert.Empty(result.RootElement.GetProperty("result").GetProperty("analyses").EnumerateArray());
         output.WriteLine($"Scratch={retainedProject}");
-        output.WriteLine($"Parser={executable}; version=0.8.3");
+        output.WriteLine($"Parser={executable}");
         output.WriteLine($"Literal marker={literalHash.Value}; word boundary={prefix.WordBoundary.Value}.");
-        output.WriteLine("The imported snapshot keeps literal # as a marker apart from the word edge; it does not license ta.");
+        output.WriteLine("The imported snapshot keeps literal # apart from the word edge; it does not license ta.");
     }
 
     private static void CopyDirectory(string source, string target)

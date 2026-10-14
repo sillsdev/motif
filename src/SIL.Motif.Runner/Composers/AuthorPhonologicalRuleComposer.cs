@@ -27,6 +27,7 @@ public static class AuthorPhonologicalRuleComposer
         RequireContextLength(intent.Right, "right");
 
         var data = cache.LangProject.PhonologicalDataOA;
+        ValidateBoundaryMarkers(cache);
         ValidatePlacement(data, intent.Placement);
         var input = intent.Input.Select(item => ResolveRuleItem(cache, item, plannedNaturalClass)).ToArray();
         var output = intent.Output.Select(item => ResolveRuleItem(cache, item, plannedNaturalClass)).ToArray();
@@ -170,7 +171,7 @@ public static class AuthorPhonologicalRuleComposer
             else if (item.BoundaryMarker is { } boundaryId)
             {
                 var marker = SoundSystemAuthoring.FirstSet(cache).BoundaryMarkersOC
-                    .SingleOrDefault(candidate => CanonicalId.FromGuid(candidate.Guid) == boundaryId);
+                    .SingleOrDefault(candidate => candidate.Guid == boundaryId.ToGuid());
                 if (marker is null)
                     throw new InvalidOperationException("A rule boundary must be a marker in the first phoneme set.");
                 resolved[index] = new("PhSimpleContextBdry", boundaryId);
@@ -218,6 +219,40 @@ public static class AuthorPhonologicalRuleComposer
             ? LangProjectTags.kguidPhRuleWordBdry
             : LangProjectTags.kguidPhRuleMorphBdry);
     }
+
+    private static void ValidateBoundaryMarkers(LcmCache cache)
+    {
+        var firstSet = cache.LangProject.PhonologicalDataOA.PhonemeSetsOS.FirstOrDefault();
+        if (firstSet is null)
+            return;
+
+        var conflicts = firstSet.BoundaryMarkersOC.SelectMany(marker => marker.CodesOS
+                .SelectMany(code => code.Representation.AvailableWritingSystemIds
+                    .Select(ws => code.Representation.get_String(ws)?.Text)
+                    .Where(text => text is "#" or "+")
+                    .Select(text => (Marker: marker, Representation: text!)))
+                .DistinctBy(item => (item.Marker.Guid, item.Representation)))
+            .Where(item => item.Marker.Guid != ReservedBoundaryId(item.Representation))
+            .Select(item =>
+            {
+                var role = item.Representation == "#" ? "word" : "morpheme";
+                var expectedId = CanonicalId.FromGuid(ReservedBoundaryId(item.Representation));
+                return $"'{item.Representation}' is stored under marker {CanonicalId.FromGuid(item.Marker.Guid)}; " +
+                    $"the {role} boundary must use standard marker {expectedId}.";
+            })
+            .ToArray();
+        if (conflicts.Length > 0)
+            throw new InvalidOperationException("The first phoneme set has conflicting boundary markers: " +
+                string.Join(" ", conflicts) + " Repair in FieldWorks: re-point references to the standard boundary " +
+                "marker, remove the stray marker, save, and reload the project.");
+    }
+
+    private static Guid ReservedBoundaryId(string representation) => representation switch
+    {
+        "#" => LangProjectTags.kguidPhRuleWordBdry,
+        "+" => LangProjectTags.kguidPhRuleMorphBdry,
+        _ => throw new InvalidOperationException("A reserved boundary representation was not recognized."),
+    };
 
     private static void ValidatePlacement(IPhPhonData data, Placement? placement)
     {

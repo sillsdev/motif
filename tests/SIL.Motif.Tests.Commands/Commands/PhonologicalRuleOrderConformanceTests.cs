@@ -521,6 +521,91 @@ public sealed class PhonologicalRuleOrderConformanceTests(PristineProjectFixture
             previouslyValid.ToJsonString(), "placement neighbours are missing or no longer adjacent; recompute a Dry Run.");
     }
 
+    [Theory]
+    [InlineData("#", false, false)]
+    [InlineData("#", true, false)]
+    [InlineData("+", false, false)]
+    [InlineData("+", true, false)]
+    [InlineData("#", true, true)]
+    [InlineData("+", true, true)]
+    public void LiveRuleCompositionRejectsMisidentifiedBoundaryCodesWithoutChanges(
+        string representation, bool includeReserved, bool explicitMarker)
+    {
+        using var project = pristine.NewScratch();
+        var path = project.ProjectId.Path;
+        project.Dispose();
+        var strayGuid = Guid.NewGuid();
+        var reservedGuid = representation == "#"
+            ? LangProjectTags.kguidPhRuleWordBdry
+            : LangProjectTags.kguidPhRuleMorphBdry;
+        var loader = new FwDataProjectLoader();
+        using (var live = loader.LoadCache(path))
+        {
+            if (includeReserved) AddStoredBoundaryMarker(live, reservedGuid, representation);
+            AddStoredBoundaryMarker(live, strayGuid, representation);
+            loader.Save(live);
+        }
+
+        var liveDraft = "misidentified-boundary-refusal";
+        Assert.True(ProposalCommands.New(new(path, Version, liveDraft, "Reject conflicting boundary codes")).Succeeded);
+        var boundaryItem = explicitMarker
+            ? new JsonObject
+            {
+                ["boundaryMarker"] = CanonicalId.FromGuid(strayGuid, "test-prefix/").Value,
+            }
+            : new JsonObject { ["boundary"] = representation == "#" ? "word" : "morpheme" };
+        var intent = new JsonObject
+        {
+            ["name"] = "Boundary code conflict",
+            ["direction"] = "simultaneous",
+            ["input"] = new JsonArray(),
+            ["output"] = new JsonArray(),
+            ["left"] = new JsonArray(boundaryItem),
+            ["right"] = new JsonArray(new JsonObject { ["boundary"] = "word" }),
+        }.ToJsonString();
+
+        var refusal = AssertLiveRuleCompositionRefusedWithoutChanges(path, liveDraft, intent,
+            CanonicalId.FromGuid(strayGuid).Value);
+
+        Assert.Contains(CanonicalId.FromGuid(reservedGuid).Value, refusal, StringComparison.Ordinal);
+        Assert.Contains(representation == "#" ? "word boundary" : "morpheme boundary", refusal,
+            StringComparison.Ordinal);
+        Assert.Contains("re-point references to the standard boundary marker, remove the stray marker, save, and reload",
+            refusal, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void LiveRuleCompositionAcceptsPrefixedExactBoundaryIdentity()
+    {
+        using var project = pristine.NewScratch();
+        var path = project.ProjectId.Path;
+        project.Dispose();
+        var loader = new FwDataProjectLoader();
+        using (var live = loader.LoadCache(path))
+        {
+            AddStoredBoundaryMarker(live, LangProjectTags.kguidPhRuleWordBdry, "#");
+            loader.Save(live);
+        }
+
+        Assert.True(ProposalCommands.New(new(path, Version, DraftName, "Keep prefixed boundary identity")).Succeeded);
+        var prefixedMarker = CanonicalId.FromGuid(LangProjectTags.kguidPhRuleWordBdry, "fieldworks/");
+        var intent = new JsonObject
+        {
+            ["name"] = "Prefixed word boundary",
+            ["direction"] = "simultaneous",
+            ["input"] = new JsonArray(),
+            ["output"] = new JsonArray(),
+            ["left"] = new JsonArray(new JsonObject { ["boundaryMarker"] = prefixedMarker.Value }),
+            ["right"] = new JsonArray(new JsonObject { ["boundary"] = "word" }),
+        }.ToJsonString();
+
+        var composed = ProposalCommands.ComposeAuthorPhonologicalRule(new(path, Version, DraftName, intent));
+
+        Assert.True(composed.Succeeded, composed.Refusal?.Message);
+        Assert.Contains(ReadDraft(path).Operations, operation => operation.After is { } after &&
+            after.TryGetValue("ref", out var reference) && reference.GetString() == prefixedMarker.Value);
+    }
+
     [Fact]
     public void R1ThroughR6CanBeComposedInOneDraftAndAppliedInDeclaredOrder()
     {
@@ -698,7 +783,28 @@ public sealed class PhonologicalRuleOrderConformanceTests(PristineProjectFixture
         Assert.Empty(live.LangProject.PhonologicalDataOA.PhonRulesOS);
     }
 
-    private void AssertLiveRuleCompositionRefusedWithoutChanges(string path, string draftName,
+    private static void AddStoredBoundaryMarker(LcmCache cache, Guid guid, string representation)
+    {
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            var data = cache.LangProject.PhonologicalDataOA;
+            var set = data.PhonemeSetsOS.FirstOrDefault();
+            if (set is null)
+            {
+                set = cache.ServiceLocator.GetInstance<IPhPhonemeSetFactory>().Create();
+                data.PhonemeSetsOS.Add(set);
+            }
+
+            var marker = cache.ServiceLocator.GetInstance<IPhBdryMarkerFactory>().Create(guid);
+            set.BoundaryMarkersOC.Add(marker);
+            marker.Name.set_String(cache.DefaultVernWs, representation);
+            var code = cache.ServiceLocator.GetInstance<IPhCodeFactory>().Create();
+            marker.CodesOS.Add(code);
+            code.Representation.set_String(cache.DefaultVernWs, representation);
+        });
+    }
+
+    private string AssertLiveRuleCompositionRefusedWithoutChanges(string path, string draftName,
         string intentJson, string expectedMessage)
     {
         var beforeDraft = JsonSerializer.Serialize(ReadDraft(path, draftName));
@@ -709,6 +815,7 @@ public sealed class PhonologicalRuleOrderConformanceTests(PristineProjectFixture
         Assert.Contains(expectedMessage, refused.Refusal.Message, StringComparison.Ordinal);
         Assert.Equal(beforeDraft, JsonSerializer.Serialize(ReadDraft(path, draftName)));
         Assert.Equal(beforeProject, SHA256.HashData(File.ReadAllBytes(path)));
+        return refused.Refusal.Message;
     }
 
     private static void AssertBatchRefusedAt(CommandOutcome<ComposedBatchResponse> outcome, int index,
