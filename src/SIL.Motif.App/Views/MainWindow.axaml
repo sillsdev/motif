@@ -55,7 +55,7 @@
                   <StackPanel>
                     <TextBlock Classes="menuTitle" Text="Open recent" />
                     <TextBlock Classes="menuDetail" Text="{Binding RecentProjectsText, StringFormat='{}{0} &#x203A;'}"
-                               TextTrimming="CharacterEllipsis" />
+                               TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
                   </StackPanel>
                   <Button.Flyout>
                     <MenuFlyout Placement="RightEdgeAlignedTop" />

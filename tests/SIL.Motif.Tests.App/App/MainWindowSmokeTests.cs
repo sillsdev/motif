@@ -232,6 +232,47 @@ public sealed class MainWindowSmokeTests
     }
 
     [Fact]
+    public void RecentProjectSummaryDoesNotMoveProjectMenuActionsWhenItLoads()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window, _) = NewComposedWindow();
+            try
+            {
+                await workspace.RefreshKnownProjectsAsync();
+                window.Show();
+                var projectMenuButton = Assert.IsType<Button>(window.FindControl<Button>("ProjectMenuButton"));
+                ClickButton(window, projectMenuButton);
+                PageScreenshots.Settle(window);
+
+                var projectMenu = Assert.IsType<Flyout>(projectMenuButton.Flyout);
+                var content = Assert.IsAssignableFrom<Control>(projectMenu.Content);
+                var configure = Assert.Single(content.GetLogicalDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetName(button) == "Configure the project");
+                var recent = Assert.Single(content.GetLogicalDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetName(button) == "Open a recent project");
+                var detail = Assert.Single(recent.GetLogicalDescendants().OfType<TextBlock>(), text =>
+                    text.Classes.Contains("menuDetail"));
+                Assert.Contains("No other projects", detail.Text, StringComparison.Ordinal);
+                var before = BoundsInTopLevel(configure);
+
+                const string projectName = "Recent";
+                workspace.Project.KnownProjects.Add(new KnownProjectSummary(
+                    Path.Combine(Path.GetTempPath(), projectName + ".fwdata"), DateTimeOffset.UtcNow));
+                PageScreenshots.Settle(window);
+
+                Assert.Contains(projectName, detail.Text, StringComparison.Ordinal);
+                Assert.Equal(before, BoundsInTopLevel(configure));
+            }
+            finally
+            {
+                window.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromSeconds(20));
+    }
+
+    [Fact]
     public void SidebarFooterKeepsHelpAndSettingsButtonsDiscoverableAndWorking()
     {
         _avalonia.Invoke(() =>
@@ -1671,6 +1712,14 @@ public sealed class MainWindowSmokeTests
         var centre = button.TranslatePoint(new Point(button.Bounds.Width / 2, button.Bounds.Height / 2), window)!.Value;
         window.MouseDown(centre, MouseButton.Left);
         window.MouseUp(centre, MouseButton.Left);
+    }
+
+    private static Rect BoundsInTopLevel(Control control)
+    {
+        var topLevel = Assert.IsAssignableFrom<TopLevel>(TopLevel.GetTopLevel(control));
+        var position = control.TranslatePoint(new Point(), topLevel);
+        Assert.NotNull(position);
+        return new Rect(position!.Value, control.Bounds.Size);
     }
 
     private static AssessCommandResponse CapturedAssessment(AssessCommandResponse response) => response with

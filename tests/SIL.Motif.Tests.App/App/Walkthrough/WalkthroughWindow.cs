@@ -639,10 +639,22 @@ public sealed class WalkthroughWindow : IDisposable
         var root = topLevel ?? Window;
         Rect? previousBounds = null;
         var stablePasses = 0;
+        var settleStarted = Stopwatch.GetTimestamp();
+        string? lastObservation = null;
+        var observations = new Queue<string>();
         WaitUntil(() =>
         {
             root.UpdateLayout();
             var topLeft = control.TranslatePoint(new Point(0, 0), root);
+            var observation = $"visible={control.IsEffectivelyVisible}, enabled={control.IsEffectivelyEnabled}, " +
+                $"point={topLeft}, size={control.Bounds.Size}, root={root.Bounds.Size}, " +
+                $"recent={Workspace.RecentProjects.Count}, recentText='{Workspace.RecentProjectsText}'";
+            if (observation != lastObservation)
+            {
+                lastObservation = observation;
+                if (observations.Count == 12) observations.Dequeue();
+                observations.Enqueue($"{Stopwatch.GetElapsedTime(settleStarted).TotalMilliseconds:F0}ms {observation}");
+            }
             if (!control.IsEffectivelyVisible || topLeft is null)
             {
                 previousBounds = null;
@@ -659,7 +671,8 @@ public sealed class WalkthroughWindow : IDisposable
             }
 
             return stablePasses >= 2;
-        }, TimeSpan.FromSeconds(10), $"'{accessibleName}' did not settle before clicking");
+        }, TimeSpan.FromSeconds(10), $"'{accessibleName}' did not settle before clicking",
+            () => $"bounds history: {string.Join(" | ", observations)}");
         HeadlessClick.Click(root, control, accessibleName);
     }
 
