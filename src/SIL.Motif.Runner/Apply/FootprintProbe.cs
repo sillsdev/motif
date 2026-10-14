@@ -35,7 +35,7 @@ public static class FootprintProbe
                 !cache.ServiceLocator.ObjectRepository.TryGetObject(target.ToGuid(), out _))
             {
                 throw new ApplyPreconditionException(
-                    $"Operation {operation.OperationId.Value} ({operation.Kind}) targets {target.Value}, which the Dry Run " +
+                    $"Operation {operation.OperationId.Value} ({operation.Kind}) targets {target.Value} ({target.ToGuid()}), which the Dry Run " +
                     "found but which no longer exists in the project. Run a fresh Dry Run before applying.");
             }
 
