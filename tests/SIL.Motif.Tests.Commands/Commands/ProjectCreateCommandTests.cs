@@ -53,6 +53,30 @@ public sealed class ProjectCreateCommandTests : IDisposable
     }
 
     [Fact]
+    public void AWritingSystemFailureVerifyingTheNewProjectRemovesItsFolderSoTheSameNameCanBeRetried()
+    {
+        var request = new ProjectCreateRequest(_root, "NewProject", "swh");
+
+        var failure = Assert.Throws<SIL.Motif.Projection.ProjectWritingSystemsUnavailableException>(() =>
+            ProjectCreateCommand.Create(request, new WritingSystemFailsOnOpenLoader()));
+
+        Assert.Contains("WritingSystemStore", failure.Message, StringComparison.Ordinal);
+        Assert.False(Directory.Exists(Path.Combine(_root, "NewProject")));
+        var retry = ProjectCreateCommand.Create(request);
+        Assert.True(retry.Succeeded, retry.Refusal?.Message);
+    }
+
+    // Creating writes the project; reopening it to verify fails as a project whose writing system cannot be loaded.
+    private sealed class WritingSystemFailsOnOpenLoader : FwDataProjectLoader
+    {
+        public override LcmCache LoadCache(string fwDataFilePath, string? templatesFolder = null) =>
+            throw SIL.Motif.Projection.ProjectWritingSystemsUnavailableException.MissingStore(fwDataFilePath);
+
+        public override LcmCache LoadScratchCache(string fwDataFilePath, string? templatesFolder = null) =>
+            throw SIL.Motif.Projection.ProjectWritingSystemsUnavailableException.MissingStore(fwDataFilePath);
+    }
+
+    [Fact]
     public void DefaultsTheAnalysisWritingSystemToEnglishAndDeclaresNoExtraWordFormingCharacters()
     {
         var outcome = ProjectCreateCommand.Create(new ProjectCreateRequest(_root, "Plain", "swh"));

@@ -31,8 +31,11 @@ public sealed class WritingSystemMissingArgvTests(PristineProjectFixture pristin
 {
     private const string SeamVariable = "MOTIF_TEST_FAIL_WRITING_SYSTEM_FOR";
 
-    [Fact]
-    public async Task ApplyRefusesAsASetupProblemAndLeavesTheProjectAndReceiptsAlone()
+    // The second seam lets Preflight and the copies open and fails only Apply's own open of the project.
+    [Theory]
+    [InlineData(SeamVariable)]
+    [InlineData("MOTIF_TEST_FAIL_LIVE_APPLY_WRITING_SYSTEM_FOR")]
+    public async Task ApplyRefusesAsASetupProblemAndLeavesTheProjectAndReceiptsAlone(string seam)
     {
         var path = UniquelyNamedProject();
         const string draftName = "writing-system-missing-apply";
@@ -50,11 +53,12 @@ public sealed class WritingSystemMissingArgvTests(PristineProjectFixture pristin
         var start = CliProcess.Start(IsolatedRunner.Options(root), "apply", proposalId, "--project", path, "--force", "--json");
         start.Environment[ProcessRunnerLauncher.SuppressVariable] = "1";
         start.Environment[CommandSurfacePolicy.DeveloperCommandsEnvironmentVariable] = "1";
-        start.Environment[SeamVariable] = Path.GetFileName(path);
+        start.Environment[seam] = seam == SeamVariable ? Path.GetFileName(path) : path;
         var (exitCode, output, error) = await CliProcess.RunAsync(start);
 
         Assert.True(exitCode == 2, $"exit {exitCode}; stderr: {error}; stdout: {output}");
         AssertSetupRefusal(error, path);
+        Assert.DoesNotContain("roll", error, StringComparison.OrdinalIgnoreCase);
         Assert.Empty(output);
         Assert.Equal(bytesBefore, File.ReadAllBytes(path));
         Assert.Equal(receiptsBefore, ReceiptCount(path));

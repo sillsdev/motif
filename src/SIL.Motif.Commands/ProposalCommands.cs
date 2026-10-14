@@ -1720,6 +1720,8 @@ public static partial class ProposalCommands
             }
 
             var loader = new FwDataProjectLoader();
+            if (IsTestTarget("MOTIF_TEST_FAIL_LIVE_APPLY_WRITING_SYSTEM_FOR", project.FullFwDataPath))
+                throw ProjectWritingSystemsUnavailableException.MissingStore(project.FullFwDataPath);
             cache = loader.LoadCache(project.FullFwDataPath);
             try
             {

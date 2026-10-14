@@ -238,6 +238,29 @@ public sealed class ProjectInitializationRecoveryTests : IDisposable
         Assert.Equal(original, File.ReadAllBytes(recoveryPath!));
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void AWritingSystemFailureReopeningAfterTheSaveIsAnUnknownOutcomeThatKeepsTheRecoveryCopy(bool partialSave)
+    {
+        var project = CreateProject(seed: true);
+        var original = File.ReadAllBytes(project);
+
+        var outcome = Initialize(project, new WritingSystemFailsAfterFirstLoadLoader(project, partialSave));
+
+        Assert.False(outcome.Succeeded);
+        Assert.Equal("initialization.outcome-unknown", outcome.Refusal!.Code);
+        Assert.Equal(FailureReason.StoreInconsistent, outcome.Refusal.Reason);
+        Assert.Contains("WritingSystemStore", outcome.Refusal.Message, StringComparison.Ordinal);
+        Assert.True(outcome.Refusal.Facts!.TryGetValue("recoveryCopyPath", out var recoveryPath));
+        Assert.Equal(original, File.ReadAllBytes(recoveryPath!));
+
+        var retry = Initialize(project, new WritingSystemFailsAfterFirstLoadLoader(project, partialSave, failFirst: true));
+        Assert.Equal("initialization.outcome-unknown", retry.Refusal!.Code);
+        Assert.Equal(recoveryPath, retry.Refusal.Facts!["recoveryCopyPath"]);
+        Assert.Equal(original, File.ReadAllBytes(recoveryPath!));
+    }
+
     [Fact]
     public async Task InitializationCrashAfterSaveRetriesAsNoOp()
     {
@@ -645,6 +668,26 @@ public sealed class ProjectInitializationRecoveryTests : IDisposable
         try { Directory.Delete(_root, recursive: true); }
         catch (IOException) { }
         catch (UnauthorizedAccessException) { }
+    }
+
+    // The first open succeeds; every later one fails as a project whose writing system cannot be loaded.
+    private sealed class WritingSystemFailsAfterFirstLoadLoader(string project, bool partialSave, bool failFirst = false)
+        : FwDataProjectLoader
+    {
+        private int _loads;
+
+        public override LcmCache LoadCache(string fwDataFilePath, string? templatesFolder = null)
+        {
+            if (failFirst || _loads++ > 0)
+                throw SIL.Motif.Projection.ProjectWritingSystemsUnavailableException.MissingStore(fwDataFilePath);
+            return base.LoadCache(fwDataFilePath, templatesFolder);
+        }
+
+        public override void Save(LcmCache cache)
+        {
+            base.Save(cache);
+            if (partialSave) File.WriteAllText(project, "<languageproject><incomplete>");
+        }
     }
 
     private sealed class FailingSaveLoader(string project, bool corruptAfterSave) : FwDataProjectLoader
