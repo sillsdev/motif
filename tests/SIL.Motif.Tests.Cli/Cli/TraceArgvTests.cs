@@ -203,16 +203,28 @@ public sealed class TraceArgvTests(PristineProjectFixture pristine) : IDisposabl
     }
 
     [Fact]
-    public async Task TraceRenderer_RefusesLiveTraceWithoutBaseline()
+    public async Task TraceRenderer_RefusalShowsWorkingCaptureCommandAndCaptureEnablesTrace()
     {
         var project = pristine.CopyProjectFile();
 
-        var result = await CliProcess.RunAsync(_managedRoot, null, false,
+        var refusalResult = await CliProcess.RunAsync(_managedRoot, null, false,
             "trace", "--project", project, "--word", SeededProject.FirstForm, "--json");
 
-        Assert.Equal(FailureEnvelope.ExitCodeFor(FailureReason.Refused), result.ExitCode);
-        var refusal = ProjectionJson.Deserialize<FailureEnvelope>(result.Error)!;
+        Assert.Equal(FailureEnvelope.ExitCodeFor(FailureReason.Refused), refusalResult.ExitCode);
+        var refusal = ProjectionJson.Deserialize<FailureEnvelope>(refusalResult.Error)!;
         Assert.Equal("wordtrace.no-baseline", refusal.Code);
+        Assert.Contains("motif baseline capture --project <fwdata>", refusal.Message, StringComparison.Ordinal);
+
+        var captureResult = await CliProcess.RunAsync(_managedRoot, null, false,
+            "baseline", "capture", "--project", project, "--json");
+        Assert.True(captureResult.ExitCode == 0, captureResult.Error);
+        var baseline = ProjectionJson.Deserialize<BaselineCaptureResponse>(captureResult.Output)!;
+        ConfigureTracedParser(baseline);
+
+        var traceResult = await CliProcess.RunAsync(_managedRoot, null, false,
+            "trace", "--project", project, "--word", SeededProject.FirstForm, "--json");
+        Assert.True(traceResult.ExitCode == 0, traceResult.Error);
+        Assert.True(ProjectionJson.Deserialize<WordTraceResponse>(traceResult.Output)!.Parsed);
     }
 
     [Fact]
@@ -451,6 +463,12 @@ public sealed class TraceArgvTests(PristineProjectFixture pristine) : IDisposabl
         var project = pristine.CopyProjectFile();
         var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(project), _managedRoot);
         Assert.True(captured.Succeeded, captured.Refusal?.Message);
+        ConfigureTracedParser(captured.Value!);
+        return (project, captured.Value);
+    }
+
+    private void ConfigureTracedParser(BaselineCaptureResponse baseline)
+    {
         var seed = pristine.Seed;
         var stem = new JsonObject
         {
@@ -482,13 +500,12 @@ public sealed class TraceArgvTests(PristineProjectFixture pristine) : IDisposabl
             ["analysisId"] = "analysis-0", ["index"] = 0, ["surface"] = SeededProject.FirstForm,
             ["morphs"] = new JsonArray(stem),
         };
-        FakeParser.Behave(Path.GetDirectoryName(captured.Value!.FwDataPath)!, new
+        FakeParser.Behave(Path.GetDirectoryName(baseline.FwDataPath)!, new
         {
             traceSignature = "motifa|motifa",
             traceJson = tree.ToJsonString(),
             traceAnalyses = new[] { JsonDocument.Parse(analysis.ToJsonString()).RootElement },
         });
-        return (project, captured.Value);
     }
 
     // Identities the seed makes afresh each run become their names; times and digests become placeholders.

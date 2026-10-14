@@ -92,7 +92,7 @@ public static class WordTraceQuery
             {
                 return CommandOutcome<WordTraceResponse>.Refused(new Refusal(
                     "wordtrace.no-baseline", FailureReason.Refused,
-                    "The project has no Baseline yet. Run 'motif baseline capture <project>' before tracing a word."));
+                    "The project has no Baseline yet. Run 'motif baseline capture --project <fwdata>' before tracing a word."));
             }
 
             onProgress?.Invoke(new AssessmentProgress(AssessmentStage.Parsing, 0, 1, $"Tracing {request.Word}")
