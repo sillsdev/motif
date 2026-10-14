@@ -12,6 +12,37 @@ namespace SIL.Motif.Tests.Commands;
 
 public sealed class TraceEvidenceBoundaryTests
 {
+    [Theory]
+    [InlineData("missingCount")]
+    [InlineData("unboundCount")]
+    [InlineData("incomplete")]
+    [InlineData("invalidShape")]
+    [InlineData("parsed")]
+    public void SavedEmptyCountCannotReplaceUnknownIncompleteInvalidOrSuccessfulEvidence(string state)
+    {
+        var json = JsonNode.Parse(state == "parsed" ? TraceEnvelope.AnalysisRecords()
+            : TraceEnvelope.Of("-", null, capped: state == "incomplete", invalidShape: state == "invalidShape"))!;
+        var token = new SIL.Motif.Contract.Baselines.BaselineToken("project", "sha256:" + new string('a', 64),
+            "7", "2026-01-01T00:00:00Z", "sha256:" + new string('b', 64));
+        var capture = new TraceHostCapture("project", "grammar", null, token.BundleDigest,
+            DateTimeOffset.UnixEpoch, null, [])
+        {
+            Baseline = state == "unboundCount" ? null : new TraceBaselineSource(token,
+                DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch, "Saved source"),
+            LexiconEntryCount = state == "missingCount" ? null : 0,
+        };
+        json["hostCapture"] = JsonSerializer.SerializeToNode(capture,
+            new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+
+        var result = WordTraceQuery.LoadDiagnostic(json.ToJsonString());
+
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        Assert.DoesNotContain(result.Value!.Reading.NoParseReasons, reason => reason.Contains("lexicon has 0 entries"));
+        if (state == "invalidShape")
+            Assert.Equal([ParserRefusals.InvalidShape.Reason], result.Value.Reading.NoParseReasons);
+        if (state == "parsed") Assert.True(result.Value.Parsed);
+    }
+
     [Fact]
     public void AFoundStemIsNotExplainedAwayByZeroLookupsInOtherStrata()
     {
