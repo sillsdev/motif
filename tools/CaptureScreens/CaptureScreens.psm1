@@ -1,5 +1,6 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'MatrixBatches.ps1')
 
 function ConvertTo-MotifCaptureValues {
     param(
@@ -400,6 +401,16 @@ function New-MotifCaptureSheet {
     [void]$builder.AppendLine('.comparison{display:grid;grid-template-columns:1fr 1fr;gap:.4rem}.comparison figure{margin:0;min-width:0}.comparison figcaption{font-size:.8rem}')
     [void]$builder.AppendLine('</style></head><body>')
     [void]$builder.AppendLine('<h1>Motif capture review</h1>')
+    $completenessPath = Join-Path $output 'matrix/capture-completeness.json'
+    if (Test-Path -LiteralPath $completenessPath -PathType Leaf) {
+        $completeness = [IO.File]::ReadAllText($completenessPath) | ConvertFrom-Json -AsHashtable
+        $status = if ($completeness.complete) { 'Matrix capture complete' } else { 'Matrix capture incomplete' }
+        $runStatus = if ($completeness.success) { 'Screenshot runs passed.' } else { 'Capture command failed; inspect the batch logs and findings.' }
+        [void]$builder.Append('<p class="capture-status">').Append($status).Append(': ')
+        [void]$builder.Append($completeness.captured.Count).Append(' of ').Append($completeness.expected.Count)
+        [void]$builder.Append(' validated cells. ').Append($completeness.absent.Count).Append(' absent. ')
+        [void]$builder.Append($runStatus).AppendLine(' <a href="matrix/capture-completeness.json">Completeness inventory</a></p>')
+    }
     [void]$builder.AppendLine('<div class="toolbar"><label>Filter scenes <input id="scene-filter" type="search" placeholder="Scene name"></label><label><input id="findings-only" type="checkbox">Only cells with findings</label><label><input id="changed-only" type="checkbox">Only changed since previous</label></div>')
     foreach ($sceneGroup in $scenes) {
         $scene = [string]$sceneGroup.Name
@@ -541,4 +552,5 @@ updateSheet();
 
 Export-ModuleMember -Function ConvertTo-MotifCaptureValues, Get-MotifCaptureEnvironment,
     Resolve-MotifCaptureOutputPath, Clear-MotifCaptureOutput, Resolve-MotifCaptureLatest, Write-MotifCaptureLatest,
-    Set-MotifCaptureEnvironment, Restore-MotifCaptureEnvironment, New-MotifCaptureSheet
+    Set-MotifCaptureEnvironment, Restore-MotifCaptureEnvironment, New-MotifCaptureSheet, Split-MotifCaptureScenes, Read-MotifCapturePlan,
+    Save-MotifCaptureBatch, Merge-MotifCaptureBatches, Invoke-MotifAllCaptures

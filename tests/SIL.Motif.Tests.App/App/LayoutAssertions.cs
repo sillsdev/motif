@@ -27,7 +27,9 @@ internal static class LayoutAssertions
     private static readonly int[] Widths = [1040, 1240];
     private static readonly int[] Zooms = [100, 125, 150];
     private static readonly ThemeVariant[] Themes = [ThemeVariant.Light, ThemeVariant.Dark];
-    internal static void BeforeCapture(Window window)
+    internal static void BeforeCapture(Window window) => AssertCurrent(window);
+
+    internal static void AssertResponsiveLayouts(Window window)
     {
         var originalWidth = window.Width;
         var originalHeight = window.Height;

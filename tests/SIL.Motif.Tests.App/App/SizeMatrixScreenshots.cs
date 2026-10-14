@@ -37,6 +37,29 @@ public sealed class SizeMatrixScreenshots
         PageScreenshots.Views().Select(view => view.Name).Concat(AdditionalSceneNames).ToArray());
 
     [ScreenshotFact]
+    public void WriteCaptureMatrixPlan()
+    {
+        var root = Environment.GetEnvironmentVariable(ScreenshotFactAttribute.FolderVariable)!;
+        AvaloniaHeadlessPlatform.Invoke(() =>
+        {
+            var selection = MatrixCaptureSelection.Read(SceneNames);
+            var sizes = MatrixSizes.Read();
+            var plan = new
+            {
+                Scenes = SceneNames,
+                Sizes = sizes,
+                Points = selection.Points,
+            };
+            MatrixRun.WriteArtifact(Path.Combine(root, "matrix", "capture-plan.json"),
+                JsonSerializer.Serialize(plan, new JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                }));
+        });
+    }
+
+    [ScreenshotFact]
     public void CaptureScenesAtEveryMatrixSizeAndWriteAllFindings()
     {
         var root = Environment.GetEnvironmentVariable(ScreenshotFactAttribute.FolderVariable)!;
@@ -60,7 +83,9 @@ public sealed class SizeMatrixScreenshots
                     workspace.CurrentPage = page;
                     if (page == WorkspacePage.Texts && tab == TextsTab.AnalyzeTexts)
                         await AnalyzeTextsLayoutTests.SettleReaderAsync(workspace, window);
-                    await CaptureScene(run, window, scene, sizes, selection);
+                    await CaptureScene(run, window, workspace, scene,
+                        expectedPage: page, expectedTab: page == WorkspacePage.Texts ? tab : null,
+                        sizes: sizes, selection: selection);
                 }
 
                 if (selection.ContainsAny("settings-open", "settings-parsing"))
@@ -68,13 +93,15 @@ public sealed class SizeMatrixScreenshots
                     workspace.CurrentPage = WorkspacePage.Overview;
                     var settings = OpenSettings(window);
                     if (selection.Contains("settings-open"))
-                        await CaptureScene(run, window, "settings-open", sizes, selection);
+                        await CaptureScene(run, window, workspace, "settings-open",
+                            expectedPage: WorkspacePage.Overview, expectedTab: null, sizes: sizes, selection: selection);
                     if (selection.Contains("settings-parsing"))
                     {
                         var model = Assert.IsType<SettingsViewModel>(settings.DataContext);
                         model.SelectGroup(SettingsGroup.Parsing);
                         PageScreenshots.Settle(window);
-                        await CaptureScene(run, window, "settings-parsing", sizes, selection);
+                        await CaptureScene(run, window, workspace, "settings-parsing",
+                            expectedPage: WorkspacePage.Overview, expectedTab: null, sizes: sizes, selection: selection);
                     }
                     HeadlessClick.Click(window, settings.FindControl<Button>("SettingsClose")!, "Leave Settings");
                 }
@@ -83,7 +110,8 @@ public sealed class SizeMatrixScreenshots
                 {
                     workspace.CurrentPage = WorkspacePage.Overview;
                     OpenRecentProjects(window);
-                    await CaptureScene(run, window, "open-recent-projects", sizes, selection);
+                    await CaptureScene(run, window, workspace, "open-recent-projects",
+                        expectedPage: WorkspacePage.Overview, expectedTab: null, sizes: sizes, selection: selection);
                     CloseRecentProjects(window);
                 }
 
@@ -92,7 +120,8 @@ public sealed class SizeMatrixScreenshots
                     workspace.CurrentPage = WorkspacePage.TryAWord;
                     await PageScreenshots.TryTheSampleWord(workspace);
                     workspace.Assess.Trace.IsExpert = true;
-                    await CaptureScene(run, window, "try-a-word-traced-expert", sizes, selection);
+                    await CaptureScene(run, window, workspace, "try-a-word-traced-expert",
+                        expectedPage: WorkspacePage.TryAWord, expectedTab: null, sizes: sizes, selection: selection);
                     workspace.Assess.Trace.IsExpert = false;
                 }
             }
@@ -120,14 +149,16 @@ public sealed class SizeMatrixScreenshots
                         PageScreenshots.Settle(advancedWindow);
                         Assert.True(advancedWorkspace.PageModel<AssistantConnectionsPageModel>().IsEnabled);
                         Assert.True(advancedMode.IsChecked);
-                        await CaptureScene(run, advancedWindow, "ai-assistants-advanced", sizes, selection);
+                        await CaptureScene(run, advancedWindow, advancedWorkspace, "ai-assistants-advanced",
+                            expectedPage: WorkspacePage.AiAssistants, expectedTab: null, sizes: sizes, selection: selection);
                     }
                     if (selection.Contains("parsimony-enabled"))
                     {
                         advancedWorkspace.CurrentPage = WorkspacePage.Parsimony;
                         await ParsimonyStateScreenshots.DriveAsync("listed-evidence",
                             advancedWorkspace.PageModel<ParsimonyPageModel>());
-                        await CaptureScene(run, advancedWindow, "parsimony-enabled", sizes, selection);
+                        await CaptureScene(run, advancedWindow, advancedWorkspace, "parsimony-enabled",
+                            expectedPage: WorkspacePage.Parsimony, expectedTab: null, sizes: sizes, selection: selection);
                     }
                 }
                 finally
@@ -144,8 +175,10 @@ public sealed class SizeMatrixScreenshots
                     parse: false, leaveSetupOpen: true);
                 try
                 {
+                    setupWorkspace.CurrentPage = WorkspacePage.Overview;
                     Assert.NotNull(setupWorkspace.Context.Setup);
-                    await CaptureScene(run, setupWindow, "first-run-setup-first-step", sizes, selection);
+                    await CaptureScene(run, setupWindow, setupWorkspace, "first-run-setup-first-step",
+                        expectedPage: WorkspacePage.Overview, expectedTab: null, sizes: sizes, selection: selection);
                 }
                 finally { setupWindow.Close(); }
             }
@@ -157,6 +190,7 @@ public sealed class SizeMatrixScreenshots
                     configure: (fake, _) => fake.CurrentBaselineRefusesWith(SampleStoreRefusal()));
                 try
                 {
+                    refusedWorkspace.CurrentPage = WorkspacePage.Overview;
                     Assert.True(refusedWorkspace.HasRefreshRefusal);
                     var refusal = Assert.Single(refusedWindow.GetLogicalDescendants().OfType<RefusalBlock>(),
                         block => AutomationProperties.GetName(block) == "Refresh refusal");
@@ -164,7 +198,8 @@ public sealed class SizeMatrixScreenshots
                     var delete = FindStoreDeletionButton(refusal.GetLogicalDescendants().OfType<Button>());
                     Assert.True(delete.IsEffectivelyVisible);
                     Assert.True(delete.IsEffectivelyEnabled);
-                    await CaptureScene(run, refusedWindow, "refused-store-delete-action", sizes, selection);
+                    await CaptureScene(run, refusedWindow, refusedWorkspace, "refused-store-delete-action",
+                        expectedPage: WorkspacePage.Overview, expectedTab: null, sizes: sizes, selection: selection);
                 }
                 finally { refusedWindow.Close(); }
             }
@@ -179,7 +214,8 @@ public sealed class SizeMatrixScreenshots
                     reviewWorkspace.CurrentPage = WorkspacePage.Review;
                     PageScreenshots.Settle(reviewWindow);
                     Assert.NotEmpty(reviewWorkspace.PageModel<ReviewPageModel>().ReviewEntries);
-                    await CaptureScene(run, reviewWindow, "review-pending-changes", sizes, selection);
+                    await CaptureScene(run, reviewWindow, reviewWorkspace, "review-pending-changes",
+                        expectedPage: WorkspacePage.Review, expectedTab: null, sizes: sizes, selection: selection);
                 }
                 finally { reviewWindow.Close(); }
             }
@@ -190,7 +226,9 @@ public sealed class SizeMatrixScreenshots
         ExpectedMatrixFindings.AssertNoUnexpected(run.Findings, requireAllExpected: true, selection);
     }
 
-    private static async Task CaptureScene(MatrixRun run, MainWindow window, string scene,
+    /// <summary>Saves one selected scene across its matrix points after checking its explicit page and tab route.</summary>
+    internal static async Task CaptureScene(MatrixRun run, MainWindow window, WorkspaceShellViewModel workspace,
+        string scene, WorkspacePage expectedPage, TextsTab? expectedTab,
         IReadOnlyList<MatrixSize> sizes, MatrixCaptureSelection selection)
     {
         foreach (var point in selection.Points)
@@ -203,8 +241,10 @@ public sealed class SizeMatrixScreenshots
             var context = new LayoutFindingContext(scene, size.Name, point.Zoom, point.Theme);
             var findings = ReachabilityAssertions.Inspect(window, context);
             var file = $"{scene}-{size.Name}-{point.Zoom}-{point.Theme}.png";
-            SaveFrame(window, Path.Combine(run.MatrixFolder, file));
+            MatrixCaptureState.SaveFrame(window, workspace, expectedPage, expectedTab,
+                Path.Combine(run.MatrixFolder, file));
             run.AddCapture(file, scene, size, point.Zoom, point.Theme, findings);
+            run.WriteArtifacts();
         }
 
         await Task.Yield();
@@ -263,13 +303,6 @@ public sealed class SizeMatrixScreenshots
         window.Height = size.Height;
     }
 
-    private static void SaveFrame(MainWindow window, string path)
-    {
-        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        using var frame = window.CaptureRenderedFrame()
-            ?? throw new InvalidOperationException($"No frame rendered for {path}.");
-        frame.Save(path, PngBitmapEncoderOptions.Default);
-    }
 }
 
 internal sealed record MatrixSize(string Name, double Width, double Height);
@@ -433,29 +466,7 @@ internal static class ExpectedMatrixFindings
     [
         new("1-overview", "text-own-box-overflow", new("CopyableTextBlock", Name: "motif-overview-selection-label"), null, [new("half", 150, "light")], "The overview subtitle is wider than its text box at this zoom.", "matrix/1-overview-half-150-light.png",
             "V09", "overview subtitle wider than its text box", "LD"),
-        new("2a-texts-matrix", "page-horizontal-scroll", new("Grid", Name: "motif-matrix-words-grid"), null, [new("thin", 100, "light"), new("half", 100, "light"), new("half", 150, "light"), new("thin", 100, "dark")], "The results table extends beyond the page body at these sizes.", "matrix/2a-texts-matrix-thin-100-light.png",
-            "V05", "result table wider than the page", "LD"),
-        new("2a-texts-matrix", "unreachable-control", new("Button", Name: "motif-word-open-in-text"), null, [new("thin", 100, "light"), new("half", 100, "light"), new("full", 100, "light"), new("short", 100, "light"), new("half", 150, "light"), new("thin", 100, "dark"), new("full", 100, "dark")], "Result controls extend beyond the visible window or their scrollable content.", "matrix/2a-texts-matrix-thin-100-light.png",
-            "V35", "word row Next action off-screen", "UF"),
-        new("2a-texts-matrix", "unreachable-control", new("Button", Name: "motif-word-try-a-word"), null, [new("thin", 100, "light"), new("half", 100, "light"), new("full", 100, "light"), new("short", 100, "light"), new("half", 150, "light"), new("thin", 100, "dark"), new("full", 100, "dark")], "Result controls extend beyond the visible window or their scrollable content.", "matrix/2a-texts-matrix-thin-100-light.png",
-            "V35", "word row Next action off-screen", "UF"),
-        new("2c-texts-lists", "page-horizontal-scroll", new("WordListSlot", Name: "motif-lists-words-slot"), null, [new("thin", 100, "light"), new("half", 150, "light"), new("thin", 100, "dark")], "The word list keeps columns wider than the page at these sizes.", "matrix/2c-texts-lists-thin-100-light.png",
-            "V05", "result table wider than the page", "LD"),
-        new("2c-texts-lists", "page-horizontal-scroll", new("Grid", Name: "motif-lists-words-grid"), null, [new("thin", 100, "light"), new("half", 150, "light"), new("thin", 100, "dark")], "The word list extends beyond the page body at these sizes.", "matrix/2c-texts-lists-thin-100-light.png",
-            "V05", "result table wider than the page", "LD"),
-        new("2c-texts-lists", "unreachable-control", new("Button", Name: "motif-word-open-in-text"), null, [new("thin", 100, "light"), new("half", 100, "light"), new("full", 100, "light"), new("short", 100, "light"), new("half", 150, "light"), new("thin", 100, "dark"), new("full", 100, "dark")], "Result controls extend beyond the visible window or their scrollable content.", "matrix/2c-texts-lists-thin-100-light.png",
-            "V35", "word row Next action off-screen", "UF"),
-        new("2c-texts-lists", "unreachable-control", new("Button", Name: "motif-word-try-a-word"), null, [new("thin", 100, "light"), new("half", 100, "light"), new("full", 100, "light"), new("short", 100, "light"), new("half", 150, "light"), new("thin", 100, "dark"), new("full", 100, "dark")], "Result controls extend beyond the visible window or their scrollable content.", "matrix/2c-texts-lists-thin-100-light.png",
-            "V35", "word row Next action off-screen", "UF"),
-        new("4-timing", "unreachable-control", new("Button", Name: "motif-word-open-in-text"), null, [new("thin", 100, "light"), new("half", 100, "light"), new("full", 100, "light"), new("short", 100, "light"), new("half", 150, "light"), new("thin", 100, "dark"), new("full", 100, "dark")], "Result controls extend beyond the visible window or their scrollable content.", "matrix/4-timing-thin-100-light.png",
-            "V35", "word row Next action off-screen", "UF"),
-        new("4-timing", "unreachable-control", new("Button", Name: "motif-word-try-a-word"), null, [new("thin", 100, "light"), new("half", 100, "light"), new("full", 100, "light"), new("short", 100, "light"), new("half", 150, "light"), new("thin", 100, "dark"), new("full", 100, "dark")], "Result controls extend beyond the visible window or their scrollable content.", "matrix/4-timing-thin-100-light.png",
-            "V35", "word row Next action off-screen", "UF"),
-        new("4-timing", "page-horizontal-scroll", new("Grid", Name: "motif-timing-words-grid"), null, [new("half", 150, "light")], "The timing table extends beyond the page body at this zoom.", "matrix/4-timing-half-150-light.png",
-            "V18", "timing table wider than the page", "LD"),
-        new("6-review", "page-horizontal-scroll", new("WordListSlot", Name: "motif-review-words-slot"), null, [new("half", 150, "light")], "The review list keeps columns wider than the page at this zoom.", "matrix/6-review-half-150-light.png",
-            "V05", "result table wider than the page", "LD"),
-        new("6-review", "page-horizontal-scroll", new("Grid", Name: "motif-review-words-grid"), null, [new("half", 150, "light")], "The review list extends beyond the page body at this zoom.", "matrix/6-review-half-150-light.png",
+        new("2c-texts-lists", "page-horizontal-scroll", new("WordListSlot", Name: "motif-lists-words-slot"), null, [new("thin", 100, "light"), new("thin", 150, "light"), new("half", 150, "light"), new("thin", 100, "dark")], "The word list keeps columns wider than the page at these sizes.", "matrix/2c-texts-lists-thin-100-light.png",
             "V05", "result table wider than the page", "LD"),
         new("open-recent-projects", "popup-outside-window", new("FlyoutPresenter", Name: "motif-project-menu-flyout"), null, [new("thin", 100, "light"), new("half", 100, "light"), new("full", 100, "light"), new("short", 100, "light"), new("half", 150, "light"), new("thin", 100, "dark"), new("full", 100, "dark")], "The recent-project menu overlaps the top bar at these sizes.", "matrix/open-recent-projects-thin-100-light.png",
             "V25", "recent-projects menu overlaps the top bar", "UF"),
@@ -474,7 +485,29 @@ internal static class ExpectedMatrixFindings
         new("review-pending-changes", "unreachable-control", new("Button", Name: "motif-word-try-a-word"), null, [new("thin", 100, "light"), new("half", 100, "light"), new("full", 100, "light"), new("short", 100, "light"), new("half", 150, "light"), new("thin", 100, "dark"), new("full", 100, "dark")], "Pending change actions extend beyond the visible review area.", "matrix/review-pending-changes-thin-100-light.png",
             "V35", "word row Next action off-screen", "UF"),
         new("review-pending-changes", "unreachable-control", new("Button", Name: "motif-word-undo-change"), null, [new("thin", 100, "light"), new("half", 100, "light"), new("half", 150, "light"), new("thin", 100, "dark")], "Pending change actions extend beyond the visible review area.", "matrix/review-pending-changes-thin-100-light.png",
-            "V03", "review panel text and actions overlap", "LD"),
+            "V03", "review panel text and actions overlap", "LD"),        new("2a-texts-matrix", "unreachable-control", new("WordRow", Name: "motif-word-row-matrix-alikula-row"), null, [new("thin", 100, "light"), new("thin", 150, "light"), new("half", 150, "light")], "Word rows with always-visible actions are wider than the results viewport and its scroll route.", "matrix/2a-texts-matrix-thin-100-light.png",
+            "H01", "matrix word row beyond its scroll route", "Analyze texts"),
+        new("2a-texts-matrix", "unreachable-control", new("WordRow", Name: "motif-word-row-matrix-anapenda-row"), null, [new("thin", 100, "light")], "Word rows with always-visible actions are wider than the results viewport and its scroll route.", "matrix/2a-texts-matrix-thin-100-light.png",
+            "H01", "matrix word row beyond its scroll route", "Analyze texts"),
+        new("2a-texts-matrix", "unreachable-control", new("RepeatButton", Name: "PART_PageDownButton"), null, [new("thin", 150, "light"), new("half", 150, "light")], "The results list's page-down region sits outside the page body at this zoom.", "matrix/2a-texts-matrix-thin-150-light.png",
+            "H01", "matrix scroll bar outside the page body", "Analyze texts"),
+        new("2c-texts-lists", "unreachable-control", new("WordRow", Name: "motif-word-row-lists-hawajafika-row"), null, [new("thin", 100, "light"), new("thin", 150, "light"), new("half", 150, "light")], "Word rows with always-visible actions are wider than the list viewport and its scroll route.", "matrix/2c-texts-lists-thin-100-light.png",
+            "H02", "list word row beyond its scroll route", "Analyze texts"),
+        new("2c-texts-lists", "unreachable-control", new("Button", Name: "motif-handoff-list"), null, [new("thin", 150, "light")], "The list's AI Handoff action sits beyond the narrow page at this zoom.", "matrix/2c-texts-lists-thin-150-light.png",
+            "H02", "list handoff action beyond the page", "Analyze texts"),
+        new("3-try-a-word", "unreachable-control", new("ListBoxItem", Classes: ""), null, [new("thin", 100, "light"), new("thin", 150, "light"), new("short", 100, "light"), new("half", 150, "light")], "Recorded attempts sit below the compact result without a scroll route.", "matrix/3-try-a-word-thin-100-light.png",
+            "H03", "attempt row without a scroll route", "Try a Word"),
+        new("3-try-a-word", "unreachable-control", new("StackPanel", Classes: "morphemePanelPart.morphemePanelPartLast.hoverReveal.morphemePanelInspectable"), null, [new("thin", 100, "light"), new("thin", 150, "light"), new("short", 100, "light"), new("half", 150, "light")], "An attempt's inspectable morpheme sits below the compact result without a scroll route.", "matrix/3-try-a-word-thin-100-light.png",
+            "H03", "attempt morpheme without a scroll route", "Try a Word"),
+        new("4-timing", "unreachable-control", new("WordRow", Name: "motif-word-row-timing-rule-words-mwalimu-row"), null, [new("thin", 100, "light"), new("thin", 150, "light"), new("half", 150, "light")], "The costliest rule's word rows sit beyond the Timing page's scroll route.", "matrix/4-timing-thin-100-light.png",
+            "H04", "timing rule word row beyond its scroll route", "Frame"),
+        new("7-ai-handoff", "unreachable-control", new("ToggleButton", Name: "ExpanderHeader"), null, [new("thin", 100, "light")], "The handoff's expander header sits beyond the page's scroll route in a narrow window.", "matrix/7-ai-handoff-thin-100-light.png",
+            "H05", "handoff expander beyond its scroll route", "AI pages"),
+        new("7-ai-handoff", "unreachable-control", new("Button", Classes: ""), null, [new("thin", 150, "light")], "The handoff file copy actions sit beyond the page's scroll route at this zoom.", "matrix/7-ai-handoff-thin-150-light.png",
+            "H05", "handoff copy actions beyond their scroll route", "AI pages"),
+        new("10-settings", "unreachable-control", new("RepeatButton", Name: "PART_PageUpButton"), null, [new("thin", 100, "light"), new("thin", 150, "light"), new("short", 100, "light"), new("half", 150, "light")], "The Settings list's page-up region has no height when the list is at its top.", "matrix/10-settings-thin-100-light.png",
+            "H06", "settings scroll bar page-up region without height", "Frame / Settings"),
+
     ];
 
     internal static void AssertNoUnexpected(IEnumerable<LayoutFinding> source, bool requireAllExpected,
@@ -544,7 +577,7 @@ internal sealed class MatrixRun(string root)
     internal void WriteArtifacts()
     {
         Directory.CreateDirectory(MatrixFolder);
-        File.WriteAllText(Path.Combine(MatrixFolder, "findings.json"),
+        WriteArtifact(Path.Combine(MatrixFolder, "findings.json"),
             JsonSerializer.Serialize(_findingEntries, JsonOptions));
         var csv = new StringBuilder("file,scene,size,width,height,zoom,theme,findings\n");
         foreach (var entry in _index)
@@ -554,7 +587,22 @@ internal sealed class MatrixRun(string root)
                 .Append(entry.Height.ToString(CultureInfo.InvariantCulture)).Append(',')
                 .Append(entry.Zoom.ToString(CultureInfo.InvariantCulture)).Append(',').Append(Csv(entry.Theme)).Append(',')
                 .Append(entry.Findings.ToString(CultureInfo.InvariantCulture)).Append('\n');
-        File.WriteAllText(Path.Combine(MatrixFolder, "index.csv"), csv.ToString());
+        WriteArtifact(Path.Combine(MatrixFolder, "index.csv"), csv.ToString());
+    }
+
+    internal static void WriteArtifact(string path, string content)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        var temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        try
+        {
+            File.WriteAllText(temporary, content, new UTF8Encoding(false));
+            File.Move(temporary, path, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporary)) File.Delete(temporary);
+        }
     }
 
     private static string Csv(string value) => "\"" + value.Replace("\"", "\"\"") + "\"";

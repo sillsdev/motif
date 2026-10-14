@@ -6,7 +6,7 @@ Captures the layout size matrix, then builds the contact sheet and the pixel dif
 By default the size matrix captures each scene in 7 cells: thin, half, full and short at 100% light; half at
 150% light; and thin and full at 100% dark. -All captures every scene at all 4 sizes x 2 zooms (100, 150) x
 2 themes. -All may fail on real defects in cells the expected-findings list does not name, and it still
-writes the PNGs, findings.json and the contact sheet, so a failing run is still a complete capture.
+retains PNGs and findings. capture-completeness.json reports missing cells and batch failures.
 -Scenes, -Sizes, -Zooms and -Themes narrow the default run and cannot be combined with -All.
 
 .PARAMETER Scenes
@@ -107,18 +107,30 @@ else {
     Initialize-MotifToolEnvironment -RepoRoot $repoRoot
     $oldCaptureEnvironment = Set-MotifCaptureEnvironment -Values $captureEnvironment
     try {
-        $testFilter = if ($All) {
-            'FullyQualifiedName~Screenshot'
-        } else {
-            'FullyQualifiedName~SizeMatrixScreenshots'
-        }
         $testScript = Join-Path $repoRoot 'test.ps1'
         Write-Host "Capturing to $outputDirectory"
-        Write-Host "Running: pwsh ./test.ps1 -All -Project SIL.Motif.Tests.App -Configuration $Configuration -Filter '$testFilter'"
-        & pwsh -NoProfile -File $testScript -All -Project 'SIL.Motif.Tests.App' `
-            -Configuration $Configuration -Filter $testFilter
-        if ($LASTEXITCODE -ne 0) {
-            $testFailure = "Screenshot test run failed with exit code $LASTEXITCODE."
+        if ($All) {
+            $runner = {
+                param($Filter, $Log)
+                Write-Host "Running: pwsh ./test.ps1 -All -Project SIL.Motif.Tests.App -Configuration $Configuration -Filter '$Filter'"
+                & pwsh -NoProfile -File $testScript -All -Project 'SIL.Motif.Tests.App' `
+                    -Configuration $Configuration -Filter $Filter 2>&1 | Tee-Object -FilePath $Log -Append | Out-Host
+                return $LASTEXITCODE
+            }
+            $completeness = Invoke-MotifAllCaptures -OutputDirectory $outputDirectory -RunTests $runner
+            Write-Host "Matrix: $($completeness.captured.Count)/$($completeness.expected.Count) validated cells; complete=$($completeness.complete)."
+            if (-not $completeness.success) {
+                $testFailure = "All capture failed. Completeness: $(Join-Path $outputDirectory 'matrix/capture-completeness.json')."
+            }
+        }
+        else {
+            $testFilter = 'FullyQualifiedName~SizeMatrixScreenshots.CaptureScenesAtEveryMatrixSizeAndWriteAllFindings'
+            Write-Host "Running: pwsh ./test.ps1 -All -Project SIL.Motif.Tests.App -Configuration $Configuration -Filter '$testFilter'"
+            & pwsh -NoProfile -File $testScript -All -Project 'SIL.Motif.Tests.App' `
+                -Configuration $Configuration -Filter $testFilter
+            if ($LASTEXITCODE -ne 0) {
+                $testFailure = "Screenshot test run failed with exit code $LASTEXITCODE."
+            }
         }
     }
     finally {

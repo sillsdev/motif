@@ -193,7 +193,8 @@ internal static class CaptureDiff
         ? StringComparer.OrdinalIgnoreCase
         : StringComparer.Ordinal;
 
-    private static StringComparison PathComparison(OSPlatform platform) => platform == OSPlatform.Windows || platform == OSPlatform.OSX
+    private static StringComparison PathComparison(OSPlatform platform) =>
+        platform == OSPlatform.Windows || platform == OSPlatform.OSX
         ? StringComparison.OrdinalIgnoreCase
         : StringComparison.Ordinal;
 

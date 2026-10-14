@@ -109,16 +109,22 @@ public sealed class PageScreenshots
                     if (page == WorkspacePage.Texts && tab == TextsTab.AnalyzeTexts)
                         await AnalyzeTextsLayoutTests.SettleReaderAsync(workspace, window);
                     AssertSceneHasExpectedErrorState(window, workspace, name);
-                    Save(window, Path.Combine(folder, $"{name}-{width}-{theme}.png"));
+                    SavePageFrame(window, workspace, expectedPage: page,
+                        expectedTab: page == WorkspacePage.Texts ? tab : null,
+                        path: Path.Combine(folder, $"{name}-{width}-{theme}.png"));
                     if (page != WorkspacePage.TryAWord) continue;
                     window.Height = 1500;
                     AssertSceneHasExpectedErrorState(window, workspace, $"{name} tall");
-                    Save(window, Path.Combine(folder, $"{name}-{width}-{theme}-tall.png"));
+                    SavePageFrame(window, workspace, expectedPage: page,
+                        expectedTab: page == WorkspacePage.Texts ? tab : null,
+                        path: Path.Combine(folder, $"{name}-{width}-{theme}-tall.png"));
                     foreach (var height in new[] { 780, 1500 })
                     {
                         workspace.Assess.Trace.IsExpert = true;
                         window.Height = height;
-                        Save(window, Path.Combine(folder, $"{name}-expert-{width}-{theme}-{height}.png"));
+                        SavePageFrame(window, workspace, expectedPage: page,
+                            expectedTab: page == WorkspacePage.Texts ? tab : null,
+                            path: Path.Combine(folder, $"{name}-expert-{width}-{theme}-{height}.png"));
                     }
                     workspace.Assess.Trace.IsExpert = false;
                     window.Height = 780;
@@ -764,6 +770,21 @@ public sealed class PageScreenshots
     {
         Settle(window);
         LayoutAssertions.BeforeCapture(window);
+        SaveRenderedFrame(window, path);
+    }
+
+    /// <summary>Checks the explicit page route immediately before saving a standard page capture.</summary>
+    internal static void SavePageFrame(MainWindow window, WorkspaceShellViewModel workspace,
+        WorkspacePage expectedPage, TextsTab? expectedTab, string path)
+    {
+        Settle(window);
+        LayoutAssertions.BeforeCapture(window);
+        MatrixCaptureState.Assert(window, workspace, expectedPage, expectedTab);
+        SaveRenderedFrame(window, path);
+    }
+
+    private static void SaveRenderedFrame(MainWindow window, string path)
+    {
         using var frame = window.CaptureRenderedFrame() ?? throw new InvalidOperationException($"No frame rendered for {path}.");
         frame.Save(path, PngBitmapEncoderOptions.Default);
     }
@@ -838,9 +859,11 @@ public sealed class PageScreenshots
         if (!parse) fake.OverviewCompletesWith(EmptyOverview());
         var readerFixture = capturedWords is null ? SampleReaderFixture(parse) :
             StoredSelectionFixture.FromDisplayRecords(capturedWords, Token());
-        var inventory = TextInventoryQuery.Query(new TextInventoryRequest(readerFixture.ProjectPath));
+        var inventory = TextInventoryQuery.Query(new(readerFixture.ProjectPath));
+        if (!inventory.Succeeded || inventory.Value is null) readerFixture.Dispose();
         Assert.True(inventory.Succeeded, inventory.Refusal?.Message);
-        fake.ListTextsCompletesWith(inventory.Value!);
+        Assert.NotNull(inventory.Value);
+        fake.ListTextsCompletesWith(inventory.Value);
         configure?.Invoke(fake, capturedAssessment ?? Assessment());
         if (parse && capturedWords is not null) readerFixture.RecordAssessment(capturedAssessment ?? Assessment());
         fake.SelectionReaderHandler = readerFixture.OpenAsync;

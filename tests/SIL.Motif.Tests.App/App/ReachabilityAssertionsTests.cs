@@ -172,12 +172,30 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
         });
     }
 
-    [Theory]
-    [InlineData(0, 160, ScrollBarVisibility.Disabled, false)]
-    [InlineData(0, 160, ScrollBarVisibility.Auto, true)]
-    [InlineData(180, 10, ScrollBarVisibility.Disabled, true)]
-    public void NestedScrollRoutesMustResolveTheViewportThatClipsTheControl(
-        double innerTop, double buttonTop, ScrollBarVisibility innerScrolling, bool expectedReachable)
+    [Fact]
+    public void AControlBelowAFixedInnerViewportIsUnreachableEvenWhenTheOuterViewerScrolls() =>
+        WithNestedViewers(innerTop: 0, buttonTop: 160, ScrollBarVisibility.Disabled, (window, button, inner, outer) =>
+        {
+            var viewport = Assert.Single(inner.GetVisualDescendants().OfType<ScrollContentPresenter>());
+            Assert.True(button.TranslatePoint(default, viewport)!.Value.Y >= viewport.Bounds.Height);
+            Assert.False(ReachabilityAssertions.IsReachable(button, window));
+        });
+
+    [Fact]
+    public void AControlBelowAnInnerViewportIsReachableWhenThatViewerScrolls() =>
+        WithNestedViewers(innerTop: 0, buttonTop: 160, ScrollBarVisibility.Auto, (window, button, inner, outer) =>
+            Assert.True(ReachabilityAssertions.IsReachable(button, window)));
+
+    [Fact]
+    public void AControlInsideAFixedInnerViewportIsReachableWhenTheOuterViewerScrollsItIn() =>
+        WithNestedViewers(innerTop: 180, buttonTop: 10, ScrollBarVisibility.Disabled, (window, button, inner, outer) =>
+        {
+            Assert.True(inner.TranslatePoint(default, outer)!.Value.Y >= outer.Viewport.Height);
+            Assert.True(ReachabilityAssertions.IsReachable(button, window));
+        });
+
+    private void WithNestedViewers(double innerTop, double buttonTop, ScrollBarVisibility innerScrolling,
+        Action<Window, Button, ScrollViewer, ScrollViewer> check)
     {
         avalonia.Invoke(() =>
         {
@@ -186,7 +204,6 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
             var inner = new ScrollViewer
             {
                 Width = 110, Height = 60,
-                ClipToBounds = false,
                 HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
                 VerticalScrollBarVisibility = innerScrolling,
                 Content = new Canvas { Width = 110, Height = 200, Children = { button } },
@@ -204,18 +221,8 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
             {
                 window.Show();
                 PageScreenshots.Settle(window);
-
-                var viewport = Assert.Single(inner.GetVisualDescendants().OfType<ScrollContentPresenter>());
-                viewport.Height = 60;
-                PageScreenshots.Settle(window);
-                Assert.True(viewport.ClipToBounds);
-                if (buttonTop == 160)
-                    Assert.True(button.TranslatePoint(default, viewport)!.Value.Y >= viewport.Bounds.Height,
-                        $"Button at {button.TranslatePoint(default, viewport)}; viewport={viewport.Bounds}.");
-                else
-                    Assert.True(inner.TranslatePoint(default, outer)!.Value.Y >= outer.Viewport.Height);
                 Assert.True(outer.Extent.Height > outer.Viewport.Height + ReachabilityAssertions.Tolerance);
-                Assert.Equal(expectedReachable, ReachabilityAssertions.IsReachable(button, window));
+                check(window, button, inner, outer);
             }
             finally { window.Close(); }
         });

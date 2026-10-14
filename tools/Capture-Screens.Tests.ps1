@@ -164,6 +164,8 @@ try {
     Assert-CaptureEqual $html.Contains('matrix/overview-thin-100-light.png') $true 'new matrix capture is indexed'
 
     Write-Host "Capture-Screens regression checks passed: $passed assertions." -ForegroundColor Green
+    & pwsh -NoProfile -File (Join-Path $PSScriptRoot 'Capture-Screens.All.Tests.ps1')
+    if ($LASTEXITCODE -ne 0) { throw "Capture-All regression checks failed with exit code $LASTEXITCODE." }
 }
 finally {
     Remove-Item -LiteralPath $fixtureRoot -Recurse -Force -ErrorAction SilentlyContinue
