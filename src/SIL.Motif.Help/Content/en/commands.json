@@ -329,6 +329,16 @@
     "description": "Changes which existing category slots an inflectional affix MSA uses. Other MSA kinds and slots outside the category hierarchy are refused; Motif stages a Draft and never Applies it automatically. Only a person can Apply.",
     "source": "Hand-written from command behavior."
   },
+  "compose-edit-part-of-speech-inflection-class-default": {
+    "title": "Set a category class default",
+    "description": "Sets or clears a part of speech's explicit default inflection class after checking the expected current reference. Clearing can reveal an inherited default; Motif stages a Draft for a person to review and Apply.",
+    "source": "Hand-written from the closed intent and composer contract."
+  },
+  "compose-edit-affix-inflection-classes": {
+    "title": "Edit affix class restrictions",
+    "description": "Replaces an ordinary inflectional prefix, suffix or interfix's exact class restriction set after checking the expected current ids. An empty set removes the restriction; Motif stages a Draft for a person to review and Apply.",
+    "source": "Hand-written from the closed intent and composer contract."
+  },
   "compose-edit-allomorph-condition": {
     "title": "Edit an allomorph condition",
     "description": "Changes the environment references on one existing stem or affix allomorph after checking its current list. Shared environments remain unchanged for every other allomorph that uses them. Only a person can Apply.",

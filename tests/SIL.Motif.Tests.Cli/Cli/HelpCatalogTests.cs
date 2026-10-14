@@ -80,6 +80,8 @@ public sealed class HelpCatalogTests
                      "compose-author-lexical-entry",
                      "compose-author-alternate-form",
                      "compose-edit-allomorph-condition",
+                     "compose-edit-part-of-speech-inflection-class-default",
+                     "compose-edit-affix-inflection-classes",
                      "order-allomorphs",
                      "compose-batch",
                  })

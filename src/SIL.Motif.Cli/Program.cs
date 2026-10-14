@@ -285,6 +285,8 @@ try
         case "compose-author-affix-template":
         case "compose-edit-natural-class":
         case "compose-relink-natural-class":
+        case "compose-edit-part-of-speech-inflection-class-default":
+        case "compose-edit-affix-inflection-classes":
             if (!flags.TryGetValue("draft", out var soundDraft) ||
                 !flags.TryGetValue("project", out var soundProject) ||
                 !flags.TryGetValue("intent", out var soundIntent))
@@ -315,6 +317,11 @@ try
                 "compose-edit-natural-class" => ProposalCommands.ComposeEditNaturalClass(
                     new(soundProject, CliProductVersion(), soundDraft, soundIntent)),
                 "compose-relink-natural-class" => ProposalCommands.ComposeRelinkNaturalClass(
+                    new(soundProject, CliProductVersion(), soundDraft, soundIntent)),
+                "compose-edit-part-of-speech-inflection-class-default" =>
+                    ProposalCommands.ComposeEditPartOfSpeechInflectionClassDefault(
+                        new(soundProject, CliProductVersion(), soundDraft, soundIntent)),
+                "compose-edit-affix-inflection-classes" => ProposalCommands.ComposeEditAffixInflectionClasses(
                     new(soundProject, CliProductVersion(), soundDraft, soundIntent)),
                 _ => ProposalCommands.ComposeAuthorEnvironment(new(soundProject, CliProductVersion(), soundDraft, soundIntent)),
             });

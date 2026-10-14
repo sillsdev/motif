@@ -115,6 +115,12 @@ public static partial class ProposalCommands
                 EditInflectionalAffixComposer.Build(cache, EditInflectionalAffixIntentParser.Parse(input)),
             ReplacePrevious: (input, operation) => ReplacesTarget(input, operation,
                 MoInflAffMsaSlotsOperationKinds.AddRefSlots, MoInflAffMsaSlotsOperationKinds.RemoveRefSlots)),
+        new("compose-edit-part-of-speech-inflection-class-default", "EditPartOfSpeechInflectionClassDefault",
+            (cache, input, _) => EditPartOfSpeechInflectionClassDefaultComposer.Build(cache,
+                EditPartOfSpeechInflectionClassDefaultIntentParser.Parse(input))),
+        new("compose-edit-affix-inflection-classes", "EditAffixInflectionClasses",
+            (cache, input, _) => EditAffixInflectionClassesComposer.Build(cache,
+                EditAffixInflectionClassesIntentParser.Parse(input))),
         new("compose-edit-allomorph-condition", "EditAllomorphCondition", (cache, input, _) =>
                 EditAllomorphConditionComposer.Build(cache, EditAllomorphConditionIntentParser.Parse(input)),
             ReplacePrevious: (input, operation) => ReplacesTarget(input, operation,

@@ -189,6 +189,22 @@ public sealed record ComposeEditAffixTemplateRequest(
 public sealed record ComposeEditInflectionalAffixRequest(
     string FwDataPath, string ProductVersion, string DraftName, string IntentJson);
 
+/// <summary>Edits the explicit default inflection class of a part of speech in a Draft.</summary>
+/// <param name="FwDataPath">The saved project this Draft belongs to.</param>
+/// <param name="ProductVersion">The Motif version opening the paired store.</param>
+/// <param name="DraftName">The Draft to append the authored operations to.</param>
+/// <param name="IntentJson">The closed default-class edit resolved against the prepared Draft.</param>
+public sealed record ComposeEditPartOfSpeechInflectionClassDefaultRequest(
+    string FwDataPath, string ProductVersion, string DraftName, string IntentJson);
+
+/// <summary>Edits the exact inflection class restrictions on one ordinary affix form in a Draft.</summary>
+/// <param name="FwDataPath">The saved project this Draft belongs to.</param>
+/// <param name="ProductVersion">The Motif version opening the paired store.</param>
+/// <param name="DraftName">The Draft to append the authored operations to.</param>
+/// <param name="IntentJson">The closed class-set edit resolved against the prepared Draft.</param>
+public sealed record ComposeEditAffixInflectionClassesRequest(
+    string FwDataPath, string ProductVersion, string DraftName, string IntentJson);
+
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
 /// <param name="DraftName">The name of the Draft being authored.</param>
