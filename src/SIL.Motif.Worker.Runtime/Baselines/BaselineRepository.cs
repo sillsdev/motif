@@ -22,6 +22,16 @@ public sealed record BaselineRecord(
     DateTimeOffset SourceLastWriteUtc,
     DateTimeOffset PublishedUtc);
 
+/// <summary>A current Baseline has no stored project summary.</summary>
+public sealed class BaselineSummaryMissingException(string projectKey)
+    : Exception("The current Baseline has no stored project summary.")
+{
+    /// <summary>The project key whose summary row was absent.</summary>
+    public string ProjectKey { get; } = string.IsNullOrWhiteSpace(projectKey)
+        ? throw new ArgumentException("A project key is required.", nameof(projectKey))
+        : projectKey;
+}
+
 /// <summary>A current Baseline and the project inventory captured from the same saved state.</summary>
 public sealed record CurrentBaselineEvidence(BaselineRecord Baseline, ProjectSummarySnapshot Summary);
 
@@ -149,7 +159,7 @@ public sealed class BaselineRepository
         var baseline = Read(reader);
         if (HasApplyAfter(connection, transaction, baseline.PublishedUtc)) return null;
         if (reader.IsDBNull(12))
-            throw new InvalidDataException("The current Baseline has no stored project summary.");
+            throw new BaselineSummaryMissingException(projectKey);
         return new CurrentBaselineEvidence(baseline, ReadSummary(reader.GetString(12)));
     }
 

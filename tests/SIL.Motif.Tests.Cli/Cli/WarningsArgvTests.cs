@@ -75,6 +75,16 @@ public sealed class WarningsArgvTests(PristineProjectFixture pristine) : IDispos
 
         var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(project), _root);
         Assert.True(captured.Succeeded, captured.Refusal?.Message);
+        var diagnostic = new ParserCompileDiagnostic("Fatal grammar error", [], "raw parser output");
+        var parserRefusal = new Refusal("grammarcheck.parser-unavailable", FailureReason.Refused,
+            "The parser executable is unavailable.", new Dictionary<string, string> { ["path"] = "pangloss" },
+            diagnostic);
+        var recorded = ProjectStoreCommand.Run(project, MotifProductVersion.CurrentText, (database, _) =>
+        {
+            new ParserRefusalRepository(database).Save(captured.Value!.Token, parserRefusal);
+            return CommandOutcome<string>.Success("saved");
+        });
+        Assert.True(recorded.Succeeded, recorded.Refusal?.Message);
 
         var noCheck = Run("warnings", "--project", project);
         var noCheckJson = Run("warnings", "--project", project, "--json");
@@ -87,6 +97,13 @@ public sealed class WarningsArgvTests(PristineProjectFixture pristine) : IDispos
         var notRunRefusal = ProjectionJson.Deserialize<FailureEnvelope>(noCheckJson.Error)!;
         Assert.Equal("grammarcheck.not-run", notRunRefusal.Code);
         Assert.Contains("motif grammar check --project <fwdata>", notRunRefusal.Message, StringComparison.Ordinal);
+        Assert.Equal(parserRefusal.Code, notRunRefusal.Detail![RefusalFactNames.LastParserRefusalCode]);
+        Assert.Equal(parserRefusal.Message, notRunRefusal.Detail[RefusalFactNames.LastParserRefusalMessage]);
+        Assert.Equal("pangloss", notRunRefusal.Detail[RefusalFactNames.LastParserRefusalFactPrefix + "path"]);
+        Assert.Contains(parserRefusal.Message, notRunRefusal.Message, StringComparison.Ordinal);
+        Assert.Equal(diagnostic.Summary, notRunRefusal.ParserDiagnostic!.Summary);
+        Assert.Equal(diagnostic.RawText, notRunRefusal.ParserDiagnostic.RawText);
+        Assert.Empty(notRunRefusal.ParserDiagnostic.Issues);
     }
 
     public void Dispose()

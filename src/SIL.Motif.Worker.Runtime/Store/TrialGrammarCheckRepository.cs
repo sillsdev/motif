@@ -16,12 +16,19 @@ public sealed class TrialGrammarCheckRepository(MotifDatabase database)
 
     /// <summary>Saves a grammar check for one measured Proposal revision and Selection.</summary>
     public void Save(BaselineToken baseline, CanonicalId proposalId, string intentDigest,
-        string selectionSha256, GrammarCheckResponse response)
+        string selectionSha256, GrammarCheckResponse response, DateTimeOffset? sourceLastWriteUtc = null)
     {
         ArgumentNullException.ThrowIfNull(baseline);
         ArgumentException.ThrowIfNullOrWhiteSpace(intentDigest);
         ArgumentNullException.ThrowIfNull(selectionSha256);
         ArgumentNullException.ThrowIfNull(response);
+        var checkedUtc = DateTimeOffset.UtcNow;
+        var recordedResponse = response with
+        {
+            Provenance = new GrammarCheckProvenance(BaselineToken: baseline, SelectionSha256: selectionSha256,
+                ParserStamp: null, CheckedUtc: checkedUtc, SourceLastWriteUtc: sourceLastWriteUtc,
+                Trial: new TrialGrammarCheckIdentity(proposalId.Value, intentDigest)),
+        };
         using var connection = _database.OpenConnection();
         using var command = connection.CreateCommand();
         command.CommandText = """
@@ -38,8 +45,8 @@ public sealed class TrialGrammarCheckRepository(MotifDatabase database)
         command.Parameters.AddWithValue("$proposal", proposalId.Value);
         command.Parameters.AddWithValue("$intent", intentDigest);
         command.Parameters.AddWithValue("$selection", selectionSha256);
-        command.Parameters.AddWithValue("$response", JsonSerializer.Serialize(response, MotifJson.CreateOptions()));
-        command.Parameters.AddWithValue("$checked", DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture));
+        command.Parameters.AddWithValue("$response", JsonSerializer.Serialize(recordedResponse, MotifJson.CreateOptions()));
+        command.Parameters.AddWithValue("$checked", checkedUtc.ToString("O", CultureInfo.InvariantCulture));
         command.ExecuteNonQuery();
     }
 }

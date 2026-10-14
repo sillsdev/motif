@@ -1,4 +1,6 @@
 using System.Text.Json;
+using SIL.Motif.Contract;
+using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Responses;
 using Xunit;
 
@@ -107,5 +109,28 @@ public sealed class ResponseBindingTests
 
         Assert.Null(bound!.Code);
         Assert.Equal(FailureReason.NotFound, bound.Reason);
+    }
+
+    [Fact]
+    public void AGrammarCheckBindsItsRecordedProvenanceAndSourceSaveTime()
+    {
+        var baseline = new BaselineToken("project", "sha256:" + new string('a', 64), "1",
+            "2026-10-13T12:00:00Z", "sha256:" + new string('b', 64));
+        var sourceSave = DateTimeOffset.Parse("2026-10-13T11:45:00Z");
+        var response = new GrammarCheckResponse([], HasBaseline: true)
+        {
+            Provenance = new GrammarCheckProvenance(baseline, "sha256:" + new string('c', 64), "parser-build",
+                DateTimeOffset.Parse("2026-10-13T12:05:00Z"), sourceSave, Trial: null),
+        };
+
+        var rendered = ProjectionJson.Serialize(response);
+        var bound = ProjectionJson.Deserialize<GrammarCheckResponse>(rendered);
+
+        Assert.NotNull(bound?.Provenance);
+        Assert.Equal(baseline, bound.Provenance!.BaselineToken);
+        Assert.Equal("sha256:" + new string('c', 64), bound.Provenance.SelectionSha256);
+        Assert.Equal("parser-build", bound.Provenance.ParserStamp);
+        Assert.Equal(sourceSave, bound.Provenance.SourceLastWriteUtc);
+        Assert.Null(bound.Provenance.Trial);
     }
 }

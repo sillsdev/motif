@@ -176,6 +176,10 @@ public sealed class TrialJobHandlerTests : IDisposable
         Assert.False(string.IsNullOrWhiteSpace(reader.GetString(2)));
         using var response = JsonDocument.Parse(reader.GetString(3));
         Assert.True(response.RootElement.GetProperty("HasBaseline").GetBoolean());
+        var provenance = response.RootElement.GetProperty("Provenance");
+        Assert.Equal(DateTimeOffset.Parse("2026-08-29T00:00:00Z"),
+            provenance.GetProperty("SourceLastWriteUtc").GetDateTimeOffset());
+        Assert.Equal(proposalId.Value, provenance.GetProperty("Trial").GetProperty("ProposalId").GetString());
     }
 
     [Fact]

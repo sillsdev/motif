@@ -2,10 +2,14 @@ using System.Globalization;
 using System.Text.Json;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Worker.Store;
 
 namespace SIL.Motif.Commands.Store;
+
+/// <summary>A grammar-check response and provenance read from one persisted row.</summary>
+internal sealed record GrammarCheckStoredRecord(GrammarCheckResponse Response, GrammarCheckProvenance Provenance);
 
 /// <summary>Reads project and Trial grammar checks and stores the project's current check.</summary>
 public sealed class GrammarCheckRepository(MotifDatabase database)
@@ -14,7 +18,7 @@ public sealed class GrammarCheckRepository(MotifDatabase database)
 
     /// <summary>Reads the newest check for the Baseline, regardless of later Selection or parser changes.</summary>
     public GrammarCheckResponse? GetLatest(string baselineToken)
-        => ReadLatest(baselineToken, proposalId: null, intentDigest: null);
+        => GetLatestStored(baselineToken)?.Response;
 
     /// <summary>Reads the grammar check for one exact Proposal revision.</summary>
     public GrammarCheckResponse? GetLatest(string baselineToken, string proposalId, string intentDigest)
@@ -22,18 +26,33 @@ public sealed class GrammarCheckRepository(MotifDatabase database)
         ArgumentException.ThrowIfNullOrWhiteSpace(baselineToken);
         ArgumentException.ThrowIfNullOrWhiteSpace(proposalId);
         ArgumentException.ThrowIfNullOrWhiteSpace(intentDigest);
-        return ReadLatest(baselineToken, proposalId, intentDigest);
+        return GetLatestStored(baselineToken, proposalId, intentDigest)?.Response;
     }
 
-    private GrammarCheckResponse? ReadLatest(string baselineToken, string? proposalId, string? intentDigest)
+    /// <summary>Reads the latest stored check and its recorded provenance for the Baseline.</summary>
+    internal GrammarCheckStoredRecord? GetLatestStored(string baselineToken)
+        => ReadLatestStored(baselineToken, proposalId: null, intentDigest: null);
+
+    /// <summary>Reads the stored check and its recorded provenance for one exact Proposal revision.</summary>
+    internal GrammarCheckStoredRecord? GetLatestStored(string baselineToken, string proposalId, string intentDigest)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(baselineToken);
+        ArgumentException.ThrowIfNullOrWhiteSpace(proposalId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(intentDigest);
+        return ReadLatestStored(baselineToken, proposalId, intentDigest);
+    }
+
+    private GrammarCheckStoredRecord? ReadLatestStored(string baselineToken, string? proposalId, string? intentDigest)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(baselineToken);
         using var connection = _database.OpenConnection();
         using var command = connection.CreateCommand();
         command.CommandText = proposalId is null
-            ? "SELECT ResponseJson FROM GrammarChecks WHERE BaselineToken = $baseline AND ProposalId IS NULL AND IntentDigest IS NULL;"
+            ? "SELECT BaselineToken, ProposalId, IntentDigest, SelectionSha256, ParserStamp, ResponseJson, CheckedUtc " +
+              "FROM GrammarChecks WHERE BaselineToken = $baseline AND ProposalId IS NULL AND IntentDigest IS NULL;"
             : """
-                SELECT ResponseJson FROM GrammarChecks
+                SELECT BaselineToken, ProposalId, IntentDigest, SelectionSha256, ParserStamp, ResponseJson, CheckedUtc
+                FROM GrammarChecks
                 WHERE BaselineToken = $baseline AND ProposalId = $proposal AND IntentDigest = $intent;
                 """;
         command.Parameters.AddWithValue("$baseline", baselineToken);
@@ -43,13 +62,34 @@ public sealed class GrammarCheckRepository(MotifDatabase database)
             command.Parameters.AddWithValue("$intent", (object?)intentDigest ?? DBNull.Value);
         }
         RepositoryReadCounters.QueryExecuted();
-        var json = command.ExecuteScalar() as string;
-        if (json is null) return null;
+        using var reader = command.ExecuteReader();
+        if (!reader.Read()) return null;
         RepositoryReadCounters.RecordDeserialized();
         try
         {
-            return JsonSerializer.Deserialize<GrammarCheckResponse>(json, MotifJson.CreateOptions())
+            var response = JsonSerializer.Deserialize<GrammarCheckResponse>(reader.GetString(5), MotifJson.CreateOptions())
                 ?? throw new InvalidDataException("Stored grammar findings are incomplete.");
+            var proposal = NullableString(reader, 1);
+            var intentDigestValue = NullableString(reader, 2);
+            if ((proposal is null) != (intentDigestValue is null))
+                throw new InvalidDataException("Stored Trial grammar-check identity is incomplete.");
+            var trial = proposal is null ? null : new TrialGrammarCheckIdentity(proposal, intentDigestValue!);
+            var storedProvenance = response.Provenance;
+            var provenance = new GrammarCheckProvenance(
+                ReadBaselineToken(reader.GetString(0)),
+                reader.GetString(3),
+                NullableString(reader, 4),
+                ReadCheckedUtc(reader.GetString(6)),
+                storedProvenance?.SourceLastWriteUtc,
+                trial);
+            if (storedProvenance is not null &&
+                (storedProvenance.BaselineToken != provenance.BaselineToken ||
+                 storedProvenance.SelectionSha256 != provenance.SelectionSha256 ||
+                 storedProvenance.ParserStamp != provenance.ParserStamp ||
+                 storedProvenance.CheckedUtc != provenance.CheckedUtc ||
+                 storedProvenance.Trial != provenance.Trial))
+                throw new InvalidDataException("Stored grammar-check provenance disagrees with its recorded identity.");
+            return new GrammarCheckStoredRecord(response with { Provenance = provenance }, provenance);
         }
         catch (JsonException exception)
         {
@@ -57,12 +97,47 @@ public sealed class GrammarCheckRepository(MotifDatabase database)
         }
     }
 
+    private static string? NullableString(Microsoft.Data.Sqlite.SqliteDataReader reader, int ordinal) =>
+        reader.IsDBNull(ordinal) ? null : reader.GetString(ordinal);
+
+    private static BaselineToken ReadBaselineToken(string json)
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<BaselineToken>(json, MotifJson.CreateOptions())
+                ?? throw new InvalidDataException("Stored grammar-check Baseline identity is incomplete.");
+        }
+        catch (JsonException exception)
+        {
+            throw new InvalidDataException("Stored grammar-check Baseline identity is malformed.", exception);
+        }
+    }
+
+    private static DateTimeOffset ReadCheckedUtc(string value)
+    {
+        try
+        {
+            return DateTimeOffset.Parse(value, CultureInfo.InvariantCulture, DateTimeStyles.None);
+        }
+        catch (FormatException exception)
+        {
+            throw new InvalidDataException("Stored grammar-check time is malformed.", exception);
+        }
+    }
+
     /// <summary>Replaces the Baseline's check and recorded Selection after a requested parser run succeeds.</summary>
-    public void Save(string baselineToken, string selectionSha256, string? parserStamp, GrammarCheckResponse response)
+    public GrammarCheckResponse Save(string baselineToken, string selectionSha256, string? parserStamp,
+        GrammarCheckResponse response, DateTimeOffset? sourceLastWriteUtc = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(baselineToken);
         ArgumentNullException.ThrowIfNull(selectionSha256);
         ArgumentNullException.ThrowIfNull(response);
+        var checkedUtc = DateTimeOffset.UtcNow;
+        var recordedResponse = response with
+        {
+            Provenance = new GrammarCheckProvenance(ReadBaselineToken(baselineToken), selectionSha256, parserStamp,
+                checkedUtc, sourceLastWriteUtc, Trial: null),
+        };
         using var connection = _database.OpenConnection();
         using var command = connection.CreateCommand();
         command.CommandText = """
@@ -77,8 +152,9 @@ public sealed class GrammarCheckRepository(MotifDatabase database)
         command.Parameters.AddWithValue("$baseline", baselineToken);
         command.Parameters.AddWithValue("$selection", selectionSha256);
         command.Parameters.AddWithValue("$parser", (object?)parserStamp ?? DBNull.Value);
-        command.Parameters.AddWithValue("$response", JsonSerializer.Serialize(response, MotifJson.CreateOptions()));
-        command.Parameters.AddWithValue("$checked", DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture));
+        command.Parameters.AddWithValue("$response", JsonSerializer.Serialize(recordedResponse, MotifJson.CreateOptions()));
+        command.Parameters.AddWithValue("$checked", checkedUtc.ToString("O", CultureInfo.InvariantCulture));
         command.ExecuteNonQuery();
+        return recordedResponse;
     }
 }

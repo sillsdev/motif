@@ -1,7 +1,9 @@
+using System.IO;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Contract.Projects;
+using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Store;
 using SIL.Motif.Contract.Baselines;
 
@@ -20,7 +22,15 @@ public static class WarningWordsQuery
     internal static GrammarCheckResponse WithYourWords(MotifDatabase database, ProjectLocator project,
         GrammarCheckResponse check, BaselineToken checkedBaseline)
     {
-        var current = CurrentEvidenceQuery.ReadCurrentEvidence(database, project, includeResolvedReadings: true);
+        SIL.Motif.Contract.Commands.CommandOutcome<CurrentEvidenceSnapshot> current;
+        try
+        {
+            current = CurrentEvidenceQuery.ReadCurrentEvidence(database, project, includeResolvedReadings: true);
+        }
+        catch (BaselineSummaryMissingException)
+        {
+            return check;
+        }
         var navigation = current.Succeeded && current.Value!.Baseline?.Token == checkedBaseline
             ? current.Value.Navigation : null;
         check = (navigation ?? SavedProjectNavigation.Read(project.FullFwDataPath, checkedBaseline.ProjectIdentity)).Verify(check);

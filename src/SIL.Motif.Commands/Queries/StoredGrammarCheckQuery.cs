@@ -16,9 +16,12 @@ using SIL.Motif.Worker.Store;
 namespace SIL.Motif.Commands.Queries;
 
 /// <summary>
-/// The grammar check stored for the current Baseline, or null when nobody has requested one.
+/// The stored grammar check and the provenance recorded with it, each null before a check has run.
 /// </summary>
-public sealed record StoredGrammarCheckResponse(GrammarCheckResponse? Check, Refusal? LastParserRefusal = null);
+public sealed record StoredGrammarCheckResponse(
+    GrammarCheckResponse? Check,
+    Refusal? LastParserRefusal = null,
+    GrammarCheckProvenance? Provenance = null);
 
 /// <summary>
 /// Reads grammar findings from the Motif store without starting PanGloss, each with the Selection's words it
@@ -52,31 +55,36 @@ public static class StoredGrammarCheckQuery
         ArgumentNullException.ThrowIfNull(set);
         var token = JsonSerializer.Serialize(set.Baseline, MotifJson.CreateOptions());
         var repository = new GrammarCheckRepository(database);
-        GrammarCheckResponse? check;
+        GrammarCheckStoredRecord? stored;
         if (set.Origin.Kind == EvidenceOriginKind.Trial)
         {
             if (set.Origin.ProposalId is not { } proposalId || set.Origin.IntentDigest is not { } intentDigest)
                 return CommandOutcome<StoredGrammarCheckResponse>.Refused(new Refusal(
                     "assessment.invalid-evidence", FailureReason.Refused,
                     "The Trial has no Proposal revision identity for its grammar check."));
-            check = repository.GetLatest(token, proposalId, intentDigest);
+            stored = repository.GetLatestStored(token, proposalId, intentDigest);
         }
         else
         {
-            check = repository.GetLatest(token);
+            stored = repository.GetLatestStored(token);
         }
-        if (check is null) return CommandOutcome<StoredGrammarCheckResponse>.Success(new(null));
+        var check = stored?.Response;
+        var lastParserRefusal = set.Origin.Kind == EvidenceOriginKind.Trial
+            ? null
+            : new ParserRefusalRepository(database).Get(set.Baseline);
+        if (check is null)
+            return CommandOutcome<StoredGrammarCheckResponse>.Success(new(null, lastParserRefusal));
         if (set.Origin.Kind == EvidenceOriginKind.Trial)
         {
             if (set.RootAssessmentId is null)
-                return CommandOutcome<StoredGrammarCheckResponse>.Success(new(check));
+                return CommandOutcome<StoredGrammarCheckResponse>.Success(new(check, Provenance: stored!.Provenance));
             try
             {
                 var records = ReadTrialComponents(database, set);
                 var evidence = AssessmentEvidenceSet.Create(records[0], records.Skip(1).ToArray());
                 check = WarningWordsQuery.WithYourWords(check,
                     evidence.Words.Select(AssessmentWordRows.FromRecorded).ToArray(), evidence.ObjectTimings);
-                return CommandOutcome<StoredGrammarCheckResponse>.Success(new(check));
+                return CommandOutcome<StoredGrammarCheckResponse>.Success(new(check, Provenance: stored!.Provenance));
             }
             catch (Exception exception) when (exception is InvalidDataException or KeyNotFoundException)
             {
@@ -87,7 +95,7 @@ public static class StoredGrammarCheckQuery
         }
         return CommandOutcome<StoredGrammarCheckResponse>.Success(new(
             WarningWordsQuery.WithYourWords(database, project, check, set.Baseline),
-            new ParserRefusalRepository(database).Get(set.Baseline)));
+            lastParserRefusal, stored!.Provenance));
     }
 
     private static CommandOutcome<StoredGrammarCheckResponse> QueryCurrentWithoutAssessment(MotifDatabase database,
@@ -98,10 +106,10 @@ public static class StoredGrammarCheckQuery
             return CommandOutcome<StoredGrammarCheckResponse>.Refused(
                 BaselineMissingRefusal.ForProject(project.FullFwDataPath));
         var token = JsonSerializer.Serialize(baseline.Token, MotifJson.CreateOptions());
-        var check = new GrammarCheckRepository(database).GetLatest(token);
+        var stored = new GrammarCheckRepository(database).GetLatestStored(token);
         return CommandOutcome<StoredGrammarCheckResponse>.Success(new(
-            check is null ? null : WarningWordsQuery.WithYourWords(database, project, check, baseline.Token),
-            new ParserRefusalRepository(database).Get(baseline.Token)));
+            stored is null ? null : WarningWordsQuery.WithYourWords(database, project, stored.Response, baseline.Token),
+            new ParserRefusalRepository(database).Get(baseline.Token), stored?.Provenance));
     }
 
     private static IReadOnlyList<AssessmentRecord> ReadTrialComponents(MotifDatabase database, EvidenceSet set)

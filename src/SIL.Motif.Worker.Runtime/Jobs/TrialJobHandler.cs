@@ -215,7 +215,7 @@ internal sealed class TrialJobHandler
                     {
                         new TrialGrammarCheckRepository(claim.Database).Save(baseline.Token,
                             proposal.ProposalId, IntentDigest.Compute(proposal), candidate.Selection.Sha256,
-                            grammarCheck);
+                            grammarCheck, baseline.SourceLastWriteUtc);
                     }
                 }
                 catch (Exception exception) when (exception is not OperationCanceledException)

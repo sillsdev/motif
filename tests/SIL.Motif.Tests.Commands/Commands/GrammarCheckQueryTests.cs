@@ -3,15 +3,22 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Threading;
+using SIL.Motif.Commands;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Contract;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Generator;
 using SIL.LCModel;
 using SIL.LCModel.Infrastructure;
+using SIL.Motif.Host;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Host.Texts;
+using SIL.Motif.Worker.Baselines;
+using SIL.Motif.Worker.Projects;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
@@ -325,6 +332,49 @@ public sealed class GrammarCheckQueryTests : IDisposable
         Assert.Equal(Path.GetFileNameWithoutExtension(fwDataPath), request.FieldWorksProjectName);
     }
 
+    [Theory]
+    [InlineData("absent")]
+    [InlineData("placeholder")]
+    [InlineData("incorrect")]
+    public void CheckedInventoryComesFromTheSelectedBaselineWhenItsSavedSummaryIsUnavailableOrWrong(
+        string summaryState)
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        Capture(fwDataPath);
+        var summary = ReadCurrentSummary(fwDataPath);
+        AddLexicalEntryToLiveProject(fwDataPath);
+        switch (summaryState)
+        {
+            case "absent":
+                ReplaceSummary(fwDataPath, null);
+                break;
+            case "placeholder":
+                ReplaceSummary(fwDataPath, JsonSerializer.Serialize(ProjectSummarySnapshot.Empty,
+                    MotifJson.CreateOptions()));
+                break;
+            case "incorrect":
+                Assert.NotEmpty(summary.WritingSystems);
+                ReplaceSummary(fwDataPath, JsonSerializer.Serialize(summary with
+                {
+                    LexemeCount = 0,
+                    RuleCount = 17,
+                }, MotifJson.CreateOptions()));
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(summaryState));
+        }
+
+        var outcome = GrammarCheckQuery.Query(new GrammarCheckRequest(fwDataPath), new FakeInvoker
+        {
+            Respond = _ => new PanGlossOutcome.Completed(GrammarHealthReports.With(), string.Empty, TimeSpan.Zero),
+        }, CancellationToken.None);
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        Assert.Equal(2, outcome.Value!.CheckedLexemeCount);
+        Assert.Equal(0, outcome.Value.CheckedRuleCount);
+        Assert.Empty(outcome.Value.Advisories);
+    }
+
     [Fact]
     public void AVersionFourReportRetainsErrorsAsDistinctFindings()
     {
@@ -621,6 +671,42 @@ public sealed class GrammarCheckQueryTests : IDisposable
     {
         var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(fwDataPath), NewManagedRoot());
         Assert.True(captured.Succeeded, captured.Refusal?.Message);
+    }
+
+    private static ProjectSummarySnapshot ReadCurrentSummary(string fwDataPath)
+    {
+        var result = ProjectStoreCommand.Run(fwDataPath, MotifProductVersion.CurrentText, (database, project) =>
+        {
+            var evidence = new BaselineRepository(database).GetCurrentEvidence(ProjectWorkspaceKey.Compute(project));
+            return CommandOutcome<ProjectSummarySnapshot>.Success(evidence!.Summary);
+        });
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        return result.Value!;
+    }
+
+    private static void ReplaceSummary(string fwDataPath, string? summaryJson)
+    {
+        var result = ProjectStoreCommand.Run(fwDataPath, MotifProductVersion.CurrentText, (database, _) =>
+        {
+            using var connection = database.OpenConnection();
+            using var command = connection.CreateCommand();
+            command.CommandText = summaryJson is null
+                ? "DELETE FROM BaselineSummaries;"
+                : "UPDATE BaselineSummaries SET SummaryJson = $summary;";
+            if (summaryJson is not null) command.Parameters.AddWithValue("$summary", summaryJson);
+            command.ExecuteNonQuery();
+            return CommandOutcome<object>.Success(new object());
+        });
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+    }
+
+    private static void AddLexicalEntryToLiveProject(string fwDataPath)
+    {
+        var loader = new FwDataProjectLoader();
+        using var cache = loader.LoadCache(fwDataPath);
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor,
+            () => cache.ServiceLocator.GetInstance<ILexEntryFactory>().Create());
+        loader.Save(cache);
     }
 
     private string NewManagedRoot()

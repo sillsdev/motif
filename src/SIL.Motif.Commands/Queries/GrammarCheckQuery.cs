@@ -20,6 +20,7 @@ using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Parser;
+using SIL.Motif.Host.Texts;
 using SIL.Motif.Projection.Grammar;
 using SIL.LCModel;
 using SIL.Motif.Worker.Baselines;
@@ -72,14 +73,10 @@ public static class GrammarCheckQuery
         return ProjectStoreCommand.Run(request.ProjectPath, ResolveProductVersion(), (database, project) =>
         {
             var workspaceKey = ProjectWorkspaceKey.Compute(project);
-            var baselineEvidence = new BaselineRepository(database).GetCurrentEvidence(workspaceKey);
-            if (baselineEvidence is null)
+            var baseline = new BaselineRepository(database).GetCurrent(workspaceKey);
+            if (baseline is null)
                 return CommandOutcome<GrammarCheckResponse>.Refused(
                     BaselineMissingRefusal.ForProject(request.ProjectPath));
-            var baseline = baselineEvidence.Baseline;
-            var inventoryKnown = baselineEvidence.Summary.WritingSystems.Count > 0;
-            int? checkedLexemeCount = inventoryKnown ? baselineEvidence.Summary.LexemeCount : null;
-            int? checkedRuleCount = inventoryKnown ? baselineEvidence.Summary.RuleCount : null;
 
             var storedAnalyses = request.StoredAnalyses ??
                 (defaultChecks ?? FileDefaultProposalChecksStore.ForInstallation()).StoredAnalyses;
@@ -150,18 +147,20 @@ public static class GrammarCheckQuery
             try
             {
                 LcmCache Cache() => (reader ??= BaselineReadCache.Open(baseline.FwDataPath)).Cache;
+                var inventory = ProjectGrammarInventoryReader.Read(Cache());
                 response = new GrammarCheckResponse(findings.Select(finding => WithReach(finding, Cache))
                     .ToArray(), HasBaseline: true)
                 {
                     Summary = summary,
                     Locale = locale,
-                    CheckedLexemeCount = checkedLexemeCount,
-                    CheckedRuleCount = checkedRuleCount,
-                    Advisories = EmptyLexiconAdvisory(checkedLexemeCount),
+                    CheckedLexemeCount = inventory.LexemeCount,
+                    CheckedRuleCount = inventory.RuleCount,
+                    Advisories = EmptyLexiconAdvisory(inventory),
                 };
                 var baselineToken = JsonSerializer.Serialize(baseline.Token, MotifJson.CreateOptions());
                 var selectionSha256 = SelectionDigest(database, Cache, baselineToken);
-                new GrammarCheckRepository(database).Save(baselineToken, selectionSha256, parserStamp, response);
+                response = new GrammarCheckRepository(database).Save(baselineToken, selectionSha256, parserStamp,
+                    response, baseline.SourceLastWriteUtc);
             }
             finally
             {
@@ -178,12 +177,12 @@ public static class GrammarCheckQuery
         Subject = finding.Subject.Select(part => part with { Reach = WarningReachReader.Reach(part, cache) }).ToArray(),
     };
 
-    private static IReadOnlyList<GrammarCheckAdvisory> EmptyLexiconAdvisory(int? checkedLexemeCount) =>
-        checkedLexemeCount == 0
+    private static IReadOnlyList<GrammarCheckAdvisory> EmptyLexiconAdvisory(ProjectGrammarInventory inventory) =>
+        inventory.LexemeCount == 0 && inventory.StemLexemeCount == 0
             ? [new GrammarCheckAdvisory(GrammarCheckAdvisoryCodes.EmptyLexicon,
                 "This Baseline has 0 lexical entries and 0 stem lexemes; add lexical entries before interpreting " +
                 "parser findings as evidence about how words parse.")
-            { LexemeCount = 0, StemLexemeCount = 0 }]
+            { LexemeCount = inventory.LexemeCount, StemLexemeCount = inventory.StemLexemeCount }]
             : [];
 
     private static string SelectionDigest(SIL.Motif.Host.Store.MotifDatabase database, Func<LcmCache> cache,

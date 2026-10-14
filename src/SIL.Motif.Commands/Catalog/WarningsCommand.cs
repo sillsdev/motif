@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
@@ -15,13 +17,11 @@ public static class WarningsCommand
         var stored = StoredGrammarCheckQuery.Query(new GrammarCheckRequest(request.ProjectPath, request.ProposalId));
         if (!stored.Succeeded) return CommandOutcome<WarningsResponse>.Refused(stored.Refusal!);
         if (stored.Value!.Check is not { } check)
-            return CommandOutcome<WarningsResponse>.Refused(new Refusal(
-                "grammarcheck.not-run", FailureReason.Refused,
-                request.ProposalId is null
-                    ? "The current Baseline has not been checked. Run: motif grammar check --project <fwdata>"
-                    : "The latest Trial for this Proposal has no grammar check to read."));
+            return CommandOutcome<WarningsResponse>.Refused(NotRunRefusal(request.ProposalId is null
+                ? "The current Baseline has not been checked. Run: motif grammar check --project <fwdata>"
+                : "The latest Trial for this Proposal has no grammar check to read.", stored.Value.LastParserRefusal));
         return CommandOutcome<WarningsResponse>.Success(FromCheck(check, request.Kind, request.LeftOut) with
-        { LastParserRefusal = stored.Value.LastParserRefusal });
+        { LastParserRefusal = stored.Value.LastParserRefusal, Provenance = stored.Value.Provenance });
     }
 
     internal static WarningsResponse FromCheck(GrammarCheckResponse? check, string? kind = null, bool leftOut = false)
@@ -58,5 +58,26 @@ public static class WarningsCommand
             CheckedRuleCount = check?.CheckedRuleCount,
             Advisories = check?.Advisories ?? [],
         };
+    }
+
+    private static Refusal NotRunRefusal(string message, Refusal? lastParserRefusal)
+    {
+        IReadOnlyDictionary<string, string>? facts = null;
+        if (lastParserRefusal is { } parserRefusal)
+        {
+            var copiedFacts = new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                [RefusalFactNames.LastParserRefusalCode] = parserRefusal.Code,
+                [RefusalFactNames.LastParserRefusalReason] = parserRefusal.Reason.ToString(),
+                [RefusalFactNames.LastParserRefusalMessage] = parserRefusal.Message,
+            };
+            foreach (var (name, value) in parserRefusal.Facts)
+                copiedFacts[RefusalFactNames.LastParserRefusalFactPrefix + name] = value;
+            facts = copiedFacts;
+            message += $" The last parser attempt was refused ({parserRefusal.Code}): {parserRefusal.Message}";
+        }
+
+        return new Refusal("grammarcheck.not-run", FailureReason.Refused, message, facts,
+            lastParserRefusal?.ParserDiagnostic);
     }
 }

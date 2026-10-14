@@ -13,4 +13,16 @@ public static class RefusalFactNames
 
     /// <summary>The full path of a refused Motif store file, on a <see cref="RefusalCodes.StoreOtherVersion"/> refusal.</summary>
     public const string StorePath = "storePath";
+
+    /// <summary>Fact key for the parser refusal code on a grammarcheck.not-run refusal.</summary>
+    public const string LastParserRefusalCode = "lastParserRefusalCode";
+
+    /// <summary>Fact key for the parser refusal reason on a grammarcheck.not-run refusal.</summary>
+    public const string LastParserRefusalReason = "lastParserRefusalReason";
+
+    /// <summary>Fact key for the parser refusal message on a grammarcheck.not-run refusal.</summary>
+    public const string LastParserRefusalMessage = "lastParserRefusalMessage";
+
+    /// <summary>Prefix for parser fact keys on a grammarcheck.not-run refusal.</summary>
+    public const string LastParserRefusalFactPrefix = "lastParserRefusal.fact.";
 }

@@ -55,6 +55,17 @@ public sealed class PostApplyBaselineRefreshTests(PristineProjectFixture pristin
         async Task<(int ExitCode, string Output, string Error)> DryRun(string id) =>
             await Run("dry-run", id, "--project", path, "--wait", "--wait-timeout-ms", "30000", "--json");
 
+        async Task AssertWarningsNotRun()
+        {
+            var warnings = await Run("warnings", "--project", path, "--json");
+            Assert.Equal(2, warnings.ExitCode);
+            Assert.Empty(warnings.Output);
+            using var refusal = JsonDocument.Parse(warnings.Error);
+            Assert.Equal("grammarcheck.not-run", refusal.RootElement.GetProperty("code").GetString());
+            Assert.Contains("motif grammar check --project <fwdata>",
+                refusal.RootElement.GetProperty("message").GetString(), StringComparison.Ordinal);
+        }
+
         if (captureInitialBaseline)
         {
             var captured = await Run("baseline", "capture", "--project", path, "--json");
@@ -63,6 +74,7 @@ public sealed class PostApplyBaselineRefreshTests(PristineProjectFixture pristin
         var first = await Author("first", "p");
         var measured = await DryRun(first);
         Assert.True(measured.ExitCode == 0, measured.Error);
+        await AssertWarningsNotRun();
         var before = SHA256.HashData(File.ReadAllBytes(path));
         var applied = await Run("apply", first, "--project", path, "--force", "--json");
         Assert.True(applied.ExitCode == 0, applied.Error);
@@ -72,15 +84,7 @@ public sealed class PostApplyBaselineRefreshTests(PristineProjectFixture pristin
 
         var second = await Author("second", "k");
         var automatic = await DryRun(second);
-        var warnings = await Run("warnings", "--project", path, "--json");
-        Assert.Equal(2, warnings.ExitCode);
-        Assert.Empty(warnings.Output);
-        using (var refusal = JsonDocument.Parse(warnings.Error))
-        {
-            Assert.Equal("grammarcheck.not-run", refusal.RootElement.GetProperty("code").GetString());
-            Assert.Contains("motif grammar check --project <fwdata>",
-                refusal.RootElement.GetProperty("message").GetString(), StringComparison.Ordinal);
-        }
+        await AssertWarningsNotRun();
         using (var connection = new SqliteConnection(new SqliteConnectionStringBuilder
                {
                    DataSource = Path.ChangeExtension(path, ".motif.db"),

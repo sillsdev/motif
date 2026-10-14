@@ -66,6 +66,68 @@ public sealed class StoredGrammarCheckQueryTests : IDisposable
     }
 
     [Fact]
+    public void AStoredCheckExposesItsPersistedProvenance()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        Capture(fwDataPath);
+        Assert.True(SelectionCommands.SetDefault(new SetDefaultSelectionRequest(
+            fwDataPath, "Default", [], ["mbo"])).Succeeded);
+        var request = new GrammarCheckRequest(fwDataPath);
+        var checkedNow = GrammarCheckQuery.Query(request, new FakeInvoker
+        {
+            Respond = _ => new PanGlossOutcome.Completed(ReportWithOneFinding, string.Empty, TimeSpan.Zero),
+        }, CancellationToken.None, parserStamp: "build-1");
+        Assert.True(checkedNow.Succeeded, checkedNow.Refusal?.Message);
+
+        var stored = StoredGrammarCheckQuery.Query(request);
+
+        Assert.True(stored.Succeeded, stored.Refusal?.Message);
+        var provenance = stored.Value!.Provenance;
+        Assert.NotNull(provenance);
+        var baseline = CurrentBaselineQuery.Query(new CurrentBaselineRequest(fwDataPath));
+        Assert.True(baseline.Succeeded, baseline.Refusal?.Message);
+        Assert.Equal(baseline.Value!.Token, provenance.BaselineToken);
+        Assert.Equal(baseline.Value.SourceLastWriteUtc, provenance.SourceLastWriteUtc);
+        Assert.Equal("build-1", provenance.ParserStamp);
+        Assert.StartsWith("sha256:", provenance.SelectionSha256, StringComparison.Ordinal);
+        Assert.Equal(71, provenance.SelectionSha256.Length);
+        Assert.NotEqual(default, provenance.CheckedUtc);
+        Assert.Null(provenance.Trial);
+        Assert.Equal(provenance, checkedNow.Value!.Provenance);
+        Assert.Equal(checkedNow.Value!.CheckedLexemeCount, stored.Value.Check!.CheckedLexemeCount);
+
+        var warnings = WarningsCommand.Warnings(new WarningsRequest(fwDataPath));
+        Assert.True(warnings.Succeeded, warnings.Refusal?.Message);
+        Assert.Equal(provenance, warnings.Value!.Provenance);
+    }
+
+    [Fact]
+    public void ARepositorySavedCheckWithoutASourceDateKeepsItNull()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        Capture(fwDataPath);
+        var request = new GrammarCheckRequest(fwDataPath);
+        var saved = ProjectStoreCommand.Run(fwDataPath, MotifProductVersion.CurrentText, (database, project) =>
+        {
+            var current = new SIL.Motif.Worker.Baselines.BaselineRepository(database)
+                .GetCurrent(SIL.Motif.Worker.Projects.ProjectWorkspaceKey.Compute(project));
+            Assert.NotNull(current);
+            var token = System.Text.Json.JsonSerializer.Serialize(current.Token, SIL.Motif.Contract.MotifJson.CreateOptions());
+            new SIL.Motif.Commands.Store.GrammarCheckRepository(database).Save(token, "sha256:selection", null,
+                new GrammarCheckResponse([], HasBaseline: true));
+            return SIL.Motif.Contract.Commands.CommandOutcome<string>.Success("saved");
+        });
+        Assert.True(saved.Succeeded, saved.Refusal?.Message);
+
+        var stored = StoredGrammarCheckQuery.Query(request);
+
+        Assert.True(stored.Succeeded, stored.Refusal?.Message);
+        Assert.NotNull(stored.Value!.Provenance);
+        Assert.Null(stored.Value.Provenance.SourceLastWriteUtc);
+        Assert.Equal(stored.Value.Provenance, stored.Value.Check!.Provenance);
+    }
+
+    [Fact]
     public void ASecondCheckOfTheSameBaselineReplacesTheFirstAfterSelectionChanges()
     {
         var fwDataPath = _pristine.CopyProjectFile();

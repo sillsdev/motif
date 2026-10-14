@@ -458,14 +458,15 @@ public sealed class TrialsTests : IDisposable
             return new SavedProposal(id, json, digest);
         }
 
-        public void RecordBaseline(string bundleDigest, string capturedUtc)
+        public void RecordBaseline(string bundleDigest, string capturedUtc, DateTimeOffset? sourceLastWriteUtc = null)
         {
             var token = new BaselineToken("project-id", "sha256:" + new string('1', 64), "projection-v1",
                 capturedUtc, bundleDigest);
             var baselineRoot = Path.Combine(_root, "baseline-" + capturedUtc.Replace(':', '-'));
             new BaselineRepository(Database).Record(ProjectWorkspaceKey.Compute(Project),
                 new BaselinePublication(baselineRoot, Path.Combine(baselineRoot, "project.fwdata"), token),
-                DateTimeOffset.Parse("2026-09-24T10:30:00Z"), DateTimeOffset.Parse(capturedUtc),
+                sourceLastWriteUtc ?? DateTimeOffset.Parse("2026-09-24T10:30:00Z"),
+                DateTimeOffset.Parse(capturedUtc),
                 _includeIndexedText
                     ? new TextWordsProjection([new TextWordsProjectedText(_textId, "Text", [], [])], [])
                     : TestTextWords.Empty,

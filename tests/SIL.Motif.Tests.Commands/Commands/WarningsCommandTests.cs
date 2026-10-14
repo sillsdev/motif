@@ -3,11 +3,15 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Threading;
+using SIL.Motif.Commands;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Commands.Store;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
@@ -86,6 +90,61 @@ public sealed class WarningsCommandTests(PristineProjectFixture pristine) : IDis
         Assert.Contains("motif grammar check --project <fwdata>", warnings.Refusal.Message, StringComparison.Ordinal);
         Assert.True(stored.Succeeded, stored.Refusal?.Message);
         Assert.Null(stored.Value!.Check);
+    }
+
+    [Fact]
+    public void NotRunWarningsRetainTheLastParserRefusal()
+    {
+        Directory.CreateDirectory(_root);
+        var project = pristine.CopyProjectFile();
+        var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(project), _root);
+        Assert.True(captured.Succeeded, captured.Refusal?.Message);
+        var diagnostic = new ParserCompileDiagnostic("Fatal grammar error", [], "raw parser output");
+        var parserRefusal = new Refusal("grammarcheck.parser-unavailable", FailureReason.Refused,
+            "The parser executable is unavailable.", new Dictionary<string, string> { ["testFact"] = "source" },
+            diagnostic);
+        var recorded = ProjectStoreCommand.Run(project, MotifProductVersion.CurrentText, (database, _) =>
+        {
+            new ParserRefusalRepository(database).Save(captured.Value!.Token, parserRefusal);
+            return CommandOutcome<string>.Success("saved");
+        });
+        Assert.True(recorded.Succeeded, recorded.Refusal?.Message);
+
+        var warnings = WarningsCommand.Warnings(new WarningsRequest(project));
+
+        Assert.False(warnings.Succeeded);
+        Assert.Equal("grammarcheck.not-run", warnings.Refusal!.Code);
+        Assert.Equal(parserRefusal.Code, warnings.Refusal.Facts[RefusalFactNames.LastParserRefusalCode]);
+        Assert.Equal(parserRefusal.Message, warnings.Refusal.Facts[RefusalFactNames.LastParserRefusalMessage]);
+        Assert.Equal("source", warnings.Refusal.Facts[RefusalFactNames.LastParserRefusalFactPrefix + "testFact"]);
+        Assert.Contains(parserRefusal.Message, warnings.Refusal.Message, StringComparison.Ordinal);
+        Assert.Equal(diagnostic.Summary, warnings.Refusal.ParserDiagnostic!.Summary);
+        Assert.Equal(diagnostic.RawText, warnings.Refusal.ParserDiagnostic.RawText);
+        Assert.Empty(warnings.Refusal.ParserDiagnostic.Issues);
+    }
+
+    [Fact]
+    public void ProjectEvidenceWithoutACheckRetainsTheLastParserRefusal()
+    {
+        Directory.CreateDirectory(_root);
+        var project = pristine.CopyProjectFile();
+        var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(project), _root);
+        Assert.True(captured.Succeeded, captured.Refusal?.Message);
+        var parserRefusal = new Refusal("grammarcheck.parser-unavailable", FailureReason.Refused,
+            "The parser executable is unavailable.");
+
+        var stored = ProjectStoreCommand.Run(project, MotifProductVersion.CurrentText, (database, locator) =>
+        {
+            new ParserRefusalRepository(database).Save(captured.Value!.Token, parserRefusal);
+            var set = EvidenceSet.FromProject(captured.Value.Token, null, [],
+                new System.Collections.Generic.Dictionary<string, string>(StringComparer.Ordinal), null, []);
+            return StoredGrammarCheckQuery.Query(database, locator, set);
+        });
+
+        Assert.True(stored.Succeeded, stored.Refusal?.Message);
+        Assert.Null(stored.Value!.Check);
+        Assert.Equal(parserRefusal.Code, stored.Value.LastParserRefusal!.Code);
+        Assert.Equal(parserRefusal.Message, stored.Value.LastParserRefusal.Message);
     }
 
     [Fact]

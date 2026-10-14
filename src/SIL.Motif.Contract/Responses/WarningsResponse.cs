@@ -35,6 +35,9 @@ public sealed record WarningsResponse(
     /// <summary>Motif advisories recorded with the completed check, separate from parser findings.</summary>
     public IReadOnlyList<GrammarCheckAdvisory> Advisories { get; init; } = [];
 
+    /// <summary>The Baseline, Selection, parser, and time recorded with the stored grammar check.</summary>
+    public GrammarCheckProvenance? Provenance { get; init; }
+
     /// <summary>The number of findings after the requested filters.</summary>
     public int TotalCount => Findings.Count;
 }

@@ -28,18 +28,12 @@ public static class ProjectSummaryReader
             .ToArray();
         var words = texts.SelectMany(text => text.OccurrencesByWord.Keys)
             .Distinct(StringComparer.Ordinal).Count();
-        var entries = cache.ServiceLocator.GetInstance<ILexEntryRepository>();
-        var affixRules = entries.AllInstances()
-            .SelectMany(entry => entry.AlternateFormsOS.OfType<IMoAffixAllomorph>()
-                .Concat(entry.LexemeFormOA is IMoAffixAllomorph allomorph ? [allomorph] : []))
-            .Select(form => form.Guid).Distinct().Count();
-        var ruleCount = affixRules + cache.LangProject.MorphologicalDataOA.CompoundRulesOS.Count +
-            cache.LangProject.PhonologicalDataOA.PhonRulesOS.Count;
+        var inventory = ProjectGrammarInventoryReader.Read(cache);
         var wordformCount = cache.ServiceLocator.GetInstance<IWfiWordformRepository>().Count;
         var wordforms = LcmWordformCorpus.ExtractForms(cache)
             .Distinct(StringComparer.Ordinal).OrderBy(word => word, StringComparer.Ordinal).ToArray();
         return new ProjectSummarySnapshot(words, texts.Sum(text => text.OccurrenceCount), wordformCount,
-            ruleCount, entries.Count, wordforms, texts)
+            inventory.RuleCount, inventory.LexemeCount, wordforms, texts)
         { WritingSystems = WritingSystemDisplayReader.Read(cache), WordWritingSystems = ReadWordWritingSystems(cache) };
     }
 

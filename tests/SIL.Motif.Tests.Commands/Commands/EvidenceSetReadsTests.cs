@@ -131,6 +131,36 @@ public sealed class EvidenceSetReadsTests : IDisposable
     }
 
     [Fact]
+    public void StoredTrialGrammarCheckKeepsMeasuredProvenanceAfterTheCurrentBaselineChanges()
+    {
+        using var fixture = new TrialsTests.ProjectFixture(_root);
+        var proposal = fixture.SaveProposal();
+        fixture.RecordAssessment(proposal, "trial-root", AssessmentKinds.ParseTime);
+        fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", "trial", ["trial-root"]);
+        var measuredSourceSave = DateTimeOffset.Parse("2026-09-24T10:30:00Z");
+        new TrialGrammarCheckRepository(fixture.Database).Save(fixture.Token, proposal.Id, proposal.Digest,
+            "sha256:selection", new GrammarCheckResponse([], HasBaseline: true), measuredSourceSave);
+        var request = new GrammarCheckRequest(fixture.Project.FullFwDataPath, proposal.Id.Value);
+        var before = StoredGrammarCheckQuery.Query(request);
+        Assert.True(before.Succeeded, before.Refusal?.Message);
+        var beforeProvenance = before.Value!.Provenance;
+        Assert.NotNull(beforeProvenance);
+        Assert.Equal(fixture.Token, beforeProvenance.BaselineToken);
+        Assert.Equal("sha256:selection", beforeProvenance.SelectionSha256);
+        Assert.Null(beforeProvenance.ParserStamp);
+        Assert.Equal(measuredSourceSave, beforeProvenance.SourceLastWriteUtc);
+        Assert.Equal(proposal.Id.Value, beforeProvenance.Trial!.ProposalId);
+        Assert.Equal(proposal.Digest, beforeProvenance.Trial.IntentDigest);
+
+        fixture.RecordBaseline("sha256:" + new string('b', 64), "2026-09-24T11:30:00Z",
+            DateTimeOffset.Parse("2026-09-24T12:30:00Z"));
+
+        var after = StoredGrammarCheckQuery.Query(request);
+        Assert.True(after.Succeeded, after.Refusal?.Message);
+        Assert.Equal(beforeProvenance, after.Value!.Provenance);
+    }
+
+    [Fact]
     public void StoredGrammarCheckForAnIncompleteTrialReturnsWithoutWordAttribution()
     {
         using var fixture = new TrialsTests.ProjectFixture(_root);

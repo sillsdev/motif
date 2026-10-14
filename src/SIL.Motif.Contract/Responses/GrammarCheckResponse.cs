@@ -23,6 +23,10 @@ public sealed record GrammarCheckResponse(IReadOnlyList<GrammarWarning> Findings
 
     /// <summary>The parser's per-code summary rows, used to group findings for display.</summary>
     public IReadOnlyList<GrammarWarningSummary> Summary { get; init; } = [];
+
+    /// <summary>The exact Baseline, Selection, parser, source-save time, and check time recorded with these findings.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
+    public GrammarCheckProvenance? Provenance { get; init; }
 }
 
 /// <summary>A Motif observation about a completed grammar check that is not a parser finding.</summary>

@@ -9,6 +9,7 @@ using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Store;
+using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Store;
 using SIL.Motif.Host.LcmUtils;
 
@@ -148,6 +149,11 @@ public static class ProjectStoreCommand
         catch (LcmInitializationException exception)
         {
             return CommandOutcome<T>.Refused(new Refusal("project.unloadable", FailureReason.Refused,
+                exception.Message, Fact(fwDataPath)));
+        }
+        catch (BaselineSummaryMissingException exception)
+        {
+            return CommandOutcome<T>.Refused(new Refusal("store.inconsistent", FailureReason.StoreInconsistent,
                 exception.Message, Fact(fwDataPath)));
         }
         catch (IOException exception)

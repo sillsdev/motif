@@ -170,7 +170,7 @@ public sealed class BaselineRepositoryTests : IDisposable
             DateTimeOffset.Parse("2026-08-23T11:00:00Z"), TestTextWords.Empty, Summary());
         Execute(database, "DELETE FROM BaselineSummaries WHERE ProjectKey = $project;", "workspace", null);
 
-        var exception = Assert.Throws<InvalidDataException>(() => repository.GetCurrentEvidence("workspace"));
+        var exception = Assert.Throws<BaselineSummaryMissingException>(() => repository.GetCurrentEvidence("workspace"));
 
         Assert.Contains("no stored project summary", exception.Message, StringComparison.Ordinal);
     }
