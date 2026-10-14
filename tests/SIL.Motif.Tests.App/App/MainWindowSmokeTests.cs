@@ -500,7 +500,7 @@ public sealed class MainWindowSmokeTests
     }
 
     [Fact]
-    public void OverviewKeepsItsTileLayoutAndShowsARefreshRefusalOnce()
+    public void OverviewKeepsItsFiguresAndTablesAndShowsARefreshRefusalOnce()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -547,7 +547,8 @@ public sealed class MainWindowSmokeTests
                     AutomationProperties.GetAutomationId(block) == AutomationIds.FreshnessDetail);
                 Assert.Equal(workspace.FreshnessLabel, freshnessLabel.Text);
                 Assert.Equal(workspace.FreshnessDetail, freshnessDetail.Text);
-                Assert.Equal(2, page.GetVisualDescendants().OfType<OutcomeBar>().Count());
+                Assert.NotNull(page.FindControl<ItemsControl>("OverviewCoverageRows"));
+                Assert.NotNull(page.FindControl<ItemsControl>("OverviewAccuracyRows"));
                 var overviewModel = workspace.PageModel<OverviewPageModel>();
                 Assert.Equal(Mark.ParserRefusal,
                     Assert.Single(overviewModel.TextCoverageSegments, segment => segment.Label == "can't read").Mark);
@@ -559,7 +560,7 @@ public sealed class MainWindowSmokeTests
                     .Single(item => item.Text == overviewModel.SpeedMedian).FontWeight);
                 var tiles = window.GetLogicalDescendants().OfType<Control>()
                     .Where(item => item.Classes.Contains("overviewTile")).ToArray();
-                Assert.Equal(4, tiles.Length);
+                Assert.Equal(5, tiles.Length);
                 Assert.All(tiles, tile =>
                 {
                     Assert.Equal(Avalonia.Layout.HorizontalAlignment.Stretch, tile.HorizontalAlignment);

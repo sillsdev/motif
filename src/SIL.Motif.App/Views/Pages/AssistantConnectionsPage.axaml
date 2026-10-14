@@ -7,13 +7,13 @@
              x:DataType="vm:AssistantConnectionsPageModel">
   <Grid RowDefinitions="Auto,*">
     <Border Classes="handoffHeader">
-      <views:CopyableTextBlock Classes="section-title" Text="AI assistants" />
+      <views:CopyableTextBlock TextWrapping="Wrap" Classes="section-title" Text="AI assistants" />
     </Border>
     <ScrollViewer Grid.Row="1">
       <StackPanel>
         <Border Classes="card">
           <StackPanel>
-            <views:CopyableTextBlock Classes="section-title" Text="Advanced AI mode" />
+            <views:CopyableTextBlock TextWrapping="Wrap" Classes="section-title" Text="Advanced AI mode" />
             <views:CopyableTextBlock Text="When this is on, connected assistants can read Known projects and draft Proposals through Motif. They cannot Apply a Proposal. Restart open assistant sessions after changing this setting."
                                       TextWrapping="Wrap" />
             <CheckBox Content="Turn on Advanced AI mode" IsChecked="{Binding IsEnabled}" />
@@ -26,9 +26,9 @@
 
         <Border Classes="card" IsVisible="{Binding ShowsAssistantList}">
           <StackPanel>
-            <views:CopyableTextBlock Classes="section-title" Text="Choose assistants" />
-            <views:CopyableTextBlock Text="Motif found these supported assistants. Check each one you want to connect." />
-            <views:CopyableTextBlock Text="{Binding EmptyAssistantText}" IsVisible="{Binding HasNoAssistants}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.AssistantsEmptyText}" />
+            <views:CopyableTextBlock TextWrapping="Wrap" Classes="section-title" Text="Choose assistants" />
+            <views:CopyableTextBlock TextWrapping="Wrap" Text="Motif found these supported assistants. Check each one you want to connect." />
+            <views:CopyableTextBlock TextWrapping="Wrap" Text="{Binding EmptyAssistantText}" IsVisible="{Binding HasNoAssistants}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.AssistantsEmptyText}" />
             <ItemsControl x:Name="AssistantConnectionsItems" ItemsSource="{Binding Assistants}" IsVisible="{Binding HasAssistants}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:AssistantChoiceViewModel">

@@ -802,8 +802,6 @@ public sealed class PageScreenshots
         ]));
         fake.StoredGrammarCheckIs(new GrammarCheckResponse(GrammarFindings(), HasBaseline: true));
         fake.CheckGrammarCompletesWith(new GrammarCheckResponse(GrammarFindings(), HasBaseline: true));
-        fake.ListTextsCompletesWith(new TextInventoryResponse(
-            [new TextChoiceSummary(Story, "Hadithi ya sungura"), new TextChoiceSummary(Letter, "Barua kwa mwalimu")], HasBaseline: true));
         fake.AssessCompletesWith(capturedAssessment ?? Assessment());
         fake.StatsCompletesWith(new StatsCommandResponse("assessment/one", ProjectPath, "cache", null, StatisticsRows()));
         fake.HandoffCompletesWith(new HandoffCommandResponse(@"C:\Users\linguist\Documents\Motif Handoffs\Sample 2 Oct 6:47 PM",
@@ -838,9 +836,12 @@ public sealed class PageScreenshots
         fake.OnInspect((request, _) => Task.FromResult(CommandOutcome<InspectResponse>.Success(SampleInspection(request.Subject))));
         OverviewTimingScreenshots.ReadOverviewAndTiming(fake, capturedAssessment ?? Assessment());
         if (!parse) fake.OverviewCompletesWith(EmptyOverview());
-        configure?.Invoke(fake, capturedAssessment ?? Assessment());
         var readerFixture = capturedWords is null ? SampleReaderFixture(parse) :
             StoredSelectionFixture.FromDisplayRecords(capturedWords, Token());
+        var inventory = TextInventoryQuery.Query(new TextInventoryRequest(readerFixture.ProjectPath));
+        Assert.True(inventory.Succeeded, inventory.Refusal?.Message);
+        fake.ListTextsCompletesWith(inventory.Value!);
+        configure?.Invoke(fake, capturedAssessment ?? Assessment());
         if (parse && capturedWords is not null) readerFixture.RecordAssessment(capturedAssessment ?? Assessment());
         fake.SelectionReaderHandler = readerFixture.OpenAsync;
         fake.OnReadWordState((request, cancellation) => Task.Run(() =>
@@ -848,9 +849,6 @@ public sealed class PageScreenshots
                 cancellation), cancellation));
         var check = await fake.ReadStoredGrammarCheckAsync(new GrammarCheckRequest(ProjectPath), CancellationToken.None);
         if (check.Value?.Check is { } warnings) readerFixture.RecordGrammarCheck(warnings);
-        if (capturedWords is not null)
-            fake.ListTextsCompletesWith(new TextInventoryResponse(capturedWords.Texts.Select(text =>
-                new TextChoiceSummary(text.TextId, text.Title)).ToArray(), true));
 
         var selection = new SelectionViewModel(fake);
         var workspace = new WorkspaceShellViewModel(

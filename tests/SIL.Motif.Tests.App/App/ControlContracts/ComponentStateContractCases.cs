@@ -87,6 +87,16 @@ internal static class ComponentStateContractCases
 
     internal static IEnumerable<ComponentStateCase> All()
     {
+        foreach (var (property, key) in new[]
+        {
+            (ToggleButton.ForegroundProperty, "Intent.Link.Text"),
+            (ToggleButton.BackgroundProperty, "Intent.Primary.Fill"),
+        })
+            yield return new("ToggleButton.tryWordPathsToggle:checked", "checked", () => Alone(new ToggleButton
+            {
+                Content = "Paths the parser dropped", Classes = { "tryWordPathsToggle" }, IsChecked = true,
+            }), StateStimulus.None, StatePart.Self, property, key);
+
         const string face = " /template/ ContentPresenter#PART_ContentPresenter";
         const string actionHover = "Button.actionChip:pointerover" + face;
         const string actionPressed = "Button.actionChip:pressed" + face;
@@ -210,6 +220,10 @@ internal static class ComponentStateContractCases
             yield return new($"Button.overviewTile:{how}" + face, how, () => Alone(Press("overviewTile")), stimulus,
                 StatePart.Face, ContentPresenter.BorderBrushProperty, "Intent.Border");
         }
+
+        const string overviewRowHover = "Button.overviewTableRow:pointerover /template/ ContentPresenter#PART_ContentPresenter";
+        yield return new(overviewRowHover, "hover", () => Alone(Press("overviewTableRow")), StateStimulus.Pointer,
+            StatePart.Face, ContentPresenter.BackgroundProperty, "Intent.Surface.Hover");
 
         const string lookFirstHover = "Button.overviewLookFirstRow:pointerover /template/ ContentPresenter#PART_ContentPresenter";
         yield return new(lookFirstHover, "hover", () => Alone(Press("overviewLookFirstRow")), StateStimulus.Pointer,
@@ -841,10 +855,13 @@ internal static class TooltipOwners
             control => control is Button && Name(control) == "Apply to FieldWorks project"),
         new("Review count title", "Views/ReviewPanel.axaml", "{Binding CountText}", TooltipScene.ReviewStaged,
             control => control is CopyableTextBlock &&
-                AutomationProperties.GetAutomationId(control) == AutomationIds.ReviewCountTitle),
+                AutomationProperties.GetAutomationId(control) == AutomationIds.ReviewCountTitle)
+        {
+            Pending = "the staged Review scene does not show the count heading",
+        },
         new("Review all changes menu", "Views/ReviewPanel.axaml", "Review all changes", TooltipScene.ReviewStaged,
             control => control is Button && control.Classes.Contains("denseTableMenu") && Name(control) == "Review all changes"),
-        new("Review group note", "Views/ReviewPanel.axaml", "{Binding Note}", TooltipScene.ReviewStaged,
+        new("Review group note", "Views/ReviewPanel.axaml", "{Binding NoteTip}", TooltipScene.ReviewStaged,
             control => control is TextBlock { DataContext: ReviewChangeGroupViewModel } &&
                 control.Classes.Contains("denseTableGroupName"))
         {
@@ -852,39 +869,72 @@ internal static class TooltipOwners
         },
         new("Review grammar row title", "Views/ReviewPanel.axaml", "{Binding Title}", TooltipScene.ReviewStaged,
             control => control is CopyableTextBlock { DataContext: ReviewEntryViewModel entry } text &&
-                control.Classes.Contains("denseTableItem") && text.Text == entry.Title),
+                control.Classes.Contains("denseTableItem") && text.Text == entry.Title)
+        {
+            Pending = "the staged sample holds no grammar change",
+        },
         new("Review grammar row summary", "Views/ReviewPanel.axaml", "{Binding Summary}", TooltipScene.ReviewStaged,
             control => control is CopyableTextBlock { DataContext: ReviewEntryViewModel entry } text &&
-                !control.Classes.Contains("denseTableItem") && text.Text == entry.Summary),
+                !control.Classes.Contains("denseTableItem") && text.Text == entry.Summary)
+        {
+            Pending = "the staged sample holds no grammar change",
+        },
         new("Review row word", "Views/ReviewPanel.axaml", "{Binding Word}", TooltipScene.ReviewStaged,
             control => control is CopyableTextBlock { DataContext: ChangeViewModel } &&
                 control.Classes.Contains("denseTableItem") && control.FindAncestorOfType<ReviewPanel>() is not null),
         new("Review row looked at", "Views/ReviewPanel.axaml", "Looked at", TooltipScene.ReviewStaged,
             control => control is CopyableTextBlock && Name(control) == "Looked at" &&
-                control.FindAncestorOfType<ReviewPanel>() is not null),
+                control.FindAncestorOfType<ReviewPanel>() is not null)
+        {
+            Pending = "the staged sample has no change marked as looked at",
+        },
         new("Review opinion now", "Views/ReviewPanel.axaml", "{Binding StagedTransition.Now}", TooltipScene.ReviewStaged,
             control => control is OpinionMark { DataContext: ChangeViewModel change } &&
                 ToolTip.GetTip(control) as string == change.StagedTransition.Now &&
-                control.FindAncestorOfType<ReviewPanel>() is not null),
+                control.FindAncestorOfType<ReviewPanel>() is not null)
+        {
+            Pending = "the staged Review scene does not show the opinion column",
+        },
         new("Review opinion after Apply", "Views/ReviewPanel.axaml", "{Binding StagedTransition.AfterApply}", TooltipScene.ReviewStaged,
             control => control is OpinionMark { DataContext: ChangeViewModel change } &&
                 ToolTip.GetTip(control) as string == change.StagedTransition.AfterApply &&
                 ToolTip.GetTip(control) as string != change.StagedTransition.Now &&
-                control.FindAncestorOfType<ReviewPanel>() is not null),
+                control.FindAncestorOfType<ReviewPanel>() is not null)
+        {
+            Pending = "the staged Review scene does not show the opinion column",
+        },
         new("Review opinion change text", "Views/ReviewPanel.axaml", "{Binding TransitionText}", TooltipScene.ReviewStaged,
             control => control is CopyableTextBlock { DataContext: ChangeViewModel change } text &&
-                text.Text == change.TransitionText && control.FindAncestorOfType<ReviewPanel>() is not null),
+                text.Text == change.TransitionText && control.FindAncestorOfType<ReviewPanel>() is not null)
+        {
+            Pending = "the staged Review scene does not show the opinion column",
+        },
         new("Review grammar effect", "Views/ReviewPanel.axaml", "{Binding TableOutcomeText}", TooltipScene.ReviewStaged,
             control => control is CopyableTextBlock { DataContext: ReviewEntryViewModel entry } text &&
-                text.Text == entry.TableOutcomeText),
+                text.Text == entry.TableOutcomeText)
+        {
+            Pending = "the staged sample holds no grammar change",
+        },
         new("Review row location", "Views/ReviewPanel.axaml", "{Binding Change.Presentation.PendingChange.WhereText}",
             TooltipScene.ReviewStaged, control => control is CopyableTextBlock { DataContext: ReviewEntryViewModel entry } text &&
-                entry.Change is { } change && text.Text == change.Presentation.PendingChange?.WhereText),
+                entry.Change is { } change && text.Text == change.Presentation.PendingChange?.WhereText)
+        {
+            Pending = "the staged Review scene does not show the location column",
+        },
         new("Review row fit", "Views/ReviewPanel.axaml", "{Binding TableFitDescription}", TooltipScene.ReviewStaged,
             control => control is Border && control.Classes.Contains("reviewFitTag")),
         new("Review Inspector Word Analyses", "Views/ReviewInspector.axaml", "{Binding Listed.Row.WordAnalysesTip}",
             TooltipScene.ReviewStaged, control => control is HyperlinkButton &&
                 control.FindAncestorOfType<ReviewInspector>() is not null),
+        new("Try a Word analysis that could not be shown", "Views/TryWordPanel.axaml", "{Binding ProjectionErrorText}",
+            TooltipScene.TryAWordRecordedDetails, control => control is StackPanel { DataContext: TraceAnalysisViewModel } &&
+                control.FindAncestorOfType<TryWordPanel>() is not null && ToolTip.GetTip(control) is string { Length: > 0 }),
+        new("Try a Word attempt stop", "Views/TryWordPanel.axaml", "{Binding StopReason}", TooltipScene.TryAWordRecordedDetails,
+            control => control is CopyableTextBlock { DataContext: TraceCandidateViewModel } &&
+                control.FindAncestorOfType<TryWordPanel>() is not null)
+        {
+            Pending = "the recorded-details scene does not list the attempts that got furthest",
+        },
         new("Parsimony group heading", "Views/Pages/ParsimonyPage.axaml", "{Binding Label}", TooltipScene.Overview,
             control => control is TextBlock { DataContext: DenseTableGroup } && control.FindAncestorOfType<ParsimonyPage>() is not null)
         {
@@ -943,13 +993,22 @@ internal static class TooltipOwners
         new("earlier timing kind", "Views/TryWordPanel.axaml", "{Binding KindTip}", TooltipScene.TryAWordEarlierTiming,
             control => control is TextBlock { DataContext: TryWordEarlierRuleTime }),
         new("parser's morphemes", "Views/TraceAnalysesView.axaml", "{Binding LegacyMorphemesTip}", TooltipScene.TryAWordRecordedDetails,
-            control => control is CopyableTextBlock { DataContext: TraceAnalysisViewModel analysis } text && text.Text == analysis.Surface),
+            control => control is CopyableTextBlock { DataContext: TraceAnalysisViewModel analysis } text && text.Text == analysis.Surface)
+        {
+            Pending = "Try a Word's compact results replace the recorded-analyses view this scene used to show",
+        },
         new("repeated records", "Views/TraceAnalysesView.axaml", "The trace recorded this result more than once; distinct derivations are not established.",
             TooltipScene.TryAWordRepeatedRecords,
-            control => control is CopyableTextBlock { DataContext: TraceAnalysisViewModel analysis } text && text.Text == analysis.RecordedCountText),
+            control => control is CopyableTextBlock { DataContext: TraceAnalysisViewModel analysis } text && text.Text == analysis.RecordedCountText)
+        {
+            Pending = "Try a Word's compact results replace the recorded-analyses view this scene used to show",
+        },
         new("analysis that could not be shown", "Views/TraceAnalysesView.axaml", "{Binding ProjectionError}", TooltipScene.TryAWordRecordedDetails,
             control => control is CopyableTextBlock { DataContext: TraceAnalysisViewModel analysis } text &&
-                text.Text == analysis.ProjectionErrorText),
+                text.Text == analysis.ProjectionErrorText)
+        {
+            Pending = "Try a Word's compact results replace the recorded-analyses view this scene used to show",
+        },
         new("WORDS column", "Views/Pages/TimingPage.axaml", "How many of these words the parser recorded time for this rule in",
             TooltipScene.Timing, control => control is CopyableTextBlock { Text: "WORDS" }),
         new("grammar warning named this rule", "Views/Pages/TimingPage.axaml",

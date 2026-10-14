@@ -25,6 +25,54 @@ namespace SIL.Motif.Tests.App;
 public sealed class OverviewPageWordsTests
 {
     [Fact]
+    public void InventoryWithoutAResponseStaysBlankWhileLoading()
+    {
+        var (_, context) = NewContext();
+        var page = new OverviewPageModel(context);
+
+        Assert.Empty(page.WordformCountText);
+        Assert.Empty(page.RuleCountText);
+        Assert.Empty(page.LexemeCountText);
+    }
+
+    [Fact]
+    public void MeasuredInventoryKeepsZeroAndUsesTheCurrentNumberFormat()
+    {
+        var (_, context) = NewContext();
+        var page = new OverviewPageModel(context)
+        {
+            Overview = Populated() with { WordformCount = 0, RuleCount = 1234, LexemeCount = 56789 },
+        };
+
+        Assert.Equal("0", page.WordformCountText);
+        Assert.Equal(1234.ToString("N0", System.Globalization.CultureInfo.CurrentCulture), page.RuleCountText);
+        Assert.Equal(56789.ToString("N0", System.Globalization.CultureInfo.CurrentCulture), page.LexemeCountText);
+    }
+
+    [Fact]
+    public async Task LostWordInspectorUsesRecordedEvidenceAndKeepsTheWordRoute()
+    {
+        var (fake, context) = NewContext();
+        var page = new OverviewPageModel(context);
+        var texts = new TextsPageModel(context);
+        fake.OverviewCompletesWith(Populated() with
+        {
+            LookFirst = new OverviewLookFirst(["mwalimu"], [], [], null, 0)
+                { SharedLostMorphemesAvailable = false },
+        });
+        await context.OpenProjectAsync(ProjectPath);
+        Assert.Equal("Approved words the grammar no longer builds.", page.LostWordsContextText);
+        Assert.Equal("Shared morpheme information is unavailable.", page.SharedLostMorphemeContextText);
+        Assert.True(page.OpenLostWordsCommand.CanExecute(null));
+        page.OpenWordCommand.Execute("mwalimu");
+        Assert.Equal(WorkspacePage.Texts, context.CurrentPage);
+        page.OpenLostWordsCommand.Execute(null);
+        Assert.Equal([new TextsListCell(WordProjectStatus.Approved, CompareColumnKind.NoParse)],
+            texts.Assess.Compare.Cells.Where(cell => cell.IsSelected)
+                .Select(cell => new TextsListCell(cell.Row, cell.Column)));
+    }
+
+    [Fact]
     public async Task WarningKindsNameTheirActualLevelAndSpellingMatchesDoNotSayNone()
     {
         var (fake, context) = NewContext();
@@ -116,7 +164,7 @@ public sealed class OverviewPageWordsTests
     }
 
     [Fact]
-    public void SpeedTileKeepsSlowestWordsCompactAndMarksAStoppedWord()
+    public void SlowestWordsTableKeepsWordsCompactAndMarksAStoppedWord()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -127,15 +175,14 @@ public sealed class OverviewPageWordsTests
             var window = Show(page);
             try
             {
-                var speed = window.GetLogicalDescendants().OfType<Control>()
-                    .Single(control => Avalonia.Automation.AutomationProperties.GetName(control) == "Speed");
-                var summary = speed.GetLogicalDescendants().OfType<TextBlock>()
-                    .Single(text => text.Text?.StartsWith("Slowest:", StringComparison.Ordinal) == true);
-
-                Assert.Contains("mwalimu", summary.Text, StringComparison.Ordinal);
-                Assert.Contains("Stopped", summary.Text, StringComparison.Ordinal);
-                Assert.Contains("700 ms", summary.Text, StringComparison.Ordinal);
-                Assert.Empty(speed.GetLogicalDescendants().OfType<SIL.Motif.App.Controls.WordPresentation.WordRow>());
+                var slowest = window.GetLogicalDescendants().OfType<Control>()
+                    .Single(control => Avalonia.Automation.AutomationProperties.GetName(control) == "Slowest words");
+                var words = slowest.GetLogicalDescendants().OfType<TextBlock>()
+                    .Select(text => text.Text ?? string.Empty).ToArray();
+                Assert.Contains("mwalimu", words);
+                Assert.Contains("Stopped", words);
+                Assert.Contains("700 ms", words);
+                Assert.Empty(slowest.GetLogicalDescendants().OfType<SIL.Motif.App.Controls.WordPresentation.WordRow>());
             }
             finally
             {
@@ -185,6 +232,7 @@ public sealed class OverviewPageWordsTests
         fake.OverviewCompletesWith(Populated());
         await context.OpenProjectAsync(ProjectPath);
         Assert.False(page.SlowestWordRows[0].HasCard);
+        Assert.Null(page.SlowestTableRows[1].Outcome);
 
         context.Assess.Words.Load([new AssessmentWordResult("mwalimu", "capped", true, "INCOMPLETE — search limit", 700, null)]);
 
@@ -192,6 +240,8 @@ public sealed class OverviewPageWordsTests
         Assert.True(mwalimu.HasCard);
         Assert.Same(context.Assess.Words.Find("mwalimu")!.WordRow, mwalimu.Row);
         Assert.Equal("700 ms", mwalimu.TimeText);
+        Assert.Equal(Mark.Stopped, page.SlowestTableRows[0].Outcome);
+        Assert.Null(page.SlowestTableRows[1].Outcome);
     }
 
     [Theory]
@@ -530,8 +580,7 @@ public sealed class OverviewPageWordsTests
             {
                 var tiles = window.GetLogicalDescendants().OfType<Control>()
                     .Where(tile => tile.Classes.Contains("overviewTile")).ToArray();
-                Assert.Equal(4, tiles.Length);
-                Assert.All(tiles, tile => Assert.Equal(tiles[0].Bounds.Size, tile.Bounds.Size));
+                Assert.Equal(5, tiles.Length);
                 foreach (var tile in tiles)
                 {
                     var title = tile.GetLogicalDescendants().OfType<TextBlock>()
@@ -551,7 +600,7 @@ public sealed class OverviewPageWordsTests
     }
 
     [Fact]
-    public void EachTilesBarHasAKeyNamingEveryColourWithItsCount()
+    public void OutcomeRowsNameTheirMarksAndCountsAndKeepTheirActionsVisible()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -559,71 +608,29 @@ public sealed class OverviewPageWordsTests
             var page = new OverviewPageModel(context);
             fake.OverviewCompletesWith(Populated());
             await context.OpenProjectAsync(ProjectPath);
-
             var window = Show(page);
             try
             {
-                var bars = window.GetLogicalDescendants().OfType<OutcomeBar>().ToArray();
-                Assert.Equal(2, bars.Length);
-                var detail = window.GetLogicalDescendants().OfType<TextBlock>()
-                    .First(text => text.Classes.Contains("overviewTileDetail"));
-                foreach (var bar in bars)
+                var segments = page.TextCoverageSegments.Concat(page.AccuracySegments).ToArray();
+                var rows = window.GetLogicalDescendants().OfType<Button>()
+                    .Where(button => button.DataContext is OutcomeSegment).ToArray();
+                Assert.Equal(segments.Length, rows.Length);
+                foreach (var row in rows)
                 {
-                    var parts = bar.GetLogicalDescendants().OfType<Border>()
-                        .Where(part => part.Classes.Contains("outcomeSegment") && !part.Classes.Contains("swatch")).ToArray();
-                    var entries = bar.GetLogicalDescendants().OfType<StackPanel>()
-                        .Where(entry => entry.Classes.Contains("outcomeLegendEntry")).ToArray();
-                    Assert.Equal(bar.Segments!.Count, parts.Length);
-                    if (bar.Segments.All(segment => segment.Mark.Kind == MarkKind.Outcome))
-                    {
-                        var links = bar.GetLogicalDescendants().OfType<HyperlinkButton>().ToArray();
-                        Assert.Equal(bar.Segments.Count, links.Length);
-                        for (var index = 0; index < links.Length; index++)
-                        {
-                            var segment = bar.Segments[index];
-                            Assert.Equal(segment.ActionName, Avalonia.Automation.AutomationProperties.GetName(links[index]));
-                            Assert.Contains("revealLink", links[index].Classes);
-                            Assert.DoesNotContain("revealOnHover", links[index].Classes);
-                            Assert.DoesNotContain(links[index].GetVisualDescendants().OfType<TextBlock>(),
-                                text => text.Text == "→");
-                            Assert.Contains(links[index].GetVisualDescendants().OfType<MarkGlyph>(),
-                                glyph => glyph.Mark == segment.Mark);
-                            Assert.Equal([segment.Mark.Word, segment.CountText],
-                                links[index].GetVisualDescendants().OfType<TextBlock>()
-                                    .Where(text => !text.Classes.Contains("markGlyph"))
-                                    .Select(text => text.Text ?? string.Empty));
-                            Assert.NotNull(links[index].Command);
-                        }
-                        continue;
-                    }
-                    // Parts that share a colour share one swatch, so the key shows each colour once.
-                    var colours = bar.Segments.Select((segment, index) => (segment, index)).GroupBy(item => item.segment.Mark).ToArray();
-                    Assert.Equal(colours.Length, entries.Length);
-                    for (var index = 0; index < entries.Length; index++)
-                    {
-                        var swatch = entries[index].Children.OfType<Border>().Single();
-                        var colour = parts[colours[index].First().index].Classes.Where(name => name != "outcomeSegment").Order();
-                        Assert.Equal(colour, swatch.Classes.Where(name => name is not ("outcomeSegment" or "swatch")).Order());
-                        var words = entries[index].Children.OfType<TextBlock>().Select(text => text.Text ?? string.Empty);
-                        Assert.Equal(string.Join(", ", colours[index].Select(item => $"{item.segment.CountText} {item.segment.Label}")),
-                            string.Join(" ", words));
-                        Assert.All(entries[index].Children.OfType<TextBlock>(), text =>
-                        {
-                            Assert.Equal(detail.FontSize, text.FontSize);
-                        });
-                        Assert.All(entries[index].Children.OfType<HyperlinkButton>(), link =>
-                        {
-                            Assert.NotNull(link.Command);
-                            Assert.NotEmpty(Avalonia.Automation.AutomationProperties.GetName(link) ?? string.Empty);
-                        });
-                        Assert.Equal(detail.FontWeight, entries[index].Children.OfType<TextBlock>().Last().FontWeight);
-                    }
+                    var segment = Assert.IsType<OutcomeSegment>(row.DataContext);
+                    Assert.Equal(segment.ActionName, Avalonia.Automation.AutomationProperties.GetName(row));
+                    Assert.NotNull(row.Command);
+                    Assert.DoesNotContain("revealOnHover", row.Classes);
+                    Assert.Contains(row.GetLogicalDescendants().OfType<MarkGlyph>(), glyph => glyph.Mark == segment.Mark);
+                    var text = row.GetLogicalDescendants().OfType<TextBlock>().Select(block => block.Text).ToArray();
+                    Assert.Contains(segment.Label, text);
+                    Assert.Contains(segment.CountText, text);
+                    var bar = Assert.Single(row.GetLogicalDescendants().OfType<OverviewShareBar>());
+                    Assert.Equal(segment.Mark, bar.Mark);
+                    Assert.Equal(segment.Count, bar.Value);
                 }
             }
-            finally
-            {
-                window.Close();
-            }
+            finally { window.Close(); }
         }, TimeSpan.FromSeconds(10));
     }
 
@@ -640,11 +647,9 @@ public sealed class OverviewPageWordsTests
             var window = Show(page);
             try
             {
-                var bar = window.GetLogicalDescendants().OfType<OutcomeBar>()
-                    .Single(item => item.Segments!.All(segment => segment.Mark.Kind == MarkKind.Outcome));
-                var different = bar.GetLogicalDescendants().OfType<HyperlinkButton>()
-                    .Single(link => (Avalonia.Automation.AutomationProperties.GetName(link) ?? string.Empty)
-                        .Contains("Different", StringComparison.Ordinal));
+                var different = window.GetLogicalDescendants().OfType<Button>()
+                    .Single(button => button.DataContext is OutcomeSegment { Mark.Kind: MarkKind.Outcome,
+                        Mark.Value: "different" });
 
                 different.Command!.Execute(null);
 
@@ -709,7 +714,7 @@ public sealed class OverviewPageWordsTests
     }
 
     [Fact]
-    public void LookFirstRowsRevealTheirLinkOnHoverOrFocus()
+    public void LookFirstRowsKeepTheirLinksVisibleWithHoverAndFocus()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -730,7 +735,7 @@ public sealed class OverviewPageWordsTests
                 Assert.Equal(page.LookFirstRows.Count, links.Length);
                 var actionHint = Assert.Single(links[0].GetLogicalDescendants().OfType<TextBlock>(),
                     text => text.Classes.Contains("overviewLookFirstAction"));
-                Assert.Equal(0, actionHint.Opacity);
+                Assert.Equal(1, actionHint.Opacity);
                 links[0].BringIntoView();
                 window.UpdateLayout();
                 Dispatcher.UIThread.RunJobs();
@@ -840,7 +845,7 @@ public sealed class OverviewPageWordsTests
     }
 
     [Fact]
-    public void TheSpeedTileComesFirst()
+    public void SpeedAndCoverageUseSeparateOverviewColumns()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -852,11 +857,13 @@ public sealed class OverviewPageWordsTests
             var window = Show(page);
             try
             {
-                var grid = window.GetLogicalDescendants().OfType<UniformGrid>()
-                    .Single(candidate => candidate.Classes.Contains("overviewTiles"));
-                var tiles = grid.Children.OfType<Control>()
-                    .Where(tile => tile.Classes.Contains("overviewTile") && tile.IsEffectivelyVisible).ToArray();
-                Assert.Equal("Speed", Avalonia.Automation.AutomationProperties.GetName(tiles[0]));
+                var view = window.GetLogicalDescendants().OfType<OverviewPage>().Single();
+                var right = view.FindControl<StackPanel>("OverviewRightColumn")!;
+                Assert.Contains(right.GetLogicalDescendants().OfType<Control>(), control =>
+                    Avalonia.Automation.AutomationProperties.GetName(control) == "Speed");
+                var left = view.FindControl<StackPanel>("OverviewLeftColumn")!;
+                Assert.Contains(left.GetLogicalDescendants().OfType<Control>(), control =>
+                    Avalonia.Automation.AutomationProperties.GetName(control) == "Text coverage");
             }
             finally
             {

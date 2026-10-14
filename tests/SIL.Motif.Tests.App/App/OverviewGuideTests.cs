@@ -10,7 +10,7 @@ using Xunit;
 namespace SIL.Motif.Tests.App;
 
 /// <summary>
-/// Ensures the canonical Overview guide names every card and the reading guide links back to its full page tour.
+/// Ensures the canonical Overview guide names every section and the reading guide links back to its full page tour.
 /// </summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class OverviewGuideTests
@@ -18,10 +18,10 @@ public sealed class OverviewGuideTests
     private static readonly string[] RetiredCardNames = ["Accuracy", "Text Coverage", "**Timing**", "**Warnings**"];
 
     [Fact]
-    public void TheOverviewGuideNamesEveryCardAndTheReadingGuideLinksBack()
+    public void TheOverviewGuideNamesEveryTableAndTheReadingGuideLinksBack()
     {
         var titles = RenderedTileTitles();
-        Assert.Equal(["Speed", "Text coverage", "Approved analyses kept", "Grammar warnings"], titles);
+        Assert.Equal(["Text coverage", "Approved analyses kept", "Speed", "Slowest words", "Grammar warnings"], titles);
 
         var catalog = HelpCatalog.Load(CultureInfo.GetCultureInfo("en"));
         var guide = catalog.GetHelpPage(HelpEntryKind.Guide, "overview");

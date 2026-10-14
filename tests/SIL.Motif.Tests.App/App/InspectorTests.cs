@@ -251,7 +251,7 @@ public sealed class InspectorTests
                 Assert.NotEmpty(tryLinks);
                 Assert.All(tryLinks, link =>
                 {
-                    Assert.Equal(0, link.Opacity);
+                    Assert.Equal(1, link.Opacity);
                     Assert.True(link.Focusable);
                     Assert.Contains("revealOnHover", link.Classes);
                 });
@@ -273,9 +273,9 @@ public sealed class InspectorTests
                 Assert.Contains(facts, link => (string)link.Content! == "Lexicon Edit ↗");
                 Assert.Contains(facts, link => (string)link.Content! == "Category Edit ↗");
                 Assert.All(facts, link => Assert.Contains("revealControl", link.Classes));
-                Assert.All(facts, link => Assert.True(link.Focusable, "A link hidden until hover is still reachable by keyboard."));
+                Assert.All(facts, link => Assert.True(link.Focusable, "A link is reachable by keyboard."));
                 Assert.All(facts, link => Assert.Contains("revealOnHover", link.Classes));
-                Assert.All(facts, link => Assert.Equal(0, link.Opacity));
+                Assert.All(facts, link => Assert.Equal(1, link.Opacity));
                 facts[0].Focus(NavigationMethod.Tab);
                 Settle(window);
                 Assert.True(facts[0].Opacity > 0);
@@ -356,7 +356,7 @@ public sealed class InspectorTests
 
     private static InspectLink TraceChip(Window window) =>
         window.GetVisualDescendants().OfType<ItemsControl>()
-            .Single(items => AutomationProperties.GetName(items) == "Recorded analyses" && items.IsEffectivelyVisible)
+            .Single(items => AutomationProperties.GetName(items) == "Recorded parser analyses" && items.IsEffectivelyVisible)
             .GetVisualDescendants().OfType<InspectLink>().First(link => link.IsEffectivelyVisible);
 
     private static InspectLink RecordedRuleLink(Window window, TraceTimingKey? timingKey = null) =>

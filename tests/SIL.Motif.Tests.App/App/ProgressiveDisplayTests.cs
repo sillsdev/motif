@@ -44,11 +44,11 @@ public sealed class ProgressiveDisplayTests
     private static readonly string[] ViewNames =
     [
         "ComparePanel", "DiagnosticPanel", "DifferencePanel", "ExpertTracePanel", "GrammarPanel", "HandoffPanel",
-        "Inspector", "MainWindow", "MiniMatrix", "Pages/AssistantConnectionsPage", "Pages/OverviewPage", "Pages/ParsimonyPage",
+        "Inspector", "MainWindow", "MiniMatrix", "OverviewInspector", "Pages/AssistantConnectionsPage", "Pages/OverviewPage", "Pages/ParsimonyPage",
         "Pages/ProposalsPage", "Pages/TimingPage",
         "RefusalBlock", "ResultsInTextPanel", "ReviewWordRow",
         "RetirementProposalReviewPanel", "ReviewInspector", "ReviewPanel", "SelectionPanel", "SettingsPage", "SettingsNavigation", "SetupDialog", "StatisticsPanel", "TextWordsPanel", "TextsListsPanel",
-        "TraceAnalysesView", "TryWordPanel", "WarningsFilterPanel", "WarningsInspectorPanel", "WordCard", "WordDispositionButtons",
+        "TraceAnalysesView", "TryWordAttemptInspector", "TryWordPanel", "WarningsFilterPanel", "WarningsInspectorPanel", "WordCard", "WordDispositionButtons",
     ];
 
     public static IEnumerable<object[]> CollectionViews() => ViewNames.Select(name => new object[] { name });
@@ -92,7 +92,7 @@ public sealed class ProgressiveDisplayTests
                     if (entry.Mode is "tree" or "grid") continue;
                     var isFragment = !ReferenceEquals(root, fragment);
                     var externalScroll = isFragment || viewName is "DiagnosticPanel" or "ExpertTracePanel" or
-                        "TraceAnalysesView";
+                        "TraceAnalysesView" or "OverviewInspector";
                     window.Content = externalScroll ? new ScrollViewer { Content = fragment } : fragment;
                     foreach (var ancestor in items.GetLogicalAncestors().OfType<Control>())
                     {
@@ -205,7 +205,7 @@ public sealed class ProgressiveDisplayTests
             .Where(path => File.ReadAllText(path).Contains("Children.Add(", StringComparison.Ordinal) ||
                 File.ReadAllText(path).Contains("ProgressivePanel.Populate(this", StringComparison.Ordinal))
             .Select(path => Path.GetFileNameWithoutExtension(path).Replace(".axaml", string.Empty)).Order().ToArray();
-        Assert.Equal(new[] { "FilterChip", "GrammarWarningPartsBlock", "HeatCell", "MainWindow", "MarkChip", "MorphemePanel", "NamedMark", "OutcomeBar", "ProgressivePanel", "WordCard", "WordRow", "WordRowHeader", "WordStripToken" },
+        Assert.Equal(new[] { "FilterChip", "GrammarWarningPartsBlock", "HeatCell", "MainWindow", "MarkChip", "MorphemePanel", "NamedMark", "OutcomeBar", "OverviewShareBar", "ProgressivePanel", "WordCard", "WordRow", "WordRowHeader", "WordStripToken" },
             codeBuilt);
     }
 
@@ -1006,6 +1006,7 @@ public sealed class ProgressiveDisplayTests
             "GrammarPanel" => new GrammarPanel(workspace.PageModel<WarningsPageModel>().Grammar),
             "HandoffPanel" => new HandoffPanel(workspace.PageModel<AiHandoffPageModel>().Handoff),
             "Inspector" => new Inspector { DataContext = workspace.Inspector },
+            "OverviewInspector" => new OverviewInspector(workspace.PageModel<OverviewPageModel>()),
             "SettingsPage" => BuildSettingsPage(workspace),
             "SettingsNavigation" => BuildSettingsPage(workspace).Navigation,
             "MiniMatrix" => new MiniMatrix { DataContext = workspace.Assess.Compare },
@@ -1042,6 +1043,7 @@ public sealed class ProgressiveDisplayTests
             "TextsListsPanel" => new TextsListsPanel(texts.TextsLists),
             "TraceAnalysesView" => new TraceAnalysesView { DataContext = trace.Trace },
             "TryWordPanel" => new TryWordPanel(trace),
+            "TryWordAttemptInspector" => new TryWordAttemptInspector(trace.Trace),
             "WarningsFilterPanel" => new WarningsFilterPanel(workspace.PageModel<WarningsPageModel>()),
             "WarningsInspectorPanel" => new WarningsInspectorPanel(workspace.PageModel<WarningsPageModel>()),
             "WordCard" => BuildWordCard(workspace),

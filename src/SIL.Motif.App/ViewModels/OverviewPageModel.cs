@@ -32,6 +32,13 @@ public sealed partial class OverviewPageModel : PageModel
         OpenAccuracyCommand = new RelayCommand(() => Context.OpenTexts(TextsTab.Matrix,
             Enum.GetValues<CompareColumnKind>()
                 .Select(column => new TextsListCell(WordProjectStatus.Approved, column)).ToArray()));
+        OpenWordCommand = new RelayCommand<string?>(word =>
+        {
+            if (!string.IsNullOrWhiteSpace(word)) Context.OpenWord(word);
+        });
+        OpenLostWordsCommand = new RelayCommand(
+            () => OpenCell(WordProjectStatus.Approved, CompareColumnKind.NoParse),
+            () => Overview is { AssessmentId: not null, LookFirst.ApprovedLostWords.Count: > 0 });
         OpenTimingCommand = new RelayCommand(() => Context.OpenPage(WorkspacePage.Timing));
         OpenWarningsCommand = new RelayCommand(() => Context.OpenPage(WorkspacePage.Warnings));
         OpenAiHandoffCommand = new RelayCommand(() => Context.OpenPage(WorkspacePage.AiHandoff));
@@ -60,6 +67,7 @@ public sealed partial class OverviewPageModel : PageModel
     /// <summary>The stored Overview read for the open project.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasAssessment))]
+    [NotifyCanExecuteChangedFor(nameof(OpenLostWordsCommand))]
     [NotifyPropertyChangedFor(nameof(ShowNoAssessment))]
     [NotifyPropertyChangedFor(nameof(ShowNumbers))]
     [NotifyPropertyChangedFor(nameof(ShowTiles))]
@@ -79,6 +87,7 @@ public sealed partial class OverviewPageModel : PageModel
     [NotifyPropertyChangedFor(nameof(HasTimingKindShares))]
     [NotifyPropertyChangedFor(nameof(TimingAttributionNote))]
     [NotifyPropertyChangedFor(nameof(SlowestWordRows))]
+    [NotifyPropertyChangedFor(nameof(SlowestTableRows))]
     [NotifyPropertyChangedFor(nameof(HasSlowestWordRows))]
     [NotifyPropertyChangedFor(nameof(SlowestWordSummary))]
     [NotifyPropertyChangedFor(nameof(HasSlowestWordSummary))]
@@ -97,6 +106,8 @@ public sealed partial class OverviewPageModel : PageModel
     [NotifyPropertyChangedFor(nameof(WarningsYourWordsText))]
     [NotifyPropertyChangedFor(nameof(WarningsSpellingCandidatesText))]
     [NotifyPropertyChangedFor(nameof(WarningKindRows))]
+    [NotifyPropertyChangedFor(nameof(LostWordsContextText))]
+    [NotifyPropertyChangedFor(nameof(SharedLostMorphemeContextText))]
     private OverviewResponse? _overview;
 
     partial void OnOverviewChanged(OverviewResponse? value)
@@ -117,6 +128,22 @@ public sealed partial class OverviewPageModel : PageModel
     [NotifyPropertyChangedFor(nameof(HasOverviewRefusal))]
     [NotifyPropertyChangedFor(nameof(OverviewRefusalLine))]
     private WindowRefusal? _overviewRefusal;
+
+    /// <summary>Opens a word named in recorded Overview evidence in the Texts page.</summary>
+    public IRelayCommand<string?> OpenWordCommand { get; }
+
+    /// <summary>Opens the Matrix cell containing Approved words the grammar did not build.</summary>
+    public IRelayCommand OpenLostWordsCommand { get; }
+
+    /// <summary>The stored Lost-word evidence shown beside the summary tables.</summary>
+    public string LostWordsContextText => !HasAssessment ? "Parse your texts to see which approved words are Lost."
+        : Overview!.LookFirst.ApprovedLostWords.Count == 0 ? "No approved word is Lost in this parse."
+        : "Approved words the grammar no longer builds.";
+
+    /// <summary>Whether shared morpheme evidence was recorded, without treating unavailable evidence as none.</summary>
+    public string SharedLostMorphemeContextText => Overview?.LookFirst.SharedLostMorphemesAvailable == true
+        ? Overview.LookFirst.SharedLostMorphemes.Count == 0 ? "No shared morphemes were recorded." : string.Empty
+        : "Shared morpheme information is unavailable.";
 
     /// <summary>Whether the response has an Assessment for its default Selection.</summary>
     public bool HasAssessment => Overview?.AssessmentId is not null;
@@ -190,13 +217,18 @@ public sealed partial class OverviewPageModel : PageModel
 
     /// <summary>The project's wordform count from the response.</summary>
     public string WordformCountText =>
-        Overview?.WordformCount.ToString("N0", CultureInfo.CurrentCulture) ?? string.Empty;
+        Overview is { } response ? InventoryCountText(response.WordformCount) : string.Empty;
 
     /// <summary>The project's rule count from the response.</summary>
-    public string RuleCountText => Overview?.RuleCount.ToString("N0", CultureInfo.CurrentCulture) ?? string.Empty;
+    public string RuleCountText =>
+        Overview is { } response ? InventoryCountText(response.RuleCount) : string.Empty;
 
     /// <summary>The project's lexeme count from the response.</summary>
-    public string LexemeCountText => Overview?.LexemeCount.ToString("N0", CultureInfo.CurrentCulture) ?? string.Empty;
+    public string LexemeCountText =>
+        Overview is { } response ? InventoryCountText(response.LexemeCount) : string.Empty;
+
+    private static string InventoryCountText(int? count) =>
+        count?.ToString("N0", CultureInfo.CurrentCulture) ?? "Not measured";
 
     /// <summary>
     /// The speed headline: how many words PanGloss timed and their total word time, each word's parse time added
@@ -230,7 +262,15 @@ public sealed partial class OverviewPageModel : PageModel
             })]
             : [];
 
-    public bool HasSlowestWordRows => SlowestWordRows.Count > 0;
+    /// <summary>The measured slow words, with outcomes from the summary or an already loaded parse.</summary>
+    public IReadOnlyList<OverviewSlowWord> SlowestTableRows => Overview is { Timing.MeasuredWordCount: > 0 } overview
+        ? overview.Timing.SlowestWords.Select(word => new OverviewSlowWord(word.Word,
+            TimingShare.FormatDuration(word.ElapsedMs),
+            overview.LookFirst.StepLimitedWords.Contains(word.Word, StringComparer.Ordinal)
+                ? Mark.Stopped : Context.Assess.Words.Find(word.Word)?.WordRow.OutcomeMark)).ToArray()
+        : [];
+
+    public bool HasSlowestWordRows => SlowestTableRows.Count > 0;
 
     public string SlowestWordSummary => Overview is { Timing.MeasuredWordCount: > 0 } overview &&
         overview.Timing.SlowestWords.Count > 0
@@ -581,6 +621,7 @@ public sealed partial class OverviewPageModel : PageModel
     {
         if (e.PropertyName != nameof(AssessWordsViewModel.AllRows)) return;
         OnPropertyChanged(nameof(SlowestWordRows));
+        OnPropertyChanged(nameof(SlowestTableRows));
         OnPropertyChanged(nameof(HasSlowestWordRows));
     }
 

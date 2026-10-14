@@ -40,11 +40,18 @@ public sealed partial class StoredSelectionFixture : IDisposable
             : "synthetic saved-project marker");
         var texts = projection.Texts.Select(text =>
         {
-            var words = text.Lines.SelectMany(line => line.Tokens).Where(word => word.WordformId is not null)
+            var tokens = text.Lines.SelectMany(line => line.Tokens).Where(word => word.WordformId is not null)
+                .ToArray();
+            var words = tokens
                 .SelectMany(word => word.Forms).GroupBy(form => form.Text, StringComparer.Ordinal)
                 .ToDictionary(group => group.Key, group => group.Count(), StringComparer.Ordinal);
-            return new ProjectTextSummary(text.TextId, text.Title, words.Count,
-                text.Lines.Sum(line => line.Tokens.Count(word => word.WordformId is not null)), words);
+            var interlinearized = tokens.Where(word => word.AnalysisId is not null).ToArray();
+            return new ProjectTextSummary(text.TextId, text.Title, words.Count, tokens.Length, words)
+            {
+                InterlinearizedWordCount = interlinearized.SelectMany(word => word.Forms).Select(form => form.Text)
+                    .Distinct(StringComparer.Ordinal).Count(),
+                InterlinearizedOccurrenceCount = interlinearized.Length,
+            };
         }).ToArray();
         var forms = texts.SelectMany(text => text.OccurrencesByWord.Keys).Distinct(StringComparer.Ordinal).ToArray();
         var summary = new ProjectSummarySnapshot(forms.Length, texts.Sum(text => text.OccurrenceCount),

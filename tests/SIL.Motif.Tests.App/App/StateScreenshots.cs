@@ -1322,19 +1322,37 @@ public sealed class TryWordReviewScreenshots
                     group.Attempts.Any(attempt => attempt.AttemptId == "0.2.0.3.2"));
                 trace.SelectStopGroupCommand.Execute(trace.StopGroups[groupIndex]);
                 PageScreenshots.Settle(window);
-                foreach (var expander in window.GetVisualDescendants().OfType<Expander>()
-                             .Where(expander => expander.IsEffectivelyVisible && expander.Header?.ToString() == "Steps on this path"))
-                    expander.IsExpanded = true;
-                Assert.Single(trace.ClosestAttempts).IsTreeContextExpanded = true;
-                PageScreenshots.Settle(window);
-                Assert.Contains(window.GetVisualDescendants().OfType<CopyableTextBlock>(),
-                    block => block.IsEffectivelyVisible && block.Text == "Recorded event: 0.0");
-                var finalContextRow = window.GetVisualDescendants().OfType<CopyableTextBlock>()
-                    .Single(block => block.IsEffectivelyVisible && block.Text == "Recorded event: 0.2.0.3.1")
-                    .FindAncestorOfType<StackPanel>()!;
-                var contextOrigin = finalContextRow.TranslatePoint(default, window)!.Value;
-                Assert.True(contextOrigin.Y + finalContextRow.Bounds.Height <= window.ClientSize.Height + 1,
-                    "The final recorded context row must fit inside the expanded-path capture.");
+                trace.SelectedCandidate = Assert.Single(trace.ClosestAttempts);
+                trace.SelectedCandidate.IsTreeContextExpanded = true;
+                var registered = window.GetVisualDescendants().OfType<TryAWordPage>().Single();
+                var inspectorContent = ((SIL.Motif.App.Views.Shell.IWorkspacePaneProvider)registered).InspectorContent!;
+                var inspectorWindow = new Window
+                {
+                    Content = inspectorContent, Width = width, Height = 5000,
+                    RequestedThemeVariant = Application.Current!.RequestedThemeVariant,
+                };
+                try
+                {
+                    inspectorWindow.Show();
+                    PageScreenshots.Settle(inspectorWindow);
+                    Assert.Contains(inspectorWindow.GetVisualDescendants().OfType<CopyableTextBlock>(),
+                        block => block.IsEffectivelyVisible && block.Text == "Recorded event: 0.0");
+                    var finalContextRow = inspectorWindow.GetVisualDescendants().OfType<CopyableTextBlock>()
+                        .Single(block => block.IsEffectivelyVisible && block.Text == "Recorded event: 0.2.0.3.1")
+                        .FindAncestorOfType<StackPanel>()!;
+                    var contextOrigin = finalContextRow.TranslatePoint(default, inspectorWindow)!.Value;
+                    Assert.True(contextOrigin.Y + finalContextRow.Bounds.Height <= inspectorWindow.ClientSize.Height + 1,
+                        "The final recorded context row must fit inside the expanded-path Inspector capture.");
+                    LayoutAssertions.AssertCurrent(inspectorWindow);
+                    using var bitmap = inspectorWindow.CaptureRenderedFrame();
+                    Assert.NotNull(bitmap);
+                    bitmap.Save(Path.Combine(folder, $"state-try-a-word-steps-inspector-{width}-{theme}.png"));
+                }
+                finally
+                {
+                    inspectorWindow.Content = null;
+                    inspectorWindow.Close();
+                }
                 Save("steps-expanded");
 
                 window.Height = 1500;
@@ -1367,6 +1385,9 @@ public sealed class TryWordReviewScreenshots
                 Save("different-baselines");
 
                 await Show(WordTraceQuery.LoadDiagnostic(SIL.Motif.Tests.TestFixtures.TraceEnvelope.AnalysisRecords()).Value!);
+                window.GetVisualDescendants().OfType<Expander>()
+                    .Single(expander => AutomationProperties.GetName(expander) == "Full parser analysis details").IsExpanded = true;
+                PageScreenshots.Settle(window);
                 window.GetVisualDescendants().OfType<Expander>()
                     .Single(expander => AutomationProperties.GetName(expander) == "Recorded source analyses").IsExpanded = true;
                 Save("source-analyses");

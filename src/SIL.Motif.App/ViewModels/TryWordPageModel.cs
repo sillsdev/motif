@@ -90,6 +90,8 @@ public sealed class TryWordPageModel : PageModel
 
     /// <summary>Each stored analysis and its own recorded opinion, preserving the shared record order.</summary>
     public IReadOnlyList<TryWordStoredAnalysis> FieldWorksAnalyses { get; private set; } = [];
+    /// <summary>Whether the comparison has stored FieldWorks analyses to display.</summary>
+    public bool HasFieldWorksAnalyses => FieldWorksAnalyses.Count > 0;
 
     /// <summary>The distinct opinions actually stored for the returned word.</summary>
     public IReadOnlyList<TryWordOpinion> ResultOpinions => (ResultWordContext?.Analyses ?? []).Select(analysis => WindowWords.OpinionOf(analysis.StoredAnalysisOpinion))
@@ -368,6 +370,7 @@ public sealed class TryWordPageModel : PageModel
         OnPropertyChanged(nameof(ResultWordContext));
         OnPropertyChanged(nameof(FieldWorksContextStatus));
         OnPropertyChanged(nameof(FieldWorksAnalyses));
+        OnPropertyChanged(nameof(HasFieldWorksAnalyses));
         OnPropertyChanged(nameof(ResultOpinions));
         OnPropertyChanged(nameof(ResultMeaning));
         OnPropertyChanged(nameof(ResultMeaningMark));

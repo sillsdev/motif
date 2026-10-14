@@ -312,6 +312,11 @@ public sealed class TryWordPageTests
             {
                 window.Show();
                 Settle(window);
+                var details = window.GetVisualDescendants().OfType<Expander>().Single(expander =>
+                    AutomationProperties.GetName(expander) == "Full parser analysis details");
+                Assert.False(details.IsExpanded);
+                details.IsExpanded = true;
+                Settle(window);
                 var parser = window.GetVisualDescendants().OfType<Expander>().Single(expander =>
                     AutomationProperties.GetName(expander) == "Recorded source analyses");
                 Assert.Equal("Parser record", parser.Header);
@@ -700,7 +705,7 @@ public sealed class TryWordPageTests
                 var analyze = Assert.Single(window.GetLogicalDescendants().OfType<Button>(), button =>
                     button.Command == page.OpenInTextsCommand);
                 Assert.True(analyze.Focusable);
-                Assert.Equal(0, analyze.Opacity);
+                Assert.Equal(1, analyze.Opacity);
                 analyze.Focus();
                 Settle(window);
                 Assert.Equal(1, analyze.Opacity);
@@ -871,7 +876,7 @@ public sealed class TryWordPageTests
     }
 
     [Fact]
-    public void PointingAtTheWordRowRevealsTheToolsMenu()
+    public void TheToolsMenuStaysVisibleBeforeHoverAndOnKeyboardFocus()
     {
         _avalonia.Invoke(() =>
         {
@@ -885,7 +890,10 @@ public sealed class TryWordPageTests
                     AutomationProperties.GetName(button) == "Try a Word tools");
                 var input = window.GetLogicalDescendants().OfType<TextBox>().Single(box =>
                     AutomationProperties.GetName(box) == "Word to try");
-                Assert.Equal(0, tools.Opacity);
+                Assert.Equal(1, tools.Opacity);
+                Assert.True(tools.Focus());
+                Settle(window);
+                Assert.Equal(1, tools.Opacity);
 
                 window.MouseMove(input.TranslatePoint(new Point(input.Bounds.Width / 2, input.Bounds.Height / 2), window)!.Value);
                 Settle(window);
@@ -1086,7 +1094,19 @@ public sealed class TryWordPageTests
             {
                 window.Show();
                 Settle(window);
-                var texts = ContextTexts(window);
+                var analyses = window.GetVisualDescendants().OfType<ListBox>()
+                    .Single(list => list.Name == "TryWordPanelFieldWorksAnalysesItems");
+                Assert.Same(page.FieldWorksAnalyses, analyses.ItemsSource);
+                Assert.Equal(3, analyses.ItemCount);
+                var texts = new List<string>();
+                for (var index = 0; index < analyses.ItemCount; index++)
+                {
+                    analyses.ScrollIntoView(index);
+                    Settle(window);
+                    var row = Assert.IsType<ListBoxItem>(analyses.ContainerFromIndex(index));
+                    texts.AddRange(VisibleTexts(row));
+                    texts.AddRange(ContextTexts(window).OfType<string>());
+                }
                 foreach (var opinion in new[] { "Approved", "Disapproved", "Unknown" }) Assert.Contains(opinion, texts);
                 Assert.DoesNotContain(texts, text => text is not null && text.Contains(saved.ToString("O")));
                 Assert.DoesNotContain(texts, text => text?.Contains("saved", StringComparison.OrdinalIgnoreCase) == true);
@@ -1752,11 +1772,11 @@ public sealed class TryWordPageTests
                 window.Show();
                 Settle(window);
                 var visible = VisibleTexts(view).ToArray();
-                Assert.Contains("Parsed: 2 analyses", visible);
+                Assert.Single(visible, text => text == "Parsed · 2 analyses");
                 Assert.Contains("Morphemes: MA + TIN + LU", visible);
                 Assert.DoesNotContain("Recorded twice", visible);
                 Assert.Single(visible, text => text == "Analysis 1");
-                Assert.True(TopOf(view, "Parsed: 2 analyses", window) < TopOf(view, "Recorded trace", window));
+                Assert.True(TopOf(view, "Parsed · 2 analyses", window) < TopOf(view, "Recorded trace", window));
                 Assert.DoesNotContain("Why the other attempts failed", visible);
                 Assert.DoesNotContain("Further derivation is prohibited after a final template.", visible);
                 Assert.DoesNotContain("Rules on this word's best path", visible);

@@ -831,8 +831,8 @@ public sealed partial class ComponentStyleTests
             Border.BackgroundProperty, "Intent.Surface");
         yield return new("Overview", "a framed tile", host => Add(host, Box("overviewTile")),
             Border.PaddingProperty, "Component.Overview.TilePadding");
-        yield return new("Overview", "a tile value", host => Add(host, Text("overviewTileValue")),
-            TextBlock.FontSizeProperty, "Intent.Type.Title");
+        yield return new("Overview", "a table summary", host => Add(host, Text("overviewTileValue")),
+            TextBlock.FontSizeProperty, "Intent.Type.Body");
         yield return new("Overview", "a handoff icon", host => Add(host,
                 new PathIcon { Classes = { "overviewHandoffIcon" } }),
             Control.WidthProperty, "Component.Overview.HandoffIconSize");

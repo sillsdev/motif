@@ -130,7 +130,6 @@ public sealed class FirstProjectSmokeTests(PristineProjectFixture pristine)
                 InteractiveControlFamily.List,
                 InteractiveControlFamily.SelectableText,
                 InteractiveControlFamily.ContentSurface,
-                InteractiveControlFamily.Summary,
                 InteractiveControlFamily.StaticText,
                 InteractiveControlFamily.Collection);
             Assert.True(walkthrough.Find<Border>("Project summary").IsEffectivelyVisible);
@@ -174,9 +173,7 @@ public sealed class FirstProjectSmokeTests(PristineProjectFixture pristine)
                 InteractiveControlFamily.Disclosure,
                 InteractiveControlFamily.List,
                 InteractiveControlFamily.SelectableText,
-                InteractiveControlFamily.Mark,
                 InteractiveControlFamily.Collection,
-                InteractiveControlFamily.Morpheme,
                 InteractiveControlFamily.FocusableSurface);
             var review = walkthrough.Workspace.PageModel<ReviewPageModel>();
             Assert.Equal(["Removed", "Spelling → Incorrect"],

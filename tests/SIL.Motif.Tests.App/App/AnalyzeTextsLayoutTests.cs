@@ -620,6 +620,10 @@ public sealed class AnalyzeTextsLayoutTests
                 var action = Assert.Single(prompt.GetVisualDescendants().OfType<Button>());
                 Assert.Equal(workspace.Context.ParsePromptActionText, action.Content);
 
+                // The stored inventory orders Texts by coverage, so the Story need not come first.
+                var inText = workspace.PageModel<TextsPageModel>().ResultsInText;
+                inText.SelectedText = inText.Texts.Single(text => text.Title == "Hadithi ya sungura");
+                await SettleReaderAsync(workspace, window);
                 var panel = Panel(window);
                 var strips = Strips(panel).ToArray();
                 Assert.Equal(["Sungura", "alikula", "chakula"],

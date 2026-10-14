@@ -10,6 +10,7 @@ public sealed partial class TraceWordViewModel
 {
     private ITraceViewPreferences? _viewPreferences;
     private IReadOnlyList<TraceStepViewModel> _expertTree = [];
+    private bool _refreshingStepRows;
 
     [ObservableProperty]
     private bool _isExpert;
@@ -41,17 +42,19 @@ public sealed partial class TraceWordViewModel
     }
 
     partial void OnExpertWholeTreeChanged(bool value) => NotifyExpertRows();
-    partial void OnSelectedCandidateChanged(TraceCandidateViewModel? value)
+    partial void OnSelectedCandidateChanged(TraceCandidateViewModel? value) => RefreshStepRows(() =>
     {
+        OnPropertyChanged(nameof(SelectedAttemptStep));
         OnPropertyChanged(nameof(PlainSteps));
         OnPropertyChanged(nameof(PlainFoldText));
         NotifyExpertRows();
-    }
-    partial void OnSelectedStepChanged(TraceStepViewModel? value)
+    });
+    partial void OnSelectedStepChanged(TraceStepViewModel? value) => RefreshStepRows(() =>
     {
         if (value is not null) value.IsSelected = true;
         foreach (var step in _expertTree.Concat(Candidates.SelectMany(candidate => candidate.Steps)))
             step.IsSelected = value?.RecordedStep.StepId == step.RecordedStep.StepId;
+        OnPropertyChanged(nameof(SelectedAttemptStep));
         OnPropertyChanged(nameof(PlainSteps));
         OnPropertyChanged(nameof(PlainFoldText));
         OnPropertyChanged(nameof(PlainSelectedStep));
@@ -59,17 +62,30 @@ public sealed partial class TraceWordViewModel
         OnPropertyChanged(nameof(ExpertRawRecord));
         OnPropertyChanged(nameof(ExpertEnvironmentTokens));
         OnPropertyChanged(nameof(HasExpertEnvironment));
-    }
+    });
 
     private void RebuildExpert()
     {
         _expertTree = Roots.SelectMany(Flatten).ToArray();
-        OnPropertyChanged(nameof(PlainSteps));
-        OnPropertyChanged(nameof(PlainFoldText));
-        OnPropertyChanged(nameof(PlainSelectedStep));
-        OnPropertyChanged(nameof(ExpertAttempts));
-        NotifyExpertVisibility();
-        NotifyExpertRows();
+        RefreshStepRows(() =>
+        {
+            OnPropertyChanged(nameof(SelectedAttemptStep));
+            OnPropertyChanged(nameof(PlainSteps));
+            OnPropertyChanged(nameof(PlainFoldText));
+            OnPropertyChanged(nameof(PlainSelectedStep));
+            OnPropertyChanged(nameof(ExpertAttempts));
+            NotifyExpertVisibility();
+            NotifyExpertRows();
+        });
+    }
+
+    private void RefreshStepRows(Action refresh)
+    {
+        // A display refresh is not a new request to choose a recorded occurrence.
+        var previous = _refreshingStepRows;
+        _refreshingStepRows = true;
+        try { refresh(); }
+        finally { _refreshingStepRows = previous; }
     }
 
     private void NotifyExpertVisibility()
@@ -133,7 +149,22 @@ public sealed partial class TraceWordViewModel
         set
         {
             // A filtered Plain list must not clear Expert's selected event.
-            if (value is not null && value.RecordedStep.StepId != SelectedStep?.RecordedStep.StepId)
+            if (!_refreshingStepRows && value is not null && value.RecordedStep.StepId != SelectedStep?.RecordedStep.StepId)
+                SelectedStep = value;
+        }
+    }
+
+    /// <summary>
+    /// The selected occurrence's row on the chosen attempt; an empty row selection preserves the trace selection.
+    /// </summary>
+    public TraceStepViewModel? SelectedAttemptStep
+    {
+        get => SelectedStep is not { } selected ? null
+            : SelectedCandidate?.Steps.FirstOrDefault(step => step.RecordedStep.StepId == selected.RecordedStep.StepId);
+        set
+        {
+            // Reparenting or switching the attempt is not a request to discard a recorded occurrence.
+            if (!_refreshingStepRows && value is not null && value.RecordedStep.StepId != SelectedStep?.RecordedStep.StepId)
                 SelectedStep = value;
         }
     }

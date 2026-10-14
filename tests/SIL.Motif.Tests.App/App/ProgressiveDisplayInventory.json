@@ -367,13 +367,6 @@
   },
   {
     "view": "Pages/OverviewPage",
-    "name": "OverviewPageLegendItems",
-    "source": "#OverviewKindBar.Legend",
-    "mode": "finite",
-    "control": "ItemsControl"
-  },
-  {
-    "view": "Pages/OverviewPage",
     "name": "OverviewPageWarningKindRowsItems",
     "source": "WarningKindRows",
     "mode": "finite",
@@ -650,7 +643,7 @@
     "name": "TryWordPanelFieldWorksAnalysesItems",
     "source": "FieldWorksAnalyses",
     "mode": "rows",
-    "control": "ItemsControl"
+    "control": "ListBox"
   },
   {
     "view": "TryWordPanel",
@@ -910,5 +903,91 @@
     "source": "SpellingCandidateRows",
     "mode": "rows",
     "control": "ItemsControl"
+  },
+  {
+    "view": "TryWordPanel",
+    "name": "TryWordStopGroupsItems",
+    "source": "StopGroups",
+    "mode": "rows",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "TryWordPanel",
+    "name": "TryWordAttempts",
+    "source": "Trace.ClosestAttempts",
+    "mode": "rows",
+    "control": "ListBox"
+  },
+  {
+    "view": "TryWordAttemptInspector",
+    "name": "TryWordSelectedAttemptSteps",
+    "source": "SelectedCandidate.Steps",
+    "mode": "rows",
+    "control": "ListBox"
+  },
+  {
+    "view": "TryWordAttemptInspector",
+    "name": "TryWordSelectedAttemptContext",
+    "source": "SelectedCandidate.RecordedTreeContext",
+    "mode": "rows",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "TryWordPanel",
+    "name": "TryWordParserAnalysesItems",
+    "source": "Trace.Analyses",
+    "mode": "rows",
+    "control": "ListBox"
+  },
+  {
+    "view": "TryWordPanel",
+    "name": "TryWordParserMorphsItems",
+    "source": "Morphs",
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
+  },
+  {
+    "view": "Pages/OverviewPage",
+    "name": "OverviewCoverageRows",
+    "source": "TextCoverageSegments",
+    "mode": "finite",
+    "control": "ItemsControl",
+    "reason": "Five declared parse outcomes."
+  },
+  {
+    "view": "Pages/OverviewPage",
+    "name": "OverviewAccuracyRows",
+    "source": "AccuracySegments",
+    "mode": "finite",
+    "control": "ItemsControl",
+    "reason": "Five declared Approved-word outcomes."
+  },
+  {
+    "view": "Pages/OverviewPage",
+    "name": "OverviewTimingRows",
+    "source": "TimingKindShares",
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
+  },
+  {
+    "view": "Pages/OverviewPage",
+    "name": "OverviewSlowestRows",
+    "source": "SlowestTableRows",
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
+  },
+  {
+    "view": "OverviewInspector",
+    "name": "OverviewInspectorApprovedLostWordsItems",
+    "source": "Overview.LookFirst.ApprovedLostWords",
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
+  },
+  {
+    "view": "OverviewInspector",
+    "name": "OverviewInspectorSharedLostMorphemesItems",
+    "source": "Overview.LookFirst.SharedLostMorphemes",
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
   }
 ]

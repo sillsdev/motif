@@ -5,6 +5,7 @@ using Avalonia.Media;
 using Avalonia.VisualTree;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
+using SIL.Motif.Commands.Queries;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -12,6 +13,41 @@ namespace SIL.Motif.Tests.App;
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class SetupHLayoutTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SetupTextInventoryCountsMatchTheStoredSelectionSources(bool useCapturedText)
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, frame) = await PageScreenshots.OpenOverSampleData(
+                capturedWords: useCapturedText ? WritingSystemTestData.ArabicText() : null);
+            try
+            {
+                var summary = workspace.Context.SelectionReads.Summary!;
+                Assert.NotEmpty(summary.SourcePositions);
+                var choices = workspace.Context.Setup!.Selection.Texts.Where(text => text.IsChecked).ToArray();
+                Assert.Equal(summary.Texts.Count, choices.Length);
+                foreach (var choice in choices)
+                {
+                    var text = Assert.Single(summary.Texts, text => text.TextId == choice.Id);
+                    Assert.Equal(text.DistinctFormCount, choice.WordCount);
+                    Assert.NotEqual("no words", choice.InterlinearizedText);
+                    var interlinearized = summary.SourcePositions.Where(position =>
+                            position.Location.Anchor.TextId == choice.Id && position.Location.AnalysisId is not null)
+                        .Select(position => position.Word.Form).Distinct(StringComparer.Ordinal).Count();
+                    Assert.Equal(interlinearized, choice.InterlinearizedWordCount);
+                }
+                Assert.Equal(summary.PhysicalOccurrenceCount, summary.Texts.Sum(text => text.OccurrenceCount));
+            }
+            finally
+            {
+                frame.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromMinutes(2));
+    }
+
     [Theory]
     [InlineData(640, 600, 1)]
     [InlineData(1040, 480, 1)]
@@ -91,8 +127,45 @@ public sealed class SetupHLayoutTests
             }
         }, TimeSpan.FromMinutes(2));
     }
-    [ScreenshotFact]
-    public void CaptureEverySetupStepAtFourSizes()
+    public static TheoryData<string, int, int, bool, int> CaptureCases
+    {
+        get
+        {
+            var cases = new TheoryData<string, int, int, bool, int>();
+            foreach (var (name, width, height) in new[]
+                     { ("thin", 640, 600), ("half", 1040, 780), ("full", 1920, 1080), ("short", 1040, 480) })
+            foreach (var dark in new[] { false, true })
+            foreach (var zoom in new[] { 100, 150 })
+                cases.Add(name, width, height, dark, zoom);
+            return cases;
+        }
+    }
+
+    [Fact]
+    public void AnActuallyEmptyCapturedTextKeepsItsZeroInventoryCount()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var captured = new TextWordsResponse([], [new TextLines(Guid.NewGuid(), "Empty Text", [])], true);
+            var (workspace, frame) = await PageScreenshots.OpenOverSampleData(parse: false, capturedWords: captured);
+            try
+            {
+                var choice = Assert.Single(workspace.Context.Setup!.Selection.Texts);
+                Assert.Equal(0, choice.WordCount);
+                Assert.Equal("0 distinct", choice.DistinctCountText);
+                Assert.Equal("no words", choice.InterlinearizedText);
+            }
+            finally
+            {
+                frame.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromMinutes(2));
+    }
+
+    [ScreenshotTheory]
+    [MemberData(nameof(CaptureCases))]
+    public void CaptureEverySetupStepAtFourSizes(string size, int width, int height, bool dark, int zoom)
     {
         var folder = Environment.GetEnvironmentVariable(ScreenshotFactAttribute.FolderVariable)!;
         Directory.CreateDirectory(folder);
@@ -103,35 +176,28 @@ public sealed class SetupHLayoutTests
             var setup = workspace.Context.Setup!;
             setup.IsOpen = true;
             var dialog = new SetupDialog { DataContext = setup };
-            var window = new Window { Content = dialog };
+            var window = new Window
+            {
+                Width = width, Height = height,
+                Content = new LayoutTransformControl { Child = dialog,
+                    LayoutTransform = new ScaleTransform(zoom / 100d, zoom / 100d) },
+            };
             try
             {
+                var theme = dark ? Avalonia.Styling.ThemeVariant.Dark : Avalonia.Styling.ThemeVariant.Light;
+                Application.Current.RequestedThemeVariant = theme;
+                dialog.FitToAvailableArea(width * 100d / zoom, height * 100d / zoom);
                 window.Show();
-                foreach (var (theme, variant) in new[]
+                for (var step = 0; step < 4; step++)
                 {
-                    ("light", Avalonia.Styling.ThemeVariant.Light),
-                    ("dark", Avalonia.Styling.ThemeVariant.Dark),
-                })
-                {
-                    Application.Current.RequestedThemeVariant = variant;
-                    foreach (var (name, width, height) in new[]
-                    {
-                        ("thin", 640, 600), ("half", 1040, 780),
-                        ("full", 1920, 1080), ("short", 1040, 480),
-                    })
-                    {
-                        window.Width = width;
-                        window.Height = height;
-                        dialog.FitToAvailableArea(width, height);
-                        for (var step = 0; step < 4; step++)
-                        {
-                            setup.Step = step;
-                            PageScreenshots.Settle(window);
-                            using var capture = window.CaptureRenderedFrame() ??
-                                throw new InvalidOperationException("The Setup window did not render.");
-                            capture.Save(Path.Combine(folder, $"h-setup-step{step + 1}-{name}-{theme}.png"), Avalonia.Media.Imaging.PngBitmapEncoderOptions.Default);
-                        }
-                    }
+                    setup.Step = step;
+                    PageScreenshots.Settle(window);
+                    using var capture = window.CaptureRenderedFrame() ??
+                        throw new InvalidOperationException("The Setup window did not render.");
+                    var suffix = zoom == 100 ? string.Empty : "-150";
+                    var themeName = dark ? "dark" : "light";
+                    capture.Save(Path.Combine(folder, $"h-setup-step{step + 1}-{size}{suffix}-{themeName}.png"),
+                        Avalonia.Media.Imaging.PngBitmapEncoderOptions.Default);
                 }
             }
             finally

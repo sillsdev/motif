@@ -285,12 +285,16 @@ internal sealed class TooltipScenes
                         "the Texts side panel");
                 break;
             case TooltipScene.FrameInspectorStrip:
-                Show(WorkspacePage.Overview);
+                // Timing supplies no page Inspector; one an earlier scene opened stays open until it is hidden.
+                Show(WorkspacePage.Timing);
+                PageScreenshots.Settle(Window);
+                if (Visible<Button>().FirstOrDefault(button => button.Name == "InspectorHideButton") is { } hide)
+                    HeadlessClick.Click(Window, hide, "Hide Inspector");
                 await Until(() => Visible<Button>().Any(button => button.Name == "InspectorStrip"),
                     "the Inspector strip");
                 break;
             case TooltipScene.FrameInspectorOpen:
-                Show(WorkspacePage.Overview);
+                Show(WorkspacePage.Timing);
                 var inspectorStrip = Visible<Button>().Single(button => button.Name == "InspectorStrip");
                 HeadlessClick.Click(Window, inspectorStrip, "the Inspector strip");
                 await Until(() => Visible<Button>().Any(button => button.Name == "InspectorHideButton"),
@@ -520,7 +524,7 @@ internal sealed class TooltipScenes
         switch (scene)
         {
             case TooltipScene.ReaderDisapproved:
-                InText.SelectedText = InText.Texts.First();
+                InText.SelectedText = InText.Texts.First(text => text.Title == "Hadithi ya sungura");
                 break;
             case TooltipScene.AnalyzeWordList:
                 Workspace.PageModel<TextsPageModel>().ShowAnalyzeViewCommand.Execute(AnalyzeTextsView.TextReader);

@@ -2,15 +2,20 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Styles.Resources>
-    <StaticResource x:Key="Component.TryWord.PageInset" ResourceKey="Intent.Inset.Page" />
-    <StaticResource x:Key="Component.TryWord.InputMinWidth" ResourceKey="Primitive.Size.190" />
+    <StaticResource x:Key="Component.TryWord.PageInset" ResourceKey="Primitive.Inset.8_4_8_4" />
     <StaticResource x:Key="Component.TryWord.ProgressWidth" ResourceKey="Primitive.Size.52" />
-    <StaticResource x:Key="Component.TryWord.SmallInset" ResourceKey="Intent.Inset.Row" />
+    <StaticResource x:Key="Component.TryWord.SmallInset" ResourceKey="Primitive.Inset.7_1_7_1" />
     <StaticResource x:Key="Component.TryWord.SmallRowInset" ResourceKey="Primitive.Inset.1_1_1_1" />
     <StaticResource x:Key="Component.TryWord.SmallBottomInset" ResourceKey="Primitive.Inset.0_0_4_4" />
     <StaticResource x:Key="Component.TryWord.ToolButtonInset" ResourceKey="Intent.Inset.Row" />
     <StaticResource x:Key="Component.TryWord.SidebarWidth" ResourceKey="Primitive.Size.280" />
     <StaticResource x:Key="Component.TryWord.NotationFont" ResourceKey="Primitive.Font.Mono" />
+    <StaticResource x:Key="Component.TryWord.ToolsMaxHeight" ResourceKey="Primitive.Size.280" />
+    <StaticResource x:Key="Component.TryWord.ComparisonListMaxHeight" ResourceKey="Primitive.Size.60" />
+    <StaticResource x:Key="Component.TryWord.ShortComparisonListMaxHeight" ResourceKey="Primitive.Size.40" />
+    <StaticResource x:Key="Component.TryWord.ShortPageHeight" ResourceKey="Primitive.Size.360" />
+    <StaticResource x:Key="Component.TryWord.CompactControlHeight" ResourceKey="Primitive.Size.24" />
+    <StaticResource x:Key="Component.TryWord.ColumnsBreakpoint" ResourceKey="Primitive.Size.600" />
   </Styles.Resources>
   <Style Selector="StackPanel.diagnosticBody">
     <Setter Property="Margin" Value="{DynamicResource Component.TryWord.PageInset}" />
@@ -119,5 +124,63 @@
   </Style>
   <Style Selector="Button.traceMode.chosen:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.traceMode.chosen:pressed /template/ ContentPresenter#PART_ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource Intent.Emphasis.Fill}" />
+  </Style>
+  <Style Selector="ListBox.tryWordList ListBoxItem">
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+  </Style>
+  <Style Selector="StackPanel.tryWordPage">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
+    <Setter Property="Margin" Value="{DynamicResource Component.TryWord.PageInset}" />
+  </Style>
+  <Style Selector="Border.tryWordInput">
+    <Setter Property="Padding" Value="{DynamicResource Component.TryWord.PageInset}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerBottom}" />
+  </Style>
+  <Style Selector="Border.tryWordSection, Border.tryWordAttemptRow">
+    <Setter Property="Padding" Value="{DynamicResource Component.TryWord.SmallInset}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerBottom}" />
+  </Style>
+  <Style Selector=":is(UserControl).tryWord Border.card">
+    <Setter Property="Padding" Value="{DynamicResource Component.TryWord.SmallInset}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.None}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerBottom}" />
+  </Style>
+  <Style Selector="ListBox.tryWordComparisonList, ListBox#TryWordPanelFieldWorksAnalysesItems">
+    <Setter Property="MaxHeight" Value="{DynamicResource Component.TryWord.ComparisonListMaxHeight}" />
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.None}" />
+  </Style>
+  <Style Selector="ListBox.tryWordComparisonList ListBoxItem, ListBox#TryWordPanelFieldWorksAnalysesItems ListBoxItem">
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+  </Style>
+  <Style Selector="Button.tryWordResultAction">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Body}" />
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+    <Setter Property="MinHeight" Value="{DynamicResource Component.TryWord.CompactControlHeight}" />
+  </Style>
+  <Style Selector="Expander.tryWordDisclosure">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
+  </Style>
+  <Style Selector="Expander.tryWordDisclosure /template/ ToggleButton">
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+    <Setter Property="MinHeight" Value="{DynamicResource Component.TryWord.CompactControlHeight}" />
+  </Style>
+  <Style Selector="ListBox#TryWordAttempts ListBoxItem">
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+  </Style>
+  <Style Selector="ToggleButton.tryWordPathsToggle">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+    <Setter Property="MinHeight" Value="{DynamicResource Component.TryWord.CompactControlHeight}" />
+  </Style>
+  <Style Selector="ToggleButton.tryWordPathsToggle:checked">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Link.Text}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Primary.Fill}" />
+  </Style>
+  <Style Selector=":is(UserControl).tryWord.shortPage ListBox.tryWordComparisonList, :is(UserControl).tryWord.shortPage ListBox#TryWordPanelFieldWorksAnalysesItems">
+    <Setter Property="MaxHeight" Value="{DynamicResource Component.TryWord.ShortComparisonListMaxHeight}" />
   </Style>
 </Styles>

@@ -53,7 +53,7 @@
         <Border Classes="card" IsVisible="{Binding !Handoff.HasCompletedFiles}"
                 AutomationProperties.Name="What the AI Handoff will contain">
           <StackPanel Spacing="{DynamicResource Component.Handoff.CardGap}">
-            <views:CopyableTextBlock Classes="section-title" Text="What goes in" FontSize="{DynamicResource Component.Handoff.TitleSize}" />
+            <views:CopyableTextBlock TextWrapping="Wrap" Classes="section-title" Text="What goes in" FontSize="{DynamicResource Component.Handoff.TitleSize}" />
             <ItemsControl x:Name="HandoffPanelPlannedFilesItems" ItemsSource="{Binding PlannedFiles}">
               <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
@@ -76,7 +76,7 @@
         <Border Classes="card" IsVisible="{Binding Handoff.HasCompletedFiles}">
           <StackPanel Spacing="{DynamicResource Intent.Space.Group}">
             <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-              <views:CopyableTextBlock Classes="section-title"
+              <views:CopyableTextBlock TextWrapping="Wrap" Classes="section-title"
                          Text="{Binding Handoff.WrittenAtText}" />
               <views:CopyableTextBlock Text="{Binding Handoff.CoverageText}" TextWrapping="Wrap"
                          IsVisible="{Binding Handoff.CoverageText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
@@ -138,24 +138,30 @@
     <ScrollViewer Grid.Column="1" MaxWidth="{DynamicResource Component.Handoff.GuideWidth}"
                   HorizontalAlignment="Right">
       <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
-        <views:CopyableTextBlock Classes="section-title" Text="Get a chat model's help" FontSize="{DynamicResource Component.Handoff.TitleSize}" />
+        <views:CopyableTextBlock TextWrapping="Wrap" Classes="section-title" Text="Get a chat model's help" FontSize="{DynamicResource Component.Handoff.TitleSize}" />
 
         <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Group}" Margin="{DynamicResource Component.Handoff.FirstStepMargin}">
           <Border Classes="stepMark"><views:CopyableTextBlock Text="1" /></Border>
           <StackPanel Grid.Column="1" Spacing="{DynamicResource Intent.Space.Snug}">
-            <views:CopyableTextBlock Text="Copy the starter prompt" FontWeight="{DynamicResource Intent.Weight.Section}" />
+            <views:CopyableTextBlock TextWrapping="Wrap" Text="Copy the starter prompt" FontWeight="{DynamicResource Intent.Weight.Section}" />
             <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Small}" TextWrapping="Wrap"
                        Text="It tells the model what the files are and how to read them." />
             <Button Content="Copy starter prompt" Classes="Primary" Theme="{DynamicResource SolidButton}"
                     Click="OnCopyStarterPromptClick" IsEnabled="{Binding Handoff.HasCompletedFiles}"
-                    HorizontalAlignment="Left" AutomationProperties.Name="Copy the starter prompt" />
+                    HorizontalAlignment="Left" AutomationProperties.Name="Copy the starter prompt">
+              <Button.ContentTemplate>
+                <DataTemplate x:DataType="x:String">
+                  <TextBlock Text="{Binding}" TextWrapping="Wrap" TextAlignment="Center" />
+                </DataTemplate>
+              </Button.ContentTemplate>
+            </Button>
           </StackPanel>
         </Grid>
 
         <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Group}" Margin="{DynamicResource Component.Handoff.StepMargin}">
           <Border Classes="stepMark"><views:CopyableTextBlock Text="2" /></Border>
           <StackPanel Grid.Column="1" Spacing="{DynamicResource Intent.Space.Minimal}">
-            <views:CopyableTextBlock Text="Open a chat" FontWeight="{DynamicResource Intent.Weight.Section}" />
+            <views:CopyableTextBlock TextWrapping="Wrap" Text="Open a chat" FontWeight="{DynamicResource Intent.Weight.Section}" />
             <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Small}" Text="Claude, ChatGPT or Gemini." TextWrapping="Wrap" />
           </StackPanel>
         </Grid>
@@ -163,7 +169,7 @@
         <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Group}" Margin="{DynamicResource Component.Handoff.StepMargin}">
           <Border Classes="stepMark"><views:CopyableTextBlock Text="3" /></Border>
           <StackPanel Grid.Column="1" Spacing="{DynamicResource Intent.Space.Minimal}">
-            <views:CopyableTextBlock Text="Add the files, then paste" FontWeight="{DynamicResource Intent.Weight.Section}" />
+            <views:CopyableTextBlock TextWrapping="Wrap" Text="Add the files, then paste" FontWeight="{DynamicResource Intent.Weight.Section}" />
             <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Small}" TextWrapping="Wrap"
                        Text="Drag the files into the chat, then paste the prompt." />
           </StackPanel>
@@ -171,8 +177,8 @@
 
         <Border Classes="card" Margin="{DynamicResource Component.Handoff.AskMargin}">
           <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
-            <views:CopyableTextBlock Text="Try asking" FontWeight="{DynamicResource Intent.Weight.Section}" />
-            <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Label}" Text="Click a question to copy it." />
+            <views:CopyableTextBlock TextWrapping="Wrap" Text="Try asking" FontWeight="{DynamicResource Intent.Weight.Section}" />
+            <views:CopyableTextBlock TextWrapping="Wrap" Classes="muted" FontSize="{DynamicResource Intent.Type.Label}" Text="Click a question to copy it." />
             <ItemsControl x:Name="HandoffPanelQuestionsItems" ItemsSource="{Binding Questions}">
               <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>

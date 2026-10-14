@@ -161,6 +161,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
         OnPropertyChanged(nameof(HasDiagnosticJson));
         OnPropertyChanged(nameof(SummaryText));
         OnPropertyChanged(nameof(PageSummaryText));
+        OnPropertyChanged(nameof(ParserTimeText));
         OnPropertyChanged(nameof(StopReason));
         OnPropertyChanged(nameof(HasStopReason));
         OnPropertyChanged(nameof(Analyses));
@@ -219,6 +220,10 @@ public sealed partial class TraceWordViewModel : ObservableObject
             return string.Join(" · ", parts);
         }
     }
+
+    /// <summary>The recorded parser duration, independent of the result outcome and analysis count.</summary>
+    public string ParserTimeText => Result?.ParserElapsedMs is { } milliseconds
+        ? $"Parser time · {FormatMs(milliseconds)}" : string.Empty;
 
     public string? StopReason => Result is { Complete: false } result ? result.StopReason : null;
 
@@ -438,6 +443,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
         OnPropertyChanged(nameof(FurthestAttempt));
         OnPropertyChanged(nameof(HasComparison));
         OnPropertyChanged(nameof(PageSummaryText));
+        OnPropertyChanged(nameof(ParserTimeText));
         OnPropertyChanged(nameof(ShowsChosenWord));
         OnPropertyChanged(nameof(ShowsOtherWord));
     }
@@ -847,6 +853,12 @@ public sealed class TraceAnalysisViewModel
     public string? ProjectionStatus { get; }
     public string? ProjectionError { get; }
     public string? LegacyMorphemes { get; }
+    /// <summary>Whether producer morpheme labels lack a projected morph list for the compact comparison.</summary>
+    public bool HasUnprojectedMorphemes => !HasProjectedMorphemes && HasLegacyMorphemes;
+
+    /// <summary>Whether the recorded analysis includes projected morphs.</summary>
+    public bool HasProjectedMorphemes => Morphs.Count > 0;
+
     public bool HasLegacyMorphemes => LegacyMorphemes is { Length: > 0 };
     /// <summary>The parser's recorded morphemes, shown without assigning FieldWorks identities or roles.</summary>
     public string LegacyMorphemesText => HasLegacyMorphemes
@@ -1046,7 +1058,7 @@ public sealed partial class TraceStopGroupViewModel : ObservableObject
         ReasonText = explanation is { Length: > 0 } sentence ? sentence
             : reasonCode is { Length: > 0 } code ? TraceStepKinds.ExplainReason(code)
             : "PanGloss didn't record why.";
-        CountText = count.ToString("N0");
+        CountText = count == 1 ? "1 attempt" : $"{count:N0} attempts";
     }
 
     /// <summary>The captured FieldWorks name or producer label; null when no stopping rule was recorded.</summary>
