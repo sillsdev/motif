@@ -1011,7 +1011,7 @@
   },
   {
     "name": "motif_add_lexical_entry",
-    "description": "Author a dictionary entry. Stages one new dictionary entry with its lexeme form, one sense with gloss and optional definition, and grammatical info: a stem, or an inflectional, derivational or unclassified affix. Inspect its Dry Run and try words with it before a person Applies the Proposal.\nCommand: compose-author-lexical-entry. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+    "description": "Author a dictionary entry. Stages one new dictionary entry with its lexeme form, one sense with gloss and optional definition, and grammatical info: a stem, or an inflectional, derivational or unclassified affix. Each form can name environments, and an affix can name the inflection classes it attaches to. Inspect its Dry Run and try words with it before a person Applies the Proposal.\nCommand: compose-author-lexical-entry. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -1296,7 +1296,7 @@
   },
   {
     "name": "motif_compose_batch",
-    "description": "Compose many intents. Stages every intent in a JSON file in one Draft with one project load, through the same checks as each composing command alone. If any intent is refused, nothing is added. Only a person can Apply.\nCommand: compose-batch. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentsJson: {\u0022intents\u0022:[{\u0022verb\u0022:\u0022compose-author-phoneme\u0022,\u0022intent\u0022:{...},\u0022citation\u0022:{\u0022source\u0022:\u0022Grammar\u0022,\u0022locator\u0022:\u0022\u00A7 3\u0022}}, ...]}: each entry names a composing verb, carries exactly the closed intent that verb\u0027s --intent takes, and may include one citation beside that intent.",
+    "description": "Compose many intents. Stages every intent in a JSON file in one Draft with one project load, through the same checks as each composing command alone. If any intent is refused, nothing is added, and both a label and comment are still required before Finalize. Only a person can Apply.\nCommand: compose-batch. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentsJson: {\u0022intents\u0022:[{\u0022verb\u0022:\u0022compose-author-phoneme\u0022,\u0022intent\u0022:{...},\u0022citation\u0022:{\u0022source\u0022:\u0022Grammar\u0022,\u0022locator\u0022:\u0022\u00A7 3\u0022}}, ...]}: each entry names a composing verb, carries exactly the closed intent that verb\u0027s --intent takes, and may include one citation beside that intent.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -2489,6 +2489,20 @@
                       "definition": {
                         "type": "string",
                         "description": "Optional definition of the sense."
+                      },
+                      "inflectionClasses": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Affix only: canonical ids of the inflection classes of the stems this form attaches to; omit for no restriction."
+                      },
+                      "environments": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Canonical ids of the phonological environments this form occurs in; omit for any."
                       },
                       "msa": {
                         "type": "object",
