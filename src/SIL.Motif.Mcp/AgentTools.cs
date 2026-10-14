@@ -39,6 +39,32 @@ internal static class AgentTools
         "motif_compose_batch",
     };
 
+    private static readonly string[] BatchComposerVerbs =
+    [
+        "compose-author-lexeme-form",
+        "compose-author-feature-structure",
+        "compose-author-feature-value",
+        "compose-author-phoneme",
+        "compose-author-natural-class",
+        "compose-edit-natural-class",
+        "compose-relink-natural-class",
+        "compose-author-environment",
+        "compose-author-phonological-rule",
+        "compose-author-part-of-speech",
+        "compose-author-inflection-feature",
+        "compose-author-inflection-class",
+        "compose-author-stem-name",
+        "compose-author-lexical-entry",
+        "compose-author-affix-slot",
+        "compose-author-affix-template",
+        "compose-edit-adhoc-prohibition",
+        "compose-edit-affix-slot",
+        "compose-edit-affix-template",
+        "compose-edit-inflectional-affix",
+        "compose-edit-allomorph-condition",
+        "order-allomorphs",
+    ];
+
     public static IReadOnlyList<AgentTool> All { get; } = BuildAll();
 
     private static IReadOnlyList<AgentTool> BuildAll()
@@ -522,15 +548,13 @@ internal static class AgentTools
         new("motif_compose_batch",
             string.Empty,
             AgentClass.Draft,
-            ComposeBatchSchema(Array.Empty<AgentTool>()),
+            Schema.Object(),
             false,
             false,
             true,
             false,
             true,
-            (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalCommands.ComposeBatch(new(
-                c.ProjectPath, c.ProductVersion, a.Required("draft"), a.IntentJson("intents"))),
-                r => $"Draft now has {r.OperationCount} changes from {r.Intents.Count} intents. Dry Run the Draft, then Finalize for a person to Apply.")))
+            (c, a, ct) => Task.FromResult(ComposeBatch(c, a)))
             { Requests = [typeof(ComposeBatchRequest)] },
 
         new("motif_retire_allomorph",
@@ -905,14 +929,18 @@ internal static class AgentTools
 
     private static JsonObject ComposeBatchSchema(IReadOnlyList<AgentTool> tools)
     {
-        var supportedIntents = CommandCatalog.All
-            .Where(command => command.ResponseType == typeof(ComposedOperationsResponse) &&
-                !command.Name.StartsWith("parsimony ", StringComparison.Ordinal))
-            .Select(command => (Command: command, Tool: tools.SingleOrDefault(tool => tool.Requests.Contains(command.RequestType))))
-            .Where(pair => pair.Tool is not null)
-            .Select(pair => BatchIntentSchema(pair.Command.Name, pair.Tool!.InputSchema))
-            .Where(pair => pair is not null)
-            .Select(pair => pair!.Value)
+        var supportedIntents = BatchComposerVerbs
+            .Select(verb =>
+            {
+                var command = CommandCatalog.All.SingleOrDefault(candidate => candidate.Name == verb)
+                    ?? throw new InvalidOperationException($"Batch composer '{verb}' is missing from the command catalog.");
+                if (command.ResponseType != typeof(ComposedOperationsResponse))
+                    throw new InvalidOperationException($"Batch composer '{verb}' does not return composed operations.");
+                var tool = tools.SingleOrDefault(candidate => candidate.Requests.Contains(command.RequestType))
+                    ?? throw new InvalidOperationException($"Batch composer '{verb}' has no MCP adapter.");
+                return BatchIntentSchema(verb, tool.InputSchema)
+                    ?? throw new InvalidOperationException($"Batch composer '{verb}' has no structured MCP intent schema.");
+            })
             .ToArray();
         var citation = Schema.Object(
             ("source", Schema.String("Where this change came from."), true),
@@ -929,9 +957,43 @@ internal static class AgentTools
         };
         return Schema.Object(
             ("draft", Schema.String("Draft name from motif_start_proposal."), true),
-            ("intents", Schema.Array("Ordered semantic composer intents. Each later intent can refer to objects created earlier in this batch.",
+            ("intents", Schema.Array("Semantic composer intents for one Draft. Referenced entity ids must come from earlier completed calls or batches; declare operation ordering and dependencies in the intents.",
                 item), true),
             ("project", Schema.String("Known project name or recorded .fwdata path."), true));
+    }
+
+    private static ToolOutcome ComposeBatch(ServerContext context, ToolArgs arguments)
+    {
+        var input = arguments.Copy();
+        if (!input.TryGetPropertyValue("intents", out var intentsNode))
+            throw new ToolArgumentException("tool.missing-argument", "Argument 'intents' is required.");
+        if (intentsNode is not JsonArray intents)
+            throw new ToolArgumentException("tool.invalid-argument", "Argument 'intents' must be an array.");
+
+        var refusals = new List<string>();
+        for (var index = 0; index < intents.Count; index++)
+        {
+            if (intents[index] is not JsonObject intent ||
+                !intent.TryGetPropertyValue("verb", out var verbNode) ||
+                verbNode is not JsonValue verbValue ||
+                !verbValue.TryGetValue<string>(out var verb) ||
+                string.IsNullOrWhiteSpace(verb))
+            {
+                refusals.Add($"Intent {index} must have a string 'verb'.");
+                continue;
+            }
+
+            if (!BatchComposerVerbs.Contains(verb, StringComparer.Ordinal))
+                refusals.Add($"Intent {index} uses unsupported batch verb '{verb}'.");
+        }
+
+        if (refusals.Count > 0)
+            throw new ToolArgumentException("tool.invalid-argument",
+                "Every batch entry must use one of the ordinary grammar composer verbs. " + string.Join(" ", refusals));
+
+        return ToolOutcome.From(ProposalCommands.ComposeBatch(new(context.ProjectPath, context.ProductVersion,
+                arguments.Required("draft"), arguments.IntentJson("intents"))),
+            result => $"Draft now has {result.OperationCount} changes from {result.Intents.Count} intents. Dry Run the Draft, then Finalize for a person to Apply.");
     }
 
     private static (string Verb, JsonObject Schema)? BatchIntentSchema(string verb, JsonObject toolSchema)

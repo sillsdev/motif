@@ -1,6 +1,7 @@
 using System.IO.Pipelines;
 using System.Collections.Generic;
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using ModelContextProtocol.Client;
@@ -19,6 +20,7 @@ using SIL.Motif.Contract.HumanJudgments;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Parsimony;
 using SIL.Motif.Contract.Requests;
+using SIL.Motif.Contract.Retirement;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host;
 using SIL.Motif.Host.LcmUtils;
@@ -28,6 +30,7 @@ using SIL.Motif.Mcp;
 using SIL.Motif.Commands.Preferences;
 using SIL.Motif.Projection.HumanJudgments;
 using SIL.Motif.Runner.Operations;
+using SIL.Motif.Runner.Retirement;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker;
 using SIL.Motif.Worker.Projects;
@@ -227,6 +230,125 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
 
         var finalized = await session.CallAsync("motif_finalize_proposal", ("draft", "author-grammar"));
         Assert.Equal(proposalId, finalized.GetProperty("result").GetProperty("proposalId").GetString());
+    }
+
+    [Fact]
+    public async Task DefaultBatchRefusesValidDispositionIntentBeforeComposingEarlierAllowedIntent()
+    {
+        using var project = new WalkthroughProject(pristine);
+        var savedDispositions = SeedSavedDispositions(project);
+        var duplicateRules = CreateDuplicateAllomorphProhibitions(project);
+        Assert.True(BaselineCaptureCommand.Capture(
+            new BaselineCaptureRequest(project.FwDataPath), project.ManagedRoot).Succeeded);
+        var projectHash = HashProject(project.FwDataPath);
+        var parserPath = FakeParser.CopyRecordingInvocations(Path.Combine(project.ManagedRoot, "batch-disposition-parser"));
+        var primary = project.Seed.FirstLexemeFormId.ToString("D").ToLowerInvariant();
+        var other = project.Seed.SecondLexemeFormId.ToString("D").ToLowerInvariant();
+        FakeParser.WriteFactsFixture(parserPath, new
+        {
+            prohibitions = new[]
+            {
+                Prohibition(duplicateRules[0].ToGuid().ToString("D").ToLowerInvariant(), primary, other),
+                Prohibition(duplicateRules[1].ToGuid().ToString("D").ToLowerInvariant(), primary, other),
+            },
+        });
+        await using var runner = new InProcessRunnerLauncher(
+            new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), parserPath));
+        await using var experimental = await Session.StartAsync(project.FwDataPath,
+            new McpLaunchOptions(Profile: "parsimony-experimental", Runner: runner));
+
+        const string controlDraft = "batch-disposition-control";
+        var controlStarted = await experimental.CallAsync("motif_start_proposal", ("draft", controlDraft),
+            ("label", "Record one measured decision"), ("comment", "Use the specialized disposition path."));
+        var measure = await experimental.CallAsync("motif_run_parsimony_measure", ("measure_id", "P-adhoc-duplicate"),
+            ("evidence_scope", "project-approved"), ("wait_seconds", 120));
+        Assert.True(measure.GetProperty("ok").GetBoolean(), measure.ToString());
+        var report = measure.GetProperty("result");
+        var finding = Assert.Single(report.GetProperty("findings").EnumerateArray());
+        var recordTypes = await experimental.CallAsync("motif_parsimony_record_types");
+        var recordTypeId = Assert.Single(recordTypes.GetProperty("result").GetProperty("recordTypes")
+            .EnumerateArray()).GetProperty("id").GetString()!;
+        var disposed = await experimental.CallAsync("motif_dispose_parsimony_finding",
+            ("report_id", report.GetProperty("reportId").GetString()),
+            ("finding_id", finding.GetProperty("findingId").GetString()),
+            ("disposition", "defer"), ("record_type_id", recordTypeId), ("draft", controlDraft),
+            ("reason", "Confirm the observed prohibition identities first."));
+        Assert.Equal("RecordParsimonyDisposition",
+            disposed.GetProperty("result").GetProperty("composerName").GetString());
+        var dispositionIntent = Assert.Single(AssertDraftComposers(project.FwDataPath, controlDraft,
+            controlStarted.GetProperty("result").GetProperty("proposalId").GetString()!, ["RecordParsimonyDisposition"]));
+
+        await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions());
+        const string safeDraft = "batch-disposition-safe-control";
+        await session.CallAsync("motif_start_proposal", ("draft", safeDraft),
+            ("label", "Stage an ordinary phoneme"), ("comment", "Confirm the safe composer accepts this intent."));
+        var safe = await session.CallAsync("motif_add_phoneme", ("draft", safeDraft),
+            ("name", "T1SafeDisposition"), ("representations", new[] { "t1d" }));
+        Assert.True(safe.GetProperty("result").GetProperty("operationCount").GetInt32() > 0);
+
+        const string batchDraft = "batch-disposition-refusal";
+        var started = await session.CallAsync("motif_start_proposal", ("draft", batchDraft),
+            ("label", "Keep this Draft unchanged"), ("comment", "A restricted intent must refuse atomically."));
+        var before = ReadDraftState(project.FwDataPath, batchDraft);
+        var result = await session.Client.CallToolAsync("motif_compose_batch", new Dictionary<string, object?>
+        {
+            ["project"] = project.FwDataPath,
+            ["draft"] = batchDraft,
+            ["intents"] = new object[]
+            {
+                new { verb = "compose-author-phoneme", intent = new { name = "T1BatchSafeDisposition", representations = new[] { "t1b" } } },
+                new { verb = "compose-record-parsimony-disposition", intent = dispositionIntent },
+            },
+        });
+
+        AssertTypedBatchRefusal(result);
+        AssertDraftStateUnchanged(before, ReadDraftState(project.FwDataPath, batchDraft));
+        Assert.NotNull(started.GetProperty("result").GetProperty("proposalId").GetString());
+        AssertProjectUnchanged(project, projectHash, savedDispositions);
+    }
+
+    [Fact]
+    public async Task DefaultBatchRefusesValidRetirementIntentBeforeComposingEarlierAllowedIntent()
+    {
+        using var project = new WalkthroughProject(pristine);
+        var retirementIntent = AddDuplicateAffixRetirementIntent(project, pristine.Seed);
+        await using var experimental = await Session.StartAsync(project.FwDataPath,
+            new McpLaunchOptions(Profile: "parsimony-experimental"));
+
+        const string controlDraft = "batch-retirement-control";
+        await experimental.CallAsync("motif_start_proposal", ("draft", controlDraft),
+            ("label", "Retire one duplicate alternate"), ("comment", "Use the specialized retirement path."));
+        var retired = await experimental.CallAsync("motif_retire_allomorph", ("draft", controlDraft),
+            ("intent_json", retirementIntent));
+        Assert.True(retired.GetProperty("ok").GetBoolean(), retired.ToString());
+        Assert.True(retired.GetProperty("result").GetProperty("operationCount").GetInt32() > 0);
+
+        await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions());
+        const string safeDraft = "batch-retirement-safe-control";
+        await session.CallAsync("motif_start_proposal", ("draft", safeDraft),
+            ("label", "Stage an ordinary phoneme"), ("comment", "Confirm the safe composer accepts this intent."));
+        var safe = await session.CallAsync("motif_add_phoneme", ("draft", safeDraft),
+            ("name", "T1SafeRetirement"), ("representations", new[] { "t1r" }));
+        Assert.True(safe.GetProperty("result").GetProperty("operationCount").GetInt32() > 0);
+
+        const string batchDraft = "batch-retirement-refusal";
+        await session.CallAsync("motif_start_proposal", ("draft", batchDraft),
+            ("label", "Keep this Draft unchanged"), ("comment", "A restricted intent must refuse atomically."));
+        var before = ReadDraftState(project.FwDataPath, batchDraft);
+        using var parsedRetirement = JsonDocument.Parse(retirementIntent);
+        var result = await session.Client.CallToolAsync("motif_compose_batch", new Dictionary<string, object?>
+        {
+            ["project"] = project.FwDataPath,
+            ["draft"] = batchDraft,
+            ["intents"] = new object[]
+            {
+                new { verb = "compose-author-phoneme", intent = new { name = "T1BatchSafeRetirement", representations = new[] { "t1q" } } },
+                new { verb = "retire-allomorph", intent = parsedRetirement.RootElement.Clone() },
+            },
+        });
+
+        AssertTypedBatchRefusal(result);
+        AssertDraftStateUnchanged(before, ReadDraftState(project.FwDataPath, batchDraft));
     }
 
     [Fact]
@@ -942,7 +1064,67 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
 
     private static string HashProject(string path) => Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path)));
 
+    private static DraftState ReadDraftState(string projectPath, string draftName)
+    {
+        var result = ProjectStoreCommand.Run(projectPath, MotifProductVersion.CurrentText, (database, _) =>
+        {
+            var json = new ProposalRepository(database).GetDraft(draftName).ProposalJson!;
+            return CommandOutcome<DraftState>.Success(new(json, Encoding.UTF8.GetBytes(json), DraftRevision.Compute(json)));
+        });
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        return result.Value!;
+    }
+
+    private static void AssertDraftStateUnchanged(DraftState before, DraftState after)
+    {
+        Assert.Equal(before.ProposalJson, after.ProposalJson);
+        Assert.True(before.ProposalJsonBytes.AsSpan().SequenceEqual(after.ProposalJsonBytes));
+        Assert.Equal(before.Revision, after.Revision);
+    }
+
+    private static void AssertTypedBatchRefusal(CallToolResult result)
+    {
+        Assert.True(result.IsError);
+        Assert.Equal("tool.invalid-argument", result.StructuredContent!.Value.GetProperty("code").GetString());
+    }
+
+    private static string AddDuplicateAffixRetirementIntent(WalkthroughProject project, SeededProject seed)
+    {
+        using var cache = new FwDataProjectLoader().LoadCache(project.FwDataPath);
+        var entry = cache.ServiceLocator.GetInstance<ILexEntryRepository>().GetObject(seed.FirstEntryId);
+        var prefix = cache.ServiceLocator.GetInstance<IMoMorphTypeRepository>()
+            .GetObject(MoMorphTypeTags.kguidMorphPrefix);
+        IMoAffixAllomorph[] forms = new IMoAffixAllomorph[2];
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            for (var index = 0; index < forms.Length; index++)
+            {
+                forms[index] = cache.ServiceLocator.GetInstance<IMoAffixAllomorphFactory>().Create();
+                entry.AlternateFormsOS.Add(forms[index]);
+                forms[index].MorphTypeRA = prefix;
+                forms[index].Form.set_String(cache.DefaultVernWs, "t1-retirement-duplicate");
+            }
+        });
+        new FwDataProjectLoader().Save(cache);
+
+        var entryId = CanonicalId.FromGuid(entry.Guid);
+        var identities = forms.Select(form => new AllomorphIdentity(
+            CanonicalId.FromGuid(form.Guid).Value,
+            entryId.Value,
+            form.ClassName,
+            "alternate",
+            "prefix",
+            AllomorphRetirementSemanticDigest.Compute(cache, form),
+            null)).ToArray();
+        return RetireAllomorphCodec.ToJson(new RetireAllomorphIntentDocument(
+            new RetireAllomorphIntent(entryId.Value, AllomorphRetirementScope.Affix,
+                [identities[0]], [], [], []),
+            [identities[1]]));
+    }
+
     private sealed record SavedDisposition(string RecordId, JudgmentPredecessor Head);
+
+    private sealed record DraftState(string ProposalJson, byte[] ProposalJsonBytes, string Revision);
 
     private sealed record SavedDispositionPair(SavedDisposition ToRevise, SavedDisposition ToRetract);
 

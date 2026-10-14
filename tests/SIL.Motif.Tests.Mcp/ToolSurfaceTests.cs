@@ -98,9 +98,49 @@ public sealed class ToolSurfaceTests
         Assert.DoesNotContain("intentsJson", batch.Tool.ArgumentNames);
         var branches = intents["items"]!["oneOf"]!.AsArray();
         var verbs = branches.Select(branch => branch!["properties"]!["verb"]!["enum"]![0]!.GetValue<string>()).ToArray();
+        Assert.Equal(22, verbs.Length);
+        Assert.Equal(new[]
+        {
+            "compose-author-lexeme-form",
+            "compose-author-feature-structure",
+            "compose-author-feature-value",
+            "compose-author-phoneme",
+            "compose-author-natural-class",
+            "compose-edit-natural-class",
+            "compose-relink-natural-class",
+            "compose-author-environment",
+            "compose-author-phonological-rule",
+            "compose-author-part-of-speech",
+            "compose-author-inflection-feature",
+            "compose-author-inflection-class",
+            "compose-author-stem-name",
+            "compose-author-lexical-entry",
+            "compose-author-affix-slot",
+            "compose-author-affix-template",
+            "compose-edit-adhoc-prohibition",
+            "compose-edit-affix-slot",
+            "compose-edit-affix-template",
+            "compose-edit-inflectional-affix",
+            "compose-edit-allomorph-condition",
+            "order-allomorphs",
+        }.Order(StringComparer.Ordinal), verbs.Order(StringComparer.Ordinal));
+        Assert.DoesNotContain("compose-record-parsimony-disposition", verbs);
+        Assert.DoesNotContain("retire-allomorph", verbs);
+        Assert.DoesNotContain("retire-redundant-zero-affix", verbs);
+        Assert.DoesNotContain("compose-retire-allomorph", verbs);
+        Assert.DoesNotContain("compose-retire-redundant-zero-affix", verbs);
+        Assert.DoesNotContain("unknown-nonallowlisted-verb", verbs);
         Assert.DoesNotContain("parsimony dispose", verbs);
         Assert.DoesNotContain("parsimony revise", verbs);
         Assert.DoesNotContain("parsimony retract", verbs);
+
+        var batchOnly = MotifMcpServer.Expose(new ToolProfile("batch-only", null, null, "concise",
+            [new ToolSelection("motif_compose_batch", null, null, null)]));
+        var batchOnlySchema = Assert.Single(batchOnly).Tool.InputSchema;
+        var batchOnlyVerbs = batchOnlySchema["properties"]!["intents"]!["items"]!["oneOf"]!.AsArray()
+            .Select(branch => branch!["properties"]!["verb"]!["enum"]![0]!.GetValue<string>())
+            .Order(StringComparer.Ordinal);
+        Assert.Equal(verbs.Order(StringComparer.Ordinal), batchOnlyVerbs);
         var template = branches.Single(branch => branch!["properties"]!["verb"]!["enum"]![0]!.GetValue<string>() ==
             "compose-author-affix-template");
         var templateIntent = template!["properties"]!["intent"]!["properties"]!;

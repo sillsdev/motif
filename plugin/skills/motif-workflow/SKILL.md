@@ -48,8 +48,9 @@ connect, inspect its MCP launch log instead. Do not substitute direct FieldWorks
    sense and its structured MSA; choose the morph type and MSA kind together, and give affixes their
    category and any applicable slots or derivational destination.
 3. For related composer calls, `motif_compose_batch` takes an `intents` array of `{verb, intent,
-   citation?}` objects. Each `intent` is structured semantic input, and later intents can refer to
-   entity ids created earlier in the batch. Never supply low-level operations as a batch.
+   citation?}` objects. Each `intent` is structured semantic input. Referenced entity ids must come
+   from earlier completed calls or batches; declare operation ordering and dependencies in the intent
+   data, since array position alone does not establish them. Never supply low-level operations as a batch.
 4. Call `motif_dry_run` on the Draft. Read the effects and any refusal before continuing.
 5. Call `motif_trial` with representative positive words and, when available, attested negative words.
    Read its summary, including unfinished searches, without treating an incomplete search as rejection.

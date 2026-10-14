@@ -11,7 +11,7 @@ A linguist sees prefixes or suffixes recurring in the same grammatical order acr
 
 ## Motif support
 
-`motif_grammar` can read categories, templates and slots. `motif_add_lexical_entry` creates one entry and one sense with a structured MSA: use an inflectional MSA for a slot-filling affix, or a derivational MSA with both its source and destination categories. `motif_add_affix_slot` creates a category-owned slot and can assign existing inflectional MSAs; `motif_add_affix_template` creates the ordered prefix and suffix slots. Use the returned entity ids when a later intent in `motif_compose_batch` depends on an object created earlier in that batch.
+`motif_grammar` can read categories, templates and slots. `motif_add_lexical_entry` creates one entry and one sense with a structured MSA: use an inflectional MSA for a slot-filling affix, or a derivational MSA with both its source and destination categories. `motif_add_affix_slot` creates a category-owned slot and can assign existing inflectional MSAs; `motif_add_affix_template` creates the ordered prefix and suffix slots. Use returned entity ids in later calls or batches after the creating call completes. Batch intents may reference only ids from earlier completed calls or batches; declare operation ordering and dependencies in the intent data, since array position alone does not establish them.
 
 ## Check with a Trial
 
