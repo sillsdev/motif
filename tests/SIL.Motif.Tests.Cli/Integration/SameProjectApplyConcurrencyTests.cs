@@ -65,7 +65,7 @@ public sealed class SameProjectApplyConcurrencyTests(PristineProjectFixture pris
         var appliedResponses = 0;
         foreach (var outcome in outcomes)
             appliedResponses += AssertDocumentedOutcome(outcome.ExitCode, outcome.Output, outcome.Error,
-                added.Value.DraftId!);
+                iteration, added.Value.DraftId!);
 
         // A request past preflight can receive the first Apply's idempotent Receipt.
         Assert.InRange(appliedResponses, 1, 2);
@@ -78,7 +78,8 @@ public sealed class SameProjectApplyConcurrencyTests(PristineProjectFixture pris
         Assert.Equal(CanonicalId.Parse(added.Value.DraftId!).ToGuid(), appliedLog.ProposalId);
     }
 
-    private static int AssertDocumentedOutcome(int exitCode, string output, string error, string proposalId)
+    private static int AssertDocumentedOutcome(
+        int exitCode, string output, string error, int iteration, string proposalId)
     {
         if (exitCode == 0)
         {
@@ -96,7 +97,9 @@ public sealed class SameProjectApplyConcurrencyTests(PristineProjectFixture pris
             return 1;
         }
 
-        Assert.Equal(3, exitCode);
+        Assert.True(exitCode == 3,
+            $"Iteration {iteration}: expected Busy exit code 3, got {exitCode}.\n" +
+            $"Child stdout:\n{output}\nChild stderr:\n{error}");
         Assert.Empty(output);
         using var failure = JsonDocument.Parse(error);
         Assert.Equal("Busy", failure.RootElement.GetProperty("reason").GetString());
