@@ -13,6 +13,7 @@ using Avalonia.VisualTree;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
@@ -27,6 +28,127 @@ namespace SIL.Motif.Tests.App;
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void UseAllTextsRestoresAndPersistsTheFullSelection(bool allBoxesAlreadyChecked)
+    {
+        var folder = Environment.GetEnvironmentVariable(ScreenshotFactAttribute.FolderVariable);
+        if (!string.IsNullOrWhiteSpace(folder)) Directory.CreateDirectory(folder);
+        var settingsPath = NewSettingsPath();
+        try
+        {
+            AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+            {
+                FakeCommandClient? fake = null;
+                var (workspace, window) = await PageScreenshots.OpenOverSampleData(parse: false,
+                    configure: (client, _) =>
+                    {
+                        fake = client;
+                        client.DefaultSelectionIs(new NamedSelectionProjection("Default", [SampleTextId], [],
+                            string.Empty, string.Empty,
+                            new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null), "1"));
+                    }, settingsFilePath: settingsPath);
+                try
+                {
+                    foreach (var text in workspace.Selection.Texts)
+                        text.IsChecked = allBoxesAlreadyChecked || text.Id == SampleTextId;
+                    var popup = OpenSettings(window);
+                    popup.FindControl<ListBox>("SettingsGroups")!.SelectedIndex = 2;
+                    PageScreenshots.Settle(window);
+                    var settings = Assert.IsType<SettingsViewModel>(popup.DataContext);
+                    var useAllTexts = popup.FindControl<Button>("UseAllTextsButton")!;
+                    Assert.Single(popup.GetVisualDescendants().OfType<Button>(),
+                        button => AutomationProperties.GetName(button) == "Use all texts");
+                    Assert.Single(popup.GetVisualDescendants().OfType<TextBlock>(),
+                        text => text.IsEffectivelyVisible && text.Text == "Texts to parse");
+                    workspace.Selection.SearchText = "Hadithi";
+                    Assert.Equal(allBoxesAlreadyChecked ? "2 of 2 Texts selected" : "1 of 2 Texts selected",
+                        settings.TextSelectionSummary);
+                    workspace.Selection.SearchText = string.Empty;
+                    Assert.True(useAllTexts.IsEnabled);
+                    if (!string.IsNullOrWhiteSpace(folder)) SavePopupState(window, popup, folder, "settings-text-selection-all-before.png");
+
+                    HeadlessClick.Click(window, useAllTexts, "Use all texts");
+                    await settings.UseAllTextsCommand.ExecutionTask!;
+
+                    var expectedTextIds = workspace.Selection.Texts.Select(text => text.Id).Order().ToArray();
+                    Assert.Equal(expectedTextIds, workspace.Selection.ChosenTextIds.Order());
+                    Assert.True(workspace.Selection.AreAllTextsSelected);
+                    Assert.False(settings.UseAllTextsCommand.CanExecute(null));
+                    Assert.False(settings.CanUseAllTexts);
+                    PageScreenshots.Settle(window);
+                    Assert.False(useAllTexts.IsEnabled);
+                    var saved = await fake!.ReadDefaultSelectionAsync(
+                        new ReadDefaultSelectionRequest(workspace.Context.ProjectPath!), CancellationToken.None);
+                    Assert.True(saved.Succeeded, saved.Refusal?.Message);
+                    Assert.Equal(expectedTextIds, saved.Value!.Selection!.TextIds.Order());
+                    Assert.Equal("2", saved.Value.Selection.Revision);
+
+                    await workspace.Context.Setup!.ProjectOpenedAsync(workspace.Context.ProjectPath!);
+                    Assert.Equal(expectedTextIds, workspace.Selection.ChosenTextIds.Order());
+                    Assert.False(useAllTexts.IsEnabled);
+                    if (!string.IsNullOrWhiteSpace(folder)) SavePopupState(window, popup, folder, "settings-text-selection-all-after.png");
+                }
+                finally
+                {
+                    window.Close();
+                    await workspace.DisposeAsync();
+                }
+            }, TimeSpan.FromMinutes(2));
+        }
+        finally
+        {
+            DeleteSettingsPath(settingsPath);
+        }
+    }
+
+    [Fact]
+    public void TextSelectionSummaryUsesTheSingularForOneText()
+    {
+        var settingsPath = NewSettingsPath();
+        try
+        {
+            AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+            {
+                var (workspace, window) = await PageScreenshots.OpenOverSampleData(parse: false,
+                    configure: (client, _) =>
+                    {
+                        client.ListTextsCompletesWith(new TextInventoryResponse(
+                            [new TextChoiceSummary(SampleTextId, "One story")], HasBaseline: true));
+                        client.DefaultSelectionIs(new NamedSelectionProjection("Default", [SampleTextId], [],
+                            string.Empty, string.Empty,
+                            new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null), "1"));
+                    },
+                    settingsFilePath: settingsPath);
+                try
+                {
+                    workspace.Selection.SelectAllTexts();
+                    var popup = OpenSettings(window);
+                    popup.FindControl<ListBox>("SettingsGroups")!.SelectedIndex = 2;
+                    PageScreenshots.Settle(window);
+                    var settings = Assert.IsType<SettingsViewModel>(popup.DataContext);
+                    Assert.Equal("1 of 1 Text selected", settings.TextSelectionSummary);
+                    var folder = Environment.GetEnvironmentVariable(ScreenshotFactAttribute.FolderVariable);
+                    if (!string.IsNullOrWhiteSpace(folder))
+                    {
+                        Directory.CreateDirectory(folder);
+                        SavePopupState(window, popup, folder, "settings-one-text.png");
+                    }
+                }
+                finally
+                {
+                    window.Close();
+                    await workspace.DisposeAsync();
+                }
+            }, TimeSpan.FromMinutes(2));
+        }
+        finally
+        {
+            DeleteSettingsPath(settingsPath);
+        }
+    }
+
     [Fact]
     public void SettingsMarkupKeepsItsInteractiveFamiliesBound()
     {
@@ -351,13 +473,15 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
     public void SettingsLinksOpenTheDocumentationAndMotifDataFolder()
     {
         var settingsPath = NewSettingsPath();
+        var dataRoot = Path.Combine(Path.GetDirectoryName(settingsPath)!, "managed-data");
+        var facts = new ApplicationFacts("0.2.0", "0.8.3", "Test operating system", false, true, dataRoot);
         var launcher = new RecordingUriLauncher();
         try
         {
             AvaloniaHeadlessFixture.RunUntilComplete(async () =>
             {
                 var (workspace, window) = FakeComposedWindow.Create(settingsFilePath: settingsPath,
-                    uriLauncher: launcher);
+                    uriLauncher: launcher, applicationFacts: facts);
                 try
                 {
                     window.Show();
@@ -382,7 +506,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                         await Task.Yield();
                         PageScreenshots.Settle(window);
                     }
-                    Assert.Equal(new Uri(RunnerOptions.ResolveRoot()), launcher.Launches[1]);
+                    Assert.Equal(new Uri(dataRoot), launcher.Launches[1]);
                 }
                 finally
                 {
@@ -432,6 +556,65 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
         }
         finally
         {
+            DeleteSettingsPath(settingsPath);
+        }
+    }
+
+    [Fact]
+    public void ResetZoomReturnsToDefaultPersistsAcrossReloadAndIsDisabledAtDefault()
+    {
+        var settingsPath = NewSettingsPath();
+        var priorTheme = ReadTheme();
+        try
+        {
+            AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+            {
+                var (workspace, window) = FakeComposedWindow.Create(settingsFilePath: settingsPath);
+                try
+                {
+                    window.Show();
+                    var popup = OpenSettings(window);
+                    var settings = Assert.IsType<SettingsViewModel>(popup.DataContext);
+                    var reset = Button(popup, "Reset zoom to 100%");
+                    Assert.True(reset.IsEffectivelyVisible);
+                    Assert.False(reset.IsEnabled);
+
+                    settings.ZoomPercent = 125;
+                    Assert.True(reset.IsEnabled);
+                    Assert.Equal(125, new FileUserPreferencesStore(settingsPath).Current.ZoomPercent);
+                    HeadlessClick.Click(window, reset, "Reset zoom to 100%");
+                    Assert.Equal(100, settings.ZoomPercent);
+                    Assert.True(reset.IsEffectivelyVisible);
+                    Assert.False(reset.IsEnabled);
+                    Assert.Equal(100, new FileUserPreferencesStore(settingsPath).Current.ZoomPercent);
+                }
+                finally
+                {
+                    window.Close();
+                    await workspace.DisposeAsync();
+                }
+
+                var (reloadedWorkspace, reloadedWindow) = FakeComposedWindow.Create(settingsFilePath: settingsPath);
+                try
+                {
+                    reloadedWindow.Show();
+                    var reloadedPopup = OpenSettings(reloadedWindow);
+                    var reloadedSettings = Assert.IsType<SettingsViewModel>(reloadedPopup.DataContext);
+                    var reset = Button(reloadedPopup, "Reset zoom to 100%");
+                    Assert.Equal(100, reloadedSettings.ZoomPercent);
+                    Assert.True(reset.IsEffectivelyVisible);
+                    Assert.False(reset.IsEnabled);
+                }
+                finally
+                {
+                    reloadedWindow.Close();
+                    await reloadedWorkspace.DisposeAsync();
+                }
+            }, TimeSpan.FromMinutes(1));
+        }
+        finally
+        {
+            RestoreTheme(priorTheme);
             DeleteSettingsPath(settingsPath);
         }
     }
@@ -1049,6 +1232,17 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                                 PageScreenshots.Settle(window);
                                 SavePopupState(window, popup, folder,
                                     $"settings-{GroupSlugs[index]}-{width}-{themeName}.png");
+                            }
+
+                            if (themeName == "light" && width == 1240)
+                            {
+                                groups.SelectedIndex = 0;
+                                PageScreenshots.Settle(window);
+                                SavePopupState(window, popup, folder, "settings-display-reset-default.png");
+                                settings.ZoomPercent = 125;
+                                SavePopupState(window, popup, folder, "settings-display-reset-available.png");
+                                HeadlessClick.Click(window, Button(popup, "Reset zoom to 100%"), "Reset zoom to 100%");
+                                SavePopupState(window, popup, folder, "settings-display-reset-disabled.png");
                             }
 
                             groups.SelectedIndex = 1;

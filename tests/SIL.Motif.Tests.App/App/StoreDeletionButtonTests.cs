@@ -13,15 +13,14 @@ using Xunit;
 namespace SIL.Motif.Tests.App;
 
 /// <summary>
-/// Delete this file and reopen appears only for a store another version of Motif made, and pressing it asks
-/// before anything is deleted.
+/// Delete Motif's store and reopen appears only for a store another version made, and pressing it asks first.
 /// </summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class StoreDeletionButtonTests
 {
     private const string Project = @"C:\projects\one.fwdata";
     private const string StorePath = @"C:\projects\one.motif.db";
-    private const string DeleteButtonText = "Delete this file and reopen";
+    private const string DeleteButtonText = "Delete Motif's store and reopen";
 
     private readonly AvaloniaHeadlessFixture _avalonia;
 
@@ -52,6 +51,9 @@ public sealed class StoreDeletionButtonTests
                 await workspace.OpenRecentProjectCommand.ExecuteAsync(new RecentProjectViewModel(Project));
                 Settle(window);
 
+                var refusalComponent = Assert.Single(window.GetLogicalDescendants().OfType<StoreRefusalBlock>());
+                Assert.IsType<StoreRefusalBlockViewModel>(refusalComponent.DataContext);
+
                 var block = window.GetLogicalDescendants().OfType<RefusalBlock>()
                     .Single(candidate => AutomationProperties.GetName(candidate) == "Refresh refusal");
                 Assert.True(block.IsEffectivelyVisible);
@@ -59,8 +61,8 @@ public sealed class StoreDeletionButtonTests
                 Assert.Equal(offered, button.IsEffectivelyVisible);
                 if (!offered) return;
 
-                var question = window.GetLogicalDescendants().OfType<StackPanel>()
-                    .Single(panel => panel.Name == "StoreDeletionQuestion");
+                var question = window.GetLogicalDescendants().OfType<Border>()
+                    .Single(border => border.Name == "StoreDeletionQuestion");
                 Assert.False(question.IsEffectivelyVisible);
                 Assert.True(button.IsEffectivelyEnabled);
 
@@ -72,7 +74,7 @@ public sealed class StoreDeletionButtonTests
                 Assert.Contains(WorkspaceShellViewModel.StoreDeletionWarning, shown);
                 var choices = question.GetLogicalDescendants().OfType<Button>()
                     .Where(choice => choice.IsEffectivelyVisible).Select(choice => choice.Content).ToList();
-                Assert.Equal(["Delete and reopen", "Cancel"], choices);
+                Assert.Equal(["Delete Motif's store and reopen", "Keep Motif's store"], choices);
                 Assert.Empty(fake.DeleteRefusedStoreRequests);
             }
             finally

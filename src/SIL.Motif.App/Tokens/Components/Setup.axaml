@@ -4,17 +4,16 @@
   <Styles.Resources>
     <StaticResource x:Key="Component.Setup.DialogWidth" ResourceKey="Primitive.Size.780" />
     <StaticResource x:Key="Component.Setup.DialogHeightLimit" ResourceKey="Primitive.Size.600" />
-    <StaticResource x:Key="Component.Setup.DialogRadius" ResourceKey="Primitive.Radius.12" />
-    <StaticResource x:Key="Component.Setup.DialogPadding" ResourceKey="Primitive.Inset.16_16_16_16" />
-    <StaticResource x:Key="Component.Setup.DialogMargin" ResourceKey="Primitive.Inset.16_16_16_16" />
-    <StaticResource x:Key="Component.Setup.TextListHeight" ResourceKey="Primitive.Size.240" />
+    <StaticResource x:Key="Component.Setup.DialogRadius" ResourceKey="Intent.Radius.None" />
+    <StaticResource x:Key="Component.Setup.DialogPadding" ResourceKey="Primitive.Inset.8_4_8_4" />
+    <StaticResource x:Key="Component.Setup.DialogMargin" ResourceKey="Primitive.Inset.8_4_8_4" />
     <StaticResource x:Key="Component.Setup.AddedWordsHeight" ResourceKey="Primitive.Size.52" />
     <StaticResource x:Key="Component.Setup.AddedWordsMaxHeight" ResourceKey="Primitive.Size.140" />
     <StaticResource x:Key="Component.Setup.NumberWidth" ResourceKey="Primitive.Size.190" />
     <StaticResource x:Key="Component.Setup.MarkerSize" ResourceKey="Primitive.Size.8" />
     <StaticResource x:Key="Component.Setup.MarkerActiveWidth" ResourceKey="Primitive.Size.22" />
-    <StaticResource x:Key="Component.Setup.TextRowPadding" ResourceKey="Primitive.Inset.10_8_10_8" />
-    <StaticResource x:Key="Component.Setup.SummaryPadding" ResourceKey="Primitive.Inset.10_8_10_8" />
+    <StaticResource x:Key="Component.Setup.TextRowPadding" ResourceKey="Primitive.Inset.8_2_8_2" />
+    <StaticResource x:Key="Component.Setup.SummaryPadding" ResourceKey="Primitive.Inset.8_2_8_2" />
   </Styles.Resources>
   <Style Selector="Grid.setupOverlay">
     <Setter Property="HorizontalAlignment" Value="Stretch" />

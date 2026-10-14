@@ -27,6 +27,16 @@
   <Style Selector="Border.topBar.macChrome">
     <Setter Property="Padding" Value="{DynamicResource Component.TopBar.MacChromePadding}" />
   </Style>
+  <Style Selector="Button#PART_FullScreenButton">
+    <Setter Property="IsVisible" Value="False" />
+  </Style>
+  <Style Selector="Button#PART_PopoverFullScreenButton">
+    <Setter Property="IsVisible" Value="False" />
+  </Style>
+  <!-- The top bar draws the Motif brand itself; the caption's own title text would sit on top of it. -->
+  <Style Selector="Panel#PART_TitleTextPanel > TextBlock">
+    <Setter Property="IsVisible" Value="False" />
+  </Style>
   <Style Selector="StackPanel.topBarGroup">
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Related}" />
   </Style>

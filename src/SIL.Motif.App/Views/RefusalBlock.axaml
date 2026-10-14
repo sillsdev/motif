@@ -7,7 +7,12 @@
              x:DataType="vm:WindowRefusal">
   <ScrollViewer Classes="refusalBlockViewport">
     <StackPanel Classes="refusal">
-      <views:CopyableTextBlock Classes="error" Text="{Binding Sentence}" TextWrapping="Wrap" />
+      <StackPanel Classes="refusalRecoveryCopy" IsVisible="{Binding OffersStoreDeletion}">
+        <TextBlock Classes="refusalTitle" Text="{Binding Heading}" />
+        <views:CopyableTextBlock Classes="error" Text="{Binding Sentence}" TextWrapping="Wrap" />
+      </StackPanel>
+      <views:CopyableTextBlock Classes="error" Text="{Binding Sentence}" TextWrapping="Wrap"
+                               IsVisible="{Binding !OffersStoreDeletion}" />
       <ScrollViewer Classes="refusalViewport" IsVisible="{Binding HasCompileIssues}"
                     HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
                     AutomationProperties.Name="Fatal grammar issues">
@@ -31,13 +36,14 @@
           </ItemsControl.ItemTemplate>
         </ItemsControl>
       </ScrollViewer>
-      <Button x:Name="ReportProblemButton" Content="Report a problem" Click="OnReportProblemClick"
+      <HyperlinkButton x:Name="ReportProblemButton" Classes="refusalReport" Content="Report a problem" Click="OnReportProblemClick"
               IsVisible="{Binding OffersProblemReport}"
               AutomationProperties.Name="Review a problem report" HorizontalAlignment="Left" />
       <Button x:Name="DeleteStoreButton"
-              Content="Delete this file and reopen"
+              Classes="Primary" Theme="{DynamicResource SolidButton}"
+              Content="Delete Motif's store and reopen"
               CommandParameter="{Binding}"
-              AutomationProperties.Name="Delete Motif's file for this project and reopen it"
+              AutomationProperties.Name="Delete Motif's store and reopen the project"
               HorizontalAlignment="Left"
               IsVisible="False" />
       <Expander Classes="refusalDetails" Header="{Binding DetailsTitle}" AutomationProperties.Name="Refusal details"

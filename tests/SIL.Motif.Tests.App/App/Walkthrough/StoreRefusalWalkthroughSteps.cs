@@ -16,12 +16,12 @@ internal static class StoreRefusalWalkthroughSteps
 
     internal static Button FindDeleteButton(this RefusalBlock refusal) =>
         refusal.GetLogicalDescendants().OfType<Button>().Single(button =>
-            AutomationProperties.GetName(button) == "Delete Motif's file for this project and reopen it");
+            AutomationProperties.GetName(button) == "Delete Motif's store and reopen the project");
 
     internal static void ClickDeleteButton(this WalkthroughWindow walkthrough)
     {
         var refusal = walkthrough.Find<RefusalBlock>("Refresh refusal");
         HeadlessClick.Click(walkthrough.Window, refusal.FindDeleteButton(),
-            "Delete Motif's file for this project and reopen it");
+            "Delete Motif's store and reopen the project");
     }
 }

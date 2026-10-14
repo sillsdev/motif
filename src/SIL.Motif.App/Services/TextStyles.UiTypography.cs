@@ -11,6 +11,13 @@ public sealed partial class TextStyles
     private const string EmbeddedFontAssets = "avares://SIL.Motif.App/Assets/Fonts";
     private const string AndikaFamilyName = EmbeddedFontCollectionKey + "#Andika";
     private static readonly FontFamily UiFontFamily = new(AndikaFamilyName);
+    private static readonly string[] WritingSystemFontFamilies =
+    [
+        "Andika",
+        "Charis SIL",
+        "Doulos SIL",
+        "Gentium Plus",
+    ];
     private static readonly FontFeatureCollection DefaultInterfaceFeatures =
         FontFeatureCollection.Parse("kern=1,liga=1,clig=1,calt=1");
 
@@ -110,10 +117,30 @@ public sealed partial class TextStyles
     internal static FontManagerOptions CurrentInterfaceFontOptions =>
         InterfaceFontOptionsForLanguage(System.Globalization.CultureInfo.CurrentUICulture.Name);
 
-    internal static void RegisterUiFontCollection(FontManager fontManager) =>
+    internal static void RegisterUiFontCollection(FontManager fontManager)
+    {
         fontManager.AddFontCollection(new EmbeddedFontCollection(
             new Uri(EmbeddedFontCollectionKey, UriKind.Absolute),
             new Uri(EmbeddedFontAssets, UriKind.Absolute)));
+    }
+
+    internal static bool TryGetBundledWritingSystemFont(string familyName, out string embeddedFamilyName,
+        out string expectedFamilyName)
+    {
+        var requestedFamily = familyName.Equals("Charis", StringComparison.OrdinalIgnoreCase)
+            ? "Charis SIL" : familyName;
+        foreach (var family in WritingSystemFontFamilies)
+        {
+            if (!family.Equals(requestedFamily, StringComparison.OrdinalIgnoreCase)) continue;
+            embeddedFamilyName = $"{EmbeddedFontCollectionKey}#{family}";
+            expectedFamilyName = family;
+            return true;
+        }
+
+        embeddedFamilyName = string.Empty;
+        expectedFamilyName = string.Empty;
+        return false;
+    }
 
     internal static void ApplyApplicationFontResources(Application application)
     {

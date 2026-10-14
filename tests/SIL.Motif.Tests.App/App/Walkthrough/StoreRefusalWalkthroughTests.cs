@@ -1,11 +1,14 @@
 using System.Diagnostics;
 using Avalonia.Controls;
+using Avalonia.Headless;
 using Avalonia.LogicalTree;
+using Avalonia.Media.Imaging;
 using Microsoft.Data.Sqlite;
 using SIL.Motif.App.Views;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host.Store;
+using SIL.Motif.Tests.App;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Store;
 using Xunit;
@@ -50,6 +53,7 @@ public sealed class StoreRefusalWalkthroughTests(PristineProjectFixture pristine
                 walkthrough.Workspace.Baseline.ShownRefusal);
             var block = walkthrough.Find<RefusalBlock>("Refresh refusal");
             Assert.True(block.IsEffectivelyVisible);
+            Assert.False(walkthrough.Named<Border>("TechDemoNotice").IsEffectivelyVisible);
             InteractiveControlSweep.AssertScene(walkthrough, "older store refused",
                 InteractiveControlFamily.Action,
                 InteractiveControlFamily.Link,
@@ -59,11 +63,13 @@ public sealed class StoreRefusalWalkthroughTests(PristineProjectFixture pristine
                 InteractiveControlFamily.ContentSurface,
                 InteractiveControlFamily.Collection,
                 InteractiveControlFamily.Container);
-            Assert.Contains(storePath, refusal.Sentence, StringComparison.Ordinal);
             var sentence = block.GetLogicalDescendants().OfType<CopyableTextBlock>()
-                .Single(text => text.Text == refusal.Sentence);
+                .Single(text => text.Text == refusal.Sentence && text.IsEffectivelyVisible);
             Assert.True(sentence.IsEffectivelyVisible);
+            Assert.DoesNotContain(block.GetLogicalDescendants().OfType<CopyableTextBlock>(),
+                text => text.Text == walkthrough.Workspace.Baseline.HeldStatusText && text.IsEffectivelyVisible);
             Assert.Contains(storePath, refusal.Details, StringComparison.Ordinal);
+            CaptureIfRequested(walkthrough, "refusal-refresh-after.png");
 
             var details = walkthrough.FindRefusalDetails();
             HeadlessClick.Click(walkthrough.Window, details, "Refusal details");
@@ -73,10 +79,11 @@ public sealed class StoreRefusalWalkthroughTests(PristineProjectFixture pristine
             Assert.True(detailsText.IsEffectivelyVisible);
 
             walkthrough.ClickDeleteButton();
-            var question = walkthrough.Named<StackPanel>("StoreDeletionQuestion");
+            var question = walkthrough.Named<Border>("StoreDeletionQuestion");
             Assert.True(question.IsEffectivelyVisible);
+            CaptureIfRequested(walkthrough, "refusal-delete-confirmation-after.png");
 
-            walkthrough.Click("Keep Motif's file");
+            walkthrough.Click("Keep Motif's store");
             Assert.False(question.IsEffectivelyVisible);
             Assert.True(block.FindDeleteButton().IsEffectivelyVisible);
             walkthrough.WaitUntilProjectIsQuiet(
@@ -86,7 +93,7 @@ public sealed class StoreRefusalWalkthroughTests(PristineProjectFixture pristine
 
             walkthrough.ClickDeleteButton();
             Assert.True(question.IsEffectivelyVisible);
-            walkthrough.Click("Delete Motif's file and reopen the project");
+            walkthrough.Click("Confirm deleting Motif's store and reopening the project");
             walkthrough.WaitUntil(
                 () => !walkthrough.Workspace.IsConfirmingStoreDeletion &&
                     walkthrough.Workspace.Baseline.ShownRefusal is null &&
@@ -124,8 +131,10 @@ public sealed class StoreRefusalWalkthroughTests(PristineProjectFixture pristine
             Assert.Equal(RefusalCodes.StoreInconsistent, refusal.Code);
             var block = walkthrough.Find<RefusalBlock>("Refresh refusal");
             Assert.True(block.IsEffectivelyVisible);
+            Assert.False(walkthrough.Named<Border>("TechDemoNotice").IsEffectivelyVisible);
             Assert.Contains("damaged", refusal.Sentence, StringComparison.OrdinalIgnoreCase);
             Assert.False(block.FindDeleteButton().IsEffectivelyVisible);
+            CaptureIfRequested(walkthrough, "refusal-corrupt-store-after.png");
             walkthrough.WaitUntilProjectIsQuiet(
                 WalkthroughSteps.Remaining(deadline), "the damaged project's open stages did not finish");
             Assert.Equal(corruptBytes, ReadSharedBytes(storePath));
@@ -140,6 +149,17 @@ public sealed class StoreRefusalWalkthroughTests(PristineProjectFixture pristine
         using var bytes = new MemoryStream();
         stream.CopyTo(bytes);
         return bytes.ToArray();
+    }
+
+    private static void CaptureIfRequested(WalkthroughWindow walkthrough, string name)
+    {
+        var folder = Environment.GetEnvironmentVariable(ScreenshotFactAttribute.FolderVariable);
+        if (string.IsNullOrWhiteSpace(folder)) return;
+        Directory.CreateDirectory(folder);
+        PageScreenshots.Settle(walkthrough.Window);
+        using var frame = walkthrough.Window.CaptureRenderedFrame()
+            ?? throw new InvalidOperationException($"No frame rendered for {name}.");
+        frame.Save(Path.Combine(folder, name), PngBitmapEncoderOptions.Default);
     }
 
     private static string StorePath(string projectPath)

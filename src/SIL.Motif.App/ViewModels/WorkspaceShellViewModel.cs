@@ -30,8 +30,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     private const string OpenProjectRefusalText = "Motif could not open this project.";
 
     /// <summary>What the window asks before it deletes a store another version of Motif made.</summary>
-    public const string StoreDeletionWarning =
-        "Changes not applied yet are lost. Your FieldWorks project is not touched.";
+    public const string StoreDeletionWarning = StoreRefusalBlockViewModel.StoreDeletionWarning;
 
     /// <summary>What the project menu's Configure entry says while the project has no Baseline to choose Texts from.</summary>
     public const string ConfigureNeedsBaselineText = "Refresh first to choose Texts";
@@ -53,6 +52,8 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     private bool _knownProjectsRefreshRequested;
     private int _refreshGeneration;
     private int _projectOpenGeneration;
+    /// <summary>The saved project identity lookup used by Recent copy exclusion.</summary>
+    internal Func<string, string?> ReadSavedProjectIdentity { get; init; } = KnownProjectsQuery.ReadProjectIdentity;
     private readonly HashSet<string> _openedProjectPaths = new(
         OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
 
@@ -77,6 +78,16 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         Project = project;
         Baseline = baseline;
         TechDemoNotice = techDemoNotice;
+        if (TechDemoNotice is not null)
+        {
+            TechDemoNotice.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(TechDemoNoticeViewModel.IsVisible))
+                    OnPropertyChanged(nameof(ShowsTechDemoNotice));
+            };
+        }
+        OpenRecentProjectFolderCommand = new AsyncRelayCommand<RecentProjectViewModel>(OpenRecentProjectFolderAsync,
+            CanOpenRecentProjectFolder);
         Context = new WorkspaceContext(selection, assess, new ChangesViewModel(commandClient), commandClient, folderPicker,
             dragSource, baseline, clock, clipboard, diagnosticFiles, diagnosticDialogs,
             advancedAiModePreferences, assistantConnections, uriLauncher, defaultProposalChecks)
@@ -86,6 +97,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
             BrowseForProjectCommand = project.BrowseCommand,
             OpenProjectCommand = new AsyncRelayCommand<string>(path =>
                 path is null ? Task.CompletedTask : OpenProjectFromCommandAsync(path)),
+            OpenProjectFolderCommand = OpenRecentProjectFolderCommand,
         };
         PublishBaseline();
         ParseAllWordsCommand = new AsyncRelayCommand(ParseAllWordsAsync, CanParseAllWords);
@@ -132,6 +144,9 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         ConfirmStoreDeletionCommand = new AsyncRelayCommand(DeleteRefusedStoreAndReopenAsync,
             () => IsConfirmingStoreDeletion);
         CancelStoreDeletionCommand = new RelayCommand(() => StopConfirmingStoreDeletion(), () => IsConfirmingStoreDeletion);
+        StoreRefusalBlock = new StoreRefusalBlockViewModel(
+            DeleteRefusedStoreCommand, ConfirmStoreDeletionCommand, CancelStoreDeletionCommand);
+        StoreRefusalBlock.Show(Baseline.ShownRefusal, IsConfirmingStoreDeletion);
 
         Project.ProjectChosen += OnProjectChosen;
         Project.KnownProjects.CollectionChanged += OnKnownProjectsChanged;
@@ -184,6 +199,9 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
 
     /// <summary>The tech demo notice shown until the person acknowledges it, or <see langword="null"/> when disabled.</summary>
     public TechDemoNoticeViewModel? TechDemoNotice { get; }
+
+    /// <summary>Whether the first-run notice is visible while no project refusal needs attention.</summary>
+    public bool ShowsTechDemoNotice => TechDemoNotice?.IsVisible == true && !HasRefreshRefusal && !HasOpenRefusal;
 
     /// <summary>What every page is built from: the project, its evidence, and the pages' navigation actions.</summary>
     public WorkspaceContext Context { get; }
@@ -252,6 +270,9 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
             try
             {
                 await Project.LoadKnownProjectsAsync().ConfigureAwait(true);
+                RefreshRecentProjects();
+                if (_projectIdentityRead is { } read && IsCurrentProjectIdentityRead(read))
+                    await read.Completion.ConfigureAwait(true);
             }
             catch (Exception)
             {
@@ -293,6 +314,9 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     /// <summary>Opens the recent project passed as the command parameter.</summary>
     public IAsyncRelayCommand<RecentProjectViewModel> OpenRecentProjectCommand { get; }
 
+    /// <summary>Opens a recent project's containing folder in the system file manager.</summary>
+    public IAsyncRelayCommand<RecentProjectViewModel> OpenRecentProjectFolderCommand { get; }
+
     /// <summary>Runs <see cref="OpenConfiguration"/>: the project menu's Configure.</summary>
     public IRelayCommand ConfigureCommand { get; }
 
@@ -332,7 +356,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     public bool HasOpenRefusal => OpenRefusal is not null;
 
     /// <summary>
-    /// Delete this file and reopen: asks, with <see cref="StoreDeletionWarning"/>, before deleting the store the
+    /// Delete Motif's store and reopen: asks, with <see cref="StoreDeletionWarning"/>, before deleting the store the
     /// refusal passed as the parameter names. Only a <see cref="WindowRefusal.OffersStoreDeletion"/> refusal can.
     /// </summary>
     public IRelayCommand<WindowRefusal> DeleteRefusedStoreCommand { get; }
@@ -345,6 +369,9 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
 
     /// <summary>Stops asking, and deletes nothing.</summary>
     public IRelayCommand CancelStoreDeletionCommand { get; }
+
+    /// <summary>The refused-store notice and its caller-owned recovery commands.</summary>
+    public StoreRefusalBlockViewModel StoreRefusalBlock { get; }
 
     /// <summary>The freshness line's state in words.</summary>
     public string FreshnessLabel => HasRefreshRefusal ? "Refresh refused" : Freshness switch
@@ -544,12 +571,16 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         }
         finally
         {
-            RefreshRecentProjects();
-            RaiseFreshness();
             if (openGeneration == Volatile.Read(ref _projectOpenGeneration))
             {
-                _isSettingProject = false;
-                OnPropertyChanged(nameof(IsProjectOpening));
+                await ResolveOpenProjectIdentityAsync().ConfigureAwait(true);
+                if (openGeneration == Volatile.Read(ref _projectOpenGeneration))
+                {
+                    RefreshRecentProjects(resolveIdentity: false);
+                    RaiseFreshness();
+                    _isSettingProject = false;
+                    OnPropertyChanged(nameof(IsProjectOpening));
+                }
             }
         }
     }
@@ -571,6 +602,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     {
         _storeDeletionProject = projectPath;
         OnPropertyChanged(nameof(IsConfirmingStoreDeletion));
+        StoreRefusalBlock.Show(Baseline.ShownRefusal, IsConfirmingStoreDeletion);
         DeleteRefusedStoreCommand.NotifyCanExecuteChanged();
         ConfirmStoreDeletionCommand.NotifyCanExecuteChanged();
         CancelStoreDeletionCommand.NotifyCanExecuteChanged();
@@ -601,6 +633,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         OpenRefusal = refusal;
         OnPropertyChanged(nameof(OpenRefusal));
         OnPropertyChanged(nameof(HasOpenRefusal));
+        OnPropertyChanged(nameof(ShowsTechDemoNotice));
     }
 
     private async Task OpenProjectFromCommandAsync(string fwDataPath)
@@ -743,6 +776,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
 
     private void RaiseFreshness()
     {
+        StoreRefusalBlock.Show(Baseline.ShownRefusal, IsConfirmingStoreDeletion);
         OnPropertyChanged(nameof(SelectionSummaryText));
         OnPropertyChanged(nameof(Freshness));
         OnPropertyChanged(nameof(HasFreshness));
@@ -752,6 +786,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         OnPropertyChanged(nameof(FreshnessIsStale));
         OnPropertyChanged(nameof(FreshnessIsBusy));
         OnPropertyChanged(nameof(HasRefreshRefusal));
+        OnPropertyChanged(nameof(ShowsTechDemoNotice));
         OnPropertyChanged(nameof(ProjectSwitchEnabled));
         OnPropertyChanged(nameof(ShowsSeeWhatChanged));
         OnPropertyChanged(nameof(ShowsRefreshAction));
@@ -769,14 +804,33 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
 
     private void OnKnownProjectsChanged(object? sender, NotifyCollectionChangedEventArgs e) => RefreshRecentProjects();
 
-    private void RefreshRecentProjects()
+    private void RefreshRecentProjects(bool resolveIdentity = true)
     {
+        if (_isDisposed) return;
+        var openIdentity = _projectIdentityRead is { } read && IsCurrentProjectIdentityRead(read)
+            ? read.Identity : null;
+        if (resolveIdentity && openIdentity is null && Context.ProjectPath is not null)
+            _ = ResolveOpenProjectIdentityAsync();
+        openIdentity ??= Context.ProjectPath is not null ? Context.Baseline?.Token?.ProjectIdentity : null;
         RecentProjects.Clear();
-        foreach (var known in Project.KnownProjects.Where(known =>
-                     !string.Equals(known.FullFwDataPath, Context.ProjectPath, StringComparison.OrdinalIgnoreCase)))
-            RecentProjects.Add(new RecentProjectViewModel(known.FullFwDataPath));
+        foreach (var recent in RecentProjectViewModel.MostRecentlySeenCopies(Project.KnownProjects)
+                     .Where(recent => !string.Equals(recent.FullFwDataPath, Context.ProjectPath,
+                         OperatingSystem.IsLinux() ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase) &&
+                         (openIdentity is null ||
+                          !string.Equals(recent.ProjectIdentity, openIdentity, StringComparison.OrdinalIgnoreCase))))
+            RecentProjects.Add(recent);
         OnPropertyChanged(nameof(RecentProjectsText));
         OnPropertyChanged(nameof(HasRecentProjects));
+    }
+
+    private bool CanOpenRecentProjectFolder(RecentProjectViewModel? recent) =>
+        recent is { CanOpenFolder: true } && Context.UriLauncher is not null;
+
+    private async Task OpenRecentProjectFolderAsync(RecentProjectViewModel? recent)
+    {
+        if (!CanOpenRecentProjectFolder(recent) || recent?.FolderPath is not { } folder ||
+            Context.UriLauncher is not { } launcher) return;
+        await launcher.LaunchAsync(new Uri(folder)).ConfigureAwait(true);
     }
 
     private void OnBaselinePropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -881,7 +935,10 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     /// <summary>Cancels and awaits any active run, so nothing keeps running past this workspace's lifetime.</summary>
     public async ValueTask DisposeAsync()
     {
+        _isDisposed = true;
+        Interlocked.Increment(ref _projectOpenGeneration);
         await Context.StopProjectWorkAsync().ConfigureAwait(true);
         if (_knownProjectsRefreshTask is { } refresh) await refresh.ConfigureAwait(true);
+        await Task.WhenAll(_projectIdentityReads).ConfigureAwait(true);
     }
 }

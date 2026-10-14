@@ -249,7 +249,7 @@ public sealed partial class MainWindow : Window
         {
             var item = new MenuItem
             {
-                Header = recent.Name,
+                Header = CreateRecentProjectHeader(recent, workspace),
                 Command = workspace.OpenRecentProjectCommand,
                 CommandParameter = recent,
             };
@@ -282,6 +282,50 @@ public sealed partial class MainWindow : Window
                 target?.Focus();
             });
         }
+    }
+
+    private Grid CreateRecentProjectHeader(RecentProjectViewModel recent, WorkspaceShellViewModel workspace)
+    {
+        var details = string.Join(" · ", new[]
+        {
+            recent.StateText,
+            recent.HasWordformCount ? recent.WordformCountText : null,
+        }.Where(value => !string.IsNullOrWhiteSpace(value)));
+        var title = new TextBlock { Classes = { "recentProjectMenuTitle" }, Text = recent.Name };
+        var summary = new TextBlock
+        {
+            Classes = { "recentProjectMenuMetadata" },
+            Text = details,
+            IsVisible = details.Length > 0,
+        };
+        var description = new StackPanel
+        {
+            Classes = { "recentProjectMenuDetails" },
+            Children = { title, summary },
+        };
+        var folder = new HyperlinkButton
+        {
+            Classes = { "recentProjectMenuFolder" },
+            Content = "Open folder",
+            Command = workspace.OpenRecentProjectFolderCommand,
+            CommandParameter = recent,
+            IsEnabled = recent.CanOpenFolder,
+        };
+        Avalonia.Automation.AutomationProperties.SetName(folder, $"Open {recent.Name} folder");
+        folder.AddHandler(Button.ClickEvent, (_, _) => Dispatcher.UIThread.Post(HideProjectMenu),
+            RoutingStrategies.Bubble);
+        folder.AddHandler(InputElement.PointerReleasedEvent, (_, eventArgs) => eventArgs.Handled = true,
+            RoutingStrategies.Bubble, handledEventsToo: true);
+
+        var header = new Grid
+        {
+            Classes = { "recentProjectMenuRow" },
+            ColumnDefinitions = new ColumnDefinitions("*,Auto"),
+        };
+        header.Children.Add(description);
+        Grid.SetColumn(folder, 1);
+        header.Children.Add(folder);
+        return header;
     }
 
     [KeyboardShortcutHandler(

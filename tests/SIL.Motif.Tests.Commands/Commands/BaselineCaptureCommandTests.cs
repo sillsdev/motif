@@ -1,13 +1,24 @@
 using System;
 using System.IO;
+using System.Text.Json;
+using System.Xml.Linq;
+using SIL.Motif.Commands;
 using SIL.LCModel;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Cli.Rendering;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Commands.Store;
+using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host;
 using SIL.Motif.Host.LcmUtils;
+using SIL.Motif.Host.Store;
 using SIL.Motif.Tests.TestFixtures;
+using SIL.Motif.Worker.Baselines;
+using SIL.Motif.Worker.Projects;
+using SIL.Motif.Worker.Store;
 using Xunit;
 
 namespace SIL.Motif.Tests.Commands;
@@ -63,7 +74,110 @@ public sealed class BaselineCaptureCommandTests : IDisposable
         var outcome = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(fwDataPath), managedRoot);
 
         Assert.True(outcome.Succeeded);
-        Assert.Equal(Path.GetFullPath(fwDataPath), Assert.Single(KnownProjectsQuery.List(managedRoot)).FullFwDataPath);
+        var known = Assert.Single(KnownProjectsQuery.List(managedRoot));
+        Assert.Equal(Path.GetFullPath(fwDataPath), known.FullFwDataPath);
+        Assert.Equal(outcome.Value!.Token.ProjectIdentity, known.ProjectIdentity);
+        Assert.NotNull(known.WordformCount);
+        Assert.Equal("Not parsed yet", known.StateText);
+    }
+
+    [Fact]
+    public void AReplacedProjectKeepsItsSavedIdentityAndDoesNotShowThePreviousBaselineCounts()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        var managedRoot = NewManagedRoot();
+        var outcome = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(fwDataPath), managedRoot);
+        Assert.True(outcome.Succeeded);
+        var replacementIdentity = Guid.NewGuid();
+        var document = XDocument.Load(fwDataPath);
+        var languageProject = document.Descendants("rt").Single(element =>
+            element.Attribute("class")?.Value == "LangProject");
+        languageProject.SetAttributeValue("guid", replacementIdentity.ToString("D"));
+        document.Save(fwDataPath);
+
+        var known = Assert.Single(KnownProjectsQuery.List(managedRoot));
+
+        Assert.Equal(replacementIdentity.ToString("D"), known.ProjectIdentity);
+        Assert.Null(known.WordformCount);
+        Assert.Null(known.StateText);
+    }
+
+    [Fact]
+    public void ACorruptBaselineTimestampLeavesRecentMetadataEmpty()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        var managedRoot = NewManagedRoot();
+        var outcome = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(fwDataPath), managedRoot);
+        Assert.True(outcome.Succeeded);
+        var locator = new ProjectLocator(Path.GetFullPath(fwDataPath), Path.GetFileNameWithoutExtension(fwDataPath));
+        var catalog = new ProjectDatabaseCatalog(MotifSchema.CurrentSchema, MotifProductVersion.Current);
+        using (var database = catalog.OpenOwned(locator))
+        using (var connection = database.OpenConnection())
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "UPDATE Baselines SET PublishedUtc = 'invalid timestamp';";
+            command.ExecuteNonQuery();
+        }
+
+        var known = Assert.Single(KnownProjectsQuery.List(managedRoot));
+
+        Assert.Equal(outcome.Value!.Token.ProjectIdentity, known.ProjectIdentity);
+        Assert.Null(known.WordformCount);
+        Assert.Null(known.StateText);
+    }
+
+    [Fact]
+    public void KnownProjectStateShowsChangesNotAppliedYetWhenTheProjectStoreHasOperations()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        var managedRoot = NewManagedRoot();
+        var outcome = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(fwDataPath), managedRoot);
+        Assert.True(outcome.Succeeded);
+        var fullPath = Path.GetFullPath(fwDataPath);
+        var project = new ProjectLocator(fullPath, Path.GetFileNameWithoutExtension(fullPath));
+        var catalog = new ProjectDatabaseCatalog(MotifSchema.CurrentSchema, MotifProductVersion.Current);
+        using (var database = catalog.OpenOwned(project))
+        {
+            var proposalId = CanonicalId.FromGuid(Guid.NewGuid());
+            var draft = new DraftDocument
+            {
+                ProposalId = proposalId.Value,
+                Operations = [new DraftOperation { OperationId = "operation-1", Kind = "lexical/setGloss" }],
+            };
+            new ProposalRepository(database).CreateDraft(PendingChanges.DraftName, proposalId,
+                JsonSerializer.Serialize(draft), ProposalRoles.PendingChanges);
+        }
+
+        var known = Assert.Single(KnownProjectsQuery.List(managedRoot));
+
+        Assert.Equal("Changes not applied yet", known.StateText);
+    }
+
+    [Fact]
+    public void ARecentProjectWithASaveAfterItsBaselineNeedsRefreshDespiteAnAssessmentPointer()
+    {
+        var path = _pristine.CopyProjectFile();
+        var root = NewManagedRoot();
+        var outcome = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root);
+        Assert.True(outcome.Succeeded);
+        var locator = new ProjectLocator(path, Path.GetFileNameWithoutExtension(path));
+        using (var database = new ProjectDatabaseCatalog(MotifSchema.CurrentSchema, MotifProductVersion.Current)
+                   .OpenOwned(locator))
+        {
+            var assessments = new AssessmentRepository(database);
+            assessments.Record(new NewAssessmentRecord("recent-results", null, null, "pangloss", "parse-time",
+                "{}", "sha256:scope", "whitespace", "1", JsonSerializer.Serialize(outcome.Value!.Token),
+                SIL.Motif.Host.Corpus.Selection.Create("Default", ["one"]), null, null, "sha256:grammar",
+                null, null, null, []));
+            assessments.PromoteToCurrent("recent-results");
+        }
+        Assert.Equal("Results available", Assert.Single(KnownProjectsQuery.List(root)).StateText);
+        File.SetLastWriteTimeUtc(path, outcome.Value!.SourceLastWriteUtc.UtcDateTime.AddMinutes(1));
+
+        var recent = Assert.Single(KnownProjectsQuery.List(root));
+
+        Assert.Equal("Refresh needed", recent.StateText);
+        Assert.NotNull(recent.WordformCount);
     }
 
     [Fact]

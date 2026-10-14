@@ -137,8 +137,8 @@ public sealed partial class OverviewPageModel : PageModel
     public bool ShowChooseProject => !Context.HasProject;
 
     /// <summary>The Known projects offered on the initial Choose a project page.</summary>
-    public IReadOnlyList<RecentProjectViewModel> ChooseProjectRows => Context.KnownProjects
-        .Select(project => new RecentProjectViewModel(project.FullFwDataPath)).ToArray();
+    public IReadOnlyList<RecentProjectViewModel> ChooseProjectRows =>
+        RecentProjectViewModel.MostRecentlySeenCopies(Context.KnownProjects);
 
     /// <summary>Whether there are Known projects to open from the initial page.</summary>
     public bool HasKnownProjects => Context.KnownProjects.Count > 0;

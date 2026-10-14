@@ -24,6 +24,7 @@ using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Worker.Store;
+using SIL.Motif.Tests.App.Walkthrough;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
@@ -129,6 +130,171 @@ public sealed class PageScreenshots
                 window.Close();
             }
         }, TimeSpan.FromMinutes(3));
+    }
+
+    [ScreenshotFact]
+    public void CaptureRecentProjectChooser()
+    {
+        var folder = Environment.GetEnvironmentVariable(ScreenshotFactAttribute.FolderVariable)!;
+        Directory.CreateDirectory(folder);
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var projectFolder = Path.Combine(folder, "MotifSyntheticTurkic");
+            Directory.CreateDirectory(projectFolder);
+            var projectPath = Path.Combine(projectFolder, "MotifSyntheticTurkic.fwdata");
+            var fake = new FakeCommandClient();
+            fake.KnownProjectsListIs([new KnownProjectSummary(projectPath, CaptureStartAt)
+            {
+                ProjectIdentity = "11111111-2222-4333-8444-555555555555",
+                StateText = "Changes not applied yet",
+                WordformCount = 104,
+            }]);
+            var selection = new SelectionViewModel(fake);
+            var launcher = new Launcher();
+            var workspace = new WorkspaceShellViewModel(
+                new ProjectViewModel(fake, new Picker()), new BaselineViewModel(fake), selection,
+                new AssessViewModel(fake, selection), new Folder(), new Drag(), fake,
+                techDemoNotice: FirstRunNotice(), uriLauncher: launcher);
+            var window = new MainWindow(rememberBounds: false, uriLauncher: launcher,
+                preferencesStore: new MemoryUserPreferencesStore());
+            window.Compose(workspace);
+            window.Width = 1100;
+            window.Height = 780;
+            window.Show();
+            try
+            {
+                await workspace.Project.LoadKnownProjectsAsync();
+                workspace.TechDemoNotice?.GotItCommand.Execute(null);
+                workspace.CurrentPage = WorkspacePage.Overview;
+                var recent = Assert.Single(workspace.PageModel<OverviewPageModel>().ChooseProjectRows);
+                Assert.Equal("MotifSyntheticTurkic", recent.Name);
+                Assert.Equal("Changes not applied yet", recent.StateText);
+                Assert.Equal("104 wordforms", recent.WordformCountText);
+                Assert.True(recent.CanOpenFolder);
+                Assert.Contains(window.GetVisualDescendants().OfType<CopyableTextBlock>(),
+                    text => text.Text == recent.StateText);
+                Assert.Contains(window.GetVisualDescendants().OfType<CopyableTextBlock>(),
+                    text => text.Text == recent.WordformCountText);
+                var folderButton = Assert.Single(window.GetVisualDescendants().OfType<HyperlinkButton>(),
+                    button => Equals(button.Content, "Open folder"));
+                Assert.True(folderButton.IsEffectivelyEnabled,
+                    $"Enabled={folderButton.IsEnabled}; command={folderButton.Command}; " +
+                    $"parameter={folderButton.CommandParameter}; canExecute={folderButton.Command?.CanExecute(folderButton.CommandParameter)}; " +
+                    $"visible={folderButton.IsVisible}; page={workspace.CurrentPage}; hasLauncher={workspace.Context.UriLauncher is not null}");
+                Settle(window);
+                Save(window, Path.Combine(folder, "recent-chooser-after.png"));
+                Assert.True(folderButton.Focus(NavigationMethod.Tab));
+                Assert.True(folderButton.IsFocused);
+                Settle(window);
+                Save(window, Path.Combine(folder, "recent-chooser-folder-focus.png"));
+                window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
+                window.KeyRelease(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
+                await workspace.OpenRecentProjectFolderCommand.ExecutionTask!;
+                Assert.Equal(new Uri(projectFolder), launcher.LastUri);
+                Assert.Null(workspace.OpenRecentProjectCommand.ExecutionTask);
+
+                var projectMenu = window.FindControl<Button>("ProjectMenuButton")!;
+                projectMenu.Flyout!.ShowAt(projectMenu);
+                Settle(window);
+                var openRecent = window.FindControl<Button>("OpenRecentButton")!;
+                openRecent.Flyout!.ShowAt(openRecent);
+                Settle(window);
+                var recentMenuItem = Assert.Single(window.RecentProjectItems);
+                var menuRow = Assert.IsType<Grid>(recentMenuItem.Header);
+                Assert.Contains(menuRow.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == recent.Name);
+                Assert.Contains(menuRow.GetVisualDescendants().OfType<TextBlock>(),
+                    text => text.Text == $"{recent.StateText} · {recent.WordformCountText}");
+                var menuFolderLink = Assert.Single(menuRow.GetVisualDescendants().OfType<HyperlinkButton>());
+                Assert.True(menuFolderLink.IsEffectivelyEnabled);
+                Assert.Same(workspace.OpenRecentProjectFolderCommand, menuFolderLink.Command);
+                Assert.Equal(recent.FullFwDataPath,
+                    Assert.IsType<RecentProjectViewModel>(menuFolderLink.CommandParameter).FullFwDataPath);
+                Settle(window);
+                using (var frame = window.CaptureRenderedFrame()
+                    ?? throw new InvalidOperationException("No frame rendered for recent-menu-after.png."))
+                    frame.Save(Path.Combine(folder, "recent-menu-after.png"), PngBitmapEncoderOptions.Default);
+                HeadlessClick.Click(window, menuFolderLink, "Open MotifSyntheticTurkic folder");
+                await workspace.OpenRecentProjectFolderCommand.ExecutionTask!;
+                Assert.Equal(new Uri(projectFolder), launcher.LastUri);
+                Assert.Null(workspace.OpenRecentProjectCommand.ExecutionTask);
+            }
+            finally
+            {
+                window.Close();
+                await workspace.DisposeAsync();
+                Directory.Delete(projectFolder, recursive: true);
+            }
+        }, TimeSpan.FromMinutes(3));
+    }
+
+    [ScreenshotFact]
+    public void CaptureRecentProjectMenuAtThin150()
+    {
+        var folder = Environment.GetEnvironmentVariable(ScreenshotFactAttribute.FolderVariable)!;
+        Directory.CreateDirectory(folder);
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var fake = new FakeCommandClient();
+            fake.KnownProjectsListIs([new KnownProjectSummary(ProjectPath, CaptureStartAt)
+            {
+                ProjectIdentity = "11111111-2222-4333-8444-555555555555",
+                StateText = "Changes not applied yet",
+                WordformCount = 104,
+            }]);
+            var selection = new SelectionViewModel(fake);
+            var workspace = new WorkspaceShellViewModel(
+                new ProjectViewModel(fake, new Picker()), new BaselineViewModel(fake), selection,
+                new AssessViewModel(fake, selection), new Folder(), new Drag(), fake);
+            var preferences = new MemoryUserPreferencesStore();
+            preferences.Update(current => current with { ZoomPercent = 150 });
+            var window = new MainWindow(rememberBounds: false, uriLauncher: null, preferencesStore: preferences);
+            window.Compose(workspace);
+            window.Width = 960;
+            window.Height = 780;
+            window.Show();
+            try
+            {
+                await workspace.Project.LoadKnownProjectsAsync();
+                workspace.CurrentPage = WorkspacePage.Overview;
+                var projectMenu = window.FindControl<Button>("ProjectMenuButton")!;
+                projectMenu.Flyout!.ShowAt(projectMenu);
+                Settle(window);
+                var projectMenuPanel = Assert.Single(window.GetVisualDescendants().OfType<StackPanel>(),
+                    panel => panel.Classes.Contains("projectMenu"));
+                Assert.True(projectMenuPanel.Bounds.Width <= 210.5,
+                    $"The project menu is {projectMenuPanel.Bounds.Width:0.#} px wide at thin 150% zoom.");
+                var openRecent = window.FindControl<Button>("OpenRecentButton")!;
+                openRecent.Flyout!.ShowAt(openRecent);
+                Settle(window);
+
+                var parentDetail = Assert.Single(openRecent.GetVisualDescendants().OfType<TextBlock>(),
+                    text => text.Classes.Contains("menuDetail"));
+                Assert.Equal("Sample ›", parentDetail.Text);
+                var submenu = Assert.Single(window.GetVisualDescendants().OfType<MenuFlyoutPresenter>(),
+                    presenter => presenter.IsEffectivelyVisible);
+                var submenuBounds = new Rect(submenu.TranslatePoint(default, window)!.Value, submenu.Bounds.Size);
+                var parentDetailBounds = new Rect(parentDetail.TranslatePoint(default, window)!.Value,
+                    parentDetail.Bounds.Size);
+                Assert.False(submenuBounds.Intersects(parentDetailBounds),
+                    "The recent-project menu covers its parent detail.");
+                Assert.True(submenuBounds.Left >= 0 && submenuBounds.Right <= window.ClientSize.Width,
+                    $"The recent-project menu spans x {submenuBounds.Left:0.#}-{submenuBounds.Right:0.#} " +
+                    $"outside the {window.ClientSize.Width:0.#} px window.");
+                var recentMenuItem = Assert.Single(window.RecentProjectItems);
+                var menuRow = Assert.IsType<Grid>(recentMenuItem.Header);
+                var folderLink = Assert.Single(menuRow.GetVisualDescendants().OfType<HyperlinkButton>());
+                var folderBounds = new Rect(folderLink.TranslatePoint(default, window)!.Value, folderLink.Bounds.Size);
+                Assert.True(folderBounds.Left >= 0 && folderBounds.Right <= window.ClientSize.Width,
+                    $"The folder link spans x {folderBounds.Left:0.#}-{folderBounds.Right:0.#} " +
+                    $"outside the {window.ClientSize.Width:0.#} px window.");
+                Save(window, Path.Combine(folder, "recent-menu-thin-150-after.png"));
+            }
+            finally
+            {
+                window.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromMinutes(1));
     }
 
     [ScreenshotFact]
@@ -1007,7 +1173,7 @@ public sealed class PageScreenshots
                         word?.WordformId, word is null ? null : analysis?.Opinion == ReadingGrade.Approved ? "approved" :
                             analysis?.Opinion == ReadingGrade.Disapproved ? "disapproved" : analysis is null ? "unanalysed" : "unapproved",
                         analysis?.Key, null, null, word is null ? null : new FieldWorksLinkTarget("analyses", word.WordformId),
-                        offset, analysis?.AnalysisId);
+                        offset, analysis?.AnalysisId) { TextWritingSystem = word is null ? null : "sw" };
                 }).ToArray(), Guid.Parse(Id("paragraph " + id, index + 1)),
                 Guid.Parse(Id("segment " + id, index + 1)), true)).ToArray(),
             lines.SelectMany(items => items).Distinct().Where(forms.ContainsKey)
@@ -1175,7 +1341,13 @@ public sealed class PageScreenshots
 
     private sealed class Launcher : IUriLauncher
     {
-        public Task<bool> LaunchAsync(Uri uri, CancellationToken cancellationToken = default) => Task.FromResult(true);
+        public Uri? LastUri { get; private set; }
+
+        public Task<bool> LaunchAsync(Uri uri, CancellationToken cancellationToken = default)
+        {
+            LastUri = uri;
+            return Task.FromResult(true);
+        }
     }
 
     private sealed class Drag : IFileDragSource

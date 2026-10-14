@@ -42,11 +42,23 @@ public sealed partial class SelectionViewModel : ObservableObject, IProjectState
 
     public bool HasTexts => _allTexts.Count > 0;
 
+    /// <summary>The number of Texts in the current project, whether or not the list is filtered.</summary>
+    public int TextCount => _allTexts.Count;
+
+    /// <summary>The identities of every Text in the project, including Texts hidden by the filter.</summary>
+    internal IReadOnlyList<Guid> AllTextIds => _allTexts.Select(text => text.Id).ToArray();
+
     public bool ShowClearTexts => _allTexts.Count > 3;
+
+    /// <summary>Whether every Text in the current project is selected.</summary>
+    public bool AreAllTextsSelected => _allTexts.All(text => text.IsChecked);
 
     public IRelayCommand SelectAllTextsCommand { get; }
 
     public IRelayCommand ClearTextsCommand { get; }
+
+    /// <summary>Selects every Text currently available in the project.</summary>
+    public void SelectAllTexts() => SetAllTextChecks(isChecked: true);
 
     /// <summary>Why the Text list is empty, or <c>null</c> when it is not.</summary>
     [ObservableProperty]
@@ -143,6 +155,7 @@ public sealed partial class SelectionViewModel : ObservableObject, IProjectState
         _allTexts.Clear();
         Texts.Clear();
         OnPropertyChanged(nameof(HasTexts));
+        OnPropertyChanged(nameof(TextCount));
         OnPropertyChanged(nameof(ShowClearTexts));
         SearchText = string.Empty;
         PastedWords = string.Empty;
@@ -194,6 +207,7 @@ public sealed partial class SelectionViewModel : ObservableObject, IProjectState
             ? null
             : outcome.Value!.HasBaseline ? "This Baseline has no Texts." : "Capture a Baseline to choose Texts.";
         OnPropertyChanged(nameof(HasTexts));
+        OnPropertyChanged(nameof(TextCount));
         OnPropertyChanged(nameof(ShowClearTexts));
         ApplyFilter();
         Recompute();
@@ -223,8 +237,6 @@ public sealed partial class SelectionViewModel : ObservableObject, IProjectState
     {
         if (e.PropertyName == nameof(TextChoiceViewModel.IsChecked) && !_settingTextChecks) Recompute();
     }
-
-    private void SelectAllTexts() => SetAllTextChecks(isChecked: true);
 
     private void ClearTexts() => SetAllTextChecks(isChecked: false);
 
@@ -285,6 +297,7 @@ public sealed partial class SelectionViewModel : ObservableObject, IProjectState
         var chosenBefore = ChosenTextIds;
         ChosenTextIds = _allTexts.Where(text => text.IsChecked).Select(text => text.Id).ToList();
         if (!chosenBefore.SequenceEqual(ChosenTextIds)) OnPropertyChanged(nameof(ChosenTextIds));
+        OnPropertyChanged(nameof(AreAllTextsSelected));
         PastedWordEntries = SplitPastedWords(PastedWords);
 
         var hasThreshold = RetrySlowerThanMilliseconds is not null;

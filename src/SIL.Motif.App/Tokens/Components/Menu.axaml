@@ -8,6 +8,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Styles.Resources>
     <StaticResource x:Key="Component.Menu.Width" ResourceKey="Primitive.Size.280" />
+    <StaticResource x:Key="Component.Menu.ProjectMenuWidth" ResourceKey="Primitive.Size.210" />
     <StaticResource x:Key="Component.Menu.EntryPadding" ResourceKey="Primitive.Inset.10_8_10_8" />
     <StaticResource x:Key="Component.Menu.ButtonPadding" ResourceKey="Primitive.Inset.6_2_6_2" />
     <StaticResource x:Key="Component.Menu.ButtonHeight" ResourceKey="Primitive.Size.24" />
@@ -23,6 +24,12 @@
   <Style Selector="StackPanel.menu">
     <Setter Property="Width" Value="{DynamicResource Component.Menu.Width}" />
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Minimal}" />
+  </Style>
+  <Style Selector="StackPanel.projectMenu">
+    <Setter Property="Width" Value="{DynamicResource Component.Menu.ProjectMenuWidth}" />
+  </Style>
+  <Style Selector="StackPanel.projectMenu Button.menuEntry :is(TextBlock).menuDetail">
+    <Setter Property="TextWrapping" Value="Wrap" />
   </Style>
   <Style Selector="Button.menuButton">
     <Setter Property="Padding" Value="{DynamicResource Component.Menu.ButtonPadding}" />
@@ -45,5 +52,30 @@
   <Style Selector="Button.menuEntry :is(TextBlock).menuDetail">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Caption}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+  </Style>
+  <Style Selector="Grid.recentProjectMenuRow">
+    <Setter Property="Width" Value="{DynamicResource Component.Menu.Width}" />
+    <Setter Property="ColumnSpacing" Value="{DynamicResource Intent.Space.Related}" />
+  </Style>
+  <Style Selector="StackPanel.recentProjectMenuDetails">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Minimal}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="TextBlock.recentProjectMenuTitle">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Navigation}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Text}" />
+    <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+  </Style>
+  <Style Selector="TextBlock.recentProjectMenuMetadata">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Caption}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+    <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+  </Style>
+  <Style Selector="HyperlinkButton.recentProjectMenuFolder">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Caption}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Link.Text}" />
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
 </Styles>

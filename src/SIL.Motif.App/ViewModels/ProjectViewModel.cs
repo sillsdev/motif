@@ -73,8 +73,7 @@ public sealed partial class ProjectViewModel : ObservableObject
 
         MachineStoreRecoveryMessage = null;
         MachineStoreProblemReport = null;
-        if (KnownProjects.Select(project => project.FullFwDataPath).SequenceEqual(
-                projects.Select(project => project.FullFwDataPath), StringComparer.OrdinalIgnoreCase)) return;
+        if (KnownProjects.SequenceEqual(projects)) return;
         KnownProjects.Clear();
         foreach (var project in projects) KnownProjects.Add(project);
     }

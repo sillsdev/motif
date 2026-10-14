@@ -1,0 +1,148 @@
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Headless;
+using Avalonia.Media;
+using Avalonia.VisualTree;
+using SIL.Motif.App.ViewModels;
+using SIL.Motif.App.Views;
+using Xunit;
+
+namespace SIL.Motif.Tests.App;
+
+[Collection(AvaloniaHeadlessCollection.Name)]
+public sealed class SetupHLayoutTests
+{
+    [Theory]
+    [InlineData(640, 600, 1)]
+    [InlineData(1040, 480, 1)]
+    [InlineData(640, 600, 1.5)]
+    [InlineData(1040, 480, 1.5)]
+    public void EveryStepKeepsItsPrimaryActionsOutsideTheScrollingBody(int width, int height, double zoom)
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, frame) = await PageScreenshots.OpenOverSampleData();
+            var setup = workspace.Context.Setup!;
+            for (var index = 0; index < 16; index++)
+                setup.Selection.Texts.Add(new TextChoiceViewModel(Guid.NewGuid(), $"Additional text {index + 1}", 80, 0));
+            setup.IsOpen = true;
+            var dialog = new SetupDialog { DataContext = setup };
+            dialog.FitToAvailableArea(width / zoom, height / zoom);
+            var window = new Window
+            {
+                Content = new LayoutTransformControl
+                {
+                    LayoutTransform = new ScaleTransform(zoom, zoom), Child = dialog,
+                },
+                Width = width, Height = height,
+            };
+            try
+            {
+                window.Show();
+                for (var step = 0; step < 4; step++)
+                {
+                    setup.Step = step;
+                    PageScreenshots.Settle(window);
+                    var body = dialog.FindControl<ScrollViewer>("SetupBodyScroll")!;
+                    Assert.NotNull(body);
+                    if (step == 1)
+                    {
+                        var textList = dialog.FindControl<ItemsControl>("SetupDialogTextsItems")!;
+                        Assert.Contains(body, textList.GetVisualAncestors());
+                        Assert.True(body.Extent.Height > body.Viewport.Height);
+                    }
+                    var actions = dialog.GetVisualDescendants().OfType<Button>()
+                        .Where(button => button.IsEffectivelyVisible &&
+                            button.Classes.Any(name => name is "setupPrimary" or "setupSecondary" or "setupSkip"));
+                    Assert.Single(actions, button => button.Classes.Contains("setupSkip"));
+                    Assert.Single(actions, button => button.Classes.Contains("setupPrimary"));
+                    Assert.Equal(step == 0 ? 0 : 1,
+                        actions.Count(button => button.Classes.Contains("setupSecondary")));
+                    foreach (var action in actions)
+                    {
+                        Assert.DoesNotContain(body, action.GetVisualAncestors());
+                        var origin = action.TranslatePoint(default, window)!.Value;
+                        var bottomRight = action.TranslatePoint(new Point(action.Bounds.Width, action.Bounds.Height), window)!.Value;
+                        Assert.InRange(origin.X, 0, window.ClientSize.Width);
+                        Assert.InRange(origin.Y, 0, window.ClientSize.Height);
+                        Assert.InRange(bottomRight.X, 0, window.ClientSize.Width + 1);
+                        Assert.InRange(bottomRight.Y, 0, window.ClientSize.Height + 1);
+                    }
+                    body.Offset = new Vector(0, Math.Max(0, body.Extent.Height - body.Viewport.Height));
+                    PageScreenshots.Settle(window);
+                    Assert.True(body.Extent.Width <= body.Viewport.Width + 1);
+                    foreach (var action in actions)
+                    {
+                        var origin = action.TranslatePoint(default, window)!.Value;
+                        var bottomRight = action.TranslatePoint(new Point(action.Bounds.Width, action.Bounds.Height), window)!.Value;
+                        Assert.InRange(origin.X, 0, window.ClientSize.Width);
+                        Assert.InRange(origin.Y, 0, window.ClientSize.Height);
+                        Assert.InRange(bottomRight.X, 0, window.ClientSize.Width + 1);
+                        Assert.InRange(bottomRight.Y, 0, window.ClientSize.Height + 1);
+                    }
+                }
+            }
+            finally
+            {
+                setup.IsOpen = false;
+                window.Close();
+                frame.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromMinutes(2));
+    }
+    [ScreenshotFact]
+    public void CaptureEverySetupStepAtFourSizes()
+    {
+        var folder = Environment.GetEnvironmentVariable(ScreenshotFactAttribute.FolderVariable)!;
+        Directory.CreateDirectory(folder);
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var previousTheme = Application.Current!.RequestedThemeVariant;
+            var (workspace, frame) = await PageScreenshots.OpenOverSampleData();
+            var setup = workspace.Context.Setup!;
+            setup.IsOpen = true;
+            var dialog = new SetupDialog { DataContext = setup };
+            var window = new Window { Content = dialog };
+            try
+            {
+                window.Show();
+                foreach (var (theme, variant) in new[]
+                {
+                    ("light", Avalonia.Styling.ThemeVariant.Light),
+                    ("dark", Avalonia.Styling.ThemeVariant.Dark),
+                })
+                {
+                    Application.Current.RequestedThemeVariant = variant;
+                    foreach (var (name, width, height) in new[]
+                    {
+                        ("thin", 640, 600), ("half", 1040, 780),
+                        ("full", 1920, 1080), ("short", 1040, 480),
+                    })
+                    {
+                        window.Width = width;
+                        window.Height = height;
+                        dialog.FitToAvailableArea(width, height);
+                        for (var step = 0; step < 4; step++)
+                        {
+                            setup.Step = step;
+                            PageScreenshots.Settle(window);
+                            using var capture = window.CaptureRenderedFrame() ??
+                                throw new InvalidOperationException("The Setup window did not render.");
+                            capture.Save(Path.Combine(folder, $"h-setup-step{step + 1}-{name}-{theme}.png"), Avalonia.Media.Imaging.PngBitmapEncoderOptions.Default);
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                Application.Current.RequestedThemeVariant = previousTheme;
+                setup.IsOpen = false;
+                window.Close();
+                frame.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromMinutes(3));
+    }
+
+}

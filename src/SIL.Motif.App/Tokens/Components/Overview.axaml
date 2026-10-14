@@ -29,6 +29,22 @@
   <Style Selector="StackPanel.overviewProject">
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
   </Style>
+  <Style Selector="Border.overviewRecentRow">
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Component.Overview.CardRadius}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.Overview.HistoryEntryPadding}" />
+  </Style>
+  <Style Selector="Button.overviewRecentProject">
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.None}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Text}" />
+    <Setter Property="HorizontalContentAlignment" Value="Left" />
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Body}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
   <Style Selector="StackPanel.overviewRefusalActions">
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Related}" />
   </Style>

@@ -13,13 +13,13 @@ namespace SIL.Motif.App.Views;
 /// command's own account folded under Details. Bind the refusal as its data context; with none it hides.
 /// </summary>
 /// <remarks>
-/// A refusal that <see cref="WindowRefusal.OffersStoreDeletion"/> also shows Delete this file and reopen, but
+/// A refusal that <see cref="WindowRefusal.OffersStoreDeletion"/> also shows Delete Motif's store and reopen, but
 /// only where the host binds <see cref="StoreDeletionCommand"/>: a surface that cannot reopen the project shows
 /// no button rather than one that does nothing.
 /// </remarks>
 public sealed partial class RefusalBlock : UserControl
 {
-    /// <summary>What Delete this file and reopen runs, with the refusal as its parameter.</summary>
+    /// <summary>What Delete Motif's store and reopen runs, with the refusal as its parameter.</summary>
     public static readonly StyledProperty<ICommand?> StoreDeletionCommandProperty =
         AvaloniaProperty.Register<RefusalBlock, ICommand?>(nameof(StoreDeletionCommand));
 
@@ -32,7 +32,7 @@ public sealed partial class RefusalBlock : UserControl
         IsVisible = false;
     }
 
-    /// <summary>What Delete this file and reopen runs, with the refusal as its parameter.</summary>
+    /// <summary>What Delete Motif's store and reopen runs, with the refusal as its parameter.</summary>
     public ICommand? StoreDeletionCommand
     {
         get => GetValue(StoreDeletionCommandProperty);

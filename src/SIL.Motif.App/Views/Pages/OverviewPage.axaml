@@ -72,10 +72,28 @@
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:RecentProjectViewModel">
-                <Button Content="{Binding Name}"
-                        Command="{Binding $parent[views:OverviewPage].Page.Context.OpenProjectCommand}"
-                        CommandParameter="{Binding FullFwDataPath}"
-                        AutomationProperties.Name="{Binding AutomationName}" />
+                <Border Classes="overviewRecentRow">
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
+                    <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+                      <Button Classes="overviewRecentProject" Content="{Binding Name}"
+                              Command="{Binding $parent[views:OverviewPage].Page.Context.OpenProjectCommand}"
+                              CommandParameter="{Binding FullFwDataPath}"
+                              HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                              AutomationProperties.Name="{Binding AutomationName}" />
+                      <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}"
+                                  IsVisible="{Binding HasRecentDetails}">
+                        <views:CopyableTextBlock Classes="overviewMuted" Text="{Binding StateText}"
+                                                 IsVisible="{Binding HasStateText}" />
+                        <views:CopyableTextBlock Classes="overviewMuted" Text="{Binding WordformCountText}"
+                                                 IsVisible="{Binding HasWordformCount}" />
+                      </StackPanel>
+                    </StackPanel>
+                    <HyperlinkButton Grid.Column="1" Classes="overviewTileLink" Content="Open folder"
+                                     Command="{Binding $parent[views:OverviewPage].Page.Context.OpenProjectFolderCommand}"
+                                     CommandParameter="{Binding}" IsEnabled="{Binding CanOpenFolder}"
+                                     AutomationProperties.Name="Open project folder" />
+                  </Grid>
+                </Border>
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>

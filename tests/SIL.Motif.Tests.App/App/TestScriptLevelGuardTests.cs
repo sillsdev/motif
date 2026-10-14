@@ -1,4 +1,8 @@
 using Xunit;
+using System.Diagnostics;
+using System.Text.Json;
+using SIL.Motif.Tests.TestFixtures;
+using SIL.Motif.Host.Store;
 
 namespace SIL.Motif.Tests.App.App;
 
@@ -29,6 +33,76 @@ public sealed class TestScriptLevelGuardTests
         Assert.Contains("$artifactRequirements.ExplainedWordCardFixture", script, StringComparison.Ordinal);
         Assert.True(script.IndexOf("Prepare-TestArtifacts.ps1", StringComparison.Ordinal) <
                     script.IndexOf("dotnet test (", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ReleasePathwaysSetsItsPrivateRootBeforeSeedingProjects()
+    {
+        var script = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "tools", "release-pathways.ps1"));
+        var rootCreation = script.IndexOf("$releaseRoot = Join-Path", StringComparison.Ordinal);
+        var workerRoot = script.IndexOf("$env:MOTIF_WORKER_ROOT = Join-Path $releaseRoot", StringComparison.Ordinal);
+        var firstSeed = script.IndexOf("Seed-Selection $build.ProjectPath", StringComparison.Ordinal);
+
+        Assert.True(rootCreation >= 0);
+        Assert.True(workerRoot >= 0);
+        Assert.True(firstSeed >= 0);
+        Assert.True(rootCreation < workerRoot);
+        Assert.True(workerRoot < firstSeed);
+    }
+
+    [Fact]
+    public void ReleasePathwayChildrenInheritThePrivateRootBeforeAnyFixtureIsSeeded()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "MotifReleaseIsolation", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var source = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "tools", "release-pathways.ps1"));
+            var beforeSeeding = source[..source.IndexOf("$projectPaths =", StringComparison.Ordinal)];
+            var script = Path.Combine(root, "probe.ps1");
+            File.WriteAllText(script, beforeSeeding + """
+                try {
+                    $pwsh = [Diagnostics.Process]::GetCurrentProcess().MainModule.FileName
+                    $child = Invoke-Process -Executable $pwsh -Arguments @('-NoProfile', '-Command', '$env:MOTIF_WORKER_ROOT')
+                    $project = Join-Path $work 'probe.fwdata'
+                    Set-Content -LiteralPath $project -Value ''
+                    [void] (Invoke-Process -Executable $script:CliPath -Arguments @('overview', '--project', $project, '--json') -AllowFailure)
+                    @{ ChildRoot = $child.Output.Trim(); ExpectedRoot = Join-Path $releaseRoot 'launch-worker'; Project = $project } |
+                        ConvertTo-Json -Compress
+                }
+                finally { Set-Content -LiteralPath (Join-Path $work 'release-root.txt') -Value $releaseRoot }
+                """);
+            var start = new ProcessStartInfo("pwsh");
+            foreach (var argument in new[] { "-NoProfile", "-File", script,
+                         "-AppExecutable", script, "-CliExecutable", BuildOutput.Cli, "-SampleBuilder", script,
+                         "-SampleSpec", script, "-WalkthroughDirectory", root, "-WorkDirectory", root })
+                start.ArgumentList.Add(argument);
+            var sentinel = Path.Combine(root, "parent-worker");
+            start.Environment["MOTIF_WORKER_ROOT"] = sentinel;
+            var result = ToolProcess.Run(start);
+            Assert.True(result.ExitCode == 0, result.Error);
+            using var json = JsonDocument.Parse(result.Output);
+            var actual = json.RootElement.GetProperty("ChildRoot").GetString();
+            Assert.Equal(json.RootElement.GetProperty("ExpectedRoot").GetString(), actual);
+            Assert.NotEqual(sentinel, actual);
+            Assert.Contains("MotifReleaseCheck-", actual!);
+            Assert.True(File.Exists(Path.Combine(actual!, "motif.db")));
+            using var machine = MachineDatabase.Open(actual!);
+            var recorded = Assert.Single(new KnownProjectRegistry(machine).List());
+            Assert.Equal(json.RootElement.GetProperty("Project").GetString(), recorded.FullFwDataPath);
+            Assert.False(File.Exists(Path.Combine(sentinel, "motif.db")));
+        }
+        finally
+        {
+            var rootFile = Path.Combine(root, "release-root.txt");
+            if (File.Exists(rootFile))
+            {
+                var releaseRoot = File.ReadAllText(rootFile).Trim();
+                Assert.StartsWith(Path.Combine(Path.GetTempPath(), "MotifReleaseCheck-"), releaseRoot);
+                Directory.Delete(releaseRoot, recursive: true);
+            }
+            Directory.Delete(root, recursive: true);
+        }
     }
 
     [Fact]

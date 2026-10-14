@@ -6,11 +6,15 @@ Open **Settings** from the bottom of the left sidebar to change how Motif looks 
 
 Zoom changes the Motif window's layout and text together. At higher zoom the usable page area is smaller, so scroll within a page to reach its content. Display shows the available zoom choices; [Keyboard shortcuts](guide:keyboard-shortcuts) lists their keys.
 
+**Reset to 100%** is always visible and is disabled when zoom is already 100%.
+
 Theme can follow the operating system or use Light or Dark. The change applies while Settings is open.
 
 ## Parsing
 
 The Parsing group edits the current project's Default Selection. Setup, Settings, and **Analysis options** edit that same saved limit policy; the next parse uses it, while earlier results keep the limits from their own run. See [Default Selection](guide:default-selection) and [first-run setup](guide:first-run-setup) for choosing what to parse.
+
+**Texts to parse** shows the selected Text count; **Use all texts** saves every project Text in the Default Selection while keeping its added words and parsing limits.
 
 When the step limit is finite, the time limit can follow Motif's estimate or use an explicit value. An explicit value remains in force when the step limit changes until you choose the estimate again. With no step limit there is no time limit, and an explicit override is cleared. Enter commits a number; leaving the field also commits it. If Motif refuses the value, the saved Selection stays as it was. Escape restores the last accepted value before it closes Settings.
 

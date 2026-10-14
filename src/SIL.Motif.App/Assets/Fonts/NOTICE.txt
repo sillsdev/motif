@@ -2,3 +2,18 @@ Andika 7.000
 Copyright (c) 2004-2025 SIL Global
 Source: https://software.sil.org/andika/download/
 License: SIL Open Font License 1.1, included as OFL.txt.
+
+Charis SIL 6.200 (CharisSIL/)
+Copyright (c) 1997-2023 SIL International
+Source: https://software.sil.org/charis/download/
+License: SIL Open Font License 1.1, included as CharisSIL/OFL.txt.
+
+Doulos SIL 6.200 (DoulosSIL/)
+Copyright (c) 1994-2023 SIL International
+Source: https://software.sil.org/doulos/download/
+License: SIL Open Font License 1.1, included as DoulosSIL/OFL.txt.
+
+Gentium Plus 6.200 (GentiumPlus/)
+Copyright (c) 2003-2023 SIL International
+Source: https://software.sil.org/gentium/download/
+License: SIL Open Font License 1.1, included as GentiumPlus/OFL.txt.

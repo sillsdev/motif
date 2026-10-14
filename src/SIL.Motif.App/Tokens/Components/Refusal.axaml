@@ -7,6 +7,8 @@
   <Styles.Resources>
     <StaticResource x:Key="Component.Refusal.ContentMaxHeight" ResourceKey="Primitive.Size.240" />
     <StaticResource x:Key="Component.Refusal.BlockMaxHeight" ResourceKey="Primitive.Size.320" />
+    <StaticResource x:Key="Component.Refusal.RecoveryPadding" ResourceKey="Primitive.Inset.14_10_14_10" />
+    <StaticResource x:Key="Component.Refusal.RecoveryRadius" ResourceKey="Primitive.Radius.8" />
   </Styles.Resources>
   <Style Selector="ScrollViewer.refusalBlockViewport">
     <Setter Property="MaxHeight" Value="{DynamicResource Component.Refusal.BlockMaxHeight}" />
@@ -17,10 +19,32 @@
     <Setter Property="MaxHeight" Value="{DynamicResource Component.Refusal.ContentMaxHeight}" />
   </Style>
   <Style Selector="StackPanel.refusal">
-    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Minimal}" />
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Related}" />
+  </Style>
+  <Style Selector="StackPanel.refusalRecoveryCopy">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
+  </Style>
+  <Style Selector="TextBlock.refusalTitle">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Section}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Text}" />
+  </Style>
+  <Style Selector="HyperlinkButton.refusalReport">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Link.Text}" />
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+  </Style>
+  <Style Selector="Border.refusalConfirmation">
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Component.Refusal.RecoveryRadius}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.Refusal.RecoveryPadding}" />
   </Style>
   <Style Selector="StackPanel.refusalActions">
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Related}" />
+  </Style>
+  <Style Selector="Button.refusalSecondary">
+    <Setter Property="Theme" Value="{DynamicResource OutlineButton}" />
   </Style>
   <Style Selector=":is(TextBlock).refusalDetails">
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />

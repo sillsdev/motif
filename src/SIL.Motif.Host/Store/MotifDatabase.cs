@@ -129,6 +129,45 @@ public sealed class MotifDatabase : IDisposable
     /// <summary>Opens a configured connection while this worker owns the database.</summary>
     public SqliteConnection OpenConnection() => _store.OpenConnection();
 
+    /// <summary>Reads an existing project store without creating it or changing its journal mode.</summary>
+    /// <param name="path">The existing sibling Motif database path.</param>
+    /// <param name="project">The project locator that must match persisted metadata.</param>
+    /// <param name="read">Reads optional display data from one validated read-only transaction.</param>
+    /// <returns>The data returned by <paramref name="read"/>.</returns>
+    /// <remarks>Store leases fail immediately; entering the read snapshot waits at most one second for SQLite.</remarks>
+    public static T ReadExisting<T>(string path, ProjectLocator project, Func<SqliteConnection, SqliteTransaction, T> read)
+    {
+        ArgumentNullException.ThrowIfNull(read);
+        var descriptor = Describe(path, project, MotifSchema.CurrentSchema, MotifProductVersion.Current);
+        using var lease = new FileStream(path + ".use.lock", FileMode.Open, FileAccess.Read,
+            FileShare.ReadWrite | FileShare.Delete);
+        using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+        {
+            DataSource = Path.GetFullPath(path),
+            Mode = SqliteOpenMode.ReadOnly,
+            Pooling = false,
+            DefaultTimeout = 1,
+        }.ToString());
+        connection.Open();
+        using var transaction = connection.BeginTransaction(deferred: true);
+        using (var command = connection.CreateCommand())
+        {
+            command.Transaction = transaction;
+            command.CommandText = "PRAGMA application_id;";
+            if (Convert.ToInt32(command.ExecuteScalar()) != MotifSchema.ApplicationId)
+                throw new InvalidDataException("The file is not a Motif project database.");
+            command.CommandText = "PRAGMA user_version;";
+            if (Convert.ToInt32(command.ExecuteScalar()) != MotifSchema.CurrentSchema)
+                throw new NotSupportedException("The project database has another schema version.");
+        }
+        descriptor.ValidateSchema(connection, transaction);
+        var metadata = MotifSchema.ReadMetadata(connection, transaction);
+        EnsureLocatorMatches(metadata.Project, project);
+        if (MotifProductVersion.Current < metadata.MinimumWorkerVersion)
+            throw new NotSupportedException("The project database requires a newer worker.");
+        return read(connection, transaction);
+    }
+
     /// <summary>Gets the fully resolved path of the owned Motif database.</summary>
     public string FullPath => _store.FullPath;
 

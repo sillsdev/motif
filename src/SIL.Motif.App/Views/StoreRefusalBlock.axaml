@@ -1,0 +1,30 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             x:Class="SIL.Motif.App.Views.StoreRefusalBlock"
+             x:DataType="vm:StoreRefusalBlockViewModel">
+  <Border Classes="notice" IsVisible="{Binding HasRefusal}">
+    <StackPanel>
+      <views:RefusalBlock DataContext="{Binding Refusal}"
+                          StoreDeletionCommand="{Binding $parent[views:StoreRefusalBlock].((vm:StoreRefusalBlockViewModel)DataContext).DeleteStoreCommand}"
+                          AutomationProperties.Name="Refresh refusal" />
+      <Border x:Name="StoreDeletionQuestion" Classes="refusalConfirmation"
+              IsVisible="{Binding IsConfirmingStoreDeletion}">
+        <StackPanel Classes="refusal">
+          <TextBlock Classes="refusalTitle" Text="Delete Motif's store?" />
+          <views:CopyableTextBlock Text="{Binding Warning}" TextWrapping="Wrap" />
+          <StackPanel Classes="refusalActions" Orientation="Horizontal">
+            <Button Classes="Primary" Theme="{DynamicResource SolidButton}"
+                    Content="Delete Motif's store and reopen"
+                    Command="{Binding ConfirmStoreDeletionCommand}"
+                    AutomationProperties.Name="Confirm deleting Motif's store and reopening the project" />
+            <Button Classes="refusalSecondary" Content="Keep Motif's store"
+                    Command="{Binding CancelStoreDeletionCommand}"
+                    AutomationProperties.Name="Keep Motif's store" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </Border>
+</UserControl>

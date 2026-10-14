@@ -440,7 +440,7 @@ public sealed partial class ComponentStyleTests
 
         yield return new("Notice", "a notice", host => Add(host, Box("notice")), Border.BackgroundProperty, "Intent.Warning.Fill");
         yield return new("Notice", "a notice", host => Add(host, Box("notice")), Border.PaddingProperty, "Component.Notice.Padding");
-        yield return new("Refusal", "a refusal", host => Add(host, Stack("refusal")), StackPanel.SpacingProperty, "Intent.Space.Minimal");
+        yield return new("Refusal", "a refusal", host => Add(host, Stack("refusal")), StackPanel.SpacingProperty, "Intent.Space.Related");
         yield return new("Refusal", "a refusal's actions", host => Add(host, Stack("refusalActions")),
             StackPanel.SpacingProperty, "Intent.Space.Related");
         yield return new("Refusal", "a refusal's details", host => Add(host, Text("refusalDetails")),
@@ -799,6 +799,14 @@ public sealed partial class ComponentStyleTests
             TextBlock.MarginProperty, "Component.Selection.CountMargin");
         yield return new("Setup", "the dialog", host => Add(host, Box("setupDialog")),
             Border.MaxWidthProperty, "Component.Setup.DialogWidth");
+        yield return new("Setup", "the dialog edge", host => Add(host, Box("setupDialog")),
+            Border.CornerRadiusProperty, "Component.Setup.DialogRadius");
+        yield return new("Setup", "the dialog inset", host => Add(host, Box("setupDialog")),
+            Border.PaddingProperty, "Component.Setup.DialogPadding");
+        yield return new("Setup", "a Text row", host => Add(host, Box("setupTextRow")),
+            Border.PaddingProperty, "Component.Setup.TextRowPadding");
+        yield return new("Setup", "the primary action", host => Add(host, Press("setupPrimary")),
+            Button.PaddingProperty, "Component.Setup.TextRowPadding");
         yield return new("Overview", "the header", host => Add(host, Box("overviewHeader")),
             Border.PaddingProperty, "Component.Overview.HeaderPadding");
         yield return new("Overview", "a summary tile", host => Add(host, Press("overviewTile")),

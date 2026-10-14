@@ -319,10 +319,11 @@ public sealed class WorkflowShellTests
                 Assert.Same(workspace.ConfigureCommand, entries[2].Command);
                 Assert.IsType<MenuFlyout>(entries[1].Flyout);
 
+                var newestSeen = DateTimeOffset.UtcNow;
                 workspace.Project.KnownProjects.Add(new KnownProjectSummary(
-                    Path.Combine(Path.GetTempPath(), "p", "mbugwe.fwdata"), DateTimeOffset.UtcNow));
+                    Path.Combine(Path.GetTempPath(), "p", "mbugwe.fwdata"), newestSeen));
                 workspace.Project.KnownProjects.Add(new KnownProjectSummary(
-                    Path.Combine(Path.GetTempPath(), "p", "sena.fwdata"), DateTimeOffset.UtcNow));
+                    Path.Combine(Path.GetTempPath(), "p", "sena.fwdata"), newestSeen.AddMinutes(-1)));
 
                 Assert.Equal(["Open mbugwe", "Open sena"], window.RecentProjectItems.Select(AutomationProperties.GetName));
                 Assert.All(window.RecentProjectItems, item => Assert.Same(workspace.OpenRecentProjectCommand, item.Command));

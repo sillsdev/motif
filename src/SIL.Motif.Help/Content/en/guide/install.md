@@ -12,7 +12,7 @@ The same release offers preview downloads for Linux x64 and macOS with Apple sil
 
 Save in FieldWorks before **Refresh**; Motif reads the last saved project and can do that while FieldWorks remains open. Close FieldWorks before **Apply to FieldWorks project**. Motif refuses Apply if FieldWorks still owns the project.
 
-Before 1.0, incompatible Motif stores are refused rather than upgraded. A confirmed **Delete this file and reopen** recreates a refused project store and loses changes not applied yet. For damaged project or machine stores, follow [the recovery instructions](guide:when-something-goes-wrong); remove only the identified Motif file, never the FieldWorks project.
+Before 1.0, incompatible Motif stores are refused rather than upgraded. A confirmed **Delete Motif's store and reopen** recreates a refused project store and loses changes not applied yet. For damaged project or machine stores, follow [the recovery instructions](guide:when-something-goes-wrong); remove only the identified Motif file, never the FieldWorks project.
 
 Motif keeps a local usage log of command names and argument shapes, not the supplied values. It has no usage-upload feature. Writing-system loading can make online language-tag lookups. **Report a problem** lets you review a report that excludes project and language data by default; optional local details and AI Handoff files can contain private data, so review them before sharing.
 

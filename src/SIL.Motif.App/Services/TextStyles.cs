@@ -23,6 +23,7 @@ public sealed partial class TextStyles
     private FontManager? _fontManager;
     private readonly Dictionary<string, WritingSystemDisplay> _systems = new(StringComparer.Ordinal);
     private readonly Dictionary<TextStyleRequest, ResolvedTextStyle> _cache = [];
+    private readonly Dictionary<string, string?> _requestedFamilies = new(StringComparer.Ordinal);
     private readonly HashSet<string> _noticedMissingFonts = new(StringComparer.Ordinal);
     private IReadOnlyList<string> _fallbackFamilies = MotifFallbacks;
     private string _uiLocale = CultureInfo.CurrentUICulture.Name;
@@ -119,7 +120,8 @@ public sealed partial class TextStyles
             ? writingSystem?.FontFamily
             : styleFont.FontFamily;
         var featuresText = styleFont?.FontFeatures ?? writingSystem?.FontFeatures;
-        string?[] familyNames = [requestedFamily, .. _fallbackFamilies];
+        var resolvedRequestedFamily = ResolveRequestedFontFamily(requestedFamily);
+        string?[] familyNames = [resolvedRequestedFamily ?? requestedFamily, .. _fallbackFamilies];
         var family = new FontFamily(string.Join(", ",
             familyNames.Where(name => !string.IsNullOrWhiteSpace(name))));
         var features = ParseOpenTypeFeatures(featuresText);
@@ -131,7 +133,7 @@ public sealed partial class TextStyles
             writingSystem?.Id,
             writingSystem?.Name ?? writingSystem?.Id ?? string.Empty,
             requestedFamily,
-            IsInstalled(requestedFamily),
+            resolvedRequestedFamily is not null,
             _fallbackFamilies,
             Revision,
             request.UiLocale,
@@ -266,15 +268,55 @@ public sealed partial class TextStyles
     private bool IsInstalled(string? family)
     {
         if (string.IsNullOrWhiteSpace(family)) return false;
-        var fontFamily = new FontFamily(family);
-        var systemFont = CurrentFontManager.SystemFonts.Any(installed =>
-            string.Equals(installed.Name, fontFamily.Name, StringComparison.OrdinalIgnoreCase));
-        var embeddedFont = Uri.TryCreate(family, UriKind.Absolute, out var familyUri) &&
-            !string.IsNullOrWhiteSpace(familyUri.Fragment);
-        if (!systemFont && !embeddedFont) return false;
-        return CurrentFontManager.TryGetGlyphTypeface(new Typeface(fontFamily), out var typeface) &&
-            string.Equals(typeface.FamilyName, fontFamily.Name, StringComparison.OrdinalIgnoreCase);
+        return ResolveRequestedFontFamily(family) is not null;
     }
+
+    private string? ResolveRequestedFontFamily(string? family)
+    {
+        if (string.IsNullOrWhiteSpace(family)) return null;
+        if (_requestedFamilies.TryGetValue(family, out var cached)) return cached;
+        var resolved = FindRequestedFontFamily(family);
+        _requestedFamilies.Add(family, resolved);
+        return resolved;
+    }
+
+    private string? FindRequestedFontFamily(string family)
+    {
+        var requested = new FontFamily(family);
+        foreach (var alias in FontFamilyAliases(requested.Name))
+        {
+            var systemFont = CurrentFontManager.SystemFonts.FirstOrDefault(installed =>
+                string.Equals(installed.Name, alias, StringComparison.OrdinalIgnoreCase));
+            if (systemFont is not null &&
+                CurrentFontManager.TryGetGlyphTypeface(new Typeface(new FontFamily(systemFont.Name)), out var systemTypeface) &&
+                string.Equals(systemTypeface.FamilyName, systemFont.Name, StringComparison.OrdinalIgnoreCase))
+                return systemFont.Name;
+        }
+
+        if (TextStyles.TryGetBundledWritingSystemFont(requested.Name, out var embeddedName,
+                out var expectedFamilyName))
+        {
+            var embeddedFamily = new FontFamily(embeddedName);
+            if (CurrentFontManager.TryGetGlyphTypeface(new Typeface(embeddedFamily), out var embeddedTypeface) &&
+                string.Equals(embeddedTypeface.FamilyName, expectedFamilyName, StringComparison.OrdinalIgnoreCase))
+                return embeddedName;
+        }
+
+        if (Uri.TryCreate(family, UriKind.Absolute, out var familyUri) &&
+            !string.IsNullOrWhiteSpace(familyUri.Fragment) &&
+            CurrentFontManager.TryGetGlyphTypeface(new Typeface(requested), out var typeface) &&
+            string.Equals(typeface.FamilyName, requested.Name, StringComparison.OrdinalIgnoreCase))
+            return family;
+
+        return null;
+    }
+
+    private static IEnumerable<string> FontFamilyAliases(string family) =>
+        family.Equals("Charis SIL", StringComparison.OrdinalIgnoreCase)
+            ? ["Charis SIL", "Charis"]
+            : family.Equals("Charis", StringComparison.OrdinalIgnoreCase)
+                ? ["Charis", "Charis SIL"]
+                : [family];
 
     internal void RegisterMissingFontNotice(Control control, TextStyleRequest request, string? text)
     {
@@ -301,6 +343,7 @@ public sealed partial class TextStyles
     private void AdvanceRevision()
     {
         _cache.Clear();
+        _requestedFamilies.Clear();
         Revision++;
         ContextChanged?.Invoke(this, EventArgs.Empty);
     }

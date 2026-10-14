@@ -200,6 +200,9 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     /// <summary>The shell's action that opens the project at the path given as the parameter.</summary>
     public IAsyncRelayCommand<string>? OpenProjectCommand { get; init; }
 
+    /// <summary>Opens a Known project's containing folder in the system file manager.</summary>
+    public IAsyncRelayCommand<RecentProjectViewModel>? OpenProjectFolderCommand { get; init; }
+
     /// <summary>
     /// The shell's Refresh: captures a new Baseline from FieldWorks' last save, reloads every page, and settles an
     /// Apply whose result could not be confirmed.

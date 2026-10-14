@@ -5,6 +5,7 @@
     <StaticResource x:Key="Component.Settings.Width" ResourceKey="Primitive.Size.760" />
     <StaticResource x:Key="Component.Settings.MaxHeight" ResourceKey="Primitive.Size.640" />
     <StaticResource x:Key="Component.Settings.Radius" ResourceKey="Primitive.Radius.12" />
+    <StaticResource x:Key="Component.Settings.GearSize" ResourceKey="Primitive.Size.18" />
     <StaticResource x:Key="Component.Settings.RailWidth" ResourceKey="Primitive.GridLength.176" />
     <StaticResource x:Key="Component.Settings.ContentPadding" ResourceKey="Primitive.Inset.24_16_24_20" />
     <StaticResource x:Key="Component.Settings.HeaderPadding" ResourceKey="Primitive.Inset.16_12_16_0" />
@@ -40,8 +41,9 @@
     <Setter Property="Background" Value="{DynamicResource Intent.Selected.Fill}" />
   </Style>
   <Style Selector="Path.settingsGearGlyph">
-    <Setter Property="Width" Value="{DynamicResource Component.Menu.ButtonHeight}" />
-    <Setter Property="Height" Value="{DynamicResource Component.Menu.ButtonHeight}" />
+    <Setter Property="Width" Value="{DynamicResource Component.Settings.GearSize}" />
+    <Setter Property="Height" Value="{DynamicResource Component.Settings.GearSize}" />
+    <Setter Property="Stretch" Value="Uniform" />
     <Setter Property="Stroke" Value="{DynamicResource Intent.TextSecondary}" />
     <Setter Property="Fill" Value="{DynamicResource Intent.Clear}" />
     <Setter Property="StrokeThickness" Value="{DynamicResource Intent.Stroke.Icon}" />

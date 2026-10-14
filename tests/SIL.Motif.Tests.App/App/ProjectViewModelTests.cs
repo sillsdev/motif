@@ -43,8 +43,7 @@ public sealed class ProjectViewModelTests
         fake.KnownProjectsListIs(projects);
         var viewModel = new ProjectViewModel(fake, new FakeProjectPicker());
         await viewModel.LoadKnownProjectsAsync();
-        fake.KnownProjectsListIs(projects.Select(project =>
-            project with { LastSeenUtc = project.LastSeenUtc.AddMinutes(1) }).ToArray());
+        fake.KnownProjectsListIs(projects.Select(project => project with { }).ToArray());
         var notifications = 0;
         viewModel.KnownProjects.CollectionChanged += CountNotification;
 
@@ -56,6 +55,25 @@ public sealed class ProjectViewModelTests
             viewModel.KnownProjects.Select(project => project.FullFwDataPath));
 
         void CountNotification(object? sender, NotifyCollectionChangedEventArgs args) => notifications++;
+    }
+
+    [Fact]
+    public async Task ChangingOnlyLastSeenPublishesTheUpdatedSummary()
+    {
+        var project = new KnownProjectSummary(@"C:\projects\one.fwdata", DateTimeOffset.UtcNow);
+        var fake = new FakeCommandClient();
+        fake.KnownProjectsListIs([project]);
+        var viewModel = new ProjectViewModel(fake, new FakeProjectPicker());
+        await viewModel.LoadKnownProjectsAsync();
+        var updated = project with { LastSeenUtc = project.LastSeenUtc.AddMinutes(1) };
+        fake.KnownProjectsListIs([updated]);
+        var notifications = 0;
+        viewModel.KnownProjects.CollectionChanged += (_, _) => notifications++;
+
+        await viewModel.LoadKnownProjectsAsync();
+
+        Assert.True(notifications > 0);
+        Assert.Equal(updated, Assert.Single(viewModel.KnownProjects));
     }
 
     [Fact]

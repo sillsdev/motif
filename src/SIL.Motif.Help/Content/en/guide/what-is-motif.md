@@ -4,7 +4,7 @@ Motif tells you how well the FieldWorks parser handles your words: which ones pa
 
 Motif reads your saved FieldWorks project. It writes nothing to it until you open **Review changes** and choose **Apply to FieldWorks project**. FieldWorks is where you edit the project.
 
-The window uses Andika for its interface text; linguistic text uses the fonts selected in the FieldWorks project's writing systems.
+The window uses Andika for its interface text; linguistic text uses the fonts selected in the FieldWorks project's writing systems. Motif includes Andika, Charis SIL, Doulos SIL and Gentium Plus, so a project using one of them does not need a separate font installation.
 
 To start, [install Motif](guide:install), then [open your project](guide:open-a-project).
 

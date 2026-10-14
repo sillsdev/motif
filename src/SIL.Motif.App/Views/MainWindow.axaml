@@ -41,7 +41,7 @@
           </StackPanel>
           <Button.Flyout>
             <Flyout Placement="BottomEdgeAlignedLeft">
-              <StackPanel Classes="menu">
+              <StackPanel Classes="menu projectMenu">
                 <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" Click="OnProjectMenuEntryClick"
                         Command="{Binding SelectNewProjectCommand}" AutomationProperties.Name="Select a new project"
                         AutomationProperties.AutomationId="{x:Static app:AutomationIds.SelectNewProject}">
@@ -126,7 +126,7 @@
     </Border>
 
     <Grid Grid.Row="1" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto">
-      <Border x:Name="TechDemoNotice" Grid.Row="0" IsVisible="{Binding TechDemoNotice.IsVisible}" Classes="notice">
+      <Border x:Name="TechDemoNotice" Grid.Row="0" IsVisible="{Binding ShowsTechDemoNotice}" Classes="notice">
         <DockPanel LastChildFill="True">
           <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
             <HyperlinkButton Classes="reviewLink" Content="Report a problem"
@@ -139,25 +139,7 @@
                                    VerticalAlignment="Center" TextWrapping="Wrap" />
         </DockPanel>
       </Border>
-      <Border Grid.Row="1" IsVisible="{Binding HasRefreshRefusal}" Classes="notice">
-        <StackPanel>
-          <views:RefusalBlock DataContext="{Binding Baseline.ShownRefusal}"
-                              StoreDeletionCommand="{Binding $parent[Border].((vm:WorkspaceShellViewModel)DataContext).DeleteRefusedStoreCommand}"
-                              AutomationProperties.Name="Refresh refusal" />
-          <StackPanel x:Name="StoreDeletionQuestion" Classes="refusal" IsVisible="{Binding IsConfirmingStoreDeletion}">
-            <views:CopyableTextBlock Text="{x:Static vm:WorkspaceShellViewModel.StoreDeletionWarning}" TextWrapping="Wrap" />
-            <StackPanel Classes="refusalActions" Orientation="Horizontal">
-              <Button Content="Delete and reopen"
-                      Command="{Binding ConfirmStoreDeletionCommand}"
-                      AutomationProperties.Name="Delete Motif's file and reopen the project" />
-              <Button Content="Cancel"
-                      Command="{Binding CancelStoreDeletionCommand}"
-                      AutomationProperties.Name="Keep Motif's file" />
-            </StackPanel>
-          </StackPanel>
-          <views:CopyableTextBlock Classes="muted" Text="{Binding Baseline.HeldStatusText}" TextWrapping="Wrap" />
-        </StackPanel>
-      </Border>
+      <views:StoreRefusalBlock Grid.Row="1" DataContext="{Binding StoreRefusalBlock}" />
       <Border Grid.Row="2" IsVisible="{Binding HasOpenRefusal}" Classes="notice">
         <StackPanel>
           <views:RefusalBlock DataContext="{Binding OpenRefusal}" />
@@ -307,7 +289,7 @@
                       AutomationProperties.AutomationId="{x:Static app:AutomationIds.SettingsButton}"
                       ToolTip.Tip="Settings (Ctrl+,)" ToolTip.Placement="Right">
                 <Path Classes="settingsGearGlyph"
-                      Data="M12 8.25a3.75 3.75 0 1 0 0 7.5 3.75 3.75 0 0 0 0-7.5zm8.1 3.75a8.2 8.2 0 0 0-.1-1.25l2-1.56-2-3.46-2.39.96a8.7 8.7 0 0 0-2.16-1.25L15.1 2h-4.2l-.35 2.44a8.7 8.7 0 0 0-2.16 1.25L6 4.73 4 8.19l2 1.56a8.2 8.2 0 0 0 0 2.5l-2 1.56 2 3.46 2.39-.96a8.7 8.7 0 0 0 2.16 1.25L10.9 22h4.2l.35-2.44a8.7 8.7 0 0 0 2.16-1.25l2.39.96 2-3.46-2-1.56c.07-.41.1-.83.1-1.25z" />
+                      Data="M19.73 9.93 L21.98 9.88 L21.98 14.12 L19.73 14.07 L18.93 16.0 L20.55 17.56 L17.56 20.55 L16.0 18.93 L14.07 19.73 L14.12 21.98 L9.88 21.98 L9.93 19.73 L8.0 18.93 L6.44 20.55 L3.45 17.56 L5.07 16.0 L4.27 14.07 L2.02 14.12 L2.02 9.88 L4.27 9.93 L5.07 8.0 L3.45 6.44 L6.44 3.45 L8.0 5.07 L9.93 4.27 L9.88 2.02 L14.12 2.02 L14.07 4.27 L16.0 5.07 L17.56 3.45 L20.55 6.44 L18.93 8.0 Z M12 8.5 A3.5 3.5 0 1 0 12 15.5 A3.5 3.5 0 1 0 12 8.5 Z" />
                 <Button.Flyout>
                   <Flyout Placement="RightEdgeAlignedBottom" FlyoutPresenterClasses="settings"
                           Opened="OnSettingsFlyoutOpened" Closed="OnSettingsFlyoutClosed">

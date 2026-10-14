@@ -154,6 +154,8 @@ internal sealed partial class SettingsViewModel : ObservableObject
         ZoomOutCommand = new RelayCommand(ZoomOut, () => ZoomPercent > ZoomPolicy.Percentages[0]);
         ResetZoomCommand = new RelayCommand(() => ZoomPercent = 100, () => ZoomPercent != 100);
         ResetPreferencesCommand = new RelayCommand(ResetPreferences, () => _preferences.State == PreferenceState.Refused);
+        UseAllTextsCommand = new AsyncRelayCommand(UseAllTextsCommandAsync,
+            () => CanUseAllTexts);
         SelectGroupCommand = new RelayCommand<SettingsGroup>(group => SelectGroup(group));
         ChooseStoredAnalysesCommand = new RelayCommand<StoredAnalysisComparison>(ChooseStoredAnalyses);
         ClearShortcutSearchCommand = new RelayCommand(() => ShortcutSearch = string.Empty,
@@ -186,6 +188,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
     public IRelayCommand ZoomOutCommand { get; }
     public IRelayCommand ResetZoomCommand { get; }
     public IRelayCommand ResetPreferencesCommand { get; }
+    public IAsyncRelayCommand UseAllTextsCommand { get; }
     public IRelayCommand<SettingsGroup> SelectGroupCommand { get; }
     public IRelayCommand<WindowThemeChoice> SelectThemeCommand { get; }
     public IRelayCommand ClearShortcutSearchCommand { get; }
@@ -225,6 +228,13 @@ internal sealed partial class SettingsViewModel : ObservableObject
     public bool HasProject => _workspace.HasProject;
     public bool HasSavedSelection => _workspace.Context.Setup?.CanRunDefaultSelection == true;
     public bool HasProjectWithoutSelection => HasProject && !HasSavedSelection;
+    public string TextSelectionSummary =>
+        $"{_workspace.Selection.ChosenTextIds.Count} of {_workspace.Selection.TextCount} " +
+        (_workspace.Selection.TextCount == 1 ? "Text selected" : "Texts selected");
+    public bool CanUseAllTexts => HasSavedSelection &&
+        _workspace.Context.Setup?.SavedSelectionContainsAllTexts != true;
+    public string TextSelectionRefusal { get; private set; } = string.Empty;
+    public bool HasTextSelectionRefusal => !string.IsNullOrEmpty(TextSelectionRefusal);
     public bool PanGlossNotFound => !_panGlossExecutableFound;
     public bool ShortcutSearchHasText => !string.IsNullOrWhiteSpace(ShortcutSearch);
     public bool HasShortcutMatches => ShortcutEntries.Count > 0;
@@ -377,7 +387,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
     public int LightThemeTabIndex => IsLightThemeSelected ? 0 : -1;
     public int DarkThemeTabIndex => IsDarkThemeSelected ? 0 : -1;
     public int SystemThemeTabIndex => IsSystemThemeSelected ? 0 : -1;
-    public bool ShowZoomReset => ZoomPercent != 100;
+    public bool CanResetZoom => ZoomPercent != 100;
     public bool ShowUseEstimate => !IsUsingEstimate && !IsNoStepLimit;
     public string ReportVersionsText => _windowReport.ToVersionText();
     public string ParsingFooter => _workspace.Context.Assess.IsActive
@@ -401,7 +411,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
         ZoomInCommand.NotifyCanExecuteChanged();
         ZoomOutCommand.NotifyCanExecuteChanged();
         ResetZoomCommand.NotifyCanExecuteChanged();
-        OnPropertyChanged(nameof(ShowZoomReset));
+        OnPropertyChanged(nameof(CanResetZoom));
     }
 
     partial void OnThemeChoiceChanged(WindowThemeChoice value)
@@ -561,6 +571,19 @@ internal sealed partial class SettingsViewModel : ObservableObject
         OnPropertyChanged(nameof(ParsingFooter));
         OnPropertyChanged(nameof(StepLimitEstimateText));
         OnPropertyChanged(nameof(ProjectName));
+        return refusal;
+    }
+
+    /// <summary>Selects all project Texts and saves that Selection.</summary>
+    public async Task<WindowRefusal?> UseAllTextsAsync()
+    {
+        if (_observedSetup is null) return null;
+        SetTextSelectionRefusal(string.Empty);
+        var refusal = await _observedSetup.SelectAllTextsAsync().ConfigureAwait(true);
+        SetTextSelectionRefusal(refusal?.Sentence ?? string.Empty);
+        UseAllTextsCommand.NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(CanUseAllTexts));
+        OnPropertyChanged(nameof(TextSelectionSummary));
         return refusal;
     }
 
@@ -777,6 +800,14 @@ internal sealed partial class SettingsViewModel : ObservableObject
 
     private void OnSelectionChanged(object? sender, PropertyChangedEventArgs args)
     {
+        if (args.PropertyName is nameof(SelectionViewModel.ChosenTextIds) or
+            nameof(SelectionViewModel.AreAllTextsSelected) or nameof(SelectionViewModel.HasTexts) or
+            nameof(SelectionViewModel.TextCount))
+        {
+            OnPropertyChanged(nameof(TextSelectionSummary));
+            OnPropertyChanged(nameof(CanUseAllTexts));
+            UseAllTextsCommand.NotifyCanExecuteChanged();
+        }
         if (args.PropertyName is nameof(SelectionViewModel.PerWordStepLimit) or
             nameof(SelectionViewModel.PerWordStepLimitUnbounded))
         {
@@ -812,6 +843,8 @@ internal sealed partial class SettingsViewModel : ObservableObject
             OnPropertyChanged(nameof(HasSavedSelection));
             OnPropertyChanged(nameof(HasProjectWithoutSelection));
             OnPropertyChanged(nameof(IsTimeLimitEnabled));
+            OnPropertyChanged(nameof(CanUseAllTexts));
+            UseAllTextsCommand.NotifyCanExecuteChanged();
         }
         if (args.PropertyName == nameof(SetupViewModel.CurrentSelectionLimits))
         {
@@ -850,6 +883,8 @@ internal sealed partial class SettingsViewModel : ObservableObject
             OnPropertyChanged(nameof(HasProject));
             OnPropertyChanged(nameof(HasSavedSelection));
             OnPropertyChanged(nameof(HasProjectWithoutSelection));
+            OnPropertyChanged(nameof(CanUseAllTexts));
+            UseAllTextsCommand.NotifyCanExecuteChanged();
             OnPropertyChanged(nameof(IsTimeLimitEnabled));
             OnPropertyChanged(nameof(GroupParsingLabel));
             OnPropertyChanged(nameof(ParsingLead));
@@ -871,6 +906,19 @@ internal sealed partial class SettingsViewModel : ObservableObject
         if (_observedSetup is not null) _observedSetup.PropertyChanged -= OnSetupChanged;
         _observedSetup = setup;
         if (_observedSetup is not null) _observedSetup.PropertyChanged += OnSetupChanged;
+    }
+
+    private async Task UseAllTextsCommandAsync()
+    {
+        await UseAllTextsAsync().ConfigureAwait(true);
+    }
+
+    private void SetTextSelectionRefusal(string value)
+    {
+        if (TextSelectionRefusal == value) return;
+        TextSelectionRefusal = value;
+        OnPropertyChanged(nameof(TextSelectionRefusal));
+        OnPropertyChanged(nameof(HasTextSelectionRefusal));
     }
 
 }

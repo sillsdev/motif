@@ -57,8 +57,8 @@ public sealed partial record WindowRefusal
         "PanGloss gave an answer Motif could not read. Install the PanGloss that matches this Motif, then try again.";
 
     private const string StoreFromOtherVersion =
-        "Motif's file for this project{0} was made by a different version of Motif. Close Motif, delete that " +
-        "file, and open the project again. Changes not applied yet are lost; your FieldWorks project is not touched.";
+        "Motif cannot open this store. Delete it and reopen the project to continue. Changes not applied yet " +
+        "are lost; your FieldWorks project is not touched.";
 
     private const string StoreDamaged =
         "Motif's file for this project is damaged. Close every Motif window and keep a copy of the matching .motif.db file " +
@@ -287,6 +287,9 @@ public sealed partial record WindowRefusal
     public bool OffersStoreDeletion =>
         Code == C.StoreOtherVersion && Facts.ContainsKey(RefusalFactNames.StorePath);
 
+    /// <summary>The heading for a refused Motif store that can be deleted and recreated.</summary>
+    public string? Heading => OffersStoreDeletion ? "This Motif store is from another version" : null;
+
     /// <summary>Presents a command's refusal in the window's words.</summary>
     public static WindowRefusal From(Refusal refusal) => From(refusal, GenericSentence);
 
@@ -339,9 +342,7 @@ public sealed partial record WindowRefusal
     private static string SentenceFor(Refusal refusal, string sentenceWhenUnmapped)
     {
         if (refusal.Code == C.StoreInconsistent) return StoreDamaged;
-        if (refusal.Code == C.StoreOtherVersion)
-            return string.Format(System.Globalization.CultureInfo.InvariantCulture, StoreFromOtherVersion,
-                refusal.Facts.TryGetValue(RefusalFactNames.StorePath, out var path) ? ", " + path + "," : string.Empty);
+        if (refusal.Code == C.StoreOtherVersion) return StoreFromOtherVersion;
         if (refusal.Facts.ContainsKey(RefusalFactNames.ParserNotFound) &&
             Sentences.TryGetValue(refusal.Code, out var mapped) && mapped == ParserUnusable)
             return ParserMissing;

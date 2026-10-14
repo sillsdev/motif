@@ -126,6 +126,11 @@ $script:AppPrefix = $appPrefix
 
 $releaseRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('MotifReleaseCheck-' + [Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $releaseRoot | Out-Null
+$env:MOTIF_WORKER_ROOT = Join-Path $releaseRoot 'launch-worker'
+$env:MOTIF_RUNNER_NAMESPACE = 'release-launch-check'
+$env:MOTIF_RUNNER_IDLE_SECONDS = '2'
+$env:MOTIF_WRITING_SYSTEM_REPOSITORY_PATH = Join-Path $releaseRoot 'writing-systems'
+$env:MOTIF_TEST_SLDR_CACHE_PATH = Join-Path $releaseRoot 'sldr-cache'
 $projectPaths = [ordered]@{}
 $cliProjects = [ordered]@{}
 $cliProjectPaths = [ordered]@{}
@@ -208,11 +213,6 @@ $env:MOTIF_RELEASE_PATHWAYS = $walkthroughs
 $env:MOTIF_RELEASE_SEED_MANIFEST = $seedManifestPath
 $env:MOTIF_RELEASE_RESULT = Join-Path $releaseRoot 'app-pathways.json'
 $env:MOTIF_RELEASE_LAUNCH_RESULT = Join-Path $releaseRoot 'app-launch.json'
-$env:MOTIF_WORKER_ROOT = Join-Path $releaseRoot 'launch-worker'
-$env:MOTIF_RUNNER_NAMESPACE = 'release-launch-check'
-$env:MOTIF_RUNNER_IDLE_SECONDS = '2'
-$env:MOTIF_WRITING_SYSTEM_REPOSITORY_PATH = Join-Path $releaseRoot 'writing-systems'
-$env:MOTIF_TEST_SLDR_CACHE_PATH = Join-Path $releaseRoot 'sldr-cache'
 
 $launch = Invoke-InstalledApp @('--release-launch-check')
 if (-not (Test-Path -LiteralPath $env:MOTIF_RELEASE_LAUNCH_RESULT -PathType Leaf)) {

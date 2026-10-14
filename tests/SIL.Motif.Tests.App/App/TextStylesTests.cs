@@ -5,6 +5,7 @@ using Avalonia.Controls.Documents;
 using Avalonia.Headless;
 using Avalonia.LogicalTree;
 using Avalonia.Media;
+using Avalonia.Platform;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using SIL.Motif.App;
@@ -120,7 +121,10 @@ public sealed class TextStylesTests
             Assert.Equal(FlowDirection.RightToLeft, control.FlowDirection);
             Assert.Equal(2, control.FontFeatures!.Count);
             Assert.Equal(["smcp", "cv01"], control.FontFeatures.Select(feature => feature.Tag.ToString()));
-            Assert.False(resolved.RequestedFontInstalled);
+            Assert.False(resolved.RequestedFontInstalled,
+                $"Requested {resolved.RequestedFontFamily} as '{new FontFamily(resolved.RequestedFontFamily!).Name}'; " +
+                $"resolved family is {resolved.FontFamily}; system families: " +
+                string.Join(", ", FontManager.Current.SystemFonts.Select(font => font.Name)));
             Assert.Same(resolved, resolver.Resolve(TextStyleRequest.Linguistic(SeededProject.RightToLeftTag, "Paragraph")));
             Assert.DoesNotContain("Andika", control.FontFamily!.Name, StringComparison.OrdinalIgnoreCase);
             Assert.Equal(18 * 96d / 72d,
@@ -156,6 +160,98 @@ public sealed class TextStylesTests
                 $"matched family='{glyphTypeface?.FamilyName ?? "none"}'.");
             Assert.Equal("DejaVu Sans", new FontFamily(family).Name);
             Assert.Same(style, resolver.Resolve(TextStyleRequest.Linguistic(system.Id)));
+            return Task.CompletedTask;
+        }, TimeSpan.FromSeconds(15));
+    }
+
+    [Fact]
+    public void ResolvesBundledFieldWorksFontsAndTheirEmphasisWithoutMissingFontNotices()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(() =>
+        {
+            var families = new[] { "Andika", "Charis SIL", "Charis", "Doulos SIL", "Gentium Plus" };
+            Assert.True(TextStyles.TryGetBundledWritingSystemFont("Andika", out var andikaFamily,
+                out var andikaExpectedFamily));
+            Assert.Equal("fonts:Motif#Andika", andikaFamily);
+            Assert.Equal("Andika", andikaExpectedFamily);
+            var mappedFamilies = families.Select(family =>
+            {
+                Assert.True(TextStyles.TryGetBundledWritingSystemFont(family, out var embeddedFamily, out _));
+                return embeddedFamily;
+            }).ToArray();
+            Assert.Equal([
+                "fonts:Motif#Andika",
+                "fonts:Motif#Charis SIL",
+                "fonts:Motif#Charis SIL",
+                "fonts:Motif#Doulos SIL",
+                "fonts:Motif#Gentium Plus",
+            ], mappedFamilies);
+            var bundledFontAssets = AssetLoader.GetAssets(
+                    new Uri("avares://SIL.Motif.App/Assets/Fonts", UriKind.Absolute), null)
+                .Count(asset => asset.OriginalString.EndsWith(".ttf", StringComparison.OrdinalIgnoreCase));
+            Assert.Equal(17, bundledFontAssets);
+            var systems = families.Select((family, index) => new WritingSystemDisplay(
+                $"qaa-x-font-{index}", family, family, WritingSystemKind.Vernacular, index, index == 0,
+                family, string.Empty, false,
+                new Dictionary<string, double>(StringComparer.Ordinal) { ["Normal"] = 10 })
+            {
+                StyleFonts = new Dictionary<string, WritingSystemStyleFont>(StringComparer.Ordinal)
+                {
+                    ["Normal"] = new(family, string.Empty),
+                },
+            }).ToArray();
+            var resolver = new TextStyles();
+            resolver.ReplaceContext(systems);
+            var textBlocks = systems.Select(system => new WritingSystemTextBlock { Text = "SIL font sample" }).ToArray();
+            var children = new List<Control>();
+            for (var index = 0; index < systems.Length; index++)
+            {
+                SIL.Motif.App.Controls.WritingSystemText.SetId(textBlocks[index], systems[index].Id);
+                SIL.Motif.App.Controls.WritingSystemText.SetStyleName(textBlocks[index], "Normal");
+                children.Add(textBlocks[index]);
+            }
+
+            var boldItalic = new TextBlock { Text = "Charis bold italic" };
+            resolver.Apply(boldItalic, TextStyleRequest.Linguistic(systems[1].Id) with
+            {
+                Weight = FontWeight.Bold,
+                Emphasis = FontStyle.Italic,
+            });
+            children.Add(boldItalic);
+            var panel = new StackPanel();
+            foreach (var child in children) panel.Children.Add(child);
+            var window = new Window { Content = panel };
+            SIL.Motif.App.Controls.WritingSystemText.SetResolver(window, resolver);
+            window.Show();
+            RenderFrame(window);
+
+            try
+            {
+                Assert.Empty(resolver.MissingFontNotices);
+                for (var index = 0; index < families.Length; index++)
+                {
+                    var style = resolver.Resolve(TextStyleRequest.Linguistic(systems[index].Id));
+                    Assert.True(style.RequestedFontInstalled, $"{families[index]} was not resolved.");
+                    var run = Assert.Single(textBlocks[index].TextLayout.TextLines.SelectMany(line => line.TextRuns)
+                        .OfType<ShapedTextRun>());
+                    var actualFamily = run.GlyphRun.GlyphTypeface.FamilyName;
+                    if (families[index] is "Charis SIL" or "Charis")
+                        Assert.Contains(actualFamily, new[] { "Charis SIL", "Charis" });
+                    else
+                        Assert.Equal(families[index], actualFamily);
+                }
+
+                var emphasisRun = Assert.Single(boldItalic.TextLayout.TextLines.SelectMany(line => line.TextRuns)
+                    .OfType<ShapedTextRun>());
+                Assert.Contains(emphasisRun.GlyphRun.GlyphTypeface.FamilyName, new[] { "Charis SIL", "Charis" });
+                Assert.Equal(FontWeight.Bold, emphasisRun.GlyphRun.GlyphTypeface.Weight);
+                Assert.Equal(FontStyle.Italic, emphasisRun.GlyphRun.GlyphTypeface.Style);
+            }
+            finally
+            {
+                window.Close();
+            }
+
             return Task.CompletedTask;
         }, TimeSpan.FromSeconds(15));
     }

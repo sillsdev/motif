@@ -33,6 +33,11 @@
           <TextBlock Classes="setupTitle" IsVisible="{Binding IsLimitsStep}" Text="How much work should each word get?" />
           <TextBlock Classes="setupTitle" IsVisible="{Binding IsFirstRunStep}" Text="{Binding FinishTitle}" />
 
+        </StackPanel>
+
+        <ScrollViewer x:Name="SetupBodyScroll" Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
+          <views:RefusalBlock DataContext="{Binding ShownRefusal}" />
           <TextBlock Classes="setupDescription" IsVisible="{Binding IsProjectStep}"
                      Text="Motif found this project. Choose the texts and words to include in every run." TextWrapping="Wrap" />
           <TextBlock Classes="setupDescription" IsVisible="{Binding IsSelectionStep}"
@@ -42,9 +47,8 @@
                      Text="Choose the maximum number of analysis attempts per word. PanGloss derives an inner search-work limit at 100 times that value. Motif estimates how long a word may take and gives it extra time to finish." TextWrapping="Wrap" />
           <TextBlock Classes="setupDescription" IsVisible="{Binding IsFirstRunStep}"
                      Text="{Binding FinishDescription}" TextWrapping="Wrap" />
-        </StackPanel>
 
-        <Grid Grid.Row="2">
+          <Grid>
           <StackPanel IsVisible="{Binding IsProjectStep}" Spacing="{DynamicResource Intent.Space.Related}" VerticalAlignment="Center">
             <TextBlock Classes="setupProjectName" Text="{Binding ProjectName}" />
             <TextBlock Classes="setupMuted" Text="Your choices are kept with this project and can be changed later." TextWrapping="Wrap" />
@@ -64,27 +68,25 @@
                       AutomationProperties.Name="Clear" AutomationProperties.AutomationId="{x:Static app:AutomationIds.SetupClearTexts}" />
             </StackPanel>
             <Border Classes="setupTextList">
-              <ScrollViewer MaxHeight="{DynamicResource Component.Setup.TextListHeight}">
-                <ItemsControl x:Name="SetupDialogTextsItems" ItemsSource="{Binding Selection.Texts}">
-                  <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
-                  </ItemsControl.ItemsPanel>
-                  <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="vm:TextChoiceViewModel">
-                      <Border Classes="setupTextRow">
-                        <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
-                          <CheckBox IsChecked="{Binding IsChecked}" VerticalAlignment="Center"
-                                    AutomationProperties.Name="{Binding Title}" />
-                          <TextBlock Grid.Column="1" Text="{Binding Title}" FontWeight="SemiBold" VerticalAlignment="Center" />
-                          <TextBlock Grid.Column="2" Classes="setupMuted" Text="{Binding DistinctCountText}"
-                                     TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-                          <TextBlock Grid.Column="3" Classes="setupCoverage" Text="{Binding InterlinearizedText}" VerticalAlignment="Center" />
-                        </Grid>
-                      </Border>
-                    </DataTemplate>
-                  </ItemsControl.ItemTemplate>
-                </ItemsControl>
-              </ScrollViewer>
+              <ItemsControl x:Name="SetupDialogTextsItems" ItemsSource="{Binding Selection.Texts}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:TextChoiceViewModel">
+                    <Border Classes="setupTextRow">
+                      <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
+                        <CheckBox IsChecked="{Binding IsChecked}" VerticalAlignment="Center"
+                                  AutomationProperties.Name="{Binding Title}" />
+                        <TextBlock Grid.Column="1" Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="2" Classes="setupMuted" Text="{Binding DistinctCountText}"
+                                   TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="3" Classes="setupCoverage" Text="{Binding InterlinearizedText}" VerticalAlignment="Center" />
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
             </Border>
             <TextBlock Classes="setupMuted" Text="{Binding Selection.TextsEmptyMessage}"
                        IsVisible="{Binding Selection.TextsEmptyMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}"
@@ -128,20 +130,21 @@
               <TextBlock Classes="setupSummaryText" Text="{Binding RunSummary}" TextWrapping="Wrap" />
             </Border>
           </StackPanel>
-        </Grid>
+          </Grid>
+        </StackPanel>
+        </ScrollViewer>
 
-        <Grid Grid.Row="3" ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
-          <Button Classes="setupSkip" Content="Skip for now" Command="{Binding SkipCommand}"
+        <Grid Grid.Row="3" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
+          <Button Classes="setupSkip" HorizontalAlignment="Left" Content="Skip for now" Command="{Binding SkipCommand}"
                   AutomationProperties.Name="Skip setup for now"
                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.SkipSetup}" />
-          <views:RefusalBlock Grid.Column="1" DataContext="{Binding ShownRefusal}" VerticalAlignment="Center" />
-          <Button Grid.Column="2" Classes="setupSecondary" Content="Back" Command="{Binding BackCommand}"
+          <Button Grid.Column="1" Classes="setupSecondary" Content="Back" Command="{Binding BackCommand}"
                   IsVisible="{Binding IsBackVisible}"
                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.SetupBack}" />
-          <Button Grid.Column="3" Classes="setupPrimary" Content="{Binding NextButtonText}" Command="{Binding NextCommand}"
+          <Button Grid.Column="2" Classes="setupPrimary" Content="{Binding NextButtonText}" Command="{Binding NextCommand}"
                   IsVisible="{Binding IsNextVisible}"
                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.SetupNext}" />
-          <Button Grid.Column="3" Classes="setupPrimary" Content="{Binding FinishButtonText}"
+          <Button Grid.Column="2" Classes="setupPrimary" Content="{Binding FinishButtonText}"
                   Command="{Binding FinishCommand}" IsVisible="{Binding IsFirstRunStep}"
                   AutomationProperties.Name="{Binding FinishButtonText}"
                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.SetupFinish}" />

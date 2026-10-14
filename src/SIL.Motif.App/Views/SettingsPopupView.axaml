@@ -71,7 +71,7 @@
                             />
                   </StackPanel>
                   <Button Classes="settingsLink" Content="Reset to 100%" Command="{Binding ResetZoomCommand}"
-                          IsVisible="{Binding ShowZoomReset}" AutomationProperties.Name="Reset zoom to 100%" />
+                          IsEnabled="{Binding CanResetZoom}" AutomationProperties.Name="Reset zoom to 100%" />
                 </StackPanel>
               </Grid>
               </Border>
@@ -112,6 +112,21 @@
                       IsVisible="{Binding HasProjectWithoutSelection}" Click="OnConfigureRequested"
                       AutomationProperties.Name="Choose what to parse" />
               <StackPanel IsVisible="{Binding HasSavedSelection}" Classes="settingsPage">
+                <Border Classes="settingsRow">
+                  <Grid Classes="settingsRow" ColumnDefinitions="*,Auto">
+                    <StackPanel Classes="settingsLabel">
+                      <TextBlock Classes="settingsLabelText" Text="Texts to parse" />
+                      <TextBlock Classes="settingsCaption" Text="{Binding TextSelectionSummary}" />
+                    </StackPanel>
+                    <Button x:Name="UseAllTextsButton" Grid.Column="1" Classes="settingsLink"
+                            Content="Use all texts"
+                            Command="{Binding UseAllTextsCommand}"
+                            IsEnabled="{Binding CanUseAllTexts}"
+                            AutomationProperties.Name="Use all texts" />
+                  </Grid>
+                </Border>
+                <TextBlock Classes="settingsRefusal" Text="{Binding TextSelectionRefusal}"
+                           IsVisible="{Binding HasTextSelectionRefusal}" TextWrapping="Wrap" />
                 <Border Classes="settingsRow">
                 <Grid Classes="settingsRow" ColumnDefinitions="*,Auto">
                   <StackPanel Classes="settingsLabel">

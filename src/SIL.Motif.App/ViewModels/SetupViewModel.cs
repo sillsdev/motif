@@ -51,6 +51,10 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
     /// <summary>Whether the saved Default Selection can be run from the shell.</summary>
     public bool CanRunDefaultSelection => ProjectPath is not null && _savedSelection is not null;
 
+    /// <summary>Whether the saved Default Selection contains every current project Text.</summary>
+    internal bool SavedSelectionContainsAllTexts => _savedSelection is { } saved &&
+        saved.TextIds.ToHashSet().SetEquals(Selection.AllTextIds);
+
     /// <summary>The accepted parsing policy shared by Setup, Settings, and Analysis options.</summary>
     public SelectionParsingLimits CurrentSelectionLimits => _savedSelection?.Limits ??
         SelectionLimitPolicy.Estimated(_configuredStepLimit);
@@ -378,6 +382,35 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
         _setupGeneration++;
         IsOpen = true;
         _configurationLoadTask = RefreshParserStepRateAsync(projectPath);
+    }
+
+    /// <summary>Persists all project Texts as the Selection and updates Setup's shared choices.</summary>
+    public async Task<WindowRefusal?> SelectAllTextsAsync()
+    {
+        if (ProjectPath is not { } projectPath || _savedSelection is not { } saved ||
+            SavedSelectionContainsAllTexts) return null;
+
+        var generation = _loadGeneration;
+        Selection.SelectAllTexts();
+        var result = await _context.Commands.SetDefaultSelectionAsync(new SetDefaultSelectionRequest(
+            projectPath, saved.Name, Selection.ChosenTextIds, saved.AddedWords, saved.Limits, saved.Revision),
+            CancellationToken.None).ConfigureAwait(true);
+        if (!result.Succeeded)
+        {
+            if (result.Refusal!.Code == "selection.revision-conflict")
+                await ReloadSelectionAfterConflictAsync(projectPath, generation).ConfigureAwait(true);
+            else if (generation == _loadGeneration && ProjectPath == projectPath)
+                Selection.ApplyDefaultSelection(saved);
+            return WindowRefusal.From(result.Refusal!);
+        }
+
+        if (generation != _loadGeneration || ProjectPath != projectPath) return null;
+        _savedSelection = result.Value!.Selection;
+        Selection.ApplyDefaultSelection(_savedSelection);
+        OnPropertyChanged(nameof(CanRunDefaultSelection));
+        OnPropertyChanged(nameof(CurrentSelectionLimits));
+        CaptureSnapshot();
+        return null;
     }
 
     private async Task FinishAsync()

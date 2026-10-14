@@ -11,6 +11,7 @@ using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
+using ShapedTextRun = Avalonia.Media.TextFormatting.ShapedTextRun;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -20,14 +21,81 @@ namespace SIL.Motif.Tests.App;
 public sealed class WritingSystemTextScreenshots
 {
     [ScreenshotFact]
+    public void CapturesCharisSilInAnalyzeTextsAndTryAWord()
+    {
+        var folder = Environment.GetEnvironmentVariable(ScreenshotFactAttribute.FolderVariable)!;
+        Directory.CreateDirectory(folder);
+
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            Walkthrough.WalkthroughFonts.Register();
+            var (workspace, window) = await AnalyzeTextsLayoutTests.OpenAnalyzeTexts();
+            try
+            {
+                window.SetValue(TextElement.FontFamilyProperty, new FontFamily("fonts:MotifWalkthrough#Andika"));
+                var resolver = workspace.Context.TextStyles;
+                resolver.SetFallbackFamilies(["fonts:MotifWalkthrough#DejaVu Sans"]);
+                resolver.ReplaceContext([new WritingSystemDisplay("sw", "Swahili", "Sw", WritingSystemKind.Vernacular,
+                    0, true, "Charis SIL", string.Empty, false,
+                    new Dictionary<string, double>(StringComparer.Ordinal) { ["Normal"] = 10 })
+                {
+                    StyleFonts = new Dictionary<string, WritingSystemStyleFont>(StringComparer.Ordinal)
+                    {
+                        ["Normal"] = new("Charis SIL", string.Empty),
+                    },
+                }]);
+                var anchor = workspace.Context.SelectionReads.Summary!.SourcePositions
+                    .Single(position => position.Word.Form == "Sungura").Location.Anchor;
+                Assert.True(await AnalyzeTextsLayoutTests.Panel(window).FocusOccurrenceAsync(anchor));
+                await AnalyzeTextsLayoutTests.SettleReaderAsync(workspace, window);
+
+                var style = resolver.Resolve(TextStyleRequest.Linguistic("sw"));
+                var word = Assert.Single(window.GetVisualDescendants().OfType<TextBlock>(), text =>
+                    text.Text == "Sungura" && text.Classes.Contains("stripWord"));
+                Assert.True(word.IsEffectivelyVisible);
+                var run = Assert.Single(word.TextLayout.TextLines.SelectMany(line => line.TextRuns)
+                    .OfType<ShapedTextRun>());
+                var fontFamily = run.GlyphRun.GlyphTypeface.FamilyName;
+                if (style.RequestedFontInstalled)
+                {
+                    Assert.Empty(resolver.MissingFontNotices);
+                    Assert.True(new[] { "Charis SIL", "Charis" }.Contains(fontFamily),
+                        $"shape={fontFamily}; style={style.FontFamily}; control={word.FontFamily}; " +
+                        $"id={SIL.Motif.App.Controls.WritingSystemText.GetId(word)}");
+                }
+                else
+                {
+                    Assert.Single(resolver.MissingFontNotices);
+                    Assert.Equal("DejaVu Sans", fontFamily);
+                }
+
+                Capture(window, folder, style.RequestedFontInstalled ? "charis-sil-analyze-after" :
+                    "charis-sil-analyze-before", "light");
+
+                workspace.Context.TryWord("Sungura");
+                await workspace.Assess.Trace.TryCommand.ExecutionTask!;
+                workspace.CurrentPage = WorkspacePage.TryAWord;
+                AnalyzeTextsLayoutTests.Settle(window);
+                Capture(window, folder, style.RequestedFontInstalled ? "charis-sil-try-a-word-after" :
+                    "charis-sil-try-a-word-before", "light");
+            }
+            finally
+            {
+                Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
+                window.Close();
+            }
+        }, TimeSpan.FromMinutes(3));
+    }
+
+    [ScreenshotFact]
     public void CapturesRightToLeftTextCardWordListReviewAndMissingFontLine()
     {
         var folder = Environment.GetEnvironmentVariable(ScreenshotFactAttribute.FolderVariable)!;
         Directory.CreateDirectory(folder);
-        Walkthrough.WalkthroughFonts.Register();
 
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
+            Walkthrough.WalkthroughFonts.Register();
             var (workspace, window) = await PageScreenshots.OpenOverSampleData(parse: false,
                 capturedWords: WritingSystemTestData.ArabicText());
             try

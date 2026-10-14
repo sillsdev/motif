@@ -8,7 +8,7 @@ For a problem report, choose **Report a problem** and review the preview. By def
 
 Send feedback through [GitHub Issues](https://github.com/sillsdev/motif/issues). If you cannot use GitHub, copy the reviewed report and email it to [john_lambert@sil.org](mailto:john_lambert@sil.org). Review any local details before sharing them.
 
-If Motif says the project's file was made by a different version and offers **Delete this file and reopen**, read the confirmation before continuing. That action deletes Motif's file and recreates it; changes not applied yet are lost, but the FieldWorks project is not touched.
+If Motif says the project store was made by a different version and offers **Delete Motif's store and reopen**, read the confirmation before continuing. That action deletes Motif's store and recreates it; changes not applied yet are lost, but the FieldWorks project is not touched.
 
 If Motif says its file for this project is damaged, close every Motif window. Keep a copy of the matching `.motif.db` file beside the project's `.fwdata` file if support may need it. Remove only that Motif file, then reopen the project; changes not applied yet will be lost, but the FieldWorks project is unchanged. If you cannot confirm the file belongs to Motif, leave it in place and ask for help.
 

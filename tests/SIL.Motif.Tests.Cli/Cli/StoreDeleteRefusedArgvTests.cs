@@ -13,7 +13,7 @@ using Xunit;
 namespace SIL.Motif.Tests.Cli;
 
 /// <summary>
-/// <c>store delete-refused</c> reaches the same deletion the window's Delete this file and reopen does, as a
+/// <c>store delete-refused</c> reaches the same deletion as the window's Delete Motif's store and reopen action, as a
 /// developer command: it deletes a store another version of Motif made, and is refused on the released surface.
 /// </summary>
 public sealed class StoreDeleteRefusedArgvTests : IDisposable
