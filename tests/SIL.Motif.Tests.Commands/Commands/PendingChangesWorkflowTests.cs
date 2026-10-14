@@ -222,6 +222,45 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine,
     }
 
     [Fact]
+    public async Task AnApplyThatStartsWhileAnotherIsUnderWayIsBusyAndTheFirstAppliesOnce()
+    {
+        using var scratch = pristine.NewScratch();
+        var path = scratch.ProjectId.Path;
+        Guid wordformId = Guid.Empty;
+        NonUndoableUnitOfWorkHelper.Do(scratch.ActionHandlerAccessor, () =>
+            wordformId = scratch.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                .Create(TsStringUtils.MakeString("overlap-word", scratch.DefaultVernWs)).Guid);
+        new FwDataProjectLoader().Save(scratch);
+        var root = NewManagedRoot(path);
+        var runner = IsolatedRunner.Process(root);
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root).Succeeded);
+        var pending = PutChange(path, LoadPending(path).Revision, wordformId, "overlap-word");
+        Assert.True(ProposalCommands.Label(new LabelRequest(path, ProductVersion, PendingChanges.DraftName,
+            "Correct word spelling")).Succeeded);
+        Assert.True(ProposalCommands.Comment(new CommentRequest(path, ProductVersion, PendingChanges.DraftName,
+            "Correct the spelling status of the selected word.")).Succeeded);
+        var measured = await MeasureStepAsync("the Trial", new MeasurePendingRequest(path, null, null,
+            ["overlap-word"]), runner);
+        Assert.True(measured.Succeeded, "the Trial: " + measured.Refusal?.Message + " " + LastJob(path));
+
+        CommandOutcome<ApplyPendingResult>? overlapping = null;
+        PendingChangesWorkflow.BeforeFinalizeForTests.Value = () =>
+        {
+            PendingChangesWorkflow.BeforeFinalizeForTests.Value = null;
+            overlapping = PendingChangesWorkflow.Apply(new ApplyPendingRequest(path, null, null),
+                dryRunTimeout: StepBound, runnerLauncher: runner);
+        };
+        var first = await ApplyStepAsync("the first Apply", new ApplyPendingRequest(path, null, null), runner);
+
+        Assert.NotNull(overlapping);
+        Assert.True(first.Succeeded, "the first Apply: " + first.Refusal?.Code + " " + first.Refusal?.Message);
+        Assert.True(first.Value!.Applied);
+        Assert.Equal(pending.DraftId, first.Value.Receipt!.ProposalId);
+        Assert.Equal("apply.in-progress", overlapping!.Refusal?.Code);
+        Assert.Equal(3, FailureEnvelope.ExitCodeFor(overlapping.Refusal!.Reason));
+    }
+
+    [Fact]
     public void ApplyAllPendingWhileTheProjectIsHeldIsBusyAndReopensTheChanges()
     {
         string path;

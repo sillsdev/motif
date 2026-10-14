@@ -88,6 +88,9 @@ public static class PendingChangesWorkflow
             DryRunSource.Bound), CancellationToken.None, null, null);
     }
 
+    // Lets a test run a second Apply between this one's reads and its Finalize, the window two processes share.
+    internal static readonly AsyncLocal<Action?> BeforeFinalizeForTests = new();
+
     private sealed record ApplyTarget(string ProjectPath, string ProposalId, string? ExpectedRevision, bool Force,
         DryRunSource DryRun);
 
@@ -137,6 +140,7 @@ public static class PendingChangesWorkflow
             return RefuseApply("apply.change-no-longer-fits",
                 "One or more changes no longer fit the project. Remove those changes first.");
 
+        BeforeFinalizeForTests.Value?.Invoke();
         string proposalId = identity.ProposalId;
         if (identity.DraftName is { } draftName)
         {
