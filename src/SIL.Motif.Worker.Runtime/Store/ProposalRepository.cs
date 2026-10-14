@@ -322,10 +322,13 @@ public sealed class ProposalRepository : IProposalRepository
             check.CommandText = "SELECT COUNT(*) FROM Receipts WHERE ProposalId = $id;";
             if ((long)check.ExecuteScalar()! > 0)
                 throw new InvalidOperationException("A Proposal with a Receipt is final: it and its Receipts are kept.");
+            // Detaching would turn the Assessment into Baseline evidence, which is what a Proposal-less one means.
+            check.CommandText = "SELECT COUNT(*) FROM Assessments WHERE ProposalId = $id;";
+            if ((long)check.ExecuteScalar()! > 0)
+                throw new InvalidOperationException(
+                    "This Proposal still has Assessment results that are kept, so it cannot be deleted.");
         }
-        // An Assessment somebody pinned or retained outlives its Proposal, detached from it.
-        foreach (var sql in new[] { "UPDATE Assessments SET ProposalId = NULL WHERE ProposalId = $id;",
-            "DELETE FROM Reports WHERE ProposalId = $id;",
+        foreach (var sql in new[] { "DELETE FROM Reports WHERE ProposalId = $id;",
             "DELETE FROM GrammarChecks WHERE ProposalId = $id;", "DELETE FROM ProposalRevisions WHERE ProposalId = $id;" })
         {
             using var command = connection.CreateCommand();

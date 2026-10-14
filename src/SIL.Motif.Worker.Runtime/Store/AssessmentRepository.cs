@@ -549,11 +549,10 @@ public sealed class AssessmentRepository : IAssessmentRepository
         };
     }
 
-    // A pinned or retained Assessment is one somebody chose to keep, so a Proposal's sweep leaves it in place.
+    // A retained invocation is an immutable aggregate, so a sweep never takes one of its members.
     private const string SweptAssessments = """
         SELECT AssessmentId FROM Assessments
         WHERE ProposalId = $proposalId AND ($exceptId IS NULL OR AssessmentId != $exceptId)
-            AND AssessmentId NOT IN (SELECT AssessmentId FROM AssessmentPins)
             AND AssessmentId NOT IN (SELECT AssessmentId FROM RetainedInvocationMembers)
         """;
 
@@ -568,6 +567,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
             // Reports and replacement links outlive a swept Assessment; they lose only the link.
             $"UPDATE Reports SET AssessmentId = NULL WHERE AssessmentId IN ({SweptAssessments});",
             $"UPDATE Assessments SET ReplacesAssessmentId = NULL WHERE ReplacesAssessmentId IN ({SweptAssessments});",
+            $"DELETE FROM AssessmentPins WHERE AssessmentId IN ({SweptAssessments});",
             $"DELETE FROM AssessmentObjectTimings WHERE AssessmentId IN ({SweptAssessments});",
             $"""
             DELETE FROM ParsedAnalyses WHERE AssessedWordId IN (

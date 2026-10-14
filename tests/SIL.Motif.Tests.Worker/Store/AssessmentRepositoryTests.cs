@@ -553,20 +553,19 @@ public sealed class AssessmentRepositoryTests : IDisposable
     }
 
     [Fact]
-    public void SweepKeepsAPinnedAssessment()
+    public void SweepRemovesAPinnedAssessmentWithItsPin()
     {
         var repository = NewRepository("sweep-pinned.fwdata", out var database);
         var proposal = CanonicalId.Mint("proposal/");
         SeedProposal(database, proposal.Value);
         repository.Record(NewAssessment("pinned", proposal, "sha256:intent", "Correctness"));
-        repository.Record(NewAssessment("loose", proposal, "sha256:intent", "ParseTime"));
         Execute(database, "INSERT INTO AssessmentPins (AssessmentId, PinnedBy, PinnedUtc) " +
             "VALUES ('pinned', 'linguist', '2026-10-13T00:00:00Z');", proposal.Value);
 
         repository.DeleteByProposal(proposal, exceptAssessmentId: null);
 
-        Assert.Equal("pinned", repository.Get("pinned").AssessmentId);
-        Assert.Throws<KeyNotFoundException>(() => repository.Get("loose"));
+        Assert.Throws<KeyNotFoundException>(() => repository.Get("pinned"));
+        Assert.Equal("0", Scalar(database, "SELECT CAST(COUNT(*) AS TEXT) FROM AssessmentPins;"));
     }
 
     [Fact]
@@ -588,8 +587,9 @@ public sealed class AssessmentRepositoryTests : IDisposable
     }
 
     [Fact]
-    public void DeletingAClosedProposalKeepsItsPinnedAssessmentWithoutTheProposal()
+    public void DeletingAClosedProposalNeverTurnsItsAssessmentsIntoBaselineEvidence()
     {
+        // An Assessment with no Proposal is Baseline evidence, so a deleted Proposal's Trial must never become one.
         var repository = NewRepository("delete-pinned.fwdata", out var database);
         var proposal = CanonicalId.Mint("proposal/");
         SeedProposal(database, proposal.Value);
@@ -601,8 +601,22 @@ public sealed class AssessmentRepositoryTests : IDisposable
         repository.DeleteByProposal(proposal, exceptAssessmentId: null);
         new ProposalRepository(database).DeleteArchived(proposal);
 
-        Assert.Equal("null", Scalar(database, "SELECT IFNULL(ProposalId, 'null') FROM Assessments WHERE AssessmentId = 'pinned';"));
+        Assert.Equal("0", Scalar(database, "SELECT CAST(COUNT(*) AS TEXT) FROM Assessments;"));
         Assert.Equal("0", Scalar(database, "SELECT CAST(COUNT(*) AS TEXT) FROM Proposals;"));
+    }
+
+    [Fact]
+    public void AProposalWhoseAssessmentIsStillKeptIsNotDeletedAndKeepsTheAssessmentItsOwn()
+    {
+        var repository = NewRepository("delete-kept.fwdata", out var database);
+        var proposal = CanonicalId.Mint("proposal/");
+        SeedProposal(database, proposal.Value);
+        Execute(database, "UPDATE Proposals SET Status = 'rejected' WHERE ProposalId = $proposal;", proposal.Value);
+        repository.Record(NewAssessment("kept", proposal, "sha256:intent", "Correctness"));
+
+        Assert.Throws<InvalidOperationException>(() => new ProposalRepository(database).DeleteArchived(proposal));
+
+        Assert.Equal(proposal.Value, Scalar(database, "SELECT ProposalId FROM Assessments WHERE AssessmentId = 'kept';"));
     }
 
     private static void Execute(MotifDatabase database, string sql, string proposalId)
