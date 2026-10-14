@@ -53,9 +53,9 @@ public static class EditAllomorphConditionComposer
         ValidateEnvironments(cache, desired);
 
         var existing = current.ToHashSet();
-        return existing.Except(desired).OrderBy(IdKey, StringComparer.Ordinal)
+        return existing.Except(desired, CanonicalId.ByGuid).OrderBy(IdKey, StringComparer.Ordinal)
             .Select(id => ReferenceOperation(removeKind, intent.Target, id))
-            .Concat(desired.Except(existing).OrderBy(IdKey, StringComparer.Ordinal)
+            .Concat(desired.Except(existing, CanonicalId.ByGuid).OrderBy(IdKey, StringComparer.Ordinal)
                 .Select(id => ReferenceOperation(addKind, intent.Target, id)))
             .ToArray();
     }
@@ -98,7 +98,7 @@ public static class EditAllomorphConditionComposer
 
     private static CanonicalId[] Unique(IReadOnlyList<CanonicalId> ids, string name)
     {
-        if (ids.Distinct().Count() != ids.Count)
+        if (ids.Distinct(CanonicalId.ByGuid).Count() != ids.Count)
             throw new InvalidOperationException($"'{ConstructName}': '{name}' must contain unique identities.");
         return ids.ToArray();
     }
@@ -106,7 +106,7 @@ public static class EditAllomorphConditionComposer
     private static void ValidateEnvironments(LcmCache cache, IReadOnlyList<CanonicalId> ids)
     {
         var environments = cache.LangProject.PhonologicalDataOA.EnvironmentsOS
-            .Select(item => CanonicalId.FromGuid(item.Guid)).ToHashSet();
+            .Select(item => CanonicalId.FromGuid(item.Guid)).ToHashSet(CanonicalId.ByGuid);
         foreach (var id in ids)
         {
             _ = ReferenceFieldLowering.Resolve<IPhEnvironment>(cache, id, ConstructName);
@@ -119,7 +119,7 @@ public static class EditAllomorphConditionComposer
     private static void RequireExpected(CanonicalId target, IReadOnlyList<CanonicalId> expected,
         IReadOnlyList<CanonicalId> current)
     {
-        if (!expected.SequenceEqual(current))
+        if (!expected.SequenceEqual(current, CanonicalId.ByGuid))
             throw new InvalidOperationException(
                 $"'{ConstructName}': target '{target.Value}' condition references differ from the expected list.");
     }
@@ -128,7 +128,8 @@ public static class EditAllomorphConditionComposer
         new(CanonicalId.Mint(), kind, target: target,
             after: JsonSerializer.SerializeToElement(new { member = member.Value }), rationale: Rationale);
 
-    private static string IdKey(CanonicalId id) => id.Value;
+    // Ordered by the identity the suffix encodes, so a prefixed spelling sorts with its unprefixed twin.
+    private static string IdKey(CanonicalId id) => id.Suffix;
 
     private static InvalidOperationException WrongTarget(EditAllomorphConditionIntent intent, string expected) =>
         new($"'{ConstructName}': target '{intent.Target.Value}' must be {expected} for field '{intent.Field}'.");

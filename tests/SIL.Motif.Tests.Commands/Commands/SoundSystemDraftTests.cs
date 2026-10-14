@@ -109,9 +109,12 @@ public sealed class SoundSystemDraftTests(PristineProjectFixture pristine)
         Assert.NotEmpty(ProposalDryRunner.Run(scratch, proposal).ExpectedEffects);
     }
 
-    [Fact]
-    public void EditAllomorphConditionDependsOnAnEnvironmentCreatedEarlierInTheDraft()
+    [Theory]
+    [InlineData("")]
+    [InlineData("environment/")]
+    public void EditAllomorphConditionDependsOnAnEnvironmentCreatedEarlierInTheDraft(string prefix)
     {
+        // The prefix is optional (design rule 8): a prefixed spelling of the created id must earn the same edge.
         using var cache = pristine.NewScratch();
         var path = cache.ProjectId.Path;
         var entry = cache.ServiceLocator.GetInstance<ILexEntryRepository>().GetObject(pristine.Seed.FirstEntryId);
@@ -121,7 +124,7 @@ public sealed class SoundSystemDraftTests(PristineProjectFixture pristine)
         cache.Dispose();
 
         const string version = "0.1.0";
-        const string draft = "condition-new-environment";
+        var draft = "condition-new-environment" + (prefix.Length == 0 ? "" : "-prefixed");
         Assert.True(ProposalCommands.New(new(path, version, draft, "Restrict one stem allomorph")).Succeeded);
         Assert.True(ProposalCommands.Comment(new(path, version, draft,
             "The new typed environment narrows this allomorph without changing its shared users.")).Succeeded);
@@ -150,7 +153,7 @@ public sealed class SoundSystemDraftTests(PristineProjectFixture pristine)
                 target,
                 field = "phoneEnv",
                 expectedEnvironments = Array.Empty<string>(),
-                environments = new[] { environmentCreate.EntityId! },
+                environments = new[] { prefix + environmentCreate.EntityId! },
             })));
         Assert.True(condition.Succeeded, condition.Refusal?.Message);
         AssertCreatedObjectsMatch(condition.Value!);

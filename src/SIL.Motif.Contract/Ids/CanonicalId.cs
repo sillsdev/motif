@@ -190,6 +190,24 @@ public readonly struct CanonicalId : IEquatable<CanonicalId>, IComparable<Canoni
         return bytes;
     }
 
+    /// <summary>
+    /// Compares ids by the GUID they encode, ignoring the optional prefix (design rule 8), for every place that asks
+    /// whether two ids name one object: operation slots, staged-dependency edges and Footprint exclusions.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="Equals(CanonicalId)"/> stays exact, because an id's spelling is part of a canonical document; this
+    /// comparer is for identity questions. It decodes rather than comparing suffix text, since the last of the 22
+    /// characters carries bits the GUID does not use.
+    /// </remarks>
+    public static System.Collections.Generic.IEqualityComparer<CanonicalId> ByGuid { get; } = new GuidComparer();
+
+    private sealed class GuidComparer : System.Collections.Generic.IEqualityComparer<CanonicalId>
+    {
+        public bool Equals(CanonicalId x, CanonicalId y) => x.ToGuid() == y.ToGuid();
+
+        public int GetHashCode(CanonicalId id) => id.ToGuid().GetHashCode();
+    }
+
     public bool Equals(CanonicalId other) =>
         string.Equals(Prefix, other.Prefix, StringComparison.Ordinal) &&
         string.Equals(_suffix, other._suffix, StringComparison.Ordinal);

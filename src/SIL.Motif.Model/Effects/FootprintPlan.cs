@@ -40,7 +40,7 @@ public static class FootprintPlan
     {
         if (proposal is null) throw new ArgumentNullException(nameof(proposal));
 
-        var minted = new HashSet<CanonicalId>();
+        var minted = new HashSet<CanonicalId>(CanonicalId.ByGuid);
         foreach (var operation in proposal.Operations)
         {
             if (operation.EntityId is { } entityId)

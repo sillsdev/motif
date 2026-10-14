@@ -96,7 +96,7 @@ internal static class ReferenceSequenceFieldLowering
     {
         for (var index = 0; index < sequence.Count; index++)
         {
-            if (CanonicalId.FromGuid(sequence[index].Guid) == memberId) return index;
+            if (sequence[index].Guid == memberId.ToGuid()) return index;
         }
 
         return -1;
