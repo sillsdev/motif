@@ -15,10 +15,39 @@ public sealed class ToolSurfaceTests
     public void EveryEligibleCommandHasAToolAndNoOtherCommandDoes()
     {
         foreach (var command in CommandCatalog.All)
-            Assert.Equal(command.Surface is CommandSurface.AdvancedAi or CommandSurface.Released &&
-                command.Agent != AgentClass.HumanOnly,
+            Assert.Equal(command.IsAgentTool,
                 AgentTools.All.Any(tool => tool.Requests.Contains(command.RequestType)));
         Assert.All(AgentTools.All, tool => Assert.NotEqual(AgentClass.HumanOnly, tool.Class));
+    }
+
+    [Fact]
+    public void OnlyTheTwoNumeralEditorsOptOutOfDefaultToolExposure()
+    {
+        var optedOut = CommandCatalog.All.Where(command => !command.ExposeAsAgentTool)
+            .Select(command => command.Name)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.Equal(new[]
+        {
+            "compose-edit-affix-inflection-classes",
+            "compose-edit-part-of-speech-inflection-class-default",
+        }, optedOut);
+
+        var numeralEditors = CommandCatalog.All.Where(command =>
+            command.Name is "compose-edit-part-of-speech-inflection-class-default" or
+                "compose-edit-affix-inflection-classes").ToArray();
+        Assert.Equal(2, numeralEditors.Length);
+        Assert.All(numeralEditors, command =>
+        {
+            Assert.Equal(CommandSurface.AdvancedAi, command.Surface);
+            Assert.Equal(AgentClass.Draft, command.Agent);
+            Assert.False(command.IsAgentTool);
+            Assert.DoesNotContain(AgentTools.All, tool => tool.Requests.Contains(command.RequestType));
+        });
+
+        Assert.All(CommandCatalog.All.Except(numeralEditors), command =>
+            Assert.True(command.ExposeAsAgentTool));
     }
 
     [Theory]
