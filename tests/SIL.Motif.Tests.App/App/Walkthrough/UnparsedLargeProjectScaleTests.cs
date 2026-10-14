@@ -155,6 +155,18 @@ public sealed class UnparsedLargeProjectScaleTests(ITestOutputHelper output)
             var diagnostics = window.Workspace.Context.SelectionReads.Reader!.Diagnostics;
             Assert.InRange(diagnostics.LiveLineModels, 1, 48);
             Assert.InRange(diagnostics.LiveTokenModels, 1, 512);
+            window.WaitUntil(() =>
+            {
+                reader.ScrollToEnd();
+                reader.UpdateLayout();
+                var finalStrip = AnalyzeTextsLayoutTests.Strips(panel).FirstOrDefault(strip =>
+                    ResultsInTextPanel.TokenOf(strip)?.Occurrence == finalPosition.Location.Anchor);
+                if (finalStrip is null) return false;
+                var position = finalStrip.TranslatePoint(new Point(), reader);
+                return position is not null && new Rect(reader.Viewport).Intersects(
+                    new Rect(position.Value, finalStrip.Bounds.Size));
+            }, TimeSpan.FromSeconds(30), "the Text reader did not realize its final selected word",
+                () => $"offset {reader.Offset} in extent {reader.Extent} with viewport {reader.Viewport}");
             var strip = Assert.Single(AnalyzeTextsLayoutTests.Strips(panel), strip =>
                 ResultsInTextPanel.TokenOf(strip)?.Occurrence == finalPosition.Location.Anchor);
             var origin = strip.TranslatePoint(new Point(), reader);
