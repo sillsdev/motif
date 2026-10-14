@@ -70,35 +70,6 @@ public sealed class SharedWordListResponsiveTests
                 }
             });
 
-            var fake = new FakeCommandClient();
-            fake.PendingChangesIs(ReviewScreenshots.Blocked());
-            var (reviewWorkspace, reviewWindow) = await ReviewScreenshots.OpenAsync(fake);
-            try
-            {
-                reviewWorkspace.CurrentPage = WorkspacePage.Review;
-                PageScreenshots.Settle(reviewWindow);
-                foreach (var theme in Themes)
-                foreach (var size in Sizes)
-                {
-                    ApplySize(reviewWindow, size, theme);
-                    var slots = reviewWindow.GetVisualDescendants().OfType<WordListSlot>()
-                        .Where(slot => slot.IsEffectivelyVisible && slot.CurrentLayout is not null).ToArray();
-                    var state = $"6-review, 640x{size.Height} at {size.Zoom}% {theme.Name}";
-                    Record(slots.Length > 0, state,
-                        "no visible production WordListSlot was measured", failures);
-
-                    for (var index = 0; index < slots.Length; index++)
-                        InspectSlotLayout(slots[index], new ResponsiveScene("6-review", TooltipScene.ReviewStaged,
-                            WordListSchemas.Review, true, true), index, size, theme.Name, reviewWindow, failures);
-                }
-            }
-            finally
-            {
-                Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
-                WindowZoomPolicy.Apply(Application.Current!, ZoomPolicy.DefaultPercent);
-                reviewWindow.Close();
-            }
-
             Record(cacheWasChecked, "shared word-list cache", "no measured slot was available for a scroll check", failures);
             Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures));
         }, TimeSpan.FromMinutes(5));
@@ -157,6 +128,8 @@ public sealed class SharedWordListResponsiveTests
         fixture.Width = 640;
         var workspace = fixture.Workspace;
         var window = fixture.Window;
+        // These check returning use; the first-run notice is acknowledged as a returning user has.
+        workspace.TechDemoNotice?.GotItCommand.Execute(null);
         try
         {
             foreach (var scene in selectedScenes ?? Scenes)

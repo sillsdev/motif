@@ -2,16 +2,139 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:sys="clr-namespace:System;assembly=System.Runtime"
              xmlns:app="clr-namespace:SIL.Motif.App"
+             xmlns:controls="clr-namespace:SIL.Motif.App.Controls"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              xmlns:contract="clr-namespace:SIL.Motif.Contract.Responses;assembly=SIL.Motif.Contract"
              x:Class="SIL.Motif.App.Views.ParsimonyPage"
              x:DataType="vm:ParsimonyPageModel">
+  <UserControl.Resources>
+    <DataTemplate x:Key="ParsimonySidePanelTemplate" x:DataType="vm:ParsimonyPageModel">
+      <StackPanel Classes="parsimonySidePanel" MaxWidth="{StaticResource Component.Parsimony.SidePanelWidth}">
+        <views:CopyableTextBlock Classes="muted" Text="{Binding UnavailableText}" TextWrapping="Wrap"
+                                 IsVisible="{Binding !IsListed}" AutomationProperties.Name="Findings not available" />
+        <StackPanel Classes="parsimonyStack" IsVisible="{Binding IsListed}">
+          <StackPanel Orientation="Horizontal" Classes="parsimonyTabs">
+            <Button Classes="parsimonyTab" Classes.selected="{Binding ShowingActive}" Content="{Binding ActiveTabLabel}"
+                    Command="{Binding ShowActiveCommand}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParsimonyActiveTab}" />
+            <Button Classes="parsimonyTab" Classes.selected="{Binding ShowingSuppressed}" Content="{Binding SuppressedTabLabel}"
+                    Command="{Binding ShowSuppressedCommand}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParsimonySuppressedTab}" />
+          </StackPanel>
+          <views:CopyableTextBlock Classes="parsimonyMessage" Text="{Binding AxisSummary}" IsVisible="{Binding ShowingActive}"
+                                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParsimonySummary}" />
+          <StackPanel Classes="parsimonyStack" IsVisible="{Binding ShowingActive}">
+            <views:CopyableTextBlock Classes="parsimonyGroupTitle" Text="Kind of finding" />
+            <ItemsControl x:Name="ParsimonyKindFilters" ItemsSource="{Binding KindFilters}" AutomationProperties.Name="Filter by kind">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><WrapPanel Classes="parsimonyFilters" /></ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:ParsimonyFilterChoice">
+                  <views:FilterChip Label="{Binding Name}" Count="{Binding Count}" IsActive="{Binding IsSelected}"
+                                    Command="{Binding SelectCommand}" CommandParameter="{Binding Key}"
+                                    AutomationProperties.AutomationId="{Binding AutomationId}" />
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <views:CopyableTextBlock Classes="parsimonyGroupTitle" Text="Decision" />
+            <ItemsControl x:Name="ParsimonyDecisionFilters" ItemsSource="{Binding DecisionFilters}" AutomationProperties.Name="Filter by decision">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><WrapPanel Classes="parsimonyFilters" /></ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:ParsimonyFilterChoice">
+                  <views:FilterChip Label="{Binding Name}" Count="{Binding Count}" IsActive="{Binding IsSelected}"
+                                    Command="{Binding SelectCommand}" CommandParameter="{Binding Key}"
+                                    AutomationProperties.AutomationId="{Binding AutomationId}" />
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <views:CopyableTextBlock Classes="muted" Text="{Binding AxisLegend}" TextWrapping="Wrap" />
+          </StackPanel>
+          <views:CopyableTextBlock Classes="muted" Text="{Binding LoadingNote}" TextWrapping="Wrap"
+                                   IsVisible="{Binding HasLoadingNote}" AutomationProperties.Name="Findings still loading" />
+        </StackPanel>
+      </StackPanel>
+    </DataTemplate>
+
+    <DataTemplate x:Key="ParsimonyInspectorTemplate" x:DataType="vm:ParsimonyPageModel">
+      <ScrollViewer MaxWidth="{StaticResource Component.Parsimony.InspectorWidth}">
+        <StackPanel Classes="parsimonyDetailColumn">
+          <views:CopyableTextBlock Classes="parsimonyMessage" Text="{Binding SelectionMessage}" TextWrapping="Wrap"
+                                   IsVisible="{Binding HasSelectionMessage}" />
+          <Border Classes="card parsimonyDetail" IsVisible="{Binding HasEvidence}" AutomationProperties.Name="Finding evidence"
+                  AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParsimonyEvidence}">
+            <StackPanel Spacing="{StaticResource Intent.Space.Minimal}">
+              <views:CopyableTextBlock Classes="parsimonyGroupTitle" Text="{Binding Evidence.Title}" TextWrapping="Wrap" />
+              <ItemsControl x:Name="ParsimonyEvidenceDetailsItems" ItemsSource="{Binding Evidence.Details}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:InspectorDetail">
+                    <StackPanel>
+                      <views:CopyableTextBlock Classes="muted" Text="{Binding Label}" />
+                      <views:CopyableTextBlock Text="{Binding Value}" TextWrapping="Wrap" />
+                    </StackPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <ItemsControl x:Name="ParsimonyEvidenceLimitationsItems" ItemsSource="{Binding Evidence.Limitations}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="sys:String">
+                    <views:CopyableTextBlock Text="{Binding}" TextWrapping="Wrap" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </Border>
+
+          <Border Classes="card parsimonyDetail" IsVisible="{Binding ShowActiveActions}" AutomationProperties.Name="Decide this finding">
+            <StackPanel Spacing="{StaticResource Intent.Space.Minimal}">
+              <views:CopyableTextBlock Classes="muted" Text="Notebook record type for this decision" TextWrapping="Wrap"
+                                       IsVisible="{Binding HasRecordTypes}" />
+              <ComboBox x:Name="ParsimonyRecordTypes" ItemsSource="{Binding RecordTypes}" SelectedItem="{Binding SelectedRecordType}"
+                        IsVisible="{Binding HasRecordTypes}" AutomationProperties.Name="Notebook record type"
+                        AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParsimonyRecordType}">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="contract:NotebookRecordType">
+                    <views:CopyableTextBlock Text="{Binding Name}" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+              <TextBox PlaceholderText="Reason (optional)" Text="{Binding ReasonText}" AcceptsReturn="True" TextWrapping="Wrap"
+                       AutomationProperties.Name="Reason" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParsimonyReason}" />
+              <TextBox PlaceholderText="Question to ask" Text="{Binding QuestionText}" AcceptsReturn="True" TextWrapping="Wrap"
+                       AutomationProperties.Name="Question" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParsimonyQuestion}" />
+              <WrapPanel Orientation="Horizontal">
+                <Button Content="Keep" Command="{Binding KeepCommand}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParsimonyKeep}" />
+                <Button Content="Defer" Command="{Binding DeferCommand}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParsimonyDefer}" />
+                <Button Content="Ask" Command="{Binding AskCommand}" Click="OnAsk"
+                        AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParsimonyAsk}" />
+              </WrapPanel>
+              <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding FixNote}" IsVisible="{Binding HasFixNote}" />
+            </StackPanel>
+          </Border>
+
+          <Border Classes="card parsimonyDetail" IsVisible="{Binding ShowSuppressedActions}" AutomationProperties.Name="Saved decision">
+            <StackPanel Spacing="{StaticResource Intent.Space.Minimal}">
+              <Button Content="Return to Active" Command="{Binding ReturnToActiveCommand}"
+                      AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParsimonyReturn}" />
+            </StackPanel>
+          </Border>
+
+          <views:CopyableTextBlock Classes="parsimonyMessage" Text="{Binding ActionMessage}" TextWrapping="Wrap"
+                                   IsVisible="{Binding HasActionMessage}"
+                                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParsimonyActionMessage}" />
+          <HyperlinkButton Classes="reviewLink" Content="Review changes" Command="{Binding ShowPageCommand}"
+                           CommandParameter="{x:Static vm:WorkspacePage.Review}" IsVisible="{Binding HasStagedAction}"
+                           AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParsimonyReviewChanges}" />
+        </StackPanel>
+      </ScrollViewer>
+    </DataTemplate>
+  </UserControl.Resources>
+
   <Grid RowDefinitions="Auto,*" Classes="parsimonyPanel">
-    <!-- The page reads the stored Report when the project opens and never starts a check, so it says what it has. -->
-    <StackPanel Grid.Row="0" Spacing="{DynamicResource Intent.Space.Minimal}">
+    <StackPanel Grid.Row="0" Spacing="{StaticResource Intent.Space.Minimal}">
       <Border Classes="card parsimonyNotice" IsVisible="{Binding HasMessage}" AutomationProperties.Name="Parsimony state">
-        <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+        <StackPanel Spacing="{StaticResource Intent.Space.Minimal}">
           <views:CopyableTextBlock Classes="parsimonyMessage" Text="{Binding Message}" TextWrapping="Wrap" />
           <views:CopyableTextBlock Classes="muted" Text="{Binding NextStep}" TextWrapping="Wrap" IsVisible="{Binding HasNextStep}" />
         </StackPanel>
@@ -34,163 +157,153 @@
       </Border>
     </StackPanel>
 
-    <Grid Grid.Row="1" ColumnDefinitions="3*,2*" IsVisible="{Binding IsListed}">
-      <Grid Grid.Column="0" RowDefinitions="Auto,*">
-        <StackPanel Grid.Row="0" Spacing="{DynamicResource Intent.Space.Minimal}">
-          <StackPanel Orientation="Horizontal" Classes="parsimonyTabs" Spacing="{DynamicResource Intent.Space.Minimal}">
-            <Button Classes="parsimonyTab" Classes.selected="{Binding ShowingActive}" Content="{Binding ActiveTabLabel}"
-                    Command="{Binding ShowActiveCommand}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParsimonyActiveTab}" />
-            <Button Classes="parsimonyTab" Classes.selected="{Binding ShowingSuppressed}" Content="{Binding SuppressedTabLabel}"
-                    Command="{Binding ShowSuppressedCommand}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParsimonySuppressedTab}" />
-          </StackPanel>
-          <views:CopyableTextBlock Classes="parsimonyMessage" Text="{Binding AxisSummary}" IsVisible="{Binding ShowingActive}"
-                                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParsimonySummary}" />
-          <views:CopyableTextBlock Classes="muted" Text="{Binding AxisLegend}" TextWrapping="Wrap"
-                                   IsVisible="{Binding ShowingActive}" />
-          <views:CopyableTextBlock Classes="muted" Text="{Binding LoadingNote}" TextWrapping="Wrap"
-                                   IsVisible="{Binding HasLoadingNote}" AutomationProperties.Name="Findings still loading" />
-        </StackPanel>
-
-        <!-- Each list scrolls itself and realizes only the rows near the window, so thousands of findings stay light. -->
-        <Grid Grid.Row="1">
-          <ListBox x:Name="ParsimonyRowsItems" Classes="parsimonyRows" ItemsSource="{Binding Rows}"
-                   IsVisible="{Binding ShowingActive}" AutomationProperties.Name="Active findings"
-                   KeyboardNavigation.TabNavigation="Continue">
-            <ListBox.ItemsPanel>
-              <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
-            </ListBox.ItemsPanel>
-            <ListBox.ItemTemplate>
-              <DataTemplate x:DataType="vm:ParsimonyListRow">
-                <StackPanel>
-                  <StackPanel Classes="parsimonyGroup" IsVisible="{Binding IsHeader}">
-                    <Grid ColumnDefinitions="*,Auto" Classes="parsimonyGroupHeader">
-                      <views:CopyableTextBlock Classes="parsimonyGroupTitle" Text="{Binding Title}" TextWrapping="Wrap" />
-                      <views:CopyableTextBlock Grid.Column="1" Classes="muted" Text="{Binding Count}" VerticalAlignment="Center" />
-                    </Grid>
-                    <views:CopyableTextBlock Classes="muted" Text="{Binding Detail}" TextWrapping="Wrap" />
-                  </StackPanel>
-                  <Button Classes="parsimonyRow" Classes.selected="{Binding IsSelected}" IsVisible="{Binding !IsHeader}"
-                          Command="{Binding SelectCommand}" CommandParameter="{Binding Link}"
-                          AutomationProperties.Name="{Binding Description}"
-                          AutomationProperties.AutomationId="{Binding AutomationId}">
-                    <Grid ColumnDefinitions="*,Auto" Classes="parsimonyRowGrid">
-                      <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-                        <views:CopyableTextBlock Classes="parsimonyGroupTitle parsimonyRowItems" Text="{Binding Items}" TextWrapping="Wrap" />
-                        <views:CopyableTextBlock Classes="muted" Text="{Binding Description}" TextWrapping="Wrap" />
-                      </StackPanel>
-                      <views:MarkChip Grid.Column="1" Text="{Binding Disposition}" WrapText="True" VerticalAlignment="Center"
-                                      IsVisible="{Binding HasDisposition}"
-                                      AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParsimonyDecision}" />
-                    </Grid>
-                  </Button>
-                </StackPanel>
-              </DataTemplate>
-            </ListBox.ItemTemplate>
-          </ListBox>
-
-          <Grid RowDefinitions="Auto,*" IsVisible="{Binding ShowingSuppressed}">
-            <views:CopyableTextBlock Grid.Row="0" Classes="muted" TextWrapping="Wrap" IsVisible="{Binding HasSuppressedEmptyText}"
-                                     Text="Nothing is suppressed. Keep or defer a finding, then Apply and Refresh, and it is listed here." />
-            <ListBox x:Name="ParsimonySuppressedItems" Grid.Row="1" Classes="parsimonyRows" ItemsSource="{Binding SuppressedItems}"
-                     AutomationProperties.Name="Suppressed decisions" KeyboardNavigation.TabNavigation="Continue">
-              <ListBox.ItemsPanel>
-                <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
-              </ListBox.ItemsPanel>
-              <ListBox.ItemTemplate>
-                <DataTemplate x:DataType="vm:ParsimonySuppressedItem">
-                  <Button Classes="parsimonyRow" Classes.selected="{Binding IsSelected}"
-                          Command="{Binding SelectCommand}" CommandParameter="{Binding Key}"
-                          AutomationProperties.AutomationId="{Binding AutomationId}">
-                    <Grid ColumnDefinitions="*,Auto" Classes="parsimonyRowGrid">
-                      <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-                        <views:CopyableTextBlock Classes="parsimonyGroupTitle" Text="{Binding Title}" TextWrapping="Wrap" />
-                        <views:CopyableTextBlock Classes="muted" Text="{Binding Identity}" TextWrapping="Wrap" />
-                        <views:CopyableTextBlock Classes="muted" Text="{Binding Reason}" TextWrapping="Wrap" />
-                        <views:CopyableTextBlock Classes="muted" Text="{Binding StateLabel}" TextWrapping="Wrap" />
-                        <views:CopyableTextBlock Classes="parsimonyDisposition" Text="{Binding ReturnLabel}" TextWrapping="Wrap"
-                                                 IsVisible="{Binding HasReturn}" />
-                      </StackPanel>
-                      <views:MarkChip Grid.Column="1" Text="{Binding Decision}" VerticalAlignment="Center"
-                                      IsVisible="{Binding HasDecision}"
-                                      AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParsimonyDecision}" />
-                    </Grid>
-                  </Button>
-                </DataTemplate>
-              </ListBox.ItemTemplate>
-            </ListBox>
+    <Grid Grid.Row="1" IsVisible="{Binding IsListed}" controls:DenseTable.IsWidthHost="True">
+      <Grid RowDefinitions="Auto,*" IsVisible="{Binding ShowingActive}">
+        <Border Classes="denseTableColumnHeader">
+          <Grid controls:DenseTable.Columns="2* 1.2* 1.5* 1.2* Component.Parsimony.Column.DecisionsWidth Component.DenseTable.MenuSize"
+                controls:DenseTable.CompactColumns="* 0 0 0 Component.Parsimony.Column.DecisionsWidth Component.DenseTable.MenuSize">
+            <views:CopyableTextBlock Classes="denseTableHeading" Text="Finding" VerticalAlignment="Center" />
+            <Border Grid.Column="1" controls:DenseTable.Secondary="True">
+              <views:CopyableTextBlock Classes="denseTableHeading" Text="Counted" VerticalAlignment="Center" />
+            </Border>
+            <Border Grid.Column="2" controls:DenseTable.Secondary="True">
+              <views:CopyableTextBlock Classes="denseTableHeading" Text="Strength of evidence" TextWrapping="NoWrap"
+                         TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+            </Border>
+            <Border Grid.Column="3" controls:DenseTable.Secondary="True">
+              <views:CopyableTextBlock Classes="denseTableHeading" Text="Paired parser check" TextWrapping="NoWrap"
+                         TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+            </Border>
+            <views:CopyableTextBlock Grid.Column="4" Classes="denseTableHeading" Text="Decision" VerticalAlignment="Center" />
           </Grid>
-        </Grid>
+        </Border>
+        <ListBox x:Name="ParsimonyRowsItems" Grid.Row="1" Classes="denseTable"
+                 ItemsSource="{Binding TableEntries}"
+                 SelectedItem="{Binding SelectedTableEntry, Mode=TwoWay}"
+                 Focusable="True" IsTabStop="True" KeyboardNavigation.TabNavigation="Once"
+                 AutomationProperties.Name="Active findings">
+          <ListBox.ItemsPanel>
+            <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+          </ListBox.ItemsPanel>
+          <ListBox.DataTemplates>
+            <DataTemplate DataType="vm:DenseTableGroup" x:DataType="vm:DenseTableGroup">
+              <Border Classes="denseTableGroupHeader">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Intent.Space.Group}">
+                  <TextBlock Classes="denseTableGroupName" Text="{Binding Label}" TextWrapping="Wrap"
+                             TextTrimming="CharacterEllipsis" MaxLines="1" VerticalAlignment="Center"
+                             ToolTip.Tip="{Binding Label}" AutomationProperties.Name="{Binding Label}" />
+                  <TextBlock Grid.Column="1" Classes="denseTableCount" Text="{Binding CountText}"
+                             VerticalAlignment="Center" />
+                </Grid>
+              </Border>
+            </DataTemplate>
+            <DataTemplate DataType="vm:ParsimonyListRow" x:DataType="vm:ParsimonyListRow">
+              <Grid>
+                <Border Classes="denseTableRow" AutomationProperties.AutomationId="{Binding AutomationId}">
+                  <Grid controls:DenseTable.Columns="2* 1.2* 1.5* 1.2* Component.Parsimony.Column.DecisionsWidth Component.DenseTable.MenuSize"
+                        controls:DenseTable.CompactColumns="* 0 0 0 Component.Parsimony.Column.DecisionsWidth Component.DenseTable.MenuSize">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Intent.Space.Compact}"
+                          VerticalAlignment="Center">
+                      <views:CopyableTextBlock Classes="denseTableCell denseTableItem" Text="{Binding Items}"
+                                               TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                                               VerticalAlignment="Center"
+                                               AutomationProperties.Name="{Binding Items}" />
+                      <views:MarkChip Grid.Column="1" Text="{Binding Disposition}" Compact="True"
+                                      VerticalAlignment="Center" IsVisible="{Binding HasDisposition}"
+                                      AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParsimonyDecision}" />
+                    </Grid>
+                    <Border Grid.Column="1" controls:DenseTable.Secondary="True">
+                      <views:CopyableTextBlock Classes="denseTableCell" Text="{Binding Description}"
+                                               TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                                               VerticalAlignment="Center" />
+                    </Border>
+                    <Border Grid.Column="2" controls:DenseTable.Secondary="True">
+                      <views:CopyableTextBlock Classes="denseTableCell" Text="{Binding StrengthOfEvidence}"
+                                               TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                                               VerticalAlignment="Center" />
+                    </Border>
+                    <Border Grid.Column="3" controls:DenseTable.Secondary="True">
+                      <views:CopyableTextBlock Classes="denseTableCell" Text="{Binding PairedParserCheck}"
+                                               TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                                               VerticalAlignment="Center" />
+                    </Border>
+                    <StackPanel Grid.Column="4" Classes="parsimonyDecisionActions" Orientation="Horizontal"
+                                Spacing="{StaticResource Intent.Space.Minimal}" VerticalAlignment="Center">
+                      <Button Classes="denseTableAction" Content="Keep" Command="{Binding KeepCommand}"
+                              AutomationProperties.Name="{Binding Items, StringFormat='Keep {0}'}"
+                              AutomationProperties.AutomationId="{Binding KeepAutomationId}" />
+                      <Button Classes="denseTableAction" Content="Defer" Command="{Binding DeferCommand}"
+                              AutomationProperties.Name="{Binding Items, StringFormat='Defer {0}'}"
+                              AutomationProperties.AutomationId="{Binding DeferAutomationId}" />
+                      <Button Classes="denseTableAction" Content="Ask" Command="{Binding AskCommand}"
+                              Click="OnAsk"
+                              AutomationProperties.Name="{Binding Items, StringFormat='Ask about {0}'}"
+                              AutomationProperties.AutomationId="{Binding AskAutomationId}" />
+                    </StackPanel>
+                    <Button Grid.Column="5" Classes="denseTableMenu" Content="⋯" IsTabStop="True"
+                            AutomationProperties.Name="{Binding Items, StringFormat='Actions for {0}'}"
+                            AutomationProperties.AutomationId="{Binding ActionsAutomationId}">
+                      <Button.Flyout>
+                        <Flyout Placement="BottomEdgeAlignedLeft">
+                          <StackPanel Classes="menu">
+                            <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
+                                    Content="Details" Click="OnShowDetails"
+                                    AutomationProperties.Name="{Binding Items, StringFormat='Details for {0}'}"
+                                    AutomationProperties.AutomationId="{Binding DetailsAutomationId}" />
+                            <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
+                                    Content="Keep" Command="{Binding KeepCommand}"
+                                    AutomationProperties.AutomationId="{Binding KeepAutomationId}" />
+                            <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
+                                    Content="Defer" Command="{Binding DeferCommand}"
+                                    AutomationProperties.AutomationId="{Binding DeferAutomationId}" />
+                            <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
+                                    Content="Ask" Command="{Binding AskCommand}" Click="OnAsk"
+                                    AutomationProperties.AutomationId="{Binding AskAutomationId}" />
+                          </StackPanel>
+                        </Flyout>
+                      </Button.Flyout>
+                    </Button>
+                  </Grid>
+                </Border>
+                <Border Classes="denseTableFocusRing" />
+              </Grid>
+            </DataTemplate>
+          </ListBox.DataTemplates>
+        </ListBox>
       </Grid>
 
-      <ScrollViewer Grid.Column="1">
-      <StackPanel Classes="parsimonyDetailColumn">
-        <views:CopyableTextBlock Classes="parsimonyMessage" Text="{Binding SelectionMessage}" TextWrapping="Wrap"
-                                 IsVisible="{Binding HasSelectionMessage}" />
-        <Border Classes="card parsimonyDetail" IsVisible="{Binding HasEvidence}" AutomationProperties.Name="Finding evidence"
-                AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParsimonyEvidence}">
-          <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-            <views:CopyableTextBlock Classes="parsimonyGroupTitle" Text="{Binding Evidence.Title}" TextWrapping="Wrap" />
-            <ItemsControl x:Name="ParsimonyEvidenceDetailsItems" ItemsSource="{Binding Evidence.Details}">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="vm:InspectorDetail">
-                  <StackPanel>
-                    <views:CopyableTextBlock Classes="muted" Text="{Binding Label}" />
-                    <views:CopyableTextBlock Text="{Binding Value}" TextWrapping="Wrap" />
+      <Grid RowDefinitions="Auto,*" IsVisible="{Binding ShowingSuppressed}">
+        <views:CopyableTextBlock Grid.Row="0" Classes="muted" TextWrapping="Wrap" IsVisible="{Binding HasSuppressedEmptyText}"
+                                 Text="Nothing is suppressed. Keep or defer a finding, then Apply and Refresh, and it is listed here." />
+        <ListBox x:Name="ParsimonySuppressedItems" Grid.Row="1" Classes="parsimonyRows" ItemsSource="{Binding SuppressedItems}"
+                 AutomationProperties.Name="Suppressed decisions" KeyboardNavigation.TabNavigation="Continue">
+          <ListBox.ItemsPanel>
+            <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+          </ListBox.ItemsPanel>
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:ParsimonySuppressedItem">
+              <Button Classes="parsimonyRow" Classes.selected="{Binding IsSelected}"
+                      Command="{Binding SelectCommand}" CommandParameter="{Binding Key}"
+                      Click="OnSuppressedDetails"
+                      AutomationProperties.AutomationId="{Binding AutomationId}">
+                <Grid ColumnDefinitions="*,Auto" Classes="parsimonyRowGrid">
+                  <StackPanel Spacing="{StaticResource Intent.Space.Minimal}">
+                    <views:CopyableTextBlock Classes="parsimonyGroupTitle" Text="{Binding Title}" TextWrapping="Wrap" />
+                    <views:CopyableTextBlock Classes="muted" Text="{Binding Identity}" TextWrapping="Wrap" />
+                    <views:CopyableTextBlock Classes="muted" Text="{Binding Reason}" TextWrapping="Wrap" />
+                    <views:CopyableTextBlock Classes="muted" Text="{Binding StateLabel}" TextWrapping="Wrap" />
+                    <views:CopyableTextBlock Classes="parsimonyDisposition" Text="{Binding ReturnLabel}" TextWrapping="Wrap"
+                                             IsVisible="{Binding HasReturn}" />
                   </StackPanel>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-            <ItemsControl x:Name="ParsimonyEvidenceLimitationsItems" ItemsSource="{Binding Evidence.Limitations}">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="sys:String">
-                  <views:CopyableTextBlock Text="{Binding}" TextWrapping="Wrap" />
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-          </StackPanel>
-        </Border>
-
-        <Border Classes="card parsimonyDetail" IsVisible="{Binding ShowActiveActions}" AutomationProperties.Name="Decide this finding">
-          <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-            <views:CopyableTextBlock Classes="muted" Text="Notebook record type for this decision" TextWrapping="Wrap"
-                                     IsVisible="{Binding HasRecordTypes}" />
-            <ComboBox x:Name="ParsimonyRecordTypes" ItemsSource="{Binding RecordTypes}" SelectedItem="{Binding SelectedRecordType}"
-                      IsVisible="{Binding HasRecordTypes}" AutomationProperties.Name="Notebook record type"
-                      AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParsimonyRecordType}">
-              <ComboBox.ItemTemplate>
-                <DataTemplate x:DataType="contract:NotebookRecordType">
-                  <views:CopyableTextBlock Text="{Binding Name}" />
-                </DataTemplate>
-              </ComboBox.ItemTemplate>
-            </ComboBox>
-            <TextBox PlaceholderText="Reason (optional)" Text="{Binding ReasonText}" AcceptsReturn="True" TextWrapping="Wrap"
-                     AutomationProperties.Name="Reason" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParsimonyReason}" />
-            <TextBox PlaceholderText="Question to ask" Text="{Binding QuestionText}" AcceptsReturn="True" TextWrapping="Wrap"
-                     AutomationProperties.Name="Question" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParsimonyQuestion}" />
-            <WrapPanel Orientation="Horizontal">
-              <Button Content="Keep" Command="{Binding KeepCommand}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParsimonyKeep}" />
-              <Button Content="Defer" Command="{Binding DeferCommand}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParsimonyDefer}" />
-              <Button Content="Ask" Command="{Binding AskCommand}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParsimonyAsk}" />
-            </WrapPanel>
-            <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding FixNote}" IsVisible="{Binding HasFixNote}" />
-          </StackPanel>
-        </Border>
-
-        <Border Classes="card parsimonyDetail" IsVisible="{Binding ShowSuppressedActions}" AutomationProperties.Name="Saved decision">
-          <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-            <Button Content="Return to Active" Command="{Binding ReturnToActiveCommand}"
-                    AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParsimonyReturn}" />
-          </StackPanel>
-        </Border>
-
-        <views:CopyableTextBlock Classes="parsimonyMessage" Text="{Binding ActionMessage}" TextWrapping="Wrap"
-                                 IsVisible="{Binding HasActionMessage}"
-                                 AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParsimonyActionMessage}" />
-        <HyperlinkButton Classes="reviewLink" Content="Review changes" Command="{Binding ShowPageCommand}"
-                         CommandParameter="{x:Static vm:WorkspacePage.Review}" IsVisible="{Binding HasStagedAction}"
-                         AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParsimonyReviewChanges}" />
-      </StackPanel>
-      </ScrollViewer>
+                  <views:MarkChip Grid.Column="1" Text="{Binding Decision}" VerticalAlignment="Center"
+                                  IsVisible="{Binding HasDecision}"
+                                  AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParsimonyDecision}" />
+                </Grid>
+              </Button>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </Grid>
     </Grid>
   </Grid>
 </UserControl>

@@ -1,5 +1,8 @@
+using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Globalization;
+using Avalonia.Collections;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.Commands.Handoff;
 using SIL.Motif.Commands.Queries;
@@ -19,12 +22,23 @@ public sealed record OpenGrammarWarningRequest(string Code) : PageRequest(Worksp
 /// </summary>
 public sealed class WarningsPageModel : PageModel
 {
+    private readonly Dictionary<GrammarWarningRowViewModel, string> _rowAreas =
+        new(ReferenceEqualityComparer.Instance);
     private int _readGeneration;
     private string? _requestedWarningCode;
+    private string? _currentArea;
+    private string? _selectedArea;
 
     public WarningsPageModel(WorkspaceContext context) : base(context)
     {
         Grammar = new GrammarViewModel(context.Commands, context.Clock);
+        Grammar.Warnings.TableEntries.CollectionChanged += OnWarningTableEntriesChanged;
+        FilteredTableEntries = new DataGridCollectionView(Grammar.Warnings.TableEntries)
+        {
+            Filter = MatchesSelectedArea,
+        };
+        AreaFilters.Add(new WarningsAreaFilterOption(null, "All areas", 0, true));
+        SetAreaCommand = new RelayCommand<WarningsAreaFilterOption>(SelectArea);
         Grammar.Warnings.ConfigureActions(
             row => Context.HandOffWarning(WordsFor(row), new WarningHandoffScope(
                 row.Message, row.GroupCode, row.AttributionState, row.IsPartialReach)),
@@ -43,6 +57,30 @@ public sealed class WarningsPageModel : PageModel
 
     /// <summary>The page's own grammar check.</summary>
     public GrammarViewModel Grammar { get; }
+
+    /// <summary>The table entries filtered by the selected Warnings area.</summary>
+    public DataGridCollectionView FilteredTableEntries { get; }
+
+    /// <summary>The Warnings area choices and their current finding counts.</summary>
+    public ObservableCollection<WarningsAreaFilterOption> AreaFilters { get; } = [];
+
+    /// <summary>Selects the Warnings area shown in the page's table.</summary>
+    public IRelayCommand<WarningsAreaFilterOption> SetAreaCommand { get; }
+
+    /// <summary>The selected finding's area for its Inspector summary, or empty when no row is selected.</summary>
+    public string SelectedWarningArea => Grammar.Warnings.SelectedTableEntry is GrammarWarningRowViewModel row &&
+        _rowAreas.TryGetValue(row, out var area) ? area : string.Empty;
+
+    /// <summary>Whether a selected finding area is available for the Inspector summary.</summary>
+    public bool HasSelectedWarningArea => SelectedWarningArea.Length > 0;
+
+    /// <summary>The selected finding's severity for its Inspector summary.</summary>
+    public string SelectedWarningSeverity => (Grammar.Warnings.SelectedTableEntry as GrammarWarningRowViewModel)?.SeverityLabel
+        ?? string.Empty;
+
+    /// <summary>The selected finding's exact word count, or its evidence label when no count is available.</summary>
+    public string SelectedWarningWordCount => (Grammar.Warnings.SelectedTableEntry as GrammarWarningRowViewModel)?.TableNamedWordsText
+        ?? string.Empty;
 
     /// <summary>Whether the open project's grammar has no check to show, so the page offers one.</summary>
     public bool IsGrammarNotChecked => Context.HasProject && !Grammar.HasChecked && !Grammar.IsLoading;
@@ -116,6 +154,18 @@ public sealed class WarningsPageModel : PageModel
 
     private void OnGrammarChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (sender == Grammar.Warnings)
+        {
+            if (e.PropertyName == nameof(GrammarWarningsViewModel.Findings)) ResetAreaFilters();
+            else if (e.PropertyName == nameof(GrammarWarningsViewModel.ShownCount)) UpdateAllAreasCount();
+            else if (e.PropertyName == nameof(GrammarWarningsViewModel.SelectedTableEntry))
+            {
+                OnPropertyChanged(nameof(SelectedWarningArea));
+                OnPropertyChanged(nameof(SelectedWarningSeverity));
+                OnPropertyChanged(nameof(SelectedWarningWordCount));
+            }
+            OnPropertyChanged(nameof(HasSelectedWarningArea));
+        }
         TryOpenRequestedWarning();
         Badge = Grammar.ShowFindings ? Grammar.Warnings.TotalCount.ToString(CultureInfo.CurrentCulture) : string.Empty;
         PublishSummary();
@@ -130,7 +180,7 @@ public sealed class WarningsPageModel : PageModel
         var row = Grammar.Warnings.Rows.Cast<GrammarWarningRowViewModel>()
             .FirstOrDefault(item => string.Equals(item.GroupCode, code, StringComparison.Ordinal));
         if (row is null) return;
-        row.IsOpen = true;
+        Grammar.Warnings.OpenDetailsCommand.Execute(row);
         _requestedWarningCode = null;
     }
 
@@ -149,5 +199,96 @@ public sealed class WarningsPageModel : PageModel
     {
         OnPropertyChanged(nameof(IsGrammarNotChecked));
         CheckGrammarCommand.NotifyCanExecuteChanged();
+    }
+
+    private bool MatchesSelectedArea(object item)
+    {
+        if (_selectedArea is null) return true;
+        return item switch
+        {
+            DenseTableGroup group => string.Equals(group.Label, _selectedArea, StringComparison.Ordinal),
+            GrammarWarningRowViewModel row => _rowAreas.TryGetValue(row, out var area) &&
+                string.Equals(area, _selectedArea, StringComparison.Ordinal),
+            _ => false,
+        };
+    }
+
+    private void SelectArea(WarningsAreaFilterOption? option)
+    {
+        if (option is null || !AreaFilters.Contains(option)) return;
+        _selectedArea = option.Area;
+        foreach (var item in AreaFilters) item.Update(item.Count,
+            string.Equals(item.Area, _selectedArea, StringComparison.Ordinal));
+        FilteredTableEntries.Refresh();
+        if (Grammar.Warnings.SelectedTableEntry is { } selected &&
+            !FilteredTableEntries.Cast<object>().Contains(selected))
+            Grammar.Warnings.SelectedTableEntry = null;
+        OnPropertyChanged(nameof(SelectedWarningArea));
+        OnPropertyChanged(nameof(SelectedWarningSeverity));
+        OnPropertyChanged(nameof(SelectedWarningWordCount));
+        OnPropertyChanged(nameof(HasSelectedWarningArea));
+    }
+
+    private void OnWarningTableEntriesChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.Action == NotifyCollectionChangedAction.Reset)
+        {
+            _rowAreas.Clear();
+            _currentArea = null;
+            foreach (var option in AreaFilters.Where(item => item.Area is not null))
+                option.Update(0, option.Area == _selectedArea);
+        }
+
+        if (e.NewItems is not null)
+        {
+            foreach (var item in e.NewItems)
+            {
+                if (item is DenseTableGroup group)
+                {
+                    _currentArea = group.Label;
+                    var option = AreaFilters.FirstOrDefault(candidate => candidate.Area == group.Label);
+                    if (option is null)
+                    {
+                        option = new WarningsAreaFilterOption(group.Label, group.Label, 0,
+                            group.Label == _selectedArea);
+                        AreaFilters.Add(option);
+                    }
+                    else
+                    {
+                        option.Update(0, group.Label == _selectedArea);
+                    }
+                }
+                else if (item is GrammarWarningRowViewModel row && _currentArea is { } area)
+                {
+                    _rowAreas[row] = area;
+                    var option = AreaFilters.FirstOrDefault(candidate => candidate.Area == area);
+                    if (option is not null) option.Update(option.Count + row.RepeatCount, area == _selectedArea);
+                }
+            }
+        }
+
+        UpdateAllAreasCount();
+        OnPropertyChanged(nameof(SelectedWarningArea));
+        OnPropertyChanged(nameof(SelectedWarningSeverity));
+        OnPropertyChanged(nameof(SelectedWarningWordCount));
+        OnPropertyChanged(nameof(HasSelectedWarningArea));
+    }
+
+    private void ResetAreaFilters()
+    {
+        _selectedArea = null;
+        _currentArea = null;
+        _rowAreas.Clear();
+        AreaFilters.Clear();
+        AreaFilters.Add(new WarningsAreaFilterOption(null, "All areas", Grammar.Warnings.ShownCount, true));
+        FilteredTableEntries.Refresh();
+        OnPropertyChanged(nameof(SelectedWarningArea));
+        OnPropertyChanged(nameof(HasSelectedWarningArea));
+    }
+
+    private void UpdateAllAreasCount()
+    {
+        var allAreas = AreaFilters.FirstOrDefault(item => item.Area is null);
+        allAreas?.Update(Grammar.Warnings.ShownCount, _selectedArea is null);
     }
 }

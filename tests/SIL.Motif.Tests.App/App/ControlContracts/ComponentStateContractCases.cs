@@ -36,6 +36,8 @@ internal enum StatePart
     Ring,
     Text,
     Glyph,
+    DenseRow,
+    DenseRing,
 }
 
 /// <summary>
@@ -73,8 +75,6 @@ internal static class ComponentStateContractCases
         new("Border.matrixCell.violation:pointerover", nameof(InteractionCueTests.AMeaningCellKeepsItsEdgeUnderThePointerAndWhenChosen)),
         new("Border.matrixCell.review:pointerover", nameof(InteractionCueTests.AMeaningCellKeepsItsEdgeUnderThePointerAndWhenChosen)),
         new("Border.matrixCell.new:pointerover", nameof(InteractionCueTests.AMeaningCellKeepsItsEdgeUnderThePointerAndWhenChosen)),
-        new("Border.warningRow:pointerover :is(Control).warningHoverTitle", nameof(WarningsPageWordsTests.ARowOpensPanGlossGuidanceAndShowsItsFieldWorksLink)),
-        new("Border.warningRow:focus-within :is(Control).warningHoverTitle", nameof(WarningsPageWordsTests.ARowOpensPanGlossGuidanceAndShowsItsFieldWorksLink)),
     ];
 
     /// <summary>
@@ -334,6 +334,17 @@ internal static class ComponentStateContractCases
         yield return new("ListBox.parsimonyRows ListBoxItem:selected" + rowsFace, "selected",
             () => WordRowsEntry(selected: true, "parsimonyRows"), StateStimulus.None, StatePart.Face,
             ContentPresenter.BackgroundProperty, "Intent.Clear");
+        const string denseRow = "ListBox.denseTable ListBoxItem";
+        yield return new(denseRow + ":pointerover Border.denseTableRow", "hover", () => DenseTableEntry(selected: false),
+            StateStimulus.Pointer, StatePart.DenseRow, Border.BackgroundProperty, "Intent.Surface.Hover");
+        yield return new(denseRow + ":selected Border.denseTableRow", "selected", () => DenseTableEntry(selected: true),
+            StateStimulus.None, StatePart.DenseRow, Border.BackgroundProperty, "Intent.Selected.Fill");
+        yield return new(denseRow + ":focus-visible Border.denseTableFocusRing", "keyboard focus",
+            () => DenseTableEntry(selected: false), StateStimulus.KeyboardFocus, StatePart.DenseRing,
+            Border.BorderBrushProperty, "Intent.Focus");
+        yield return new(denseRow + ":focus-visible Border.denseTableFocusRing", "keyboard focus",
+            () => DenseTableEntry(selected: false), StateStimulus.None, StatePart.DenseRing,
+            Border.BorderThicknessProperty, "Intent.Stroke.Focus");
         yield return new("Border.wordPresentationFrame:pointerover", "hover", () => PresentationRow(),
             StateStimulus.Pointer, StatePart.Self, Border.BackgroundProperty, "Intent.Surface.Hover");
         yield return new("Border.wordPresentationFrame.open", "opened", () => PresentationRow(open: true),
@@ -394,6 +405,8 @@ internal static class ComponentStateContractCases
     internal static AvaloniaObject? PartOf(Control target, StatePart part) => part switch
     {
         StatePart.Self => target,
+        StatePart.DenseRow => target.GetVisualDescendants().OfType<Border>().FirstOrDefault(row => row.Classes.Contains("denseTableRow")),
+        StatePart.DenseRing => target.GetVisualDescendants().OfType<Border>().FirstOrDefault(row => row.Classes.Contains("denseTableFocusRing")),
         StatePart.Face => target.GetVisualDescendants().OfType<ContentPresenter>().FirstOrDefault(face => face.Name == "PART_ContentPresenter"),
         StatePart.Ring => RingAround(target),
         StatePart.Text => target is TextBlock ? target : target.GetVisualDescendants().OfType<TextBlock>().FirstOrDefault(),
@@ -415,6 +428,17 @@ internal static class ComponentStateContractCases
     {
         var list = new ListBox { Classes = { rowsClass } };
         var item = new ListBoxItem { Content = "kitabu" };
+        list.Items.Add(item);
+        if (selected) list.SelectedIndex = 0;
+        return (list, item);
+    }
+
+    private static (Control, Control) DenseTableEntry(bool selected)
+    {
+        var list = new ListBox { Classes = { "denseTable" } };
+        var row = new Border { Classes = { "denseTableRow" }, Child = new TextBlock { Text = "kitabu" } };
+        var ring = new Border { Classes = { "denseTableFocusRing" } };
+        var item = new ListBoxItem { Content = new Grid { Children = { row, ring } } };
         list.Items.Add(item);
         if (selected) list.SelectedIndex = 0;
         return (list, item);
@@ -815,6 +839,67 @@ internal static class TooltipOwners
         },
         new("Apply to FieldWorks project", "Views/ReviewPanel.axaml", "{Binding ApplyDisabledReason}", TooltipScene.ReviewStaged,
             control => control is Button && Name(control) == "Apply to FieldWorks project"),
+        new("Review count title", "Views/ReviewPanel.axaml", "{Binding CountText}", TooltipScene.ReviewStaged,
+            control => control is CopyableTextBlock &&
+                AutomationProperties.GetAutomationId(control) == AutomationIds.ReviewCountTitle),
+        new("Review all changes menu", "Views/ReviewPanel.axaml", "Review all changes", TooltipScene.ReviewStaged,
+            control => control is Button && control.Classes.Contains("denseTableMenu") && Name(control) == "Review all changes"),
+        new("Review group note", "Views/ReviewPanel.axaml", "{Binding Note}", TooltipScene.ReviewStaged,
+            control => control is TextBlock { DataContext: ReviewChangeGroupViewModel } &&
+                control.Classes.Contains("denseTableGroupName"))
+        {
+            Pending = "the staged Review scene has only ordinary groups, which carry no note",
+        },
+        new("Review grammar row title", "Views/ReviewPanel.axaml", "{Binding Title}", TooltipScene.ReviewStaged,
+            control => control is CopyableTextBlock { DataContext: ReviewEntryViewModel entry } text &&
+                control.Classes.Contains("denseTableItem") && text.Text == entry.Title),
+        new("Review grammar row summary", "Views/ReviewPanel.axaml", "{Binding Summary}", TooltipScene.ReviewStaged,
+            control => control is CopyableTextBlock { DataContext: ReviewEntryViewModel entry } text &&
+                !control.Classes.Contains("denseTableItem") && text.Text == entry.Summary),
+        new("Review row word", "Views/ReviewPanel.axaml", "{Binding Word}", TooltipScene.ReviewStaged,
+            control => control is CopyableTextBlock { DataContext: ChangeViewModel } &&
+                control.Classes.Contains("denseTableItem") && control.FindAncestorOfType<ReviewPanel>() is not null),
+        new("Review row looked at", "Views/ReviewPanel.axaml", "Looked at", TooltipScene.ReviewStaged,
+            control => control is CopyableTextBlock && Name(control) == "Looked at" &&
+                control.FindAncestorOfType<ReviewPanel>() is not null),
+        new("Review opinion now", "Views/ReviewPanel.axaml", "{Binding StagedTransition.Now}", TooltipScene.ReviewStaged,
+            control => control is OpinionMark { DataContext: ChangeViewModel change } &&
+                ToolTip.GetTip(control) as string == change.StagedTransition.Now &&
+                control.FindAncestorOfType<ReviewPanel>() is not null),
+        new("Review opinion after Apply", "Views/ReviewPanel.axaml", "{Binding StagedTransition.AfterApply}", TooltipScene.ReviewStaged,
+            control => control is OpinionMark { DataContext: ChangeViewModel change } &&
+                ToolTip.GetTip(control) as string == change.StagedTransition.AfterApply &&
+                ToolTip.GetTip(control) as string != change.StagedTransition.Now &&
+                control.FindAncestorOfType<ReviewPanel>() is not null),
+        new("Review opinion change text", "Views/ReviewPanel.axaml", "{Binding TransitionText}", TooltipScene.ReviewStaged,
+            control => control is CopyableTextBlock { DataContext: ChangeViewModel change } text &&
+                text.Text == change.TransitionText && control.FindAncestorOfType<ReviewPanel>() is not null),
+        new("Review grammar effect", "Views/ReviewPanel.axaml", "{Binding TableOutcomeText}", TooltipScene.ReviewStaged,
+            control => control is CopyableTextBlock { DataContext: ReviewEntryViewModel entry } text &&
+                text.Text == entry.TableOutcomeText),
+        new("Review row location", "Views/ReviewPanel.axaml", "{Binding Change.Presentation.PendingChange.WhereText}",
+            TooltipScene.ReviewStaged, control => control is CopyableTextBlock { DataContext: ReviewEntryViewModel entry } text &&
+                entry.Change is { } change && text.Text == change.Presentation.PendingChange?.WhereText),
+        new("Review row fit", "Views/ReviewPanel.axaml", "{Binding TableFitDescription}", TooltipScene.ReviewStaged,
+            control => control is Border && control.Classes.Contains("reviewFitTag")),
+        new("Review Inspector Word Analyses", "Views/ReviewInspector.axaml", "{Binding Listed.Row.WordAnalysesTip}",
+            TooltipScene.ReviewStaged, control => control is HyperlinkButton &&
+                control.FindAncestorOfType<ReviewInspector>() is not null),
+        new("Parsimony group heading", "Views/Pages/ParsimonyPage.axaml", "{Binding Label}", TooltipScene.Overview,
+            control => control is TextBlock { DataContext: DenseTableGroup } && control.FindAncestorOfType<ParsimonyPage>() is not null)
+        {
+            Pending = "the sample window shows no Parsimony findings, which need Advanced AI mode",
+        },
+        new("Proposals group heading", "Views/Pages/ProposalsPage.axaml", "{Binding Label}", TooltipScene.Overview,
+            control => control is TextBlock { DataContext: DenseTableGroup } && control.FindAncestorOfType<ProposalsPage>() is not null)
+        {
+            Pending = "the sample window has no scene on the Proposals page",
+        },
+        new("Proposal name", "Views/Pages/ProposalsPage.axaml", "{Binding Label}", TooltipScene.Overview,
+            control => control is TextBlock { DataContext: ProposalCardViewModel } && control.Classes.Contains("denseTableItem"))
+        {
+            Pending = "the sample window has no scene on the Proposals page",
+        },
         new("cancel parsing", "Views/MainWindow.axaml", "Cancel keeps the previous results.", TooltipScene.ParseProgress,
             control => control is Button && Name(control) == "Cancel parsing all words"),
         new("expert tree scope", "Views/ExpertTracePanel.axaml", "Turn off to show only the chosen attempt's recorded ancestors and terminal event.", TooltipScene.ExpertTrace,

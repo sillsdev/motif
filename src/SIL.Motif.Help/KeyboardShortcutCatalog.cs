@@ -109,6 +109,8 @@ public enum ShortcutKey
     K,
     /// <summary>F10.</summary>
     F10,
+    /// <summary>The keyboard menu key.</summary>
+    Apps,
 }
 
 /// <summary>The product surface where a shortcut is available.</summary>
@@ -138,6 +140,8 @@ public enum ShortcutScope
     Settings,
     /// <summary>The Pages rail.</summary>
     NavigationRail,
+    /// <summary>Grouped tables with row and group actions.</summary>
+    Table,
 }
 
 /// <summary>The focus condition required before a shortcut can run.</summary>

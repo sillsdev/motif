@@ -18,7 +18,7 @@ namespace SIL.Motif.App.ViewModels;
 /// one list, before any is written to FieldWorks, and counted beside the page's sidebar label. Outside Proposal mode
 /// that Draft is the pending changes; with a Proposal open it is that Proposal (ADR 0061), and nothing else differs.
 /// </summary>
-public sealed class ReviewPageModel : PageModel
+public sealed partial class ReviewPageModel : PageModel
 {
     private const string NumbersPrompt = "Check how many changed words keep their approved analyses.";
     private CancellationTokenSource? _measurementCancellation;
@@ -71,8 +71,8 @@ public sealed class ReviewPageModel : PageModel
         ApplyCommand = new AsyncRelayCommand(ApplyAsync, () => CanApply);
         KeepEditingCommand = new RelayCommand(() => Context.OpenPage(OriginPage));
         OpenAnalyzeTextsCommand = new RelayCommand(() => Context.OpenTexts(TextsTab.AnalyzeTexts));
-        PreviousCommand = new RelayCommand(Previous, () => _currentIndex > 0);
-        NextCommand = new AsyncRelayCommand(NextAsync, () => _currentIndex < _entries.Count - 1);
+        PreviousCommand = new RelayCommand(Previous, () => AdjacentVisibleIndex(-1) >= 0);
+        NextCommand = new AsyncRelayCommand(NextAsync, () => AdjacentVisibleIndex(1) >= 0);
         KeepCommand = new AsyncRelayCommand(() => KeepAsync(Current), () => Current is not null);
         UndoCommand = new AsyncRelayCommand(() => UndoAsync(Current), () => Current is not null);
         KeepAllCommand = new AsyncRelayCommand(KeepAllAsync, () => _entries.Count > 0);
@@ -80,6 +80,7 @@ public sealed class ReviewPageModel : PageModel
         TryAgainCommand = new AsyncRelayCommand(TryAgainAsync,
             () => InProposalMode && !IsApplying && Context.ProposalStanding.CanTryAgain);
         DeclineCommand = new AsyncRelayCommand(DeclineAsync, () => ShowsDecline && !IsApplying);
+        ShowNeedsAttentionCommand = new RelayCommand(() => SelectedFilterIndex = 3);
         context.PropertyChanged += OnLensPropertyChanged;
     }
 
@@ -315,6 +316,7 @@ public sealed class ReviewPageModel : PageModel
         _entries = grammar.Concat(wordEntries).ToArray();
         var keep = previousKey is null ? -1 : Array.FindIndex(_entries.ToArray(), entry => entry.Key == previousKey);
         _currentIndex = keep >= 0 ? keep : 0;
+        EnsureVisibleCurrent();
         MarkCurrent();
         _reviewEntries = null;
         OnPropertyChanged(nameof(Entries));
@@ -382,21 +384,24 @@ public sealed class ReviewPageModel : PageModel
 
     private void Previous()
     {
-        if (_currentIndex <= 0) return;
-        _currentIndex--;
+        var previous = AdjacentVisibleIndex(-1);
+        if (previous < 0) return;
+        _currentIndex = previous;
         AfterMove();
     }
 
     private async Task NextAsync()
     {
+        var next = AdjacentVisibleIndex(1);
         if (Current is { } leaving) await MarkAsync(leaving, true).ConfigureAwait(true);
-        if (_currentIndex < _entries.Count - 1) _currentIndex++;
+        if (next >= 0) _currentIndex = next;
         AfterMove();
     }
 
     private void AfterMove()
     {
         _walked = true;
+        EnsureVisibleCurrent();
         MarkCurrent();
         OnPropertyChanged(nameof(Current));
         RaiseWalkState();
@@ -407,14 +412,19 @@ public sealed class ReviewPageModel : PageModel
         if (entry is null) return;
         await MarkAsync(entry, true).ConfigureAwait(true);
         var index = _entries.ToList().IndexOf(entry);
-        if (index >= 0 && index < _entries.Count - 1) _currentIndex = index + 1;
-        else if (index >= 0) _currentIndex = index;
+        if (index >= 0)
+        {
+            _currentIndex = index;
+            var next = AdjacentVisibleIndex(1);
+            if (next >= 0) _currentIndex = next;
+        }
         AfterMove();
     }
 
     private async Task KeepAllAsync()
     {
         foreach (var entry in _entries.ToArray()) await MarkAsync(entry, true).ConfigureAwait(true);
+        if (_selectedFilterIndex == 1) AfterMove();
     }
 
     private async Task MarkAsync(ReviewEntryViewModel entry, bool lookedAt)
@@ -427,6 +437,7 @@ public sealed class ReviewPageModel : PageModel
         if (!outcome.Succeeded) return;
         entry.IsLookedAt = lookedAt;
         OnPropertyChanged(nameof(LookedAtText));
+        if (_selectedFilterIndex == 1) InvalidateVisibleEntries();
     }
 
     // The pending changes are taken out whole through the one Draft discard path; a Proposal never offers Undo all.
@@ -592,18 +603,24 @@ public sealed class ReviewPageModel : PageModel
     private IReadOnlyList<ReviewListEntryViewModel> BuildReviewEntries()
     {
         var entries = new List<ReviewListEntryViewModel> { new(this) };
-        var grammar = _entries.Where(entry => entry.IsGrammar).ToArray();
+        var visible = _entries.Where(MatchesFilter).ToArray();
+        var grammar = visible.Where(entry => entry.IsGrammar).ToArray();
         if (grammar.Length > 0) entries.Add(new ReviewListEntryViewModel(new ReviewGrammarGroupViewModel(grammar.Length)));
         for (var index = 0; index < grammar.Length; index++)
             entries.Add(new ReviewListEntryViewModel(grammar[index], index == grammar.Length - 1));
-        var byChange = _entries.Where(entry => entry.Change is not null)
+        var byChange = visible.Where(entry => entry.Change is not null)
             .ToDictionary(entry => entry.Change!.ChangeId, StringComparer.Ordinal);
         foreach (var group in ReviewGroups)
         {
-            entries.Add(new ReviewListEntryViewModel(group, null, isLastChange: false));
-            for (var index = 0; index < group.Items.Count; index++)
-                entries.Add(new ReviewListEntryViewModel(group, group.Items[index], index == group.Items.Count - 1,
-                    byChange.GetValueOrDefault(group.Items[index].ChangeId)));
+            var changes = group.Items.Where(change => byChange.ContainsKey(change.ChangeId)).ToArray();
+            if (changes.Length == 0) continue;
+            var visibleGroup = new ReviewChangeGroupViewModel(group.Title, changes, Changes,
+                group.IsNoLongerFits ? ReviewGroupKind.NoLongerFits
+                : group.IsUncertain ? ReviewGroupKind.Uncertain : ReviewGroupKind.Ordinary);
+            entries.Add(new ReviewListEntryViewModel(visibleGroup, null, isLastChange: false));
+            for (var index = 0; index < changes.Length; index++)
+                entries.Add(new ReviewListEntryViewModel(visibleGroup, changes[index], index == changes.Length - 1,
+                    byChange.GetValueOrDefault(changes[index].ChangeId)));
         }
 
         return entries;
@@ -646,6 +663,9 @@ public sealed class ReviewPageModel : PageModel
             var uncertain = UncertainChanges.Count;
             if (uncertain > 0)
                 blockers.Add(new(ApplyBlockerKind.Uncertain, UncertainSentence(uncertain)));
+            if (Changes.Items.Any(item => item.Fit is null))
+                blockers.Add(new(ApplyBlockerKind.FitNotChecked,
+                    "Refresh to check whether every change still fits the project.", "Refresh", RefreshCommand));
             if (Context.Baseline?.FieldWorksHeldProject == true)
                 blockers.Add(new(ApplyBlockerKind.FieldWorksHoldsProject,
                     "FieldWorks has this project open. Close it before applying changes."));
@@ -699,7 +719,7 @@ public sealed class ReviewPageModel : PageModel
         get
         {
             var blockingIds = new HashSet<string>(StringComparer.Ordinal);
-            foreach (var change in Changes.Items.Where(item => item.IsNoLongerFits || item.IsUncertain ||
+            foreach (var change in Changes.Items.Where(item => item.Fit is null || item.IsNoLongerFits || item.IsUncertain ||
                          WordsLosingApprovedAnalysis.Contains(item.Word, StringComparer.Ordinal)))
                 blockingIds.Add(change.ChangeId);
             return blockingIds.Count > 0 ? blockingIds.Count : _entries.Count;
@@ -741,8 +761,8 @@ public sealed class ReviewPageModel : PageModel
 
     public bool ShowsEmptyState => !HasEntries && !NeedsReconciliation;
 
-    /// <summary>Whether the numbers and Apply cards have anything to act on or report.</summary>
-    public bool ShowsSideCards => HasEntries || (InProposalMode && _review is not null) ||
+    /// <summary>Whether the navigator and Apply area explain the open project or show a result.</summary>
+    public bool ShowsSideCards => Context.HasProject || HasEntries || (InProposalMode && _review is not null) ||
         HasReceipt || ApplyRefusal is not null;
 
     /// <summary>
@@ -812,6 +832,7 @@ public sealed class ReviewPageModel : PageModel
 
     /// <summary>Every blocker's sentence in order, or what Apply is doing, for a reader of one line.</summary>
     public string ApplyBlockReason => IsApplying ? "Applying changes to FieldWorks..." :
+        IsMeasuring ? "Checking these changes…" :
         !HasEntries && !NeedsReconciliation ? "Choose a change in Texts to begin." :
         string.Join(" ", ApplyBlockers.Select(blocker => blocker.Sentence));
 
@@ -1290,6 +1311,14 @@ public sealed class ReviewPageModel : PageModel
         base.OnPropertyChanged(e);
         switch (e.PropertyName)
         {
+            case nameof(ReviewEntries):
+                _tableEntries = null;
+                OnPropertyChanged(nameof(TableEntries));
+                OnPropertyChanged(nameof(SelectedTableEntry));
+                break;
+            case nameof(Current):
+                OnPropertyChanged(nameof(SelectedTableEntry));
+                break;
             case nameof(CanApply):
                 // The Apply button follows its command, so every change to CanApply must re-ask the command.
                 ApplyCommand.NotifyCanExecuteChanged();
@@ -1300,6 +1329,7 @@ public sealed class ReviewPageModel : PageModel
                 OnPropertyChanged(nameof(ApplyBlockers));
                 OnPropertyChanged(nameof(IsApplyBlocked));
                 OnPropertyChanged(nameof(ApplyBlockedTitle));
+                OnPropertyChanged(nameof(HasChangesNeedingAttention));
                 break;
             case nameof(ApplyRefusal):
                 OnPropertyChanged(nameof(NeedsReconciliation));
@@ -1326,6 +1356,8 @@ public sealed class ReviewPageModel : PageModel
     protected override void OnProjectCleared()
     {
         _walked = false;
+        _selectedFilterIndex = 0;
+        OnPropertyChanged(nameof(SelectedFilterIndex));
         ReleaseContext();
         _reviewGeneration++;
         _reviewEntryCountGeneration++;

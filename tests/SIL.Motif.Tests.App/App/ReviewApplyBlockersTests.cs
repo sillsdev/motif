@@ -208,7 +208,7 @@ public sealed class ReviewApplyBlockersTests
     }
 
     [Fact]
-    public async Task AnEmptyReviewShowsNoSideCardsAndLinksToAnalyzeTexts()
+    public async Task AnEmptyReviewKeepsApplyVisibleWithItsInstructionAndLinksToAnalyzeTexts()
     {
         var fake = new FakeCommandClient();
         fake.PendingChangesIs(Snapshot());
@@ -217,7 +217,9 @@ public sealed class ReviewApplyBlockersTests
         await context.OpenProjectAsync(ProjectPath);
         var capture = new TextsRequestCapture(context);
 
-        Assert.False(page.ShowsSideCards);
+        Assert.True(page.ShowsSideCards);
+        Assert.False(page.CanApply);
+        Assert.Equal("Choose a change in Texts to begin.", page.ApplyDisabledReason);
         Assert.True(page.ShowsEmptyState);
         Assert.Equal("No changes yet", page.CountText);
         Assert.False(page.ShowsHeaderNote);

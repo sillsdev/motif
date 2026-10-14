@@ -56,14 +56,6 @@
     <Setter Property="FontWeight" Value="SemiBold" />
   </Style>
 
-  <Style Selector="Border.warningRow :is(Control).warningHoverTitle">
-    <Setter Property="IsVisible" Value="False" />
-  </Style>
-
-  <Style Selector="Border.warningRow:pointerover :is(Control).warningHoverTitle, Border.warningRow:focus-within :is(Control).warningHoverTitle">
-    <Setter Property="IsVisible" Value="True" />
-  </Style>
-
   <Style Selector="Border.warningDetail">
     <Setter Property="Padding" Value="{DynamicResource Component.Warnings.DetailPadding}" />
   </Style>

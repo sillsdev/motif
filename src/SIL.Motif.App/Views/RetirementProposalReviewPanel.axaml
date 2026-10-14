@@ -52,7 +52,7 @@
       <Border Classes="reviewAnalysis">
         <StackPanel Classes="reviewCompact">
           <views:CopyableTextBlock Classes="section-title" Text="Tested readings" />
-          <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding ReadingResultsText}" />
+          <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding ReadingResultsText}" TextWrapping="Wrap" />
           <views:ProgressiveItemsControl x:Name="RetirementAffectedReadings"
                                          FullItemsSource="{Binding AffectedReadings}"
                                          AutomationProperties.Name="Before and after evidence for each affected reading">
@@ -68,7 +68,7 @@
                     <views:CopyableTextBlock Text="{Binding Word}" />
                   </StackPanel>
                   <views:CopyableTextBlock Grid.Column="1" Text="{Binding Verification}" FontWeight="{DynamicResource Intent.Weight.Strong}" />
-                  <views:CopyableTextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding SurfaceText}"
+                  <views:CopyableTextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding SurfaceText}" TextWrapping="Wrap"
                                            Classes="reviewSmall" />
                   <views:CopyableTextBlock Grid.Row="2" Grid.ColumnSpan="2" Text="{Binding RuleAttribution}"
                                            Classes="reviewSmall" TextWrapping="Wrap" />
@@ -76,7 +76,7 @@
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </views:ProgressiveItemsControl>
-          <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding FindingCountsText}" />
+          <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding FindingCountsText}" TextWrapping="Wrap" />
           <WrapPanel>
             <views:CopyableTextBlock Text="Problem: " />
             <views:CopyableTextBlock Text="{Binding FindingState}" FontWeight="{DynamicResource Intent.Weight.Strong}" />

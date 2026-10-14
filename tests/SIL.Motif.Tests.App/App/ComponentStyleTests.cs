@@ -731,12 +731,6 @@ public sealed partial class ComponentStyleTests
             Border.PaddingProperty, "Component.Warnings.DetailPadding");
         yield return new("Proposals", "the page", host => Add(host, Stack("proposalsPage")),
             StackPanel.MarginProperty, "Component.Proposals.PageMargin");
-        yield return new("Proposals", "a group", host => Add(host, Stack("proposalsGroup")),
-            StackPanel.MarginProperty, "Component.Proposals.GroupMargin");
-        yield return new("Proposals", "a card", host => Add(host, Box("proposalCard")),
-            Border.PaddingProperty, "Component.Proposals.CardPadding");
-        yield return new("Proposals", "a card", host => Add(host, Box("proposalCard")),
-            Border.CornerRadiusProperty, "Component.Proposals.CardRadius");
         yield return new("Parsimony", "the page", host => Add(host, With(new Grid(), ["parsimonyPanel"])),
             Grid.MarginProperty, "Component.Parsimony.PageMargin");
         yield return new("Parsimony", "the state notice", host => Add(host, Box("parsimonyNotice")),
@@ -749,6 +743,8 @@ public sealed partial class ComponentStyleTests
             Grid.ColumnSpacingProperty, "Intent.Space.Compact");
         yield return new("Parsimony", "a finding row's layout", host => Add(host, With(new Grid(), ["parsimonyRowGrid"])),
             Grid.ColumnSpacingProperty, "Intent.Space.Compact");
+        yield return new("Parsimony", "the three row decision actions", host => Add(host, Stack("parsimonyDecisionActions")),
+            StackPanel.WidthProperty, "Component.Parsimony.Column.DecisionsWidth");
         yield return new("Parsimony", "a measure's title", host => Add(host, Text("parsimonyGroupTitle")),
             TextBlock.ForegroundProperty, "Intent.Text");
         yield return new("Parsimony", "a finding row", host => Add(host, Press("parsimonyRow")),
@@ -899,6 +895,17 @@ public sealed partial class ComponentStyleTests
             Border.BoxShadowProperty, "Intent.Shadow.Raised");
         yield return new("WordListSlot", "the reserved list scrollbar gutter", WordRows,
             Control.WidthProperty, "Component.WordListSlot.ScrollbarGutter");
+
+        yield return new("DenseTable", "a column header", host => Add(host, Box("denseTableColumnHeader")),
+            Control.HeightProperty, "Component.DenseTable.ColumnHeaderHeight");
+        yield return new("DenseTable", "an area heading", host => Add(host, Box("denseTableGroupHeader")),
+            Control.HeightProperty, "Component.DenseTable.GroupHeaderHeight");
+        yield return new("DenseTable", "an item row", host => Add(host, Box("denseTableRow")),
+            Control.HeightProperty, "Component.DenseTable.RowHeight");
+        yield return new("DenseTable", "an item row divider", host => Add(host, Box("denseTableRow")),
+            Border.BorderBrushProperty, "Intent.Border");
+        yield return new("DenseTable", "a row menu", host => Add(host, Press("denseTableMenu")),
+            Control.WidthProperty, "Component.DenseTable.MenuSize");
 
         yield return new("PanGlossLine", "a same reading label", host => Inside(host, Box("panGlossLine", "same")),
             TextBlock.ForegroundProperty, "Intent.Outcome.Same");

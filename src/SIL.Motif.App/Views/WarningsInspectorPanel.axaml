@@ -1,0 +1,184 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             xmlns:word="clr-namespace:SIL.Motif.App.Controls.WordPresentation"
+             x:Class="SIL.Motif.App.Views.WarningsInspectorPanel"
+             IsVisible="{Binding Grammar.ShowFindings}"
+             x:DataType="views:WarningsInspectorPanel">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
+                IsVisible="{Binding Grammar.ShowFindings}">
+    <StackPanel Classes="warningInspector" Spacing="{DynamicResource Intent.Space.Related}"
+                AutomationProperties.Name="Selected warning details">
+      <StackPanel IsVisible="{Binding Page.HasSelectedWarningArea}"
+                  Spacing="{DynamicResource Intent.Space.Related}">
+        <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+          <views:CopyableTextBlock Classes="denseTableHeading" Text="Selected finding" />
+          <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto"
+                ColumnSpacing="{DynamicResource Intent.Space.Group}"
+                IsVisible="{Binding Page.HasSelectedWarningArea}">
+            <views:CopyableTextBlock Text="Severity" Classes="muted" />
+            <views:CopyableTextBlock Grid.Column="1" Text="{Binding Page.SelectedWarningSeverity}" />
+            <views:CopyableTextBlock Grid.Row="1" Text="Area" Classes="muted" />
+            <views:CopyableTextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Page.SelectedWarningArea}" />
+            <views:CopyableTextBlock Grid.Row="2" Text="Named words" Classes="muted" />
+            <views:CopyableTextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Page.SelectedWarningWordCount}" />
+          </Grid>
+        </StackPanel>
+        <ItemsControl x:Name="WarningsInspectorSelectedDetails" ItemsSource="{Binding Grammar.Warnings.SelectedDetails}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate><StackPanel /></ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:GrammarWarningRowViewModel">
+              <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
+                <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+                  <views:CopyableTextBlock Text="{Binding TableItemText}" FontWeight="{DynamicResource Intent.Weight.Section}" />
+                  <views:CopyableTextBlock Classes="muted" Text="What is wrong" FontWeight="{DynamicResource Intent.Weight.Section}" />
+                  <views:CopyableTextBlock Text="{Binding TableProblemText}" TextWrapping="Wrap" />
+                  <views:CopyableTextBlock Classes="muted" Text="{Binding ReachStateText}"
+                                            IsVisible="{Binding HasReachStateText}" TextWrapping="Wrap" />
+                </StackPanel>
+
+                <ItemsControl x:Name="WarningsInspectorDetailsItems" ItemsSource="{Binding Details}">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><StackPanel /></ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:GrammarWarningDetailViewModel">
+                      <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
+                        <views:CopyableTextBlock Classes="muted" Text="{Binding SeenText}"
+                                                  IsVisible="{Binding HasSeenText}" />
+                        <StackPanel IsVisible="{Binding HasExplanation}" Spacing="{DynamicResource Intent.Space.Minimal}">
+                          <views:CopyableTextBlock Classes="muted" Text="Why PanGloss reported it" FontWeight="{DynamicResource Intent.Weight.Section}" />
+                          <views:CopyableTextBlock Text="{Binding Explanation}" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <StackPanel IsVisible="{Binding HasWordforms}" Spacing="{DynamicResource Intent.Space.Minimal}">
+                          <views:CopyableTextBlock Text="Wordforms not compared" FontWeight="{DynamicResource Intent.Weight.Section}" />
+                          <views:CopyableTextBlock Text="{Binding WordformsText}" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <StackPanel IsVisible="{Binding HasProblemParts}" Spacing="{DynamicResource Intent.Space.Minimal}">
+                          <Border Classes="warningProblem">
+                            <views:GrammarWarningPartsBlock Parts="{Binding ProblemParts}" />
+                          </Border>
+                        </StackPanel>
+                        <Border Classes="warningSubjects">
+                          <views:GrammarWarningPartsBlock Parts="{Binding SubjectParts}" />
+                        </Border>
+                        <ItemsControl x:Name="WarningsInspectorEntryLinksItems" ItemsSource="{Binding EntryLinks}" IsVisible="{Binding HasEntryLinks}">
+                          <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                          </ItemsControl.ItemsPanel>
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:GrammarWarningEntryLink">
+                              <HyperlinkButton Classes="warningEntryAction" Content="{Binding Label}"
+                                               NavigateUri="{Binding Address}" />
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <StackPanel IsVisible="{Binding HasGuidance}" Spacing="{DynamicResource Intent.Space.Minimal}">
+                          <views:CopyableTextBlock Classes="muted" Text="What to do in FieldWorks" FontWeight="{DynamicResource Intent.Weight.Section}" />
+                          <views:CopyableTextBlock Text="{Binding Guidance}" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <views:CopyableTextBlock Classes="muted" Text="PanGloss gives no advice for this kind yet"
+                                                  IsVisible="{Binding !HasGuidance}" TextWrapping="Wrap" />
+                        <HyperlinkButton Classes="revealControl revealLink" Content="Learn more"
+                                         NavigateUri="{Binding HelpUrl}" IsVisible="{Binding HasHelp}" />
+                        <views:CopyableTextBlock Classes="muted warningRawMessage" Text="{Binding Description}"
+                                                  IsVisible="{Binding HasDescription}" TextWrapping="Wrap" />
+                      </StackPanel>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <StackPanel IsVisible="{Binding HasAnyWordRows}" Spacing="{DynamicResource Intent.Space.Minimal}">
+                  <views:CopyableTextBlock Text="{Binding ExactWordsHeading}" FontWeight="{DynamicResource Intent.Weight.Section}"
+                                           IsVisible="{Binding HasExactRows}" />
+                  <views:WordListSlot Schema="{x:Static word:WordListSchemas.Warnings}">
+                    <Grid RowDefinitions="Auto,Auto" RowSpacing="{DynamicResource Intent.Space.Minimal}">
+                      <word:WordRowHeader />
+                      <ItemsControl x:Name="WarningsInspectorWordRows" Grid.Row="1" ItemsSource="{Binding WordRows}"
+                                    IsVisible="{Binding HasExactRows}">
+                        <ItemsControl.ItemsPanel>
+                          <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="vm:WordRowViewModel">
+                            <word:WordRow Data="{Binding Presentation}"
+                                          State="{Binding PresentationState, Mode=TwoWay}"
+                                          Host="{Binding $parent[views:WarningsInspectorPanel].ExactWordPresentationHost}" />
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </Grid>
+                  </views:WordListSlot>
+                </StackPanel>
+                <views:CopyableTextBlock Classes="muted" Text="{Binding NoExactUsesText}"
+                                          IsVisible="{Binding HasNoExactUses}" />
+                <StackPanel IsVisible="{Binding HasMembershipCandidates}" Spacing="{DynamicResource Intent.Space.Minimal}">
+                  <views:CopyableTextBlock Classes="muted" Text="Words that use members of the named resource" />
+                  <views:WordListSlot Schema="{x:Static word:WordListSchemas.Warnings}">
+                    <Grid RowDefinitions="Auto,Auto">
+                      <word:WordRowHeader IsVisible="False" />
+                      <ItemsControl x:Name="WarningsInspectorMembershipRows" Grid.Row="1"
+                                    ItemsSource="{Binding MembershipCandidateRows}">
+                        <ItemsControl.ItemsPanel>
+                          <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="vm:WordRowViewModel">
+                            <word:WordRow Data="{Binding Presentation}"
+                                          State="{Binding PresentationState, Mode=TwoWay}"
+                                          Host="{Binding $parent[views:WarningsInspectorPanel].MembershipCandidatePresentationHost}" />
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </Grid>
+                  </views:WordListSlot>
+                </StackPanel>
+                <StackPanel IsVisible="{Binding HasSpellingCandidates}" Spacing="{DynamicResource Intent.Space.Minimal}">
+                  <views:CopyableTextBlock Classes="muted" Text="{Binding SpellingCandidatesText}" />
+                  <views:WordListSlot Schema="{x:Static word:WordListSchemas.Warnings}">
+                    <Grid RowDefinitions="Auto,Auto">
+                      <word:WordRowHeader IsVisible="False" />
+                      <ItemsControl x:Name="WarningsInspectorSpellingRows" Grid.Row="1"
+                                    ItemsSource="{Binding SpellingCandidateRows}">
+                        <ItemsControl.ItemsPanel>
+                          <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="vm:WordRowViewModel">
+                            <word:WordRow Data="{Binding Presentation}"
+                                          State="{Binding PresentationState, Mode=TwoWay}"
+                                          Host="{Binding $parent[views:WarningsInspectorPanel].SpellingCandidatePresentationHost}" />
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </Grid>
+                  </views:WordListSlot>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
+                  <Button Content="AI Handoff for this warning" Command="{Binding $parent[views:WarningsInspectorPanel].Grammar.Warnings.HandOffCommand}"
+                          CommandParameter="{Binding}" />
+                  <Button Content="Parse these words again" IsVisible="{Binding CanParseAgain}"
+                          Command="{Binding $parent[views:WarningsInspectorPanel].Grammar.Warnings.ReparseCommand}"
+                          CommandParameter="{Binding}" />
+                </StackPanel>
+                <Border Classes="warningWorkflow" IsVisible="{Binding HasYourWords}">
+                  <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+                    <views:CopyableTextBlock Text="After you fix it" FontWeight="{DynamicResource Intent.Weight.Section}" />
+                    <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap"
+                                              Text="Save in FieldWorks, refresh Motif, then parse these words again." />
+                  </StackPanel>
+                </Border>
+              </StackPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+      <views:CopyableTextBlock Classes="muted" Text="Select a finding to see its details."
+                                IsVisible="{Binding !Page.HasSelectedWarningArea}" />
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

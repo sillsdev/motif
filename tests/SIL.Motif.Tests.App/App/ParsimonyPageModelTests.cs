@@ -201,6 +201,11 @@ public sealed class ParsimonyPageModelTests
         var suppressed = page.SuppressedItems.ToDictionary(item => item.Decision + "/" + item.Reason);
         Assert.Equal("Suppressed", suppressed["Kept/Reason: Checked against the paradigm."].StateLabel);
         Assert.Equal("No reason given", suppressed["Deferred/No reason given"].Reason);
+
+        Assert.True(page.SelectFinding(active.Link!));
+        Assert.Same(active, page.SelectedTableEntry);
+        Assert.True(page.SelectSuppressed(suppressed["Kept/Reason: Checked against the paradigm."].Key));
+        Assert.Null(page.SelectedTableEntry);
     }
 
     [Fact]
@@ -450,6 +455,59 @@ public sealed class ParsimonyPageModelTests
         Assert.Equal("Staged in pending changes. Nothing is written to FieldWorks until Apply.", page.ActionMessage);
         Assert.Equal("Kept · staged, not yet applied", Assert.Single(page.Rows, row => !row.IsHeader).Disposition);
         Assert.Empty(page.SuppressedItems);
+    }
+
+    [Fact]
+    public async Task RowKeepSelectsItsFindingAndDoesNotReuseAnotherFindingsReasonOrQuestion()
+    {
+        var fake = new FakeCommandClient();
+        var first = Finding("first", ParsimonyMeasure, ParsimonyAxis.Parsimony, 1, 3, ["first item"]);
+        var target = Finding("target", ParsimonyMeasure, ParsimonyAxis.Parsimony, 2, 3, ["target item"]);
+        ExpectReport(fake, Report([first, target]));
+        var (context, page) = Build(fake, advancedAi: true);
+        await context.OpenProjectAsync(ProjectA);
+        var rows = page.Rows.Where(row => !row.IsHeader).ToArray();
+        Assert.True(page.SelectFinding(rows[0].Link!));
+        page.ReasonText = "Reason for the first finding.";
+        page.QuestionText = "Question for the first finding?";
+
+        await rows[1].KeepCommand!.ExecuteAsync(null);
+
+        var request = Assert.Single(fake.RecordDispositionRequests);
+        Assert.Equal(target.FindingId, request.FindingId);
+        Assert.Null(request.Reason);
+        Assert.Null(request.Question);
+        Assert.Same(rows[1], Assert.Single(page.Rows, row => row.IsSelected));
+        Assert.Equal("target item", page.Evidence!.Details.Single(detail => detail.Label == "Items").Value);
+    }
+
+    [Fact]
+    public async Task RowAskSelectsItsFindingBeforeRequestingItsQuestion()
+    {
+        var fake = new FakeCommandClient();
+        var first = Finding("first", ParsimonyMeasure, ParsimonyAxis.Parsimony, 1, 3);
+        var target = Finding("target", ParsimonyMeasure, ParsimonyAxis.Parsimony, 2, 3);
+        ExpectReport(fake, Report([first, target]));
+        var (context, page) = Build(fake, advancedAi: true);
+        await context.OpenProjectAsync(ProjectA);
+        var rows = page.Rows.Where(row => !row.IsHeader).ToArray();
+        Assert.True(page.SelectFinding(rows[0].Link!));
+        page.QuestionText = "Question for the first finding?";
+
+        await rows[1].AskCommand!.ExecuteAsync(null);
+
+        Assert.Empty(fake.RecordDispositionRequests);
+        Assert.Same(rows[1], Assert.Single(page.Rows, row => row.IsSelected));
+        Assert.Equal("Write the question to ask first.", page.ActionMessage);
+        Assert.Empty(page.QuestionText);
+
+        page.QuestionText = "Does this restriction apply to every stem class?";
+        await rows[1].AskCommand!.ExecuteAsync(null);
+
+        var request = Assert.Single(fake.RecordDispositionRequests);
+        Assert.Equal(target.FindingId, request.FindingId);
+        Assert.Equal("Does this restriction apply to every stem class?", request.Question);
+        Assert.Null(request.Reason);
     }
 
     [Fact]

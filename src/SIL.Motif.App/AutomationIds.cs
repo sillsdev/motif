@@ -15,6 +15,12 @@ public static class AutomationIds
     public const string ParsimonySummary = "motif-parsimony-summary";
     /// <summary>The evidence column, shown while a finding is selected.</summary>
     public const string ParsimonyEvidence = "motif-parsimony-evidence";
+    /// <summary>The automation identifier of one kind-of-finding filter on the Parsimony page.</summary>
+    public static string ParsimonyKindFilter(string measureId) => "motif-parsimony-kind-" + measureId;
+
+    /// <summary>The automation identifier of one decision filter on the Parsimony page.</summary>
+    public static string ParsimonyDecisionFilter(string key) => "motif-parsimony-decision-" + key;
+
     /// <summary>The Parsimony page's Active and Suppressed tabs.</summary>
     public const string ParsimonyActiveTab = "motif-parsimony-tab-active";
     public const string ParsimonySuppressedTab = "motif-parsimony-tab-suppressed";
@@ -87,6 +93,9 @@ public static class AutomationIds
     public const string TryWordResult = "motif-try-word-result";
     public const string Pages = "motif-pages";
     public const string ProposalsSetAside = "motif-proposals-set-aside";
+    public const string ProposalsClearFilter = "motif-proposals-clear-filter";
+    /// <summary>The Proposals page's grouped table.</summary>
+    public const string ProposalsTable = "motif-proposals-table";
 
     /// <summary>The "words in Selection" caption under the Overview's first count.</summary>
     public const string OverviewSelectionLabel = "motif-overview-selection-label";
@@ -138,8 +147,7 @@ public static class AutomationIds
     /// <summary>The sentence a pending-change row gives about its word.</summary>
     public const string WordNote = "motif-word-note";
 
-    /// <summary>The Review page's group note, its Back button and the group header's Remove button.</summary>
-    public const string ReviewGroupNote = "motif-review-group-note";
+    /// <summary>The Review page's Back button and the group header's Remove button.</summary>
     public const string ReviewBack = "motif-review-back";
     public const string ReviewGroupUndoAll = "motif-review-group-undo-all";
 
@@ -163,6 +171,11 @@ public static class AutomationIds
     /// <param name="proposalId">The Proposal's canonical id.</param>
     /// <returns>An ASCII identifier that stays with the Proposal whichever group it is in.</returns>
     public static string ForProposalOpen(string proposalId) => "motif-proposals-open-" + ProposalIdPart(proposalId);
+
+    /// <summary>Creates the identifier of one Proposal row's action menu.</summary>
+    /// <param name="proposalId">The Proposal's canonical id.</param>
+    /// <returns>An ASCII identifier that stays with the Proposal whichever group it is in.</returns>
+    public static string ForProposalActions(string proposalId) => "motif-proposals-actions-" + ProposalIdPart(proposalId);
 
     /// <summary>Creates the identifier of the Try again button on one Proposal's card.</summary>
     /// <param name="proposalId">The Proposal's canonical id.</param>

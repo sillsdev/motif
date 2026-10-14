@@ -1,0 +1,84 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:controls="clr-namespace:SIL.Motif.App.Controls"
+             xmlns:word="clr-namespace:SIL.Motif.App.Controls.WordPresentation"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             x:Class="SIL.Motif.App.Views.ReviewInspector"
+             x:DataType="vm:ReviewPageModel">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+    <StackPanel Classes="reviewRelated">
+      <views:RetirementProposalReviewPanel DataContext="{Binding RetirementReview}"
+          IsVisible="{Binding $parent[views:ReviewInspector].Page.HasRetirementReview}" />
+      <views:CopyableTextBlock Text="Select a change to see its details."
+                               IsVisible="{Binding Current, Converter={x:Static ObjectConverters.IsNull}}"
+                               TextWrapping="Wrap" Classes="muted" />
+      <ContentControl Content="{Binding Current}">
+        <ContentControl.ContentTemplate>
+          <DataTemplate x:DataType="vm:ReviewEntryViewModel">
+            <StackPanel Classes="reviewRelated">
+              <views:CopyableTextBlock Classes="section-title" Text="{Binding Title}" TextWrapping="Wrap" />
+              <StackPanel Classes="reviewCompact" IsVisible="{Binding IsGrammar}">
+                <views:CopyableTextBlock Text="{Binding Summary}" TextWrapping="Wrap" />
+                <views:CopyableTextBlock Text="{Binding EffectText}" IsVisible="{Binding HasEffects}" TextWrapping="Wrap" />
+                <views:CopyableTextBlock Text="{Binding PartsText}" IsVisible="{Binding HasParts}" TextWrapping="Wrap" />
+              </StackPanel>
+              <views:CopyableTextBlock Text="{Binding FitText}" IsVisible="{Binding !IsGrammar}" TextWrapping="Wrap" />
+              <ContentControl Content="{Binding Change}">
+                <ContentControl.ContentTemplate>
+                  <DataTemplate x:DataType="vm:ChangeViewModel">
+                    <StackPanel Classes="reviewCompact">
+                      <views:CopyableTextBlock Text="{Binding WhereText}" TextWrapping="Wrap" />
+                      <views:CopyableTextBlock Text="{Binding TransitionText}" TextWrapping="Wrap" />
+                      <views:CopyableTextBlock Text="{Binding DetailText}" IsVisible="{Binding HasDetailText}"
+                                               TextWrapping="Wrap" />
+                      <StackPanel Classes="reviewCompact" IsVisible="{Binding IsUncertain}">
+                        <views:CopyableTextBlock Text="Now reads" Classes="reviewSmall" />
+                        <views:ProgressiveItemsControl x:Name="ReviewInspectorAfterWordsItems" FullItemsSource="{Binding AfterWords}" AutomationProperties.Name="Refreshed sentence">
+                          <views:ProgressiveItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></views:ProgressiveItemsControl.ItemsPanel>
+                          <views:ProgressiveItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:UncertaintyTokenViewModel">
+                              <Border Classes="reviewSentenceToken" Classes.changed="{Binding IsChanged}">
+                                <views:CopyableTextBlock Text="{Binding Form}"
+                                    controls:WritingSystemText.Id="{Binding FormWritingSystem}"
+                                    controls:WritingSystemText.StyleName="Normal" />
+                              </Border>
+                            </DataTemplate>
+                          </views:ProgressiveItemsControl.ItemTemplate>
+                        </views:ProgressiveItemsControl>
+                        <Button Content="Check again" Classes="reviewAction"
+                                Command="{Binding $parent[views:ReviewInspector].Page.ReconfirmChangeCommand}"
+                                CommandParameter="{Binding}" AutomationProperties.Name="{Binding CheckAgainAutomationName}" />
+                      </StackPanel>
+                      <WrapPanel Classes="reviewActions">
+                        <Button Content="{Binding Listed.Row.OpenInTextLabel}" Classes="reviewAction"
+                                Command="{Binding Listed.Row.OpenInTextCommand}"
+                                AutomationProperties.Name="{Binding Listed.Row.OpenInTextAutomationName}" />
+                        <Button Content="{Binding Listed.Row.TryWordLabel}" Classes="reviewAction"
+                                Command="{Binding Listed.Row.TryWordCommand}" />
+                        <HyperlinkButton Content="{Binding Listed.Row.WordAnalysesLabel}" Classes="reviewLink"
+                                NavigateUri="{Binding Listed.Row.WordAnalysesLink}" IsEnabled="{Binding Listed.Row.HasWordAnalysesLink}"
+                                AutomationProperties.Name="{Binding Listed.Row.WordAnalysesName}"
+                                ToolTip.Tip="{Binding Listed.Row.WordAnalysesTip}" ToolTip.ShowOnDisabled="True" />
+                      </WrapPanel>
+                      <word:WordCard Key="{Binding Presentation.Key}"
+                                     EvidenceRevision="{Binding Presentation.EvidenceRevision}"
+                                     Host="{Binding $parent[views:ReviewInspector].PresentationHost}"
+                                     AutomationProperties.Name="{Binding Word, StringFormat='Word card for {0}'}" />
+                    </StackPanel>
+                  </DataTemplate>
+                </ContentControl.ContentTemplate>
+              </ContentControl>
+              <WrapPanel Classes="reviewActions">
+                <Button Content="Keep" Command="{Binding KeepCommand}" Classes="reviewAction"
+                        AutomationProperties.Name="{Binding KeepAutomationName}" />
+                <Button Content="Undo" Command="{Binding UndoCommand}" Classes="reviewAction"
+                        AutomationProperties.Name="{Binding UndoAutomationName}" />
+              </WrapPanel>
+            </StackPanel>
+          </DataTemplate>
+        </ContentControl.ContentTemplate>
+      </ContentControl>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

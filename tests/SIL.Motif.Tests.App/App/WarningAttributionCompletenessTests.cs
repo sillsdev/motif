@@ -72,6 +72,7 @@ public sealed class WarningAttributionCompletenessTests
 
         Assert.Equal(WarningDisplayState.NoFollowedRouteMatch, zeroRow.AttributionState);
         Assert.Equal(string.Empty, zeroRow.ReachSummaryText);
+        Assert.Equal("—", zeroRow.TableNamedWordsText);
         Assert.Contains("Motif could not follow every named connection", zeroRow.ReachStateText,
             StringComparison.Ordinal);
 
@@ -81,5 +82,40 @@ public sealed class WarningAttributionCompletenessTests
         Assert.True(positiveRow.IsPartialReach);
         Assert.True(positiveRow.HasPartialCount);
         Assert.Equal(string.Empty, positiveRow.ReachSummaryText);
+        Assert.Equal("—", positiveRow.TableNamedWordsText);
     }
+
+    [Theory]
+    [InlineData(0, "none")]
+    [InlineData(1, "1 word")]
+    [InlineData(2, "2 words")]
+    public void CompleteIdentityEvidenceShowsItsExactCount(int count, string expected)
+    {
+        var mixed = MixedFinding("allomorph-used");
+        var finding = mixed with { Subject = [mixed.Subject[0]] };
+        var words = Enumerable.Range(0, count).Select(index => Word("match-" + index, "allomorph-used")).ToArray();
+        finding = finding with { YourWords = WarningWordsQuery.YourWordsOf(finding, words, []) };
+        var table = new GrammarWarningsViewModel();
+        table.Load([finding]);
+        var row = Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(table.Rows));
+        Assert.False(row.IsPartialReach);
+        Assert.Equal(expected, row.TableNamedWordsText);
+    }
+
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    public void MissingEvidenceInAnotherFindingDoesNotBecomeAnExactCount(int count)
+    {
+        var mixed = MixedFinding("allomorph-used");
+        var finding = mixed with { Subject = [mixed.Subject[0]] };
+        var words = Enumerable.Range(0, count).Select(index => Word("match-" + index, "allomorph-used")).ToArray();
+        finding = finding with { YourWords = WarningWordsQuery.YourWordsOf(finding, words, []) };
+        var unavailable = finding with { YourWords = null };
+        var row = new GrammarWarningRowViewModel([finding, unavailable]);
+        Assert.False(row.IsPartialReach);
+        Assert.Equal("—", row.TableNamedWordsText);
+    }
+
 }

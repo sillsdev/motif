@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
+             xmlns:controls="clr-namespace:SIL.Motif.App.Controls"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              xmlns:word="clr-namespace:SIL.Motif.App.Controls.WordPresentation"
@@ -46,31 +47,38 @@
                 Command="{Binding Grammar.CheckCommand}" AutomationProperties.Name="Check the grammar again" />
       </StackPanel>
 
-      <Grid RowDefinitions="Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}"
+      <Grid RowDefinitions="Auto,*,Auto" RowSpacing="{DynamicResource Intent.Space.Related}"
             IsVisible="{Binding Grammar.ShowFindings}">
-        <WrapPanel Classes="warningControls" Orientation="Horizontal">
-          <views:FilterChip Label="All" Count="{Binding Grammar.Warnings.TotalCount}"
-                            IsActive="{Binding Grammar.Warnings.Bucket, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:GrammarFindingBucket.All}}"
-                            Command="{Binding Grammar.Warnings.SetBucketCommand}" CommandParameter="{x:Static vm:GrammarFindingBucket.All}"
-                            Margin="{DynamicResource Intent.Gap.AfterRelated}" />
-          <views:FilterChip Label="Errors" Count="{Binding Grammar.Warnings.ErrorCount}" Mark="{x:Static vm:Mark.Error}"
-                            IsVisible="{Binding Grammar.Warnings.HasReportedErrors}"
-                            IsActive="{Binding Grammar.Warnings.Bucket, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:GrammarFindingBucket.Errors}}"
-                            Command="{Binding Grammar.Warnings.SetBucketCommand}" CommandParameter="{x:Static vm:GrammarFindingBucket.Errors}"
-                            Margin="{DynamicResource Intent.Gap.AfterRelated}" />
-          <views:FilterChip Label="Warnings" Count="{Binding Grammar.Warnings.WarningCount}" Mark="{x:Static vm:Mark.Warning}"
-                            IsVisible="{Binding Grammar.Warnings.HasReportedWarnings}"
-                            IsActive="{Binding Grammar.Warnings.Bucket, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:GrammarFindingBucket.Warnings}}"
-                            Command="{Binding Grammar.Warnings.SetBucketCommand}" CommandParameter="{x:Static vm:GrammarFindingBucket.Warnings}"
-                            Margin="{DynamicResource Intent.Gap.AfterRelated}" />
-          <views:FilterChip Label="Information" Count="{Binding Grammar.Warnings.InformationCount}" Mark="{x:Static vm:Mark.Information}"
-                            IsVisible="{Binding Grammar.Warnings.HasReportedInformation}"
-                            IsActive="{Binding Grammar.Warnings.Bucket, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:GrammarFindingBucket.Information}}"
-                            Command="{Binding Grammar.Warnings.SetBucketCommand}" CommandParameter="{x:Static vm:GrammarFindingBucket.Information}"
-                            Margin="{DynamicResource Intent.Gap.AfterRelated}" />
+        <WrapPanel x:Name="WarningsBodyControls" Classes="warningControls" Orientation="Horizontal">
+          <views:CopyableTextBlock x:Name="WarningsCountSummary" Classes="muted"
+                                   Text="{Binding Grammar.Warnings.CountSummary}"
+                                   IsVisible="{Binding !ShowInlineFilters}" />
+          <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}"
+                      IsVisible="{Binding ShowInlineFilters}">
+            <views:FilterChip Label="All" Count="{Binding Grammar.Warnings.TotalCount}"
+                              IsActive="{Binding Grammar.Warnings.Bucket, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:GrammarFindingBucket.All}}"
+                              Command="{Binding Grammar.Warnings.SetBucketCommand}" CommandParameter="{x:Static vm:GrammarFindingBucket.All}"
+                              Margin="{DynamicResource Intent.Gap.AfterRelated}" />
+            <views:FilterChip Label="Errors" Count="{Binding Grammar.Warnings.ErrorCount}" Mark="{x:Static vm:Mark.Error}"
+                              IsVisible="{Binding Grammar.Warnings.HasReportedErrors}"
+                              IsActive="{Binding Grammar.Warnings.Bucket, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:GrammarFindingBucket.Errors}}"
+                              Command="{Binding Grammar.Warnings.SetBucketCommand}" CommandParameter="{x:Static vm:GrammarFindingBucket.Errors}"
+                              Margin="{DynamicResource Intent.Gap.AfterRelated}" />
+            <views:FilterChip Label="Warnings" Count="{Binding Grammar.Warnings.WarningCount}" Mark="{x:Static vm:Mark.Warning}"
+                              IsVisible="{Binding Grammar.Warnings.HasReportedWarnings}"
+                              IsActive="{Binding Grammar.Warnings.Bucket, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:GrammarFindingBucket.Warnings}}"
+                              Command="{Binding Grammar.Warnings.SetBucketCommand}" CommandParameter="{x:Static vm:GrammarFindingBucket.Warnings}"
+                              Margin="{DynamicResource Intent.Gap.AfterRelated}" />
+            <views:FilterChip Label="Information" Count="{Binding Grammar.Warnings.InformationCount}" Mark="{x:Static vm:Mark.Information}"
+                              IsVisible="{Binding Grammar.Warnings.HasReportedInformation}"
+                              IsActive="{Binding Grammar.Warnings.Bucket, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:GrammarFindingBucket.Information}}"
+                              Command="{Binding Grammar.Warnings.SetBucketCommand}" CommandParameter="{x:Static vm:GrammarFindingBucket.Information}"
+                              Margin="{DynamicResource Intent.Gap.AfterRelated}" />
+          </StackPanel>
           <ToggleButton Content="{Binding Grammar.Warnings.TouchYourWordsText}"
                         IsChecked="{Binding Grammar.Warnings.TouchYourWords, Mode=TwoWay}"
                         AutomationProperties.Name="Show findings with exact uses in your words"
+                        IsVisible="{Binding ShowInlineFilters}"
                         Margin="{DynamicResource Intent.Gap.AfterRelated}" />
           <Button Content="{Binding Grammar.Warnings.SortLabel}"
                   AutomationProperties.Name="Choose warning sort order"
@@ -93,14 +101,113 @@
                   AutomationProperties.Name="Check the grammar again" Margin="{DynamicResource Intent.Gap.AfterRelated}" />
         </WrapPanel>
 
-        <ScrollViewer Grid.Row="1">
-          <ItemsControl x:Name="GrammarPanelRowsItems" ItemsSource="{Binding Grammar.Warnings.Rows}" AutomationProperties.Name="Grammar findings">
+        <Grid Grid.Row="1" RowDefinitions="Auto,*" controls:DenseTable.IsWidthHost="True">
+          <Border Classes="denseTableColumnHeader">
+            <Grid ColumnSpacing="{DynamicResource Intent.Space.Group}" controls:DenseTable.Columns="Narrow 2* 2* Narrow Actions"
+                  controls:DenseTable.CompactColumns="0 * 0 0 Actions">
+              <Border controls:DenseTable.Secondary="True">
+                <views:CopyableTextBlock Classes="denseTableHeading" Text="Severity" VerticalAlignment="Center" />
+              </Border>
+              <views:CopyableTextBlock Grid.Column="1" Classes="denseTableHeading" Text="Item" VerticalAlignment="Center" />
+              <Border Grid.Column="2" controls:DenseTable.Secondary="True">
+                <views:CopyableTextBlock Classes="denseTableHeading" Text="What is wrong" VerticalAlignment="Center" />
+              </Border>
+              <Border Grid.Column="3" controls:DenseTable.Secondary="True">
+                <views:CopyableTextBlock Classes="denseTableHeading" Text="Named words" VerticalAlignment="Center" />
+              </Border>
+              <Border Grid.Column="4" />
+            </Grid>
+          </Border>
+
+          <ListBox x:Name="GrammarPanelRowsItems" Grid.Row="1" Classes="denseTable"
+                   ItemsSource="{Binding TableEntries}"
+                   SelectedItem="{Binding Grammar.Warnings.SelectedTableEntry, Mode=TwoWay}"
+                   Focusable="True" IsTabStop="True" KeyboardNavigation.TabNavigation="Once"
+                   AutomationProperties.Name="Grammar findings">
+            <ListBox.ItemsPanel>
+              <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+            </ListBox.ItemsPanel>
+            <ListBox.DataTemplates>
+              <DataTemplate DataType="vm:DenseTableGroup" x:DataType="vm:DenseTableGroup">
+                <Border Classes="denseTableGroupHeader">
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Group}">
+                    <TextBlock Classes="denseTableGroupName" Text="{Binding Label}" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Classes="denseTableCount" Text="{Binding CountText}"
+                               VerticalAlignment="Center" />
+                  </Grid>
+                </Border>
+              </DataTemplate>
+              <DataTemplate DataType="vm:GrammarWarningRowViewModel" x:DataType="vm:GrammarWarningRowViewModel">
+                <Grid>
+                <Border Classes="denseTableRow">
+                  <Grid ColumnSpacing="{DynamicResource Intent.Space.Group}" controls:DenseTable.Columns="Narrow 2* 2* Narrow Actions"
+                        controls:DenseTable.CompactColumns="0 * 0 0 Actions">
+                    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}"
+                                VerticalAlignment="Center" controls:DenseTable.Secondary="True">
+                      <views:MarkChip Mark="{Binding SeverityMark}" Compact="True" />
+                      <TextBlock Classes="denseTableCell" Text="{Binding SeverityLabel}" />
+                    </StackPanel>
+                    <views:CopyableTextBlock Grid.Column="1" Classes="denseTableCell denseTableItem"
+                                              Text="{Binding TableItemText}" TextWrapping="NoWrap"
+                                              TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                    <Border Grid.Column="2" controls:DenseTable.Secondary="True">
+                      <views:CopyableTextBlock Classes="denseTableCell" Text="{Binding TableProblemText}"
+                                              TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                                              VerticalAlignment="Center" />
+                    </Border>
+                    <Border Grid.Column="3" controls:DenseTable.Secondary="True">
+                      <views:CopyableTextBlock Classes="denseTableCell"
+                                              Text="{Binding TableNamedWordsText}" VerticalAlignment="Center" />
+                    </Border>
+                    <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Minimal}"
+                                VerticalAlignment="Center">
+                      <Button Classes="denseTableAction" Content="Details"
+                              Command="{Binding $parent[views:GrammarPanel].OpenFindingDetailsCommand}"
+                              CommandParameter="{Binding}"
+                              AutomationProperties.Name="{Binding RowTitleText, StringFormat='Details for {0}'}" />
+                      <Button Classes="denseTableMenu" Content="⋯" IsTabStop="True"
+                              AutomationProperties.Name="{Binding RowTitleText, StringFormat='Actions for {0}'}">
+                        <Button.Flyout>
+                          <Flyout Placement="BottomEdgeAlignedLeft">
+                            <StackPanel Classes="menu">
+                              <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
+                                      Content="Open details"
+                                      Command="{Binding $parent[views:GrammarPanel].OpenFindingDetailsCommand}"
+                                      CommandParameter="{Binding}" />
+                              <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
+                                      Content="AI Handoff for this warning"
+                                      Command="{Binding $parent[views:GrammarPanel].Grammar.Warnings.HandOffCommand}"
+                                      CommandParameter="{Binding}" />
+                              <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
+                                      Content="Parse these words again" IsVisible="{Binding CanParseAgain}"
+                                      Command="{Binding $parent[views:GrammarPanel].Grammar.Warnings.ReparseCommand}"
+                                      CommandParameter="{Binding}" />
+                            </StackPanel>
+                          </Flyout>
+                        </Button.Flyout>
+                      </Button>
+                    </StackPanel>
+                  </Grid>
+                </Border>
+                <Border Classes="denseTableFocusRing" />
+                </Grid>
+              </DataTemplate>
+            </ListBox.DataTemplates>
+          </ListBox>
+        </Grid>
+
+        <ScrollViewer x:Name="GrammarPanelSelectionDetailsHost" Grid.Row="2"
+                      MaxHeight="{DynamicResource Component.DenseTable.DetailMaxHeight}"
+                      HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
+                      IsVisible="{Binding ShowInlineSelectionDetails}">
+          <ItemsControl x:Name="GrammarPanelSelectionDetailsItems" ItemsSource="{Binding InlineSelectionDetails}"
+                        AutomationProperties.Name="Selected warning details">
             <ItemsControl.ItemsPanel>
               <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:GrammarWarningRowViewModel">
-                <Border Classes="warningRow hoverReveal">
+                <Border Classes="warningRow" IsVisible="{Binding IsOpen}">
                   <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
                     <Button Classes="warningSummary" Command="{Binding ToggleOpenCommand}"
                             AutomationProperties.Name="{Binding RowTitleText}">
@@ -113,10 +220,6 @@
                                                   Text="{Binding LineSummaryText}" VerticalAlignment="Center" />
                       </Grid>
                     </Button>
-                    <views:CopyableTextBlock Classes="muted warningHoverTitle" Text="{Binding PanGlossTitle}"
-                                              IsVisible="{Binding HasDistinctPanGlossTitle}"
-                                              TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
-
                     <StackPanel IsVisible="{Binding IsOpen}" Spacing="{DynamicResource Intent.Space.Related}">
                       <views:CopyableTextBlock Classes="muted" Text="{Binding StatusText}"
                                                 IsVisible="{Binding HasRefreshStatus}" TextWrapping="Wrap" />
@@ -140,11 +243,11 @@
                                   <views:CopyableTextBlock Text="{Binding WordformsText}" TextWrapping="Wrap" />
                                 </StackPanel>
                                 <StackPanel IsVisible="{Binding HasProblemParts}" Spacing="{DynamicResource Intent.Space.Minimal}">
-                                  <Border Classes="hoverReveal warningProblem">
+                                  <Border Classes="warningProblem">
                                     <views:GrammarWarningPartsBlock Parts="{Binding ProblemParts}" />
                                   </Border>
                                 </StackPanel>
-                                <Border Classes="hoverReveal warningSubjects">
+                                <Border Classes="warningSubjects">
                                   <views:GrammarWarningPartsBlock Parts="{Binding SubjectParts}" />
                                 </Border>
                                 <ItemsControl x:Name="GrammarPanelEntryLinksItems" ItemsSource="{Binding EntryLinks}" IsVisible="{Binding HasEntryLinks}">

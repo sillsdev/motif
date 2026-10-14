@@ -310,10 +310,13 @@ public sealed class MainWindowSmokeTests
                 Assert.False(window.FindControl<TextBlock>("SidebarHelpLabel")?.IsEffectivelyVisible ?? true);
                 Assert.True(settings.IsEffectivelyVisible);
 
+                var before = workspace.CurrentPage;
                 ClickButton(window, settings);
                 Dispatcher.UIThread.RunJobs();
-                Assert.True(settings.Flyout?.IsOpen);
-                settings.Flyout?.Hide();
+                Assert.Equal(WorkspacePage.Settings, workspace.CurrentPage);
+                ClickButton(window, SettingsTestAccess.Page(window).FindControl<Button>("SettingsClose")!);
+                Dispatcher.UIThread.RunJobs();
+                Assert.Equal(before, workspace.CurrentPage);
                 ClickButton(window, help);
                 Dispatcher.UIThread.RunJobs();
                 Assert.True(help.Flyout?.IsOpen);
@@ -420,11 +423,14 @@ public sealed class MainWindowSmokeTests
     {
         _avalonia.Invoke(() =>
         {
-            var (_, window, _) = NewComposedWindow();
+            var (workspace, window, _) = NewComposedWindow();
             try
             {
+                workspace.CurrentPage = WorkspacePage.Review;
+                window.Show();
+                window.UpdateLayout();
                 Assert.Contains("FieldWorks must be closed, or it keeps its own copy. Keep a backup: this is a tech demo.",
-                    window.GetLogicalDescendants().OfType<TextBlock>().Select(text => text.Text));
+                    window.GetVisualDescendants().OfType<TextBlock>().Select(text => text.Text));
             }
             finally
             {
@@ -862,14 +868,14 @@ public sealed class MainWindowSmokeTests
                 var findings = window.GetVisualDescendants().OfType<ItemsControl>()
                     .Single(control => AutomationProperties.GetName(control) == "Grammar findings");
                 var row = Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(grammarModel.Warnings.Rows));
-                row.ToggleOpenCommand.Execute(null);
+                grammarModel.Warnings.OpenDetailsCommand.Execute(row);
                 window.UpdateLayout();
                 Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();
 
                 Assert.Single(window.GetVisualDescendants().OfType<TextBlock>(),
                     block => block.Text == "Restore the missing item in FieldWorks." && block.IsEffectivelyVisible);
-                var link = Assert.Single(findings.GetVisualDescendants().OfType<HyperlinkButton>(), button =>
+                var link = Assert.Single(window.GetVisualDescendants().OfType<HyperlinkButton>(), button =>
                     button.Classes.Contains("warningEntryAction"));
                 Assert.True(link.IsEffectivelyVisible);
                 Assert.Equal(new Uri("silfw://motif.test/project/entry-1"), link.NavigateUri);
@@ -1830,7 +1836,7 @@ public sealed class MainWindowSmokeTests
             {
                 Assert.True(workspace.IsSidebarCollapsed);
                 // The Parsimony page is absent from a window without Advanced AI mode, so only the offered pages are walked.
-                foreach (var page in Enum.GetValues<WorkspacePage>().Where(workspace.Context.CanOpenPage).Reverse())
+                foreach (var page in workspace.VisiblePages.Select(entry => entry.Page).Where(workspace.Context.CanOpenPage).Reverse())
                 {
                     var entry = window.GetLogicalDescendants().OfType<ListBoxItem>()
                         .Single(item => item.DataContext is PageViewModel model && model.Page == page);

@@ -170,8 +170,15 @@
   {
     "view": "GrammarPanel",
     "name": "GrammarPanelRowsItems",
-    "source": "Grammar.Warnings.Rows",
+    "source": "TableEntries",
     "mode": "rows",
+    "control": "ListBox"
+  },
+  {
+    "view": "GrammarPanel",
+    "name": "GrammarPanelSelectionDetailsItems",
+    "source": "InlineSelectionDetails",
+    "mode": "inline",
     "control": "ItemsControl"
   },
   {
@@ -485,9 +492,16 @@
     "control": "ProgressiveItemsControl"
   },
   {
+    "view": "ReviewInspector",
+    "name": "ReviewInspectorAfterWordsItems",
+    "source": "AfterWords",
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
+  },
+  {
     "view": "ReviewPanel",
     "name": "ReviewItems",
-    "source": "ReviewEntries",
+    "source": "TableEntries",
     "mode": "rows",
     "control": "ListBox"
   },
@@ -781,7 +795,7 @@
   {
     "view": "Pages/ParsimonyPage",
     "name": "ParsimonyRowsItems",
-    "source": "Rows",
+    "source": "TableEntries",
     "mode": "rows",
     "control": "ListBox"
   },
@@ -817,7 +831,84 @@
     "view": "Pages/ProposalsPage",
     "name": "ProposalsRowsItems",
     "source": "Rows",
+    "mode": "rows",
+    "control": "ListBox"
+  },
+  {
+    "view": "Pages/ParsimonyPage",
+    "name": "ParsimonyDecisionFilters",
+    "source": "DecisionFilters",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "Pages/ParsimonyPage",
+    "name": "ParsimonyKindFilters",
+    "source": "KindFilters",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "Pages/ProposalsPage",
+    "name": "ProposalsGroupFilterItems",
+    "source": "GroupFilters",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "Pages/ProposalsPage",
+    "name": "ProposalsNumberItems",
+    "source": "SelectedProposal.Numbers",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "WarningsFilterPanel",
+    "name": "WarningsAreaFilterItems",
+    "source": "AreaFilters",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "WarningsInspectorPanel",
+    "name": "WarningsInspectorSelectedDetails",
+    "source": "Grammar.Warnings.SelectedDetails",
     "mode": "inline",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "WarningsInspectorPanel",
+    "name": "WarningsInspectorDetailsItems",
+    "source": "Details",
+    "mode": "inline",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "WarningsInspectorPanel",
+    "name": "WarningsInspectorEntryLinksItems",
+    "source": "EntryLinks",
+    "mode": "rows",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "WarningsInspectorPanel",
+    "name": "WarningsInspectorWordRows",
+    "source": "WordRows",
+    "mode": "rows",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "WarningsInspectorPanel",
+    "name": "WarningsInspectorMembershipRows",
+    "source": "MembershipCandidateRows",
+    "mode": "rows",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "WarningsInspectorPanel",
+    "name": "WarningsInspectorSpellingRows",
+    "source": "SpellingCandidateRows",
+    "mode": "rows",
     "control": "ItemsControl"
   }
 ]

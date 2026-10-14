@@ -1,14 +1,135 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:app="clr-namespace:SIL.Motif.App"
+             xmlns:controls="clr-namespace:SIL.Motif.App.Controls"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.ProposalsPage"
              x:DataType="vm:ProposalsPageModel">
-  <ScrollViewer>
-    <StackPanel Classes="proposalsPage">
+  <UserControl.Resources>
+    <DataTemplate x:Key="ProposalGroupFilterTemplate" x:DataType="vm:ProposalsPageModel">
+      <StackPanel Classes="proposalFilterPane" Spacing="{DynamicResource Intent.Space.Compact}"
+                  IsVisible="{Binding IsListed}">
+        <views:CopyableTextBlock Classes="muted" Text="Show" />
+        <ItemsControl x:Name="ProposalsGroupFilterItems" ItemsSource="{Binding GroupFilters}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate><WrapPanel Classes="proposalFilters" /></ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:ProposalGroupFilterViewModel">
+              <views:FilterChip Label="{Binding Label}" Count="{Binding Count}"
+                                IsActive="{Binding IsActive}" Command="{Binding SelectCommand}"
+                                IsEnabled="{Binding CanSelect}"
+                                CommandParameter="{Binding Filter}" />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </DataTemplate>
+    <DataTemplate x:Key="ProposalInspectorTemplate" x:DataType="vm:ProposalsPageModel">
+      <Border Classes="inspector">
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+          <StackPanel Classes="inspectorBody" Spacing="{DynamicResource Intent.Space.Related}">
+            <views:CopyableTextBlock Classes="muted" Text="Reading Proposals…"
+                                     IsVisible="{Binding IsLoading}" TextWrapping="Wrap" />
+            <views:CopyableTextBlock Classes="muted" Text="No Proposals yet"
+                                     IsVisible="{Binding IsEmpty}" TextWrapping="Wrap" />
+            <StackPanel IsVisible="{Binding IsFilteredEmpty}"
+                        Spacing="{DynamicResource Intent.Space.Compact}">
+              <views:CopyableTextBlock Classes="muted" Text="{Binding FilterEmptyText}" TextWrapping="Wrap" />
+              <Button x:Name="ClearProposalFilter" Content="Show all Proposals"
+                      Command="{Binding ClearGroupFilterCommand}"
+                      AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalsClearFilter}" />
+            </StackPanel>
+            <views:CopyableTextBlock Classes="muted" Text="No Proposals to show."
+                                     IsVisible="{Binding IsNoProposalsToShow}" TextWrapping="Wrap" />
+            <views:CopyableTextBlock Classes="muted" Text="Select a Proposal."
+                                     IsVisible="{Binding ShowSelectProposalPrompt}" TextWrapping="Wrap" />
+            <views:CopyableTextBlock Classes="inspectorTitle" Text="{Binding SelectedProposal.Label}"
+                                     IsVisible="{Binding HasSelectedProposal}"
+                                     TextWrapping="Wrap" />
+            <StackPanel IsVisible="{Binding HasSelectedProposal}"
+                        Spacing="{DynamicResource Intent.Space.Related}">
+              <Grid Classes="inspectorFact" ColumnDefinitions="Auto,*">
+                <TextBlock Classes="inspectorFactLabel" Text="Status" />
+                <views:CopyableTextBlock Grid.Column="1" Text="{Binding SelectedProposal.DetailsStatusText}"
+                                         TextWrapping="Wrap" />
+              </Grid>
+              <Grid Classes="inspectorFact" ColumnDefinitions="Auto,*">
+                <TextBlock Classes="inspectorFactLabel" Text="Built by" />
+                <views:CopyableTextBlock Grid.Column="1" Text="{Binding SelectedProposal.AuthorText}"
+                                         TextWrapping="Wrap" />
+              </Grid>
+              <Border Classes="inspectorSection">
+                <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
+                  <TextBlock Classes="inspectorSectionTitle" Text="Its changes" />
+                  <views:CopyableTextBlock Text="{Binding SelectedProposal.ChangeCountText}" />
+                  <views:CopyableTextBlock Classes="muted" Text="{Binding SelectedProposal.KindsText}"
+                                           TextWrapping="Wrap" />
+                  <views:CopyableTextBlock Classes="inspectorMeaning problem"
+                                           Text="{Binding SelectedProposal.LostChip}"
+                                           IsVisible="{Binding SelectedProposal.HasLostChip}" />
+                  <views:CopyableTextBlock Classes="inspectorMeaning problem"
+                                           Text="{Binding SelectedProposal.FitChip}"
+                                           IsVisible="{Binding SelectedProposal.HasFitChip}" />
+                  <views:CopyableTextBlock Classes="muted" Text="{Binding SelectedProposal.AlsoChip}"
+                                           IsVisible="{Binding SelectedProposal.HasAlsoChip}"
+                                           TextWrapping="Wrap" />
+                </StackPanel>
+              </Border>
+              <Border Classes="inspectorSection" IsVisible="{Binding SelectedProposal.HasNumbers}">
+                <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
+                  <TextBlock Classes="inspectorSectionTitle" Text="What it would do to the numbers" />
+                  <ItemsControl x:Name="ProposalsNumberItems" ItemsSource="{Binding SelectedProposal.Numbers}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:ProposalNumber">
+                        <Grid Classes="inspectorFact" ColumnDefinitions="*,Auto">
+                          <views:CopyableTextBlock Text="{Binding Label}" />
+                          <views:CopyableTextBlock Grid.Column="1" Classes="proposalNumber"
+                                                   Classes.moved="{Binding Moved}" Text="{Binding Value}" />
+                        </Grid>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <views:CopyableTextBlock Classes="muted" Text="{Binding SelectedProposal.StatusText}"
+                                           IsVisible="{Binding SelectedProposal.HasStatus}"
+                                           TextWrapping="Wrap" />
+                </StackPanel>
+              </Border>
+              <views:RefusalBlock DataContext="{Binding SelectedProposal.ShownRefusal}" />
+              <StackPanel Classes="proposalInspectorActions" Spacing="{DynamicResource Intent.Space.Compact}">
+                <Button Content="Open in Review changes" Classes="Primary" Theme="{DynamicResource SolidButton}"
+                        Command="{Binding OpenInReviewCommand}" CommandParameter="{Binding SelectedProposal}"
+                        Click="OnRequestPageInspector"
+                        AutomationProperties.AutomationId="{Binding SelectedOpenAutomationId}" />
+                <WrapPanel Classes="proposalInspectorActions">
+                  <Button Content="{Binding SelectedProposal.TryText}"
+                          IsVisible="{Binding SelectedProposal.CanTry}"
+                          Command="{Binding TryAgainCommand}" CommandParameter="{Binding SelectedProposal}"
+                          AutomationProperties.AutomationId="{Binding SelectedTryAgainAutomationId}" />
+                  <Button Content="Reopen" IsVisible="{Binding SelectedProposal.CanReopen}"
+                          Command="{Binding ReopenCommand}" CommandParameter="{Binding SelectedProposal}"
+                          AutomationProperties.AutomationId="{Binding SelectedReopenAutomationId}" />
+                  <Button Content="Delete" IsVisible="{Binding SelectedProposal.CanDelete}"
+                          Command="{Binding DeleteCommand}" CommandParameter="{Binding SelectedProposal}"
+                          AutomationProperties.AutomationId="{Binding SelectedDeleteAutomationId}" />
+                </WrapPanel>
+              </StackPanel>
+            </StackPanel>
+          </StackPanel>
+        </ScrollViewer>
+      </Border>
+    </DataTemplate>
+  </UserControl.Resources>
+  <Grid x:Name="ProposalsTableHost" RowDefinitions="Auto,Auto,*,Auto"
+        controls:DenseTable.IsWidthHost="True">
+    <StackPanel Grid.Row="0" Grid.Column="0" Classes="proposalsPage">
       <StackPanel Classes="proposalsHeading">
-        <views:CopyableTextBlock Classes="section-title" Text="Proposals" />
+        <StackPanel Classes="proposalTitleRow">
+          <views:CopyableTextBlock Classes="section-title" Text="Proposals" />
+          <views:CopyableTextBlock Classes="muted" Text="{Binding TotalProposalCountText}"
+                                   IsVisible="{Binding IsListed}" />
+        </StackPanel>
         <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap"
                                  Text="Each one is tried on a copy of your project. Nothing reaches FieldWorks until you apply it." />
       </StackPanel>
@@ -17,81 +138,157 @@
       <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" IsVisible="{Binding IsEmpty}"
                                Text="No Proposals yet. Changes you collect and Proposals an assistant puts together are listed here." />
       <views:RefusalBlock DataContext="{Binding ShownRefusal}" />
-      <ItemsControl x:Name="ProposalsRowsItems" ItemsSource="{Binding Rows}">
-        <ItemsControl.ItemsPanel>
-          <ItemsPanelTemplate>
-            <StackPanel Classes="proposalRows" />
-          </ItemsPanelTemplate>
-        </ItemsControl.ItemsPanel>
-        <ItemsControl.DataTemplates>
-          <DataTemplate DataType="vm:ProposalGroupHeader">
-            <TextBlock Classes="section-title proposalsHeader" Text="{Binding Title}" />
-          </DataTemplate>
-          <DataTemplate DataType="vm:ProposalNumber">
-            <StackPanel Classes="proposalNumber">
-              <TextBlock Classes="proposalNumberLabel muted" Text="{Binding Label}" />
-              <TextBlock Classes="proposalNumberValue" Classes.moved="{Binding Moved}" Text="{Binding Value}" />
-            </StackPanel>
-          </DataTemplate>
-          <DataTemplate DataType="vm:ProposalCardViewModel">
-            <Border Classes="proposalCard" AutomationProperties.AutomationId="{Binding RowAutomationId}"
-                    AutomationProperties.Name="{Binding Label}">
-              <DockPanel LastChildFill="True">
-                <StackPanel DockPanel.Dock="Right" Classes="proposalActions">
-                  <Button Content="{Binding TryText}" IsVisible="{Binding CanTry}"
+    </StackPanel>
+    <Border Grid.Row="1" Grid.Column="0" Classes="denseTableColumnHeader" IsVisible="{Binding IsListed}">
+      <Grid ColumnSpacing="{DynamicResource Intent.Space.Group}"
+            controls:DenseTable.Columns="3* Narrow Narrow * * * * Actions"
+            controls:DenseTable.CompactColumns="* 0 Narrow 0 0 0 0 Actions">
+        <views:CopyableTextBlock Classes="denseTableHeading" Text="Proposal" VerticalAlignment="Center" />
+        <Border Grid.Column="1" controls:DenseTable.Secondary="True">
+          <views:CopyableTextBlock Classes="denseTableHeading" Text="Built by" VerticalAlignment="Center" />
+        </Border>
+        <views:CopyableTextBlock Grid.Column="2" Classes="denseTableHeading" Text="Status" VerticalAlignment="Center" />
+        <Border Grid.Column="3" controls:DenseTable.Secondary="True">
+          <views:CopyableTextBlock Classes="denseTableHeading" Text="Approved kept" VerticalAlignment="Center" />
+        </Border>
+        <Border Grid.Column="4" controls:DenseTable.Secondary="True">
+          <views:CopyableTextBlock Classes="denseTableHeading" Text="Coverage" VerticalAlignment="Center" />
+        </Border>
+        <Border Grid.Column="5" controls:DenseTable.Secondary="True">
+          <views:CopyableTextBlock Classes="denseTableHeading" Text="Warnings" VerticalAlignment="Center" />
+        </Border>
+        <Border Grid.Column="6" controls:DenseTable.Secondary="True">
+          <views:CopyableTextBlock Classes="denseTableHeading" Text="Word time" VerticalAlignment="Center" />
+        </Border>
+        <Border Grid.Column="7" />
+      </Grid>
+    </Border>
+    <ListBox x:Name="ProposalsRowsItems" Grid.Row="2" Grid.Column="0" Classes="denseTable"
+             ItemsSource="{Binding Rows}" SelectedItem="{Binding SelectedProposal, Mode=TwoWay}"
+             IsVisible="{Binding IsListed}" Focusable="True" IsTabStop="True"
+             KeyboardNavigation.TabNavigation="Once"
+             AutomationProperties.Name="Proposals"
+             AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalsTable}">
+      <ListBox.ItemsPanel>
+        <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+      </ListBox.ItemsPanel>
+      <ListBox.DataTemplates>
+        <DataTemplate DataType="vm:DenseTableGroup" x:DataType="vm:DenseTableGroup">
+          <Border Classes="denseTableGroupHeader">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Group}">
+              <TextBlock Classes="denseTableGroupName" Text="{Binding Label}"
+                         TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                         ToolTip.Tip="{Binding Label}" AutomationProperties.Name="{Binding Label}"
+                         VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1" Classes="denseTableCount" Text="{Binding CountText}"
+                         VerticalAlignment="Center" />
+            </Grid>
+          </Border>
+        </DataTemplate>
+        <DataTemplate DataType="vm:ProposalCardViewModel" x:DataType="vm:ProposalCardViewModel">
+          <Grid>
+            <Border Classes="denseTableRow" AutomationProperties.AutomationId="{Binding RowAutomationId}"
+                    AutomationProperties.Name="{Binding AccessibleRowName}">
+              <Grid ColumnSpacing="{DynamicResource Intent.Space.Group}"
+                    controls:DenseTable.Columns="3* Narrow Narrow * * * * Actions"
+                    controls:DenseTable.CompactColumns="* 0 Narrow 0 0 0 0 Actions">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Compact}"
+                      VerticalAlignment="Center">
+                  <TextBlock Classes="denseTableCell denseTableItem" Text="{Binding Label}"
+                             TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                             ToolTip.Tip="{Binding Label}" />
+                  <Border Grid.Column="1" controls:DenseTable.Secondary="True">
+                    <TextBlock Classes="denseTableCell" Text="{Binding ChangeCountText}"
+                               TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+                  </Border>
+                </Grid>
+                <Border Grid.Column="1" controls:DenseTable.Secondary="True">
+                  <TextBlock Classes="denseTableCell" Text="{Binding AuthorText}"
+                             TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                </Border>
+                <Border Grid.Column="2" Classes="meaningMark"
+                        Classes.look="{Binding TableStatusIsLook}"
+                        Classes.problem="{Binding TableStatusIsProblem}"
+                        IsVisible="{Binding HasTableStatus}">
+                  <TextBlock Text="{Binding TableStatusText}" TextWrapping="NoWrap"
+                             TextTrimming="CharacterEllipsis" />
+                </Border>
+                <Border Grid.Column="3" controls:DenseTable.Secondary="True">
+                  <TextBlock Classes="denseTableCell proposalNumber" Classes.moved="{Binding ApprovedKept.Moved}"
+                             Text="{Binding TableApprovedKeptText}"
+                             TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                </Border>
+                <Border Grid.Column="4" controls:DenseTable.Secondary="True">
+                  <TextBlock Classes="denseTableCell proposalNumber" Classes.moved="{Binding Coverage.Moved}"
+                             Text="{Binding TableCoverageText}"
+                             TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                </Border>
+                <Border Grid.Column="5" controls:DenseTable.Secondary="True">
+                  <TextBlock Classes="denseTableCell proposalNumber" Classes.moved="{Binding Warnings.Moved}"
+                             Text="{Binding TableWarningsText}"
+                             TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                </Border>
+                <Border Grid.Column="6" controls:DenseTable.Secondary="True">
+                  <TextBlock Classes="denseTableCell proposalNumber" Classes.moved="{Binding WordTime.Moved}"
+                             Text="{Binding TableWordTimeText}"
+                             TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                </Border>
+                <StackPanel Grid.Column="7" Orientation="Horizontal"
+                            Spacing="{DynamicResource Intent.Space.Minimal}" VerticalAlignment="Center">
+                  <Button Classes="denseTableAction" Content="{Binding TryText}" IsVisible="{Binding CanTry}"
                           Command="{Binding $parent[UserControl].((vm:ProposalsPageModel)DataContext).TryAgainCommand}"
                           CommandParameter="{Binding}"
                           AutomationProperties.AutomationId="{Binding TryAgainAutomationId}" />
-                  <Button Content="Reopen" IsVisible="{Binding CanReopen}"
+                  <Button Classes="denseTableAction" Content="Reopen" IsVisible="{Binding CanReopen}"
                           Command="{Binding $parent[UserControl].((vm:ProposalsPageModel)DataContext).ReopenCommand}"
                           CommandParameter="{Binding}"
                           AutomationProperties.AutomationId="{Binding ReopenAutomationId}" />
-                  <Button Content="Delete" IsVisible="{Binding CanDelete}"
-                          Command="{Binding $parent[UserControl].((vm:ProposalsPageModel)DataContext).DeleteCommand}"
-                          CommandParameter="{Binding}"
-                          AutomationProperties.AutomationId="{Binding DeleteAutomationId}" />
-                  <Button Content="Open" Classes="Primary" Theme="{DynamicResource SolidButton}"
+                  <Button Classes="denseTableAction" Content="Open" IsVisible="{Binding ShowsOpenAction}"
                           Command="{Binding $parent[UserControl].((vm:ProposalsPageModel)DataContext).OpenCommand}"
                           CommandParameter="{Binding}"
                           AutomationProperties.AutomationId="{Binding OpenAutomationId}" />
+                  <Button Classes="denseTableMenu" Content="⋯"
+                          AutomationProperties.Name="{Binding Label, StringFormat='Actions for {0}'}"
+                          AutomationProperties.AutomationId="{Binding ActionsAutomationId}">
+                    <Button.Flyout>
+                      <Flyout Placement="BottomEdgeAlignedLeft">
+                        <StackPanel Classes="menu">
+                          <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
+                                  Content="{Binding TryText}" IsVisible="{Binding CanTry}"
+                                  Command="{Binding $parent[UserControl].((vm:ProposalsPageModel)DataContext).TryAgainCommand}"
+                                  CommandParameter="{Binding}" />
+                          <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
+                                  Content="Reopen" IsVisible="{Binding CanReopen}"
+                                  Command="{Binding $parent[UserControl].((vm:ProposalsPageModel)DataContext).ReopenCommand}"
+                                  CommandParameter="{Binding}" />
+                          <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
+                                  Content="Details"
+                                  Command="{Binding $parent[UserControl].((vm:ProposalsPageModel)DataContext).SelectProposalCommand}"
+                                  CommandParameter="{Binding}" Click="OnRequestPageInspector"
+                                  AutomationProperties.AutomationId="{Binding DetailsAutomationId}" />
+                          <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
+                                  Content="Open" IsVisible="{Binding ShowsOpenAction}"
+                                  Command="{Binding $parent[UserControl].((vm:ProposalsPageModel)DataContext).OpenCommand}"
+                                  CommandParameter="{Binding}" />
+                          <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
+                                  Content="Delete" IsVisible="{Binding CanDelete}"
+                                  Command="{Binding $parent[UserControl].((vm:ProposalsPageModel)DataContext).DeleteCommand}"
+                                  CommandParameter="{Binding}" />
+                        </StackPanel>
+                      </Flyout>
+                    </Button.Flyout>
+                  </Button>
                 </StackPanel>
-                <StackPanel Classes="proposalBody">
-                  <StackPanel Classes="proposalTitleRow">
-                    <TextBlock Classes="proposalLabel" Text="{Binding Label}" />
-                    <Border Classes="meaningMark look" IsVisible="{Binding HasStatusWord}">
-                      <TextBlock Text="{Binding StatusWord}" />
-                    </Border>
-                  </StackPanel>
-                  <TextBlock Classes="muted" Text="{Binding KindsText}" />
-                  <WrapPanel Classes="proposalNumbers" Classes.old="{Binding NumbersAreOld}"
-                             IsVisible="{Binding HasNumbers}">
-                    <ContentControl Content="{Binding Coverage}" />
-                    <ContentControl Content="{Binding ApprovedKept}" />
-                    <ContentControl Content="{Binding WordTime}" />
-                    <ContentControl Content="{Binding Warnings}" />
-                  </WrapPanel>
-                  <TextBlock Classes="muted" Text="{Binding StatusText}" IsVisible="{Binding HasStatus}" />
-                  <views:RefusalBlock DataContext="{Binding ShownRefusal}" />
-                  <WrapPanel Classes="proposalNumbers">
-                    <Border Classes="meaningMark problem" IsVisible="{Binding HasLostChip}">
-                      <TextBlock Text="{Binding LostChip}" />
-                    </Border>
-                    <Border Classes="meaningMark problem" IsVisible="{Binding HasFitChip}">
-                      <TextBlock Text="{Binding FitChip}" />
-                    </Border>
-                    <Border Classes="meaningMark look" IsVisible="{Binding HasAlsoChip}">
-                      <TextBlock Text="{Binding AlsoChip}" />
-                    </Border>
-                  </WrapPanel>
-                </StackPanel>
-              </DockPanel>
+              </Grid>
             </Border>
-          </DataTemplate>
-        </ItemsControl.DataTemplates>
-      </ItemsControl>
-      <Button Content="{Binding SetAsideLinkText}" IsVisible="{Binding HasSetAsideLink}"
-              Command="{Binding ShowSetAsideCommand}" HorizontalAlignment="Left"
-              AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalsSetAside}" />
-    </StackPanel>
-  </ScrollViewer>
+            <Border Classes="denseTableFocusRing" />
+          </Grid>
+        </DataTemplate>
+      </ListBox.DataTemplates>
+    </ListBox>
+    <Button Grid.Row="3" Grid.Column="0" Content="{Binding SetAsideLinkText}"
+            IsVisible="{Binding HasSetAsideLink}" Command="{Binding ShowSetAsideCommand}"
+            HorizontalAlignment="Left"
+            AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalsSetAside}" />
+  </Grid>
 </UserControl>

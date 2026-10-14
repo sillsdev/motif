@@ -6,14 +6,17 @@
     <StaticResource x:Key="Component.Parsimony.BannerPadding" ResourceKey="Intent.Inset.Notice" />
     <StaticResource x:Key="Component.Parsimony.GroupMargin" ResourceKey="Intent.Gap.AfterGroup" />
     <StaticResource x:Key="Component.Parsimony.RowPadding" ResourceKey="Primitive.Inset.6_4_6_4" />
+    <StaticResource x:Key="Component.Parsimony.Column.DecisionsWidth" ResourceKey="Primitive.Size.110" />
+    <StaticResource x:Key="Component.Parsimony.SidePanelWidth" ResourceKey="Primitive.Size.320" />
+    <StaticResource x:Key="Component.Parsimony.InspectorWidth" ResourceKey="Primitive.Size.320" />
   </Styles.Resources>
 
   <Style Selector="Grid.parsimonyPanel">
-    <Setter Property="Margin" Value="{DynamicResource Component.Parsimony.PageMargin}" />
+    <Setter Property="Margin" Value="{StaticResource Component.Parsimony.PageMargin}" />
   </Style>
 
   <Style Selector="Border.parsimonyNotice">
-    <Setter Property="Padding" Value="{DynamicResource Component.Parsimony.NoticePadding}" />
+    <Setter Property="Padding" Value="{StaticResource Component.Parsimony.NoticePadding}" />
   </Style>
 
   <Style Selector=":is(TextBlock).parsimonyMessage">
@@ -24,22 +27,26 @@
   <Style Selector="Border.parsimonyBanner">
     <Setter Property="Background" Value="{DynamicResource Intent.Surface.Subtle}" />
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
-    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
-    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.Control}" />
-    <Setter Property="Padding" Value="{DynamicResource Component.Parsimony.BannerPadding}" />
+    <Setter Property="BorderThickness" Value="{StaticResource Intent.Stroke.Box}" />
+    <Setter Property="CornerRadius" Value="{StaticResource Intent.Radius.Control}" />
+    <Setter Property="Padding" Value="{StaticResource Component.Parsimony.BannerPadding}" />
   </Style>
 
   <Style Selector="StackPanel.parsimonyGroup">
-    <Setter Property="Margin" Value="{DynamicResource Component.Parsimony.GroupMargin}" />
-    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Minimal}" />
+    <Setter Property="Margin" Value="{StaticResource Component.Parsimony.GroupMargin}" />
+    <Setter Property="Spacing" Value="{StaticResource Intent.Space.Minimal}" />
   </Style>
 
   <Style Selector="Grid.parsimonyGroupHeader">
-    <Setter Property="ColumnSpacing" Value="{DynamicResource Intent.Space.Compact}" />
+    <Setter Property="ColumnSpacing" Value="{StaticResource Intent.Space.Compact}" />
   </Style>
 
   <Style Selector="Grid.parsimonyRowGrid">
-    <Setter Property="ColumnSpacing" Value="{DynamicResource Intent.Space.Compact}" />
+    <Setter Property="ColumnSpacing" Value="{StaticResource Intent.Space.Compact}" />
+  </Style>
+
+  <Style Selector="StackPanel.parsimonyDecisionActions">
+    <Setter Property="Width" Value="{StaticResource Component.Parsimony.Column.DecisionsWidth}" />
   </Style>
 
   <Style Selector=":is(TextBlock).parsimonyGroupTitle">
@@ -50,13 +57,13 @@
   <Style Selector="ListBox.parsimonyRows">
     <Setter Property="Focusable" Value="False" />
     <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
-    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.None}" />
-    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+    <Setter Property="BorderThickness" Value="{StaticResource Intent.Stroke.None}" />
+    <Setter Property="Padding" Value="{StaticResource Intent.Inset.None}" />
   </Style>
 
   <Style Selector="ListBox.parsimonyRows ListBoxItem">
     <Setter Property="Focusable" Value="False" />
-    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+    <Setter Property="Padding" Value="{StaticResource Intent.Inset.None}" />
   </Style>
 
   <Style Selector="ListBox.parsimonyRows ListBoxItem /template/ ContentPresenter#PART_ContentPresenter">
@@ -80,8 +87,8 @@
     <Setter Property="HorizontalAlignment" Value="Stretch" />
     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
     <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
-    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.None}" />
-    <Setter Property="Padding" Value="{DynamicResource Component.Parsimony.RowPadding}" />
+    <Setter Property="BorderThickness" Value="{StaticResource Intent.Stroke.None}" />
+    <Setter Property="Padding" Value="{StaticResource Component.Parsimony.RowPadding}" />
   </Style>
 
   <Style Selector="Button.parsimonyRow.selected">
@@ -93,22 +100,37 @@
   </Style>
 
   <Style Selector=":is(TextBlock).parsimonyDisposition">
-    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
+    <Setter Property="FontSize" Value="{StaticResource Intent.Type.Label}" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.Link}" />
   </Style>
 
   <Style Selector="Border.parsimonyDetail">
-    <Setter Property="Padding" Value="{DynamicResource Component.Parsimony.NoticePadding}" />
+    <Setter Property="Padding" Value="{StaticResource Component.Parsimony.NoticePadding}" />
+  </Style>
+
+  <Style Selector="StackPanel.parsimonyStack">
+    <Setter Property="Spacing" Value="{StaticResource Intent.Space.Minimal}" />
   </Style>
 
   <Style Selector="StackPanel.parsimonyTabs">
-    <Setter Property="Margin" Value="{DynamicResource Component.Parsimony.GroupMargin}" />
+    <Setter Property="Spacing" Value="{StaticResource Intent.Space.Minimal}" />
+    <Setter Property="Margin" Value="{StaticResource Component.Parsimony.GroupMargin}" />
+  </Style>
+
+  <Style Selector="StackPanel.parsimonySidePanel">
+    <Setter Property="Margin" Value="{StaticResource Intent.Gap.CompactItem}" />
+    <Setter Property="Spacing" Value="{StaticResource Intent.Space.Minimal}" />
+  </Style>
+
+  <Style Selector="WrapPanel.parsimonyFilters">
+    <Setter Property="ItemSpacing" Value="{StaticResource Intent.Space.Minimal}" />
+    <Setter Property="LineSpacing" Value="{StaticResource Intent.Space.Minimal}" />
   </Style>
 
   <Style Selector="Button.parsimonyTab">
     <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
-    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.None}" />
+    <Setter Property="BorderThickness" Value="{StaticResource Intent.Stroke.None}" />
   </Style>
 
   <Style Selector="Button.parsimonyTab.selected">
@@ -117,11 +139,11 @@
   </Style>
 
   <Style Selector="StackPanel.parsimonyDecisionRow">
-    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
+    <Setter Property="Spacing" Value="{StaticResource Intent.Space.Compact}" />
   </Style>
 
   <Style Selector="StackPanel.parsimonyDetailColumn">
-    <Setter Property="Margin" Value="{DynamicResource Intent.Gap.CompactItem}" />
-    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Minimal}" />
+    <Setter Property="Margin" Value="{StaticResource Intent.Gap.CompactItem}" />
+    <Setter Property="Spacing" Value="{StaticResource Intent.Space.Minimal}" />
   </Style>
 </Styles>

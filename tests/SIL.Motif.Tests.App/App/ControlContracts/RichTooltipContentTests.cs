@@ -434,12 +434,12 @@ internal sealed class TooltipScenes
                 break;
             case TooltipScene.Warnings:
                 Show(WorkspacePage.Warnings);
-                await Until(() => !Grammar.IsLoading && Grammar.HasChecked && Visible<Button>().Any(HasNamedEntryAction),
-                    "the completed grammar check with a named entry");
-                var warningSummary = Visible<Button>().First(HasNamedEntryAction);
-                var warningRow = Assert.IsType<GrammarWarningRowViewModel>(warningSummary.DataContext);
+                await Until(() => !Grammar.IsLoading && Grammar.HasChecked &&
+                    Grammar.Warnings.Rows.OfType<GrammarWarningRowViewModel>().Any(row => HasNamedEntryAction(row)), "the completed grammar check with a named entry");
+                var warningRow = Grammar.Warnings.Rows.OfType<GrammarWarningRowViewModel>().First(row => HasNamedEntryAction(row));
                 var entry = warningRow.Details.SelectMany(detail => detail.EntryLinks).Single();
-                if (!warningRow.IsOpen) warningRow.ToggleOpenCommand.Execute(null);
+                // The row's Details action, not selection alone, reveals the finding in the page Inspector.
+                Visible<GrammarPanel>().Single().OpenFindingDetailsCommand.Execute(warningRow);
                 PageScreenshots.Settle(Window);
                 await Until(() => Visible<HyperlinkButton>().Any(button =>
                     button.Classes.Contains("warningEntryAction") && button.Content is string text &&
@@ -632,8 +632,7 @@ internal sealed class TooltipScenes
     private ResultsTokenViewModel Token(string form) =>
         AnalyzeTextsLayoutTests.RealizedLines(InText).SelectMany(line => line.Tokens).First(token => token.Form == form);
 
-    private static bool HasNamedEntryAction(Button button) => button.Classes.Contains("warningSummary") &&
-        button.DataContext is GrammarWarningRowViewModel row &&
+    private static bool HasNamedEntryAction(GrammarWarningRowViewModel row) =>
         row.Details.Any(detail => detail.EntryLinks.Count > 0);
 
     // The staged scenes, which come last, show a pending change; it is chakula's, as the state captures stage it.

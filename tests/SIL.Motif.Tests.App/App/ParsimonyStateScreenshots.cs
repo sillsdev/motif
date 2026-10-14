@@ -107,9 +107,11 @@ public sealed class ParsimonyStateScreenshots(ITestOutputHelper output)
             ConfigureNoReport(fake, state);
             return;
         }
-        var report = ParsimonySampleReports.Listed(
-            state == "earlier-baseline" ? EarlierToken() : current,
-            incomplete: state == "incomplete");
+        var report = state == "dense-review"
+            ? ParsimonySampleReports.ReviewWorkspace(current)
+            : ParsimonySampleReports.Listed(
+                state == "earlier-baseline" ? EarlierToken() : current,
+                incomplete: state == "incomplete");
         fake.OnReadLatestParsimony((_, _) => Task.FromResult(CommandOutcome<ParsimonyLatestReportResponse>.Success(
             new ParsimonyLatestReportResponse(report.ReportId, report.Inputs.BundleId))));
         fake.OnReadParsimonyReport((_, _) => Task.FromResult(CommandOutcome<ParsimonyReportResponse>.Success(report)));
@@ -125,7 +127,9 @@ public sealed class ParsimonyStateScreenshots(ITestOutputHelper output)
         for (var index = 0; index < findings.Length; index++)
         {
             var finding = findings[index];
-            if (index == 0 && state is "suppressed-with-reason")
+            if (state == "dense-review" && index == findings.Length - 1)
+                suppressed.Add(History(finding, "keep", "Recorded after checking the stem set."));
+            else if (index == 0 && state is "suppressed-with-reason")
                 suppressed.Add(History(finding, "keep", "Checked against the field notes."));
             else if (index == 0 && state is "suppressed-without-reason")
                 suppressed.Add(History(finding, "defer", null));
@@ -148,6 +152,43 @@ public sealed class ParsimonyStateScreenshots(ITestOutputHelper output)
                 }, null, null)));
         fake.RecordDispositionHandler = (request, _) => Task.FromResult(CommandOutcome<ComposedOperationsResponse>.Success(
             new ComposedOperationsResponse(request.DraftName, "RecordParsimonyDisposition", [], 1)));
+    }
+
+    internal static async Task DriveDenseReviewAsync(ParsimonyPageModel page)
+    {
+        var rows = page.Rows.Where(row => !row.IsHeader).ToDictionary(row => row.Items, StringComparer.Ordinal);
+        var active = rows["ka- + -ni"];
+        var asked = rows["ma- + -tu"];
+        var kept = rows["mu- + -ta"];
+        var deferred = rows["sa- + -li"];
+
+        Assert.True(page.SelectFinding(asked.Link!), page.SelectionMessage);
+        page.QuestionText = "Does the restriction on ma- + -tu apply across all stem classes?";
+        await page.AskCommand.ExecuteAsync(null);
+
+        Assert.True(page.SelectFinding(kept.Link!), page.SelectionMessage);
+        page.ReasonText = "Keep the named prohibition; it accounts for 3 of 6 counted restrictions.";
+        await page.KeepCommand.ExecuteAsync(null);
+
+        Assert.True(page.SelectFinding(deferred.Link!), page.SelectionMessage);
+        page.ReasonText = "Wait until the paired parser check for the named form has run.";
+        await page.DeferCommand.ExecuteAsync(null);
+
+        Assert.True(page.SelectFinding(active.Link!), page.SelectionMessage);
+        page.QuestionText = "Does the finding's 2-of-4 count include this named prohibition?";
+
+        Assert.Equal("Active (4)", page.ActiveTabLabel);
+        Assert.Equal(1, Assert.Single(page.DecisionFilters, choice => choice.Key == "none").Count);
+        Assert.Equal(1, Assert.Single(page.DecisionFilters, choice => choice.Key == "ask").Count);
+        Assert.Equal(1, Assert.Single(page.DecisionFilters, choice => choice.Key == "keep").Count);
+        Assert.Equal(1, Assert.Single(page.DecisionFilters, choice => choice.Key == "defer").Count);
+        Assert.Equal("Question open · staged, not yet applied", asked.Disposition);
+        Assert.Equal("Kept · staged, not yet applied", kept.Disposition);
+        Assert.Equal("Deferred · staged, not yet applied", deferred.Disposition);
+        Assert.Single(page.SuppressedItems);
+        Assert.Same(active, page.SelectedTableEntry);
+        Assert.Equal("Does the finding's 2-of-4 count include this named prohibition?", page.QuestionText);
+        Assert.True(page.AskCommand.CanExecute(null));
     }
 
     // A judgment whose stored JSON was edited: it no longer suppresses, so its finding stays Active.

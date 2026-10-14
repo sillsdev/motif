@@ -73,7 +73,6 @@ public sealed class ApplyReadBackWalkthroughTests(PristineProjectFixture pristin
                 InteractiveControlFamily.List,
                 InteractiveControlFamily.SelectableText,
                 InteractiveControlFamily.Collection,
-                InteractiveControlFamily.Mark,
                 InteractiveControlFamily.FocusableSurface);
             var review = walkthrough.Workspace.PageModel<ReviewPageModel>();
             var reviewEntry = walkthrough.Window.GetLogicalDescendants().OfType<ListBoxItem>()

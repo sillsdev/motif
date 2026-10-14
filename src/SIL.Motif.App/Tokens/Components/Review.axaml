@@ -6,7 +6,7 @@
     <StaticResource x:Key="Component.Review.GroupMargin" ResourceKey="Primitive.Inset.0_0_8_8" />
     <StaticResource x:Key="Component.Review.GroupRadius" ResourceKey="Intent.Radius.None" />
     <StaticResource x:Key="Component.Review.EntryMargin" ResourceKey="Primitive.Inset.0_0_8_0" />
-    <StaticResource x:Key="Component.Review.PageHeaderGap" ResourceKey="Primitive.Inset.0_0_0_8" />
+    <StaticResource x:Key="Component.Review.HeaderGuidanceGap" ResourceKey="Primitive.Inset.0_0_0_8" />
     <StaticResource x:Key="Component.Review.EntryHeaderRule" ResourceKey="Primitive.Inset.1_1_1_0" />
     <StaticResource x:Key="Component.Review.EntryRule" ResourceKey="Primitive.Inset.1_0_1_0" />
     <StaticResource x:Key="Component.Review.EntryLastRule" ResourceKey="Primitive.Inset.1_0_1_1" />
@@ -24,6 +24,10 @@
     <StaticResource x:Key="Component.Review.GapStart" ResourceKey="Primitive.Inset.10_0_0_0" />
     <StaticResource x:Key="Component.Review.GapEnd" ResourceKey="Primitive.Inset.0_0_6_0" />
     <StaticResource x:Key="Component.Review.RightWidth" ResourceKey="Primitive.Size.320" />
+    <StaticResource x:Key="Component.Review.TableActionsWidth" ResourceKey="Primitive.Size.110" />
+    <StaticResource x:Key="Component.Review.TableCompactFitWidth" ResourceKey="Primitive.Size.90" />
+    <x:String x:Key="Component.Review.TableCompactColumns">* 0 0 0 0 Component.Review.TableCompactFitWidth Component.Review.TableActionsWidth</x:String>
+    <x:String x:Key="Component.Review.TableColumns">* Narrow 2* Narrow 2* Narrow Component.Review.TableActionsWidth</x:String>
   </Styles.Resources>
   <Style Selector="Grid.reviewLayout">
     <Setter Property="Margin" Value="{DynamicResource Component.Review.PageMargin}" />
@@ -38,8 +42,12 @@
   <Style Selector="StackPanel.reviewCompact">
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
   </Style>
+  <Style Selector="Border.reviewHeaderGuidance">
+    <Setter Property="Margin" Value="{DynamicResource Component.Review.HeaderGuidanceGap}" />
+  </Style>
   <Style Selector="StackPanel.reviewPageHeader">
-    <Setter Property="Margin" Value="{DynamicResource Component.Review.PageHeaderGap}" />
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
+    <Setter Property="Margin" Value="{DynamicResource Intent.Inset.None}" />
   </Style>
   <Style Selector="StackPanel.reviewRight">
     <Setter Property="MaxWidth" Value="{DynamicResource Component.Review.RightWidth}" />
@@ -229,5 +237,32 @@
     <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
     <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Border.reviewFitTag">
+    <Setter Property="Padding" Value="{StaticResource Component.Review.PillPadding}" />
+    <Setter Property="BorderThickness" Value="{StaticResource Intent.Stroke.Box}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+  </Style>
+  <Style Selector="Border.reviewFitTag.fits">
+    <Setter Property="Background" Value="{DynamicResource Intent.Success.Fill}" />
+  </Style>
+  <Style Selector="Border.reviewFitTag.noLongerFits">
+    <Setter Property="Background" Value="{DynamicResource Intent.Danger.Fill}" />
+  </Style>
+  <Style Selector="Border.reviewFitTag.uncertain">
+    <Setter Property="Background" Value="{DynamicResource Intent.Warning.Fill}" />
+  </Style>
+  <Style Selector=":is(TextBlock).reviewFitText">
+    <Setter Property="FontSize" Value="{StaticResource Intent.Type.Label}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Text}" />
+  </Style>
+  <Style Selector="Border.reviewFitTag.fits :is(TextBlock)">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Success.Text}" />
+  </Style>
+  <Style Selector="Border.reviewFitTag.noLongerFits :is(TextBlock)">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Danger.Text}" />
+  </Style>
+  <Style Selector="Border.reviewFitTag.uncertain :is(TextBlock)">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Warning.Text}" />
   </Style>
 </Styles>

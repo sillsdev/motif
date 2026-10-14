@@ -37,6 +37,35 @@ public sealed partial class ReviewEntryViewModel : ObservableObject
     /// <summary>Whether this is a change to the grammar or lexicon rather than to a word.</summary>
     public bool IsGrammar => Change is null;
 
+    /// <summary>The word change's fit in the window's words, separate from its staged Opinion.</summary>
+    public string FitText => Change?.ReviewFitText ?? string.Empty;
+
+    /// <summary>The word's parser outcome, or the grammar change's recorded effects.</summary>
+    public string TableOutcomeText => Change?.Listed?.Row.CompactOutcomeWord ??
+        (HasEffects ? "Changes observed" : "No effects recorded");
+
+    /// <summary>The compact fit label beside a change, with its full status in <see cref="TableFitDescription"/>.</summary>
+    public string TableFitText => Change switch
+    {
+        null => "At Apply",
+        { IsNoLongerFits: true } => "No fit",
+        { IsUncertain: true } => "Recheck",
+        { StillFits: true } => "Still fits",
+        _ => "Unchecked",
+    };
+
+    /// <summary>The complete fit status, including when a grammar change is checked under ADR 0046.</summary>
+    public string TableFitDescription => Change?.ReviewFitText ?? "Checked on Apply";
+
+    public string FitGlyph => Change is { IsNoLongerFits: true } ? "✗"
+        : Change is { IsUncertain: true } ? "!" : Change is { StillFits: true } ? "✓" : string.Empty;
+
+    public string TableKeepAutomationName => Change is { } change ? $"Keep: {change.Word}" : KeepAutomationName;
+
+    public string TableUndoAutomationName => Change?.UndoAutomationName ?? UndoAutomationName;
+
+    public string MoreAutomationName => $"More for {Change?.Word ?? Title}";
+
     /// <summary>What a grammar change makes, counted in a linguist's nouns, or empty for a word change.</summary>
     public string Summary => Entry is GrammarChangeEntry grammar ? grammar.Summary : string.Empty;
 
@@ -105,7 +134,7 @@ public sealed record UndoPromptViewModel(
 }
 
 /// <summary>The band over the grammar changes, worded as a word group's band is.</summary>
-public sealed class ReviewGrammarGroupViewModel(int count)
+public sealed class ReviewGrammarGroupViewModel(int count) : IDenseTableGroupHeading
 {
     public string Title => "Grammar changes";
 

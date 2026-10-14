@@ -379,6 +379,98 @@ public sealed class TokenHygieneTests
         Assert.Contains("unresolved-resource", output.ToString());
     }
 
+    [Theory]
+    [InlineData("Columns")]
+    [InlineData("CompactColumns")]
+    public void DenseTableSchemasKeepTheirComponentTracksAndAliasesReachable(string property)
+    {
+        using var repo = new ScratchRepo();
+        repo.Write(View, Document($"<Grid xmlns:table=\"clr-namespace:SIL.Motif.App.Controls\" "
+            + $"table:DenseTable.{property}=\"* Component.Sample.Actions 0 Actions\" />"));
+        repo.Write(Component, Dictionary(
+            "<StaticResource x:Key=\"Component.Sample.Actions\" ResourceKey=\"Primitive.Size.110\" />"));
+        repo.Write(Primitives, Dictionary("<x:Double x:Key=\"Primitive.Size.110\">110</x:Double>"));
+
+        var output = new StringWriter();
+        Assert.Equal(0, TokenHygiene.Run([], repo.Root, [], output));
+    }
+
+    [Theory]
+    [InlineData("Columns")]
+    [InlineData("CompactColumns")]
+    public void DenseTableSchemasRejectMissingComponentTracks(string property)
+    {
+        using var repo = new ScratchRepo();
+        repo.Write(View, Document($"<Grid xmlns:table=\"clr-namespace:SIL.Motif.App.Controls;assembly=SIL.Motif.App\" "
+            + $"table:DenseTable.{property}=\"* Component.Sample.Missing Actions\" />"));
+
+        var output = new StringWriter();
+        Assert.Equal(1, TokenHygiene.Run([], repo.Root, [], output));
+        Assert.Contains("unresolved-resource", output.ToString());
+        Assert.Contains("Component.Sample.Missing", output.ToString());
+    }
+
+    [Theory]
+    [InlineData("clr-namespace:Other.Controls", "DenseTable.Columns")]
+    [InlineData("clr-namespace:SIL.Motif.App.Controls", "DenseTable.Tag")]
+    [InlineData("clr-namespace:SIL.Motif.App.Controls", "OtherTable.Columns")]
+    public void UnrelatedAttributesCannotKeepATableTrackAlive(string xmlNamespace, string property)
+    {
+        using var repo = new ScratchRepo();
+        repo.Write(View, Document($"<Grid xmlns:table=\"{xmlNamespace}\" table:{property}=\"Component.Sample.Actions\" />"));
+        repo.Write(Component, Dictionary(
+            "<StaticResource x:Key=\"Component.Sample.Actions\" ResourceKey=\"Primitive.Size.110\" />"));
+        repo.Write(Primitives, Dictionary("<x:Double x:Key=\"Primitive.Size.110\">110</x:Double>"));
+
+        var output = new StringWriter();
+        Assert.Equal(1, TokenHygiene.Run([], repo.Root, [], output));
+        Assert.Contains("unreferenced-resource", output.ToString());
+        Assert.Contains("Component.Sample.Actions", output.ToString());
+    }
+
+    [Theory]
+    [InlineData("Columns", "StaticResource")]
+    [InlineData("CompactColumns", "DynamicResource")]
+    public void DenseTableResourceSchemasKeepOnlyTheirReferencedTracksReachable(string property, string markup)
+    {
+        using var repo = new ScratchRepo();
+        repo.Write(View, Document($"<Grid xmlns:table=\"clr-namespace:SIL.Motif.App.Controls\" "
+            + $"table:DenseTable.{property}=\"{{{markup} Component.Sample.Schema}}\" />"));
+        repo.Write(Component, Dictionary(
+            "<StaticResource x:Key=\"Component.Sample.Schema\" ResourceKey=\"Component.Sample.Columns\" />"
+            + "<x:String x:Key=\"Component.Sample.Columns\">* Component.Sample.Actions 0 Actions</x:String>"
+            + "<StaticResource x:Key=\"Component.Sample.Actions\" ResourceKey=\"Primitive.Size.110\" />"
+            + "<x:String x:Key=\"Component.Sample.UnusedColumns\">* Component.Sample.UnusedTrack</x:String>"
+            + "<StaticResource x:Key=\"Component.Sample.UnusedTrack\" ResourceKey=\"Primitive.Size.110\" />"));
+        repo.Write(Primitives, Dictionary("<x:Double x:Key=\"Primitive.Size.110\">110</x:Double>"));
+
+        var output = new StringWriter();
+        Assert.Equal(1, TokenHygiene.Run([], repo.Root, [], output));
+        Assert.Contains("Component.Sample.UnusedColumns", output.ToString());
+        Assert.Contains("Component.Sample.UnusedTrack", output.ToString());
+        Assert.DoesNotContain("Component.Sample.Actions", output.ToString());
+        Assert.DoesNotContain("Component.Sample.Schema", output.ToString());
+        Assert.DoesNotContain("Component.Sample.Columns'", output.ToString());
+        Assert.DoesNotContain("unresolved-resource", output.ToString());
+        Assert.DoesNotContain("Primitive.Size.110", output.ToString());
+    }
+
+    [Fact]
+    public void DenseTableResourceSchemasRejectAMissingTrackInAStoredSchema()
+    {
+        using var repo = new ScratchRepo();
+        repo.Write(View, Document("<Grid xmlns:table=\"clr-namespace:SIL.Motif.App.Controls\" "
+            + "table:DenseTable.Columns=\"{StaticResource Component.Sample.Columns}\" />"));
+        repo.Write(Component, Dictionary(
+            "<x:String x:Key=\"Component.Sample.Columns\">* Component.Sample.Missing Actions</x:String>"));
+
+        var output = new StringWriter();
+        Assert.Equal(1, TokenHygiene.Run([], repo.Root, [], output));
+        Assert.Contains("unresolved-resource", output.ToString());
+        Assert.Contains("Component.Sample.Missing", output.ToString());
+        Assert.DoesNotContain("Component.Sample.Columns}", output.ToString());
+    }
+
     [Fact]
     public void AnEmptyScanIsRefusedRatherThanReportedClean()
     {

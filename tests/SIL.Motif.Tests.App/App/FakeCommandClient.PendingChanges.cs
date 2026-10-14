@@ -14,6 +14,8 @@ public sealed partial class FakeCommandClient
     private string? _applySummary;
     public Refusal? ApplyPendingRefusal { get; set; }
     public Refusal? MeasurePendingRefusal { get; set; }
+    public Func<MeasurePendingRequest, CancellationToken, Task<CommandOutcome<MeasurePendingResult>>>?
+        MeasurePendingHandler { get; set; }
     public Func<ApplyPendingRequest, CancellationToken, Task<CommandOutcome<ApplyPendingResult>>>? ApplyPendingHandler
         { get; set; }
 
@@ -44,6 +46,7 @@ public sealed partial class FakeCommandClient
         MeasurePendingRequest request, IProgress<MeasureProgress> progress, CancellationToken cancellationToken)
     {
         MeasurePendingRequests.Add(request);
+        if (MeasurePendingHandler is { } handler) return handler(request, cancellationToken);
         if (MeasurePendingRefusal is { } refusal)
             return Task.FromResult(CommandOutcome<MeasurePendingResult>.Refused(refusal));
         return _measurement is { } result ? Completed(result) : throw NotConfigured(nameof(MeasurePendingAsync));

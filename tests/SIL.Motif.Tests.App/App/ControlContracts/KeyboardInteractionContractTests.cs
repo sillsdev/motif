@@ -94,6 +94,10 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
 
         var expectedSettingsKeys = new List<(string Key, string Gesture, string Scope)>
         {
+            ("↑", "↑", "Tables"), ("↓", "↓", "Tables"),
+            ("Home", "Home", "Tables"), ("End", "End", "Tables"),
+            ("Tab", "Tab", "Tables"), ("Tab", "Shift+Tab", "Tables"),
+            ("Menu key or ↓", "Menu key or Alt+↓", "Tables"), ("Enter", "Enter", "Tables"),
             ("← or →", "← or →", "Analyze texts"),
             ("↑", "↑", "Analyze texts"), ("↓", "↓", "Analyze texts"),
             ("Enter or Space", "Enter or Space", "Analyze texts"),

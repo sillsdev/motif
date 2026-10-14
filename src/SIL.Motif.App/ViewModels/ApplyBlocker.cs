@@ -37,6 +37,9 @@ public enum ApplyBlockerKind
 
     /// <summary>The open Proposal's evidence does not yet permit Apply.</summary>
     NotReady,
+
+    /// <summary>At least one pending word change has no current fit result.</summary>
+    FitNotChecked,
 }
 
 /// <summary>

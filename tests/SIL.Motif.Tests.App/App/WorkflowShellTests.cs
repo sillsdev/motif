@@ -178,7 +178,7 @@ public sealed class WorkflowShellTests
                         "AI assistants page"],
                     entries.Select(AutomationProperties.GetName));
 
-                foreach (var page in Enum.GetValues<WorkspacePage>().Reverse())
+                foreach (var page in workspace.VisiblePages.Select(entry => entry.Page).Reverse())
                 {
                     Click(window, Entry(entries, page));
 
@@ -237,7 +237,7 @@ public sealed class WorkflowShellTests
                 Assert.True(workspace.IsSidebarCollapsed);
                 Assert.Equal(44, sidebar.Bounds.Width);
                 Assert.All(SidebarEntries(window), entry => Assert.False(Label(entry).IsEffectivelyVisible));
-                Assert.Equal(workspace.Pages.Select(page => (object)page.Title), SidebarEntries(window).Select(entry => ToolTip.GetTip(entry)));
+                Assert.Equal(workspace.VisiblePages.Select(page => (object)page.Title), SidebarEntries(window).Select(entry => ToolTip.GetTip(entry)));
 
                 window.Width = 900;
                 window.UpdateLayout();
@@ -248,7 +248,7 @@ public sealed class WorkflowShellTests
                 Assert.Equal(44, sidebar.Bounds.Width);
                 var entries = SidebarEntries(window);
                 Assert.All(entries, entry => Assert.False(Label(entry).IsEffectivelyVisible));
-                Assert.Equal(workspace.Pages.Select(page => (object)page.Title), entries.Select(entry => ToolTip.GetTip(entry)));
+                Assert.Equal(workspace.VisiblePages.Select(page => (object)page.Title), entries.Select(entry => ToolTip.GetTip(entry)));
                 var reviewBadge = Entry(entries, WorkspacePage.Review).GetVisualDescendants().OfType<Border>()
                     .Single(border => border.Classes.Contains("pageBadge"));
                 Assert.True(reviewBadge.IsEffectivelyVisible);
@@ -586,6 +586,7 @@ public sealed class WorkflowShellTests
             var (workspace, window) = NewComposedWindow();
             try
             {
+                window.Width = 1920;
                 workspace.CurrentPage = WorkspacePage.Review;
                 window.Show();
                 window.UpdateLayout();
@@ -604,19 +605,18 @@ public sealed class WorkflowShellTests
 
                 var groups = page.ReviewGroups;
                 Assert.Equal(["Added", "Removed"], groups.Select(item => item.Title));
-                Assert.Same(page.ReviewEntries, list.ItemsSource);
+                Assert.Same(page.TableEntries, list.ItemsSource);
                 Assert.Equal(page.ReviewGroups.Select(item => item.Title),
-                    page.ReviewEntries.Where(entry => entry.IsGroupHeader).Select(entry => entry.Group!.Title));
+                    page.TableEntries.OfType<ReviewChangeGroupViewModel>().Select(group => group.Title));
                 Assert.Contains(review.GetVisualDescendants().OfType<TextBlock>(),
                     text => text.Text == "Added");
-                // With no parse in the window, the row claims no opinion; the staged arrow says what changes.
-                Assert.DoesNotContain(review.GetLogicalDescendants().OfType<OpinionMark>(),
-                    mark => mark.IsEffectivelyVisible);
-                Assert.Contains(review.GetVisualDescendants().OfType<TextBlock>(),
-                    text => text.Text == "Not in FieldWorks → Unknown");
+                var added = page.TableEntries.OfType<ReviewListEntryViewModel>().Single(entry => entry.Change?.Word == "kitabu");
+                var addedRow = ((ListBox)list).ContainerFromItem(added)!;
+                Assert.Equal("Not in FieldWorks → Unknown", added.Change!.TransitionText);
+                Assert.Equal([OpinionMarkKind.None, OpinionMarkKind.Unknown],
+                    addedRow.GetVisualDescendants().OfType<OpinionMark>().Select(mark => mark.Kind!.Value));
                 var buttons = review.GetLogicalDescendants().OfType<Button>().ToArray();
                 var undo = buttons.Single(button => AutomationProperties.GetName(button) == "Undo: kitabu");
-                // Each change row has one Keep and one Undo, side by side, and no second Undo beside them.
                 var keep = buttons.Single(button => AutomationProperties.GetName(button) == "Keep: kitabu");
                 Assert.Same(keep.Parent, undo.Parent);
                 Assert.Equal(2, buttons.Count(button => Equals(button.Content, "Undo") &&
@@ -631,14 +631,15 @@ public sealed class WorkflowShellTests
                     AutomationProperties.GetName(button) == "Undo all: Added");
                 Assert.DoesNotContain(buttons, button =>
                     AutomationProperties.GetName(button) == "Go to text in Added");
-                var goToText = buttons.Single(button => AutomationProperties.GetName(button) == "Open kitabu in Analyze texts");
-                // Undo stays in sight; the row's next steps rest hidden but stay on the Tab path.
-                Assert.Equal(0d, goToText.Opacity);
+                page.SelectEntry(added.Review!);
+                PageScreenshots.Settle(window);
+                var goToText = Assert.Single(review.InspectorContent.GetVisualDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetName(button) == added.Change.Listed!.Row.OpenInTextAutomationName);
+                Assert.Equal(1d, goToText.Opacity);
+                Assert.True(goToText.IsEffectivelyVisible);
+                Assert.True(goToText.IsHitTestVisible);
                 Assert.True(goToText.IsTabStop);
                 Assert.True(goToText.Focus(NavigationMethod.Tab));
-                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
-                Assert.Equal(1d, goToText.Opacity);
-                Assert.True(goToText.IsHitTestVisible);
                 Assert.Equal(1d, undo.Opacity);
             }
             finally

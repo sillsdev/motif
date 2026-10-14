@@ -1,12 +1,13 @@
 using Avalonia.Controls;
+using Avalonia.Controls.Templates;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
-using Avalonia.Threading;
 using Avalonia.VisualTree;
+using SIL.Motif.App.Controls;
 using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.App.ViewModels;
-using WordPresentationRow = SIL.Motif.App.Controls.WordPresentation.WordRow;
+using SIL.Motif.App.Views.Shell;
 
 namespace SIL.Motif.App.Views;
 
@@ -14,7 +15,7 @@ namespace SIL.Motif.App.Views;
 /// The Review page: the one list of changes every page adds to, each with a way to take it back, before
 /// anything is saved to FieldWorks.
 /// </summary>
-public sealed partial class ReviewPanel : UserControl
+public sealed partial class ReviewPanel : UserControl, IWorkspacePaneProvider
 {
     public ReviewPanel(ReviewPageModel page)
     {
@@ -23,13 +24,38 @@ public sealed partial class ReviewPanel : UserControl
         DataContext = page;
         AvaloniaXamlLoader.Load(this);
         _items = this.FindControl<ListBox>("ReviewItems")!;
+        DenseTable.Attach(_items);
         PresentationHost = new ReviewWordPresentationHost(page);
-        _items.AddHandler(KeyDownEvent, OnReviewKeyDown, RoutingStrategies.Tunnel);
+        _footer = BuildPane("ApplyFooterTemplate");
+        _sidePanel = BuildPane("ReviewNavigatorTemplate");
+        InspectorContent = new ReviewInspector(page, PresentationHost);
+        _items.SelectionChanged += (_, _) =>
+        {
+            if (_items.SelectedItem is ReviewListEntryViewModel { Review: { } entry }) Page.SelectEntry(entry);
+        };
+        foreach (var pane in new[] { _sidePanel, InspectorContent, _footer })
+            pane.AddHandler(KeyDownEvent, OnEntryKeyDown, RoutingStrategies.Tunnel);
+        AddHandler(MorphemePanel.OverflowRequestedEvent, OnMorphologyRequested);
         AddHandler(KeyDownEvent, OnEntryKeyDown, RoutingStrategies.Tunnel);
         _items.GotFocus += OnReviewGotFocus;
     }
 
     public ReviewPageModel Page { get; }
+
+    public string SidePanelTitle => "Review changes";
+
+    public Control SidePanel => _sidePanel;
+
+    public Control InspectorContent { get; }
+
+    public Control InspectorFooter => _footer;
+
+    private Control BuildPane(string key)
+    {
+        var pane = ((IDataTemplate)Resources[key]!).Build(Page)!;
+        pane.DataContext = Page;
+        return pane;
+    }
 
     [KeyboardShortcutHandler(
         "ReviewChanges:PreviousEntry", "ReviewChanges:NextEntry", "ReviewChanges:KeepEntry", "ReviewChanges:UndoEntry")]
@@ -40,6 +66,9 @@ public sealed partial class ReviewPanel : UserControl
                 KeyboardShortcutBehavior.KeepEntry, KeyboardShortcutBehavior.UndoEntry]);
         if (entry is null || !KeyboardShortcutRegistry.Allows(entry, KeyboardShortcutRegistry.IsTextInput(e.Source),
                 hasFocusedItem: true)) return;
+        if ((entry.Behavior is KeyboardShortcutBehavior.PreviousEntry or KeyboardShortcutBehavior.NextEntry) &&
+            e.Source is Control source && (ReferenceEquals(source, _items) || source.GetVisualAncestors().Contains(_items)))
+            return;
         var command = entry.Behavior switch
         {
             KeyboardShortcutBehavior.PreviousEntry => (System.Windows.Input.ICommand)Page.PreviousCommand,
@@ -55,80 +84,43 @@ public sealed partial class ReviewPanel : UserControl
     public IWordPresentationHost PresentationHost { get; }
 
     private readonly ListBox _items;
-    private int _navigationVersion;
+    private readonly Control _footer;
+    private readonly Control _sidePanel;
 
     private void OnReviewGotFocus(object? sender, FocusChangedEventArgs e)
     {
         if (e.Source is not Control source) return;
         // Keep the focused action's list entry active for keyboard navigation.
-        var ancestors = source.GetVisualAncestors().OfType<Control>().ToArray();
+        var ancestors = source.GetSelfAndVisualAncestors().OfType<Control>().ToArray();
         foreach (var list in ancestors.OfType<ItemsControl>().Where(control => ReferenceEquals(control, _items)))
         {
             var container = ancestors.FirstOrDefault(control => list.IndexFromContainer(control) >= 0);
-            if (container is not null) KeyboardNavigation.SetTabOnceActiveElement(list, container);
+            if (container is not null)
+            {
+                KeyboardNavigation.SetTabOnceActiveElement(list, container);
+                if (container.DataContext is ReviewListEntryViewModel { Review: { } entry }) Page.SelectEntry(entry);
+            }
         }
     }
 
-    [KeyboardShortcutHandler(
-        "ReviewChanges:PreviousRow", "ReviewChanges:NextRow", "ReviewChanges:FirstItem", "ReviewChanges:LastItem")]
-    private void OnReviewKeyDown(object? sender, KeyEventArgs e)
+    private void OnDetailsRequested(object? sender, RoutedEventArgs e)
     {
-        var entry = KeyboardShortcutRegistry.Find(KeyboardShortcutScope.ReviewChanges, e.Key, e.KeyModifiers,
-            targetBehaviors: [KeyboardShortcutBehavior.PreviousRow, KeyboardShortcutBehavior.NextRow,
-                KeyboardShortcutBehavior.FirstItem, KeyboardShortcutBehavior.LastItem]);
-        if (entry is null || e.Source is not Control source) return;
-        var row = (source as WordPresentationRow) ??
-            source.GetVisualAncestors().OfType<WordPresentationRow>().FirstOrDefault();
-        if (row is null ||
-            row.FindAncestorOfType<ListBox>() is not { } list || !ReferenceEquals(list, _items) ||
-            !KeyboardShortcutRegistry.Allows(entry, KeyboardShortcutRegistry.IsTextInput(source),
-                hasFocusedItem: true)) return;
-        var container = row.GetVisualAncestors().OfType<Control>()
-            .FirstOrDefault(control => list.IndexFromContainer(control) >= 0);
-        if (container is null) return;
-        var entries = Page.ReviewEntries;
-        var changeIndices = entries.Select((item, index) => (item, index))
-            .Where(pair => pair.item.IsChangeRow).Select(pair => pair.index).ToArray();
-        var currentPosition = Array.IndexOf(changeIndices, list.IndexFromContainer(container));
-        if (currentPosition < 0 || changeIndices.Length == 0) return;
-        var targetPosition = entry.Behavior switch
-        {
-            KeyboardShortcutBehavior.FirstItem => 0,
-            KeyboardShortcutBehavior.LastItem => changeIndices.Length - 1,
-            KeyboardShortcutBehavior.PreviousRow => currentPosition - 1,
-            _ => currentPosition + 1,
-        };
-        if (targetPosition < 0 || targetPosition >= changeIndices.Length) return;
-        var targetIndex = changeIndices[targetPosition];
-        var targetEntry = entries[targetIndex];
+        if (sender is not Control { DataContext: ReviewEntryViewModel entry }) return;
+        Page.SelectEntry(entry);
+        if (Page.SelectedTableEntry is { } selected)
+            _items.ContainerFromItem(selected)?.GetVisualDescendants().OfType<Button>()
+                .FirstOrDefault(button => button.Classes.Contains("denseTableMenu"))?.Flyout?.Hide();
+        WorkspaceLayoutHost.RequestPageInspector(this);
+    }
 
+    private void OnMorphologyRequested(object? sender, MorphemeOverflowRequestedEventArgs e)
+    {
+        var entry = Page.Entries.FirstOrDefault(entry => entry.Change?.ReviewMorphologyRequest == e.Request);
+        if (entry is null) return;
+        Page.SelectEntry(entry);
+        WorkspaceLayoutHost.RequestPageInspector(this);
+        InspectorContent.GetVisualDescendants().OfType<Button>().FirstOrDefault(button =>
+            button.IsEffectivelyVisible && button.IsEnabled)?.Focus();
         e.Handled = true;
-        var version = ++_navigationVersion;
-        list.ScrollIntoView(targetIndex);
-        list.UpdateLayout();
-        Dispatcher.UIThread.Post(RealizeRow, DispatcherPriority.Loaded);
-
-        bool IsCurrent() => version == _navigationVersion && TopLevel.GetTopLevel(list) is not null &&
-            targetIndex < Page.ReviewEntries.Count && ReferenceEquals(Page.ReviewEntries[targetIndex], targetEntry);
-
-        void RealizeRow()
-        {
-            if (!IsCurrent()) return;
-            list.ScrollIntoView(targetIndex);
-            list.UpdateLayout();
-            Dispatcher.UIThread.Post(FocusTarget, DispatcherPriority.Loaded);
-        }
-
-        void FocusTarget()
-        {
-            if (!IsCurrent() || list.ContainerFromIndex(targetIndex) is not { } container) return;
-            var target = container.GetVisualDescendants().OfType<WordPresentationRow>().FirstOrDefault();
-            if (target is null) return;
-            target.FocusWord();
-            list.UpdateLayout();
-            list.ScrollIntoView(targetIndex);
-            list.UpdateLayout();
-            list.ContainerFromIndex(targetIndex)?.GetVisualDescendants().OfType<WordPresentationRow>().FirstOrDefault()?.FocusWord();
-        }
     }
 }

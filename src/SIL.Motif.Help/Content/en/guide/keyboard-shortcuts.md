@@ -60,6 +60,18 @@ Inside text inputs, Ctrl+C/X/V and Ctrl+Z/Y use the control's own copy, cut, pas
 | U | U | U | Lists | Stage Unknown |
 | F | Ctrl+F | ⌘+F | Lists | Focus the word search |
 
+## Tables
+
+| Key | Windows / Linux | macOS | Page or scope | Action |
+| --- | --- | --- | --- | --- |
+| ↑ | ↑ | ↑ | Tables | Move to the previous row |
+| ↓ | ↓ | ↓ | Tables | Move to the next row |
+| Home | Home | Home | Tables | Go to the first row |
+| End | End | End | Tables | Go to the last row |
+| Tab | Tab | Tab | Tables | Next table action |
+| Tab | Shift+Tab | Shift+Tab | Tables | Previous table action |
+| Menu key or ↓ | Menu key or Alt+↓ | Menu key or Alt+↓ | Tables | Open row actions |
+
 ## Matrix
 
 | Key | Windows / Linux | macOS | Page or scope | Action |

@@ -313,6 +313,44 @@ public sealed class ReviewChangeGroupsTests
         Assert.Equal("FieldWorks has not reparsed this paragraph after the edit.", Unsure(notReparsed).DetailText);
     }
 
+    [Theory]
+    [InlineData(ChangeFitStatus.Fits, "Still fits")]
+    [InlineData(ChangeFitStatus.NoLongerFits, "No longer fits")]
+    [InlineData(ChangeFitStatus.Uncertain, "Needs another look")]
+    public async Task CompactReviewFactsKeepFitAndExactTextLocationSeparateFromOpinion(string status,
+        string expectedFit)
+    {
+        var occurrence = new OccurrenceAnchor(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 2);
+        var (page, fake) = await OpenReviewAsync([Change("one", "kitabu", ChangeKinds.Approve,
+            occurrence: occurrence)],
+            uncertainChangeIds: status == ChangeFitStatus.Uncertain ? ["one"] : null,
+            noLongerFitsChangeIds: status == ChangeFitStatus.NoLongerFits ? ["one"] : null,
+            occurrenceLocation: _ => new TextOccurrenceLocation(0, 3, 2, "Story, line 4, word 3"));
+        var change = Assert.Single(Assert.Single(page.ReviewGroups).Items);
+        var row = change.Presentation;
+
+        Assert.Equal(expectedFit, row.PendingChange!.FitText);
+        Assert.Equal("Story, line 4, word 3", row.PendingChange.WhereText);
+        Assert.Equal("Unknown → Approved", row.StagedText);
+        Assert.Equal("Keep: kitabu", row.PendingChange.KeepAutomationName);
+        Assert.Equal("Undo: kitabu", row.PendingChange.UndoAutomationName);
+        Assert.Empty(fake.ReviewMarkRequests);
+        Assert.Empty(fake.ApplyPendingRequests);
+    }
+
+    [Fact]
+    public async Task CompactReviewWithoutAFitResultDoesNotClaimTheChangeStillFits()
+    {
+        var (page, fake) = await OpenReviewAsync([Change("one", "kitabu", ChangeKinds.Approve)]);
+        fake.PendingChangesIs(page.Context.Changes.Snapshot with { FitSummary = [] });
+        await page.Context.Changes.ReloadAsync();
+        var change = Assert.Single(Assert.Single(page.ReviewGroups).Items);
+
+        Assert.Equal("Not checked", change.Presentation.PendingChange!.FitText);
+        Assert.Equal("Not tied to a text occurrence", change.Presentation.PendingChange.WhereText);
+        Assert.False(change.Presentation.PendingChange.StillFits);
+    }
+
     private static async Task<(ReviewPageModel Page, FakeCommandClient Client)> OpenReviewAsync(
         IReadOnlyList<PendingChange> changes, string[]? uncertainChangeIds = null,
         Func<OccurrenceAnchor, TextOccurrenceLocation?>? occurrenceLocation = null,

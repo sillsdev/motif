@@ -14,7 +14,7 @@ namespace SIL.Motif.Tests.App;
 
 /// <summary>
 /// Every other place a word is listed shows the same word row as the Matrix and Lists, with its three next steps:
-/// Timing's costliest words, Review changes, What changed and Analyze texts' Word list.
+/// Timing's costliest words, What changed and Analyze texts' Word list; Review offers those steps in its Inspector.
 /// Try a Word on any of them opens Try a Word on that word.
 /// </summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
@@ -179,6 +179,25 @@ public sealed class WordRowEverywhereTests
                 window.Width = 1240;
                 window.Height = 1600;
                 await reach(workspace, window, client!);
+                if (list == "review")
+                {
+                    var panel = Assert.Single(window.GetVisualDescendants().OfType<ReviewPanel>());
+                    var page = workspace.PageModel<ReviewPageModel>();
+                    page.SelectEntry(Assert.Single(page.Entries, entry => entry.Change?.Word == word));
+                    SIL.Motif.App.Views.Shell.WorkspaceLayoutHost.RequestPageInspector(panel);
+                    PageScreenshots.Settle(window);
+                    var next = panel.InspectorContent.GetVisualDescendants().OfType<Button>()
+                        .Where(button => button.IsEffectivelyVisible).ToArray();
+                    var tryWord = Assert.Single(next, button => Equals(button.Content, "Try a Word"));
+                    Assert.Contains(next, button => Equals(button.Content, "Open in text"));
+                    Assert.Contains(next, button => Equals(button.Content, "Word Analyses ↗"));
+                    tryWord.BringIntoView();
+                    PageScreenshots.Settle(window);
+                    HeadlessClick.Click(window, tryWord, "Try a Word");
+                    Assert.Equal(WorkspacePage.TryAWord, workspace.CurrentPage);
+                    Assert.Equal(word, workspace.PageModel<TryWordPageModel>().Trace.WordToTry);
+                    return;
+                }
                 var row = await RowIn(window, list, word);
                 if (list == "timing-rule-words")
                     Assert.False(string.IsNullOrWhiteSpace(row.Data?.TimeText));

@@ -138,6 +138,8 @@ public sealed record WordCardSentenceToken(string Form, string? WritingSystem, b
 /// <summary>The pending-change actions and status displayed on a Review word row.</summary>
 /// <param name="IsLookedAt">Whether Review changes marks the change looked at, shown as a chip before Keep.</param>
 /// <param name="KeepAutomationName">The accessible name of the row's Keep.</param>
+/// <param name="FitText">The fit result in short window words, independently of the staged Opinion.</param>
+/// <param name="WhereText">The exact text location or why no text location is available.</param>
 public sealed record WordPendingChange(
     bool IsUncertain,
     bool StillFits,
@@ -145,7 +147,9 @@ public sealed record WordPendingChange(
     string ReconfirmAutomationName,
     string UndoAutomationName,
     bool IsLookedAt = false,
-    string? KeepAutomationName = null);
+    string? KeepAutomationName = null,
+    string FitText = "",
+    string WhereText = "");
 
 /// <summary>A typed section in a word card.</summary>
 public abstract record WordCardSection;

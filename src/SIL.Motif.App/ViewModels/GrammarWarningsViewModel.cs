@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using Avalonia.Collections;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -120,6 +121,7 @@ public static class GrammarLevelMarks
 public sealed partial class GrammarWarningsViewModel : ObservableObject
 {
     private readonly List<GrammarWarningRowViewModel> _all = [];
+    private GrammarWarningRowViewModel? _selectedWarning;
     private Func<GrammarWarningRowViewModel, Task>? _reparseWords;
     private Action<GrammarWarningRowViewModel>? _handOffWords;
     private WordRowRoutes? _wordRoutes;
@@ -130,6 +132,12 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
         SetBucketCommand = new RelayCommand<GrammarFindingBucket>(bucket => Bucket = bucket);
         SetReportOrderCommand = new RelayCommand(() => MostYourWordsFirst = false);
         SetMostYourWordsFirstCommand = new RelayCommand(() => MostYourWordsFirst = true);
+        OpenDetailsCommand = new RelayCommand<GrammarWarningRowViewModel>(row =>
+        {
+            if (row is null) return;
+            SelectedTableEntry = row;
+            row.IsOpen = true;
+        });
         HandOffCommand = new RelayCommand<GrammarWarningRowViewModel>(row =>
         {
             if (row is not null) _handOffWords?.Invoke(row);
@@ -162,6 +170,8 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
     public IRelayCommand SetReportOrderCommand { get; }
     /// <summary>Changes the warning list to put findings with more exact word uses first.</summary>
     public IRelayCommand SetMostYourWordsFirstCommand { get; }
+    /// <summary>Selects a finding and opens its page-owned detail panel.</summary>
+    public IRelayCommand<GrammarWarningRowViewModel> OpenDetailsCommand { get; }
     public IRelayCommand<GrammarWarningRowViewModel> HandOffCommand { get; }
     public IAsyncRelayCommand<GrammarWarningRowViewModel> ReparseCommand { get; }
 
@@ -189,6 +199,30 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
 
     /// <summary>The findings in the page's filtered view.</summary>
     public DataGridCollectionView Rows { get; }
+
+    /// <summary>The page's area headings and warning rows, in their displayed order.</summary>
+    public ObservableCollection<object> TableEntries { get; } = [];
+
+    /// <summary>The selected table row, or null when no finding row is selected.</summary>
+    [ObservableProperty]
+    private object? _selectedTableEntry;
+
+    /// <summary>The selected finding as a list of at most one, which is all the details pane binds to.</summary>
+    public ObservableCollection<GrammarWarningRowViewModel> SelectedDetails { get; } = [];
+
+    partial void OnSelectedTableEntryChanged(object? value)
+    {
+        if (value is DenseTableGroup)
+        {
+            SelectedTableEntry = null;
+            return;
+        }
+
+        if (_selectedWarning is { } previous && !ReferenceEquals(previous, value)) previous.IsOpen = false;
+        _selectedWarning = value as GrammarWarningRowViewModel;
+        SelectedDetails.Clear();
+        if (_selectedWarning is not null) SelectedDetails.Add(_selectedWarning);
+    }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasAny))]
@@ -292,8 +326,54 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
     private void Refresh()
     {
         Rows.Refresh();
+        RefreshTableEntries();
         ShownCount = VisibleFindings().Where(Matches).Sum(row => row.RepeatCount);
     }
+
+    private void RefreshTableEntries()
+    {
+        var groups = Rows.Cast<object>().OfType<GrammarWarningRowViewModel>()
+            .GroupBy(WarningArea)
+            .OrderBy(group => AreaOrder(group.Key))
+            .ThenBy(group => group.Key, StringComparer.Ordinal)
+            .ToArray();
+        TableEntries.Clear();
+        foreach (var group in groups)
+        {
+            var count = group.Sum(row => row.RepeatCount);
+            TableEntries.Add(new DenseTableGroup(group.Key, $"{count:N0} {(count == 1 ? "finding" : "findings")}"));
+            foreach (var row in group) TableEntries.Add(row);
+        }
+
+        if (SelectedTableEntry is not null && !TableEntries.Contains(SelectedTableEntry))
+            SelectedTableEntry = null;
+    }
+
+    private static string WarningArea(GrammarWarningRowViewModel row)
+    {
+        var kinds = row.Warning.Subject.Select(part => part.FieldWorksKind).Where(kind => kind is not null)
+            .Cast<string>().ToArray();
+        var code = row.Warning.Code ?? string.Empty;
+        if (kinds.Contains("PhEnvironment", StringComparer.Ordinal) ||
+            code.Contains("environment", StringComparison.OrdinalIgnoreCase))
+            return "Environments";
+        if (kinds.Any(kind => kind.StartsWith("MoAffix", StringComparison.Ordinal)) ||
+            code.Contains("affix", StringComparison.OrdinalIgnoreCase))
+            return "Affixes";
+        if (kinds.Any(kind => kind.StartsWith("Ph", StringComparison.Ordinal)) ||
+            code.Contains("phon", StringComparison.OrdinalIgnoreCase) ||
+            code.Contains("rule", StringComparison.OrdinalIgnoreCase))
+            return "Phonological rules";
+        return "Other findings";
+    }
+
+    private static int AreaOrder(string area) => area switch
+    {
+        "Environments" => 0,
+        "Phonological rules" => 1,
+        "Affixes" => 2,
+        _ => 3,
+    };
 
     private bool Matches(object item) =>
         item is GrammarWarningRowViewModel row
@@ -393,6 +473,24 @@ public sealed partial class GrammarWarningRowViewModel : ObservableObject
         ? $"None of your words use {NamedItemText}" : "None of your words use the named items";
     /// <summary>The quiet row title, with repeated identical findings counted once.</summary>
     public string RowTitleText => $"{PanGlossTitle} · {RepeatCount:N0} {CountWord(RepeatCount, "finding", "findings")}";
+    /// <summary>Whether the table lets a person select this row; a heading cannot be selected, a finding can.</summary>
+    public bool IsSelectable => true;
+    /// <summary>The severity written out for the table's first column: Error, Warning or Note.</summary>
+    public string SeverityLabel => Level switch
+    {
+        GrammarDiagnosticLevel.Error => "Error",
+        GrammarDiagnosticLevel.Warning => "Warning",
+        _ => "Note",
+    };
+    /// <summary>The named item for the table's Item column, or the finding's title when it names none.</summary>
+    public string TableItemText => NamedItemText.Length > 0 ? NamedItemText : PanGlossTitle;
+    /// <summary>The PanGloss description for the table's problem column, or its message when it has none.</summary>
+    public string TableProblemText => Warning.Description.Length > 0 ? Warning.Description : Message;
+    /// <summary>The Named words cell: an exact count, none, or a dash when no exact count is available.</summary>
+    public string TableNamedWordsText => WarningWordsQuery.Touched(Findings.Where(item => item.NamesItem).ToArray())
+        is not { IsComplete: true } ? "—" : YourWordsCount is { } count
+        ? count == 0 ? "none" : $"{count:N0} {(count == 1 ? "word" : "words")}"
+        : AttributionState == WarningDisplayState.NoneInSelection ? "none" : "—";
     /// <summary>Whether the separate title says more than the row heading.</summary>
     public bool HasDistinctPanGlossTitle => PanGlossTitle.Length > 0 &&
         !RowTitleText.StartsWith(PanGlossTitle, StringComparison.Ordinal);

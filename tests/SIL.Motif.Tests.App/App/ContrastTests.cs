@@ -511,7 +511,11 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
             var lists = new TextsListsViewModel(compare);
 
             var prior = Application.Current!.RequestedThemeVariant;
-            var reviewWindow = new Window { Content = new ReviewPanel(review), Width = 1100, Height = 800 };
+            var reviewWindow = new Window
+            {
+                Content = SIL.Motif.App.Views.Shell.WorkspaceLayoutHost.ForPage(new ReviewPanel(review)),
+                Width = 1100, Height = 800,
+            };
             var listsWindow = new Window { Content = new TextsListsPanel(lists), Width = 1100, Height = 800 };
             try
             {

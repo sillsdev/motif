@@ -13,6 +13,7 @@ using Avalonia.VisualTree;
 using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
+using SIL.Motif.App.Views.Shell;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
@@ -46,8 +47,8 @@ public sealed class ProgressiveDisplayTests
         "Inspector", "MainWindow", "MiniMatrix", "Pages/AssistantConnectionsPage", "Pages/OverviewPage", "Pages/ParsimonyPage",
         "Pages/ProposalsPage", "Pages/TimingPage",
         "RefusalBlock", "ResultsInTextPanel", "ReviewWordRow",
-        "RetirementProposalReviewPanel", "ReviewPanel", "SelectionPanel", "SettingsPage", "SettingsNavigation", "SetupDialog", "StatisticsPanel", "TextWordsPanel", "TextsListsPanel",
-        "TraceAnalysesView", "TryWordPanel", "WordCard", "WordDispositionButtons",
+        "RetirementProposalReviewPanel", "ReviewInspector", "ReviewPanel", "SelectionPanel", "SettingsPage", "SettingsNavigation", "SetupDialog", "StatisticsPanel", "TextWordsPanel", "TextsListsPanel",
+        "TraceAnalysesView", "TryWordPanel", "WarningsFilterPanel", "WarningsInspectorPanel", "WordCard", "WordDispositionButtons",
     ];
 
     public static IEnumerable<object[]> CollectionViews() => ViewNames.Select(name => new object[] { name });
@@ -443,9 +444,9 @@ public sealed class ProgressiveDisplayTests
                 fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one", changes,
                     changes.Select(change => new ChangeFit(change.ChangeId, true, [])).ToArray()));
             });
-                var page = workspace.PageModel<ReviewPageModel>();
-                var panel = new ReviewPanel(page);
-                var window = new Window { Width = 1240, Height = 780, Content = panel };
+            var page = workspace.PageModel<ReviewPageModel>();
+            var panel = new ReviewPanel(page);
+            var window = new Window { Width = 1240, Height = 780, Content = WorkspaceLayoutHost.ForPage(panel) };
             try
             {
                 window.Show();
@@ -455,10 +456,10 @@ public sealed class ProgressiveDisplayTests
                 Assert.Equal(2, groups.Count);
                 Assert.All(groups, group => Assert.Equal(100, group.Items.Count));
                 AssertBoundedRows("first");
-                items.ScrollIntoView(EntryIndex(groups[0].Items[0]));
+                items.ScrollIntoView(TableEntry(groups[0].Items[0]));
                 PageScreenshots.Settle(window);
                 var first = ChangeRow(groups[0].Items[0]);
-                first.FocusWord();
+                first.Focus();
                 AssertFocus(0, 0);
                 for (var index = 1; index <= 12; index++)
                 {
@@ -475,9 +476,11 @@ public sealed class ProgressiveDisplayTests
                 Press(Key.Home);
                 AssertFocus(0, 0);
 
-                items.ScrollIntoView(EntryIndex(groups[0].Items[99]));
+                items.ScrollIntoView(TableEntry(groups[0].Items[99]));
                 PageScreenshots.Settle(window);
-                ChangeRow(groups[0].Items[99]).FocusWord();
+                Assert.True(ChangeRow(groups[0].Items[99]).Focus());
+                PageScreenshots.Settle(window);
+                AssertFocus(0, 99);
                 Press(Key.Down);
                 AssertFocus(1, 0);
                 Press(Key.Up);
@@ -485,16 +488,23 @@ public sealed class ProgressiveDisplayTests
                 AssertBoundedRows("group boundary");
 
                 Press(Key.Home);
-                first = ChangeRow(groups[0].Items[0]);
-                first.State = first.State! with { IsOpen = true };
-                PageScreenshots.Settle(window);
-                Assert.True(groups[0].Items[0].Listed!.IsOpen);
+                AssertInspector(groups[0].Items[0]);
                 Press(Key.End);
                 AssertFocus(1, 99);
+                AssertInspector(groups[1].Items[99]);
                 Press(Key.Home);
                 AssertFocus(0, 0);
-                Assert.True(ChangeRow(groups[0].Items[0]).State?.IsOpen);
-                AssertBoundedRows("expanded return");
+                AssertInspector(groups[0].Items[0]);
+                AssertBoundedRows("Inspector return");
+
+                void AssertInspector(ChangeViewModel change)
+                {
+                    PageScreenshots.Settle(window);
+                    var card = Assert.Single(panel.InspectorContent.GetVisualDescendants().OfType<WordCard>());
+                    Assert.Equal(change.Presentation.Key, card.Document!.Key);
+                    var pending = Assert.Single(card.Document.Sections.OfType<WordCardPendingChange>());
+                    Assert.Equal(change.Reading, pending.Reading);
+                }
 
                 void Press(Key key)
                 {
@@ -503,31 +513,31 @@ public sealed class ProgressiveDisplayTests
                     PageScreenshots.Settle(window);
                 }
 
-                int EntryIndex(ChangeViewModel change) => page.ReviewEntries
-                    .Select((item, index) => (item, index))
-                    .Single(pair => ReferenceEquals(pair.item.Change, change)).index;
+                ReviewListEntryViewModel TableEntry(ChangeViewModel change) => page.TableEntries
+                    .OfType<ReviewListEntryViewModel>().Single(item => ReferenceEquals(item.Change, change));
 
-                PresentationWordRow ChangeRow(ChangeViewModel change) => Assert.Single(items.ContainerFromIndex(EntryIndex(change))!
-                    .GetVisualDescendants().OfType<PresentationWordRow>());
+                ListBoxItem ChangeRow(ChangeViewModel change) =>
+                    Assert.IsType<ListBoxItem>(items.ContainerFromItem(TableEntry(change)));
 
                 void AssertFocus(int groupIndex, int rowIndex)
                 {
-                    var rows = panel.GetVisualDescendants().OfType<PresentationWordRow>().ToArray();
-                    var focusedRows = rows.Where(row => row.IsFocused).ToArray();
-                    Assert.True(focusedRows.Length == 1,
-                        $"Expected focus on {groupIndex}/{rowIndex}; realized {string.Join(',', rows.Select(row => row.Data?.Key.Value))}");
-                    var focused = focusedRows[0];
-                    Assert.Equal($"change:{groups[groupIndex].Items[rowIndex].ChangeId}", focused.Data?.Key.Value);
+                    var focused = Assert.Single(items.GetRealizedContainers(), container => container.IsFocused);
+                    var entry = Assert.IsType<ReviewListEntryViewModel>(focused.DataContext);
+                    Assert.Same(groups[groupIndex].Items[rowIndex], entry.Change);
+                    Assert.Same(entry.Review, page.Current);
                     var top = focused.TranslatePoint(default, window)!.Value.Y;
                     Assert.InRange(top, 0, window.Bounds.Height - focused.Bounds.Height);
                 }
 
                 void AssertBoundedRows(string position)
                 {
-                    var count = panel.GetVisualDescendants().OfType<PresentationWordRow>().Count();
-                    Assert.InRange(count, 1, 16);
-                    Assert.InRange(items.GetRealizedContainers().Count(), 1, 18);
-                    _output.WriteLine($"Review {position}: {count} shared word rows for 200 changes");
+                    var rows = items.GetRealizedContainers().Where(container =>
+                        container.DataContext is ReviewListEntryViewModel { Change: not null }).ToArray();
+                    var rowHeight = (double)Application.Current!.FindResource("Component.DenseTable.RowHeight")!;
+                    var budget = 2 * (int)Math.Ceiling(items.Bounds.Height / rowHeight) + 2;
+                    Assert.InRange(rows.Length, 1, budget);
+                    Assert.InRange(items.GetRealizedContainers().Count(), 1, budget + groups.Count);
+                    _output.WriteLine($"Review {position}: {rows.Length}/{budget} table rows for 200 changes");
                 }
             }
             finally
@@ -1002,8 +1012,10 @@ public sealed class ProgressiveDisplayTests
             "Pages/AssistantConnectionsPage" => new AssistantConnectionsPage(
                 workspace.PageModel<AssistantConnectionsPageModel>()),
             "Pages/OverviewPage" => new OverviewPage(workspace.PageModel<OverviewPageModel>()),
-            "Pages/ParsimonyPage" => new ParsimonyPage(workspace.PageModel<ParsimonyPageModel>()),
-            "Pages/ProposalsPage" => new ProposalsPage(workspace.PageModel<ProposalsPageModel>()),
+            "Pages/ParsimonyPage" => WorkspaceLayoutHost.ForPage(
+                new ParsimonyPage(workspace.PageModel<ParsimonyPageModel>())),
+            "Pages/ProposalsPage" => WorkspaceLayoutHost.ForPage(
+                new ProposalsPage(workspace.PageModel<ProposalsPageModel>())),
             "Pages/TimingPage" => new TimingPage(workspace.PageModel<TimingPageModel>()),
             "ReviewWordRow" => new PresentationWordRow
             {
@@ -1020,7 +1032,9 @@ public sealed class ProgressiveDisplayTests
             {
                 DataContext = new RetirementProposalReviewViewModel(EmptyRetirementReview()),
             },
-            "ReviewPanel" => new ReviewPanel(workspace.PageModel<ReviewPageModel>()),
+            "ReviewInspector" => new ReviewInspector(workspace.PageModel<ReviewPageModel>(),
+                new ReviewWordPresentationHost(workspace.PageModel<ReviewPageModel>())),
+            "ReviewPanel" => WorkspaceLayoutHost.ForPage(new ReviewPanel(workspace.PageModel<ReviewPageModel>())),
             "SelectionPanel" => new SelectionPanel(workspace.Selection, texts.Words),
             "SetupDialog" => new SetupDialog { DataContext = workspace.Context.Setup },
             "StatisticsPanel" => new StatisticsPanel(workspace.PageModel<TimingPageModel>().Statistics),
@@ -1028,6 +1042,8 @@ public sealed class ProgressiveDisplayTests
             "TextsListsPanel" => new TextsListsPanel(texts.TextsLists),
             "TraceAnalysesView" => new TraceAnalysesView { DataContext = trace.Trace },
             "TryWordPanel" => new TryWordPanel(trace),
+            "WarningsFilterPanel" => new WarningsFilterPanel(workspace.PageModel<WarningsPageModel>()),
+            "WarningsInspectorPanel" => new WarningsInspectorPanel(workspace.PageModel<WarningsPageModel>()),
             "WordCard" => BuildWordCard(workspace),
             "WordDispositionButtons" => new WordDispositionButtons
             {

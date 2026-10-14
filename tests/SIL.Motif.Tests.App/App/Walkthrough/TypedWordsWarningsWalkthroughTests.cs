@@ -51,14 +51,16 @@ public sealed class TypedWordsWarningsWalkthroughTests(PristineProjectFixture pr
             Assert.Equal("5 spelling matches", row.SpellingCandidatesText);
             Assert.Equal(["chat", "chats", "fenêtre", "fenêtres", "très"],
                 row.SpellingCandidateRows.Select(word => word.Word).Order(StringComparer.Ordinal));
-            row.ToggleOpenCommand.Execute(null);
+            warnings.OpenDetailsCommand.Execute(row);
             PageScreenshots.Settle(walkthrough.Window);
             var visibleText = walkthrough.Window.GetLogicalDescendants().OfType<TextBlock>()
                 .Where(text => text.IsEffectivelyVisible).Select(text => text.Text).ToArray();
             Assert.Contains(row.SpellingCandidatesText, visibleText);
             Assert.Contains(row.ReachStateText, visibleText);
+            // Opened details show in the Inspector, or inline under the table where the Inspector cannot fit.
             var groups = Assert.Single(walkthrough.Window.GetVisualDescendants().OfType<ItemsControl>(),
-                control => control.Name == "GrammarPanelRowsItems");
+                control => control.Name is "WarningsInspectorSelectedDetails" or "GrammarPanelSelectionDetailsItems" &&
+                    control.IsEffectivelyVisible);
             var scroll = groups.GetVisualAncestors().OfType<ScrollViewer>().First();
             var descriptions = letterFindings.Select(finding => finding.Description).ToHashSet(StringComparer.Ordinal);
             var expectedLetters = NoTextsWarningProject.UndeclaredLetters.ToHashSet(StringComparer.Ordinal);

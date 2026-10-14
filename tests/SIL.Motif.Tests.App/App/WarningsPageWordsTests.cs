@@ -69,11 +69,11 @@ public sealed class WarningsPageWordsTests
                 window.Show();
                 PageScreenshots.Settle(window);
                 var row = Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(grammar.Warnings.Rows));
-                row.ToggleOpenCommand.Execute(null);
+                grammar.Warnings.OpenDetailsCommand.Execute(row);
                 PageScreenshots.Settle(window);
 
                 var items = Assert.Single(panel.GetVisualDescendants().OfType<ItemsControl>(),
-                    control => control.Name == "GrammarPanelRowsItems");
+                    control => control.Name == "GrammarPanelSelectionDetailsItems");
                 var scroll = items.GetVisualAncestors().OfType<ScrollViewer>().First();
                 var descriptions = findings.Select(finding => finding.Description).ToHashSet(StringComparer.Ordinal);
                 var readable = new HashSet<string>(StringComparer.Ordinal);
@@ -153,8 +153,8 @@ public sealed class WarningsPageWordsTests
                 try
                 {
                     window.Show();
-                    Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(grammar.Warnings.Rows))
-                        .ToggleOpenCommand.Execute(null);
+                    var row = Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(grammar.Warnings.Rows));
+                    grammar.Warnings.OpenDetailsCommand.Execute(row);
                     window.UpdateLayout();
                     Dispatcher.UIThread.RunJobs();
                     window.UpdateLayout();
@@ -253,8 +253,8 @@ public sealed class WarningsPageWordsTests
                 Assert.Contains(panel.GetVisualDescendants().OfType<ToggleButton>(), toggle =>
                     Equals(toggle.Content, "Touch your words · 1 word"));
                 Assert.Contains(panel.GetVisualDescendants().OfType<TextBlock>(), text =>
-                    text.IsEffectivelyVisible && text.Text == "1 of your words");
-                Assert.DoesNotContain(panel.GetVisualDescendants().OfType<TextBlock>(), text =>
+                    text.IsEffectivelyVisible && text.Text == "1 word");
+                Assert.Contains(panel.GetVisualDescendants().OfType<TextBlock>(), text =>
                     text.IsEffectivelyVisible && text.Text == "The environment description is distinct from the producer's explanation.");
                 Assert.DoesNotContain(panel.GetVisualDescendants().OfType<TextBlock>(), text =>
                     text.IsEffectivelyVisible && text.Text == "In FieldWorks, check the named environment and the allomorphs that use it.");
@@ -262,7 +262,7 @@ public sealed class WarningsPageWordsTests
                     text.IsEffectivelyVisible && text.Text == "PanGloss explains that this environment cannot be read by the parser.");
 
                 var row = Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(grammar.Warnings.Rows));
-                row.ToggleOpenCommand.Execute(null);
+                grammar.Warnings.OpenDetailsCommand.Execute(row);
                 window.UpdateLayout();
                 Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();
@@ -306,9 +306,8 @@ public sealed class WarningsPageWordsTests
                 Assert.Equal(1, link.Opacity);
                 Assert.True(link.IsHitTestVisible);
 
-                var hoverTitle = Assert.Single(panel.GetVisualDescendants().OfType<CopyableTextBlock>(),
-                    text => text.Classes.Contains("warningHoverTitle"));
-                Assert.False(hoverTitle.IsEffectivelyVisible);
+                Assert.DoesNotContain(panel.GetVisualDescendants().OfType<CopyableTextBlock>(),
+                    text => text.Classes.Contains("warningPanGlossTitle"));
             }
             finally
             {
@@ -358,7 +357,7 @@ public sealed class WarningsPageWordsTests
                 Assert.Null(row.Warning.Guidance);
                 Assert.Equal(description, row.Message);
                 Assert.Equal([problem], row.ProblemParts.Select(part => part.Text));
-                row.ToggleOpenCommand.Execute(null);
+                grammar.Warnings.OpenDetailsCommand.Execute(row);
                 window.UpdateLayout();
                 Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();
@@ -419,7 +418,7 @@ public sealed class WarningsPageWordsTests
                 window.UpdateLayout();
                 Dispatcher.UIThread.RunJobs();
                 var row = Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(grammar.Warnings.Rows));
-                row.ToggleOpenCommand.Execute(null);
+                grammar.Warnings.OpenDetailsCommand.Execute(row);
                 window.UpdateLayout();
                 Dispatcher.UIThread.RunJobs();
                 var link = Assert.Single(panel.GetVisualDescendants().OfType<HyperlinkButton>(),

@@ -15,7 +15,7 @@ internal sealed class ReviewWordPresentationHost(ReviewPageModel page) : IWordPr
             return WordCardReadResult.Failed("This change has changed before its details could be shown.", false);
 
         await page.ShowContextCommand.ExecuteAsync(change).ConfigureAwait(true);
-        var listed = change.Listed!;
+        var listed = change.Listed;
         WordCardSentenceToken[] ChangedTokens(IEnumerable<UncertaintyTokenViewModel> tokens) =>
             tokens.Select(token => new WordCardSentenceToken(token.Form, token.FormWritingSystem, token.IsChanged)).ToArray();
         var pending = new WordCardPendingChange(
@@ -29,11 +29,9 @@ internal sealed class ReviewWordPresentationHost(ReviewPageModel page) : IWordPr
             [],
             change.HasUnavailableContext,
             page.Context, change.ContextSource);
-        var sections = new WordCardSection[]
-        {
-            pending,
-            new WordCardAnalysis(listed.Card, listed.CardToken, listed.HasCard ? null : listed.NotParsedText),
-        };
+        WordCardSection[] sections = listed is null
+            ? [pending]
+            : [pending, new WordCardAnalysis(listed.Card, listed.CardToken, listed.HasCard ? null : listed.NotParsedText)];
         return WordCardReadResult.Read(new WordCardDocument(key, evidenceRevision, sections));
     }
 
@@ -75,7 +73,7 @@ internal sealed class ReviewWordPresentationHost(ReviewPageModel page) : IWordPr
     }
 
     private ChangeViewModel? Find(WordPresentationKey key) => key.Value.StartsWith("change:", StringComparison.Ordinal)
-        ? page.ReviewEntries.Select(entry => entry.Change).FirstOrDefault(change =>
+        ? page.Entries.Select(entry => entry.Change).FirstOrDefault(change =>
             change is not null && change.Presentation.Key == key)
         : null;
 

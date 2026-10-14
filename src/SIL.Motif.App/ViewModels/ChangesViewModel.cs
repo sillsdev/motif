@@ -864,6 +864,15 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
     public bool IsUncertain => Fit?.Status == ChangeFitStatus.Uncertain;
     public bool StillFits => Fit?.StillFits == true;
 
+    /// <summary>The compact fit label, separate from the staged Opinion and parser outcome.</summary>
+    public string ReviewFitText => Fit?.Status switch
+    {
+        ChangeFitStatus.Fits => "Still fits",
+        ChangeFitStatus.NoLongerFits => "No longer fits",
+        ChangeFitStatus.Uncertain => "Needs another look",
+        _ => "Not checked",
+    };
+
     /// <summary>The first line of the row's staged note: whether the change waits as staged or needs a look.</summary>
     public string NoteTitle => IsUncertain ? "Needs another look" : "Staged";
 
@@ -961,7 +970,12 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
         WordListOwner.Review, TransitionText, DetailText,
         PendingChange: new WordPendingChange(IsUncertain, StillFits,
             AfterWords.Select(token => new WordCardSentenceToken(token.Form, token.FormWritingSystem, token.IsChanged)).ToArray(),
-            CheckAgainAutomationName, UndoAutomationName, IsLookedAt, $"Keep: {Word}"));
+            CheckAgainAutomationName, UndoAutomationName, IsLookedAt, $"Keep: {Word}", ReviewFitText, WhereText));
+
+    /// <summary>Identifies this change and evidence for a request to open its complete morphology.</summary>
+    public MorphemeOverflowRequest ReviewMorphologyRequest => new(PresentationKey.Value,
+        $"{PresentationKey.Value}:review", _presentationRevision,
+        RowAnalysisIsParserBuilt ? MorphologyProducer.PanGloss : MorphologyProducer.FieldWorks);
 
     /// <summary>The card-open state retained on the pending change while its list row is recycled.</summary>
     public WordInteractionState PresentationState
@@ -1030,6 +1044,7 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
     public OpinionMarkKind? AfterOpinionMark => MarkFor(StagedTransition.AfterApply);
     public bool HasNowOpinionMark => NowOpinionMark is not null;
     public bool HasAfterOpinionMark => AfterOpinionMark is not null;
+    public bool HasOpinionTransitionMarks => HasNowOpinionMark && HasAfterOpinionMark;
     public string ReviewLabel => Kind == ChangeKinds.Approve && analyses is { Count: > 1 }
         ? $"Approve 1 of {analyses.Count} analyses" : Label;
     public string Word { get; } = word;

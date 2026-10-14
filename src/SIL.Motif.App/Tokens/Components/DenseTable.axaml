@@ -1,0 +1,102 @@
+<!-- The dense table row family keeps headings, actions and keyboard state consistent across list pages; a page opts in through SIL.Motif.App.Controls.DenseTable. -->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <StaticResource x:Key="Component.DenseTable.GroupHeaderHeight" ResourceKey="Primitive.Size.26" />
+    <StaticResource x:Key="Component.DenseTable.ColumnHeaderHeight" ResourceKey="Primitive.Size.26" />
+    <StaticResource x:Key="Component.DenseTable.RowHeight" ResourceKey="Primitive.Size.36" />
+    <StaticResource x:Key="Component.DenseTable.DetailMaxHeight" ResourceKey="Primitive.Size.320" />
+    <StaticResource x:Key="Component.DenseTable.Column.NarrowWidth" ResourceKey="Primitive.Size.110" />
+    <StaticResource x:Key="Component.DenseTable.Column.ActionsWidth" ResourceKey="Primitive.Size.92" />
+    <StaticResource x:Key="Component.DenseTable.CompactThreshold" ResourceKey="Primitive.Size.600" />
+    <StaticResource x:Key="Component.DenseTable.MinFlexibleWidth" ResourceKey="Primitive.Size.110" />
+    <StaticResource x:Key="Component.DenseTable.ColumnSpacing" ResourceKey="Intent.Space.Group" />
+    <StaticResource x:Key="Component.DenseTable.CompactColumnSpacing" ResourceKey="Intent.Space.Compact" />
+    <StaticResource x:Key="Component.DenseTable.MenuSize" ResourceKey="Primitive.Size.24" />
+    <StaticResource x:Key="Component.DenseTable.HorizontalPadding" ResourceKey="Primitive.Inset.6_0_6_0" />
+  </Styles.Resources>
+
+  <Style Selector="ListBox.denseTable">
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.None}" />
+    <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+  </Style>
+  <Style Selector="ListBox.denseTable ListBoxItem">
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.None}" />
+  </Style>
+  <Style Selector="Border.denseTableColumnHeader">
+    <Setter Property="Height" Value="{DynamicResource Component.DenseTable.ColumnHeaderHeight}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerBottom}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.DenseTable.HorizontalPadding}" />
+  </Style>
+  <Style Selector="Border.denseTableGroupHeader">
+    <Setter Property="Height" Value="{DynamicResource Component.DenseTable.GroupHeaderHeight}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerBottom}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.DenseTable.HorizontalPadding}" />
+  </Style>
+  <Style Selector="Border.denseTableRow">
+    <Setter Property="Height" Value="{DynamicResource Component.DenseTable.RowHeight}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerBottom}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.DenseTable.HorizontalPadding}" />
+  </Style>
+  <Style Selector="ListBox.denseTable ListBoxItem:pointerover Border.denseTableRow">
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface.Hover}" />
+  </Style>
+  <Style Selector="ListBox.denseTable ListBoxItem:selected Border.denseTableRow">
+    <Setter Property="Background" Value="{DynamicResource Intent.Selected.Fill}" />
+  </Style>
+  <Style Selector="Border.denseTableFocusRing">
+    <Setter Property="IsHitTestVisible" Value="False" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Focus}" />
+  </Style>
+  <Style Selector="ListBox.denseTable ListBoxItem:focus-visible Border.denseTableFocusRing">
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Focus}" />
+  </Style>
+  <Style Selector=":is(TextBlock).denseTableCell">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Text}" />
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
+  </Style>
+  <Style Selector=":is(TextBlock).denseTableItem">
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector=":is(TextBlock).denseTableHeading">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Caption}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector=":is(TextBlock).denseTableGroupName">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Text}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector=":is(TextBlock).denseTableCount">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Caption}" />
+  </Style>
+  <Style Selector="Button.denseTableAction">
+    <Setter Property="Height" Value="{DynamicResource Component.DenseTable.MenuSize}" />
+    <Setter Property="MinHeight" Value="{DynamicResource Component.DenseTable.MenuSize}" />
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Link}" />
+  </Style>
+  <Style Selector="Button.denseTableMenu">
+    <Setter Property="Width" Value="{DynamicResource Component.DenseTable.MenuSize}" />
+    <Setter Property="Height" Value="{DynamicResource Component.DenseTable.MenuSize}" />
+    <Setter Property="MinHeight" Value="{DynamicResource Component.DenseTable.MenuSize}" />
+    <Setter Property="MinWidth" Value="{DynamicResource Component.DenseTable.MenuSize}" />
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+  </Style>
+</Styles>

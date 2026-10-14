@@ -16,7 +16,7 @@ public enum ReviewGroupKind
 }
 
 /// <summary>A group of pending changes with one Undo all action.</summary>
-public sealed class ReviewChangeGroupViewModel
+public sealed class ReviewChangeGroupViewModel : IDenseTableGroupHeading
 {
     private readonly ChangesViewModel _changes;
     private readonly int _projectGeneration;
@@ -54,6 +54,9 @@ public sealed class ReviewChangeGroupViewModel
     };
 
     public bool HasNote => Note.Length > 0;
+
+    /// <summary>The group heading's tooltip: its note, or null so an ordinary group opens no empty tip.</summary>
+    public string? NoteTip => HasNote ? Note : null;
 
     /// <summary>The words on the action that takes back every change in the group.</summary>
     public string UndoAllText => IsNoLongerFits ? "Remove the ones that no longer fit" : "Undo all";

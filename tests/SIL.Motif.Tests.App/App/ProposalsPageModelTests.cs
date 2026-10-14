@@ -35,6 +35,134 @@ public sealed class ProposalsPageModelTests
     }
 
     [Fact]
+    public async Task ListGroupsPrepareTheThreeDenseTableSections()
+    {
+        var cards = new[]
+        {
+            Card("p/ready", "Ready", ProposalGroup.WaitingForYou),
+            Card("p/stale", "Stale", ProposalGroup.NeedsAnotherTry),
+            Card("p/new", "New", ProposalGroup.NotTried),
+            Card("p/mine", "Your changes", ProposalGroup.NotAppliedYet, pending: true),
+            Card("p/closed", "Closed", ProposalGroup.SetAside) with { Status = "withdrawn" },
+        };
+        var fake = new FakeCommandClient();
+        fake.OnProposalStandings((request, _) => Task.FromResult(CommandOutcome<ProposalStandings>.Success(
+            new ProposalStandings(cards.Where(card => request.IncludeSetAside || card.Group != ProposalGroup.SetAside)
+                .ToArray(), 1))));
+        var context = WorkspaceContextTests.NewContext(fake);
+        var page = new ProposalsPageModel(context);
+        await context.OpenProjectAsync(ProjectPath);
+
+        Assert.Equal(["Your changes not applied yet", "Waiting for you"],
+            page.ListGroups.Select(group => group.Title));
+        Assert.Equal("p/ready", page.SelectedProposal?.ProposalId);
+        Assert.Equal(["1 proposal", "3 proposals"],
+            page.Rows.OfType<DenseTableGroup>().Select(group => group.CountText));
+        Assert.Equal("5 proposals", page.TotalProposalCountText);
+        await page.ShowSetAsideCommand.ExecuteAsync(null);
+
+        Assert.Equal(["Your changes not applied yet", "Waiting for you", "Closed"],
+            page.ListGroups.Select(group => group.Title));
+        Assert.Equal(["p/mine"], page.ListGroups[0].Cards.Select(card => card.ProposalId));
+        Assert.Equal(["p/ready", "p/stale", "p/new"],
+            page.ListGroups[1].Cards.Select(card => card.ProposalId));
+        Assert.Equal(["p/closed"], page.ListGroups[2].Cards.Select(card => card.ProposalId));
+        Assert.Equal(["1 proposal", "3 proposals", "1 proposal"],
+            page.Rows.OfType<DenseTableGroup>().Select(group => group.CountText));
+        Assert.Equal("5 proposals", page.TotalProposalCountText);
+
+        await page.SelectGroupFilterCommand.ExecuteAsync(ProposalListFilter.WaitingForYou);
+
+        Assert.Equal(["Waiting for you"], page.ListGroups.Select(group => group.Title));
+    }
+
+    [Fact]
+    public async Task ResponsiveCaptureFixturePreservesHSectionsAndSelectedTrialValues()
+    {
+        var fake = new FakeCommandClient();
+        ProposalsCaptureFixture.Configure(fake);
+        var context = WorkspaceContextTests.NewContext(fake);
+        var page = new ProposalsPageModel(context);
+        await context.OpenProjectAsync(ProjectPath);
+
+        Assert.Equal(["Your changes not applied yet", "Waiting for you"],
+            page.ListGroups.Select(group => group.Title));
+        Assert.Equal([1, 3], page.ListGroups.Select(group => group.Cards.Count));
+        var selected = Assert.IsType<ProposalCardViewModel>(page.SelectedProposal);
+        Assert.Equal(ProposalsCaptureFixture.SelectedProposalId, selected.ProposalId);
+        Assert.Equal(93, selected.Card.Trial!.TextCoveragePercent.Before);
+        Assert.Equal(95, selected.Card.Trial.TextCoveragePercent.After);
+        Assert.Equal(41, selected.Card.Trial.ApprovedKept.Before);
+        Assert.Equal(43, selected.Card.Trial.ApprovedKept.After);
+        Assert.Equal(52, selected.Card.Trial.ApprovedTotal.Before);
+        Assert.Equal(52, selected.Card.Trial.ApprovedTotal.After);
+        Assert.Equal("41 → 43", selected.TableApprovedKeptText);
+        Assert.Equal("41 of 52 → 43 of 52", selected.ApprovedKept!.Value);
+        Assert.Equal(24, selected.Card.Trial.WarningCount.Before);
+        Assert.Equal(22, selected.Card.Trial.WarningCount.After);
+
+        await page.ShowSetAsideCommand.ExecuteAsync(null);
+
+        Assert.Equal(["Your changes not applied yet", "Waiting for you", "Closed"],
+            page.ListGroups.Select(group => group.Title));
+        Assert.Equal([1, 3, 4], page.ListGroups.Select(group => group.Cards.Count));
+        Assert.Equal(ProposalsCaptureFixture.SelectedProposalId, page.SelectedProposal?.ProposalId);
+        Assert.Equal(8, page.Rows.OfType<ProposalCardViewModel>().Count());
+    }
+
+    [Fact]
+    public async Task DenseTableSelectionUpdatesTheSelectedAccessibleRow()
+    {
+        var (fake, _, page) = await OpenAsync(Standings(
+            Card("p/first", "First", ProposalGroup.WaitingForYou),
+            Card("p/second", "Second", ProposalGroup.NeedsAnotherTry, standing: Stale)));
+        var first = page.SelectedProposal!;
+        var second = page.Rows.OfType<ProposalCardViewModel>().Single(card => card.ProposalId == "p/second");
+
+        page.SelectedProposal = second;
+
+        Assert.Same(second, page.SelectedProposal);
+        Assert.False(first.IsSelected);
+        Assert.True(second.IsSelected);
+        Assert.Equal("Second, selected", second.AccessibleRowName);
+        Assert.Equal("Needs another try", second.TableStatusText);
+        Assert.Equal("Try again", second.TryText);
+        Assert.Equal(AutomationIds.ForProposalActions(second.ProposalId), second.ActionsAutomationId);
+    }
+
+    [Fact]
+    public async Task DenseTableNumbersUseOnlyTheStoredTrialAndKeepNoTrialWording()
+    {
+        var tried = Card("p/tried", "Tried", ProposalGroup.WaitingForYou, trial: Summary(TrialFreshness.Current),
+            standing: TrialStanding.Current);
+        var noAfterTrial = Summary(TrialFreshness.Current) with
+        {
+            ApprovedKept = new Paired<int>(10, 0, true, false, false, null),
+        };
+        var noAfter = Card("p/no-after", "No after value", ProposalGroup.WaitingForYou, trial: noAfterTrial,
+            standing: TrialStanding.Current);
+        var untried = Card("p/untried", "Untried", ProposalGroup.NotTried);
+        var pending = Card("p/pending", "Your changes", ProposalGroup.NotAppliedYet, pending: true);
+        var (_, _, page) = await OpenAsync(Standings(tried, noAfter, untried, pending));
+        var triedRow = page.Rows.OfType<ProposalCardViewModel>().Single(card => card.ProposalId == "p/tried");
+        var noAfterRow = page.Rows.OfType<ProposalCardViewModel>().Single(card => card.ProposalId == "p/no-after");
+        var untriedRow = page.Rows.OfType<ProposalCardViewModel>().Single(card => card.ProposalId == "p/untried");
+        var pendingRow = page.Rows.OfType<ProposalCardViewModel>().Single(card => card.ProposalId == "p/pending");
+
+        Assert.Equal("Ready", triedRow.TableStatusText);
+        Assert.Equal("10 → 9", triedRow.TableApprovedKeptText);
+        Assert.Equal("10 of 12 → 9 of 12", triedRow.ApprovedKept!.Value);
+        Assert.Equal("10", noAfterRow.TableApprovedKeptText);
+        Assert.Equal("10 of 12", noAfterRow.ApprovedKept!.Value);
+        Assert.Equal("60% → 64.5%", triedRow.TableCoverageText);
+        Assert.Equal("3 → 3", triedRow.TableWarningsText);
+        Assert.Equal("2.5 s → 2.6 s", triedRow.TableWordTimeText);
+        Assert.Equal("Not tried yet", untriedRow.TableApprovedKeptText);
+        Assert.Equal("Not tried yet", untriedRow.TableCoverageText);
+        Assert.Equal("Draft", pendingRow.TableStatusText);
+    }
+
+    [Fact]
     public async Task OpenEntersProposalMode()
     {
         var (fake, context, page) = await OpenAsync(Standings(Card("p/waiting", "Waiting one",
@@ -46,6 +174,19 @@ public sealed class ProposalsPageModelTests
 
         Assert.Equal("p/waiting", context.Lens?.ProposalId);
         Assert.Equal(WorkspacePage.Overview, context.CurrentPage);
+    }
+
+    [Fact]
+    public async Task InspectorActionOpensTheProposalInReviewChanges()
+    {
+        var (fake, context, page) = await OpenAsync(Standings(Card("p/waiting", "Waiting one",
+            ProposalGroup.WaitingForYou)));
+        fake.ReadTrialCompletesWith(Trial("p/waiting", TrialFreshness.Current));
+
+        await page.OpenInReviewCommand.ExecuteAsync(page.SelectedProposal);
+
+        Assert.Equal("p/waiting", context.Lens?.ProposalId);
+        Assert.Equal(WorkspacePage.Review, context.CurrentPage);
     }
 
     [Fact]
@@ -372,6 +513,98 @@ public sealed class ProposalsPageModelTests
         await page.ShowSetAsideCommand.ExecuteAsync(null);
         Assert.False(fake.ProposalStandingsRequests[^1].IncludeSetAside);
         Assert.Equal("Show closed (2)", page.SetAsideLinkText);
+    }
+
+    [Fact]
+    public async Task ShowingClosedClearsAnActiveGroupFilter()
+    {
+        var waiting = Card("p/ready", "Ready", ProposalGroup.WaitingForYou);
+        var notTried = Card("p/new", "New", ProposalGroup.NotTried);
+        var closed = Card("p/closed", "Closed", ProposalGroup.SetAside) with { Status = "withdrawn" };
+        var fake = new FakeCommandClient();
+        fake.OnProposalStandings((request, _) => Task.FromResult(CommandOutcome<ProposalStandings>.Success(
+            request.IncludeSetAside
+                ? new ProposalStandings([waiting, notTried, closed], 1)
+                : new ProposalStandings([waiting, notTried], 1))));
+        var context = WorkspaceContextTests.NewContext(fake);
+        var page = new ProposalsPageModel(context);
+        await context.OpenProjectAsync(ProjectPath);
+        await page.SelectGroupFilterCommand.ExecuteAsync(ProposalListFilter.WaitingForYou);
+
+        await page.ShowSetAsideCommand.ExecuteAsync(null);
+
+        Assert.True(fake.ProposalStandingsRequests[^1].IncludeSetAside);
+        Assert.Null(page.SelectedGroupFilter);
+        Assert.Contains(page.Rows.OfType<ProposalCardViewModel>(), card => card.Card.Group == ProposalGroup.SetAside);
+        Assert.Equal("Hide closed", page.SetAsideLinkText);
+    }
+
+    [Fact]
+    public async Task ARefusedClosedFilterReadClearsThePreviousListAndSelection()
+    {
+        var openCard = Card("p/open", "Open", ProposalGroup.WaitingForYou);
+        var refusedRead = new TaskCompletionSource<CommandOutcome<ProposalStandings>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var reads = 0;
+        var fake = new FakeCommandClient();
+        fake.OnProposalStandings((_, _) => Interlocked.Increment(ref reads) == 1
+            ? Task.FromResult(CommandOutcome<ProposalStandings>.Success(new ProposalStandings([openCard], 1)))
+            : refusedRead.Task);
+        var context = WorkspaceContextTests.NewContext(fake);
+        var page = new ProposalsPageModel(context);
+        await context.OpenProjectAsync(ProjectPath);
+
+        var selectingClosed = page.SelectGroupFilterCommand.ExecuteAsync(ProposalListFilter.Closed);
+
+        Assert.Equal(ProposalsPageState.Loading, page.State);
+        Assert.Null(page.SelectedProposal);
+        Assert.Empty(page.Rows);
+        Assert.False(page.IsListed);
+        refusedRead.SetResult(CommandOutcome<ProposalStandings>.Refused(
+            new Refusal("store.unavailable", FailureReason.Refused, "The Proposals could not be read.")));
+        await selectingClosed;
+
+        Assert.Equal(ProposalsPageState.Refused, page.State);
+        Assert.Null(page.SelectedProposal);
+        Assert.Null(page.SelectedGroupFilter);
+        Assert.Empty(page.Rows);
+        Assert.Empty(page.Groups);
+        Assert.All(page.GroupFilters, filter => Assert.Equal(0, filter.Count));
+        Assert.False(page.HasSetAsideLink);
+    }
+
+    [Fact]
+    public async Task AFilterThatStopsMatchingOffersAClearFilterRoute()
+    {
+        var openCard = Card("p/open", "Open", ProposalGroup.WaitingForYou);
+        var fake = new FakeCommandClient();
+        fake.OnProposalStandings((request, _) => Task.FromResult(CommandOutcome<ProposalStandings>.Success(
+            request.IncludeSetAside
+                ? new ProposalStandings([openCard], 0)
+                : new ProposalStandings([openCard], 1))));
+        var context = WorkspaceContextTests.NewContext(fake);
+        var page = new ProposalsPageModel(context);
+        await context.OpenProjectAsync(ProjectPath);
+
+        await page.SelectGroupFilterCommand.ExecuteAsync(ProposalListFilter.Closed);
+
+        Assert.Equal(ProposalListFilter.Closed, page.SelectedGroupFilter);
+        Assert.Empty(page.Rows.OfType<ProposalCardViewModel>());
+        Assert.Equal(0, Assert.Single(page.GroupFilters, filter => filter.Filter == ProposalListFilter.Closed).Count);
+    }
+
+    [Fact]
+    public async Task AFilterWithNoProposalsCannotBeSelected()
+    {
+        var (fake, _, page) = await OpenAsync(Standings(
+            Card("p/open", "Open", ProposalGroup.WaitingForYou)));
+        var closed = Assert.Single(page.GroupFilters, filter => filter.Filter == ProposalListFilter.Closed);
+
+        Assert.False(closed.CanSelect);
+        await page.SelectGroupFilterCommand.ExecuteAsync(ProposalListFilter.Closed);
+
+        Assert.Null(page.SelectedGroupFilter);
+        Assert.Single(fake.ProposalStandingsRequests);
     }
 
     private static readonly TrialStanding Stale = TrialStanding.NeedsAnotherTry(TrialStaleReason.BaselineMoved);

@@ -201,6 +201,8 @@ internal static class TokenHygiene
     private static List<Violation> AuditResources(IReadOnlyList<SourceFile> files)
     {
         var declarations = new Dictionary<string, (string File, int Line)>(StringComparer.Ordinal);
+        var resources = new Dictionary<string, (string File, XElement Element)>(StringComparer.Ordinal);
+        var tableSchemas = new HashSet<string>(StringComparer.Ordinal);
         var dependencies = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
         var references = new List<ResourceReference>();
         var findings = new List<Violation>();
@@ -224,6 +226,7 @@ internal static class TokenHygiene
                 if (IsAppTokenKey(key))
                 {
                     declarations.TryAdd(key!, (file.Path, LineOf(element.Attribute(Xaml + "Key")!)));
+                    resources.TryAdd(key!, (file.Path, element));
                     dependencies.TryAdd(key!, new HashSet<string>(StringComparer.Ordinal));
                 }
 
@@ -235,6 +238,14 @@ internal static class TokenHygiene
                     if (attribute.Name == Xaml + "Key") continue;
                     if (attribute.Name.LocalName == "ResourceKey" && IsAppTokenKey(attribute.Value))
                         references.Add(new(file.Path, LineOf(attribute), owner, attribute.Value));
+                    if (IsDenseTableSchema(attribute))
+                    {
+                        var schemaResource = MarkupResourceReference.Match(attribute.Value);
+                        if (schemaResource.Success) tableSchemas.Add(schemaResource.Groups["key"].Value);
+                        else if (!attribute.Value.TrimStart().StartsWith('{'))
+                            foreach (var track in ComponentTracks(attribute.Value))
+                                references.Add(new(file.Path, LineOf(attribute), owner, track));
+                    }
                     foreach (Match match in MarkupResourceReference.Matches(attribute.Value))
                         references.Add(new(file.Path, LineOf(attribute), owner, match.Groups["key"].Value));
                 }
@@ -244,6 +255,18 @@ internal static class TokenHygiene
                         references.Add(new(file.Path, LineOf(element), owner, match.Groups["key"].Value));
                 }
             }
+        }
+
+        var pendingSchemas = new Queue<string>(tableSchemas);
+        var visitedSchemas = new HashSet<string>(StringComparer.Ordinal);
+        while (pendingSchemas.TryDequeue(out var schema))
+        {
+            if (!visitedSchemas.Add(schema) || !resources.TryGetValue(schema, out var resource)) continue;
+            if (resource.Element.Name.LocalName == "String")
+                foreach (var track in ComponentTracks(resource.Element.Value))
+                    references.Add(new(resource.File, LineOf(resource.Element), schema, track));
+            else if ((string?)resource.Element.Attribute("ResourceKey") is { } alias && IsAppTokenKey(alias))
+                pendingSchemas.Enqueue(alias);
         }
 
         foreach (var file in files.Where(file => file.Path.EndsWith(".cs", StringComparison.Ordinal)))
@@ -289,6 +312,14 @@ internal static class TokenHygiene
         }
         return findings;
     }
+
+    private static IEnumerable<string> ComponentTracks(string schema) =>
+        schema.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Where(track => track.StartsWith("Component.", StringComparison.Ordinal));
+
+    private static bool IsDenseTableSchema(XAttribute attribute) =>
+        attribute.Name.LocalName is "DenseTable.Columns" or "DenseTable.CompactColumns" &&
+        attribute.Name.NamespaceName.Split(';')[0] == "clr-namespace:SIL.Motif.App.Controls";
 
     private static bool IsAppTokenKey(string? key) => key is not null &&
         (key.StartsWith("Primitive.", StringComparison.Ordinal) || key.StartsWith("Intent.", StringComparison.Ordinal) ||
