@@ -225,9 +225,9 @@ public sealed class SelectionWordRowsTests
                 for (var offset = 0d; offset < scroll.Extent.Height - scroll.Viewport.Height; offset += scroll.Viewport.Height / 2)
                 {
                     scroll.Offset = scroll.Offset.WithY(offset);
-                    PageScreenshots.Settle(window);
+                    SettleRowLayout(window);
                     await list.SettleVisibleDetailsAsync();
-                    PageScreenshots.Settle(window);
+                    SettleRowLayout(window);
                     foreach (var row in window.GetVisualDescendants().OfType<WordRow>().Where(row => row.Data is not null))
                         shown.Add($"{row.Data!.Key.Value}@{row.Data.EvidenceRevision}");
                 }
@@ -538,6 +538,16 @@ public sealed class SelectionWordRowsTests
         }, TimeSpan.FromSeconds(30));
     }
 
+    // These checks need realized controls and bindings, not rasterized screenshot frames.
+    private static void SettleRowLayout(Window window)
+    {
+        for (var pass = 0; pass < 3; pass++)
+        {
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            window.UpdateLayout();
+        }
+    }
+
     private static async Task<IReadOnlyList<WeakReference<object>>> ScrollAsync(TextWordsViewModel list,
         SelectionReader reader)
     {
@@ -555,7 +565,7 @@ public sealed class SelectionWordRowsTests
             for (var offset = 0; offset < list.Rows.Count; offset += 15)
             {
                 rows.ScrollIntoView(offset);
-                PageScreenshots.Settle(window);
+                SettleRowLayout(window);
                 Avalonia.Threading.Dispatcher.UIThread.RunJobs();
                 await list.SettleVisibleDetailsAsync();
                 Assert.InRange(reader.Diagnostics.LiveRowModels, 1, 128);
@@ -565,16 +575,16 @@ public sealed class SelectionWordRowsTests
                 Assert.InRange(rows.GetVisualDescendants().OfType<SIL.Motif.App.Controls.WordPresentation.WordRow>().Count(), 1, 64);
             }
             rows.ScrollIntoView(list.Rows.Count - 1);
-            PageScreenshots.Settle(window);
+            SettleRowLayout(window);
             await list.SettleVisibleDetailsAsync();
             Assert.InRange(reader.Diagnostics.WordformRowsDeserialized, 500, weak.Count);
             Assert.Equal(1, list.CheckedWordCount);
             rows.ScrollIntoView(0);
-            PageScreenshots.Settle(window);
+            SettleRowLayout(window);
             await list.SettleVisibleDetailsAsync();
             Assert.True(list.Rows[0].IsChecked);
             window.Content = null;
-            PageScreenshots.Settle(window);
+            SettleRowLayout(window);
             Assert.Equal(0, reader.Diagnostics.LiveRowModels);
             Assert.Equal(0, reader.Diagnostics.LeasedWordKeys);
         }
