@@ -65,7 +65,8 @@ public static class ProjectInitializationCommand
         {
             return ProjectLockedRefusal(projectPath);
         }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException or LcmInitializationException)
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException or
+            LcmInitializationException || (exception is ProjectWritingSystemsUnavailableException && File.Exists(recoveryCopyPath)))
         {
             if (File.Exists(recoveryCopyPath))
                 return UnknownOutcome(projectPath, recoveryCopyPath,
@@ -80,7 +81,8 @@ public static class ProjectInitializationCommand
         {
             initialInspection = HumanJudgmentFieldDefinition.Inspect(cache);
         }
-        catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)
+        catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException ||
+            File.Exists(recoveryCopyPath))
         {
             cache.Dispose();
             if (File.Exists(recoveryCopyPath))
@@ -112,7 +114,7 @@ public static class ProjectInitializationCommand
                         return UnknownOutcome(projectPath, retainedRecoveryCopy,
                             "The saved project changed after an initialization attempt and now has an incompatible or ambiguous reserved field.");
                 }
-                catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)
+                catch (Exception exception)
                 {
                     return UnknownOutcome(projectPath, retainedRecoveryCopy,
                         "Motif could not compare the saved project with its initialization recovery copy. " + exception.Message);
@@ -174,7 +176,7 @@ public static class ProjectInitializationCommand
             HumanJudgmentFieldDefinition.CreateDefinition(cache);
             loader.Save(cache);
         }
-        catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)
+        catch (Exception exception)
         {
             writeFailure = exception;
         }
@@ -183,7 +185,7 @@ public static class ProjectInitializationCommand
         {
             cache.Dispose();
         }
-        catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)
+        catch (Exception exception)
         {
             writeFailure ??= exception;
         }
@@ -219,11 +221,13 @@ public static class ProjectInitializationCommand
         {
             verifiedCache = loader.LoadCache(projectPath);
         }
-        catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)
+        catch (Exception exception)
         {
             return UnknownOutcome(projectPath, recoveryCopyPath,
                 "Motif could not reopen the saved project to establish the initialization result. " +
-                (writeFailure?.Message ?? exception.Message));
+                (exception is ProjectWritingSystemsUnavailableException && writeFailure is not null
+                    ? writeFailure.Message + " " + exception.Message
+                    : writeFailure?.Message ?? exception.Message));
         }
 
         HumanJudgmentFieldInspection inspection;
@@ -231,7 +235,7 @@ public static class ProjectInitializationCommand
         {
             inspection = HumanJudgmentFieldDefinition.Inspect(verifiedCache);
         }
-        catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)
+        catch (Exception exception)
         {
             verifiedCache.Dispose();
             return UnknownOutcome(projectPath, recoveryCopyPath,
@@ -242,7 +246,7 @@ public static class ProjectInitializationCommand
         {
             verifiedCache.Dispose();
         }
-        catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)
+        catch (Exception exception)
         {
             return UnknownOutcome(projectPath, recoveryCopyPath,
                 "Motif could not close the verification cache cleanly: " + exception.Message);
@@ -272,7 +276,7 @@ public static class ProjectInitializationCommand
                         ("recoveryCopyPath", retainedCopy));
                 }
             }
-            catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)
+            catch (Exception exception)
             {
                 return UnknownOutcome(projectPath, recoveryCopyPath,
                     "Motif could not compare the saved project with its recovery copy after the save attempt. " + exception.Message);

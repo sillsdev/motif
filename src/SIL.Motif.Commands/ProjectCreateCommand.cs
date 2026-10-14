@@ -112,7 +112,13 @@ public static class ProjectCreateCommand
             }
             return Verify(loader, fwDataPath, request.Name);
         }
-        catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)
+        catch (ProjectWritingSystemsUnavailableException)
+        {
+            // A setup problem still leaves nothing behind, so the same name can be created once it is fixed.
+            RemoveCreatedFolder(projectFolder);
+            throw;
+        }
+        catch (Exception exception)
         {
             RemoveCreatedFolder(projectFolder);
             return Refused("project-create.failed", FailureReason.Refused,
