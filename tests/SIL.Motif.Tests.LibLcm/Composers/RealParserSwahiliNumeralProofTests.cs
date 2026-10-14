@@ -143,7 +143,8 @@ public sealed class RealParserSwahiliNumeralProofTests(PristineProjectFixture pr
         var proposal = loaded.Value!;
         AssertClassDependencies(proposal, concordClass, invarClass, fixture, zero);
 
-        var reversed = proposal with { Operations = proposal.Operations.Reverse().ToArray() };
+        var reversed = new Proposal(proposal.ContractVersions, proposal.ProposalId, proposal.Requires,
+            proposal.Operations.Reverse().ToArray(), proposal.Extensions);
         using (var reverseTarget = new FwDataProjectLoader().LoadScratchCache(projectPath))
         {
             var reverseDryRun = DryRun(reverseTarget, reversed);
