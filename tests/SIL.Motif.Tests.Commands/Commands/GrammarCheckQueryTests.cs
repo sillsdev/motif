@@ -5,11 +5,13 @@ using System.Text.Json;
 using System.Threading;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Baselines;
+using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Contract.Ids;
 using SIL.Motif.Generator;
 using SIL.LCModel;
 using SIL.LCModel.Infrastructure;
@@ -42,6 +44,91 @@ public sealed class GrammarCheckQueryTests : IDisposable
     {
         try { Directory.Delete(_managedRootsParent, recursive: true); }
         catch (IOException) { } catch (UnauthorizedAccessException) { }
+    }
+
+    [Fact]
+    public void EmptyRequiredSlotIsAStoredWarningUntilAnAffixIsAssigned()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        var loader = new FwDataProjectLoader();
+        Guid categoryGuid;
+        Guid slotGuid;
+        using (var cache = loader.LoadCache(fwDataPath))
+        {
+            var services = cache.ServiceLocator;
+            IPartOfSpeech category = null!;
+            IMoInflAffixTemplate template = null!;
+            IMoInflAffixSlot slot = null!;
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                category = services.GetInstance<IPartOfSpeechFactory>().Create();
+                cache.LangProject.PartsOfSpeechOA.PossibilitiesOS.Add(category);
+                category.Name.set_String(cache.DefaultAnalWs, "Verb");
+                template = services.GetInstance<IMoInflAffixTemplateFactory>().Create();
+                category.AffixTemplatesOS.Add(template);
+                template.Name.set_String(cache.DefaultAnalWs, "Conjugation");
+                slot = services.GetInstance<IMoInflAffixSlotFactory>().Create();
+                category.AffixSlotsOC.Add(slot);
+                slot.Name.set_String(cache.DefaultAnalWs, "Tense");
+                template.SuffixSlotsRS.Add(slot);
+            });
+            categoryGuid = category.Guid;
+            slotGuid = slot.Guid;
+            loader.Save(cache);
+        }
+
+        Capture(fwDataPath);
+        var before = Check(fwDataPath);
+        var warning = Assert.Single(before.Findings, item => item.Code == GrammarFindingCodes.RequiredSlotEmpty);
+        Assert.Equal(GrammarDiagnosticLevel.Warning, warning.Severity);
+        Assert.Contains("Conjugation", warning.Description, StringComparison.Ordinal);
+        Assert.Contains("Verb", warning.Description, StringComparison.Ordinal);
+        Assert.Contains("Tense", warning.Description, StringComparison.Ordinal);
+        Assert.Equal(CanonicalId.FromGuid(slotGuid).Value, Assert.Single(warning.Subject).ObjectId);
+        Assert.Equal(GrammarFindingCodes.RequiredSlotEmpty,
+            Assert.Single(before.Summary, item => item.Code == GrammarFindingCodes.RequiredSlotEmpty).Code);
+        var stored = StoredGrammarCheckQuery.Query(new GrammarCheckRequest(fwDataPath));
+        Assert.True(stored.Succeeded, stored.Refusal?.Message);
+        Assert.Contains(stored.Value!.Check!.Findings, item => item.Code == GrammarFindingCodes.RequiredSlotEmpty);
+        var warnings = WarningsCommand.Warnings(new WarningsRequest(fwDataPath));
+        Assert.True(warnings.Succeeded, warnings.Refusal?.Message);
+        Assert.Contains(warnings.Value!.Findings, item => item.Code == GrammarFindingCodes.RequiredSlotEmpty);
+
+        using (var cache = loader.LoadCache(fwDataPath))
+        {
+            var services = cache.ServiceLocator;
+            var category = (IPartOfSpeech)services.GetInstance<ICmObjectRepository>().GetObject(categoryGuid);
+            var slot = (IMoInflAffixSlot)services.GetInstance<ICmObjectRepository>().GetObject(slotGuid);
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                var entry = services.GetInstance<ILexEntryFactory>().Create();
+                var form = services.GetInstance<IMoAffixAllomorphFactory>().Create();
+                entry.LexemeFormOA = form;
+                form.MorphTypeRA = services.GetInstance<IMoMorphTypeRepository>()
+                    .GetObject(MoMorphTypeTags.kguidMorphSuffix);
+                var msa = services.GetInstance<IMoInflAffMsaFactory>().Create();
+                entry.MorphoSyntaxAnalysesOC.Add(msa);
+                msa.PartOfSpeechRA = category;
+                msa.SlotsRC.Add(slot);
+            });
+            loader.Save(cache);
+        }
+
+        Capture(fwDataPath);
+        Assert.DoesNotContain(Check(fwDataPath).Findings,
+            item => item.Code == GrammarFindingCodes.RequiredSlotEmpty);
+    }
+
+    private static GrammarCheckResponse Check(string fwDataPath) =>
+        AssertOutcome(GrammarCheckQuery.Query(new GrammarCheckRequest(fwDataPath), new FakeInvoker
+        {
+            Respond = _ => new PanGlossOutcome.Completed(GrammarHealthReports.With(), string.Empty, TimeSpan.Zero),
+        }, CancellationToken.None));
+
+    private static GrammarCheckResponse AssertOutcome(CommandOutcome<GrammarCheckResponse> outcome)
+    {
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        return outcome.Value!;
     }
 
     [Theory]

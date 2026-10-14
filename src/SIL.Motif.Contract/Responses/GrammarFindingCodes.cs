@@ -5,4 +5,7 @@ public static class GrammarFindingCodes
 {
     /// <summary>An allomorph the parser could not segment while importing the grammar for Parse all words.</summary>
     public const string ParseAllomorphUnsegmentable = "parse.allomorph.unsegmentable";
+
+    /// <summary>A required inflectional slot has no assigned inflectional affixes.</summary>
+    public const string RequiredSlotEmpty = "grammar.required-slot-empty";
 }

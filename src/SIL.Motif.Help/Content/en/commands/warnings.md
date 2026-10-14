@@ -20,6 +20,8 @@ The response includes separate error, warning, and information counts, plus find
 
 The response includes the Baseline's lexical entry and rule counts when that inventory is available. Motif advisories are listed separately from parser findings.
 
+Motif findings include `grammar.required-slot-empty` when a required inflectional slot in a template has no affixes. Each finding names the template, part of speech, slot and canonical slot ID. FieldWorks treats the empty required slot as obligatory.
+
 When a stored Assessment matches the Baseline and Selection, all recorded allomorph segmentation refusals are included under `parse.allomorph.unsegmentable`, labelled **Parse all words**. Their descriptions preserve the parser's reason, without truncating the allomorph list or inventing guidance. These findings can differ from the whole-grammar check's findings.
 
 ## Your words

@@ -148,14 +148,18 @@ public static class GrammarCheckQuery
             {
                 LcmCache Cache() => (reader ??= BaselineReadCache.Open(baseline.FwDataPath)).Cache;
                 var inventory = ProjectGrammarInventoryReader.Read(Cache());
-                response = new GrammarCheckResponse(findings.Select(finding => WithReach(finding, Cache))
-                    .ToArray(), HasBaseline: true)
+                var projected = new GrammarCheckResponse(findings, HasBaseline: true)
                 {
                     Summary = summary,
                     Locale = locale,
                     CheckedLexemeCount = inventory.LexemeCount,
                     CheckedRuleCount = inventory.RuleCount,
                     Advisories = EmptyLexiconAdvisory(inventory),
+                };
+                projected = RequiredSlotWarnings.AddTo(projected, Cache());
+                response = projected with
+                {
+                    Findings = projected.Findings.Select(finding => WithReach(finding, Cache)).ToArray(),
                 };
                 var baselineToken = JsonSerializer.Serialize(baseline.Token, MotifJson.CreateOptions());
                 var selectionSha256 = SelectionDigest(database, Cache, baselineToken);
