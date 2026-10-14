@@ -94,7 +94,7 @@ public sealed class WritingSystemMissingToolTests(PristineProjectFixture pristin
                 new ProjectLocator(path, "wsfail")), path, DateTimeOffset.UtcNow);
         var context = new ServerContext(path, "1.0", new NoRunnerLauncher(
             new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(null), ToolProfile.Builtin,
-            TextWriter.Null, advancedAiModeEnabled: true);
+            TextWriter.Null, advancedAiModeEnabled: true, parserPath: FakeParser.ExecutablePath);
         var tools = MotifMcpServer.Expose(ToolProfile.Builtin);
         var captured = await MotifMcpServer.CallAsync(context, tools, "motif_capture_baseline",
             new Dictionary<string, JsonElement> { ["project"] = JsonSerializer.SerializeToElement(path) }, CancellationToken.None);
