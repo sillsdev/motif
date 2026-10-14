@@ -20,6 +20,7 @@ public static partial class RetireRedundantZeroAffixOperationKinds
     {
         OperationKindRegistry.Register(DeleteGraph);
         OperationHandlerRegistry.Register(DeleteGraph, RetireRedundantZeroAffixGraphDeleteHandler.Instance);
+        OperationSlotRegistry.RegisterEntityDeletion(DeleteGraph);
     }
 #pragma warning restore CA2255
 }

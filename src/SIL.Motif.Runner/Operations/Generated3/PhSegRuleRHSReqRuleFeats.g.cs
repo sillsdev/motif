@@ -33,6 +33,8 @@ public static class PhSegRuleRHSReqRuleFeatsOperationKinds
         OperationKindRegistry.Register(RemoveRefReqRuleFeats);
         OperationHandlerRegistry.Register(AddRefReqRuleFeats, PhSegRuleRHSReqRuleFeatsAddRefHandler.Instance);
         OperationHandlerRegistry.Register(RemoveRefReqRuleFeats, PhSegRuleRHSReqRuleFeatsRemoveRefHandler.Instance);
+        OperationSlotRegistry.RegisterMember(AddRefReqRuleFeats, SnapshotFields.PhSegRuleRHSReqRuleFeats);
+        OperationSlotRegistry.RegisterMember(RemoveRefReqRuleFeats, SnapshotFields.PhSegRuleRHSReqRuleFeats);
     }
 }
 

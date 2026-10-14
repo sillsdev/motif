@@ -32,6 +32,8 @@ public static class MoStemMsaInflectionClassOperationKinds
         OperationKindRegistry.Register(ClearInflectionClass);
         OperationHandlerRegistry.Register(SetInflectionClass, MoStemMsaInflectionClassSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearInflectionClass, MoStemMsaInflectionClassClearHandler.Instance);
+        OperationSlotRegistry.RegisterScalar(SetInflectionClass, SnapshotFields.MoStemMsaInflectionClass);
+        OperationSlotRegistry.RegisterScalar(ClearInflectionClass, SnapshotFields.MoStemMsaInflectionClass);
     }
 }
 

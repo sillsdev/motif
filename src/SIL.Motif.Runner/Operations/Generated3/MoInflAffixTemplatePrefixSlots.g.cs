@@ -35,8 +35,11 @@ public static class MoInflAffixTemplatePrefixSlotsOperationKinds
         OperationKindRegistry.Register(RemoveRefPrefixSlots);
         OperationHandlerRegistry.Register(AddRefPrefixSlots, MoInflAffixTemplatePrefixSlotsAddRefHandler.Instance);
         OperationHandlerRegistry.Register(RemoveRefPrefixSlots, MoInflAffixTemplatePrefixSlotsRemoveRefHandler.Instance);
+        OperationSlotRegistry.RegisterMember(AddRefPrefixSlots, SnapshotFields.MoInflAffixTemplatePrefixSlots);
+        OperationSlotRegistry.RegisterMember(RemoveRefPrefixSlots, SnapshotFields.MoInflAffixTemplatePrefixSlots);
         OperationKindRegistry.Register(MovePrefixSlots);
         OperationHandlerRegistry.Register(MovePrefixSlots, MoInflAffixTemplatePrefixSlotsMoveHandler.Instance);
+        OperationSlotRegistry.RegisterMember(MovePrefixSlots, SnapshotFields.MoInflAffixTemplatePrefixSlots);
     }
 }
 

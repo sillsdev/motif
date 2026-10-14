@@ -32,6 +32,8 @@ public static class LexEtymologyFormOperationKinds
         OperationKindRegistry.Register(ClearForm);
         OperationHandlerRegistry.Register(SetForm, LexEtymologyFormSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearForm, LexEtymologyFormClearHandler.Instance);
+        OperationSlotRegistry.RegisterAlternative(SetForm, SnapshotFields.LexEtymologyForm);
+        OperationSlotRegistry.RegisterAlternative(ClearForm, SnapshotFields.LexEtymologyForm);
     }
 }
 

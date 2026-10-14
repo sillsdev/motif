@@ -32,6 +32,8 @@ public static class MoStemMsaMsFeaturesOperationKinds
         OperationKindRegistry.Register(DeleteMsFeatures);
         OperationHandlerRegistry.Register(CreateMsFeatures, MoStemMsaMsFeaturesCreateHandler.Instance);
         OperationHandlerRegistry.Register(DeleteMsFeatures, MoStemMsaMsFeaturesDeleteHandler.Instance);
+        OperationSlotRegistry.RegisterOwningCreate(CreateMsFeatures, SnapshotFields.MoStemMsaMsFeatures, true);
+        OperationSlotRegistry.RegisterScalar(DeleteMsFeatures, SnapshotFields.MoStemMsaMsFeatures);
     }
 #pragma warning restore CA2255
 }

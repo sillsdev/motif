@@ -63,6 +63,8 @@ public static class ReferenceAtomicFieldEmitter
                 OperationKindRegistry.Register(Clear__FIELDNAME__);
                 OperationHandlerRegistry.Register(Set__FIELDNAME__, __PREFIX__SetHandler.Instance);
                 OperationHandlerRegistry.Register(Clear__FIELDNAME__, __PREFIX__ClearHandler.Instance);
+                OperationSlotRegistry.RegisterScalar(Set__FIELDNAME__, __SNAPSHOTFIELD__);
+                OperationSlotRegistry.RegisterScalar(Clear__FIELDNAME__, __SNAPSHOTFIELD__);
             }
         }
 

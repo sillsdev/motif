@@ -21,6 +21,7 @@ public static class PartOfSpeechStemNamesOperationKinds
     internal static void Register()
     {
         OperationKindRegistry.Register(Create);
+        OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.PartOfSpeechStemNames, false);
         OperationHandlerRegistry.Register(Create, new OwningCreateHandler<IPartOfSpeech>(
             Create, SnapshotFields.PartOfSpeechStemNames, owner => owner.StemNamesOC.Cast<ICmObject>().ToArray(),
             (cache, owner, guid, index, concreteClass) =>

@@ -21,6 +21,7 @@ public static class MoStemNameRegionsOperationKinds
     internal static void Register()
     {
         OperationKindRegistry.Register(Create);
+        OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.MoStemNameRegions, false);
         OperationHandlerRegistry.Register(Create, new OwningCreateHandler<IMoStemName>(
             Create, SnapshotFields.MoStemNameRegions, owner => owner.RegionsOC.Cast<ICmObject>().ToArray(),
             (cache, owner, guid, index, concreteClass) =>

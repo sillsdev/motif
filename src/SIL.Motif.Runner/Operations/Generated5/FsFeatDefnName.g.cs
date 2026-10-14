@@ -32,6 +32,8 @@ public static class FsFeatDefnNameOperationKinds
         OperationKindRegistry.Register(ClearName);
         OperationHandlerRegistry.Register(SetName, FsFeatDefnNameSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearName, FsFeatDefnNameClearHandler.Instance);
+        OperationSlotRegistry.RegisterAlternative(SetName, SnapshotFields.FsFeatDefnName);
+        OperationSlotRegistry.RegisterAlternative(ClearName, SnapshotFields.FsFeatDefnName);
     }
 }
 

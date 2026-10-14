@@ -96,7 +96,7 @@ public sealed class AnalysisChangeSlotTests
     }
 
     [Fact]
-    public void NotebookTitleWritesInDifferentWritingSystemsDoNotConflict()
+    public void NotebookTitleWritesInDifferentWritingSystemsConflictBecauseTitleIsOneString()
     {
         var record = CanonicalId.Mint();
         var operations = new[]
@@ -105,7 +105,7 @@ public sealed class AnalysisChangeSlotTests
             Envelope(RnGenericRecTitleOperationKinds.Set, record, new { ws = "fr", text = "Francais" }),
         };
 
-        Assert.Null(ProposalOperationSlotValidator.FindConflict(operations));
+        Assert.NotNull(ProposalOperationSlotValidator.FindConflict(operations));
     }
 
     [Fact]

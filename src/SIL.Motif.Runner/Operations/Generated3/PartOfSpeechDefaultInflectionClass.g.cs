@@ -32,6 +32,8 @@ public static class PartOfSpeechDefaultInflectionClassOperationKinds
         OperationKindRegistry.Register(ClearDefaultInflectionClass);
         OperationHandlerRegistry.Register(SetDefaultInflectionClass, PartOfSpeechDefaultInflectionClassSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearDefaultInflectionClass, PartOfSpeechDefaultInflectionClassClearHandler.Instance);
+        OperationSlotRegistry.RegisterScalar(SetDefaultInflectionClass, SnapshotFields.PartOfSpeechDefaultInflectionClass);
+        OperationSlotRegistry.RegisterScalar(ClearDefaultInflectionClass, SnapshotFields.PartOfSpeechDefaultInflectionClass);
     }
 }
 

@@ -16,10 +16,8 @@ using ContractIntentDigest = SIL.Motif.Contract.Canonicalization.IntentDigest;
 namespace SIL.Motif.Tests.Runner;
 
 /// <summary>
-/// Pins <c>TargetResolution</c>'s two fail-closed guards -- missing <c>target</c> and a target of the
-/// wrong type -- as reached through <see cref="ProposalApplier.Apply"/>'s footprint pre-flight, via
-/// <c>IOperationHandler.ReadCurrentFootprint</c>, which <see cref="FootprintProbe"/> calls before Apply
-/// opens any unit of work. Both tests assert the refusal happens before mutation: nothing is committed.
+/// Pins missing-target and wrong-type refusal context at the public <see cref="ProposalApplier.Apply"/> boundary.
+/// Refusals must identify the failed input and leave no applied-history entry to reconcile.
 /// </summary>
 [Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group0)]
 public sealed class TargetResolutionRefusalsTests : IDisposable
@@ -52,7 +50,7 @@ public sealed class TargetResolutionRefusalsTests : IDisposable
         Assert.Contains($"kind '{LexicalSenseOperationKinds.SetGloss}'", ex.Message);
         Assert.Contains("requires 'target'", ex.Message);
 
-        // Refused during the footprint pre-flight, before any unit of work opened: nothing committed.
+        // A refusal must leave no applied-history entry to reconcile.
         Assert.Empty(ProjectAppliedLog.ReadAll(_cache));
     }
 

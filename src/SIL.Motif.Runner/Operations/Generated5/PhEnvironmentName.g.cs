@@ -32,6 +32,8 @@ public static class PhEnvironmentNameOperationKinds
         OperationKindRegistry.Register(ClearName);
         OperationHandlerRegistry.Register(SetName, PhEnvironmentNameSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearName, PhEnvironmentNameClearHandler.Instance);
+        OperationSlotRegistry.RegisterAlternative(SetName, SnapshotFields.PhEnvironmentName);
+        OperationSlotRegistry.RegisterAlternative(ClearName, SnapshotFields.PhEnvironmentName);
     }
 }
 

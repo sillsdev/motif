@@ -32,6 +32,8 @@ public static class ReversalIndexEntryPartOfSpeechOperationKinds
         OperationKindRegistry.Register(ClearPartOfSpeech);
         OperationHandlerRegistry.Register(SetPartOfSpeech, ReversalIndexEntryPartOfSpeechSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearPartOfSpeech, ReversalIndexEntryPartOfSpeechClearHandler.Instance);
+        OperationSlotRegistry.RegisterScalar(SetPartOfSpeech, SnapshotFields.ReversalIndexEntryPartOfSpeech);
+        OperationSlotRegistry.RegisterScalar(ClearPartOfSpeech, SnapshotFields.ReversalIndexEntryPartOfSpeech);
     }
 }
 

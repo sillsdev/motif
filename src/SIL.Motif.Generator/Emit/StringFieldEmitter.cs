@@ -55,6 +55,8 @@ public static class StringFieldEmitter
                 OperationKindRegistry.Register(Clear);
                 OperationHandlerRegistry.Register(Set, new __PREFIX__Handler(false));
                 OperationHandlerRegistry.Register(Clear, new __PREFIX__Handler(true));
+                OperationSlotRegistry.RegisterScalar(Set, __SNAPSHOT_FIELD__);
+                OperationSlotRegistry.RegisterScalar(Clear, __SNAPSHOT_FIELD__);
             }
         }
 

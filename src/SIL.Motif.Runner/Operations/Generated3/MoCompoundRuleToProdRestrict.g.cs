@@ -33,6 +33,8 @@ public static class MoCompoundRuleToProdRestrictOperationKinds
         OperationKindRegistry.Register(RemoveRefToProdRestrict);
         OperationHandlerRegistry.Register(AddRefToProdRestrict, MoCompoundRuleToProdRestrictAddRefHandler.Instance);
         OperationHandlerRegistry.Register(RemoveRefToProdRestrict, MoCompoundRuleToProdRestrictRemoveRefHandler.Instance);
+        OperationSlotRegistry.RegisterMember(AddRefToProdRestrict, SnapshotFields.MoCompoundRuleToProdRestrict);
+        OperationSlotRegistry.RegisterMember(RemoveRefToProdRestrict, SnapshotFields.MoCompoundRuleToProdRestrict);
     }
 }
 

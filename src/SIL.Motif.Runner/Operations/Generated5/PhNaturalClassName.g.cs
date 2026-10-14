@@ -32,6 +32,8 @@ public static class PhNaturalClassNameOperationKinds
         OperationKindRegistry.Register(ClearName);
         OperationHandlerRegistry.Register(SetName, PhNaturalClassNameSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearName, PhNaturalClassNameClearHandler.Instance);
+        OperationSlotRegistry.RegisterAlternative(SetName, SnapshotFields.PhNaturalClassName);
+        OperationSlotRegistry.RegisterAlternative(ClearName, SnapshotFields.PhNaturalClassName);
     }
 }
 

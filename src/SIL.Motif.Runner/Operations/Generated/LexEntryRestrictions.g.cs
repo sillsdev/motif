@@ -32,6 +32,8 @@ public static class LexEntryRestrictionsOperationKinds
         OperationKindRegistry.Register(ClearRestrictions);
         OperationHandlerRegistry.Register(SetRestrictions, LexEntryRestrictionsSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearRestrictions, LexEntryRestrictionsClearHandler.Instance);
+        OperationSlotRegistry.RegisterAlternative(SetRestrictions, SnapshotFields.LexEntryRestrictions);
+        OperationSlotRegistry.RegisterAlternative(ClearRestrictions, SnapshotFields.LexEntryRestrictions);
     }
 }
 

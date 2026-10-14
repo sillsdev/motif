@@ -32,6 +32,8 @@ public static class MoModifyFromInputModificationOperationKinds
         OperationKindRegistry.Register(ClearModification);
         OperationHandlerRegistry.Register(SetModification, MoModifyFromInputModificationSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearModification, MoModifyFromInputModificationClearHandler.Instance);
+        OperationSlotRegistry.RegisterScalar(SetModification, SnapshotFields.MoModifyFromInputModification);
+        OperationSlotRegistry.RegisterScalar(ClearModification, SnapshotFields.MoModifyFromInputModification);
     }
 }
 

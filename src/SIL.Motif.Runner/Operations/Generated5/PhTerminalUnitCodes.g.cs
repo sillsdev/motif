@@ -21,6 +21,7 @@ public static class PhTerminalUnitCodesOperationKinds
     internal static void Register()
     {
         OperationKindRegistry.Register(Create);
+        OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.PhTerminalUnitCodes, false);
         OperationHandlerRegistry.Register(Create, new OwningCreateHandler<IPhTerminalUnit>(
             Create, SnapshotFields.PhTerminalUnitCodes, owner => owner.CodesOS.Cast<ICmObject>().ToArray(),
             (cache, owner, guid, index, concreteClass) =>

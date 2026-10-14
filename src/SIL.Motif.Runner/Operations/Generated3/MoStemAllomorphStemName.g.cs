@@ -32,6 +32,8 @@ public static class MoStemAllomorphStemNameOperationKinds
         OperationKindRegistry.Register(ClearStemName);
         OperationHandlerRegistry.Register(SetStemName, MoStemAllomorphStemNameSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearStemName, MoStemAllomorphStemNameClearHandler.Instance);
+        OperationSlotRegistry.RegisterScalar(SetStemName, SnapshotFields.MoStemAllomorphStemName);
+        OperationSlotRegistry.RegisterScalar(ClearStemName, SnapshotFields.MoStemAllomorphStemName);
     }
 }
 

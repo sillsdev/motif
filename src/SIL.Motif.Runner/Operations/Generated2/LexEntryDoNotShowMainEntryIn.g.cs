@@ -33,6 +33,8 @@ public static class LexEntryDoNotShowMainEntryInOperationKinds
         OperationKindRegistry.Register(RemoveRefDoNotShowMainEntryIn);
         OperationHandlerRegistry.Register(AddRefDoNotShowMainEntryIn, LexEntryDoNotShowMainEntryInAddRefHandler.Instance);
         OperationHandlerRegistry.Register(RemoveRefDoNotShowMainEntryIn, LexEntryDoNotShowMainEntryInRemoveRefHandler.Instance);
+        OperationSlotRegistry.RegisterMember(AddRefDoNotShowMainEntryIn, SnapshotFields.LexEntryDoNotShowMainEntryIn);
+        OperationSlotRegistry.RegisterMember(RemoveRefDoNotShowMainEntryIn, SnapshotFields.LexEntryDoNotShowMainEntryIn);
     }
 }
 

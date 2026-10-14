@@ -32,6 +32,8 @@ public static class PhSegmentRuleNameOperationKinds
         OperationKindRegistry.Register(ClearName);
         OperationHandlerRegistry.Register(SetName, PhSegmentRuleNameSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearName, PhSegmentRuleNameClearHandler.Instance);
+        OperationSlotRegistry.RegisterAlternative(SetName, SnapshotFields.PhSegmentRuleName);
+        OperationSlotRegistry.RegisterAlternative(ClearName, SnapshotFields.PhSegmentRuleName);
     }
 }
 

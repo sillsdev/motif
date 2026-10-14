@@ -33,5 +33,6 @@ public static class LexDbEntriesOperationKinds
                     throw new InvalidOperationException("Entries are created only in this project's lexicon.");
                 cache.ServiceLocator.GetInstance<ILexEntryFactory>().Create(guid, owner);
             }, false, false, Array.Empty<string>(), "LexEntry"));
+        OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.LexDbEntries, false);
     }
 }

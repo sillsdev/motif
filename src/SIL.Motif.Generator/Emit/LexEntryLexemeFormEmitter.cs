@@ -113,6 +113,8 @@ public static class LexEntryLexemeFormEmitter
                 OperationKindRegistry.Register(DeleteLexemeForm);
                 OperationHandlerRegistry.Register(CreateLexemeForm, LexEntryLexemeFormCreateHandler.Instance);
                 OperationHandlerRegistry.Register(DeleteLexemeForm, LexEntryLexemeFormDeleteHandler.Instance);
+                OperationSlotRegistry.RegisterOwningCreate(CreateLexemeForm, SnapshotFields.LexEntryLexemeForm, true);
+                OperationSlotRegistry.RegisterScalar(DeleteLexemeForm, SnapshotFields.LexEntryLexemeForm);
             }
         }
 

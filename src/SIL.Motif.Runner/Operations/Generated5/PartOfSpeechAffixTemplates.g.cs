@@ -23,6 +23,7 @@ public static class PartOfSpeechAffixTemplatesOperationKinds
     internal static void Register()
     {
         OperationKindRegistry.Register(Create);
+        OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.PartOfSpeechAffixTemplates, false);
         OperationHandlerRegistry.Register(Create, new OwningCreateHandler<IPartOfSpeech>(
             Create, SnapshotFields.PartOfSpeechAffixTemplates, owner => owner.AffixTemplatesOS.Cast<ICmObject>().ToArray(),
             (cache, owner, guid, index, concreteClass) =>
@@ -32,6 +33,7 @@ public static class PartOfSpeechAffixTemplatesOperationKinds
             }, true, false, Array.Empty<string>(), "MoInflAffixTemplate", true));
         OperationKindRegistry.Register(MoveAffixTemplates);
         OperationHandlerRegistry.Register(MoveAffixTemplates, PartOfSpeechAffixTemplatesMoveHandler.Instance);
+        OperationSlotRegistry.RegisterMember(MoveAffixTemplates, SnapshotFields.PartOfSpeechAffixTemplates);
     }
 }
 

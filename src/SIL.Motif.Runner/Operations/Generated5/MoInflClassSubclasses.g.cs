@@ -21,6 +21,7 @@ public static class MoInflClassSubclassesOperationKinds
     internal static void Register()
     {
         OperationKindRegistry.Register(Create);
+        OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.MoInflClassSubclasses, false);
         OperationHandlerRegistry.Register(Create, new OwningCreateHandler<IMoInflClass>(
             Create, SnapshotFields.MoInflClassSubclasses, owner => owner.SubclassesOC.Cast<ICmObject>().ToArray(),
             (cache, owner, guid, index, concreteClass) =>

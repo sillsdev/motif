@@ -32,6 +32,8 @@ public static class LexSenseMorphoSyntaxAnalysisOperationKinds
         OperationKindRegistry.Register(ClearMorphoSyntaxAnalysis);
         OperationHandlerRegistry.Register(SetMorphoSyntaxAnalysis, LexSenseMorphoSyntaxAnalysisSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearMorphoSyntaxAnalysis, LexSenseMorphoSyntaxAnalysisClearHandler.Instance);
+        OperationSlotRegistry.RegisterScalar(SetMorphoSyntaxAnalysis, SnapshotFields.LexSenseMorphoSyntaxAnalysis);
+        OperationSlotRegistry.RegisterScalar(ClearMorphoSyntaxAnalysis, SnapshotFields.LexSenseMorphoSyntaxAnalysis);
     }
 }
 

@@ -21,6 +21,7 @@ public static class PhSegRuleRHSStrucChangeOperationKinds
     internal static void Register()
     {
         OperationKindRegistry.Register(Create);
+        OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.PhSegRuleRHSStrucChange, false);
         OperationHandlerRegistry.Register(Create, new OwningCreateHandler<IPhSegRuleRHS>(
             Create, SnapshotFields.PhSegRuleRHSStrucChange, owner => owner.StrucChangeOS.Cast<ICmObject>().ToArray(),
             (cache, owner, guid, index, concreteClass) =>

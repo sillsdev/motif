@@ -21,6 +21,7 @@ public static class PartOfSpeechInflectionClassesOperationKinds
     internal static void Register()
     {
         OperationKindRegistry.Register(Create);
+        OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.PartOfSpeechInflectionClasses, false);
         OperationHandlerRegistry.Register(Create, new OwningCreateHandler<IPartOfSpeech>(
             Create, SnapshotFields.PartOfSpeechInflectionClasses, owner => owner.InflectionClassesOC.Cast<ICmObject>().ToArray(),
             (cache, owner, guid, index, concreteClass) =>

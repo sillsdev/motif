@@ -32,6 +32,8 @@ public static class FsFeatStrucTypeAbbreviationOperationKinds
         OperationKindRegistry.Register(ClearAbbreviation);
         OperationHandlerRegistry.Register(SetAbbreviation, FsFeatStrucTypeAbbreviationSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearAbbreviation, FsFeatStrucTypeAbbreviationClearHandler.Instance);
+        OperationSlotRegistry.RegisterAlternative(SetAbbreviation, SnapshotFields.FsFeatStrucTypeAbbreviation);
+        OperationSlotRegistry.RegisterAlternative(ClearAbbreviation, SnapshotFields.FsFeatStrucTypeAbbreviation);
     }
 }
 

@@ -21,6 +21,7 @@ public static class RnResearchNbkRecordsOperationKinds
     internal static void Register()
     {
         OperationKindRegistry.Register(Create);
+        OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.RnResearchNbkRecords, false);
         OperationHandlerRegistry.Register(Create, new OwningCreateHandler<IRnResearchNbk>(
             Create, SnapshotFields.RnResearchNbkRecords, owner => owner.RecordsOC.Cast<ICmObject>().ToArray(),
             (cache, owner, guid, index, concreteClass) =>

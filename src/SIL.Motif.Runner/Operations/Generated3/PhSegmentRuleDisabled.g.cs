@@ -32,6 +32,8 @@ public static class PhSegmentRuleDisabledOperationKinds
         OperationKindRegistry.Register(ClearDisabled);
         OperationHandlerRegistry.Register(SetDisabled, PhSegmentRuleDisabledSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearDisabled, PhSegmentRuleDisabledClearHandler.Instance);
+        OperationSlotRegistry.RegisterScalar(SetDisabled, SnapshotFields.PhSegmentRuleDisabled);
+        OperationSlotRegistry.RegisterScalar(ClearDisabled, SnapshotFields.PhSegmentRuleDisabled);
     }
 }
 

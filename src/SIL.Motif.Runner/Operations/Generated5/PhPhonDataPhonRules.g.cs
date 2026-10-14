@@ -23,6 +23,7 @@ public static class PhPhonDataPhonRulesOperationKinds
     internal static void Register()
     {
         OperationKindRegistry.Register(Create);
+        OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.PhPhonDataPhonRules, false);
         OperationHandlerRegistry.Register(Create, new OwningCreateHandler<IPhPhonData>(
             Create, SnapshotFields.PhPhonDataPhonRules, owner => owner.PhonRulesOS.Cast<ICmObject>().ToArray(),
             (cache, owner, guid, index, concreteClass) =>
@@ -33,6 +34,7 @@ public static class PhPhonDataPhonRulesOperationKinds
             }, true, false, new[] { "PhRegularRule" }, "PhSegmentRule", true));
         OperationKindRegistry.Register(MovePhonRules);
         OperationHandlerRegistry.Register(MovePhonRules, PhPhonDataPhonRulesMoveHandler.Instance);
+        OperationSlotRegistry.RegisterMember(MovePhonRules, SnapshotFields.PhPhonDataPhonRules);
     }
 }
 

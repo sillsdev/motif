@@ -368,7 +368,8 @@ public static class OwningCreateCatalogWriter
             throw new GeneratorException($"Could not locate the registration body for {owner}.{field}.");
         code = code.Insert(registrationEndIndex,
             $"\n        OperationKindRegistry.Register(Move{field});\n" +
-            $"        OperationHandlerRegistry.Register(Move{field}, {prefix}MoveHandler.Instance);");
+            $"        OperationHandlerRegistry.Register(Move{field}, {prefix}MoveHandler.Instance);\n" +
+            $"        OperationSlotRegistry.RegisterMember(Move{field}, SnapshotFields.{prefix});");
         return code.TrimEnd() + "\n\n" + RenderMoveHandler(prefix, owner, field).Trim() + "\n";
     }
 
@@ -396,6 +397,7 @@ public static class OwningCreateCatalogWriter
             internal static void Register()
             {
                 OperationKindRegistry.Register(Create);
+                OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.__PREFIX__, __ATOMIC__);
                 OperationHandlerRegistry.Register(Create, new OwningCreateHandler<I__OWNER__>(
                     Create, SnapshotFields.__PREFIX__, owner => __MEMBERS__,
                     (cache, owner, guid, index, concreteClass) =>
@@ -431,6 +433,7 @@ public static class OwningCreateCatalogWriter
             {
                 OperationKindRegistry.Register(Move__FIELD__);
                 OperationHandlerRegistry.Register(Move__FIELD__, __PREFIX__MoveHandler.Instance);
+                OperationSlotRegistry.RegisterMember(Move__FIELD__, SnapshotFields.__PREFIX__);
             }
         }
         """;

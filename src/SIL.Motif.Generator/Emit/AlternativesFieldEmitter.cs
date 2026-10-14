@@ -62,6 +62,8 @@ public static class AlternativesFieldEmitter
                 OperationKindRegistry.Register(Clear__FIELDNAME__);
                 OperationHandlerRegistry.Register(Set__FIELDNAME__, __PREFIX__SetHandler.Instance);
                 OperationHandlerRegistry.Register(Clear__FIELDNAME__, __PREFIX__ClearHandler.Instance);
+                OperationSlotRegistry.RegisterAlternative(Set__FIELDNAME__, __SNAPSHOTFIELD__);
+                OperationSlotRegistry.RegisterAlternative(Clear__FIELDNAME__, __SNAPSHOTFIELD__);
             }
         }
 

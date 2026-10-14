@@ -33,6 +33,8 @@ public static class MoMorphAdhocProhibRestOfMorphsOperationKinds
         OperationKindRegistry.Register(RemoveRefRestOfMorphs);
         OperationHandlerRegistry.Register(AddRefRestOfMorphs, MoMorphAdhocProhibRestOfMorphsAddRefHandler.Instance);
         OperationHandlerRegistry.Register(RemoveRefRestOfMorphs, MoMorphAdhocProhibRestOfMorphsRemoveRefHandler.Instance);
+        OperationSlotRegistry.RegisterMember(AddRefRestOfMorphs, SnapshotFields.MoMorphAdhocProhibRestOfMorphs);
+        OperationSlotRegistry.RegisterMember(RemoveRefRestOfMorphs, SnapshotFields.MoMorphAdhocProhibRestOfMorphs);
     }
 }
 

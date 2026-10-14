@@ -32,6 +32,8 @@ public static class FsSymFeatValNameOperationKinds
         OperationKindRegistry.Register(ClearName);
         OperationHandlerRegistry.Register(SetName, FsSymFeatValNameSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearName, FsSymFeatValNameClearHandler.Instance);
+        OperationSlotRegistry.RegisterAlternative(SetName, SnapshotFields.FsSymFeatValName);
+        OperationSlotRegistry.RegisterAlternative(ClearName, SnapshotFields.FsSymFeatValName);
     }
 }
 

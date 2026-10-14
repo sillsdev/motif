@@ -58,6 +58,8 @@ public static class GlossFieldEmitter
                 OperationKindRegistry.Register(ClearGloss);
                 OperationHandlerRegistry.Register(SetGloss, SetGlossOperationHandler.Instance);
                 OperationHandlerRegistry.Register(ClearGloss, ClearGlossOperationHandler.Instance);
+                OperationSlotRegistry.RegisterAlternative(SetGloss, SnapshotFields.LexSenseGloss);
+                OperationSlotRegistry.RegisterAlternative(ClearGloss, SnapshotFields.LexSenseGloss);
             }
         }
 

@@ -32,6 +32,8 @@ public static class MoStemMsaPartOfSpeechOperationKinds
         OperationKindRegistry.Register(ClearPartOfSpeech);
         OperationHandlerRegistry.Register(SetPartOfSpeech, MoStemMsaPartOfSpeechSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearPartOfSpeech, MoStemMsaPartOfSpeechClearHandler.Instance);
+        OperationSlotRegistry.RegisterScalar(SetPartOfSpeech, SnapshotFields.MoStemMsaPartOfSpeech);
+        OperationSlotRegistry.RegisterScalar(ClearPartOfSpeech, SnapshotFields.MoStemMsaPartOfSpeech);
     }
 }
 

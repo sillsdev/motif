@@ -32,6 +32,8 @@ public static class MoStemNameNameOperationKinds
         OperationKindRegistry.Register(ClearName);
         OperationHandlerRegistry.Register(SetName, MoStemNameNameSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearName, MoStemNameNameClearHandler.Instance);
+        OperationSlotRegistry.RegisterAlternative(SetName, SnapshotFields.MoStemNameName);
+        OperationSlotRegistry.RegisterAlternative(ClearName, SnapshotFields.MoStemNameName);
     }
 }
 

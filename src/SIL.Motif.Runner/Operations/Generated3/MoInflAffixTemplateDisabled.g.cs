@@ -32,6 +32,8 @@ public static class MoInflAffixTemplateDisabledOperationKinds
         OperationKindRegistry.Register(ClearDisabled);
         OperationHandlerRegistry.Register(SetDisabled, MoInflAffixTemplateDisabledSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearDisabled, MoInflAffixTemplateDisabledClearHandler.Instance);
+        OperationSlotRegistry.RegisterScalar(SetDisabled, SnapshotFields.MoInflAffixTemplateDisabled);
+        OperationSlotRegistry.RegisterScalar(ClearDisabled, SnapshotFields.MoInflAffixTemplateDisabled);
     }
 }
 

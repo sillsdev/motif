@@ -32,6 +32,8 @@ public static class MoDerivAffMsaToPartOfSpeechOperationKinds
         OperationKindRegistry.Register(ClearToPartOfSpeech);
         OperationHandlerRegistry.Register(SetToPartOfSpeech, MoDerivAffMsaToPartOfSpeechSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearToPartOfSpeech, MoDerivAffMsaToPartOfSpeechClearHandler.Instance);
+        OperationSlotRegistry.RegisterScalar(SetToPartOfSpeech, SnapshotFields.MoDerivAffMsaToPartOfSpeech);
+        OperationSlotRegistry.RegisterScalar(ClearToPartOfSpeech, SnapshotFields.MoDerivAffMsaToPartOfSpeech);
     }
 }
 

@@ -21,6 +21,7 @@ public static class LexEntryAlternateFormsOperationKinds
     {
         OperationKindRegistry.Register(MoveAlternateForms);
         OperationHandlerRegistry.Register(MoveAlternateForms, LexEntryAlternateFormsMoveHandler.Instance);
+        OperationSlotRegistry.RegisterMember(MoveAlternateForms, SnapshotFields.LexEntryAlternateForms);
     }
 }
 

@@ -33,6 +33,8 @@ public static class ReversalIndexEntrySensesOperationKinds
         OperationKindRegistry.Register(RemoveRefSenses);
         OperationHandlerRegistry.Register(AddRefSenses, ReversalIndexEntrySensesAddRefHandler.Instance);
         OperationHandlerRegistry.Register(RemoveRefSenses, ReversalIndexEntrySensesRemoveRefHandler.Instance);
+        OperationSlotRegistry.RegisterMember(AddRefSenses, SnapshotFields.ReversalIndexEntrySenses);
+        OperationSlotRegistry.RegisterMember(RemoveRefSenses, SnapshotFields.ReversalIndexEntrySenses);
     }
 }
 

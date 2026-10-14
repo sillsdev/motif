@@ -32,6 +32,8 @@ public static class MoInsertNCContentOperationKinds
         OperationKindRegistry.Register(ClearContent);
         OperationHandlerRegistry.Register(SetContent, MoInsertNCContentSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearContent, MoInsertNCContentClearHandler.Instance);
+        OperationSlotRegistry.RegisterScalar(SetContent, SnapshotFields.MoInsertNCContent);
+        OperationSlotRegistry.RegisterScalar(ClearContent, SnapshotFields.MoInsertNCContent);
     }
 }
 

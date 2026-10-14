@@ -33,6 +33,8 @@ public static class MoDerivAffMsaToProdRestrictOperationKinds
         OperationKindRegistry.Register(RemoveRefToProdRestrict);
         OperationHandlerRegistry.Register(AddRefToProdRestrict, MoDerivAffMsaToProdRestrictAddRefHandler.Instance);
         OperationHandlerRegistry.Register(RemoveRefToProdRestrict, MoDerivAffMsaToProdRestrictRemoveRefHandler.Instance);
+        OperationSlotRegistry.RegisterMember(AddRefToProdRestrict, SnapshotFields.MoDerivAffMsaToProdRestrict);
+        OperationSlotRegistry.RegisterMember(RemoveRefToProdRestrict, SnapshotFields.MoDerivAffMsaToProdRestrict);
     }
 }
 

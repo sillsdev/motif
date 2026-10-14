@@ -32,6 +32,8 @@ public static class CmPossibilityNameOperationKinds
         OperationKindRegistry.Register(ClearName);
         OperationHandlerRegistry.Register(SetName, CmPossibilityNameSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearName, CmPossibilityNameClearHandler.Instance);
+        OperationSlotRegistry.RegisterAlternative(SetName, SnapshotFields.CmPossibilityName);
+        OperationSlotRegistry.RegisterAlternative(ClearName, SnapshotFields.CmPossibilityName);
     }
 }
 

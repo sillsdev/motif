@@ -33,6 +33,8 @@ public static class MoStemAllomorphPhoneEnvOperationKinds
         OperationKindRegistry.Register(RemoveRefPhoneEnv);
         OperationHandlerRegistry.Register(AddRefPhoneEnv, MoStemAllomorphPhoneEnvAddRefHandler.Instance);
         OperationHandlerRegistry.Register(RemoveRefPhoneEnv, MoStemAllomorphPhoneEnvRemoveRefHandler.Instance);
+        OperationSlotRegistry.RegisterMember(AddRefPhoneEnv, SnapshotFields.MoStemAllomorphPhoneEnv);
+        OperationSlotRegistry.RegisterMember(RemoveRefPhoneEnv, SnapshotFields.MoStemAllomorphPhoneEnv);
     }
 }
 

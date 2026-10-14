@@ -21,6 +21,7 @@ public static class LexEntryMorphoSyntaxAnalysesOperationKinds
     internal static void Register()
     {
         OperationKindRegistry.Register(Create);
+        OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.LexEntryMorphoSyntaxAnalyses, false);
         OperationHandlerRegistry.Register(Create, new OwningCreateHandler<ILexEntry>(
             Create, SnapshotFields.LexEntryMorphoSyntaxAnalyses, owner => owner.MorphoSyntaxAnalysesOC.Cast<ICmObject>().ToArray(),
             (cache, owner, guid, index, concreteClass) =>

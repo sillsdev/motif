@@ -28,6 +28,10 @@ public static class WfiAnalysisOperationKinds
         OperationHandlerRegistry.Register(RemoveRefEvaluations, new HumanEvaluationHandler(false));
         OperationHandlerRegistry.Register(DeleteAnalysis, new DeleteAnalysisHandler());
         OperationHandlerRegistry.Register(CreateAnalysis, new CreateAnalysisHandler());
+        OperationSlotRegistry.RegisterScalar(AddRefEvaluations, SnapshotFields.WfiAnalysisEvaluations);
+        OperationSlotRegistry.RegisterScalar(RemoveRefEvaluations, SnapshotFields.WfiAnalysisEvaluations);
+        OperationSlotRegistry.RegisterEntityDeletion(DeleteAnalysis);
+        OperationSlotRegistry.RegisterOwningCreate(CreateAnalysis, SnapshotFields.WfiWordformAnalyses, false);
     }
 #pragma warning restore CA2255
 }

@@ -32,6 +32,8 @@ public static class MoAdhocProhibDisabledOperationKinds
         OperationKindRegistry.Register(ClearDisabled);
         OperationHandlerRegistry.Register(SetDisabled, MoAdhocProhibDisabledSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearDisabled, MoAdhocProhibDisabledClearHandler.Instance);
+        OperationSlotRegistry.RegisterScalar(SetDisabled, SnapshotFields.MoAdhocProhibDisabled);
+        OperationSlotRegistry.RegisterScalar(ClearDisabled, SnapshotFields.MoAdhocProhibDisabled);
     }
 }
 

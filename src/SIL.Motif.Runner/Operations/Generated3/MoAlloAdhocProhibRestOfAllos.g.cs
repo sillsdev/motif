@@ -33,6 +33,8 @@ public static class MoAlloAdhocProhibRestOfAllosOperationKinds
         OperationKindRegistry.Register(RemoveRefRestOfAllos);
         OperationHandlerRegistry.Register(AddRefRestOfAllos, MoAlloAdhocProhibRestOfAllosAddRefHandler.Instance);
         OperationHandlerRegistry.Register(RemoveRefRestOfAllos, MoAlloAdhocProhibRestOfAllosRemoveRefHandler.Instance);
+        OperationSlotRegistry.RegisterMember(AddRefRestOfAllos, SnapshotFields.MoAlloAdhocProhibRestOfAllos);
+        OperationSlotRegistry.RegisterMember(RemoveRefRestOfAllos, SnapshotFields.MoAlloAdhocProhibRestOfAllos);
     }
 }
 

@@ -33,6 +33,8 @@ public static class EnvironmentStringEmitter
                 OperationKindRegistry.Register(Clear);
                 OperationHandlerRegistry.Register(Set, new EnvironmentStringHandler(false));
                 OperationHandlerRegistry.Register(Clear, new EnvironmentStringHandler(true));
+                OperationSlotRegistry.RegisterScalar(Set, SnapshotFields.PhEnvironmentStringRepresentation);
+                OperationSlotRegistry.RegisterScalar(Clear, SnapshotFields.PhEnvironmentStringRepresentation);
             }
         }
 

@@ -21,6 +21,7 @@ public static class PhSegRuleRHSRightContextOperationKinds
     internal static void Register()
     {
         OperationKindRegistry.Register(Create);
+        OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.PhSegRuleRHSRightContext, true);
         OperationHandlerRegistry.Register(Create, new OwningCreateHandler<IPhSegRuleRHS>(
             Create, SnapshotFields.PhSegRuleRHSRightContext, owner => owner.RightContextOA is { } child ? new ICmObject[] { child } : Array.Empty<ICmObject>(),
             (cache, owner, guid, index, concreteClass) =>

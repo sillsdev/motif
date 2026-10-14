@@ -32,6 +32,8 @@ public static class PhIterationContextMemberOperationKinds
         OperationKindRegistry.Register(ClearMember);
         OperationHandlerRegistry.Register(SetMember, PhIterationContextMemberSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearMember, PhIterationContextMemberClearHandler.Instance);
+        OperationSlotRegistry.RegisterScalar(SetMember, SnapshotFields.PhIterationContextMember);
+        OperationSlotRegistry.RegisterScalar(ClearMember, SnapshotFields.PhIterationContextMember);
     }
 }
 

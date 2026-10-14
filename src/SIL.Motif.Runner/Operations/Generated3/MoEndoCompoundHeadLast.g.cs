@@ -32,6 +32,8 @@ public static class MoEndoCompoundHeadLastOperationKinds
         OperationKindRegistry.Register(ClearHeadLast);
         OperationHandlerRegistry.Register(SetHeadLast, MoEndoCompoundHeadLastSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearHeadLast, MoEndoCompoundHeadLastClearHandler.Instance);
+        OperationSlotRegistry.RegisterScalar(SetHeadLast, SnapshotFields.MoEndoCompoundHeadLast);
+        OperationSlotRegistry.RegisterScalar(ClearHeadLast, SnapshotFields.MoEndoCompoundHeadLast);
     }
 }
 

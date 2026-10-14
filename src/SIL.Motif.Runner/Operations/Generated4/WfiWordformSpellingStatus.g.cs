@@ -33,6 +33,8 @@ public static class WfiWordformSpellingStatusOperationKinds
         OperationKindRegistry.Register(ClearSpellingStatus);
         OperationHandlerRegistry.Register(SetSpellingStatus, WfiWordformSpellingStatusSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearSpellingStatus, WfiWordformSpellingStatusClearHandler.Instance);
+        OperationSlotRegistry.RegisterScalar(SetSpellingStatus, SnapshotFields.WfiWordformSpellingStatus);
+        OperationSlotRegistry.RegisterScalar(ClearSpellingStatus, SnapshotFields.WfiWordformSpellingStatus);
     }
 }
 

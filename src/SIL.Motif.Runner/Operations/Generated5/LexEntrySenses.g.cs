@@ -21,6 +21,7 @@ public static class LexEntrySensesOperationKinds
     internal static void Register()
     {
         OperationKindRegistry.Register(Create);
+        OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.LexEntrySenses, false);
         OperationHandlerRegistry.Register(Create, new OwningCreateHandler<ILexEntry>(
             Create, SnapshotFields.LexEntrySenses, owner => owner.SensesOS.Cast<ICmObject>().ToArray(),
             (cache, owner, guid, index, concreteClass) =>

@@ -32,6 +32,8 @@ public static class MoDerivAffMsaFromStemNameOperationKinds
         OperationKindRegistry.Register(ClearFromStemName);
         OperationHandlerRegistry.Register(SetFromStemName, MoDerivAffMsaFromStemNameSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearFromStemName, MoDerivAffMsaFromStemNameClearHandler.Instance);
+        OperationSlotRegistry.RegisterScalar(SetFromStemName, SnapshotFields.MoDerivAffMsaFromStemName);
+        OperationSlotRegistry.RegisterScalar(ClearFromStemName, SnapshotFields.MoDerivAffMsaFromStemName);
     }
 }
 

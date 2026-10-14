@@ -21,6 +21,7 @@ public static class PhPhonDataNaturalClassesOperationKinds
     internal static void Register()
     {
         OperationKindRegistry.Register(Create);
+        OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.PhPhonDataNaturalClasses, false);
         OperationHandlerRegistry.Register(Create, new OwningCreateHandler<IPhPhonData>(
             Create, SnapshotFields.PhPhonDataNaturalClasses, owner => owner.NaturalClassesOS.Cast<ICmObject>().ToArray(),
             (cache, owner, guid, index, concreteClass) =>

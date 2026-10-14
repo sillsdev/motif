@@ -33,6 +33,8 @@ public static class PhNCSegmentsSegmentsOperationKinds
         OperationKindRegistry.Register(RemoveRefSegments);
         OperationHandlerRegistry.Register(AddRefSegments, PhNCSegmentsSegmentsAddRefHandler.Instance);
         OperationHandlerRegistry.Register(RemoveRefSegments, PhNCSegmentsSegmentsRemoveRefHandler.Instance);
+        OperationSlotRegistry.RegisterMember(AddRefSegments, SnapshotFields.PhNCSegmentsSegments);
+        OperationSlotRegistry.RegisterMember(RemoveRefSegments, SnapshotFields.PhNCSegmentsSegments);
     }
 }
 

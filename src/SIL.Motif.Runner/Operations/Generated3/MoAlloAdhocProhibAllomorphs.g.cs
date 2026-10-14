@@ -33,6 +33,8 @@ public static class MoAlloAdhocProhibAllomorphsOperationKinds
         OperationKindRegistry.Register(RemoveRefAllomorphs);
         OperationHandlerRegistry.Register(AddRefAllomorphs, MoAlloAdhocProhibAllomorphsAddRefHandler.Instance);
         OperationHandlerRegistry.Register(RemoveRefAllomorphs, MoAlloAdhocProhibAllomorphsRemoveRefHandler.Instance);
+        OperationSlotRegistry.RegisterMember(AddRefAllomorphs, SnapshotFields.MoAlloAdhocProhibAllomorphs);
+        OperationSlotRegistry.RegisterMember(RemoveRefAllomorphs, SnapshotFields.MoAlloAdhocProhibAllomorphs);
     }
 }
 

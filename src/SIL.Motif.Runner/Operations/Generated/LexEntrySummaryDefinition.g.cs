@@ -32,6 +32,8 @@ public static class LexEntrySummaryDefinitionOperationKinds
         OperationKindRegistry.Register(ClearSummaryDefinition);
         OperationHandlerRegistry.Register(SetSummaryDefinition, LexEntrySummaryDefinitionSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearSummaryDefinition, LexEntrySummaryDefinitionClearHandler.Instance);
+        OperationSlotRegistry.RegisterAlternative(SetSummaryDefinition, SnapshotFields.LexEntrySummaryDefinition);
+        OperationSlotRegistry.RegisterAlternative(ClearSummaryDefinition, SnapshotFields.LexEntrySummaryDefinition);
     }
 }
 

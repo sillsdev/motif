@@ -32,6 +32,8 @@ public static class MoInflAffixSlotNameOperationKinds
         OperationKindRegistry.Register(ClearName);
         OperationHandlerRegistry.Register(SetName, MoInflAffixSlotNameSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearName, MoInflAffixSlotNameClearHandler.Instance);
+        OperationSlotRegistry.RegisterAlternative(SetName, SnapshotFields.MoInflAffixSlotName);
+        OperationSlotRegistry.RegisterAlternative(ClearName, SnapshotFields.MoInflAffixSlotName);
     }
 }
 

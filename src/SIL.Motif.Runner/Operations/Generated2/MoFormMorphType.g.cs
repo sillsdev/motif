@@ -32,6 +32,8 @@ public static class MoFormMorphTypeOperationKinds
         OperationKindRegistry.Register(ClearMorphType);
         OperationHandlerRegistry.Register(SetMorphType, MoFormMorphTypeSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearMorphType, MoFormMorphTypeClearHandler.Instance);
+        OperationSlotRegistry.RegisterScalar(SetMorphType, SnapshotFields.MoFormMorphType);
+        OperationSlotRegistry.RegisterScalar(ClearMorphType, SnapshotFields.MoFormMorphType);
     }
 }
 

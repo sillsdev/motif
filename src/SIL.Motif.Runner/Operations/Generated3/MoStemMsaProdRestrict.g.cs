@@ -33,6 +33,8 @@ public static class MoStemMsaProdRestrictOperationKinds
         OperationKindRegistry.Register(RemoveRefProdRestrict);
         OperationHandlerRegistry.Register(AddRefProdRestrict, MoStemMsaProdRestrictAddRefHandler.Instance);
         OperationHandlerRegistry.Register(RemoveRefProdRestrict, MoStemMsaProdRestrictRemoveRefHandler.Instance);
+        OperationSlotRegistry.RegisterMember(AddRefProdRestrict, SnapshotFields.MoStemMsaProdRestrict);
+        OperationSlotRegistry.RegisterMember(RemoveRefProdRestrict, SnapshotFields.MoStemMsaProdRestrict);
     }
 }
 

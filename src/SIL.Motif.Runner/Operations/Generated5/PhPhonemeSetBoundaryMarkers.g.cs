@@ -21,6 +21,7 @@ public static class PhPhonemeSetBoundaryMarkersOperationKinds
     internal static void Register()
     {
         OperationKindRegistry.Register(Create);
+        OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.PhPhonemeSetBoundaryMarkers, false);
         OperationHandlerRegistry.Register(Create, new OwningCreateHandler<IPhPhonemeSet>(
             Create, SnapshotFields.PhPhonemeSetBoundaryMarkers, owner => owner.BoundaryMarkersOC.Cast<ICmObject>().ToArray(),
             (cache, owner, guid, index, concreteClass) =>

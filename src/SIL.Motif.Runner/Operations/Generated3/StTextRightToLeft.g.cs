@@ -32,6 +32,8 @@ public static class StTextRightToLeftOperationKinds
         OperationKindRegistry.Register(ClearRightToLeft);
         OperationHandlerRegistry.Register(SetRightToLeft, StTextRightToLeftSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearRightToLeft, StTextRightToLeftClearHandler.Instance);
+        OperationSlotRegistry.RegisterScalar(SetRightToLeft, SnapshotFields.StTextRightToLeft);
+        OperationSlotRegistry.RegisterScalar(ClearRightToLeft, SnapshotFields.StTextRightToLeft);
     }
 }
 

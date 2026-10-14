@@ -32,6 +32,8 @@ public static class MoStemNameAbbreviationOperationKinds
         OperationKindRegistry.Register(ClearAbbreviation);
         OperationHandlerRegistry.Register(SetAbbreviation, MoStemNameAbbreviationSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearAbbreviation, MoStemNameAbbreviationClearHandler.Instance);
+        OperationSlotRegistry.RegisterAlternative(SetAbbreviation, SnapshotFields.MoStemNameAbbreviation);
+        OperationSlotRegistry.RegisterAlternative(ClearAbbreviation, SnapshotFields.MoStemNameAbbreviation);
     }
 }
 

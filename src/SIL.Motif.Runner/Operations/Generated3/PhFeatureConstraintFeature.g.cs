@@ -32,6 +32,8 @@ public static class PhFeatureConstraintFeatureOperationKinds
         OperationKindRegistry.Register(ClearFeature);
         OperationHandlerRegistry.Register(SetFeature, PhFeatureConstraintFeatureSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearFeature, PhFeatureConstraintFeatureClearHandler.Instance);
+        OperationSlotRegistry.RegisterScalar(SetFeature, SnapshotFields.PhFeatureConstraintFeature);
+        OperationSlotRegistry.RegisterScalar(ClearFeature, SnapshotFields.PhFeatureConstraintFeature);
     }
 }
 

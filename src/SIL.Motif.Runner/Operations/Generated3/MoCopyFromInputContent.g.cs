@@ -32,6 +32,8 @@ public static class MoCopyFromInputContentOperationKinds
         OperationKindRegistry.Register(ClearContent);
         OperationHandlerRegistry.Register(SetContent, MoCopyFromInputContentSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearContent, MoCopyFromInputContentClearHandler.Instance);
+        OperationSlotRegistry.RegisterScalar(SetContent, SnapshotFields.MoCopyFromInputContent);
+        OperationSlotRegistry.RegisterScalar(ClearContent, SnapshotFields.MoCopyFromInputContent);
     }
 }
 

@@ -32,6 +32,8 @@ public static class PhNaturalClassAbbreviationOperationKinds
         OperationKindRegistry.Register(ClearAbbreviation);
         OperationHandlerRegistry.Register(SetAbbreviation, PhNaturalClassAbbreviationSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearAbbreviation, PhNaturalClassAbbreviationClearHandler.Instance);
+        OperationSlotRegistry.RegisterAlternative(SetAbbreviation, SnapshotFields.PhNaturalClassAbbreviation);
+        OperationSlotRegistry.RegisterAlternative(ClearAbbreviation, SnapshotFields.PhNaturalClassAbbreviation);
     }
 }
 

@@ -33,6 +33,8 @@ public static class LexEntryDoNotPublishInOperationKinds
         OperationKindRegistry.Register(RemoveRefDoNotPublishIn);
         OperationHandlerRegistry.Register(AddRefDoNotPublishIn, LexEntryDoNotPublishInAddRefHandler.Instance);
         OperationHandlerRegistry.Register(RemoveRefDoNotPublishIn, LexEntryDoNotPublishInRemoveRefHandler.Instance);
+        OperationSlotRegistry.RegisterMember(AddRefDoNotPublishIn, SnapshotFields.LexEntryDoNotPublishIn);
+        OperationSlotRegistry.RegisterMember(RemoveRefDoNotPublishIn, SnapshotFields.LexEntryDoNotPublishIn);
     }
 }
 

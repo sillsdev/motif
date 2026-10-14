@@ -32,6 +32,8 @@ public static class LexSenseDefinitionOperationKinds
         OperationKindRegistry.Register(ClearDefinition);
         OperationHandlerRegistry.Register(SetDefinition, LexSenseDefinitionSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearDefinition, LexSenseDefinitionClearHandler.Instance);
+        OperationSlotRegistry.RegisterAlternative(SetDefinition, SnapshotFields.LexSenseDefinition);
+        OperationSlotRegistry.RegisterAlternative(ClearDefinition, SnapshotFields.LexSenseDefinition);
     }
 }
 

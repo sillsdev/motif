@@ -21,6 +21,7 @@ public static class PhPhonDataContextsOperationKinds
     internal static void Register()
     {
         OperationKindRegistry.Register(Create);
+        OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.PhPhonDataContexts, false);
         OperationHandlerRegistry.Register(Create, new OwningCreateHandler<IPhPhonData>(
             Create, SnapshotFields.PhPhonDataContexts, owner => owner.ContextsOS.Cast<ICmObject>().ToArray(),
             (cache, owner, guid, index, concreteClass) =>

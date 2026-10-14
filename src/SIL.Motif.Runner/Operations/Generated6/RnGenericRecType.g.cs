@@ -32,6 +32,8 @@ public static class RnGenericRecTypeOperationKinds
         OperationKindRegistry.Register(ClearType);
         OperationHandlerRegistry.Register(SetType, RnGenericRecTypeSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearType, RnGenericRecTypeClearHandler.Instance);
+        OperationSlotRegistry.RegisterScalar(SetType, SnapshotFields.RnGenericRecType);
+        OperationSlotRegistry.RegisterScalar(ClearType, SnapshotFields.RnGenericRecType);
     }
 }
 

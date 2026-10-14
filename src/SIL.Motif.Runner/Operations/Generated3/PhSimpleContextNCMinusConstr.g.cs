@@ -33,6 +33,8 @@ public static class PhSimpleContextNCMinusConstrOperationKinds
         OperationKindRegistry.Register(RemoveRefMinusConstr);
         OperationHandlerRegistry.Register(AddRefMinusConstr, PhSimpleContextNCMinusConstrAddRefHandler.Instance);
         OperationHandlerRegistry.Register(RemoveRefMinusConstr, PhSimpleContextNCMinusConstrRemoveRefHandler.Instance);
+        OperationSlotRegistry.RegisterMember(AddRefMinusConstr, SnapshotFields.PhSimpleContextNCMinusConstr);
+        OperationSlotRegistry.RegisterMember(RemoveRefMinusConstr, SnapshotFields.PhSimpleContextNCMinusConstr);
     }
 }
 

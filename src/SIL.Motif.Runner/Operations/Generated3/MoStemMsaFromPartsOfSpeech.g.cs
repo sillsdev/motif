@@ -33,6 +33,8 @@ public static class MoStemMsaFromPartsOfSpeechOperationKinds
         OperationKindRegistry.Register(RemoveRefFromPartsOfSpeech);
         OperationHandlerRegistry.Register(AddRefFromPartsOfSpeech, MoStemMsaFromPartsOfSpeechAddRefHandler.Instance);
         OperationHandlerRegistry.Register(RemoveRefFromPartsOfSpeech, MoStemMsaFromPartsOfSpeechRemoveRefHandler.Instance);
+        OperationSlotRegistry.RegisterMember(AddRefFromPartsOfSpeech, SnapshotFields.MoStemMsaFromPartsOfSpeech);
+        OperationSlotRegistry.RegisterMember(RemoveRefFromPartsOfSpeech, SnapshotFields.MoStemMsaFromPartsOfSpeech);
     }
 }
 

@@ -32,6 +32,8 @@ public static class MoFormIsAbstractOperationKinds
         OperationKindRegistry.Register(ClearIsAbstract);
         OperationHandlerRegistry.Register(SetIsAbstract, MoFormIsAbstractSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearIsAbstract, MoFormIsAbstractClearHandler.Instance);
+        OperationSlotRegistry.RegisterScalar(SetIsAbstract, SnapshotFields.MoFormIsAbstract);
+        OperationSlotRegistry.RegisterScalar(ClearIsAbstract, SnapshotFields.MoFormIsAbstract);
     }
 }
 

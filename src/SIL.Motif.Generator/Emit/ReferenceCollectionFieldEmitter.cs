@@ -51,7 +51,7 @@ public static class ReferenceCollectionFieldEmitter
                 : $"    public const string Move{spec.FieldName} = \"{spec.MoveKind}\";\n\n    ")
             .Replace("__MOVE_REGISTRATION__", spec.MoveKind is null
                 ? string.Empty
-                : $"        OperationKindRegistry.Register(Move{spec.FieldName});\n        OperationHandlerRegistry.Register(Move{spec.FieldName}, {prefix}MoveHandler.Instance);\n")
+                : $"        OperationKindRegistry.Register(Move{spec.FieldName});\n        OperationHandlerRegistry.Register(Move{spec.FieldName}, {prefix}MoveHandler.Instance);\n        OperationSlotRegistry.RegisterMember(Move{spec.FieldName}, SnapshotFields.{prefix});\n")
             .Replace("__REMOVE_PLACEMENT_CHECK__", spec.MoveKind is null
                 ? "\n"
                 : $"        if (operation.Placement is not null)\n            throw new InvalidOperationException($\"Operation '{{operation.OperationId.Value}}' of kind '{{{prefix}OperationKinds.RemoveRef{spec.FieldName}}}' cannot carry placement; use its move kind.\");\n\n")
@@ -163,6 +163,8 @@ public static class ReferenceCollectionFieldEmitter
                 OperationKindRegistry.Register(RemoveRef__FIELDNAME__);
                 OperationHandlerRegistry.Register(AddRef__FIELDNAME__, __PREFIX__AddRefHandler.Instance);
                 OperationHandlerRegistry.Register(RemoveRef__FIELDNAME__, __PREFIX__RemoveRefHandler.Instance);
+                OperationSlotRegistry.RegisterMember(AddRef__FIELDNAME__, __SNAPSHOTFIELD__);
+                OperationSlotRegistry.RegisterMember(RemoveRef__FIELDNAME__, __SNAPSHOTFIELD__);
         __MOVE_REGISTRATION__    }
         }
 

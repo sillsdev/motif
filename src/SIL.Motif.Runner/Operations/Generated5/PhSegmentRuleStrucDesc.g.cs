@@ -21,6 +21,7 @@ public static class PhSegmentRuleStrucDescOperationKinds
     internal static void Register()
     {
         OperationKindRegistry.Register(Create);
+        OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.PhSegmentRuleStrucDesc, false);
         OperationHandlerRegistry.Register(Create, new OwningCreateHandler<IPhSegmentRule>(
             Create, SnapshotFields.PhSegmentRuleStrucDesc, owner => owner.StrucDescOS.Cast<ICmObject>().ToArray(),
             (cache, owner, guid, index, concreteClass) =>

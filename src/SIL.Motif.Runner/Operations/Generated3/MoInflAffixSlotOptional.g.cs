@@ -32,6 +32,8 @@ public static class MoInflAffixSlotOptionalOperationKinds
         OperationKindRegistry.Register(ClearOptional);
         OperationHandlerRegistry.Register(SetOptional, MoInflAffixSlotOptionalSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearOptional, MoInflAffixSlotOptionalClearHandler.Instance);
+        OperationSlotRegistry.RegisterScalar(SetOptional, SnapshotFields.MoInflAffixSlotOptional);
+        OperationSlotRegistry.RegisterScalar(ClearOptional, SnapshotFields.MoInflAffixSlotOptional);
     }
 }
 

@@ -32,6 +32,8 @@ public static class MoStratumAbbreviationOperationKinds
         OperationKindRegistry.Register(ClearAbbreviation);
         OperationHandlerRegistry.Register(SetAbbreviation, MoStratumAbbreviationSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearAbbreviation, MoStratumAbbreviationClearHandler.Instance);
+        OperationSlotRegistry.RegisterAlternative(SetAbbreviation, SnapshotFields.MoStratumAbbreviation);
+        OperationSlotRegistry.RegisterAlternative(ClearAbbreviation, SnapshotFields.MoStratumAbbreviation);
     }
 }
 

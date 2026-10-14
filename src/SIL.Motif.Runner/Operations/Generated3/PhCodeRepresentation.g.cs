@@ -32,6 +32,8 @@ public static class PhCodeRepresentationOperationKinds
         OperationKindRegistry.Register(ClearRepresentation);
         OperationHandlerRegistry.Register(SetRepresentation, PhCodeRepresentationSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearRepresentation, PhCodeRepresentationClearHandler.Instance);
+        OperationSlotRegistry.RegisterAlternative(SetRepresentation, SnapshotFields.PhCodeRepresentation);
+        OperationSlotRegistry.RegisterAlternative(ClearRepresentation, SnapshotFields.PhCodeRepresentation);
     }
 }
 

@@ -21,6 +21,7 @@ public static class CmPossibilitySubPossibilitiesOperationKinds
     internal static void Register()
     {
         OperationKindRegistry.Register(Create);
+        OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.CmPossibilitySubPossibilities, false);
         OperationHandlerRegistry.Register(Create, new OwningCreateHandler<ICmPossibility>(
             Create, SnapshotFields.CmPossibilitySubPossibilities, owner => owner.SubPossibilitiesOS.Cast<ICmObject>().ToArray(),
             (cache, owner, guid, index, concreteClass) =>

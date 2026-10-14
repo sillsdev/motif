@@ -33,6 +33,8 @@ public static class PhSegRuleRHSInputPOSesOperationKinds
         OperationKindRegistry.Register(RemoveRefInputPOSes);
         OperationHandlerRegistry.Register(AddRefInputPOSes, PhSegRuleRHSInputPOSesAddRefHandler.Instance);
         OperationHandlerRegistry.Register(RemoveRefInputPOSes, PhSegRuleRHSInputPOSesRemoveRefHandler.Instance);
+        OperationSlotRegistry.RegisterMember(AddRefInputPOSes, SnapshotFields.PhSegRuleRHSInputPOSes);
+        OperationSlotRegistry.RegisterMember(RemoveRefInputPOSes, SnapshotFields.PhSegRuleRHSInputPOSes);
     }
 }
 

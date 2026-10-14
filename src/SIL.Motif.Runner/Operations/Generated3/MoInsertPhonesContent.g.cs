@@ -33,6 +33,8 @@ public static class MoInsertPhonesContentOperationKinds
         OperationKindRegistry.Register(RemoveRefContent);
         OperationHandlerRegistry.Register(AddRefContent, MoInsertPhonesContentAddRefHandler.Instance);
         OperationHandlerRegistry.Register(RemoveRefContent, MoInsertPhonesContentRemoveRefHandler.Instance);
+        OperationSlotRegistry.RegisterMember(AddRefContent, SnapshotFields.MoInsertPhonesContent);
+        OperationSlotRegistry.RegisterMember(RemoveRefContent, SnapshotFields.MoInsertPhonesContent);
     }
 }
 

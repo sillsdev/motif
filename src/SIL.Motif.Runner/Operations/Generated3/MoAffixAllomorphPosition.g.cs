@@ -35,8 +35,11 @@ public static class MoAffixAllomorphPositionOperationKinds
         OperationKindRegistry.Register(RemoveRefPosition);
         OperationHandlerRegistry.Register(AddRefPosition, MoAffixAllomorphPositionAddRefHandler.Instance);
         OperationHandlerRegistry.Register(RemoveRefPosition, MoAffixAllomorphPositionRemoveRefHandler.Instance);
+        OperationSlotRegistry.RegisterMember(AddRefPosition, SnapshotFields.MoAffixAllomorphPosition);
+        OperationSlotRegistry.RegisterMember(RemoveRefPosition, SnapshotFields.MoAffixAllomorphPosition);
         OperationKindRegistry.Register(MovePosition);
         OperationHandlerRegistry.Register(MovePosition, MoAffixAllomorphPositionMoveHandler.Instance);
+        OperationSlotRegistry.RegisterMember(MovePosition, SnapshotFields.MoAffixAllomorphPosition);
     }
 }
 

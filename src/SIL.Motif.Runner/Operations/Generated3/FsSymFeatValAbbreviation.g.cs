@@ -32,6 +32,8 @@ public static class FsSymFeatValAbbreviationOperationKinds
         OperationKindRegistry.Register(ClearAbbreviation);
         OperationHandlerRegistry.Register(SetAbbreviation, FsSymFeatValAbbreviationSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearAbbreviation, FsSymFeatValAbbreviationClearHandler.Instance);
+        OperationSlotRegistry.RegisterAlternative(SetAbbreviation, SnapshotFields.FsSymFeatValAbbreviation);
+        OperationSlotRegistry.RegisterAlternative(ClearAbbreviation, SnapshotFields.FsSymFeatValAbbreviation);
     }
 }
 

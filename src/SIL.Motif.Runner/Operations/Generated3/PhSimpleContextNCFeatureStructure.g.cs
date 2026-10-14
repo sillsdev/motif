@@ -32,6 +32,8 @@ public static class PhSimpleContextNCFeatureStructureOperationKinds
         OperationKindRegistry.Register(ClearFeatureStructure);
         OperationHandlerRegistry.Register(SetFeatureStructure, PhSimpleContextNCFeatureStructureSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearFeatureStructure, PhSimpleContextNCFeatureStructureClearHandler.Instance);
+        OperationSlotRegistry.RegisterScalar(SetFeatureStructure, SnapshotFields.PhSimpleContextNCFeatureStructure);
+        OperationSlotRegistry.RegisterScalar(ClearFeatureStructure, SnapshotFields.PhSimpleContextNCFeatureStructure);
     }
 }
 

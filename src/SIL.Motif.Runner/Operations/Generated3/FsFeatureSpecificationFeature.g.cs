@@ -32,6 +32,8 @@ public static class FsFeatureSpecificationFeatureOperationKinds
         OperationKindRegistry.Register(ClearFeature);
         OperationHandlerRegistry.Register(SetFeature, FsFeatureSpecificationFeatureSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearFeature, FsFeatureSpecificationFeatureClearHandler.Instance);
+        OperationSlotRegistry.RegisterScalar(SetFeature, SnapshotFields.FsFeatureSpecificationFeature);
+        OperationSlotRegistry.RegisterScalar(ClearFeature, SnapshotFields.FsFeatureSpecificationFeature);
     }
 }
 

@@ -32,6 +32,8 @@ public static class LexEtymologyGlossOperationKinds
         OperationKindRegistry.Register(ClearGloss);
         OperationHandlerRegistry.Register(SetGloss, LexEtymologyGlossSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearGloss, LexEtymologyGlossClearHandler.Instance);
+        OperationSlotRegistry.RegisterAlternative(SetGloss, SnapshotFields.LexEtymologyGloss);
+        OperationSlotRegistry.RegisterAlternative(ClearGloss, SnapshotFields.LexEtymologyGloss);
     }
 }
 

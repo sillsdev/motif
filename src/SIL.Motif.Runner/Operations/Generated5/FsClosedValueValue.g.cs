@@ -32,6 +32,8 @@ public static class FsClosedValueValueOperationKinds
         OperationKindRegistry.Register(ClearValue);
         OperationHandlerRegistry.Register(SetValue, FsClosedValueValueSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearValue, FsClosedValueValueClearHandler.Instance);
+        OperationSlotRegistry.RegisterScalar(SetValue, SnapshotFields.FsClosedValueValue);
+        OperationSlotRegistry.RegisterScalar(ClearValue, SnapshotFields.FsClosedValueValue);
     }
 }
 

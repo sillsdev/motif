@@ -32,6 +32,8 @@ public static class MoInflAffixTemplateFinalOperationKinds
         OperationKindRegistry.Register(ClearFinal);
         OperationHandlerRegistry.Register(SetFinal, MoInflAffixTemplateFinalSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearFinal, MoInflAffixTemplateFinalClearHandler.Instance);
+        OperationSlotRegistry.RegisterScalar(SetFinal, SnapshotFields.MoInflAffixTemplateFinal);
+        OperationSlotRegistry.RegisterScalar(ClearFinal, SnapshotFields.MoInflAffixTemplateFinal);
     }
 }
 

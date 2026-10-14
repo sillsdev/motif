@@ -59,6 +59,8 @@ public static class FsFeatStrucFeatureSpecsOperationKinds
         OperationKindRegistry.Register(DeleteFeatureSpecs);
         OperationHandlerRegistry.Register(CreateFeatureSpecs, FsFeatStrucFeatureSpecsCreateHandler.Instance);
         OperationHandlerRegistry.Register(DeleteFeatureSpecs, FsFeatStrucFeatureSpecsDeleteHandler.Instance);
+        OperationSlotRegistry.RegisterOwningCreate(CreateFeatureSpecs, SnapshotFields.FsFeatStrucFeatureSpecs, false);
+        OperationSlotRegistry.RegisterEntityDeletion(DeleteFeatureSpecs);
     }
 #pragma warning restore CA2255
 }

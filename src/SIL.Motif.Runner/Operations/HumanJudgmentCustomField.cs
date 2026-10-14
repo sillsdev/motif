@@ -34,6 +34,7 @@ public static class HumanJudgmentCustomFieldOperationKinds
     {
         OperationKindRegistry.Register(Set);
         OperationHandlerRegistry.Register(Set, HumanJudgmentCustomFieldHandler.Instance);
+        OperationSlotRegistry.RegisterScalar(Set, SnapshotFields.RnGenericRecMotifHumanJudgment);
     }
 #pragma warning restore CA2255
 }

@@ -32,6 +32,8 @@ public static class LexEntryBibliographyOperationKinds
         OperationKindRegistry.Register(ClearBibliography);
         OperationHandlerRegistry.Register(SetBibliography, LexEntryBibliographySetHandler.Instance);
         OperationHandlerRegistry.Register(ClearBibliography, LexEntryBibliographyClearHandler.Instance);
+        OperationSlotRegistry.RegisterAlternative(SetBibliography, SnapshotFields.LexEntryBibliography);
+        OperationSlotRegistry.RegisterAlternative(ClearBibliography, SnapshotFields.LexEntryBibliography);
     }
 }
 

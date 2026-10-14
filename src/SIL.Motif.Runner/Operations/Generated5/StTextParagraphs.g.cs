@@ -21,6 +21,7 @@ public static class StTextParagraphsOperationKinds
     internal static void Register()
     {
         OperationKindRegistry.Register(Create);
+        OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.StTextParagraphs, false);
         OperationHandlerRegistry.Register(Create, new OwningCreateHandler<IStText>(
             Create, SnapshotFields.StTextParagraphs, owner => owner.ParagraphsOS.Cast<ICmObject>().ToArray(),
             (cache, owner, guid, index, concreteClass) =>

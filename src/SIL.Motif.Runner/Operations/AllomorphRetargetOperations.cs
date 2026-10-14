@@ -28,6 +28,8 @@ public static class AllomorphRetargetOperationKinds
         OperationHandlerRegistry.Register(SetBundleMorph, BundleMorphHandler.Instance);
         OperationKindRegistry.Register(RetargetAdhocReferences);
         OperationHandlerRegistry.Register(RetargetAdhocReferences, AdhocReferencesHandler.Instance);
+        OperationSlotRegistry.RegisterMany(SetBundleMorph, CompoundOperationSlots.RetargetBundle);
+        OperationSlotRegistry.RegisterMany(RetargetAdhocReferences, CompoundOperationSlots.RetargetAdhoc);
     }
 #pragma warning restore CA2255
 }

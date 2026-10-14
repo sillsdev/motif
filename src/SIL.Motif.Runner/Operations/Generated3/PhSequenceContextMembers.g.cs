@@ -35,8 +35,11 @@ public static class PhSequenceContextMembersOperationKinds
         OperationKindRegistry.Register(RemoveRefMembers);
         OperationHandlerRegistry.Register(AddRefMembers, PhSequenceContextMembersAddRefHandler.Instance);
         OperationHandlerRegistry.Register(RemoveRefMembers, PhSequenceContextMembersRemoveRefHandler.Instance);
+        OperationSlotRegistry.RegisterMember(AddRefMembers, SnapshotFields.PhSequenceContextMembers);
+        OperationSlotRegistry.RegisterMember(RemoveRefMembers, SnapshotFields.PhSequenceContextMembers);
         OperationKindRegistry.Register(MoveMembers);
         OperationHandlerRegistry.Register(MoveMembers, PhSequenceContextMembersMoveHandler.Instance);
+        OperationSlotRegistry.RegisterMember(MoveMembers, SnapshotFields.PhSequenceContextMembers);
     }
 }
 

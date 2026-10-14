@@ -32,6 +32,8 @@ public static class LexEntryCitationFormOperationKinds
         OperationKindRegistry.Register(ClearCitationForm);
         OperationHandlerRegistry.Register(SetCitationForm, LexEntryCitationFormSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearCitationForm, LexEntryCitationFormClearHandler.Instance);
+        OperationSlotRegistry.RegisterAlternative(SetCitationForm, SnapshotFields.LexEntryCitationForm);
+        OperationSlotRegistry.RegisterAlternative(ClearCitationForm, SnapshotFields.LexEntryCitationForm);
     }
 }
 

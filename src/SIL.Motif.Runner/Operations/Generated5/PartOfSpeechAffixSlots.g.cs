@@ -21,6 +21,7 @@ public static class PartOfSpeechAffixSlotsOperationKinds
     internal static void Register()
     {
         OperationKindRegistry.Register(Create);
+        OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.PartOfSpeechAffixSlots, false);
         OperationHandlerRegistry.Register(Create, new OwningCreateHandler<IPartOfSpeech>(
             Create, SnapshotFields.PartOfSpeechAffixSlots, owner => owner.AffixSlotsOC.Cast<ICmObject>().ToArray(),
             (cache, owner, guid, index, concreteClass) =>

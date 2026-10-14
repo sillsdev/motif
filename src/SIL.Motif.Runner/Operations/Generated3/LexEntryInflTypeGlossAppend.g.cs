@@ -32,6 +32,8 @@ public static class LexEntryInflTypeGlossAppendOperationKinds
         OperationKindRegistry.Register(ClearGlossAppend);
         OperationHandlerRegistry.Register(SetGlossAppend, LexEntryInflTypeGlossAppendSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearGlossAppend, LexEntryInflTypeGlossAppendClearHandler.Instance);
+        OperationSlotRegistry.RegisterAlternative(SetGlossAppend, SnapshotFields.LexEntryInflTypeGlossAppend);
+        OperationSlotRegistry.RegisterAlternative(ClearGlossAppend, SnapshotFields.LexEntryInflTypeGlossAppend);
     }
 }
 

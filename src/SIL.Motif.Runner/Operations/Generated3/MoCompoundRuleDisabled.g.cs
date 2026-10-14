@@ -32,6 +32,8 @@ public static class MoCompoundRuleDisabledOperationKinds
         OperationKindRegistry.Register(ClearDisabled);
         OperationHandlerRegistry.Register(SetDisabled, MoCompoundRuleDisabledSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearDisabled, MoCompoundRuleDisabledClearHandler.Instance);
+        OperationSlotRegistry.RegisterScalar(SetDisabled, SnapshotFields.MoCompoundRuleDisabled);
+        OperationSlotRegistry.RegisterScalar(ClearDisabled, SnapshotFields.MoCompoundRuleDisabled);
     }
 }
 

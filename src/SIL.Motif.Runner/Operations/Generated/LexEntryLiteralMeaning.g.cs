@@ -32,6 +32,8 @@ public static class LexEntryLiteralMeaningOperationKinds
         OperationKindRegistry.Register(ClearLiteralMeaning);
         OperationHandlerRegistry.Register(SetLiteralMeaning, LexEntryLiteralMeaningSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearLiteralMeaning, LexEntryLiteralMeaningClearHandler.Instance);
+        OperationSlotRegistry.RegisterAlternative(SetLiteralMeaning, SnapshotFields.LexEntryLiteralMeaning);
+        OperationSlotRegistry.RegisterAlternative(ClearLiteralMeaning, SnapshotFields.LexEntryLiteralMeaning);
     }
 }
 

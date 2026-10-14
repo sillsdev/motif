@@ -32,6 +32,8 @@ public static class MoUnclassifiedAffixMsaPartOfSpeechOperationKinds
         OperationKindRegistry.Register(ClearPartOfSpeech);
         OperationHandlerRegistry.Register(SetPartOfSpeech, MoUnclassifiedAffixMsaPartOfSpeechSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearPartOfSpeech, MoUnclassifiedAffixMsaPartOfSpeechClearHandler.Instance);
+        OperationSlotRegistry.RegisterScalar(SetPartOfSpeech, SnapshotFields.MoUnclassifiedAffixMsaPartOfSpeech);
+        OperationSlotRegistry.RegisterScalar(ClearPartOfSpeech, SnapshotFields.MoUnclassifiedAffixMsaPartOfSpeech);
     }
 }
 

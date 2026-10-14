@@ -33,6 +33,8 @@ public static class LexEntryDialectLabelsOperationKinds
         OperationKindRegistry.Register(RemoveRefDialectLabels);
         OperationHandlerRegistry.Register(AddRefDialectLabels, LexEntryDialectLabelsAddRefHandler.Instance);
         OperationHandlerRegistry.Register(RemoveRefDialectLabels, LexEntryDialectLabelsRemoveRefHandler.Instance);
+        OperationSlotRegistry.RegisterMember(AddRefDialectLabels, SnapshotFields.LexEntryDialectLabels);
+        OperationSlotRegistry.RegisterMember(RemoveRefDialectLabels, SnapshotFields.LexEntryDialectLabels);
     }
 }
 

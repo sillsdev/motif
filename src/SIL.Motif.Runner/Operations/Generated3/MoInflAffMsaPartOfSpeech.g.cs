@@ -32,6 +32,8 @@ public static class MoInflAffMsaPartOfSpeechOperationKinds
         OperationKindRegistry.Register(ClearPartOfSpeech);
         OperationHandlerRegistry.Register(SetPartOfSpeech, MoInflAffMsaPartOfSpeechSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearPartOfSpeech, MoInflAffMsaPartOfSpeechClearHandler.Instance);
+        OperationSlotRegistry.RegisterScalar(SetPartOfSpeech, SnapshotFields.MoInflAffMsaPartOfSpeech);
+        OperationSlotRegistry.RegisterScalar(ClearPartOfSpeech, SnapshotFields.MoInflAffMsaPartOfSpeech);
     }
 }
 

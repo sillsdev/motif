@@ -32,6 +32,8 @@ public static class LexEntryCommentOperationKinds
         OperationKindRegistry.Register(ClearComment);
         OperationHandlerRegistry.Register(SetComment, LexEntryCommentSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearComment, LexEntryCommentClearHandler.Instance);
+        OperationSlotRegistry.RegisterAlternative(SetComment, SnapshotFields.LexEntryComment);
+        OperationSlotRegistry.RegisterAlternative(ClearComment, SnapshotFields.LexEntryComment);
     }
 }
 

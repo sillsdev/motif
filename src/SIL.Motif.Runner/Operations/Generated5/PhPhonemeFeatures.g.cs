@@ -21,6 +21,7 @@ public static class PhPhonemeFeaturesOperationKinds
     internal static void Register()
     {
         OperationKindRegistry.Register(Create);
+        OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.PhPhonemeFeatures, true);
         OperationHandlerRegistry.Register(Create, new OwningCreateHandler<IPhPhoneme>(
             Create, SnapshotFields.PhPhonemeFeatures, owner => owner.FeaturesOA is { } child ? new ICmObject[] { child } : Array.Empty<ICmObject>(),
             (cache, owner, guid, index, concreteClass) =>

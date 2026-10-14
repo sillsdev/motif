@@ -32,6 +32,8 @@ public static class MoFormFormOperationKinds
         OperationKindRegistry.Register(ClearForm);
         OperationHandlerRegistry.Register(SetForm, MoFormFormSetHandler.Instance);
         OperationHandlerRegistry.Register(ClearForm, MoFormFormClearHandler.Instance);
+        OperationSlotRegistry.RegisterAlternative(SetForm, SnapshotFields.MoFormForm);
+        OperationSlotRegistry.RegisterAlternative(ClearForm, SnapshotFields.MoFormForm);
     }
 }
 

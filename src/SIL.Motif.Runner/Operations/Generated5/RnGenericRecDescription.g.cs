@@ -21,6 +21,7 @@ public static class RnGenericRecDescriptionOperationKinds
     internal static void Register()
     {
         OperationKindRegistry.Register(Create);
+        OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.RnGenericRecDescription, true);
         OperationHandlerRegistry.Register(Create, new OwningCreateHandler<IRnGenericRec>(
             Create, SnapshotFields.RnGenericRecDescription, owner => owner.DescriptionOA is { } child ? new ICmObject[] { child } : Array.Empty<ICmObject>(),
             (cache, owner, guid, index, concreteClass) =>

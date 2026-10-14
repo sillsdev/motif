@@ -25,6 +25,7 @@ public static class AlternateFormRetirementOperationKinds
     {
         OperationKindRegistry.Register(DeleteAlternateForm);
         OperationHandlerRegistry.Register(DeleteAlternateForm, AlternateFormDeleteHandler.Instance);
+        OperationSlotRegistry.RegisterMany(DeleteAlternateForm, CompoundOperationSlots.DeleteAlternateForms);
     }
 #pragma warning restore CA2255
 }

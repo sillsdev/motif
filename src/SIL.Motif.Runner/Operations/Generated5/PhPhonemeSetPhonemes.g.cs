@@ -21,6 +21,7 @@ public static class PhPhonemeSetPhonemesOperationKinds
     internal static void Register()
     {
         OperationKindRegistry.Register(Create);
+        OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.PhPhonemeSetPhonemes, false);
         OperationHandlerRegistry.Register(Create, new OwningCreateHandler<IPhPhonemeSet>(
             Create, SnapshotFields.PhPhonemeSetPhonemes, owner => owner.PhonemesOC.Cast<ICmObject>().ToArray(),
             (cache, owner, guid, index, concreteClass) =>

@@ -26,6 +26,8 @@ public static class RnGenericRecTitleOperationKinds
         OperationKindRegistry.Register(Clear);
         OperationHandlerRegistry.Register(Set, new RnGenericRecTitleHandler(false));
         OperationHandlerRegistry.Register(Clear, new RnGenericRecTitleHandler(true));
+        OperationSlotRegistry.RegisterScalar(Set, SnapshotFields.RnGenericRecTitle);
+        OperationSlotRegistry.RegisterScalar(Clear, SnapshotFields.RnGenericRecTitle);
     }
 }
 
