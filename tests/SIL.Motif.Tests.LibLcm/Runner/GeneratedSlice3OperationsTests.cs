@@ -200,8 +200,10 @@ public sealed class GeneratedSlice3OperationsTests : IDisposable
         Assert.Equal(new[] { first.Guid, inserted.Guid, last.Guid }, template.PrefixSlotsRS.Select(slot => slot.Guid));
     }
 
-    [Fact]
-    public void Move_MoInflAffixTemplatePrefixSlots_UsesDeclaredPlacementInDryRunAndApply()
+    [Theory]
+    [InlineData("")]
+    [InlineData("slot/")]
+    public void Move_MoInflAffixTemplatePrefixSlots_UsesDeclaredPlacementInDryRunAndApply(string prefix)
     {
         var pos = CreatePartOfSpeech();
         var first = CreateInflAffixSlot(pos);
@@ -220,8 +222,8 @@ public sealed class GeneratedSlice3OperationsTests : IDisposable
         var proposal = BuildProposal(
             "grammar/moInflAffixTemplate/movePrefixSlots",
             CanonicalId.FromGuid(template.Guid),
-            new { member = CanonicalId.FromGuid(moved.Guid).Value },
-            new Placement(CanonicalId.FromGuid(last.Guid), null));
+            new { member = CanonicalId.FromGuid(moved.Guid, prefix).Value },
+            new Placement(CanonicalId.FromGuid(last.Guid, prefix), null));
 
         var dryRun = ScratchDryRun.Of(_cache, proposal);
         var expectedEffect = Assert.Single(dryRun.ExpectedEffects);
