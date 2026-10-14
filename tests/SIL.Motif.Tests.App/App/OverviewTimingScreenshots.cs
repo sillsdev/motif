@@ -29,24 +29,16 @@ public sealed class OverviewTimingScreenshots
                 workspace.Context.TryWord("hawajafika");
                 await workspace.Assess.Trace.TryCommand.ExecutionTask!;
                 Assert.True(workspace.PageModel<TryWordPageModel>().HasEarlierTiming);
-                foreach (var (theme, variant) in new[] { ("light", ThemeVariant.Light), ("dark", ThemeVariant.Dark) })
+                window.Height = 780;
+                foreach (var (name, page) in new[]
                 {
-                    Application.Current!.RequestedThemeVariant = variant;
-                    foreach (var width in new[] { 1040, 1240 })
-                    {
-                        window.Width = width;
-                        window.Height = 780;
-                        foreach (var (name, page) in new[]
-                                 {
-                                     ("14-overview-populated", WorkspacePage.Overview),
-                                     ("16-timing-filled", WorkspacePage.Timing),
-                                     ("17-try-a-word-earlier-timing", WorkspacePage.TryAWord),
-                                 })
-                        {
-                            workspace.CurrentPage = page;
-                            PageScreenshots.Save(window, Path.Combine(folder, $"{name}-{width}-{theme}.png"));
-                        }
-                    }
+                    ("14-overview-populated", WorkspacePage.Overview),
+                    ("16-timing-filled", WorkspacePage.Timing),
+                    ("17-try-a-word-earlier-timing", WorkspacePage.TryAWord),
+                })
+                {
+                    workspace.CurrentPage = page;
+                    PageScreenshots.SaveAll(window, folder, name);
                 }
             }
             finally

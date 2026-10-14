@@ -2,15 +2,20 @@ using System.Globalization;
 using System.Text;
 using Avalonia;
 using Avalonia.Automation;
+using Avalonia.Automation.Peers;
+using Avalonia.Headless;
+using Avalonia.Threading;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Presenters;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
+using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.TextFormatting;
 using Avalonia.VisualTree;
 using SIL.Motif.App.Views;
+using static SIL.Motif.Tests.App.LayoutAssertions;
 
 namespace SIL.Motif.Tests.App;
 
@@ -18,14 +23,19 @@ internal static class ReachabilityAssertions
 {
     internal const double Tolerance = LayoutAssertions.Tolerance;
 
-    internal static IReadOnlyList<LayoutFinding> Inspect(Visual root, LayoutFindingContext context) =>
-        InspectCore(root, context, includeTextChecks: true);
+    internal static IReadOnlyList<LayoutFinding> Inspect(Visual root, LayoutFindingContext context,
+        LayoutTextMeasurements? measurements = null) =>
+        InspectCore(root, context, includeTextChecks: true, measurements: measurements);
+
+    internal static IReadOnlyList<LayoutFinding> InspectQuick(Visual root, LayoutFindingContext context) =>
+        InspectCore(root, context, includeTextChecks: true, includeDetailedTextChecks: false);
 
     internal static IReadOnlyList<LayoutFinding> InspectReachabilityAndTitleBar(
         Visual root, LayoutFindingContext context) => InspectCore(root, context, includeTextChecks: false);
 
     private static IReadOnlyList<LayoutFinding> InspectCore(
-        Visual root, LayoutFindingContext context, bool includeTextChecks)
+        Visual root, LayoutFindingContext context, bool includeTextChecks, bool includeDetailedTextChecks = true,
+        LayoutTextMeasurements? measurements = null)
     {
         var findings = new List<LayoutFinding>();
         var window = TopLevel.GetTopLevel(root) ?? root as TopLevel;
@@ -44,17 +54,25 @@ internal static class ReachabilityAssertions
                 .Where(control => !popupControls.Contains(control))
                 .Where(control => !modalControls.Contains(control))
                 .ToArray();
-            foreach (var control in controls.Where(IsInteractive))
+            foreach (var control in controls.Where(IsInteractive).Where(_ => !modalCoversSurface)
+                         .Where(control => popupOverlays.All(overlay =>
+                             !overlay.Bounds.Intersects(BoundsIn(control, topLevel)))))
             {
-                if (IsReachable(control, topLevel)) continue;
+                if (!ReferenceEquals(TopLevel.GetTopLevel(control), topLevel) || IsReachable(control, topLevel)) continue;
+                if (!ReferenceEquals(TopLevel.GetTopLevel(control), topLevel)) continue;
                 var bounds = BoundsIn(control, topLevel);
                 findings.Add(new LayoutFinding(context.Scene, context.Size, context.Zoom, context.Theme,
                     LayoutCheckNames.UnreachableControl, Describe(control), LayoutBounds.From(bounds),
-                    "outside-client-or-scroll-route",
-                    $"The enabled control is outside its top-level client area or an ancestor clip with no scroll route. " +
+                    "no-visible-hit-target-or-scroll-route",
+                    $"The enabled control has no visible hit target in its client area or a valid scroll route. " +
                     $"Client bounds: {ClientBounds(topLevel)}. {ScrollRouteDiagnostics(control)}"));
             }
 
+            controls = Controls(surface).Where(control => ReferenceEquals(TopLevel.GetTopLevel(control), topLevel))
+                .Where(control => !popupControls.Contains(control) && !modalControls.Contains(control)).ToArray();
+            var authored = controls.Where(control => control.IsEffectivelyVisible)
+                .Where(control => control.TemplatedParent is null).ToArray();
+            findings.AddRange(AutomationFindings(authored, context, topLevel));
             findings.AddRange(NavCompletenessFindings(surface, context, topLevel));
             findings.AddRange(PageHorizontalScrollFindings(surface, context, topLevel));
             if (!includeTextChecks) continue;
@@ -68,12 +86,11 @@ internal static class ReachabilityAssertions
             {
                 var first = texts[firstIndex];
                 var second = texts[secondIndex];
-                if (IsAncestor(first, second) || IsAncestor(second, first) || IntentionallyLayered(first, second))
-                    continue;
-
                 var firstBounds = paintedBounds[first];
                 var secondBounds = paintedBounds[second];
                 if (!OverlapsBeyondTolerance(firstBounds, secondBounds, out var overlap)) continue;
+                if (IsAncestor(first, second) || IsAncestor(second, first) || IntentionallyLayered(first, second))
+                    continue;
                 findings.Add(new LayoutFinding(context.Scene, context.Size, context.Zoom, context.Theme,
                     LayoutCheckNames.OverlappingText, Describe(first), LayoutBounds.From(firstBounds),
                     TextPairIdentity(first, second),
@@ -81,10 +98,10 @@ internal static class ReachabilityAssertions
                     $"{overlap.Height:0.#} px at {overlap}.", Describe(second)));
             }
 
-            foreach (var text in texts)
+            foreach (var text in texts.Where(_ => includeDetailedTextChecks))
             {
                 findings.AddRange(MissingGlyphFindings(text, context, topLevel));
-                findings.AddRange(TextBoxOverflowFindings(text, context, topLevel));
+                findings.AddRange(TextBoxOverflowFindings(text, context, topLevel, measurements));
             }
 
         }
@@ -101,19 +118,142 @@ internal static class ReachabilityAssertions
     internal static bool IsReachable(Control control, TopLevel topLevel)
     {
         if (!control.IsEffectivelyVisible || !control.IsEffectivelyEnabled) return true;
+        // Empty layout slots have no rendered hit target, as with inactive scrollbar buttons.
+        if (control.Bounds.Width <= 0 || control.Bounds.Height <= 0) return true;
         var revealHost = control.GetVisualAncestors().OfType<Control>()
             .FirstOrDefault(ancestor => ancestor.Classes.Contains("hoverReveal"));
         if (revealHost is not null && !ReferenceEquals(revealHost, control))
             return IsReachableCore(revealHost, topLevel);
-        return IsReachableCore(control, topLevel);
+        if (!IsInteractive(control)) return IsReachableCore(control, topLevel);
+        if (!HasVisibleOpacity(control) || control.GetSelfAndVisualAncestors().OfType<Control>()
+                .Any(ancestor => !ancestor.IsHitTestVisible)) return false;
+        if (HasHitTarget(control, topLevel)) return true;
+        if (!IsReachableCore(control, topLevel)) return false;
+        var viewers = control.GetVisualAncestors().OfType<ScrollViewer>()
+            .Select(viewer => (Viewer: viewer, Offset: viewer.Offset)).ToArray();
+        if (viewers.Length == 0) return false;
+        try
+        {
+            foreach (var (viewer, _) in viewers)
+            {
+                if (viewer.Content is not Visual content) continue;
+                var target = ExtentBounds(control, content);
+                var x = viewer.Offset.X;
+                var y = viewer.Offset.Y;
+                if (viewer.HorizontalScrollBarVisibility != ScrollBarVisibility.Disabled)
+                    x = RevealOffset(x, target.Left, target.Right, viewer.Viewport.Width, viewer.Extent.Width);
+                if (viewer.VerticalScrollBarVisibility != ScrollBarVisibility.Disabled)
+                    y = RevealOffset(y, target.Top, target.Bottom, viewer.Viewport.Height, viewer.Extent.Height);
+                var offset = new Vector(x, y);
+                if (offset == viewer.Offset) continue;
+                viewer.Offset = offset;
+                SettleHitTesting(topLevel);
+            }
+            return HasHitTarget(control, topLevel);
+        }
+        finally
+        {
+            foreach (var (viewer, offset) in viewers) viewer.Offset = offset;
+            SettleHitTesting(topLevel);
+        }
+    }
+
+    // A scroll extent includes the content's margin, so a control's place in it is offset by that margin.
+    internal static Rect ExtentBounds(Control control, Visual content)
+    {
+        var margin = content is Layoutable layoutable ? layoutable.Margin : default;
+        return BoundsIn(control, content).Translate(new Vector(margin.Left, margin.Top));
+    }
+
+    private static double RevealOffset(double current, double start, double end, double viewport, double extent)
+    {
+        var offset = start < current ? start : end > current + viewport ? end - viewport : current;
+        return Math.Clamp(offset, 0, Math.Max(0, extent - viewport));
+    }
+
+    internal static bool CanReachItem(ListBox list, int index, TopLevel topLevel)
+    {
+        if (index < 0 || index >= list.ItemCount) return false;
+        if (list.ContainerFromIndex(index) is Control current && HasHitTarget(current, topLevel)) return true;
+        var offsets = list.GetVisualDescendants().OfType<ScrollViewer>()
+            .Select(viewer => (Viewer: viewer, Offset: viewer.Offset)).ToArray();
+        try
+        {
+            list.ScrollIntoView(index);
+            SettleHitTesting(topLevel);
+            return list.ContainerFromIndex(index) is Control revealed && IsReachable(revealed, topLevel);
+        }
+        finally
+        {
+            foreach (var (viewer, offset) in offsets) viewer.Offset = offset;
+            SettleHitTesting(topLevel);
+        }
+    }
+
+    private static void SettleHitTesting(TopLevel topLevel)
+    {
+        Dispatcher.UIThread.RunJobs();
+        topLevel.UpdateLayout();
+        Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+        // A newly realized container can need a second frame before hit testing sees it.
+        Dispatcher.UIThread.RunJobs();
+        Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+    }
+
+    private static bool HasHitTarget(Control control, TopLevel topLevel)
+    {
+        var bounds = BoundsIn(control, topLevel);
+        if (!Contains(ClientBounds(topLevel), bounds)) return false;
+        foreach (var ancestor in control.GetVisualAncestors().OfType<Control>().Where(item => item.ClipToBounds))
+            if (!Contains(BoundsIn(ancestor, topLevel), bounds)) return false;
+        if (bounds.Width <= Tolerance || bounds.Height <= Tolerance) return false;
+        foreach (var (x, y) in new[] { (0.5, 0.5), (0.25, 0.25), (0.75, 0.25), (0.25, 0.75), (0.75, 0.75) })
+        {
+            var point = new Point(bounds.X + bounds.Width * x, bounds.Y + bounds.Height * y);
+            if (topLevel.InputHitTest(point) is Visual hit && (ReferenceEquals(hit, control) || IsAncestor(control, hit)))
+                return true;
+        }
+        return false;
+    }
+
+    internal static IReadOnlyList<LayoutFinding> AutomationFindings(
+        IReadOnlyList<Control> controls, LayoutFindingContext context, TopLevel topLevel)
+    {
+        var findings = new List<LayoutFinding>();
+        foreach (var control in controls.Where(IsInteractive))
+        {
+            var name = ControlAutomationPeer.CreatePeerForElement(control)?.GetName();
+            var typeFallback = control is ContentControl { Content: Control content } && name == content.ToString();
+            if (!string.IsNullOrWhiteSpace(name) && !typeFallback) continue;
+            findings.Add(new LayoutFinding(context.Scene, context.Size, context.Zoom, context.Theme,
+                LayoutCheckNames.MissingAutomationName, Describe(control), LayoutBounds.From(BoundsIn(control, topLevel)),
+                "runtime-peer-name", "The interactive control has no nonempty runtime automation-peer name."));
+        }
+        var identities = controls.Where(IsInteractive).ToArray();
+        var scopes = identities.Select(control => control.GetVisualAncestors().OfType<Control>()
+            .FirstOrDefault(ancestor => !string.IsNullOrWhiteSpace(AutomationProperties.GetAutomationId(ancestor))))
+            .OfType<Control>();
+        foreach (var group in identities.Concat(scopes).Distinct().GroupBy(control => (
+                     Scope: control.GetVisualAncestors().OfType<Control>().FirstOrDefault(ancestor =>
+                         !string.IsNullOrWhiteSpace(AutomationProperties.GetAutomationId(ancestor))) ?? topLevel,
+                     Id: AutomationProperties.GetAutomationId(control)))
+                     .Where(group => !string.IsNullOrWhiteSpace(group.Key.Id) && group.Count() > 1))
+        {
+            var first = group.First();
+            foreach (var other in group.Skip(1))
+                findings.Add(new LayoutFinding(context.Scene, context.Size, context.Zoom, context.Theme,
+                    LayoutCheckNames.DuplicateAutomationId, Describe(first), LayoutBounds.From(BoundsIn(first, topLevel)),
+                    group.Key.Id!, "Multiple visible controls share this automation ID in the same identified container.", Describe(other)));
+        }
+        return findings;
     }
 
     private static bool IsReachableCore(Control control, TopLevel topLevel)
     {
         if (!control.IsEffectivelyVisible || !control.IsEffectivelyEnabled) return true;
         var bounds = BoundsIn(control, topLevel);
-        // Empty layout slots have no rendered hit target, as with inactive scrollbar buttons.
         if (bounds.Width <= 0 || bounds.Height <= 0) return true;
+        var needsScrolling = false;
 
         foreach (var ancestor in control.GetVisualAncestors().OfType<Control>()
                      .Where(item => item.ClipToBounds && item is not TopLevel))
@@ -125,13 +265,18 @@ internal static class ReachabilityAssertions
             {
                 // Only the viewer that owns this presenter can scroll the control out of its clip.
                 var owner = ancestor.GetVisualAncestors().OfType<ScrollViewer>().FirstOrDefault();
-                if (owner is not null && ScrollCanReveal(control, owner)) continue;
+                if (owner is not null && ScrollCanReveal(control, owner))
+                {
+                    needsScrolling = true;
+                    continue;
+                }
             }
 
             if (control.GetVisualAncestors().OfType<ScrollViewer>().Any(viewer =>
                     (ReferenceEquals(ancestor, viewer) || IsAncestor(ancestor, viewer)) &&
                     ScrollCanReveal(control, viewer)))
             {
+                needsScrolling = true;
                 continue;
             }
 
@@ -139,8 +284,17 @@ internal static class ReachabilityAssertions
         }
 
         var clientBounds = ClientBounds(topLevel);
-        return Contains(clientBounds, bounds) ||
-            control.GetVisualAncestors().OfType<ScrollViewer>().Any(viewer => ScrollCanReveal(control, viewer));
+        if (!Contains(clientBounds, bounds))
+            return control.GetVisualAncestors().OfType<ScrollViewer>().Any(viewer => ScrollCanReveal(control, viewer));
+        // A covered hit target matters only for a control a person acts on, not for a container such as a reveal host.
+        if (needsScrolling || !IsInteractive(control)) return true;
+        foreach (var (x, y) in new[] { (0.5, 0.5), (0.25, 0.25), (0.75, 0.25), (0.25, 0.75), (0.75, 0.75) })
+        {
+            var point = control.TranslatePoint(new Point(control.Bounds.Width * x, control.Bounds.Height * y), topLevel);
+            if (point is null || topLevel.InputHitTest(point.Value) is not Visual hit) continue;
+            if (ReferenceEquals(hit, control) || IsAncestor(control, hit)) return true;
+        }
+        return false;
     }
 
     internal static IReadOnlyList<LayoutFinding> MissingGlyphFindings(
@@ -168,13 +322,13 @@ internal static class ReachabilityAssertions
     }
 
     internal static IReadOnlyList<LayoutFinding> TextBoxOverflowFindings(
-        TextBlock text, LayoutFindingContext context, Visual layoutRoot)
+        TextBlock text, LayoutFindingContext context, Visual layoutRoot, LayoutTextMeasurements? measurements = null)
     {
         if (!IsRenderedText(text) || text.TextWrapping != TextWrapping.NoWrap ||
             text.TextTrimming != TextTrimming.None)
             return [];
 
-        var desiredWidth = LayoutAssertions.MeasureWithoutWrapping(text);
+        var desiredWidth = measurements?.UnwrappedWidth(text) ?? LayoutAssertions.MeasureWithoutWrapping(text);
         if (desiredWidth <= text.Bounds.Width + Tolerance) return [];
         var bounds = BoundsIn(text, layoutRoot);
         return [new LayoutFinding(context.Scene, context.Size, context.Zoom, context.Theme,
@@ -289,7 +443,8 @@ internal static class ReachabilityAssertions
         var overflowing = Controls(page).OfType<Control>()
             .Where(control => control.IsEffectivelyVisible)
             .Where(control => !IsInsideInputControl(control))
-            .Where(control => !ContainsHorizontally(bodyBounds, BoundsIn(control, topLevel)))
+            .Where(control => PaintedBounds(control) is { Width: > 0, Height: > 0 } painted &&
+                !ContainsHorizontally(bodyBounds, painted))
             .ToHashSet();
         foreach (var control in overflowing)
         {
@@ -414,11 +569,18 @@ internal static class ReachabilityAssertions
         return excluded;
     }
 
-    private static IEnumerable<Control> Controls(Visual root) => root.GetSelfAndVisualDescendants().OfType<Control>();
+    private static IEnumerable<Control> Controls(Visual root)
+    {
+        if (!root.IsVisible) yield break;
+        if (root is Control control) yield return control;
+        foreach (var child in root.GetVisualChildren())
+        foreach (var descendant in Controls(child)) yield return descendant;
+    }
 
     private static bool IsRenderedText(TextBlock text) =>
         text.IsEffectivelyVisible && text.Bounds.Width > 0 && text.Bounds.Height > 0 &&
-        text.TextLayout.TextLines.Count > 0 && HasVisibleOpacity(text);
+        text.TextLayout.TextLines.Any(line => line.TextRuns.OfType<ShapedTextRun>()
+            .Any(run => run.Text.ToString().EnumerateRunes().Any(IsVisibleGlyph))) && HasVisibleOpacity(text);
 
     private static bool HasVisibleOpacity(Visual visual) =>
         visual.Opacity > 0 && visual.GetVisualAncestors().OfType<Visual>().All(ancestor => ancestor.Opacity > 0);
@@ -447,7 +609,7 @@ internal static class ReachabilityAssertions
     private static bool ScrollCanReveal(Control control, ScrollViewer viewer)
     {
         if (viewer.Content is not Visual content) return false;
-        var bounds = BoundsIn(control, content);
+        var bounds = ExtentBounds(control, content);
         if (bounds.Left < -Tolerance || bounds.Top < -Tolerance ||
             bounds.Right > viewer.Extent.Width + Tolerance || bounds.Bottom > viewer.Extent.Height + Tolerance)
             return false;
@@ -497,23 +659,6 @@ internal static class ReachabilityAssertions
             ? bounds.Bounds.TransformToAABB(bounds.Transform).Intersect(bounds.Clip)
             : default;
 
-    private static Rect BoundsIn(Visual visual, Visual root)
-    {
-        var bounds = visual.Bounds;
-        var corners = new[]
-        {
-            new Point(0, 0), new Point(bounds.Width, 0),
-            new Point(0, bounds.Height), new Point(bounds.Width, bounds.Height),
-        }.Select(point => visual.TranslatePoint(point, root)).Where(point => point is not null)
-            .Select(point => point!.Value).ToArray();
-        if (corners.Length == 0) return default;
-        var left = corners.Min(point => point.X);
-        var top = corners.Min(point => point.Y);
-        var right = corners.Max(point => point.X);
-        var bottom = corners.Max(point => point.Y);
-        return new Rect(left, top, right - left, bottom - top);
-    }
-
     private static bool Contains(Rect container, Rect content) =>
         container.Left <= content.Left + Tolerance && container.Top <= content.Top + Tolerance &&
         container.Right >= content.Right - Tolerance && container.Bottom >= content.Bottom - Tolerance;
@@ -538,7 +683,8 @@ internal static class ReachabilityAssertions
 
     private static ControlDescription Describe(Control control) => new(
         control.GetType().Name, control.Name, AutomationProperties.GetAutomationId(control),
-        AutomationProperties.GetName(control), string.Join('.', control.Classes), NearestNamedAncestor(control));
+        ControlAutomationPeer.FromElement(control)?.GetName() ?? AutomationProperties.GetName(control),
+        string.Join('.', control.Classes), NearestNamedAncestor(control));
 
     private static string? NearestNamedAncestor(Control control) => control.GetVisualAncestors()
         .OfType<Control>().Select(ancestor => ancestor.Name ?? AutomationProperties.GetAutomationId(ancestor))
@@ -548,70 +694,4 @@ internal static class ReachabilityAssertions
         findings.GroupBy(finding => finding.Key)
             .Select(group => group.First() with { Count = group.Sum(finding => finding.Count) })
             .ToArray();
-}
-
-internal sealed record LayoutFindingContext(string Scene, string Size, int Zoom, string Theme);
-
-/// <summary>
-/// What a layout finding says about one control. <paramref name="NamedAncestor"/> is the nearest visual ancestor
-/// that has a Name or AutomationId and is not a template part, which names a control that cannot carry an id itself, such as the
-/// AccessText a Button creates for its label.
-/// </summary>
-internal sealed record ControlDescription(
-    string Type, string? Name, string? AutomationId, string? AutomationName, string Classes,
-    string? NamedAncestor = null);
-
-internal sealed record LayoutBounds(double X, double Y, double Width, double Height)
-{
-    internal static LayoutBounds From(Rect rect) => new(rect.X, rect.Y, rect.Width, rect.Height);
-}
-
-internal sealed record LayoutFinding(
-    string Scene,
-    string Size,
-    int Zoom,
-    string Theme,
-    string Check,
-    ControlDescription Control,
-    LayoutBounds Bounds,
-    string Identity,
-    string Detail,
-    ControlDescription? RelatedControl = null,
-    int Count = 1)
-{
-    internal LayoutFindingKey Key => new(Scene, Size, Zoom, Theme, Check, StableControlKey(Control), Identity,
-        RelatedControl is null ? null : StableControlKey(RelatedControl));
-
-    private static string StableControlKey(ControlDescription control) =>
-        $"{control.Type}#{control.Name}#{control.AutomationId}.{control.Classes}";
-}
-
-internal sealed record LayoutFindingKey(
-    string Scene,
-    string Size,
-    int Zoom,
-    string Theme,
-    string Check,
-    string Control,
-    string Identity,
-    string? RelatedControl);
-
-internal static class LayoutCheckNames
-{
-    internal const string UnreachableControl = "unreachable-control";
-    internal const string OverlappingText = "overlapping-text";
-    internal const string MissingGlyph = "missing-glyph";
-    internal const string TitleBarOverflow = "title-bar-overflow";
-    internal const string TitleBarOverlap = "title-bar-overlap";
-    internal const string TextBoxOverflow = "text-own-box-overflow";
-    internal const string PopupOutsideWindow = "popup-outside-window";
-    internal const string NavItemHidden = "nav-item-hidden";
-    internal const string PageHorizontalScroll = "page-horizontal-scroll";
-
-    /// <summary>The checks that <c>InspectReachabilityAndTitleBar</c> can report.</summary>
-    internal static IReadOnlySet<string> ReachabilityAndTitleBar { get; } = new HashSet<string>(StringComparer.Ordinal)
-    {
-        UnreachableControl, NavItemHidden, PageHorizontalScroll, TitleBarOverflow, TitleBarOverlap,
-        PopupOutsideWindow,
-    };
 }

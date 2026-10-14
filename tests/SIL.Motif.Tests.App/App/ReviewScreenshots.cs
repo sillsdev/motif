@@ -550,16 +550,8 @@ public sealed class ReviewScreenshots
 
     internal static void SaveAll(MainWindow window, string folder, string name)
     {
-        foreach (var (theme, variant) in new[] { ("light", ThemeVariant.Light), ("dark", ThemeVariant.Dark) })
-        {
-            Application.Current!.RequestedThemeVariant = variant;
-            foreach (var width in new[] { 1040, 1240 })
-            {
-                window.Width = width;
-                window.Height = 780;
-                Save(window, Path.Combine(folder, $"{name}-{width}-{theme}.png"));
-            }
-        }
+        window.Height = 780;
+        PageScreenshots.SaveAll(window, folder, name);
     }
 
     private static void Save(MainWindow window, string path)

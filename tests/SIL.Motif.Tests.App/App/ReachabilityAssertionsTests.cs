@@ -130,6 +130,41 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
     }
 
     [Fact]
+    public void AControlAtTheBottomOfScrolledContentWithAMarginIsReachable()
+    {
+        avalonia.Invoke(() =>
+        {
+            var action = new Button { Content = "Continue", Width = 72, Height = 32 };
+            Canvas.SetLeft(action, 10);
+            Canvas.SetTop(action, 280);
+            var canvas = new Canvas
+            {
+                Width = 100, Height = 320, Margin = new Thickness(0, 100, 0, 0), Children = { action },
+            };
+            var scroll = new ScrollViewer
+            {
+                Width = 110,
+                Height = 110,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                Content = canvas,
+            };
+            var window = new Window { Content = scroll, Width = 140, Height = 140 };
+            try
+            {
+                window.Show();
+                PageScreenshots.Settle(window);
+
+                Assert.Equal(420, scroll.Extent.Height, 1);
+                Assert.True(ReachabilityAssertions.IsReachable(action, window),
+                    $"The scroll extent {scroll.Extent} includes the content's margin, so the bottom action is reachable.");
+                Assert.Equal(default, scroll.Offset);
+            }
+            finally { window.Close(); }
+        });
+    }
+
+    [Fact]
     public void AListBoxRowBelowItsViewportIsReachableByScrolling()
     {
         avalonia.Invoke(() =>
@@ -206,7 +241,12 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
                 Width = 110, Height = 60,
                 HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
                 VerticalScrollBarVisibility = innerScrolling,
-                Content = new Canvas { Width = 110, Height = 200, Children = { button } },
+                // Top-aligned, so a viewport that cannot scroll shows the canvas from its top rather than centred.
+                Content = new Canvas
+                {
+                    Width = 110, Height = 200, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top,
+                    Children = { button },
+                },
             };
             Canvas.SetTop(inner, innerTop);
             var outer = new ScrollViewer

@@ -82,7 +82,7 @@ public sealed class AssistantConnectionsPageTests
         public void SetEnabled(bool enabled) => IsEnabled = enabled;
     }
 
-    private sealed class FakeAssistantConnections : IAssistantConnectionService
+    internal sealed class FakeAssistantConnections : IAssistantConnectionService
     {
         public List<AssistantClient> Connected { get; } = [];
         public IReadOnlyList<AssistantInstallation> FindAssistants() =>

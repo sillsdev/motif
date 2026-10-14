@@ -59,10 +59,16 @@ public sealed class ProgressiveDisplayTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, sampleWindow) = await PageScreenshots.OpenOverSampleData();
+            var (workspace, sampleWindow) = await PageScreenshots.OpenOverSampleData(
+                renderForCapture: false,
+                composeWindow: viewName is "MainWindow" or "SettingsPage" or "SettingsNavigation");
             var window = new Window { Width = 1240, Height = 780 };
             try
             {
+                Assert.Equal(PageScreenshots.Assessment().Words.Count, workspace.Assess.Words.AllRows.Count);
+                var reader = workspace.PageModel<TextsPageModel>().ResultsInText;
+                Assert.Equal("alikula", reader.SelectedToken!.Form);
+                Assert.NotEmpty(reader.LinePages!.RealizedLines);
                 if (viewName is "ComparePanel" or "MiniMatrix" or "TextsListsPanel")
                 {
                     var source = workspace.Assess.Words.AllRows[0].Source;
@@ -138,6 +144,7 @@ public sealed class ProgressiveDisplayTests
             {
                 window.Close();
                 sampleWindow.Close();
+                await workspace.DisposeAsync();
             }
         }, TimeSpan.FromSeconds(60));
     }
@@ -603,14 +610,14 @@ public sealed class ProgressiveDisplayTests
                 {
                     window.KeyPress(Key.Down, RawInputModifiers.None, PhysicalKey.None, null);
                     window.KeyRelease(Key.Down, RawInputModifiers.None, PhysicalKey.None, null);
-                    PageScreenshots.Settle(window);
+                    LayoutInvariantEngineTests.Settle(window);
                 }
                 Assert.Same(children[60], tree.SelectedItem);
                 for (var index = 0; index < 60; index++)
                 {
                     window.KeyPress(Key.Up, RawInputModifiers.None, PhysicalKey.None, null);
                     window.KeyRelease(Key.Up, RawInputModifiers.None, PhysicalKey.None, null);
-                    PageScreenshots.Settle(window);
+                    LayoutInvariantEngineTests.Settle(window);
                 }
                 Assert.Same(children[0], tree.SelectedItem);
                 Assert.InRange(root.GetRealizedContainers().Count(), 1, 64);
@@ -634,7 +641,7 @@ public sealed class ProgressiveDisplayTests
                 {
                     window.KeyPress(Key.Down, RawInputModifiers.None, PhysicalKey.None, null);
                     window.KeyRelease(Key.Down, RawInputModifiers.None, PhysicalKey.None, null);
-                    PageScreenshots.Settle(window);
+                    LayoutInvariantEngineTests.Settle(window);
                 }
                 Assert.Same(roots[60], tree.SelectedItem);
                 tree.ScrollIntoView(1999);
@@ -864,7 +871,7 @@ public sealed class ProgressiveDisplayTests
                     Assert.True(next.StaysOpenOnClick);
                     Assert.True(next.Focus());
                     next.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(MenuItem.ClickEvent));
-                    PageScreenshots.Settle(window);
+                    LayoutInvariantEngineTests.Settle(window);
                     Assert.True(menu.IsOpen);
                     Assert.Contains(menu.Items.OfType<MenuItem>(), item => item.IsFocused);
                 }

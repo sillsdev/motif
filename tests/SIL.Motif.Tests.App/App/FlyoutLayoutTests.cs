@@ -17,72 +17,80 @@ namespace SIL.Motif.Tests.App;
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class FlyoutLayoutTests
 {
-    public static TheoryData<string, int> Flyouts() => new()
+    [Fact]
+    public void APopUpShowsAllOfItselfWithoutScrollingSideways()
     {
-        { "help", 1040 }, { "help", 1240 }, { "help-texts", 1040 }, { "tools", 1040 }, { "tools", 1240 },
-    };
-
-    [Theory]
-    [MemberData(nameof(Flyouts))]
-    public void APopUpShowsAllOfItselfWithoutScrollingSideways(string which, int width)
-    {
-        var failures = new List<string>();
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var (workspace, window) = await PageScreenshots.OpenOverSampleData(
                 configure: OverviewTimingScreenshots.ReadOverviewAndTiming);
             try
             {
-                window.Width = width;
-                window.Height = 780;
-                Button button;
-                if (which == "tools")
+                var cases = new List<string>();
+                foreach (var (which, width) in new[]
                 {
-                    workspace.Context.TryWord("matinlu");
-                    await workspace.Assess.Trace.TryCommand.ExecutionTask!;
-                    workspace.CurrentPage = WorkspacePage.TryAWord;
-                    PageScreenshots.Settle(window);
-                    button = Visible<Button>(window).Single(candidate =>
-                        AutomationProperties.GetName(candidate) == "Try a Word tools");
-                }
-                else
+                    ("help", 1040), ("help", 1240), ("help-texts", 1040), ("tools", 1040), ("tools", 1240),
+                })
                 {
-                    workspace.CurrentPage = which == "help" ? WorkspacePage.Overview : WorkspacePage.Texts;
-                    PageScreenshots.Settle(window);
-                    button = window.FindControl<Button>("HelpButton")!;
-                }
-                HeadlessClick.Click(window, button, which);
-                for (var pass = 0; pass < 50 && button.Flyout?.IsOpen != true; pass++)
-                {
-                    await Task.Yield();
-                    PageScreenshots.Settle(window);
-                }
-                Assert.True(button.Flyout!.IsOpen, $"the {which} pop-up did not open");
-                PageScreenshots.Settle(window);
+                    Button? button = null;
+                    var failure = await Record.ExceptionAsync(async () =>
+                    {
+                        var failures = new List<string>();
+                        window.Width = width;
+                        window.Height = 780;
+                        if (which == "tools")
+                        {
+                            workspace.Context.TryWord("matinlu");
+                            await workspace.Assess.Trace.TryCommand.ExecutionTask!;
+                            workspace.CurrentPage = WorkspacePage.TryAWord;
+                            PageScreenshots.Settle(window);
+                            button = Visible<Button>(window).Single(candidate =>
+                                AutomationProperties.GetName(candidate) == "Try a Word tools");
+                        }
+                        else
+                        {
+                            workspace.CurrentPage = which == "help" ? WorkspacePage.Overview : WorkspacePage.Texts;
+                            PageScreenshots.Settle(window);
+                            button = window.FindControl<Button>("HelpButton")!;
+                        }
+                        HeadlessClick.Click(window, button, which);
+                        for (var pass = 0; pass < 50 && button.Flyout?.IsOpen != true; pass++)
+                        {
+                            await Task.Yield();
+                            PageScreenshots.Settle(window);
+                        }
+                        Assert.True(button.Flyout!.IsOpen, $"the {which} pop-up did not open");
+                        PageScreenshots.Settle(window);
 
-                var presenter = Assert.Single(Visible<FlyoutPresenter>(window));
-                var scroll = presenter.GetVisualDescendants().OfType<ScrollViewer>().First();
-                if (scroll.Offset.X > 0.5) failures.Add($"scrolled {scroll.Offset.X:F0} px sideways");
-                if (scroll.Extent.Width > scroll.Viewport.Width + 0.5)
-                    failures.Add($"{scroll.Extent.Width:F0} px of content in a {scroll.Viewport.Width:F0} px pop-up");
-                var shown = new Rect(scroll.TranslatePoint(default, window)!.Value, scroll.Viewport);
-                var words = presenter.GetVisualDescendants().OfType<TextBlock>()
-                    .Where(text => text.IsEffectivelyVisible && !string.IsNullOrWhiteSpace(text.Text));
-                foreach (var text in words)
-                {
-                    var at = new Rect(text.TranslatePoint(default, window)!.Value, text.Bounds.Size);
-                    if (at.Left < shown.Left - 0.5 || at.Right > shown.Right + 0.5)
-                        failures.Add($"'{text.Text}' spans x {at.Left:F0}-{at.Right:F0}, outside {shown.Left:F0}-{shown.Right:F0}");
+                        var presenter = Assert.Single(Visible<FlyoutPresenter>(window));
+                        var scroll = presenter.GetVisualDescendants().OfType<ScrollViewer>().First();
+                        if (scroll.Offset.X > 0.5) failures.Add($"scrolled {scroll.Offset.X:F0} px sideways");
+                        if (scroll.Extent.Width > scroll.Viewport.Width + 0.5)
+                            failures.Add($"{scroll.Extent.Width:F0} px of content in a {scroll.Viewport.Width:F0} px pop-up");
+                        var shown = new Rect(scroll.TranslatePoint(default, window)!.Value, scroll.Viewport);
+                        var words = presenter.GetVisualDescendants().OfType<TextBlock>()
+                            .Where(text => text.IsEffectivelyVisible && !string.IsNullOrWhiteSpace(text.Text));
+                        foreach (var text in words)
+                        {
+                            var at = new Rect(text.TranslatePoint(default, window)!.Value, text.Bounds.Size);
+                            if (at.Left < shown.Left - 0.5 || at.Right > shown.Right + 0.5)
+                                failures.Add($"'{text.Text}' spans x {at.Left:F0}-{at.Right:F0}, outside {shown.Left:F0}-{shown.Right:F0}");
+                        }
+                        Assert.True(failures.Count == 0,
+                            $"{which} at {width}:{Environment.NewLine}{string.Join(Environment.NewLine, failures)}");
+                    });
+                    button?.Flyout?.Hide();
+                    PageScreenshots.Settle(window);
+                    if (failure is not null) cases.Add($"{which} at {width}: {failure}");
                 }
-                button.Flyout.Hide();
+                Assert.True(cases.Count == 0, string.Join(Environment.NewLine, cases));
             }
             finally
             {
                 window.Close();
+                await workspace.DisposeAsync();
             }
-        }, TimeSpan.FromMinutes(1));
-
-        Assert.True(failures.Count == 0, $"{which} at {width}:{Environment.NewLine}{string.Join(Environment.NewLine, failures)}");
+        }, TimeSpan.FromMinutes(5));
     }
 
     private static IEnumerable<T> Visible<T>(Window window) where T : Control =>

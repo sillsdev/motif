@@ -29,7 +29,7 @@ internal static class LayoutAssertions
     private static readonly ThemeVariant[] Themes = [ThemeVariant.Light, ThemeVariant.Dark];
     internal static void BeforeCapture(Window window) => AssertCurrent(window);
 
-    internal static void AssertResponsiveLayouts(Window window)
+    internal static void AssertResponsiveLayouts(Window window, bool captureFailure = true)
     {
         var originalWidth = window.Width;
         var originalHeight = window.Height;
@@ -68,7 +68,7 @@ internal static class LayoutAssertions
                 }
                 catch (Exception failure)
                 {
-                    SaveFailureFrame(window, width, theme, zoom, failure.Message);
+                    if (captureFailure) SaveFailureFrame(window, width, theme, zoom, failure.Message);
                     throw new Xunit.Sdk.XunitException(
                         $"Layout does not fit at {width}×780, {zoom}% zoom, {theme} theme. " + failure.Message);
                 }
@@ -367,25 +367,7 @@ internal static class LayoutAssertions
         return measure.DesiredSize;
     }
 
-    internal static double MeasureWithoutWrapping(TextBlock text)
-    {
-        var measure = new TextBlock
-        {
-            Text = text.Text,
-            FontFamily = text.FontFamily,
-            FontSize = text.FontSize,
-            FontStyle = text.FontStyle,
-            FontWeight = text.FontWeight,
-            FontStretch = text.FontStretch,
-            FlowDirection = text.FlowDirection,
-            TextAlignment = text.TextAlignment,
-            TextWrapping = TextWrapping.NoWrap,
-            LineHeight = text.LineHeight,
-            TextTrimming = TextTrimming.None,
-        };
-        measure.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-        return measure.DesiredSize.Width;
-    }
+    internal static double MeasureWithoutWrapping(TextBlock text) => LayoutTextMeasurements.FreshWidth(text);
 
     private static void AssertGridChildrenStayInTheirColumns(Visual root)
     {
@@ -454,7 +436,7 @@ internal static class LayoutAssertions
         return visibleX && (visibleY || bars.Any(bar => bar.Orientation == Avalonia.Layout.Orientation.Vertical));
     }
 
-    private static Rect BoundsIn(Visual visual, Visual root)
+    internal static Rect BoundsIn(Visual visual, Visual root)
     {
         var bounds = visual.Bounds;
         var corners = new[]

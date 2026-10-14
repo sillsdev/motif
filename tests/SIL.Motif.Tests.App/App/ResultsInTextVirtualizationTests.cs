@@ -144,13 +144,13 @@ public sealed class ResultsInTextVirtualizationTests
                     .Min(container => container.Bounds.Height);
                 var perPage = Math.Max(1, (int)Math.Floor(reader.Viewport.Height / Math.Max(1, height)));
                 lines.ScrollIntoView(Math.Min(2000, next + perPage - 1) - 1);
-                await SettleAsync(setup);
+                await SettleAsync(setup, renderFrame: false);
                 foreach (var container in lines.GetRealizedContainers())
                     visited.Add(Assert.IsType<SelectionLinePosition>(container.DataContext).Header.Number);
                 for (var retry = 0; retry < 4 && !visited.Contains(next); retry++)
                 {
                     lines.ScrollIntoView(next - 1);
-                    await SettleAsync(setup);
+                    await SettleAsync(setup, renderFrame: false);
                     foreach (var container in lines.GetRealizedContainers())
                         visited.Add(Assert.IsType<SelectionLinePosition>(container.DataContext).Header.Number);
                 }
@@ -234,7 +234,7 @@ public sealed class ResultsInTextVirtualizationTests
         }, TimeSpan.FromSeconds(60));
     }
 
-    private static async Task SettleAsync(ReaderSetup setup)
+    private static async Task SettleAsync(ReaderSetup setup, bool renderFrame = true)
     {
         var lines = setup.Panel.FindControl<ItemsControl>("TextLineItems")!;
         (int Number, Rect Bounds)[] previous = [];
@@ -242,7 +242,7 @@ public sealed class ResultsInTextVirtualizationTests
         {
             Avalonia.Threading.Dispatcher.UIThread.RunJobs();
             setup.Window.UpdateLayout();
-            Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            if (renderFrame) Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
             if (setup.Owner.LinePages is { } pages) await pages.Pending;
             foreach (var words in setup.Panel.GetVisualDescendants().OfType<ProgressiveItemsControl>())
                 await words.PageRefresh;

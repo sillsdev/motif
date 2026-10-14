@@ -7,6 +7,7 @@ using Avalonia.Controls.Templates;
 using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.Media;
+using Avalonia.Styling;
 using Avalonia.VisualTree;
 using SIL.Motif.App;
 using SIL.Motif.App.Controls.WordPresentation;
@@ -126,6 +127,85 @@ public sealed class LayoutAssertionsTests(AvaloniaHeadlessFixture avalonia)
             {
                 window.Close();
             }
+        });
+    }
+
+    [Fact]
+    public void CaptureSweepChecksEveryCellAndRestoresZoomSizeThemeAndScroll()
+    {
+        avalonia.Invoke(() =>
+        {
+            var app = Application.Current!;
+            var theme = app.RequestedThemeVariant;
+            var zoom = (int)Math.Round(WindowZoomPolicy.Transform.ScaleX * 100);
+            var scroll = new ScrollViewer
+            {
+                Content = new Border { Height = 2000 },
+                VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
+            };
+            var window = new Window
+            {
+                Width = 900, Height = 500,
+                Content = new LayoutTransformControl
+                {
+                    LayoutTransform = WindowZoomPolicy.Transform,
+                    Child = scroll,
+                },
+            };
+            var visited = new HashSet<(int Width, int Zoom, ThemeVariant Theme)>();
+            try
+            {
+                window.Show();
+                PageScreenshots.Settle(window);
+                scroll.Offset = new Vector(0, 30);
+                PageScreenshots.Settle(window);
+                var offset = scroll.Offset;
+                window.LayoutUpdated += (_, _) => visited.Add(((int)window.Width,
+                    (int)Math.Round(WindowZoomPolicy.Transform.ScaleX * 100), app.RequestedThemeVariant!));
+
+                LayoutAssertions.AssertResponsiveLayouts(window);
+
+                foreach (var expectedTheme in new[] { ThemeVariant.Light, ThemeVariant.Dark })
+                foreach (var expectedWidth in new[] { 1040, 1240 })
+                foreach (var expectedZoom in new[] { 100, 125, 150 })
+                    Assert.Contains((expectedWidth, expectedZoom, expectedTheme), visited);
+                Assert.Equal(900, window.Width);
+                Assert.Equal(500, window.Height);
+                Assert.Equal(theme, app.RequestedThemeVariant);
+                Assert.Equal(zoom, (int)Math.Round(WindowZoomPolicy.Transform.ScaleX * 100));
+                Assert.Equal(offset, scroll.Offset);
+            }
+            finally
+            {
+                window.Close();
+                app.RequestedThemeVariant = theme;
+                WindowZoomPolicy.Apply(app, zoom);
+            }
+        });
+    }
+
+    [Fact]
+    public void CaptureSweepRejectsWrappedTextClippedVertically()
+    {
+        avalonia.Invoke(() =>
+        {
+            var text = new TextBlock
+            {
+                Text = string.Join(' ', Enumerable.Repeat("wrapped words", 30)),
+                Width = 80, Height = 20, TextWrapping = TextWrapping.Wrap,
+            };
+            var window = new Window { Width = 900, Height = 500, Content = text };
+            try
+            {
+                window.Show();
+                PageScreenshots.Settle(window);
+                var failure = Assert.ThrowsAny<Xunit.Sdk.XunitException>(() =>
+                    LayoutAssertions.AssertResponsiveLayouts(window, captureFailure: false));
+                Assert.Contains("vertically", failure.Message, StringComparison.Ordinal);
+                Assert.Equal(900, window.Width);
+                Assert.Equal(500, window.Height);
+            }
+            finally { window.Close(); }
         });
     }
 

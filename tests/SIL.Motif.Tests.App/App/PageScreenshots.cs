@@ -783,6 +783,24 @@ public sealed class PageScreenshots
         SaveRenderedFrame(window, path);
     }
 
+    /// <summary>Checks one unchanged scene across all layout cells, then captures both widths and themes.</summary>
+    internal static void SaveAll(MainWindow window, string folder, string scene)
+    {
+        Settle(window);
+        LayoutAssertions.BeforeCapture(window);
+        foreach (var (theme, variant) in new[] { ("light", ThemeVariant.Light), ("dark", ThemeVariant.Dark) })
+        {
+            Application.Current!.RequestedThemeVariant = variant;
+            foreach (var width in new[] { 1040, 1240 })
+            {
+                window.Width = width;
+                Settle(window);
+                LayoutAssertions.AssertCurrent(window);
+                SaveRenderedFrame(window, Path.Combine(folder, $"{scene}-{width}-{theme}.png"));
+            }
+        }
+    }
+
     private static void SaveRenderedFrame(MainWindow window, string path)
     {
         using var frame = window.CaptureRenderedFrame() ?? throw new InvalidOperationException($"No frame rendered for {path}.");
@@ -803,12 +821,17 @@ public sealed class PageScreenshots
     /// <summary>
     /// Opens the window over the sample project; without <paramref name="parse"/> it stops before the first parse,
     /// and with <paramref name="leaveSetupOpen"/> it stops with first-run setup still showing.
+    /// Component fixtures can omit shell composition with <paramref name="composeWindow"/> and build their own view.
     /// </summary>
     internal static async Task<(WorkspaceShellViewModel Workspace, MainWindow Window)> OpenOverSampleData(
         bool parse = true, Action<FakeCommandClient, AssessCommandResponse>? configure = null, bool leaveSetupOpen = false,
         string? settingsFilePath = null, TextWordsResponse? capturedWords = null,
-        AssessCommandResponse? capturedAssessment = null, bool advancedAiModeEnabled = false, IUserPreferencesStore? preferencesStore = null)
+        AssessCommandResponse? capturedAssessment = null, bool advancedAiModeEnabled = false, IUserPreferencesStore? preferencesStore = null,
+        SIL.Motif.Commands.Assistants.IAssistantConnectionService? assistantConnections = null,
+        bool renderForCapture = true, Action<string, double>? recordSetup = null, bool composeWindow = true)
     {
+        var stage = System.Diagnostics.Stopwatch.StartNew();
+        void Record(string name) { recordSetup?.Invoke(name, stage.Elapsed.TotalMilliseconds); stage.Restart(); }
         var fake = new FakeCommandClient();
         var clock = NewCaptureClock();
         fake.KnownProjectsListIs([new KnownProjectSummary(ProjectPath, CaptureStartAt)]);
@@ -824,7 +847,7 @@ public sealed class PageScreenshots
         fake.StoredGrammarCheckIs(new GrammarCheckResponse(GrammarFindings(), HasBaseline: true));
         fake.CheckGrammarCompletesWith(new GrammarCheckResponse(GrammarFindings(), HasBaseline: true));
         fake.AssessCompletesWith(capturedAssessment ?? Assessment());
-        fake.StatsCompletesWith(new StatsCommandResponse("assessment/one", ProjectPath, "cache", null, StatisticsRows()));
+        fake.StatsCompletesWith(new StatsCommandResponse("assessment/one", ProjectPath, "cache", null, StatisticsRows(capturedAssessment)));
         fake.HandoffCompletesWith(new HandoffCommandResponse(@"C:\Users\linguist\Documents\Motif Handoffs\Sample 2 Oct 6:47 PM",
             Capture(), new SelectionProjection([], []),
             HandoffFileExpectations.Assessed.Select(file => file.RelativePath).ToArray(), ["assessment/one"])
@@ -865,6 +888,7 @@ public sealed class PageScreenshots
         Assert.NotNull(inventory.Value);
         fake.ListTextsCompletesWith(inventory.Value);
         configure?.Invoke(fake, capturedAssessment ?? Assessment());
+        Record("configure-fakes");
         if (parse && capturedWords is not null) readerFixture.RecordAssessment(capturedAssessment ?? Assessment());
         fake.SelectionReaderHandler = readerFixture.OpenAsync;
         fake.OnReadWordState((request, cancellation) => Task.Run(() =>
@@ -873,17 +897,20 @@ public sealed class PageScreenshots
         var check = await fake.ReadStoredGrammarCheckAsync(new GrammarCheckRequest(ProjectPath), CancellationToken.None);
         if (check.Value?.Check is { } warnings) readerFixture.RecordGrammarCheck(warnings);
 
+        Record("publish-store");
         var selection = new SelectionViewModel(fake);
         var workspace = new WorkspaceShellViewModel(
             new ProjectViewModel(fake, new Picker()), new BaselineViewModel(fake),
             selection, new AssessViewModel(fake, selection),
             new Folder(), new Drag(),
-            fake, clock, techDemoNotice: FirstRunNotice(), advancedAiModeEnabled: advancedAiModeEnabled);
+            fake, clock, techDemoNotice: FirstRunNotice(), advancedAiModeEnabled: advancedAiModeEnabled,
+            assistantConnections: assistantConnections);
         IUserPreferencesStore preferences = preferencesStore ?? (settingsFilePath is null
             ? new MemoryUserPreferencesStore()
             : new FileUserPreferencesStore(settingsFilePath));
         var window = new MainWindow(rememberBounds: false, uriLauncher: null, preferencesStore: preferences);
-        window.Compose(workspace);
+        if (composeWindow) window.Compose(workspace);
+        else workspace.UpdateWindowWidth(window.Width);
         window.Closed += async (_, _) =>
         {
             await workspace.Context.StopProjectWorkAsync();
@@ -891,7 +918,9 @@ public sealed class PageScreenshots
         };
         window.Show();
 
+        Record("compose-and-show");
         await workspace.SetProjectAsync(readerFixture.ProjectPath);
+        Record("open-project");
         if (leaveSetupOpen) return (workspace, window);
         workspace.Context.Setup?.SkipCommand.Execute(null);
         foreach (var text in selection.Texts) text.IsChecked = true;
@@ -902,18 +931,23 @@ public sealed class PageScreenshots
             await workspace.Context.EvidencePublication;
             return (workspace, window);
         }
+        Record("select-texts");
         await workspace.Assess.RunCommand.ExecuteAsync(null);
         await workspace.Context.EvidencePublication;
+        Record("assess");
         workspace.PageModel<TimingPageModel>().Statistics.AssessmentId = "assessment/one";
         await workspace.PageModel<TimingPageModel>().Statistics.LoadCommand.ExecuteAsync(null);
+        Record("statistics");
         workspace.Assess.Words.SelectedRow = workspace.Assess.Words.Rows.FirstOrDefault(row => row.Word == "hawajafika");
         var textsPage = workspace.PageModel<TextsPageModel>();
         workspace.CurrentPage = WorkspacePage.Texts;
         textsPage.Tab = TextsTab.AnalyzeTexts;
         textsPage.ShowAnalyzeViewCommand.Execute(AnalyzeTextsView.TextReader);
-        Settle(window);
+        if (renderForCapture) Settle(window);
+        else LayoutInvariantEngineTests.Settle(window);
         var reader = textsPage.ResultsInText;
         await reader.SelectionRefresh;
+        if (!composeWindow) reader.ShowReader();
         Assert.Null(workspace.Context.SelectionReads.Refusal);
         var positions = workspace.Context.SelectionReads.Summary!.SourcePositions;
         var first = positions.FirstOrDefault(position => position.Word.Form == "alikula") ?? positions.FirstOrDefault();
@@ -921,7 +955,9 @@ public sealed class PageScreenshots
         var token = await reader.ReadOccurrenceAsync(first.Location.Anchor);
         Assert.NotNull(token);
         reader.SelectToken(token);
+        Record("reader-and-token");
         await workspace.PageModel<AiHandoffPageModel>().Handoff.RunCommand.ExecuteAsync(null);
+        Record("handoff");
         clock.Advance(TimeSpan.FromDays(1).Add(TimeSpan.FromMinutes(35)));
         workspace.PageModel<AiHandoffPageModel>().Handoff.LatestAssessmentAt = clock.GetLocalNow();
         return (workspace, window);
@@ -1225,7 +1261,7 @@ public sealed class PageScreenshots
         return fixture;
     }
 
-    private static TextWordsResponse TextWords()
+    internal static TextWordsResponse TextWords()
     {
         var assessment = Assessment();
         TextToken Token(string form)
@@ -1327,8 +1363,8 @@ public sealed class PageScreenshots
         };
     }
 
-    private static IReadOnlyList<JsonElement> StatisticsRows() =>
-        Assessment().Words.Select(word => JsonSerializer.SerializeToElement(new
+    private static IReadOnlyList<JsonElement> StatisticsRows(AssessCommandResponse? assessment = null) =>
+        (assessment ?? Assessment()).Words.Select(word => JsonSerializer.SerializeToElement(new
         {
             kind = "word", form = word.Word, attempts = word.Attempts, passes = word.Passes,
             elapsed_ns = word.ElapsedMs * 1_000_000L, capped = word.Outcome == "capped", timed_out = false,

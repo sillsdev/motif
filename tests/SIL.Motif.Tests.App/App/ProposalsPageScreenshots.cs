@@ -39,6 +39,8 @@ public sealed class ProposalsPageScreenshots
         }, TimeSpan.FromMinutes(3));
     }
 
+    internal static void Configure(FakeCommandClient fake) => fake.ProposalStandingsCompleteWith(Standings());
+
     internal static ProposalStandings Standings() => new ProposalStandings(
     [
         Card("proposal/sound", "Sound change", ProposalGroup.WaitingForYou, Summary(TrialFreshness.Current),
