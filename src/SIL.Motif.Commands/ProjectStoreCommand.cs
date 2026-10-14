@@ -126,12 +126,6 @@ public static class ProjectStoreCommand
         {
             return operation();
         }
-        catch (Exception exception) when (SqliteConnections.IsBusy(exception))
-        {
-            // Reaches here only from a step that saved nothing; a step past a save maps its own failures first.
-            return CommandOutcome<T>.Refused(new Refusal("project.busy", FailureReason.Busy,
-                "Another Motif task is writing to this project's data. Try again in a moment.", Fact(fwDataPath)));
-        }
         catch (ProjectBaselineBusyException)
         {
             return CommandOutcome<T>.Refused(new Refusal("project.busy", FailureReason.Busy,
@@ -242,6 +236,14 @@ public static class ProjectStoreCommand
         if (exception.Repository is { } repository) facts["writingSystemRepository"] = repository;
         return new Refusal("project.writing-system-missing", FailureReason.Refused, exception.Message, facts);
     }
+
+    /// <summary>
+    /// The refusal for a Draft step that could not get the project database's write lock before the busy timeout.
+    /// Only a step that writes once, so that the failed write means nothing was saved, may return it: it tells the
+    /// caller to retry.
+    /// </summary>
+    public static Refusal BusyBeforeSave(string fwDataPath) => new("project.busy", FailureReason.Busy,
+        "Another Motif task is writing to this project's data. Try again in a moment.", Fact(fwDataPath));
 
     internal static ProjectLocator Locate(string fwDataPath)
     {

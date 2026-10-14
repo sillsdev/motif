@@ -558,8 +558,18 @@ public static class AssessCommand
                 {
                     return CommandOutcome<AssessCommandResponse>.Refused(Cancelled(request.ProjectPath));
                 }
-                new ParserRefusalRepository(database).Clear(baseline.Token);
+                // Retained before any housekeeping so a later failure cannot delete artifacts the saved Assessment uses.
                 foreach (var lease in artifactLeases) lease.Retain();
+                try
+                {
+                    ClearParserRefusal(database, request.ProjectPath, baseline.Token);
+                }
+                catch (Exception exception) when (exception is not OperationCanceledException)
+                {
+                    // The Assessment is saved and the next successful Assess clears the stale refusal again.
+                    ProjectDiagnosticLog.Append(request.ProjectPath,
+                        "Assess saved its Assessment but could not clear the stale parser refusal.", exception);
+                }
                 return CommandOutcome<AssessCommandResponse>.Success(response);
             }
             finally
@@ -567,6 +577,15 @@ public static class AssessCommand
                 foreach (var lease in artifactLeases) lease.Dispose();
             }
         });
+    }
+
+    private static void ClearParserRefusal(MotifDatabase database, string projectPath, SIL.Motif.Contract.Baselines.BaselineToken token)
+    {
+        var requested = Environment.GetEnvironmentVariable("MOTIF_TEST_BUSY_PARSER_REFUSAL_CLEAR_FOR");
+        if (requested is not null && string.Equals(Path.GetFullPath(requested), Path.GetFullPath(projectPath),
+                OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+            throw new Microsoft.Data.Sqlite.SqliteException("database is locked", 5);
+        new ParserRefusalRepository(database).Clear(token);
     }
 
     // No Baseline yet: capture and publish one. One already current: reuse it rather than recapturing.

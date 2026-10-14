@@ -195,9 +195,11 @@ public static partial class ProposalCommands
                     return (input, RecordParsimonyDispositionComposer.Build(cache, intent, proposalId));
                 });
         }
-        catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException &&
-            !SqliteConnections.IsBusy(exception))
+        catch (Exception exception) when (SqliteConnections.IsBusy(exception))
         {
+            return CommandOutcome<ComposedOperationsResponse>.Refused(ProjectStoreCommand.BusyBeforeSave(request.FwDataPath));
+        }
+        catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)        {
             return CommandOutcome<ComposedOperationsResponse>.Refused(
                 DraftInvalid(exception.Message, ("draftName", request.DraftName)));
         }
@@ -239,9 +241,11 @@ public static partial class ProposalCommands
             return ComposeIntoDraft(database, project, draftName, composer, (cache, proposalId) =>
                 (document.RootElement.Clone(), build(cache, document.RootElement, proposalId)));
         }
-        catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException &&
-            !SqliteConnections.IsBusy(exception))
+        catch (Exception exception) when (SqliteConnections.IsBusy(exception))
         {
+            return CommandOutcome<ComposedOperationsResponse>.Refused(ProjectStoreCommand.BusyBeforeSave(project.FullFwDataPath));
+        }
+        catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)        {
             return CommandOutcome<ComposedOperationsResponse>.Refused(
                 DraftInvalid(exception.Message, ("draftName", draftName)));
         }
@@ -257,9 +261,11 @@ public static partial class ProposalCommands
                 return Single(ComposeStepsIntoDraft(database, project, draftName,
                     [ComposeStep.From(composer, document.RootElement.Clone())]));
             }
-            catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException &&
-                !SqliteConnections.IsBusy(ex))
+            catch (Exception ex) when (SqliteConnections.IsBusy(ex))
             {
+                return CommandOutcome<ComposedOperationsResponse>.Refused(ProjectStoreCommand.BusyBeforeSave(path));
+            }
+            catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException)            {
                 return CommandOutcome<ComposedOperationsResponse>.Refused(DraftInvalid(ex.Message, ("draftName", draftName)));
             }
         });
@@ -448,9 +454,11 @@ public static partial class ProposalCommands
                 ("draftName", draftName), ("intentIndex", exception.Index.ToString(CultureInfo.InvariantCulture)),
                 ("verb", verb)));
         }
-        catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException &&
-            !SqliteConnections.IsBusy(exception))
+        catch (Exception exception) when (SqliteConnections.IsBusy(exception))
         {
+            return CommandOutcome<ComposedOperationsResponse[]>.Refused(ProjectStoreCommand.BusyBeforeSave(project.FullFwDataPath));
+        }
+        catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)        {
             return CommandOutcome<ComposedOperationsResponse[]>.Refused(
                 DraftInvalid(exception.Message, ("draftName", draftName)));
         }

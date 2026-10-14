@@ -36,9 +36,11 @@ public static partial class ProposalCommands
                 return Single(ComposeStepsIntoDraft(database, project, draftName,
                     [ComposeStep.From(composer, document.RootElement.Clone(), citation)]));
             }
-            catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException &&
-                !SqliteConnections.IsBusy(exception))
+            catch (Exception exception) when (SqliteConnections.IsBusy(exception))
             {
+                return CommandOutcome<ComposedOperationsResponse>.Refused(ProjectStoreCommand.BusyBeforeSave(fwDataPath));
+            }
+            catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)            {
                 return CommandOutcome<ComposedOperationsResponse>.Refused(
                     DraftInvalid(exception.Message, ("draftName", draftName)));
             }

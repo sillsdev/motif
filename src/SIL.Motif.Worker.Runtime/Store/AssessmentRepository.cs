@@ -718,12 +718,17 @@ public sealed class AssessmentRepository : IAssessmentRepository
         next.Transaction = transaction;
         next.CommandText = """
             SELECT MAX(COALESCE((SELECT seq FROM sqlite_sequence WHERE name = 'AssessedWords'), 0),
-                       COALESCE((SELECT MAX(AssessedWordId) FROM AssessedWords), 0)) + 1;
+                       COALESCE((SELECT MAX(AssessedWordId) FROM AssessedWords), 0));
             """;
-        var firstId = (long)next.ExecuteScalar()!;
-        for (var index = 0; index < prepared.Words.Count; index++) prepared.Words[index][0] = firstId + index;
+        var highWater = (long)next.ExecuteScalar()!;
+        // Ids never wrap or repeat; the Assessment rolls back instead (pinned by `IdAllocationNeverWraps`).
+        if (highWater > long.MaxValue - prepared.Words.Count)
+            throw new InvalidOperationException(
+                "The project's store has no assessed-word ids left, so the Assessment was not recorded.");
+        var firstId = highWater + 1;
+        for (var index = 0; index < prepared.Words.Count; index++) prepared.Words[index][0] = checked(firstId + index);
         InsertRows(connection, transaction, "AssessedWords", WordColumns, prepared.Words);
-        foreach (var (word, values) in prepared.Analyses) values[0] = firstId + word;
+        foreach (var (word, values) in prepared.Analyses) values[0] = checked(firstId + word);
         InsertRows(connection, transaction, "ParsedAnalyses", AnalysisColumns,
             prepared.Analyses.Select(analysis => analysis.Values).ToArray());
     }
