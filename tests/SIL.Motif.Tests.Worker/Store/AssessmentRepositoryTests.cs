@@ -699,9 +699,41 @@ public sealed class AssessmentRepositoryTests : IDisposable
             transaction.Commit();
         }
 
-        Assert.True(statements <= 40, $"{statements} statements recorded 1,000 words and 3,000 analyses.");
+        // 10 word and 30 analysis batches, plus BEGIN, COMMIT, the header and the id read; row at a time is 5,000.
+        Assert.True(statements <= 40 + 6, $"{statements} statements recorded 1,000 words and 3,000 analyses.");
         Assert.Equal(1000L, long.Parse(Scalar(database, "SELECT CAST(COUNT(*) AS TEXT) FROM AssessedWords")));
         Assert.Equal(3000L, long.Parse(Scalar(database, "SELECT CAST(COUNT(*) AS TEXT) FROM ParsedAnalyses")));
+    }
+
+    [Theory]
+    [InlineData(2L, true)]
+    [InlineData(1L, false)]
+    public void IdAllocationNeverWraps(
+        long headroom, bool fits)
+    {
+        var repository = NewRepository($"id-allocation-{headroom}.fwdata", out var database);
+        using var ownedDatabase = database;
+        using (var connection = database.OpenConnection())
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "INSERT OR REPLACE INTO sqlite_sequence (name, seq) VALUES ('AssessedWords', $seq);";
+            command.Parameters.AddWithValue("$seq", long.MaxValue - headroom);
+            command.ExecuteNonQuery();
+        }
+        var record = NewAssessment($"assessment/id-{headroom}", null, null, "Correctness");
+
+        if (fits)
+        {
+            repository.RecordBatch([record]);
+            Assert.Equal(long.MaxValue.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                Scalar(database, "SELECT CAST(MAX(AssessedWordId) AS TEXT) FROM AssessedWords"));
+            return;
+        }
+        Assert.Throws<InvalidOperationException>(() => repository.RecordBatch([record]));
+        Assert.Equal("0", Scalar(database, "SELECT CAST(COUNT(*) AS TEXT) FROM Assessments"));
+        Assert.Equal("0", Scalar(database, "SELECT CAST(COUNT(*) AS TEXT) FROM AssessedWords"));
+        Assert.Equal((long.MaxValue - headroom).ToString(System.Globalization.CultureInfo.InvariantCulture),
+            Scalar(database, "SELECT CAST(seq AS TEXT) FROM sqlite_sequence WHERE name = 'AssessedWords'"));
     }
 
     private static string Scalar(MotifDatabase database, string sql)
