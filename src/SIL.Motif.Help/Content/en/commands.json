@@ -289,6 +289,11 @@
     "description": "Changes a job's position in the queue by moving it before another job or to either end. Use it when work across Known projects needs a different order.",
     "source": "Hand-written from docs/cli-api.md and command behavior."
   },
+  "apply": {
+    "title": "Apply with Readiness override",
+    "description": "Applies one Proposal using its already bound Dry Run. The optional --force option skips Readiness checks only; changes that no longer fit remain refused, and only a person can Apply.",
+    "source": "Hand-written from command behavior."
+  },
   "apply --all-pending": {
     "title": "Apply pending changes",
     "description": "Applies the current pending changes to the FieldWorks project as one unit of work. A current Dry Run can waive Correctness for a judgment-only Proposal; mixed changes still need normal Readiness evidence.",
@@ -336,7 +341,7 @@
   },
   "compose-batch": {
     "title": "Compose many intents",
-    "description": "Stages every intent in a JSON file in one Draft with one project load, through the same checks as each composing command alone. If any intent is refused, nothing is added. Only a person can Apply.",
+    "description": "Stages every intent in a JSON file in one Draft with one project load, through the same checks as each composing command alone. If any intent is refused, nothing is added, and both a label and comment are still required before Finalize. Only a person can Apply.",
     "source": "Hand-written from command behavior."
   },
   "order-allomorphs": {
@@ -431,12 +436,12 @@
   },
   "new": {
     "title": "Start a Proposal",
-    "description": "Starts a named Draft holding one related set of semantic changes. Measure it and revise it before Finalize. Only a person can Apply.",
+    "description": "Starts a named Draft holding one related set of semantic changes. Set a short label and a comment before Finalize, then measure and revise the Draft. Only a person can Apply.",
     "source": "Authored from ADR 0058 and the typed command contract."
   },
   "finalize": {
     "title": "Finalize a Proposal",
-    "description": "Finalizes a Draft as an immutable Proposal revision for a person to review. Evidence for unchanged content on the same Baseline remains current.",
+    "description": "Finalizes a Draft as an immutable Proposal revision for a person to review. The Draft needs both a short label and a comment. Evidence for unchanged content on the same Baseline remains current.",
     "source": "Authored from ADR 0058 and the typed command contract."
   },
   "dry-run": {
@@ -486,7 +491,17 @@
   },
   "apply --proposal": {
     "title": "Apply one Proposal",
-    "description": "Applies one Proposal to the FieldWorks project as one unit of work, using the result of its latest Trial. The Proposal must have been tried since it and the project last changed.",
+    "description": "Applies one Proposal to the FieldWorks project as one unit of work, using the result of its latest Trial. It is a human-only Released command and does not offer a Readiness override.",
+    "source": "Hand-written from command behavior."
+  },
+  "label": {
+    "title": "Label a Draft",
+    "description": "Sets or replaces the short label that identifies a Draft in lists and review. The label does not change its operations, and only a person can Apply the Proposal.",
+    "source": "Hand-written from command behavior."
+  },
+  "comment": {
+    "title": "Comment on a Draft",
+    "description": "Sets or replaces the Draft's rationale for its proposed changes. The comment preserves review context without changing operations, and only a person can Apply the Proposal.",
     "source": "Hand-written from command behavior."
   },
   "reject --proposal": {

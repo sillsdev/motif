@@ -8,6 +8,14 @@ internal static class AdvancedAiModeCommand
 
     public static int Run(string[] args, TextWriter output, TextWriter error)
     {
+        if (args.Length == 1 && args[0] == "advanced-ai")
+        {
+            output.WriteLine(FileAdvancedAiModePreferenceStore.ForInstallation().IsEnabled
+                ? "Advanced AI mode is on."
+                : "Advanced AI mode is off.");
+            return 0;
+        }
+
         if (args.Length != 2 || args[0] != "advanced-ai" || args[1] is not "on" and not "off")
         {
             error.WriteLine(Usage);

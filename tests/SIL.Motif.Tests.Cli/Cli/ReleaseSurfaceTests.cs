@@ -33,26 +33,48 @@ public sealed class ReleaseSurfaceTests : IDisposable
     }
 
     [Fact]
-    public void AllPendingAfterTheOptionTerminatorIsRefusedAsDeveloperOnly()
+    public void AllPendingAfterTheOptionTerminatorDoesNotSelectReleasedApply()
     {
         var result = Run("apply P --project p --force --json -- --all-pending", developerCommands: false);
 
-        Assert.Equal(FailureEnvelope.ExitCodeFor(FailureReason.Refused), result.ExitCode);
+        Assert.Equal(FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument), result.ExitCode);
         Assert.Empty(result.Output);
-        var envelope = ProjectionJson.Deserialize<FailureEnvelope>(result.Error)!;
-        Assert.Equal("command.not-in-release", envelope.Code);
-        Assert.Equal(FailureReason.Refused, envelope.Reason);
-        Assert.Contains("Command 'apply'", envelope.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("command.developer-commands-required", result.Error, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void ApplyingOneProposalIsRefusedAsDeveloperOnly()
+    public void ApplyEntryPointsAreHumanOnlyAndOnlyReleasedRoutesArePublic()
     {
-        var result = Run("apply P", developerCommands: false);
+        var apply = Assert.Single(CommandCatalog.All, command => command.Name == "apply");
+        Assert.Equal(CommandSurface.Released, apply.Surface);
+        Assert.Equal(AgentClass.HumanOnly, apply.Agent);
+        Assert.False(apply.IsAgentTool);
+        foreach (var name in new[] { "apply --proposal", "apply --all-pending" })
+        {
+            var releasedApply = Assert.Single(CommandCatalog.All, command => command.Name == name);
+            Assert.Equal(CommandSurface.Released, releasedApply.Surface);
+            Assert.Equal(AgentClass.HumanOnly, releasedApply.Agent);
+            Assert.False(releasedApply.IsAgentTool);
+        }
+    }
 
-        Assert.Equal(FailureEnvelope.ExitCodeFor(FailureReason.Refused), result.ExitCode);
-        Assert.Empty(result.Output);
-        Assert.Contains("Command 'apply' is not part of Motif", result.Error, StringComparison.Ordinal);
+    [Fact]
+    public void PlainApplyDispatchesWithoutDeveloperOptIn()
+    {
+        var result = Run("apply", developerCommands: false);
+
+        Assert.Equal(FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument), result.ExitCode);
+        Assert.Contains("Usage: motif apply <proposalId>", result.Error, StringComparison.Ordinal);
+        Assert.DoesNotContain("MOTIF_DEVELOPER_COMMANDS=1", result.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void PlainApplyForceDispatchesWithoutDeveloperOptIn()
+    {
+        var result = Run("apply proposal --project p --force --json", developerCommands: false);
+
+        Assert.DoesNotContain("command.developer-commands-required", result.Error, StringComparison.Ordinal);
+        Assert.DoesNotContain("MOTIF_DEVELOPER_COMMANDS=1", result.Error, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -165,7 +187,7 @@ public sealed class ReleaseSurfaceTests : IDisposable
             Assert.True(text.ExitCode == expectedExitCode,
                 $"Expected exit code {expectedExitCode}; got {text.ExitCode}.{Environment.NewLine}{text.Error}");
             Assert.Contains(name, text.Error, StringComparison.Ordinal);
-            Assert.Contains($"not part of Motif {MotifProductVersion.CurrentText}", text.Error, StringComparison.Ordinal);
+            Assert.Contains("MOTIF_DEVELOPER_COMMANDS=1", text.Error, StringComparison.Ordinal);
 
             var json = Run(name + " --json", developerCommands: false);
             Assert.True(json.ExitCode == expectedExitCode,
@@ -173,9 +195,46 @@ public sealed class ReleaseSurfaceTests : IDisposable
             Assert.Equal(string.Empty, json.Output);
             var envelope = ProjectionJson.Deserialize<FailureEnvelope>(json.Error)!;
             Assert.Equal(FailureReason.Refused, envelope.Reason);
-            Assert.Equal("command.not-in-release", envelope.Code);
+            Assert.Equal("command.developer-commands-required", envelope.Code);
             Assert.Contains(name, envelope.Message, StringComparison.Ordinal);
+            Assert.Contains("MOTIF_DEVELOPER_COMMANDS=1", envelope.Message, StringComparison.Ordinal);
         }
+    }
+
+    [Fact]
+    public void DraftAuthoringAndEvaluationUseTheAdvancedAiSurface()
+    {
+        var authoring = new[]
+        {
+            "new", "compose-author-phoneme", "compose-batch", "label", "comment", "finalize",
+        };
+        var evaluating = new[] { "dry-run", "trial" };
+
+        Assert.All(authoring, name => Assert.Equal(CommandSurface.AdvancedAi,
+            Assert.Single(CommandCatalog.All, command => command.Name == name).Surface));
+        Assert.All(evaluating, name => Assert.Equal(CommandSurface.AdvancedAi,
+            Assert.Single(CommandCatalog.All, command => command.Name == name).Surface));
+
+        var apply = Assert.Single(CommandCatalog.All, command => command.Name == "apply --all-pending");
+        Assert.Equal(CommandSurface.Released, apply.Surface);
+        Assert.Equal(AgentClass.HumanOnly, apply.Agent);
+        Assert.False(apply.IsAgentTool);
+    }
+
+    [Fact]
+    public void AdvancedAiRefusalNamesTheSettingAndSandboxPreferencePath()
+    {
+        var result = Run("new --project p --draft proposal", developerCommands: false);
+
+        Assert.Equal(FailureEnvelope.ExitCodeFor(FailureReason.Refused), result.ExitCode);
+        Assert.Contains("motif settings advanced-ai on", result.Error, StringComparison.Ordinal);
+        Assert.Contains("MOTIF_ADVANCED_AI_MODE_PATH", result.Error, StringComparison.Ordinal);
+
+        var json = Run("new --project p --draft proposal --json", developerCommands: false);
+        var envelope = ProjectionJson.Deserialize<FailureEnvelope>(json.Error)!;
+        Assert.Equal("command.advanced-ai-mode-required", envelope.Code);
+        Assert.Contains("motif settings advanced-ai on", envelope.Message, StringComparison.Ordinal);
+        Assert.Contains("MOTIF_ADVANCED_AI_MODE_PATH", envelope.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -190,9 +249,9 @@ public sealed class ReleaseSurfaceTests : IDisposable
         Assert.Equal(string.Empty, result.Output);
         var envelope = ProjectionJson.Deserialize<FailureEnvelope>(result.Error)!;
         Assert.Equal(FailureReason.Refused, envelope.Reason);
-        Assert.Equal("command.not-in-release", envelope.Code);
+        Assert.Equal("command.developer-commands-required", envelope.Code);
         Assert.Contains("add-delete-lexeme-form", envelope.Message, StringComparison.Ordinal);
-        Assert.Contains($"Motif {MotifProductVersion.CurrentText}", envelope.Message, StringComparison.Ordinal);
+        Assert.Contains("MOTIF_DEVELOPER_COMMANDS=1", envelope.Message, StringComparison.Ordinal);
 
         using var machine = MachineDatabase.Open(Path.Combine(_root, "machine"));
         Assert.Empty(new KnownProjectRegistry(machine).List());
@@ -204,7 +263,7 @@ public sealed class ReleaseSurfaceTests : IDisposable
         var result = Run("new", developerCommands: true);
 
         Assert.Equal(1, result.ExitCode);
-        Assert.DoesNotContain($"not part of Motif {MotifProductVersion.CurrentText}", result.Error, StringComparison.Ordinal);
+        Assert.DoesNotContain("MOTIF_DEVELOPER_COMMANDS=1", result.Error, StringComparison.Ordinal);
         Assert.Contains("Usage: motif new", result.Error, StringComparison.Ordinal);
     }
 

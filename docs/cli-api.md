@@ -16,7 +16,9 @@ motif help --all --json
 
 The shared user-facing Guides, including agent Guides, are authored under [`src/SIL.Motif.Help/Content/en/guide/`](../src/SIL.Motif.Help/Content/en/guide/). For current agent guidance, see [Start here](../src/SIL.Motif.Help/Content/en/guide/agents/start-here.md), [Output and exit codes](../src/SIL.Motif.Help/Content/en/guide/agents/output-and-exit-codes.md), and [Work with jobs](../src/SIL.Motif.Help/Content/en/guide/agents/work-with-jobs.md). Command and glossary Help is authored under `src/SIL.Motif.Help/Content/en/` and embedded by `SIL.Motif.Help` with logical resource names beginning `help/`.
 
-Two entry points are not catalogued commands. `motif mcp [--profile <file | shipped name>] [--activity-log <file.jsonl>]` serves the tools to an AI assistant over standard input and output. `motif settings advanced-ai on|off` turns Advanced AI mode on or off; commands on the Advanced AI surface are refused, with that instruction, while it is off. Developer commands appear only with `MOTIF_DEVELOPER_COMMANDS=1`.
+Two entry points are not catalogued commands. `motif mcp [--profile <file | shipped name>] [--activity-log <file.jsonl>]` serves the tools to an AI assistant over standard input and output. `motif settings advanced-ai` reads the current mode; append `on` or `off` to change it. `motif help mcp --full` explains the MCP startup gate. `motif help` lists Advanced AI and Developer verbs with their enablement instructions even while those modes are off. When Advanced AI is off, refusals name the setting command; in a sandbox, set `MOTIF_ADVANCED_AI_MODE_PATH` to a writable preference file. Developer commands require `MOTIF_DEVELOPER_COMMANDS=1`, which refusals name directly.
+
+Draft authoring commands, including `label` and `comment`, use Advanced AI mode. The Released Apply commands `apply <proposalId>`, `apply --proposal <id>`, and `apply --all-pending` are human-only and unavailable as agent tools. Plain `apply` has an optional `--force` switch that skips Readiness reasons only; it does not bypass project fit checks. The `apply --proposal` route has no force option.
 
 ## Process and data boundary
 

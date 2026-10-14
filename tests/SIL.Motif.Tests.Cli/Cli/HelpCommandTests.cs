@@ -28,6 +28,106 @@ public sealed class HelpCommandTests
     }
 
     [Fact]
+    public void HelpDiscoversAdvancedAiAndDeveloperCommandsWhenBothModesAreOff()
+    {
+        var result = Run("help");
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Contains("Advanced AI commands", result.Output, StringComparison.Ordinal);
+        Assert.Contains("motif settings advanced-ai on", result.Output, StringComparison.Ordinal);
+        Assert.Contains("MOTIF_ADVANCED_AI_MODE_PATH", result.Output, StringComparison.Ordinal);
+        Assert.Contains("label", result.Output, StringComparison.Ordinal);
+        Assert.Contains("parsimony show", result.Output, StringComparison.Ordinal);
+        Assert.Contains("store delete-refused", result.Output, StringComparison.Ordinal);
+        Assert.Contains("Developer commands", result.Output, StringComparison.Ordinal);
+        Assert.Contains("MOTIF_DEVELOPER_COMMANDS=1", result.Output, StringComparison.Ordinal);
+        Assert.Contains("pending-changes", result.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void HelpDiscoveryListsCompleteCatalogNamesOnEachHiddenSurface()
+    {
+        var result = Run("help");
+
+        Assert.Equal(0, result.ExitCode);
+        var lines = result.Output.Split(Environment.NewLine);
+        var advancedHeader = Array.FindIndex(lines, line => line.StartsWith("Advanced AI commands", StringComparison.Ordinal));
+        var developerHeader = Array.FindIndex(lines, line => line.StartsWith("Developer commands", StringComparison.Ordinal));
+        Assert.True(advancedHeader >= 0 && developerHeader > advancedHeader);
+
+        var advancedNames = lines[advancedHeader + 1].Split("  ", StringSplitOptions.RemoveEmptyEntries);
+        var developerNames = lines[developerHeader + 1].Split("  ", StringSplitOptions.RemoveEmptyEntries);
+        Assert.Equal(CommandsForSurface(CommandSurface.AdvancedAi), advancedNames);
+        Assert.Equal(CommandsForSurface(CommandSurface.Developer), developerNames);
+
+        var projectCreate = CommandCatalog.All.SingleOrDefault(command => command.Name == "project create");
+        if (projectCreate is not null)
+        {
+            Assert.Equal(CommandSurface.Developer, projectCreate.Surface);
+            Assert.Equal(AgentClass.HumanOnly, projectCreate.Agent);
+            Assert.False(projectCreate.IsAgentTool);
+            Assert.Contains("project create", developerNames, StringComparer.Ordinal);
+            var help = Run("help", "project", "create");
+            Assert.Equal(0, help.ExitCode);
+            Assert.Contains("MOTIF_DEVELOPER_COMMANDS=1", help.Output, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
+    public void HelpDocumentsTheMcpEntryPointAndAdvancedAiModeStatus()
+    {
+        var list = Run("help");
+        Assert.Contains("Other entry points:", list.Output, StringComparison.Ordinal);
+        Assert.Contains("mcp", list.Output, StringComparison.Ordinal);
+        Assert.Contains("settings advanced-ai", list.Output, StringComparison.Ordinal);
+
+        var mcp = Run("help", "mcp", "--full");
+        Assert.Equal(0, mcp.ExitCode);
+        Assert.Contains("Usage: motif mcp", mcp.Output, StringComparison.Ordinal);
+        Assert.Contains("motif settings advanced-ai", mcp.Output, StringComparison.Ordinal);
+        Assert.Contains("complete initialization", mcp.Output, StringComparison.Ordinal);
+        Assert.Contains("zero tools", mcp.Output, StringComparison.Ordinal);
+        Assert.Contains("MOTIF_ADVANCED_AI_MODE_PATH", mcp.Output, StringComparison.Ordinal);
+        Assert.Contains("restart the Motif MCP server and reconnect the assistant", mcp.Output,
+            StringComparison.Ordinal);
+        Assert.Contains("tools/list result stays empty", mcp.Output, StringComparison.Ordinal);
+        Assert.Contains("motif_advanced_ai_setup", mcp.Output, StringComparison.Ordinal);
+        Assert.Contains("without reading project data or changing settings", mcp.Output, StringComparison.Ordinal);
+        Assert.Contains("A clean exit after standard input reaches EOF means the session ended", mcp.Output,
+            StringComparison.Ordinal);
+        Assert.Contains("by itself, it does not show that startup failed", mcp.Output, StringComparison.Ordinal);
+        Assert.Contains("MCP launch log", mcp.Output, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("label", "motif settings advanced-ai on", "MOTIF_ADVANCED_AI_MODE_PATH")]
+    [InlineData("pending-changes", "MOTIF_DEVELOPER_COMMANDS=1", "")]
+    public void HelpForAnUnavailableCommandExplainsItsEnablement(string command, string instruction, string pathHint)
+    {
+        var result = Run("help", command);
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Contains(command, result.Output, StringComparison.Ordinal);
+        Assert.Contains(instruction, result.Output, StringComparison.Ordinal);
+        if (pathHint.Length > 0)
+            Assert.Contains(pathHint, result.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void HelpShowsAdvancedAiAndDeveloperCommandsWhenBothModesAreEnabled()
+    {
+        var result = Run(true, true, "help");
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Contains("Advanced AI commands (enabled)", result.Output, StringComparison.Ordinal);
+        Assert.Contains("Developer commands (enabled)", result.Output,
+            StringComparison.Ordinal);
+        Assert.Contains("Start a Proposal", result.Output, StringComparison.Ordinal);
+        Assert.Contains("parsimony show", result.Output, StringComparison.Ordinal);
+        Assert.Contains("store delete-refused", result.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void AppViewsAndCliHelpContainNoUserVisibleBetaCopy()
     {
         var repositoryRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", ".."));
@@ -269,7 +369,9 @@ public sealed class HelpCommandTests
 
     private static CliRun Run(params string[] arguments) => Run(false, arguments);
 
-    private static CliRun Run(bool advancedAi, params string[] arguments)
+    private static CliRun Run(bool advancedAi, params string[] arguments) => Run(advancedAi, false, arguments);
+
+    private static CliRun Run(bool advancedAi, bool developerCommands, params string[] arguments)
     {
         var start = new ProcessStartInfo(BuildOutput.Cli)
         {
@@ -280,7 +382,10 @@ public sealed class HelpCommandTests
         };
         foreach (var argument in arguments)
             start.ArgumentList.Add(argument);
-        start.Environment.Remove(CommandSurfacePolicy.DeveloperCommandsEnvironmentVariable);
+        if (developerCommands)
+            start.Environment[CommandSurfacePolicy.DeveloperCommandsEnvironmentVariable] = "1";
+        else
+            start.Environment.Remove(CommandSurfacePolicy.DeveloperCommandsEnvironmentVariable);
         var preferencePath = Path.Combine(Path.GetTempPath(), "motif-help-preferences", Guid.NewGuid().ToString("N"),
             "advanced-ai-mode.json");
         new FileAdvancedAiModePreferenceStore(preferencePath).SetEnabled(advancedAi);
@@ -300,6 +405,14 @@ public sealed class HelpCommandTests
             if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true);
         }
     }
+
+    private static string[] CommandsForSurface(CommandSurface surface) => CliVerbCatalog.All
+        .Where(verb => CommandCatalog.All.Any(command =>
+            command.Name == verb.CommandName && command.Surface == surface))
+        .Select(verb => verb.CommandName)
+        .Distinct(StringComparer.Ordinal)
+        .Order(StringComparer.Ordinal)
+        .ToArray();
 
     private sealed record CliRun(int ExitCode, string Output, string Error);
 

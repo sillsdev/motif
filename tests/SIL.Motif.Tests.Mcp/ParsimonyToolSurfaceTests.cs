@@ -170,11 +170,23 @@ public sealed class ParsimonyToolSurfaceTests
         await using var client = await ModelContextProtocol.Client.McpClient.CreateAsync(
             new StreamClientTransport(toServer.Writer.AsStream(), fromServer.Reader.AsStream()));
         Assert.Empty(await client.ListToolsAsync());
-        Assert.Contains("Advanced AI mode", client.ServerInstructions!);
+        Assert.Contains("started and connected successfully", client.ServerInstructions!, StringComparison.Ordinal);
+        Assert.Contains("Advanced AI mode is OFF", client.ServerInstructions!, StringComparison.Ordinal);
+        Assert.Contains("zero tools are exposed", client.ServerInstructions!, StringComparison.Ordinal);
+        Assert.Contains("MOTIF_ADVANCED_AI_MODE_PATH", client.ServerInstructions!, StringComparison.Ordinal);
+        Assert.Contains("motif settings advanced-ai on", client.ServerInstructions!, StringComparison.Ordinal);
+        Assert.Contains("restart the Motif MCP server and reconnect the assistant", client.ServerInstructions!,
+            StringComparison.Ordinal);
         var refused = await client.CallToolAsync("motif_grammar", new Dictionary<string, object?>());
         Assert.True(refused.IsError);
         Assert.Equal("advanced-ai.disabled", refused.StructuredContent!.Value.GetProperty("code").GetString());
-        Assert.Contains("Advanced AI mode", ((TextContentBlock)refused.Content[0]).Text);
+        Assert.Contains("Advanced AI mode is OFF", ((TextContentBlock)refused.Content[0]).Text);
+        Assert.Contains("MOTIF_ADVANCED_AI_MODE_PATH", ((TextContentBlock)refused.Content[0]).Text,
+            StringComparison.Ordinal);
+        Assert.Equal(SIL.Motif.Commands.Preferences.FileAdvancedAiModePreferenceStore.DisabledServerInstructions,
+            client.ServerInstructions);
+        Assert.Contains(SIL.Motif.Commands.Preferences.FileAdvancedAiModePreferenceStore.DisabledMessage,
+            ((TextContentBlock)refused.Content[0]).Text, StringComparison.Ordinal);
         cancellation.Cancel();
         try { await server; } catch (OperationCanceledException) { }
 

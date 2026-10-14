@@ -190,6 +190,47 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public async Task TheBuiltCliInitializesWithValidMcpFramingWhenModeIsOffAndExplainsTheEmptyToolList()
+    {
+        using var project = new WalkthroughProject(pristine);
+        var preferencePath = Path.Combine(project.ManagedRoot, "advanced-ai-mode.json");
+        new FileAdvancedAiModePreferenceStore(preferencePath).SetEnabled(false);
+        var transport = new StdioClientTransport(new StdioClientTransportOptions
+        {
+            EnvironmentVariables = new Dictionary<string, string?>
+            {
+                [FileAdvancedAiModePreferenceStore.PathEnvironmentVariable] = preferencePath,
+                [RunnerOptions.RootVariable] = project.ManagedRoot,
+            },
+            Name = "motif process regression with Advanced AI off",
+            Command = BuildOutput.Cli,
+            Arguments = ["mcp"],
+            WorkingDirectory = project.ManagedRoot,
+        });
+        await using var client = await McpClient.CreateAsync(transport);
+
+        Assert.Empty(await client.ListToolsAsync());
+        var prompts = await client.ListPromptsAsync();
+        var setupPrompt = Assert.Single(prompts);
+        Assert.Equal("motif_advanced_ai_setup", setupPrompt.Name);
+        Assert.Empty(setupPrompt.ProtocolPrompt.Arguments ?? []);
+        var setup = await client.GetPromptAsync(setupPrompt.Name);
+        Assert.Equal(setupPrompt.Description, setup.Description);
+        var setupText = Assert.IsType<TextContentBlock>(Assert.Single(setup.Messages).Content).Text;
+        Assert.Contains("motif settings advanced-ai on", setupText, StringComparison.Ordinal);
+        Assert.Contains(FileAdvancedAiModePreferenceStore.PathEnvironmentVariable, setupText, StringComparison.Ordinal);
+        Assert.Contains("restart the Motif MCP server and reconnect the assistant", setupText,
+            StringComparison.Ordinal);
+        Assert.Contains("does not read or change any project or setting", setupText, StringComparison.Ordinal);
+        Assert.Equal(FileAdvancedAiModePreferenceStore.DisabledServerInstructions, client.ServerInstructions);
+        var refused = await client.CallToolAsync("motif_grammar", new Dictionary<string, object?>());
+        Assert.True(refused.IsError);
+        Assert.Equal("advanced-ai.disabled", refused.StructuredContent!.Value.GetProperty("code").GetString());
+        Assert.Contains(FileAdvancedAiModePreferenceStore.PathEnvironmentVariable,
+            ((TextContentBlock)refused.Content[0]).Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task TheBuiltCliListsToolsAndServesAReadOverStdio()
     {
         using var project = new WalkthroughProject(pristine);
@@ -214,7 +255,11 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         await using var client = await McpClient.CreateAsync(transport);
 
         var tools = await client.ListToolsAsync();
+        Assert.NotEmpty(tools);
         Assert.Contains(tools, tool => tool.Name == "motif_grammar");
+        Assert.Empty(await client.ListPromptsAsync());
+        Assert.DoesNotContain("Advanced AI mode is OFF", client.ServerInstructions ?? string.Empty,
+            StringComparison.Ordinal);
 
         var result = await client.CallToolAsync("motif_grammar", new Dictionary<string, object?> { ["project"] = project.FwDataPath });
         Assert.True(result.IsError != true, string.Join(Environment.NewLine, serverErrors));

@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging;
+using ModelContextProtocol;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using SIL.Motif.Commands;
@@ -30,6 +31,9 @@ public sealed record McpLaunchOptions(
 public static class MotifMcpServer
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
+    private const string AdvancedAiSetupPromptName = "motif_advanced_ai_setup";
+    private const string AdvancedAiSetupPromptDescription =
+        "Explain how to enable Motif tools after Advanced AI mode was off at server startup.";
 
     /// <summary>Serves one client over <paramref name="input"/> and <paramref name="output"/> until it disconnects.</summary>
     public static async Task RunAsync(McpLaunchOptions options, Stream input, Stream output, TextWriter log,
@@ -41,16 +45,33 @@ public static class MotifMcpServer
             options.Runner ?? ProcessRunnerLauncher.FromEnvironment(), new ActivityLog(options.ActivityLogPath), profile, log, options.AdvancedAiModeEnabled, options.ParserPath);
         var exposed = options.AdvancedAiModeEnabled ? Expose(profile) : [];
         var includeParsimonyResources = exposed.Any(tool => tool.Tool.Name == "motif_parsimony_measures");
+        var prompts = options.AdvancedAiModeEnabled
+            ? Array.Empty<Prompt>()
+            : new[]
+            {
+                new Prompt
+                {
+                    Name = AdvancedAiSetupPromptName,
+                    Title = "Enable Motif tools",
+                    Description = AdvancedAiSetupPromptDescription,
+                    Arguments = [],
+                },
+            };
+        var setupPromptText =
+            SIL.Motif.Commands.Preferences.FileAdvancedAiModePreferenceStore.DisabledServerInstructions +
+            " Check the current mode with 'motif settings advanced-ai'. This prompt only gives setup instructions; " +
+            "it does not read or change any project or setting.";
         using var loggerFactory = new StderrLoggerFactory(log);
         var server = McpServer.Create(new StreamServerTransport(input, output, "motif"), new McpServerOptions
         {
             ServerInfo = new Implementation { Name = "motif", Version = MotifProductVersion.CurrentText },
             ServerInstructions = options.AdvancedAiModeEnabled ? profile.Instructions :
-                SIL.Motif.Commands.Preferences.FileAdvancedAiModePreferenceStore.EnableInstruction,
+                SIL.Motif.Commands.Preferences.FileAdvancedAiModePreferenceStore.DisabledServerInstructions,
             Capabilities = new ServerCapabilities
             {
                 Tools = new ToolsCapability(),
                 Resources = new ResourcesCapability(),
+                Prompts = new PromptsCapability(),
             },
             Handlers = new McpServerHandlers
             {
@@ -60,6 +81,27 @@ public static class MotifMcpServer
                 }),
                 CallToolHandler = async (request, token) => await CallAsync(
                     context, exposed, request.Params?.Name ?? string.Empty, request.Params?.Arguments, token),
+                ListPromptsHandler = (_, _) => ValueTask.FromResult(new ListPromptsResult
+                {
+                    Prompts = prompts,
+                }),
+                GetPromptHandler = (request, _) =>
+                {
+                    if (options.AdvancedAiModeEnabled || request.Params?.Name != AdvancedAiSetupPromptName)
+                        throw new McpProtocolException("The requested prompt is not available.", McpErrorCode.InvalidParams);
+                    return ValueTask.FromResult(new GetPromptResult
+                    {
+                        Description = AdvancedAiSetupPromptDescription,
+                        Messages =
+                        [
+                            new PromptMessage
+                            {
+                                Role = Role.User,
+                                Content = new TextContentBlock { Text = setupPromptText },
+                            },
+                        ],
+                    });
+                },
                 ListResourcesHandler = (_, _) => ValueTask.FromResult(
                     ParsimonyTools.ListResources(includeParsimonyResources)),
                 ReadResourceHandler = (request, _) => ValueTask.FromResult(
@@ -104,7 +146,7 @@ public static class MotifMcpServer
         if (!context.AdvancedAiModeEnabled)
         {
             outcome = ToolOutcome.Refused("advanced-ai.disabled", FailureReason.Refused,
-                SIL.Motif.Commands.Preferences.FileAdvancedAiModePreferenceStore.EnableInstruction);
+                SIL.Motif.Commands.Preferences.FileAdvancedAiModePreferenceStore.DisabledMessage);
             result = RefusalMapper.ToResult(outcome.Refusal!);
         }
         else if (tool is null)

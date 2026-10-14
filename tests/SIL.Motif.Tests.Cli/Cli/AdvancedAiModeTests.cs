@@ -42,6 +42,26 @@ public sealed class AdvancedAiModeTests
         Assert.Equal(enabled, store.IsEnabled);
     }
 
+    [Theory]
+    [InlineData(true, "Advanced AI mode is on.")]
+    [InlineData(false, "Advanced AI mode is off.")]
+    public async Task SettingsCommandReportsTheCurrentModeWithoutChangingIt(bool enabled, string expected)
+    {
+        var preferencePath = NewPreferencePath();
+        var store = new FileAdvancedAiModePreferenceStore(preferencePath);
+        store.SetEnabled(enabled);
+
+        var start = CliProcess.CreateStartInfoWithAdvancedAiModePath(
+            Path.Combine(Path.GetTempPath(), "motif-settings-status"), FakeParser.ExecutablePath,
+            developerCommands: false, preferencePath, "settings", "advanced-ai");
+        var result = await CliProcess.RunAsync(start);
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal(expected + Environment.NewLine, result.Output);
+        Assert.Empty(result.Error);
+        Assert.Equal(enabled, store.IsEnabled);
+    }
+
     private static string NewPreferencePath() => Path.Combine(Path.GetTempPath(), "motif-advanced-ai-cli-tests",
         Guid.NewGuid().ToString("N"), "advanced-ai-mode.json");
 }

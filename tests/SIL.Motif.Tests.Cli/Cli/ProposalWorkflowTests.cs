@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
@@ -6,6 +7,7 @@ using System.Text.Json.Nodes;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Commands.Baselines;
+using SIL.Motif.Commands.Preferences;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
@@ -63,6 +65,66 @@ public sealed class ProposalWorkflowTests : IDisposable
     {
         try { Directory.Delete(_workerRoot, recursive: true); }
         catch { }
+    }
+
+    [Fact]
+    public void AdvancedAiCliCompletesDraftAuthoringAndEvaluationWithoutDeveloperOptIn()
+    {
+        const string draft = "advanced-ai-cli-draft";
+        var intentsPath = Path.Combine(_workerRoot, "intents.json");
+        File.WriteAllText(intentsPath, JsonSerializer.Serialize(new
+        {
+            intents = new[]
+            {
+                new
+                {
+                    verb = "compose-author-phoneme",
+                    intent = new { name = "motifDiscoveryProbe", representations = new[] { "ɮ" } },
+                },
+            },
+        }));
+
+        var preferencePath = Path.Combine(_workerRoot, "advanced-ai-mode.json");
+        new FileAdvancedAiModePreferenceStore(preferencePath).SetEnabled(true);
+        var environment = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+        {
+            [FileAdvancedAiModePreferenceStore.PathEnvironmentVariable] = preferencePath,
+            [RunnerOptions.RootVariable] = _workerRoot,
+        };
+        Assert.False(environment.ContainsKey(CommandSurfacePolicy.DeveloperCommandsEnvironmentVariable));
+
+        (int ExitCode, string Output, string Error) Run(params string[] args)
+        {
+            using var output = new StringWriter();
+            using var error = new StringWriter();
+            var exitCode = global::SIL.Motif.Cli.Program.Run(
+                args, output, error, environment, static (_, _) => { });
+            return (exitCode, output.ToString(), error.ToString());
+        }
+
+        var created = Run("new", "--project", _fwDataPath, "--draft", draft);
+        Assert.True(created.ExitCode == 0, created.Error + created.Output);
+        const string proposalMarker = "proposalId: ";
+        var proposalStart = created.Output.IndexOf(proposalMarker, StringComparison.Ordinal);
+        Assert.True(proposalStart >= 0, "Could not find '" + proposalMarker + "' in new's output: " + created.Output);
+        var proposalId = created.Output.Substring(proposalStart + proposalMarker.Length).TrimEnd('\r', '\n');
+
+        var composed = Run("compose-batch", "--project", _fwDataPath, "--draft", draft,
+            "--intents", intentsPath, "--json");
+        Assert.True(composed.ExitCode == 0, composed.Error + composed.Output);
+
+        var labeled = Run("label", "--project", _fwDataPath, "--draft", draft, "CLI authored");
+        Assert.True(labeled.ExitCode == 0, labeled.Error + labeled.Output);
+        var commented = Run("comment", "--project", _fwDataPath, "--draft", draft, "Reviewed by a person");
+        Assert.True(commented.ExitCode == 0, commented.Error + commented.Output);
+
+        var dryRun = Run("dry-run", "--project", _fwDataPath, proposalId, "--json");
+        Assert.True(dryRun.ExitCode == 0, dryRun.Error + dryRun.Output);
+        var trial = Run("trial", "--project", _fwDataPath, proposalId, "--json");
+        Assert.True(trial.ExitCode == 0, trial.Error + trial.Output);
+
+        var finalized = Run("finalize", "--project", _fwDataPath, "--draft", draft, "--json");
+        Assert.True(finalized.ExitCode == 0, finalized.Error + finalized.Output);
     }
 
     [Fact]

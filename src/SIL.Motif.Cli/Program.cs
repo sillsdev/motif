@@ -2162,10 +2162,11 @@ static int RefuseUnavailableCommand(
 {
     var code = command.Surface == CommandSurface.AdvancedAi
         ? "command.advanced-ai-mode-required"
-        : "command.not-in-release";
+        : "command.developer-commands-required";
     var message = command.Surface == CommandSurface.AdvancedAi
-        ? $"Command '{commandName}' requires Advanced AI mode. Run 'motif settings advanced-ai on' to enable it."
-        : $"Command '{commandName}' is not part of Motif {MotifProductVersion.CurrentText}.";
+        ? $"Command '{commandName}' requires Advanced AI mode. " +
+          FileAdvancedAiModePreferenceStore.DisabledMessage
+        : $"Command '{commandName}' requires Developer commands. Set MOTIF_DEVELOPER_COMMANDS=1 to enable them.";
     if (asJson)
     {
         error.WriteLine(ProjectionJson.Serialize(

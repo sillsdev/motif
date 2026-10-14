@@ -1713,7 +1713,9 @@ public static partial class ProposalCommands
             {
                 var guidance = candidate is null
                     ? "Apply requires a Correctness Assessment for this revision. Run a Trial that collects " +
-                      "approved morphology comparisons; timing-only evidence cannot satisfy this requirement."
+                      "approved morphology comparisons; timing-only evidence cannot satisfy this requirement. " +
+                      "A project with no stems or no approved morphology comparisons has no Correctness candidate " +
+                      "to satisfy this Readiness check."
                     : "Review the Correctness evidence and resolve the reported readiness reasons before applying.";
                 return CommandOutcome<ApplyProjection>.Refused(new Refusal(
                     readiness.IsRegression ? "apply.regression" : "apply.not-ready", FailureReason.Refused,

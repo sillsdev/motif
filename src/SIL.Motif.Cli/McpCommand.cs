@@ -6,8 +6,8 @@ namespace SIL.Motif.Cli;
 
 /// <summary>
 /// <c>motif mcp</c>: serves Motif to an AI agent over standard input and output. It is a server rather than a
-/// catalogued command, so it has no JSON result and no help entry of its own; the protocol owns standard
-/// output, and every diagnostic goes to standard error.
+/// catalogued command, so it has no JSON result; the protocol owns standard output, and every diagnostic goes to
+/// standard error.
 /// </summary>
 internal static class McpCommand
 {

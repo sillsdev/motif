@@ -16,6 +16,10 @@ motif apply --proposal <id> --project <project> --json
 
 The JSON response has `ok`, `applied`, and a one-line `summary`, as `apply --all-pending` does. A Proposal that has not been tried is refused with `apply.trial-missing`; one that changed since its Trial is refused with `apply.trial-stale`. If the response contains `apply.reconciliation-needed`, reload and inspect the project because a write may have happened.
 
+## Readiness
+
+Apply can be refused with `apply.not-ready` when the current Trial has no Correctness Assessment for this revision. A project with no stems, or no approved morphology comparisons in the Trial, may have no Correctness result to satisfy Readiness; timing-only evidence is not enough. This Released command has no `--force` option, so collect the required evidence before applying.
+
 ## Related commands
 
 See [Review a Proposal's changes](cmd:proposal%20review) and [Apply pending changes](cmd:apply%20--all-pending).

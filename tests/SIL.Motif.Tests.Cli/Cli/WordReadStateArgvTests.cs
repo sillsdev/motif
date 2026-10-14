@@ -36,7 +36,8 @@ public sealed class WordReadStateArgvTests : IDisposable
         var result = Run("word read-state --json", developerCommands: false);
 
         Assert.Equal(FailureEnvelope.ExitCodeFor(FailureReason.Refused), result.ExitCode);
-        Assert.Contains("command.not-in-release", result.Error, StringComparison.Ordinal);
+        Assert.Contains("command.developer-commands-required", result.Error, StringComparison.Ordinal);
+        Assert.Contains("MOTIF_DEVELOPER_COMMANDS=1", result.Error, StringComparison.Ordinal);
     }
 
     [Fact]

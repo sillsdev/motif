@@ -19,9 +19,18 @@ public sealed class FileAdvancedAiModePreferenceStore : IAdvancedAiModePreferenc
     /// <summary>The environment variable tests use to select a private preference file.</summary>
     public const string PathEnvironmentVariable = "MOTIF_ADVANCED_AI_MODE_PATH";
 
-    /// <summary>The refusal shown when an AI agent feature is requested while Advanced AI mode is off.</summary>
-    public const string EnableInstruction =
-        "Advanced AI mode enables Motif's AI tools; run 'motif settings advanced-ai on' to turn it on.";
+    /// <summary>The refusal shown when an AI tool is called while Advanced AI mode is off.</summary>
+    public const string DisabledMessage =
+        "Advanced AI mode is OFF. Run 'motif settings advanced-ai on' to enable Motif's tools. " +
+        "In a sandbox, set MOTIF_ADVANCED_AI_MODE_PATH to a writable preference file. " +
+        "Then restart the Motif MCP server and reconnect the assistant so it reads the changed startup setting.";
+
+    /// <summary>Explains why an initialized MCP connection exposes no tools while Advanced AI mode is off.</summary>
+    public const string DisabledServerInstructions =
+        "The Motif MCP server started and connected successfully. Advanced AI mode is OFF, so zero tools are exposed. " +
+        "Run 'motif settings advanced-ai on' to enable Motif's tools. In a sandbox, set " +
+        "MOTIF_ADVANCED_AI_MODE_PATH to a writable preference file before changing the setting. " +
+        "Then restart the Motif MCP server and reconnect the assistant so it reads the changed startup setting.";
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private readonly string _path;

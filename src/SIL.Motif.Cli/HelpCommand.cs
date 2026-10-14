@@ -57,33 +57,73 @@ public static class HelpCommand
                          entry.Kind == HelpEntryKind.Command && IsAvailableHelpEntry(entry, policy)))
                 output.WriteLine($"{commandEntry.Title,-30}  {commandEntry.Code}");
             output.WriteLine();
+            PrintDiscoverySection(output, "Advanced AI commands", CommandSurface.AdvancedAi, policy);
+            output.WriteLine();
+            PrintDiscoverySection(output, "Developer commands", CommandSurface.Developer, policy);
+            output.WriteLine();
+            output.WriteLine("Other entry points:");
+            output.WriteLine("  mcp                         Start Motif's MCP server over standard input and output");
+            output.WriteLine("  settings advanced-ai       Read the mode status; add on or off to change it");
+            output.WriteLine();
             output.WriteLine("Use 'motif help <command> --full' for examples and related commands.");
             return 0;
         }
 
         var code = string.Join(' ', codeParts);
+        if (code == "mcp")
+        {
+            if (json)
+                return Usage(error);
+            PrintMcpHelp(full, output);
+            return 0;
+        }
+
         var guidePrefix = "guide:";
         var isGuide = code.StartsWith(guidePrefix, StringComparison.Ordinal);
+        var isCommand = catalog.Find(HelpEntryKind.Command, code) is not null ||
+            CommandCatalog.All.Any(item => item.Name == code);
         var entryKind = isGuide
             ? HelpEntryKind.Guide
-            : catalog.Find(HelpEntryKind.Command, code) is not null
+            : isCommand
                 ? HelpEntryKind.Command
                 : HelpEntryKind.Term;
         var lookupCode = isGuide ? Uri.UnescapeDataString(code[guidePrefix.Length..]) : code;
         var entry = catalog.Find(entryKind, lookupCode);
-        if (entry is null || !IsAvailableHelpEntry(entry, policy))
+        var command = entryKind == HelpEntryKind.Command
+            ? CommandCatalog.All.SingleOrDefault(item => item.Name == lookupCode)
+            : null;
+        if (entry is null && command is not null)
+        {
+            if (json)
+                return Usage(error);
+            output.WriteLine(command.Name);
+            foreach (var usage in UsageLines(command.Name))
+                output.WriteLine(NormalizeUsage(usage));
+            output.WriteLine(EnablementText(command.Surface));
+            return 0;
+        }
+        if (entry is null)
         {
             error.WriteLine($"No released command, glossary term, or Guide named '{code}'. Run 'motif help' for commands.");
             return 2;
         }
 
+        var unavailable = command is not null && !policy.IsAvailable(command);
         if (json)
         {
-            output.WriteLine(JsonSerializer.Serialize(BuildEntry(entry, entryKind == HelpEntryKind.Command), JsonOptions));
+            var helpEntry = BuildEntry(entry, entryKind == HelpEntryKind.Command);
+            output.WriteLine(JsonSerializer.Serialize(unavailable
+                ? new { entry = helpEntry, available = false, enablement = EnablementText(command!.Surface) }
+                : helpEntry, JsonOptions));
             return 0;
         }
 
         PrintEntry(entry, entryKind, catalog, output);
+        if (unavailable)
+        {
+            output.WriteLine();
+            output.WriteLine(EnablementText(command!.Surface));
+        }
         if (full)
         {
             output.WriteLine();
@@ -104,12 +144,68 @@ public static class HelpCommand
             .Select(entry => BuildEntry(entry, entry.Kind == HelpEntryKind.Command)),
     };
 
+    private static void PrintMcpHelp(bool full, TextWriter output)
+    {
+        output.WriteLine("Start the MCP server");
+        output.WriteLine("Starts Motif's MCP server over standard input and output for an assistant connection.");
+        output.WriteLine("Usage: motif mcp [--profile <file | shipped name>] [--activity-log <file.jsonl>]");
+        output.WriteLine("Advanced AI mode is read when the server starts.");
+        output.WriteLine("Read the current mode with 'motif settings advanced-ai'; use 'on' or 'off' to change it.");
+        output.WriteLine("Expanded help: motif help mcp --full");
+        if (!full) return;
+
+        output.WriteLine();
+        output.WriteLine("The MCP server can start and complete initialization while Advanced AI mode is off. " +
+            "That connected session exposes zero tools, and a tool call explains that the mode is off. " +
+            "The tools/list result stays empty; the inert 'motif_advanced_ai_setup' prompt provides setup steps " +
+            "without reading project data or changing settings. " +
+            "Keep the stdio connection open while waiting for initialization and tools/list. A clean exit after " +
+            "standard input reaches EOF means the session ended; by itself, it does not show that startup failed. " +
+            "If initialization fails while the connection remains open, inspect the assistant's MCP launch log.");
+        output.WriteLine();
+        output.WriteLine("Run 'motif settings advanced-ai on' to enable tools. In a sandbox, set " +
+            "MOTIF_ADVANCED_AI_MODE_PATH to a writable preference file before changing the setting. " +
+            "Then restart the Motif MCP server and reconnect the assistant so it reads the setting at startup.");
+    }
+
     private static bool IsAvailableHelpEntry(HelpEntry entry, CommandSurfacePolicy policy)
     {
         if (entry.Kind != HelpEntryKind.Command) return true;
         var command = CommandCatalog.All.SingleOrDefault(item => item.Name == entry.Code);
-        return command is not null && command.Surface != CommandSurface.Developer && policy.IsAvailable(command);
+        return command is not null && policy.IsAvailable(command);
     }
+
+    private static void PrintDiscoverySection(
+        TextWriter output, string title, CommandSurface surface, CommandSurfacePolicy policy)
+    {
+        var commands = CliVerbCatalog.All
+            .Where(verb => CommandCatalog.All.Any(command =>
+                command.Name == verb.CommandName && command.Surface == surface))
+            .Select(verb => verb.CommandName)
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal);
+        var enabled = surface == CommandSurface.AdvancedAi
+            ? policy.AdvancedAiModeEnabled
+            : policy.DeveloperCommandsEnabled;
+        var instruction = surface switch
+        {
+            CommandSurface.AdvancedAi => "run 'motif settings advanced-ai on'; in a sandbox, set " +
+                "MOTIF_ADVANCED_AI_MODE_PATH to a writable preference file",
+            CommandSurface.Developer => "set MOTIF_DEVELOPER_COMMANDS=1",
+            _ => string.Empty,
+        };
+        output.WriteLine($"{title} ({(enabled ? "enabled" : instruction)}):");
+        output.WriteLine(string.Join("  ", commands));
+    }
+
+    private static string EnablementText(CommandSurface surface) => surface switch
+    {
+        CommandSurface.AdvancedAi => "This command requires Advanced AI mode. " +
+            SIL.Motif.Commands.Preferences.FileAdvancedAiModePreferenceStore.DisabledMessage,
+        CommandSurface.Developer => "This command requires Developer commands. " +
+            "Set MOTIF_DEVELOPER_COMMANDS=1 to enable them.",
+        _ => string.Empty,
+    };
 
     private static object BuildEntry(HelpEntry entry, bool command)
     {

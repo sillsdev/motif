@@ -90,6 +90,45 @@ public sealed class HelpCatalogTests
     }
 
     [Fact]
+    public void DraftWorkflowAndApplyHelpCoversPromotedCommandsAndReadinessBoundaries()
+    {
+        var catalog = HelpCatalog.Load(System.Globalization.CultureInfo.GetCultureInfo("en"));
+
+        foreach (var code in new[] { "label", "comment", "apply" })
+        {
+            var entry = Assert.IsType<HelpEntry>(catalog.Find(HelpEntryKind.Command, code));
+            Assert.InRange(entry.Title.Length, 1, 30);
+            Assert.False(string.IsNullOrWhiteSpace(entry.Description));
+            Assert.False(string.IsNullOrWhiteSpace(entry.HelpPage));
+        }
+
+        var releasedApply = catalog.GetHelpPage(HelpEntryKind.Command, "apply --proposal")!;
+        Assert.Contains("apply.not-ready", releasedApply, StringComparison.Ordinal);
+        Assert.Contains("no stems", releasedApply, StringComparison.Ordinal);
+        Assert.Contains("no `--force` option", releasedApply, StringComparison.Ordinal);
+
+        var plainApply = catalog.GetHelpPage(HelpEntryKind.Command, "apply")!;
+        Assert.Contains("`--force` skips the Readiness reasons", plainApply, StringComparison.Ordinal);
+        Assert.Contains("does not bypass checks", plainApply, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void DraftCreationBatchAndFinalizeHelpRequireBothReviewFields()
+    {
+        var catalog = HelpCatalog.Load(System.Globalization.CultureInfo.GetCultureInfo("en"));
+
+        foreach (var code in new[] { "new", "compose-batch", "finalize" })
+        {
+            var entry = Assert.IsType<HelpEntry>(catalog.Find(HelpEntryKind.Command, code));
+            Assert.Contains("label", entry.Description, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("comment", entry.Description, StringComparison.OrdinalIgnoreCase);
+            var page = catalog.GetHelpPage(HelpEntryKind.Command, code)!;
+            Assert.Contains("label", page, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("comment", page, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    [Fact]
     public void AllomorphHelpExplainsSharedReferencesAndElsewhereOrder()
     {
         var catalog = HelpCatalog.Load(System.Globalization.CultureInfo.GetCultureInfo("en"));

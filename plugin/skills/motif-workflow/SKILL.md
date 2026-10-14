@@ -8,8 +8,14 @@ description: Use Motif to inspect a Known project, draft and measure a Proposal,
 Use Motif for every project change. A Proposal belongs to one project. The person owns project
 persistence and decides whether to Apply after reviewing a Finalized Proposal in Motif.
 
-If the Motif tools are missing, tell the person to open Motif, turn on Advanced AI mode, and select
-this assistant. Do not substitute direct FieldWorks, SQL, XML, or file edits.
+If the Motif tools are missing, check the MCP connection status first. If the client says the Motif
+server started and connected successfully but Advanced AI mode is OFF and zero tools are exposed, this
+is the mode gate: in Motif, turn on Advanced AI mode, or run `motif settings advanced-ai on`. In a
+sandbox, set `MOTIF_ADVANCED_AI_MODE_PATH` to a writable preference file before changing the setting.
+If available, use the inert `motif_advanced_ai_setup` prompt for these first-enable steps; it does not
+read project data or change settings. Then restart the Motif MCP server and reconnect this assistant so
+the server reads the setting at startup. If the client reports that the server failed to start or
+connect, inspect its MCP launch log instead. Do not substitute direct FieldWorks, SQL, XML, or file edits.
 
 ## Find the project
 

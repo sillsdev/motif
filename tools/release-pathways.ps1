@@ -245,6 +245,42 @@ Seed-Selection $first.ProjectPath $first.TextId
 [void] (Invoke-Cli @('assess', $first.ProjectPath, '--texts', $first.TextId))
 [void] (Invoke-CliJson @('overview', '--project', $first.ProjectPath))
 
+$previousAdvancedAiPath = $env:MOTIF_ADVANCED_AI_MODE_PATH
+$previousDeveloperCommands = $env:MOTIF_DEVELOPER_COMMANDS
+$env:MOTIF_ADVANCED_AI_MODE_PATH = Join-Path $releaseRoot 'advanced-ai-mode.json'
+Remove-Item Env:MOTIF_DEVELOPER_COMMANDS -ErrorAction SilentlyContinue
+try {
+    [void] (Invoke-Cli @('settings', 'advanced-ai', 'on'))
+    $authoringDraft = 'release-authoring-sequence'
+    $authoringIntents = Join-Path $releaseRoot 'authoring-intents.json'
+    @{ intents = @(@{
+        verb = 'compose-author-phoneme'
+        intent = @{ name = 'motifDiscoveryProbe'; representations = @('ɮ') }
+    }) } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $authoringIntents -Encoding utf8
+    $createdAuthoringDraft = Invoke-Cli @('new', '--project', $first.ProjectPath, '--draft', $authoringDraft)
+    $proposalMarker = 'proposalId: '
+    $proposalMarkerStart = $createdAuthoringDraft.Output.IndexOf($proposalMarker, [StringComparison]::Ordinal)
+    if ($proposalMarkerStart -lt 0) {
+        throw "The installed CLI did not print '$proposalMarker' for the release authoring Draft: $($createdAuthoringDraft.Output)"
+    }
+    $authoringProposalId = $createdAuthoringDraft.Output.Substring($proposalMarkerStart + $proposalMarker.Length).Trim()
+    [void] (Invoke-CliJson @('compose-batch', '--project', $first.ProjectPath, '--draft', $authoringDraft,
+        '--intents', $authoringIntents))
+    [void] (Invoke-CliJson @('label', '--project', $first.ProjectPath, '--draft', $authoringDraft,
+        'Release pathway authoring'))
+    [void] (Invoke-CliJson @('comment', '--project', $first.ProjectPath, '--draft', $authoringDraft,
+        'The authored phoneme is checked before finalizing.'))
+    [void] (Invoke-CliJson @('dry-run', '--project', $first.ProjectPath, $authoringProposalId, '--wait'))
+    [void] (Invoke-CliJson @('trial', '--project', $first.ProjectPath, $authoringProposalId, '--wait'))
+    [void] (Invoke-CliJson @('finalize', '--project', $first.ProjectPath, '--draft', $authoringDraft))
+}
+finally {
+    if ($null -eq $previousAdvancedAiPath) { Remove-Item Env:MOTIF_ADVANCED_AI_MODE_PATH -ErrorAction SilentlyContinue }
+    else { $env:MOTIF_ADVANCED_AI_MODE_PATH = $previousAdvancedAiPath }
+    if ($null -eq $previousDeveloperCommands) { Remove-Item Env:MOTIF_DEVELOPER_COMMANDS -ErrorAction SilentlyContinue }
+    else { $env:MOTIF_DEVELOPER_COMMANDS = $previousDeveloperCommands }
+}
+
 $reading = $cliProjects['explained-word-card']
 Seed-Selection $reading.ProjectPath $reading.TextId
 $readingAssessment = Invoke-CliJson @('assess', $reading.ProjectPath, '--texts', $reading.TextId)

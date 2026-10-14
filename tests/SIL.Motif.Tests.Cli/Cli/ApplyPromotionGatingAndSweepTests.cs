@@ -170,6 +170,7 @@ public sealed class ApplyPromotionGatingAndSweepTests
         Assert.Contains("Apply requires a Correctness Assessment", result.Refusal.Message, StringComparison.Ordinal);
         Assert.Contains("approved morphology comparisons", result.Refusal.Message, StringComparison.Ordinal);
         Assert.Contains("timing-only evidence cannot satisfy", result.Refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("no stems", result.Refusal.Message, StringComparison.Ordinal);
         Assert.DoesNotContain($"trial {proposalId}", result.Refusal.Message, StringComparison.Ordinal);
         Assert.DoesNotContain("--force", result.Refusal.Message, StringComparison.Ordinal);
         Assert.Equal("proposed", GetRecord(proposalId).Status);
