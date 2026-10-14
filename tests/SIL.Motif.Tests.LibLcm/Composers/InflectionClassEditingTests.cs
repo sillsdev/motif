@@ -65,6 +65,60 @@ public sealed class InflectionClassEditingTests(PristineProjectFixture pristine)
         Assert.Equal("n", Get<IMoAffixAllomorph>(cache, form).Form.get_String(cache.DefaultVernWs).Text);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NestedClassesCanRestrictOrdinaryPrefixAndSuffixAlternates(bool suffix)
+    {
+        using var cache = pristine.NewScratch();
+        var parent = CanonicalId.FromGuid(pristine.Seed.PartOfSpeechId);
+        var child = AddChildCategory(cache, parent);
+        var cls = AddInflectionClass(cache, parent, "parent class");
+        var nested = Created(ApplyOps(cache, AuthorInflectionClassComposer.Build(cache,
+            new(parent, "nested", Anal(cache), Parent: cls))), MoInflClassSubclassesOperationKinds.Create);
+        var type = MorphType(suffix ? MoMorphTypeTags.kguidMorphSuffix : MoMorphTypeTags.kguidMorphPrefix);
+        var entry = Created(ApplyOps(cache, AuthorLexicalEntryComposer.Build(cache,
+            new("n", Vern(cache), type, "concord", Anal(cache), new(LexicalEntryMsaKind.Inflectional, child)))),
+            LexDbEntriesOperationKinds.Create);
+        var alternate = Created(ApplyOps(cache, AuthorAlternateFormComposer.Build(cache,
+            new(entry, "wa", Vern(cache), type))), LexEntryAlternateFormsCreateOperationKinds.CreateAlternateForms);
+        ApplyOps(cache, EditAffixInflectionClassesComposer.Build(cache, new(alternate, [], [Alias(nested)]))
+            .Concat(EditPartOfSpeechInflectionClassDefaultComposer.Build(cache, new(child, null, Alias(nested)))).ToArray());
+        Assert.Equal(nested.ToGuid(), Get<IPartOfSpeech>(cache, child).DefaultInflectionClassRA.Guid);
+        Assert.Equal(nested.ToGuid(), Assert.Single(Get<IMoAffixAllomorph>(cache, alternate).InflectionClassesRC).Guid);
+        Assert.Empty(((IMoAffixAllomorph)Get<ILexEntry>(cache, entry).LexemeFormOA).InflectionClassesRC);
+    }
+
+    [Fact]
+    public void ParserIneligibleBracketFormsAreRefusedBeforeLowering()
+    {
+        using var cache = pristine.NewScratch();
+        var category = CanonicalId.FromGuid(pristine.Seed.PartOfSpeechId);
+        var cls = AddInflectionClass(cache, category, "concord");
+        var (_, _, form) = AddInflectionalPrefix(cache, "n", category);
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            Get<IMoAffixAllomorph>(cache, form).Form.set_String(cache.DefaultVernWs, "[C]"));
+        var before = BaselineSemanticDigest.Compute(cache);
+        Assert.Throws<InvalidOperationException>(() => EditAffixInflectionClassesComposer.Build(cache, new(form, [], [cls])));
+        Assert.Equal(before, BaselineSemanticDigest.Compute(cache));
+    }
+
+    [Fact]
+    public void DefaultClassOwnershipMustRemainValidWhenDryRunLowersTheCompleteGraph()
+    {
+        using var cache = pristine.NewScratch();
+        var category = CanonicalId.FromGuid(pristine.Seed.PartOfSpeechId);
+        var cls = AddInflectionClass(cache, category, "concord");
+        var proposal = Proposal(EditPartOfSpeechInflectionClassDefaultComposer.Build(cache, new(category, null, cls)));
+        var foreign = AddCategory(cache, "foreign");
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            Get<IPartOfSpeech>(cache, foreign).InflectionClassesOC.Add(Get<IMoInflClass>(cache, cls)));
+        var before = BaselineSemanticDigest.Compute(cache);
+        Assert.Throws<InvalidOperationException>(() => ScratchDryRun.Of(cache, proposal));
+        Assert.Null(Get<IPartOfSpeech>(cache, category).DefaultInflectionClassRA);
+        Assert.Equal(before, BaselineSemanticDigest.Compute(cache));
+    }
+
     [Fact]
     public void WrongTypeForeignOwnerExpectedMismatchAndDecodedDuplicatesLeaveLiveStateAlone()
     {
@@ -140,6 +194,9 @@ public sealed class InflectionClassEditingTests(PristineProjectFixture pristine)
     [InlineData("process")]
     [InlineData("subclassName")]
     [InlineData("subclassAdded")]
+    [InlineData("classOwner")]
+    [InlineData("categoryAncestry")]
+    [InlineData("formOwner")]
     public void RemovalOnlyEditsBindClassCategoryDefaultAndEntryScope(string drift)
     {
         using var cache = pristine.NewScratch();
@@ -149,6 +206,8 @@ public sealed class InflectionClassEditingTests(PristineProjectFixture pristine)
         var fallback = AddInflectionClass(cache, parent, "fallback");
         var subclass = Created(ApplyOps(cache, AuthorInflectionClassComposer.Build(cache,
             new(parent, "subclass", Anal(cache), Parent: cls))), MoInflClassSubclassesOperationKinds.Create);
+        var otherCategory = AddCategory(cache, "other category");
+        var (otherEntry, _, _) = AddInflectionalPrefix(cache, "other", child);
         ApplyOps(cache, EditPartOfSpeechInflectionClassDefaultComposer.Build(cache, new(parent, null, fallback)));
         var (entry, msa, form) = AddInflectionalPrefix(cache, "n", child);
         ApplyOps(cache, EditAffixInflectionClassesComposer.Build(cache, new(form, [], [cls])));
@@ -166,6 +225,9 @@ public sealed class InflectionClassEditingTests(PristineProjectFixture pristine)
                 case "mixedMsa": Get<ILexEntry>(cache, entry).MorphoSyntaxAnalysesOC.Add(cache.ServiceLocator.GetInstance<IMoStemMsaFactory>().Create()); break;
                 case "subclassName": Get<IMoInflClass>(cache, subclass).Name.set_String(cache.DefaultAnalWs, "changed"); break;
                 case "subclassAdded": Get<IMoInflClass>(cache, cls).SubclassesOC.Add(cache.ServiceLocator.GetInstance<IMoInflClassFactory>().Create()); break;
+                case "classOwner": Get<IPartOfSpeech>(cache, otherCategory).InflectionClassesOC.Add(Get<IMoInflClass>(cache, cls)); break;
+                case "categoryAncestry": Get<IPartOfSpeech>(cache, otherCategory).SubPossibilitiesOS.Add(Get<IPartOfSpeech>(cache, child)); break;
+                case "formOwner": Get<ILexEntry>(cache, otherEntry).AlternateFormsOS.Add(Get<IMoAffixAllomorph>(cache, form)); break;
                 default: Get<ILexEntry>(cache, entry).AlternateFormsOS.Add(cache.ServiceLocator.GetInstance<IMoAffixProcessFactory>().Create()); break;
             }
         });
@@ -275,6 +337,34 @@ public sealed class InflectionClassEditingTests(PristineProjectFixture pristine)
         Assert.Null(Get<IPartOfSpeech>(cache, category).DefaultInflectionClassRA);
         Assert.Empty(Get<IMoAffixAllomorph>(cache, form).InflectionClassesRC);
         Assert.Equal(before, BaselineSemanticDigest.Compute(cache));
+    }
+
+    [Fact]
+    public void ClearingDefaultAndRestrictionsAppearsInPreviewAndAggregateMechanicalDiff()
+    {
+        using var cache = pristine.NewScratch();
+        var category = CanonicalId.FromGuid(pristine.Seed.PartOfSpeechId);
+        var cls = AddInflectionClass(cache, category, "concord");
+        var (_, _, form) = AddInflectionalPrefix(cache, "n", category);
+        ApplyOps(cache, EditAffixInflectionClassesComposer.Build(cache, new(form, [], [cls]))
+            .Concat(EditPartOfSpeechInflectionClassDefaultComposer.Build(cache, new(category, null, cls))).ToArray());
+        var before = Snapshots(cache, category, form);
+        var proposal = Proposal(EditAffixInflectionClassesComposer.Build(cache, new(form, [Alias(cls)], []))
+            .Concat(EditPartOfSpeechInflectionClassDefaultComposer.Build(cache, new(category, Alias(cls), null))).ToArray());
+        var dryRun = ScratchDryRun.Of(cache, proposal);
+        foreach (var field in new[] { SnapshotFields.MoAffixFormInflectionClasses, SnapshotFields.PartOfSpeechDefaultInflectionClass })
+            Assert.Contains(dryRun.ExpectedEffects, effect => effect.Field == field && effect.Before.Values.Contains(cls.Value) && effect.After.Count == 0);
+        ProposalApplier.Apply(cache, proposal, dryRun.Anchor, "class-editor-tests");
+        var diff = SoundSystemSnapshots.Compare(before, Snapshots(cache, category, form));
+        Assert.Equal(2, diff.Count);
+        Assert.All(diff, effect => { Assert.Contains(cls.Value, effect.Before.Values); Assert.Empty(effect.After); });
+        var digest = BaselineSemanticDigest.Compute(cache);
+        var loader = new FwDataProjectLoader();
+        loader.Save(cache);
+        using var reopened = loader.LoadScratchCache(cache.ProjectId.Path);
+        Assert.Null(Get<IPartOfSpeech>(reopened, category).DefaultInflectionClassRA);
+        Assert.Empty(Get<IMoAffixAllomorph>(reopened, form).InflectionClassesRC);
+        Assert.Equal(digest, BaselineSemanticDigest.Compute(reopened));
     }
 
     private static CanonicalId Alias(CanonicalId id) => CanonicalId.Parse("class:" + id.Value);

@@ -256,7 +256,8 @@ either lexeme or alternate, carrying a nonabstract prefix, suffix or prefixing/s
 in the default vernacular writing system, in an ordinary affix entry with at least one grammatical-info object and
 only inflectional grammatical info, each with a usable project category. Process forms and mixed or
 noninflectional grammatical-info scopes are refused even for an empty or unchanged desired set.
-Circumfix entries, abstract or blank forms, and other morph types are outside this editor's scope.
+Circumfix entries, abstract or blank forms, bracket-pattern forms, and other morph types are outside
+this editor's scope.
 Each desired class must belong to an applicable category or an ancestor. Both editors decode optional
 identity prefixes before comparisons; decoded aliases in a set are duplicates and are refused.
 Membership edits lower existing `grammar/moAffixForm/addRefInflectionClasses` and
@@ -276,6 +277,9 @@ mechanical diff reuse the existing default-reference and class-membership field 
 uses the existing `PartOfSpeech.DefaultInflectionClass` and `MoAffixForm.InflectionClasses` inventory
 rows; no new operation kind or contract version is introduced. The closed editor schemas and portable
 vectors are in `inflection-class-editing.schema.json` and `inflection-class-editing.vectors.json`.
+Dry Run and Apply check affected explicit defaults against the category domain after the complete
+declared graph is lowered, so ownership changes between composition and Dry Run cannot authorize a
+foreign default. Invalid choices leave the live project unchanged.
 
 `AuthorStemName` accepts closed `{category, name, ws, regions:[[{feature, value}]], abbreviation?}`.
 It requires at least one nonempty region, each feature at most once per region, each feature a closed

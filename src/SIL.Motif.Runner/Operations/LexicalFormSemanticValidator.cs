@@ -7,11 +7,21 @@ using SIL.Motif.Runner.Composers;
 
 namespace SIL.Motif.Runner.Operations;
 
-/// <summary>Checks ordinary form class restrictions after the complete declared graph exists.</summary>
+/// <summary>Checks explicit default and ordinary form class domains after the complete declared graph exists.</summary>
 internal static class LexicalFormSemanticValidator
 {
     internal static void ValidateProposal(LcmCache cache, IReadOnlyList<OperationEnvelope> operations)
     {
+        foreach (var operation in operations.Where(operation => operation.Kind is
+            PartOfSpeechDefaultInflectionClassOperationKinds.SetDefaultInflectionClass or
+            PartOfSpeechDefaultInflectionClassOperationKinds.ClearDefaultInflectionClass))
+        {
+            var target = operation.Target ?? throw new InvalidOperationException("A category default edit needs a target.");
+            var category = InflectionAuthoring.Category(cache, target);
+            if (category.DefaultInflectionClassRA is { } cls &&
+                !LexicalFormAuthoring.InCategoryOrAncestor(InflectionAuthoring.OwningCategory(cls), category))
+                throw new InvalidOperationException("The default class must belong to the category or one of its ancestors.");
+        }
         var relevant = operations.Where(operation => operation.Kind is
             LexEntryAlternateFormsCreateOperationKinds.CreateAlternateForms or
             MoAffixFormInflectionClassesOperationKinds.AddRefInflectionClasses).ToArray();
