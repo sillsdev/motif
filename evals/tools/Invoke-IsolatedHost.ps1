@@ -167,7 +167,7 @@ $registered = Invoke-ABProcess $motifExe (Get-ABProjectRegistrationArguments $fw
 if ($registered.ExitCode -ne 0 -or $registered.Stderr -match 'could not be recorded') {
     throw "Known project registration failed: $($registered.Stderr)"
 }
-$baseline = Invoke-ABProcess $motifExe @('baseline', 'capture', $fwDataPath, '--json') $agentDirectory @{} 300000
+$baseline = Invoke-ABProcess $motifExe @('baseline', 'capture', '--project', $fwDataPath, '--json') $agentDirectory @{} 300000
 if ($baseline.ExitCode -ne 0) { throw "Baseline capture failed: $($baseline.Stderr)" }
 if ($manifest.preflight) {
     $checked = Invoke-ABProcess '/usr/bin/python3' @('/opt/client/agent-boundary.py', $agentLaunchPath) $agentDirectory @{} 60000

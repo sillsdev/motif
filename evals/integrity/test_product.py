@@ -80,7 +80,7 @@ class ProductTests(unittest.TestCase):
             for asset in native_assets:
                 self.assertTrue((product / asset).is_file(), 'Missing declared native asset: ' + asset)
             config = {'session': str(session), 'mounts': [[str(product), '/opt/product'], [str(runtime), '/opt/runtime']]}
-            result = subprocess.run(boundary(config, ['/opt/product/motif', 'baseline', 'capture',
+            result = subprocess.run(boundary(config, ['/opt/product/motif', 'baseline', 'capture', '--project',
                                                      '/session/project/' + project.name, '--json']),
                                     stdin=subprocess.DEVNULL, capture_output=True, timeout=120)
             self.assertEqual(0, result.returncode, result.stderr.decode())
