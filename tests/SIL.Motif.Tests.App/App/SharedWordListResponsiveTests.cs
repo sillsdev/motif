@@ -64,7 +64,6 @@ public sealed class SharedWordListResponsiveTests
                 }
             });
 
-            Record(cacheWasChecked, "shared word-list cache", "no measured slot was available for a scroll check", failures);
             Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures));
         }, TimeSpan.FromMinutes(5));
     }

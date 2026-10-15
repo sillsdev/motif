@@ -71,6 +71,7 @@ Inside text inputs, Ctrl+C/X/V and Ctrl+Z/Y use the control's own copy, cut, pas
 | Tab | Tab | Tab | Tables | Next table action |
 | Tab | Shift+Tab | Shift+Tab | Tables | Previous table action |
 | Menu key or ↓ | Menu key or Alt+↓ | Menu key or Alt+↓ | Tables | Open row actions |
+| Enter | Enter | Enter | Tables | Open row details |
 
 ## Matrix
 

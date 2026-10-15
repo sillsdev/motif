@@ -63,8 +63,7 @@
                       </WrapPanel>
                       <word:WordCard Key="{Binding Presentation.Key}" Focusable="False" AutomationProperties.Name="{Binding WordCardAutomationName}"
                                      EvidenceRevision="{Binding Presentation.EvidenceRevision}"
-                                     Host="{Binding $parent[views:ReviewInspector].PresentationHost}"
-                                     AutomationProperties.Name="{Binding Word, StringFormat='Word card for {0}'}" />
+                                     Host="{Binding $parent[views:ReviewInspector].PresentationHost}" />
                     </StackPanel>
                   </DataTemplate>
                 </ContentControl.ContentTemplate>
