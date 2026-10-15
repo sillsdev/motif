@@ -1453,11 +1453,75 @@ public sealed class DeterministicAssessCommandTests : IDisposable
                 AssessmentStage.SelectingWords,
                 AssessmentStage.Parsing,
                 AssessmentStage.ReadingStatistics,
+                AssessmentStage.Finalizing,
                 AssessmentStage.Complete,
             },
             stages.Select(stage => stage.Stage));
         var parsing = Assert.Single(stages, stage => stage.Stage == AssessmentStage.Parsing);
         Assert.Equal(2, parsing.Total);
+    }
+
+    [Fact]
+    public void FinalizingProgressCountsWordsBetweenStatisticsAndComplete()
+    {
+        using var seeded = NewSeededScratch();
+        var stages = new List<AssessmentProgress>();
+
+        var outcome = AssessTwoWords(seeded, stages.Add, CancellationToken.None);
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        var finalizing = stages.Where(stage => stage.Stage == AssessmentStage.Finalizing).ToArray();
+        Assert.NotEmpty(finalizing);
+        Assert.All(finalizing, stage => Assert.Equal(2, stage.Total));
+        Assert.Equal(0, finalizing[0].Completed);
+        Assert.Equal(2, finalizing[^1].Completed);
+        Assert.Equal("Preparing results: 2 of 2 words", finalizing[^1].Message);
+        Assert.Equal(finalizing.Select(stage => stage.Completed).Order(), finalizing.Select(stage => stage.Completed));
+        var order = stages.Select(stage => stage.Stage).ToList();
+        Assert.True(order.IndexOf(AssessmentStage.ReadingStatistics) < order.IndexOf(AssessmentStage.Finalizing));
+        Assert.True(order.LastIndexOf(AssessmentStage.Finalizing) < order.IndexOf(AssessmentStage.Complete));
+    }
+
+    [Fact]
+    public void CancellingDuringFinalizingReturnsCancelledAndStoresNothing()
+    {
+        using var seeded = NewSeededScratch();
+        using var cancellation = new CancellationTokenSource();
+
+        var outcome = AssessTwoWords(seeded, progress =>
+        {
+            if (progress.Stage == AssessmentStage.Finalizing && progress.Completed >= 1) cancellation.Cancel();
+        }, cancellation.Token);
+
+        Assert.False(outcome.Succeeded);
+        Assert.Equal("assessment.cancelled", outcome.Refusal!.Code);
+        Assert.Equal(FailureReason.Cancelled, outcome.Refusal.Reason);
+        var repository = OpenRepository(seeded.FwDataPath);
+        Assert.Empty(repository.ListBaselineAssessments(AssessmentKind.ParseTime.ToStoredKind()));
+        Assert.Empty(repository.ListBaselineAssessments(AssessmentKind.ObjectTiming.ToStoredKind()));
+    }
+
+    [Fact]
+    public void ObjectTimingsPastTheCapAreCountedNotKeptAndTheSummarySaysSo()
+    {
+        using var seeded = NewSeededScratch();
+        AssessCommand.ObjectTimingRowCapForTests.Value = 1;
+        try
+        {
+            var outcome = AssessTwoWords(seeded, null, CancellationToken.None);
+
+            Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+            Assert.Contains("2 object timing rows", outcome.Value!.SummaryMarkdown, StringComparison.Ordinal);
+            Assert.Contains("Only the first 1 of 2 object timing rows were kept", outcome.Value.SummaryMarkdown,
+                StringComparison.Ordinal);
+            var parse = outcome.Value.AssessmentIds.Select(OpenRepository(seeded.FwDataPath).Get)
+                .Single(record => record.Kind == AssessmentKind.ParseTime.ToStoredKind());
+            Assert.Equal(SeededProject.AnalysedWordForm, Assert.Single(parse.ObjectTimings).Word);
+        }
+        finally
+        {
+            AssessCommand.ObjectTimingRowCapForTests.Value = null;
+        }
     }
 
     [Fact]
@@ -1664,6 +1728,33 @@ public sealed class DeterministicAssessCommandTests : IDisposable
         };
         return AssessCommand.Run(new AssessRequest(seeded.FwDataPath), NewManagedRoot(), assessor,
             new FakeInvoker(), null, CancellationToken.None);
+    }
+
+    // Assesses the seeded Text's two words, each with one timed object, so Finalizing has two words to count.
+    private SIL.Motif.Contract.Commands.CommandOutcome<AssessCommandResponse> AssessTwoWords(
+        SeededScratch seeded, Action<AssessmentProgress>? onProgress, CancellationToken cancellationToken)
+    {
+        Assert.True(SelectionCommands.SetDefault(new SetDefaultSelectionRequest(
+            seeded.FwDataPath, "Default", [seeded.Seeded.TextId], [])).Succeeded);
+        var cachePath = Path.Combine(_managedRootsParent, "two-words-stats.sqlite");
+        WriteStatsCache(cachePath,
+            (SeededProject.AnalysedWordForm, 4, 0, 2, 2_000_000L),
+            (SeededProject.UnanalysedWordForm, 3, 0, 1, 1_000_000L));
+        var cacheDigest = BatchInvocationEvidence.DigestFile(cachePath);
+        var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind => kind switch
+        {
+            AssessmentKind.ParseTime => new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
+                [new(0, SeededProject.AnalysedWordForm, 9, SIL.Motif.Host.Parser.WordOutcome.NoAnalysis, "none"),
+                 new(1, SeededProject.UnanalysedWordForm, 15, SIL.Motif.Host.Parser.WordOutcome.NoAnalysis, "none")],
+                1000, seeded.FwDataPath, []) { PerWordStepLimit = StepCap.Default }),
+            AssessmentKind.ObjectTiming => new AssessmentRaw.FileCache(cachePath, cacheDigest),
+            _ => new AssessmentRaw.WordMeasurements([]),
+        })
+        {
+            CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(_managedRootsParent, scope, candidate),
+        };
+        return AssessCommand.Run(new AssessRequest(seeded.FwDataPath), NewManagedRoot(), assessor,
+            new FakeInvoker(), onProgress, cancellationToken);
     }
 
     private static void WriteStatsCache(string path,

@@ -21,6 +21,9 @@ public enum AssessmentStage
     /// <summary>Querying PanGloss's per-object statistics.</summary>
     ReadingStatistics,
 
+    /// <summary>Preparing each word's grades, comparison and names after the statistics are read.</summary>
+    Finalizing,
+
     /// <summary>Every command-owned stage finished.</summary>
     Complete,
 }

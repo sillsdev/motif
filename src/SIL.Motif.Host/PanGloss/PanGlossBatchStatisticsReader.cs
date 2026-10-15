@@ -5,13 +5,36 @@ namespace SIL.Motif.Host.PanGloss;
 /// <summary>Reads word counters and per-object timings from one retained PanGloss batch statistics cache.</summary>
 public static class PanGlossBatchStatisticsReader
 {
+    /// <summary>The most object timing rows kept from one cache, so a very large project cannot exhaust memory.</summary>
+    public const int DefaultMaxObjectTimingRows = 1_000_000;
+
     /// <summary>Reads the batch rows and validates exact Selection coverage in the cache.</summary>
     /// <param name="cachePath">The statistics cache written by the batch invocation.</param>
     /// <param name="expectedWords">The exact resolved Selection measured by that invocation.</param>
     /// <returns>The per-word counters and per-object timings stored in the cache.</returns>
     /// <exception cref="InvalidDataException">The cache does not contain exactly the requested word rows.</exception>
-    public static PanGlossBatchStatistics Read(string cachePath, IReadOnlyCollection<string> expectedWords)
+    public static PanGlossBatchStatistics<PanGlossObjectTiming> Read(
+        string cachePath, IReadOnlyCollection<string> expectedWords) =>
+        Read(cachePath, expectedWords, timing => timing, DefaultMaxObjectTimingRows);
+
+    /// <summary>
+    /// Reads the batch rows, converting each object timing as it is read so only one list is held, and keeping
+    /// at most <paramref name="maxObjectTimingRows"/> of them in the query's own order.
+    /// </summary>
+    /// <param name="cachePath">The statistics cache written by the batch invocation.</param>
+    /// <param name="expectedWords">The exact resolved Selection measured by that invocation.</param>
+    /// <param name="convert">Maps each validated timing row to the caller's own shape.</param>
+    /// <param name="maxObjectTimingRows">The row cap; rows past it are counted but not kept.</param>
+    /// <returns>
+    /// The per-word counters, the kept converted timings, and the total number of timing rows in the cache.
+    /// </returns>
+    /// <exception cref="InvalidDataException">The cache does not contain exactly the requested word rows.</exception>
+    public static PanGlossBatchStatistics<T> Read<T>(
+        string cachePath, IReadOnlyCollection<string> expectedWords,
+        Func<PanGlossObjectTiming, T> convert, int maxObjectTimingRows)
     {
+        ArgumentNullException.ThrowIfNull(convert);
+        ArgumentOutOfRangeException.ThrowIfNegative(maxObjectTimingRows);
         ArgumentException.ThrowIfNullOrWhiteSpace(cachePath);
         ArgumentNullException.ThrowIfNull(expectedWords);
         var expected = expectedWords.ToHashSet(StringComparer.Ordinal);
@@ -41,7 +64,8 @@ public static class PanGlossBatchStatisticsReader
         if (missing is not null)
             throw new InvalidDataException($"The batch statistics cache has no per-word row for selected word '{missing}'.");
 
-        return new PanGlossBatchStatistics(words, ReadObjectTimings(connection, words));
+        var (timings, total) = ReadObjectTimings(connection, words, convert, maxObjectTimingRows);
+        return new PanGlossBatchStatistics<T>(words, timings, total);
     }
 
     private static int ReadSchemaVersion(SqliteConnection connection)
@@ -75,23 +99,37 @@ public static class PanGlossBatchStatisticsReader
         return words;
     }
 
-    private static IReadOnlyList<PanGlossObjectTiming> ReadObjectTimings(
-        SqliteConnection connection, IReadOnlyDictionary<string, PanGlossWordStatistics> words)
+    internal const string ObjectTimingsFrom = """
+        FROM fact AS f
+        JOIN word AS w ON w.word_id = f.word_id
+        JOIN object AS o ON o.object_id = f.object_id
+        GROUP BY w.form, o.key, o.identity_quality, o.kind, o.label, f.direction
+        """;
+
+    internal const string ObjectTimingsQuery = """
+        SELECT w.form, o.key, o.identity_quality, o.kind, o.label, f.direction,
+               SUM(f.attempts), SUM(f.self_time_ns)
+        """ + "\n" + ObjectTimingsFrom + """
+
+        ORDER BY w.form, o.kind, o.key, f.direction;
+        """;
+
+    private static (IReadOnlyList<T> Rows, long Total) ReadObjectTimings<T>(
+        SqliteConnection connection, IReadOnlyDictionary<string, PanGlossWordStatistics> words,
+        Func<PanGlossObjectTiming, T> convert, int maxRows)
     {
         using var command = connection.CreateCommand();
-        command.CommandText = """
-            SELECT w.form, o.key, o.identity_quality, o.kind, o.label, f.direction,
-                   SUM(f.attempts), SUM(f.self_time_ns)
-            FROM fact AS f
-            JOIN word AS w ON w.word_id = f.word_id
-            JOIN object AS o ON o.object_id = f.object_id
-            GROUP BY w.form, o.key, o.identity_quality, o.kind, o.label, f.direction
-            ORDER BY w.form, o.kind, o.key, f.direction;
-            """;
+        command.CommandText = ObjectTimingsQuery;
         using var reader = command.ExecuteReader();
-        var rows = new List<PanGlossObjectTiming>();
+        var rows = new List<T>();
         while (reader.Read())
         {
+            if (rows.Count >= maxRows)
+            {
+                // Counted by SQLite without materializing, so memory stays bounded by the cap.
+                reader.Close();
+                return (rows, CountObjectTimings(connection));
+            }
             var word = reader.GetString(0);
             var key = reader.GetString(1);
             var identityQuality = reader.GetString(2);
@@ -106,10 +144,17 @@ public static class PanGlossBatchStatisticsReader
             int? attempts = SupportsCounter(kind, "attempts") ? ReadCounter(reader, 6, "object attempts", word) : null;
             long? nanoseconds = SupportsTimer(kind, direction)
                 ? ReadElapsedNs(reader, 7, "object", word) : null;
-            rows.Add(new PanGlossObjectTiming(kind, key, identityQuality, direction, label, word, attempts, null,
-                nanoseconds));
+            rows.Add(convert(new PanGlossObjectTiming(kind, key, identityQuality, direction, label, word, attempts,
+                null, nanoseconds)));
         }
-        return rows;
+        return (rows, rows.Count);
+    }
+
+    private static long CountObjectTimings(SqliteConnection connection)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT COUNT(*) FROM (SELECT 1 " + ObjectTimingsFrom + ")";
+        return (long)(command.ExecuteScalar() ?? 0L);
     }
 
     internal static bool IsKnownKind(string kind) => kind is
@@ -148,10 +193,17 @@ public static class PanGlossBatchStatisticsReader
 
 /// <summary>The per-word counters and object timings recorded by one PanGloss batch run.</summary>
 /// <param name="Words">Attempts, passes and elapsed nanoseconds, indexed by each exact form in the Selection.</param>
-/// <param name="ObjectTimings">The per-word timings aggregated by PanGloss object identity.</param>
-public sealed record PanGlossBatchStatistics(
+/// <param name="ObjectTimings">The per-word timings aggregated by PanGloss object identity, up to the cap.</param>
+/// <param name="TotalObjectTimingRows">How many timing rows the cache holds, including any past the cap.</param>
+/// <typeparam name="T">The shape each timing row was converted to as it was read.</typeparam>
+public sealed record PanGlossBatchStatistics<T>(
     IReadOnlyDictionary<string, PanGlossWordStatistics> Words,
-    IReadOnlyList<PanGlossObjectTiming> ObjectTimings);
+    IReadOnlyList<T> ObjectTimings,
+    long TotalObjectTimingRows)
+{
+    /// <summary>True when rows past the cap were counted but not kept.</summary>
+    public bool Truncated => TotalObjectTimingRows > ObjectTimings.Count;
+}
 
 /// <summary>PanGloss's whole-word counters and elapsed time for a batch result.</summary>
 /// <param name="Attempts">The analysis attempts recorded for the word.</param>

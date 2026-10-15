@@ -194,9 +194,10 @@ public static class AssessCommand
             onProgress?.Invoke(new AssessmentProgress(
                 AssessmentStage.SelectingWords, 0, null, "Composing the Selection..."));
             SelectionComposition composition;
-            using (var reader = BaselineReadCache.Open(baseline.FwDataPath))
+            // One copy of the Baseline serves both the Selection and the naming, and is released when the run ends.
+            using var baselineReader = BaselineReadCache.Open(baseline.FwDataPath);
             {
-                var cache = reader.Cache;
+                var cache = baselineReader.Cache;
                 var composed = SelectionComposer.Compose(
                     cache, selectionRequest, assessments, JsonSerializer.Serialize(baseline.Token, MotifJson.CreateOptions()));
                 if (!composed.Succeeded)
@@ -379,7 +380,7 @@ public static class AssessCommand
                 string summaryMarkdown;
                 // Require one batch statistics row for each resolved word before recording.
                 Dictionary<string, PanGlossWordStatistics>? wordStats = null;
-                var objectTimings = new List<AssessmentObjectTiming>();
+                IReadOnlyList<AssessmentObjectTiming> objectTimings = [];
                 if (statsCachePath is null)
                 {
                     summaryMarkdown = "(no per-object statistics were collected)" + Environment.NewLine;
@@ -400,11 +401,14 @@ public static class AssessCommand
                         return CommandOutcome<AssessCommandResponse>.Refused(ParserUnavailable(request.ProjectPath, exception.Message));
                     }
                     using var replayLease = replay;
-                    PanGlossBatchStatistics batchStatistics;
+                    PanGlossBatchStatistics<AssessmentObjectTiming> batchStatistics;
                     try
                     {
                         batchStatistics = PanGlossBatchStatisticsReader.Read(
-                            replay.CachePath, composition.Selection.Words);
+                            replay.CachePath, composition.Selection.Words,
+                            row => new AssessmentObjectTiming(row.Kind, row.Key, row.IdentityQuality, row.Direction,
+                                row.Object, row.Word, row.Attempts, row.Passes, row.ElapsedNs),
+                            ObjectTimingRowCapForTests.Value ?? PanGlossBatchStatisticsReader.DefaultMaxObjectTimingRows);
                     }
                     catch (Exception exception) when (exception is IOException or InvalidDataException or
                         UnauthorizedAccessException or SqliteException)
@@ -414,17 +418,17 @@ public static class AssessCommand
                     }
                     wordStats = batchStatistics.Words.ToDictionary(pair => pair.Key, pair => pair.Value,
                         StringComparer.Ordinal);
-                    objectTimings.AddRange(batchStatistics.ObjectTimings.Select(row => new AssessmentObjectTiming(
-                        row.Kind, row.Key, row.IdentityQuality, row.Direction, row.Object, row.Word,
-                        row.Attempts, row.Passes, row.ElapsedNs)));
+                    objectTimings = batchStatistics.ObjectTimings;
                     summaryMarkdown = $"Batch statistics: {batchStatistics.Words.Count} words; " +
-                        $"{batchStatistics.ObjectTimings.Count} object timing rows.";
+                        $"{batchStatistics.TotalObjectTimingRows} object timing rows.";
+                    if (batchStatistics.Truncated)
+                        summaryMarkdown += $" Only the first {batchStatistics.ObjectTimings.Count} of " +
+                            $"{batchStatistics.TotalObjectTimingRows} object timing rows were kept; the rest were not recorded.";
                 }
 
                 if (cancellationToken.IsCancellationRequested)
                     return CommandOutcome<AssessCommandResponse>.Refused(Cancelled(request.ProjectPath));
-                using var namingReader = BaselineReadCache.Open(baseline.FwDataPath);
-                var namingCache = namingReader.Cache;
+                var namingCache = baselineReader.Cache;
                 var projectName = Path.GetFileNameWithoutExtension(request.ProjectPath);
                 var wordContext = ReadProjectWordContext(namingCache, composition.Selection.Words,
                     composition.Descriptor.TextIds);
@@ -441,42 +445,72 @@ public static class AssessCommand
                         .Select(missed => ReadStoredAnalysis(namingCache, projectName, missed, ReadingGrade.Approved, navigation.LinkFor))
                         .ToArray();
                 }
-                pendingRecords = pendingRecords.Select(record => record with
+                var parseWordCount = pendingRecords
+                    .FirstOrDefault(record => record.Kind == AssessmentKind.ParseTime.ToStoredKind())?.Words.Count ?? 0;
+                var finalizing = new FinalizingProgress(onProgress, parseWordCount);
+                finalizing.Report(0);
+                // Grades and comparison facts depend only on these inputs, so every record shares one computation.
+                var gradeMemo = new Dictionary<(string, IReadOnlyList<ParseAnalysis>), IReadOnlyList<string>>();
+                var comparisonMemo = new Dictionary<
+                    (string, ParseWordEvidence?, string, bool, WordCorrectness?), WordAnalysisComparison?>();
+                IReadOnlyList<string>? GradesOf(string wordText, ParseWordEvidence? morphology)
                 {
-                    Words = record.Words.Select(word =>
+                    if (morphology is null) return null;
+                    var key = (wordText, morphology.Analyses);
+                    if (gradeMemo.TryGetValue(key, out var cached)) return cached;
+                    return gradeMemo[key] = GradeReadings(morphology.Analyses,
+                        wordContext.Approved.GetValueOrDefault(wordText) ?? Array.Empty<ApprovedMorphology>(),
+                        wordContext.Rejected.GetValueOrDefault(wordText) ?? Array.Empty<ApprovedMorphology>(),
+                        wordContext.Candidates.GetValueOrDefault(wordText) ?? Array.Empty<ApprovedMorphology>());
+                }
+                WordAnalysisComparison? ComparisonOf(AssessedWord word)
+                {
+                    var key = (word.Word, word.Morphology, word.Outcome, word.IsIncomplete, word.Correctness);
+                    if (comparisonMemo.TryGetValue(key, out var cached)) return cached;
+                    finalizing.FirstPassWordDone();
+                    return comparisonMemo[key] = CompareSemantics.Capture(new CompareWordFacts(
+                        wordContext.Standings.GetValueOrDefault(word.Word), word.Outcome, word.IsIncomplete,
+                        word.Morphology, null, word.Correctness?.Unmatched.Count ?? 0)
                     {
-                        var stats = wordStats is not null && wordStats.TryGetValue(word.Word, out var found)
-                            ? found : null;
-                        return word with
+                        StoredAnalyses = storedContext.Analyses.GetValueOrDefault(word.Word) ?? [],
+                        StoredAnalysesAvailable = true,
+                        MissedApproved = NameMissed(word.Word, word.Correctness),
+                    });
+                }
+                try
+                {
+                    pendingRecords = pendingRecords.Select(record => record with
+                    {
+                        Words = record.Words.Select(word =>
                         {
-                            ElapsedNs = stats?.ElapsedNs,
-                            Attempts = stats?.Attempts,
-                            Passes = stats?.Passes,
-                            Morphology = word.Morphology is { } morphology && stats is not null
-                                ? morphology with { Attempts = stats.Attempts }
-                                : word.Morphology,
-                            ProjectStanding = wordContext.Standings.GetValueOrDefault(word.Word),
-                            OccurrenceCount = wordContext.HasTextSelection
-                                ? wordContext.OccurrencesByWord.GetValueOrDefault(word.Word) : null,
-                            ReadingGrades = word.Morphology is null ? null : GradeReadings(word.Morphology.Analyses,
-                                wordContext.Approved.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>(),
-                                wordContext.Rejected.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>(),
-                                wordContext.Candidates.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>()),
-                            AnalysisComparison = CompareSemantics.Capture(new CompareWordFacts(
-                                wordContext.Standings.GetValueOrDefault(word.Word), word.Outcome, word.IsIncomplete,
-                                word.Morphology, null, word.Correctness?.Unmatched.Count ?? 0)
+                            cancellationToken.ThrowIfCancellationRequested();
+                            var stats = wordStats is not null && wordStats.TryGetValue(word.Word, out var found)
+                                ? found : null;
+                            return word with
                             {
-                                StoredAnalyses = storedContext.Analyses.GetValueOrDefault(word.Word) ?? [],
-                                StoredAnalysesAvailable = true,
+                                ElapsedNs = stats?.ElapsedNs,
+                                Attempts = stats?.Attempts,
+                                Passes = stats?.Passes,
+                                Morphology = word.Morphology is { } morphology && stats is not null
+                                    ? morphology with { Attempts = stats.Attempts }
+                                    : word.Morphology,
+                                ProjectStanding = wordContext.Standings.GetValueOrDefault(word.Word),
+                                OccurrenceCount = wordContext.HasTextSelection
+                                    ? wordContext.OccurrencesByWord.GetValueOrDefault(word.Word) : null,
+                                ReadingGrades = GradesOf(word.Word, word.Morphology),
+                                AnalysisComparison = ComparisonOf(word),
+                                MissedApprovedCount = word.Correctness?.Unmatched.Count,
                                 MissedApproved = NameMissed(word.Word, word.Correctness),
-                            }),
-                            MissedApprovedCount = word.Correctness?.Unmatched.Count,
-                            MissedApproved = NameMissed(word.Word, word.Correctness),
-                        };
-                    }).ToArray(),
-                    ObjectTimings = record.Kind == AssessmentKind.ParseTime.ToStoredKind()
-                        ? objectTimings : record.ObjectTimings,
-                }).ToList();
+                            };
+                        }).ToArray(),
+                        ObjectTimings = record.Kind == AssessmentKind.ParseTime.ToStoredKind()
+                            ? objectTimings : record.ObjectTimings,
+                    }).ToList();
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    return CommandOutcome<AssessCommandResponse>.Refused(Cancelled(request.ProjectPath));
+                }
                 var currentBaseline = baselines.GetCurrent(workspaceKey);
                 if (currentBaseline is null || currentBaseline.Token != baseline.Token)
                     return CommandOutcome<AssessCommandResponse>.Refused(new Refusal(
@@ -509,38 +543,44 @@ public static class AssessCommand
                         pendingRecords.Single(record => record.Kind == AssessmentKind.ParseTime.ToStoredKind()).AssessmentId,
                         invocation.InvocationId,
                         DateTimeOffset.Parse(savedUtc, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind));
-                    words = words.Select(word =>
+                    try
                     {
-                        var readings = word.Morphology is null
-                            ? null : ParserReadingReader.Read(namingCache, projectName, word.Morphology, navigation.LinkFor);
-                        var readingGrades = word.Morphology is null ? null : GradeReadings(word.Morphology.Analyses,
-                            wordContext.Approved.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>(),
-                            wordContext.Rejected.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>(),
-                            wordContext.Candidates.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>());
-                        var projectStanding = wordContext.Standings.GetValueOrDefault(word.Word);
-                        var missedApproved = NameMissed(word.Word, word.Correctness);
-                        var storedAnalyses = storedContext.Analyses[word.Word];
-                        var stats = wordStats is not null && wordStats.TryGetValue(word.Word, out var found) ? found : null;
-                        var row = word with
+                        words = words.Select(word =>
                         {
-                            Origin = origin,
-                            Readings = readings,
-                            TryWordLink = storedContext.WordLinks.GetValueOrDefault(word.Word),
-                            WordWritingSystem = storedContext.WordWritingSystems.GetValueOrDefault(word.Word),
-                            ReadingGrades = readingGrades,
-                            ProjectStanding = projectStanding,
-                            OccurrenceCount = wordContext.HasTextSelection
-                                ? wordContext.OccurrencesByWord.GetValueOrDefault(word.Word) : null,
-                            MissedApproved = missedApproved,
-                            ExpectedAnalysis = AssessmentWordRows.ExpectedAnalysis(storedAnalyses),
-                            StoredAnalyses = storedAnalyses,
-                            StoredAnalysesAvailable = true,
-                            AnalysisComparison = comparisonByWord?.GetValueOrDefault(word.Word),
-                            Attempts = stats?.Attempts,
-                            Passes = stats?.Passes,
-                        };
-                        return row with { FixFirst = AssessmentWordRows.FixFirst(row), Comparison = CompareSemantics.Compare(row) };
-                    }).ToArray();
+                            cancellationToken.ThrowIfCancellationRequested();
+                            finalizing.SecondPassWordDone();
+                            var readings = word.Morphology is null
+                                ? null : ParserReadingReader.Read(namingCache, projectName, word.Morphology, navigation.LinkFor);
+                            var readingGrades = GradesOf(word.Word, word.Morphology);
+                            var projectStanding = wordContext.Standings.GetValueOrDefault(word.Word);
+                            var missedApproved = NameMissed(word.Word, word.Correctness);
+                            var storedAnalyses = storedContext.Analyses[word.Word];
+                            var stats = wordStats is not null && wordStats.TryGetValue(word.Word, out var found) ? found : null;
+                            var row = word with
+                            {
+                                Origin = origin,
+                                Readings = readings,
+                                TryWordLink = storedContext.WordLinks.GetValueOrDefault(word.Word),
+                                WordWritingSystem = storedContext.WordWritingSystems.GetValueOrDefault(word.Word),
+                                ReadingGrades = readingGrades,
+                                ProjectStanding = projectStanding,
+                                OccurrenceCount = wordContext.HasTextSelection
+                                    ? wordContext.OccurrencesByWord.GetValueOrDefault(word.Word) : null,
+                                MissedApproved = missedApproved,
+                                ExpectedAnalysis = AssessmentWordRows.ExpectedAnalysis(storedAnalyses),
+                                StoredAnalyses = storedAnalyses,
+                                StoredAnalysesAvailable = true,
+                                AnalysisComparison = comparisonByWord?.GetValueOrDefault(word.Word),
+                                Attempts = stats?.Attempts,
+                                Passes = stats?.Passes,
+                            };
+                            return row with { FixFirst = AssessmentWordRows.FixFirst(row), Comparison = CompareSemantics.Compare(row) };
+                        }).ToArray();
+                    }
+                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                    {
+                        return CommandOutcome<AssessCommandResponse>.Refused(Cancelled(request.ProjectPath));
+                    }
                 }
 
                 var response = new AssessCommandResponse(baseline, composition.Projection, assessmentIds, summaryMarkdown)
@@ -595,6 +635,35 @@ public static class AssessCommand
                 foreach (var lease in artifactLeases) lease.Dispose();
             }
         });
+    }
+
+    // A test narrows the timings cap for its own async flow without touching any other running test.
+    internal static readonly AsyncLocal<int?> ObjectTimingRowCapForTests = new();
+
+    private sealed class FinalizingProgress(Action<AssessmentProgress>? onProgress, int total)
+    {
+        private int _firstPass;
+        private int _secondPass;
+        private int _lastReported = -1;
+        private readonly int _step = Math.Max(1, Math.Min(500, total / 100));
+
+        public void FirstPassWordDone() { _firstPass++; Report(); }
+
+        public void SecondPassWordDone() { _secondPass++; Report(); }
+
+        private void Report()
+        {
+            // The two passes each cover the Selection once, so their average is the share of words finished.
+            var completed = Math.Min(total, (_firstPass + _secondPass) / 2);
+            if (completed - _lastReported >= _step) Report(completed);
+        }
+
+        public void Report(int completed)
+        {
+            _lastReported = completed;
+            onProgress?.Invoke(new AssessmentProgress(AssessmentStage.Finalizing, completed, total,
+                $"Preparing results: {completed:N0} of {total:N0} words"));
+        }
     }
 
     private static void ClearParserRefusal(MotifDatabase database, string projectPath, SIL.Motif.Contract.Baselines.BaselineToken token)

@@ -34,6 +34,22 @@ public sealed class PanGlossBatchStatisticsReaderTests : IDisposable
         Assert.Equal("endo#", Assert.Single(result.ObjectTimings, row => row.Key == "endo#").Object);
     }
 
+    [Fact]
+    public void KeepsTheFirstRowsInQueryOrderAndCountsTheRestWhenCapped()
+    {
+        var path = Path.Combine(_root, "capped.sqlite");
+        WriteCache(path);
+        var all = PanGlossBatchStatisticsReader.Read(path, ["word"]);
+        Assert.False(all.Truncated);
+        Assert.True(all.ObjectTimings.Count > 2);
+
+        var capped = PanGlossBatchStatisticsReader.Read(path, ["word"], row => row, 2);
+
+        Assert.True(capped.Truncated);
+        Assert.Equal(all.ObjectTimings.Count, capped.TotalObjectTimingRows);
+        Assert.Equal(all.ObjectTimings.Take(2), capped.ObjectTimings);
+    }
+
     public void Dispose() => Directory.Delete(_root, recursive: true);
 
     [Fact]
