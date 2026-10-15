@@ -714,10 +714,12 @@ public static class AssessCommand
     private static ProjectWordContext ReadProjectWordContext(
         LcmCache cache, IReadOnlyList<string> words, IReadOnlyList<Guid> textIds)
     {
-        var approved = ApprovedMorphologyReader.Read(cache);
-        var rejected = ApprovedMorphologyReader.ReadDisapproved(cache);
-        var candidates = ApprovedMorphologyReader.ReadCandidates(cache);
-        var misspelled = ApprovedMorphologyReader.ReadIncorrectSpellings(cache);
+        // Only the selected words: a lexicon-wide read builds every analysis in the project.
+        var forms = ApprovedMorphologyReader.FormsOf(words);
+        var approved = ApprovedMorphologyReader.Read(cache, forms);
+        var rejected = ApprovedMorphologyReader.ReadDisapproved(cache, forms);
+        var candidates = ApprovedMorphologyReader.ReadCandidates(cache, forms);
+        var misspelled = ApprovedMorphologyReader.ReadIncorrectSpellings(cache, forms);
         var standings = words.ToDictionary(word => word, word => ProjectStandings.Of(
             approved.GetValueOrDefault(word)?.Count ?? 0,
             candidates.GetValueOrDefault(word)?.Count ?? 0,

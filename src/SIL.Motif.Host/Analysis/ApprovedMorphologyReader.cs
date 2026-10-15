@@ -9,15 +9,19 @@ namespace SIL.Motif.Host.Analysis;
 public static class ApprovedMorphologyReader
 {
     /// <summary>Every human-approved analysis, keyed by its wordform's surface text.</summary>
-    public static IReadOnlyDictionary<string, IReadOnlyList<ApprovedMorphology>> Read(LcmCache cache) =>
-        ReadFrom(cache, word => word.HumanApprovedAnalyses);
+    /// <param name="cache">The project to read.</param>
+    /// <param name="forms">Only these surface forms, or every wordform when <see langword="null"/>.</param>
+    public static IReadOnlyDictionary<string, IReadOnlyList<ApprovedMorphology>> Read(LcmCache cache,
+        IReadOnlySet<string>? forms = null) =>
+        ReadFrom(cache, word => word.HumanApprovedAnalyses, forms);
 
     /// <summary>
     /// Every human-disapproved analysis, keyed the same way as <see cref="Read"/> — the negative half of the
     /// same human judgement, read for grading a produced reading against what the project explicitly rejected.
     /// </summary>
-    public static IReadOnlyDictionary<string, IReadOnlyList<ApprovedMorphology>> ReadDisapproved(LcmCache cache) =>
-        ReadFrom(cache, word => word.HumanDisapprovedParses);
+    public static IReadOnlyDictionary<string, IReadOnlyList<ApprovedMorphology>> ReadDisapproved(LcmCache cache,
+        IReadOnlySet<string>? forms = null) =>
+        ReadFrom(cache, word => word.HumanDisapprovedParses, forms);
 
     /// <summary>Reads every native default-human Approved morphology with its surface and writing-system tag.</summary>
     public static IReadOnlyList<NativeReadingExpectation> ReadApprovedExpectations(LcmCache cache) =>
@@ -31,25 +35,35 @@ public static class ApprovedMorphologyReader
     /// Every candidate analysis — one no person has approved or rejected, whoever produced it — keyed the same way as
     /// <see cref="Read"/>, for grading a produced reading against what the project holds without a human verdict.
     /// </summary>
-    public static IReadOnlyDictionary<string, IReadOnlyList<ApprovedMorphology>> ReadCandidates(LcmCache cache) =>
+    public static IReadOnlyDictionary<string, IReadOnlyList<ApprovedMorphology>> ReadCandidates(LcmCache cache,
+        IReadOnlySet<string>? forms = null) =>
         ReadFrom(cache, word =>
         {
             var withOpinion = word.HumanApprovedAnalyses.Concat(word.HumanDisapprovedParses).ToHashSet();
             return word.AnalysesOC.Where(analysis => !withOpinion.Contains(analysis));
-        });
+        }, forms);
 
     /// <summary>The surface text of every wordform FieldWorks marks as incorrectly spelled.</summary>
-    public static IReadOnlySet<string> ReadIncorrectSpellings(LcmCache cache) =>
+    public static IReadOnlySet<string> ReadIncorrectSpellings(LcmCache cache, IReadOnlySet<string>? forms = null) =>
         cache.ServiceLocator.GetInstance<IWfiWordformRepository>().AllInstances()
             .Where(word => word.SpellingStatus == IncorrectSpellingStatus)
             .Select(word => word.Form.VernacularDefaultWritingSystem?.Text ?? string.Empty)
+            .Where(form => forms is null || forms.Contains(form))
+            .ToHashSet(StringComparer.Ordinal);
+
+    /// <summary>
+    /// The filter for reading only <paramref name="words"/>: each as given and decomposed, since the analysis readers
+    /// key by the decomposed form and the spelling reader by the stored text.
+    /// </summary>
+    public static IReadOnlySet<string> FormsOf(IEnumerable<string> words) =>
+        words.SelectMany(word => new[] { word, word.Normalize(System.Text.NormalizationForm.FormD) })
             .ToHashSet(StringComparer.Ordinal);
 
     // SpellingStatus's Incorrect member (0 = Undecided, 1 = Correct, 2 = Incorrect).
     private const int IncorrectSpellingStatus = 2;
 
     private static IReadOnlyDictionary<string, IReadOnlyList<ApprovedMorphology>> ReadFrom(
-        LcmCache cache, Func<IWfiWordform, IEnumerable<IWfiAnalysis>> select)
+        LcmCache cache, Func<IWfiWordform, IEnumerable<IWfiAnalysis>> select, IReadOnlySet<string>? forms)
     {
         var result = new Dictionary<string, List<ApprovedMorphology>>(StringComparer.Ordinal);
         foreach (var word in cache.ServiceLocator.GetInstance<IWfiWordformRepository>().AllInstances())
@@ -57,7 +71,7 @@ public static class ApprovedMorphologyReader
             foreach (var ws in word.Form.AvailableWritingSystemIds.Order())
             {
                 var form = word.Form.get_String(ws)?.Text?.Normalize(System.Text.NormalizationForm.FormD);
-                if (string.IsNullOrEmpty(form)) continue;
+                if (string.IsNullOrEmpty(form) || (forms is not null && !forms.Contains(form))) continue;
                 if (!result.TryGetValue(form, out var expected)) result[form] = expected = [];
                 foreach (var analysis in select(word))
                 {

@@ -16,8 +16,9 @@ internal sealed record BaselineWordContext(
     /// <summary>Projects all opinions and links before the caller disposes its Baseline cache.</summary>
     internal static BaselineWordContext Read(LcmCache cache, SavedProjectNavigation navigation, IReadOnlyList<string> words)
     {
-        return Read(cache, navigation, words, ApprovedMorphologyReader.Read(cache),
-            ApprovedMorphologyReader.ReadDisapproved(cache), ApprovedMorphologyReader.ReadCandidates(cache));
+        var forms = ApprovedMorphologyReader.FormsOf(words);
+        return Read(cache, navigation, words, ApprovedMorphologyReader.Read(cache, forms),
+            ApprovedMorphologyReader.ReadDisapproved(cache, forms), ApprovedMorphologyReader.ReadCandidates(cache, forms));
     }
 
     /// <summary>Names already captured opinions from the same loaded cache without reading them again.</summary>

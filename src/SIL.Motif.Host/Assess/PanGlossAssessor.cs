@@ -176,7 +176,7 @@ public sealed class PanGlossAssessor : IAssessor
                 {
                     IReadOnlyDictionary<string, IReadOnlyList<ApprovedMorphology>> expected;
                     using (var cache = new FwDataProjectLoader().LoadScratchCache(evidence.SourcePath))
-                        expected = ApprovedMorphologyReader.Read(cache);
+                        expected = ApprovedMorphologyReader.Read(cache, ApprovedMorphologyReader.FormsOf(rows.Select(row => row.Word)));
                     rows = rows.Select(row => row with
                     {
                         Correctness = MorphologyCorrectness.Compare(row.Morphology!,
