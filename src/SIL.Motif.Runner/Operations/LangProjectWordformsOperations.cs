@@ -133,7 +133,7 @@ internal sealed class CreateWordformHandler : IOperationHandler
             result["collision"] = entityId.Value;
             return result;
         }
-        foreach (var (field, value) in WordformOwningSnapshots.Snapshot(cache, wordform)
+        foreach (var (field, value) in WordformOwningSnapshots.Read(cache, wordform)
                      .AlternativesFields[SnapshotFields.LangProjectWordforms])
             if (field == "ref" || field == "form:" + ws) result[field] = value;
         return result;

@@ -6,11 +6,14 @@ using SIL.Motif.Model.Snapshot;
 
 namespace SIL.Motif.Runner.Snapshotting;
 
-/// <summary>Projects one wordform's membership and authored forms under the project root, never the inventory.</summary>
+/// <summary>
+/// Projects one wordform's membership and authored forms under the project root, never the inventory. The members are
+/// named Read, not Snapshot, so the Baseline's whole-model digest does not discover them as generated snapshotters.
+/// </summary>
 public static class WordformOwningSnapshots
 {
     /// <summary>The wordform's identity as <c>ref</c> and each non-empty form as <c>form:&lt;ws&gt;</c>, in NFD.</summary>
-    public static ObjectSnapshot Snapshot(LcmCache cache, IWfiWordform wordform)
+    public static ObjectSnapshot Read(LcmCache cache, IWfiWordform wordform)
     {
         ArgumentNullException.ThrowIfNull(wordform);
         var alternatives = new Dictionary<string, string>(StringComparer.Ordinal)
@@ -31,10 +34,10 @@ public static class WordformOwningSnapshots
     }
 
     /// <summary>The same projection for an identity that may not exist yet; an absent wordform has no fields.</summary>
-    public static ObjectSnapshot Snapshot(LcmCache cache, CanonicalId wordformId) =>
+    public static ObjectSnapshot Read(LcmCache cache, CanonicalId wordformId) =>
         cache.ServiceLocator.GetInstance<ICmObjectRepository>().TryGetObject(wordformId.ToGuid(), out var found) &&
         found is IWfiWordform wordform
-            ? Snapshot(cache, wordform)
+            ? Read(cache, wordform)
             : new ObjectSnapshot(CanonicalId.FromGuid(cache.LangProject.Guid),
                 new Dictionary<string, IReadOnlyDictionary<string, string>>(StringComparer.Ordinal));
 }

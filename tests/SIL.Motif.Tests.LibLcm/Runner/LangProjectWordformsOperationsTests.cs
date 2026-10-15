@@ -180,11 +180,11 @@ public sealed class LangProjectWordformsOperationsTests : IDisposable
         var identity = CanonicalId.Mint();
         var proposal = Create(identity, "snap");
         var dryRun = ScratchDryRun.Of(_cache, proposal);
-        var before = WordformOwningSnapshots.Snapshot(_cache, identity);
+        var before = WordformOwningSnapshots.Read(_cache, identity);
 
         var receipt = ProposalApplier.Apply(_cache, proposal, dryRun.Anchor, "tester");
 
-        var after = WordformOwningSnapshots.Snapshot(_cache, identity);
+        var after = WordformOwningSnapshots.Read(_cache, identity);
         Assert.Empty(before.AlternativesFields);
         var fields = after.AlternativesFields[SnapshotFields.LangProjectWordforms];
         Assert.Equal(identity.Value, fields["ref"]);
