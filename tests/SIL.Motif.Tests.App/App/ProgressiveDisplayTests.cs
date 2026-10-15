@@ -567,12 +567,12 @@ public sealed class ProgressiveDisplayTests
                 window.Height = 780;
                 workspace.CurrentPage = WorkspacePage.Timing;
                 PageScreenshots.Settle(window);
-                var table = Assert.Single(window.GetVisualDescendants().OfType<ItemsControl>(),
+                var table = Assert.Single(window.GetVisualDescendants().OfType<ProgressiveItemsControl>(),
                     control => AutomationProperties.GetName(control) == "Timing by rule");
-                var row = table.Items[0];
-                table.ItemsSource = Enumerable.Repeat(row, 2000).ToArray();
+                var row = ((System.Collections.IList)table.FullItemsSource!)[0];
+                table.FullItemsSource = Enumerable.Repeat(row, 2000).ToArray();
                 PageScreenshots.Settle(window);
-                Assert.InRange(table.GetRealizedContainers().Count(), 1, 48);
+                Assert.InRange(table.GetRealizedContainers().Count(), 1, 22);
             }
             finally { window.Close(); }
         }, TimeSpan.FromSeconds(30));

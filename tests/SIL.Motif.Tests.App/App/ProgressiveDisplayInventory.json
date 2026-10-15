@@ -414,14 +414,15 @@
     "view": "Pages/TimingPage",
     "name": "TimingPageRuleRowsItems",
     "source": "RuleRows",
-    "mode": "rows",
-    "control": "ItemsControl"
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
   },
   {
     "view": "Pages/TimingPage",
     "name": "TimingPageCostliestRuleWordRowsItems",
     "source": "CostliestRuleWordRows",
-    "mode": "rows",
+    "mode": "finite",
+    "reason": "The five costliest words under one rule.",
     "control": "ItemsControl"
   },
   {

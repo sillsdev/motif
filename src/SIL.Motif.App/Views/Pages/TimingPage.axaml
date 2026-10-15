@@ -245,11 +245,8 @@
                                              views:ClearTipPlacement.IsEnabled="True"
                                              Background="{DynamicResource Intent.Clear}" />
                   </Grid>
-                  <ItemsControl x:Name="TimingPageRuleRowsItems" ItemsSource="{Binding RuleRows}"
+                  <views:ProgressiveItemsControl x:Name="TimingPageRuleRowsItems" FullItemsSource="{Binding RuleRows}"
                                 AutomationProperties.Name="Timing by rule">
-                    <ItemsControl.ItemsPanel>
-                      <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                       <DataTemplate x:DataType="vm:TimingRuleRow">
                         <Border Classes="hoverReveal">
@@ -309,7 +306,7 @@
                         </Border>
                       </DataTemplate>
                     </ItemsControl.ItemTemplate>
-                  </ItemsControl>
+                  </views:ProgressiveItemsControl>
                 </StackPanel>
               </Border>
 
@@ -332,7 +329,7 @@
           <!-- The word lists take the page's full width, so each row keeps its columns and next steps at 1040. -->
           <Border Classes="card" IsVisible="{Binding HasRule}">
             <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
-              <views:CopyableTextBlock Classes="section-title" Text="{Binding RuleWordsTitle}" />
+              <views:CopyableTextBlock Classes="section-title" Text="{Binding RuleWordsTitle}" TextWrapping="Wrap" />
               <views:WordListSlot Schema="{x:Static word:WordListSchemas.Timing}">
                 <Grid RowDefinitions="Auto,Auto" AutomationProperties.AutomationId="{x:Static app:AutomationIds.TimingWordsGrid}">
                   <word:WordRowHeader />
@@ -340,9 +337,6 @@
                                 ItemsSource="{Binding CostliestRuleWordRows}"
                                 AutomationProperties.Name="Words under this rule"
                                 KeyboardNavigation.TabNavigation="Continue">
-                    <ItemsControl.ItemsPanel>
-                      <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                       <DataTemplate x:DataType="vm:ListedWordViewModel">
                         <word:WordRow Data="{Binding TimingPresentation}"
@@ -359,7 +353,7 @@
           <Border Classes="card" IsVisible="{Binding HasSelectedWords}">
             <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
               <views:CopyableTextBlock Classes="section-title" Text="How long the words took" />
-              <views:CopyableTextBlock Text="{Binding PercentileSummary}" />
+              <views:CopyableTextBlock Text="{Binding PercentileSummary}" TextWrapping="Wrap" />
             </StackPanel>
           </Border>
         </StackPanel>

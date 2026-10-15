@@ -9,10 +9,6 @@ internal static partial class LayoutInvariantWorkList
     internal static IReadOnlyList<LayoutException> QuickEntries { get; } =
     [
         new(new("Timing/populated", "640x600", 150, "light"), "unreachable-control",
-            new("Button", null, null, null, "", "TimingSidePanel"),
-            null, "Frame", "Button has no hit target or scroll route at 640x600 150%.",
-            "no-visible-hit-target-or-scroll-route", 1),
-        new(new("Timing/populated", "640x600", 150, "light"), "unreachable-control",
             new("WordRow", null, "motif-word-row-timing-rule-words-hawajafika-row", "hawajafika · Approved · PanGloss: No parse · Lost", "", "TimingPageCostliestRuleWordRowsItems"),
             null, "Frame", "hawajafika · Approved · PanGloss: No parse · Lost has no hit target or scroll route at 640x600 150%.",
             "no-visible-hit-target-or-scroll-route", 1),
