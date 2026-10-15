@@ -19,6 +19,17 @@ public sealed class AutomationIdsTests
     }
 
     [Fact]
+    public void ReviewGroupUndoAllIdsAreSafeNonEmptyAndDistinctEvenForTitlesWithoutAsciiLetters()
+    {
+        var titles = new[] { "No longer fits", "Unknown → Approved", "→", "日本語", "Ünï", "" };
+        var ids = titles.Select(AutomationIds.ForReviewGroupUndoAll).ToArray();
+
+        Assert.All(ids, id => Assert.Matches("^motif-review-group-undo-all-[a-f0-9]*$", id));
+        Assert.Equal(ids.Length, ids.Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(ids[4], AutomationIds.ForReviewGroupUndoAll("U\u0308ni\u0308"));
+    }
+
+    [Fact]
     public void WordStripPartIdsAreStableSafeAndDistinct()
     {
         var parts = new[]

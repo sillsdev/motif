@@ -154,7 +154,8 @@ public static class AutomationIds
     /// <param name="title">The group's title, which is unique within the page.</param>
     /// <returns>An identifier that no other group's button shares.</returns>
     public static string ForReviewGroupUndoAll(string title) =>
-        "motif-review-group-undo-all-" + System.Text.RegularExpressions.Regex.Replace(title.ToLowerInvariant(), "[^a-z0-9]+", "-").Trim('-');
+        "motif-review-group-undo-all-" + Convert.ToHexString(
+            Encoding.UTF8.GetBytes(title.Normalize(NormalizationForm.FormC))).ToLowerInvariant();
 
     /// <summary>The letter drawn inside an opinion mark.</summary>
     public const string OpinionMarkLetter = "motif-opinion-mark-letter";

@@ -1051,6 +1051,8 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
     public string CheckAgainAutomationName => $"Check again: {Word}";
     public string UndoAutomationName => $"Undo: {Word}";
 
+    public string WordCardAutomationName => $"Word card for {Word}";
+
     /// <summary>The parser's reading, for a change that sends it to FieldWorks or judges it.</summary>
     public string Reading { get; } = reading;
 
