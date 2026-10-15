@@ -109,26 +109,6 @@ public static partial class ProposalCommands
         ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
             DraftComposers["compose-edit-inflectional-affix"]);
 
-    public static CommandOutcome<ComposedOperationsResponse> ComposeEditPartOfSpeechInflectionClassDefault(
-        ComposeEditPartOfSpeechInflectionClassDefaultRequest request) =>
-        ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
-            DraftComposers["compose-edit-part-of-speech-inflection-class-default"]);
-
-    public static CommandOutcome<ComposedOperationsResponse> ComposeEditStemAllomorphStemName(
-        ComposeEditStemAllomorphStemNameRequest request) =>
-        ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
-            DraftComposers["compose-edit-stem-allomorph-stem-name"]);
-
-    public static CommandOutcome<ComposedOperationsResponse> ComposeEditStemInflectionClass(
-        ComposeEditStemInflectionClassRequest request) =>
-        ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
-            DraftComposers["compose-edit-stem-inflection-class"]);
-
-    public static CommandOutcome<ComposedOperationsResponse> ComposeEditAffixInflectionClasses(
-        ComposeEditAffixInflectionClassesRequest request) =>
-        ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
-            DraftComposers["compose-edit-affix-inflection-classes"]);
-
     public static CommandOutcome<ComposedOperationsResponse> ComposeEditAllomorphCondition(ComposeEditAllomorphConditionRequest request) =>
         ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
             DraftComposers["compose-edit-allomorph-condition"]);

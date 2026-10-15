@@ -332,22 +332,46 @@
   "compose-edit-part-of-speech-inflection-class-default": {
     "title": "Set a category class default",
     "description": "Sets or clears a part of speech's explicit default inflection class after checking the expected current reference. Clearing can reveal an inherited default; Motif stages a Draft for a person to review and Apply.",
-    "source": "Hand-written from the closed intent and composer contract."
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "target": "Id of the part of speech whose explicit default inflection class changes.",
+      "expectedInflectionClass": "Id of the explicit default class stored now, or null when it has none; an inherited default does not count.",
+      "inflectionClass": "Id of the class to make the explicit default, or null to clear it."
+    }
   },
   "compose-edit-stem-allomorph-stem-name": {
     "title": "Set a stem allomorph's name",
     "description": "Sets or clears the stem name of one stem allomorph after checking the expected current stem name. The name must belong to a stem category of the entry or an ancestor; Motif stages a Draft for a person to review and Apply.",
-    "source": "Hand-written from the closed intent and composer contract."
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "target": "Id of the stem allomorph, the lexeme form or an alternate form, to edit.",
+      "expectedStemName": "Id of the stem name the allomorph has now, or null when it has none.",
+      "stemName": "Id of the stem name to set, or null to clear it."
+    }
   },
   "compose-edit-stem-inflection-class": {
     "title": "Set a stem's class",
     "description": "Sets or clears the inflection class of one stem analysis after checking the expected current class. The class must belong to the stem's part of speech or an ancestor; Motif stages a Draft for a person to review and Apply.",
-    "source": "Hand-written from the closed intent and composer contract."
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "target": "Id of the stem analysis whose inflection class changes.",
+      "expectedInflectionClass": "Id of the class the stem analysis has now, or null when it has none.",
+      "inflectionClass": "Id of the class to set, or null to clear it."
+    }
   },
   "compose-edit-affix-inflection-classes": {
     "title": "Edit affix class restrictions",
     "description": "Replaces an ordinary inflectional prefix, suffix or interfix's exact class restriction set after checking the expected current ids. An empty set removes the restriction; Motif stages a Draft for a person to review and Apply.",
-    "source": "Hand-written from the closed intent and composer contract."
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "target": "Id of the ordinary inflectional prefix, suffix or interfix form to edit.",
+      "expectedInflectionClasses": "Ids of the inflection classes the form is restricted to now, as an unordered set; empty when it has no restriction.",
+      "inflectionClasses": "Ids of the inflection classes the form should be restricted to, as an unordered set; empty removes the restriction."
+    }
   },
   "compose-edit-allomorph-condition": {
     "title": "Edit an allomorph condition",

@@ -111,8 +111,8 @@ public sealed class InflectionClassEditorDraftTests(PristineProjectFixture prist
         Assert.Equal(("Inflectional grammar", "§ 2"), (defaultCitation!.Source, defaultCitation.Locator));
 
         var beforeMismatch = DraftBytes(path, DraftName);
-        var mismatchDefault = ProposalCommands.ComposeEditPartOfSpeechInflectionClassDefault(
-            new(path, Version, DraftName, JsonSerializer.Serialize(new
+        var mismatchDefault = ProposalCommands.ComposeIntent(
+            new(path, Version, DraftName, "compose-edit-part-of-speech-inflection-class-default", JsonSerializer.Serialize(new
             {
                 target = category,
                 expectedInflectionClass = (string?)null,
@@ -121,7 +121,7 @@ public sealed class InflectionClassEditorDraftTests(PristineProjectFixture prist
         Assert.False(mismatchDefault.Succeeded);
         Assert.Equal(beforeMismatch, DraftBytes(path, DraftName));
 
-        var mismatchAffix = ProposalCommands.ComposeEditAffixInflectionClasses(new(path, Version, DraftName,
+        var mismatchAffix = ProposalCommands.ComposeIntent(new(path, Version, DraftName, "compose-edit-affix-inflection-classes",
             JsonSerializer.Serialize(new
             {
                 target = formId,
@@ -131,7 +131,7 @@ public sealed class InflectionClassEditorDraftTests(PristineProjectFixture prist
         Assert.False(mismatchAffix.Succeeded);
         Assert.Equal(beforeMismatch, DraftBytes(path, DraftName));
 
-        var closedRefusal = ProposalCommands.ComposeEditAffixInflectionClasses(new(path, Version, DraftName,
+        var closedRefusal = ProposalCommands.ComposeIntent(new(path, Version, DraftName, "compose-edit-affix-inflection-classes",
             JsonSerializer.Serialize(new
             {
                 target = formId,
@@ -142,8 +142,8 @@ public sealed class InflectionClassEditorDraftTests(PristineProjectFixture prist
         Assert.False(closedRefusal.Succeeded);
         Assert.Equal(beforeMismatch, DraftBytes(path, DraftName));
 
-        var closedDefaultRefusal = ProposalCommands.ComposeEditPartOfSpeechInflectionClassDefault(
-            new(path, Version, DraftName, JsonSerializer.Serialize(new
+        var closedDefaultRefusal = ProposalCommands.ComposeIntent(
+            new(path, Version, DraftName, "compose-edit-part-of-speech-inflection-class-default", JsonSerializer.Serialize(new
             {
                 target = category,
                 expectedInflectionClass = classId,
@@ -153,8 +153,8 @@ public sealed class InflectionClassEditorDraftTests(PristineProjectFixture prist
         Assert.False(closedDefaultRefusal.Succeeded);
         Assert.Equal(beforeMismatch, DraftBytes(path, DraftName));
 
-        var defaultNoOp = ProposalCommands.ComposeEditPartOfSpeechInflectionClassDefault(
-            new(path, Version, DraftName, JsonSerializer.Serialize(new
+        var defaultNoOp = ProposalCommands.ComposeIntent(
+            new(path, Version, DraftName, "compose-edit-part-of-speech-inflection-class-default", JsonSerializer.Serialize(new
             {
                 target = category,
                 expectedInflectionClass = classId,
@@ -162,7 +162,7 @@ public sealed class InflectionClassEditorDraftTests(PristineProjectFixture prist
             })));
         Assert.True(defaultNoOp.Succeeded, defaultNoOp.Refusal?.Message);
         Assert.Empty(defaultNoOp.Value!.Operations);
-        var affixNoOp = ProposalCommands.ComposeEditAffixInflectionClasses(new(path, Version, DraftName,
+        var affixNoOp = ProposalCommands.ComposeIntent(new(path, Version, DraftName, "compose-edit-affix-inflection-classes",
             JsonSerializer.Serialize(new
             {
                 target = formId,

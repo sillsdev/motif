@@ -39,7 +39,7 @@ public static class CommandCatalog
 {
     public static IReadOnlyList<CommandDescriptor> All { get; } = HandWritten().Concat(ProposalCommands.ComposerDescriptors.Select(
         composer => new CommandDescriptor(composer.Verb, typeof(ComposeIntentRequest), typeof(ComposedOperationsResponse),
-            composer.Surface, composer.Agent))).ToArray();
+            composer.Surface, composer.Agent) { ExposeAsAgentTool = composer.AgentTool })).ToArray();
 
     private static CommandDescriptor[] HandWritten() => new[]
     {
@@ -116,18 +116,6 @@ public static class CommandCatalog
             typeof(ComposedOperationsResponse), CommandSurface.AdvancedAi, AgentClass.Draft),
         new CommandDescriptor("compose-edit-inflectional-affix", typeof(ComposeEditInflectionalAffixRequest),
             typeof(ComposedOperationsResponse), CommandSurface.AdvancedAi, AgentClass.Draft),
-        new CommandDescriptor("compose-edit-part-of-speech-inflection-class-default",
-            typeof(ComposeEditPartOfSpeechInflectionClassDefaultRequest), typeof(ComposedOperationsResponse),
-            CommandSurface.AdvancedAi, AgentClass.Draft) { ExposeAsAgentTool = false },
-        new CommandDescriptor("compose-edit-affix-inflection-classes",
-            typeof(ComposeEditAffixInflectionClassesRequest), typeof(ComposedOperationsResponse),
-            CommandSurface.AdvancedAi, AgentClass.Draft) { ExposeAsAgentTool = false },
-        new CommandDescriptor("compose-edit-stem-allomorph-stem-name",
-            typeof(ComposeEditStemAllomorphStemNameRequest), typeof(ComposedOperationsResponse),
-            CommandSurface.AdvancedAi, AgentClass.Draft) { ExposeAsAgentTool = false },
-        new CommandDescriptor("compose-edit-stem-inflection-class",
-            typeof(ComposeEditStemInflectionClassRequest), typeof(ComposedOperationsResponse),
-            CommandSurface.AdvancedAi, AgentClass.Draft) { ExposeAsAgentTool = false },
         new CommandDescriptor("compose-edit-allomorph-condition", typeof(ComposeEditAllomorphConditionRequest),
             typeof(ComposedOperationsResponse), CommandSurface.AdvancedAi, AgentClass.Draft),
         new CommandDescriptor("order-allomorphs", typeof(ComposeOrderAllomorphsRequest),

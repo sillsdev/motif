@@ -22,6 +22,32 @@ public sealed class ToolSurfaceTests
     }
 
     [Fact]
+    public void TheMcpBatchOffersEveryComposerVerbTheCatalogOffersToAgentsExceptThreeNamedOnes()
+    {
+        // Retirements take one intent_json document, so a batch has no property schema for them.
+        var retirements = new[] { "retire-allomorph", "retire-redundant-zero-affix" };
+        // A disposition is refused in the default batch, pinned by
+        var disposition = "compose-record-parsimony-disposition"; // DefaultBatchRefusesValidDispositionIntent*
+        var notInBatch = retirements.Append(disposition);
+        var agentEligible = CommandCatalog.All
+            .Where(command => SIL.Motif.Commands.ProposalCommands.ComposerVerbs.Contains(command.Name))
+            .Where(command => command.IsAgentTool)
+            .Select(command => command.Name)
+            .Except(notInBatch)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        var batch = AgentTools.All.Single(tool => tool.Name == "motif_compose_batch").InputSchema;
+        var offered = batch["properties"]!["intents"]!["items"]!["oneOf"]!.AsArray()
+            .Select(branch => branch!["properties"]!["verb"]!["enum"]![0]!.GetValue<string>())
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.Empty(agentEligible.Except(offered));
+        Assert.Empty(offered.Except(agentEligible));
+    }
+
+    [Fact]
     public void EveryTypedComposerHasExactlyOneToolBuiltFromItsShapeAndIsOffered()
     {
         foreach (var composer in SIL.Motif.Commands.ProposalCommands.ComposerDescriptors.Where(c => c.IsAgentTool))

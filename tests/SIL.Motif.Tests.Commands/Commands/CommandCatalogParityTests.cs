@@ -4,7 +4,9 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using SIL.Motif.Cli;
+using SIL.Motif.Commands;
 using SIL.Motif.Commands.Catalog;
+using SIL.Motif.Commands.Requests;
 using SIL.Motif.Generator;
 using Xunit;
 
@@ -60,7 +62,10 @@ public sealed class CommandCatalogParityTests
     [Fact]
     public void CommandCatalogRequestTypesAreUnique()
     {
-        var requestTypes = CommandCatalog.All.Select(command => command.RequestType).ToList();
+        var typed = ProposalCommands.ComposerDescriptors.Select(composer => composer.Verb).ToHashSet();
+        var shared = CommandCatalog.All.Where(command => typed.Contains(command.Name)).ToList();
+        Assert.All(shared, command => Assert.Equal(typeof(ComposeIntentRequest), command.RequestType));
+        var requestTypes = CommandCatalog.All.Except(shared).Select(command => command.RequestType).ToList();
         Assert.Equal(requestTypes.Distinct().Count(), requestTypes.Count);
     }
 

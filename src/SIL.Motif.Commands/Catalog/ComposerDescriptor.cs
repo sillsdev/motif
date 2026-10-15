@@ -20,7 +20,8 @@ public sealed class ComposerDescriptor
         Surface = exposure.Surface;
         Agent = exposure.Agent;
         OnByDefault = exposure.OnByDefault;
-        InBatch = exposure.InBatch;
+        AgentTool = exposure.AgentTool;
+        InBatch = exposure.InBatch && exposure.AgentTool;
         ToolName = exposure.ToolName ?? ToolNameFor(Verb);
         FieldNames = shape.Fields.Select(field => field.Name).ToArray();
         _schema = shape.ToJsonSchema();
@@ -38,6 +39,9 @@ public sealed class ComposerDescriptor
     /// <summary>Whether the composer's AI tool is registered without the user naming it.</summary>
     public bool OnByDefault { get; }
 
+    /// <summary>Whether AI agents are offered the composer; false keeps it CLI-first.</summary>
+    public bool AgentTool { get; }
+
     /// <summary>Whether a batch may name the composer's verb.</summary>
     public bool InBatch { get; }
 
@@ -49,7 +53,7 @@ public sealed class ComposerDescriptor
 
     /// <summary>Whether the composer is offered as an AI tool at all.</summary>
     public bool IsAgentTool =>
-        Surface is CommandSurface.AdvancedAi or CommandSurface.Released && Agent != AgentClass.HumanOnly;
+        AgentTool && Surface is CommandSurface.AdvancedAi or CommandSurface.Released && Agent != AgentClass.HumanOnly;
 
     /// <summary>A fresh copy of the closed JSON Schema of the intent.</summary>
     public JsonObject Schema() => _schema.DeepClone().AsObject();

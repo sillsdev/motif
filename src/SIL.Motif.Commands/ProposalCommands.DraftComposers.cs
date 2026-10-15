@@ -42,6 +42,9 @@ public static partial class ProposalCommands
     internal static IReadOnlyDictionary<string, IComposerDefinition> DraftComposers { get; } =
         ComposerRegistry.Build(ComposerDefinitions.All, LegacyComposers());
 
+    /// <summary>Every verb a Draft can be composed through, whether declared as a typed definition or not.</summary>
+    public static IReadOnlyList<string> ComposerVerbs { get; } = DraftComposers.Keys.ToArray();
+
     /// <summary>What front ends need to offer each typed composer definition, in definition order.</summary>
     public static IReadOnlyList<ComposerDescriptor> ComposerDescriptors { get; } =
         ComposerDefinitions.All.Select(definition => new ComposerDescriptor(definition)).ToArray();
@@ -122,18 +125,6 @@ public static partial class ProposalCommands
                 EditInflectionalAffixComposer.Build(cache, EditInflectionalAffixIntentParser.Parse(input)),
             ReplacePrevious: (input, operation) => ReplacesTarget(input, operation,
                 MoInflAffMsaSlotsOperationKinds.AddRefSlots, MoInflAffMsaSlotsOperationKinds.RemoveRefSlots)),
-        new("compose-edit-part-of-speech-inflection-class-default", "EditPartOfSpeechInflectionClassDefault",
-            (cache, input, _) => EditPartOfSpeechInflectionClassDefaultComposer.Build(cache,
-                EditPartOfSpeechInflectionClassDefaultIntentParser.Parse(input))),
-        new("compose-edit-affix-inflection-classes", "EditAffixInflectionClasses",
-            (cache, input, _) => EditAffixInflectionClassesComposer.Build(cache,
-                EditAffixInflectionClassesIntentParser.Parse(input))),
-        new("compose-edit-stem-allomorph-stem-name", "EditStemAllomorphStemName",
-            (cache, input, _) => EditStemAllomorphStemNameComposer.Build(cache,
-                EditStemAllomorphStemNameIntentParser.Parse(input))),
-        new("compose-edit-stem-inflection-class", "EditStemInflectionClass",
-            (cache, input, _) => EditStemInflectionClassComposer.Build(cache,
-                EditStemInflectionClassIntentParser.Parse(input))),
         new("compose-edit-allomorph-condition", "EditAllomorphCondition", (cache, input, _) =>
                 EditAllomorphConditionComposer.Build(cache, EditAllomorphConditionIntentParser.Parse(input)),
             ReplacePrevious: (input, operation) => ReplacesTarget(input, operation,

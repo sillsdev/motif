@@ -52,6 +52,7 @@ internal enum IntentFieldKind
 /// <param name="Values">For a choice, the accepted strings.</param>
 /// <param name="Shape">For a nested field, the shape of each object.</param>
 /// <param name="Many">For a nested field, whether the value is an array of objects.</param>
+/// <param name="Nullable">For an id field, whether JSON null is a meaningful value, such as "no class".</param>
 internal sealed record IntentField(
     string Name,
     IntentFieldKind Kind,
@@ -59,14 +60,16 @@ internal sealed record IntentField(
     IdRole Role,
     IReadOnlyList<string>? Values,
     IntentShape? Shape,
-    bool Many);
+    bool Many,
+    bool Nullable = false);
 
 /// <summary>Builders for the fields of an <see cref="IntentShape"/>.</summary>
 internal static class Field
 {
-    /// <summary>One id string.</summary>
-    public static IntentField Id(string name, IdRole role = IdRole.Reference, bool required = false) =>
-        new(name, IntentFieldKind.Id, required, role, null, null, false);
+    /// <summary>One id string, or JSON null when <paramref name="nullable"/> says null means "none".</summary>
+    public static IntentField Id(
+        string name, IdRole role = IdRole.Reference, bool required = false, bool nullable = false) =>
+        new(name, IntentFieldKind.Id, required, role, null, null, false, nullable);
 
     /// <summary>An array of id strings.</summary>
     public static IntentField Ids(string name, IdRole role = IdRole.Reference, bool required = false) =>
@@ -227,6 +230,7 @@ internal sealed class IntentShape
 
     private static JsonNode FieldSchema(IntentField field) => field.Kind switch
     {
+        IntentFieldKind.Id when field.Nullable => new JsonObject { ["type"] = new JsonArray("string", "null") },
         IntentFieldKind.Id or IntentFieldKind.Text => new JsonObject { ["type"] = "string" },
         IntentFieldKind.Ids => new JsonObject { ["type"] = "array", ["items"] = new JsonObject { ["type"] = "string" } },
         IntentFieldKind.Flag => new JsonObject { ["type"] = "boolean" },

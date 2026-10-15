@@ -4,7 +4,14 @@ namespace SIL.Motif.Commands;
 internal static class ComposerDefinitions
 {
     /// <summary>One instance of every typed definition.</summary>
-    public static IReadOnlyList<IComposerDefinition> All { get; } = [new AuthorFeatureValueDefinition()];
+    public static IReadOnlyList<IComposerDefinition> All { get; } = 
+    [
+        new AuthorFeatureValueDefinition(),
+        new EditAffixInflectionClassesDefinition(),
+        new EditPartOfSpeechInflectionClassDefaultDefinition(),
+        new EditStemAllomorphStemNameDefinition(),
+        new EditStemInflectionClassDefinition(),
+    ];
 }
 
 /// <summary>Joins typed definitions and legacy composers into the one verb-keyed table the engine reads.</summary>

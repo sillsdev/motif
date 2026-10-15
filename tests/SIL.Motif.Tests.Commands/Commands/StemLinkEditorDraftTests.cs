@@ -45,7 +45,7 @@ public sealed class StemLinkEditorDraftTests(PristineProjectFixture pristine)
         var formId = formCreate.EntityId!;
 
         var before = DraftBytes(path, draft);
-        var mismatch = ProposalCommands.ComposeEditStemAllomorphStemName(new(path, Version, draft,
+        var mismatch = ProposalCommands.ComposeIntent(new(path, Version, draft, "compose-edit-stem-allomorph-stem-name",
             Json(new { target = formId, expectedStemName = nameCreate.EntityId, stemName = nameCreate.EntityId })));
         Assert.False(mismatch.Succeeded);
         Assert.Contains("differs from the expected stem name", mismatch.Refusal!.Message, StringComparison.Ordinal);
@@ -62,7 +62,7 @@ public sealed class StemLinkEditorDraftTests(PristineProjectFixture pristine)
         var foreignNameId = foreignName.Operations.Single(op => op.Kind == PartOfSpeechStemNamesOperationKinds.Create)
             .EntityId!;
         var beforeForeign = DraftBytes(path, draft);
-        var foreign = ProposalCommands.ComposeEditStemAllomorphStemName(new(path, Version, draft,
+        var foreign = ProposalCommands.ComposeIntent(new(path, Version, draft, "compose-edit-stem-allomorph-stem-name",
             Json(new { target = formId, expectedStemName = (string?)null, stemName = foreignNameId })));
         Assert.False(foreign.Succeeded);
         Assert.Contains("must belong to a stem category", foreign.Refusal!.Message, StringComparison.Ordinal);
@@ -91,7 +91,7 @@ public sealed class StemLinkEditorDraftTests(PristineProjectFixture pristine)
         var citation = OperationCitation.FromProvenance(saved.Provenance);
         Assert.Equal(("Verb grammar", "§ 5"), (citation!.Source, citation.Locator));
 
-        var again = ProposalCommands.ComposeEditStemAllomorphStemName(new(path, Version, draft,
+        var again = ProposalCommands.ComposeIntent(new(path, Version, draft, "compose-edit-stem-allomorph-stem-name",
             Json(new { target = formId, expectedStemName = (string?)null, stemName = nameCreate.EntityId })));
         Assert.False(again.Succeeded);
     }
@@ -113,7 +113,7 @@ public sealed class StemLinkEditorDraftTests(PristineProjectFixture pristine)
         var msaCreate = entry.Operations.Single(op => op.Kind == LexEntryMorphoSyntaxAnalysesOperationKinds.Create);
 
         var before = DraftBytes(path, draft);
-        var mismatch = ProposalCommands.ComposeEditStemInflectionClass(new(path, Version, draft,
+        var mismatch = ProposalCommands.ComposeIntent(new(path, Version, draft, "compose-edit-stem-inflection-class",
             Json(new { target = msaCreate.EntityId, expectedInflectionClass = classCreate.EntityId, inflectionClass = (string?)null })));
         Assert.False(mismatch.Succeeded);
         Assert.Contains("differs from the expected inflection class", mismatch.Refusal!.Message, StringComparison.Ordinal);
@@ -126,7 +126,7 @@ public sealed class StemLinkEditorDraftTests(PristineProjectFixture pristine)
             Json(new { category = foreignId, name = "Elsewhere", ws = analysis }))));
         var foreignClassId = foreignClass.Operations.Single(op => op.EntityId is not null).EntityId!;
         var beforeForeign = DraftBytes(path, draft);
-        var foreign = ProposalCommands.ComposeEditStemInflectionClass(new(path, Version, draft,
+        var foreign = ProposalCommands.ComposeIntent(new(path, Version, draft, "compose-edit-stem-inflection-class",
             Json(new { target = msaCreate.EntityId, expectedInflectionClass = (string?)null, inflectionClass = foreignClassId })));
         Assert.False(foreign.Succeeded);
         Assert.Contains("must belong to the part of speech", foreign.Refusal!.Message, StringComparison.Ordinal);
