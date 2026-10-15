@@ -247,6 +247,48 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
     }
 
     [Fact]
+    public void TheTechDemoNoticeAndItsButtonsAreLiveAndReadableInBothThemes()
+    {
+        var failures = new List<string>();
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var priorTheme = Application.Current!.RequestedThemeVariant;
+            var (_, window) = await PageScreenshots.OpenOverSampleData(parse: false);
+            try
+            {
+                var banner = window.FindControl<Border>("TechDemoNotice")!;
+                foreach (var theme in Themes)
+                {
+                    Application.Current!.RequestedThemeVariant = theme;
+                    PageScreenshots.Settle(window);
+                    if (!banner.IsEffectivelyVisible) failures.Add($"{theme}: the notice is not visible");
+                    var message = banner.GetVisualDescendants().OfType<TextBlock>()
+                        .First(candidate => candidate.Text == TechDemoNoticeViewModel.NoticeText);
+                    var messageRatio = Effective(message);
+                    if (messageRatio < Text) failures.Add($"{theme} notice text: {messageRatio:F2}:1");
+                    foreach (var name in new[] { "Report a problem", "Acknowledge the tech demo notice" })
+                    {
+                        var button = banner.GetLogicalDescendants().OfType<Button>()
+                            .Single(candidate => AutomationProperties.GetName(candidate) == name);
+                        if (!button.IsEffectivelyEnabled) failures.Add($"{theme} '{name}' is disabled");
+                        if (!button.IsEffectivelyVisible) failures.Add($"{theme} '{name}' is not visible");
+                        var text = button.GetVisualDescendants().OfType<TextBlock>().First();
+                        var ratio = Effective(text);
+                        if (ratio < Text) failures.Add($"{theme} '{name}': {ratio:F2}:1");
+                    }
+                }
+            }
+            finally
+            {
+                Application.Current!.RequestedThemeVariant = priorTheme;
+                window.Close();
+            }
+        }, TimeSpan.FromMinutes(1));
+
+        Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures));
+    }
+
+    [Fact]
     public void EveryMatrixCellsTextIsReadableEvenWhenItsCountIsZero()
     {
         var failures = new List<string>();
