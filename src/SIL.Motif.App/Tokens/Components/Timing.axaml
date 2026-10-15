@@ -8,6 +8,8 @@
     <StaticResource x:Key="Component.Timing.PickerHeight" ResourceKey="Primitive.Size.52" />
     <StaticResource x:Key="Component.Timing.SourcePickerWidth" ResourceKey="Primitive.Size.170" />
     <StaticResource x:Key="Component.Timing.SlowestCountWidth" ResourceKey="Primitive.Size.90" />
+    <StaticResource x:Key="Component.Timing.WordsColumnMinWidth" ResourceKey="Primitive.Size.70" />
+    <StaticResource x:Key="Component.Timing.NarrowColumnMinWidth" ResourceKey="Primitive.Size.52" />
     <StaticResource x:Key="Component.Timing.RowPadding" ResourceKey="Intent.Inset.Row" />
     <StaticResource x:Key="Component.Timing.HeaderPadding" ResourceKey="Intent.Inset.Row" />
     <StaticResource x:Key="Component.Timing.HeadlineGap" ResourceKey="Intent.Space.Section" />

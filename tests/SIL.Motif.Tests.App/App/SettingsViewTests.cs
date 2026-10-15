@@ -958,6 +958,57 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
         }
     }
 
+    [Fact]
+    public void CopyingTheDataPathGivesTheExactPathWithoutBreakOpportunities()
+    {
+        var dataRoot = Path.Combine(Path.GetTempPath(), "linguist", "managed.data", "long-folder-name-0123456789");
+        var facts = new ApplicationFacts("0.2.0", "0.8.3", "Linux", false, true, dataRoot);
+        var settingsPath = NewSettingsPath();
+        string? copied = null;
+        try
+        {
+            AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+            {
+                var (workspace, window) = FakeComposedWindow.Create(settingsFilePath: settingsPath,
+                    applicationFacts: facts);
+                try
+                {
+                    window.Width = 1040;
+                    window.Height = 780;
+                    window.Show();
+                    var page = OpenSettings(window);
+                    SettingsTestAccess.Select(page, SettingsGroup.About);
+                    PageScreenshots.Settle(window);
+                    var value = page.GetVisualDescendants().OfType<CopyableTextBlock>()
+                        .Single(text => text.IsEffectivelyVisible
+                            && text.Text?.Replace("\u200B", "", StringComparison.Ordinal) == dataRoot);
+                    Assert.Contains('\u200B', value.Text!);
+                    value.SelectAll();
+                    Assert.Contains('\u200B', value.SelectedText);
+                    var key = new KeyEventArgs
+                    {
+                        RoutedEvent = InputElement.KeyDownEvent,
+                        Key = Key.C,
+                        KeyModifiers = KeyModifiers.Control,
+                    };
+                    value.RaiseEvent(key);
+                    Assert.True(key.Handled);
+                    copied = await window.Clipboard!.TryGetTextAsync();
+                }
+                finally
+                {
+                    window.Close();
+                }
+            }, TimeSpan.FromSeconds(30));
+        }
+        finally
+        {
+            DeleteSettingsPath(settingsPath);
+        }
+
+        Assert.Equal(dataRoot, copied);
+    }
+
     [Theory]
     [InlineData(640)]
     [InlineData(1040)]

@@ -230,9 +230,9 @@
                     <Grid.ColumnDefinitions>
                       <ColumnDefinition Width="2*" />
                       <ColumnDefinition Width="{Binding Context.Inspector, Converter={x:Static views:TimingPage.InspectorKindColumnWidth}}" />
-                      <ColumnDefinition Width="0.9*" />
-                      <ColumnDefinition Width="1.3*" />
-                      <ColumnDefinition Width="0.7*" />
+                      <ColumnDefinition Width="0.9*" MinWidth="{DynamicResource Component.Timing.NarrowColumnMinWidth}" />
+                      <ColumnDefinition Width="1.3*" MinWidth="{DynamicResource Component.Timing.NarrowColumnMinWidth}" />
+                      <ColumnDefinition Width="0.7*" MinWidth="{DynamicResource Component.Timing.WordsColumnMinWidth}" />
                       <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <views:CopyableTextBlock Grid.Column="0" Text="RULE" TextWrapping="Wrap" />
@@ -254,9 +254,9 @@
                             <Grid.ColumnDefinitions>
                               <ColumnDefinition Width="2*" />
                               <ColumnDefinition Width="{Binding $parent[views:TimingPage].Page.Context.Inspector, Converter={x:Static views:TimingPage.InspectorKindColumnWidth}}" />
-                              <ColumnDefinition Width="0.9*" />
-                              <ColumnDefinition Width="1.3*" />
-                              <ColumnDefinition Width="0.7*" />
+                              <ColumnDefinition Width="0.9*" MinWidth="{DynamicResource Component.Timing.NarrowColumnMinWidth}" />
+                              <ColumnDefinition Width="1.3*" MinWidth="{DynamicResource Component.Timing.NarrowColumnMinWidth}" />
+                              <ColumnDefinition Width="0.7*" MinWidth="{DynamicResource Component.Timing.WordsColumnMinWidth}" />
                               <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <Button Grid.ColumnSpan="5" Classes="timingRuleRow" Classes.chosen="{Binding IsChosen}"
@@ -268,9 +268,9 @@
                               <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="2*" />
                                 <ColumnDefinition Width="{Binding $parent[views:TimingPage].Page.Context.Inspector, Converter={x:Static views:TimingPage.InspectorKindColumnWidth}}" />
-                                <ColumnDefinition Width="0.9*" />
-                                <ColumnDefinition Width="1.3*" />
-                                <ColumnDefinition Width="0.7*" />
+                                <ColumnDefinition Width="0.9*" MinWidth="{DynamicResource Component.Timing.NarrowColumnMinWidth}" />
+                                <ColumnDefinition Width="1.3*" MinWidth="{DynamicResource Component.Timing.NarrowColumnMinWidth}" />
+                                <ColumnDefinition Width="0.7*" MinWidth="{DynamicResource Component.Timing.WordsColumnMinWidth}" />
                               </Grid.ColumnDefinitions>
                               <Grid Grid.Column="0" ColumnDefinitions="*,Auto"
                                     ColumnSpacing="{DynamicResource Intent.Space.Compact}">

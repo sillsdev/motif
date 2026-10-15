@@ -20,7 +20,13 @@
     </WrapPanel>
     <TextBlock Text="{Binding ExpertScopeText}" Classes="muted" TextWrapping="Wrap"
                IsVisible="{Binding ExpertScopeText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
-    <Grid ColumnDefinitions="2*,2*,1.25*,2*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
+    <Grid ColumnSpacing="{DynamicResource Intent.Space.Related}">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="2*" />
+        <ColumnDefinition Width="2*" />
+        <ColumnDefinition Width="1.25*" MinWidth="{DynamicResource Component.TryWord.TraceOutcomeColumnMinWidth}" />
+        <ColumnDefinition Width="2*" MinWidth="{DynamicResource Component.TryWord.TraceNotationColumnMinWidth}" />
+      </Grid.ColumnDefinitions>
       <TextBlock Text="Event · source" TextWrapping="Wrap" />
       <TextBlock Grid.Column="1" Text="Input → output" TextWrapping="Wrap" />
       <TextBlock Grid.Column="2" Text="Outcome" TextWrapping="Wrap" />
@@ -35,7 +41,13 @@
           <Border Classes="hoverReveal" BorderBrush="{DynamicResource Intent.Border}" BorderThickness="{DynamicResource Intent.Stroke.DividerBottom}"
                   Padding="{DynamicResource Component.TryWord.SmallInset}" Background="{DynamicResource Intent.Clear}">
             <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
-            <Grid ColumnDefinitions="2*,2*,1.25*,2*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
+            <Grid ColumnSpacing="{DynamicResource Intent.Space.Related}">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="2*" />
+        <ColumnDefinition Width="2*" />
+        <ColumnDefinition Width="1.25*" MinWidth="{DynamicResource Component.TryWord.TraceOutcomeColumnMinWidth}" />
+        <ColumnDefinition Width="2*" MinWidth="{DynamicResource Component.TryWord.TraceNotationColumnMinWidth}" />
+      </Grid.ColumnDefinitions>
               <WrapPanel ItemSpacing="{DynamicResource Intent.Space.Related}">
                 <TextBlock Text="{Binding KindText}" TextWrapping="Wrap" />
                 <views:InspectLink Subject="{Binding InspectSubject}" Captured="{Binding Captured}" IsVisible="{Binding CanInspect}">

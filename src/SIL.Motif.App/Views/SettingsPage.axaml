@@ -469,13 +469,14 @@
                 <views:CopyableTextBlock Grid.Column="1" Classes="settingsAboutValue" Text="{Binding OperatingSystemText}"
                            TextWrapping="Wrap" />
               </Grid></Border>
-              <Border Classes="settingsAboutRow"><Grid Classes="settingsAboutRow" ColumnDefinitions="Auto,*"
+              <Border Classes="settingsAboutRow"><Grid Classes="settingsAboutRow" RowDefinitions="Auto,Auto"
                     RowSpacing="{DynamicResource Intent.Space.Compact}">
                 <views:CopyableTextBlock Classes="settingsAboutLabel" Text="Where Motif keeps its data" />
-                <Grid x:Name="SettingsAboutDataRow" Classes="settingsAboutDataRow" Grid.Column="1"
+                <Grid x:Name="SettingsAboutDataRow" Classes="settingsAboutDataRow" Grid.Row="1"
                       ColumnDefinitions="*,Auto" RowSpacing="{DynamicResource Intent.Space.Compact}"
                       ColumnSpacing="{DynamicResource Intent.Space.Compact}">
-                  <views:CopyableTextBlock Classes="settingsAboutValue" Text="{Binding DataRootDisplay}" TextWrapping="Wrap" />
+                  <views:CopyableTextBlock Classes="settingsAboutValue" Text="{Binding DataRootDisplay}" TextWrapping="Wrap"
+                                           AutomationProperties.Name="{Binding DataRoot}" />
                   <Button Grid.Column="1" Classes="settingsLink" Content="{Binding DataFolderActionText}"
                           Click="OnOpenDataFolderRequested" AutomationProperties.Name="Open Motif data folder" />
                 </Grid>

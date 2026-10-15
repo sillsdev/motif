@@ -201,7 +201,8 @@ public static class KeyboardShortcutRegistry
             root?.GetVisualDescendants().OfType<SelectableTextBlock>() ?? []);
         var selected = selectedBlocks
             .Select(block => block.SelectedText).FirstOrDefault(text => !string.IsNullOrEmpty(text));
-        if (selected is not null) return selected;
+        // Zero-width spaces only give a path wrapping room; a paste must get the exact text.
+        if (selected is not null) return selected.Replace("\u200B", "", StringComparison.Ordinal);
         foreach (var ancestor in ancestors)
         {
             if (ancestor is Controls.WordPresentation.WordRow { Data: { } data }) return data.Facts.Word;

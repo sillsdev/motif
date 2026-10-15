@@ -8,6 +8,8 @@
     <StaticResource x:Key="Component.TryWord.SmallRowInset" ResourceKey="Primitive.Inset.1_1_1_1" />
     <StaticResource x:Key="Component.TryWord.SmallBottomInset" ResourceKey="Primitive.Inset.0_0_4_4" />
     <StaticResource x:Key="Component.TryWord.ToolButtonInset" ResourceKey="Intent.Inset.Row" />
+    <StaticResource x:Key="Component.TryWord.TraceNotationColumnMinWidth" ResourceKey="Primitive.Size.92" />
+    <StaticResource x:Key="Component.TryWord.TraceOutcomeColumnMinWidth" ResourceKey="Primitive.Size.70" />
     <StaticResource x:Key="Component.TryWord.SidebarWidth" ResourceKey="Primitive.Size.280" />
     <StaticResource x:Key="Component.TryWord.NotationFont" ResourceKey="Primitive.Font.Mono" />
     <StaticResource x:Key="Component.TryWord.ToolsMaxHeight" ResourceKey="Primitive.Size.280" />
