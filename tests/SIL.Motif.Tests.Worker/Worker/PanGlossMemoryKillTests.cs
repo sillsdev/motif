@@ -84,7 +84,18 @@ public sealed class PanGlossMemoryKillTests : IDisposable
         var kill = PanGlossMemoryKill.FromJobPeak(limit * GiB, peak * GiB, exitCode);
 
         Assert.Equal(expected, kill is not null);
-        if (expected) Assert.Equal(new PanGlossMemoryKill(limit * GiB, peak * GiB), kill);
+        if (expected) Assert.Equal(new PanGlossMemoryKill(limit * GiB, peak * GiB, Inferred: true), kill);
+    }
+
+    // The Windows rule infers the stop from the peak, so its message must not claim more than that.
+    [Fact]
+    public void AnInferredStopSaysTheRunWasLikelyStoppedAndNamesThePeak()
+    {
+        var message = PanGlossMemoryKill.FromJobPeak(10 * GiB, 10 * GiB, 1)!.Describe();
+
+        Assert.Contains("likely stopped by the memory limit", message, StringComparison.Ordinal);
+        Assert.Contains("10 GiB", message, StringComparison.Ordinal);
+        Assert.DoesNotContain("and was stopped", message, StringComparison.Ordinal);
     }
 
     [Fact]

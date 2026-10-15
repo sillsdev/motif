@@ -42,7 +42,7 @@ public static class PanGlossMemoryLimit
     /// <summary>Turns a setting into a ceiling in bytes, or null for none; an unset setting takes the default.</summary>
     public static ulong? Resolve(string? setting, ulong physicalMemoryBytes)
     {
-        if (string.IsNullOrWhiteSpace(setting)) return physicalMemoryBytes / 4 * 3;
+        if (string.IsNullOrWhiteSpace(setting)) return (ulong)(physicalMemoryBytes * DefaultFraction);
         var text = setting.Trim();
         if (string.Equals(text, "none", StringComparison.OrdinalIgnoreCase)) return null;
         var digits = text;
@@ -60,7 +60,7 @@ public static class PanGlossMemoryLimit
         throw new PanGlossMemoryLimitSettingException(
             $"{Variable} is '{setting}', which is not a memory limit. Use a number of bytes such as 12884901888, " +
             "a number with a binary suffix such as 12GiB or 512MiB (KiB, MiB, GiB and TiB), or none to remove the " +
-            "limit. Unset, the limit is 75% of this computer's memory.");
+            "limit. Unset, the limit is 75% of the memory available to Motif.");
     }
 
     /// <summary>A byte count in gibibytes, for a message a person reads.</summary>
@@ -71,18 +71,30 @@ public static class PanGlossMemoryLimit
 /// <summary>A parser run Motif stopped for memory: the ceiling applied and the peak measured, when known.</summary>
 /// <param name="LimitBytes">The ceiling the run was held to.</param>
 /// <param name="PeakBytes">The largest memory the run was seen to hold, or null when the platform cannot say.</param>
-public sealed record PanGlossMemoryKill(ulong LimitBytes, ulong? PeakBytes)
+/// <param name="Inferred">
+/// True when the stop is inferred from a failed run's peak rather than reported by the platform, so the message says
+/// the run was likely stopped by the limit.
+/// </param>
+public sealed record PanGlossMemoryKill(ulong LimitBytes, ulong? PeakBytes, bool Inferred = false)
 {
     // An allocation past the limit fails rather than succeeding, so the peak settles just under it.
     private const double JobPeakShare = 0.95;
 
-    /// <summary>A Windows job-object run that failed with its peak within 5% of the limit is read as stopped for memory.</summary>
+    /// <summary>
+    /// A heuristic for Windows: a job-object run that failed with its peak within 5% of the limit is read as likely
+    /// stopped for memory. The job's own limit-violation record (JOBOBJECT_LIMIT_VIOLATION_INFORMATION) would say so
+    /// exactly and is the intended replacement.
+    /// </summary>
     public static PanGlossMemoryKill? FromJobPeak(ulong limitBytes, ulong peakBytes, int exitCode) =>
-        exitCode != 0 && peakBytes >= limitBytes * JobPeakShare ? new PanGlossMemoryKill(limitBytes, peakBytes) : null;
+        exitCode != 0 && peakBytes >= limitBytes * JobPeakShare
+            ? new PanGlossMemoryKill(limitBytes, peakBytes, Inferred: true) : null;
 
     /// <summary>One plain statement of what happened and what to do about it, for a refusal's message.</summary>
     public string Describe() =>
-        $"The parser used more memory than Motif allows and was stopped. The limit was {PanGlossMemoryLimit.Format(LimitBytes)}" +
+        (Inferred
+            ? "The parser failed after using nearly all the memory Motif allows, so it was likely stopped by the memory " +
+              $"limit. The limit was {PanGlossMemoryLimit.Format(LimitBytes)}"
+            : $"The parser used more memory than Motif allows and was stopped. The limit was {PanGlossMemoryLimit.Format(LimitBytes)}") +
         (PeakBytes is { } peak ? $" and the parser had reached {PanGlossMemoryLimit.Format(peak)}. " : ". ") +
         "Run the parser with fewer threads or a per-word step limit. The limit protects the rest of this computer; " +
         $"to raise it or remove it, set {PanGlossMemoryLimit.Variable} to a number of bytes or to none.";
