@@ -247,7 +247,7 @@ public sealed class SizeMatrixScreenshots
             PageScreenshots.Settle(window);
 
             var context = new LayoutFindingContext(scene, size.Name, point.Zoom, point.Theme);
-            var findings = ReachabilityAssertions.Inspect(window, context);
+            var findings = ReachabilityAssertions.Inspect(window, context, reportOnly: run.ReportOnly);
             var file = $"{scene}-{size.Name}-{point.Zoom}-{point.Theme}.png";
             MatrixCaptureState.SaveFrame(window, workspace, expectedPage, expectedTab,
                 Path.Combine(run.MatrixFolder, file));
@@ -532,6 +532,9 @@ internal sealed class MatrixRun(string root)
     internal string MatrixFolder { get; } = Path.Combine(root, "matrix");
     internal List<LayoutFinding> Findings { get; } = [];
 
+    /// <summary>Findings of a report-only check: written to report-only-findings.json, never failing the run.</summary>
+    internal List<LayoutFinding> ReportOnly { get; } = [];
+
     internal void AddCapture(string file, string scene, MatrixSize size, int zoom, string theme,
         IReadOnlyList<LayoutFinding> findings)
     {
@@ -557,6 +560,8 @@ internal sealed class MatrixRun(string root)
         Directory.CreateDirectory(MatrixFolder);
         WriteArtifact(Path.Combine(MatrixFolder, "findings.json"),
             JsonSerializer.Serialize(_findingEntries, JsonOptions));
+        WriteArtifact(Path.Combine(MatrixFolder, "report-only-findings.json"),
+            JsonSerializer.Serialize(ReportOnly, JsonOptions));
         var csv = new StringBuilder("file,scene,size,width,height,zoom,theme,findings\n");
         foreach (var entry in _index)
             csv.Append(Csv(entry.File)).Append(',').Append(Csv(entry.Scene)).Append(',')

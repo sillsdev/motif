@@ -23,19 +23,27 @@ internal static class ReachabilityAssertions
 {
     internal const double Tolerance = LayoutAssertions.Tolerance;
 
-    internal static IReadOnlyList<LayoutFinding> Inspect(Visual root, LayoutFindingContext context,
-        LayoutTextMeasurements? measurements = null) =>
-        InspectCore(root, context, includeTextChecks: true, measurements: measurements);
+    /// <summary>
+    /// Whether a <c>mid-word-wrap</c> finding fails the run that sees it. While false, the engine logs each one to
+    /// the list a caller passes as <c>reportOnly</c> instead of returning it. Flip it to true once the known
+    /// mid-word breaks are fixed.
+    /// </summary>
+    internal static readonly bool MidWordWrapFailsTheRun = false;
 
-    internal static IReadOnlyList<LayoutFinding> InspectQuick(Visual root, LayoutFindingContext context) =>
-        InspectCore(root, context, includeTextChecks: true, includeDetailedTextChecks: false);
+    internal static IReadOnlyList<LayoutFinding> Inspect(Visual root, LayoutFindingContext context,
+        LayoutTextMeasurements? measurements = null, List<LayoutFinding>? reportOnly = null) =>
+        InspectCore(root, context, includeTextChecks: true, measurements: measurements, reportOnly: reportOnly);
+
+    internal static IReadOnlyList<LayoutFinding> InspectQuick(Visual root, LayoutFindingContext context,
+        List<LayoutFinding>? reportOnly = null) =>
+        InspectCore(root, context, includeTextChecks: true, includeDetailedTextChecks: false, reportOnly: reportOnly);
 
     internal static IReadOnlyList<LayoutFinding> InspectReachabilityAndTitleBar(
         Visual root, LayoutFindingContext context) => InspectCore(root, context, includeTextChecks: false);
 
     private static IReadOnlyList<LayoutFinding> InspectCore(
         Visual root, LayoutFindingContext context, bool includeTextChecks, bool includeDetailedTextChecks = true,
-        LayoutTextMeasurements? measurements = null)
+        LayoutTextMeasurements? measurements = null, List<LayoutFinding>? reportOnly = null)
     {
         var findings = new List<LayoutFinding>();
         var window = TopLevel.GetTopLevel(root) ?? root as TopLevel;
@@ -100,6 +108,8 @@ internal static class ReachabilityAssertions
                     $"{overlap.Height:0.#} px at {overlap}.", Describe(second)));
             }
 
+            foreach (var text in texts) findings.AddRange(MidWordWrapFindings(text, context, topLevel));
+
             foreach (var text in texts.Where(_ => includeDetailedTextChecks))
             {
                 findings.AddRange(MissingGlyphFindings(text, context, topLevel));
@@ -110,6 +120,12 @@ internal static class ReachabilityAssertions
 
         findings.AddRange(TopBarFindings(root, context));
         if (window is not null) findings.AddRange(PopupBoundsFindings(root, window, context));
+        if (!MidWordWrapFailsTheRun)
+        {
+            reportOnly?.AddRange(CollapseDuplicates(findings.Where(finding =>
+                finding.Check == LayoutCheckNames.MidWordWrap)));
+            findings.RemoveAll(finding => finding.Check == LayoutCheckNames.MidWordWrap);
+        }
         return CollapseDuplicates(findings);
     }
 
@@ -321,6 +337,50 @@ internal static class ReachabilityAssertions
         }
 
         return findings;
+    }
+
+    /// <summary>Flags a wrapped TextBlock that breaks a line between two letters or digits of one word.</summary>
+    internal static IReadOnlyList<LayoutFinding> MidWordWrapFindings(
+        TextBlock text, LayoutFindingContext context, Visual layoutRoot)
+    {
+        if (!IsRenderedText(text) || text.TextWrapping == TextWrapping.NoWrap || string.IsNullOrEmpty(text.Text))
+            return [];
+        var content = text.Text;
+        var lines = text.TextLayout.TextLines;
+        for (var index = 0; index + 1 < lines.Count; index++)
+        {
+            var line = lines[index];
+            if (line.NewLineLength > 0) continue;
+            var last = line.FirstTextSourceIndex + line.Length - 1;
+            var next = lines[index + 1].FirstTextSourceIndex;
+            if (last < 0 || next >= content.Length || next != last + 1) continue;
+            if (!InsideWord(content[last]) || !InsideWord(content[next])) continue;
+            var bounds = BoundsIn(text, layoutRoot);
+            return [new LayoutFinding(context.Scene, context.Size, context.Zoom, context.Theme,
+                LayoutCheckNames.MidWordWrap, Describe(text), LayoutBounds.From(bounds), ControlIdentity(text),
+                $"Line {index + 1} ends '{WordAround(content, last, forward: false)}' and the next begins " +
+                $"'{WordAround(content, next, forward: true)}' inside one word of '{Truncate(content)}'; " +
+                $"the text box is {text.Bounds.Width:0.#} px wide.")];
+        }
+
+        return [];
+
+        // A script written without spaces breaks between letters by design.
+        static bool InsideWord(char character) => char.IsLetterOrDigit(character) && !IsUnspacedScript(character);
+
+        static bool IsUnspacedScript(char character) => character is >= '\u0E00' and <= '\u0EFF'
+            or >= '\u2E80' and <= '\u9FFF' or >= '\uAC00' and <= '\uD7AF' or >= '\uF900' and <= '\uFAFF';
+
+        static string WordAround(string value, int position, bool forward)
+        {
+            var start = position;
+            var end = position;
+            if (forward) while (end + 1 < value.Length && char.IsLetterOrDigit(value[end + 1])) end++;
+            else while (start > 0 && char.IsLetterOrDigit(value[start - 1])) start--;
+            return value[start..(end + 1)];
+        }
+
+        static string Truncate(string value) => value.Length <= 60 ? value : value[..60] + "...";
     }
 
     internal static IReadOnlyList<LayoutFinding> TextBoxOverflowFindings(

@@ -370,6 +370,51 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
     }
 
     [Fact]
+    public void AWrappedWordBrokenInsideItselfIsReportedAndBreaksAtSpacesAreNot()
+    {
+        avalonia.Invoke(() =>
+        {
+            TextBlock Wrapped(string name, string value, double width, TextWrapping wrapping = TextWrapping.Wrap) =>
+                new() { Name = name, Text = value, Width = width, TextWrapping = wrapping, FontSize = 14 };
+
+            var split = Wrapped("SplitWord", "0 words", 24);
+            var spaced = Wrapped("SpacedWords", "alpha beta gamma delta", 90);
+            var hyphenated = Wrapped("HyphenatedWord", "well-known well-known", 70);
+            var newline = Wrapped("Newlines", "abc\ndef", 400);
+            var unwrapped = Wrapped("Unwrapped", "supercalifragilistic", 24, TextWrapping.NoWrap);
+            var window = new Window
+            {
+                Content = new StackPanel { Children = { split, spaced, hyphenated, newline, unwrapped } },
+                Width = 300, Height = 300,
+            };
+            try
+            {
+                window.Show();
+                PageScreenshots.Settle(window);
+                var context = new LayoutFindingContext("synthetic", "thin", 100, "light");
+
+                Assert.True(split.TextLayout.TextLines.Count > 1);
+                var finding = Assert.Single(ReachabilityAssertions.MidWordWrapFindings(split, context, window));
+                Assert.Equal(LayoutCheckNames.MidWordWrap, finding.Check);
+                Assert.Equal("SplitWord", finding.Control.Name);
+                Assert.True(spaced.TextLayout.TextLines.Count > 1);
+                Assert.Empty(ReachabilityAssertions.MidWordWrapFindings(spaced, context, window));
+                Assert.Empty(ReachabilityAssertions.MidWordWrapFindings(hyphenated, context, window));
+                Assert.Empty(ReachabilityAssertions.MidWordWrapFindings(newline, context, window));
+                Assert.Empty(ReachabilityAssertions.MidWordWrapFindings(unwrapped, context, window));
+
+                var reportOnly = new List<LayoutFinding>();
+                var inspected = ReachabilityAssertions.Inspect(window, context, reportOnly: reportOnly);
+                Assert.Equal(ReachabilityAssertions.MidWordWrapFailsTheRun,
+                    inspected.Any(item => item.Check == LayoutCheckNames.MidWordWrap));
+                Assert.Equal(!ReachabilityAssertions.MidWordWrapFailsTheRun,
+                    reportOnly.Any(item => item.Control.Name == "SplitWord"));
+            }
+            finally { window.Close(); }
+        });
+    }
+
+    [Fact]
     public void AnOpenFlyoutOutsideTheWindowIsReportedWithAStableCheckName()
     {
         avalonia.Invoke(() =>
