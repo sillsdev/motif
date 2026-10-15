@@ -220,6 +220,30 @@ public sealed class HelpCommandTests
     }
 
     [Fact]
+    public void ParsimonyHelpShowsTheBaselineReportPathAndAssessmentInputBoundary()
+    {
+        var parsimony = Run(true, "help", "parsimony", "--full");
+
+        Assert.True(parsimony.ExitCode == 0, parsimony.Error);
+        Assert.Contains("motif baseline capture --project \"<fwdata>\" --json", parsimony.Output,
+            StringComparison.Ordinal);
+        Assert.Contains("motif parsimony --project \"<fwdata>\" --measure P-adhoc-duplicate " +
+            "--evidence-scope project-approved --wait --json", parsimony.Output, StringComparison.Ordinal);
+        Assert.Contains("motif parsimony show --project \"<fwdata>\" \"<reportId>\" --json", parsimony.Output,
+            StringComparison.Ordinal);
+
+        var report = Run("help", "report", "--full");
+        Assert.Equal(0, report.ExitCode);
+        Assert.Contains("Supplying that Assessment to", report.Output, StringComparison.Ordinal);
+        Assert.Contains("report --kind parsimony", report.Output, StringComparison.Ordinal);
+
+        var kinds = Run("help", "report", "--list-kinds", "--full");
+        Assert.Equal(0, kinds.ExitCode);
+        Assert.Contains("the Parsimony producer needs a frozen Baseline evidence bundle", kinds.Output,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void MalformedHelpCallUsesTheInvocationErrorExitCode()
     {
         var result = Run("help", "--json");

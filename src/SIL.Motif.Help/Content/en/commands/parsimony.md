@@ -6,10 +6,14 @@
 
 Capture a Baseline first. This command does not capture or refresh one. Creating the Report requires PanGloss to import the Baseline and write grammar facts; the completed Report can be read later without PanGloss.
 
-## Example
+## Minimal CLI path
+
+Capture the saved project state, create a Parsimony Report from that Baseline, then read the stored Report. Replace `<fwdata>` with the project file path and use the `reportId` returned by the second command.
 
 ```powershell
-motif parsimony --project "C:\FieldWorks\Projects\Koro\Koro.fwdata" --measure P-allo-duplicate-form --wait --json
+motif baseline capture --project "<fwdata>" --json
+motif parsimony --project "<fwdata>" --measure P-adhoc-duplicate --evidence-scope project-approved --wait --json
+motif parsimony show --project "<fwdata>" "<reportId>" --json
 ```
 
 To compare a Proposal, run `dry-run --wait` first, then pass its job id:
