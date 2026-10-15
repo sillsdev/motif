@@ -149,7 +149,12 @@ public static class AutomationIds
 
     /// <summary>The Review page's Back button and the group header's Remove button.</summary>
     public const string ReviewBack = "motif-review-back";
-    public const string ReviewGroupUndoAll = "motif-review-group-undo-all";
+
+    /// <summary>The identifier of one Review group's Undo all button, distinct for each group title.</summary>
+    /// <param name="title">The group's title, which is unique within the page.</param>
+    /// <returns>An identifier that no other group's button shares.</returns>
+    public static string ForReviewGroupUndoAll(string title) =>
+        "motif-review-group-undo-all-" + System.Text.RegularExpressions.Regex.Replace(title.ToLowerInvariant(), "[^a-z0-9]+", "-").Trim('-');
 
     /// <summary>The letter drawn inside an opinion mark.</summary>
     public const string OpinionMarkLetter = "motif-opinion-mark-letter";

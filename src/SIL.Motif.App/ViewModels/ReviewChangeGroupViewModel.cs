@@ -61,6 +61,8 @@ public sealed class ReviewChangeGroupViewModel : IDenseTableGroupHeading
     /// <summary>The words on the action that takes back every change in the group.</summary>
     public string UndoAllText => IsNoLongerFits ? "Remove the ones that no longer fit" : "Undo all";
 
+    public string UndoAllAutomationId => AutomationIds.ForReviewGroupUndoAll(Title);
+
     public string UndoAllAutomationName => $"Undo all: {Title}";
 
     public string WordCountText

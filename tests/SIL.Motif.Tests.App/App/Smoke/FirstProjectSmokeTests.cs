@@ -167,14 +167,14 @@ public sealed class FirstProjectSmokeTests(PristineProjectFixture pristine)
                 changes.LastRefusal?.Message ?? $"Expected two changes, found {changes.Items.Count}.");
 
             walkthrough.ShowPage(WorkspacePage.Review);
+            // Review's word card is not a tab stop: it is taller than the Inspector viewport can show.
             InteractiveControlSweep.AssertScene(walkthrough, "pending changes in Review",
                 InteractiveControlFamily.Action,
                 InteractiveControlFamily.Link,
                 InteractiveControlFamily.Disclosure,
                 InteractiveControlFamily.List,
                 InteractiveControlFamily.SelectableText,
-                InteractiveControlFamily.Collection,
-                InteractiveControlFamily.FocusableSurface);
+                InteractiveControlFamily.Collection);
             var review = walkthrough.Workspace.PageModel<ReviewPageModel>();
             Assert.Equal(["Removed", "Spelling → Incorrect"],
                 review.ReviewGroups.Select(group => group.Title));

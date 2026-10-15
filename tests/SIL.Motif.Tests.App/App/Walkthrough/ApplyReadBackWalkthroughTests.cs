@@ -66,14 +66,14 @@ public sealed class ApplyReadBackWalkthroughTests(PristineProjectFixture pristin
                 walkthrough.Workspace.Baseline.SourceLastWriteUtc);
 
             walkthrough.ShowPage(WorkspacePage.Review);
+            // Review's word card is not a tab stop: it is taller than the Inspector viewport can show.
             InteractiveControlSweep.AssertScene(walkthrough, "pending change in Review",
                 InteractiveControlFamily.Action,
                 InteractiveControlFamily.Link,
                 InteractiveControlFamily.Disclosure,
                 InteractiveControlFamily.List,
                 InteractiveControlFamily.SelectableText,
-                InteractiveControlFamily.Collection,
-                InteractiveControlFamily.FocusableSurface);
+                InteractiveControlFamily.Collection);
             var review = walkthrough.Workspace.PageModel<ReviewPageModel>();
             var reviewEntry = walkthrough.Window.GetLogicalDescendants().OfType<ListBoxItem>()
                 .Single(item => Avalonia.Automation.AutomationProperties.GetName(item) == "Review changes page");

@@ -61,7 +61,7 @@
                                 AutomationProperties.Name="{Binding Listed.Row.WordAnalysesName}"
                                 ToolTip.Tip="{Binding Listed.Row.WordAnalysesTip}" ToolTip.ShowOnDisabled="True" />
                       </WrapPanel>
-                      <word:WordCard Key="{Binding Presentation.Key}"
+                      <word:WordCard Key="{Binding Presentation.Key}" Focusable="False" AutomationProperties.Name="{Binding Word, StringFormat='Word card for {0}'}"
                                      EvidenceRevision="{Binding Presentation.EvidenceRevision}"
                                      Host="{Binding $parent[views:ReviewInspector].PresentationHost}"
                                      AutomationProperties.Name="{Binding Word, StringFormat='Word card for {0}'}" />

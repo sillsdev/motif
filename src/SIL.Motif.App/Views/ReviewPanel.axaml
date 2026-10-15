@@ -207,7 +207,7 @@
                         IsVisible="{Binding IsNoLongerFits}" AutomationProperties.Name="Check all changes again against the refreshed project" />
                 <Button Grid.Column="3" Classes="denseTableAction" Content="Undo all" Command="{Binding UndoAllCommand}"
                         AutomationProperties.Name="{Binding UndoAllAutomationName}"
-                        AutomationProperties.AutomationId="{x:Static app:AutomationIds.ReviewGroupUndoAll}" />
+                        AutomationProperties.AutomationId="{Binding UndoAllAutomationId}" />
               </Grid>
             </Border>
           </DataTemplate>

@@ -29,7 +29,8 @@
     <DataTemplate x:Key="ProposalInspectorTemplate" x:DataType="vm:ProposalsPageModel">
       <Border Classes="inspector">
         <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-          <StackPanel Classes="inspectorBody" Spacing="{DynamicResource Intent.Space.Related}">
+          <Border Classes="inspectorBodyFrame">
+          <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
             <views:CopyableTextBlock Classes="muted" Text="Reading Proposals…"
                                      IsVisible="{Binding IsLoading}" TextWrapping="Wrap" />
             <views:CopyableTextBlock Classes="muted" Text="No Proposals yet"
@@ -117,6 +118,7 @@
               </StackPanel>
             </StackPanel>
           </StackPanel>
+          </Border>
         </ScrollViewer>
       </Border>
     </DataTemplate>

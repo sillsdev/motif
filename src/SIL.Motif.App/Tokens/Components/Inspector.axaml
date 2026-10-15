@@ -31,6 +31,9 @@
     <Setter Property="Margin" Value="{DynamicResource Component.Inspector.BodyPadding}" />
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
   </Style>
+  <Style Selector="Border.inspectorBodyFrame">
+    <Setter Property="Padding" Value="{DynamicResource Component.Inspector.BodyPadding}" />
+  </Style>
   <Style Selector=":is(TextBlock).inspectorTitle">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Title}" />
     <Setter Property="FontWeight" Value="SemiBold" />
