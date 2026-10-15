@@ -43,8 +43,9 @@ public sealed class SettingsShortcutScopeTests
                 var scroll = page.FindControl<ScrollViewer>("SettingsListScroll")!;
                 var presenter = Assert.Single(scroll.GetVisualDescendants().OfType<ScrollContentPresenter>(),
                     candidate => ReferenceEquals(candidate.TemplatedParent, scroll));
-                var list = Assert.IsType<StackPanel>(scroll.Content);
-                var availableWidth = presenter.Bounds.Width - list.Margin.Left - list.Margin.Right;
+                var inset = Assert.IsType<Border>(scroll.Content);
+                var list = Assert.IsType<StackPanel>(inset.Child);
+                var availableWidth = presenter.Bounds.Width - inset.Padding.Left - inset.Padding.Right;
                 Assert.InRange(list.Bounds.Width, availableWidth - 1, availableWidth + 1);
                 var row = page.FindControl<ItemsControl>("SettingsShortcutsItems")!
                     .GetVisualDescendants().OfType<Border>().First(border =>

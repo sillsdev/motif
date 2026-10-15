@@ -610,7 +610,9 @@ public sealed class SettingsPageTests
                 var list = page.GetVisualDescendants().OfType<StackPanel>()
                     .Single(panel => panel.Classes.Contains("settingsList"));
                 Assert.Equal(Avalonia.Layout.HorizontalAlignment.Stretch, list.HorizontalAlignment);
-                Assert.Equal((Thickness)Application.Current.FindResource("Component.Settings.PageInset")!, list.Margin);
+                var inset = Assert.IsType<Border>(list.Parent);
+                Assert.Equal((Thickness)Application.Current.FindResource("Component.Settings.PageInset")!, inset.Padding);
+                Assert.Equal(default, list.Margin);
                 var heading = page.FindControl<StackPanel>("SettingsDisplaySection")!.Children.OfType<TextBlock>().First();
                 Assert.Equal((double)Application.Current.FindResource("Intent.Type.Label")!, heading.FontSize);
                 Assert.True(Application.Current.TryGetResource("Intent.TextSecondary", window.ActualThemeVariant, out var brush));

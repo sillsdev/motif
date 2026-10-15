@@ -129,7 +129,11 @@ public sealed partial class SettingsPage : UserControl, IWorkspacePaneProvider
             if (this.FindControl<ScrollViewer>("SettingsListScroll") is { Content: Control content } scroll &&
                 this.FindControl<Control>(section) is { } target &&
                 target.TranslatePoint(default, content) is { } origin)
-                scroll.Offset = new Vector(0, origin.Y + content.Margin.Top);
+            {
+                // The first section rests at offset zero; a few pixels down leaves Page up a sub-pixel button.
+                var inset = content is Border page ? page.Padding.Top : 0;
+                scroll.Offset = new Vector(0, origin.Y <= inset ? 0 : origin.Y);
+            }
         });
     }
 

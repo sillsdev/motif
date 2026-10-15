@@ -376,8 +376,10 @@
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Caption}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.Severity.Info}" />
   </Style>
+  <Style Selector=":is(UserControl).settingsPageView Border.settingsPageInset">
+    <Setter Property="Padding" Value="{DynamicResource Component.Settings.PageInset}" />
+  </Style>
   <Style Selector=":is(UserControl).settingsPageView StackPanel.settingsList">
-    <Setter Property="Margin" Value="{DynamicResource Component.Settings.PageInset}" />
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Related}" />
     <Setter Property="HorizontalAlignment" Value="Stretch" />
   </Style>

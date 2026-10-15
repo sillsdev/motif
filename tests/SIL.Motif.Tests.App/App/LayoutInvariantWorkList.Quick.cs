@@ -52,9 +52,5 @@ internal static partial class LayoutInvariantWorkList
             new("ToggleButton", "ExpanderHeader", null, null, ":unchecked", "ExpanderHeaderLayoutContainer"),
             null, "AI pages", "ExpanderHeader has no hit target or scroll route at 640x600 150%.",
             "no-visible-hit-target-or-scroll-route", 1),
-        new(new("Settings/populated", "640x600", 150, "light"), "unreachable-control",
-            new("RepeatButton", "PART_PageUpButton", null, "Page up", ":empty", "SettingsListScroll"),
-            null, "Frame / Settings", "Page up has no hit target or scroll route at 640x600 150%.",
-            "no-visible-hit-target-or-scroll-route", 1),
     ];
 }

@@ -15,6 +15,7 @@
       </Grid>
     </Border>
     <ScrollViewer x:Name="SettingsListScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" SizeChanged="OnSettingsContentSizeChanged">
+      <Border Classes="settingsPageInset">
       <StackPanel Classes="settingsList">
 <StackPanel x:Name="SettingsDisplaySection" Classes="settingsPage">
               <views:CopyableTextBlock Classes="settingsGroupHeading" Text="Display" />
@@ -487,6 +488,7 @@
                          TextWrapping="Wrap" />
             </StackPanel>
       </StackPanel>
+      </Border>
     </ScrollViewer>
   </Grid>
 </UserControl>
