@@ -578,5 +578,20 @@
     "title": "Author a stem name",
     "description": "Adds a category-owned stem name with explicit feature regions to a Draft. Each region states where an allomorph bearing this stem name is eligible; attaching it to an allomorph is a separate operation.",
     "source": "Hand-written from the closed intent and composer contract."
+  },
+  "phonology-examples save": {
+    "title": "Save phonology examples",
+    "description": "Saves underlying forms, expected surface forms and their context, with optional citations, as an immutable advisory Example Set revision. Saving does not change the FieldWorks project.",
+    "source": "The shared command catalog and typed request contract."
+  },
+  "phonology-examples list": {
+    "title": "List phonology examples",
+    "description": "Lists the current revision of each saved advisory phonology Example Set in stable order. Use the returned cursor to read another page.",
+    "source": "The shared command catalog and typed request contract."
+  },
+  "phonology-examples show": {
+    "title": "Show phonology examples",
+    "description": "Reads a bounded page from one exact saved Example Set revision, including its citations. It reads stored evidence without capturing a project or running PanGloss.",
+    "source": "The shared command catalog and typed request contract."
   }
 }

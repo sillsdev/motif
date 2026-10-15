@@ -4,7 +4,7 @@
 
 ## When to use it
 
-Use it to clear away Proposals nobody will apply. An applied Proposal is final: it is never deleted, and its Receipts are kept. A Proposal that is still open, or is being tried, is refused.
+Use it to clear away Proposals nobody will apply. An applied Proposal is final: it is never deleted, and its Receipts are kept. A Proposal that is still open, or is being tried, is refused. A Proposal that a saved phonology Example Set cites is refused with `proposal.retained-by-example-set`; the set keeps the Proposal's evidence, so it stays until the set is gone.
 
 ## Example
 

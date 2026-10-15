@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading;
@@ -28,6 +29,7 @@ using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Parsimony;
+using SIL.Motif.Contract.Phonology;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Host.Store;
@@ -1426,6 +1428,81 @@ try
             result = RenderCommand(WordContextQuery.Query(new WordContextRequest(contextProject, contextWord)));
             break;
 
+        case "phonology-examples":
+            if (positionals.Count < 1 || !flags.TryGetValue("project", out var phonologyProject))
+                return Usage(UsageLineFor("phonology-examples save") + " OR " +
+                    UsageLineFor("phonology-examples list") + " OR " +
+                    UsageLineFor("phonology-examples show"), asJson);
+            var phonologyPageSize = 20;
+            if (flags.TryGetValue("page-size", out var phonologyPageSizeText) &&
+                (!int.TryParse(phonologyPageSizeText, NumberStyles.None, CultureInfo.InvariantCulture,
+                    out phonologyPageSize) || phonologyPageSize is < 1 or > PhonologyExampleValidation.MaxPageSize))
+                return Usage("--page-size must be between 1 and " +
+                    PhonologyExampleValidation.MaxPageSize.ToString(CultureInfo.InvariantCulture) + ".", asJson);
+            switch (positionals[0])
+            {
+                case "save":
+                    if (positionals.Count != 1 || !flags.TryGetValue("file", out var phonologyFile) ||
+                        !File.Exists(phonologyFile))
+                        return Usage(UsageLineFor("phonology-examples save"), asJson);
+                    try
+                    {
+                        var payload = ReadBoundedUtf8File(phonologyFile,
+                            PhonologyExampleValidation.MaxPayloadUtf8Bytes);
+                        var request = PhonologyExampleValidation.ParseSaveFile(payload, phonologyProject);
+                        result = RenderCommand(PhonologyExampleCommands.Save(request));
+                    }
+                    catch (Exception exception) when (exception is ArgumentException or IOException or
+                        DecoderFallbackException)
+                    {
+                        return Usage("The Example Set file is invalid: " + exception.Message, asJson);
+                    }
+                    break;
+                case "list":
+                    if (positionals.Count != 1)
+                        return Usage(UsageLineFor("phonology-examples list"), asJson);
+                    PhonologySetListCursor? listCursor;
+                    try
+                    {
+                        listCursor = flags.TryGetValue("continuation", out var listCursorJson)
+                            ? DeserializePhonologyCursor<PhonologySetListCursor>(listCursorJson)
+                            : null;
+                        if (flags.ContainsKey("continuation") && listCursor is null)
+                            return Usage("--continuation must contain a list cursor JSON object.", asJson);
+                    }
+                    catch (JsonException exception)
+                    {
+                        return Usage("--continuation is not a valid list cursor: " + exception.Message, asJson);
+                    }
+                    result = RenderCommand(PhonologyExampleCommands.List(new ListPhonologyExamplesRequest(
+                        phonologyProject, phonologyPageSize, listCursor)));
+                    break;
+                case "show":
+                    if (positionals.Count != 2)
+                        return Usage(UsageLineFor("phonology-examples show"), asJson);
+                    PhonologyPageCursor? pageCursor;
+                    try
+                    {
+                        pageCursor = flags.TryGetValue("continuation", out var pageCursorJson)
+                            ? DeserializePhonologyCursor<PhonologyPageCursor>(pageCursorJson)
+                            : null;
+                        if (flags.ContainsKey("continuation") && pageCursor is null)
+                            return Usage("--continuation must contain a revision page cursor JSON object.", asJson);
+                    }
+                    catch (JsonException exception)
+                    {
+                        return Usage("--continuation is not a valid revision page cursor: " + exception.Message, asJson);
+                    }
+                    result = RenderCommand(PhonologyExampleCommands.Show(new ShowPhonologyExamplesRequest(
+                        phonologyProject, positionals[1], phonologyPageSize, pageCursor)));
+                    break;
+                default:
+                    return Usage(UsageLineFor("phonology-examples save") + " OR " +
+                        UsageLineFor("phonology-examples list") + " OR " +
+                        UsageLineFor("phonology-examples show"), asJson);
+            }
+            break;
+
         case "delete":
             if (positionals.Count != 0 || !flags.TryGetValue("project", out var deleteProject) ||
                 !flags.TryGetValue("proposal", out var deleteProposal) || string.IsNullOrWhiteSpace(deleteProposal))
@@ -2162,6 +2239,8 @@ static string ResolveCommandName(string verb, IReadOnlyDictionary<string, string
         return "apply --proposal";
     if (verb == "trial" && flags.ContainsKey("pending"))
         return "trial --pending";
+    if (verb == "phonology-examples" && positionals.FirstOrDefault() is "save" or "list" or "show")
+        return verb + " " + positionals[0];
     if (verb is "config" or "baseline" or "grammar" or "jobs" or "project" or "selection" or "texts" or "setup" or "store" or "word" or "difference")
     {
         var candidate = positionals.Count > 0 ? verb + " " + positionals[0] : verb;
@@ -2440,6 +2519,49 @@ static (Dictionary<string, string> Flags, List<string> Positionals, IReadOnlyLis
 
 // The version this CLI negotiates with; the worker decides compatibility from the protocol range, not this.
 static string CliProductVersion() => MotifProductVersion.CurrentText;
+
+static string ReadBoundedUtf8File(string path, int maximumBytes)
+{
+    using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+    if (stream.Length > maximumBytes)
+        throw new InvalidDataException($"The file exceeds the {maximumBytes} byte limit.");
+    var buffer = new byte[maximumBytes + 1];
+    var total = 0;
+    while (total < buffer.Length)
+    {
+        var read = stream.Read(buffer, total, buffer.Length - total);
+        if (read == 0) break;
+        total += read;
+    }
+    if (total > maximumBytes)
+        throw new InvalidDataException($"The file exceeds the {maximumBytes} byte limit.");
+    return new UTF8Encoding(false, true).GetString(buffer, 0, total);
+}
+
+static T? DeserializePhonologyCursor<T>(string json) where T : class
+{
+    using var document = JsonDocument.Parse(json);
+    EnsureUniqueJsonProperties(document.RootElement);
+    return JsonSerializer.Deserialize<T>(json, PhonologyJson.CreateOptions());
+}
+
+static void EnsureUniqueJsonProperties(JsonElement element)
+{
+    if (element.ValueKind == JsonValueKind.Object)
+    {
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var property in element.EnumerateObject())
+        {
+            if (!names.Add(property.Name))
+                throw new JsonException($"The cursor JSON repeats '{property.Name}'.");
+            EnsureUniqueJsonProperties(property.Value);
+        }
+    }
+    else if (element.ValueKind == JsonValueKind.Array)
+    {
+        foreach (var item in element.EnumerateArray()) EnsureUniqueJsonProperties(item);
+    }
+}
 
 static bool IsTruthyFlag(string value) => !string.Equals(value, "false", StringComparison.OrdinalIgnoreCase);
 

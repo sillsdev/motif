@@ -21,6 +21,7 @@ namespace SIL.Motif.Commands.Catalog;
 /// <see cref="TimingCommand"/>, <see cref="Queries.GrammarCheckQuery"/>, <see cref="Queries.GrammarReadQuery"/>,
 /// <see cref="HandoffCommand"/>,
 /// <see cref="JobCommands"/>, <see cref="PendingChangesWorkflow"/>, <see cref="ReadStateCommands"/>,
+/// <see cref="PhonologyExampleCommands"/>,
 /// <see cref="Queries.WordContextQuery"/>, <see cref="Queries.WordTraceQuery"/>, <see cref="Queries.ObjectUsesQuery"/>, and <see cref="Queries.InspectQuery"/>.
 /// The project setup group reaches <see cref="ProjectCreateCommand"/> and <see cref="ProjectInitializationCommand"/>.
 /// </summary>
@@ -219,6 +220,13 @@ public static class CommandCatalog
         new CommandDescriptor("store delete-refused", typeof(ProjectStoreResetRequest), typeof(ProjectStoreResetResponse), CommandSurface.Developer, AgentClass.HumanOnly),
         new CommandDescriptor("texts list", typeof(TextInventoryRequest), typeof(TextInventoryResponse), CommandSurface.Released, AgentClass.Read),
         new CommandDescriptor("word read-state", typeof(WordReadStateRequest), typeof(WordReadStateResponse), CommandSurface.Developer, AgentClass.Read),
+
+        new CommandDescriptor("phonology-examples save", typeof(SavePhonologyExamplesRequest),
+            typeof(PhonologyExamplesSavedResponse), CommandSurface.AdvancedAi, AgentClass.Draft),
+        new CommandDescriptor("phonology-examples list", typeof(ListPhonologyExamplesRequest),
+            typeof(PhonologyExamplesListResponse), CommandSurface.Released, AgentClass.Read),
+        new CommandDescriptor("phonology-examples show", typeof(ShowPhonologyExamplesRequest),
+            typeof(PhonologyExamplesPageResponse), CommandSurface.Released, AgentClass.Read),
 
         new CommandDescriptor("writing-systems", typeof(WritingSystemsRequest),
             typeof(WritingSystemsResponse), CommandSurface.Released, AgentClass.Read),

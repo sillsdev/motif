@@ -164,22 +164,24 @@ public sealed class SchemaVersionGateTests : IDisposable
     }
 
     [Fact]
-    public void AStoreStampedWithSchemaFortyFiveIsRefusedByTheProposalDifferenceGeneration()
+    public void AStoreStampedWithSchemaFortySixIsRefusedByThePhonologyExampleGeneration()
     {
-        Assert.Equal(46, MotifSchema.CurrentSchema);
-        var path = Path.Combine(_root, "schema45.motif.db");
-        var locator = new ProjectLocator(Path.Combine(_root, "schema45.fwdata"), "schema45");
+        Assert.Equal(47, MotifSchema.CurrentSchema);
+        var path = Path.Combine(_root, "schema46.motif.db");
+        var locator = new ProjectLocator(Path.Combine(_root, "schema46.fwdata"), "schema46");
         using (MotifDatabase.OpenOwned(path, locator, MotifSchema.CurrentSchema, new Version(1, 0))) { }
         using (var connection = new SqliteConnection($"Data Source={path};Pooling=False"))
         {
             connection.Open();
             using var command = connection.CreateCommand();
-            command.CommandText = "PRAGMA user_version = 45;";
+            command.CommandText = "PRAGMA user_version = 46;";
             command.ExecuteNonQuery();
         }
 
-        Assert.Throws<MotifStoreVersionException>(() =>
+        var refusal = Assert.Throws<MotifStoreVersionException>(() =>
             MotifDatabase.OpenOwned(path, locator, MotifSchema.CurrentSchema, new Version(1, 0)));
+        Assert.Contains("delete", refusal.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(46, PragmaUserVersion(path));
     }
 
     [Fact]

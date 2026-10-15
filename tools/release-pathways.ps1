@@ -320,6 +320,23 @@ try {
     if ($forcedRead.returned -ne 1 -or $forcedRead.items[0].name -ne 'motifForceProbe') {
         throw 'The installed forced Apply did not persist the authored phoneme.'
     }
+
+    $examplesFile = Join-Path $releaseRoot 'phonology-examples.json'
+    @{ name = 'Release pathway examples'; examples = @(@{
+        id = 'probe'; underlying = 'a-ku'; expected = @('e-ki')
+        context = @{ kind = 'hcXmlEntry'; entryId = 'probe-entry' }
+    }) } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $examplesFile -Encoding utf8
+    $savedExamples = Invoke-CliJson @('phonology-examples', 'save', '--project', $first.ProjectPath,
+        '--file', $examplesFile)
+    $examplesRevision = [string] $savedExamples.exampleSet.revisionId
+    $listedExamples = Invoke-CliJson @('phonology-examples', 'list', '--project', $first.ProjectPath)
+    $shownExamples = Invoke-CliJson @('phonology-examples', 'show', '--project', $first.ProjectPath,
+        $examplesRevision)
+    if (-not $examplesRevision -or @($listedExamples.items).Count -ne 1 -or
+        $listedExamples.items[0].revisionId -ne $examplesRevision -or
+        @($shownExamples.items).Count -ne 1 -or $shownExamples.items[0].id -ne 'probe') {
+        throw 'The installed phonology-examples save, list and show did not round-trip the saved example.'
+    }
 }
 finally {
     if ($null -eq $previousAdvancedAiPath) { Remove-Item Env:MOTIF_ADVANCED_AI_MODE_PATH -ErrorAction SilentlyContinue }

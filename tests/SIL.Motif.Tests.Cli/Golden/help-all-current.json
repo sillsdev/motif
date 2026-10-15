@@ -178,7 +178,7 @@
       "slug": "delete-proposal",
       "title": "Delete a closed Proposal",
       "description": "Deletes a declined, superseded or withdrawn Proposal that never applied, with its Trials. An applied Proposal is never deleted.",
-      "helpPage": "# Delete a closed Proposal\n\n\u0060delete --proposal\u0060 deletes a declined, superseded or withdrawn Proposal that never applied, together with its [Trials](term:trial).\n\n## When to use it\n\nUse it to clear away Proposals nobody will apply. An applied Proposal is final: it is never deleted, and its Receipts are kept. A Proposal that is still open, or is being tried, is refused.\n\n## Example\n\n\u0060\u0060\u0060powershell\nmotif delete --proposal \u003Cid\u003E --project \u0022C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\u0022 --json\n\u0060\u0060\u0060\n\n## What it prints\n\nThe deleted Proposal\u0027s id and how many Trials were removed with it. In the window, a closed card on **Proposals** offers **Delete** for the same.\n\n## Related commands\n\n- [List Proposals](cmd:proposals) lists closed Proposals with \u0060--include-set-aside\u0060.\n",
+      "helpPage": "# Delete a closed Proposal\n\n\u0060delete --proposal\u0060 deletes a declined, superseded or withdrawn Proposal that never applied, together with its [Trials](term:trial).\n\n## When to use it\n\nUse it to clear away Proposals nobody will apply. An applied Proposal is final: it is never deleted, and its Receipts are kept. A Proposal that is still open, or is being tried, is refused. A Proposal that a saved phonology Example Set cites is refused with \u0060proposal.retained-by-example-set\u0060; the set keeps the Proposal\u0027s evidence, so it stays until the set is gone.\n\n## Example\n\n\u0060\u0060\u0060powershell\nmotif delete --proposal \u003Cid\u003E --project \u0022C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\u0022 --json\n\u0060\u0060\u0060\n\n## What it prints\n\nThe deleted Proposal\u0027s id and how many Trials were removed with it. In the window, a closed card on **Proposals** offers **Delete** for the same.\n\n## Related commands\n\n- [List Proposals](cmd:proposals) lists closed Proposals with \u0060--include-set-aside\u0060.\n",
       "usage": [
         "Usage: motif delete --proposal \u003Cid\u003E --project \u003Cfwdata\u003E [--json]"
       ],
@@ -315,6 +315,32 @@
       ],
       "surface": "Released",
       "url": "https://motif-docs.pages.dev/reference/commands/overview/"
+    },
+    {
+      "kind": "command",
+      "code": "phonology-examples list",
+      "slug": "phonology-examples-list",
+      "title": "List phonology examples",
+      "description": "Lists the current revision of each saved advisory phonology Example Set in stable order. Use the returned cursor to read another page.",
+      "helpPage": "# List phonology examples\n\n\u0060phonology-examples list\u0060 reads the current revision of each saved phonology Example Set from the project\u0027s Motif store. Example Sets are advisory evidence and do not affect Readiness or Apply.\n\n## When to use it\n\nUse this to find a set and its current revision before reading or revising it. The command reads stored headers and does not capture the FieldWorks project or run PanGloss.\n\n## Example\n\n\u0060\u0060\u0060powershell\nmotif phonology-examples list --project \u0022C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\u0022 --json\n\u0060\u0060\u0060\n\n## What it prints\n\nEach item gives the set name, current revision id, and example count. A response with a continuation cursor has another page; pass that cursor as JSON with \u0060--continuation\u0060.\n\n## Related commands\n\n- [Save phonology examples](cmd:phonology-examples%20save) creates a new set or advances one at its exact current revision.\n- [Show a saved phonology revision](cmd:phonology-examples%20show) reads the complete examples a page at a time.\n",
+      "usage": [
+        "Usage: motif phonology-examples list --project \u003Cfwdata\u003E [--page-size \u003Cn\u003E] [--continuation \u003Ccursor-json\u003E] [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/phonology-examples-list/"
+    },
+    {
+      "kind": "command",
+      "code": "phonology-examples show",
+      "slug": "phonology-examples-show",
+      "title": "Show phonology examples",
+      "description": "Reads a bounded page from one exact saved Example Set revision, including its citations. It reads stored evidence without capturing a project or running PanGloss.",
+      "helpPage": "# Show phonology examples\n\n\u0060phonology-examples show\u0060 reads one exact saved revision and returns its examples in authored order, including source context and any citations. Example Sets are advisory evidence and do not affect Readiness or Apply.\n\n## When to use it\n\nUse this to inspect a current or historical revision. The command reads Motif\u0027s stored rows and does not capture the project or run PanGloss.\n\n## Example\n\n\u0060\u0060\u0060powershell\nmotif phonology-examples show --project \u0022C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\u0022 \u003CrevisionId\u003E --json\n\u0060\u0060\u0060\n\n## What it prints\n\nEach example includes its underlying form, expected forms, generation context, and optional citation. A continuation cursor marks another page; pass that cursor as JSON with \u0060--continuation\u0060.\n\n## Related commands\n\n- [List phonology examples](cmd:phonology-examples%20list) finds the current revision of each set.\n- [Save phonology examples](cmd:phonology-examples%20save) records a new immutable revision.\n",
+      "usage": [
+        "Usage: motif phonology-examples show --project \u003Cfwdata\u003E \u003CrevisionId\u003E [--page-size \u003Cn\u003E] [--continuation \u003Ccursor-json\u003E] [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/phonology-examples-show/"
     },
     {
       "kind": "command",

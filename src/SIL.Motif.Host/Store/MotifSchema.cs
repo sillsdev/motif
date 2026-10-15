@@ -16,7 +16,7 @@ public static class MotifSchema
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 46;
+    public const int CurrentSchema = 47;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
@@ -34,7 +34,7 @@ public static class MotifSchema
             command.CommandText = MetadataDdl + CorpusDdl + ProposalWorkflowDdl + SelectionDdl + AssessmentDdl + JobDdl +
                 BaselineDdl + BaselineTextWordsDdl + BaselineTextReadIndexDdl + RetainedInvocationDdl + ParsimonyBundleDdl + ParsimonyBundleLifetimeDdl +
                 GrammarCheckDdl + PendingChangeFitDdl + ReviewMarkDdl +
-                ReadOccurrenceDdl + ActiveParseDdl + ParserRefusalDdl + ProposalDifferenceDdl;
+                ReadOccurrenceDdl + ActiveParseDdl + ParserRefusalDdl + ProposalDifferenceDdl + PhonologyExampleDdl;
             command.ExecuteNonQuery();
         }
 
@@ -65,7 +65,8 @@ public static class MotifSchema
             "BaselineSummaries", "BaselineTextWords", "BaselineTextWordforms", "BaselineTextReadIndex", "GrammarChecks", "PendingChangeFits", "ReviewMarks",
             "ReadOccurrences", "ActiveParse", "ParserRefusals", "ParsimonyBundles", "ParsimonyBundleReferences",
             "ParsimonyReaderLeases", "ParsimonyBuildClaims", "CurrentParsimonyBundles",
-            "ProposalDifferences", "ProposalDifferenceCases", "ProposalDifferenceOccurrences", "ProposalDifferenceBuckets"
+            "ProposalDifferences", "ProposalDifferenceCases", "ProposalDifferenceOccurrences", "ProposalDifferenceBuckets",
+            "PhonologyExampleSets", "PhonologyExampleSetRevisions", "PhonologyExamples"
         };
         var expectedIndexes = new HashSet<string>(StringComparer.Ordinal)
         {
@@ -75,7 +76,18 @@ public static class MotifSchema
             "IX_RetainedInvocations_Project", "IX_RetainedInvocationMembers_Assessment",
             "IX_ParsimonyBundles_ProjectCreated", "IX_ParsimonyReaderLeases_BundleExpiry",
             "IX_ParsimonyBuildClaims_Project", "IX_GrammarChecks_Project", "IX_GrammarChecks_Proposal",
-            "IX_ProposalDifferences_Proposal", "IX_ProposalDifferenceOccurrences_Order", "IX_ProposalDifferenceBuckets_Bucket"
+            "IX_ProposalDifferences_Proposal", "IX_ProposalDifferenceOccurrences_Order", "IX_ProposalDifferenceBuckets_Bucket",
+            "IX_PhonologyExampleSets_Name", "IX_PhonologyExampleSetRevisions_SetRevision",
+            "IX_PhonologyExamples_RevisionExampleId"
+        };
+        var expectedTriggers = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "TR_PhonologyExampleSets_NameImmutable",
+            "TR_PhonologyExampleSetRevisions_ImmutableUpdate",
+            "TR_PhonologyExampleSetRevisions_ImmutableDelete",
+            "TR_PhonologyExamples_Complete",
+            "TR_PhonologyExamples_ImmutableUpdate",
+            "TR_PhonologyExamples_ImmutableDelete"
         };
 
         using (var objects = connection.CreateCommand())
@@ -89,7 +101,8 @@ public static class MotifSchema
                 var type = reader.GetString(0);
                 var name = reader.GetString(1);
                 if ((type == "table" && expectedTables.Contains(name)) ||
-                    (type == "index" && expectedIndexes.Contains(name)))
+                    (type == "index" && expectedIndexes.Contains(name)) ||
+                    (type == "trigger" && expectedTriggers.Contains(name)))
                     continue;
                 throw new InvalidDataException($"Motif schema contains unexpected {type} {name}.");
             }
@@ -99,6 +112,8 @@ public static class MotifSchema
             ValidateTable(connection, transaction, table, ColumnsFor(table), ForeignKeysFor(table));
         foreach (var index in expectedIndexes)
             ValidateIndex(connection, transaction, index, IndexColumnsFor(index));
+        foreach (var trigger in expectedTriggers)
+            ValidateTrigger(connection, transaction, trigger);
     }
 
     internal static (ProjectLocator Project, Version MinimumWorkerVersion) ReadMetadata(
@@ -208,6 +223,30 @@ public static class MotifSchema
         }
         if (table == "AssessedWords" && sql.IndexOf("CHECK (IsIncomplete IN (0, 1))", StringComparison.OrdinalIgnoreCase) < 0)
             throw new InvalidDataException($"Motif table {table} is missing a required invariant.");
+        var requiredInvariants = table switch
+        {
+            "PhonologyExampleSets" => new[]
+                { "FOREIGN KEY (SetId, CurrentRevisionId)", "DEFERRABLE INITIALLY DEFERRED" },
+            "PhonologyExampleSetRevisions" => new[]
+                { "CHECK (RevisionNumber > 0)", "CHECK (ExampleCount BETWEEN 1 AND 500)", "UNIQUE (SetId, RevisionId)" },
+            "PhonologyExamples" => new[]
+                { "CHECK (Ordinal >= 0)", "PRIMARY KEY (RevisionId, Ordinal)", "UNIQUE (RevisionId, ExampleId)" },
+            _ => []
+        };
+        foreach (var invariant in requiredInvariants)
+            if (sql.IndexOf(invariant, StringComparison.OrdinalIgnoreCase) < 0)
+                throw new InvalidDataException($"Motif table {table} is missing a required invariant.");
+    }
+
+    private static void ValidateTrigger(SqliteConnection connection, SqliteTransaction? transaction, string trigger)
+    {
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = "SELECT sql FROM sqlite_master WHERE type = 'trigger' AND name = $trigger;";
+        command.Parameters.AddWithValue("$trigger", trigger);
+        var sql = command.ExecuteScalar() as string;
+        if (sql is null || !sql.Contains("RAISE(ABORT", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException($"Motif trigger {trigger} is missing its immutability invariant.");
     }
 
     private static void ValidateIndex(
@@ -284,11 +323,15 @@ public static class MotifSchema
         "IX_ProposalDifferences_Proposal" => "ProposalDifferences",
         "IX_ProposalDifferenceOccurrences_Order" => "ProposalDifferenceOccurrences",
         "IX_ProposalDifferenceBuckets_Bucket" => "ProposalDifferenceBuckets",
+        "IX_PhonologyExampleSets_Name" => "PhonologyExampleSets",
+        "IX_PhonologyExampleSetRevisions_SetRevision" => "PhonologyExampleSetRevisions",
+        "IX_PhonologyExamples_RevisionExampleId" => "PhonologyExamples",
         _ => throw new InvalidDataException($"Motif index {index} is not registered.")
     };
 
     private static bool IsUniqueIndex(string index) => index is "IX_Jobs_Lineage_Attempt" or
-        "IX_Proposals_DraftName" or "IX_Proposals_OpenRole" or "IX_GrammarChecks_Project" or "IX_GrammarChecks_Proposal";
+        "IX_Proposals_DraftName" or "IX_Proposals_OpenRole" or "IX_GrammarChecks_Project" or "IX_GrammarChecks_Proposal" or
+        "IX_PhonologyExampleSets_Name" or "IX_PhonologyExampleSetRevisions_SetRevision" or "IX_PhonologyExamples_RevisionExampleId";
 
     private static bool IsPartialIndex(string index) => index is "IX_Proposals_OpenRole" or "IX_GrammarChecks_Project" or
         "IX_GrammarChecks_Proposal";
@@ -316,6 +359,9 @@ public static class MotifSchema
         "IX_ProposalDifferences_Proposal" => ["ProposalId", "CreatedUtc"],
         "IX_ProposalDifferenceOccurrences_Order" => ["DifferenceId", "TextId", "LineNumber", "OccurrenceIndex"],
         "IX_ProposalDifferenceBuckets_Bucket" => ["DifferenceId", "Bucket", "CaseKey"],
+        "IX_PhonologyExampleSets_Name" => ["Name"],
+        "IX_PhonologyExampleSetRevisions_SetRevision" => ["SetId", "RevisionNumber"],
+        "IX_PhonologyExamples_RevisionExampleId" => ["RevisionId", "ExampleId"],
         _ => throw new InvalidDataException($"Motif index {index} is not registered.")
     };
 
@@ -348,6 +394,11 @@ public static class MotifSchema
         "Receipts" => [new("Proposals", "ProposalId", "ProposalId", "NO ACTION", "NO ACTION", "NONE")],
         "Reports" => [new("Assessments", "AssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE"),
             new("Proposals", "ProposalId", "ProposalId", "NO ACTION", "NO ACTION", "NONE")],
+        "PhonologyExampleSets" => [new("PhonologyExampleSetRevisions", "SetId", "SetId", "NO ACTION", "NO ACTION", "NONE"),
+            new("PhonologyExampleSetRevisions", "CurrentRevisionId", "RevisionId", "NO ACTION", "NO ACTION", "NONE")],
+        "PhonologyExampleSetRevisions" => [new("Proposals", "ProposalId", "ProposalId", "NO ACTION", "NO ACTION", "NONE"),
+            new("PhonologyExampleSets", "SetId", "SetId", "NO ACTION", "NO ACTION", "NONE")],
+        "PhonologyExamples" => [new("PhonologyExampleSetRevisions", "RevisionId", "RevisionId", "NO ACTION", "NO ACTION", "NONE")],
         _ => []
     };
 
@@ -501,6 +552,16 @@ public static class MotifSchema
         "RetainedInvocationMembers" =>
         [C("InvocationId", "TEXT", true, 1), C("Kind", "TEXT", true, 2),
             C("AssessmentId", "TEXT", true)],
+        "PhonologyExampleSets" =>
+        [C("SetId", "TEXT", false, 1), C("Name", "TEXT", true), C("CurrentRevisionId", "TEXT", true)],
+        "PhonologyExampleSetRevisions" =>
+        [C("RevisionId", "TEXT", false, 1), C("SetId", "TEXT", true), C("RevisionNumber", "INTEGER", true),
+            C("ExecutableSha256", "TEXT", true), C("CitedRevisionSha256", "TEXT", true),
+            C("ExampleCount", "INTEGER", true), C("ProposalId", "TEXT"), C("SavedUtc", "TEXT", true)],
+        "PhonologyExamples" =>
+        [C("RevisionId", "TEXT", true, 1), C("Ordinal", "INTEGER", true, 2), C("ExampleId", "TEXT", true),
+            C("Underlying", "TEXT", true), C("ExpectedJson", "TEXT", true), C("ContextJson", "TEXT", true),
+            C("CitationJson", "TEXT")],
         _ => throw new InvalidDataException($"Motif table {table} is not registered.")
     };
 
@@ -1023,5 +1084,81 @@ public static class MotifSchema
             BundleId TEXT NOT NULL REFERENCES ParsimonyBundles(BundleId) ON DELETE CASCADE,
             PRIMARY KEY (ProjectKey, InputKind)
         );
+        """;
+
+    private const string PhonologyExampleDdl = """
+        CREATE TABLE PhonologyExampleSets (
+            SetId TEXT PRIMARY KEY,
+            Name TEXT NOT NULL,
+            CurrentRevisionId TEXT NOT NULL,
+            FOREIGN KEY (SetId, CurrentRevisionId)
+                REFERENCES PhonologyExampleSetRevisions(SetId, RevisionId) DEFERRABLE INITIALLY DEFERRED
+        );
+        CREATE UNIQUE INDEX IX_PhonologyExampleSets_Name ON PhonologyExampleSets(Name);
+
+        CREATE TABLE PhonologyExampleSetRevisions (
+            RevisionId TEXT PRIMARY KEY,
+            SetId TEXT NOT NULL REFERENCES PhonologyExampleSets(SetId),
+            RevisionNumber INTEGER NOT NULL CHECK (RevisionNumber > 0),
+            ExecutableSha256 TEXT NOT NULL,
+            CitedRevisionSha256 TEXT NOT NULL,
+            ExampleCount INTEGER NOT NULL CHECK (ExampleCount BETWEEN 1 AND 500),
+            ProposalId TEXT NULL REFERENCES Proposals(ProposalId),
+            SavedUtc TEXT NOT NULL,
+            UNIQUE (SetId, RevisionId)
+        );
+        CREATE UNIQUE INDEX IX_PhonologyExampleSetRevisions_SetRevision
+            ON PhonologyExampleSetRevisions(SetId, RevisionNumber);
+
+        CREATE TABLE PhonologyExamples (
+            RevisionId TEXT NOT NULL REFERENCES PhonologyExampleSetRevisions(RevisionId),
+            Ordinal INTEGER NOT NULL CHECK (Ordinal >= 0),
+            ExampleId TEXT NOT NULL,
+            Underlying TEXT NOT NULL,
+            ExpectedJson TEXT NOT NULL,
+            ContextJson TEXT NOT NULL,
+            CitationJson TEXT NULL,
+            PRIMARY KEY (RevisionId, Ordinal),
+            UNIQUE (RevisionId, ExampleId)
+        );
+        CREATE UNIQUE INDEX IX_PhonologyExamples_RevisionExampleId ON PhonologyExamples(RevisionId, ExampleId);
+
+        CREATE TRIGGER TR_PhonologyExamples_Complete
+        BEFORE INSERT ON PhonologyExamples
+        WHEN (SELECT COUNT(*) FROM PhonologyExamples WHERE RevisionId = NEW.RevisionId) >=
+             (SELECT ExampleCount FROM PhonologyExampleSetRevisions WHERE RevisionId = NEW.RevisionId)
+        BEGIN
+            SELECT RAISE(ABORT, 'Example Set revision is complete');
+        END;
+
+        CREATE TRIGGER TR_PhonologyExampleSets_NameImmutable
+        BEFORE UPDATE OF Name ON PhonologyExampleSets
+        BEGIN
+            SELECT RAISE(ABORT, 'Example Set names are immutable');
+        END;
+
+        CREATE TRIGGER TR_PhonologyExampleSetRevisions_ImmutableUpdate
+        BEFORE UPDATE ON PhonologyExampleSetRevisions
+        BEGIN
+            SELECT RAISE(ABORT, 'Example Set revisions are immutable');
+        END;
+
+        CREATE TRIGGER TR_PhonologyExampleSetRevisions_ImmutableDelete
+        BEFORE DELETE ON PhonologyExampleSetRevisions
+        BEGIN
+            SELECT RAISE(ABORT, 'Example Set revisions are immutable');
+        END;
+
+        CREATE TRIGGER TR_PhonologyExamples_ImmutableUpdate
+        BEFORE UPDATE ON PhonologyExamples
+        BEGIN
+            SELECT RAISE(ABORT, 'Example Set examples are immutable');
+        END;
+
+        CREATE TRIGGER TR_PhonologyExamples_ImmutableDelete
+        BEFORE DELETE ON PhonologyExamples
+        BEGIN
+            SELECT RAISE(ABORT, 'Example Set examples are immutable');
+        END;
         """;
 }

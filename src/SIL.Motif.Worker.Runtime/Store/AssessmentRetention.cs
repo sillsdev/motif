@@ -13,6 +13,20 @@ namespace SIL.Motif.Worker.Store;
 /// </remarks>
 internal static class AssessmentRetention
 {
+    /// <summary>Counts immutable phonology Example Set revisions that retain a Proposal.</summary>
+    /// <param name="connection">The open connection that owns <paramref name="transaction"/>.</param>
+    /// <param name="transaction">The transaction for reading retained Example Set revisions.</param>
+    /// <param name="proposalId">The Proposal id to count references for.</param>
+    /// <returns>The number of immutable revisions that reference the Proposal.</returns>
+    public static int CountPhonologyExampleSetReferences(SqliteConnection connection, SqliteTransaction transaction,
+        string proposalId)
+    {
+        using var command = Command(connection, transaction,
+            "SELECT COUNT(*) FROM PhonologyExampleSetRevisions WHERE ProposalId = $proposalId;",
+            ("$proposalId", proposalId));
+        return checked((int)(long)command.ExecuteScalar()!);
+    }
+
     /// <summary>
     /// Removes the removable Assessments recorded against <paramref name="proposalId"/>, apart from
     /// <paramref name="exceptAssessmentId"/>, inside the caller's transaction, and returns how many it removed.
@@ -97,4 +111,14 @@ internal static class AssessmentRetention
         foreach (var (name, value) in parameters) command.Parameters.AddWithValue(name, (object?)value ?? DBNull.Value);
         return command;
     }
+}
+
+/// <summary>Indicates that immutable phonology Example Set revisions retain a Proposal.</summary>
+/// <param name="revisionCount">The number of associated immutable revisions retaining the Proposal.</param>
+internal sealed class ProposalRetainedByExampleSetException(int revisionCount)
+    : InvalidOperationException($"This Proposal is retained by {revisionCount} immutable phonology Example Set " +
+        $"revision{(revisionCount == 1 ? "" : "s")} and cannot be deleted while that reference exists.")
+{
+    /// <summary>The number of immutable Example Set revisions retaining the Proposal.</summary>
+    internal int RevisionCount { get; } = revisionCount;
 }

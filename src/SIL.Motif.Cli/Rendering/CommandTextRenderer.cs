@@ -5,6 +5,7 @@ using System.Text.Json;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.HumanJudgments;
 using SIL.Motif.Contract.Parsimony;
+using SIL.Motif.Contract.Phonology;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -55,6 +56,9 @@ public static class CommandTextRenderer
             CorpusAddedResponse r => RenderCorpusAdded(r),
             CorpusDocumentAddedResponse r => RenderCorpusDocumentAdded(r),
             CorpusBundleAddedResponse r => RenderCorpusBundleAdded(r),
+            PhonologyExamplesSavedResponse r => RenderPhonologyExamplesSaved(r),
+            PhonologyExamplesListResponse r => RenderPhonologyExamplesList(r),
+            PhonologyExamplesPageResponse r => RenderPhonologyExamplesPage(r),
             ReportKindListResponse r => RenderReportKindList(r),
             ReportResponse r => RenderReport(r),
             ParsimonyReportResponse r => RenderParsimonyReport(r),
@@ -196,6 +200,51 @@ public static class CommandTextRenderer
         if (response.RecoveryCopyPath is not null)
             text += " Keep the recovery copy at '" + response.RecoveryCopyPath + "'.";
         return text + Environment.NewLine;
+    }
+
+    private static string RenderPhonologyExamplesSaved(PhonologyExamplesSavedResponse response)
+    {
+        var set = response.ExampleSet;
+        return $"Saved phonology Example Set '{set.Name}' revision {set.Revision.RevisionId} " +
+            $"with {set.Revision.ExampleCount} examples." + Environment.NewLine;
+    }
+
+    private static string RenderPhonologyExamplesList(PhonologyExamplesListResponse response)
+    {
+        if (response.Items.Count == 0) return "No phonology Example Sets are saved." + Environment.NewLine;
+        var builder = new StringBuilder();
+        foreach (var set in response.Items)
+            builder.AppendLine($"{set.Name}  {set.Revision.RevisionId}  {set.Revision.ExampleCount} examples");
+        AppendContinuation(builder, response.Continuation);
+        return builder.ToString();
+    }
+
+    private static string RenderPhonologyExamplesPage(PhonologyExamplesPageResponse response)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine($"{response.ExampleSet.Name}  {response.ExampleSet.Revision.RevisionId}");
+        foreach (var example in response.Items)
+        {
+            builder.AppendLine($"{example.Id}: {example.Underlying} → {string.Join(" | ", example.Expected)}");
+            builder.AppendLine("  Context: " + (example.Context switch
+            {
+                PhonologyGenerationContext.HcXmlEntry hc => $"HC XML entry {hc.EntryId}",
+                PhonologyGenerationContext.FwdataEntry fw => $"FieldWorks entry {fw.EntryGuid}; MSA {fw.MsaGuid} ({fw.MsaClass})",
+                _ => "unknown",
+            }));
+            if (example.Citation is { } citation)
+                builder.AppendLine("  Citation: " + citation.Source +
+                    (citation.Locator is null ? "" : ", " + citation.Locator));
+        }
+        AppendContinuation(builder, response.Continuation);
+        return builder.ToString();
+    }
+
+    private static void AppendContinuation<T>(StringBuilder builder, T? continuation) where T : class
+    {
+        if (continuation is null) return;
+        builder.Append("Next page cursor: ");
+        builder.AppendLine(ProjectionJson.Serialize(continuation));
     }
 
     private static string RenderProjectCreated(ProjectCreatedResponse r)

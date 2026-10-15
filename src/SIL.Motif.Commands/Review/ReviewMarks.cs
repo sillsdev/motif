@@ -1,4 +1,5 @@
 using System.Globalization;
+using Microsoft.Data.Sqlite;
 using SIL.Motif.Commands.Store;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
@@ -96,7 +97,21 @@ public static class ReviewMarks
     {
         ArgumentNullException.ThrowIfNull(database);
         using var connection = database.OpenConnection();
+        using var transaction = connection.BeginTransaction();
+        ClearAll(connection, transaction, proposalId);
+        transaction.Commit();
+    }
+
+    /// <summary>Removes every mark for one Proposal inside the caller's transaction.</summary>
+    /// <param name="connection">The open connection that owns <paramref name="transaction"/>.</param>
+    /// <param name="transaction">The transaction that includes this review-mark deletion.</param>
+    /// <param name="proposalId">The id of the Proposal whose marks are removed.</param>
+    internal static void ClearAll(SqliteConnection connection, SqliteTransaction transaction, string proposalId)
+    {
+        ArgumentNullException.ThrowIfNull(connection);
+        ArgumentNullException.ThrowIfNull(transaction);
         using var command = connection.CreateCommand();
+        command.Transaction = transaction;
         command.CommandText = "DELETE FROM ReviewMarks WHERE ProposalId = $proposal;";
         command.Parameters.AddWithValue("$proposal", proposalId);
         command.ExecuteNonQuery();

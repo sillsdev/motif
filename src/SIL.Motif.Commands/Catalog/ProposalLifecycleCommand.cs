@@ -2,6 +2,7 @@ using System.Text.Json;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -54,18 +55,25 @@ public static class ProposalLifecycleCommand
         if (record.DraftName is not null || !DeletableStatuses.Contains(record.Status))
             return Refuse<ProposalDeletedResponse>("proposal.not-closed", id,
                 "Only a declined, superseded or withdrawn Proposal can be deleted.");
-        var trials = Trials.JobsFor(database, project, record.ProposalId);
-        if (trials.Any(job => !JobStateMachine.IsTerminal(job.Status)))
-            return Refuse<ProposalDeletedResponse>("proposal.trial-running", id,
-                "This Proposal is being tried. Wait for the try to finish, then delete it.");
-
         var jobs = new JobRepository(database);
-        foreach (var job in trials) jobs.DeleteArchived(job.JobId);
-        new AssessmentRepository(database).DeleteByProposal(record.ProposalId, exceptAssessmentId: null);
-        Review.ReviewMarks.ClearAll(database, id);
+        IReadOnlyList<JobRecord> trials;
         try
         {
-            repository.DeleteArchived(record.ProposalId);
+            using var connection = database.OpenConnection();
+            using var transaction = connection.BeginTransaction(deferred: false);
+            // The write lock is held, so no Trial can be enqueued between this read and the delete.
+            trials = Trials.JobsFor(database, project, record.ProposalId);
+            if (trials.Any(job => !JobStateMachine.IsTerminal(job.Status)))
+                return Refuse<ProposalDeletedResponse>("proposal.trial-running", id,
+                    "This Proposal is being tried. Wait for the try to finish, then delete it.");
+            foreach (var job in trials) jobs.DeleteArchived(connection, transaction, job.JobId);
+            Review.ReviewMarks.ClearAll(connection, transaction, id);
+            ProposalDeletion.Delete(connection, transaction, record.ProposalId);
+            transaction.Commit();
+        }
+        catch (ProposalRetainedByExampleSetException exception)
+        {
+            return Refuse<ProposalDeletedResponse>("proposal.retained-by-example-set", id, exception.Message);
         }
         catch (InvalidOperationException exception)
         {

@@ -634,10 +634,24 @@ public sealed class JobRepository
             .Select(record => record.JobId)
             .ToHashSet(StringComparer.Ordinal);
 
+    /// <summary>Deletes one terminal job from the archive and releases any pin it owns.</summary>
+    /// <param name="jobId">The id of the terminal job to delete.</param>
     public void DeleteArchived(string jobId)
     {
         using var connection = _database.OpenConnection();
         using var transaction = connection.BeginTransaction();
+        DeleteArchived(connection, transaction, jobId);
+        transaction.Commit();
+    }
+
+    /// <summary>Deletes one terminal job and releases its pin inside the caller's transaction.</summary>
+    /// <param name="connection">The open connection that owns <paramref name="transaction"/>.</param>
+    /// <param name="transaction">The transaction that includes this job deletion.</param>
+    /// <param name="jobId">The id of the terminal job to delete.</param>
+    internal void DeleteArchived(SqliteConnection connection, SqliteTransaction transaction, string jobId)
+    {
+        ArgumentNullException.ThrowIfNull(connection);
+        ArgumentNullException.ThrowIfNull(transaction);
         var current = ReadRequired(connection, transaction, jobId);
         if (!JobStateMachine.IsTerminal(current.Status))
             throw new InvalidOperationException("Only terminal jobs may be deleted from the archive.");
@@ -648,7 +662,6 @@ public sealed class JobRepository
         command.Parameters.AddWithValue("$version", current.Version);
         if (command.ExecuteNonQuery() != 1) throw new InvalidOperationException("The job changed concurrently; reload it before deleting.");
         ReleaseBundlePin(connection, transaction, jobId);
-        transaction.Commit();
     }
 
     public JobRecord Retry(string terminalJobId, string? newJobId = null)

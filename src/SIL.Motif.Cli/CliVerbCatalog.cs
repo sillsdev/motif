@@ -42,6 +42,14 @@ public static class CliVerbCatalog
             }),
         new CliVerbDescriptor("Project", "word-context", "word-context",
             new[] { "word-context --project <fwdata> --word <word> [--json]" }),
+        new CliVerbDescriptor("Project", "phonology-examples", "phonology-examples save",
+            new[] { "phonology-examples save --project <fwdata> --file <examples.json> [--json]" }),
+        new CliVerbDescriptor("Project", "phonology-examples", "phonology-examples list",
+            new[] { "phonology-examples list --project <fwdata> [--page-size <n>] " +
+                "[--continuation <cursor-json>] [--json]" }),
+        new CliVerbDescriptor("Project", "phonology-examples", "phonology-examples show",
+            new[] { "phonology-examples show --project <fwdata> <revisionId> [--page-size <n>] " +
+                "[--continuation <cursor-json>] [--json]" }),
         new CliVerbDescriptor(
             "Commands", "analyses", "analyses",
             new[]
