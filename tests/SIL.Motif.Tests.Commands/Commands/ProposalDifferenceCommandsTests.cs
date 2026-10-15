@@ -327,6 +327,23 @@ public sealed class ProposalDifferenceCommandsTests : IDisposable
         Assert.Equal(2, produced.Value!.Summary.Words);
     }
 
+    [Fact]
+    public void ATrialWhoseBaselineCannotBeAssessedStillQueuesAndReportsWhy()
+    {
+        using var fixture = new Fixture(_root, noBaselineIds: true);
+        string? reported = null;
+
+        var queued = TrialBaselines.EnqueueWithBaseline(
+            new SIL.Motif.Commands.Requests.EnqueueTrialRequest(fixture.ProjectPath, "1.0", fixture.ProposalId,
+                Words: ["sita"]),
+            _ => throw new InvalidOperationException("no parser"), reason => reported = reason);
+
+        Assert.True(queued.Succeeded, queued.Refusal?.Message);
+        Assert.Equal("no parser", reported);
+        var job = new JobRepository(fixture.Database).Get(queued.Value!.JobId)!;
+        Assert.Null(TrialJobInput.Parse(job.InputJson).BaselineAssessmentIds);
+    }
+
     public void Dispose()
     {
         try { Directory.Delete(_root, recursive: true); }

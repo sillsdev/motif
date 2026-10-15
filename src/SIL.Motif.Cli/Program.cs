@@ -915,7 +915,9 @@ try
                         new EnqueueTrialRequest(
                             trialProject, CliProductVersion(), positionals[0], flags.GetValueOrDefault("scope"),
                             Words: trialWords, AllWords: flags.ContainsKey("all-words")),
-                        RunnerOptions.ResolveRoot(), null, cancellationToken),
+                        ResolveRoot(), null, cancellationToken,
+                        reason => error.WriteLine(
+                            "warning: the Trial has no Baseline Assessment, so `difference produce` will refuse it: " + reason)),
                     successAsJson: false));
             }
             // A job just entered the queue: wake the runner before anything below waits on it.

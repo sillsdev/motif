@@ -117,7 +117,7 @@ public sealed class JobVerbArgvTests : IDisposable
         var result = Run($"trial --project \"{Project}\" {proposalId}");
 
         Assert.Equal(0, result.ExitCode);
-        Assert.Equal(string.Empty, result.Error);
+        Assert.StartsWith("warning: the Trial has no Baseline Assessment", result.Error, StringComparison.Ordinal);
         Assert.False(string.IsNullOrWhiteSpace(result.Output));
 
         var jobId = result.Output.Trim();
