@@ -26,6 +26,8 @@ public sealed partial class ParsimonyPage : UserControl, IWorkspacePaneProvider
         _sidePanel = BuildPane("ParsimonySidePanelTemplate", page);
         _inspectorContent = BuildPane("ParsimonyInspectorTemplate", page);
         DenseTable.Attach(this.FindControl<ListBox>("ParsimonyRowsItems")!);
+        DenseTable.Attach(this.FindControl<ListBox>("ParsimonySuppressedItems")!,
+            _ => WorkspaceLayoutHost.RequestPageInspector(this));
     }
 
     public string SidePanelTitle => "Parsimony";
@@ -40,6 +42,12 @@ public sealed partial class ParsimonyPage : UserControl, IWorkspacePaneProvider
         WorkspaceLayoutHost.RequestPageInspector(this);
     }
 
+    private void OnReturn(object? sender, RoutedEventArgs e)
+    {
+        CloseDenseActionMenus();
+        WorkspaceLayoutHost.RequestPageInspector(this);
+    }
+
     private void OnShowDetails(object? sender, RoutedEventArgs e)
     {
         if (sender is Button { DataContext: ParsimonyListRow { Link: { } link } row } &&
@@ -49,16 +57,23 @@ public sealed partial class ParsimonyPage : UserControl, IWorkspacePaneProvider
         WorkspaceLayoutHost.RequestPageInspector(this);
     }
 
-    private void OnSuppressedDetails(object? sender, RoutedEventArgs e) =>
+    private void OnShowSuppressedDetails(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button { DataContext: ParsimonySuppressedItem item } && !item.IsSelected)
+            item.SelectCommand.Execute(item.Key);
+        CloseDenseActionMenus();
         WorkspaceLayoutHost.RequestPageInspector(this);
+    }
 
     private void CloseDenseActionMenus()
     {
-        var rows = this.FindControl<ListBox>("ParsimonyRowsItems");
-        if (rows is null) return;
-        foreach (var menu in rows.GetVisualDescendants().OfType<Button>()
-                     .Where(button => button.Classes.Contains("denseTableMenu")))
-            if (menu.Flyout is Flyout flyout) flyout.Hide();
+        foreach (var name in new[] { "ParsimonyRowsItems", "ParsimonySuppressedItems" })
+        {
+            if (this.FindControl<ListBox>(name) is not { } rows) continue;
+            foreach (var menu in rows.GetVisualDescendants().OfType<Button>()
+                         .Where(button => button.Classes.Contains("denseTableMenu")))
+                if (menu.Flyout is Flyout flyout) flyout.Hide();
+        }
     }
 
     private Control BuildPane(string key, ParsimonyPageModel page)

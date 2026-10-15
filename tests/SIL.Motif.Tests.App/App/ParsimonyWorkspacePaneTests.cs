@@ -103,6 +103,86 @@ public sealed class ParsimonyWorkspacePaneTests
     }
 
     [Fact]
+    public void SuppressedDecisionsUseDenseRowsWithAlwaysVisibleReturn()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData(advancedAiModeEnabled: true,
+                configure: (fake, _) => ParsimonyStateScreenshots.Configure(fake, "suppressed-with-reason"));
+            var resultWindow = new Window { Width = 1280, Height = 820 };
+            try
+            {
+                workspace.CurrentPage = WorkspacePage.Parsimony;
+                var model = workspace.PageModel<ParsimonyPageModel>();
+                var page = new ParsimonyPage(model);
+                resultWindow.Content = WorkspaceLayoutHost.ForPage(page);
+                resultWindow.Show();
+                model.IsShowingSuppressed = true;
+                PageScreenshots.Settle(resultWindow);
+
+                var list = Assert.IsType<ListBox>(page.FindControl<ListBox>("ParsimonySuppressedItems"));
+                Assert.Contains("denseTable", list.Classes);
+                Assert.Same(model.SuppressedItems, list.ItemsSource);
+                Assert.IsType<VirtualizingStackPanel>(list.ItemsPanelRoot);
+                var header = Assert.Single(page.GetVisualDescendants().OfType<Border>(),
+                    border => border.IsEffectivelyVisible && border.Classes.Contains("denseTableColumnHeader"));
+                var headerGrid = Assert.Single(header.GetVisualDescendants().OfType<Grid>(),
+                    grid => DenseTable.GetColumns(grid) is not null);
+                var rows = list.GetVisualDescendants().OfType<ListBoxItem>().ToArray();
+                Assert.Equal(model.SuppressedItems.Count, rows.Length);
+                Assert.NotEmpty(rows);
+                Assert.All(rows, container =>
+                {
+                    var item = Assert.IsType<ParsimonySuppressedItem>(container.DataContext);
+                    var rowBorder = Assert.Single(container.GetVisualDescendants().OfType<Border>(),
+                        border => border.Classes.Contains("denseTableRow"));
+                    Assert.Equal(item.AutomationId, AutomationProperties.GetAutomationId(rowBorder));
+                    var rowGrid = Assert.Single(rowBorder.GetVisualDescendants().OfType<Grid>(),
+                        grid => DenseTable.GetColumns(grid) is not null);
+                    Assert.Equal(DenseTable.GetColumns(headerGrid), DenseTable.GetColumns(rowGrid));
+                    Assert.Equal(DenseTable.GetCompactColumns(headerGrid), DenseTable.GetCompactColumns(rowGrid));
+                    var buttons = container.GetVisualDescendants().OfType<Button>().ToArray();
+                    var action = Assert.Single(buttons, button => button.Content?.ToString() == "Return");
+                    Assert.True(action.IsEffectivelyVisible);
+                    Assert.True(action.IsTabStop);
+                    Assert.Equal(item.ReturnAutomationId, AutomationProperties.GetAutomationId(action));
+                    var menu = Assert.Single(buttons, button => button.Classes.Contains("denseTableMenu"));
+                    Assert.True(menu.IsEffectivelyVisible);
+                    var flyout = Assert.IsType<Flyout>(menu.Flyout);
+                    flyout.ShowAt(menu);
+                    PageScreenshots.Settle(resultWindow);
+                    Assert.Equal(new[] { "Details", "Return to Active" }, Assert.IsAssignableFrom<Control>(flyout.Content)
+                        .GetVisualDescendants().OfType<Button>().Select(button => button.Content?.ToString()));
+                    flyout.Hide();
+                });
+
+                var chosen = model.SuppressedItems[0];
+                list.SelectedItem = chosen;
+                PageScreenshots.Settle(resultWindow);
+                Assert.True(chosen.IsSelected);
+                Assert.Same(chosen, model.SelectedSuppressedEntry);
+                Assert.True(model.ShowSuppressedActions);
+                Assert.Contains(model.Evidence!.Details, detail => detail.Label == "Reason");
+
+                resultWindow.Width = 500;
+                PageScreenshots.Settle(resultWindow);
+                var cells = list.GetVisualDescendants().OfType<Control>().Where(DenseTable.GetSecondary).ToArray();
+                Assert.NotEmpty(cells);
+                Assert.All(cells, cell => Assert.False(cell.IsVisible));
+                Assert.All(list.GetVisualDescendants().OfType<Button>().Where(button =>
+                        button.Content?.ToString() == "Return"),
+                    button => Assert.True(button.IsEffectivelyVisible));
+            }
+            finally
+            {
+                resultWindow.Close();
+                window.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromMinutes(3));
+    }
+
+    [Fact]
     public void ActiveFindingsUseGroupedDenseRowsWithAlwaysVisibleDecisions()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
@@ -129,7 +209,7 @@ public sealed class ParsimonyWorkspacePaneTests
                 Assert.IsType<VirtualizingStackPanel>(list.ItemsPanelRoot);
 
                 var header = Assert.Single(page.GetVisualDescendants().OfType<Border>(),
-                    border => border.Classes.Contains("denseTableColumnHeader"));
+                    border => border.IsEffectivelyVisible && border.Classes.Contains("denseTableColumnHeader"));
                 var headerGrid = Assert.Single(header.GetVisualDescendants().OfType<Grid>(),
                     grid => DenseTable.GetColumns(grid) is not null);
                 var wideColumns = DenseTable.GetColumns(headerGrid)!;

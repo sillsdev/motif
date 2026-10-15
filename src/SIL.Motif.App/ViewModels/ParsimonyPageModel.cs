@@ -190,9 +190,11 @@ public sealed partial class ParsimonyListRow(
 /// <param name="isSelected">Whether the decision is the one shown in the detail pane.</param>
 /// <param name="selectCommand">Shows this decision's detail.</param>
 /// <param name="automationId">The row's automation identifier, from its revision.</param>
+/// <param name="returnCommand">Selects this decision and stages its return to Active.</param>
 public sealed partial class ParsimonySuppressedItem(
     string key, string title, string identity, string decision, string reason, string stateLabel, string returnLabel,
-    bool isSelected, IRelayCommand<string> selectCommand, string automationId) : ObservableObject
+    bool isSelected, IRelayCommand<string> selectCommand, string automationId, IAsyncRelayCommand returnCommand)
+    : ObservableObject
 {
     /// <summary>The revision the row shows, which selects it.</summary>
     public string Key { get; } = key;
@@ -218,10 +220,25 @@ public sealed partial class ParsimonySuppressedItem(
     /// <summary>The row's automation identifier, from its revision.</summary>
     public string AutomationId { get; } = automationId;
 
+    /// <summary>Stages the return of this decision's finding to Active after selecting the decision.</summary>
+    public IAsyncRelayCommand ReturnCommand { get; } = returnCommand;
+
+    /// <summary>The Return action's automation identifier.</summary>
+    public string ReturnAutomationId => AutomationId + "-return";
+
+    /// <summary>The repeating action menu's automation identifier.</summary>
+    public string ActionsAutomationId => AutomationId + "-actions";
+
+    /// <summary>The action that opens this decision's Inspector details.</summary>
+    public string DetailsAutomationId => AutomationId + "-details";
+
     /// <summary>Set while a return to Active is staged and not yet applied.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasReturn))]
+    [NotifyPropertyChangedFor(nameof(HasReturn), nameof(StateText))]
     private string _returnLabel = returnLabel;
+
+    /// <summary>The state in one line: what the decision means now, and a staged return when there is one.</summary>
+    public string StateText => HasReturn ? StateLabel + " · " + ReturnLabel : StateLabel;
 
     /// <summary>Whether this decision is the one shown in the detail pane.</summary>
     [ObservableProperty]
@@ -287,6 +304,7 @@ public sealed partial class ParsimonyPageModel : PageModel
     private ParsimonyListRow? _selectedRow;
     private ParsimonySuppressedItem? _selectedSuppressedItem;
 
+
     // Staged here and not yet applied. They are cleared once Apply has written them or the draft is gone.
     private string _kindFilter = string.Empty;
     private string _decisionFilter = string.Empty;
@@ -323,6 +341,12 @@ public sealed partial class ParsimonyPageModel : PageModel
     {
         ActionsChanged();
         NotifyAllRowDecisionCommands();
+    }
+
+    partial void OnSelectedSuppressedEntryChanged(ParsimonySuppressedItem? value)
+    {
+        if (value is not null && !string.Equals(value.Key, _selectedSuppressedKey, StringComparison.Ordinal))
+            SelectSuppressed(value.Key);
     }
 
     partial void OnSelectedTableEntryChanged(object? value)
@@ -541,6 +565,10 @@ public sealed partial class ParsimonyPageModel : PageModel
     /// <summary>The active table row; null when the current filter hides the selected finding.</summary>
     [ObservableProperty]
     private object? _selectedTableEntry;
+
+    /// <summary>The selected Suppressed row; null when no saved decision is selected.</summary>
+    [ObservableProperty]
+    private ParsimonySuppressedItem? _selectedSuppressedEntry;
 
     /// <summary>Selects one Active finding and shows its evidence and actions.</summary>
     public IRelayCommand<ParsimonyFindingLink> SelectFindingCommand { get; }
@@ -955,6 +983,7 @@ public sealed partial class ParsimonyPageModel : PageModel
         var selected = _selectedFindingId is null ? null : _rowsByFinding.GetValueOrDefault(_selectedFindingId);
         SelectedTableEntry = selected is not null && _tableEntries.Contains(selected) ? selected : null;
         InsertNew(_suppressedItems, [.. _suppressedRows.Select(SuppressedItemFor)]);
+        SelectedSuppressedEntry = _selectedSuppressedItem is { } current && _suppressedItems.Contains(current) ? current : null;
         OnPropertyChanged(nameof(ActiveTabLabel));
         OnPropertyChanged(nameof(SuppressedTabLabel));
         OnPropertyChanged(nameof(HasSuppressedEmptyText));
@@ -1034,7 +1063,8 @@ public sealed partial class ParsimonyPageModel : PageModel
             _stagedReturns.ContainsKey(row.RecordId) ? ReturnStagedLabel : string.Empty,
             row.RevisionId == _selectedSuppressedKey,
             SelectSuppressedCommand,
-            AutomationIds.ForParsimonySuppressed(row.RevisionId));
+            AutomationIds.ForParsimonySuppressed(row.RevisionId),
+            new AsyncRelayCommand(() => ReturnSuppressedAsync(row.RevisionId), () => CanReturnSuppressed(row.RevisionId)));
         _suppressedByKey[row.RevisionId] = made;
         if (made.IsSelected) _selectedSuppressedItem = made;
         return made;
@@ -1057,6 +1087,7 @@ public sealed partial class ParsimonyPageModel : PageModel
             item?.IsSelected = true;
             _selectedSuppressedItem = item;
         }
+        SelectedSuppressedEntry = item is not null && _suppressedItems.Contains(item) ? item : null;
         ActionsChanged();
     }
 
@@ -1066,10 +1097,12 @@ public sealed partial class ParsimonyPageModel : PageModel
         DeferCommand.NotifyCanExecuteChanged();
         AskCommand.NotifyCanExecuteChanged();
         ReturnToActiveCommand.NotifyCanExecuteChanged();
+        foreach (var item in _suppressedByKey.Values) item.ReturnCommand.NotifyCanExecuteChanged();
     }
 
     private void NotifyAllRowDecisionCommands()
     {
+        foreach (var item in _suppressedByKey.Values) item.ReturnCommand.NotifyCanExecuteChanged();
         foreach (var row in _rowsByFinding.Values) row.NotifyDecisionCommandsChanged();
     }
 
@@ -1117,6 +1150,13 @@ public sealed partial class ParsimonyPageModel : PageModel
 
     private bool CanReturnSelected() =>
         Context.HasProject && CanActOnSelection && !_staging && SelectedSuppressedRow() is { State: "suppressed" };
+
+    private bool CanReturnSuppressed(string key) =>
+        Context.HasProject && IsListed && IsShowingSuppressed && CanActOnSelection && !_staging &&
+        _suppressedRows.Any(row => string.Equals(row.RevisionId, key, StringComparison.Ordinal) &&
+            row.State == "suppressed");
+
+    private Task ReturnSuppressedAsync(string key) => SelectSuppressed(key) ? ReturnToActiveAsync() : Task.CompletedTask;
 
     private ParsimonySuppressionHistoryViewRow? SelectedSuppressedRow() =>
         _suppressedRows.FirstOrDefault(row => string.Equals(row.RevisionId, _selectedSuppressedKey, StringComparison.Ordinal));
@@ -1346,6 +1386,7 @@ public sealed partial class ParsimonyPageModel : PageModel
         _suppressedByKey.Clear();
         _selectedRow = null;
         _selectedSuppressedItem = null;
+        SelectedSuppressedEntry = null;
         IsIncomplete = false;
         IsHistorical = false;
         MissingInputs = [];

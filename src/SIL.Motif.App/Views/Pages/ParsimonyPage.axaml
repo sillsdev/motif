@@ -9,6 +9,8 @@
              x:Class="SIL.Motif.App.Views.ParsimonyPage"
              x:DataType="vm:ParsimonyPageModel">
   <UserControl.Resources>
+    <x:String x:Key="SuppressedColumns">2* 1.5* 1.5* 1.2* Component.Parsimony.Column.DecisionsWidth Component.DenseTable.MenuSize</x:String>
+    <x:String x:Key="SuppressedCompactColumns">* 0 0 0 Component.Parsimony.Column.DecisionsWidth Component.DenseTable.MenuSize</x:String>
     <DataTemplate x:Key="ParsimonySidePanelTemplate" x:DataType="vm:ParsimonyPageModel">
       <StackPanel Classes="parsimonySidePanel" MaxWidth="{StaticResource Component.Parsimony.SidePanelWidth}">
         <views:CopyableTextBlock Classes="muted" Text="{Binding UnavailableText}" TextWrapping="Wrap"
@@ -272,34 +274,95 @@
         </ListBox>
       </Grid>
 
-      <Grid RowDefinitions="Auto,*" IsVisible="{Binding ShowingSuppressed}">
+      <Grid RowDefinitions="Auto,Auto,*" IsVisible="{Binding ShowingSuppressed}" controls:DenseTable.IsWidthHost="True">
         <views:CopyableTextBlock Grid.Row="0" Classes="muted" TextWrapping="Wrap" IsVisible="{Binding HasSuppressedEmptyText}"
                                  Text="Nothing is suppressed. Keep or defer a finding, then Apply and Refresh, and it is listed here." />
-        <ListBox x:Name="ParsimonySuppressedItems" Grid.Row="1" Classes="parsimonyRows" ItemsSource="{Binding SuppressedItems}"
-                 AutomationProperties.Name="Suppressed decisions" KeyboardNavigation.TabNavigation="Continue">
+        <Border Grid.Row="1" Classes="denseTableColumnHeader" IsVisible="{Binding HasSuppressedItems}">
+          <Grid controls:DenseTable.Columns="{StaticResource SuppressedColumns}"
+                controls:DenseTable.CompactColumns="{StaticResource SuppressedCompactColumns}">
+            <views:CopyableTextBlock Classes="denseTableHeading" Text="Decision" VerticalAlignment="Center" />
+            <Border Grid.Column="1" controls:DenseTable.Secondary="True">
+              <views:CopyableTextBlock Classes="denseTableHeading" Text="Judgment" TextWrapping="NoWrap"
+                         TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+            </Border>
+            <Border Grid.Column="2" controls:DenseTable.Secondary="True">
+              <views:CopyableTextBlock Classes="denseTableHeading" Text="Reason" TextWrapping="NoWrap"
+                         TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+            </Border>
+            <Border Grid.Column="3" controls:DenseTable.Secondary="True">
+              <views:CopyableTextBlock Classes="denseTableHeading" Text="State" TextWrapping="NoWrap"
+                         TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+            </Border>
+            <views:CopyableTextBlock Grid.Column="4" Classes="denseTableHeading" Text="Action" VerticalAlignment="Center" />
+          </Grid>
+        </Border>
+        <ListBox x:Name="ParsimonySuppressedItems" Grid.Row="2" Classes="denseTable"
+                 ItemsSource="{Binding SuppressedItems}"
+                 SelectedItem="{Binding SelectedSuppressedEntry, Mode=TwoWay}"
+                 Focusable="True" IsTabStop="True" KeyboardNavigation.TabNavigation="Once"
+                 AutomationProperties.Name="Suppressed decisions">
           <ListBox.ItemsPanel>
             <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
           </ListBox.ItemsPanel>
           <ListBox.ItemTemplate>
             <DataTemplate x:DataType="vm:ParsimonySuppressedItem">
-              <Button Classes="parsimonyRow" Classes.selected="{Binding IsSelected}"
-                      Command="{Binding SelectCommand}" CommandParameter="{Binding Key}"
-                      Click="OnSuppressedDetails"
-                      AutomationProperties.AutomationId="{Binding AutomationId}">
-                <Grid ColumnDefinitions="*,Auto" Classes="parsimonyRowGrid">
-                  <StackPanel Spacing="{StaticResource Intent.Space.Minimal}">
-                    <views:CopyableTextBlock Classes="parsimonyGroupTitle" Text="{Binding Title}" TextWrapping="Wrap" />
-                    <views:CopyableTextBlock Classes="muted" Text="{Binding Identity}" TextWrapping="Wrap" />
-                    <views:CopyableTextBlock Classes="muted" Text="{Binding Reason}" TextWrapping="Wrap" />
-                    <views:CopyableTextBlock Classes="muted" Text="{Binding StateLabel}" TextWrapping="Wrap" />
-                    <views:CopyableTextBlock Classes="parsimonyDisposition" Text="{Binding ReturnLabel}" TextWrapping="Wrap"
-                                             IsVisible="{Binding HasReturn}" />
-                  </StackPanel>
-                  <views:MarkChip Grid.Column="1" Text="{Binding Decision}" VerticalAlignment="Center"
-                                  IsVisible="{Binding HasDecision}"
-                                  AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParsimonyDecision}" />
-                </Grid>
-              </Button>
+              <Grid>
+                <Border Classes="denseTableRow" AutomationProperties.AutomationId="{Binding AutomationId}">
+                  <Grid controls:DenseTable.Columns="{StaticResource SuppressedColumns}"
+                        controls:DenseTable.CompactColumns="{StaticResource SuppressedCompactColumns}">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Intent.Space.Compact}"
+                          VerticalAlignment="Center">
+                      <views:CopyableTextBlock Classes="denseTableCell denseTableItem" Text="{Binding Title}"
+                                               TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                                               VerticalAlignment="Center"
+                                               AutomationProperties.Name="{Binding Title}" />
+                      <views:MarkChip Grid.Column="1" Text="{Binding Decision}" Compact="True"
+                                      VerticalAlignment="Center" IsVisible="{Binding HasDecision}"
+                                      AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParsimonyDecision}" />
+                    </Grid>
+                    <Border Grid.Column="1" controls:DenseTable.Secondary="True">
+                      <views:CopyableTextBlock Classes="denseTableCell" Text="{Binding Identity}"
+                                               TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                                               VerticalAlignment="Center" />
+                    </Border>
+                    <Border Grid.Column="2" controls:DenseTable.Secondary="True">
+                      <views:CopyableTextBlock Classes="denseTableCell" Text="{Binding Reason}"
+                                               TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                                               VerticalAlignment="Center" />
+                    </Border>
+                    <Border Grid.Column="3" controls:DenseTable.Secondary="True">
+                      <views:CopyableTextBlock Classes="denseTableCell" Text="{Binding StateText}"
+                                               TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                                               VerticalAlignment="Center" />
+                    </Border>
+                    <StackPanel Grid.Column="4" Classes="parsimonyDecisionActions" Orientation="Horizontal"
+                                Spacing="{StaticResource Intent.Space.Minimal}" VerticalAlignment="Center">
+                      <Button Classes="denseTableAction" Content="Return" Command="{Binding ReturnCommand}"
+                              Click="OnReturn"
+                              AutomationProperties.Name="{Binding Title, StringFormat='Return {0} to Active'}"
+                              AutomationProperties.AutomationId="{Binding ReturnAutomationId}" />
+                    </StackPanel>
+                    <Button Grid.Column="5" Classes="denseTableMenu" Content="⋯" IsTabStop="True"
+                            AutomationProperties.Name="{Binding Title, StringFormat='Actions for {0}'}"
+                            AutomationProperties.AutomationId="{Binding ActionsAutomationId}">
+                      <Button.Flyout>
+                        <Flyout Placement="BottomEdgeAlignedLeft">
+                          <StackPanel Classes="menu">
+                            <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
+                                    Content="Details" Click="OnShowSuppressedDetails"
+                                    AutomationProperties.Name="{Binding Title, StringFormat='Details for {0}'}"
+                                    AutomationProperties.AutomationId="{Binding DetailsAutomationId}" />
+                            <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
+                                    Content="Return to Active" Command="{Binding ReturnCommand}" Click="OnReturn"
+                                    AutomationProperties.AutomationId="{Binding ReturnAutomationId}" />
+                          </StackPanel>
+                        </Flyout>
+                      </Button.Flyout>
+                    </Button>
+                  </Grid>
+                </Border>
+                <Border Classes="denseTableFocusRing" />
+              </Grid>
             </DataTemplate>
           </ListBox.ItemTemplate>
         </ListBox>

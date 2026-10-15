@@ -208,13 +208,14 @@ public sealed class ParsimonyDenseCaptureScreenshots
         }
 
         var suppressedList = page.FindControl<ListBox>("ParsimonySuppressedItems")!;
-        var decision = suppressedList.GetVisualDescendants().OfType<Button>()
-            .FirstOrDefault(button => ReferenceEquals(button.DataContext, suppressed));
+        var decision = suppressedList.GetVisualDescendants().OfType<ListBoxItem>()
+            .FirstOrDefault(item => ReferenceEquals(item.DataContext, suppressed));
         if (decision is not null)
         {
             try
             {
                 HeadlessClick.Click(window, decision, "Saved Suppressed decision");
+                WorkspaceLayoutHost.RequestPageInspector(page);
             }
             catch (Exception error)
             {
