@@ -1,11 +1,11 @@
 <!-- A word list keeps its heading and every row on the same measured tracks.
-     Component.WordListSlot owns track bounds, minimum viewport, column gap and scrollbar gutter. -->
+     Component.WordListSlot owns track bounds, stack breakpoint, column gap and scrollbar gutter. -->
 <Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:views="using:SIL.Motif.App.Views">
   <Styles.Resources>
     <StaticResource x:Key="Component.WordListSlot.ColumnGap" ResourceKey="Intent.Space.Related" />
     <StaticResource x:Key="Component.WordListSlot.ScrollbarGutter" ResourceKey="Primitive.Size.18" />
-    <StaticResource x:Key="Component.WordListSlot.MinimumViewportWidth" ResourceKey="Primitive.Size.520" />
+    <StaticResource x:Key="Component.WordListSlot.StackBreakpoint" ResourceKey="Primitive.Size.520" />
     <StaticResource x:Key="Component.WordListSlot.Tick.Minimum" ResourceKey="Primitive.Size.28" />
     <StaticResource x:Key="Component.WordListSlot.Tick.Preferred" ResourceKey="Primitive.Size.28" />
     <StaticResource x:Key="Component.WordListSlot.Tick.Maximum" ResourceKey="Primitive.Size.28" />
@@ -15,10 +15,10 @@
     <StaticResource x:Key="Component.WordListSlot.Opinion.Minimum" ResourceKey="Primitive.Size.70" />
     <StaticResource x:Key="Component.WordListSlot.Opinion.Preferred" ResourceKey="Primitive.Size.90" />
     <StaticResource x:Key="Component.WordListSlot.Opinion.Maximum" ResourceKey="Primitive.Size.110" />
-    <StaticResource x:Key="Component.WordListSlot.FieldWorks.Minimum" ResourceKey="Primitive.Size.110" />
+    <StaticResource x:Key="Component.WordListSlot.FieldWorks.Minimum" ResourceKey="Primitive.Size.170" />
     <StaticResource x:Key="Component.WordListSlot.FieldWorks.Preferred" ResourceKey="Primitive.Size.170" />
     <StaticResource x:Key="Component.WordListSlot.FieldWorks.Maximum" ResourceKey="Primitive.Size.420" />
-    <StaticResource x:Key="Component.WordListSlot.PanGloss.Minimum" ResourceKey="Primitive.Size.110" />
+    <StaticResource x:Key="Component.WordListSlot.PanGloss.Minimum" ResourceKey="Primitive.Size.170" />
     <StaticResource x:Key="Component.WordListSlot.PanGloss.Preferred" ResourceKey="Primitive.Size.170" />
     <StaticResource x:Key="Component.WordListSlot.PanGloss.Maximum" ResourceKey="Primitive.Size.420" />
     <StaticResource x:Key="Component.WordListSlot.Meaning.Minimum" ResourceKey="Primitive.Size.90" />
@@ -61,7 +61,7 @@
     <Setter Property="Theme" Value="{StaticResource {x:Type ScrollViewer}}" />
     <Setter Property="(views:WordListSizingHints.ColumnGap)" Value="{StaticResource Component.WordListSlot.ColumnGap}" />
     <Setter Property="(views:WordListSizingHints.ScrollbarGutter)" Value="{StaticResource Component.WordListSlot.ScrollbarGutter}" />
-    <Setter Property="(views:WordListSizingHints.MinimumViewportWidth)" Value="{StaticResource Component.WordListSlot.MinimumViewportWidth}" />
+    <Setter Property="(views:WordListSizingHints.StackBreakpoint)" Value="{StaticResource Component.WordListSlot.StackBreakpoint}" />
   </Style>
   <Style Selector="views|WordListSlot :is(Control).wordPresentationColumnTick">
     <Setter Property="(views:WordListSizingHints.Minimum)" Value="{StaticResource Component.WordListSlot.Tick.Minimum}" />

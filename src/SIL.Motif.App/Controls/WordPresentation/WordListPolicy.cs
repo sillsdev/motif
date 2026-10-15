@@ -163,14 +163,14 @@ internal sealed class WordListSizing
         double outerChromeWidth,
         double reservedVerticalScrollbarWidth,
         double columnGap,
-        double supportedMinimumWidth,
+        double stackBreakpoint,
         IEnumerable<WordColumnSizing> columns)
     {
         ArgumentNullException.ThrowIfNull(columns);
         OuterChromeWidth = CheckWidth(outerChromeWidth, nameof(outerChromeWidth));
         ReservedVerticalScrollbarWidth = CheckWidth(reservedVerticalScrollbarWidth, nameof(reservedVerticalScrollbarWidth));
         ColumnGap = CheckWidth(columnGap, nameof(columnGap));
-        SupportedMinimumWidth = CheckWidth(supportedMinimumWidth, nameof(supportedMinimumWidth));
+        StackBreakpoint = CheckWidth(stackBreakpoint, nameof(stackBreakpoint));
         var values = columns.ToArray();
         if (values.Length != Enum.GetValues<WordListColumn>().Length ||
             values.Select(column => column.Column).Distinct().Count() != values.Length)
@@ -200,8 +200,8 @@ internal sealed class WordListSizing
     /// <summary>The gap between adjacent data tracks.</summary>
     public double ColumnGap { get; }
 
-    /// <summary>The minimum supported content width before the list uses a horizontal viewport.</summary>
-    public double SupportedMinimumWidth { get; }
+    /// <summary>The minimum supported content width below which every row stacks its actions under the word instead of using columns.</summary>
+    public double StackBreakpoint { get; }
 
     /// <summary>The immutable sizing inputs in column order.</summary>
     public ImmutableArray<WordColumnSizing> Columns { get; }
@@ -211,7 +211,7 @@ internal sealed class WordListSizing
     internal bool HasSameValues(WordListSizing other) =>
         OuterChromeWidth.Equals(other.OuterChromeWidth) &&
         ReservedVerticalScrollbarWidth.Equals(other.ReservedVerticalScrollbarWidth) &&
-        ColumnGap.Equals(other.ColumnGap) && SupportedMinimumWidth.Equals(other.SupportedMinimumWidth) &&
+        ColumnGap.Equals(other.ColumnGap) && StackBreakpoint.Equals(other.StackBreakpoint) &&
         Columns.AsSpan().SequenceEqual(other.Columns.AsSpan());
 
     private static double CheckWidth(double width, string parameter)
@@ -239,7 +239,7 @@ internal sealed record WordListLayout(
     double ContentWidth,
     double TrackAreaWidth,
     double ColumnGap,
-    bool UsesHorizontalViewport,
+    bool Stacked,
     long StyleRevision,
     string UiLocale,
     long Revision)
@@ -294,10 +294,10 @@ internal sealed class WordListPolicy
         var trackBudget = Math.Max(0, contentWidth - gapWidth);
         var minimumWidths = columns.ToDictionary(column => column, column => Minimum(sizing.For(column)));
         var minimumTrackWidth = minimumWidths.Values.Sum();
-        var horizontal = contentWidth < sizing.SupportedMinimumWidth || minimumTrackWidth > trackBudget;
+        var stacked = contentWidth < sizing.StackBreakpoint || minimumTrackWidth > trackBudget;
         var widths = columns.ToDictionary(column => column, column => minimumWidths[column]);
 
-        if (!horizontal)
+        if (!stacked)
         {
             var fixedColumns = columns.Where(column => !HasMorphology(schema, column)).ToArray();
             GrowTowardPreferred(widths, fixedColumns, trackBudget, sizing);
@@ -305,16 +305,16 @@ internal sealed class WordListPolicy
             DistributeRemaining(widths, morphologyColumns, trackBudget - widths.Values.Sum(), sizing);
         }
 
-        var tracks = ImmutableArray.CreateBuilder<WordListTrack>(columns.Length);
-        foreach (var column in columns)
-            tracks.Add(new WordListTrack(column, widths[column]));
+        // A stacked list has no tracks: each row reflows inside the slot instead of scrolling sideways.
+        var tracks = ImmutableArray.CreateBuilder<WordListTrack>(stacked ? 0 : columns.Length);
+        if (!stacked)
+            foreach (var column in columns)
+                tracks.Add(new WordListTrack(column, widths[column]));
 
-        var trackAreaWidth = Math.Max(contentWidth, widths.Values.Sum() + gapWidth);
-        if (horizontal)
-            trackAreaWidth = Math.Max(trackAreaWidth, sizing.SupportedMinimumWidth);
+        var trackAreaWidth = stacked ? contentWidth : Math.Max(contentWidth, widths.Values.Sum() + gapWidth);
         var layout = new WordListLayout(schema, showsMeaning, tracks.MoveToImmutable(), availableLogicalWidth,
             sizing.OuterChromeWidth, sizing.ReservedVerticalScrollbarWidth, contentWidth, trackAreaWidth,
-            sizing.ColumnGap, horizontal, styleRevision, locale, ++_revision);
+            sizing.ColumnGap, stacked, styleRevision, locale, ++_revision);
         _lastAvailableWidth = availableLogicalWidth;
         _lastSchema = schema;
         _lastShowsMeaning = showsMeaning;

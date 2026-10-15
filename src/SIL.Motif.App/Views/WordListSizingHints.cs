@@ -22,8 +22,8 @@ internal sealed class WordListSizingHints
     public static readonly AttachedProperty<double> ScrollbarGutterProperty =
         AvaloniaProperty.RegisterAttached<WordListSizingHints, Control, double>("ScrollbarGutter", inherits: true);
 
-    public static readonly AttachedProperty<double> MinimumViewportWidthProperty =
-        AvaloniaProperty.RegisterAttached<WordListSizingHints, Control, double>("MinimumViewportWidth", inherits: true);
+    public static readonly AttachedProperty<double> StackBreakpointProperty =
+        AvaloniaProperty.RegisterAttached<WordListSizingHints, Control, double>("StackBreakpoint", inherits: true);
 
     public static double GetMinimum(Control control) => control.GetValue(MinimumProperty);
     public static void SetMinimum(Control control, double value) => control.SetValue(MinimumProperty, value);
@@ -35,6 +35,6 @@ internal sealed class WordListSizingHints
     public static void SetColumnGap(Control control, double value) => control.SetValue(ColumnGapProperty, value);
     public static double GetScrollbarGutter(Control control) => control.GetValue(ScrollbarGutterProperty);
     public static void SetScrollbarGutter(Control control, double value) => control.SetValue(ScrollbarGutterProperty, value);
-    public static double GetMinimumViewportWidth(Control control) => control.GetValue(MinimumViewportWidthProperty);
-    public static void SetMinimumViewportWidth(Control control, double value) => control.SetValue(MinimumViewportWidthProperty, value);
+    public static double GetStackBreakpoint(Control control) => control.GetValue(StackBreakpointProperty);
+    public static void SetStackBreakpoint(Control control, double value) => control.SetValue(StackBreakpointProperty, value);
 }

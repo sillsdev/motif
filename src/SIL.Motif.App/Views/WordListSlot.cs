@@ -32,13 +32,13 @@ public sealed class WordListSlot : ScrollViewer
             hint.Changed.AddClassHandler<Control>((heading, _) =>
                 heading.GetVisualAncestors().OfType<WordListSlot>().FirstOrDefault()?.InvalidateMeasure());
         foreach (var hint in new[] { WordListSizingHints.ColumnGapProperty, WordListSizingHints.ScrollbarGutterProperty,
-                     WordListSizingHints.MinimumViewportWidthProperty })
+                     WordListSizingHints.StackBreakpointProperty })
             hint.Changed.AddClassHandler<WordListSlot>((slot, _) => slot.InvalidateMeasure());
     }
 
     public WordListSlot()
     {
-        HorizontalScrollBarVisibility = ScrollBarVisibility.Auto;
+        HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled;
         VerticalScrollBarVisibility = ScrollBarVisibility.Disabled;
     }
 
@@ -113,9 +113,6 @@ public sealed class WordListSlot : ScrollViewer
             WordListLayoutScope.SetLayout(this, resolved);
             ApplySlotGeometry(content, header, rows, resolved);
         }
-        HorizontalScrollBarVisibility = resolved.UsesHorizontalViewport
-            ? ScrollBarVisibility.Auto
-            : ScrollBarVisibility.Disabled;
         return base.MeasureOverride(measureSize);
     }
 

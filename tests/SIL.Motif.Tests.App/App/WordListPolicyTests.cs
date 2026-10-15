@@ -62,7 +62,7 @@ public sealed class WordListPolicyTests
 
         Assert.Equal(958, layout.ContentWidth);
         Assert.Equal(958, layout.TrackAreaWidth);
-        Assert.False(layout.UsesHorizontalViewport);
+        Assert.False(layout.Stacked);
         Assert.Equal(24, layout.WidthOf(WordListColumn.Tick));
         Assert.Equal(120, layout.WidthOf(WordListColumn.Word));
         Assert.Equal(90, layout.WidthOf(WordListColumn.Meaning));
@@ -76,7 +76,7 @@ public sealed class WordListPolicyTests
     }
 
     [Fact]
-    public void PolicyUsesOneHorizontalViewportWhenTheSupportedMinimumCannotFit()
+    public void PolicyStacksRowsWhenTheBreakpointCannotFit()
     {
         var schema = WordListSchema.Create(
             WordListColumnSet.Tick | WordListColumnSet.FieldWorks | WordListColumnSet.PanGloss |
@@ -85,10 +85,10 @@ public sealed class WordListPolicyTests
             hasPanGlossMorphology: true);
         var layout = new WordListPolicy().Resolve(300, schema, true, 0, "en", Sizing());
 
-        Assert.True(layout.UsesHorizontalViewport);
+        Assert.True(layout.Stacked);
         Assert.Equal(258, layout.ContentWidth);
-        Assert.True(layout.TrackAreaWidth > layout.ContentWidth);
-        Assert.Equal(150, layout.WidthOf(WordListColumn.Next));
+        Assert.Equal(layout.ContentWidth, layout.TrackAreaWidth);
+        Assert.Empty(layout.Tracks);
     }
 
     [Fact]
@@ -114,7 +114,7 @@ public sealed class WordListPolicyTests
         outerChromeWidth: 24,
         reservedVerticalScrollbarWidth: 18,
         columnGap: 8,
-        supportedMinimumWidth: 520,
+        stackBreakpoint: 520,
         [
             new(WordListColumn.Tick, 24, 24, 24, 24),
             new(WordListColumn.Word, 80, 120, 220, 100),

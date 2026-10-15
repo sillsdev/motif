@@ -45,7 +45,7 @@ public sealed class WordListSlotTests(AvaloniaHeadlessFixture avalonia)
                 var layout = Assert.IsType<WordListLayout>(slot.CurrentLayout);
                 var expectedColumns = schema.OrderedColumns(showsMeaning);
                 Assert.Equal(expectedColumns, layout.Tracks.Select(track => track.Column));
-                Assert.False(layout.UsesHorizontalViewport);
+                Assert.False(layout.Stacked);
                 Assert.Equal(layout.AvailableWidth,
                     layout.OuterChromeWidth + layout.ReservedVerticalScrollbarWidth + layout.ContentWidth,
                     precision: 6);
@@ -67,7 +67,7 @@ public sealed class WordListSlotTests(AvaloniaHeadlessFixture avalonia)
     {
         avalonia.Invoke(() =>
         {
-            var (slot, header, rows, window) = Show(width: 900);
+            var (slot, header, rows, window) = Show(width: 1280);
             try
             {
                 var layout = Assert.IsType<WordListLayout>(slot.CurrentLayout);
@@ -77,7 +77,7 @@ public sealed class WordListSlotTests(AvaloniaHeadlessFixture avalonia)
                 Assert.True(double.IsFinite(layout.AvailableWidth));
                 Assert.Equal(layout.AvailableWidth - layout.OuterChromeWidth - layout.ReservedVerticalScrollbarWidth,
                     layout.ContentWidth, precision: 6);
-                Assert.False(layout.UsesHorizontalViewport);
+                Assert.False(layout.Stacked);
                 Assert.Equal(layout.ContentWidth, layout.TrackAreaWidth, precision: 6);
                 var headerLine = Assert.Single(header.GetVisualDescendants().OfType<Grid>(),
                     grid => grid.Classes.Contains("wordPresentationHeaderLine"));
@@ -138,7 +138,7 @@ public sealed class WordListSlotTests(AvaloniaHeadlessFixture avalonia)
     }
 
     [Fact]
-    public void NarrowSlotKeepsItsChromeAndUsesOneHorizontalViewport()
+    public void NarrowSlotStacksItsRowsInsteadOfScrollingSideways()
     {
         avalonia.Invoke(() =>
         {
@@ -146,45 +146,20 @@ public sealed class WordListSlotTests(AvaloniaHeadlessFixture avalonia)
             try
             {
                 var layout = Assert.IsType<WordListLayout>(slot.CurrentLayout);
-                var tracksWidth = layout.Tracks.Sum(track => track.Width) +
-                    Math.Max(0, layout.Tracks.Length - 1) * layout.ColumnGap;
-                Assert.True(layout.UsesHorizontalViewport);
-                Assert.True(layout.TrackAreaWidth > layout.ContentWidth);
-                Assert.Equal(tracksWidth, layout.TrackAreaWidth, precision: 6);
-                Assert.Equal(layout.TrackAreaWidth + layout.OuterChromeWidth, header.Bounds.Width, precision: 6);
-                Assert.Equal(layout.TrackAreaWidth + layout.OuterChromeWidth + layout.ReservedVerticalScrollbarWidth,
-                    rows.Bounds.Width, precision: 6);
-                Assert.Equal(ScrollBarVisibility.Auto, slot.HorizontalScrollBarVisibility);
+                Assert.True(layout.Stacked);
+                Assert.Empty(layout.Tracks);
+                Assert.Equal(layout.ContentWidth, layout.TrackAreaWidth, precision: 6);
+                Assert.Equal(layout.AvailableWidth, rows.Bounds.Width, precision: 6);
+                Assert.Equal(ScrollBarVisibility.Disabled, slot.HorizontalScrollBarVisibility);
+                Assert.True(slot.Extent.Width <= slot.Viewport.Width + 1,
+                    $"Extent {slot.Extent.Width:0.###} px exceeds viewport {slot.Viewport.Width:0.###} px.");
                 Assert.Same(layout, WordListLayoutScope.GetLayout(header));
-                Assert.Same(layout, WordListLayoutScope.GetLayout(rows.GetVisualDescendants().OfType<WordRow>().First()));
-            }
-            finally
-            {
-                window.Close();
-            }
-        });
-    }
-
-    [Fact]
-    public void NarrowSlotScrollsItsColumnsInsteadOfClippingThem()
-    {
-        avalonia.Invoke(() =>
-        {
-            var (slot, _, _, window) = Show(width: 420);
-            try
-            {
-                var content = Assert.IsType<Grid>(slot.Content);
-                Assert.True(Assert.IsType<WordListLayout>(slot.CurrentLayout).UsesHorizontalViewport);
-                Assert.Equal(420, slot.Viewport.Width, precision: 6);
-                Assert.True(slot.Extent.Width > slot.Viewport.Width,
-                    $"Extent {slot.Extent.Width:0.###} px does not exceed viewport {slot.Viewport.Width:0.###} px.");
-                Assert.Equal(0, content.TranslatePoint(default, slot)!.Value.X, precision: 6);
-
-                slot.Offset = new Vector(slot.Extent.Width - slot.Viewport.Width, 0);
-                window.UpdateLayout();
-
-                Assert.Equal(slot.Extent.Width - slot.Viewport.Width, slot.Offset.X, precision: 6);
-                Assert.Equal(-slot.Offset.X, content.TranslatePoint(default, slot)!.Value.X, precision: 6);
+                var row = rows.GetVisualDescendants().OfType<WordRow>().First();
+                Assert.Same(layout, WordListLayoutScope.GetLayout(row));
+                var shell = row.GetVisualDescendants().OfType<Grid>()
+                    .First(grid => grid.Classes.Contains("wordPresentationShell"));
+                Assert.True(shell.Bounds.Width <= slot.Viewport.Width + 1);
+                Assert.Contains(shell.Children, child => child is WrapPanel);
             }
             finally
             {

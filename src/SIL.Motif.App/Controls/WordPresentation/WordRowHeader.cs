@@ -47,13 +47,16 @@ public sealed class WordRowHeader : UserControl
     public void Rebuild()
     {
         var layout = WordListLayoutScope.GetLayout(this);
-        var tracks = layout?.Tracks.Select(track => track.Column).ToArray() ?? DefaultColumns();
+        // Column headings mean nothing once rows stack, so a stacked list shows none.
+        _frame.IsVisible = layout?.Stacked != true;
+        // Hidden headings stay in the tree: the sizing styles reach them there.
+        var tracks = layout is null ? DefaultColumns() : layout.Schema.OrderedColumns(layout.ShowsMeaning).ToArray();
         _line.ColumnSpacing = layout?.ColumnGap ?? 0;
         _line.Children.Clear();
         _line.ColumnDefinitions.Clear();
         foreach (var column in tracks)
         {
-            var width = layout is null ? GridLength.Auto : new GridLength(layout.Tracks.Single(item => item.Column == column).Width);
+            var width = layout is null || layout.Stacked ? GridLength.Auto : new GridLength(layout.WidthOf(column));
             _line.ColumnDefinitions.Add(new ColumnDefinition(width));
             var heading = _headings[column];
             Grid.SetColumn(heading, _line.ColumnDefinitions.Count - 1);

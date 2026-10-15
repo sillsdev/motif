@@ -34,6 +34,8 @@ public sealed class WordRow : UserControl
     private CheckBox? _tick;
     private WordCard? _placedCard;
     private int _columnCount = 1;
+    private int _cardRow = 2;
+    private int _noteRow = 1;
     private bool _changingData;
     private bool _cellsDirty = true;
     private bool _deferDirtyCellsUntilMeasure;
@@ -157,7 +159,7 @@ public sealed class WordRow : UserControl
         _placedCard = card;
         if (card is null) return;
         card.Classes.Add("wordPresentationCardHost");
-        Grid.SetRow(card, 2);
+        Grid.SetRow(card, _cardRow);
         Grid.SetColumnSpan(card, _columnCount);
         _shell.Children.Add(card);
     }
@@ -220,10 +222,12 @@ public sealed class WordRow : UserControl
         _shell.Children.Clear();
         _shell.ColumnDefinitions.Clear();
         _shell.RowDefinitions.Clear();
-        _shell.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
-        _shell.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
-        _shell.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
         var data = Data;
+        var stacked = WordListLayoutScope.GetLayout(this)?.Stacked == true;
+        _noteRow = stacked ? 2 : 1;
+        _cardRow = stacked ? 3 : 2;
+        for (var row = 0; row <= _cardRow; row++)
+            _shell.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
         _builtWithData = data is not null;
         if (data is null)
         {
@@ -234,20 +238,24 @@ public sealed class WordRow : UserControl
         var layout = _builtLayout = WordListLayoutScope.GetLayout(this);
         var columns = layout?.Schema.OrderedColumns(layout.ShowsMeaning) ?? DefaultColumns();
         var hasOpinionColumn = columns.Contains(WordListColumn.Opinion);
-        _columnCount = Math.Max(1, columns.Count);
-        foreach (var column in columns)
+        if (stacked) PlaceStackedCells(data, columns, hasOpinionColumn);
+        else
         {
-            var width = layout is null
-                ? column == WordListColumn.Word ? new GridLength(1, GridUnitType.Star) : GridLength.Auto
-                : new GridLength(layout.WidthOf(column));
-            _shell.ColumnDefinitions.Add(new ColumnDefinition(width));
-        }
-        for (var index = 0; index < columns.Count; index++)
-        {
-            var cell = Cell(data, columns[index], hasOpinionColumn);
-            if (cell is null) continue;
-            Grid.SetColumn(cell, index);
-            _shell.Children.Add(cell);
+            _columnCount = Math.Max(1, columns.Count);
+            foreach (var column in columns)
+            {
+                var width = layout is null
+                    ? column == WordListColumn.Word ? new GridLength(1, GridUnitType.Star) : GridLength.Auto
+                    : new GridLength(layout.WidthOf(column));
+                _shell.ColumnDefinitions.Add(new ColumnDefinition(width));
+            }
+            for (var index = 0; index < columns.Count; index++)
+            {
+                var cell = Cell(data, columns[index], hasOpinionColumn);
+                if (cell is null) continue;
+                Grid.SetColumn(cell, index);
+                _shell.Children.Add(cell);
+            }
         }
         var note = new StackPanel { Classes = { "wordPresentationNotes" } };
         if (data.PendingChange is { } pending)
@@ -303,10 +311,12 @@ public sealed class WordRow : UserControl
             if (!string.IsNullOrWhiteSpace(data.MeasuredText))
                 note.Children.Add(Text(data.MeasuredText, "wordPresentationNote"));
         }
+        if (stacked)
+            foreach (var text in note.Children.OfType<TextBlock>()) text.TextWrapping = TextWrapping.Wrap;
         if (note.Children.Count > 0)
         {
-            Grid.SetRow(note, 1);
-            Grid.SetColumnSpan(note, Math.Max(1, columns.Count));
+            Grid.SetRow(note, _noteRow);
+            Grid.SetColumnSpan(note, _columnCount);
             _shell.Children.Add(note);
         }
         AutomationProperties.SetName(this, data.Facts.Summary);
@@ -315,6 +325,37 @@ public sealed class WordRow : UserControl
     }
 
     private WordCard? _card;
+
+    // A narrow slot gets the word on top and every other cell wrapping beneath it; nothing scrolls or hides.
+    private void PlaceStackedCells(WordPresentation data, IReadOnlyList<WordListColumn> columns, bool hasOpinionColumn)
+    {
+        _columnCount = 2;
+        _shell.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+        _shell.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(1, GridUnitType.Star)));
+        var rest = new WrapPanel { Classes = { "wordPresentationStackedCells" } };
+        foreach (var column in columns)
+        {
+            var cell = Cell(data, column, hasOpinionColumn);
+            if (cell is Panel { Children.Count: 0 } && column != WordListColumn.Word) continue;
+            switch (column)
+            {
+                case WordListColumn.Tick:
+                    _shell.Children.Add(cell);
+                    break;
+                case WordListColumn.Word:
+                    Grid.SetColumn(cell, 1);
+                    _shell.Children.Add(cell);
+                    break;
+                default:
+                    rest.Children.Add(cell);
+                    break;
+            }
+        }
+        if (rest.Children.Count == 0) return;
+        Grid.SetRow(rest, 1);
+        Grid.SetColumn(rest, 1);
+        _shell.Children.Add(rest);
+    }
 
     private Control? Cell(WordPresentation data, WordListColumn column, bool hasOpinionColumn)
     {

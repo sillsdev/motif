@@ -67,7 +67,7 @@ internal sealed class WordListSizingAdapter
         var sizing = new WordListSizing(chrome,
             WordListSizingHints.GetScrollbarGutter(header),
             WordListSizingHints.GetColumnGap(header),
-            WordListSizingHints.GetMinimumViewportWidth(header), widths);
+            WordListSizingHints.GetStackBreakpoint(header), widths);
         _lastHeader = header;
         _lastSchema = schema;
         _lastShowsMeaning = showsMeaning;
@@ -92,7 +92,7 @@ internal sealed class WordListSizingAdapter
         }
         hints[^3] = WordListSizingHints.GetScrollbarGutter(header);
         hints[^2] = WordListSizingHints.GetColumnGap(header);
-        hints[^1] = WordListSizingHints.GetMinimumViewportWidth(header);
+        hints[^1] = WordListSizingHints.GetStackBreakpoint(header);
         return hints;
     }
 

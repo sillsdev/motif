@@ -529,7 +529,7 @@ public sealed class WalkthroughWindow : IDisposable
                 (clippedBy is WordListSlot { CurrentLayout: { } layout } slot
                     ? $"; layout available {layout.AvailableWidth}, content {layout.ContentWidth}, tracks {layout.TrackAreaWidth}, " +
                       $"chrome {layout.OuterChromeWidth}, scrollbar {layout.ReservedVerticalScrollbarWidth}, " +
-                      $"horizontal {layout.UsesHorizontalViewport}, slot desired {slot.DesiredSize}, extent {slot.Extent}"
+                      $"stacked {layout.Stacked}, slot desired {slot.DesiredSize}, extent {slot.Extent}"
                     : string.Empty) + ").");
         }
         var origin = control.TranslatePoint(new Point(), Window)
