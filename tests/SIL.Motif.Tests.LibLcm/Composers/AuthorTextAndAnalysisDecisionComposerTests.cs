@@ -5,6 +5,7 @@ using SIL.LCModel.Infrastructure;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Parsing;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Analysis;
 using SIL.Motif.Host.Texts;
 using SIL.Motif.Model.DryRun;
@@ -117,6 +118,70 @@ public sealed class AuthorTextAndAnalysisDecisionComposerTests : IDisposable
             Decide($$"""{"decision":"misspelled","wordform":"{{Id(analysis)}}"}""")).Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void DecisionComposer_StoresAReadingAsUnknownThenApprovesItAndRefusesADuplicate()
+    {
+        var (form, msa) = EntryMorph();
+        var morphs = $$"""[{"form":"{{form}}","msa":"{{msa}}"}]""";
+
+        var added = Decide($$"""{"decision":"add-reading","wordform":"{{_sita.Value}}","morphs":{{morphs}}}""");
+        var create = Assert.Single(added, op => op.Kind == WfiAnalysisOperationKinds.CreateAnalysis);
+        Assert.Single(added);
+        Apply(added);
+
+        var wordform = _cache.ServiceLocator.GetInstance<IWfiWordformRepository>().GetObject(_sita.ToGuid());
+        var stored = Assert.Single(wordform.AnalysesOC, item => item.Guid == create.EntityId!.Value.ToGuid());
+        Assert.Equal(Opinions.noopinion, stored.GetAgentOpinion(_cache.LangProject.DefaultUserAgent));
+        Assert.Equal(form, CanonicalId.FromGuid(stored.MorphBundlesOS.Single().MorphRA.Guid).Value);
+
+        Apply(Decide($$"""{"decision":"approve","analysis":"{{create.EntityId!.Value.Value}}"}"""));
+        Assert.Equal(Opinions.approves, stored.GetAgentOpinion(_cache.LangProject.DefaultUserAgent));
+
+        Assert.Contains("already has a stored analysis", Assert.Throws<InvalidOperationException>(() =>
+            Decide($$"""{"decision":"add-reading","wordform":"{{_sita.Value}}","morphs":{{morphs}}}""")).Message,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AnalysisChange_ADecisionOnAStoredIdNeedsThatAnalysisUnderTheWordform()
+    {
+        var failure = Assert.Throws<InvalidOperationException>(() => AnalysisChangeComposer.Build(_cache,
+            new AnalysisChangeIntent(AnalysisChangeKinds.Approve, _sita, null, CanonicalId.Mint())));
+        Assert.Contains("Choose one stored analysis under this wordform", failure.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AnalysisChange_AReadingWithAStoredIdStillMatchesByMorphologyAndRefusesAMismatch()
+    {
+        var (form, msa) = EntryMorph();
+        Apply(Decide($$"""{"decision":"add-reading","wordform":"{{_sita.Value}}","morphs":[{"form":"{{form}}","msa":"{{msa}}"}]}"""));
+        var wordform = _cache.ServiceLocator.GetInstance<IWfiWordformRepository>().GetObject(_sita.ToGuid());
+        var stored = Assert.Single(wordform.AnalysesOC, item => item.MorphBundlesOS.Count == 1);
+        var id = CanonicalId.FromGuid(stored.Guid);
+        var reading = new ParseAnalysis([new ParseMorph(CanonicalId.Parse(form).ToGuid().ToString("D"),
+            CanonicalId.Parse(msa).ToGuid().ToString("D"), null, null)]);
+
+        var operations = AnalysisChangeComposer.Build(_cache,
+            new AnalysisChangeIntent(AnalysisChangeKinds.Approve, _sita, reading, id));
+        var approve = Assert.Single(operations);
+        Assert.Equal(WfiAnalysisOperationKinds.AddRefEvaluations, approve.Kind);
+        Assert.Equal(id, approve.Target);
+
+        var other = new ParseAnalysis([new ParseMorph(null, null, null, "zzz")]);
+        Assert.Contains("does not match the reading", Assert.Throws<InvalidOperationException>(() =>
+            AnalysisChangeComposer.Build(_cache,
+                new AnalysisChangeIntent(AnalysisChangeKinds.Approve, _sita, other, id))).Message,
+            StringComparison.Ordinal);
+    }
+
+    private (string Form, string Msa) EntryMorph()
+    {
+        var entry = _cache.ServiceLocator.GetInstance<ILexEntryRepository>().AllInstances()
+            .First(item => item.LexemeFormOA is not null && item.MorphoSyntaxAnalysesOC.Any());
+        return (CanonicalId.FromGuid(entry.LexemeFormOA.Guid).Value,
+            CanonicalId.FromGuid(entry.MorphoSyntaxAnalysesOC.First().Guid).Value);
+    }
+
     private IReadOnlyList<OperationEnvelope> Decide(string intent) =>
         EditAnalysisDecisionComposer.Build(_cache, EditAnalysisDecisionIntentParser.Parse(Json(intent)));
 
@@ -200,6 +265,28 @@ public sealed class AuthorTextAndAnalysisDecisionParserTests
         Assert.Equal(decision, intent.Decision);
         Assert.Equal(id, (intent.Analysis ?? intent.Wordform)!.Value.Value);
     }
+
+    [Fact]
+    public void Decision_ParsesAReadingAsAnOrderedMorphList()
+    {
+        var (a, b) = (CanonicalId.Mint().Value, CanonicalId.Mint().Value);
+        var intent = EditAnalysisDecisionIntentParser.Parse(Json(
+            $$"""{"decision":"add-reading","wordform":"{{a}}","morphs":[{"form":"{{b}}"},{"guessedString":"x"}]}"""));
+        Assert.Equal(2, intent.Morphs!.Count);
+        Assert.Equal(b, intent.Morphs[0].Form!.Value.Value);
+        Assert.Equal("x", intent.Morphs[1].GuessedString);
+    }
+
+    [Theory]
+    [InlineData("""{"decision":"add-reading","wordform":"AAAAAAAAAAAAAAAAAAAAAA"}""")]
+    [InlineData("""{"decision":"add-reading","wordform":"AAAAAAAAAAAAAAAAAAAAAA","morphs":[]}""")]
+    [InlineData("""{"decision":"add-reading","wordform":"AAAAAAAAAAAAAAAAAAAAAA","morphs":[{}]}""")]
+    [InlineData("""{"decision":"add-reading","wordform":"AAAAAAAAAAAAAAAAAAAAAA","morphs":[{"form":"AAAAAAAAAAAAAAAAAAAAAA","x":1}]}""")]
+    [InlineData("""{"decision":"add-reading","wordform":"AAAAAAAAAAAAAAAAAAAAAA","morphs":[{"guessedString":" "}]}""")]
+    [InlineData("""{"decision":"add-reading","analysis":"AAAAAAAAAAAAAAAAAAAAAA","morphs":[{"guessedString":"x"}]}""")]
+    [InlineData("""{"decision":"approve","analysis":"AAAAAAAAAAAAAAAAAAAAAA","morphs":[{"guessedString":"x"}]}""")]
+    public void Decision_RefusesAMalformedReading(string json) =>
+        Assert.ThrowsAny<Exception>(() => EditAnalysisDecisionIntentParser.Parse(Json(json)));
 
     [Theory]
     [InlineData("""{"decision":"maybe","analysis":"AAAAAAAAAAAAAAAAAAAAAA"}""")]

@@ -376,7 +376,7 @@
   },
   "compose-edit-analysis-decision": {
     "title": "Decide an analysis",
-    "description": "Stages one human decision about an existing analysis or wordform in a Draft: approve, disapprove, return to unknown, or mark the spelling incorrect. It names the exact canonical identity. Only a person can Apply.",
+    "description": "Stages one human decision about an existing analysis or wordform in a Draft: approve, disapprove, return to unknown, mark the spelling incorrect, or store a parser reading as an unknown analysis. It names the exact canonical identity. Only a person can Apply.",
     "source": "Authored from the typed command contract."
   },
   "order-allomorphs": {

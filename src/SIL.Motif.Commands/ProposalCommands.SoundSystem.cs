@@ -166,7 +166,9 @@ public static partial class ProposalCommands
     /// </summary>
     /// <remarks>
     /// Closed input is <c>{ "decision": "approve|disapprove|unknown", "analysis": "&lt;id&gt;" }</c> or
-    /// <c>{ "decision": "misspelled", "wordform": "&lt;id&gt;" }</c>.
+    /// <c>{ "decision": "misspelled", "wordform": "&lt;id&gt;" }</c>, or
+    /// <c>{ "decision": "add-reading", "wordform": "&lt;id&gt;", "morphs": [ { "form", "msa", "inflType" } ] }</c>,
+    /// whose <see cref="ComposedOperationsResponse.CreatedObjects"/> entry names the new analysis for a later decision.
     /// </remarks>
     public static CommandOutcome<ComposedOperationsResponse> ComposeEditAnalysisDecision(
         ComposeEditAnalysisDecisionRequest request) =>

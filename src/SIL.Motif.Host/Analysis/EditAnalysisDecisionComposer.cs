@@ -2,6 +2,7 @@ using SIL.LCModel;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Runner.Composers;
 using SIL.Motif.Contract.Model;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Runner.Resolution;
 
 namespace SIL.Motif.Host.Analysis;
@@ -23,6 +24,19 @@ public static class EditAnalysisDecisionComposer
                     $"'EditAnalysisDecision': '{wordform.Value}' is not an existing wordform.");
             return AnalysisChangeComposer.Build(cache,
                 new AnalysisChangeIntent(AnalysisChangeKinds.IncorrectSpelling, wordform, null));
+        }
+
+        if (intent.Decision == AnalysisDecisions.AddReading)
+        {
+            var target = intent.Wordform!.Value;
+            if (CanonicalIdResolver.Resolve(cache, target) is not IWfiWordform)
+                throw new InvalidOperationException(
+                    $"'EditAnalysisDecision': '{target.Value}' is not an existing wordform.");
+            var reading = new ParseAnalysis(intent.Morphs!.Select(morph => new ParseMorph(
+                morph.Form?.ToGuid().ToString("D"), morph.Msa?.ToGuid().ToString("D"),
+                morph.InflType?.ToGuid().ToString("D"), morph.GuessedString)).ToArray());
+            return AnalysisChangeComposer.Build(cache, new AnalysisChangeIntent(
+                AnalysisChangeKinds.AddCandidate, target, reading));
         }
 
         var analysisId = intent.Analysis!.Value;

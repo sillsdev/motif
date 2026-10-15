@@ -3309,12 +3309,13 @@
                     "properties": {
                       "decision": {
                         "type": "string",
-                        "description": "The human decision to record.",
+                        "description": "The decision to record.",
                         "enum": [
                           "approve",
                           "disapprove",
                           "unknown",
-                          "misspelled"
+                          "misspelled",
+                          "add-reading"
                         ]
                       },
                       "analysis": {
@@ -3323,7 +3324,33 @@
                       },
                       "wordform": {
                         "type": "string",
-                        "description": "Id of a wordform; required for misspelled."
+                        "description": "Id of a wordform; required for misspelled and add-reading."
+                      },
+                      "morphs": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "form": {
+                              "type": "string",
+                              "description": "Id of the allomorph."
+                            },
+                            "msa": {
+                              "type": "string",
+                              "description": "Id of the morphosyntactic analysis."
+                            },
+                            "inflType": {
+                              "type": "string",
+                              "description": "Id of the inflectional type."
+                            },
+                            "guessedString": {
+                              "type": "string",
+                              "description": "Surface text of a guessed morph with no allomorph."
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "description": "Ordered morphs of the parser reading to store as unknown; required for add-reading."
                       }
                     },
                     "additionalProperties": false,

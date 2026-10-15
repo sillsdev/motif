@@ -262,7 +262,8 @@ public sealed record ComposeAuthorTextRequest(
 /// <param name="DraftName">The name of the Draft being authored.</param>
 /// <param name="IntentJson">
 /// Closed <c>{decision, analysis}</c> input for approve, disapprove or unknown, or <c>{decision, wordform}</c> for
-/// misspelled, naming the exact canonical identity.
+/// misspelled, naming the exact canonical identity. <c>{decision:"add-reading", wordform, morphs}</c> stores the
+/// listed morphs, each by exact form, MSA and InflType identities, as a new analysis in the unknown state.
 /// </param>
 public sealed record ComposeEditAnalysisDecisionRequest(
     string FwDataPath, string ProductVersion, string DraftName, string IntentJson);

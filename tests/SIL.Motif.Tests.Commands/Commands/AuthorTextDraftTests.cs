@@ -64,6 +64,37 @@ public sealed class AuthorTextDraftTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public void AReadingAddedAsUnknownReportsItsAnalysisAndLaterApprovalInTheSameDraftDependsOnIt()
+    {
+        var (path, _, wordform, _) = Prepare();
+        const string draft = "reading-then-approve";
+        Assert.True(ProposalCommands.New(new(path, Version, draft, "Synthetic reading decision")).Succeeded);
+        string form, msa;
+        using (var cache = pristine.NewScratch())
+        {
+            var entry = cache.ServiceLocator.GetInstance<ILexEntryRepository>().GetObject(pristine.Seed.FirstEntryId);
+            form = CanonicalId.FromGuid(entry.LexemeFormOA.Guid).Value;
+            msa = CanonicalId.FromGuid(entry.MorphoSyntaxAnalysesOC.First().Guid).Value;
+        }
+
+        var added = ProposalCommands.ComposeEditAnalysisDecision(new(path, Version, draft, JsonSerializer.Serialize(
+            new { decision = "add-reading", wordform, morphs = new[] { new { form, msa } } })));
+        Assert.True(added.Succeeded, added.Refusal?.Message);
+        var created = Assert.Single(added.Value!.CreatedObjects);
+        Assert.Equal(WfiAnalysisOperationKinds.CreateAnalysis, created.Kind);
+
+        var approved = ProposalCommands.ComposeEditAnalysisDecision(new(path, Version, draft,
+            JsonSerializer.Serialize(new { decision = "approve", analysis = created.Id })));
+        Assert.True(approved.Succeeded, approved.Refusal?.Message);
+
+        var operations = ReadDraft(path, draft).Operations;
+        var creation = operations.Single(operation => operation.EntityId == created.Id);
+        var approval = operations.Single(operation => operation.Kind == WfiAnalysisOperationKinds.AddRefEvaluations);
+        Assert.Equal(created.Id, approval.Target);
+        Assert.Contains(creation.OperationId, approval.DependsOn);
+    }
+
+    [Fact]
     public void RefusedTextIntentsLeaveTheDraftUnchanged()
     {
         var (path, ws, _, _) = Prepare();
