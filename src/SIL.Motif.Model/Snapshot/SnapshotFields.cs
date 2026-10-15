@@ -63,6 +63,9 @@ public static partial class SnapshotFields
     /// <summary>Whether one wordform exists in the project and the form it was authored with; never the whole inventory.</summary>
     public const string LangProjectWordforms = "analysis/langProject/wordforms";
 
+    /// <summary>One Text's identity, name, paragraph, segment and occurrence bindings; never every Text.</summary>
+    public const string LangProjectTexts = "texts/langProject/texts";
+
     /// <summary>The ordered alternate forms owned by a lexical entry.</summary>
     public const string LexEntryAlternateForms = "lexical/lexEntry/alternateForms";
 

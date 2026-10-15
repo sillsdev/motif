@@ -1,0 +1,314 @@
+{
+  "contract": "text-create/v1",
+  "vectors": [
+    {
+      "shape": "TextCreatePayload",
+      "input": {
+        "name": {
+          "ws": "swh",
+          "text": "Hadithi"
+        },
+        "contents": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "paragraphs": [
+          {
+            "id": "AAAAAAAAAAAAAAAAAAAAAg",
+            "ws": "swh",
+            "segments": [
+              {
+                "id": "AAAAAAAAAAAAAAAAAAAAAw",
+                "words": [
+                  "AAAAAAAAAAAAAAAAAAAABA",
+                  "AAAAAAAAAAAAAAAAAAAABQ"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "valid": true,
+      "note": "one paragraph, one segment, two words"
+    },
+    {
+      "shape": "TextCreatePayload",
+      "input": {
+        "name": {
+          "ws": "swh",
+          "text": "Hadithi"
+        },
+        "contents": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "paragraphs": [
+          {
+            "id": "AAAAAAAAAAAAAAAAAAAAAg",
+            "ws": "swh",
+            "segments": [
+              {
+                "id": "AAAAAAAAAAAAAAAAAAAAAw",
+                "words": [
+                  "AAAAAAAAAAAAAAAAAAAABA"
+                ]
+              },
+              {
+                "id": "AAAAAAAAAAAAAAAAAAAABA",
+                "words": [
+                  "AAAAAAAAAAAAAAAAAAAABA",
+                  "AAAAAAAAAAAAAAAAAAAABQ"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "AAAAAAAAAAAAAAAAAAAABQ",
+            "ws": "swh",
+            "segments": [
+              {
+                "id": "AAAAAAAAAAAAAAAAAAAABg",
+                "words": [
+                  "AAAAAAAAAAAAAAAAAAAABQ"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "valid": true,
+      "note": "two paragraphs, three segments"
+    },
+    {
+      "shape": "TextCreatePayload",
+      "input": {
+        "name": {
+          "ws": "swh",
+          "text": "T"
+        },
+        "contents": "AAAAAAAAAAAAAAAAAAAAAQ"
+      },
+      "valid": false,
+      "note": "paragraphs are required"
+    },
+    {
+      "shape": "TextCreatePayload",
+      "input": {
+        "name": {
+          "ws": "swh",
+          "text": "Hadithi"
+        },
+        "contents": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "paragraphs": []
+      },
+      "valid": false,
+      "note": "at least one paragraph"
+    },
+    {
+      "shape": "TextCreatePayload",
+      "input": {
+        "name": {
+          "ws": "swh",
+          "text": "Hadithi"
+        },
+        "contents": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "paragraphs": [
+          {
+            "id": "AAAAAAAAAAAAAAAAAAAAAg",
+            "ws": "swh",
+            "segments": []
+          }
+        ]
+      },
+      "valid": false,
+      "note": "at least one segment"
+    },
+    {
+      "shape": "TextCreatePayload",
+      "input": {
+        "name": {
+          "ws": "swh",
+          "text": "Hadithi"
+        },
+        "contents": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "paragraphs": [
+          {
+            "id": "AAAAAAAAAAAAAAAAAAAAAg",
+            "ws": "swh",
+            "segments": [
+              {
+                "id": "AAAAAAAAAAAAAAAAAAAAAw",
+                "words": []
+              }
+            ]
+          }
+        ]
+      },
+      "valid": false,
+      "note": "at least one word"
+    },
+    {
+      "shape": "TextCreatePayload",
+      "input": {
+        "name": {
+          "ws": "swh",
+          "text": "Hadithi"
+        },
+        "contents": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "paragraphs": [
+          {
+            "id": "AAAAAAAAAAAAAAAAAAAAAg",
+            "ws": "swh",
+            "segments": [
+              {
+                "id": "AAAAAAAAAAAAAAAAAAAAAw",
+                "words": [
+                  "not an id"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "valid": false,
+      "note": "a word is a wordform identity"
+    },
+    {
+      "shape": "TextCreatePayload",
+      "input": {
+        "name": {
+          "ws": "swh",
+          "text": "Hadithi"
+        },
+        "contents": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "paragraphs": [
+          {
+            "id": "AAAAAAAAAAAAAAAAAAAAAQ",
+            "ws": "swh",
+            "segments": [
+              {
+                "id": "AAAAAAAAAAAAAAAAAAAAAw",
+                "words": [
+                  "AAAAAAAAAAAAAAAAAAAABA"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "valid": false,
+      "note": "paragraph identity repeats the contents identity"
+    },
+    {
+      "shape": "TextCreatePayload",
+      "input": {
+        "name": {
+          "ws": "swh",
+          "text": "Hadithi"
+        },
+        "contents": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "paragraphs": [
+          {
+            "id": "AAAAAAAAAAAAAAAAAAAAAg",
+            "ws": "swh",
+            "segments": [
+              {
+                "id": "AAAAAAAAAAAAAAAAAAAAAw",
+                "words": [
+                  "AAAAAAAAAAAAAAAAAAAABA"
+                ]
+              },
+              {
+                "id": "AAAAAAAAAAAAAAAAAAAAAw",
+                "words": [
+                  "AAAAAAAAAAAAAAAAAAAABA"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "valid": false,
+      "note": "segment identity repeats"
+    },
+    {
+      "shape": "TextCreatePayload",
+      "input": {
+        "name": {
+          "ws": "swh",
+          "text": "sitá"
+        },
+        "contents": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "paragraphs": [
+          {
+            "id": "AAAAAAAAAAAAAAAAAAAAAg",
+            "ws": "swh",
+            "segments": [
+              {
+                "id": "AAAAAAAAAAAAAAAAAAAAAw",
+                "words": [
+                  "AAAAAAAAAAAAAAAAAAAABA"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "valid": false,
+      "note": "precomposed title is not NFD"
+    },
+    {
+      "shape": "TextCreatePayload",
+      "input": {
+        "name": {
+          "ws": "swh",
+          "text": "Hadithi"
+        },
+        "contents": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "paragraphs": [
+          {
+            "id": "AAAAAAAAAAAAAAAAAAAAAg",
+            "ws": "swh",
+            "segments": [
+              {
+                "id": "AAAAAAAAAAAAAAAAAAAAAw",
+                "words": [
+                  "AAAAAAAAAAAAAAAAAAAABA"
+                ]
+              }
+            ]
+          }
+        ],
+        "extra": 1
+      },
+      "valid": false,
+      "note": "unknown member"
+    },
+    {
+      "shape": "TextCreatePayload",
+      "input": {
+        "name": {
+          "ws": "swh",
+          "text": "Hadithi"
+        },
+        "contents": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "paragraphs": [
+          {
+            "id": "AAAAAAAAAAAAAAAAAAAAAg",
+            "ws": "",
+            "segments": [
+              {
+                "id": "AAAAAAAAAAAAAAAAAAAAAw",
+                "words": [
+                  "AAAAAAAAAAAAAAAAAAAABA"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "valid": false,
+      "note": "blank paragraph writing system"
+    },
+    {
+      "shape": "TextCreatePayload",
+      "input": [],
+      "valid": false,
+      "note": "not an object"
+    }
+  ]
+}

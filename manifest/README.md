@@ -23,6 +23,9 @@ and `DefaultAffix` remain unsupported. Creates do not authorize deleting an owni
 membership with no inventory row to classify. The wordform create projects, per wordform, its identity and form through
 `analysis/langProject/wordforms` (`WordformOwningSnapshots`). The lexical create families additionally project virtual `LexDb.Entries`, ordered `LexEntry.Senses`
 and unordered `LexEntry.MorphoSyntaxAnalyses` through `LexiconOwningSnapshots`.
+The Text create projects, per Text, its identity, name, paragraphs, segments and occurrence bindings through
+`texts/langProject/texts` (`TextOwningSnapshots`); the `Text`, `StText`, `StTxtPara` and `Segment` rows keep their classification
+because the create is one composite operation, not a per-field family.
 Closed shapes, ownership, normalization and evidence refresh are specified in the
 [Proposal contract](../docs/change-set-contract.md).
 

@@ -80,6 +80,7 @@ public static class ChangeVocabulary
                 Grammar("template", "affix template", "affix templates", "Add an affix template"),
             ["grammar/partOfSpeech/createAffixSlots"] =
                 Grammar("slot", "affix slot", "affix slots", "Add an affix slot"),
+            ["texts/langProject/createTexts"] = Word("text", "text", "texts", "Add a text"),
             ["analysis/langProject/createWordforms"] = Word("wordform", "wordform", "wordforms", "Add a wordform"),
             ["lexical/lexDb/createEntries"] = Grammar("entry", "entry", "entries", "Add a dictionary entry"),
             ["lists/cmPossibilityList/createPossibilities"] =

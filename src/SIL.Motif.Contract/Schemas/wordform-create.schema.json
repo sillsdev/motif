@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://motif.sil.org/contracts/wordform-create/v1",
   "title": "Wordform create payload",
-  "description": "The closed after payload of analysis/langProject/createWordforms: one nonblank word without spaces, in NFD, in one writing system the project knows. A form that already exists in that writing system is refused with its identity.",
+  "description": "The closed after payload of analysis/langProject/createWordforms: one nonblank word without spaces, in NFD, in one writing system the project knows. The pattern checks only that the word has no whitespace; the parser enforces NFD, and a form that already exists in that writing system is refused with its identity.",
   "$ref": "#/$defs/WordformCreatePayload",
   "$defs": {
     "WordformCreatePayload": {

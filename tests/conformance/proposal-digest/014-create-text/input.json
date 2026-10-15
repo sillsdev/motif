@@ -1,0 +1,51 @@
+{
+  "contractVersions": {
+    "analysis": "1.0",
+    "texts": "1.0"
+  },
+  "operations": [
+    {
+      "operationId": "AAAAAAAAAAAAAAAAAAAAAQ",
+      "kind": "analysis/langProject/createWordforms",
+      "target": "AAAAAAAAAAAAAAAAAAAAAg",
+      "entityId": "AAAAAAAAAAAAAAAAAAAAAw",
+      "after": {
+        "ws": "swh",
+        "text": "sita"
+      }
+    },
+    {
+      "operationId": "AAAAAAAAAAAAAAAAAAAABA",
+      "kind": "texts/langProject/createTexts",
+      "target": "AAAAAAAAAAAAAAAAAAAAAg",
+      "entityId": "AAAAAAAAAAAAAAAAAAAABQ",
+      "after": {
+        "name": {
+          "ws": "swh",
+          "text": "Hadithi"
+        },
+        "contents": "AAAAAAAAAAAAAAAAAAAABg",
+        "paragraphs": [
+          {
+            "id": "AAAAAAAAAAAAAAAAAAAABw",
+            "ws": "swh",
+            "segments": [
+              {
+                "id": "AAAAAAAAAAAAAAAAAAAACA",
+                "words": [
+                  "AAAAAAAAAAAAAAAAAAAAAw",
+                  "AAAAAAAAAAAAAAAAAAAAAw"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "dependsOn": [
+        "AAAAAAAAAAAAAAAAAAAAAQ"
+      ]
+    }
+  ],
+  "proposalId": "AAAAAAAAAAAAAAAAAAAACg",
+  "requires": []
+}

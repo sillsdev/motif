@@ -85,6 +85,40 @@ public sealed class AffixAuthoringContractTests
         Assert.Equal(10, refused);
     }
 
+    [Fact]
+    public void TextCreateSchemaIsClosedAndItsVectorsAgreeWithTheParser()
+    {
+        using var schema = typeof(CanonicalId).Assembly.GetManifestResourceStream(
+            "SIL.Motif.Contract.Schemas.text-create.schema.json");
+        Assert.NotNull(schema);
+        using var schemaDocument = JsonDocument.Parse(schema!);
+        foreach (var definition in schemaDocument.RootElement.GetProperty("$defs").EnumerateObject())
+            if (definition.Value.TryGetProperty("type", out var type) && type.GetString() == "object")
+                Assert.False(definition.Value.GetProperty("additionalProperties").GetBoolean());
+        using var stream = typeof(CanonicalId).Assembly.GetManifestResourceStream(
+            "SIL.Motif.Contract.Schemas.text-create.vectors.json");
+        Assert.NotNull(stream);
+        using var document = JsonDocument.Parse(stream!);
+        var accepted = 0;
+        var refused = 0;
+        foreach (var vector in document.RootElement.GetProperty("vectors").EnumerateArray())
+        {
+            var input = vector.GetProperty("input");
+            if (vector.GetProperty("valid").GetBoolean())
+            {
+                _ = LangProjectTextsCreatePayload.Parse(input);
+                accepted++;
+            }
+            else
+            {
+                Assert.ThrowsAny<Exception>(() => LangProjectTextsCreatePayload.Parse(input));
+                refused++;
+            }
+        }
+        Assert.Equal(2, accepted);
+        Assert.Equal(11, refused);
+    }
+
     [Theory]
     [InlineData("inflectionClasses")]
     [InlineData("environments")]

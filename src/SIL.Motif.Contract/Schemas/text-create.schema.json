@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://motif.sil.org/contracts/text-create/v1",
+  "title": "Text create payload",
+  "description": "The closed after payload of texts/langProject/createTexts: a title, the identity of the Text's contents, and paragraphs of segments whose words are existing wordform identities. The pattern checks identity shape only; the parser additionally enforces an NFD title, unique identities across the payload, and the size bounds.",
+  "$ref": "#/$defs/TextCreatePayload",
+  "$defs": {
+    "CanonicalId": {
+      "type": "string",
+      "pattern": "^[\\s\\S]*[A-Za-z0-9_-]{22}$"
+    },
+    "TextCreatePayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "contents",
+        "paragraphs"
+      ],
+      "properties": {
+        "name": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ws",
+            "text"
+          ],
+          "properties": {
+            "ws": {
+              "type": "string",
+              "minLength": 1
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "contents": {
+          "$ref": "#/$defs/CanonicalId"
+        },
+        "paragraphs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1000,
+          "items": {
+            "$ref": "#/$defs/Paragraph"
+          }
+        }
+      }
+    },
+    "Paragraph": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "ws",
+        "segments"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/CanonicalId"
+        },
+        "ws": {
+          "type": "string",
+          "minLength": 1
+        },
+        "segments": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/Segment"
+          }
+        }
+      }
+    },
+    "Segment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "words"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/CanonicalId"
+        },
+        "words": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 500,
+          "items": {
+            "$ref": "#/$defs/CanonicalId"
+          }
+        }
+      }
+    }
+  }
+}

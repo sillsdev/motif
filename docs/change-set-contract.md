@@ -165,6 +165,19 @@ and a form that another identity takes after the Dry Run changes the footprint (
 a fresh Dry Run. Approving or disapproving an analysis and marking spelling use the existing analysis
 kinds on the created identity, and its Text occurrences remain out of scope.
 
+A Text is created whole by `texts/langProject/createTexts`, which targets the project root with the closed payload
+`{ "name": { "ws", "text" }, "contents": <id>, "paragraphs": [ { "id", "ws", "segments": [ { "id", "words": [<wordformId>, ...] } ] } ] }`.
+The payload authors every identity it creates (the Text's `entityId`, its contents, each paragraph and each
+segment); the Text's identity is unique across them. Each word is an existing wordform's identity, so every
+occurrence is bound by identity and nothing is tokenised or matched by form. A paragraph's text is its segments'
+wordform forms in the paragraph's writing system, joined by single spaces; a wordform that does not exist or has no form
+in that writing system fails the create, and a wordform created earlier in the same Proposal is reached through
+`dependsOn`. The create fails for any created identity that already exists, accepts no placement and no storage-GUID
+override, and holds at most 1,000 paragraphs, 500 words per segment and 20,000 words. Its effect records the Text's
+`ref`, `name:<ws>`, `paragraphs`, `segments`, `words` and a `structure` digest of every identity and binding, never other
+Texts. The Text's occurrence index in a later Baseline is the position of a word within its paragraph's segments;
+glosses, translations, punctuation, analyses and the other Text fields remain out of scope.
+
 Dictionary entries are unowned in LibLCM: the lexicon lists them through a virtual `Entries` property the
 model does not carry as a field. `lexical/lexDb/createEntries` therefore targets the project's lexicon with
 the closed payload `{}`, and its effect records only the new entry's membership, never the whole entry list.
