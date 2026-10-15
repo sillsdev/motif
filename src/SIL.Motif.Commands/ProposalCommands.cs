@@ -340,6 +340,7 @@ public static partial class ProposalCommands
                 }
                 (previous ?? authored).Cite(citation);
                 EnsureContractVersion(draft, LexicalSenseOperationKinds.SetGloss);
+                RequireNoSlotConflict(draft);
 
                 if (!TrySaveLoadedDraft(repository, request.DraftName, loadedJson, draft))
                     return CommandOutcome<SetGlossAddedResponse>.Refused(DraftRevisionConflict(request.DraftName));
@@ -354,7 +355,7 @@ public static partial class ProposalCommands
             }
             catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException)            {
                 return CommandOutcome<SetGlossAddedResponse>.Refused(
-                    DraftInvalid(ex.Message, ("draftName", request.DraftName)));
+                    DraftInvalidFrom(ex, ("draftName", request.DraftName)));
             }
         });
     }
@@ -396,6 +397,7 @@ public static partial class ProposalCommands
                 operation.Cite(citation);
                 draft.Operations.Add(operation);
                 EnsureContractVersion(draft, LexEntryLexemeFormOperationKinds.DeleteLexemeForm);
+                RequireNoSlotConflict(draft);
 
                 if (!TrySaveLoadedDraft(repository, request.DraftName, loadedJson, draft))
                     return CommandOutcome<DeleteLexemeFormAddedResponse>.Refused(DraftRevisionConflict(request.DraftName));
@@ -409,7 +411,7 @@ public static partial class ProposalCommands
             }
             catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException)            {
                 return CommandOutcome<DeleteLexemeFormAddedResponse>.Refused(
-                    DraftInvalid(ex.Message, ("draftName", request.DraftName)));
+                    DraftInvalidFrom(ex, ("draftName", request.DraftName)));
             }
         });
     }
@@ -517,6 +519,7 @@ public static partial class ProposalCommands
                 operation.Cite(citation);
                 draft.Operations.Add(operation);
                 EnsureContractVersion(draft, LexicalSenseOperationKinds.SetGloss);
+                RequireNoSlotConflict(draft);
 
                 var origin = corpus.Provenance.Origin;
                 var provenanceJson = JsonSerializer.Serialize(new
@@ -544,7 +547,7 @@ public static partial class ProposalCommands
             }
             catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException)            {
                 return CommandOutcome<PromoteGlossAddedResponse>.Refused(
-                    DraftInvalid(ex.Message, ("draftName", request.DraftName)));
+                    DraftInvalidFrom(ex, ("draftName", request.DraftName)));
             }
         });
     }
@@ -2101,6 +2104,23 @@ public static partial class ProposalCommands
     private static Refusal InvalidWs(string draftName) =>
         new("operation.invalid-writing-system", FailureReason.InvalidArgument, "--ws must not be empty.",
             Fact(("draftName", draftName)));
+
+    /// <summary>A Draft refusal; a slot conflict adds the colliding operation ids as facts.</summary>
+    private static Refusal DraftInvalidFrom(Exception exception, params (string Key, string? Value)[] facts)
+    {
+        var conflict = exception as ProposalSlotConflictException ?? exception.InnerException as ProposalSlotConflictException;
+        return conflict is null
+            ? DraftInvalid(exception.Message, facts)
+            : DraftInvalid(conflict.Message, facts.Concat(new (string Key, string? Value)[]
+            {
+                ("existingOperationId", conflict.ExistingOperationId.Value),
+                ("duplicateOperationId", conflict.DuplicateOperationId.Value),
+            }).ToArray());
+    }
+
+    /// <summary>Throws when the Draft's operations would share a slot, before the Draft is saved.</summary>
+    private static void RequireNoSlotConflict(DraftDocument draft) =>
+        ProposalOperationSlotValidator.ValidateAppend(ProposalJsonParser.Parse(BuildProposalJson(draft)).Operations);
 
     private static Refusal DraftInvalid(string message, params (string Key, string? Value)[] facts) =>
         new("draft.invalid", FailureReason.Refused, message, Fact(facts));

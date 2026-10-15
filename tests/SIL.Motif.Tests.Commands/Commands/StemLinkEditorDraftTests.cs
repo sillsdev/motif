@@ -160,6 +160,51 @@ public sealed class StemLinkEditorDraftTests(PristineProjectFixture pristine)
         Assert.Equal(("Noun grammar", "§ 3"), (citation!.Source, citation.Locator));
     }
 
+    [Fact]
+    public void TwoEditsOfOneStemAnalysisInOneBatchAreRefusedWhenAdded()
+    {
+        var (path, vernacular, analysis, category) = Open();
+        const string draft = "stem-class-twice";
+        Assert.True(ProposalCommands.New(new(path, Version, draft, "Attach a class twice")).Succeeded);
+        var first = Compose(ProposalCommands.ComposeAuthorInflectionClass(new(path, Version, draft,
+            Json(new { category, name = "Class One", ws = analysis }))));
+        var firstId = first.Operations.Single(op => op.Kind == PartOfSpeechInflectionClassesOperationKinds.Create).EntityId!;
+        var second = Compose(ProposalCommands.ComposeAuthorInflectionClass(new(path, Version, draft,
+            Json(new { category, name = "Class Two", ws = analysis }))));
+        var secondId = second.Operations.Single(op => op.Kind == PartOfSpeechInflectionClassesOperationKinds.Create).EntityId!;
+        var entry = Compose(ProposalCommands.ComposeAuthorLexicalEntry(new(path, Version, draft, Json(new
+        {
+            form = "tabu", formWs = vernacular, morphType = CanonicalId.FromGuid(MoMorphTypeTags.kguidMorphStem).Value,
+            gloss = "book", analysisWs = analysis, msa = new { kind = "stem", category },
+        }))));
+        var msa = entry.Operations.Single(op => op.Kind == LexEntryMorphoSyntaxAnalysesOperationKinds.Create).EntityId!;
+        var before = DraftBytes(path, draft);
+
+        var refused = ProposalCommands.ComposeBatch(new(path, Version, draft, Json(new
+        {
+            intents = new object[]
+            {
+                new
+                {
+                    verb = "compose-edit-stem-inflection-class",
+                    intent = new { target = msa, expectedInflectionClass = (string?)null, inflectionClass = firstId },
+                },
+                new
+                {
+                    verb = "compose-edit-stem-inflection-class",
+                    intent = new { target = msa, expectedInflectionClass = firstId, inflectionClass = secondId },
+                },
+            },
+        })));
+
+        Assert.False(refused.Succeeded);
+        Assert.Equal("draft.invalid", refused.Refusal!.Code);
+        Assert.Contains("same slot", refused.Refusal.Message, StringComparison.Ordinal);
+        Assert.True(refused.Refusal.Facts.ContainsKey("existingOperationId"));
+        Assert.True(refused.Refusal.Facts.ContainsKey("duplicateOperationId"));
+        Assert.Equal(before, DraftBytes(path, draft));
+    }
+
     private (string Path, string Vernacular, string Analysis, string Category) Open()
     {
         using var cache = pristine.NewScratch();

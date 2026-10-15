@@ -16,6 +16,18 @@ public static class ProposalOperationSlotValidator
         TextCreateDependencies.Validate(proposal.Operations);
     }
 
+    /// <summary>
+    /// Runs at the moment a change is added to a Draft, with the operations the Draft would then hold, so a
+    /// same-slot conflict is refused when the second change arrives instead of at Finalize.
+    /// </summary>
+    /// <exception cref="ProposalSlotConflictException">Two operations address the same slot.</exception>
+    public static void ValidateAppend(IReadOnlyList<OperationEnvelope> retainedPlusAdded)
+    {
+        if (FindConflict(retainedPlusAdded) is { } collision)
+            throw new ProposalSlotConflictException(collision.Existing.OperationId, collision.Duplicate.OperationId);
+        TextCreateDependencies.Validate(retainedPlusAdded);
+    }
+
     public static (OperationEnvelope Existing, OperationEnvelope Duplicate)? FindConflict(
         IEnumerable<OperationEnvelope> operations)
     {

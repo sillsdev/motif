@@ -401,6 +401,7 @@ public static partial class ProposalCommands
                         var related = step.RelatedObjects?.Invoke(cache, input);
                         step.ValidateAppend?.Invoke(validated, input, operations);
                         var added = DeclareDependencies(input, operations, staged);
+                        ProposalOperationSlotValidator.ValidateAppend(validated.Concat(added).ToList());
                         // Later steps read the project as a later single call would, after this step's changes.
                         if (index < steps.Count - 1)
                             ApplyToScratch(cache, added);
@@ -462,10 +463,12 @@ public static partial class ProposalCommands
         catch (ComposeStepException exception) when (describeBatchFailure)
         {
             var verb = steps[exception.Index].Verb;
-            return CommandOutcome<ComposedOperationsResponse[]>.Refused(DraftInvalid(
-                $"Intent {exception.Index} ({verb}): {exception.Message} Nothing in this batch was added.",
+            var failure = DraftInvalidFrom(exception,
                 ("draftName", draftName), ("intentIndex", exception.Index.ToString(CultureInfo.InvariantCulture)),
-                ("verb", verb)));
+                ("verb", verb));
+            return CommandOutcome<ComposedOperationsResponse[]>.Refused(new Refusal(failure.Code, failure.Reason,
+                $"Intent {exception.Index} ({verb}): {exception.Message} Nothing in this batch was added.",
+                failure.Facts));
         }
         catch (Exception exception) when (SqliteConnections.IsBusy(exception))
         {
@@ -473,7 +476,7 @@ public static partial class ProposalCommands
         }
         catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)        {
             return CommandOutcome<ComposedOperationsResponse[]>.Refused(
-                DraftInvalid(exception.Message, ("draftName", draftName)));
+                DraftInvalidFrom(exception, ("draftName", draftName)));
         }
     }
 

@@ -102,6 +102,27 @@ public sealed class PromoteGlossTests : IDisposable
                 tokeniser: "whitespace-and-punctuation", tokeniserVersion: "1", tokeniserNotes: null).Succeeded);
 
     [Fact]
+    public void PromoteGlossOnASlotAnEarlierGlossAlreadyWritesIsRefusedWhenAdded()
+    {
+        SeedCorpus();
+        var target = CanonicalId.Mint().Value;
+        Assert.True(NewDraft(_fwDataPath, ProductVersion, "slot", null).Succeeded);
+        var typed = ProposalCommands.AddSetGloss(new AddSetGlossRequest(
+            _fwDataPath, ProductVersion, "slot", target, "en", "typed"));
+        Assert.True(typed.Succeeded);
+        var before = ReadDraftJson("slot");
+
+        var promoted = PromoteGloss(_fwDataPath, ProductVersion, "slot", target, "en", "promoted", "wiki-testlang");
+
+        Assert.False(promoted.Succeeded);
+        Assert.Equal("draft.invalid", promoted.Refusal!.Code);
+        Assert.Contains("same slot", promoted.Refusal.Message, StringComparison.Ordinal);
+        Assert.Equal(typed.Value!.OperationId, promoted.Refusal.Facts["existingOperationId"]);
+        Assert.True(promoted.Refusal.Facts.ContainsKey("duplicateOperationId"));
+        Assert.Equal(before, ReadDraftJson("slot"));
+    }
+
+    [Fact]
     public void PromoteGloss_AddsTheOperation_AndRecordsTheCorpusOriginAsProvenance()
     {
         SeedCorpus();
