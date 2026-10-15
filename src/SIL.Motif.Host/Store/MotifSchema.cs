@@ -16,7 +16,7 @@ public static class MotifSchema
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 45;
+    public const int CurrentSchema = 46;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
@@ -34,7 +34,7 @@ public static class MotifSchema
             command.CommandText = MetadataDdl + CorpusDdl + ProposalWorkflowDdl + SelectionDdl + AssessmentDdl + JobDdl +
                 BaselineDdl + BaselineTextWordsDdl + BaselineTextReadIndexDdl + RetainedInvocationDdl + ParsimonyBundleDdl + ParsimonyBundleLifetimeDdl +
                 GrammarCheckDdl + PendingChangeFitDdl + ReviewMarkDdl +
-                ReadOccurrenceDdl + ActiveParseDdl + ParserRefusalDdl;
+                ReadOccurrenceDdl + ActiveParseDdl + ParserRefusalDdl + ProposalDifferenceDdl;
             command.ExecuteNonQuery();
         }
 
@@ -64,7 +64,8 @@ public static class MotifSchema
             "RetainedInvocationMembers", "NamedSelections", "DefaultSelection", "AssessmentObjectTimings",
             "BaselineSummaries", "BaselineTextWords", "BaselineTextWordforms", "BaselineTextReadIndex", "GrammarChecks", "PendingChangeFits", "ReviewMarks",
             "ReadOccurrences", "ActiveParse", "ParserRefusals", "ParsimonyBundles", "ParsimonyBundleReferences",
-            "ParsimonyReaderLeases", "ParsimonyBuildClaims", "CurrentParsimonyBundles"
+            "ParsimonyReaderLeases", "ParsimonyBuildClaims", "CurrentParsimonyBundles",
+            "ProposalDifferences", "ProposalDifferenceCases", "ProposalDifferenceOccurrences", "ProposalDifferenceBuckets"
         };
         var expectedIndexes = new HashSet<string>(StringComparer.Ordinal)
         {
@@ -73,7 +74,8 @@ public static class MotifSchema
             "IX_Proposals_DraftName", "IX_Proposals_OpenRole", "IX_Assessments_Proposal", "IX_Assessments_Kind",
             "IX_RetainedInvocations_Project", "IX_RetainedInvocationMembers_Assessment",
             "IX_ParsimonyBundles_ProjectCreated", "IX_ParsimonyReaderLeases_BundleExpiry",
-            "IX_ParsimonyBuildClaims_Project", "IX_GrammarChecks_Project", "IX_GrammarChecks_Proposal"
+            "IX_ParsimonyBuildClaims_Project", "IX_GrammarChecks_Project", "IX_GrammarChecks_Proposal",
+            "IX_ProposalDifferences_Proposal", "IX_ProposalDifferenceOccurrences_Order", "IX_ProposalDifferenceBuckets_Bucket"
         };
 
         using (var objects = connection.CreateCommand())
@@ -279,6 +281,9 @@ public static class MotifSchema
         "IX_ParsimonyReaderLeases_BundleExpiry" => "ParsimonyReaderLeases",
         "IX_ParsimonyBuildClaims_Project" => "ParsimonyBuildClaims",
         "IX_GrammarChecks_Project" or "IX_GrammarChecks_Proposal" => "GrammarChecks",
+        "IX_ProposalDifferences_Proposal" => "ProposalDifferences",
+        "IX_ProposalDifferenceOccurrences_Order" => "ProposalDifferenceOccurrences",
+        "IX_ProposalDifferenceBuckets_Bucket" => "ProposalDifferenceBuckets",
         _ => throw new InvalidDataException($"Motif index {index} is not registered.")
     };
 
@@ -308,6 +313,9 @@ public static class MotifSchema
         "IX_ParsimonyBuildClaims_Project" => ["ProjectKey"],
         "IX_GrammarChecks_Project" => ["BaselineToken"],
         "IX_GrammarChecks_Proposal" => ["BaselineToken", "ProposalId", "IntentDigest"],
+        "IX_ProposalDifferences_Proposal" => ["ProposalId", "CreatedUtc"],
+        "IX_ProposalDifferenceOccurrences_Order" => ["DifferenceId", "TextId", "LineNumber", "OccurrenceIndex"],
+        "IX_ProposalDifferenceBuckets_Bucket" => ["DifferenceId", "Bucket", "CaseKey"],
         _ => throw new InvalidDataException($"Motif index {index} is not registered.")
     };
 
@@ -333,6 +341,10 @@ public static class MotifSchema
         "ParsimonyReaderLeases" => [new("ParsimonyBundles", "BundleId", "BundleId", "NO ACTION", "CASCADE", "NONE")],
         "CurrentParsimonyBundles" => [new("ParsimonyBundles", "BundleId", "BundleId", "NO ACTION", "CASCADE", "NONE")],
         "ProposalRevisions" => [new("Proposals", "ProposalId", "ProposalId", "NO ACTION", "NO ACTION", "NONE")],
+        "ProposalDifferences" => [new("Proposals", "ProposalId", "ProposalId", "NO ACTION", "NO ACTION", "NONE")],
+        "ProposalDifferenceCases" => [new("ProposalDifferences", "DifferenceId", "DifferenceId", "NO ACTION", "CASCADE", "NONE")],
+        "ProposalDifferenceOccurrences" => [new("ProposalDifferences", "DifferenceId", "DifferenceId", "NO ACTION", "CASCADE", "NONE")],
+        "ProposalDifferenceBuckets" => [new("ProposalDifferences", "DifferenceId", "DifferenceId", "NO ACTION", "CASCADE", "NONE")],
         "Receipts" => [new("Proposals", "ProposalId", "ProposalId", "NO ACTION", "NO ACTION", "NONE")],
         "Reports" => [new("Assessments", "AssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE"),
             new("Proposals", "ProposalId", "ProposalId", "NO ACTION", "NO ACTION", "NONE")],
@@ -424,6 +436,20 @@ public static class MotifSchema
             C("CreatedUtc", "TEXT", true)],
         "CurrentParsimonyBundles" => [C("ProjectKey", "TEXT", true, 1), C("InputKind", "TEXT", true, 2),
             C("BundleId", "TEXT", true)],
+        "ProposalDifferences" =>
+        [C("DifferenceId", "TEXT", false, 1), C("ProposalId", "TEXT", true), C("TrialJobId", "TEXT", true),
+            C("BeforeAssessmentId", "TEXT", true), C("AfterAssessmentId", "TEXT", true), C("TextId", "TEXT", true),
+            C("BaselineToken", "TEXT", true), C("SummaryJson", "TEXT", true), C("SummaryDigest", "TEXT", true),
+            C("CreatedUtc", "TEXT", true)],
+        "ProposalDifferenceCases" =>
+        [C("DifferenceId", "TEXT", true, 1), C("CaseKey", "TEXT", true, 2), C("Word", "TEXT", true),
+            C("OccurrenceCount", "INTEGER", true), C("BeforeState", "TEXT", true), C("AfterState", "TEXT", true),
+            C("CouldBeBad", "INTEGER", true), C("FactsJson", "TEXT", true), C("FactsDigest", "TEXT", true)],
+        "ProposalDifferenceOccurrences" =>
+        [C("DifferenceId", "TEXT", true, 1), C("TextId", "TEXT", true, 2), C("SegmentId", "TEXT", true, 3),
+            C("OccurrenceIndex", "INTEGER", true, 4), C("LineNumber", "INTEGER", true), C("CaseKey", "TEXT", true)],
+        "ProposalDifferenceBuckets" =>
+        [C("DifferenceId", "TEXT", true, 1), C("CaseKey", "TEXT", true, 2), C("Bucket", "TEXT", true, 3)],
         "ParsedAnalyses" =>
         [C("AssessedWordId", "INTEGER", true), C("OrdinalIndex", "INTEGER", true), C("CategoryGuid", "TEXT"),
             C("MorphemeGuidsJson", "TEXT", true), C("RootIndex", "INTEGER", true), C("IdentityDigest", "TEXT", true)],
@@ -860,6 +886,55 @@ public static class MotifSchema
             FitSummaryJson TEXT NOT NULL,
             PRIMARY KEY (DraftRevision, ProjectLastWriteUtcTicks, BaselineIdentity)
         );
+        """;
+
+    private const string ProposalDifferenceDdl = """
+        CREATE TABLE ProposalDifferences (
+            DifferenceId TEXT PRIMARY KEY,
+            ProposalId TEXT NOT NULL REFERENCES Proposals(ProposalId),
+            TrialJobId TEXT NOT NULL,
+            BeforeAssessmentId TEXT NOT NULL,
+            AfterAssessmentId TEXT NOT NULL,
+            TextId TEXT NOT NULL,
+            BaselineToken TEXT NOT NULL,
+            SummaryJson TEXT NOT NULL,
+            SummaryDigest TEXT NOT NULL,
+            CreatedUtc TEXT NOT NULL
+        );
+        CREATE INDEX IX_ProposalDifferences_Proposal ON ProposalDifferences(ProposalId, CreatedUtc);
+
+        CREATE TABLE ProposalDifferenceCases (
+            DifferenceId TEXT NOT NULL REFERENCES ProposalDifferences(DifferenceId) ON DELETE CASCADE,
+            CaseKey TEXT NOT NULL,
+            Word TEXT NOT NULL,
+            OccurrenceCount INTEGER NOT NULL CHECK (OccurrenceCount >= 0),
+            BeforeState TEXT NOT NULL,
+            AfterState TEXT NOT NULL,
+            CouldBeBad INTEGER NOT NULL CHECK (CouldBeBad IN (0, 1)),
+            FactsJson TEXT NOT NULL,
+            FactsDigest TEXT NOT NULL,
+            PRIMARY KEY (DifferenceId, CaseKey)
+        );
+
+        CREATE TABLE ProposalDifferenceOccurrences (
+            DifferenceId TEXT NOT NULL REFERENCES ProposalDifferences(DifferenceId) ON DELETE CASCADE,
+            TextId TEXT NOT NULL,
+            SegmentId TEXT NOT NULL,
+            OccurrenceIndex INTEGER NOT NULL CHECK (OccurrenceIndex >= 0),
+            LineNumber INTEGER NOT NULL,
+            CaseKey TEXT NOT NULL,
+            PRIMARY KEY (DifferenceId, TextId, SegmentId, OccurrenceIndex)
+        );
+        CREATE INDEX IX_ProposalDifferenceOccurrences_Order
+            ON ProposalDifferenceOccurrences(DifferenceId, TextId, LineNumber, OccurrenceIndex);
+
+        CREATE TABLE ProposalDifferenceBuckets (
+            DifferenceId TEXT NOT NULL REFERENCES ProposalDifferences(DifferenceId) ON DELETE CASCADE,
+            CaseKey TEXT NOT NULL,
+            Bucket TEXT NOT NULL,
+            PRIMARY KEY (DifferenceId, CaseKey, Bucket)
+        );
+        CREATE INDEX IX_ProposalDifferenceBuckets_Bucket ON ProposalDifferenceBuckets(DifferenceId, Bucket, CaseKey);
         """;
 
     private const string ReviewMarkDdl = """

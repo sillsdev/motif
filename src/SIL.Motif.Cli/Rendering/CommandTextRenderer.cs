@@ -82,6 +82,7 @@ public static class CommandTextRenderer
             OverviewResponse r => RenderOverview(r),
             GrammarCheckResponse r => RenderGrammarCheck(r),
             WarningsResponse r => RenderWarnings(r),
+            ProposalDifferenceResponse r => RenderProposalDifference(r),
             TimingResponse r => RenderTiming(r),
             ObjectUsesResponse r => RenderUses(r),
             InspectResponse r => RenderInspect(r),
@@ -582,6 +583,34 @@ public static class CommandTextRenderer
         if (response.WordAnalysesLink is { } link) text.AppendLine($"Word Analyses: {link}");
         return text.ToString();
     }
+
+    private static string RenderProposalDifference(ProposalDifferenceResponse response)
+    {
+        var summary = response.Summary;
+        var text = new StringBuilder();
+        text.AppendLine($"Difference {summary.DifferenceId} for Proposal {summary.ProposalId}");
+        text.AppendLine($"  Text: {summary.TextTitle} ({summary.TextId})");
+        text.AppendLine($"  Human decisions: as recorded in FieldWorks for this Text at the current Baseline; " +
+            $"{CountLabel(summary.WordsWithApprovedDecisions, "word has", "words have")} an approved analysis");
+        text.AppendLine($"  {CountLabel(summary.Words, "word", "words")}, {CountLabel(summary.Occurrences, "occurrence", "occurrences")} " +
+            $"compared; {CountLabel(summary.UnboundOccurrences, "occurrence", "occurrences")} could not be matched to one measured word");
+        text.AppendLine($"  Could be bad: {summary.CouldBeBadWords}; improved: {summary.ImprovedWords} (advisory only)");
+        foreach (var bucket in summary.Buckets)
+            text.AppendLine($"  {BucketCode(bucket.Bucket)}: {CountLabel(bucket.Words, "word", "words")}, " +
+                $"{CountLabel(bucket.Occurrences, "occurrence", "occurrences")}");
+        text.AppendLine("  Before -> after:");
+        foreach (var cell in summary.Matrix)
+            text.AppendLine($"    {cell.BeforeState} -> {cell.AfterState}: {CountLabel(cell.Words, "word", "words")}");
+        text.AppendLine($"  Showing {response.Words.Count} of {response.MatchingWords} matching words");
+        foreach (var word in response.Words)
+            text.AppendLine($"    {word.Word} x{word.Occurrences}: {word.BeforeState} -> {word.AfterState}" +
+                (word.Buckets.Count == 0 ? "" : " [" + string.Join(", ", word.Buckets.Select(BucketCode)) + "]"));
+        if (response.NextOffset is { } next) text.AppendLine($"  More: --offset {next}");
+        return text.ToString();
+    }
+
+    private static string BucketCode(ProposalDifferenceBucket bucket) =>
+        SIL.Motif.Worker.Store.ProposalDifferenceRepository.BucketName(bucket);
 
     private static string RenderWarnings(WarningsResponse response)
     {

@@ -341,7 +341,8 @@ public sealed class ProposalRepository : IProposalRepository
                 throw new InvalidOperationException("This Proposal has Assessment results that are still pinned, " +
                     "retained, current, cited by another Proposal's Report, or replaced by a kept result, so it is kept.");
         }
-        foreach (var sql in new[] { "DELETE FROM GrammarChecks WHERE ProposalId = $id;",
+        foreach (var sql in new[] { "DELETE FROM ProposalDifferences WHERE ProposalId = $id;",
+            "DELETE FROM GrammarChecks WHERE ProposalId = $id;",
             "DELETE FROM ProposalRevisions WHERE ProposalId = $id;" })
         {
             using var command = connection.CreateCommand();

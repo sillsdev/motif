@@ -1403,6 +1403,37 @@ try
                 flags.GetValueOrDefault("proposal"))));
             break;
 
+        case "difference":
+            if (positionals.Count == 1 && positionals[0] == "produce")
+            {
+                if (!flags.TryGetValue("project", out var differenceProject) ||
+                    !flags.TryGetValue("proposal", out var differenceProposal) ||
+                    !flags.TryGetValue("text", out var differenceText))
+                    return Usage(UsageLineFor("difference produce"), asJson);
+                result = RenderCommand(ProposalDifferenceCommands.Produce(new ProposalDifferenceProduceRequest(
+                    differenceProject, differenceProposal, differenceText, flags.GetValueOrDefault("job"))), asJson);
+                break;
+            }
+            if (positionals.Count == 1 && positionals[0] == "show")
+            {
+                var differenceOffset = 0;
+                var differenceLimit = 25;
+                if (!flags.TryGetValue("project", out var deltaShowProject) ||
+                    !(flags.ContainsKey("proposal") || flags.ContainsKey("difference")) ||
+                    flags.TryGetValue("offset", out var differenceOffsetText) &&
+                    !int.TryParse(differenceOffsetText, NumberStyles.None, CultureInfo.InvariantCulture, out differenceOffset) ||
+                    flags.TryGetValue("limit", out var differenceLimitText) &&
+                    !int.TryParse(differenceLimitText, NumberStyles.None, CultureInfo.InvariantCulture, out differenceLimit))
+                    return Usage(UsageLineFor("difference show"), asJson);
+                result = RenderCommand(ProposalDifferenceCommands.Show(new ProposalDifferenceShowRequest(deltaShowProject,
+                    flags.GetValueOrDefault("proposal"), flags.GetValueOrDefault("difference"),
+                    flags.ContainsKey("could-be-bad"), flags.GetValueOrDefault("bucket"),
+                    flags.GetValueOrDefault("before"), flags.GetValueOrDefault("after"), differenceOffset,
+                    differenceLimit)), asJson);
+                break;
+            }
+            return Usage(UsageLineFor("difference"), asJson);
+
         case "grammar":
             if (positionals.Count == 1 && positionals[0] == "read")
             {
@@ -2084,7 +2115,7 @@ static string ResolveCommandName(string verb, IReadOnlyDictionary<string, string
         return "apply --proposal";
     if (verb == "trial" && flags.ContainsKey("pending"))
         return "trial --pending";
-    if (verb is "config" or "baseline" or "grammar" or "jobs" or "project" or "selection" or "texts" or "setup" or "store" or "word")
+    if (verb is "config" or "baseline" or "grammar" or "jobs" or "project" or "selection" or "texts" or "setup" or "store" or "word" or "difference")
     {
         var candidate = positionals.Count > 0 ? verb + " " + positionals[0] : verb;
         if (CommandCatalog.All.Any(command => command.Name == candidate)) return candidate;

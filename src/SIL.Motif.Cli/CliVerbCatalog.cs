@@ -375,6 +375,16 @@ public static class CliVerbCatalog
             "Project", "warnings", "warnings",
             new[] { "warnings --project <fwdata> [--proposal <id>] [--kind <code>] [--left-out] [--json]" }),
         new CliVerbDescriptor(
+            "Project", "difference", "difference produce",
+            new[] { "difference produce --project <fwdata> --proposal <id> --text <guid> [--job <id>] [--json]" }),
+        new CliVerbDescriptor(
+            "Project", "difference", "difference show",
+            new[]
+            {
+                "difference show --project <fwdata> (--proposal <id> | --difference <id>) [--could-be-bad] " +
+                "[--bucket <code>] [--before <state>] [--after <state>] [--offset <n>] [--limit <n>] [--json]",
+            }),
+        new CliVerbDescriptor(
             "Project", "grammar", "grammar check",
             new[] { "grammar check --project <fwdata> [--stored-analyses budget|all|off] [--json]" }),
         new CliVerbDescriptor(
