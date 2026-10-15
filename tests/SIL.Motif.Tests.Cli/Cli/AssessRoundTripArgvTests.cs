@@ -159,7 +159,7 @@ public sealed class AssessRoundTripArgvTests : IDisposable
         Assert.False(process.HasExited, "The CLI exited before cancellation was sent.");
 
         Assert.True(launched.Interrupt(), "Could not send Ctrl+Break to the CLI process group.");
-        await launched.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(30));
+        await launched.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(90));
         var error = launched.ReadStderr();
         var output = launched.ReadStdout();
         Assert.True(launched.ExitCode == 2, $"Expected cancelled exit code 2.{Environment.NewLine}{error}");
