@@ -160,7 +160,9 @@ writing system the project knows. Its effect records only the new wordform's mem
 (`ref` and `form:<ws>`), never the inventory. The create refuses a form that already exists in that writing system
 and names the existing wordform's identity so the caller reuses it; no match is ever inferred from similarity.
 It also refuses same-type identity reuse and wrong-type identity conflicts, accepts no placement and no
-storage-GUID override. Approving or disapproving an analysis and marking spelling use the existing analysis
+storage-GUID override. Two operations of one Proposal that create the same form are refused when the second runs,
+and a form that another identity takes after the Dry Run changes the footprint (`formOwner:<ws>`), so Apply asks for
+a fresh Dry Run. Approving or disapproving an analysis and marking spelling use the existing analysis
 kinds on the created identity, and its Text occurrences remain out of scope.
 
 Dictionary entries are unowned in LibLCM: the lexicon lists them through a virtual `Entries` property the

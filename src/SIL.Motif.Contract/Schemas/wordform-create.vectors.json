@@ -1,0 +1,109 @@
+{
+  "contract": "wordform-create/v1",
+  "vectors": [
+    {
+      "shape": "WordformCreatePayload",
+      "input": {
+        "ws": "swh",
+        "text": "mutu"
+      },
+      "valid": true,
+      "note": "plain word"
+    },
+    {
+      "shape": "WordformCreatePayload",
+      "input": {
+        "ws": "swh",
+        "text": "sitá"
+      },
+      "valid": true,
+      "note": "NFD with a combining mark"
+    },
+    {
+      "shape": "WordformCreatePayload",
+      "input": {
+        "ws": "swh"
+      },
+      "valid": false,
+      "note": "text is required"
+    },
+    {
+      "shape": "WordformCreatePayload",
+      "input": {
+        "text": "mutu"
+      },
+      "valid": false,
+      "note": "ws is required"
+    },
+    {
+      "shape": "WordformCreatePayload",
+      "input": {
+        "ws": "swh",
+        "text": ""
+      },
+      "valid": false,
+      "note": "empty text"
+    },
+    {
+      "shape": "WordformCreatePayload",
+      "input": {
+        "ws": "swh",
+        "text": "two words"
+      },
+      "valid": false,
+      "note": "a space"
+    },
+    {
+      "shape": "WordformCreatePayload",
+      "input": {
+        "ws": "swh",
+        "text": " mutu"
+      },
+      "valid": false,
+      "note": "leading space"
+    },
+    {
+      "shape": "WordformCreatePayload",
+      "input": {
+        "ws": "swh",
+        "text": "sitá"
+      },
+      "valid": false,
+      "note": "precomposed form is not NFD"
+    },
+    {
+      "shape": "WordformCreatePayload",
+      "input": {
+        "ws": "swh",
+        "text": "mutu",
+        "extra": 1
+      },
+      "valid": false,
+      "note": "unknown member"
+    },
+    {
+      "shape": "WordformCreatePayload",
+      "input": {
+        "ws": "swh",
+        "text": 7
+      },
+      "valid": false,
+      "note": "text must be a string"
+    },
+    {
+      "shape": "WordformCreatePayload",
+      "input": {
+        "ws": "",
+        "text": "mutu"
+      },
+      "valid": false,
+      "note": "blank writing system"
+    },
+    {
+      "shape": "WordformCreatePayload",
+      "input": [],
+      "valid": false,
+      "note": "not an object"
+    }
+  ]
+}

@@ -19,8 +19,9 @@ change the classification of any LibLCM member.
 Region specifications reuse `FsFeatStruc.FeatureSpecs`, `FsFeatureSpecification.Feature` and
 `FsClosedValue.Value`; allomorph attachment reuses `MoStemAllomorph.StemName`. `MoStemName.DefaultStem`
 and `DefaultAffix` remain unsupported. Creates do not authorize deleting an owning graph.
-The wordform create projects the virtual `LangProject.Wordforms` membership of one wordform and its form through
-`analysis/langProject/wordforms`. The lexical create families additionally project virtual `LexDb.Entries`, ordered `LexEntry.Senses`
+`WfiWordform` has no owner in the model (`owner="none"` in MasterLCModel.xml), so `LangProject.Wordforms` is a virtual
+membership with no inventory row to classify. The wordform create projects, per wordform, its identity and form through
+`analysis/langProject/wordforms` (`WordformOwningSnapshots`). The lexical create families additionally project virtual `LexDb.Entries`, ordered `LexEntry.Senses`
 and unordered `LexEntry.MorphoSyntaxAnalyses` through `LexiconOwningSnapshots`.
 Closed shapes, ownership, normalization and evidence refresh are specified in the
 [Proposal contract](../docs/change-set-contract.md).

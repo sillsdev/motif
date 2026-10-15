@@ -52,6 +52,39 @@ public sealed class AffixAuthoringContractTests
         Assert.True(refused >= 8);
     }
 
+    [Fact]
+    public void WordformCreateSchemaIsClosedAndItsVectorsAgreeWithTheParser()
+    {
+        using var schema = typeof(CanonicalId).Assembly.GetManifestResourceStream(
+            "SIL.Motif.Contract.Schemas.wordform-create.schema.json");
+        Assert.NotNull(schema);
+        using var schemaDocument = JsonDocument.Parse(schema!);
+        Assert.False(schemaDocument.RootElement.GetProperty("$defs").GetProperty("WordformCreatePayload")
+            .GetProperty("additionalProperties").GetBoolean());
+        using var stream = typeof(CanonicalId).Assembly.GetManifestResourceStream(
+            "SIL.Motif.Contract.Schemas.wordform-create.vectors.json");
+        Assert.NotNull(stream);
+        using var document = JsonDocument.Parse(stream!);
+        var accepted = 0;
+        var refused = 0;
+        foreach (var vector in document.RootElement.GetProperty("vectors").EnumerateArray())
+        {
+            var input = vector.GetProperty("input");
+            if (vector.GetProperty("valid").GetBoolean())
+            {
+                _ = LangProjectWordformsCreatePayload.Parse(input);
+                accepted++;
+            }
+            else
+            {
+                Assert.ThrowsAny<Exception>(() => LangProjectWordformsCreatePayload.Parse(input));
+                refused++;
+            }
+        }
+        Assert.Equal(2, accepted);
+        Assert.Equal(10, refused);
+    }
+
     [Theory]
     [InlineData("inflectionClasses")]
     [InlineData("environments")]

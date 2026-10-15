@@ -4,8 +4,11 @@ using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Model.DryRun;
+using SIL.Motif.Model.Snapshot;
 using SIL.Motif.Runner.Apply;
 using SIL.Motif.Runner.Operations;
+using SIL.Motif.Runner.Snapshotting;
+using SIL.LCModel.Infrastructure;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.LCModel;
 using SIL.LCModel.Core.Text;
@@ -108,6 +111,110 @@ public sealed class LangProjectWordformsOperationsTests : IDisposable
         Assert.Equal(("swh", "sita"), LangProjectWordformsCreatePayload.Parse(document.RootElement));
         Assert.True("sita".IsNormalized(NormalizationForm.FormD));
     }
+
+    [Fact]
+    public void CreateWordform_RefusesAnIdentityThatAlreadyExistsAsAWordform()
+    {
+        var existing = Seed("sameid");
+
+        var failure = Assert.ThrowsAny<Exception>(() => ScratchDryRun.Of(_cache, Create(existing, "another")));
+
+        Assert.Contains("already exists", failure.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void CreateWordform_RefusesTheSameFormTwiceInOneProposal()
+    {
+        var proposal = Many(Op(CanonicalId.Mint(), new { ws = _ws, text = "dup" }),
+            Op(CanonicalId.Mint(), new { ws = _ws, text = "dup" }));
+
+        var failure = Assert.ThrowsAny<Exception>(() => ScratchDryRun.Of(_cache, proposal));
+
+        Assert.Contains("reuse that identity", failure.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void CreateWordform_RefusesPlacementAndStorageIdentityOverrides()
+    {
+        var after = new { ws = _ws, text = "plain" };
+        var placed = Many(Op(CanonicalId.Mint(), after, placement: new Placement(CanonicalId.Mint(), null)));
+        var overridden = Many(Op(CanonicalId.Mint(), after, storage: CanonicalId.Mint()));
+
+        Assert.Contains("placement", Assert.ThrowsAny<Exception>(() => ScratchDryRun.Of(_cache, placed)).Message,
+            StringComparison.Ordinal);
+        Assert.Contains("storage GUID", Assert.ThrowsAny<Exception>(() => ScratchDryRun.Of(_cache, overridden)).Message,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void CreateWordform_RefusesATargetThatIsNotTheProjectRoot()
+    {
+        var other = Seed("elsewhere");
+        var proposal = Many(Op(CanonicalId.Mint(), new { ws = _ws, text = "target" }, target: other));
+
+        var failure = Assert.ThrowsAny<Exception>(() => ScratchDryRun.Of(_cache, proposal));
+
+        Assert.Contains("not a LangProject", failure.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void CreateWordform_FormTakenUnderAnotherIdentityAfterTheDryRunChangesTheFootprintAndRollsEverythingBack()
+    {
+        var first = CanonicalId.Mint();
+        var second = CanonicalId.Mint();
+        var proposal = Many(Op(first, new { ws = _ws, text = "alpha" }), Op(second, new { ws = _ws, text = "beta" }));
+        var dryRun = ScratchDryRun.Of(_cache, proposal);
+        Seed("beta");
+        var count = Wordforms().Count;
+
+        var failure = Assert.ThrowsAny<Exception>(() => ProposalApplier.Apply(_cache, proposal, dryRun.Anchor, "tester"));
+
+        Assert.Contains("Dry Run", failure.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(count, Wordforms().Count);
+        Assert.DoesNotContain(Wordforms(), word => word.Guid == first.ToGuid());
+    }
+
+    [Fact]
+    public void WordformSnapshotProjectsIdentityAndFormAndDiffsToTheAppliedEffect()
+    {
+        var identity = CanonicalId.Mint();
+        var proposal = Create(identity, "snap");
+        var dryRun = ScratchDryRun.Of(_cache, proposal);
+        var before = WordformOwningSnapshots.Snapshot(_cache, identity);
+
+        var receipt = ProposalApplier.Apply(_cache, proposal, dryRun.Anchor, "tester");
+
+        var after = WordformOwningSnapshots.Snapshot(_cache, identity);
+        Assert.Empty(before.AlternativesFields);
+        var fields = after.AlternativesFields[SnapshotFields.LangProjectWordforms];
+        Assert.Equal(identity.Value, fields["ref"]);
+        Assert.Equal("snap", fields["form:" + _ws]);
+        var effect = Assert.Single(AnalysisFieldSnapshots.Diff(before, after));
+        Assert.Equal(SnapshotFields.LangProjectWordforms, effect.Field);
+        var actual = Assert.Single(receipt.ActualEffects);
+        Assert.Equal(actual.After["form:" + _ws], effect.After["form:" + _ws]);
+        Assert.Equal(actual.After["ref"], effect.After["ref"]);
+    }
+
+    private CanonicalId Seed(string form)
+    {
+        IWfiWordform created = null!;
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () => created = _cache.ServiceLocator
+            .GetInstance<IWfiWordformFactory>().Create(TsStringUtils.MakeString(form, _cache.DefaultVernWs)));
+        return CanonicalId.FromGuid(created.Guid);
+    }
+
+    private OperationEnvelope Op(CanonicalId identity, object after, Placement? placement = null,
+        CanonicalId? storage = null, CanonicalId? target = null)
+    {
+        using var json = JsonDocument.Parse(JsonSerializer.Serialize(after));
+        return new OperationEnvelope(CanonicalId.Mint(), LangProjectWordformsOperationKinds.Create, identity,
+            target ?? CanonicalId.FromGuid(_cache.LangProject.Guid), json.RootElement.Clone(), placement,
+            storageIdOverride: storage);
+    }
+
+    private static Proposal Many(params OperationEnvelope[] operations) => new(
+        new Dictionary<string, string> { ["analysis"] = "1.0" }, CanonicalId.Mint(), null, operations);
 
     private List<IWfiWordform> Wordforms() =>
         _cache.ServiceLocator.GetInstance<IWfiWordformRepository>().AllInstances().ToList();

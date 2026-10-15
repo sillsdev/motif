@@ -10,6 +10,7 @@ using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Model.Effects;
 using SIL.Motif.Model.Snapshot;
+using SIL.Motif.Runner.Snapshotting;
 
 namespace SIL.Motif.Runner.Operations;
 
@@ -68,7 +69,7 @@ internal sealed class CreateWordformHandler : IOperationHandler
         if (operation.Placement is not null)
             throw new InvalidOperationException($"'{Kind}': placement is not defined for wordforms.");
         var (ws, text) = LangProjectWordformsCreatePayload.Parse(after);
-        var (id, _) = TargetResolution.Resolve<ILangProject>(cache, operation, Kind);
+        var id = ResolveProject(cache, operation);
         var repository = cache.ServiceLocator.GetInstance<ICmObjectRepository>();
         if (repository.IsValidObjectId(entityId.ToGuid()))
         {
@@ -86,21 +87,29 @@ internal sealed class CreateWordformHandler : IOperationHandler
             throw new InvalidOperationException($"'{Kind}': a wordform '{text}' already exists in '{ws}' as " +
                 $"'{CanonicalId.FromGuid(existing.Guid).Value}'; reuse that identity instead of creating another.");
 
-        var before = Read(cache, entityId, ws);
+        var before = Read(cache, entityId, ws, text);
         var created = cache.ServiceLocator.GetInstance<IWfiWordformFactory>().Create(entityId.ToGuid());
         created.Form.set_String(wsHandle, form);
         touchedTargets.Add(id);
-        return new ExpectedEffect(id, SnapshotFields.LangProjectWordforms, before, Read(cache, entityId, ws));
+        return new ExpectedEffect(id, SnapshotFields.LangProjectWordforms, before, Read(cache, entityId, ws, text));
     }
 
     public ExpectedEffect ReadCurrentFootprint(LcmCache cache, OperationEnvelope operation)
     {
         var entityId = operation.EntityId ?? throw new InvalidOperationException($"'{Kind}' requires entityId.");
-        var (ws, _) = LangProjectWordformsCreatePayload.Parse(operation.After ??
+        var (ws, text) = LangProjectWordformsCreatePayload.Parse(operation.After ??
             throw new InvalidOperationException($"'{Kind}' requires after."));
-        var (id, _) = TargetResolution.Resolve<ILangProject>(cache, operation, Kind);
-        var current = Read(cache, entityId, ws);
+        var id = ResolveProject(cache, operation);
+        var current = Read(cache, entityId, ws, text);
         return new ExpectedEffect(id, SnapshotFields.LangProjectWordforms, current, current);
+    }
+
+    private static CanonicalId ResolveProject(LcmCache cache, OperationEnvelope operation)
+    {
+        var (id, project) = TargetResolution.Resolve<ILangProject>(cache, operation, Kind);
+        if (project.Guid != cache.LangProject.Guid)
+            throw new InvalidOperationException($"'{Kind}': wordforms are created only in this project.");
+        return id;
     }
 
     private static int Resolve(LcmCache cache, string ws)
@@ -110,20 +119,23 @@ internal sealed class CreateWordformHandler : IOperationHandler
             : throw new InvalidOperationException($"'{Kind}' operation: writing system tag '{ws}' is not known to this project.");
     }
 
-    private static Dictionary<string, string> Read(LcmCache cache, CanonicalId entityId, string ws)
+    private static Dictionary<string, string> Read(LcmCache cache, CanonicalId entityId, string ws, string text)
     {
         var result = new Dictionary<string, string>(StringComparer.Ordinal);
         var repository = cache.ServiceLocator.GetInstance<ICmObjectRepository>();
+        var handle = cache.WritingSystemFactory.GetWsFromStr(ws);
+        if (handle != 0 && cache.ServiceLocator.GetInstance<IWfiWordformRepository>()
+                .TryGetObject(TsStringUtils.MakeString(text, handle), out var holder) && holder.Guid != entityId.ToGuid())
+            result["formOwner:" + ws] = CanonicalId.FromGuid(holder.Guid).Value;
         if (!repository.TryGetObject(entityId.ToGuid(), out var found)) return result;
         if (found is not IWfiWordform wordform)
         {
             result["collision"] = entityId.Value;
             return result;
         }
-        result["ref"] = entityId.Value;
-        var handle = cache.WritingSystemFactory.GetWsFromStr(ws);
-        var text = handle == 0 ? null : wordform.Form.get_String(handle).Text;
-        if (!string.IsNullOrEmpty(text)) result["form:" + ws] = text.Normalize(NormalizationForm.FormD);
+        foreach (var (field, value) in WordformOwningSnapshots.Snapshot(cache, wordform)
+                     .AlternativesFields[SnapshotFields.LangProjectWordforms])
+            if (field == "ref" || field == "form:" + ws) result[field] = value;
         return result;
     }
 }
