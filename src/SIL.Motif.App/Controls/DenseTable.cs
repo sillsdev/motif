@@ -74,24 +74,104 @@ public sealed class DenseTable
     /// <summary>Gets whether this control is a secondary cell wrapper.</summary>
     public static bool GetSecondary(Control control) => control.GetValue(SecondaryProperty);
 
+    // What a width host knows of its grids, so a grid joining or resizing costs a lookup, not a subtree walk.
+    private sealed class HostState
+    {
+        public readonly HashSet<Grid> Grids = [];
+        public readonly HashSet<Control> Cells = [];
+        public readonly Dictionary<Grid, string> Schemas = [];
+        public readonly Dictionary<string, int> SchemaCounts = new(StringComparer.Ordinal);
+        public readonly Dictionary<Grid, double> Widths = [];
+        public readonly SortedDictionary<double, int> WidthCounts = [];
+        public (bool Compact, double Available)? Applied;
+    }
+
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Control, HostState> States = new();
+
+    private static readonly AttachedProperty<Control?> JoinedHostProperty =
+        AvaloniaProperty.RegisterAttached<DenseTable, Control, Control?>("JoinedHost");
+
     private static void Configure(Grid grid)
     {
         if (!grid.GetValue(ConfiguredProperty))
         {
             grid.SetValue(ConfiguredProperty, true);
-            grid.AttachedToVisualTree += (_, _) => RefreshFor(grid);
-            grid.SizeChanged += (_, _) => RefreshFor(grid);
+            grid.AttachedToVisualTree += (_, _) => Join(grid);
+            grid.DetachedFromVisualTree += (_, _) => Leave(grid);
+            grid.SizeChanged += (_, _) => OnGridSizeChanged(grid);
         }
-        if (WidthHost(grid) is { } host) Refresh(host);
+        if (WidthHost(grid) is { } host) Join(grid, host);
         else SetTracks(grid, Parse(GetColumns(grid)));
     }
 
     private static Control? WidthHost(Visual visual) => visual.GetVisualAncestors().OfType<Control>()
         .FirstOrDefault(GetIsWidthHost);
 
-    private static void RefreshFor(Visual visual)
+    private static void Join(Grid grid)
     {
-        if (WidthHost(visual) is { } host) Refresh(host);
+        if (GetColumns(grid) is not null && WidthHost(grid) is { } host) Join(grid, host);
+    }
+
+    private static void Join(Grid grid, Control host)
+    {
+        var state = States.GetOrCreateValue(host);
+        Unregister(state, grid);
+        if (GetColumns(grid) is not { } schema) return;
+        grid.SetValue(JoinedHostProperty, host);
+        state.Grids.Add(grid);
+        state.Schemas[grid] = schema;
+        state.SchemaCounts[schema] = state.SchemaCounts.GetValueOrDefault(schema) + 1;
+        if (grid.Bounds.Width > 0) SetWidth(state, grid, grid.Bounds.Width);
+        var wanted = Wanted(host, state);
+        if (state.Applied != wanted) ApplyAll(state, wanted);
+        else ApplyTo(grid, wanted);
+    }
+
+    private static void Leave(Grid grid)
+    {
+        if (grid.GetValue(JoinedHostProperty) is { } host && States.TryGetValue(host, out var state))
+            Unregister(state, grid);
+        grid.SetValue(JoinedHostProperty, null);
+    }
+
+    private static void Unregister(HostState state, Grid grid)
+    {
+        if (state.Schemas.Remove(grid, out var schema) &&
+            --state.SchemaCounts[schema] == 0) state.SchemaCounts.Remove(schema);
+        state.Grids.Remove(grid);
+        SetWidth(state, grid, 0);
+    }
+
+    private static void SetWidth(HostState state, Grid grid, double width)
+    {
+        if (state.Widths.Remove(grid, out var old) && --state.WidthCounts[old] == 0) state.WidthCounts.Remove(old);
+        if (width <= 0) return;
+        state.Widths[grid] = width;
+        state.WidthCounts[width] = state.WidthCounts.GetValueOrDefault(width) + 1;
+    }
+
+    private static void OnGridSizeChanged(Grid grid)
+    {
+        if (grid.GetValue(JoinedHostProperty) is not { } host || !States.TryGetValue(host, out var state)) return;
+        SetWidth(state, grid, grid.Bounds.Width);
+        var wanted = Wanted(host, state);
+        if (state.Applied != wanted) ApplyAll(state, wanted);
+    }
+
+    private static void JoinCell(Control cell)
+    {
+        if (!GetSecondary(cell) || WidthHost(cell) is not { } host) return;
+        var state = States.GetOrCreateValue(host);
+        cell.SetValue(JoinedHostProperty, host);
+        state.Cells.Add(cell);
+        cell.IsVisible = state.Applied is not { Compact: true };
+    }
+
+    private static void LeaveCell(Control cell)
+    {
+        if (cell.GetValue(JoinedHostProperty) is { } host && States.TryGetValue(host, out var state))
+            state.Cells.Remove(cell);
+        cell.SetValue(JoinedHostProperty, null);
     }
 
     private static GridLength[] Parse(string? schema) => schema is null ? [] :
@@ -108,42 +188,64 @@ public sealed class DenseTable
             spacing * Math.Max(0, tracks.Length - 1);
     }
 
-    private static void Refresh(Control host)
+    /// <summary>How many times a grid's tracks have been recomputed; a test reads it to prove resizing is linear.</summary>
+    internal static long GridVisits;
+
+    // The schema every grid shares: compact when the narrowest laid-out grid cannot hold the widest wide schema.
+    private static (bool Compact, double Available) Wanted(Control host, HostState state)
     {
-        var grids = host.GetVisualDescendants().OfType<Grid>()
-            .Where(grid => GetColumns(grid) is not null && ReferenceEquals(WidthHost(grid), host)).ToArray();
-        if (grids.Length == 0) return;
-        var available = grids.Where(grid => grid.Bounds.Width > 0).Select(grid => grid.Bounds.Width)
-            .Append(host.Bounds.Width).Min();
+        var available = Math.Min(host.Bounds.Width, state.WidthCounts.Count == 0 ? double.PositiveInfinity
+            : state.WidthCounts.Keys.First());
         var wideSpacing = ResourceSize(Application.Current?.FindResource("Component.DenseTable.ColumnSpacing"));
         var minimumFlexibleWidth = ResourceSize(Application.Current?.FindResource("Component.DenseTable.MinFlexibleWidth"));
-        var minimumWideWidth = Math.Max(
+        var minimumWideWidth = state.SchemaCounts.Count == 0 ? 0 : Math.Max(
             ResourceSize(Application.Current?.FindResource("Component.DenseTable.CompactThreshold")),
-            grids.Max(grid => MinimumWideWidth(Parse(GetColumns(grid)), wideSpacing, minimumFlexibleWidth)));
-        var compact = available < minimumWideWidth;
-        var spacing = compact
-            ? ResourceSize(Application.Current?.FindResource("Component.DenseTable.CompactColumnSpacing"))
-            : wideSpacing;
-        foreach (var grid in grids)
-        {
-            var wide = Parse(GetColumns(grid));
-            var narrow = Parse(GetCompactColumns(grid));
-            if (narrow.Length != 0 && narrow.Length != wide.Length)
-                throw new InvalidOperationException("Dense table wide and compact schemas must have equal column counts.");
-            var tracks = compact && narrow.Length != 0 ? narrow : wide;
-            if (tracks.Any(track => track.IsAuto))
-                throw new InvalidOperationException("Responsive dense table tracks must use fixed or star widths.");
-            grid.ColumnSpacing = spacing;
-            var fixedWidth = tracks.Where(track => track.IsAbsolute).Sum(track => track.Value);
-            var stars = tracks.Where(track => track.IsStar).Sum(track => track.Value);
-            var room = Math.Max(0, available - fixedWidth - spacing * Math.Max(0, tracks.Length - 1));
-            if (stars > 0 && !tracks.Any(track => track.IsAuto))
-                tracks = tracks.Select(track => track.IsStar ? new GridLength(room * track.Value / stars) : track).ToArray();
-            SetTracks(grid, tracks);
-        }
+            state.SchemaCounts.Keys.Max(schema => MinimumWideWidth(Parse(schema), wideSpacing, minimumFlexibleWidth)));
+        return (available < minimumWideWidth, available);
+    }
+
+    private static void ApplyAll(HostState state, (bool Compact, double Available) wanted)
+    {
+        state.Applied = wanted;
+        foreach (var grid in state.Grids) ApplyTo(grid, wanted);
+        foreach (var cell in state.Cells) cell.IsVisible = !wanted.Compact;
+    }
+
+    // Walks the subtree once, for a host that exists before its grids attach; later changes arrive per grid.
+    private static void Refresh(Control host)
+    {
+        var state = States.GetOrCreateValue(host);
+        foreach (var grid in host.GetVisualDescendants().OfType<Grid>()
+                     .Where(grid => GetColumns(grid) is not null && ReferenceEquals(WidthHost(grid), host)))
+            if (!state.Grids.Contains(grid)) Join(grid, host);
         foreach (var cell in host.GetVisualDescendants().OfType<Control>()
                      .Where(control => GetSecondary(control) && ReferenceEquals(WidthHost(control), host)))
-            cell.IsVisible = !compact;
+            if (!state.Cells.Contains(cell)) JoinCell(cell);
+        if (state.Grids.Count == 0) return;
+        ApplyAll(state, Wanted(host, state));
+    }
+
+    private static void ApplyTo(Grid grid, (bool Compact, double Available) wanted)
+    {
+        GridVisits++;
+        var compact = wanted.Compact;
+        var spacing = compact
+            ? ResourceSize(Application.Current?.FindResource("Component.DenseTable.CompactColumnSpacing"))
+            : ResourceSize(Application.Current?.FindResource("Component.DenseTable.ColumnSpacing"));
+        var wide = Parse(GetColumns(grid));
+        var narrow = Parse(GetCompactColumns(grid));
+        if (narrow.Length != 0 && narrow.Length != wide.Length)
+            throw new InvalidOperationException("Dense table wide and compact schemas must have equal column counts.");
+        var tracks = compact && narrow.Length != 0 ? narrow : wide;
+        if (tracks.Any(track => track.IsAuto))
+            throw new InvalidOperationException("Responsive dense table tracks must use fixed or star widths.");
+        grid.ColumnSpacing = spacing;
+        var fixedWidth = tracks.Where(track => track.IsAbsolute).Sum(track => track.Value);
+        var stars = tracks.Where(track => track.IsStar).Sum(track => track.Value);
+        var room = Math.Max(0, wanted.Available - fixedWidth - spacing * Math.Max(0, tracks.Length - 1));
+        if (stars > 0)
+            tracks = tracks.Select(track => track.IsStar ? new GridLength(room * track.Value / stars) : track).ToArray();
+        SetTracks(grid, tracks);
     }
 
     private static void SetTracks(Grid grid, GridLength[] tracks)
@@ -160,7 +262,13 @@ public sealed class DenseTable
     {
         ColumnsProperty.Changed.AddClassHandler<Grid>((grid, _) => Configure(grid));
         CompactColumnsProperty.Changed.AddClassHandler<Grid>((grid, _) => Configure(grid));
-        SecondaryProperty.Changed.AddClassHandler<Control>((control, _) => RefreshFor(control));
+        SecondaryProperty.Changed.AddClassHandler<Control>((control, args) =>
+        {
+            if (args.NewValue is not true) { LeaveCell(control); return; }
+            control.AttachedToVisualTree += (_, _) => JoinCell(control);
+            control.DetachedFromVisualTree += (_, _) => LeaveCell(control);
+            JoinCell(control);
+        });
         IsWidthHostProperty.Changed.AddClassHandler<Control>((host, args) =>
         {
             if (args.NewValue is true)
@@ -179,7 +287,10 @@ public sealed class DenseTable
 
     private static void OnHostSizeChanged(object? sender, SizeChangedEventArgs args)
     {
-        if (sender is Control host) Refresh(host);
+        if (sender is not Control host) return;
+        var state = States.GetOrCreateValue(host);
+        var wanted = Wanted(host, state);
+        if (state.Grids.Count > 0 && state.Applied != wanted) ApplyAll(state, wanted);
     }
 
     private static void OnHostAttached(object? sender, VisualTreeAttachmentEventArgs args)

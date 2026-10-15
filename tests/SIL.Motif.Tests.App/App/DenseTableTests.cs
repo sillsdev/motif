@@ -417,6 +417,45 @@ public sealed class DenseTableTests
         }, TimeSpan.FromSeconds(30));
     }
 
+    [Fact]
+    public void ResizingVisitsEachRealizedRowGridAFixedNumberOfTimes()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(() =>
+        {
+            const int rowCount = 200;
+            var rows = new StackPanel();
+            Grid Columns()
+            {
+                var grid = new Grid();
+                DenseTable.SetColumns(grid, "Narrow * 2* Narrow Actions");
+                DenseTable.SetCompactColumns(grid, "0 * 0 0 Actions");
+                return grid;
+            }
+            var header = Columns();
+            for (var index = 0; index < rowCount; index++) rows.Children.Add(Columns());
+            var host = new StackPanel { Children = { header, rows } };
+            DenseTable.SetIsWidthHost(host, true);
+            var window = new Window { Width = 900, Height = 400, Content = new ScrollViewer { Content = host } };
+            try
+            {
+                window.Show();
+                PageScreenshots.Settle(window);
+                foreach (var width in new double[] { 700, 500, 360, 900, 640 })
+                {
+                    DenseTable.GridVisits = 0;
+                    window.Width = width;
+                    PageScreenshots.Settle(window);
+                    Assert.True(DenseTable.GridVisits <= 2 * (rowCount + 1),
+                        $"Resizing to {width} visited {DenseTable.GridVisits} row grids for {rowCount + 1} grids.");
+                    Assert.Equal(header.ColumnDefinitions[1].ActualWidth,
+                        rows.Children.OfType<Grid>().Last().ColumnDefinitions[1].ActualWidth, 1);
+                }
+            }
+            finally { window.Close(); }
+            return Task.CompletedTask;
+        }, TimeSpan.FromSeconds(60));
+    }
+
     private sealed record TableFact(string Title, string SecondaryEvidence);
 
     [Theory]
