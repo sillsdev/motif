@@ -11,6 +11,8 @@ using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Contract.Commands;
+using SIL.Motif.Host.Analysis;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.Parser;
@@ -120,6 +122,111 @@ public sealed class ProposalDifferenceCommandsTests : IDisposable
         Assert.False(sita.Facts.CompleteComparison);
     }
 
+    [Fact]
+    public void AFormSharedByTwoWordformsIsCountedAsUnboundAndNeverGuessed()
+    {
+        using var fixture = new Fixture(_root, ambiguousMutu: true);
+
+        var produced = ProposalDifferenceCommands.Produce(fixture.ProduceRequest()).Value!;
+
+        Assert.Equal(["sita"], produced.Words.Select(word => word.Word));
+        Assert.Equal(2, produced.Summary.UnboundOccurrences);
+        Assert.Equal(2, produced.Summary.Occurrences);
+    }
+
+    [Fact]
+    public void PagingPastTheEndReturnsNoWordsAndNoNextOffset()
+    {
+        using var fixture = new Fixture(_root);
+        var id = ProposalDifferenceCommands.Produce(fixture.ProduceRequest()).Value!.Summary.DifferenceId;
+
+        var page = ProposalDifferenceCommands.Show(new ProposalDifferenceShowRequest(fixture.ProjectPath,
+            DifferenceId: id, Offset: 5)).Value!;
+
+        Assert.Empty(page.Words);
+        Assert.Equal(2, page.MatchingWords);
+        Assert.Null(page.NextOffset);
+    }
+
+    [Fact]
+    public void MalformedShowRequestsAndUnknownTextsAreRefusedWithNamedCodes()
+    {
+        using var fixture = new Fixture(_root);
+
+        Assert.Equal("difference.invalid-page", ProposalDifferenceCommands.Show(new ProposalDifferenceShowRequest(
+            fixture.ProjectPath, ProposalId: fixture.ProposalId, Limit: 0)).Refusal!.Code);
+        Assert.Equal("difference.invalid-state", ProposalDifferenceCommands.Show(new ProposalDifferenceShowRequest(
+            fixture.ProjectPath, ProposalId: fixture.ProposalId, BeforeState: "nonsense")).Refusal!.Code);
+        Assert.Equal("difference.text-not-found", ProposalDifferenceCommands.Produce(new ProposalDifferenceProduceRequest(
+            fixture.ProjectPath, fixture.ProposalId, Guid.NewGuid().ToString("D"))).Refusal!.Code);
+        Assert.Equal("difference.invalid-text", ProposalDifferenceCommands.Produce(new ProposalDifferenceProduceRequest(
+            fixture.ProjectPath, fixture.ProposalId, "not-a-guid")).Refusal!.Code);
+    }
+
+    [Fact]
+    public void ASavedWordWhoseBytesChangedIsRefusedOnRead()
+    {
+        using var fixture = new Fixture(_root);
+        var id = ProposalDifferenceCommands.Produce(fixture.ProduceRequest()).Value!.Summary.DifferenceId;
+        fixture.Sql("UPDATE ProposalDifferenceCases SET FactsJson = REPLACE(FactsJson, 'complete', 'incomplete') WHERE Word = 'sita';");
+
+        var outcome = ProposalDifferenceCommands.Show(new ProposalDifferenceShowRequest(fixture.ProjectPath, DifferenceId: id));
+
+        Assert.Equal(FailureReason.StoreInconsistent, outcome.Refusal!.Reason);
+    }
+
+    [Fact]
+    public void AFailedPublishLeavesNoRowsBehind()
+    {
+        using var fixture = new Fixture(_root);
+        var summary = ProposalDifferenceCommands.Produce(fixture.ProduceRequest()).Value!.Summary with
+        { DifferenceId = "difference/rollback" };
+        var facts = HumanAgreementDifferenceClassifier.Compare(null, null,
+            HumanAgreementClassifier.Compile([], CapturedSpellingStatus.Undecided));
+        var twice = new NewProposalDifferenceWord("same", facts, []);
+
+        Assert.ThrowsAny<Exception>(() => new ProposalDifferenceRepository(fixture.Database)
+            .Publish(new NewProposalDifference(summary, [twice, twice])));
+
+        Assert.Equal(0, fixture.Count("ProposalDifferences", "difference/rollback"));
+        Assert.Equal(0, fixture.Count("ProposalDifferenceCases", "difference/rollback"));
+    }
+
+    [Fact]
+    public void DeletingAProposalRemovesItsDifferencesAndEveryChildRow()
+    {
+        using var fixture = new Fixture(_root);
+        var other = CanonicalId.Mint("proposal/");
+        var proposals = new ProposalRepository(fixture.Database);
+        proposals.SaveRevision(new ProposalRevisionRecord(other, "sha256:" + new string('4', 64), "{}", "rejected", null, null, null));
+        proposals.SetStatus(other, "rejected", null);
+        var produced = ProposalDifferenceCommands.Produce(fixture.ProduceRequest()).Value!;
+        var summary = produced.Summary with { DifferenceId = "difference/doomed", ProposalId = other.Value };
+        var facts = HumanAgreementDifferenceClassifier.Compare(null, null,
+            HumanAgreementClassifier.Compile([], CapturedSpellingStatus.Undecided));
+        new ProposalDifferenceRepository(fixture.Database).Publish(new NewProposalDifference(summary,
+            [new NewProposalDifferenceWord("w", facts, [new ProposalDifferenceOccurrence("t", "s", 0, 1)])]));
+        Assert.Equal(1, fixture.Count("ProposalDifferenceOccurrences", "difference/doomed"));
+
+        proposals.DeleteArchived(other);
+
+        foreach (var table in new[] { "ProposalDifferences", "ProposalDifferenceCases", "ProposalDifferenceOccurrences" })
+            Assert.Equal(0, fixture.Count(table, "difference/doomed"));
+        Assert.Equal(2, fixture.Count("ProposalDifferenceCases", produced.Summary.DifferenceId));
+    }
+
+    [Fact]
+    public void ACandidateAnalysisInTheCaptureIsReadAsAnUnknownReadingAndNotRefused()
+    {
+        using var fixture = new Fixture(_root);
+
+        var sita = Assert.Single(ProposalDifferenceCommands.Produce(fixture.ProduceRequest()).Value!.Words,
+            word => word.Word == "sita");
+
+        Assert.Equal(HumanAgreementApprovalState.NoApprovedMatch, sita.Facts.Before.ApprovedState);
+        Assert.Contains(sita.Facts.Before.MatchedUnknownAnalysisIds, id => id.Length > 0);
+    }
+
     public void Dispose()
     {
         try { Directory.Delete(_root, recursive: true); }
@@ -131,10 +238,12 @@ public sealed class ProposalDifferenceCommandsTests : IDisposable
         private readonly string _dir;
         private readonly string _tokenJson;
         private readonly bool _beforeOmitsSita;
+        private readonly bool _ambiguousMutu;
 
-        public Fixture(string testRoot, bool beforeOmitsSita = false)
+        public Fixture(string testRoot, bool beforeOmitsSita = false, bool ambiguousMutu = false)
         {
             _beforeOmitsSita = beforeOmitsSita;
+            _ambiguousMutu = ambiguousMutu;
             _dir = System.IO.Path.Combine(testRoot, Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(_dir);
             ProjectPath = System.IO.Path.Combine(_dir, "project.fwdata");
@@ -169,13 +278,22 @@ public sealed class ProposalDifferenceCommandsTests : IDisposable
             var sitaId = Guid.Parse("33333333-3333-3333-3333-333333333333");
             var mutuId = Guid.Parse("44444444-4444-4444-4444-444444444444");
             var analysisId = Guid.Parse("55555555-5555-5555-5555-555555555555");
+            var otherMutuId = Guid.Parse("77777777-7777-7777-7777-777777777777");
+            var candidateId = Guid.Parse("66666666-6666-6666-6666-666666666666");
+            var candidate = new TextWordsProjectedAnalysis("k2", [])
+            {
+                AnalysisId = candidateId, Opinion = "unknown",
+                Identity = new ApprovedMorphology([new ApprovedMorph(FormB, Msa, null, ["sita"])])
+                { SourceAnalysisId = CanonicalId.FromGuid(candidateId).Value },
+            };
             var identity = new ApprovedMorphology([new ApprovedMorph(FormA, Msa, null, ["sita"])])
             { SourceAnalysisId = CanonicalId.FromGuid(analysisId).Value };
             TextWordsProjectedToken Token(string form, Guid wordform, int index) => new(form,
                 [new WritingSystemText(form, "swh")], wordform, "analysed", null, null, null, null, index, null);
             var text = new TextWordsProjectedText(TextId, "Hadithi",
                 [new TextWordsProjectedLine(1, "sita mutu sita .", [Token("sita", sitaId, 0), Token("mutu", mutuId, 1),
-                    Token("sita", sitaId, 2), new TextWordsProjectedToken(".", [new WritingSystemText(".", "swh")], null,
+                    Token("sita", sitaId, 2), .. _ambiguousMutu ? [Token("mutu", otherMutuId, 4)] : Array.Empty<TextWordsProjectedToken>(),
+                    new TextWordsProjectedToken(".", [new WritingSystemText(".", "swh")], null,
                         null, null, null, null, null, 3, null)], paragraph, segment, true)], []);
             var approved = new TextWordsProjectedAnalysis("k1", [])
             { AnalysisId = analysisId, Opinion = ReadingGrade.Approved, Identity = identity };
@@ -184,12 +302,14 @@ public sealed class ProposalDifferenceCommandsTests : IDisposable
                 DateTimeOffset.Parse("2026-09-24T10:30:00Z"), DateTimeOffset.Parse(capturedUtc),
                 new TextWordsProjection([text],
                 [
-                    new TextWordsProjectedWordform(sitaId, [approved], [], 0, false, [approved]),
+                    new TextWordsProjectedWordform(sitaId, [approved], [], 1, false, [approved, candidate]),
                     new TextWordsProjectedWordform(mutuId, [], [], 0, true, []),
+                    .. _ambiguousMutu ? [new TextWordsProjectedWordform(otherMutuId, [], [], 0, false, [])]
+                        : Array.Empty<TextWordsProjectedWordform>(),
                 ]),
-                new ProjectSummarySnapshot(2, 3, 2, 0, 0, ["sita", "mutu"],
-                    [new ProjectTextSummary(TextId, "Hadithi", 2, 3,
-                        new Dictionary<string, int>(StringComparer.Ordinal) { ["sita"] = 2, ["mutu"] = 1 })]));
+                new ProjectSummarySnapshot(2, _ambiguousMutu ? 4 : 3, 2, 0, 0, ["sita", "mutu"],
+                    [new ProjectTextSummary(TextId, "Hadithi", 2, _ambiguousMutu ? 4 : 3,
+                        new Dictionary<string, int>(StringComparer.Ordinal) { ["sita"] = 2, ["mutu"] = _ambiguousMutu ? 2 : 1 })]));
         }
 
         private void Seed()
@@ -262,6 +382,23 @@ public sealed class ProposalDifferenceCommandsTests : IDisposable
                 projectionVersion = "projection-v1", dryRunAtUtc = "2026-09-24T11:00:00Z",
             },
         }, MotifJson.CreateOptions());
+
+        public void Sql(string sql)
+        {
+            using var connection = Database.OpenConnection();
+            using var command = connection.CreateCommand();
+            command.CommandText = sql;
+            command.ExecuteNonQuery();
+        }
+
+        public int Count(string table, string differenceId)
+        {
+            using var connection = Database.OpenConnection();
+            using var command = connection.CreateCommand();
+            command.CommandText = $"SELECT COUNT(*) FROM {table} WHERE DifferenceId = $id;";
+            command.Parameters.AddWithValue("$id", differenceId);
+            return Convert.ToInt32(command.ExecuteScalar());
+        }
 
         public void Dispose() => Database.Dispose();
     }

@@ -82,11 +82,16 @@ public static class ProposalDifferenceCommands
                     "The current Baseline has no Text with that id. Use an id that `motif texts list` shows.");
             var read = baselines.ReadCurrentSelectionIndexes(key, [textId])
                 ?? throw new InvalidDataException("The Baseline vanished during the read.");
+            if (!read.Baseline.Token.HasSameSemanticIdentity(trial.Baseline))
+                return Refuse("difference.baseline-changed", FailureReason.Refused,
+                    "The project changed after this Trial ran, so its recorded decisions may differ. Trial the Proposal again.");
             var text = read.Texts.Single();
 
-            var built = Build(text, before.Words, after.Words);
+            Built built;
+            try { built = Build(text, before.Words, after.Words); }
+            catch (DifferenceRefusalException refusal) { return CommandOutcome<ProposalDifferenceResponse>.Refused(refusal.Refusal); }
             var summary = Summarize(built, trial.JobId, request.ProposalId, before.AssessmentId, after.AssessmentId,
-                text, JsonSerializer.Serialize(evidence.Baseline.Token, MotifJson.CreateOptions()));
+                text, JsonSerializer.Serialize(read.Baseline.Token, MotifJson.CreateOptions()));
             new ProposalDifferenceRepository(database).Publish(new NewProposalDifference(summary, built.Words));
             return Show(database, summary, new ProposalDifferenceFilter(), 0, 25);
         });
@@ -156,13 +161,31 @@ public static class ProposalDifferenceCommands
 
     private sealed record Built(IReadOnlyList<NewProposalDifferenceWord> Words, int UnboundOccurrences);
 
+    private static Dictionary<string, AssessedWord> OnePerForm(IReadOnlyList<AssessedWord> words, string side)
+    {
+        var byForm = new Dictionary<string, AssessedWord>(StringComparer.Ordinal);
+        foreach (var group in words.GroupBy(word => Nfd(word.Word)))
+        {
+            var distinct = group.Select(word => JsonSerializer.Serialize(word.Morphology, MotifJson.CreateOptions()))
+                .Distinct(StringComparer.Ordinal).Count();
+            if (distinct > 1)
+                throw new DifferenceRefusalException(new Refusal("difference.duplicate-parse-rows", FailureReason.StoreInconsistent,
+                    $"The {side} Assessment holds several different parses for '{group.Key}', so no one of them can be compared."));
+            byForm[group.Key] = group.First();
+        }
+        return byForm;
+    }
+
+    private sealed class DifferenceRefusalException(Refusal refusal) : Exception(refusal.Message)
+    {
+        public Refusal Refusal { get; } = refusal;
+    }
+
     private static Built Build(SIL.Motif.Host.Texts.BaselineTextReadIndex text, IReadOnlyList<AssessedWord> beforeWords,
         IReadOnlyList<AssessedWord> afterWords)
     {
-        var before = beforeWords.GroupBy(word => Nfd(word.Word)).ToDictionary(group => group.Key, group => group.First(),
-            StringComparer.Ordinal);
-        var after = afterWords.GroupBy(word => Nfd(word.Word)).ToDictionary(group => group.Key, group => group.First(),
-            StringComparer.Ordinal);
+        var before = OnePerForm(beforeWords, "before");
+        var after = OnePerForm(afterWords, "after");
         var wordforms = text.Wordforms.ToDictionary(wordform => wordform.WordformId);
         var byForm = new Dictionary<string, List<(Guid Wordform, ProposalDifferenceOccurrence Where)>>(StringComparer.Ordinal);
         var unbound = 0;
@@ -185,9 +208,9 @@ public static class ProposalDifferenceCommands
             if (ids.Length != 1) { unbound += tokens.Count; continue; }
             var wordform = wordforms[ids[0]];
             var decisions = wordform.Analyses.Select(analysis => new HumanAnalysisDecision(
-                CanonicalId.FromGuid(analysis.AnalysisId).Value, analysis.Opinion, analysis.Identity)).ToArray();
+                CanonicalId.FromGuid(analysis.AnalysisId).Value, GradeOf(analysis.Opinion), analysis.Identity)).ToArray();
             var compiled = HumanAgreementClassifier.Compile(decisions, wordform.IncorrectSpelling
-                ? CapturedSpellingStatus.Incorrect : CapturedSpellingStatus.Unavailable);
+                ? CapturedSpellingStatus.Incorrect : CapturedSpellingStatus.Undecided);
             var facts = HumanAgreementDifferenceClassifier.Compare(before.GetValueOrDefault(form)?.Morphology,
                 after.GetValueOrDefault(form)?.Morphology, compiled);
             words.Add(new NewProposalDifferenceWord(form, facts, tokens.Select(token => token.Where).ToArray()));
@@ -215,6 +238,15 @@ public static class ProposalDifferenceCommands
             built.Words.Count(word => word.Facts.CouldBeBad), built.Words.Count(word => word.Facts.Improved), buckets,
             matrix, DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture));
     }
+
+    private static string GradeOf(string opinion) => opinion switch
+    {
+        "approved" => ReadingGrade.Approved,
+        "disapproved" => ReadingGrade.Disapproved,
+        "unknown" => ReadingGrade.Candidate,
+        _ => throw new DifferenceRefusalException(new Refusal("difference.unexpected-opinion", FailureReason.StoreInconsistent,
+            $"The captured decisions hold an opinion '{opinion}' that is not approved, disapproved or unknown. Capture the Baseline again.")),
+    };
 
     private static string Nfd(string value) => value.Trim().Normalize(NormalizationForm.FormD);
 }

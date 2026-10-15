@@ -164,6 +164,25 @@ public sealed class SchemaVersionGateTests : IDisposable
     }
 
     [Fact]
+    public void AStoreStampedWithSchemaFortyFiveIsRefusedByTheProposalDifferenceGeneration()
+    {
+        Assert.Equal(46, MotifSchema.CurrentSchema);
+        var path = Path.Combine(_root, "schema45.motif.db");
+        var locator = new ProjectLocator(Path.Combine(_root, "schema45.fwdata"), "schema45");
+        using (MotifDatabase.OpenOwned(path, locator, MotifSchema.CurrentSchema, new Version(1, 0))) { }
+        using (var connection = new SqliteConnection($"Data Source={path};Pooling=False"))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "PRAGMA user_version = 45;";
+            command.ExecuteNonQuery();
+        }
+
+        Assert.Throws<MotifStoreVersionException>(() =>
+            MotifDatabase.OpenOwned(path, locator, MotifSchema.CurrentSchema, new Version(1, 0)));
+    }
+
+    [Fact]
     public void ABaselinesTableWithoutSourceLastWriteUtcIsRefusedRatherThanBackfilled()
     {
         var path = Path.Combine(_root, "no-source-last-write.motif.db");

@@ -27,3 +27,14 @@ Existing human decisions enable the first useful slice on one Selection without 
 A live-Opinion read on every page would reinterpret historical results. A spelling-only join would transfer decisions between different Wordforms, while a separate external annotation store contradicts the owner's decision and ADR 0056 ownership.
 
 The first acceptance slice compares one explicit Trial over a small frozen Selection through a shared Commands query, CLI and MCP. Classifier groundwork precedes it; later slices generalize matrices/grouping and supply the data contract to the window program. Published pages retain their frozen occurrences, human decisions and native case detail independently of current indexes or named Selection rows. Missing sample-authoring families remain required work; research's actual sita and deliberately bad mutu acceptance must pass through CLI and MCP before the effort is complete. Thresholds, full spelling/occurrence capture, persistence/retention integration and domain expansion for Text/Segment authoring remain director decisions.
+
+## First stored slice
+
+The first stored result is made on request and read back from saved tables, with no background job. It compares one completed Trial over one Text.
+
+- **Standalone tables.** The result lives in four tables of store schema 46 (`ProposalDifferences`, `ProposalDifferenceCases`, `ProposalDifferenceOccurrences`, `ProposalDifferenceBuckets`) rather than as an Assessment row with a stored scope. Facts are copied by value, so a result outlives the Trial and Assessments it was made from; their ids are provenance, not references. Deleting a Proposal deletes its results. Reports cannot cite a result yet; that arrives only if a Report needs to.
+- **Synchronous production.** One command reads the Trial's two ParseTime Assessments and the current Baseline's captured decisions and writes the whole result in one transaction, so nothing partial is ever readable and no claim fencing applies. A Job wrapper replaces this when large-corpus production needs it.
+- **Developer surface for now.** `difference produce` and `difference show` are Developer commands in this slice; they become AdvancedAi and Read, with release-pathway and Help updates, when the MCP tool lands.
+- **Frozen decisions are checked twice.** The command refuses `difference.baseline-changed` when the Baseline that supplied the decisions is not the one the Trial measured, checked on the same read that supplies them.
+- **Spelling.** The capture records only whether a wordform is marked incorrect, so every other wordform is read as undecided; Correct is not distinguished from Undecided until the capture says so.
+- **Unmatched tokens.** A token binds to a result word only when exactly one of its forms was measured and exactly one Wordform shares that form; every other token is counted as unbound and never guessed.
