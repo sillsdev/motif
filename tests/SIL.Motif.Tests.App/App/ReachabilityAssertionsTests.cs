@@ -415,6 +415,73 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
     }
 
     [Fact]
+    public void TextCrowdingADrawnEdgeIsReportedAndTextWithClearanceOrItsOwnPaddingIsNot()
+    {
+        avalonia.Invoke(() =>
+        {
+            TextBlock Label(string name, string value = "Label") => new() { Name = name, Text = value, FontSize = 14 };
+            Border Box(Control child, double inset, string? name = null) => new()
+            {
+                Name = name, Width = 160, Height = 50, BorderBrush = Brushes.Gray, BorderThickness = new Thickness(1),
+                Child = new Border { Padding = new Thickness(inset, 12, 0, 12), Child = child },
+            };
+
+            var flush = Label("Flush");
+            var near = Label("Near");
+            var clear = Label("Clear");
+            var panel = Label("Panel");
+            var inButton = Label("InButton");
+            var cell = Label("Cell");
+            var collapsed = Label("Collapsed");
+            collapsed.IsVisible = false;
+            var grid = new Grid { Width = 160, Height = 30, Children = { cell } };
+            SIL.Motif.App.Controls.DenseTable.SetColumns(grid, "*");
+            var window = new Window
+            {
+                Width = 400, Height = 500,
+                Content = new StackPanel
+                {
+                    Children =
+                    {
+                        Box(flush, 0), Box(near, 2), Box(clear, 8), Box(panel, 0, "SidePanelBorder"),
+                        new Border { Name = "PlainBox", BorderBrush = Brushes.Gray, BorderThickness = new Thickness(1),
+                            Child = new Button { Content = inButton } },
+                        grid, Box(collapsed, 0),
+                    },
+                },
+            };
+            try
+            {
+                window.Show();
+                PageScreenshots.Settle(window);
+                var context = new LayoutFindingContext("synthetic", "thin", 100, "light");
+                IReadOnlyList<LayoutFinding> Edges(TextBlock text) =>
+                    ReachabilityAssertions.EdgeCrowdingFindings(text, context, window);
+
+                Assert.Contains(Edges(flush), finding => finding.Detail.Contains("left edge"));
+                Assert.Equal(LayoutCheckNames.EdgeCrowding, Edges(flush)[0].Check);
+                Assert.Contains(Edges(near), finding => finding.Detail.Contains("left edge"));
+                Assert.DoesNotContain(Edges(clear), finding => finding.Detail.Contains("left edge"));
+                Assert.Contains(Edges(panel), finding => finding.Detail.Contains("left edge"));
+                Assert.DoesNotContain(Edges(clear), finding => finding.Detail.Contains("top edge"));
+                Assert.Empty(Edges(inButton));
+                Assert.Empty(Edges(cell));
+                Assert.Empty(Edges(collapsed));
+
+                var reportOnly = new List<LayoutFinding>();
+                var inspected = ReachabilityAssertions.Inspect(window, context, reportOnly: reportOnly);
+                Assert.Equal(ReachabilityAssertions.EdgeCrowdingFailsTheRun,
+                    inspected.Any(item => item.Check == LayoutCheckNames.EdgeCrowding));
+                Assert.Equal(!ReachabilityAssertions.EdgeCrowdingFailsTheRun,
+                    reportOnly.Any(item => item.Control.Name == "Flush"));
+                Assert.True(Application.Current!.TryGetResource("Intent.Space.Related", null, out var token));
+                Assert.Equal(ReachabilityAssertions.EdgeClearance, Convert.ToDouble(token));
+            }
+            finally { window.Close(); }
+        });
+    }
+
+    [Fact]
     public void AnOpenFlyoutOutsideTheWindowIsReportedWithAStableCheckName()
     {
         avalonia.Invoke(() =>

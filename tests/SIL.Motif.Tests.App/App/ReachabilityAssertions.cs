@@ -15,6 +15,7 @@ using Avalonia.Media;
 using Avalonia.Media.TextFormatting;
 using Avalonia.VisualTree;
 using SIL.Motif.App.Views;
+using DenseTable = SIL.Motif.App.Controls.DenseTable;
 using static SIL.Motif.Tests.App.LayoutAssertions;
 
 namespace SIL.Motif.Tests.App;
@@ -29,6 +30,19 @@ internal static class ReachabilityAssertions
     /// mid-word breaks are fixed.
     /// </summary>
     internal static readonly bool MidWordWrapFailsTheRun = false;
+
+    /// <summary>
+    /// Whether an <c>edge-crowding</c> finding fails the run that sees it. While false, the engine logs each one to
+    /// the list a caller passes as <c>reportOnly</c> instead of returning it. Flip it to true once the known
+    /// crowded edges are fixed.
+    /// </summary>
+    internal static readonly bool EdgeCrowdingFailsTheRun = false;
+
+    /// <summary>The smallest gap between painted text and a drawn edge, equal to the Intent.Space.Related spacing.</summary>
+    internal const double EdgeClearance = 6;
+
+    // A line box already carries leading above and below the glyphs, so top and bottom need a third of it.
+    private const double VerticalClearanceShare = 1.0 / 3;
 
     internal static IReadOnlyList<LayoutFinding> Inspect(Visual root, LayoutFindingContext context,
         LayoutTextMeasurements? measurements = null, List<LayoutFinding>? reportOnly = null) =>
@@ -109,6 +123,7 @@ internal static class ReachabilityAssertions
             }
 
             foreach (var text in texts) findings.AddRange(MidWordWrapFindings(text, context, topLevel));
+            foreach (var text in texts) findings.AddRange(EdgeCrowdingFindings(text, context, topLevel));
 
             foreach (var text in texts.Where(_ => includeDetailedTextChecks))
             {
@@ -125,6 +140,12 @@ internal static class ReachabilityAssertions
             reportOnly?.AddRange(CollapseDuplicates(findings.Where(finding =>
                 finding.Check == LayoutCheckNames.MidWordWrap)));
             findings.RemoveAll(finding => finding.Check == LayoutCheckNames.MidWordWrap);
+        }
+        if (!EdgeCrowdingFailsTheRun)
+        {
+            reportOnly?.AddRange(CollapseDuplicates(findings.Where(finding =>
+                finding.Check == LayoutCheckNames.EdgeCrowding)));
+            findings.RemoveAll(finding => finding.Check == LayoutCheckNames.EdgeCrowding);
         }
         return CollapseDuplicates(findings);
     }
@@ -381,6 +402,102 @@ internal static class ReachabilityAssertions
         }
 
         static string Truncate(string value) => value.Length <= 60 ? value : value[..60] + "...";
+    }
+
+    private static readonly string[] FramePaneNames =
+        ["SidePanelBorder", "InspectorPane", "WorkingPageHost", "TopBar", "StatusBar"];
+
+    /// <summary>Flags text whose painted bounds sit closer than the edge clearance to a drawn edge of its panel.</summary>
+    internal static IReadOnlyList<LayoutFinding> EdgeCrowdingFindings(
+        TextBlock text, LayoutFindingContext context, Visual layoutRoot, double clearance = EdgeClearance)
+    {
+        if (!IsRenderedText(text) || PaintedBounds(text) is not { Width: > 0, Height: > 0 }) return [];
+        var ancestors = text.GetVisualAncestors().OfType<Control>().ToArray();
+        // These templates pad their own content, and a table cell is flush by design.
+        if (ancestors.Any(ancestor => ancestor is Button or ToggleButton or ComboBox or TextBox or CheckBox
+                or RadioButton or MenuItem or TabItem or ListBoxItem or ComboBoxItem ||
+                ancestor is Grid grid && !string.IsNullOrEmpty(DenseTable.GetColumns(grid)))) return [];
+
+        var ink = InkBounds(text, layoutRoot);
+        var findings = new List<LayoutFinding>();
+        var found = new HashSet<string>();
+        for (var index = 0; index < ancestors.Length && found.Count < 4; index++)
+        {
+            var ancestor = ancestors[index];
+            var edges = DrawnEdges(ancestor, ancestors[(index + 1)..]);
+            if (edges.Length == 0) continue;
+            var box = BoundsIn(ancestor, layoutRoot);
+            var thickness = ancestor is Border border ? border.BorderThickness : default;
+            foreach (var edge in edges.Where(found.Add))
+            {
+                var distance = edge switch
+                {
+                    "left" => ink.Left - (box.Left + thickness.Left),
+                    "right" => box.Right - thickness.Right - ink.Right,
+                    "top" => ink.Top - (box.Top + thickness.Top),
+                    _ => box.Bottom - thickness.Bottom - ink.Bottom,
+                };
+                var needed = edge is "left" or "right" ? clearance : clearance * VerticalClearanceShare;
+                if (distance < -Tolerance || distance >= needed - Tolerance) continue;
+                findings.Add(new LayoutFinding(context.Scene, context.Size, context.Zoom, context.Theme,
+                    LayoutCheckNames.EdgeCrowding, Describe(text), LayoutBounds.From(ink),
+                    $"{ControlIdentity(text)}:{edge}:{ControlIdentity(ancestor)}",
+                    $"Text '{text.Text}' is {Math.Max(0, distance):0.#} px from the {edge} edge of " +
+                    $"{ControlIdentity(ancestor)}; the clearance is {needed:0.#} px.", Describe(ancestor)));
+            }
+        }
+
+        return findings;
+    }
+
+    // The sides on which this ancestor draws something the eye reads as an edge.
+    private static string[] DrawnEdges(Control ancestor, IReadOnlyList<Control> outer)
+    {
+        if (ancestor.Name is { } name && FramePaneNames.Contains(name)) return ["left", "right", "top", "bottom"];
+        var sides = new List<string>();
+        if (ancestor is Border { BorderBrush: not null } border)
+        {
+            var thickness = border.BorderThickness;
+            if (thickness.Left > 0) sides.Add("left");
+            if (thickness.Right > 0) sides.Add("right");
+            if (thickness.Top > 0) sides.Add("top");
+            if (thickness.Bottom > 0) sides.Add("bottom");
+        }
+
+        if (sides.Count == 0 && SolidColor(ancestor) is { } own &&
+            (outer.Select(SolidColor).FirstOrDefault(color => color is not null) is not { } parent || parent != own))
+            return ["left", "right", "top", "bottom"];
+        return [.. sides];
+    }
+
+    private static Color? SolidColor(Control control)
+    {
+        var brush = control switch
+        {
+            Border border => border.Background,
+            Panel panel => panel.Background,
+            TemplatedControl templated => templated.Background,
+            _ => null,
+        };
+        return brush is ISolidColorBrush { Color.A: > 0 } solid ? solid.Color : null;
+    }
+
+    // Ink spans the arranged text, inset by its padding and placed by its alignment within the box.
+    private static Rect InkBounds(TextBlock text, Visual layoutRoot)
+    {
+        var box = BoundsIn(text, layoutRoot);
+        var layout = text.TextLayout;
+        var contentWidth = Math.Max(0, box.Width - text.Padding.Left - text.Padding.Right);
+        var inkWidth = Math.Min(contentWidth, layout.WidthIncludingTrailingWhitespace);
+        var offset = text.TextAlignment switch
+        {
+            TextAlignment.Center => (contentWidth - inkWidth) / 2,
+            TextAlignment.Right or TextAlignment.End => contentWidth - inkWidth,
+            _ => 0,
+        };
+        var left = box.Left + text.Padding.Left + offset;
+        var height = Math.Min(Math.Max(0, box.Height - text.Padding.Top - text.Padding.Bottom), layout.Height);
+        return new Rect(left, box.Top + text.Padding.Top, inkWidth, height);
     }
 
     internal static IReadOnlyList<LayoutFinding> TextBoxOverflowFindings(

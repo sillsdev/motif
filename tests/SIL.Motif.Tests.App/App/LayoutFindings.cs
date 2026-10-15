@@ -66,6 +66,7 @@ internal static class LayoutCheckNames
     internal const string NavItemHidden = "nav-item-hidden";
     internal const string PageHorizontalScroll = "page-horizontal-scroll";
     internal const string MidWordWrap = "mid-word-wrap";
+    internal const string EdgeCrowding = "edge-crowding";
 
     /// <summary>The checks that <c>InspectReachabilityAndTitleBar</c> can report.</summary>
     internal static IReadOnlySet<string> ReachabilityAndTitleBar { get; } = new HashSet<string>(StringComparer.Ordinal)
