@@ -22,6 +22,19 @@ public sealed class ProposalDifferenceToolTests
     }
 
     [Fact]
+    public void EveryEnumeratedChoiceOfTheReadToolIsListedOnce()
+    {
+        var tool = MotifMcpServer.Expose(ToolProfile.Builtin).Single(tool => tool.Name == "motif_proposal_difference");
+        var properties = (System.Text.Json.Nodes.JsonObject)tool.Tool.InputSchema["properties"]!;
+
+        foreach (var name in new[] { "bucket", "before_state", "after_state" })
+        {
+            var choices = properties[name]!["enum"]!.AsArray().Select(node => node!.GetValue<string>()).ToArray();
+            Assert.Equal(choices.Length, choices.Distinct(StringComparer.Ordinal).Count());
+        }
+    }
+
+    [Fact]
     public async Task ReadingBeforeAnyComparisonIsSavedNamesTheProduceStep()
     {
         var directory = Path.Combine(Path.GetTempPath(), "motif-proposal-difference-" + Guid.NewGuid().ToString("N"));

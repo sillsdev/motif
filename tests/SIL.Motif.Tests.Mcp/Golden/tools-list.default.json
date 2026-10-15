@@ -3742,8 +3742,7 @@
             "incomplete",
             "unavailable",
             "not-measured",
-            "conflicting-decisions",
-            "unavailable"
+            "conflicting-decisions"
           ]
         },
         "after_state": {
@@ -3758,8 +3757,7 @@
             "incomplete",
             "unavailable",
             "not-measured",
-            "conflicting-decisions",
-            "unavailable"
+            "conflicting-decisions"
           ]
         },
         "offset": {

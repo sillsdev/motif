@@ -944,8 +944,8 @@ internal static class AgentTools
     private static string[] ApprovalStates =>
     [
         .. Enum.GetValues<SIL.Motif.Contract.Responses.HumanAgreementApprovalState>()
-            .Select(SIL.Motif.Worker.Store.ProposalDifferenceRepository.ApprovalStateName),
-        "unavailable",
+            .Select(SIL.Motif.Worker.Store.ProposalDifferenceRepository.ApprovalStateName)
+            .Append("unavailable").Distinct(StringComparer.Ordinal),
     ];
 
     private static JsonObject RuleComposerSchema()
