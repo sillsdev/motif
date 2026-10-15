@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Automation;
 using Avalonia.Interactivity;
+using Avalonia.LogicalTree;
 using Avalonia.Markup.Xaml;
 
 namespace SIL.Motif.App.Views.Shell;
@@ -88,9 +89,13 @@ public sealed partial class WorkspaceLayoutHost : UserControl
     {
         var footerCap = (double)this.FindResource("Component.Shell.FooterMaxHeight")!;
         var pageMinHeight = (double)this.FindResource("Component.Shell.WorkingPageMinHeight")!;
-        // The notice above the page and the footer below it split what the page's minimum height leaves.
+        // Fixed bands (the reveal row, the project notice band) come off first; the notice and footer split the rest.
+        var paneHeader = (double)this.FindResource("Component.Shell.PaneHeaderHeight")!;
+        var fixedBands = (Part<Button>("SidePanelRevealButton").IsVisible ? paneHeader : 0) +
+            (Page is Control page && page.GetLogicalDescendants().OfType<Border>().Any(border =>
+                border.Name == "NoticeBand" && border.IsVisible) ? paneHeader : 0);
         var bandBudget = double.IsInfinity(availableSize.Height) ? double.PositiveInfinity
-            : Math.Max(0, (availableSize.Height - pageMinHeight) / 2);
+            : Math.Max(0, (availableSize.Height - pageMinHeight - fixedBands) / 2);
         SetValue(BandBudgetProperty, bandBudget);
         var footerBudget = Math.Min(footerCap, bandBudget);
         Part<ScrollViewer>("InspectorFooterViewport").MaxHeight = footerBudget;

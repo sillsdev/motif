@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.VisualTree;
+using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views.Shell;
 using Xunit;
@@ -9,8 +10,10 @@ namespace SIL.Motif.Tests.App;
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class FrameBandsTests
 {
-    [Fact]
-    public void ThePageKeepsItsMinimumHeightBesideTheNoticeAndTheApplyFooterAtTheSmallestWindowAndZoom()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ThePageKeepsItsMinimumHeightBesideTheNoticeAndTheApplyFooterAtTheSmallestWindowAndZoom(bool withProjectNotice)
     {
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {
@@ -20,6 +23,13 @@ public sealed class FrameBandsTests
                 window.Show();
                 workspace.CurrentPage = WorkspacePage.Review;
                 LayoutInvariantFixtures.Apply(window, new LayoutCell(640, 600, 150));
+                if (withProjectNotice)
+                {
+                    workspace.Context.TextStyles.MissingFontNotices.Add(
+                        new WritingSystemFontNotice("x-test", "The font for this writing system is not installed."));
+                    LayoutInvariantEngineTests.Settle(window);
+                    Assert.True(window.FindControl<Border>("NoticeBand")!.IsEffectivelyVisible, "A project notice shows.");
+                }
                 var minimum = (double)window.FindResource("Component.Shell.WorkingPageMinHeight")!;
 
                 var notice = window.FindControl<Border>("TechDemoNotice")!;
