@@ -10,8 +10,15 @@ namespace SIL.Motif.Runner.Operations;
 /// </summary>
 internal static class TextCreateDependencies
 {
-    public static void Validate(IReadOnlyList<OperationEnvelope> operations)
+    public static void Validate(IReadOnlyList<OperationEnvelope> operations) => Validate(operations, null);
+
+    /// <summary>
+    /// Checks only the bindings an added operation takes part in: an added text, or a text bound to an
+    /// added wordform creation. Null checks every binding.
+    /// </summary>
+    public static void Validate(IReadOnlyList<OperationEnvelope> operations, IReadOnlyList<OperationEnvelope>? added)
     {
+        var addedIds = added?.Select(operation => operation.OperationId).ToHashSet();
         var wordformCreates = operations
             .Where(operation => operation.Kind == LangProjectWordformsOperationKinds.Create && operation.EntityId is not null)
             .GroupBy(operation => operation.EntityId!.Value, CanonicalId.ByGuid)
@@ -24,7 +31,8 @@ internal static class TextCreateDependencies
             var declared = Declared(create, byId);
             foreach (var segment in LangProjectTextsCreatePayload.Parse(after).Paragraphs.SelectMany(paragraph => paragraph.Segments))
                 foreach (var word in segment.Words)
-                    if (wordformCreates.TryGetValue(word, out var creator) && !declared.Contains(creator))
+                    if (wordformCreates.TryGetValue(word, out var creator) && !declared.Contains(creator) &&
+                        (addedIds is null || addedIds.Contains(create.OperationId) || addedIds.Contains(creator)))
                         throw new ContractParseException(
                             $"Operation '{create.OperationId.Value}' binds wordform '{word.Value}' created by operation " +
                             $"'{creator.Value}' without declaring it in dependsOn; order is never inferred from position.");

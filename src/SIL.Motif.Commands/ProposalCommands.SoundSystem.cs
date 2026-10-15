@@ -401,7 +401,7 @@ public static partial class ProposalCommands
                         var related = step.RelatedObjects?.Invoke(cache, input);
                         step.ValidateAppend?.Invoke(validated, input, operations);
                         var added = DeclareDependencies(input, operations, staged);
-                        ProposalOperationSlotValidator.ValidateAppend(validated.Concat(added).ToList());
+                        ProposalOperationSlotValidator.ValidateAppend(validated, added);
                         // Later steps read the project as a later single call would, after this step's changes.
                         if (index < steps.Count - 1)
                             ApplyToScratch(cache, added);

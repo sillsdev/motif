@@ -1,3 +1,4 @@
+using System.Linq;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Parsing;
@@ -18,15 +19,25 @@ public static class ProposalOperationSlotValidator
     }
 
     /// <summary>
-    /// Runs at the moment a change is added to a Draft, with the operations the Draft would then hold, so a
-    /// same-slot conflict is refused when the second change arrives instead of at Finalize.
+    /// Runs at the moment a change is added to a Draft, so a same-slot conflict is refused when the second
+    /// change arrives instead of at Finalize. Only conflicts that involve an added operation count: a Draft
+    /// that already holds a conflicting pair must still accept the append that fixes it.
     /// </summary>
-    /// <exception cref="ConflictRefusal">Two operations address the same slot.</exception>
-    public static void ValidateAppend(IReadOnlyList<OperationEnvelope> retainedPlusAdded)
+    /// <param name="retained">The operations the Draft already holds, without any being replaced.</param>
+    /// <param name="added">The operations being added, or replacing a retained one.</param>
+    /// <exception cref="ConflictRefusal">An added operation addresses the same slot as another.</exception>
+    public static void ValidateAppend(
+        IReadOnlyList<OperationEnvelope> retained, IReadOnlyList<OperationEnvelope> added)
     {
-        if (FindConflict(retainedPlusAdded) is { } collision)
-            throw new ConflictRefusal(collision.Existing.OperationId, collision.Duplicate.OperationId);
-        TextCreateDependencies.Validate(retainedPlusAdded);
+        for (var index = 0; index < added.Count; index++)
+        {
+            foreach (var other in retained.Concat(added.Take(index)))
+            {
+                if (FindConflict(new[] { other, added[index] }) is { } collision)
+                    throw new ConflictRefusal(collision.Existing.OperationId, collision.Duplicate.OperationId);
+            }
+        }
+        TextCreateDependencies.Validate(retained.Concat(added).ToList(), added);
     }
 
     public static (OperationEnvelope Existing, OperationEnvelope Duplicate)? FindConflict(

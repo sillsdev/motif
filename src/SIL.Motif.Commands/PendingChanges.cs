@@ -220,6 +220,7 @@ public static class PendingChanges
                     analysis.GetAgentOpinion(cache.LangProject.DefaultUserAgent).ToString());
                 additions.Add((operations[0], fingerprint, changeId, analysis, wordform, form, reading));
             }
+            // Finalize stays the backstop for text-create dependencies; only slots are checked here.
             if (ProposalOperationSlotValidator.FindConflict(existingOperations.Concat(additions.Select(item => item.Operation)))
                 is { } collision)
                 return Refuse("change.slot-occupied", "Another change already addresses one of these analyses.",
@@ -397,6 +398,7 @@ public static class PendingChanges
             }
             if (additions.Count == 0)
                 return CommandOutcome<PendingChangesSnapshot>.Success(Snapshot(database, project, repository, proposalId: request.ProposalId));
+            // Finalize stays the backstop for text-create dependencies; only slots are checked here.
             if (ProposalOperationSlotValidator.FindConflict(existing.Concat(additions.Select(item => item.Operation)))
                 is { } collision)
                 return Refuse("change.slot-occupied", "Another change already addresses one of these readings.",
@@ -611,6 +613,7 @@ public static class PendingChanges
         var existingOperations = draft.Operations.Count == 0
             ? Array.Empty<OperationEnvelope>()
             : ProposalJsonParser.Parse(ProposalCommands.BuildProposalJson(draft)).Operations;
+        // Finalize stays the backstop for text-create dependencies; only slots are checked here.
         if (ProposalOperationSlotValidator.FindConflict(existingOperations.Concat(operations)) is { } collision)
         {
             var existingChangeId = collision.Existing.Extensions is { ValueKind: JsonValueKind.Object } extension &&

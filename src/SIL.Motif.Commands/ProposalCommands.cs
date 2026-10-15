@@ -341,7 +341,7 @@ public static partial class ProposalCommands
                 }
                 (previous ?? authored).Cite(citation);
                 EnsureContractVersion(draft, LexicalSenseOperationKinds.SetGloss);
-                RequireNoSlotConflict(draft);
+                RequireNoSlotConflict(draft, (previous ?? authored).OperationId);
 
                 if (!TrySaveLoadedDraft(repository, request.DraftName, loadedJson, draft))
                     return CommandOutcome<SetGlossAddedResponse>.Refused(DraftRevisionConflict(request.DraftName));
@@ -398,7 +398,7 @@ public static partial class ProposalCommands
                 operation.Cite(citation);
                 draft.Operations.Add(operation);
                 EnsureContractVersion(draft, LexEntryLexemeFormOperationKinds.DeleteLexemeForm);
-                RequireNoSlotConflict(draft);
+                RequireNoSlotConflict(draft, operationId.Value);
 
                 if (!TrySaveLoadedDraft(repository, request.DraftName, loadedJson, draft))
                     return CommandOutcome<DeleteLexemeFormAddedResponse>.Refused(DraftRevisionConflict(request.DraftName));
@@ -520,7 +520,7 @@ public static partial class ProposalCommands
                 operation.Cite(citation);
                 draft.Operations.Add(operation);
                 EnsureContractVersion(draft, LexicalSenseOperationKinds.SetGloss);
-                RequireNoSlotConflict(draft);
+                RequireNoSlotConflict(draft, operationId.Value);
 
                 var origin = corpus.Provenance.Origin;
                 var provenanceJson = JsonSerializer.Serialize(new
@@ -2111,9 +2111,14 @@ public static partial class ProposalCommands
         return refusal is null ? DraftInvalid(exception.Message, facts) : ProposalRefusals.ToRefusal(refusal, facts);
     }
 
-    /// <summary>Throws when the Draft's operations would share a slot, before the Draft is saved.</summary>
-    private static void RequireNoSlotConflict(DraftDocument draft) =>
-        ProposalOperationSlotValidator.ValidateAppend(ProposalJsonParser.Parse(BuildProposalJson(draft)).Operations);
+    /// <summary>Throws when the added operation would share a slot with another, before saving.</summary>
+    private static void RequireNoSlotConflict(DraftDocument draft, string addedOperationId)
+    {
+        var operations = ProposalJsonParser.Parse(BuildProposalJson(draft)).Operations;
+        ProposalOperationSlotValidator.ValidateAppend(
+            operations.Where(operation => operation.OperationId.Value != addedOperationId).ToList(),
+            operations.Where(operation => operation.OperationId.Value == addedOperationId).ToList());
+    }
 
     private static Refusal DraftInvalid(string message, params (string Key, string? Value)[] facts) =>
         new("draft.invalid", FailureReason.Refused, message, Fact(facts));
@@ -2151,7 +2156,7 @@ public static partial class ProposalCommands
         JsonSerializer.Deserialize<DraftDocument>(json, DraftJsonOptions)
         ?? throw new InvalidOperationException("Draft content is empty or invalid.");
 
-    private static string SerializeDraft(DraftDocument draft) =>
+    internal static string SerializeDraft(DraftDocument draft) =>
         JsonSerializer.Serialize(draft, DraftJsonOptions);
 
     private static Dictionary<string, string> Fact(params (string Key, string? Value)[] entries)
