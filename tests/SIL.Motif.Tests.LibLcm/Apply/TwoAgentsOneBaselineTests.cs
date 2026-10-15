@@ -1,3 +1,4 @@
+using SIL.Motif.Runner.Execution;
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
@@ -80,7 +81,7 @@ public sealed class TwoAgentsOneBaselineTests : IDisposable
         Assert.Equal(originalGloss + " (agent A)", senseRepo.GetObject(_seed.FirstSenseId).Gloss.get_String(wsHandle).Text);
 
         // Agent B's baseline has now moved underneath it: apply must refuse drift, not blindly overwrite.
-        var ex = Assert.Throws<ApplyPreconditionException>(
+        var ex = Assert.Throws<PreconditionRefusal>(
             () => ProposalApplier.Apply(_cache, proposalB, dryRunB.Anchor, "agent-b"));
         Assert.Contains("drift", ex.Message, StringComparison.OrdinalIgnoreCase);
 

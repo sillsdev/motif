@@ -1,3 +1,4 @@
+using SIL.Motif.Runner.Execution;
 using System.Text.Json;
 using SIL.LCModel;
 using SIL.LCModel.Infrastructure;
@@ -244,7 +245,7 @@ public sealed class AuthorPartOfSpeechComposerTests : IDisposable
         CreateCategory(_cache, "Concurrent");
         var count = list.PossibilitiesOS.Count;
 
-        var exception = Assert.Throws<ApplyPreconditionException>(() => ProposalApplier.Apply(
+        var exception = Assert.Throws<PreconditionRefusal>(() => ProposalApplier.Apply(
             _cache, proposal, dryRun.Anchor, "author-part-of-speech-tests"));
 
         Assert.Contains("Footprint drift detected", exception.Message, StringComparison.Ordinal);
@@ -261,7 +262,7 @@ public sealed class AuthorPartOfSpeechComposerTests : IDisposable
         var dryRun = ScratchDryRun.Of(_cache, proposal);
         var stale = dryRun.Anchor with { ProjectionVersion = "4" };
 
-        var exception = Assert.Throws<ApplyPreconditionException>(() => ProposalApplier.Apply(
+        var exception = Assert.Throws<PreconditionRefusal>(() => ProposalApplier.Apply(
             _cache, proposal, stale, "author-part-of-speech-tests"));
 
         Assert.Contains("projection version 4", exception.Message, StringComparison.Ordinal);

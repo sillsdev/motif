@@ -1,3 +1,4 @@
+using SIL.Motif.Runner.Execution;
 using System.Collections.Generic;
 using System.Text.Json;
 using SIL.LCModel;
@@ -615,7 +616,7 @@ public sealed class RewriteRuleContextTests(PristineProjectFixture pristine)
             cache.LangProject.PhonologicalDataOA.ContextsOS.Add(
                 cache.ServiceLocator.GetInstance<IPhSimpleContextSegFactory>().Create()));
 
-        var error = Assert.Throws<ApplyPreconditionException>(() => ProposalApplier.Apply(cache,
+        var error = Assert.Throws<PreconditionRefusal>(() => ProposalApplier.Apply(cache,
             built.Proposal, dryRun.Anchor, "rewrite-context-tests"));
 
         Assert.Contains("Footprint drift detected", error.Message, StringComparison.Ordinal);

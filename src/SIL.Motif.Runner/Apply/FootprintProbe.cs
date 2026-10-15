@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using SIL.Motif.Contract.Model;
 using SIL.Motif.Model.Effects;
+using SIL.Motif.Runner.Execution;
 using SIL.Motif.Runner.Operations;
 using SIL.LCModel;
 
@@ -34,9 +35,15 @@ public static class FootprintProbe
             if (operation.Target is { } target &&
                 !cache.ServiceLocator.ObjectRepository.TryGetObject(target.ToGuid(), out _))
             {
-                throw new ApplyPreconditionException(
+                throw new PreconditionRefusal(
+                    PreconditionKind.TargetGone,
                     $"Operation {operation.OperationId.Value} ({operation.Kind}) targets {target.Value} ({target.ToGuid()}), which the Dry Run " +
-                    "found but which no longer exists in the project. Run a fresh Dry Run before applying.");
+                    "found but which no longer exists in the project. Run a fresh Dry Run before applying.",
+                    new Dictionary<string, string>
+                    {
+                        ["operationId"] = operation.OperationId.Value,
+                        ["target"] = target.Value,
+                    });
             }
 
             var handler = OperationHandlerRegistry.Resolve(operation.Kind, "Apply's footprint pre-flight");

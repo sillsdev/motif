@@ -1,3 +1,4 @@
+using SIL.Motif.Runner.Execution;
 using System.Text.Json;
 using SIL.LCModel;
 using SIL.LCModel.Core.KernelInterfaces;
@@ -141,7 +142,7 @@ public sealed class RewriteRuleCreationTests(PristineProjectFixture pristine)
         var dryRun = ScratchDryRun.Of(cache, proposal);
         AddExistingRule(cache, "Concurrent rule");
 
-        var exception = Assert.Throws<ApplyPreconditionException>(() => ProposalApplier.Apply(
+        var exception = Assert.Throws<PreconditionRefusal>(() => ProposalApplier.Apply(
             cache, proposal, dryRun.Anchor, "rewrite-rule-tests"));
 
         Assert.Contains("Footprint drift detected", exception.Message, StringComparison.Ordinal);

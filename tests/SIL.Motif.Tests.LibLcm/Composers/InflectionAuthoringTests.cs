@@ -1,3 +1,4 @@
+using SIL.Motif.Runner.Execution;
 using System.Text.Json;
 using SIL.LCModel;
 using SIL.Motif.Contract.Ids;
@@ -235,7 +236,7 @@ public sealed class InflectionAuthoringTests : IDisposable
         var proposal = Proposal([Rename("Authored")]);
         var evidence = ScratchDryRun.Of(_cache, proposal);
         Apply([Rename("Concurrent")]);
-        Assert.Throws<ApplyPreconditionException>(() => ProposalApplier.Apply(_cache, proposal, evidence.Anchor, "inflection-tests"));
+        Assert.Throws<PreconditionRefusal>(() => ProposalApplier.Apply(_cache, proposal, evidence.Anchor, "inflection-tests"));
         var current = OperationHandlerRegistry.Resolve(kind, "inflection-tests")
             .ReadCurrentFootprint(_cache, proposal.Operations[0]);
         Assert.Equal("Concurrent", current.Before[Ws]);
@@ -321,7 +322,7 @@ public sealed class InflectionAuthoringTests : IDisposable
             if (moveFeature) _cache.LangProject.PhFeatureSystemOA.FeaturesOC.Add((IFsClosedFeature)Objects.GetObject(feature.ToGuid()));
             else ((IFsClosedFeature)Objects.GetObject(other.ToGuid())).ValuesOC.Add((IFsSymFeatVal)Objects.GetObject(value.ToGuid()));
         });
-        var refusal = Assert.Throws<ApplyPreconditionException>(() => ProposalApplier.Apply(_cache, proposal, evidence.Anchor, "inflection-tests"));
+        var refusal = Assert.Throws<PreconditionRefusal>(() => ProposalApplier.Apply(_cache, proposal, evidence.Anchor, "inflection-tests"));
         Assert.Contains("Footprint drift", refusal.Message, StringComparison.Ordinal);
         Assert.All(operations.Where(op => op.EntityId is not null), op => Assert.False(Objects.IsValidObjectId(op.EntityId!.Value.ToGuid())));
     }

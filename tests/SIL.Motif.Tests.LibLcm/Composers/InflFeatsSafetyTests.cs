@@ -1,3 +1,4 @@
+using SIL.Motif.Runner.Execution;
 using System.Text.Json;
 using SIL.LCModel;
 using SIL.LCModel.Infrastructure;
@@ -195,7 +196,7 @@ public sealed class InflFeatsSafetyTests : IDisposable
         if (scenario == "category" && !stagedStructure)
             Assert.False(Exists(_cache, create.EntityId!.Value));
         var before = BaselineSemanticDigest.Compute(_cache);
-        Assert.Throws<ApplyPreconditionException>(() => ProposalApplier.Apply(_cache, proposal, dryRun.Anchor, "feature-drift-tests"));
+        Assert.Throws<PreconditionRefusal>(() => ProposalApplier.Apply(_cache, proposal, dryRun.Anchor, "feature-drift-tests"));
         Assert.Equal(before, BaselineSemanticDigest.Compute(_cache));
         if (scenario != "collision") Assert.False(Exists(_cache, selection[0].EntityId!.Value));
         if (stagedStructure) Assert.Null(Get<IMoInflAffMsa>(_cache, msa).InflFeatsOA);
@@ -281,7 +282,7 @@ public sealed class InflFeatsSafetyTests : IDisposable
             }
         });
         var before = BaselineSemanticDigest.Compute(_cache);
-        Assert.Throws<ApplyPreconditionException>(() => ProposalApplier.Apply(_cache, proposal, dryRun.Anchor, "staged-feature-tests"));
+        Assert.Throws<PreconditionRefusal>(() => ProposalApplier.Apply(_cache, proposal, dryRun.Anchor, "staged-feature-tests"));
         Assert.Equal(before, BaselineSemanticDigest.Compute(_cache));
         Assert.False(Exists(_cache, msaCreate.EntityId!.Value));
         Assert.False(Exists(_cache, selection[0].EntityId!.Value));
@@ -392,7 +393,7 @@ public sealed class InflFeatsSafetyTests : IDisposable
         Assert.Equal("8", evaluated.Anchor.ProjectionVersion);
         var obsolete = evaluated.Anchor with { ProjectionVersion = "7" };
         var before = BaselineSemanticDigest.Compute(_cache);
-        var refusal = Assert.Throws<ApplyPreconditionException>(() =>
+        var refusal = Assert.Throws<PreconditionRefusal>(() =>
             ProposalApplier.Apply(_cache, proposal, obsolete, "feature-projection-tests"));
         Assert.Contains("projection version 7", refusal.Message);
         Assert.Contains("version 8", refusal.Message);

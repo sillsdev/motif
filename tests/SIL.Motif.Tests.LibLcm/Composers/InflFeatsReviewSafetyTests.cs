@@ -1,3 +1,4 @@
+using SIL.Motif.Runner.Execution;
 using System.Text.Json;
 using SIL.LCModel;
 using SIL.LCModel.Infrastructure;
@@ -77,7 +78,7 @@ public sealed class InflFeatsReviewSafetyTests : IDisposable
         var postDriftMembers = domain.ValuesOC.Select(value => value.Guid).Order().ToArray();
         var appliedBefore = ProjectAppliedLog.ReadAll(_cache).ToArray();
         Receipt? receipt = null;
-        Assert.Throws<ApplyPreconditionException>(() =>
+        Assert.Throws<PreconditionRefusal>(() =>
         {
             receipt = ProposalApplier.Apply(_cache, proposal, dryRun.Anchor, "closed-domain-tests");
         });

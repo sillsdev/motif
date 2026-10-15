@@ -27,6 +27,7 @@ using SIL.Motif.Model.Effects;
 using SIL.Motif.Projection;
 using SIL.Motif.Projection.Store;
 using SIL.Motif.Runner.Apply;
+using SIL.Motif.Runner.Execution;
 using SIL.Motif.Runner.AppliedLog;
 using SIL.Motif.Runner.Composers;
 using SIL.Motif.Runner.DryRun;
@@ -1941,12 +1942,10 @@ public static partial class ProposalCommands
                 "apply.applied-content-mismatch", FailureReason.Refused, ex.Message,
                 Fact(("proposalId", proposalId))));
         }
-        catch (ApplyPreconditionException ex)
+        catch (ProposalRefusalException ex)
         {
             // Thrown before any unit of work opens, so nothing rolled back and the cache is still sound.
-            return CommandOutcome<ApplyProjection>.Refused(new Refusal(
-                "apply.precondition-failed", FailureReason.Refused, ex.Message,
-                Fact(("proposalId", proposalId))));
+            return CommandOutcome<ApplyProjection>.Refused(ProposalRefusals.ToRefusal(ex, ("proposalId", proposalId)));
         }
         catch (ArgumentException ex)
         {
@@ -2108,14 +2107,8 @@ public static partial class ProposalCommands
     /// <summary>A Draft refusal; a slot conflict adds the colliding operation ids as facts.</summary>
     private static Refusal DraftInvalidFrom(Exception exception, params (string Key, string? Value)[] facts)
     {
-        var conflict = exception as ProposalSlotConflictException ?? exception.InnerException as ProposalSlotConflictException;
-        return conflict is null
-            ? DraftInvalid(exception.Message, facts)
-            : DraftInvalid(conflict.Message, facts.Concat(new (string Key, string? Value)[]
-            {
-                ("existingOperationId", conflict.ExistingOperationId.Value),
-                ("duplicateOperationId", conflict.DuplicateOperationId.Value),
-            }).ToArray());
+        var refusal = exception as ProposalRefusalException ?? exception.InnerException as ProposalRefusalException;
+        return refusal is null ? DraftInvalid(exception.Message, facts) : ProposalRefusals.ToRefusal(refusal, facts);
     }
 
     /// <summary>Throws when the Draft's operations would share a slot, before the Draft is saved.</summary>

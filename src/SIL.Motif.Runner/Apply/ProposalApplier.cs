@@ -10,6 +10,7 @@ using SIL.Motif.Model.Effects;
 using SIL.Motif.Model.Receipts;
 using SIL.Motif.Model.Snapshot;
 using SIL.Motif.Runner.AppliedLog;
+using SIL.Motif.Runner.Execution;
 using SIL.Motif.Runner.Operations;
 using SIL.LCModel;
 using SIL.LCModel.Core.KernelInterfaces;
@@ -39,7 +40,7 @@ public static class ProposalApplier
     /// <param name="anchor">
     /// The <see cref="BoundDryRunAnchor"/> a prior <see cref="SIL.Motif.Runner.DryRun.ProposalDryRunner.Run"/>
     /// call produced against this same baseline (ADR 0004 decision 3). Required: a bare apply with no
-    /// bound DryRun is a hard error (<see cref="ApplyPreconditionException"/>), and so is one bound to
+    /// bound DryRun is a hard error (<see cref="PreconditionRefusal"/>), and so is one bound to
     /// a different Proposal's content (<see cref="BoundDryRunAnchor.IntentDigest"/> mismatch) — an
     /// anchor authorizes exactly the content its DryRun evaluated, never a substitute with the same
     /// footprint. Apply re-reads the current footprint and hard-stops with a drift diagnostic if it no
@@ -91,7 +92,8 @@ public static class ProposalApplier
 
         if (anchor is null)
         {
-            throw new ApplyPreconditionException(
+            throw new PreconditionRefusal(
+                PreconditionKind.DryRunMissing,
                 "Apply requires a prior bound DryRun (docs/adr/0004, decision 3): call " +
                 "ProposalDryRunner.Run first and pass its BoundDryRunAnchor here. A bare " +
                 "apply with no bound DryRun is a hard error.");
@@ -121,7 +123,8 @@ public static class ProposalApplier
             .ToArray();
         if (missingPrerequisites.Length > 0)
         {
-            throw new ApplyPreconditionException(
+            throw new PreconditionRefusal(
+                PreconditionKind.PrerequisiteMissing,
                 "Apply refused because the live project's applied history is missing prerequisite " +
                 $"Proposal(s): {string.Join(", ", missingPrerequisites)}. This dependency/order " +
                 "error cannot be forced; apply every prerequisite first.");
@@ -130,7 +133,8 @@ public static class ProposalApplier
         // One-use authorization (see BoundDryRunAnchor.IntentDigest): reject a substitute Proposal outright.
         if (!string.Equals(anchor.IntentDigest, fullIntentDigest, StringComparison.Ordinal))
         {
-            throw new ApplyPreconditionException(
+            throw new PreconditionRefusal(
+                PreconditionKind.AnchorMismatch,
                 "This anchor was not bound to the Proposal presented here: its intent digest is " +
                 $"{anchor.IntentDigest}, but the supplied Proposal's is {fullIntentDigest}. An anchor " +
                 "authorizes apply only for the exact content its DryRun evaluated -- run DryRun again " +
@@ -139,7 +143,8 @@ public static class ProposalApplier
 
         if (!string.Equals(anchor.ProjectionVersion, SnapshotFields.ProjectionVersion, StringComparison.Ordinal))
         {
-            throw new ApplyPreconditionException(
+            throw new PreconditionRefusal(
+                PreconditionKind.ProjectionVersion,
                 $"This Dry Run was recorded with semantic snapshot projection version {anchor.ProjectionVersion}, " +
                 $"but this Motif reads version {SnapshotFields.ProjectionVersion}, so its effects cannot be " +
                 "compared with the project. Run a fresh Dry Run and apply with the anchor it produces.");
@@ -150,7 +155,8 @@ public static class ProposalApplier
         if (!string.Equals(currentFootprintDigest, anchor.FootprintDigest, StringComparison.Ordinal))
         {
             // Name both sides and where each came from, so a stale scratch copy is distinguishable from real drift.
-            throw new ApplyPreconditionException(
+            throw new PreconditionRefusal(
+                PreconditionKind.FootprintDrift,
                 "Footprint drift detected: the pre-mutation state of the objects this Proposal touches " +
                 "is not what the bound DryRun measured." + Environment.NewLine +
                 $"  bound DryRun baseline (measured {anchor.DryRunAtUtc} against a scratch copy of the " +

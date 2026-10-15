@@ -1,6 +1,7 @@
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Parsing;
+using SIL.Motif.Runner.Execution;
 
 namespace SIL.Motif.Runner.Operations;
 
@@ -20,11 +21,11 @@ public static class ProposalOperationSlotValidator
     /// Runs at the moment a change is added to a Draft, with the operations the Draft would then hold, so a
     /// same-slot conflict is refused when the second change arrives instead of at Finalize.
     /// </summary>
-    /// <exception cref="ProposalSlotConflictException">Two operations address the same slot.</exception>
+    /// <exception cref="ConflictRefusal">Two operations address the same slot.</exception>
     public static void ValidateAppend(IReadOnlyList<OperationEnvelope> retainedPlusAdded)
     {
         if (FindConflict(retainedPlusAdded) is { } collision)
-            throw new ProposalSlotConflictException(collision.Existing.OperationId, collision.Duplicate.OperationId);
+            throw new ConflictRefusal(collision.Existing.OperationId, collision.Duplicate.OperationId);
         TextCreateDependencies.Validate(retainedPlusAdded);
     }
 

@@ -1,3 +1,4 @@
+using SIL.Motif.Runner.Execution;
 using System.Text.Json;
 using SIL.LCModel;
 using SIL.LCModel.Infrastructure;
@@ -317,7 +318,7 @@ public sealed class AuthorLexicalEntryComposerTests : IDisposable
         var dryRun = ScratchDryRun.Of(_cache, proposal);
         NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
             entry.SensesOS.Add(_cache.ServiceLocator.GetInstance<ILexSenseFactory>().Create()));
-        Assert.Throws<ApplyPreconditionException>(() => ProposalApplier.Apply(_cache, proposal, dryRun.Anchor, "sense-tests"));
+        Assert.Throws<PreconditionRefusal>(() => ProposalApplier.Apply(_cache, proposal, dryRun.Anchor, "sense-tests"));
         Assert.False(Repository(_cache).IsValidObjectId(member.ToGuid()));
         var refreshed = Proposal([Create(new Placement(Id(entry.SensesOS.Last()), null))]);
         ProposalApplier.Apply(_cache, refreshed, ScratchDryRun.Of(_cache, refreshed).Anchor, "sense-tests");

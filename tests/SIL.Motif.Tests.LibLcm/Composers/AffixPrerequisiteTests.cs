@@ -1,3 +1,4 @@
+using SIL.Motif.Runner.Execution;
 using System.Text.Json;
 using SIL.LCModel;
 using SIL.LCModel.Infrastructure;
@@ -41,7 +42,7 @@ public sealed class AffixPrerequisiteTests(PristineProjectFixture pristine)
             }
         });
         var digest = BaselineSemanticDigest.Compute(cache);
-        Assert.Throws<ApplyPreconditionException>(() => ProposalApplier.Apply(cache, proposal, dryRun.Anchor, "prerequisite-tests"));
+        Assert.Throws<PreconditionRefusal>(() => ProposalApplier.Apply(cache, proposal, dryRun.Anchor, "prerequisite-tests"));
         Assert.Equal(digest, BaselineSemanticDigest.Compute(cache));
         Assert.False(Exists(cache, Created(proposal, LexDbEntriesOperationKinds.Create)));
         ApplyOps(cache, operations);
@@ -120,7 +121,7 @@ public sealed class AffixPrerequisiteTests(PristineProjectFixture pristine)
                     break;
             }
         });
-        Assert.Throws<ApplyPreconditionException>(() => ProposalApplier.Apply(cache, proposal, dryRun.Anchor, "sound-prerequisite-tests"));
+        Assert.Throws<PreconditionRefusal>(() => ProposalApplier.Apply(cache, proposal, dryRun.Anchor, "sound-prerequisite-tests"));
         Assert.Empty(Get<ILexEntry>(cache, entry).AlternateFormsOS);
     }
 
@@ -149,7 +150,7 @@ public sealed class AffixPrerequisiteTests(PristineProjectFixture pristine)
         var existingDryRun = ScratchDryRun.Of(cache, existingProposal);
         ChangeClosedValue(cache, Get<IPhNCFeatures>(cache, naturalClass).FeaturesOA!, selected.Feature, otherValue);
         var beforeExistingRefusal = BaselineSemanticDigest.Compute(cache);
-        Assert.Throws<ApplyPreconditionException>(() => ProposalApplier.Apply(cache, existingProposal,
+        Assert.Throws<PreconditionRefusal>(() => ProposalApplier.Apply(cache, existingProposal,
             existingDryRun.Anchor, "feature-prerequisite-tests"));
         Assert.Equal(beforeExistingRefusal, BaselineSemanticDigest.Compute(cache));
         Assert.False(Exists(cache, existingForm));
@@ -181,7 +182,7 @@ public sealed class AffixPrerequisiteTests(PristineProjectFixture pristine)
         var stagedDryRun = ScratchDryRun.Of(cache, stagedProposal);
         ChangeClosedValue(cache, Get<IPhPhoneme>(cache, phoneme).FeaturesOA!, selected.Feature, otherValue);
         var beforeStagedRefusal = BaselineSemanticDigest.Compute(cache);
-        Assert.Throws<ApplyPreconditionException>(() => ProposalApplier.Apply(cache, stagedProposal,
+        Assert.Throws<PreconditionRefusal>(() => ProposalApplier.Apply(cache, stagedProposal,
             stagedDryRun.Anchor, "feature-prerequisite-tests"));
         Assert.Equal(beforeStagedRefusal, BaselineSemanticDigest.Compute(cache));
         Assert.False(Exists(cache, stagedEnvironment));
@@ -210,7 +211,7 @@ public sealed class AffixPrerequisiteTests(PristineProjectFixture pristine)
         var dryRun = ScratchDryRun.Of(cache, proposal);
         NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
             Get<IMoInflClass>(cache, cls).Name.set_String(cache.DefaultAnalWs, "changed"));
-        Assert.Throws<ApplyPreconditionException>(() => ProposalApplier.Apply(cache, proposal, dryRun.Anchor, "incumbent-tests"));
+        Assert.Throws<PreconditionRefusal>(() => ProposalApplier.Apply(cache, proposal, dryRun.Anchor, "incumbent-tests"));
         Assert.Empty(Get<ILexEntry>(cache, entry).AlternateFormsOS);
     }
 

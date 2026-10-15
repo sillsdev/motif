@@ -1,3 +1,4 @@
+using SIL.Motif.Runner.Execution;
 using System.Linq;
 using System.Text.Json;
 using SIL.Motif.Contract.Ids;
@@ -212,7 +213,7 @@ public sealed class ProposalApplierTests : IDisposable
         var footprintForB = FootprintProbe.ComputeCurrentFootprintDigest(_cache, proposalB);
         Assert.Equal(footprintForA, footprintForB);
 
-        var ex = Assert.Throws<ApplyPreconditionException>(
+        var ex = Assert.Throws<PreconditionRefusal>(
             () => ProposalApplier.Apply(_cache, proposalB, dryRunA.Anchor, "motif-tests"));
 
         Assert.Contains("not bound to the Proposal presented", ex.Message, StringComparison.OrdinalIgnoreCase);
@@ -242,9 +243,11 @@ public sealed class ProposalApplierTests : IDisposable
         var sense = _cache.ServiceLocator.GetInstance<ILexSenseRepository>().GetObject(senseGuid);
         NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () => sense.Delete());
 
-        var ex = Assert.Throws<ApplyPreconditionException>(
+        var ex = Assert.Throws<PreconditionRefusal>(
             () => ProposalApplier.Apply(_cache, proposal, dryRun.Anchor, "motif-tests"));
 
+        Assert.Equal(PreconditionKind.TargetGone, ex.Kind);
+        Assert.Equal(target.Value, ex.Facts["target"]);
         Assert.Contains(target.Value, ex.Message, StringComparison.Ordinal);
         Assert.Contains("fresh Dry Run", ex.Message, StringComparison.Ordinal);
         Assert.Empty(ProjectAppliedLog.ReadAll(_cache));
@@ -258,7 +261,7 @@ public sealed class ProposalApplierTests : IDisposable
         var (senseGuid, wsTag, originalGloss) = FindSenseWithKnownGloss(_cache);
         var proposal = BuildSetGlossProposal(CanonicalId.FromGuid(senseGuid), wsTag, originalGloss + " x");
 
-        var ex = Assert.Throws<ApplyPreconditionException>(
+        var ex = Assert.Throws<PreconditionRefusal>(
             () => ProposalApplier.Apply(_cache, proposal, null!, "motif-tests"));
 
         Assert.Contains("bound DryRun", ex.Message, StringComparison.OrdinalIgnoreCase);
@@ -289,7 +292,7 @@ public sealed class ProposalApplierTests : IDisposable
             CanonicalId.FromGuid(Guid.NewGuid()), "en", "footprint must not run");
         var proposal = WithRequirements(proposalWithoutRequirements, missing.Reverse().ToArray());
 
-        var ex = Assert.Throws<ApplyPreconditionException>(
+        var ex = Assert.Throws<PreconditionRefusal>(
             () => ProposalApplier.Apply(_cache, proposal, DummyAnchor(proposal), "motif-tests"));
 
         Assert.Contains("prerequisite", ex.Message, StringComparison.OrdinalIgnoreCase);
@@ -358,7 +361,7 @@ public sealed class ProposalApplierTests : IDisposable
             "drift", "drift", actionHandler,
             () => SetGlossLowering.Apply(_cache, sense, wsTag, originalGloss + " (drifted from underneath)"));
 
-        var ex = Assert.Throws<ApplyPreconditionException>(
+        var ex = Assert.Throws<PreconditionRefusal>(
             () => ProposalApplier.Apply(_cache, proposal, dryRun.Anchor, "motif-tests"));
 
         Assert.Contains("drift", ex.Message, StringComparison.OrdinalIgnoreCase);

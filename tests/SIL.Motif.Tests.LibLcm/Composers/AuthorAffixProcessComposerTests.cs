@@ -1,3 +1,4 @@
+using SIL.Motif.Runner.Execution;
 using System.Text.Json;
 using SIL.LCModel;
 using SIL.LCModel.Core.KernelInterfaces;
@@ -123,7 +124,7 @@ public sealed class AuthorAffixProcessComposerTests : IDisposable
             if (change == "insert-code") _insert.CodesOS[0].Representation.set_String(_cache.DefaultVernWs, "j");
             if (change == "input-code") _onset.CodesOS[0].Representation.set_String(_cache.DefaultVernWs, "q");
         });
-        var failure = Assert.Throws<ApplyPreconditionException>(() => ProposalApplier.Apply(_cache, proposal, dryRun.Anchor, "affix-core-tests"));
+        var failure = Assert.Throws<PreconditionRefusal>(() => ProposalApplier.Apply(_cache, proposal, dryRun.Anchor, "affix-core-tests"));
         Assert.Contains("Footprint drift", failure.Message, StringComparison.Ordinal);
         Assert.False(Repository.IsValidObjectId(Created(proposal.Operations, LexDbEntriesOperationKinds.Create).ToGuid()));
     }
@@ -164,7 +165,7 @@ public sealed class AuthorAffixProcessComposerTests : IDisposable
         var proposal = Proposal(AuthorAffixProcessComposer.Build(_cache, intent));
         var dryRun = ScratchDryRun.Of(_cache, proposal);
         Setup(() => (candidateChanged ? phoneValue : classValue).ValueRA = alternateValue);
-        var exception = Assert.Throws<ApplyPreconditionException>(() => ProposalApplier.Apply(_cache, proposal, dryRun.Anchor, "affix-core-tests"));
+        var exception = Assert.Throws<PreconditionRefusal>(() => ProposalApplier.Apply(_cache, proposal, dryRun.Anchor, "affix-core-tests"));
         Assert.Contains("Footprint drift", exception.Message, StringComparison.Ordinal);
     }
 
@@ -410,7 +411,7 @@ public sealed class AuthorAffixProcessComposerTests : IDisposable
         Assert.Equal("other-i", inserted.CodesOS[0].Representation.get_String(alternate.Handle).Text);
         if (switchDefault)
         {
-            var failure = Assert.Throws<ApplyPreconditionException>(() =>
+            var failure = Assert.Throws<PreconditionRefusal>(() =>
                 ProposalApplier.Apply(reopened, proposal, dryRun.Anchor, "affix-core-tests"));
             Assert.Contains("Footprint drift", failure.Message, StringComparison.Ordinal);
             Assert.False(reopened.ServiceLocator.GetInstance<ICmObjectRepository>().IsValidObjectId(
@@ -506,7 +507,7 @@ public sealed class AuthorAffixProcessComposerTests : IDisposable
                 .Representation.set_String(_cache.DefaultVernWs, "changed"));
         if (change == "referenced-code")
         {
-            var failure = Assert.Throws<ApplyPreconditionException>(() =>
+            var failure = Assert.Throws<PreconditionRefusal>(() =>
                 ProposalApplier.Apply(_cache, proposal, dryRun.Anchor, "affix-core-tests"));
             Assert.Contains("Footprint drift", failure.Message, StringComparison.Ordinal);
             Assert.False(Repository.IsValidObjectId(child.ToGuid()));
@@ -535,7 +536,7 @@ public sealed class AuthorAffixProcessComposerTests : IDisposable
         if (changed)
         {
             Setup(() => _unrelated.CodesOS[0].Representation.set_String(_cache.DefaultVernWs, "changed"));
-            var failure = Assert.Throws<ApplyPreconditionException>(() =>
+            var failure = Assert.Throws<PreconditionRefusal>(() =>
                 ProposalApplier.Apply(_cache, proposal, dryRun.Anchor, "affix-core-tests"));
             Assert.Contains("Footprint drift", failure.Message, StringComparison.Ordinal);
             Assert.Equal(_vowel.Guid, context.FeatureStructureRA.Guid);
@@ -577,7 +578,7 @@ public sealed class AuthorAffixProcessComposerTests : IDisposable
                 .Representation.set_String(_cache.DefaultVernWs, "changed"));
         if (change == "member-code")
         {
-            var failure = Assert.Throws<ApplyPreconditionException>(() =>
+            var failure = Assert.Throws<PreconditionRefusal>(() =>
                 ProposalApplier.Apply(_cache, proposal, dryRun.Anchor, "affix-core-tests"));
             Assert.Contains("Footprint drift", failure.Message, StringComparison.Ordinal);
             Assert.False(Repository.IsValidObjectId(classId.ToGuid()));
@@ -619,7 +620,7 @@ public sealed class AuthorAffixProcessComposerTests : IDisposable
                 dependsOn: selected.DependsOn);
             var rewritten = operations.ToArray();
             rewritten[index] = changed;
-            Assert.Throws<ApplyPreconditionException>(() => ProposalApplier.Apply(_cache,
+            Assert.Throws<PreconditionRefusal>(() => ProposalApplier.Apply(_cache,
                 new Proposal(proposal.ContractVersions, proposal.ProposalId, proposal.Requires, rewritten), anchor, "affix-core-tests"));
         }
     }

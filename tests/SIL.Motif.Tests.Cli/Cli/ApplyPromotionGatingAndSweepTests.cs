@@ -327,6 +327,28 @@ public sealed class ApplyPromotionGatingAndSweepTests
         Assert.DoesNotContain("no longer trustworthy", result.Refusal.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void ApplyRefusesATargetDeletedAfterTheDryRunWithItsPreconditionKind()
+    {
+        var id = FinalizeAndTrial("precondition-target-gone-apply", "proposal gloss");
+        var loader = new FwDataProjectLoader();
+        using (var cache = loader.LoadCache(_fwDataPath))
+        {
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                cache.ServiceLocator.GetInstance<ILexSenseRepository>().GetObject(_seed.FirstSenseId).Delete());
+            loader.Save(cache);
+        }
+
+        var result = ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, id, Force: true));
+
+        Assert.False(result.Succeeded);
+        Assert.Equal("apply.precondition-failed", result.Refusal!.Code);
+        Assert.Equal("target-gone", result.Refusal.Facts["precondition"]);
+        Assert.Equal(CanonicalId.FromGuid(_seed.FirstSenseId).Value, result.Refusal.Facts["target"]);
+        Assert.True(result.Refusal.Facts.ContainsKey("operationId"));
+        Assert.Equal(id, result.Refusal.Facts["proposalId"]);
+    }
+
     private string FinalizeAndTrial(string draftName, string newGloss)
     {
         var senseGuid = _seed.FirstSenseId;

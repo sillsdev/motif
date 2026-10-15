@@ -1,3 +1,4 @@
+using SIL.Motif.Runner.Execution;
 using System.Diagnostics;
 using System.IO;
 using System.Security.Cryptography;
@@ -397,7 +398,7 @@ public sealed class RealParserSwahiliAffixFeatureProofTests(
 
                 var driftedDigest = BaselineSemanticDigest.Compute(drifted);
                 Assert.NotEqual(originalDigest, driftedDigest);
-                var exception = Assert.Throws<ApplyPreconditionException>(() => ProposalApplier.Apply(drifted,
+                var exception = Assert.Throws<PreconditionRefusal>(() => ProposalApplier.Apply(drifted,
                     proposal, anchor, "swahili-affix-features-occupied-slot-drift"));
                 Assert.Contains("Footprint drift detected", exception.Message, StringComparison.Ordinal);
                 Assert.Same(occupied, msa.InflFeatsOA);

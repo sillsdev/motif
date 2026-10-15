@@ -1,3 +1,4 @@
+using SIL.Motif.Runner.Execution;
 using System.Text.Json;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
@@ -769,7 +770,7 @@ public sealed class AllomorphRetargetOperationsTests : IDisposable
         var replacementDryRun = ScratchDryRun.Of(_cache, replacementProposal);
         NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
             _replacement.Form.set_String(_cache.DefaultVernWs, "changed-after-dry-run"));
-        var replacementDrift = Assert.Throws<ApplyPreconditionException>(() =>
+        var replacementDrift = Assert.Throws<PreconditionRefusal>(() =>
             ProposalApplier.Apply(_cache, replacementProposal, replacementDryRun.Anchor, "retirement-tests"));
         Assert.Contains("Footprint drift detected", replacementDrift.Message, StringComparison.Ordinal);
         Assert.Equal(_retired.Guid, _bundle.MorphRA!.Guid);
@@ -780,7 +781,7 @@ public sealed class AllomorphRetargetOperationsTests : IDisposable
         var opinionDryRun = ScratchDryRun.Of(_cache, opinionProposal);
         NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
             _cache.LangProject.DefaultUserAgent.SetEvaluation(_analysis, Opinions.disapproves));
-        var opinionDrift = Assert.Throws<ApplyPreconditionException>(() =>
+        var opinionDrift = Assert.Throws<PreconditionRefusal>(() =>
             ProposalApplier.Apply(_cache, opinionProposal, opinionDryRun.Anchor, "retirement-tests"));
         Assert.Contains("Footprint drift detected", opinionDrift.Message, StringComparison.Ordinal);
 
@@ -789,7 +790,7 @@ public sealed class AllomorphRetargetOperationsTests : IDisposable
         var msaProposal = Proposal();
         var msaDryRun = ScratchDryRun.Of(_cache, msaProposal);
         NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () => _bundle.MsaRA = null);
-        var msaDrift = Assert.Throws<ApplyPreconditionException>(() =>
+        var msaDrift = Assert.Throws<PreconditionRefusal>(() =>
             ProposalApplier.Apply(_cache, msaProposal, msaDryRun.Anchor, "retirement-tests"));
         Assert.Contains("Footprint drift detected", msaDrift.Message, StringComparison.Ordinal);
         Assert.Equal(_retired.Guid, _bundle.MorphRA!.Guid);
@@ -798,7 +799,7 @@ public sealed class AllomorphRetargetOperationsTests : IDisposable
         var textUseProposal = Proposal();
         var textUseDryRun = ScratchDryRun.Of(_cache, textUseProposal);
         NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () => _textUse.AnalysesRS[1] = _textUse.AnalysesRS[0]);
-        var textUseDrift = Assert.Throws<ApplyPreconditionException>(() =>
+        var textUseDrift = Assert.Throws<PreconditionRefusal>(() =>
             ProposalApplier.Apply(_cache, textUseProposal, textUseDryRun.Anchor, "retirement-tests"));
         Assert.Contains("Footprint drift detected", textUseDrift.Message, StringComparison.Ordinal);
         Assert.Equal(_retired.Guid, _bundle.MorphRA!.Guid);

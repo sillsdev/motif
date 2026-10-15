@@ -80,7 +80,7 @@ public sealed class CommandCatalogParityTests
     private static readonly string[] ExpectedRefusalCodes =
     {
         "apply.applied-content-mismatch", "apply.change-no-longer-fits", "apply.change-uncertain", "apply.drift", "apply.dry-run-missing",
-        "apply.changes-changed", "apply.in-progress", "apply.not-ready", "apply.precondition-failed", "apply.project-in-use",
+        "apply.changes-changed", "apply.in-progress", "apply.not-ready", "apply.project-in-use",
         "apply.regression",
         "apply.reopen-failed",
         "apply.reconciliation-needed",

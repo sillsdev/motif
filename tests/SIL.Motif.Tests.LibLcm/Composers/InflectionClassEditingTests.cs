@@ -1,3 +1,4 @@
+using SIL.Motif.Runner.Execution;
 using SIL.LCModel;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Contract.Ids;
@@ -233,7 +234,7 @@ public sealed class InflectionClassEditingTests(PristineProjectFixture pristine)
             }
         });
         var before = BaselineSemanticDigest.Compute(cache);
-        Assert.Throws<ApplyPreconditionException>(() => ProposalApplier.Apply(cache, proposal, dryRun.Anchor, "class-editor-tests"));
+        Assert.Throws<PreconditionRefusal>(() => ProposalApplier.Apply(cache, proposal, dryRun.Anchor, "class-editor-tests"));
         Assert.Equal(before, BaselineSemanticDigest.Compute(cache));
         Assert.Equal(cls.ToGuid(), Assert.Single(Get<IMoAffixAllomorph>(cache, form).InflectionClassesRC).Guid);
         if (drift is not ("mixedMsa" or "process"))
@@ -261,7 +262,7 @@ public sealed class InflectionClassEditingTests(PristineProjectFixture pristine)
         NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
             Get<IMoInflClass>(cache, inherited).Name.set_String(cache.DefaultAnalWs, "changed"));
         var before = BaselineSemanticDigest.Compute(cache);
-        Assert.Throws<ApplyPreconditionException>(() => ProposalApplier.Apply(cache, proposal, dryRun.Anchor, "class-editor-tests"));
+        Assert.Throws<PreconditionRefusal>(() => ProposalApplier.Apply(cache, proposal, dryRun.Anchor, "class-editor-tests"));
         Assert.Equal(before, BaselineSemanticDigest.Compute(cache));
         ProposalApplier.Apply(cache, proposal, ScratchDryRun.Of(cache, proposal).Anchor, "class-editor-tests");
         Assert.Equal(clear ? null : (Guid?)cls.ToGuid(), Get<IPartOfSpeech>(cache, child).DefaultInflectionClassRA?.Guid);
