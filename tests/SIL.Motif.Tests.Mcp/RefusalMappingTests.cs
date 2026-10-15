@@ -103,3 +103,69 @@ public sealed class RefusalMappingTests
         Assert.Contains("Next:", ((ModelContextProtocol.Protocol.TextContentBlock)result.Content[0]).Text);
     }
 }
+
+[Trait("MotifTestLevel", "Unit")]
+public sealed class RefusalNextStepTests
+{
+    private static readonly string[] HintedCodes =
+    [
+        RefusalCodes.BaselineMissing, HostRefusalCodes.BaselineUnavailable, RefusalCodes.ProjectBusy,
+        RefusalCodes.ProjectInUse, HostRefusalCodes.ProjectRegistrationFailed, RefusalCodes.ChangeProjectSaving,
+        RefusalCodes.ProjectNotFound, RefusalCodes.JobWaitTimeout, RefusalCodes.JobWaitCancelled,
+        RefusalCodes.ProposalNotFound, RefusalCodes.ProposalInvalidId, RefusalCodes.DraftRevisionConflict,
+        RefusalCodes.JobDryRunIncomplete, RefusalCodes.StoreOtherVersion, RefusalCodes.ParseAlreadyRunning,
+        RefusalCodes.AssessParserUnavailable, RefusalCodes.GrammarCheckParserUnavailable,
+        RefusalCodes.ProjectWritingSystemMissing, HostRefusalCodes.ToolUnknownArgument,
+        HostRefusalCodes.ToolMissingArgument, HostRefusalCodes.ToolFailed,
+    ];
+
+    [Fact]
+    public void EveryRefusalTheMcpHintedNowCarriesAStructuredNext()
+    {
+        var help = SIL.Motif.Help.HelpCatalog.Load(System.Globalization.CultureInfo.InvariantCulture);
+        var commands = SIL.Motif.Commands.Catalog.CommandCatalog.All.Select(command => command.Name).ToHashSet();
+        var defaults = MotifMcpServer.Expose(ToolProfile.Builtin);
+
+        Assert.Equal(21, HintedCodes.Distinct().Count());
+        foreach (var code in HintedCodes)
+        {
+            var spec = RefusalCatalog.Specs[code];
+            var next = Assert.IsType<NextStep>(spec.Next);
+            Assert.True(next.Command is NextStep.RepeatCall or NextStep.AskPerson || commands.Contains(next.Command),
+                code + " names '" + next.Command + "', which is not a catalog command.");
+            Assert.False(string.IsNullOrWhiteSpace(help.RefusalWhy(code)), code + " has no why in Help.");
+            if (commands.Contains(next.Command))
+            {
+                var request = SIL.Motif.Commands.Catalog.CommandCatalog.All.Single(c => c.Name == next.Command).RequestType;
+                var tool = defaults.Single(t => t.Tool.Requests.Contains(request));
+                Assert.All(next.Args.Keys, arg => Assert.Contains(arg, tool.Tool.ArgumentNames));
+            }
+        }
+    }
+
+    [Fact]
+    public void ANextStepToAToolHiddenInTheActiveProfileIsAPersonsStep()
+    {
+        var lean = new ToolProfile("lean", null, null, "concise", [new ToolSelection("motif_overview", null, null, null)]);
+        var refusal = new Refusal(RefusalCodes.BaselineMissing, FailureReason.NotFound, "None yet.");
+
+        var hidden = RefusalMapper.NextFor(refusal, MotifMcpServer.Expose(lean));
+        var shown = RefusalMapper.NextFor(refusal, MotifMcpServer.Expose(ToolProfile.Builtin));
+
+        Assert.Contains("Ask the person to run `motif baseline capture", hidden);
+        Assert.DoesNotContain("motif_capture_baseline", hidden);
+        Assert.Contains("`motif_capture_baseline`", shown);
+        Assert.DoesNotContain("Ask the person", shown);
+    }
+
+    [Fact]
+    public void ACallersOwnProjectFlowsIntoTheRenderedNextStep()
+    {
+        var refusal = new Refusal(RefusalCodes.BaselineMissing, FailureReason.NotFound, "None yet.");
+        var caller = new System.Text.Json.Nodes.JsonObject { ["project"] = "indonesian" };
+
+        var text = RefusalMapper.NextFor(refusal, MotifMcpServer.Expose(ToolProfile.Builtin), caller);
+
+        Assert.Contains("project set to indonesian", text);
+    }
+}

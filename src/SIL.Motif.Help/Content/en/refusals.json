@@ -1,0 +1,86 @@
+{
+  "baseline.missing": {
+    "why": "No Baseline exists for this project, so there is nothing to compare against. Capture one first.",
+    "source": "Hand-written from the Motif MCP refusal advice."
+  },
+  "baseline.unavailable": {
+    "why": "The saved copy of the project that the Baseline needs is not available, so this cannot be measured. Take a fresh Baseline.",
+    "source": "Hand-written from the Motif MCP refusal advice."
+  },
+  "project.busy": {
+    "why": "Another Motif task holds this project, so it cannot be used yet. Wait about ten seconds.",
+    "source": "Hand-written from the Motif MCP refusal advice."
+  },
+  "project.in-use": {
+    "why": "FieldWorks has the project open, so Motif cannot change it. Ask the linguist to save and close it, then repeat this call.",
+    "source": "Hand-written from the Motif MCP refusal advice."
+  },
+  "project.registration-failed": {
+    "why": "Motif could not record the project because the worker root at {workerRoot} or the machine store at {machineStorePath} is not writable or valid. Fix them, or let any other writer to the store finish.",
+    "source": "Hand-written from the Motif MCP refusal advice."
+  },
+  "change.project-saving": {
+    "why": "FieldWorks is saving the project, so it cannot be changed this moment. Wait a few seconds.",
+    "source": "Hand-written from the Motif MCP refusal advice."
+  },
+  "project.not-found": {
+    "why": "The project file is missing, so there is nothing to open. Tell the linguist; do not guess another path.",
+    "source": "Hand-written from the Motif MCP refusal advice."
+  },
+  "job.wait-timeout": {
+    "why": "The job is still running, so its result is not ready. Keep waiting.",
+    "source": "Hand-written from the Motif MCP refusal advice."
+  },
+  "job.wait-cancelled": {
+    "why": "The wait was cancelled before the job finished. Wait again.",
+    "source": "Hand-written from the Motif MCP refusal advice."
+  },
+  "proposal.not-found": {
+    "why": "No Proposal has that id, so it cannot be used. List the Proposals that exist, then use one of those ids.",
+    "source": "Hand-written from the Motif MCP refusal advice."
+  },
+  "proposal.invalid-id": {
+    "why": "That is not a well-formed Proposal id, so it cannot be looked up. Use a proposalId a tool returned, or one from the Proposal list; do not type one.",
+    "source": "Hand-written from the Motif MCP refusal advice."
+  },
+  "draft.revision-conflict": {
+    "why": "The Draft changed after you last read it, so this change would overwrite newer work. Read the Draft again with its id, then retry.",
+    "source": "Hand-written from the Motif MCP refusal advice."
+  },
+  "job.dry-run-incomplete": {
+    "why": "The Dry Run did not complete, so the Draft has not been checked. Revise the Draft and run a new Dry Run.",
+    "source": "Hand-written from the Motif MCP refusal advice."
+  },
+  "store.other-version": {
+    "why": "Motif's data for this project was made by another version of Motif, so this version cannot read it. Tell the linguist; do not retry.",
+    "source": "Hand-written from the Motif MCP refusal advice."
+  },
+  "parse.already-running": {
+    "why": "A parse is already running for this project, so a second cannot start. Wait a minute.",
+    "source": "Hand-written from the Motif MCP refusal advice."
+  },
+  "assess.parser-unavailable": {
+    "why": "The parser is not installed here, so words cannot be assessed. Tell the linguist; evaluation tools cannot run.",
+    "source": "Hand-written from the Motif MCP refusal advice."
+  },
+  "grammarcheck.parser-unavailable": {
+    "why": "The parser is not installed here, so the grammar cannot be checked. Tell the linguist; evaluation tools cannot run.",
+    "source": "Hand-written from the Motif MCP refusal advice."
+  },
+  "project.writing-system-missing": {
+    "why": "A writing system the project needs is not set up here. This is a setup problem, not damaged data; tell the linguist what the message says to fix, and do not retry unchanged.",
+    "source": "Hand-written from the Motif MCP refusal advice."
+  },
+  "tool.unknown-argument": {
+    "why": "The call named an argument this tool does not have, so it was not run. Remove the argument the message names, or check the tool's input schema.",
+    "source": "Hand-written from the Motif MCP refusal advice."
+  },
+  "tool.missing-argument": {
+    "why": "The call left out an argument this tool requires, so it was not run. Add the argument the message names.",
+    "source": "Hand-written from the Motif MCP refusal advice."
+  },
+  "tool.failed": {
+    "why": "The tool failed unexpectedly; the diagnostic log has 'tool {toolName} failed'. If it fails again after one repeat, stop and tell the linguist.",
+    "source": "Hand-written from the Motif MCP refusal advice."
+  }
+}

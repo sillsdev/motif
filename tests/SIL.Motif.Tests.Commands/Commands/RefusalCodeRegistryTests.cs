@@ -59,6 +59,16 @@ public sealed class RefusalCodeRegistryTests
         Assert.Empty(used.Where(code => !registered.Contains(code)).Order(StringComparer.Ordinal));
     }
 
+    [Fact]
+    public void EveryRegisteredCodeHasASpec()
+    {
+        var registered = Registry().Select(entry => entry.Value).ToHashSet(StringComparer.Ordinal);
+
+        Assert.Empty(registered.Where(code => !RefusalCatalog.Specs.ContainsKey(code)).Order(StringComparer.Ordinal));
+        Assert.Empty(RefusalCatalog.Specs.Keys.Where(code => !registered.Contains(code)).Order(StringComparer.Ordinal));
+        Assert.All(RefusalCatalog.Specs, pair => Assert.Equal(pair.Key, pair.Value.Code));
+    }
+
     // Dotted lower-case literals in every product project's source, minus those that end in a file extension.
     private static HashSet<string> CodeLiteralsInSource()
     {

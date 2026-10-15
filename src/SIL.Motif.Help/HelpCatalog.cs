@@ -60,8 +60,11 @@ public sealed class HelpCatalog
     private static readonly Regex MarkdownMarksPattern = new(@"[*_`]", RegexOptions.CultureInvariant);
     private readonly Dictionary<(HelpEntryKind Kind, string Code), HelpEntry> _byCode;
 
-    private HelpCatalog(string locale, IReadOnlyList<HelpEntry> entries)
+    private readonly IReadOnlyDictionary<string, string> _refusalWhy;
+
+    private HelpCatalog(string locale, IReadOnlyList<HelpEntry> entries, IReadOnlyDictionary<string, string> refusalWhy)
     {
+        _refusalWhy = refusalWhy;
         Locale = locale;
         Entries = entries;
         _byCode = entries.ToDictionary(entry => (entry.Kind, entry.Code));
@@ -121,8 +124,15 @@ public sealed class HelpCatalog
             }
         }
 
-        return new HelpCatalog(locale, entries);
+        return new HelpCatalog(locale, entries, ReadRefusalWhy(locale));
     }
+
+    /// <summary>
+    /// The sentence that says what a refusal code is missing and what satisfies it, or <see langword="null"/> when
+    /// Help has none. A translation supplies the codes it has; English fills the rest.
+    /// </summary>
+    /// <param name="code">The exact refusal code, such as <c>baseline.missing</c>.</param>
+    public string? RefusalWhy(string code) => _refusalWhy.GetValueOrDefault(code);
 
     /// <summary>Finds an entry by its kind and exact code.</summary>
     /// <param name="kind">The entry category.</param>
@@ -268,6 +278,22 @@ public sealed class HelpCatalog
         return new GuideMetadata(
             string.IsNullOrWhiteSpace(title) ? null : title,
             string.IsNullOrWhiteSpace(description) ? null : description);
+    }
+
+    private static IReadOnlyDictionary<string, string> ReadRefusalWhy(string locale)
+    {
+        var merged = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var name in locale == EnglishLocale ? new[] { EnglishLocale } : new[] { EnglishLocale, locale })
+        {
+            if (ReadResource($"help/{name}/refusals.json") is not { } resource)
+                continue;
+            using var document = JsonDocument.Parse(resource);
+            foreach (var property in document.RootElement.EnumerateObject())
+                if (property.Value.TryGetProperty("why", out var why) && why.GetString() is { } text)
+                    merged[property.Name] = text;
+        }
+
+        return merged;
     }
 
     private static Dictionary<string, Metadata> ReadMetadata(string locale, HelpEntryKind kind)

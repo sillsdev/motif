@@ -147,18 +147,18 @@ public static class MotifMcpServer
         {
             outcome = ToolOutcome.Refused("advanced-ai.disabled", FailureReason.Refused,
                 SIL.Motif.Commands.Preferences.FileAdvancedAiModePreferenceStore.DisabledMessage);
-            result = RefusalMapper.ToResult(outcome.Refusal!);
+            result = RefusalMapper.ToResult(outcome.Refusal!, tools, args);
         }
         else if (tool is null)
         {
             outcome = ToolOutcome.Refused("tool.unknown", FailureReason.InvalidArgument,
                 $"There is no tool named '{name}'. The tools are: {string.Join(", ", tools.Select(t => t.Name))}.");
-            result = RefusalMapper.ToResult(outcome.Refusal!);
+            result = RefusalMapper.ToResult(outcome.Refusal!, tools, args);
         }
         else
         {
             outcome = await RunAsync(context, tool, args, cancellation);
-            result = outcome.Refusal is { } refusal ? RefusalMapper.ToResult(refusal) : Success(tool, outcome, args);
+            result = outcome.Refusal is { } refusal ? RefusalMapper.ToResult(refusal, tools, args) : Success(tool, outcome, args);
         }
         context.Activity.Record(new ActivityEntry(DateTimeOffset.UtcNow, tool?.Tool.Name ?? name, args,
             result.IsError == true, outcome.Refusal?.Code, ResultBytes(result), clock.ElapsedMilliseconds,

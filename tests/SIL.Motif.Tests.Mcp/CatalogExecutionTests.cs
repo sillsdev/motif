@@ -61,7 +61,7 @@ public sealed class CatalogExecutionTests
         Assert.Contains("The handler rejected this value.",
             result.StructuredContent.Value.GetProperty("message").GetString(), StringComparison.Ordinal);
         var next = result.StructuredContent.Value.GetProperty("next").GetString()!;
-        Assert.Contains("Repeat the call once", next, StringComparison.Ordinal);
+        Assert.Contains("Repeat this call", next, StringComparison.Ordinal);
         Assert.DoesNotContain("damaged", next, StringComparison.OrdinalIgnoreCase);
     }
 

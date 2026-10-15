@@ -112,7 +112,8 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
 
             Assert.True(result.IsError);
             Assert.Equal("baseline.missing", result.StructuredContent!.Value.GetProperty("code").GetString());
-            Assert.Contains("motif_capture_baseline",
+            // This profile hides the capture tool, so the step is the person's, not a call the agent cannot make.
+            Assert.Contains("Ask the person to run `motif baseline capture",
                 ((TextContentBlock)Assert.Single(result.Content)).Text, StringComparison.Ordinal);
         }
     }
