@@ -146,7 +146,7 @@ public static class AssessCommand
             AssessmentScopeConfiguration configured;
             try
             {
-                // The project's declared default scope sets the limits a run is held to, as `config show` reports.
+                // The project's declared default scope sets the kinds and limits a run is held to, as `config show` reports.
                 var scopes = new ProjectConfigurationReader().Read(project).Scopes;
                 configured = scopes.FirstOrDefault(declared => declared.Name == AssessmentScopeConfiguration.DefaultName)
                     ?? scopes[0];
@@ -227,8 +227,26 @@ public static class AssessCommand
             try
             {
                 var supportedKinds = assessor.SupportedKinds;
-                var collected = supportedKinds.Contains(AssessmentKind.Correctness)
-                    ? CollectedKinds.Append(AssessmentKind.Correctness).ToArray() : CollectedKinds;
+                IReadOnlyList<AssessmentKind> collected;
+                if (configured.Collect.Count == 0)
+                {
+                    collected = supportedKinds.Contains(AssessmentKind.Correctness)
+                        ? CollectedKinds.Append(AssessmentKind.Correctness).ToArray() : CollectedKinds;
+                }
+                else
+                {
+                    var unknown = configured.Collect.FirstOrDefault(name =>
+                        !Enum.TryParse<AssessmentKind>(name, ignoreCase: true, out var parsed) || !Enum.IsDefined(parsed));
+                    if (unknown is not null)
+                        return CommandOutcome<AssessCommandResponse>.Refused(new Refusal(
+                            "assess.unsupported-kind", FailureReason.Refused,
+                            $"The project's assessment scope asks to collect '{unknown}', which is not an Assessment kind.",
+                            new Dictionary<string, string> { ["kind"] = unknown }));
+                    // Assess always reports parse time, so the scope's list chooses what is collected beside it.
+                    collected = configured.Collect
+                        .Select(name => Enum.Parse<AssessmentKind>(name, ignoreCase: true))
+                        .Prepend(AssessmentKind.ParseTime).Distinct().ToArray();
+                }
                 var unsupported = collected.Where(kind => !supportedKinds.Contains(kind)).ToArray();
                 if (unsupported.Length > 0)
                     return CommandOutcome<AssessCommandResponse>.Refused(new Refusal(
