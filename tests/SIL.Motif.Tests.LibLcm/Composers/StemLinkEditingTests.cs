@@ -1,6 +1,7 @@
 using SIL.LCModel;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.LiveHost.Baselines;
 using SIL.Motif.Runner.Apply;
@@ -183,6 +184,52 @@ public sealed class StemLinkEditingTests(PristineProjectFixture pristine)
         Assert.True(reached);
         Assert.Null(Get<IMoStemMsa>(cache, msa).InflectionClassRA);
         Assert.Null(Get<IMoStemAllomorph>(cache, stem).StemNameRA);
+        Assert.Equal(before, BaselineSemanticDigest.Compute(cache));
+    }
+
+    [Fact]
+    public void TwoStemNameEditsOfOneAllomorphAreRefusedBeforeAnyUnitOfWork()
+    {
+        using var cache = pristine.NewScratch();
+        var category = CanonicalId.FromGuid(pristine.Seed.PartOfSpeechId);
+        var first = AddStemName(cache, category, "first");
+        var second = AddStemName(cache, category, "second");
+        var (_, _, stem) = AddStem(cache, "root", category);
+        var setFirst = EditStemAllomorphStemNameComposer.Build(cache, new(stem, null, first));
+        var setSecond = EditStemAllomorphStemNameComposer.Build(cache, new(stem, null, second));
+        var both = setFirst.Concat(setSecond).ToArray();
+        Assert.NotNull(ProposalOperationSlotValidator.FindConflict(both));
+        var anchor = ScratchDryRun.Of(cache, Proposal(setFirst)).Anchor;
+        var before = BaselineSemanticDigest.Compute(cache);
+        var refusal = Assert.Throws<ContractParseException>(() =>
+            ProposalApplier.Apply(cache, Proposal(both), anchor, "stem-link-tests"));
+        Assert.Contains("address the same target, field, and member slot", refusal.Message);
+        Assert.Contains(setFirst[0].OperationId.Value, refusal.Message);
+        Assert.Contains(setSecond[0].OperationId.Value, refusal.Message);
+        Assert.Throws<ContractParseException>(() => ScratchDryRun.Of(cache, Proposal(both)));
+        Assert.Null(Get<IMoStemAllomorph>(cache, stem).StemNameRA);
+        Assert.Equal(before, BaselineSemanticDigest.Compute(cache));
+    }
+
+    [Fact]
+    public void TwoInflectionClassEditsOfOneStemAnalysisAreRefusedBeforeAnyUnitOfWork()
+    {
+        using var cache = pristine.NewScratch();
+        var category = CanonicalId.FromGuid(pristine.Seed.PartOfSpeechId);
+        var first = AddInflectionClass(cache, category, "first");
+        var second = AddInflectionClass(cache, category, "second");
+        var (_, msa, _) = AddStem(cache, "root", category);
+        var setFirst = EditStemInflectionClassComposer.Build(cache, new(msa, null, first));
+        var setSecond = EditStemInflectionClassComposer.Build(cache, new(msa, null, second));
+        var both = setFirst.Concat(setSecond).ToArray();
+        Assert.NotNull(ProposalOperationSlotValidator.FindConflict(both));
+        var anchor = ScratchDryRun.Of(cache, Proposal(setFirst)).Anchor;
+        var before = BaselineSemanticDigest.Compute(cache);
+        var refusal = Assert.Throws<ContractParseException>(() =>
+            ProposalApplier.Apply(cache, Proposal(both), anchor, "stem-link-tests"));
+        Assert.Contains("address the same target, field, and member slot", refusal.Message);
+        Assert.Throws<ContractParseException>(() => ScratchDryRun.Of(cache, Proposal(both)));
+        Assert.Null(Get<IMoStemMsa>(cache, msa).InflectionClassRA);
         Assert.Equal(before, BaselineSemanticDigest.Compute(cache));
     }
 
