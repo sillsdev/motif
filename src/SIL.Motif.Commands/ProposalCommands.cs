@@ -1935,6 +1935,13 @@ public static partial class ProposalCommands
                 "apply.applied-content-mismatch", FailureReason.Refused, ex.Message,
                 Fact(("proposalId", proposalId))));
         }
+        catch (ApplyPreconditionException ex)
+        {
+            // Thrown before any unit of work opens, so nothing rolled back and the cache is still sound.
+            return CommandOutcome<ApplyProjection>.Refused(new Refusal(
+                "apply.precondition-failed", FailureReason.Refused, ex.Message,
+                Fact(("proposalId", proposalId))));
+        }
         catch (ArgumentException ex)
         {
             return CommandOutcome<ApplyProjection>.Refused(new Refusal(

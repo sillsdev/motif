@@ -75,6 +75,8 @@ public sealed partial record WindowRefusal
         [C.ApplyChangesChanged] = "The changes changed. Refresh them before applying.",
         [C.ApplyDrift] = "Applying may have completed, but the project could not be verified. Check it before retrying.",
         [C.ApplyDryRunMissing] = "The check did not give enough evidence to apply these changes. Check them again.",
+        [C.ApplyPreconditionFailed] =
+            "Something in the project changed since this was checked. Check it again before applying.",
         [C.ApplyNotReady] = "The check did not give enough evidence to apply these changes. Check them again.",
         [C.ApplyProjectInUse] = "FieldWorks has this project open. Close it before applying changes.",
         [C.ApplyReconciliationNeeded] =

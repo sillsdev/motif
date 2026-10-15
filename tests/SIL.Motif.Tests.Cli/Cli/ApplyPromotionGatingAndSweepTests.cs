@@ -298,12 +298,34 @@ public sealed class ApplyPromotionGatingAndSweepTests
         Assert.NotEqual(0, refused.ExitCode);
         Assert.Empty(refused.Output);
         var failure = ProjectionJson.Deserialize<FailureEnvelope>(refused.Error)!;
-        Assert.Equal("apply.drift", failure.Code);
+        Assert.Equal("apply.precondition-failed", failure.Code);
         Assert.Equal(bytes, File.ReadAllBytes(_fwDataPath));
         Assert.Equal("proposed", GetRecord(id).Status);
     }
 
     // --- helpers ---
+
+    [Fact]
+    public void ApplyRefusesProjectDriftAsAPreconditionNotAnUntrustworthyCache()
+    {
+        var id = FinalizeAndTrial("precondition-drift-apply", "proposal gloss");
+        var loader = new FwDataProjectLoader();
+        using (var cache = loader.LoadCache(_fwDataPath))
+        {
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                cache.ServiceLocator.GetInstance<ILexSenseRepository>().GetObject(_seed.FirstSenseId).Gloss
+                    .set_String(cache.WritingSystemFactory.GetWsFromStr(NewLangProjFixture.AnalysisTag),
+                        TsStringUtils.MakeString("FieldWorks edit after Dry Run", cache.DefaultAnalWs)));
+            loader.Save(cache);
+        }
+
+        var result = ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, id, Force: true));
+
+        Assert.False(result.Succeeded);
+        Assert.Equal("apply.precondition-failed", result.Refusal!.Code);
+        Assert.NotEqual(FailureReason.StoreInconsistent, result.Refusal.Reason);
+        Assert.DoesNotContain("no longer trustworthy", result.Refusal.Message, StringComparison.Ordinal);
+    }
 
     private string FinalizeAndTrial(string draftName, string newGloss)
     {

@@ -14,8 +14,8 @@ internal static class TextCreateDependencies
     {
         var wordformCreates = operations
             .Where(operation => operation.Kind == LangProjectWordformsOperationKinds.Create && operation.EntityId is not null)
-            .GroupBy(operation => operation.EntityId!.Value)
-            .ToDictionary(group => group.Key, group => group.First().OperationId);
+            .GroupBy(operation => operation.EntityId!.Value, CanonicalId.ByGuid)
+            .ToDictionary(group => group.Key, group => group.First().OperationId, CanonicalId.ByGuid);
         if (wordformCreates.Count == 0) return;
         var byId = operations.GroupBy(operation => operation.OperationId).ToDictionary(group => group.Key, group => group.First());
         foreach (var create in operations.Where(operation => operation.Kind == LangProjectTextsOperationKinds.Create))

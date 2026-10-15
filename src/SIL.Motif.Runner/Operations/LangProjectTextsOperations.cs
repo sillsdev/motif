@@ -68,7 +68,7 @@ public static class LangProjectTextsCreatePayload
             !nameText.IsNormalized(NormalizationForm.FormD))
             throw Refuse("'after.name' needs a writing system and a nonblank NFD title.");
         var contents = ClosedPayloadParsing.GetRequiredCanonicalId(after, "contents", kind);
-        var seen = new HashSet<CanonicalId> { contents };
+        var seen = new HashSet<CanonicalId>(CanonicalId.ByGuid) { contents };
         var paragraphs = new List<TextCreateParagraph>();
         var words = 0;
         var array = Required(after, "paragraphs", JsonValueKind.Array);
@@ -137,7 +137,7 @@ internal sealed class CreateTextHandler : IOperationHandler
                     $"{repository.GetObject(created.ToGuid()).ClassName}; this is a semantic conflict. Choose a fresh identity.");
         var nameWs = Handle(cache, payload.NameWritingSystem);
         var resolved = payload.Paragraphs.Select(paragraph => (paragraph, ws: Handle(cache, paragraph.WritingSystem))).ToArray();
-        var wordforms = new Dictionary<CanonicalId, IWfiWordform>();
+        var wordforms = new Dictionary<CanonicalId, IWfiWordform>(CanonicalId.ByGuid);
         foreach (var (paragraph, ws) in resolved)
             foreach (var word in paragraph.Segments.SelectMany(segment => segment.Words))
                 if (!wordforms.ContainsKey(word))

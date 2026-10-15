@@ -43,6 +43,29 @@ public sealed class EditNaturalClassComposerTests(PristineProjectFixture pristin
     }
 
     [Fact]
+    public void ComparesMembersByGuidWhateverPrefixSpellsThem()
+    {
+        using var cache = pristine.NewScratch();
+        var authored = new List<OperationEnvelope>();
+        var a = CreatePhoneme(cache, authored, "a");
+        var b = CreatePhoneme(cache, authored, "b");
+        var naturalClass = CreateSegmentClass(cache, authored, "labials", "LAB", [a, b]);
+        var prefixedA = CanonicalId.FromGuid(a.ToGuid(), "seg-");
+        var prefixedB = CanonicalId.FromGuid(b.ToGuid(), "seg-");
+
+        var unchanged = EditNaturalClassComposer.Build(cache,
+            new EditNaturalClassIntent(naturalClass, [prefixedB, prefixedA], [prefixedA, prefixedB]));
+        var swapped = EditNaturalClassComposer.Build(cache,
+            new EditNaturalClassIntent(naturalClass, [prefixedA, prefixedB], [prefixedA]));
+
+        Assert.Empty(unchanged);
+        var removal = Assert.Single(swapped);
+        Assert.Equal(PhNCSegmentsSegmentsOperationKinds.RemoveRefSegments, removal.Kind);
+        Assert.Equal(b.ToGuid(), JsonSerializer.Deserialize<JsonElement>(removal.After!.Value.GetRawText())
+            .GetProperty("member").GetString() is { } member ? CanonicalId.Parse(member).ToGuid() : Guid.Empty);
+    }
+
+    [Fact]
     public void RequiresNonemptyDistinctExpectedAndRequestedMembersAndRejectsStaleState()
     {
         using var cache = pristine.NewScratch();

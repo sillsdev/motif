@@ -300,6 +300,52 @@ public sealed class LangProjectTextsOperationsTests : IDisposable
         Assert.Throws<ContractParseException>(() => LangProjectTextsCreatePayload.Parse(document.RootElement));
     }
 
+    [Fact]
+    public void CreateTextPayload_RefusesOneGuidSpelledBareAndPrefixedAsTwoParts()
+    {
+        var guid = Guid.NewGuid();
+        var (bare, prefixed) = (CanonicalId.FromGuid(guid), CanonicalId.FromGuid(guid, "seg-"));
+        var after = Json(new
+        {
+            name = new { ws = _ws, text = "Hadithi" },
+            contents = CanonicalId.Mint().Value,
+            paragraphs = new[]
+            {
+                new
+                {
+                    id = CanonicalId.Mint().Value, ws = _ws,
+                    segments = new[]
+                    {
+                        new { id = bare.Value, words = new[] { _sita.Value } },
+                        new { id = prefixed.Value, words = new[] { _sita.Value } },
+                    },
+                },
+            },
+        });
+
+        var refusal = Assert.Throws<ContractParseException>(() => LangProjectTextsCreatePayload.Parse(after));
+
+        Assert.Contains("is used twice", refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void CreateText_AWordformCreatedInTheSameProposalIsDeclaredEvenWhenTheTextSpellsItWithAPrefix()
+    {
+        var wordform = CanonicalId.Mint();
+        var createWord = new OperationEnvelope(CanonicalId.Mint(), LangProjectWordformsOperationKinds.Create, wordform,
+            Root(), Json(new { ws = _ws, text = "kitu" }));
+        var textId = CanonicalId.Mint();
+        var prefixedWord = CanonicalId.FromGuid(wordform.ToGuid(), "word-");
+        var createText = new OperationEnvelope(CanonicalId.Mint(), LangProjectTextsOperationKinds.Create, textId, Root(),
+            Json(Payload(textId, CanonicalId.Mint(), CanonicalId.Mint(), (CanonicalId.Mint(), [prefixedWord]))));
+        var proposal = new Proposal(new Dictionary<string, string> { ["analysis"] = "1.0", ["texts"] = "1.0" },
+            CanonicalId.Mint(), null, [createWord, createText]);
+
+        var refusal = Assert.Throws<ContractParseException>(() => ScratchDryRun.Of(_cache, proposal));
+
+        Assert.Contains("without declaring it in dependsOn", refusal.Message, StringComparison.Ordinal);
+    }
+
     private CanonicalId Seed(string form)
     {
         IWfiWordform created = null!;

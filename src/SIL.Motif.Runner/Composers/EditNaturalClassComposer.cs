@@ -30,20 +30,20 @@ public static class EditNaturalClassComposer
         if (expected.Length == 0 || desired.Length == 0)
             throw new InvalidOperationException($"'{ConstructName}': a segment class must have at least one member.");
 
-        var current = naturalClass.SegmentsRC.Select(SoundSystemAuthoring.Id)
-            .OrderBy(id => id.Value, StringComparer.Ordinal).ToArray();
-        if (!expected.OrderBy(id => id.Value, StringComparer.Ordinal).SequenceEqual(current))
+        var current = naturalClass.SegmentsRC.Select(SoundSystemAuthoring.Id).ToArray();
+        if (!current.ToHashSet(CanonicalId.ByGuid).SetEquals(expected))
             throw new InvalidOperationException(
                 $"'{ConstructName}': target '{intent.Target.Value}' members differ from the expected member list.");
 
         foreach (var member in desired)
             _ = SoundSystemAuthoring.RequirePhoneme(cache, member);
 
-        var currentSet = current.ToHashSet();
-        var desiredSet = desired.ToHashSet();
-        return currentSet.Except(desiredSet).OrderBy(id => id.Value, StringComparer.Ordinal)
+        var currentSet = current.ToHashSet(CanonicalId.ByGuid);
+        var desiredSet = desired.ToHashSet(CanonicalId.ByGuid);
+        // A member spelled two ways is one member: removals use the live spelling, additions the authored one.
+        return currentSet.Except(desiredSet, CanonicalId.ByGuid).OrderBy(id => id.CanonicalSuffix, StringComparer.Ordinal)
             .Select(id => ReferenceOperation(PhNCSegmentsSegmentsOperationKinds.RemoveRefSegments, intent.Target, id))
-            .Concat(desiredSet.Except(currentSet).OrderBy(id => id.Value, StringComparer.Ordinal)
+            .Concat(desiredSet.Except(currentSet, CanonicalId.ByGuid).OrderBy(id => id.CanonicalSuffix, StringComparer.Ordinal)
                 .Select(id => ReferenceOperation(PhNCSegmentsSegmentsOperationKinds.AddRefSegments, intent.Target, id)))
             .ToArray();
     }
@@ -104,7 +104,7 @@ public static class EditNaturalClassComposer
 
     private static CanonicalId[] Unique(IReadOnlyList<CanonicalId> ids, string name)
     {
-        if (ids.Distinct().Count() != ids.Count)
+        if (ids.Distinct(CanonicalId.ByGuid).Count() != ids.Count)
             throw new InvalidOperationException($"'{ConstructName}': '{name}' must contain unique identities.");
         return ids.ToArray();
     }

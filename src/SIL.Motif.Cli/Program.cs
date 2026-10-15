@@ -335,7 +335,9 @@ try
                     new(soundProject, CliProductVersion(), soundDraft, soundIntent)),
                 "compose-edit-stem-inflection-class" => ProposalCommands.ComposeEditStemInflectionClass(
                     new(soundProject, CliProductVersion(), soundDraft, soundIntent)),
-                _ => ProposalCommands.ComposeAuthorEnvironment(new(soundProject, CliProductVersion(), soundDraft, soundIntent)),
+                "compose-author-environment" => ProposalCommands.ComposeAuthorEnvironment(
+                    new(soundProject, CliProductVersion(), soundDraft, soundIntent)),
+                _ => throw new InvalidOperationException($"'{verb}' has a compose case label but no composer arm."),
             });
             result = RenderProposal(soundOutcome, successAsJson: false);
             break;
