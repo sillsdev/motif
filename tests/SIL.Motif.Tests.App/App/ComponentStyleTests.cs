@@ -805,10 +805,6 @@ public sealed partial class ComponentStyleTests
             StackPanel.WidthProperty, "Component.Parsimony.Column.DecisionsWidth");
         yield return new("Parsimony", "a measure's title", host => Add(host, Text("parsimonyGroupTitle")),
             TextBlock.ForegroundProperty, "Intent.Text");
-        yield return new("Parsimony", "a finding row", host => Add(host, Press("parsimonyRow")),
-            Button.BackgroundProperty, "Intent.Clear");
-        yield return new("Parsimony", "the selected finding row", host => Add(host, Press("parsimonyRow", "selected")),
-            Button.BackgroundProperty, "Intent.Surface.Subtle");
         yield return new("Parsimony", "a finding's decision", host => Add(host, Text("parsimonyDisposition")),
             TextBlock.ForegroundProperty, "Intent.Link");
         yield return new("Parsimony", "the evidence", host => Add(host, Box("parsimonyDetail")),

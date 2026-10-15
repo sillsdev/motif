@@ -354,7 +354,7 @@
                                     AutomationProperties.AutomationId="{Binding DetailsAutomationId}" />
                             <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
                                     Content="Return to Active" Command="{Binding ReturnCommand}" Click="OnReturn"
-                                    AutomationProperties.AutomationId="{Binding ReturnAutomationId}" />
+                                    AutomationProperties.AutomationId="{Binding ReturnMenuAutomationId}" />
                           </StackPanel>
                         </Flyout>
                       </Button.Flyout>

@@ -5,7 +5,6 @@
     <StaticResource x:Key="Component.Parsimony.NoticePadding" ResourceKey="Intent.Inset.Notice" />
     <StaticResource x:Key="Component.Parsimony.BannerPadding" ResourceKey="Intent.Inset.Notice" />
     <StaticResource x:Key="Component.Parsimony.GroupMargin" ResourceKey="Intent.Gap.AfterGroup" />
-    <StaticResource x:Key="Component.Parsimony.RowPadding" ResourceKey="Primitive.Inset.6_4_6_4" />
     <StaticResource x:Key="Component.Parsimony.Column.DecisionsWidth" ResourceKey="Primitive.Size.110" />
     <StaticResource x:Key="Component.Parsimony.SidePanelWidth" ResourceKey="Primitive.Size.320" />
     <StaticResource x:Key="Component.Parsimony.InspectorWidth" ResourceKey="Primitive.Size.320" />
@@ -54,49 +53,9 @@
     <Setter Property="Foreground" Value="{DynamicResource Intent.Text}" />
   </Style>
 
-  <Style Selector="ListBox.parsimonyRows">
-    <Setter Property="Focusable" Value="False" />
-    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
-    <Setter Property="BorderThickness" Value="{StaticResource Intent.Stroke.None}" />
-    <Setter Property="Padding" Value="{StaticResource Intent.Inset.None}" />
-  </Style>
-
-  <Style Selector="ListBox.parsimonyRows ListBoxItem">
-    <Setter Property="Focusable" Value="False" />
-    <Setter Property="Padding" Value="{StaticResource Intent.Inset.None}" />
-  </Style>
-
-  <Style Selector="ListBox.parsimonyRows ListBoxItem /template/ ContentPresenter#PART_ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
-  </Style>
-
-  <Style Selector="ListBox.parsimonyRows ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
-  </Style>
-
-  <Style Selector="ListBox.parsimonyRows ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
-  </Style>
-
   <Style Selector=":is(TextBlock).parsimonyRowItems">
     <Setter Property="MaxLines" Value="2" />
     <Setter Property="TextTrimming" Value="CharacterEllipsis" />
-  </Style>
-
-  <Style Selector="Button.parsimonyRow">
-    <Setter Property="HorizontalAlignment" Value="Stretch" />
-    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
-    <Setter Property="BorderThickness" Value="{StaticResource Intent.Stroke.None}" />
-    <Setter Property="Padding" Value="{StaticResource Component.Parsimony.RowPadding}" />
-  </Style>
-
-  <Style Selector="Button.parsimonyRow.selected">
-    <Setter Property="Background" Value="{DynamicResource Intent.Surface.Subtle}" />
-  </Style>
-
-  <Style Selector="Button.parsimonyRow:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource Intent.Surface.Subtle}" />
   </Style>
 
   <Style Selector=":is(TextBlock).parsimonyDisposition">

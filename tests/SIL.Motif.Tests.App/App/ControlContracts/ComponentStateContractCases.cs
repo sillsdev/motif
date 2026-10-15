@@ -314,11 +314,6 @@ internal static class ComponentStateContractCases
         yield return new(warningSummaryPressed, "pressed", () => Alone(Press("warningSummary")), StateStimulus.Press,
             StatePart.Face, ContentPresenter.BackgroundProperty, "Intent.Surface.Subtle");
 
-        const string parsimonyRowHover = "Button.parsimonyRow:pointerover" + face;
-        yield return new(parsimonyRowHover, "hover", () => Alone(Press("parsimonyRow")), StateStimulus.Pointer,
-            StatePart.Face, ContentPresenter.BackgroundProperty, "Intent.Surface.Subtle");
-        yield return new("Button.parsimonyRow.selected", "selected", () => Alone(Press("parsimonyRow", "selected")),
-            StateStimulus.None, StatePart.Self, Button.BackgroundProperty, "Intent.Surface.Subtle");
         yield return new("Button.parsimonyTab.selected", "selected", () => Alone(Press("parsimonyTab", "selected")),
             StateStimulus.None, StatePart.Self, Button.BackgroundProperty, "Intent.Surface.Subtle");
 
@@ -342,12 +337,6 @@ internal static class ComponentStateContractCases
             StateStimulus.Pointer, StatePart.Face, ContentPresenter.BackgroundProperty, "Intent.Clear");
         yield return new("ListBox.wordRows ListBoxItem:selected" + rowsFace, "selected", () => WordRowsEntry(selected: true),
             StateStimulus.None, StatePart.Face, ContentPresenter.BackgroundProperty, "Intent.Clear");
-        yield return new("ListBox.parsimonyRows ListBoxItem:pointerover" + rowsFace, "hover",
-            () => WordRowsEntry(selected: false, "parsimonyRows"), StateStimulus.Pointer, StatePart.Face,
-            ContentPresenter.BackgroundProperty, "Intent.Clear");
-        yield return new("ListBox.parsimonyRows ListBoxItem:selected" + rowsFace, "selected",
-            () => WordRowsEntry(selected: true, "parsimonyRows"), StateStimulus.None, StatePart.Face,
-            ContentPresenter.BackgroundProperty, "Intent.Clear");
         const string denseRow = "ListBox.denseTable ListBoxItem";
         yield return new(denseRow + ":pointerover Border.denseTableRow", "hover", () => DenseTableEntry(selected: false),
             StateStimulus.Pointer, StatePart.DenseRow, Border.BackgroundProperty, "Intent.Surface.Hover");

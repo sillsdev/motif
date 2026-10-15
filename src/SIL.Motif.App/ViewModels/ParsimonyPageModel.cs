@@ -226,6 +226,9 @@ public sealed partial class ParsimonySuppressedItem(
     /// <summary>The Return action's automation identifier.</summary>
     public string ReturnAutomationId => AutomationId + "-return";
 
+    /// <summary>The menu's Return to Active item's automation identifier.</summary>
+    public string ReturnMenuAutomationId => AutomationId + "-return-menu";
+
     /// <summary>The repeating action menu's automation identifier.</summary>
     public string ActionsAutomationId => AutomationId + "-actions";
 
@@ -303,7 +306,6 @@ public sealed partial class ParsimonyPageModel : PageModel
     private readonly Dictionary<string, ParsimonySuppressedItem> _suppressedByKey = new(StringComparer.Ordinal);
     private ParsimonyListRow? _selectedRow;
     private ParsimonySuppressedItem? _selectedSuppressedItem;
-
 
     // Staged here and not yet applied. They are cleared once Apply has written them or the draft is gone.
     private string _kindFilter = string.Empty;
