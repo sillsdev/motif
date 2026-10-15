@@ -49,7 +49,9 @@
     </Style>
   </UserControl.Styles>
 
-  <Grid Classes="matrixLayout" RowDefinitions="Auto,*,Auto,*" IsVisible="{Binding Compare.HasWords}">
+  <ScrollViewer x:Name="MatrixScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                IsVisible="{Binding Compare.HasWords}">
+  <Grid Classes="matrixLayout" RowDefinitions="Auto,Auto,Auto,Auto">
     <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
       <Border Classes="notice" IsVisible="{Binding Compare.ShowsNoStandingsNotice}">
         <views:CopyableTextBlock TextWrapping="Wrap"
@@ -74,8 +76,7 @@
       </DockPanel>
     </StackPanel>
 
-    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-    <StackPanel Classes="matrixPanel" Spacing="{DynamicResource Component.MatrixCell.MatrixSpacing}"
+    <StackPanel Grid.Row="1" Classes="matrixPanel" Spacing="{DynamicResource Component.MatrixCell.MatrixSpacing}"
                 AutomationProperties.Name="Compare matrix">
       <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
         <views:CopyableTextBlock Classes="columnHeader matrixRowLabel" Text="FieldWorks ↓  PanGloss →"
@@ -143,7 +144,6 @@
         </ItemsControl.ItemTemplate>
       </ItemsControl>
     </StackPanel>
-    </ScrollViewer>
 
     <Border Grid.Row="2" Classes="card" IsVisible="{Binding Compare.HasFixFirst}">
       <Expander IsExpanded="True">
@@ -175,9 +175,7 @@
       </Expander>
     </Border>
 
-    <ScrollViewer x:Name="MatrixDetailsScroll" Grid.Row="3" VerticalScrollBarVisibility="Auto"
-                  HorizontalScrollBarVisibility="Disabled">
-      <Border Classes="card matrixChosen">
+      <Border Grid.Row="3" Classes="card matrixChosen">
         <Grid Classes="matrixChosenLayout" RowDefinitions="Auto,Auto,Auto,Auto,*">
           <DockPanel Classes="matrixChosenHeading" AutomationProperties.Name="{Binding Compare.SelectionText}">
             <StackPanel DockPanel.Dock="Left" Classes="matrixChosenMarks" Orientation="Horizontal"
@@ -238,8 +236,8 @@
             </DockPanel>
           </Border>
 
-          <DockPanel Grid.Row="2">
-            <ComboBox x:Name="ComparePanelSortChoicesItems" DockPanel.Dock="Left" VerticalAlignment="Top" ItemsSource="{Binding Compare.SortChoices}"
+          <WrapPanel Grid.Row="2">
+            <ComboBox x:Name="ComparePanelSortChoicesItems" VerticalAlignment="Top" ItemsSource="{Binding Compare.SortChoices}"
                       SelectedItem="{Binding Compare.Sort}"
                       MinWidth="{DynamicResource Component.TextsPage.CompareSortMinWidth}"
                       Margin="{DynamicResource Component.TextsPage.CompareControlMargin}"
@@ -250,11 +248,10 @@
                 </DataTemplate>
               </ComboBox.ItemTemplate>
             </ComboBox>
-            <TextBox x:Name="MatrixWordSearch" DockPanel.Dock="Left" VerticalAlignment="Top" Width="{DynamicResource Component.TextsPage.CompareSearchWidth}"
+            <TextBox x:Name="MatrixWordSearch" VerticalAlignment="Top" Width="{DynamicResource Component.TextsPage.CompareSearchWidth}"
                      Margin="{DynamicResource Component.TextsPage.CompareControlMargin}"
                      Text="{Binding Compare.SearchText}" PlaceholderText="Search words…"
                      AutomationProperties.Name="Search the listed words" />
-            <WrapPanel HorizontalAlignment="Right">
               <SplitButton Content="Parse again" Command="{Binding Compare.RerunCommand}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.MatrixParseAgain}"
                            IsVisible="{Binding Compare.CanRerun}" Margin="{DynamicResource Component.TextsPage.CompareControlMargin}"
                            ToolTip.Tip="Parse the stopped and unparsed words again"
@@ -284,8 +281,7 @@
                       Margin="{DynamicResource Component.TextsPage.CompareControlMargin}"
                       ToolTip.Tip="{Binding Compare.CheckedWordText}"
                       AutomationProperties.Name="Mark checked words as incorrect spelling" />
-            </WrapPanel>
-          </DockPanel>
+          </WrapPanel>
 
           <StackPanel Grid.Row="3" Spacing="{DynamicResource Intent.Space.Minimal}">
             <views:RefusalBlock DataContext="{Binding Compare.Changes.ShownRefusal}" />
@@ -312,6 +308,6 @@
           </views:WordListSlot>
         </Grid>
       </Border>
-    </ScrollViewer>
   </Grid>
+  </ScrollViewer>
 </UserControl>

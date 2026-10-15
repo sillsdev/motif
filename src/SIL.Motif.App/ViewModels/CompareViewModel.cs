@@ -938,6 +938,8 @@ public sealed partial class CompareCellViewModel : ObservableObject
     /// <summary>The words the cell shows, its big number.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CountText))]
+    [NotifyPropertyChangedFor(nameof(CountNumberText))]
+    [NotifyPropertyChangedFor(nameof(CountUnitText))]
     [NotifyPropertyChangedFor(nameof(IsEmpty))]
     [NotifyPropertyChangedFor(nameof(IsEmptyImpossible))]
     [NotifyPropertyChangedFor(nameof(ShowsPlaces))]
@@ -965,6 +967,12 @@ public sealed partial class CompareCellViewModel : ObservableObject
     private bool _isSelected;
 
     public string CountText => WordsText(WordCount);
+
+    /// <summary>The number alone, so a narrow cell never breaks a unit word; the unit lives in headers and the name.</summary>
+    public string CountNumberText => WordCount.ToString("N0", System.Globalization.CultureInfo.CurrentCulture);
+
+    /// <summary>The unit under the cell's number, shown only while the cell has room for details.</summary>
+    public string CountUnitText => WordCount == 1 ? "word" : "words";
 
     /// <summary>A combination the data cannot produce, and did not: drawn as a dash rather than as a zero.</summary>
     public bool IsEmptyImpossible => Family == CompareFamilyKind.None && Count == 0;

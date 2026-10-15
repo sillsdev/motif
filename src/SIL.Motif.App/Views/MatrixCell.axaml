@@ -7,7 +7,7 @@
              x:DataType="vm:CompareCellViewModel"
              AutomationProperties.Name="{Binding AccessibleName}"
              Focusable="True">
-  <Border Classes="matrixCell" Classes.compact="{Binding $parent[views:MatrixCell].Compact}"
+  <Border x:Name="CellBox" Classes="matrixCell" Classes.compact="{Binding $parent[views:MatrixCell].Compact}"
           Focusable="True" Tag="{Binding}"
           Classes.good="{Binding IsGood}" Classes.fine="{Binding IsFine}"
           Classes.violation="{Binding IsViolation}" Classes.review="{Binding IsReview}"
@@ -19,8 +19,9 @@
                Margin="{DynamicResource Component.MatrixCell.MarkerMargin}"
                ToolTip.Tip="{Binding PendingChangeStatus}" views:ClearTipPlacement.IsEnabled="True" />
       <StackPanel VerticalAlignment="Center">
-        <TextBlock Classes="matrixCellCount" Text="{Binding CountText}" TextWrapping="Wrap" AutomationProperties.AutomationId="{x:Static app:AutomationIds.MatrixCellCount}" />
+        <TextBlock Classes="matrixCellCount" Text="{Binding CountNumberText}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.MatrixCellCount}" />
         <StackPanel x:Name="CellDetails" Classes="matrixCellDetails">
+          <TextBlock Classes="matrixCellUnit" Text="{Binding CountUnitText}" />
           <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Compact}">
             <TextBlock Classes="matrixCellPlaces" Text="{Binding PlacesText}" IsVisible="{Binding ShowsPlaces}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.MatrixCellPlaces}" />
             <TextBlock Grid.Column="1" Classes="matrixCellLabel" Text="{Binding Label}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.MatrixCellLabel}"

@@ -478,10 +478,6 @@ internal static class ExpectedMatrixFindings
     [
         new("open-recent-projects", "popup-outside-window", new("FlyoutPresenter", Name: "motif-project-menu-flyout"), null, [..AllMatrixPoints], "The recent-project menu overlaps the top bar at these sizes.", "matrix/open-recent-projects-thin-100-light.png",
             "V25", "recent-projects menu overlaps the top bar", "UF"),
-        new("2a-texts-matrix", "unreachable-control", new("WordRow", Name: "motif-word-row-matrix-alikula-row"), null, [new("thin", 150, "light"), new("thin", 150, "dark")], "Word rows with always-visible actions are wider than the results viewport and its scroll route.", "matrix/2a-texts-matrix-thin-150-light.png",
-            "H01", "matrix word row beyond its scroll route", "Analyze texts"),
-        new("2a-texts-matrix", "unreachable-control", new("RepeatButton", Name: "PART_PageDownButton"), null, [new("thin", 150, "light"), new("half", 150, "light"), new("thin", 150, "dark"), new("half", 150, "dark")], "The results list's page-down region sits outside the page body at this zoom.", "matrix/2a-texts-matrix-thin-150-light.png",
-            "H01", "matrix scroll bar outside the page body", "Analyze texts"),
         new("2c-texts-lists", "unreachable-control", new("WordRow", Name: "motif-word-row-lists-hawajafika-row"), null, [new("thin", 150, "light"), new("thin", 150, "dark")], "Word rows with always-visible actions are wider than the list viewport and its scroll route.", "matrix/2c-texts-lists-thin-150-light.png",
             "H02", "list word row beyond its scroll route", "Analyze texts"),
         new("2c-texts-lists", "unreachable-control", new("Button", Name: "motif-handoff-list"), null, [new("thin", 150, "light"), new("thin", 150, "dark")], "The list's AI Handoff action sits beyond the narrow page at this zoom.", "matrix/2c-texts-lists-thin-150-light.png",

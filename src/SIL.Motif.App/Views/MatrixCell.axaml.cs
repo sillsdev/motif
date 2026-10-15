@@ -15,7 +15,12 @@ public sealed partial class MatrixCell : UserControl
     public static readonly Avalonia.StyledProperty<bool> CompactProperty =
         Avalonia.AvaloniaProperty.Register<MatrixCell, bool>(nameof(Compact));
 
-    public MatrixCell() => AvaloniaXamlLoader.Load(this);
+    public MatrixCell()
+    {
+        AvaloniaXamlLoader.Load(this);
+        SizeChanged += (_, e) => this.FindControl<Border>("CellBox")!.Classes.Set("narrow",
+            e.NewSize.Width < (double)this.FindResource("Component.MatrixCell.UnitMinWidth")!);
+    }
 
     /// <summary>Whether this cell shows its label, places, and refusal details.</summary>
     public bool ShowsDetails

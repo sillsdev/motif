@@ -157,7 +157,7 @@ public sealed partial class MatrixListsWindowWordsTests(AvaloniaHeadlessFixture 
                 .SelectMany(cell => cell.GetLogicalDescendants().OfType<TextBlock>())
                 .Where(text => text.IsEffectivelyVisible).Select(text => text.Text ?? string.Empty).ToArray());
 
-            Assert.Equal(new[] { "0 words", "0 places" }, labels);
+            Assert.Equal(new[] { "0", "words", "0 places" }, labels);
         });
     }
 

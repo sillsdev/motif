@@ -243,7 +243,8 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
                 cell.DataContext is CompareCellViewModel { Row: WordProjectStatus.Approved, Column: CompareColumnKind.NoParse });
             var texts = lost.GetVisualDescendants().OfType<TextBlock>().Where(text => text.IsEffectivelyVisible).ToArray();
             var count = Assert.Single(texts, text => text.Classes.Contains("matrixCellCount"));
-            Assert.Equal("4 words", count.Text);
+            Assert.Equal("4", count.Text);
+            Assert.Contains(texts, text => text.Classes.Contains("matrixCellUnit") && text.Text == "words");
             Assert.Contains(texts, text => text.Classes.Contains("matrixCellPlaces") && text.Text == "7 places");
             Assert.Contains(texts, text => text.Text == "Lost");
             Assert.Equal("You approved these in FieldWorks; PanGloss builds nothing for them.", ToolTip.GetTip(lost));
@@ -251,7 +252,7 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
             var same = window.GetVisualDescendants().OfType<MatrixCell>().Single(cell =>
                 cell.DataContext is CompareCellViewModel { Row: WordProjectStatus.Approved, Column: CompareColumnKind.Match });
             Assert.Contains(same.GetVisualDescendants().OfType<TextBlock>(), text =>
-                text.Classes.Contains("matrixCellCount") && text.Text == "1 word");
+                text.Classes.Contains("matrixCellCount") && text.Text == "1");
             Assert.Contains(same.GetVisualDescendants().OfType<TextBlock>(), text =>
                 text.Classes.Contains("matrixCellPlaces") && text.Text == "2 places");
 
@@ -260,6 +261,68 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
             Assert.Contains(empty.GetVisualDescendants().OfType<TextBlock>(), text =>
                 text.Classes.Contains("matrixCellPlaces") && text.Text == "0 places" && text.IsEffectivelyVisible);
         }));
+    }
+
+    [Theory]
+    [InlineData(366)]
+    [InlineData(382)]
+    [InlineData(430)]
+    [InlineData(640)]
+    [InlineData(1000)]
+    public void MatrixCountCellsNeverBreakAWordAtAnyWidth(double width)
+    {
+        avalonia.Invoke(() => WithPanel(MatrixListsWindowWordsTests.Compare(MatrixListsWindowWordsTests.EveryKindOfWord),
+            width, window =>
+            {
+                var cells = window.GetVisualDescendants().OfType<MatrixCell>().ToArray();
+                Assert.NotEmpty(cells);
+                foreach (var text in cells.SelectMany(cell => cell.GetVisualDescendants().OfType<TextBlock>())
+                    .Where(text => text.IsEffectivelyVisible &&
+                        (text.Classes.Contains("matrixCellCount") || text.Classes.Contains("matrixCellUnit"))))
+                {
+                    Assert.Single(text.TextLayout.TextLines);
+                    Assert.True(text.TextLayout.Width <= text.Bounds.Width + 0.5,
+                        $"'{text.Text}' needs {text.TextLayout.Width:0.#} px but has {text.Bounds.Width:0.#} at {width}.");
+                }
+            }));
+    }
+
+    [Theory]
+    [InlineData(430, 500)]
+    [InlineData(640, 600)]
+    [InlineData(1000, 900)]
+    public void TheChosenCellsListSitsBelowTheMatrixWithItsButtonsInsideTheWindow(double width, double height)
+    {
+        avalonia.Invoke(() =>
+        {
+            var compare = MatrixListsWindowWordsTests.Compare(MatrixListsWindowWordsTests.EveryKindOfWord);
+            var panel = new ComparePanel(compare);
+            var window = new Window
+            {
+                Content = panel, RequestedThemeVariant = ThemeVariant.Light, Width = width, Height = height,
+            };
+            try
+            {
+                window.Show();
+                window.UpdateLayout();
+                var matrix = window.GetVisualDescendants().OfType<StackPanel>().Single(item => item.Classes.Contains("matrixPanel"));
+                var chosen = window.GetVisualDescendants().OfType<Border>().Single(item => item.Classes.Contains("matrixChosen"));
+                var matrixBounds = matrix.TranslatePoint(default, window)!.Value;
+                var chosenTop = chosen.TranslatePoint(default, window)!.Value.Y;
+                Assert.True(chosenTop >= matrixBounds.Y + matrix.Bounds.Height - 0.5,
+                    $"The list starts at {chosenTop:0.#}, inside the matrix that ends at {matrixBounds.Y + matrix.Bounds.Height:0.#}.");
+                foreach (var button in chosen.GetVisualDescendants().OfType<Button>().Where(item => item.IsEffectivelyVisible))
+                {
+                    var origin = button.TranslatePoint(default, chosen)!.Value;
+                    Assert.True(origin.X >= -1 && origin.X + button.Bounds.Width <= chosen.Bounds.Width + 1,
+                        $"{AutomationProperties.GetName(button)} is clipped sideways at {width}x{height}.");
+                }
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
     }
 
     [Fact]
@@ -314,8 +377,7 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
             var empty = CountOf(WordProjectStatus.Rejected, CompareColumnKind.Match);
             var dash = window.GetVisualDescendants().OfType<MatrixCell>().Single(cell => cell.DataContext is CompareCellViewModel { IsNone: true })
                 .GetVisualDescendants().OfType<TextBlock>().Single(text => text.Classes.Contains("matrixCellCount"));
-            Assert.Equal("0 words", empty.Text);
-            Assert.Equal("0 words", empty.Text);
+            Assert.Equal("0", empty.Text);
             Assert.Equal(Resource("Intent.Type.Title"), empty.FontSize);
             Assert.Equal(Resource("Intent.Type.Title"), full.FontSize);
             Assert.Equal(Resource("Intent.Type.Title"), dash.FontSize);
