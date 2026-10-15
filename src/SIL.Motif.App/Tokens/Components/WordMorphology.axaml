@@ -24,8 +24,21 @@
   <Style Selector="StackPanel.morphemePanelPart">
     <Setter Property="Margin" Value="{StaticResource Primitive.Inset.0_0_24_4}" />
   </Style>
+  <Style Selector=":is(StackPanel).wordPresentationLeadingMark, TextBlock.wordPresentationCaption">
+    <Setter Property="Margin" Value="{StaticResource Primitive.Inset.0_0_4_4}" />
+    <Setter Property="VerticalAlignment" Value="Top" />
+  </Style>
+  <Style Selector="controls|MorphemePanel.wordPresentationMorphology StackPanel.morphemePanelPart">
+    <Setter Property="Margin" Value="{StaticResource Primitive.Inset.0_0_12_0}" />
+  </Style>
+  <Style Selector="controls|MorphemePanel.wordPresentationMorphology WrapPanel">
+    <Setter Property="LineSpacing" Value="{StaticResource Intent.Space.Minimal}" />
+  </Style>
   <Style Selector="StackPanel.morphemePanelPart.morphemePanelPartLast">
     <Setter Property="Margin" Value="{StaticResource Primitive.Inset.0_0_0_4}" />
+  </Style>
+  <Style Selector="controls|MorphemePanel.wordPresentationMorphology StackPanel.morphemePanelPart.morphemePanelPartLast">
+    <Setter Property="Margin" Value="{StaticResource Intent.Inset.None}" />
   </Style>
   <Style Selector="StackPanel.morphemePanelPart.morphemePanelInspectable">
     <Setter Property="Cursor" Value="Hand" />

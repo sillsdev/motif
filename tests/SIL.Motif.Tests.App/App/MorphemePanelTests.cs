@@ -103,6 +103,29 @@ public sealed class MorphemePanelTests(AvaloniaHeadlessFixture avalonia)
     }
 
     [Fact]
+    public void ACaptionedStripShowsAsManyMorphemesAsAnUncaptionedOne()
+    {
+        avalonia.Invoke(() =>
+        {
+            var morphs = Enumerable.Range(0, 5)
+                .Select(index => new ParserReadingMorphViewModel(
+                    new ParserReadingMorph($"m{index}", $"g{index}", "n", null, false, null)))
+                .ToArray();
+            var request = new MorphemeOverflowRequest("word-1", "word-1:fieldworks", 1, MorphologyProducer.FieldWorks);
+            MorphemePanel Strip(string? caption) => new()
+                { Morphs = morphs, MaxVisibleMorphs = 2, OverflowRequest = request, Caption = caption };
+            var wide = Strip(null);
+            var stacked = Strip("FieldWorks");
+            wide.Measure(Size.Infinity);
+            stacked.Measure(Size.Infinity);
+            var wideParts = Assert.IsType<WrapPanel>(wide.Child).Children.OfType<StackPanel>().Count();
+            var stackedParts = Assert.IsType<WrapPanel>(stacked.Child).Children.OfType<StackPanel>().Count();
+            Assert.Equal(2, wideParts);
+            Assert.Equal(wideParts, stackedParts);
+        });
+    }
+
+    [Fact]
     public void OverflowNamesTheProducerAndPreservesTheCompleteReading()
     {
         avalonia.Invoke(() =>

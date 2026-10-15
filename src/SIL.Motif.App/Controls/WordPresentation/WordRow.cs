@@ -254,6 +254,7 @@ public sealed class WordRow : UserControl
                 var cell = Cell(data, columns[index], hasOpinionColumn);
                 if (cell is null) continue;
                 Grid.SetColumn(cell, index);
+                cell.VerticalAlignment = VerticalAlignment.Top;
                 _shell.Children.Add(cell);
             }
         }

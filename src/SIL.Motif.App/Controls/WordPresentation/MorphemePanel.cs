@@ -340,9 +340,7 @@ public sealed class MorphemePanel : Decorator
             Child = _parts;
         }
         var morphs = Morphs ?? [];
-        // The caption is a visual root of its own, so it spends one of the visible-morph budget.
-        var budget = Caption is { Length: > 0 } ? Math.Max(1, MaxVisibleMorphs - 1) : MaxVisibleMorphs;
-        var limit = OverflowRequest is null ? morphs.Count : Math.Min(budget, morphs.Count);
+        var limit = OverflowRequest is null ? morphs.Count : Math.Min(MaxVisibleMorphs, morphs.Count);
         var visible = morphs.Take(limit).ToArray();
         if (InlineParts)
         {
@@ -370,7 +368,6 @@ public sealed class MorphemePanel : Decorator
             _parts.Children.Insert(0, new TextBlock
             {
                 Text = Caption,
-                VerticalAlignment = VerticalAlignment.Center,
                 Classes = { "wordPresentationHeading", "wordPresentationCaption" },
             });
     }
