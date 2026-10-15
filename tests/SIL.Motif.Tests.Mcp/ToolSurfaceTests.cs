@@ -29,6 +29,12 @@ public sealed class ToolSurfaceTests
         // The default batch refuses a disposition on purpose, pinned by `McpRoundTripTests`.
         var disposition = "compose-record-parsimony-disposition";
         var notInBatch = retirements.Append(disposition);
+        foreach (var verb in notInBatch)
+        {
+            Assert.Contains(verb, SIL.Motif.Commands.ProposalCommands.ComposerVerbs);
+            Assert.True(CommandCatalog.All.Single(command => command.Name == verb).IsAgentTool,
+                $"'{verb}' is excluded from the batch but is not an agent tool, so the exclusion is vacuous.");
+        }
         var agentEligible = CommandCatalog.All
             .Where(command => SIL.Motif.Commands.ProposalCommands.ComposerVerbs.Contains(command.Name))
             .Where(command => command.IsAgentTool)

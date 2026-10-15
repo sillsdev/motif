@@ -384,6 +384,58 @@ public sealed class ProposalWorkflowTests : IDisposable
     }
 
     [Fact]
+    public void TypedComposeVerbRunsEndToEndAndItsCitationFlagsReachEveryComposedOperation()
+    {
+        var (featStruc, feature, value) = SeedFeatureStructureWithClosedFeature();
+        Assert.True(ProposalCommands.New(new NewDraftRequest(_fwDataPath, ProductVersion, "typed-plain", null)).Succeeded);
+        Assert.True(ProposalCommands.New(new NewDraftRequest(_fwDataPath, ProductVersion, "typed-cited", null)).Succeeded);
+        var intent = JsonSerializer.Serialize(new { featStruc, feature, value });
+
+        var plain = CliInProcess.Run(_workerRoot, null, developerCommands: true,
+            "compose-author-feature-value", "--project", _fwDataPath, "--draft", "typed-plain", "--intent", intent);
+        var cited = CliInProcess.Run(_workerRoot, null, developerCommands: true,
+            "compose-author-feature-value", "--project", _fwDataPath, "--draft", "typed-cited", "--intent", intent,
+            "--cite-source", "Grammar 2026", "--cite-locator", "§ 7", "--json");
+
+        Assert.True(plain.ExitCode == 0, plain.Output + plain.Error);
+        Assert.Contains("3 operation", plain.Output, StringComparison.Ordinal);
+        Assert.Contains("grammar/fsFeatStruc/createFeatureSpecs", plain.Output, StringComparison.Ordinal);
+        Assert.Contains("grammar/fsClosedValue/setValue", plain.Output, StringComparison.Ordinal);
+        Assert.True(cited.ExitCode == 0, cited.Output + cited.Error);
+        var operations = ReadDraft("typed-cited").Operations;
+        Assert.Equal(3, operations.Count);
+        var citations = operations.Select(operation => OperationCitation.FromProvenance(operation.Provenance))
+            .OfType<OperationCitation>().ToArray();
+        Assert.Equal(3, citations.Length);
+        Assert.All(citations, citation => Assert.Equal(("Grammar 2026", "§ 7"), (citation.Source, citation.Locator)));
+        Assert.All(ReadDraft("typed-plain").Operations,
+            operation => Assert.Null(OperationCitation.FromProvenance(operation.Provenance)));
+    }
+
+    private (string FeatStruc, string Feature, string Value) SeedFeatureStructureWithClosedFeature()
+    {
+        var loader = new FwDataProjectLoader();
+        using var cache = loader.LoadCache(_fwDataPath);
+        var msa = (IMoStemMsa)cache.ServiceLocator.GetInstance<ILexSenseRepository>()
+            .GetObject(_seed.FirstSenseId).MorphoSyntaxAnalysisRA;
+        var featStrucGuid = Guid.NewGuid();
+        Guid featureGuid = default, valueGuid = default;
+        UndoableUnitOfWorkHelper.Do("test setup", "test setup", cache.ServiceLocator.GetInstance<SIL.LCModel.Core.KernelInterfaces.IActionHandler>(), () =>
+        {
+            SIL.Motif.Runner.Operations.MoStemMsaMsFeaturesCreateLowering.Apply(cache, msa, featStrucGuid);
+            var closed = cache.ServiceLocator.GetInstance<IFsClosedFeatureFactory>().Create();
+            cache.LangProject.MsFeatureSystemOA.FeaturesOC.Add(closed);
+            var symbolic = cache.ServiceLocator.GetInstance<IFsSymFeatValFactory>().Create();
+            closed.ValuesOC.Add(symbolic);
+            featureGuid = closed.Guid;
+            valueGuid = symbolic.Guid;
+        });
+        loader.Save(cache);
+        return (CanonicalId.FromGuid(featStrucGuid).Value, CanonicalId.FromGuid(featureGuid).Value,
+            CanonicalId.FromGuid(valueGuid).Value);
+    }
+
+    [Fact]
     public void GlossAndDeleteCliFlagsRecordTheirSeparateCitations()
     {
         var glossDraft = "cli-gloss-cited";

@@ -419,6 +419,65 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public async Task AddFeatureValueToolComposesItsOperationsIntoTheDraftAndRefusesUnknownArguments()
+    {
+        using var project = new WalkthroughProject(pristine);
+        var (featStruc, feature, value) = SeedFeatureStructureWithClosedFeature(project);
+        await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions());
+        var started = await session.CallAsync("motif_start_proposal", ("draft", "feature-value"),
+            ("label", "Add a feature value"), ("comment", "The structure needs one specification."));
+        var proposalId = started.GetProperty("result").GetProperty("proposalId").GetString()!;
+
+        var added = await session.CallAsync("motif_add_feature_value", ("draft", "feature-value"),
+            ("featStruc", featStruc), ("feature", feature), ("value", value));
+
+        Assert.True(added.GetProperty("ok").GetBoolean(), added.ToString());
+        Assert.Equal(3, added.GetProperty("result").GetProperty("operationCount").GetInt32());
+        AssertDraftComposers(project.FwDataPath, "feature-value", proposalId, ["AuthorFeatureValue"]);
+        var staged = JsonDocument.Parse(ReadDraftState(project.FwDataPath, "feature-value").ProposalJson).RootElement
+            .GetProperty("operations").EnumerateArray().Select(operation => operation.GetProperty("kind").GetString());
+        Assert.Equal(["grammar/fsFeatStruc/createFeatureSpecs", "grammar/fsFeatureSpecification/setFeature",
+            "grammar/fsClosedValue/setValue"], staged);
+
+        var before = ReadDraftState(project.FwDataPath, "feature-value");
+        var refused = await session.Client.CallToolAsync("motif_add_feature_value", new Dictionary<string, object?>
+        {
+            ["project"] = project.FwDataPath,
+            ["draft"] = "feature-value",
+            ["featStruc"] = featStruc,
+            ["feature"] = feature,
+            ["notAField"] = "x",
+        });
+        Assert.True(refused.IsError);
+        Assert.Equal("tool.unknown-argument", refused.StructuredContent!.Value.GetProperty("code").GetString());
+        AssertDraftStateUnchanged(before, ReadDraftState(project.FwDataPath, "feature-value"));
+    }
+
+    private (string FeatStruc, string Feature, string Value) SeedFeatureStructureWithClosedFeature(
+        WalkthroughProject project)
+    {
+        var loader = new FwDataProjectLoader();
+        using var cache = loader.LoadCache(project.FwDataPath);
+        var msa = (IMoStemMsa)cache.ServiceLocator.GetInstance<ILexSenseRepository>()
+            .GetObject(pristine.Seed.FirstSenseId).MorphoSyntaxAnalysisRA;
+        var featStrucGuid = Guid.NewGuid();
+        Guid featureGuid = default, valueGuid = default;
+        UndoableUnitOfWorkHelper.Do("test setup", "test setup", cache.ServiceLocator.GetInstance<IActionHandler>(), () =>
+        {
+            MoStemMsaMsFeaturesCreateLowering.Apply(cache, msa, featStrucGuid);
+            var closed = cache.ServiceLocator.GetInstance<IFsClosedFeatureFactory>().Create();
+            cache.LangProject.MsFeatureSystemOA.FeaturesOC.Add(closed);
+            var symbolic = cache.ServiceLocator.GetInstance<IFsSymFeatValFactory>().Create();
+            closed.ValuesOC.Add(symbolic);
+            featureGuid = closed.Guid;
+            valueGuid = symbolic.Guid;
+        });
+        loader.Save(cache);
+        return (CanonicalId.FromGuid(featStrucGuid).Value, CanonicalId.FromGuid(featureGuid).Value,
+            CanonicalId.FromGuid(valueGuid).Value);
+    }
+
+    [Fact]
     public async Task AnEmptyDraftCanBeWithdrawnThroughMcp()
     {
         using var project = new WalkthroughProject(pristine);
