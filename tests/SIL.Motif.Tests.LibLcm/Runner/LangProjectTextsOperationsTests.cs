@@ -114,6 +114,21 @@ public sealed class LangProjectTextsOperationsTests : IDisposable
     }
 
     [Fact]
+    public void CreateText_ReportsATextIdentityAlreadyInUseAsReuseNotAsASemanticConflict()
+    {
+        ITextFactory factory = _cache.ServiceLocator.GetInstance<ITextFactory>();
+        IText existing = null!;
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () => existing = factory.Create());
+        var textId = CanonicalId.FromGuid(existing.Guid);
+        var reused = Proposal(textId, Payload(textId, CanonicalId.Mint(), CanonicalId.Mint(), (CanonicalId.Mint(), [_sita])));
+
+        var failure = Assert.ThrowsAny<Exception>(() => ScratchDryRun.Of(_cache, reused));
+
+        Assert.Contains("overwrite/reuse", failure.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("semantic conflict", failure.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void CreateText_RefusesPlacementOverridesAndANonRootTarget()
     {
         var textId = CanonicalId.Mint();

@@ -131,10 +131,8 @@ internal sealed class CreateTextHandler : IOperationHandler
             throw new InvalidOperationException($"'{Kind}' requires after."));
         var id = ResolveProject(cache, operation);
         var repository = cache.ServiceLocator.GetInstance<ICmObjectRepository>();
-        foreach (var created in Identities(entityId, payload))
-            if (repository.IsValidObjectId(created.ToGuid()))
-                throw new InvalidOperationException($"'{Kind}': identity '{created.Value}' already exists as " +
-                    $"{repository.GetObject(created.ToGuid()).ClassName}; this is a semantic conflict. Choose a fresh identity.");
+        foreach (var (created, expectedClass) in Identities(entityId, payload))
+            CreateIdentity.RequireFresh(cache, created, Kind, expectedClass);
         var nameWs = Handle(cache, payload.NameWritingSystem);
         var resolved = payload.Paragraphs.Select(paragraph => (paragraph, ws: Handle(cache, paragraph.WritingSystem))).ToArray();
         var wordforms = new Dictionary<CanonicalId, IWfiWordform>(CanonicalId.ByGuid);
@@ -180,9 +178,10 @@ internal sealed class CreateTextHandler : IOperationHandler
         return new ExpectedEffect(id, SnapshotFields.LangProjectTexts, current, current);
     }
 
-    private static IEnumerable<CanonicalId> Identities(CanonicalId entityId, TextCreatePayload payload) =>
-        new[] { entityId, payload.Contents }.Concat(payload.Paragraphs.SelectMany(paragraph =>
-            new[] { paragraph.Id }.Concat(paragraph.Segments.Select(segment => segment.Id))));
+    private static IEnumerable<(CanonicalId Id, string ExpectedClass)> Identities(CanonicalId entityId,
+        TextCreatePayload payload) =>
+        new[] { (entityId, "Text"), (payload.Contents, "StText") }.Concat(payload.Paragraphs.SelectMany(paragraph =>
+            new[] { (paragraph.Id, "StTxtPara") }.Concat(paragraph.Segments.Select(segment => (segment.Id, "Segment")))));
 
     private static string Form(IWfiWordform wordform, int ws, string tag, CanonicalId id)
     {
