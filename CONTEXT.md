@@ -30,9 +30,16 @@ _Avoid_: setter, endpoint, builder, wizard
 
 **Phenomenon**:
 A cross-linguistic pattern a grammar must express, such as noun class, infixation, reduplication or stem
-alternation. Languages are many and phenomena are few, so each Composer declares the phenomena it serves and an
-agent finds Composers by phenomenon; no Composer is written for one language.
+alternation. Languages are many and phenomena are few, so the Phenomena are the grammar Subjects an agent finds
+Composers by; no Composer is written for one language.
 _Avoid_: feature (a FieldWorks term), construction, rule
+
+**Subject**:
+One entry in the closed list an agent searches to find a Composer: what part of a language project the change is
+about. The grammar Subjects are the Phenomena; the others are lexicography and description, such as senses and
+definitions, example sentences, a grammar explanation, or texts and their analyses. Each Composer declares the
+Subjects it serves, and a new Subject enters the list with its first Composer.
+_Avoid_: topic, category, area, tag
 
 **Lowering**:
 Turning one Motif operation into the concrete changes that realize it against a particular store.
