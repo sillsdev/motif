@@ -126,8 +126,8 @@ public sealed class RealParserSwahiliAffixProofTests(PristineProjectFixture pris
             operation => operation.Kind == LexEntryAlternateFormsCreateOperationKinds.CreateAlternateForms).EntityId!);
         Assert.True(ProposalCommands.Label(new LabelRequest(projectPath, productVersion, draftName,
             "Add Swahili m- and mw- forms.")).Succeeded);
-        Assert.True(ProposalCommands.Comment(new CommentRequest(projectPath, productVersion, draftName,
-            "The forms share one G1/2 entry and use complementary environments.")).Succeeded);
+        Assert.True(DraftRationale.Write(projectPath, productVersion, draftName,
+            "The forms share one G1/2 entry and use complementary environments.").Succeeded);
         var finalized = ProposalCommands.Finalize(new FinalizeRequest(projectPath, productVersion, draftName));
         Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
         var proposalId = finalized.Value!.ProposalId;

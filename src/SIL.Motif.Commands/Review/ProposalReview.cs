@@ -133,7 +133,7 @@ public static class ProposalReview
     private static DraftDocument ReadFinalizedDraft(ProposalRepository repository, ProposalRecord record)
     {
         var (finalized, envelope) = repository.GetFinalized(record.ProposalId);
-        return ProposalCommands.ToDraftDocument(record.ProposalId.Value, envelope, finalized.Label, finalized.Comment);
+        return ProposalCommands.ToDraftDocument(record.ProposalId.Value, envelope, finalized.Label);
     }
 
     private static int CountEntries(DraftDocument draft)
@@ -178,7 +178,7 @@ public static class ProposalReview
         else
         {
             var (finalized, envelope) = repository.GetFinalized(record.ProposalId);
-            draft = ProposalCommands.ToDraftDocument(id, envelope, finalized.Label, finalized.Comment);
+            draft = ProposalCommands.ToDraftDocument(id, envelope, finalized.Label);
             stored = envelope;
             revision = finalized.IntentDigest!;
             label = finalized.Label;

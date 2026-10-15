@@ -186,7 +186,7 @@ public static class MotifMcpServer
                 context = context.ForProject(ProjectResolver.Resolve(toolArgs.Required("project"),
                     SIL.Motif.Worker.RunnerOptions.ResolveRoot()));
             if (gated) await context.ProjectGate.WaitAsync(cancellation);
-            try { return await tool.Tool.Run(context, toolArgs, cancellation); }
+            try { return NoteNotice.Apply(context, args, await tool.Tool.Run(context, toolArgs, cancellation)); }
             finally { if (gated) context.ProjectGate.Release(); }
         }
         catch (ProfileException exception)

@@ -286,7 +286,6 @@ public sealed class ProposalReviewTests : IDisposable
             ProposalId = CanonicalId.Mint("proposal/").Value,
             ContractVersions = new Dictionary<string, string>(StringComparer.Ordinal) { ["lexical"] = "1.0" },
             Label = "A label",
-            Comment = "A comment",
             Operations = operations.ToList(),
             ComposerProvenance = provenance.ToList(),
         };

@@ -120,8 +120,8 @@ internal static class ParsimonyMeasureDispositionAcceptance
         Assert.True(composed.Succeeded, composed.Refusal?.Message);
         var expectedEffects = NotebookEffects(route.Reason);
         Assert.Equal(expectedEffects.Length, composed.Value!.Operations.Count);
-        Assert.True(ProposalCommands.Comment(new CommentRequest(projectPath, ProductVersion,
-            draft, "Keep the exact measure finding and its evidence in the Notebook decision.")).Succeeded);
+        Assert.True(DraftRationale.Write(projectPath, ProductVersion,
+            draft, "Keep the exact measure finding and its evidence in the Notebook decision.").Succeeded);
         var finalized = ProposalCommands.Finalize(new FinalizeRequest(projectPath, ProductVersion,
             draft));
         Assert.True(finalized.Succeeded, finalized.Refusal?.Message);

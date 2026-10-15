@@ -117,7 +117,8 @@ public sealed class ProposalWorkflowTests : IDisposable
 
         var labeled = Run("label", "--project", _fwDataPath, "--draft", draft, "CLI authored");
         Assert.True(labeled.ExitCode == 0, labeled.Error + labeled.Output);
-        var commented = Run("comment", "--project", _fwDataPath, "--draft", draft, "Reviewed by a person");
+        var commented = Run("proposal", "rationale", proposalId, "--project", _fwDataPath, "--text",
+            "Reviewed by a person");
         Assert.True(commented.ExitCode == 0, commented.Error + commented.Output);
 
         var dryRun = Run("dry-run", "--project", _fwDataPath, proposalId, "--json");
@@ -274,8 +275,8 @@ public sealed class ProposalWorkflowTests : IDisposable
             _fwDataPath, ProductVersion, draftName,
             JsonSerializer.Serialize(new { name = "x", representations = new[] { "x" } })));
         Assert.True(created.Succeeded, created.Refusal?.Message);
-        Assert.True(ProposalCommands.Comment(new CommentRequest(_fwDataPath, ProductVersion, draftName,
-            "Inspect this before Finalize.")).Succeeded);
+        Assert.True(DraftRationale.Write(_fwDataPath, ProductVersion, draftName,
+            "Inspect this before Finalize.").Succeeded);
         var draftId = newDraft.Value!.ProposalId;
         var beforeShow = ReadDraftJson(draftName);
         var byName = ProposalCommands.Show(new ShowProposalRequest(_fwDataPath, ProductVersion, draftName));
@@ -288,7 +289,7 @@ public sealed class ProposalWorkflowTests : IDisposable
         Assert.Equal(draftName, byName.Value.DraftName);
         Assert.Equal(DraftRevision.Compute(beforeShow), byName.Value.DraftRevision);
         Assert.Equal("A visible Draft", byName.Value.Label);
-        Assert.Equal("Inspect this before Finalize.", byName.Value.Comment);
+        Assert.Equal("Inspect this before Finalize.", byName.Value.Rationale!.Markdown);
         Assert.Equal(ProjectionJson.Serialize(byName.Value), ProjectionJson.Serialize(byId.Value));
         Assert.Equal(created.Value!.CreatedObjects.Select(item => item.Id),
             byName.Value.Operations.Where(operation => operation.EntityId is not null)
@@ -306,7 +307,7 @@ public sealed class ProposalWorkflowTests : IDisposable
         Assert.Null(finalizedShow.Value.DraftName);
         Assert.Null(finalizedShow.Value.DraftRevision);
         Assert.Equal("A visible Draft", finalizedShow.Value.Label);
-        Assert.Equal("Inspect this before Finalize.", finalizedShow.Value.Comment);
+        Assert.Equal("Inspect this before Finalize.", finalizedShow.Value.Rationale!.Markdown);
         Assert.Equal(byName.Value.Operations.Select(operation => (operation.Kind, operation.Target,
                 operation.EntityId, operation.Citation)),
             finalizedShow.Value.Operations.Select(operation => (operation.Kind, operation.Target,
@@ -524,14 +525,14 @@ public sealed class ProposalWorkflowTests : IDisposable
         Assert.True(showResult.Succeeded);
         Assert.Equal(proposalId, showResult.Value!.ProposalId);
         Assert.Equal(shortDescription, showResult.Value.Label);
-        Assert.Equal(extendedExplanation, showResult.Value.Comment);
+        Assert.Equal(extendedExplanation, showResult.Value.Rationale!.Markdown);
         var operation = Assert.Single(showResult.Value.Operations);
         Assert.Equal(canonicalId.Value, operation.Target);
         Assert.Equal("lexical/lexSense/setGloss", operation.Kind);
         var showJsonResult = ProposalCommands.Show(new ShowProposalRequest(_fwDataPath, ProductVersion, proposalId));
         Assert.True(showJsonResult.Succeeded);
         Assert.Equal(shortDescription, showJsonResult.Value!.Label);
-        Assert.Equal(extendedExplanation, showJsonResult.Value.Comment);
+        Assert.Equal(extendedExplanation, showJsonResult.Value.Rationale!.Markdown);
 
         // --- dry-run: real before/after from LibLCM, non-mutating ---
         var dryRunResult = RunDryRun(proposalId);
@@ -563,7 +564,7 @@ public sealed class ProposalWorkflowTests : IDisposable
         var appliedRecord = GetRecord(proposalId);
         Assert.Equal("applied", appliedRecord.Status);
         Assert.Equal(shortDescription, appliedRecord.Label);
-        Assert.Equal(extendedExplanation, appliedRecord.Comment);
+        Assert.Equal(extendedExplanation, appliedRecord.Rationale);
         AssertReceiptCount(proposalId, intentDigest, 1);
 
         // Apply persists: re-open the saved project from disk and check the gloss + one applied-log entry.

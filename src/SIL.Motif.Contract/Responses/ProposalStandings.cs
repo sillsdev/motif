@@ -73,6 +73,15 @@ public sealed record ProposalCard(
 {
     /// <summary>Whether the Proposal is a Draft that is not finalized yet.</summary>
     public bool IsDraft { get; init; }
+
+    /// <summary>Whether the Proposal has a Rationale.</summary>
+    public bool HasRationale { get; init; }
+
+    /// <summary>Whether the person has not looked at the Rationale yet.</summary>
+    public bool RationaleNew { get; init; }
+
+    /// <summary>Whether the person left a note.</summary>
+    public bool HasNote { get; init; }
 }
 
 /// <summary>Every Proposal in the project, grouped by what the person should do with it.</summary>

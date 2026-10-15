@@ -156,7 +156,8 @@ public sealed class RunnerSpineTests : IDisposable
         Assert.Equal(0, Cli(
             $"add-set-gloss --project \"{project}\" --draft d --target {target} --ws en --text hello").ExitCode);
         Assert.Equal(0, Cli($"label --project \"{project}\" --draft d \"a label\"").ExitCode);
-        Assert.Equal(0, Cli($"comment --project \"{project}\" --draft d \"a comment\"").ExitCode);
+        Assert.True(DraftRationale.Write(project, SIL.Motif.Host.MotifProductVersion.CurrentText, "d", "a rationale")
+            .Succeeded);
         var finalized = Cli($"finalize --project \"{project}\" --draft d");
         Assert.Equal(0, finalized.ExitCode);
         var proposalId = ExtractProposalId(finalized.Output);

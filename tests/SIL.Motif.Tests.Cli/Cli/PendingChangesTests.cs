@@ -390,8 +390,8 @@ public sealed class PendingChangesTests
         Assert.True(added.Succeeded, added.Refusal?.Message);
         Assert.True(ProposalCommands.Label(new LabelRequest(_path, "1.0", PendingChanges.DraftName,
             "Correct word spelling")).Succeeded);
-        Assert.True(ProposalCommands.Comment(new CommentRequest(_path, "1.0", PendingChanges.DraftName,
-            "The project's spelling status needs correction.")).Succeeded);
+        Assert.True(DraftRationale.Write(_path, "1.0", PendingChanges.DraftName,
+            "The project's spelling status needs correction.").Succeeded);
         var finalized = ProposalCommands.Finalize(new FinalizeRequest(_path, "1.0", PendingChanges.DraftName));
         Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
         var proposalId = finalized.Value!.ProposalId;
@@ -560,8 +560,8 @@ public sealed class PendingChangesTests
         Assert.True(added.Succeeded, added.Refusal?.Message);
         Assert.True(ProposalCommands.Label(new LabelRequest(_path, "1.0", PendingChanges.DraftName,
             "Correct spelling")).Succeeded);
-        Assert.True(ProposalCommands.Comment(new CommentRequest(_path, "1.0", PendingChanges.DraftName,
-            "Mark the chosen word's spelling as incorrect.")).Succeeded);
+        Assert.True(DraftRationale.Write(_path, "1.0", PendingChanges.DraftName,
+            "Mark the chosen word's spelling as incorrect.").Succeeded);
         var finalized = ProposalCommands.Finalize(new FinalizeRequest(_path, "1.0", PendingChanges.DraftName));
         Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
         var proposalId = finalized.Value!.ProposalId;

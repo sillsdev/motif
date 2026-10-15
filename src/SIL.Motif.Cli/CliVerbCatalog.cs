@@ -179,8 +179,6 @@ public static class CliVerbCatalog
         new CliVerbDescriptor(
             "Commands", "label", "label", new[] { "label --project <fwdata> --draft <name> <text>" }),
         new CliVerbDescriptor(
-            "Commands", "comment", "comment", new[] { "comment --project <fwdata> --draft <name> <text>" }),
-        new CliVerbDescriptor(
             "Commands", "finalize", "finalize", new[] { "finalize --project <fwdata> --draft <name>" }),
         new CliVerbDescriptor(
             "Commands", "discard-draft", "discard-draft",
@@ -516,11 +514,18 @@ public static class CliVerbCatalog
             new[] { "withdraw --proposal <id> --project <fwdata> [--json]" }),
         new CliVerbDescriptor("Commands", "proposal", "proposal review",
             new[] { "proposal review --project <fwdata> [--proposal <id>] [--json]" }),
+        new CliVerbDescriptor("Commands", "proposal", "proposal rationale",
+            new[] { "proposal rationale <proposalId> --project <fwdata> (--text <markdown> | --file <path>) [--json]" }),
+        new CliVerbDescriptor("Commands", "proposal", "proposal note",
+            new[]
+            {
+                "proposal note <proposalId> --project <fwdata> (--text <markdown> | --file <path> | --clear) [--json]",
+            }),
         new CliVerbDescriptor("Commands", "proposal", "proposal looked-at",
             new[]
             {
-                "proposal looked-at --project <fwdata> --proposal <id> --entry <key> --content-digest <digest> " +
-                "--evidence-digest <digest> [--clear] [--json]",
+                "proposal looked-at --project <fwdata> --proposal <id> --entry <key> [--content-digest <digest> " +
+                "--evidence-digest <digest>] [--clear] [--json]",
             }),
         new CliVerbDescriptor("Commands", "apply", "apply --proposal",
             new[] { "apply --proposal <id> --project <fwdata> [--revision <r>] [--json]" }),

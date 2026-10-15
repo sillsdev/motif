@@ -126,7 +126,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         await using var session = await Session.StartAsync(project.FwDataPath,
             new McpLaunchOptions(Profile: "phonology"));
         await session.CallAsync("motif_start_proposal", ("draft", "affix-authoring"),
-            ("label", "Author a conditioned prefix"), ("comment", "Each form names its conditions."));
+            ("label", "Author a conditioned prefix"), ("rationale", "Each form names its conditions."));
 
         var category = CanonicalId.FromGuid(project.Seed.PartOfSpeechId).Value;
         var inflectionClass = await session.CallAsync("motif_add_inflection_class", ("draft", "affix-authoring"),
@@ -191,9 +191,9 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
                 new ProjectLocator(second.FwDataPath, "second")), second.FwDataPath, DateTimeOffset.UtcNow);
 
         var firstDraft = await session.CallAsync("motif_start_proposal", ("draft", "shared-name"),
-            ("label", "First project"), ("comment", "One linguistic claim."));
+            ("label", "First project"), ("rationale", "One linguistic claim."));
         var secondDraft = await session.CallAsync("motif_start_proposal", ("project", second.FwDataPath),
-            ("draft", "shared-name"), ("label", "Second project"), ("comment", "The related claim in the first project."));
+            ("draft", "shared-name"), ("label", "Second project"), ("rationale", "The related claim in the first project."));
         var firstId = firstDraft.GetProperty("result").GetProperty("proposalId").GetString();
         var secondId = secondDraft.GetProperty("result").GetProperty("proposalId").GetString();
         Assert.NotEqual(firstId, secondId);
@@ -225,7 +225,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
 
         var started = await session.CallAsync("motif_start_proposal", ("draft", "author-grammar"),
             ("label", "Add a noun and a short sound inventory"),
-            ("comment", "The synthetic grammar needs one new noun entry."));
+            ("rationale", "The synthetic grammar needs one new noun entry."));
         var proposalId = started.GetProperty("result").GetProperty("proposalId").GetString()!;
 
         var morphTypes = await session.CallAsync("motif_grammar", ("kind", "morph_types"), ("detail", "detailed"));
@@ -327,7 +327,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
 
         const string controlDraft = "batch-disposition-control";
         var controlStarted = await experimental.CallAsync("motif_start_proposal", ("draft", controlDraft),
-            ("label", "Record one measured decision"), ("comment", "Use the specialized disposition path."));
+            ("label", "Record one measured decision"), ("rationale", "Use the specialized disposition path."));
         var measure = await experimental.CallAsync("motif_run_parsimony_measure", ("measure_id", "P-adhoc-duplicate"),
             ("evidence_scope", "project-approved"), ("wait_seconds", 120));
         Assert.True(measure.GetProperty("ok").GetBoolean(), measure.ToString());
@@ -349,14 +349,14 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions());
         const string safeDraft = "batch-disposition-safe-control";
         await session.CallAsync("motif_start_proposal", ("draft", safeDraft),
-            ("label", "Stage an ordinary phoneme"), ("comment", "Confirm the safe composer accepts this intent."));
+            ("label", "Stage an ordinary phoneme"), ("rationale", "Confirm the safe composer accepts this intent."));
         var safe = await session.CallAsync("motif_add_phoneme", ("draft", safeDraft),
             ("name", "T1SafeDisposition"), ("representations", new[] { "t1d" }));
         Assert.True(safe.GetProperty("result").GetProperty("operationCount").GetInt32() > 0);
 
         const string batchDraft = "batch-disposition-refusal";
         var started = await session.CallAsync("motif_start_proposal", ("draft", batchDraft),
-            ("label", "Keep this Draft unchanged"), ("comment", "A restricted intent must refuse atomically."));
+            ("label", "Keep this Draft unchanged"), ("rationale", "A restricted intent must refuse atomically."));
         var before = ReadDraftState(project.FwDataPath, batchDraft);
         var result = await session.Client.CallToolAsync("motif_compose_batch", new Dictionary<string, object?>
         {
@@ -385,7 +385,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
 
         const string controlDraft = "batch-retirement-control";
         await experimental.CallAsync("motif_start_proposal", ("draft", controlDraft),
-            ("label", "Retire one duplicate alternate"), ("comment", "Use the specialized retirement path."));
+            ("label", "Retire one duplicate alternate"), ("rationale", "Use the specialized retirement path."));
         var retired = await experimental.CallAsync("motif_retire_allomorph", ("draft", controlDraft),
             ("intent_json", retirementIntent));
         Assert.True(retired.GetProperty("ok").GetBoolean(), retired.ToString());
@@ -394,14 +394,14 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions());
         const string safeDraft = "batch-retirement-safe-control";
         await session.CallAsync("motif_start_proposal", ("draft", safeDraft),
-            ("label", "Stage an ordinary phoneme"), ("comment", "Confirm the safe composer accepts this intent."));
+            ("label", "Stage an ordinary phoneme"), ("rationale", "Confirm the safe composer accepts this intent."));
         var safe = await session.CallAsync("motif_add_phoneme", ("draft", safeDraft),
             ("name", "T1SafeRetirement"), ("representations", new[] { "t1r" }));
         Assert.True(safe.GetProperty("result").GetProperty("operationCount").GetInt32() > 0);
 
         const string batchDraft = "batch-retirement-refusal";
         await session.CallAsync("motif_start_proposal", ("draft", batchDraft),
-            ("label", "Keep this Draft unchanged"), ("comment", "A restricted intent must refuse atomically."));
+            ("label", "Keep this Draft unchanged"), ("rationale", "A restricted intent must refuse atomically."));
         var before = ReadDraftState(project.FwDataPath, batchDraft);
         using var parsedRetirement = JsonDocument.Parse(retirementIntent);
         var result = await session.Client.CallToolAsync("motif_compose_batch", new Dictionary<string, object?>
@@ -664,7 +664,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions());
 
         var started = await session.CallAsync("motif_start_proposal", ("draft", "empty-draft"),
-            ("label", "An empty draft"), ("comment", "No change was needed."));
+            ("label", "An empty draft"), ("rationale", "No change was needed."));
         var proposalId = started.GetProperty("result").GetProperty("proposalId").GetString()!;
 
         var withdrawn = await session.CallAsync("motif_withdraw_proposal", ("proposal", proposalId));
@@ -672,8 +672,41 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         Assert.Equal("withdrawn", withdrawn.GetProperty("result").GetProperty("status").GetString());
 
         var reused = await session.CallAsync("motif_start_proposal", ("draft", "empty-draft"),
-            ("label", "A replacement draft"), ("comment", "The same short name is available again."));
+            ("label", "A replacement draft"), ("rationale", "The same short name is available again."));
         Assert.NotEqual(proposalId, reused.GetProperty("result").GetProperty("proposalId").GetString());
+    }
+
+    [Fact]
+    public async Task ANoteTheLinguistLeftIsReportedOnEveryResultAboutTheProposalUntilTheNextRationale()
+    {
+        using var project = new WalkthroughProject(pristine);
+        await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions());
+        var started = await session.CallAsync("motif_start_proposal", ("draft", "noted-draft"),
+            ("label", "A noted draft"), ("rationale", "Why this draft exists."));
+        var proposalId = started.GetProperty("result").GetProperty("proposalId").GetString()!;
+        Assert.False(started.GetProperty("result").GetProperty("noteChanged").GetBoolean());
+
+        var noted = SIL.Motif.Commands.ProposalTexts.SetNote(new SIL.Motif.Commands.Requests.SetNoteRequest(
+            project.FwDataPath, SIL.Motif.Host.MotifProductVersion.CurrentText, proposalId, "Please explain the gloss."));
+        Assert.True(noted.Succeeded, noted.Refusal?.Message);
+
+        var shown = await session.CallAsync("motif_proposals", ("proposal", proposalId));
+        var result = shown.GetProperty("result");
+        Assert.True(result.GetProperty("noteChanged").GetBoolean());
+        Assert.Equal("Please explain the gloss.", result.GetProperty("note").GetProperty("markdown").GetString());
+        Assert.Contains("left a note", shown.GetProperty("next").GetString(), StringComparison.Ordinal);
+
+        var batched = await session.CallAsync("motif_compose_batch", ("draft", "noted-draft"), ("intents", new object[]
+        {
+            new { verb = "compose-author-phoneme", intent = new { name = "NoteBatchPhoneme", representations = new[] { "nb" } } },
+        }));
+        Assert.True(batched.GetProperty("result").GetProperty("noteChanged").GetBoolean(), batched.ToString());
+
+        var answered = await session.CallAsync("motif_set_rationale", ("proposal", proposalId),
+            ("rationale", "The gloss is explained here."));
+        Assert.False(answered.GetProperty("result").GetProperty("noteChanged").GetBoolean());
+        Assert.False((await session.CallAsync("motif_proposals", ("proposal", proposalId)))
+            .GetProperty("result").GetProperty("noteChanged").GetBoolean());
     }
 
     [Fact]
@@ -705,7 +738,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         Assert.Equal(SeededProject.FirstGloss, sense.GetProperty("gloss").GetString());
 
         var started = await session.CallAsync("motif_start_proposal", ("draft", "gloss-fix"), ("label", "Reword the first gloss"),
-            ("comment", "The seeded gloss reads awkwardly."));
+            ("rationale", "The seeded gloss reads awkwardly."));
         var proposalId = started.GetProperty("result").GetProperty("proposalId").GetString()!;
 
         var glossed = await session.CallAsync("motif_set_gloss", ("draft", "gloss-fix"),
@@ -724,6 +757,16 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         Assert.True(evidence.GetProperty("evidenceCurrent").GetBoolean());
         Assert.Equal(TrialResults.Categories.Append("counts"),
             evidence.GetProperty("summary").EnumerateObject().Select(property => property.Name));
+        var noted = SIL.Motif.Commands.ProposalTexts.SetNote(new SIL.Motif.Commands.Requests.SetNoteRequest(
+            project.FwDataPath, SIL.Motif.Host.MotifProductVersion.CurrentText, proposalId, "Check the other gloss too."));
+        Assert.True(noted.Succeeded, noted.Refusal?.Message);
+        var dryRunAgain = await session.CallAsync("motif_dry_run", ("proposal", proposalId), ("wait_seconds", 120));
+        Assert.True(dryRunAgain.GetProperty("result").GetProperty("noteChanged").GetBoolean(), dryRunAgain.ToString());
+        Assert.Contains("left a note", dryRunAgain.GetProperty("next").GetString(), StringComparison.Ordinal);
+        var trialAgain = await session.CallAsync("motif_trial", ("proposal", proposalId),
+            ("words", new[] { SeededProject.AnalysedWordForm }), ("wait_seconds", 120));
+        Assert.True(trialAgain.GetProperty("result").GetProperty("noteChanged").GetBoolean(), trialAgain.ToString());
+
         var difference = evidence.GetProperty("difference").GetString()!;
         var page = await session.CallAsync("motif_difference", ("difference", difference),
             ("category", "other-changes"), ("offset", 0), ("limit", 1));
@@ -958,7 +1001,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
             mcpView.GetProperty("result").GetProperty("activeCount").GetInt32());
 
         await session.CallAsync("motif_start_proposal", ("draft", "slot-edit"),
-            ("label", "Make one affix slot optional"), ("comment", "This is a Draft-only check."));
+            ("label", "Make one affix slot optional"), ("rationale", "This is a Draft-only check."));
         var slotEdit = await session.CallAsync("motif_edit_affix_slot", ("draft", "slot-edit"),
             ("target", slotId.Value), ("expected_optional", false), ("optional", true));
         var slotOperation = Assert.Single(slotEdit.GetProperty("result").GetProperty("operations").EnumerateArray());
@@ -966,7 +1009,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         Assert.Equal(1, slotEdit.GetProperty("result").GetProperty("operationCount").GetInt32());
 
         await session.CallAsync("motif_start_proposal", ("draft", "slot-create"),
-            ("label", "Add a category-owned slot"), ("comment", "The affix needs a new position class."));
+            ("label", "Add a category-owned slot"), ("rationale", "The affix needs a new position class."));
         var createdSlot = await session.CallAsync("motif_add_affix_slot", ("draft", "slot-create"),
             ("category", CanonicalId.FromGuid(project.Seed.PartOfSpeechId).Value),
             ("name", "MCP authored slot"), ("ws", "en"), ("optional", false));
@@ -999,7 +1042,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
             operation.GetProperty("kind").GetString() == "grammar/moInflAffixTemplate/addRefSuffixSlots");
 
         await session.CallAsync("motif_start_proposal", ("draft", "disable-adhoc"),
-            ("label", "Disable one duplicate rule"), ("comment", "This is a Draft-only check."));
+            ("label", "Disable one duplicate rule"), ("rationale", "This is a Draft-only check."));
         var staged = await session.CallAsync("motif_edit_adhoc_prohibition", ("draft", "disable-adhoc"),
             ("target", prohibitionId.Value), ("expected_disabled", false), ("disabled", true));
         var operation = Assert.Single(staged.GetProperty("result").GetProperty("operations").EnumerateArray());
@@ -1038,7 +1081,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
 
         const string draftName = "mcp-disposition-round-trip";
         var started = await session.CallAsync("motif_start_proposal", ("draft", draftName),
-            ("label", "Review measured dispositions"), ("comment", "Keep these choices in a Draft."));
+            ("label", "Review measured dispositions"), ("rationale", "Keep these choices in a Draft."));
         var proposalId = started.GetProperty("result").GetProperty("proposalId").GetString()!;
         AssertDraftComposers(project.FwDataPath, draftName, proposalId, []);
         AssertProjectUnchanged(project, projectHash, savedDispositions);
@@ -1108,7 +1151,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         using var project = new WalkthroughProject(pristine);
         await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions(Profile: "phonology"));
         await session.CallAsync("motif_start_proposal", ("draft", "sounds"), ("label", "Add vowel context"),
-            ("comment", "Synthetic phonological contrast."));
+            ("rationale", "Synthetic phonological contrast."));
         var phoneme = await session.CallAsync("motif_add_phoneme", ("draft", "sounds"), ("name", "z"), ("representations", new[] { "z" }));
         var phonemeId = phoneme.GetProperty("result").GetProperty("operations").EnumerateArray()
             .Single(o => o.GetProperty("kind").GetString()!.EndsWith("/createPhonemes")).GetProperty("entityId").GetString()!;
@@ -1145,7 +1188,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         await using var session = await Session.StartAsync(project.FwDataPath,
             new McpLaunchOptions(Profile: "parsimony-experimental"));
         await session.CallAsync("motif_start_proposal", ("draft", "condition"),
-            ("label", "Restrict one allomorph"), ("comment", "The environment identifies its use."));
+            ("label", "Restrict one allomorph"), ("rationale", "The environment identifies its use."));
 
         var result = await session.CallAsync("motif_edit_allomorph_condition", ("draft", "condition"),
             ("target", CanonicalId.FromGuid(pristine.Seed.FirstLexemeFormId).Value), ("field", "phoneEnv"),
@@ -1163,7 +1206,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         await using var session = await Session.StartAsync(project.FwDataPath,
             new McpLaunchOptions(Profile: "parsimony-experimental"));
         await session.CallAsync("motif_start_proposal", ("draft", "order"),
-            ("label", "Order alternate forms"), ("comment", "The first form is preferred."));
+            ("label", "Order alternate forms"), ("rationale", "The first form is preferred."));
 
         var result = await session.CallAsync("motif_order_allomorphs", ("draft", "order"),
             ("target", CanonicalId.FromGuid(pristine.Seed.FirstEntryId).Value),

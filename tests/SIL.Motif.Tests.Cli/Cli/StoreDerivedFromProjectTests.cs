@@ -84,9 +84,8 @@ public sealed class StoreDerivedFromProjectTests : IDisposable
         Assert.Equal(
             0,
             RunCli(_cwdA, $"label --project \"{_fwDataPath}\" --draft d \"a short description\"").ExitCode);
-        Assert.Equal(
-            0,
-            RunCli(_cwdB, $"comment --project \"{_fwDataPath}\" --draft d \"an extended explanation\"").ExitCode);
+        Assert.True(DraftRationale.Write(_fwDataPath, SIL.Motif.Host.MotifProductVersion.CurrentText, "d",
+            "an extended explanation").Succeeded);
 
         var finalize = RunCli(_cwdA, $"finalize --project \"{_fwDataPath}\" --draft d");
         Assert.Equal(0, finalize.ExitCode);

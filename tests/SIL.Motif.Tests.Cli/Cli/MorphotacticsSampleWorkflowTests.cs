@@ -75,8 +75,8 @@ public sealed class MorphotacticsSampleWorkflowTests(ITestOutputHelper output)
             var created = ProposalCommands.New(new NewDraftRequest(projectPath, ProductVersion,
                 "morphotactics-sample", "Repair one slot and template order"));
             Assert.True(created.Succeeded, created.Refusal?.Message);
-            var commented = ProposalCommands.Comment(new CommentRequest(projectPath, ProductVersion,
-                "morphotactics-sample", "The copied sample provides a bounded parser comparison."));
+            var commented = DraftRationale.Write(projectPath, ProductVersion,
+                "morphotactics-sample", "The copied sample provides a bounded parser comparison.");
             Assert.True(commented.Succeeded, commented.Refusal?.Message);
 
             var slotIntent = JsonSerializer.Serialize(new
@@ -233,8 +233,8 @@ public sealed class MorphotacticsSampleWorkflowTests(ITestOutputHelper output)
             Assert.Contains("Draft now has 4 operation(s).", composed.Output, StringComparison.Ordinal);
             Assert.True(ProposalCommands.Label(new LabelRequest(projectPath, ProductVersion,
                 draft, "Add an owned inflectional slot")).Succeeded);
-            Assert.True(ProposalCommands.Comment(new CommentRequest(projectPath, ProductVersion,
-                draft, "The existing affix belongs to this category and needs a dedicated slot.")).Succeeded);
+            Assert.True(DraftRationale.Write(projectPath, ProductVersion,
+                draft, "The existing affix belongs to this category and needs a dedicated slot.").Succeeded);
 
             var finalized = ProposalCommands.Finalize(new FinalizeRequest(projectPath, ProductVersion, draft));
             Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
@@ -370,8 +370,8 @@ public sealed class MorphotacticsSampleWorkflowTests(ITestOutputHelper output)
             Assert.True(createdDraft.Succeeded, createdDraft.Refusal?.Message);
             Assert.True(ProposalCommands.Label(new LabelRequest(projectPath, ProductVersion,
                 draft, "Add an alternative affix template")).Succeeded);
-            Assert.True(ProposalCommands.Comment(new CommentRequest(projectPath, ProductVersion,
-                draft, "The selected existing slot is one confirmed branch of the category's inflectional pattern.")).Succeeded);
+            Assert.True(DraftRationale.Write(projectPath, ProductVersion,
+                draft, "The selected existing slot is one confirmed branch of the category's inflectional pattern.").Succeeded);
             var intent = JsonSerializer.Serialize(new
             {
                 category = categoryId.Value,

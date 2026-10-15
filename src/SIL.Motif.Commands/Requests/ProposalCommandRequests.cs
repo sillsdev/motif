@@ -336,9 +336,15 @@ public sealed record LabelRequest(string FwDataPath, string ProductVersion, stri
 
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
-/// <param name="DraftName">The name of the Draft being authored.</param>
-/// <param name="Text">The authored Unicode text.</param>
-public sealed record CommentRequest(string FwDataPath, string ProductVersion, string DraftName, string Text);
+/// <param name="ProposalId">The full id of the Proposal, Draft or finalized, whose Rationale is written.</param>
+/// <param name="Text">The Rationale in Markdown: what the Proposal changes and why.</param>
+public sealed record SetRationaleRequest(string FwDataPath, string ProductVersion, string ProposalId, string Text);
+
+/// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
+/// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
+/// <param name="ProposalId">The full id of the Proposal the person is answering.</param>
+/// <param name="Text">The note in Markdown, or null to clear it.</param>
+public sealed record SetNoteRequest(string FwDataPath, string ProductVersion, string ProposalId, string? Text);
 
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>

@@ -31,7 +31,7 @@ public sealed class RemoveOperationsContractGroupTests(PristineProjectFixture pr
 
         Assert.True(removed.Succeeded, removed.Refusal?.Message);
         Assert.Equal(["lexical"], Groups(path));
-        Assert.True(ProposalCommands.Comment(new CommentRequest(path, Version, DraftName, "A comment.")).Succeeded);
+        Assert.True(DraftRationale.Write(path, Version, DraftName, "A comment.").Succeeded);
         Assert.True(ProposalCommands.Finalize(new FinalizeRequest(path, Version, DraftName)).Succeeded);
     }
 

@@ -325,8 +325,8 @@ public sealed partial class AllomorphRuleRetirementAcceptanceTests(
             projectPath, productVersion, draftName, "retire-allomorph", AllomorphRetirementCodec.ToJson(retirement)));
         Assert.True(composition.Succeeded, composition.Refusal?.Message);
         Assert.NotEmpty(composition.Value!.Operations);
-        var comment = ProposalCommands.Comment(new CommentRequest(projectPath, productVersion, draftName,
-            "The retired alternates are represented by one sound rule."));
+        var comment = DraftRationale.Write(projectPath, productVersion, draftName,
+            "The retired alternates are represented by one sound rule.");
         Assert.True(comment.Succeeded, comment.Refusal?.Message);
         var finalized = ProposalCommands.Finalize(new FinalizeRequest(projectPath, productVersion, draftName));
         Assert.True(finalized.Succeeded, finalized.Refusal?.Message);

@@ -112,6 +112,10 @@ public static class RefusalCodes
     public const string PhonologyExamplesRevisionConflict = "phonology-examples.revision-conflict";
     public const string PhonologyExamplesRevisionNotFound = "phonology-examples.revision-not-found";
 
+    public const string ProposalClosed = "proposal.closed";
+    public const string ProposalRationaleEmpty = "proposal.rationale-empty";
+    public const string ProposalTextTooLarge = "proposal.text-too-large";
+
     public const string ProjectBackupUnreadable = "project.backup-unreadable";
     public const string ProjectBusy = "project.busy";
     public const string ProjectInUse = "project.in-use";

@@ -36,8 +36,12 @@ connect, inspect its MCP launch log instead. Do not substitute direct FieldWorks
 
 ## Draft and measure
 
-1. Call `motif_start_proposal` with a short draft name, a reviewer-facing label, and the reason for the
-   change.
+1. Call `motif_start_proposal` with a short draft name, a reviewer-facing label, and a `rationale`: what the
+   change does and why, in Markdown. Rewrite it with `motif_set_rationale` (the full Proposal id) whenever the
+   Proposal changes, until the person has applied or closed it; the window marks a Rationale out of date once
+   the Proposal moves past it.
+   The person may answer in a note. Any result about a Proposal carries `noteChanged`; when it is true, read the
+   note with `motif_proposals` (the Proposal id) and reply by writing a new Rationale. You never write the note.
 2. Use the semantic composer tool whose description matches the intended operation. For example,
    `motif_set_gloss` changes a gloss; it does not authorize a raw property write. Keep each operation
    grounded in ids and current values returned by Motif.
@@ -71,5 +75,5 @@ connect, inspect its MCP launch log instead. Do not substitute direct FieldWorks
 
 The same requested change in two projects is two Proposals. For each Known project, make a separate
 Draft, read that project's objects, run its own Dry Run and Trial, review its Difference, and Finalize
-it independently. Name the related project in each Proposal's comment so the person can review them
+it independently. Name the related project in each Proposal's Rationale so the person can review them
 together without combining them.

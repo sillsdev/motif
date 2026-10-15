@@ -35,13 +35,31 @@ public static class CommandTextRenderer
         return sb.ToString();
     }
 
+    private static string ChangesText(ProposalChangesSince? changes) => changes is null
+        ? "the Proposal changed after this was written"
+        : $"+{changes.Added} -{changes.Removed} ~{changes.Changed} operations since this was written";
+
     public static string Render(ProposalDetailProjection projection)
     {
         var sb = new StringBuilder();
         sb.AppendLine($"Proposal {projection.ProposalId}");
         sb.AppendLine($"  status:              {projection.Status}");
         sb.AppendLine($"  label:               {projection.Label}");
-        sb.AppendLine($"  comment:             {projection.Comment}");
+        if (projection.Rationale is { } rationale)
+        {
+            sb.AppendLine($"  rationale:           {rationale.Markdown}");
+            if (rationale.OutOfDate)
+                sb.AppendLine($"  rationaleOutOfDate:  {ChangesText(rationale.ChangesSince)}");
+        }
+        else sb.AppendLine("  rationale:           (none)");
+        if (projection.Note is { } note)
+        {
+            sb.AppendLine($"  note:                {note.Markdown}");
+            if (note.OutOfDate)
+                sb.AppendLine($"  noteOutOfDate:       {ChangesText(note.ChangesSince)}");
+            if (projection.NoteChanged)
+                sb.AppendLine("  noteChanged:         the person wrote after the Rationale");
+        }
         if (projection.DraftName is not null)
             sb.AppendLine($"  draftName:           {projection.DraftName}");
         if (projection.DraftRevision is not null)

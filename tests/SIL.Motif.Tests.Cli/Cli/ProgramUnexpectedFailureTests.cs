@@ -62,8 +62,8 @@ public sealed class ProgramUnexpectedFailureTests(PristineProjectFixture pristin
         string path;
         using (var scratch = pristine.NewScratch()) path = scratch.ProjectId.Path;
         Assert.True(ProposalCommands.New(new NewDraftRequest(path, "1.0", "cli-exception", "CLI exception handling")).Succeeded);
-        Assert.True(ProposalCommands.Comment(new CommentRequest(path, "1.0", "cli-exception",
-            "Exercise CLI failures after a valid Proposal is finalized.")).Succeeded);
+        Assert.True(DraftRationale.Write(path, "1.0", "cli-exception",
+            "Exercise CLI failures after a valid Proposal is finalized.").Succeeded);
         Assert.True(ProposalCommands.AddSetGloss(new AddSetGlossRequest(path, "1.0", "cli-exception",
             CanonicalId.FromGuid(seed.FirstSenseId).Value, NewLangProjFixture.AnalysisTag, "injected")).Succeeded);
         var finalized = ProposalCommands.Finalize(new FinalizeRequest(path, "1.0", "cli-exception"));

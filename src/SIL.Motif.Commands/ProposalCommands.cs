@@ -263,7 +263,6 @@ public static partial class ProposalCommands
                     ContractVersions = new Dictionary<string, string>(),
                     Requires = new List<string>(),
                     Label = request.Label,
-                    Comment = null,
                     Operations = new List<DraftOperation>(),
                 };
 
@@ -589,10 +588,6 @@ public static partial class ProposalCommands
         SetDraftField(request.FwDataPath, request.ProductVersion, request.DraftName, "label", request.Text,
             (draft) => draft.Label = request.Text);
 
-    public static CommandOutcome<DraftFieldChangedResponse> Comment(CommentRequest request) =>
-        SetDraftField(request.FwDataPath, request.ProductVersion, request.DraftName, "comment", request.Text,
-            (draft) => draft.Comment = request.Text);
-
     private static CommandOutcome<DraftFieldChangedResponse> SetDraftField(
         string fwDataPath, string productVersion, string draftName, string fieldName, string value,
         Action<DraftDocument> setter)
@@ -638,14 +633,22 @@ public static partial class ProposalCommands
                     return CommandOutcome<ProposalFinalizedResponse>.Refused(DraftRevisionConflict(request.DraftName));
                 var draft = DeserializeDraft(draftRecord.ProposalJson!);
 
-                if (string.IsNullOrWhiteSpace(draft.Label) || string.IsNullOrWhiteSpace(draft.Comment))
+                if (string.IsNullOrWhiteSpace(draft.Label))
                 {
                     return CommandOutcome<ProposalFinalizedResponse>.Refused(DraftInvalid(
-                        $"Draft '{request.DraftName}' cannot be finalized without both a short description " +
-                        $"(label) and an extended explanation (comment). Set them with " +
-                        $"'label --draft {request.DraftName} <text>' and " +
-                        $"'comment --draft {request.DraftName} <text>', then finalize again.",
+                        $"Draft '{request.DraftName}' cannot be finalized without a short description (label). " +
+                        $"Set it with 'label --draft {request.DraftName} <text>', then finalize again.",
                         ("draftName", request.DraftName)));
+                }
+
+                if (string.IsNullOrWhiteSpace(draftRecord.Rationale))
+                {
+                    return CommandOutcome<ProposalFinalizedResponse>.Refused(new Refusal(
+                        "proposal.rationale-empty", FailureReason.InvalidArgument,
+                        $"Draft '{request.DraftName}' cannot be finalized without a Rationale. Write what the " +
+                        $"Proposal changes and why with 'proposal rationale {draft.ProposalId} --text <markdown>', " +
+                        "then finalize again.",
+                        Fact(("draftName", request.DraftName), ("proposalId", draft.ProposalId))));
                 }
 
                 if (draft.Operations.Count == 0)
@@ -676,7 +679,7 @@ public static partial class ProposalCommands
                 var intentDigest = IntentDigest.Compute(envelope);
 
                 var finalization = repository.Finalize(request.DraftName, intentDigest, proposalJson,
-                    draft.Label!, draft.Comment!, request.ExpectedRevision);
+                    draft.Label!, request.ExpectedRevision);
                 if (finalization == DraftFinalizationResult.DraftChanged)
                     return CommandOutcome<ProposalFinalizedResponse>.Refused(DraftRevisionConflict(request.DraftName));
 
@@ -745,7 +748,6 @@ public static partial class ProposalCommands
         ContractVersions = new Dictionary<string, string>(envelope.ContractVersions),
         Requires = envelope.Requires.Select(r => r.Value).ToList(),
         Label = manifest.Label,
-        Comment = manifest.Comment,
         Operations = envelope.Operations.Select(ToDraftOperation).ToList(),
         ComposerProvenance = ExtractComposerProvenance(envelope.Extensions),
         PromotionProvenance = ExtractPromotionProvenance(envelope.Extensions),
@@ -984,13 +986,12 @@ public static partial class ProposalCommands
 
     /// <summary>Loads a committed Proposal's content back into the editable Draft shape.</summary>
     internal static DraftDocument ToDraftDocument(
-        string proposalId, SIL.Motif.Contract.Model.Proposal envelope, string? label, string? comment) => new()
+        string proposalId, SIL.Motif.Contract.Model.Proposal envelope, string? label) => new()
     {
         ProposalId = proposalId,
         ContractVersions = new Dictionary<string, string>(envelope.ContractVersions),
         Requires = envelope.Requires.Select(r => r.Value).ToList(),
         Label = label,
-        Comment = comment,
         Operations = envelope.Operations.Select(ToDraftOperation).ToList(),
         ComposerProvenance = ExtractComposerProvenance(envelope.Extensions),
         PromotionProvenance = ExtractPromotionProvenance(envelope.Extensions),
@@ -1057,13 +1058,13 @@ public static partial class ProposalCommands
                     ContractVersions = new Dictionary<string, string>(envelope.ContractVersions),
                     Requires = envelope.Requires.Select(r => r.Value).ToList(),
                     Label = manifest.Label,
-                    Comment = manifest.Comment,
                     Operations = envelope.Operations.Select(ToDraftOperation).ToList(),
                     ComposerProvenance = ExtractComposerProvenance(envelope.Extensions),
                     PromotionProvenance = ExtractPromotionProvenance(envelope.Extensions),
                 };
 
                 repository.CreateDraft(request.NewDraftName, newProposalId, SerializeDraft(draft));
+                if (manifest.Rationale is not null) repository.SetRationale(newProposalId, manifest.Rationale);
 
                 return CommandOutcome<DuplicatedResponse>.Success(new DuplicatedResponse(
                     sourceId, request.NewDraftName, draft.ProposalId, draft.Operations.Count));
@@ -1392,10 +1393,10 @@ public static partial class ProposalCommands
                         ContractVersions = contractVersions,
                         Requires = envelope.Requires.Select(r => r.Value).ToList(),
                         Label = manifest.Label is null ? null : $"{manifest.Label} (split: {group.DraftName})",
-                        Comment = manifest.Comment,
                         Operations = groupOperations,
                     };
                     repository.CreateDraft(group.DraftName, newProposalId, SerializeDraft(draft));
+                    if (manifest.Rationale is not null) repository.SetRationale(newProposalId, manifest.Rationale);
 
                     results.Add(new SplitDraftResult(group.DraftName, draft.ProposalId, draft.Operations.Count));
                 }
@@ -1462,15 +1463,15 @@ public static partial class ProposalCommands
 
     public static CommandOutcome<ProposalDetailProjection> Show(ShowProposalRequest request) =>
         ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
-            BuildProposalDetail(new ProposalRepository(database), request.ProposalId));
+            BuildProposalDetail(new ProposalRepository(database), request.ProposalId, database));
 
     internal static CommandOutcome<ProposalDetailProjection> BuildProposalDetail(
-        IProposalRepository repository, string proposalSelector)
+        IProposalRepository repository, string proposalSelector, MotifDatabase? marksDatabase = null)
     {
         try
         {
             if (!CanonicalId.TryParse(proposalSelector, out var canonicalId))
-                return BuildDraftDetail(repository.GetDraft(proposalSelector));
+                return BuildDraftDetail(repository, repository.GetDraft(proposalSelector), marksDatabase);
 
             ProposalRecord current;
             try
@@ -1479,15 +1480,16 @@ public static partial class ProposalCommands
             }
             catch (KeyNotFoundException) when (repository.DraftNameExists(proposalSelector))
             {
-                return BuildDraftDetail(repository.GetDraft(proposalSelector));
+                return BuildDraftDetail(repository, repository.GetDraft(proposalSelector), marksDatabase);
             }
             if (current.DraftName is not null)
-                return BuildDraftDetail(current);
+                return BuildDraftDetail(repository, current, marksDatabase);
 
             var (record, envelope) = repository.GetFinalized(canonicalId);
             var manifest = ProposalRecordMapping.ToManifest(record);
-            return CommandOutcome<ProposalDetailProjection>.Success(
-                ProposalDetailProjectionBuilder.Build(canonicalId.Value, manifest, envelope));
+            return CommandOutcome<ProposalDetailProjection>.Success(ProposalDetailProjectionBuilder.Build(
+                canonicalId.Value, manifest, envelope, RationaleLookedAt(marksDatabase, manifest),
+                RevisionLookup(repository, canonicalId)));
         }
         catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException)
         {
@@ -1495,7 +1497,18 @@ public static partial class ProposalCommands
         }
     }
 
-    private static CommandOutcome<ProposalDetailProjection> BuildDraftDetail(ProposalRecord record)
+    internal static bool RationaleLookedAt(MotifDatabase? database, ManifestDocument manifest) =>
+        database is not null && manifest.Rationale is not null &&
+        SIL.Motif.Commands.Review.ReviewMarks.Read(database, manifest.ProposalId)
+            .TryGetValue(ProposalDetailProjectionBuilder.RationaleEntryKey, out var mark) &&
+        mark.ContentDigest == ProposalDetailProjectionBuilder.RationaleContentDigest(manifest.Rationale);
+
+    private static Func<string, SIL.Motif.Contract.Model.Proposal?> RevisionLookup(
+        IProposalRepository repository, CanonicalId proposalId) =>
+        digest => repository.GetRevisionContent(proposalId, digest);
+
+    private static CommandOutcome<ProposalDetailProjection> BuildDraftDetail(
+        IProposalRepository repository, ProposalRecord record, MotifDatabase? marksDatabase)
     {
         var draftJson = record.ProposalJson ??
             throw new InvalidDataException("Stored Draft content must not be empty.");
@@ -1503,8 +1516,9 @@ public static partial class ProposalCommands
             throw new InvalidDataException("Stored Draft name must not be empty.");
         var draft = DeserializeDraft(draftJson);
         var proposal = ProposalJsonParser.Parse(BuildProposalJson(draft));
-        var manifest = ProposalRecordMapping.ToManifest(record with { Label = draft.Label, Comment = draft.Comment });
-        var detail = ProposalDetailProjectionBuilder.Build(record.ProposalId.Value, manifest, proposal);
+        var manifest = ProposalRecordMapping.ToManifest(record with { Label = draft.Label });
+        var detail = ProposalDetailProjectionBuilder.Build(record.ProposalId.Value, manifest, proposal,
+            RationaleLookedAt(marksDatabase, manifest), RevisionLookup(repository, record.ProposalId));
         return CommandOutcome<ProposalDetailProjection>.Success(detail with
         {
             DraftName = draftName,

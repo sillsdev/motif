@@ -224,8 +224,8 @@ public sealed partial class ConditionReviewRecipeAcceptanceTests(
         Assert.True(composed.Succeeded, composed.Refusal?.Message);
         Assert.True(ProposalCommands.Label(new LabelRequest(projectPath, ProductVersion, draftName,
             "Parsimony condition repair acceptance")).Succeeded);
-        Assert.True(ProposalCommands.Comment(new CommentRequest(projectPath, ProductVersion, draftName,
-            "Exact Approved readings, held-out positives, and reviewed negatives are checked against paired Assessments.")).Succeeded);
+        Assert.True(DraftRationale.Write(projectPath, ProductVersion, draftName,
+            "Exact Approved readings, held-out positives, and reviewed negatives are checked against paired Assessments.").Succeeded);
         var finalized = ProposalCommands.Finalize(new FinalizeRequest(projectPath, ProductVersion, draftName));
         Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
         var loaded = ProjectStoreCommand.Run<Proposal>(projectPath, ProductVersion, (database, _) =>

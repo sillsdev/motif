@@ -994,8 +994,8 @@ internal static class WalkthroughFixtureSeeder
         var added = ProposalCommands.AddSetGloss(new AddSetGlossRequest(
             project.FwDataPath, version, draft, senseId, "en", "walkthrough gloss"));
         Assert.True(added.Succeeded, added.Refusal?.Message);
-        Assert.True(ProposalCommands.Comment(new CommentRequest(project.FwDataPath, version, draft,
-            "Changes one gloss so the parser's numbers can be compared.")).Succeeded);
+        Assert.True(DraftRationale.Write(project.FwDataPath, version, draft,
+            "Changes one gloss so the parser's numbers can be compared.").Succeeded);
         var finalized = ProposalCommands.Finalize(new FinalizeRequest(project.FwDataPath, version, draft));
         Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
 
@@ -1075,7 +1075,7 @@ internal static class WalkthroughFixtureSeeder
         const string draft = PendingChanges.DraftName;
         var path = project.FwDataPath;
         Assert.True(ProposalCommands.New(new NewDraftRequest(path, version, draft, "Sound system changes")).Succeeded);
-        Assert.True(ProposalCommands.Comment(new CommentRequest(path, version, draft, "Two phonemes and a class.")).Succeeded);
+        Assert.True(DraftRationale.Write(path, version, draft, "Two phonemes and a class.").Succeeded);
         var phoneme = ProposalCommands.ComposeAuthorPhoneme(new ComposeAuthorPhonemeRequest(path, version, draft,
             JsonSerializer.Serialize(new { name = "ɸ", representations = new[] { "ɸ" } })));
         Assert.True(phoneme.Succeeded, phoneme.Refusal?.Message);

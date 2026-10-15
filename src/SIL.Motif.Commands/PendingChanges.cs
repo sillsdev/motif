@@ -915,7 +915,6 @@ public static class PendingChanges
         {
             ProposalId = CanonicalId.Mint().Value,
             Label = "Changes to word analyses",
-            Comment = "Changes to word analyses and spelling.",
         }
         : ParseDraft(current.ProposalJson!);
 
@@ -924,7 +923,7 @@ public static class PendingChanges
     {
         var current = target.Current;
         var json = JsonSerializer.Serialize(draft, JsonOptions);
-        return WithReopen(repository, target, name =>
+        var saved = WithReopen(repository, target, name =>
         {
             if (expectedContext is not null)
             {
@@ -939,6 +938,10 @@ public static class PendingChanges
                 ? repository.TryCreateDraft(name, CanonicalId.Parse(draft.ProposalId), json, target.Role)
                 : repository.TrySaveDraft(name, current.ProposalJson!, json);
         });
+        // The person's own changes start with a standing Rationale, because finalizing a Proposal needs one.
+        if (saved && current is null && target.ReopenFrom is null)
+            repository.SetRationale(CanonicalId.Parse(draft.ProposalId), "Changes to word analyses and spelling.");
+        return saved;
     }
 
     // A refused write leaves a finalized Proposal finalized; a racing reopen is a conflict.

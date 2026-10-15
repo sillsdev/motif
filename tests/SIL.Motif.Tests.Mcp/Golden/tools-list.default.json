@@ -203,7 +203,7 @@
   },
   {
     "name": "motif_start_proposal",
-    "description": "Start a Proposal. Starts a named Draft holding one related set of semantic changes. Set a short label and a comment before Finalize, then measure and revise the Draft. Only a person can Apply.\nCommand: new. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nLabel: The short description a person reads while reviewing the Proposal.",
+    "description": "Start a Proposal. Starts a named Draft holding one related set of semantic changes. Set a short label and a Rationale before Finalize, then measure and revise the Draft. Only a person can Apply.\nCommand: new. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nLabel: The short description a person reads while reviewing the Proposal.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -215,9 +215,9 @@
           "type": "string",
           "description": "A one-line description a reviewer reads in Motif\u0027s window."
         },
-        "comment": {
+        "rationale": {
           "type": "string",
-          "description": "Why this change is right: the evidence, in a few sentences."
+          "description": "What this Proposal changes and why, in Markdown: the evidence, in a few sentences."
         },
         "project": {
           "type": "string",
@@ -227,7 +227,7 @@
       "required": [
         "draft",
         "label",
-        "comment",
+        "rationale",
         "project"
       ],
       "additionalProperties": false
@@ -1257,7 +1257,7 @@
   },
   {
     "name": "motif_compose_batch",
-    "description": "Compose many intents. Stages every intent in a JSON file in one Draft with one project load, through the same checks as each composing command alone. If any intent is refused, nothing is added, and both a label and comment are still required before Finalize. Only a person can Apply.\nCommand: compose-batch. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentsJson: {\u0022intents\u0022:[{\u0022verb\u0022:\u0022compose-author-phoneme\u0022,\u0022intent\u0022:{...},\u0022citation\u0022:{\u0022source\u0022:\u0022Grammar\u0022,\u0022locator\u0022:\u0022\u00A7 3\u0022}}, ...]}: each entry names a composing verb, carries exactly the closed intent that verb\u0027s --intent takes, and may include one citation beside that intent.",
+    "description": "Compose many intents. Stages every intent in a JSON file in one Draft with one project load, through the same checks as each composing command alone. If any intent is refused, nothing is added, and both a label and a Rationale are still required before Finalize. Only a person can Apply.\nCommand: compose-batch. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentsJson: {\u0022intents\u0022:[{\u0022verb\u0022:\u0022compose-author-phoneme\u0022,\u0022intent\u0022:{...},\u0022citation\u0022:{\u0022source\u0022:\u0022Grammar\u0022,\u0022locator\u0022:\u0022\u00A7 3\u0022}}, ...]}: each entry names a composing verb, carries exactly the closed intent that verb\u0027s --intent takes, and may include one citation beside that intent.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -3589,7 +3589,7 @@
   },
   {
     "name": "motif_finalize_proposal",
-    "description": "Finalize a Proposal. Finalizes a Draft as an immutable Proposal revision for a person to review. The Draft needs both a short label and a comment. Evidence for unchanged content on the same Baseline remains current.\nCommand: finalize. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nExpectedRevision: The required Draft revision for this write.",
+    "description": "Finalize a Proposal. Finalizes a Draft as an immutable Proposal revision for a person to review. The Draft needs both a short label and a Rationale. Evidence for unchanged content on the same Baseline remains current.\nCommand: finalize. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nExpectedRevision: The required Draft revision for this write.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -3642,8 +3642,38 @@
     "idempotentHint": false
   },
   {
+    "name": "motif_set_rationale",
+    "description": "Write a Proposal\u0027s Rationale. Writes or replaces what a Proposal changes and why, in Markdown. The Rationale stays outside the Proposal\u0027s content, so rewriting it never changes what the Proposal does, and it can be rewritten until the Proposal is applied or closed.\nCommand: proposal rationale. Agent class: Draft.\nProposalId: The full id of the Proposal, Draft or finalized, whose Rationale is written.\nText: The Rationale in Markdown: what the Proposal changes and why.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "proposal": {
+          "type": "string",
+          "description": "The full Proposal id, as motif_start_proposal or motif_proposals returned it."
+        },
+        "rationale": {
+          "type": "string",
+          "description": "What this Proposal changes and why, in Markdown. Replaces the earlier text."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "proposal",
+        "rationale",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
     "name": "motif_proposals",
-    "description": "Show a Proposal. Reads one saved Proposal or Draft by id, with its status, label, comment and operations. It does not change the FieldWorks project.\nCommand: show. Agent class: Read.\nProposalId: A Draft name or the exact canonical identity of a Draft or finalized Proposal.\nList Proposals. Lists every Proposal with what it changes and the numbers its latest Trial measured beside today\u0027s. Proposals are grouped by what to do next; applied and set-aside ones are counted unless asked for.\nCommand: proposals. Agent class: Read.\nIncludeSetAside: Whether closed (applied, rejected, superseded, withdrawn) Proposals are listed too.",
+    "description": "Show a Proposal. Reads one saved Proposal or Draft by id, with its status, label, Rationale, note and operations. It does not change the FieldWorks project.\nCommand: show. Agent class: Read.\nProposalId: A Draft name or the exact canonical identity of a Draft or finalized Proposal.\nList Proposals. Lists every Proposal with what it changes and the numbers its latest Trial measured beside today\u0027s. Proposals are grouped by what to do next; applied and set-aside ones are counted unless asked for.\nCommand: proposals. Agent class: Read.\nIncludeSetAside: Whether closed (applied, rejected, superseded, withdrawn) Proposals are listed too.",
     "inputSchema": {
       "type": "object",
       "properties": {

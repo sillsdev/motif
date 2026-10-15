@@ -166,7 +166,7 @@ public sealed class SchemaVersionGateTests : IDisposable
     [Fact]
     public void AStoreStampedWithSchemaFortySevenIsRefusedByThePhonologyAssessmentGeneration()
     {
-        Assert.Equal(48, MotifSchema.CurrentSchema);
+        Assert.Equal(49, MotifSchema.CurrentSchema);
         var path = Path.Combine(_root, "schema47.motif.db");
         var locator = new ProjectLocator(Path.Combine(_root, "schema47.fwdata"), "schema47");
         using (MotifDatabase.OpenOwned(path, locator, MotifSchema.CurrentSchema, new Version(1, 0))) { }

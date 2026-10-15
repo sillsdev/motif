@@ -120,8 +120,8 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine,
         Assert.Equal("Texts", Assert.Single(added.Changes).OriginPage);
         Assert.True(ProposalCommands.Label(new LabelRequest(path, ProductVersion, PendingChanges.DraftName,
             "Correct word spelling")).Succeeded);
-        Assert.True(ProposalCommands.Comment(new CommentRequest(path, ProductVersion, PendingChanges.DraftName,
-            "Correct the spelling status of the selected word.")).Succeeded);
+        Assert.True(DraftRationale.Write(path, ProductVersion, PendingChanges.DraftName,
+            "Correct the spelling status of the selected word.").Succeeded);
         var pending = LoadPending(path);
 
         var measured = await MeasureStepAsync("the first Trial", new MeasurePendingRequest(path, null, null,
@@ -158,7 +158,7 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine,
         using var database = ProjectMotifDatabase.Open(path);
         var proposal = new ProposalRepository(database).Get(CanonicalId.Parse(pending.DraftId!));
         Assert.Equal("Correct word spelling", proposal.Label);
-        Assert.Equal("Correct the spelling status of the selected word.", proposal.Comment);
+        Assert.Equal("Correct the spelling status of the selected word.", proposal.Rationale);
         Assert.Equal(1L, CountReceipts(database, pending.DraftId!));
 
         Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root).Succeeded);
@@ -194,7 +194,7 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine,
         Assert.True(secondApply.Succeeded, "the second Apply: " + secondApply.Refusal?.Message);
         var secondProposal = new ProposalRepository(database).Get(CanonicalId.Parse(reopened.DraftId!));
         Assert.Equal("Changes to word analyses", secondProposal.Label);
-        Assert.Equal("Changes to word analyses and spelling.", secondProposal.Comment);
+        Assert.Equal("Changes to word analyses and spelling.", secondProposal.Rationale);
     }
 
     [Fact]
@@ -237,8 +237,8 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine,
         var pending = PutChange(path, LoadPending(path).Revision, wordformId, "overlap-word");
         Assert.True(ProposalCommands.Label(new LabelRequest(path, ProductVersion, PendingChanges.DraftName,
             "Correct word spelling")).Succeeded);
-        Assert.True(ProposalCommands.Comment(new CommentRequest(path, ProductVersion, PendingChanges.DraftName,
-            "Correct the spelling status of the selected word.")).Succeeded);
+        Assert.True(DraftRationale.Write(path, ProductVersion, PendingChanges.DraftName,
+            "Correct the spelling status of the selected word.").Succeeded);
         var measured = await MeasureStepAsync("the Trial", new MeasurePendingRequest(path, null, null,
             ["overlap-word"]), runner);
         Assert.True(measured.Succeeded, "the Trial: " + measured.Refusal?.Message + " " + LastJob(path));

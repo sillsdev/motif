@@ -200,8 +200,8 @@ public sealed class ComposeRecordParsimonyDispositionTests : IDisposable
         Assert.NotNull(composed);
         Assert.Equal(7 + 2 * HumanJudgmentCodec.ReasonParagraphs("This choice is intentional.").Count, composed.Operations.Count);
         Assert.All(composed.Operations, operation => Assert.False(string.IsNullOrWhiteSpace(operation.Kind)));
-        Assert.True(ProposalCommands.Comment(new CommentRequest(_projectPath, ProductVersion, draft,
-            "Record the exact Parsimony finding and retain its evidence with the applied Notebook decision.")).Succeeded);
+        Assert.True(DraftRationale.Write(_projectPath, ProductVersion, draft,
+            "Record the exact Parsimony finding and retain its evidence with the applied Notebook decision.").Succeeded);
 
         var finalized = ProposalCommands.Finalize(new FinalizeRequest(_projectPath, ProductVersion, draft));
         Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
@@ -286,8 +286,8 @@ public sealed class ComposeRecordParsimonyDispositionTests : IDisposable
         Assert.NotNull(composed);
         var reasonLines = HumanJudgmentCodec.ReasonParagraphs(reason).Count;
         Assert.Equal(7 + 2 * reasonLines, composed.Operations.Count);
-        Assert.True(ProposalCommands.Comment(new CommentRequest(_projectPath, ProductVersion, draft,
-            "Retain the exact recipe finding and its evidence in the Notebook judgment.")).Succeeded);
+        Assert.True(DraftRationale.Write(_projectPath, ProductVersion, draft,
+            "Retain the exact recipe finding and its evidence in the Notebook judgment.").Succeeded);
         var finalized = ProposalCommands.Finalize(new FinalizeRequest(_projectPath, ProductVersion, draft));
         Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
         var proposal = ProjectStoreCommand.Run<Proposal>(_projectPath, ProductVersion, (database, _) =>
@@ -440,8 +440,8 @@ public sealed class ComposeRecordParsimonyDispositionTests : IDisposable
     {
         var reportId = StageReportAndDraft("applied-first");
         Assert.True(ParsimonyCommands.RecordDisposition(DispositionRequest(reportId, "applied-first", "keep")).Succeeded);
-        Assert.True(ProposalCommands.Comment(new CommentRequest(_projectPath, ProductVersion, "applied-first",
-            "Record the exact Parsimony finding.")).Succeeded);
+        Assert.True(DraftRationale.Write(_projectPath, ProductVersion, "applied-first",
+            "Record the exact Parsimony finding.").Succeeded);
         var finalized = ProposalCommands.Finalize(new FinalizeRequest(_projectPath, ProductVersion, "applied-first"));
         Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
         Assert.True(DryRunJobRunner.Run(_projectPath, ProductVersion, finalized.Value!.ProposalId).Succeeded);
@@ -467,8 +467,8 @@ public sealed class ComposeRecordParsimonyDispositionTests : IDisposable
     {
         var reportId = StageReportAndDraft("applied-stale");
         Assert.True(ParsimonyCommands.RecordDisposition(DispositionRequest(reportId, "applied-stale", "keep")).Succeeded);
-        Assert.True(ProposalCommands.Comment(new CommentRequest(_projectPath, ProductVersion, "applied-stale",
-            "Record the exact Parsimony finding.")).Succeeded);
+        Assert.True(DraftRationale.Write(_projectPath, ProductVersion, "applied-stale",
+            "Record the exact Parsimony finding.").Succeeded);
         var finalized = ProposalCommands.Finalize(new FinalizeRequest(_projectPath, ProductVersion, "applied-stale"));
         Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
         Assert.True(DryRunJobRunner.Run(_projectPath, ProductVersion, finalized.Value!.ProposalId).Succeeded);
@@ -501,8 +501,8 @@ public sealed class ComposeRecordParsimonyDispositionTests : IDisposable
     {
         var earlierReportId = StageReportAndDraft("earlier-report");
         Assert.True(ParsimonyCommands.RecordDisposition(DispositionRequest(earlierReportId, "earlier-report", "keep")).Succeeded);
-        Assert.True(ProposalCommands.Comment(new CommentRequest(_projectPath, ProductVersion, "earlier-report",
-            "Record the exact Parsimony finding.")).Succeeded);
+        Assert.True(DraftRationale.Write(_projectPath, ProductVersion, "earlier-report",
+            "Record the exact Parsimony finding.").Succeeded);
         var finalized = ProposalCommands.Finalize(new FinalizeRequest(_projectPath, ProductVersion, "earlier-report"));
         Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
         Assert.True(DryRunJobRunner.Run(_projectPath, ProductVersion, finalized.Value!.ProposalId).Succeeded);
@@ -887,8 +887,8 @@ public sealed class ComposeRecordParsimonyDispositionTests : IDisposable
                 _projectPath, ProductVersion, draft, JsonSerializer.Serialize(new { msa = _msaId })));
             Assert.True(grammar.Succeeded, grammar.Refusal?.Message);
         }
-        Assert.True(ProposalCommands.Comment(new CommentRequest(_projectPath, ProductVersion, draft,
-            "Retain the exact finding evidence with the Notebook decision.")).Succeeded);
+        Assert.True(DraftRationale.Write(_projectPath, ProductVersion, draft,
+            "Retain the exact finding evidence with the Notebook decision.").Succeeded);
         var finalized = ProposalCommands.Finalize(new FinalizeRequest(_projectPath, ProductVersion, draft));
         Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
         var parsed = ProjectStoreCommand.Run<Proposal>(_projectPath, ProductVersion, (database, _) =>

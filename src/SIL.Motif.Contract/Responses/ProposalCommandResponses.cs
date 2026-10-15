@@ -78,7 +78,14 @@ public sealed record PromoteGlossAddedResponse(
     string? Licence,
     int OperationCount);
 
-/// <summary>The Draft field <c>label</c> or <c>comment</c> set to a new value.</summary>
+/// <summary>A Proposal's Rationale or the person's note written or cleared.</summary>
+/// <param name="ProposalId">The Proposal the text belongs to.</param>
+/// <param name="Field">Which text changed: <c>rationale</c> or <c>note</c>.</param>
+/// <param name="UpdatedUtc">When the text was written; null when a note was cleared.</param>
+/// <param name="NoteChanged">Whether the person's note is now newer than the Rationale.</param>
+public sealed record ProposalTextChangedResponse(string ProposalId, string Field, string? UpdatedUtc, bool NoteChanged);
+
+/// <summary>The Draft field <c>label</c> set to a new value.</summary>
 public sealed record DraftFieldChangedResponse(string DraftName, string Field, string Value);
 
 /// <summary>A Draft committed as a Proposal revision, either its first (Finalized) or a later one (Amended).</summary>

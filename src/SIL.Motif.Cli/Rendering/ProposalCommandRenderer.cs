@@ -56,6 +56,7 @@ public static class ProposalCommandRenderer
             ComposedBatchResponse r => RenderComposedBatch(r),
             PromoteGlossAddedResponse r => RenderPromoteGlossAdded(r),
             DraftFieldChangedResponse r => $"Set {r.Field} on draft '{r.DraftName}'.{Environment.NewLine}",
+            ProposalTextChangedResponse r => RenderTextChanged(r),
             ProposalFinalizedResponse r => RenderProposalFinalized(r),
             DraftDiscardedResponse r => RenderDraftDiscarded(r),
             ReopenedResponse r => RenderReopened(r),
@@ -231,6 +232,15 @@ public static class ProposalCommandRenderer
         if (r.Licence is not null) sb.AppendLine($"  licence: {r.Licence}");
         sb.AppendLine($"Draft now has {r.OperationCount} operation(s).");
         return sb.ToString();
+    }
+
+    internal static string RenderTextChanged(ProposalTextChangedResponse response)
+    {
+        var verb = response.UpdatedUtc is null ? "Cleared" : "Wrote";
+        var text = $"{verb} the {response.Field} on Proposal {response.ProposalId}.{Environment.NewLine}";
+        return response.NoteChanged
+            ? text + "The person's note is newer than the Rationale; read it with `proposal show`." + Environment.NewLine
+            : text;
     }
 
     private static string RenderProposalFinalized(ProposalFinalizedResponse r)

@@ -174,8 +174,8 @@ public sealed class InflectionClassEditorDraftTests(PristineProjectFixture prist
         Assert.Equal(beforeMismatch, DraftBytes(path, DraftName));
 
         Assert.True(ProposalCommands.Label(new(path, Version, DraftName, "Class default and affix restriction")).Succeeded);
-        Assert.True(ProposalCommands.Comment(new(path, Version, DraftName,
-            "Use one inflection class as a category default and affix restriction.")).Succeeded);
+        Assert.True(DraftRationale.Write(path, Version, DraftName,
+            "Use one inflection class as a category default and affix restriction.").Succeeded);
         var finalized = ProposalCommands.Finalize(new(path, Version, DraftName));
         Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
         var loaded = ProjectStoreCommand.Run(path, Version, (database, _) =>

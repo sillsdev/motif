@@ -506,16 +506,6 @@ try
                 successAsJson: false);
             break;
 
-        case "comment":
-            if (!flags.TryGetValue("project", out var commentProject) ||
-                !flags.TryGetValue("draft", out var commentDraftName) || positionals.Count != 1)
-                return Usage("Usage: motif comment --project <fwdata> --draft <name> <text>", asJson);
-            result = RenderProposal(
-                ProposalCommands.Comment(
-                    new CommentRequest(commentProject, CliProductVersion(), commentDraftName, positionals[0])),
-                successAsJson: false);
-            break;
-
         case "finalize":
             if (!flags.TryGetValue("project", out var finalizeProject) ||
                 !flags.TryGetValue("draft", out var finalizeDraftName))
@@ -1422,14 +1412,40 @@ try
             }
             if (positionals.Count == 1 && positionals[0] == "review")
                 return Usage(UsageLineFor("proposal review"), asJson);
+            if (positionals.Count == 2 && positionals[0] is "rationale" or "note")
+            {
+                var isNote = positionals[0] == "note";
+                var textUsage = UsageLineFor(isNote ? "proposal note" : "proposal rationale");
+                if (!flags.TryGetValue("project", out var textProject)) return Usage(textUsage, asJson);
+                if (!isNote && flags.ContainsKey("clear"))
+                    return Usage("A Rationale cannot be cleared, only rewritten: give --text or --file. " + textUsage, asJson);
+                var sources = new[] { "text", "file" }.Count(flags.ContainsKey) + (isNote && flags.ContainsKey("clear") ? 1 : 0);
+                if (sources != 1) return Usage(textUsage, asJson);
+                string? textBody;
+                if (flags.TryGetValue("file", out var textFile))
+                {
+                    if (!File.Exists(textFile))
+                        return Usage("The file '" + textFile + "' does not exist. " + textUsage, asJson);
+                    textBody = File.ReadAllText(textFile);
+                }
+                else textBody = flags.TryGetValue("text", out var textValue) ? textValue : null;
+                result = RenderCommand(isNote
+                    ? ProposalTexts.SetNote(new SetNoteRequest(textProject, CliProductVersion(), positionals[1], textBody))
+                    : ProposalTexts.SetRationale(new SetRationaleRequest(
+                        textProject, CliProductVersion(), positionals[1], textBody ?? "")));
+                break;
+            }
             if (positionals.Count == 1 && positionals[0] == "looked-at")
             {
                 if (!flags.TryGetValue("project", out var markProject) ||
                     !flags.TryGetValue("proposal", out var markProposal) ||
-                    !flags.TryGetValue("entry", out var markEntry) ||
-                    !flags.TryGetValue("content-digest", out var markContent) ||
-                    !flags.TryGetValue("evidence-digest", out var markEvidence))
+                    !flags.TryGetValue("entry", out var markEntry))
                     return Usage(UsageLineFor("proposal looked-at"), asJson);
+                var rationaleEntry = markEntry == "proposal.rationale";
+                if (!rationaleEntry && (!flags.ContainsKey("content-digest") || !flags.ContainsKey("evidence-digest")))
+                    return Usage(UsageLineFor("proposal looked-at"), asJson);
+                var markContent = flags.GetValueOrDefault("content-digest") ?? "";
+                var markEvidence = flags.GetValueOrDefault("evidence-digest") ?? "";
                 result = RenderCommand(ReviewMarks.Set(new ReviewMarkRequest(markProject, markProposal, markEntry,
                     markContent, markEvidence, !flags.ContainsKey("clear"))));
                 break;
@@ -2319,7 +2335,7 @@ static InspectorSubject? InspectSubjectFrom(IReadOnlyDictionary<string, string> 
 static string ResolveCommandName(string verb, IReadOnlyDictionary<string, string> flags,
     IReadOnlyList<string> positionals)
 {
-    if (verb == "proposal" && positionals.FirstOrDefault() is "trial" or "review" or "looked-at")
+    if (verb == "proposal" && positionals.FirstOrDefault() is "trial" or "review" or "looked-at" or "rationale" or "note")
         return "proposal " + positionals[0];
     if (verb == "parsimony")
     {

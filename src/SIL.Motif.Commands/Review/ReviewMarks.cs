@@ -34,6 +34,8 @@ public static class ReviewMarks
         ArgumentNullException.ThrowIfNull(request);
         return ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, _) =>
         {
+            if (request.EntryKey == SIL.Motif.Projection.ProposalDetailProjectionBuilder.RationaleEntryKey)
+                return SetRationaleMark(database, request);
             if (string.IsNullOrWhiteSpace(request.EntryKey) || string.IsNullOrWhiteSpace(request.ContentDigest) ||
                 string.IsNullOrWhiteSpace(request.EvidenceDigest))
                 return CommandOutcome<ReviewMarkResponse>.Refused(new Refusal("review.invalid-mark",
@@ -53,6 +55,32 @@ public static class ReviewMarks
             return CommandOutcome<ReviewMarkResponse>.Success(
                 new ReviewMarkResponse(id, request.EntryKey, request.LookedAt));
         });
+    }
+
+    // The Rationale's mark is judged against the stored text itself, so a caller needs no digest to send.
+    private static CommandOutcome<ReviewMarkResponse> SetRationaleMark(MotifDatabase database, ReviewMarkRequest request)
+    {
+        string id;
+        ProposalRecord record;
+        try
+        {
+            id = ProposalCommands.NormalizeId(request.ProposalId);
+            record = new ProposalRepository(database).Get(CanonicalId.Parse(id));
+        }
+        catch (Exception exception) when (exception is ArgumentException or KeyNotFoundException)
+        {
+            return CommandOutcome<ReviewMarkResponse>.Refused(ProposalCommands.ProposalLoadRefusal(exception));
+        }
+        if (request.LookedAt)
+        {
+            if (record.Rationale is null)
+                return CommandOutcome<ReviewMarkResponse>.Refused(new Refusal("review.invalid-mark",
+                    FailureReason.InvalidArgument, "This Proposal has no Rationale to mark as looked at."));
+            Put(database, id, request.EntryKey,
+                SIL.Motif.Projection.ProposalDetailProjectionBuilder.RationaleContentDigest(record.Rationale), NoEvidence);
+        }
+        else Clear(database, id, [request.EntryKey]);
+        return CommandOutcome<ReviewMarkResponse>.Success(new ReviewMarkResponse(id, request.EntryKey, request.LookedAt));
     }
 
     /// <summary>Records one mark, replacing the earlier mark of the same entry.</summary>

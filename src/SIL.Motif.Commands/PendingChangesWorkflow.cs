@@ -216,7 +216,7 @@ public static class PendingChangesWorkflow
         else
         {
             var (finalized, envelope) = repository.GetFinalized(record.ProposalId);
-            draft = ProposalCommands.ToDraftDocument(id, envelope, finalized.Label, finalized.Comment);
+            draft = ProposalCommands.ToDraftDocument(id, envelope, finalized.Label);
             revision = finalized.IntentDigest!;
         }
         if (target.ExpectedRevision is { } expected && expected != revision)

@@ -463,8 +463,8 @@ public sealed class PhonologicalRuleOrderConformanceTests(PristineProjectFixture
             RuleBatchEntry(sourceIntents[1], ids, "r2", "@r1"),
             RuleBatchEntry(sourceIntents[2], ids, "r3", "@r2"))));
         Assert.True(seedBatch.Succeeded, seedBatch.Refusal?.Message);
-        var seedComment = ProposalCommands.Comment(new(path, Version, seedDraft,
-            "Save the three rules for live placement checks."));
+        var seedComment = DraftRationale.Write(path, Version, seedDraft,
+            "Save the three rules for live placement checks.");
         Assert.True(seedComment.Succeeded, seedComment.Refusal?.Message);
         var finalized = ProposalCommands.Finalize(new(path, Version, seedDraft));
         Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
@@ -649,8 +649,8 @@ public sealed class PhonologicalRuleOrderConformanceTests(PristineProjectFixture
         }
 
         Assert.Equal(6, ruleCreates.Count);
-        var comment = ProposalCommands.Comment(new(path, Version, DraftName,
-            "Stage these six rules with their declared sequence."));
+        var comment = DraftRationale.Write(path, Version, DraftName,
+            "Stage these six rules with their declared sequence.");
         Assert.True(comment.Succeeded, comment.Refusal?.Message);
         using (var source = new FwDataProjectLoader().LoadScratchCache(path))
         {

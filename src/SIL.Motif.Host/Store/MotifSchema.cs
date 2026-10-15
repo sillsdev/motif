@@ -16,7 +16,7 @@ public static class MotifSchema
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 48;
+    public const int CurrentSchema = 49;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
@@ -538,7 +538,9 @@ public static class MotifSchema
         [C("AssessmentId", "TEXT", true, 1), C("PinnedBy", "TEXT", true, 2), C("PinnedUtc", "TEXT", true)],
         "Proposals" =>
         [C("ProposalId", "TEXT", false, 1), C("CurrentIntentDigest", "TEXT"), C("Status", "TEXT", true),
-            C("Label", "TEXT"), C("Comment", "TEXT"), C("SupersededBy", "TEXT"), C("AnchorJson", "TEXT"),
+            C("Label", "TEXT"), C("Rationale", "TEXT"), C("RationaleIntentDigest", "TEXT"),
+            C("RationaleUpdatedUtc", "TEXT"), C("Note", "TEXT"), C("NoteIntentDigest", "TEXT"), C("NoteUpdatedUtc", "TEXT"),
+            C("SupersededBy", "TEXT"), C("AnchorJson", "TEXT"),
             C("ArchivedUtc", "TEXT"), C("DraftName", "TEXT"), C("DraftJson", "TEXT"), C("Role", "TEXT")],
         "ProposalRevisions" =>
         [C("ProposalId", "TEXT", true, 1), C("IntentDigest", "TEXT", true, 2),
@@ -679,7 +681,12 @@ public static class MotifSchema
             CurrentIntentDigest TEXT NULL,
             Status TEXT NOT NULL,
             Label TEXT NULL,
-            Comment TEXT NULL,
+            Rationale TEXT NULL,
+            RationaleIntentDigest TEXT NULL,
+            RationaleUpdatedUtc TEXT NULL,
+            Note TEXT NULL,
+            NoteIntentDigest TEXT NULL,
+            NoteUpdatedUtc TEXT NULL,
             SupersededBy TEXT NULL,
             AnchorJson TEXT NULL,
             ArchivedUtc TEXT NULL,

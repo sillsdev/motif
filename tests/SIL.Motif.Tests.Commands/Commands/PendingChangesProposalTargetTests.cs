@@ -85,7 +85,7 @@ public sealed class PendingChangesProposalTargetTests
         var loaded = PendingChanges.Load(new PendingChangesRequest(_path, "1.0", proposalId));
         Assert.True(PendingChanges.Put(new PutPendingChangeRequest(_path, "1.0", loaded.Value!.Revision,
             Spelling(first, "alpha-word"), proposalId)).Succeeded);
-        Assert.True(ProposalCommands.Comment(new CommentRequest(_path, "1.0", "proposal-b", "Why")).Succeeded);
+        Assert.True(DraftRationale.Write(_path, "1.0", "proposal-b", "Why").Succeeded);
         var finalize = ProposalCommands.Finalize(new FinalizeRequest(_path, "1.0", "proposal-b"));
         Assert.True(finalize.Succeeded, finalize.Refusal?.Message);
         var finalized = PendingChanges.Load(new PendingChangesRequest(_path, "1.0", proposalId));
@@ -195,7 +195,7 @@ public sealed class PendingChangesProposalTargetTests
         var loaded = PendingChanges.Load(new PendingChangesRequest(_path, "1.0", proposalId));
         Assert.True(PendingChanges.Put(new PutPendingChangeRequest(_path, "1.0", loaded.Value!.Revision,
             Spelling(first, "alpha-word"), proposalId)).Succeeded);
-        Assert.True(ProposalCommands.Comment(new CommentRequest(_path, "1.0", "proposal-c", "Why")).Succeeded);
+        Assert.True(DraftRationale.Write(_path, "1.0", "proposal-c", "Why").Succeeded);
         Assert.True(ProposalCommands.Finalize(new FinalizeRequest(_path, "1.0", "proposal-c")).Succeeded);
         var finalized = PendingChanges.Load(new PendingChangesRequest(_path, "1.0", proposalId));
         Assert.True(ProposalCommands.New(new NewDraftRequest(_path, "1.0", "review/" + proposalId, "Taken")).Succeeded);
@@ -229,7 +229,7 @@ public sealed class PendingChangesProposalTargetTests
         var loaded = PendingChanges.Load(new PendingChangesRequest(_path, "1.0", proposalId));
         Assert.True(PendingChanges.Put(new PutPendingChangeRequest(_path, "1.0", loaded.Value!.Revision,
             Spelling(first, "alpha-word"), proposalId)).Succeeded);
-        Assert.True(ProposalCommands.Comment(new CommentRequest(_path, "1.0", "proposal-d", "Why")).Succeeded);
+        Assert.True(DraftRationale.Write(_path, "1.0", "proposal-d", "Why").Succeeded);
         Assert.True(ProposalCommands.Finalize(new FinalizeRequest(_path, "1.0", "proposal-d")).Succeeded);
         using (var database = ProjectMotifDatabase.Open(_path))
             new ProposalRepository(database).SetStatus(CanonicalId.Parse(proposalId), status, null);

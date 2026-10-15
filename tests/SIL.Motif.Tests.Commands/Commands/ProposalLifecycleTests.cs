@@ -64,7 +64,7 @@ public sealed class ProposalLifecycleTests(PristineProjectFixture pristine)
         var path = NewProject();
         var created = ProposalCommands.New(new NewDraftRequest(path, Version, "empty-withdrawal", "Empty draft"));
         Assert.True(created.Succeeded, created.Refusal?.Message);
-        Assert.True(ProposalCommands.Comment(new CommentRequest(path, Version, "empty-withdrawal", "No change was needed.")).Succeeded);
+        Assert.True(DraftRationale.Write(path, Version, "empty-withdrawal", "No change was needed.").Succeeded);
 
         var withdrawn = ProposalLifecycleCommand.Withdraw(
             new WithdrawProposalRequest(path, created.Value!.ProposalId));

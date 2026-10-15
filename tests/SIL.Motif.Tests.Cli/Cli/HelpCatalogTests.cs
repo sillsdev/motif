@@ -127,7 +127,7 @@ public sealed class HelpCatalogTests
     {
         var catalog = HelpCatalog.Load(System.Globalization.CultureInfo.GetCultureInfo("en"));
 
-        foreach (var code in new[] { "label", "comment", "apply" })
+        foreach (var code in new[] { "label", "proposal rationale", "proposal note", "apply" })
         {
             var entry = Assert.IsType<HelpEntry>(catalog.Find(HelpEntryKind.Command, code));
             Assert.InRange(entry.Title.Length, 1, 30);
@@ -154,10 +154,10 @@ public sealed class HelpCatalogTests
         {
             var entry = Assert.IsType<HelpEntry>(catalog.Find(HelpEntryKind.Command, code));
             Assert.Contains("label", entry.Description, StringComparison.OrdinalIgnoreCase);
-            Assert.Contains("comment", entry.Description, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("Rationale", entry.Description, StringComparison.OrdinalIgnoreCase);
             var page = catalog.GetHelpPage(HelpEntryKind.Command, code)!;
             Assert.Contains("label", page, StringComparison.OrdinalIgnoreCase);
-            Assert.Contains("comment", page, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("Rationale", page, StringComparison.OrdinalIgnoreCase);
         }
     }
 

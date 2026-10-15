@@ -99,6 +99,7 @@ public static class CommandTextRenderer
             WritingSystemsResponse r => RenderWritingSystems(r),
             WordContextResponse r => RenderWordContext(r),
             ProposalStandings r => RenderProposalStandings(r),
+            ProposalTextChangedResponse r => ProposalCommandRenderer.RenderTextChanged(r),
             _ => throw new NotSupportedException($"No text rendering registered for '{typeof(T)}'."),
         };
         return new CommandResult(0, text);

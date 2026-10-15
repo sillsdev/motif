@@ -67,7 +67,7 @@ public sealed class SoundSystemDraftTests(PristineProjectFixture pristine)
         const string version = "0.1.0";
         const string draft = "sound-system";
         Assert.True(ProposalCommands.New(new(path, version, draft, "Author sound system")).Succeeded);
-        Assert.True(ProposalCommands.Comment(new(path, version, draft, "Synthetic vowel context.")).Succeeded);
+        Assert.True(DraftRationale.Write(path, version, draft, "Synthetic vowel context.").Succeeded);
         var phoneme = ProposalCommands.ComposeAuthorPhoneme(new(path, version, draft,
             JsonSerializer.Serialize(new { name = "a", representations = new[] { "a" } })));
         Assert.True(phoneme.Succeeded, phoneme.Refusal?.Message);
@@ -126,8 +126,8 @@ public sealed class SoundSystemDraftTests(PristineProjectFixture pristine)
         const string version = "0.1.0";
         var draft = "condition-new-environment" + (prefix.Length == 0 ? "" : "-prefixed");
         Assert.True(ProposalCommands.New(new(path, version, draft, "Restrict one stem allomorph")).Succeeded);
-        Assert.True(ProposalCommands.Comment(new(path, version, draft,
-            "The new typed environment narrows this allomorph without changing its shared users.")).Succeeded);
+        Assert.True(DraftRationale.Write(path, version, draft,
+            "The new typed environment narrows this allomorph without changing its shared users.").Succeeded);
         var phoneme = ProposalCommands.ComposeAuthorPhoneme(new(path, version, draft,
             JsonSerializer.Serialize(new { name = "a\u0301", representations = new[] { "á" } })));
         Assert.True(phoneme.Succeeded, phoneme.Refusal?.Message);
@@ -230,8 +230,8 @@ public sealed class SoundSystemDraftTests(PristineProjectFixture pristine)
         const string draft = "edit-natural-class";
         Assert.True(ProposalCommands.New(new(path, version, draft, "Correct a segment class")).Succeeded);
         Assert.True(ProposalCommands.Label(new(path, version, draft, "Remove a leaked class member")).Succeeded);
-        Assert.True(ProposalCommands.Comment(new(path, version, draft,
-            "Keep the remaining environment meaning and verify the membership edit in Dry Run.")).Succeeded);
+        Assert.True(DraftRationale.Write(path, version, draft,
+            "Keep the remaining environment meaning and verify the membership edit in Dry Run.").Succeeded);
 
         var edit = ProposalCommands.ComposeEditNaturalClass(new(path, version, draft,
             JsonSerializer.Serialize(new
@@ -303,8 +303,8 @@ public sealed class SoundSystemDraftTests(PristineProjectFixture pristine)
         const string draft = "relink-natural-class";
         Assert.True(ProposalCommands.New(new(path, version, draft, "Relink selected class users")).Succeeded);
         Assert.True(ProposalCommands.Label(new(path, version, draft, "Keep shared meanings distinct")).Succeeded);
-        Assert.True(ProposalCommands.Comment(new(path, version, draft,
-            "Move only the selected rule context and environment to the corrected class.")).Succeeded);
+        Assert.True(DraftRationale.Write(path, version, draft,
+            "Move only the selected rule context and environment to the corrected class.").Succeeded);
         var replacement = ProposalCommands.ComposeAuthorNaturalClass(new(path, version, draft,
             JsonSerializer.Serialize(new { name = "corrected class", abbreviation = "NEW", members = new[] { aId.Value } })));
         Assert.True(replacement.Succeeded, replacement.Refusal?.Message);
@@ -464,8 +464,8 @@ public sealed class SoundSystemDraftTests(PristineProjectFixture pristine)
         AssertCreatedObjectsMatch(template.Value!);
 
         Assert.True(ProposalCommands.Label(new(path, version, draft, "Add alternative template")).Succeeded);
-        Assert.True(ProposalCommands.Comment(new(path, version, draft,
-            "The plural branch requires the plural suffix slot.")).Succeeded);
+        Assert.True(DraftRationale.Write(path, version, draft,
+            "The plural branch requires the plural suffix slot.").Succeeded);
         var finalized = ProposalCommands.Finalize(new(path, version, draft));
         Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
         var loaded = ProjectStoreCommand.Run<Proposal>(path, version, (database, _) =>

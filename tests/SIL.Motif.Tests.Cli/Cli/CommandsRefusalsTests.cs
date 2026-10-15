@@ -137,7 +137,7 @@ public sealed class CommandsRefusalsTests : IDisposable
         Assert.Equal(before, ReadDraftJson("d"));
     }
 
-    // --- Label / Comment ---
+    // --- Label / Rationale ---
 
     [Fact]
     public void Label_SetsTheFieldOnTheDraftAndPersistsIt()
@@ -153,16 +153,28 @@ public sealed class CommandsRefusalsTests : IDisposable
     }
 
     [Fact]
-    public void Comment_SetsTheFieldOnTheDraftAndPersistsIt()
+    public void Rationale_IsWrittenOnTheProposalOfADraftAndPersists()
     {
         New("d", null);
 
-        var result =
-            ProposalCommands.Comment(new CommentRequest(_fwDataPath, ProductVersion, "d", "a reviewer-facing comment"));
+        var result = DraftRationale.Write(_fwDataPath, ProductVersion, "d", "a reviewer-facing rationale");
 
         Assert.True(result.Succeeded);
-        Assert.Equal("comment", result.Value!.Field);
-        Assert.Equal("a reviewer-facing comment", ReadDraft("d").Comment);
+        Assert.Equal("rationale", result.Value!.Field);
+        var shown = ProposalCommands.Show(new ShowProposalRequest(_fwDataPath, ProductVersion, "d"));
+        Assert.Equal("a reviewer-facing rationale", shown.Value!.Rationale!.Markdown);
+    }
+
+    [Fact]
+    public void ARationaleCannotBeClearedAndTheFlagIsRefusedInsteadOfIgnored()
+    {
+        New("d", null);
+        var proposalId = ReadDraft("d").ProposalId;
+
+        var refused = RunCli($"proposal rationale {proposalId} --project \"{_fwDataPath}\" --clear");
+
+        Assert.NotEqual(0, refused.ExitCode);
+        Assert.Contains("cannot be cleared", refused.Error, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -192,19 +204,17 @@ public sealed class CommandsRefusalsTests : IDisposable
     }
 
     [Theory]
-    [InlineData(null, "Explains why the change is needed.")]
-    [InlineData("   ", "Explains why the change is needed.")]
-    [InlineData("Clarify the analysis", null)]
-    [InlineData("Clarify the analysis", "\t")]
-    public void Finalize_MissingRationale_RefusesAtomicallyAndPreservesTheDraft(
-        string? label, string? comment)
+    [InlineData(null)]
+    [InlineData("   ")]
+    public void Finalize_MissingLabel_RefusesAtomicallyAndPreservesTheDraft(string? label)
     {
-        const string draftName = "missing-rationale";
+        const string draftName = "missing-label";
         New(draftName, null);
         AddSetGloss(draftName, _target, "en", "clarified gloss");
+        Assert.True(DraftRationale.Write(_fwDataPath, ProductVersion, draftName, "Explains why the change is needed.")
+            .Succeeded);
         var draft = ReadDraft(draftName);
         draft.Label = label;
-        draft.Comment = comment;
         WriteDraft(draftName, draft);
         var before = ReadDraftJson(draftName);
 
@@ -215,11 +225,29 @@ public sealed class CommandsRefusalsTests : IDisposable
         Assert.Equal("draft.invalid", refusal.Code);
         Assert.Equal(FailureReason.Refused, refusal.Reason);
         Assert.Contains("short description", refusal.Message, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("label", refusal.Message, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("extended explanation", refusal.Message, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("comment", refusal.Message, StringComparison.OrdinalIgnoreCase);
         Assert.Contains($"label --draft {draftName} <text>", refusal.Message, StringComparison.Ordinal);
-        Assert.Contains($"comment --draft {draftName} <text>", refusal.Message, StringComparison.Ordinal);
+        Assert.Equal(before, ReadDraftJson(draftName));
+        Assert.Equal(0, CountCommittedProposals());
+    }
+
+    [Fact]
+    public void Finalize_MissingRationale_RefusesNamingTheCommandAndPreservesTheDraft()
+    {
+        const string draftName = "missing-rationale";
+        New(draftName, null);
+        AddSetGloss(draftName, _target, "en", "clarified gloss");
+        var draft = ReadDraft(draftName);
+        draft.Label = "Clarify the analysis";
+        WriteDraft(draftName, draft);
+        var before = ReadDraftJson(draftName);
+
+        var result = Finalize(draftName);
+
+        Assert.False(result.Succeeded);
+        var refusal = result.Refusal!;
+        Assert.Equal("proposal.rationale-empty", refusal.Code);
+        Assert.Equal(FailureReason.InvalidArgument, refusal.Reason);
+        Assert.Contains($"proposal rationale {draft.ProposalId}", refusal.Message, StringComparison.Ordinal);
         Assert.Equal(before, ReadDraftJson(draftName));
         Assert.Equal(0, CountCommittedProposals());
     }
@@ -235,35 +263,15 @@ public sealed class CommandsRefusalsTests : IDisposable
 
         Assert.NotEqual(0, refused.ExitCode);
         Assert.Contains($"label --draft {draftName} <text>", refused.Error);
-        Assert.Contains($"comment --draft {draftName} <text>", refused.Error);
         Assert.Equal(0, RunCli($"label --draft {draftName} \"Clarify the analysis\"").ExitCode);
+        var needsRationale = RunCli($"finalize --draft {draftName}");
+        var proposalId = ReadDraft(draftName).ProposalId;
+        Assert.NotEqual(0, needsRationale.ExitCode);
+        Assert.Contains($"proposal rationale {proposalId}", needsRationale.Error);
         Assert.Equal(
             0,
-            RunCli($"comment --draft {draftName} \"Explain why this analysis is intended\"").ExitCode);
+            RunCli($"proposal rationale {proposalId} --text \"Explain why this analysis is intended\"").ExitCode);
         Assert.Equal(0, RunCli($"finalize --draft {draftName}").ExitCode);
-    }
-
-    [Fact]
-    public void Finalize_AmendWithMissingRationale_RefusesWithoutMovingCommittedState()
-    {
-        var proposalId = CommitOneOperationProposal("original-rationale");
-        var recordBefore = GetRecord(proposalId);
-        var revisionCountBefore = CountRevisions(proposalId);
-        Assert.True(Reopen("amend-rationale", proposalId).Succeeded);
-        var draft = ReadDraft("amend-rationale");
-        draft.Comment = "  ";
-        WriteDraft("amend-rationale", draft);
-        var draftBefore = ReadDraftJson("amend-rationale");
-
-        var result = Finalize("amend-rationale");
-
-        Assert.False(result.Succeeded);
-        Assert.Equal("draft.invalid", result.Refusal!.Code);
-        Assert.Equal(draftBefore, ReadDraftJson("amend-rationale"));
-        var recordAfter = GetRecord(proposalId);
-        Assert.Equal(recordBefore.Status, recordAfter.Status);
-        Assert.Equal(recordBefore.IntentDigest, recordAfter.IntentDigest);
-        Assert.Equal(revisionCountBefore, CountRevisions(proposalId));
     }
 
     [Fact]
@@ -273,9 +281,10 @@ public sealed class CommandsRefusalsTests : IDisposable
         AddSetGloss("d", _target, "en", "text");
 
         // Corrupt contractVersions so it no longer covers the 'lexical' group the one operation uses.
+        Assert.True(DraftRationale.Write(_fwDataPath, ProductVersion, "d",
+            "Keep contract-version validation independent from the required rationale guard.").Succeeded);
         var draft = ReadDraft("d");
         draft.Label = "Exercise Proposal validation";
-        draft.Comment = "Keep contract-version validation independent from the required rationale guard.";
         draft.ContractVersions.Remove("lexical");
         draft.ContractVersions["bogus"] = "1.0";
         WriteDraft("d", draft);

@@ -227,7 +227,7 @@ public sealed class ReleaseSurfaceTests : IDisposable
     {
         var authoring = new[]
         {
-            "new", "compose-author-phoneme", "compose-batch", "label", "comment", "finalize",
+            "new", "compose-author-phoneme", "compose-batch", "label", "finalize",
         };
         var evaluating = new[] { "dry-run", "trial" };
 

@@ -1,7 +1,7 @@
 [
   {
     "name": "motif_start_proposal",
-    "description": "Start a Proposal. Starts a named Draft holding one related set of semantic changes. Set a short label and a comment before Finalize, then measure and revise the Draft. Only a person can Apply.\nCommand: new. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nLabel: The short description a person reads while reviewing the Proposal.",
+    "description": "Start a Proposal. Starts a named Draft holding one related set of semantic changes. Set a short label and a Rationale before Finalize, then measure and revise the Draft. Only a person can Apply.\nCommand: new. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nLabel: The short description a person reads while reviewing the Proposal.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -13,9 +13,9 @@
           "type": "string",
           "description": "A one-line description a reviewer reads in Motif\u0027s window."
         },
-        "comment": {
+        "rationale": {
           "type": "string",
-          "description": "Why this change is right: the evidence, in a few sentences."
+          "description": "What this Proposal changes and why, in Markdown: the evidence, in a few sentences."
         },
         "project": {
           "type": "string",
@@ -25,7 +25,7 @@
       "required": [
         "draft",
         "label",
-        "comment",
+        "rationale",
         "project"
       ],
       "additionalProperties": false
@@ -992,7 +992,7 @@
   },
   {
     "name": "motif_finalize_proposal",
-    "description": "Finalize a Proposal. Finalizes a Draft as an immutable Proposal revision for a person to review. The Draft needs both a short label and a comment. Evidence for unchanged content on the same Baseline remains current.\nCommand: finalize. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nExpectedRevision: The required Draft revision for this write.",
+    "description": "Finalize a Proposal. Finalizes a Draft as an immutable Proposal revision for a person to review. The Draft needs both a short label and a Rationale. Evidence for unchanged content on the same Baseline remains current.\nCommand: finalize. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nExpectedRevision: The required Draft revision for this write.",
     "inputSchema": {
       "type": "object",
       "properties": {

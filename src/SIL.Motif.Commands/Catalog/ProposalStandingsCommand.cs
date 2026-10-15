@@ -72,7 +72,13 @@ public static class ProposalStandingsCommand
                     ? null
                     : Summarize(database, project, candidate, today.Value, beforeCorrectness.Value),
                 alsoChangedBy)
-                { IsDraft = candidate.Record.DraftName is not null });
+                {
+                    IsDraft = candidate.Record.DraftName is not null,
+                    HasRationale = candidate.Record.Rationale is not null,
+                    RationaleNew = candidate.Record.Rationale is not null && !ProposalCommands.RationaleLookedAt(
+                        database, ProposalRecordMapping.ToManifest(candidate.Record)),
+                    HasNote = candidate.Record.Note is not null,
+                });
         }
 
         var setAside = candidates.Count(candidate => GroupOf(candidate) == ProposalGroup.SetAside);

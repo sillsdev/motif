@@ -111,9 +111,9 @@ public sealed class RealParserSwahiliAffixFeatureProofTests(
 
         Assert.True(ProposalCommands.Label(new LabelRequest(projectPath, ProductVersion, draftName,
             "Swahili class features on affixes")).Succeeded);
-        Assert.True(ProposalCommands.Comment(new CommentRequest(projectPath, ProductVersion, draftName,
+        Assert.True(DraftRationale.Write(projectPath, ProductVersion, draftName,
             "Add cited NC feature values to synthetic noun controls and existing adjective concord MSAs; " +
-            "keep zuri unclassified and include one synthetic feature clash control.")).Succeeded);
+            "keep zuri unclassified and include one synthetic feature clash control.").Succeeded);
 
         var finalized = ProposalCommands.Finalize(new FinalizeRequest(projectPath, ProductVersion, draftName));
         Assert.True(finalized.Succeeded, finalized.Refusal?.Message);

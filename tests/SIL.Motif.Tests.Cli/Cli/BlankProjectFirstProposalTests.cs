@@ -78,8 +78,8 @@ public sealed class BlankProjectFirstProposalTests(ITestOutputHelper output)
 
             Assert.True(ProposalCommands.Label(new LabelRequest(projectPath, ProductVersion, draft,
                 "First phonemes")).Succeeded);
-            Assert.True(ProposalCommands.Comment(new CommentRequest(projectPath, ProductVersion, draft,
-                "A blank project's first sound system.")).Succeeded);
+            Assert.True(DraftRationale.Write(projectPath, ProductVersion, draft,
+                "A blank project's first sound system.").Succeeded);
             var finalized = ProposalCommands.Finalize(new FinalizeRequest(projectPath, ProductVersion, draft));
             Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
             var proposalId = finalized.Value!.ProposalId;

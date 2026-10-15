@@ -29,7 +29,7 @@ public sealed class ProposalRepositoryTests : IDisposable
         repository.CreateDraft("working", id, "{}");
         repository.SetAnchor(id, "{\"IntentDigest\":\"sha256:same\"}");
 
-        repository.Finalize("working", finalDigest, "{}", "label", "reason");
+        repository.Finalize("working", finalDigest, "{}", "label");
 
         Assert.Equal(retained, repository.Get(id).AnchorJson is not null);
     }
@@ -261,6 +261,52 @@ public sealed class ProposalRepositoryTests : IDisposable
     }
 
     [Fact]
+    public void TheRationaleAndTheNoteRoundTripEachWithItsOwnDigestAndTime()
+    {
+        var project = new ProjectLocator(Path.Combine(_root, "texts.fwdata"), "texts");
+        using var database = MotifDatabase.OpenOwned(Path.Combine(_root, "texts.motif.db"), project,
+            MotifSchema.CurrentSchema, new Version(1, 0));
+        var repository = new ProposalRepository(database);
+        var id = CanonicalId.Mint("proposal/");
+        repository.CreateDraft("working", id, "{\"draft\":true}");
+        repository.Finalize("working", "sha256:one", "{\"proposalId\":\"" + id.Value + "\"}", "a label");
+
+        Assert.True(repository.SetRationale(id, "built because"));
+        Assert.True(repository.SetNote(id, "please reconsider"));
+
+        var record = repository.Get(id);
+        Assert.Equal("built because", record.Rationale);
+        Assert.Equal("sha256:one", record.RationaleIntentDigest);
+        Assert.Equal("please reconsider", record.Note);
+        Assert.Equal("sha256:one", record.NoteIntentDigest);
+        Assert.True(DateTimeOffset.Parse(record.NoteUpdatedUtc!) >= DateTimeOffset.Parse(record.RationaleUpdatedUtc!));
+        Assert.True(repository.SetNote(id, null));
+        var cleared = repository.Get(id);
+        Assert.Null(cleared.Note);
+        Assert.Null(cleared.NoteIntentDigest);
+        Assert.Null(cleared.NoteUpdatedUtc);
+    }
+
+    [Fact]
+    public void NeitherTextRecordsWhoWroteIt()
+    {
+        var project = new ProjectLocator(Path.Combine(_root, "columns.fwdata"), "columns");
+        using var database = MotifDatabase.OpenOwned(Path.Combine(_root, "columns.motif.db"), project,
+            MotifSchema.CurrentSchema, new Version(1, 0));
+        using var connection = database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT name FROM pragma_table_info('Proposals');";
+        var columns = new List<string>();
+        using (var reader = command.ExecuteReader())
+            while (reader.Read()) columns.Add(reader.GetString(0));
+
+        Assert.Contains("Rationale", columns);
+        Assert.Contains("Note", columns);
+        Assert.DoesNotContain(columns, column => column.Contains("Author", StringComparison.OrdinalIgnoreCase) ||
+            column.Contains("WrittenBy", StringComparison.OrdinalIgnoreCase) || column == "Comment");
+    }
+
+    [Fact]
     public void FinalizeIsAtomicSettingRevisionDigestAndClearingTheDraftNameTogether()
     {
         var project = new ProjectLocator(Path.Combine(_root, "finalize.fwdata"), "finalize");
@@ -269,14 +315,17 @@ public sealed class ProposalRepositoryTests : IDisposable
         var repository = new ProposalRepository(database);
         var id = CanonicalId.Mint("proposal/");
         repository.CreateDraft("working", id, "{\"draft\":true}");
+        Assert.True(repository.SetRationale(id, "a rationale"));
 
-        repository.Finalize("working", "sha256:first", "{\"proposalId\":\"" + id.Value + "\"}", "a label", "a comment");
+        repository.Finalize("working", "sha256:first", "{\"proposalId\":\"" + id.Value + "\"}", "a label");
 
         var committed = repository.Get(id);
         Assert.Equal("sha256:first", committed.IntentDigest);
         Assert.Equal("proposed", committed.Status);
         Assert.Equal("a label", committed.Label);
-        Assert.Equal("a comment", committed.Comment);
+        Assert.Equal("a rationale", committed.Rationale);
+        Assert.Equal("sha256:first", committed.RationaleIntentDigest);
+        Assert.NotNull(committed.RationaleUpdatedUtc);
         Assert.Null(committed.DraftName);
         Assert.Throws<KeyNotFoundException>(() => repository.GetDraft("working"));
     }
@@ -292,7 +341,7 @@ public sealed class ProposalRepositoryTests : IDisposable
         const string draftJson = "{\"draft\":true}";
         repository.CreateDraft("working", id, draftJson);
 
-        var result = repository.Finalize("working", "sha256:stale", "{}", "a label", "a comment",
+        var result = repository.Finalize("working", "sha256:stale", "{}", "a label",
             expectedDraftRevision: "sha256:stale");
 
         Assert.Equal(DraftFinalizationResult.DraftChanged, result);
@@ -319,7 +368,7 @@ public sealed class ProposalRepositoryTests : IDisposable
         repository.CreateDraft("working", id, draftJson);
 
         var result = repository.Finalize("working", "sha256:first", "{\"proposalId\":\"" + id.Value + "\"}",
-            "a label", "a comment", expectedDraftRevision: DraftRevision.Compute(draftJson));
+            "a label", expectedDraftRevision: DraftRevision.Compute(draftJson));
 
         Assert.Equal(DraftFinalizationResult.Finalized, result);
         Assert.Equal("proposed", repository.Get(id).Status);
@@ -351,7 +400,7 @@ public sealed class ProposalRepositoryTests : IDisposable
         }
 
         Assert.ThrowsAny<SqliteException>(
-            () => repository.Finalize("working", "sha256:new-digest", "{\"different\":true}", "a label", "a comment"));
+            () => repository.Finalize("working", "sha256:new-digest", "{\"different\":true}", "a label"));
 
         var draft = repository.GetDraft("working");
         Assert.Equal("{\"draft\":true}", draft.ProposalJson);
@@ -460,7 +509,7 @@ public sealed class ProposalRepositoryTests : IDisposable
 
         repository.ReopenAsDraft(id, "reopened", "{\"draft\":true}");
         Assert.Equal(status, repository.Get(id).Status);
-        repository.Finalize("reopened", "sha256:amended", "{\"proposalId\":\"" + id.Value + "\",\"v\":2}", "label", "comment");
+        repository.Finalize("reopened", "sha256:amended", "{\"proposalId\":\"" + id.Value + "\",\"v\":2}", "label");
 
         var record = repository.Get(id);
         Assert.Equal("proposed", record.Status);

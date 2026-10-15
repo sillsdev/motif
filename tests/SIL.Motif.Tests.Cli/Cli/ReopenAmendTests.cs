@@ -65,7 +65,8 @@ public sealed class ReopenAmendTests
         Assert.True(DraftExists("v2"));
         var reopenedDraft = ReadDraft("v2");
         Assert.Equal("Clarify the first sense gloss", reopenedDraft.Label);
-        Assert.Equal("Replace the ambiguous gloss with the intended analysis.", reopenedDraft.Comment);
+        Assert.Equal("Replace the ambiguous gloss with the intended analysis.",
+            ProposalCommands.Show(new ShowProposalRequest(_fwDataPath, ProductVersion, "v2")).Value!.Rationale!.Markdown);
 
         // Amend the gloss value so the intent digest necessarily moves.
         Assert.True(ProposalCommands.AddSetGloss(new AddSetGlossRequest(
@@ -97,7 +98,7 @@ public sealed class ReopenAmendTests
         Assert.Equal("proposed", afterAmend.Status);
         Assert.Equal(secondDigest, afterAmend.IntentDigest);
         Assert.Equal("Clarify the first sense gloss", afterAmend.Label);
-        Assert.Equal("Replace the ambiguous gloss with the intended analysis.", afterAmend.Comment);
+        Assert.Equal("Replace the ambiguous gloss with the intended analysis.", afterAmend.Rationale);
 
         // Only one Proposals row exists for this id: it's the movable pointer, updated in place, never re-created.
         Assert.Equal(1, CountProposalRows(proposalId));
@@ -115,8 +116,8 @@ public sealed class ReopenAmendTests
             initialDraftName, "Closed source")).Succeeded);
         Assert.True(ProposalCommands.AddSetGloss(new AddSetGlossRequest(_fwDataPath, ProductVersion,
             initialDraftName, target, "en", "original gloss")).Succeeded);
-        Assert.True(ProposalCommands.Comment(new CommentRequest(_fwDataPath, ProductVersion,
-            initialDraftName, "Keep the original proposal as review history.")).Succeeded);
+        Assert.True(DraftRationale.Write(_fwDataPath, ProductVersion,
+            initialDraftName, "Keep the original proposal as review history.").Succeeded);
         var finalized = ProposalCommands.Finalize(new FinalizeRequest(_fwDataPath, ProductVersion, initialDraftName));
         Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
         var proposalId = finalized.Value!.ProposalId;
@@ -218,7 +219,7 @@ public sealed class ReopenAmendTests
         var finalized = ProposalCommands.Finalize(new FinalizeRequest(_fwDataPath, ProductVersion, "legacy"));
         Assert.True(finalized.Succeeded);
         var proposalId = finalized.Value!.ProposalId;
-        ClearLabelAndComment(proposalId);
+        ClearLabelAndRationale(proposalId);
 
         Assert.True(ProposalCommands.Show(
             new ShowProposalRequest(_fwDataPath, ProductVersion, proposalId)).Succeeded);
@@ -269,12 +270,12 @@ public sealed class ReopenAmendTests
         new ProposalRepository(database).SetStatus(CanonicalId.Parse(proposalId), status, supersededBy: null);
     }
 
-    private void ClearLabelAndComment(string proposalId)
+    private void ClearLabelAndRationale(string proposalId)
     {
         using var database = ProjectMotifDatabase.Open(_fwDataPath);
         using var connection = database.OpenConnection();
         using var command = connection.CreateCommand();
-        command.CommandText = "UPDATE Proposals SET Label = NULL, Comment = NULL WHERE ProposalId = $id;";
+        command.CommandText = "UPDATE Proposals SET Label = NULL, Rationale = NULL WHERE ProposalId = $id;";
         command.Parameters.AddWithValue("$id", proposalId);
         command.ExecuteNonQuery();
     }

@@ -42,7 +42,9 @@ public sealed class PostApplyBaselineRefreshTests(PristineProjectFixture pristin
                 "--json");
             Assert.True(composed.ExitCode == 0, composed.Error);
             Assert.Equal(0, (await Run("label", "--project", path, "--draft", draft, "Add a phoneme")).ExitCode);
-            Assert.Equal(0, (await Run("comment", "--project", path, "--draft", draft,
+            var draftId = ProposalCommands.Show(new SIL.Motif.Commands.Requests.ShowProposalRequest(
+                path, SIL.Motif.Host.MotifProductVersion.CurrentText, draft)).Value!.ProposalId;
+            Assert.Equal(0, (await Run("proposal", "rationale", draftId, "--project", path, "--text",
                 "The authored phoneme is needed by this disposable grammar.")).ExitCode);
             var finalized = await Run("finalize", "--project", path, "--draft", draft, "--json");
             Assert.True(finalized.ExitCode == 0, finalized.Error);

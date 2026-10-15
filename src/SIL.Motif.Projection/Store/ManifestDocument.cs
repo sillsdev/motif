@@ -29,7 +29,12 @@ public sealed class ManifestDocument
     public string Status { get; set; } = ManifestStatus.Proposed;
 
     public string? Label { get; set; }
-    public string? Comment { get; set; }
+    public string? Rationale { get; set; }
+    public string? RationaleIntentDigest { get; set; }
+    public string? RationaleUpdatedUtc { get; set; }
+    public string? Note { get; set; }
+    public string? NoteIntentDigest { get; set; }
+    public string? NoteUpdatedUtc { get; set; }
 
     /// <summary>
     /// The full <c>sha256:</c>-prefixed intent digest this manifest currently points at — a movable

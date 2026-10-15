@@ -72,7 +72,7 @@ public sealed class ProjectionRenderingTests
             ProposalId: "agent_AAECAwQFBgcICQoLDA0ODw",
             Status: "proposed",
             Label: "Revise gloss",
-            Comment: "because the old one was wrong",
+            Rationale: new RationaleView("because the old one was wrong", null, "", false, null, false),
             CurrentIntentDigest: "sha256:" + new string('a', 64),
             Operations: new[]
             {
@@ -100,7 +100,7 @@ public sealed class ProjectionRenderingTests
             ProposalId: "agent_AAECAwQFBgcICQoLDA0ODw",
             Status: "proposed",
             Label: "Revise gloss",
-            Comment: "because the old one was wrong",
+            Rationale: new RationaleView("because the old one was wrong", null, "", false, null, false),
             CurrentIntentDigest: "sha256:" + new string('a', 64),
             Operations: new[]
             {
@@ -122,7 +122,7 @@ public sealed class ProjectionRenderingTests
             "Proposal agent_AAECAwQFBgcICQoLDA0ODw",
             "  status:              proposed",
             "  label:               Revise gloss",
-            "  comment:             because the old one was wrong",
+            "  rationale:           because the old one was wrong",
             "  currentIntentDigest: " + digest,
             "  operations (1):",
             "    agent_AQIDBAUGBwgJCgsMDQ4PEA  (lexical/lexSense/setGloss)",
@@ -137,7 +137,12 @@ public sealed class ProjectionRenderingTests
             "  \"proposalId\": \"agent_AAECAwQFBgcICQoLDA0ODw\",",
             "  \"status\": \"proposed\",",
             "  \"label\": \"Revise gloss\",",
-            "  \"comment\": \"because the old one was wrong\",",
+            "  \"rationale\": {",
+            "    \"markdown\": \"because the old one was wrong\",",
+            "    \"updatedUtc\": \"\",",
+            "    \"outOfDate\": false,",
+            "    \"new\": false",
+            "  },",
             "  \"currentIntentDigest\": \"" + digest + "\",",
             "  \"operations\": [",
             "    {",
@@ -149,7 +154,8 @@ public sealed class ProjectionRenderingTests
             "      ],",
             "      \"afterJson\": \"{\\u0022ws\\u0022:\\u0022en\\u0022,\\u0022text\\u0022:\\u0022move quickly\\u0022}\"",
             "    }",
-            "  ]",
+            "  ],",
+            "  \"noteChanged\": false",
             "}",
         });
 
@@ -165,7 +171,7 @@ public sealed class ProjectionRenderingTests
             ProposalId: "agent_AAECAwQFBgcICQoLDA0ODw",
             Status: "draft",
             Label: "Revise gloss",
-            Comment: null,
+            Rationale: null,
             CurrentIntentDigest: null,
             Operations: System.Array.Empty<ProposalOperationView>(),
             DraftName: "edit-gloss",
@@ -189,7 +195,7 @@ public sealed class ProjectionRenderingTests
             ProposalId: "agent_AAECAwQFBgcICQoLDA0ODw",
             Status: "proposed",
             Label: "Revise gloss",
-            Comment: null,
+            Rationale: null,
             CurrentIntentDigest: "sha256:" + new string('a', 64),
             Operations: new[]
             {
@@ -216,7 +222,7 @@ public sealed class ProjectionRenderingTests
             ProposalId: "agent_AAECAwQFBgcICQoLDA0ODw",
             Status: "proposed",
             Label: "Revise gloss",
-            Comment: "because the old one was wrong",
+            Rationale: new RationaleView("because the old one was wrong", null, "", false, null, false),
             CurrentIntentDigest: "sha256:" + new string('a', 64),
             Operations: System.Array.Empty<ProposalOperationView>());
 
@@ -234,7 +240,7 @@ public sealed class ProjectionRenderingTests
             ProposalId: "agent_AAECAwQFBgcICQoLDA0ODw",
             Status: "superseded",
             Label: null,
-            Comment: null,
+            Rationale: null,
             CurrentIntentDigest: "sha256:" + new string('a', 64),
             Operations: System.Array.Empty<ProposalOperationView>(),
             SupersededBy: "agent_AQIDBAUGBwgJCgsMDQ4PEA");
@@ -253,7 +259,7 @@ public sealed class ProjectionRenderingTests
             ProposalId: "agent_AAECAwQFBgcICQoLDA0ODw",
             Status: "proposed",
             Label: null,
-            Comment: null,
+            Rationale: null,
             CurrentIntentDigest: "sha256:" + new string('a', 64),
             Operations: System.Array.Empty<ProposalOperationView>(),
             ExtensionsJson: """{"promotions":[{"corpusId":"wiki-testlang","licence":"CC-BY-SA-4.0"}]}""");

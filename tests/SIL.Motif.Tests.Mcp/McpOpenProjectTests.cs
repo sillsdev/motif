@@ -92,7 +92,7 @@ public sealed class McpOpenProjectTests
                 ["project"] = fwDataPath,
                 ["draft"] = "opened-scratch-project",
                 ["label"] = "Start a Proposal in the opened project",
-                ["comment"] = "The project was explicitly opened in this MCP session.",
+                ["rationale"] = "The project was explicitly opened in this MCP session.",
             });
             Assert.True(started.IsError != true, ErrorText(started));
             Assert.Equal("opened-scratch-project", started.StructuredContent!.Value.GetProperty("result")

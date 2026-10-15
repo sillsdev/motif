@@ -371,6 +371,32 @@
     },
     {
       "kind": "command",
+      "code": "proposal note",
+      "slug": "proposal-note",
+      "title": "Write your note on a Proposal",
+      "description": "Writes or clears the person\u0027s own note on a Proposal, in Markdown. Only a person writes it; an assistant can read it beside the Rationale.",
+      "helpPage": "# Write your note on a Proposal\n\nWrites or clears the person\u0027s own note on a Proposal, in Markdown. The note is the person\u0027s reply to the Rationale; only a person writes it, and an assistant reads it.\n\n## Example\n\n\u0060\u0060\u0060text\nmotif proposal note \u003CproposalId\u003E --project \u003Cfwdata\u003E --text \u0022Please keep the second gloss\u0022\nmotif proposal note \u003CproposalId\u003E --project \u003Cfwdata\u003E --file note.md\nmotif proposal note \u003CproposalId\u003E --project \u003Cfwdata\u003E --clear\n\u0060\u0060\u0060\n\nGive the full Proposal id. The note stays outside the Proposal\u0027s changes, remembers which content it was written for, and holds at most 64 KiB. It can change until the Proposal is applied or closed.\n\nWhen the note is newer than the [Rationale](cmd:proposal%20rationale), \u0060proposal show\u0060 reports it as changed, and an assistant is told to read it. Writing a new Rationale clears that.\n",
+      "usage": [
+        "Usage: motif proposal note \u003CproposalId\u003E --project \u003Cfwdata\u003E (--text \u003Cmarkdown\u003E | --file \u003Cpath\u003E | --clear) [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/proposal-note/"
+    },
+    {
+      "kind": "command",
+      "code": "proposal rationale",
+      "slug": "proposal-rationale",
+      "title": "Write a Proposal\u0027s Rationale",
+      "description": "Writes or replaces what a Proposal changes and why, in Markdown. The Rationale stays outside the Proposal\u0027s content, so rewriting it never changes what the Proposal does, and it can be rewritten until the Proposal is applied or closed.",
+      "helpPage": "# Write a Proposal\u0027s Rationale\n\nWrites or replaces a Proposal\u0027s Rationale: what the Proposal changes and why, in Markdown. Whoever builds the Proposal, usually an assistant, writes it.\n\n## Example\n\n\u0060\u0060\u0060text\nmotif proposal rationale \u003CproposalId\u003E --project \u003Cfwdata\u003E --text \u0022Plural -s was missing from the noun template\u0022\nmotif proposal rationale \u003CproposalId\u003E --project \u003Cfwdata\u003E --file rationale.md\n\u0060\u0060\u0060\n\nGive the full Proposal id, the one \u0060new\u0060 or \u0060proposals\u0060 returned; a name or a prefix is refused. A Draft that has never been finalized has a Proposal id too, so write the Rationale before [\u0060finalize\u0060](cmd:finalize), which refuses a Proposal without one.\n\nThe Rationale is kept apart from the Proposal\u0027s changes, so rewriting it never changes what the Proposal does. It remembers which content it was written for: after the Proposal changes, the person sees it marked out of date, and a rewrite clears that mark. It can be rewritten until the Proposal is applied or closed, and it holds at most 64 KiB.\n\nIf the person left a [note](cmd:proposal%20note), a new Rationale is the answer to it.\n",
+      "usage": [
+        "Usage: motif proposal rationale \u003CproposalId\u003E --project \u003Cfwdata\u003E (--text \u003Cmarkdown\u003E | --file \u003Cpath\u003E) [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/proposal-rationale/"
+    },
+    {
+      "kind": "command",
       "code": "proposal review",
       "slug": "proposal-review",
       "title": "Review a Proposal\u0027s changes",

@@ -20,7 +20,12 @@ public static class ProposalRecordMapping
         ProposalId = record.ProposalId.Value,
         Status = record.Status,
         Label = record.Label,
-        Comment = record.Comment,
+        Rationale = record.Rationale,
+        RationaleIntentDigest = record.RationaleIntentDigest,
+        RationaleUpdatedUtc = record.RationaleUpdatedUtc,
+        Note = record.Note,
+        NoteIntentDigest = record.NoteIntentDigest,
+        NoteUpdatedUtc = record.NoteUpdatedUtc,
         CurrentIntentDigest = record.IntentDigest,
         SupersededBy = record.SupersededBy,
         Anchor = record.AnchorJson is null

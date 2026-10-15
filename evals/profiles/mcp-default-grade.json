@@ -31,6 +31,7 @@
     { "name": "motif_try_word", "class": "Evaluate" },
     { "name": "motif_finalize_proposal", "class": "Draft" },
     { "name": "motif_withdraw_proposal", "class": "Draft" },
+    { "name": "motif_set_rationale", "class": "Draft" },
     { "name": "motif_proposals", "class": "Read" },
     { "name": "motif_activity", "class": "Read" },
     { "name": "motif_open", "class": "Read" },

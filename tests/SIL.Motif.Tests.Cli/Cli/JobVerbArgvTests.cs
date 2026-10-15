@@ -198,7 +198,8 @@ public sealed class JobVerbArgvTests : IDisposable
             $"add-set-gloss --project \"{Project}\" --draft d --target agent_AAECAwQFBgcICQoLDA0ODw " +
                 "--ws en --text hello").ExitCode);
         Assert.Equal(0, RunInProcess($"label --project \"{Project}\" --draft d \"a label\"").ExitCode);
-        Assert.Equal(0, RunInProcess($"comment --project \"{Project}\" --draft d \"a comment\"").ExitCode);
+        Assert.True(DraftRationale.Write(Project, SIL.Motif.Host.MotifProductVersion.CurrentText, "d", "a rationale")
+            .Succeeded);
         var finalized = RunInProcess($"finalize --project \"{Project}\" --draft d");
         Assert.Equal(0, finalized.ExitCode);
 

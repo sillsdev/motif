@@ -481,8 +481,8 @@ public sealed partial class MorphotacticRecipeAcceptanceTests(
         Assert.True(composed.Succeeded, composed.Refusal?.Message);
         Assert.True(ProposalCommands.Label(new(projectPath, ProductVersion, draftName,
             "Morphotactic repair acceptance")).Succeeded);
-        Assert.True(ProposalCommands.Comment(new(projectPath, ProductVersion, draftName,
-            "The exact Approved readings and reviewed negatives are checked against paired Assessments.")).Succeeded);
+        Assert.True(DraftRationale.Write(projectPath, ProductVersion, draftName,
+            "The exact Approved readings and reviewed negatives are checked against paired Assessments.").Succeeded);
         var finalized = ProposalCommands.Finalize(new(projectPath, ProductVersion, draftName));
         Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
         var loaded = ProjectStoreCommand.Run<Proposal>(projectPath, ProductVersion, (database, _) =>

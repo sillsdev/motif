@@ -36,11 +36,41 @@ public sealed record CitationView(string Source, string? Locator)
     public override string ToString() => Locator is null ? Source : Source + ", " + Locator;
 }
 
+/// <summary>How many operations were added and removed between two revisions of a Proposal.</summary>
+/// <param name="Added">Operations present now that the older revision lacks.</param>
+/// <param name="Removed">Operations the older revision had that are gone now.</param>
+/// <param name="Changed">Operations in both revisions, by id, whose content differs.</param>
+public sealed record ProposalChangesSince(int Added, int Removed, int Changed);
+
+/// <summary>
+/// The builder's explanation of a Proposal: what it changes and why, in Markdown. Whoever builds the Proposal,
+/// usually an agent, writes it.
+/// </summary>
+/// <param name="Markdown">The text.</param>
+/// <param name="WrittenForIntentDigest">The Proposal content the text was written for; null before a Draft's first finalize.</param>
+/// <param name="UpdatedUtc">When the text was last written.</param>
+/// <param name="OutOfDate">Whether the Proposal's content changed after the text was written.</param>
+/// <param name="ChangesSince">How the Proposal changed since the text was written; null when it did not.</param>
+/// <param name="New">Whether the person has not looked at this text yet.</param>
+public sealed record RationaleView(
+    string Markdown, string? WrittenForIntentDigest, string UpdatedUtc, bool OutOfDate,
+    ProposalChangesSince? ChangesSince, bool New);
+
+/// <summary>The person's reply to a Proposal, in Markdown. Only a person writes it; an agent reads it.</summary>
+/// <param name="Markdown">The text.</param>
+/// <param name="WrittenForIntentDigest">The Proposal content the note was written for.</param>
+/// <param name="UpdatedUtc">When the note was last written.</param>
+/// <param name="OutOfDate">Whether the Proposal's content changed after the note was written.</param>
+/// <param name="ChangesSince">How the Proposal changed since the note was written; null when it did not.</param>
+public sealed record NoteView(
+    string Markdown, string? WrittenForIntentDigest, string UpdatedUtc, bool OutOfDate,
+    ProposalChangesSince? ChangesSince);
+
 /// <summary>The <c>show</c> report: a Proposal's review state and its full operation list.</summary>
 /// <param name="ProposalId">The Proposal's portable identity.</param>
 /// <param name="Status">The Proposal's current lifecycle status.</param>
 /// <param name="Label">The optional name shown for this Proposal.</param>
-/// <param name="Comment">The optional explanatory comment attached to this Proposal.</param>
+/// <param name="Rationale">What the Proposal changes and why, or <c>null</c> before one is written.</param>
 /// <param name="CurrentIntentDigest">
 /// <c>null</c> when the Proposal has no committed revision. A reopened Draft keeps the digest of its prior revision.
 /// </param>
@@ -49,11 +79,13 @@ public sealed record CitationView(string Source, string? Locator)
 /// <param name="ExtensionsJson">Optional JSON containing non-semantic extension data.</param>
 /// <param name="DraftName">The name of the Draft whose operations are shown, or <c>null</c> for a committed revision.</param>
 /// <param name="DraftRevision">The SHA-256 revision of the exact stored Draft JSON bytes, or <c>null</c> for a committed revision.</param>
+/// <param name="Note">The person's note, or <c>null</c> when there is none.</param>
+/// <param name="NoteChanged">Whether the person wrote the note after the Rationale was last written.</param>
 public sealed record ProposalDetailProjection(
     string ProposalId,
     string Status,
     string? Label,
-    string? Comment,
+    RationaleView? Rationale,
     string? CurrentIntentDigest,
     IReadOnlyList<ProposalOperationView> Operations,
     string? SupersededBy = null,
@@ -61,4 +93,6 @@ public sealed record ProposalDetailProjection(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     string? DraftName = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    string? DraftRevision = null);
+    string? DraftRevision = null,
+    NoteView? Note = null,
+    bool NoteChanged = false);

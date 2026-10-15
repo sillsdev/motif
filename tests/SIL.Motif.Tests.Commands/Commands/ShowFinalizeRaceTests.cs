@@ -27,7 +27,7 @@ public sealed class ShowFinalizeRaceTests(PristineProjectFixture pristine)
         Assert.True(ProposalCommands.AddSetGloss(new AddSetGlossRequest(path, version, name,
             CanonicalId.FromGuid(pristine.Seed.FirstSenseId).Value, NewLangProjFixture.AnalysisTag,
             "coherent")).Succeeded);
-        Assert.True(ProposalCommands.Comment(new CommentRequest(path, version, name, "Read before Finalize")).Succeeded);
+        Assert.True(DraftRationale.Write(path, version, name, "Read before Finalize").Succeeded);
         string? priorDigest = null;
         if (reopened)
         {

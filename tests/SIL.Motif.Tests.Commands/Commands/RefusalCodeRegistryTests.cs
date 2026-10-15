@@ -29,7 +29,7 @@ public sealed class RefusalCodeRegistryTests
 
     // Dotted literals that are not refusal codes: classification and finding codes, cgroup files, SQL tables.
     private static readonly Regex NotRefusalCodes = new(
-        "^(?:delta\\.|cgroup\\.|cpu\\.|memory\\.|facts\\.|sil\\.lcmodel$|parse\\.allomorph\\.|" +
+        "^(?:proposal\\.rationale$|delta\\.|cgroup\\.|cpu\\.|memory\\.|facts\\.|sil\\.lcmodel$|parse\\.allomorph\\.|" +
         "grammar\\.(?:empty-lexicon|required-slot-empty|stored-analysis\\.))", RegexOptions.None);
 
     private static IReadOnlyList<(string Name, string Value)> Registry() =>

@@ -65,7 +65,7 @@
     },
     {
       "tool": "motif_proposals",
-      "description": "Show a Proposal. Reads one saved Proposal or Draft by id, with its status, label, comment and operations. It does not change the FieldWorks project. List Proposals. Lists every Proposal with what it changes and the numbers its latest Trial measured beside today's. Proposals are grouped by what to do next; applied and set-aside ones are counted unless asked for."
+      "description": "Show a Proposal. Reads one saved Proposal or Draft by id, with its status, label, Rationale, note and operations. It does not change the FieldWorks project. List Proposals. Lists every Proposal with what it changes and the numbers its latest Trial measured beside today's. Proposals are grouped by what to do next; applied and set-aside ones are counted unless asked for."
     },
     {
       "tool": "motif_activity",

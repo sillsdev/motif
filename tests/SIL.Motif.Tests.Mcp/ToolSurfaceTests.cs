@@ -157,6 +157,21 @@ public sealed class ToolSurfaceTests
         Assert.Equal(File.ReadAllText(path).ReplaceLineEndings("\n"), listed.ReplaceLineEndings("\n"));
     }
 
+    [Theory]
+    [InlineData("default")]
+    [InlineData("phonology")]
+    [InlineData("parsimony")]
+    [InlineData("parsimony-experimental")]
+    public void NoToolWritesThePersonsNoteAndTheRationaleToolIsOffered(string profile)
+    {
+        var tools = MotifMcpServer.Expose(ToolProfile.Load(profile));
+
+        Assert.DoesNotContain(tools, tool => tool.Name.Contains("note", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(tools, tool => tool.Tool.Requests.Contains(typeof(SIL.Motif.Commands.Requests.SetNoteRequest)));
+        if (profile == "default")
+            Assert.Contains(tools, tool => tool.Name == "motif_set_rationale");
+    }
+
     [Fact]
     public void FinalizeAndOperationRemovalAreAvailableByDefault()
     {

@@ -23,9 +23,6 @@ public sealed class DraftDocument
     /// <summary>Draft-only review metadata; moves to the manifest at <c>finalize</c>, not the object.</summary>
     public string? Label { get; set; }
 
-    /// <summary>Draft-only review metadata; moves to the manifest at <c>finalize</c>, not the object.</summary>
-    public string? Comment { get; set; }
-
     public List<DraftOperation> Operations { get; set; } = new();
 
     /// <summary>

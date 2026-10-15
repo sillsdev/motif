@@ -31,7 +31,7 @@ public sealed class McpJobExecutionTests(PristineProjectFixture pristine)
         await using var session = await McpProcessSession.StartAsync(project.ManagedRoot, null, rootNamespace);
 
         var proposal = await session.CallAsync("motif_start_proposal", project.FwDataPath,
-            ("draft", "empty-draft"), ("label", "Check an empty Draft"), ("comment", "No operations are expected."));
+            ("draft", "empty-draft"), ("label", "Check an empty Draft"), ("rationale", "No operations are expected."));
         var proposalId = proposal.GetProperty("result").GetProperty("proposalId").GetString()!;
         var dryRun = await session.CallAsync("motif_dry_run", project.FwDataPath,
             ("proposal", proposalId), ("wait_seconds", 60));

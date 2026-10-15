@@ -55,7 +55,7 @@ public sealed class LexiconDraftTests(PristineProjectFixture pristine)
         AssertCreatedObjectsMatch(entry.Value!);
         Assert.Equal(4, entry.Value!.CreatedObjects.Count);
         Assert.True(ProposalCommands.Label(new(path, version, draft, "Add an inflected noun")).Succeeded);
-        Assert.True(ProposalCommands.Comment(new(path, version, draft, "Explicit grammar pieces and a noun.")).Succeeded);
+        Assert.True(DraftRationale.Write(path, version, draft, "Explicit grammar pieces and a noun.").Succeeded);
         var finalized = ProposalCommands.Finalize(new(path, version, draft));
         Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
         var loaded = ProjectStoreCommand.Run<Proposal>(path, version, (database, _) =>
@@ -114,7 +114,7 @@ public sealed class LexiconDraftTests(PristineProjectFixture pristine)
         Assert.Contains("already exists", duplicate.Refusal!.Message, StringComparison.Ordinal);
 
         Assert.True(ProposalCommands.Label(new(path, version, draft, "Add kitabu")).Succeeded);
-        Assert.True(ProposalCommands.Comment(new(path, version, draft, "A noun and its first entry.")).Succeeded);
+        Assert.True(DraftRationale.Write(path, version, draft, "A noun and its first entry.").Succeeded);
         var finalized = ProposalCommands.Finalize(new(path, version, draft));
         Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
         var loaded = ProjectStoreCommand.Run<Proposal>(path, version, (database, _) =>
