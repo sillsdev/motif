@@ -34,6 +34,9 @@ public enum HelpEntryKind
 /// <param name="Source">The recorded origin of the localized prose.</param>
 /// <param name="HelpPage">The optional full Markdown page.</param>
 /// <param name="Url">The online documentation route for this entry.</param>
+/// <param name="Fields">
+/// For a composing command, what each argument of its intent means, keyed by wire name; null for every other entry.
+/// </param>
 public sealed record HelpEntry(
     HelpEntryKind Kind,
     string Code,
@@ -42,7 +45,8 @@ public sealed record HelpEntry(
     string Description,
     string Source,
     string? HelpPage,
-    string Url);
+    string Url,
+    IReadOnlyDictionary<string, string>? Fields = null);
 
 /// <summary>Loads embedded Motif Help content and resolves its stable cross-links and documentation URLs.</summary>
 public sealed class HelpCatalog
@@ -111,8 +115,9 @@ public sealed class HelpCatalog
 
                 var page = ReadPage(locale, kind, code) ?? ReadPage(EnglishLocale, kind, code);
                 var slug = CreateSlug(code);
+                var fields = MergeFields(englishMetadata?.Fields, localizedMetadata?.Fields);
                 entries.Add(new HelpEntry(
-                    kind, code, slug, title, description, source, page, BuildUrl(locale, kind, slug)));
+                    kind, code, slug, title, description, source, page, BuildUrl(locale, kind, slug), fields));
             }
         }
 
@@ -279,7 +284,11 @@ public sealed class HelpCatalog
             result.Add(property.Name, new Metadata(
                 value.GetProperty("title").GetString(),
                 value.GetProperty("description").GetString(),
-                value.GetProperty("source").GetString()));
+                value.GetProperty("source").GetString(),
+                value.TryGetProperty("fields", out var fields)
+                    ? fields.EnumerateObject().ToDictionary(
+                        field => field.Name, field => field.Value.GetString()!, StringComparer.Ordinal)
+                    : null));
         }
 
         return result;
@@ -376,7 +385,20 @@ public sealed class HelpCatalog
         return slug.Trim('-');
     }
 
-    private sealed record Metadata(string? Title, string? Description, string? Source);
+    private sealed record Metadata(
+        string? Title, string? Description, string? Source, Dictionary<string, string>? Fields = null);
+
+    // A translation supplies the fields it has; English fills the rest, as it does for every other field.
+    private static IReadOnlyDictionary<string, string>? MergeFields(
+        Dictionary<string, string>? english, Dictionary<string, string>? localized)
+    {
+        if (english is null && localized is null)
+            return null;
+        var merged = new Dictionary<string, string>(english ?? new(), StringComparer.Ordinal);
+        foreach (var (name, text) in localized ?? new())
+            merged[name] = text;
+        return merged;
+    }
 
     private sealed record GuideMetadata(string? Title, string? Description);
 }

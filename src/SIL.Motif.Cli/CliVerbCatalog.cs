@@ -111,8 +111,6 @@ public static class CliVerbCatalog
             {
                 "compose-author-feature-structure --draft <name> --project <fwdata> --intent '{\"msa\":...}'",
             }),
-        new CliVerbDescriptor("Commands", "compose-author-feature-value", "compose-author-feature-value",
-            new[] { "compose-author-feature-value --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
         new CliVerbDescriptor("Commands", "compose-author-phoneme", "compose-author-phoneme",
             new[] { "compose-author-phoneme --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
         new CliVerbDescriptor("Commands", "compose-author-natural-class", "compose-author-natural-class",
@@ -529,7 +527,13 @@ public static class CliVerbCatalog
             }),
         new CliVerbDescriptor("Commands", "apply", "apply --proposal",
             new[] { "apply --proposal <id> --project <fwdata> [--revision <r>] [--json]" }),
-    });
+    }.Concat(SIL.Motif.Commands.ProposalCommands.ComposerDescriptors.Select(composer =>
+        new CliVerbDescriptor("Commands", composer.Verb, composer.Verb, new[] { ComposerUsage(composer.Verb) })))
+        .ToArray());
+
+    /// <summary>The usage text every typed composer verb shares, before the citation options.</summary>
+    internal static string ComposerUsage(string verb) =>
+        verb + " --draft <name> --project <fwdata> --intent '<closed intent JSON>'";
 
     private static IReadOnlyList<CliVerbDescriptor> AddCitationOptions(
         IReadOnlyList<CliVerbDescriptor> descriptors) => descriptors.Select(descriptor =>

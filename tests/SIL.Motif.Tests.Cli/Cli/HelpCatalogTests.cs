@@ -34,6 +34,31 @@ public sealed class HelpCatalogTests
     }
 
     [Fact]
+    public void EveryTypedComposerFieldHasAHelpDescriptionAndNoDescriptionIsOrphaned()
+    {
+        var catalog = HelpCatalog.Load(System.Globalization.CultureInfo.GetCultureInfo("en"));
+        foreach (var composer in SIL.Motif.Commands.ProposalCommands.ComposerDescriptors)
+        {
+            var entry = Assert.IsType<HelpEntry>(catalog.Find(HelpEntryKind.Command, composer.Verb));
+            var described = Assert.IsAssignableFrom<IReadOnlyDictionary<string, string>>(entry.Fields);
+            var expected = composer.FieldNames.Append("draft").Order(StringComparer.Ordinal);
+            Assert.Equal(expected, described.Keys.Order(StringComparer.Ordinal));
+            Assert.All(described, pair => Assert.False(string.IsNullOrWhiteSpace(pair.Value), pair.Key));
+        }
+    }
+
+    [Fact]
+    public void ATypedComposerVerbAppearsOnceInTheCliVerbCatalogWithTheSharedUsage()
+    {
+        foreach (var composer in SIL.Motif.Commands.ProposalCommands.ComposerDescriptors)
+        {
+            var verb = Assert.Single(CliVerbCatalog.All, descriptor => descriptor.CommandName == composer.Verb);
+            Assert.StartsWith(composer.Verb + " --draft <name> --project <fwdata> --intent '<closed intent JSON>'",
+                Assert.Single(verb.UsageLines), StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
     public void EnglishCatalogCoversEveryReleasedCommandAndRequiredTerms()
     {
         var catalog = HelpCatalog.Load(System.Globalization.CultureInfo.GetCultureInfo("en"));

@@ -443,7 +443,7 @@ public static partial class ProposalCommands
     /// <c>grammar/moStemMsa/createMsFeatures</c> or <c>grammar/moInflAffMsa/createInflFeats</c>.
     /// Inflectional affix features are word requirements. The returned
     /// <see cref="ComposedOperationsResponse.CreatedObjects"/> entry carries the actual dispatched create
-    /// kind and structure identity to use in <see cref="ComposeAuthorFeatureValue"/>.
+    /// kind and structure identity to use in <see cref="ComposeIntent"/> with the <c>compose-author-feature-value</c> verb.
     /// </remarks>
     public static CommandOutcome<ComposedOperationsResponse> ComposeAuthorFeatureStructure(
         ComposeAuthorFeatureStructureRequest request)

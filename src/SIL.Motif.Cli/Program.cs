@@ -177,10 +177,21 @@ try
     CommandOutcome<ComposedOperationsResponse> ComposeWithCitation(string project, string draft, string intent,
         Func<CommandOutcome<ComposedOperationsResponse>> compose) => commandCitation is null
         ? compose()
-        : ProposalCommands.ComposeIntentForCli(project, CliProductVersion(), draft, verb, intent, commandCitation);
+        : ProposalCommands.ComposeIntent(new(project, CliProductVersion(), draft, verb, intent, commandCitation));
 
     switch (verb)
     {
+        case var typedVerb when ProposalCommands.ComposerDescriptors.Any(composer => composer.Verb == typedVerb):
+            if (!flags.TryGetValue("draft", out var typedDraft) ||
+                !flags.TryGetValue("project", out var typedProject) ||
+                !flags.TryGetValue("intent", out var typedIntent))
+                return Usage("Usage: motif " + CliVerbCatalog.ComposerUsage(typedVerb), asJson);
+            result = RenderProposal(
+                ProposalCommands.ComposeIntent(new(typedProject, CliProductVersion(), typedDraft, typedVerb,
+                    typedIntent, commandCitation)),
+                successAsJson: false);
+            break;
+
         case "open":
             if (positionals.Count != 1)
                 return Usage("Usage: motif open <path-to-.fwdata> [--json]", asJson);
@@ -277,7 +288,6 @@ try
                 successAsJson: false);
             break;
 
-        case "compose-author-feature-value":
         case "compose-author-phoneme":
         case "compose-author-natural-class":
         case "compose-author-environment":
@@ -302,7 +312,6 @@ try
                 return Usage("Usage: motif " + verb + " --draft <name> --project <fwdata> --intent '<closed intent JSON>'", asJson);
             var soundOutcome = ComposeWithCitation(soundProject, soundDraft, soundIntent, () => verb switch
             {
-                "compose-author-feature-value" => ProposalCommands.ComposeAuthorFeatureValue(new(soundProject, CliProductVersion(), soundDraft, soundIntent)),
                 "compose-author-phoneme" => ProposalCommands.ComposeAuthorPhoneme(new(soundProject, CliProductVersion(), soundDraft, soundIntent)),
                 "compose-author-natural-class" => ProposalCommands.ComposeAuthorNaturalClass(new(soundProject, CliProductVersion(), soundDraft, soundIntent)),
                 "compose-author-phonological-rule" => ProposalCommands.ComposeAuthorPhonologicalRule(

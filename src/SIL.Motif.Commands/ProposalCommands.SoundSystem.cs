@@ -26,21 +26,6 @@ namespace SIL.Motif.Commands;
 
 public static partial class ProposalCommands
 {
-    /// <summary>
-    /// Appends a closed feature specification to an existing or earlier-staged structure, including a stem's
-    /// MsFeatures or an inflectional affix's InflFeats. A supplied value must belong to the exact closed feature.
-    /// </summary>
-    /// <remarks>
-    /// Closed input is <c>{ "featStruc": "&lt;canonical ID&gt;", "feature": "&lt;canonical ID&gt;" }</c>, optionally with a <c>value</c> identity.
-    /// Omit <c>value</c> to author a feature-only specification; null is refused. Duplicate feature selections
-    /// are refused. InflFeats selections use the current morphosyntactic domain and any declared structure
-    /// type's feature membership; they are word requirements. The createdObjects entry identifies the new
-    /// specification through its actual <c>grammar/fsFeatStruc/createFeatureSpecs</c> operation.
-    /// </remarks>
-    public static CommandOutcome<ComposedOperationsResponse> ComposeAuthorFeatureValue(ComposeAuthorFeatureValueRequest request) =>
-        ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
-            DraftComposers["compose-author-feature-value"]);
-
     public static CommandOutcome<ComposedOperationsResponse> ComposeAuthorPhoneme(ComposeAuthorPhonemeRequest request) =>
         ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
             DraftComposers["compose-author-phoneme"]);

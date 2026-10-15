@@ -37,7 +37,11 @@ namespace SIL.Motif.Commands.Catalog;
 /// </remarks>
 public static class CommandCatalog
 {
-    public static IReadOnlyList<CommandDescriptor> All { get; } = new[]
+    public static IReadOnlyList<CommandDescriptor> All { get; } = HandWritten().Concat(ProposalCommands.ComposerDescriptors.Select(
+        composer => new CommandDescriptor(composer.Verb, typeof(ComposeIntentRequest), typeof(ComposedOperationsResponse),
+            composer.Surface, composer.Agent))).ToArray();
+
+    private static CommandDescriptor[] HandWritten() => new[]
     {
         // ProposalCommands
         new CommandDescriptor("open", typeof(OpenRequest), typeof(ProjectSummaryProjection), CommandSurface.Released, AgentClass.Read),
@@ -71,8 +75,6 @@ public static class CommandCatalog
             typeof(ComposedOperationsResponse), CommandSurface.AdvancedAi, AgentClass.Draft),
         new CommandDescriptor(
             "compose-author-feature-structure", typeof(ComposeAuthorFeatureStructureRequest),
-            typeof(ComposedOperationsResponse), CommandSurface.AdvancedAi, AgentClass.Draft),
-        new CommandDescriptor("compose-author-feature-value", typeof(ComposeAuthorFeatureValueRequest),
             typeof(ComposedOperationsResponse), CommandSurface.AdvancedAi, AgentClass.Draft),
         new CommandDescriptor("compose-author-phoneme", typeof(ComposeAuthorPhonemeRequest),
             typeof(ComposedOperationsResponse), CommandSurface.AdvancedAi, AgentClass.Draft),

@@ -365,45 +365,6 @@
     "idempotentHint": false
   },
   {
-    "name": "motif_add_feature_value",
-    "description": "Author a feature value. Stages a closed feature specification in an existing or earlier-staged structure, with value omitted when unchosen. Inflectional affix requirements use current morphosyntactic definitions, and any supplied value must belong to the exact feature. Only a person can Apply.\nCommand: compose-author-feature-value. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: Closed {featStruc, feature, value?} input using exact canonical identities. Omit value when unchosen; a supplied value belongs to the exact closed feature. InflFeats selections use the current morphosyntactic domain and any declared structure type, and are word requirements.",
-    "inputSchema": {
-      "type": "object",
-      "properties": {
-        "draft": {
-          "type": "string",
-          "description": "Draft name."
-        },
-        "featStruc": {
-          "type": "string",
-          "description": "Feature structure id."
-        },
-        "feature": {
-          "type": "string",
-          "description": "Feature id."
-        },
-        "value": {
-          "type": "string",
-          "description": "Optional symbolic value id."
-        },
-        "project": {
-          "type": "string",
-          "description": "Known project name or recorded .fwdata path."
-        }
-      },
-      "required": [
-        "draft",
-        "featStruc",
-        "feature",
-        "project"
-      ],
-      "additionalProperties": false
-    },
-    "readOnlyHint": false,
-    "destructiveHint": false,
-    "idempotentHint": false
-  },
-  {
     "name": "motif_add_phoneme",
     "description": "Author a phoneme. Stages a phoneme with explicitly authored name and representations in a Draft. Use its created identity in later natural classes or phonological rules. Only a person can Apply.\nCommand: compose-author-phoneme. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
     "inputSchema": {
@@ -1418,63 +1379,6 @@
                     "additionalProperties": false,
                     "required": [
                       "msa"
-                    ]
-                  },
-                  "citation": {
-                    "type": "object",
-                    "properties": {
-                      "source": {
-                        "type": "string",
-                        "description": "Where this change came from."
-                      },
-                      "locator": {
-                        "type": "string",
-                        "description": "Optional page, section or other source location."
-                      }
-                    },
-                    "required": [
-                      "source"
-                    ],
-                    "additionalProperties": false
-                  }
-                },
-                "required": [
-                  "verb",
-                  "intent"
-                ],
-                "additionalProperties": false
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "verb": {
-                    "type": "string",
-                    "description": "Composing verb for this intent.",
-                    "enum": [
-                      "compose-author-feature-value"
-                    ]
-                  },
-                  "intent": {
-                    "type": "object",
-                    "description": "Structured intent for compose-author-feature-value.",
-                    "properties": {
-                      "featStruc": {
-                        "type": "string",
-                        "description": "Feature structure id."
-                      },
-                      "feature": {
-                        "type": "string",
-                        "description": "Feature id."
-                      },
-                      "value": {
-                        "type": "string",
-                        "description": "Optional symbolic value id."
-                      }
-                    },
-                    "additionalProperties": false,
-                    "required": [
-                      "featStruc",
-                      "feature"
                     ]
                   },
                   "citation": {
@@ -3381,6 +3285,63 @@
                   "intent"
                 ],
                 "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "compose-author-feature-value"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-author-feature-value.",
+                    "properties": {
+                      "featStruc": {
+                        "type": "string",
+                        "description": "Feature structure id."
+                      },
+                      "feature": {
+                        "type": "string",
+                        "description": "Feature id."
+                      },
+                      "value": {
+                        "type": "string",
+                        "description": "Optional symbolic value id."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "featStruc",
+                      "feature"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
               }
             ]
           },
@@ -3979,6 +3940,45 @@
       "required": [
         "proposal",
         "text",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_add_feature_value",
+    "description": "Author a feature value. Stages a closed feature specification in an existing or earlier-staged structure, with value omitted when unchosen. Inflectional affix requirements use current morphosyntactic definitions, and any supplied value must belong to the exact feature. Only a person can Apply.\nCommand: compose-author-feature-value. Agent class: Draft.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "featStruc": {
+          "type": "string",
+          "description": "Feature structure id."
+        },
+        "feature": {
+          "type": "string",
+          "description": "Feature id."
+        },
+        "value": {
+          "type": "string",
+          "description": "Optional symbolic value id."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "featStruc",
+        "feature",
         "project"
       ],
       "additionalProperties": false

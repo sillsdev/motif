@@ -392,7 +392,13 @@
   "compose-author-feature-value": {
     "title": "Author a feature value",
     "description": "Stages a closed feature specification in an existing or earlier-staged structure, with value omitted when unchosen. Inflectional affix requirements use current morphosyntactic definitions, and any supplied value must belong to the exact feature. Only a person can Apply.",
-    "source": "Authored from the typed command contract."
+    "source": "Authored from the typed command contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "featStruc": "Feature structure id.",
+      "feature": "Feature id.",
+      "value": "Optional symbolic value id."
+    }
   },
   "compose-author-phoneme": {
     "title": "Author a phoneme",

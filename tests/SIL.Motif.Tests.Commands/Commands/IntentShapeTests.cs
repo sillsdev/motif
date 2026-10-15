@@ -191,13 +191,13 @@ public sealed class LegacyComposerAdapterTests
     }
 
     [Fact]
-    public void TheRegistryHoldsEveryVerbThroughTheAdapter()
+    public void TheRegistryHoldsEveryVerbAsATypedDefinitionOrThroughTheAdapter()
     {
         Assert.Equal(32, ProposalCommands.DraftComposers.Count);
         Assert.All(ProposalCommands.DraftComposers, pair =>
         {
-            Assert.IsType<LegacyComposerAdapter>(pair.Value);
             Assert.Equal(pair.Key, pair.Value.Verb);
+            Assert.Equal(ComposerDefinitions.All.Contains(pair.Value), pair.Value is not LegacyComposerAdapter);
         });
     }
 }

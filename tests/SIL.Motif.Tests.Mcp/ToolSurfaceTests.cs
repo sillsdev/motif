@@ -14,10 +14,25 @@ public sealed class ToolSurfaceTests
     [Fact]
     public void EveryEligibleCommandHasAToolAndNoOtherCommandDoes()
     {
-        foreach (var command in CommandCatalog.All)
+        foreach (var command in CommandCatalog.All.Where(command =>
+                     !SIL.Motif.Commands.ProposalCommands.ComposerDescriptors.Any(composer => composer.Verb == command.Name)))
             Assert.Equal(command.IsAgentTool,
                 AgentTools.All.Any(tool => tool.Requests.Contains(command.RequestType)));
         Assert.All(AgentTools.All, tool => Assert.NotEqual(AgentClass.HumanOnly, tool.Class));
+    }
+
+    [Fact]
+    public void EveryTypedComposerHasExactlyOneToolBuiltFromItsShapeAndIsOffered()
+    {
+        foreach (var composer in SIL.Motif.Commands.ProposalCommands.ComposerDescriptors.Where(c => c.IsAgentTool))
+        {
+            var tool = Assert.Single(AgentTools.All, candidate => candidate.Name == composer.ToolName);
+            Assert.Equal(composer.OnByDefault, tool.OnByDefault);
+            Assert.Equal(["draft", .. composer.FieldNames, "project"], tool.ArgumentNames);
+            Assert.False(tool.InputSchema["additionalProperties"]!.GetValue<bool>());
+            var batch = AgentTools.All.Single(candidate => candidate.Name == "motif_compose_batch").InputSchema.ToJsonString();
+            Assert.Equal(composer.InBatch, batch.Contains($"\"{composer.Verb}\"", StringComparison.Ordinal));
+        }
     }
 
     [Fact]

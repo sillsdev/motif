@@ -1,5 +1,6 @@
 using System.Text.Json;
 using SIL.LCModel;
+using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Commands.Retirement;
 using SIL.Motif.Host.Analysis;
 using SIL.Motif.Contract.Ids;
@@ -38,14 +39,19 @@ internal sealed record DraftComposer(
 public static partial class ProposalCommands
 {
     /// <summary>Every composer a Draft can be authored through by intent, keyed by its CLI verb.</summary>
-    internal static IReadOnlyDictionary<string, IComposerDefinition> DraftComposers { get; } = new DraftComposer[]
+    internal static IReadOnlyDictionary<string, IComposerDefinition> DraftComposers { get; } =
+        ComposerRegistry.Build(ComposerDefinitions.All, LegacyComposers());
+
+    /// <summary>What front ends need to offer each typed composer definition, in definition order.</summary>
+    public static IReadOnlyList<ComposerDescriptor> ComposerDescriptors { get; } =
+        ComposerDefinitions.All.Select(definition => new ComposerDescriptor(definition)).ToArray();
+
+    private static DraftComposer[] LegacyComposers() => new DraftComposer[]
     {
         new("compose-author-lexeme-form", "AuthorLexemeForm", (cache, input, _) =>
             AuthorLexemeFormComposer.Build(cache, AuthorLexemeFormIntentParser.Parse(input))),
         new("compose-author-feature-structure", "AuthorFeatureStructure", (cache, input, _) =>
             AuthorFeatureStructureComposer.Build(cache, AuthorFeatureStructureIntentParser.Parse(input))),
-        new("compose-author-feature-value", "AuthorFeatureValue", (cache, input, _) =>
-            AuthorFeatureValueComposer.Build(cache, AuthorFeatureValueIntentParser.Parse(input))),
         new("compose-author-phoneme", "AuthorPhoneme", (cache, input, _) =>
             AuthorPhonemeComposer.Build(cache, AuthorPhonemeIntentParser.Parse(input))),
         new("compose-author-natural-class", "AuthorNaturalClass", (cache, input, _) =>
@@ -149,6 +155,5 @@ public static partial class ProposalCommands
         new("compose-record-parsimony-disposition", "RecordParsimonyDisposition", (cache, input, proposalId) =>
             RecordParsimonyDispositionComposer.Build(cache, RecordParsimonyDispositionIntentParser.Parse(input),
                 proposalId)),
-    }.ToDictionary(composer => composer.Verb, IComposerDefinition (composer) => new LegacyComposerAdapter(composer),
-        StringComparer.Ordinal);
+    };
 }

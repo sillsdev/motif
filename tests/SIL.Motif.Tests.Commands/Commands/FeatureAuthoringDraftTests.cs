@@ -46,7 +46,7 @@ public sealed class FeatureAuthoringDraftTests(PristineProjectFixture pristine)
         Assert.False(occupied.Succeeded);
         Assert.Contains("already has a feature structure", occupied.Refusal!.Message);
         Assert.Equal(before, ReadDraft(setup.Path, draft).Operations.Select(operation => operation.OperationId));
-        var selection = ProposalCommands.ComposeAuthorFeatureValue(new(setup.Path, Version, draft,
+        var selection = ProposalCommands.ComposeIntent(new(setup.Path, Version, draft, "compose-author-feature-value",
             JsonSerializer.Serialize(new { featStruc = created.Id, feature = setup.Feature })));
         Assert.True(selection.Succeeded, selection.Refusal?.Message);
         var spec = Assert.Single(selection.Value!.CreatedObjects);

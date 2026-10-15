@@ -68,17 +68,16 @@ public sealed record ComposeAuthorLexemeFormRequest(
 public sealed record ComposeAuthorFeatureStructureRequest(
     string FwDataPath, string ProductVersion, string DraftName, string IntentJson);
 
-/// <summary>Requests a closed feature selection on an existing or earlier-staged feature structure.</summary>
+/// <summary>Requests one composing verb's intent be composed into a Draft.</summary>
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
 /// <param name="DraftName">The name of the Draft being authored.</param>
-/// <param name="IntentJson">
-/// Closed <c>{featStruc, feature, value?}</c> input using exact canonical identities. Omit value when unchosen;
-/// a supplied value belongs to the exact closed feature. InflFeats selections use the current morphosyntactic
-/// domain and any declared structure type, and are word requirements.
-/// </param>
-public sealed record ComposeAuthorFeatureValueRequest(
-    string FwDataPath, string ProductVersion, string DraftName, string IntentJson);
+/// <param name="Verb">The composing verb that selects the composer, such as <c>compose-author-feature-value</c>.</param>
+/// <param name="IntentJson">The closed semantic intent JSON the verb's shape allows.</param>
+/// <param name="Citation">The optional source copied to every operation the composer creates.</param>
+public sealed record ComposeIntentRequest(
+    string FwDataPath, string ProductVersion, string DraftName, string Verb, string IntentJson,
+    SIL.Motif.Contract.Model.OperationCitation? Citation = null);
 
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>

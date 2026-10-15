@@ -22,7 +22,8 @@ internal static class CatalogTools
 
     internal static IReadOnlyList<AgentTool> Build(IReadOnlyList<AgentTool> adapters)
     {
-        var eligible = CommandCatalog.All.Where(command => command.IsAgentTool).ToArray();
+        var eligible = CommandCatalog.All.Where(command => command.IsAgentTool && !ComposerTools.Verbs.Contains(command.Name))
+            .ToArray();
         var tools = new List<AgentTool>();
         var served = new HashSet<Type>();
         foreach (var adapter in adapters)
@@ -40,7 +41,7 @@ internal static class CatalogTools
         return tools;
     }
 
-    private static AgentTool Prepare(AgentTool tool)
+    internal static AgentTool Prepare(AgentTool tool)
     {
         var schema = tool.InputSchema.DeepClone().AsObject();
         if (tool.NeedsProject && tool.Name is not ("motif_guide" or "motif_list_projects"))

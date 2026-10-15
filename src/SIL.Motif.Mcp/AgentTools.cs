@@ -27,7 +27,6 @@ internal static class AgentTools
     {
         "motif_add_lexeme_form",
         "motif_add_feature_structure",
-        "motif_add_feature_value",
         "motif_add_phoneme",
         "motif_add_natural_class",
         "motif_add_environment",
@@ -47,7 +46,6 @@ internal static class AgentTools
     [
         "compose-author-lexeme-form",
         "compose-author-feature-structure",
-        "compose-author-feature-value",
         "compose-author-phoneme",
         "compose-author-natural-class",
         "compose-edit-natural-class",
@@ -76,7 +74,7 @@ internal static class AgentTools
 
     private static IReadOnlyList<AgentTool> BuildAll()
     {
-        var tools = CatalogTools.Build(BuildAdapters());
+        var tools = CatalogTools.Build(BuildAdapters()).Concat(ComposerTools.Build()).ToArray();
         var batchSchema = ComposeBatchSchema(tools);
         return tools.Select(tool => tool.Name == "motif_compose_batch"
                 ? tool with { InputSchema = batchSchema }
@@ -270,21 +268,6 @@ internal static class AgentTools
                     c.ProjectPath, c.ProductVersion, a.Required("draft"),
                     new JsonObject { ["msa"] = a.Required("msa") }.ToJsonString())),
                 r => $"Draft now has {r.OperationCount} changes. Read motif_guide(topic=feature-conditioned-slots) before adding any feature values."))) { Requests = [typeof(ComposeAuthorFeatureStructureRequest)] },
-
-        new("motif_add_feature_value",
-            string.Empty,
-            AgentClass.Draft,
-            Schema.Object(("draft", Schema.String("Draft name."), true),
-                ("featStruc", Schema.String("Feature structure id."), true),
-                ("feature", Schema.String("Feature id."), true), ("value", Schema.String("Optional symbolic value id."), false)),
-            false,
-            false,
-            false,
-            false,
-            true,
-            (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalCommands.ComposeAuthorFeatureValue(
-                new(c.ProjectPath, c.ProductVersion, a.Required("draft"), a.IntentJson("featStruc", "feature", "value"))),
-                r => "Use createdObjects[].id values in later composer calls; Dry Run and Trial the Draft, then Finalize."))) { Requests = [typeof(ComposeAuthorFeatureValueRequest)] },
 
         new("motif_add_phoneme",
             string.Empty,
@@ -1012,6 +995,8 @@ internal static class AgentTools
 
     private static JsonObject ComposeBatchSchema(IReadOnlyList<AgentTool> tools)
     {
+        var typedIntents = ProposalCommands.ComposerDescriptors.Where(composer => composer.InBatch)
+            .Select(ComposerTools.BatchIntentSchema);
         var supportedIntents = BatchComposerVerbs
             .Select(verb =>
             {
@@ -1024,6 +1009,7 @@ internal static class AgentTools
                 return BatchIntentSchema(verb, tool.InputSchema)
                     ?? throw new InvalidOperationException($"Batch composer '{verb}' has no structured MCP intent schema.");
             })
+            .Concat(typedIntents)
             .ToArray();
         var citation = Schema.Object(
             ("source", Schema.String("Where this change came from."), true),
@@ -1066,7 +1052,7 @@ internal static class AgentTools
                 continue;
             }
 
-            if (!BatchComposerVerbs.Contains(verb, StringComparer.Ordinal))
+            if (!BatchComposerVerbs.Contains(verb, StringComparer.Ordinal) && !ComposerTools.BatchVerbs.Contains(verb))
                 refusals.Add($"Intent {index} uses unsupported batch verb '{verb}'.");
         }
 

@@ -47,12 +47,12 @@ public sealed class SoundSystemDraftTests(PristineProjectFixture pristine)
         Assert.True(structure.Succeeded, structure.Refusal?.Message);
         AssertCreatedObjectsMatch(structure.Value!);
         var created = structure.Value!.Operations.Single(o => o.EntityId is not null);
-        var selected = ProposalCommands.ComposeAuthorFeatureValue(new(path, version, draft,
+        var selected = ProposalCommands.ComposeIntent(new(path, version, draft, "compose-author-feature-value",
             JsonSerializer.Serialize(new { featStruc = created.EntityId, feature = featureId, value = valueId })));
         Assert.True(selected.Succeeded, selected.Refusal?.Message);
         AssertCreatedObjectsMatch(selected.Value!);
         Assert.Contains(selected.Value!.Operations, o => o.Kind.EndsWith("/setValue", StringComparison.Ordinal));
-        var duplicate = ProposalCommands.ComposeAuthorFeatureValue(new(path, version, draft,
+        var duplicate = ProposalCommands.ComposeIntent(new(path, version, draft, "compose-author-feature-value",
             JsonSerializer.Serialize(new { featStruc = created.EntityId, feature = featureId, value = valueId })));
         Assert.False(duplicate.Succeeded);
         Assert.Contains("already has a feature specification", duplicate.Refusal!.Message);

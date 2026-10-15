@@ -16,33 +16,32 @@ public static partial class ProposalCommands
     private const string PhonologicalRuleComposerVerb = "compose-author-phonological-rule";
     private const string CreatePhonologicalRuleKind = "grammar/phPhonData/createPhonRules";
 
-    /// <summary>Runs one CLI composer through the batch append path so citations share its validation rules.</summary>
-    /// <param name="fwDataPath">The saved project this Draft belongs to.</param>
-    /// <param name="productVersion">The Motif product version used to open the paired store.</param>
-    /// <param name="draftName">The Draft that receives the composed operations.</param>
-    /// <param name="verb">The CLI composing verb that selects the composer.</param>
-    /// <param name="intentJson">The closed semantic intent accepted by that composer.</param>
-    /// <param name="citation">The optional source copied to every operation the composer creates.</param>
-    internal static CommandOutcome<ComposedOperationsResponse> ComposeIntentForCli(
-        string fwDataPath, string productVersion, string draftName, string verb, string intentJson,
-        OperationCitation? citation) =>
-        ProjectStoreCommand.Run(fwDataPath, productVersion, (database, project) =>
+    /// <summary>
+    /// Composes one intent into a Draft through the composer its verb names, through the batch append path so a
+    /// citation shares its validation rules.
+    /// </summary>
+    /// <remarks>
+    /// An unknown verb is refused as <c>draft.invalid</c>. A second edit of an earlier request's target replaces
+    /// that earlier edit; only within one batch is a second edit of the same target refused.
+    /// </remarks>
+    public static CommandOutcome<ComposedOperationsResponse> ComposeIntent(ComposeIntentRequest request) =>
+        ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
         {
             try
             {
-                if (!DraftComposers.TryGetValue(verb, out var composer))
-                    throw new InvalidOperationException($"'{verb}' is not a composing verb.");
-                using var document = JsonDocument.Parse(intentJson);
-                return Single(ComposeStepsIntoDraft(database, project, draftName,
-                    [ComposeStep.From(composer, document.RootElement.Clone(), citation)]));
+                if (!DraftComposers.TryGetValue(request.Verb, out var composer))
+                    throw new InvalidOperationException($"'{request.Verb}' is not a composing verb.");
+                using var document = JsonDocument.Parse(request.IntentJson);
+                return Single(ComposeStepsIntoDraft(database, project, request.DraftName,
+                    [ComposeStep.From(composer, document.RootElement.Clone(), request.Citation)]));
             }
             catch (Exception exception) when (SqliteConnections.IsBusy(exception))
             {
-                return CommandOutcome<ComposedOperationsResponse>.Refused(ProjectStoreCommand.BusyBeforeSave(fwDataPath));
+                return CommandOutcome<ComposedOperationsResponse>.Refused(ProjectStoreCommand.BusyBeforeSave(request.FwDataPath));
             }
             catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)            {
                 return CommandOutcome<ComposedOperationsResponse>.Refused(
-                    DraftInvalid(exception.Message, ("draftName", draftName)));
+                    DraftInvalid(exception.Message, ("draftName", request.DraftName)));
             }
         });
 
@@ -51,8 +50,10 @@ public static partial class ProposalCommands
     /// each verb run alone, and appends all of them or none.
     /// </summary>
     /// <remarks>
-    /// Entries run in file order and each sees the project as the earlier ones left it, so the Draft ends as it
-    /// would after the same verbs one call at a time. A refusal names the failing entry's index and verb.
+    /// Entries run in file order and each sees the project as the earlier ones left it. One difference from the
+    /// same verbs run one call at a time: when a composer replaces its own earlier edits, a second edit of a target
+    /// an earlier entry of the same batch already edited is refused, whereas a later call would replace it. A refusal names the failing
+    /// entry's index and verb.
     /// </remarks>
     public static CommandOutcome<ComposedBatchResponse> ComposeBatch(ComposeBatchRequest request) =>
         ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
