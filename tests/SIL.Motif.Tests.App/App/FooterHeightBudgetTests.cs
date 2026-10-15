@@ -19,6 +19,7 @@ namespace SIL.Motif.Tests.App;
 public sealed class FooterHeightBudgetTests(AvaloniaHeadlessFixture avalonia)
 {
     private const double FooterHeightCap = 240;
+    private const double PageMinHeight = 140;
 
     public static TheoryData<int, int, string> MinimumWindowCases => new()
     {
@@ -55,7 +56,7 @@ public sealed class FooterHeightBudgetTests(AvaloniaHeadlessFixture avalonia)
                 var caseName = $"640-{height}-{zoom}-{theme}";
                 SaveCaptureIfRequested(window, $"footer-at-top-{caseName}.png");
                 var availableHeight = window.ClientSize.Height / scale;
-                var expectedBudget = Math.Min(FooterHeightCap, availableHeight / 2);
+                var expectedBudget = Math.Min(FooterHeightCap, Math.Max(0, (availableHeight - PageMinHeight) / 2));
                 var pageViewport = host.FindControl<ContentControl>("WorkingPageHost")!;
                 Assert.True(pageViewport.Bounds.Height >= expectedBudget - 2,
                     $"The working page has {pageViewport.Bounds.Height:0.#} DIP beside a {footer.Bounds.Height:0.#} DIP footer at " +

@@ -4,7 +4,7 @@ The Motif window is a fixed frame with the same parts on every page. Nothing in 
 
 - **The rail** is the narrow strip down the left edge. It lists the pages, such as **Overview**, **Texts** and **Review changes**; choose one to open it. **Help** and **Settings** sit at the bottom of the rail.
 - **The side panel** sits beside the page and holds that page's own controls, such as the text picker on **Texts**. Not every page has one.
-- **The page** is where you do the work. A notice line above it shows project notices and the tech-demo notice. A page's action buttons sit at the bottom of the page, or at the bottom of the Inspector while it is open.
+- **The page** is where you do the work. A notice line above it shows project notices and the tech-demo notice. A page's action buttons sit at the bottom of the page, or at the bottom of the Inspector while it is open. In a short window the page always keeps a few rows of its own; the tech-demo notice and the action buttons then scroll inside their own bands instead of squeezing it out.
 - **The Inspector** shows the facts about the word, rule, morpheme or change you selected on the page. Until you select something it says "Select an item to inspect."
 - **The status bar** runs along the bottom. It says that Motif writes nothing until you press Apply, offers **Report a problem**, summarises your selection, and shows buttons for changes not applied yet, warnings and parse progress when there are any.
 

@@ -72,6 +72,8 @@ public sealed partial class MainWindow : Window
         _applicationFacts = applicationFacts ?? ApplicationFacts.Current;
         AvaloniaXamlLoader.Load(this);
         _layoutHost = this.FindControl<WorkspaceLayoutHost>("WorkspaceLayout");
+        if (_layoutHost is { } budgetHost && this.FindControl<ScrollViewer>("TechDemoNoticeViewport") is { } noticeViewport)
+            noticeViewport.Bind(MaxHeightProperty, budgetHost.GetObservable(WorkspaceLayoutHost.BandBudgetProperty));
         if (_layoutHost is { } layoutHost)
             layoutHost.AttachedToVisualTree += (_, _) => UpdateFrameViewport(ClientSize.Width / (_settings?.ZoomScale ?? 1));
         SizeChanged += (_, e) => UpdateFrameViewport(e.NewSize.Width / (_settings?.ZoomScale ?? 1));

@@ -16,6 +16,17 @@ public sealed partial class WorkspaceLayoutHost : UserControl
     public static readonly RoutedEvent<RoutedEventArgs> PageInspectorRequestedEvent =
         RoutedEvent.Register<WorkspaceLayoutHost, RoutedEventArgs>(nameof(PageInspectorRequested), RoutingStrategies.Bubble);
 
+    /// <summary>
+    /// The height each fixed band above or below the page may take before it scrolls, so the page keeps its
+    /// minimum height. Inherited, so a notice inside the page can read it.
+    /// </summary>
+    public static readonly AttachedProperty<double> BandBudgetProperty =
+        AvaloniaProperty.RegisterAttached<WorkspaceLayoutHost, Control, double>(
+            "BandBudget", double.PositiveInfinity, inherits: true);
+
+    /// <summary>Reads the height a fixed band may take before it scrolls.</summary>
+    public static double GetBandBudget(Control control) => control.GetValue(BandBudgetProperty);
+
     private bool _isAttachedToVisualTree;
     private bool _hasSidePanel;
     private bool _hasPageInspector;
@@ -76,7 +87,12 @@ public sealed partial class WorkspaceLayoutHost : UserControl
     protected override Size MeasureOverride(Size availableSize)
     {
         var footerCap = (double)this.FindResource("Component.Shell.FooterMaxHeight")!;
-        var footerBudget = Math.Min(footerCap, availableSize.Height / 2);
+        var pageMinHeight = (double)this.FindResource("Component.Shell.WorkingPageMinHeight")!;
+        // The notice above the page and the footer below it split what the page's minimum height leaves.
+        var bandBudget = double.IsInfinity(availableSize.Height) ? double.PositiveInfinity
+            : Math.Max(0, (availableSize.Height - pageMinHeight) / 2);
+        SetValue(BandBudgetProperty, bandBudget);
+        var footerBudget = Math.Min(footerCap, bandBudget);
         Part<ScrollViewer>("InspectorFooterViewport").MaxHeight = footerBudget;
         Part<ScrollViewer>("PageActionFooterViewport").MaxHeight = footerBudget;
         return base.MeasureOverride(availableSize);

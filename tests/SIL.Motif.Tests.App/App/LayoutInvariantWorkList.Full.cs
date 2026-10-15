@@ -8,10 +8,6 @@ internal static partial class LayoutInvariantWorkList
     /// </summary>
     internal static IReadOnlyList<LayoutException> Entries { get; } =
     [
-        new(new("Review/empty", "640x600", 150, "light"), "unreachable-control",
-            new("HyperlinkButton", null, null, "Go to Analyze texts", "reviewLink", "motif-review-words-grid"),
-            null, "Table pages", "Go to Analyze texts has no hit target or scroll route at 640x600 150%.",
-            "no-visible-hit-target-or-scroll-route", 1),
         new(new("Timing/populated", "640x600", 100, "light"), "unreachable-control",
             new("WordRow", null, "motif-word-row-timing-rule-words-mwalimu-row", "mwalimu · Unknown · PanGloss: Stopped · No result", "", "TimingPageCostliestRuleWordRowsItems"),
             null, "Frame", "mwalimu · Unknown · PanGloss: Stopped · No result has no hit target or scroll route at 640x600 100%.",
