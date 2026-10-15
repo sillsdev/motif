@@ -847,8 +847,10 @@ try
             if (result.ExitCode == 0 && flags.ContainsKey("wait"))
             {
                 var dryRunJobId = result.Output.Trim();
+                var dryRunWakeWarnings = RunnerWarnings.Once(error.WriteLine);
                 result = RenderCommand(JobCommands.WaitForDryRun(new WaitForDryRunRequest(
-                    dryRunProject, CliProductVersion(), positionals[0], dryRunJobId, dryRunWaitTimeout)));
+                    dryRunProject, CliProductVersion(), positionals[0], dryRunJobId, dryRunWaitTimeout),
+                    wakeRunner: () => startRunner(dryRunProject, dryRunWakeWarnings)));
             }
             break;
 
@@ -925,8 +927,10 @@ try
             if (result.ExitCode == 0 && flags.ContainsKey("wait"))
             {
                 var trialJobId = result.Output.Trim();
+                var trialWakeWarnings = RunnerWarnings.Once(error.WriteLine);
                 result = RenderCommand(JobCommands.WaitForJob(
-                    new WaitForJobRequest(trialProject, trialJobId, CliProductVersion(), trialWaitTimeout)));
+                    new WaitForJobRequest(trialProject, trialJobId, CliProductVersion(), trialWaitTimeout),
+                    () => startRunner(trialProject, trialWakeWarnings)));
             }
             break;
 
@@ -1239,10 +1243,13 @@ try
                 {
                     startRunner(candidateProject, error.WriteLine);
                     if (flags.ContainsKey("wait"))
+                    {
+                        var candidateWakeWarnings = RunnerWarnings.Once(error.WriteLine);
                         result = RunWithConsoleCancellation(cancellationToken => RenderCommand(
                             ParsimonyCommands.WaitCandidate(new WaitForParsimonyCandidateRequest(candidateProject,
                                 CliProductVersion(), queuedCandidate.Value!.JobId, candidateTimeout),
-                                cancellationToken)));
+                                cancellationToken, () => startRunner(candidateProject, candidateWakeWarnings))));
+                    }
                 }
                 break;
             }
@@ -1329,13 +1336,16 @@ try
                 if (flags.ContainsKey("wait"))
                 {
                     var parsimonyJobId = enqueuedParsimony.Value!.JobId;
+                    var parsimonyWakeWarnings = RunnerWarnings.Once(error.WriteLine);
                     result = flags.GetValueOrDefault("measure") == ParsimonyAdmission.AllMeasures
                         ? RunWithConsoleCancellation(cancellationToken => RenderCommand(ParsimonyCommands.WaitAll(
                             new WaitForParsimonyReportSetRequest(parsimonyProject, CliProductVersion(),
-                                parsimonyJobId, parsimonyWaitTimeout), cancellationToken)))
+                                parsimonyJobId, parsimonyWaitTimeout), cancellationToken,
+                            () => startRunner(parsimonyProject, parsimonyWakeWarnings))))
                         : RunWithConsoleCancellation(cancellationToken => RenderCommand(ParsimonyCommands.Wait(
                             new WaitForParsimonyReportRequest(parsimonyProject, CliProductVersion(),
-                                parsimonyJobId, parsimonyWaitTimeout), cancellationToken)));
+                                parsimonyJobId, parsimonyWaitTimeout), cancellationToken,
+                            () => startRunner(parsimonyProject, parsimonyWakeWarnings))));
                 }
             }
             break;

@@ -1316,11 +1316,13 @@ internal static class AgentTools
             var queued = JobCommands.EnqueueDryRun(new EnqueueDryRunRequest(context.ProjectPath, context.ProductVersion, proposal));
             if (!queued.Succeeded) return ToolOutcome.Refused(queued.Refusal!);
             job = queued.Value!.JobId;
-            context.StartRunner();
         }
+        // Wake on a resumed wait too: a queued job whose runner idled out or never started runs again.
+        context.StartRunner();
         var waited = await Task.Run(() => JobCommands.WaitForDryRun(new WaitForDryRunRequest(
-            context.ProjectPath, context.ProductVersion, proposal, job, wait), cancellation), cancellation);
-        if (!waited.Succeeded) return StillRunning(waited.Refusal!, job) ?? ToolOutcome.Refused(waited.Refusal!);
+            context.ProjectPath, context.ProductVersion, proposal, job, wait), cancellation,
+            wakeRunner: context.StartRunner), cancellation);
+        if (!waited.Succeeded) return StillRunning(context, waited.Refusal!, job) ?? ToolOutcome.Refused(waited.Refusal!);
         var result = JsonNode.Parse(ProjectionJson.Serialize(waited.Value!))!.AsObject();
         result["job"] = job;
         return ToolOutcome.Ok(result, "If the changes fit, run motif_trial on sample words; if not, fix the draft first.", job);
@@ -1342,24 +1344,31 @@ internal static class AgentTools
                 BaselineAssessmentIds: before.Value!.AssessmentIds, NegativeWords: negatives));
             if (!queued.Succeeded) return ToolOutcome.Refused(queued.Refusal!);
             job = queued.Value!.JobId;
-            context.StartRunner();
         }
+        // Wake on a resumed wait too: a queued job whose runner idled out or never started runs again.
+        context.StartRunner();
         var waited = await Task.Run(() => JobCommands.WaitForJob(
-            new WaitForJobRequest(context.ProjectPath, job, context.ProductVersion, wait)), cancellation);
-        if (!waited.Succeeded) return StillRunning(waited.Refusal!, job) ?? ToolOutcome.Refused(waited.Refusal!);
+            new WaitForJobRequest(context.ProjectPath, job, context.ProductVersion, wait), context.StartRunner),
+            cancellation);
+        if (!waited.Succeeded) return StillRunning(context, waited.Refusal!, job) ?? ToolOutcome.Refused(waited.Refusal!);
         return TrialResults.Complete(context, job, proposal) with { JobId = job };
     }
 
     // A wait that ran out is progress, not a failure: say where the job is and how to keep waiting.
-    private static ToolOutcome? StillRunning(Refusal refusal, string job) =>
-        refusal.Code is "job.wait-timeout" or "job.wait-cancelled"
-            ? ToolOutcome.Ok(new JsonObject
-            {
-                ["status"] = "running",
-                ["job"] = job,
-                ["detail"] = refusal.Message,
-            }, "Call this tool again with job set to " + job + " to keep waiting.", job)
-            : null;
+    private static ToolOutcome? StillRunning(ServerContext context, Refusal refusal, string job)
+    {
+        if (refusal.Code is not ("job.wait-timeout" or "job.wait-cancelled")) return null;
+        var running = new JsonObject
+        {
+            ["status"] = "running",
+            ["job"] = job,
+            ["detail"] = refusal.Message,
+        };
+        if (context.RunnerWarning is { } warning) running["runnerWarning"] = warning;
+        return ToolOutcome.Ok(running, context.RunnerWarning is null
+            ? "Call this tool again with job set to " + job + " to keep waiting."
+            : "No runner could start, so this job will not progress: fix the runnerWarning, then call this tool again with job set to " + job + ".", job);
+    }
 
     private static ToolOutcome Activity(ServerContext context)
     {

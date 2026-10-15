@@ -33,7 +33,19 @@ internal sealed class ServerContext(string projectPath, string productVersion, I
     public SemaphoreSlim ProjectGate => Gates.GetOrAdd(ProjectPath, _ => new SemaphoreSlim(1, 1));
 
     /// <summary>Wakes the job runner after a job is queued, as every other front end does.</summary>
-    public void StartRunner() => runner.Start(ProjectPath, Log.WriteLine);
+    public void StartRunner()
+    {
+        var previous = RunnerWarning;
+        RunnerWarning = null;
+        runner.Start(ProjectPath, warning =>
+        {
+            RunnerWarning = warning;
+            if (warning != previous) Log.WriteLine(warning);
+        });
+    }
+
+    /// <summary>Why the last runner start did not happen, so a job that stays queued can say so.</summary>
+    public string? RunnerWarning { get; private set; }
 }
 
 /// <summary>The arguments of one tool call, with the closed-schema checks every tool shares.</summary>

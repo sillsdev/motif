@@ -189,31 +189,39 @@ internal static class ParsimonyTools
                 context.ProjectPath, context.ProductVersion, measureId, evidenceScope));
             if (!queued.Succeeded) return ToolOutcome.Refused(queued.Refusal!);
             jobId = queued.Value!.JobId;
-            context.StartRunner();
         }
+        context.StartRunner();
 
         var timeout = TimeSpan.FromSeconds(Math.Clamp(args.Int("wait_seconds", 40), 1, 300));
         // The wait polls without blocking, and a cancelled call cancels the job it started.
         if (measureId == ParsimonyAdmission.AllMeasures)
         {
             var all = await ParsimonyCommands.WaitAllAsync(new WaitForParsimonyReportSetRequest(
-                context.ProjectPath, context.ProductVersion, jobId, timeout), cancellation).ConfigureAwait(false);
-            return all.Succeeded ? ToolOutcome.From(all) : StillRunningOrRefused(all.Refusal!, jobId, measureId);
+                context.ProjectPath, context.ProductVersion, jobId, timeout), cancellation, context.StartRunner)
+                .ConfigureAwait(false);
+            return all.Succeeded ? ToolOutcome.From(all) : StillRunningOrRefused(context, all.Refusal!, jobId, measureId);
         }
         var waited = await ParsimonyCommands.WaitAsync(new WaitForParsimonyReportRequest(
-            context.ProjectPath, context.ProductVersion, jobId, timeout), cancellation).ConfigureAwait(false);
-        return waited.Succeeded ? ToolOutcome.From(waited) : StillRunningOrRefused(waited.Refusal!, jobId, measureId);
+            context.ProjectPath, context.ProductVersion, jobId, timeout), cancellation, context.StartRunner)
+                .ConfigureAwait(false);
+        return waited.Succeeded ? ToolOutcome.From(waited) : StillRunningOrRefused(context, waited.Refusal!, jobId, measureId);
     }
 
-    private static ToolOutcome StillRunningOrRefused(Refusal refusal, string jobId, string measureId) =>
-        refusal.Code == "job.wait-timeout"
-            ? ToolOutcome.Ok(new JsonObject
-            {
-                ["status"] = "running",
-                ["jobId"] = jobId,
-                ["measureId"] = measureId,
-            }, "Repeat this tool with the same measure_id and the returned job id to read the Report.", jobId)
-            : ToolOutcome.Refused(refusal);
+    private static ToolOutcome StillRunningOrRefused(ServerContext context, Refusal refusal, string jobId,
+        string measureId)
+    {
+        if (refusal.Code != "job.wait-timeout") return ToolOutcome.Refused(refusal);
+        var running = new JsonObject
+        {
+            ["status"] = "running",
+            ["jobId"] = jobId,
+            ["measureId"] = measureId,
+        };
+        if (context.RunnerWarning is { } warning) running["runnerWarning"] = warning;
+        return ToolOutcome.Ok(running, context.RunnerWarning is null
+            ? "Repeat this tool with the same measure_id and the returned job id to read the Report."
+            : "No runner could start, so this job will not progress: fix the runnerWarning, then repeat this tool with the same measure_id and job id.", jobId);
+    }
 
     private static Task<ToolOutcome> ReadView(ServerContext context, ToolArgs args, CancellationToken cancellation)
     {

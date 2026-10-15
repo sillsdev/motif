@@ -55,7 +55,8 @@ public sealed partial class CommandClient
         WaitForJobRequest request, IProgress<SIL.Motif.Contract.Jobs.JobStatusResponse>? progress,
         CancellationToken cancellationToken) =>
         JobWait.WaitAsync(request.FwDataPath, request.JobId, progress, cancellationToken,
-            request.Timeout == Timeout.InfiniteTimeSpan ? null : request.Timeout, request.ProductVersion);
+            request.Timeout == Timeout.InfiniteTimeSpan ? null : request.Timeout, request.ProductVersion,
+            wakeRunner: () => _options.RunnerLauncher.Start(request.FwDataPath));
 
     public Task<CommandOutcome<TimingResponse>> TimingAsync(
         TimingRequest request, CancellationToken cancellationToken) =>

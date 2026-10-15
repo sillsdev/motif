@@ -99,7 +99,7 @@ public sealed class ProcessRunnerLauncherTests(PristineProjectFixture pristine)
     }
 
     [Fact]
-    public void AConfiguredRunnerThatDoesNotExistIsNotStarted()
+    public void AConfiguredRunnerThatDoesNotExistIsNotStartedAndSaysSo()
     {
         var root = Path.Combine(Path.GetTempPath(), "motif-missing-runner-" + Guid.NewGuid().ToString("N"));
         var launcher = new ProcessRunnerLauncher(IsolatedRunner.Options(root) with
@@ -111,7 +111,8 @@ public sealed class ProcessRunnerLauncherTests(PristineProjectFixture pristine)
 
         launcher.Start(Path.Combine(root, "project.fwdata"), warnings.Add);
 
-        Assert.Empty(warnings);
+        var warning = Assert.Single(warnings);
+        Assert.Contains("does not exist", warning, StringComparison.Ordinal);
         Assert.False(Directory.Exists(root));
     }
 

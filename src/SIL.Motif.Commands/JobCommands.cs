@@ -245,10 +245,10 @@ public static class JobCommands
     /// </summary>
     public static CommandOutcome<DryRunProjection> WaitForDryRun(
         WaitForDryRunRequest request, CancellationToken cancellationToken = default,
-        bool cancelOnTimeout = false)
+        bool cancelOnTimeout = false, Action? wakeRunner = null)
     {
         var waited = JobWait.WaitAsync(request.FwDataPath, request.JobId, null, cancellationToken,
-            request.Timeout, request.ProductVersion, cancelOnTimeout).GetAwaiter().GetResult();
+            request.Timeout, request.ProductVersion, cancelOnTimeout, wakeRunner).GetAwaiter().GetResult();
         if (!waited.Succeeded) return CommandOutcome<DryRunProjection>.Refused(waited.Refusal!);
 
         return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
@@ -303,9 +303,9 @@ public static class JobCommands
     /// does — used by verbs, such as <c>trial</c>, whose completion has no Dry-Run-specific anchor to
     /// bind and so needs no projection of its own beyond the job's own terminal status.
     /// </summary>
-    public static CommandOutcome<JobStatusResponse> WaitForJob(WaitForJobRequest request) =>
+    public static CommandOutcome<JobStatusResponse> WaitForJob(WaitForJobRequest request, Action? wakeRunner = null) =>
         JobWait.WaitAsync(request.FwDataPath, request.JobId, null, CancellationToken.None,
-            request.Timeout, request.ProductVersion).GetAwaiter().GetResult();
+            request.Timeout, request.ProductVersion, wakeRunner: wakeRunner).GetAwaiter().GetResult();
 
     /// <summary>Reports what the durable store currently says about one job.</summary>
     public static CommandOutcome<JobStatusResponse> Show(ShowJobRequest request)

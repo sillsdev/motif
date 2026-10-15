@@ -240,10 +240,11 @@ public static class PendingChangesWorkflow
     {
         var queued = JobCommands.EnqueueDryRun(new EnqueueDryRunRequest(projectPath, version, proposalId));
         if (!queued.Succeeded) return queued.Refusal!;
-        (runnerLauncher ?? ProcessRunnerLauncher.FromEnvironment()).Start(projectPath);
+        var launcher = runnerLauncher ?? ProcessRunnerLauncher.FromEnvironment();
+        launcher.Start(projectPath);
         var dryRun = JobCommands.WaitForDryRun(new WaitForDryRunRequest(projectPath, version, proposalId,
             queued.Value!.JobId, dryRunTimeout ?? JobCommands.DefaultWaitTimeout), cancellationToken,
-            cancelOnTimeout: true);
+            cancelOnTimeout: true, wakeRunner: () => launcher.Start(projectPath));
         return dryRun.Succeeded ? null : dryRun.Refusal!;
     }
 
@@ -329,7 +330,8 @@ public static class PendingChangesWorkflow
             return RefuseMeasure("trial.changes-changed", "The changes changed. Reload them before measuring.");
         if (!queued.Succeeded) return CommandOutcome<MeasurePendingResult>.Refused(queued.Refusal!);
         var jobId = queued.Value!.JobId;
-        (runnerLauncher ?? ProcessRunnerLauncher.FromEnvironment()).Start(request.ProjectPath);
+        var launcher = runnerLauncher ?? ProcessRunnerLauncher.FromEnvironment();
+        launcher.Start(request.ProjectPath);
 
         MeasureProgress? lastProgress = null;
         var jobProgress = new JobStatusProgress(status =>
@@ -344,7 +346,7 @@ public static class PendingChangesWorkflow
         });
         var waited = await JobWait.WaitAsync(
             request.ProjectPath, jobId, jobProgress, cancellationToken, waitTimeout, version,
-            cancelOnTimeout: true)
+            cancelOnTimeout: true, wakeRunner: () => launcher.Start(request.ProjectPath))
             .ConfigureAwait(false);
         if (!waited.Succeeded) return CommandOutcome<MeasurePendingResult>.Refused(waited.Refusal!);
         if (waited.Value!.Status != JobStatus.Completed)

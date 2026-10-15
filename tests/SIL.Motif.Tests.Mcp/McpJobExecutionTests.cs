@@ -46,6 +46,24 @@ public sealed class McpJobExecutionTests(PristineProjectFixture pristine)
             "The first root's runner exited before the MCP Dry Run completed.");
     }
 
+    [Fact]
+    public async Task ADryRunWhoseRunnerCannotStartSaysSoInsteadOfWaitingForever()
+    {
+        using var project = await CreateKnownProjectAsync(pristine);
+        var missing = Path.Combine(project.ManagedRoot, "absent", "SIL.Motif.Worker");
+        await using var session = await McpProcessSession.StartAsync(project.ManagedRoot, missing);
+
+        var proposal = await session.CallAsync("motif_start_proposal", project.FwDataPath,
+            ("draft", "empty-draft"), ("label", "Check an empty Draft"), ("comment", "No operations are expected."));
+        var proposalId = proposal.GetProperty("result").GetProperty("proposalId").GetString()!;
+        var dryRun = await session.CallAsync("motif_dry_run", project.FwDataPath,
+            ("proposal", proposalId), ("wait_seconds", 1));
+
+        var result = dryRun.GetProperty("result");
+        Assert.Equal("running", result.GetProperty("status").GetString());
+        Assert.Contains("does not exist", result.GetProperty("runnerWarning").GetString(), StringComparison.Ordinal);
+    }
+
     private static Task<WalkthroughProject> CreateKnownProjectAsync(PristineProjectFixture pristine)
     {
         var project = new WalkthroughProject(pristine);

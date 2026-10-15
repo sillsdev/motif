@@ -13,6 +13,9 @@ public static class JobWait
 {
     private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(200);
 
+    /// <summary>How long a job may sit Queued before a wait wakes the runner again.</summary>
+    public static readonly TimeSpan DefaultRewakeAfter = TimeSpan.FromSeconds(5);
+
     /// <summary>Polls a job until it finishes, the timeout elapses, or the caller cancels.</summary>
     /// <param name="projectPath">The FieldWorks project that owns the job.</param>
     /// <param name="jobId">The durable job identity to wait for.</param>
@@ -21,6 +24,11 @@ public static class JobWait
     /// <param name="timeout">The maximum wait, or <see langword="null"/> for no deadline.</param>
     /// <param name="productVersion">The version used to validate the project's store.</param>
     /// <param name="cancelOnTimeout">Requests cancellation if the wait deadline expires.</param>
+    /// <param name="wakeRunner">
+    /// Starts a runner again while the job is still Queued, which a runner that exited, never started or lost
+    /// its ownership leaves unclaimed. Called at most once per <paramref name="rewakeAfter"/>.
+    /// </param>
+    /// <param name="rewakeAfter">The queued time before the first wake and between wakes; five seconds when unset.</param>
     public static async Task<CommandOutcome<JobStatusResponse>> WaitAsync(
         string projectPath,
         string jobId,
@@ -28,9 +36,13 @@ public static class JobWait
         CancellationToken cancellationToken,
         TimeSpan? timeout,
         string? productVersion = null,
-        bool cancelOnTimeout = false)
+        bool cancelOnTimeout = false,
+        Action? wakeRunner = null,
+        TimeSpan? rewakeAfter = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(projectPath);
+        var rewake = rewakeAfter ?? DefaultRewakeAfter;
+        var lastWake = DateTimeOffset.UtcNow;
         ArgumentException.ThrowIfNullOrWhiteSpace(jobId);
 
         var version = productVersion ?? MotifProductVersion.CurrentText;
@@ -49,6 +61,12 @@ public static class JobWait
                 return CommandOutcome<JobStatusResponse>.Success(value);
             if (cancellationToken.IsCancellationRequested)
                 return await CancelAndRefuseAsync(projectPath, jobId, version, progress).ConfigureAwait(false);
+            if (wakeRunner is not null && value.Status == JobStatus.Queued &&
+                DateTimeOffset.UtcNow - lastWake >= rewake)
+            {
+                lastWake = DateTimeOffset.UtcNow;
+                wakeRunner();
+            }
             if (deadline is { } due && DateTimeOffset.UtcNow >= due)
             {
                 return await WaitTimeoutAsync(projectPath, jobId, version, value, timeout!.Value,
@@ -121,8 +139,20 @@ public static class JobWait
         var message = "Timed out after " + timeout + " waiting for job '" + jobId + "' to finish; ";
         var checkAgain = "Check again with 'jobs show " + jobId + " --project <fwdata>'.";
         AddObservedStage(status, facts);
+        var unclaimed = false;
         if (!cancelOnTimeout)
         {
+            // A runner may claim the job between the last poll and now, so the verdict reads the store again.
+            var latest = status.Status == JobStatus.Queued
+                ? await Task.Run(() => JobCommands.Show(new ShowJobRequest(projectPath, jobId, productVersion)))
+                    .ConfigureAwait(false)
+                : null;
+            if (latest is { Succeeded: true, Value.Status: { } fresh })
+            {
+                status = latest.Value!;
+                statusText = JobStatusJson.ToWire(fresh);
+            }
+            unclaimed = status.Status == JobStatus.Queued;
             message += "it was " + statusText + ". " + checkAgain;
         }
         else
@@ -135,12 +165,19 @@ public static class JobWait
             facts["jobCancelled"] = cancellation.Succeeded ? "true" : "false";
             var cancelledStatus = cancellation.Succeeded ? cancellation.Value!.Status : null;
             if (cancelledStatus is { } known) facts["jobStatus"] = JobStatusJson.ToWire(known);
+            // Only a Queued job cancels straight to Cancelled; a job a runner just claimed stays Running.
+            unclaimed = status.Status == JobStatus.Queued && cancelledStatus == JobStatus.Cancelled;
             message += !cancellation.Succeeded
                 ? "cancellation was refused, so the job keeps running. " + checkAgain
                 : cancelledStatus == JobStatus.Cancelled
                     ? "Motif cancelled the job."
                     : "Motif requested cancellation of the job.";
         }
+        if (unclaimed) facts["unclaimed"] = "true";
+        if (unclaimed)
+            message += " No runner has claimed it: the background runner may not have started, may have exited, " +
+                "or an existing runner may not be sweeping this project. Start `SIL.Motif.Worker`, or run a " +
+                "command that queues work, to wake one.";
         if (status.StageProgress is { } stage)
             message += " The last observed stage was '" + stage.Stage + "'" +
                 (string.IsNullOrWhiteSpace(stage.Detail) ? "." : " (" + stage.Detail + ").");

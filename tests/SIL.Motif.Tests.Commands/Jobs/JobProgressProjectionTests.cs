@@ -159,7 +159,113 @@ public sealed class JobProgressProjectionTests(PristineProjectFixture pristine)
         Assert.Null(shown.Value.StageProgress);
     }
 
-    private string CreateRunningTrial(out string fwDataPath)
+    [Fact]
+    public async Task AWaitOnAQueuedJobWakesTheRunnerAndTheTimeoutSaysNoRunnerClaimedIt()
+    {
+        var jobId = CreateRunningTrial(out var fwDataPath, leaveQueued: true);
+        var wakes = 0;
+
+        var waited = await JobWait.WaitAsync(fwDataPath, jobId, null, CancellationToken.None,
+            TimeSpan.FromMilliseconds(500), MotifProductVersion.CurrentText,
+            wakeRunner: () => wakes++, rewakeAfter: TimeSpan.Zero);
+
+        Assert.Equal("job.wait-timeout", waited.Refusal?.Code);
+        Assert.True(wakes >= 1, "A queued job's wait never woke a runner.");
+        Assert.Equal("true", waited.Refusal!.Facts!["unclaimed"]);
+        Assert.Contains("No runner has claimed it", waited.Refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task AWaitOnAClaimedJobDoesNotWakeAnotherRunner()
+    {
+        var jobId = CreateRunningTrial(out var fwDataPath);
+        var wakes = 0;
+
+        var waited = await JobWait.WaitAsync(fwDataPath, jobId, null, CancellationToken.None,
+            TimeSpan.FromMilliseconds(500), MotifProductVersion.CurrentText,
+            wakeRunner: () => wakes++, rewakeAfter: TimeSpan.Zero);
+
+        Assert.Equal("job.wait-timeout", waited.Refusal?.Code);
+        Assert.Equal(0, wakes);
+        Assert.False(waited.Refusal!.Facts!.ContainsKey("unclaimed"));
+    }
+
+    [Fact]
+    public async Task WakesAreRateLimitedToOnePerInterval()
+    {
+        var jobId = CreateRunningTrial(out var fwDataPath, leaveQueued: true);
+        var wakes = 0;
+
+        await JobWait.WaitAsync(fwDataPath, jobId, null, CancellationToken.None, TimeSpan.FromMilliseconds(2500),
+            MotifProductVersion.CurrentText, wakeRunner: () => wakes++, rewakeAfter: TimeSpan.FromSeconds(1));
+
+        Assert.InRange(wakes, 1, 3);
+    }
+
+    [Fact]
+    public async Task CancellingDuringAWakeCancelsTheWaitAndTheJob()
+    {
+        var jobId = CreateRunningTrial(out var fwDataPath, leaveQueued: true);
+        using var source = new CancellationTokenSource();
+
+        var waited = await JobWait.WaitAsync(fwDataPath, jobId, null, source.Token, TimeSpan.FromSeconds(30),
+            MotifProductVersion.CurrentText, wakeRunner: source.Cancel, rewakeAfter: TimeSpan.Zero);
+
+        Assert.Equal("job.wait-cancelled", waited.Refusal?.Code);
+        var shown = JobCommands.Show(new ShowJobRequest(fwDataPath, jobId, MotifProductVersion.CurrentText));
+        Assert.Equal(JobStatus.Cancelled, shown.Value!.Status);
+    }
+
+    [Fact]
+    public async Task AJobAClaimedDuringTheWaitIsNotReportedAsUnclaimed()
+    {
+        var jobId = CreateRunningTrial(out var fwDataPath, leaveQueued: true);
+
+        var waited = await JobWait.WaitAsync(fwDataPath, jobId, null, CancellationToken.None,
+            TimeSpan.FromMilliseconds(600), MotifProductVersion.CurrentText,
+            wakeRunner: () => Claim(fwDataPath, jobId), rewakeAfter: TimeSpan.Zero);
+
+        Assert.Equal("job.wait-timeout", waited.Refusal?.Code);
+        Assert.False(waited.Refusal!.Facts!.ContainsKey("unclaimed"));
+        Assert.DoesNotContain("No runner has claimed it", waited.Refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ACancelledQueuedJobIsStillReportedAsUnclaimed()
+    {
+        var jobId = CreateRunningTrial(out var fwDataPath, leaveQueued: true);
+
+        var waited = await JobWait.WaitAsync(fwDataPath, jobId, null, CancellationToken.None,
+            TimeSpan.Zero, MotifProductVersion.CurrentText, cancelOnTimeout: true);
+
+        Assert.Equal("true", waited.Refusal!.Facts!["unclaimed"]);
+    }
+
+    [Fact]
+    public void RunnerWarningsForwardEachDistinctMessageOnce()
+    {
+        var seen = new List<string>();
+        var once = RunnerWarnings.Once(seen.Add)!;
+
+        once("a");
+        once("a");
+        once("b");
+
+        Assert.Equal(["a", "b"], seen);
+    }
+
+    private static void Claim(string fwDataPath, string jobId)
+    {
+        var project = ProjectStoreCommand.Locate(fwDataPath);
+        var catalog = new ProjectDatabaseCatalog(MotifSchema.CurrentSchema,
+            MotifProductVersion.CompatibilityVersion(MotifProductVersion.CurrentText));
+        using var database = catalog.OpenOwned(project);
+        var jobs = new JobRepository(database);
+        var queued = jobs.Get(jobId)!;
+        if (queued.Status == JobStatus.Queued) jobs.Transition(queued, JobStatus.Running);
+    }
+
+    private string CreateRunningTrial(out string fwDataPath, bool leaveQueued = false)
     {
         fwDataPath = pristine.CopyProjectFile();
         var project = ProjectStoreCommand.Locate(fwDataPath);
@@ -181,6 +287,7 @@ public sealed class JobProgressProjectionTests(PristineProjectFixture pristine)
         Assert.True(enqueued.Succeeded, enqueued.Refusal?.Message);
         var jobId = enqueued.Value!.JobId;
 
+        if (leaveQueued) return jobId;
         using (var database = catalog.OpenOwned(project))
         {
             var jobs = new JobRepository(database);

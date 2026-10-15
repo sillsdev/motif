@@ -17,13 +17,13 @@ namespace SIL.Motif.Commands;
 /// No protocol exists between this and the runner it starts (ADR 0041 decision 5): the two rendezvous
 /// through nothing but the named ownership mutex the runner already guards itself with, so spawning is
 /// unconditional — an already-alive runner makes this a no-op, and keeps its own settings — and
-/// best-effort: a runner that fails to start leaves the row queued for the next enqueue to wake instead of
-/// failing the one that just queued it. Every runner setting in <see cref="Options"/> travels as a launch
+/// best-effort: a runner that cannot start leaves the row queued for the next enqueue to wake instead of
+/// failing the one that just queued it, and says why through the warning callback. Every runner setting in <see cref="Options"/> travels as a launch
 /// argument, pinned by `EveryRunnerSettingTravelsAsALaunchArgumentAndTheExecutableDoesNot`. The runner prefers
 /// an argument over its environment, pinned by `ExplicitArgumentsSelectTheRootParserNamespaceIdleAndLease`.
 /// <see cref="JobRunnerLaunchOptions.WorkerExecutable"/> is not a runner setting: it chooses the executable
-/// to start, and a configured one that does not exist starts nothing, pinned by
-/// `AConfiguredRunnerThatDoesNotExistIsNotStarted`.
+/// to start, and a configured one that does not exist starts nothing and warns, pinned by
+/// `AConfiguredRunnerThatDoesNotExistIsNotStartedAndSaysSo`.
 /// </remarks>
 public sealed class ProcessRunnerLauncher : IJobRunnerLauncher
 {
@@ -72,7 +72,14 @@ public sealed class ProcessRunnerLauncher : IJobRunnerLauncher
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(projectPath);
         var executable = Locate(Options.WorkerExecutable);
-        if (executable is null) return;
+        if (executable is null)
+        {
+            reportWarning?.Invoke("warning: no background runner was started: " + (Options.WorkerExecutable is { } named
+                ? $"the configured runner '{named}' does not exist"
+                : $"SIL.Motif.Worker was not found beside '{AppContext.BaseDirectory}'") +
+                ". Queued work stays queued until a runner starts; run `SIL.Motif.Worker` by hand or reinstall Motif.");
+            return;
+        }
 
         try
         {
@@ -92,7 +99,12 @@ public sealed class ProcessRunnerLauncher : IJobRunnerLauncher
             start.ArgumentList.Add(WorkerRunnerOptions.WakeProjectArgument);
             start.ArgumentList.Add(projectPath);
             var process = Process.Start(start);
-            if (process is null) return;
+            if (process is null)
+            {
+                reportWarning?.Invoke("warning: could not start the background runner (the operating system " +
+                    "returned no process). Queued work will run once one is started.");
+                return;
+            }
             if (isWindows)
                 process.Dispose();
             else

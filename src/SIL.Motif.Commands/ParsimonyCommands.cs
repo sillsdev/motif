@@ -267,11 +267,11 @@ public static class ParsimonyCommands
 
     /// <summary>Waits for candidate evidence; cancelling the token cancels the job and ends the wait.</summary>
     public static CommandOutcome<ParsimonyCandidateEvidenceResponse> WaitCandidate(
-        WaitForParsimonyCandidateRequest request, CancellationToken cancellation)
+        WaitForParsimonyCandidateRequest request, CancellationToken cancellation, Action? wakeRunner = null)
     {
         ArgumentNullException.ThrowIfNull(request);
         var waited = JobWait.WaitAsync(request.FwDataPath, request.JobId, null, cancellation,
-            request.Timeout, request.ProductVersion).GetAwaiter().GetResult();
+            request.Timeout, request.ProductVersion, wakeRunner: wakeRunner).GetAwaiter().GetResult();
         if (!waited.Succeeded) return CommandOutcome<ParsimonyCandidateEvidenceResponse>.Refused(waited.Refusal!);
         if (waited.Value!.Status != JobStatus.Completed)
         {
@@ -312,15 +312,16 @@ public static class ParsimonyCommands
 
     /// <summary>Waits for one report job; cancelling the token cancels the job and ends the wait.</summary>
     public static CommandOutcome<ParsimonyReportResponse> Wait(WaitForParsimonyReportRequest request,
-        CancellationToken cancellation) => WaitAsync(request, cancellation).GetAwaiter().GetResult();
+        CancellationToken cancellation, Action? wakeRunner = null) =>
+        WaitAsync(request, cancellation, wakeRunner).GetAwaiter().GetResult();
 
     /// <summary>Waits for one report job without holding a thread; cancelling the token cancels the job.</summary>
     public static async Task<CommandOutcome<ParsimonyReportResponse>> WaitAsync(
-        WaitForParsimonyReportRequest request, CancellationToken cancellation)
+        WaitForParsimonyReportRequest request, CancellationToken cancellation, Action? wakeRunner = null)
     {
         ArgumentNullException.ThrowIfNull(request);
         var waited = await JobWait.WaitAsync(request.FwDataPath, request.JobId, null, cancellation,
-            request.Timeout, request.ProductVersion).ConfigureAwait(false);
+            request.Timeout, request.ProductVersion, wakeRunner: wakeRunner).ConfigureAwait(false);
         if (!waited.Succeeded) return CommandOutcome<ParsimonyReportResponse>.Refused(waited.Refusal!);
         if (waited.Value!.Status != JobStatus.Completed)
             return CommandOutcome<ParsimonyReportResponse>.Refused(JobFailed(request.FwDataPath,
@@ -340,15 +341,16 @@ public static class ParsimonyCommands
 
     /// <summary>Waits for an all-measures job and returns the Report it stored for each measure.</summary>
     public static CommandOutcome<ParsimonyReportSetResponse> WaitAll(WaitForParsimonyReportSetRequest request,
-        CancellationToken cancellation = default) => WaitAllAsync(request, cancellation).GetAwaiter().GetResult();
+        CancellationToken cancellation = default, Action? wakeRunner = null) =>
+        WaitAllAsync(request, cancellation, wakeRunner).GetAwaiter().GetResult();
 
     /// <summary>As <see cref="WaitAll"/> without holding a thread while the job runs.</summary>
     public static async Task<CommandOutcome<ParsimonyReportSetResponse>> WaitAllAsync(
-        WaitForParsimonyReportSetRequest request, CancellationToken cancellation)
+        WaitForParsimonyReportSetRequest request, CancellationToken cancellation, Action? wakeRunner = null)
     {
         ArgumentNullException.ThrowIfNull(request);
         var waited = await JobWait.WaitAsync(request.FwDataPath, request.JobId, null, cancellation,
-            request.Timeout, request.ProductVersion).ConfigureAwait(false);
+            request.Timeout, request.ProductVersion, wakeRunner: wakeRunner).ConfigureAwait(false);
         if (!waited.Succeeded) return CommandOutcome<ParsimonyReportSetResponse>.Refused(waited.Refusal!);
         if (waited.Value!.Status != JobStatus.Completed)
             return CommandOutcome<ParsimonyReportSetResponse>.Refused(JobFailed(request.FwDataPath,
