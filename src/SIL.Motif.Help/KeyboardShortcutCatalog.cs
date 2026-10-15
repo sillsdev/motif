@@ -136,7 +136,7 @@ public enum ShortcutScope
     ReviewChanges,
     /// <summary>The keyboard-navigable diagnostic tree.</summary>
     DiagnosticTree,
-    /// <summary>The Settings popup.</summary>
+    /// <summary>The Settings page.</summary>
     Settings,
     /// <summary>The Pages rail.</summary>
     NavigationRail,

@@ -632,7 +632,7 @@
       "code": "shortcut-focus-settings-groups",
       "slug": "shortcut-focus-settings-groups",
       "title": "Move focus to Settings groups",
-      "description": "Move focus from Close to the Settings groups.",
+      "description": "Move focus from Back to the Settings groups.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-focus-settings-groups/"
     },
@@ -1073,7 +1073,7 @@
       "code": "shortcut-scope-settings",
       "slug": "shortcut-scope-settings",
       "title": "Settings",
-      "description": "Available in the Settings popup.",
+      "description": "Available on the Settings page.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-scope-settings/"
     },
