@@ -300,7 +300,7 @@ public static partial class ProposalCommands
     }
 
     private static CommandOutcome<ComposedOperationsResponse> ComposeSoundSystem(string path, string version,
-        string draftName, string intentJson, DraftComposer composer) =>
+        string draftName, string intentJson, IComposerDefinition composer) =>
         ProjectStoreCommand.Run(path, version, (database, project) =>
         {
             try
@@ -339,19 +339,19 @@ public static partial class ProposalCommands
         Func<LcmCache, CanonicalId, (JsonElement Input, IReadOnlyList<OperationEnvelope> Operations)> Build,
         Action<IReadOnlyList<OperationEnvelope>, JsonElement, IReadOnlyList<OperationEnvelope>>? ValidateAppend = null,
         Func<JsonElement, OperationEnvelope, bool>? ReplacePrevious = null,
-        Func<LcmCache, JsonElement, IReadOnlyList<ComposedRelatedObject>>? RelatedObjects = null,
+        Func<LcmCache, JsonElement, IReadOnlyList<ComposedRelatedObject>?>? RelatedObjects = null,
         JsonElement? Authored = null,
         OperationCitation? Citation = null,
         string? Label = null,
-        DraftComposer? Definition = null,
+        IComposerDefinition? Definition = null,
         bool ResolvePlacementLabels = false)
     {
-        internal static ComposeStep From(DraftComposer composer, JsonElement authored,
+        internal static ComposeStep From(IComposerDefinition composer, JsonElement authored,
             OperationCitation? citation = null, string? label = null, bool resolvePlacementLabels = false) =>
             new(composer.Verb, composer.Composer,
-                (cache, proposalId) => (authored, composer.Build(cache, authored, proposalId)),
-                composer.ValidateAppend, composer.ReplacePrevious, composer.RelatedObjects, authored, citation,
-                label, composer, resolvePlacementLabels);
+                (cache, proposalId) => (authored, composer.Compose(cache, authored, proposalId, () => CanonicalId.Mint())),
+                composer.ValidateAppend, composer.CanReplacePrevious ? composer.ReplacePrevious : null,
+                composer.RelatedObjects, authored, citation, label, composer, resolvePlacementLabels);
     }
 
     private sealed class ComposeStepException(int index, Exception inner) : Exception(inner.Message, inner)
@@ -417,7 +417,7 @@ public static partial class ProposalCommands
                         {
                             input = ResolveRulePlacementLabels(authoredInput, availableLabels, declaredLabels,
                                 index);
-                            operations = definition.Build(cache, input, proposalId);
+                            operations = definition.Compose(cache, input, proposalId, () => CanonicalId.Mint());
                         }
                         else
                         {
@@ -584,9 +584,7 @@ public static partial class ProposalCommands
     }
 
     private static bool ReplacesTarget(JsonElement authored, OperationEnvelope operation, params string[] kinds) =>
-        authored.TryGetProperty("target", out var targetValue) && targetValue.ValueKind == JsonValueKind.String &&
-        CanonicalId.TryParse(targetValue.GetString(), out var target) && operation.Target == target &&
-        kinds.Contains(operation.Kind, StringComparer.Ordinal);
+        ReplacementRule.SameTarget(kinds).Matches(authored, operation);
 
     private static bool ReplacesComposerIntent(JsonElement provenance, string composer, string? target)
     {

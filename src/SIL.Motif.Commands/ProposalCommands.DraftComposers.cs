@@ -38,7 +38,7 @@ internal sealed record DraftComposer(
 public static partial class ProposalCommands
 {
     /// <summary>Every composer a Draft can be authored through by intent, keyed by its CLI verb.</summary>
-    internal static IReadOnlyDictionary<string, DraftComposer> DraftComposers { get; } = new DraftComposer[]
+    internal static IReadOnlyDictionary<string, IComposerDefinition> DraftComposers { get; } = new DraftComposer[]
     {
         new("compose-author-lexeme-form", "AuthorLexemeForm", (cache, input, _) =>
             AuthorLexemeFormComposer.Build(cache, AuthorLexemeFormIntentParser.Parse(input))),
@@ -149,5 +149,6 @@ public static partial class ProposalCommands
         new("compose-record-parsimony-disposition", "RecordParsimonyDisposition", (cache, input, proposalId) =>
             RecordParsimonyDispositionComposer.Build(cache, RecordParsimonyDispositionIntentParser.Parse(input),
                 proposalId)),
-    }.ToDictionary(composer => composer.Verb, StringComparer.Ordinal);
+    }.ToDictionary(composer => composer.Verb, IComposerDefinition (composer) => new LegacyComposerAdapter(composer),
+        StringComparer.Ordinal);
 }
