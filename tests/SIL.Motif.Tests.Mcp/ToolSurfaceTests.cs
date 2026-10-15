@@ -26,7 +26,7 @@ public sealed class ToolSurfaceTests
     {
         // Retirements take one intent_json document, so a batch has no property schema for them.
         var retirements = new[] { "retire-allomorph", "retire-redundant-zero-affix" };
-        // The default batch refuses a disposition on purpose; McpRoundTripTests pins that refusal.
+        // The default batch refuses a disposition on purpose, pinned by `McpRoundTripTests`.
         var disposition = "compose-record-parsimony-disposition";
         var notInBatch = retirements.Append(disposition);
         var agentEligible = CommandCatalog.All
