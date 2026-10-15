@@ -153,6 +153,16 @@ the owning collection's footprint and requires a fresh Dry Run; refreshing evide
 identity, owner, name and dependencies. Apply also refuses a Dry Run from another semantic projection version
 with an instruction to run a fresh Dry Run, before comparing its footprint or writing anything.
 
+Wordforms are unowned in LibLCM too: the repository lists them and the model carries no owning field. A
+wordform is therefore created by `analysis/langProject/createWordforms`, which targets the project root and
+takes the closed payload `{ "ws": "<tag>", "text": "<form>" }`: one nonblank word without spaces, in NFD, in one
+writing system the project knows. Its effect records only the new wordform's membership and form
+(`ref` and `form:<ws>`), never the inventory. The create refuses a form that already exists in that writing system
+and names the existing wordform's identity so the caller reuses it; no match is ever inferred from similarity.
+It also refuses same-type identity reuse and wrong-type identity conflicts, accepts no placement and no
+storage-GUID override. Approving or disapproving an analysis and marking spelling use the existing analysis
+kinds on the created identity, and its Text occurrences remain out of scope.
+
 Dictionary entries are unowned in LibLCM: the lexicon lists them through a virtual `Entries` property the
 model does not carry as a field. `lexical/lexDb/createEntries` therefore targets the project's lexicon with
 the closed payload `{}`, and its effect records only the new entry's membership, never the whole entry list.

@@ -60,6 +60,9 @@ public static partial class SnapshotFields
     /// <summary>Whether one lexical entry exists in the lexicon; never the whole entry list.</summary>
     public const string LexDbEntries = "lexical/lexDb/entries";
 
+    /// <summary>Whether one wordform exists in the project and the form it was authored with; never the whole inventory.</summary>
+    public const string LangProjectWordforms = "analysis/langProject/wordforms";
+
     /// <summary>The ordered alternate forms owned by a lexical entry.</summary>
     public const string LexEntryAlternateForms = "lexical/lexEntry/alternateForms";
 

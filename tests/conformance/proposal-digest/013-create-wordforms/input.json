@@ -1,0 +1,29 @@
+{
+  "contractVersions": {
+    "analysis": "1.0"
+  },
+  "operations": [
+    {
+      "operationId": "agent_AAECAwQFBgcICQoLDA0ODw",
+      "kind": "analysis/langProject/createWordforms",
+      "target": "agent_AQIDBAUGBwgJCgsMDQ4PEA",
+      "entityId": "agent_AgMEBQYHCAkKCwwNDg8QEQ",
+      "after": {
+        "ws": "swh",
+        "text": "mutu"
+      }
+    },
+    {
+      "operationId": "agent_AwQFBgcICQoLDA0ODxAREg",
+      "kind": "analysis/langProject/createWordforms",
+      "target": "agent_AQIDBAUGBwgJCgsMDQ4PEA",
+      "entityId": "agent_BAUGBwgJCgsMDQ4PEBESEw",
+      "after": {
+        "ws": "swh",
+        "text": "sitá"
+      }
+    }
+  ],
+  "proposalId": "AAAAAAAAAAAAAAAAAAAAIA",
+  "requires": []
+}
