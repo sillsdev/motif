@@ -202,17 +202,41 @@ public sealed class ProposalDifferenceCommandsTests : IDisposable
         proposals.SetStatus(other, "rejected", null);
         var produced = ProposalDifferenceCommands.Produce(fixture.ProduceRequest()).Value!;
         var summary = produced.Summary with { DifferenceId = "difference/doomed", ProposalId = other.Value };
-        var facts = HumanAgreementDifferenceClassifier.Compare(null, null,
-            HumanAgreementClassifier.Compile([], CapturedSpellingStatus.Undecided));
+        var facts = Assert.Single(produced.Words, word => word.Word == "mutu").Facts;
+        Assert.NotEmpty(facts.Buckets);
         new ProposalDifferenceRepository(fixture.Database).Publish(new NewProposalDifference(summary,
             [new NewProposalDifferenceWord("w", facts, [new ProposalDifferenceOccurrence("t", "s", 0, 1)])]));
         Assert.Equal(1, fixture.Count("ProposalDifferenceOccurrences", "difference/doomed"));
 
+
+        Assert.True(fixture.Count("ProposalDifferenceBuckets", "difference/doomed") > 0);
         proposals.DeleteArchived(other);
 
-        foreach (var table in new[] { "ProposalDifferences", "ProposalDifferenceCases", "ProposalDifferenceOccurrences" })
+        foreach (var table in new[] { "ProposalDifferences", "ProposalDifferenceCases", "ProposalDifferenceOccurrences", "ProposalDifferenceBuckets" })
             Assert.Equal(0, fixture.Count(table, "difference/doomed"));
         Assert.Equal(2, fixture.Count("ProposalDifferenceCases", produced.Summary.DifferenceId));
+    }
+
+    [Fact]
+    public void TwoDifferentParsesOfOneFormInAnAssessmentAreRefusedRatherThanPickedAtRandom()
+    {
+        using var fixture = new Fixture(_root, duplicateBefore: true);
+
+        var outcome = ProposalDifferenceCommands.Produce(fixture.ProduceRequest());
+
+        Assert.Equal("difference.duplicate-parse-rows", outcome.Refusal!.Code);
+    }
+
+    [Theory]
+    [InlineData("no-opinion")]
+    [InlineData("Approved")]
+    public void AnOpinionOutsideTheCapturedVocabularyIsATypedRefusalNotAThrowFromTheClassifier(string opinion)
+    {
+        var refusal = Assert.Throws<ProposalDifferenceCommands.DifferenceRefusalException>(
+            () => ProposalDifferenceCommands.GradeOf(opinion));
+
+        Assert.Equal("difference.unexpected-opinion", refusal.Refusal.Code);
+        Assert.Equal(ReadingGrade.Candidate, ProposalDifferenceCommands.GradeOf("unknown"));
     }
 
     [Fact]
@@ -239,9 +263,11 @@ public sealed class ProposalDifferenceCommandsTests : IDisposable
         private readonly string _tokenJson;
         private readonly bool _beforeOmitsSita;
         private readonly bool _ambiguousMutu;
+        private readonly bool _duplicateBefore;
 
-        public Fixture(string testRoot, bool beforeOmitsSita = false, bool ambiguousMutu = false)
+        public Fixture(string testRoot, bool beforeOmitsSita = false, bool ambiguousMutu = false, bool duplicateBefore = false)
         {
+            _duplicateBefore = duplicateBefore;
             _beforeOmitsSita = beforeOmitsSita;
             _ambiguousMutu = ambiguousMutu;
             _dir = System.IO.Path.Combine(testRoot, Guid.NewGuid().ToString("N"));
@@ -359,6 +385,7 @@ public sealed class ProposalDifferenceCommandsTests : IDisposable
             params AssessedWord[] words)
         {
             if (_beforeOmitsSita && id == "before") words = words.Where(word => word.Word != "sita").ToArray();
+            if (_duplicateBefore && id == "before") words = [.. words, Word("sita", 5, Reading(FormA))];
             assessments.Record(new NewAssessmentRecord(id, proposal, digest, "pangloss", AssessmentKinds.ParseTime, "{}",
                 "sha256:scope", "whitespace", "1", _tokenJson, Selection.Create("Default", ["sita", "mutu"]),
                 "sha256:outcome", "sha256:semantic", "sha256:grammar", "fingerprint", "pipeline", 0, words,

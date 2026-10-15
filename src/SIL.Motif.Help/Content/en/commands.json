@@ -429,6 +429,16 @@
     "description": "Reads phonemes, natural classes, environments, parts of speech, inflection features or lexical entries from the current Baseline. Use an exact canonical id or a name query, and page through larger lists.",
     "source": "Authored from the typed grammar read contract."
   },
+  "difference produce": {
+    "title": "Compare a Trial with decisions",
+    "description": "Compares a completed Trial's parses with the approved, disapproved and misspelled decisions FieldWorks records for one Text, and saves the result. It reads stored evidence, runs no parser and never blocks an Apply.",
+    "source": "Authored from the Proposal Difference contract."
+  },
+  "difference show": {
+    "title": "Read a saved comparison",
+    "description": "Reads a saved comparison of a Trial with FieldWorks' recorded decisions: totals, a before and after table and a page of changed words. Filter to words that could be bad, to one category, or to one approval state.",
+    "source": "Authored from the Proposal Difference contract."
+  },
   "motif_activity": {
     "title": "Read agent activity",
     "description": "Reads calls, Proposals and jobs from this conversation and the selected project.",

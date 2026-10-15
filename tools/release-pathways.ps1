@@ -273,6 +273,12 @@ try {
         'The authored phoneme is checked before finalizing.'))
     [void] (Invoke-CliJson @('dry-run', '--project', $first.ProjectPath, $authoringProposalId, '--wait'))
     [void] (Invoke-CliJson @('trial', '--project', $first.ProjectPath, $authoringProposalId, '--wait'))
+    $noDifference = Invoke-Process -Executable $script:CliPath -Arguments @('difference', 'show',
+        '--project', $first.ProjectPath, '--proposal', $authoringProposalId, '--json') -AllowFailure
+    $noDifferenceFailure = $noDifference.Error | ConvertFrom-Json
+    if ($noDifference.ExitCode -eq 0 -or $noDifference.Output -or $noDifferenceFailure.code -ne 'difference.none') {
+        throw 'The installed difference show did not report that no comparison is saved yet.'
+    }
     [void] (Invoke-CliJson @('finalize', '--project', $first.ProjectPath, '--draft', $authoringDraft))
     $authoringApply = Invoke-CliJson @('apply', $authoringProposalId, '--project', $first.ProjectPath)
     if (-not $authoringApply.ok -or -not $authoringApply.applied -or

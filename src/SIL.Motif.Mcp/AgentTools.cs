@@ -914,7 +914,38 @@ internal static class AgentTools
                 ("offset", Schema.Integer("Rows to skip.", 0, 1000000), false),
                 ("limit", Schema.Integer("Page size, maximum 200.", 1, 200), false)), true, true, true, false, true,
             (c, a, ct) => Task.FromResult(TrialResults.Read(c, a))),
+        new("motif_proposal_difference", string.Empty, AgentClass.Read,
+            Schema.Object(("proposal", Schema.String("Proposal whose newest saved Difference to read."), false),
+                ("difference", Schema.String("Saved Difference id; takes precedence over proposal."), false),
+                ("could_be_bad", Schema.Boolean("List only words filed under a could-be-bad category."), false),
+                ("bucket", Schema.String("Category code that listed words must have.",
+                    Enum.GetValues<SIL.Motif.Contract.Responses.ProposalDifferenceBucket>()
+                        .Select(SIL.Motif.Worker.Store.ProposalDifferenceRepository.BucketName).ToArray()), false),
+                ("before_state", Schema.String("Approval state a listed word had before the Proposal.", ApprovalStates), false),
+                ("after_state", Schema.String("Approval state a listed word has after the Proposal.", ApprovalStates), false),
+                ("offset", Schema.Integer("Words to skip.", 0, 1000000), false),
+                ("limit", Schema.Integer("Page size, maximum 200.", 1, 200), false)), true, true, true, false, true,
+            (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalDifferenceCommands.Show(new ProposalDifferenceShowRequest(
+                c.ProjectPath, a.Optional("proposal"), a.Optional("difference"), a.Flag("could_be_bad"), a.Optional("bucket"),
+                a.Optional("before_state"), a.Optional("after_state"), a.Int("offset", 0), a.Int("limit", 25))))))
+            { Requests = [typeof(ProposalDifferenceShowRequest)] },
+        new("motif_difference_produce", string.Empty, AgentClass.Evaluate,
+            Schema.Object(("proposal", Schema.String("Proposal whose completed Trial is compared."), true),
+                ("text", Schema.String("GUID of the Text whose recorded human decisions are compared."), true),
+                ("job", Schema.String("Completed Trial job id; omit for the newest completed Trial."), false)),
+            false, false, true, false, true,
+            (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalDifferenceCommands.Produce(
+                new ProposalDifferenceProduceRequest(c.ProjectPath, a.Required("proposal"), a.Required("text"),
+                    a.Optional("job"))))))
+            { Requests = [typeof(ProposalDifferenceProduceRequest)] },
         ..ParsimonyTools.All,
+    ];
+
+    private static string[] ApprovalStates =>
+    [
+        .. Enum.GetValues<SIL.Motif.Contract.Responses.HumanAgreementApprovalState>()
+            .Select(SIL.Motif.Worker.Store.ProposalDifferenceRepository.ApprovalStateName),
+        "unavailable",
     ];
 
     private static JsonObject RuleComposerSchema()

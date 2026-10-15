@@ -176,7 +176,7 @@ public static class ProposalDifferenceCommands
         return byForm;
     }
 
-    private sealed class DifferenceRefusalException(Refusal refusal) : Exception(refusal.Message)
+    internal sealed class DifferenceRefusalException(Refusal refusal) : Exception(refusal.Message)
     {
         public Refusal Refusal { get; } = refusal;
     }
@@ -239,7 +239,7 @@ public static class ProposalDifferenceCommands
             matrix, DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture));
     }
 
-    private static string GradeOf(string opinion) => opinion switch
+    internal static string GradeOf(string opinion) => opinion switch
     {
         "approved" => ReadingGrade.Approved,
         "disapproved" => ReadingGrade.Disapproved,

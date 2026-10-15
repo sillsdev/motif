@@ -3695,5 +3695,131 @@
     "readOnlyHint": true,
     "destructiveHint": false,
     "idempotentHint": true
+  },
+  {
+    "name": "motif_proposal_difference",
+    "description": "Read a saved comparison. Reads a saved comparison of a Trial with FieldWorks\u0027 recorded decisions: totals, a before and after table and a page of changed words. Filter to words that could be bad, to one category, or to one approval state.\nCommand: difference show. Agent class: Read.\nProposalId: The Proposal whose newest Difference is read; ignored when a Difference id is given.\nDifferenceId: The saved Difference to read.\nCouldBeBad: Whether to list only words filed under a could-be-bad category.\nBucket: The stable category code that listed words must belong to.\nBeforeState: The approval state a listed word had before the Proposal.\nAfterState: The approval state a listed word has after the Proposal.\nOffset: How many matching words to skip.\nLimit: How many matching words to return.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "proposal": {
+          "type": "string",
+          "description": "Proposal whose newest saved Difference to read."
+        },
+        "difference": {
+          "type": "string",
+          "description": "Saved Difference id; takes precedence over proposal."
+        },
+        "could_be_bad": {
+          "type": "boolean",
+          "description": "List only words filed under a could-be-bad category."
+        },
+        "bucket": {
+          "type": "string",
+          "description": "Category code that listed words must have.",
+          "enum": [
+            "delta.regression",
+            "delta.new-competing-parse",
+            "delta.overgeneration",
+            "delta.new-wrong-reading",
+            "delta.analysis-changed",
+            "delta.ambiguity-blowup",
+            "delta.lost-parse",
+            "delta.improved.approved-match",
+            "delta.improved.unique",
+            "delta.improved.negative-rejection"
+          ]
+        },
+        "before_state": {
+          "type": "string",
+          "description": "Approval state a listed word had before the Proposal.",
+          "enum": [
+            "no-parse",
+            "no-approved-match",
+            "approved-with-alternatives",
+            "approved-unique",
+            "no-approved-expectations",
+            "incomplete",
+            "unavailable",
+            "not-measured",
+            "conflicting-decisions",
+            "unavailable"
+          ]
+        },
+        "after_state": {
+          "type": "string",
+          "description": "Approval state a listed word has after the Proposal.",
+          "enum": [
+            "no-parse",
+            "no-approved-match",
+            "approved-with-alternatives",
+            "approved-unique",
+            "no-approved-expectations",
+            "incomplete",
+            "unavailable",
+            "not-measured",
+            "conflicting-decisions",
+            "unavailable"
+          ]
+        },
+        "offset": {
+          "type": "integer",
+          "description": "Words to skip.",
+          "minimum": 0,
+          "maximum": 1000000
+        },
+        "limit": {
+          "type": "integer",
+          "description": "Page size, maximum 200.",
+          "minimum": 1,
+          "maximum": 200
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "project"
+      ]
+    },
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true
+  },
+  {
+    "name": "motif_difference_produce",
+    "description": "Compare a Trial with decisions. Compares a completed Trial\u0027s parses with the approved, disapproved and misspelled decisions FieldWorks records for one Text, and saves the result. It reads stored evidence, runs no parser and never blocks an Apply.\nCommand: difference produce. Agent class: Evaluate.\nProposalId: The Proposal whose Trial is compared.\nTextId: The GUID of the Text whose words and human decisions are compared.\nJobId: The completed Trial job; omitted takes the Proposal\u0027s latest completed Trial.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "proposal": {
+          "type": "string",
+          "description": "Proposal whose completed Trial is compared."
+        },
+        "text": {
+          "type": "string",
+          "description": "GUID of the Text whose recorded human decisions are compared."
+        },
+        "job": {
+          "type": "string",
+          "description": "Completed Trial job id; omit for the newest completed Trial."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "proposal",
+        "text",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
   }
 ]
