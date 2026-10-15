@@ -1303,6 +1303,44 @@ public sealed class PanGlossInvokerTests : IDisposable
         Assert.IsType<PanGlossOutcome.Cancelled>(await run);
     }
 
+    [Fact]
+    public async Task AParserStoppedForMemoryIsAMemoryLimitOutcomeNotAGenericRefusal()
+    {
+        var source = Project("memory-limit");
+        var kill = new PanGlossMemoryKill(12UL * 1024 * 1024 * 1024, 13UL * 1024 * 1024 * 1024);
+        using var containment = new MemoryKilledJob(kill);
+
+        var outcome = await PanGlossInvoker.LaunchAsync(FakeParser.ExecutablePath,
+            new PanGlossRequest.Batch(source, ["motifa"], TimeSpan.FromSeconds(1)),
+            containment, TimeSpan.FromSeconds(10), CancellationToken.None);
+
+        var limit = Assert.IsType<PanGlossOutcome.MemoryLimit>(outcome);
+        Assert.Equal(kill, limit.Kill);
+        Assert.Contains("MOTIF_PARSER_MEMORY_LIMIT", limit.Message, StringComparison.Ordinal);
+    }
+
+    private sealed class MemoryKilledJob(PanGlossMemoryKill kill) : PanGlossContainmentJob(
+        new PanGlossContainmentReport(null, kill.LimitBytes, true, "none", "fake", "fake", []))
+    {
+        public override PanGlossChildProcess Start(System.Diagnostics.ProcessStartInfo startInfo) =>
+            new(new KilledChild(kill));
+
+        public override void Terminate(PanGlossChildProcess process) { }
+        public override void Dispose() { }
+    }
+
+    private sealed class KilledChild(PanGlossMemoryKill kill) : IPanGlossChildProcess
+    {
+        public int Id => 1;
+        public int ExitCode => 137;
+        public PanGlossMemoryKill? MemoryKill => kill;
+        public Task WaitForExitAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task<string> ReadStandardOutputAsync() => Task.FromResult(string.Empty);
+        public Task<string> ReadStandardErrorAsync() => Task.FromResult("killed");
+        public void KillProcessTree() { }
+        public void Dispose() { }
+    }
+
     private PanGlossInvoker Invoker() => new(FakeParser.ExecutablePath, NewQueue());
 
     private static void AppendBytes(string path, byte[] bytes)

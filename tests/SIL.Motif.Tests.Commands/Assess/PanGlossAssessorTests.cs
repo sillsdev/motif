@@ -372,6 +372,19 @@ public sealed class PanGlossAssessorTests : IDisposable
         Assert.Contains("no parser", refusal.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task AMemoryLimitOutcomeReachesTheCallerAsATypedKillNotMessageText()
+    {
+        var kill = new PanGlossMemoryKill(12UL * 1024 * 1024 * 1024, null);
+        var assessor = new PanGlossAssessor(_paths,
+            new FakeInvoker { Respond = _ => new PanGlossOutcome.MemoryLimit(kill) });
+
+        var refusal = await Assert.ThrowsAsync<AssessorUnavailableException>(() =>
+            assessor.ProduceAsync(Scope(), _candidate, CancellationToken.None));
+
+        Assert.Equal(kill, refusal.MemoryKill);
+    }
+
     private static AssessmentScope Scope(params AssessmentKind[] collect) =>
         new(["motifa"], collect.Length == 0 ? [AssessmentKind.ParseTime, AssessmentKind.ObjectTiming] : collect,
             TimeSpan.FromMilliseconds(700), 123);

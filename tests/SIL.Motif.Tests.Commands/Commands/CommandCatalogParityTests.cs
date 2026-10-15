@@ -81,7 +81,7 @@ public sealed class CommandCatalogParityTests
         "apply.reconciliation-needed",
         "apply.trial-missing", "apply.trial-stale", "review.invalid-mark", "review.unreadable",
         "assess.baseline-changed", "assess.invalid-limit", "assess.invalid-replacement", "assess.invocation-inconsistent", "assess.measurements-incomplete",
-        "assess.parser-unavailable", "assess.unsupported-kind",
+        "assess.parser-memory-limit", "assess.parser-unavailable", "assess.unsupported-kind",
         "selection.default-missing", "selection.invalid", "selection.retry-source-required", "selection.retry-source-not-found", "selection.retry-source-invalid",
         "selection.retry-source-mismatch", "selection.retry-source-project-mismatch", "selection.retry-source-without-retry",
         "assessment.aggregate-unavailable", "assessment.baseline-unavailable", "assessment.cancelled", "assessment.invalid-evidence", "assessment.invalid-id", "assessment.not-found",

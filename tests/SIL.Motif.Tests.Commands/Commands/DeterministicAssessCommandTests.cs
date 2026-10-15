@@ -1595,6 +1595,30 @@ public sealed class DeterministicAssessCommandTests : IDisposable
     }
 
     [Fact]
+    public void AParserStoppedForMemoryIsRefusedAsParserMemoryLimitWithTheLimitPeakAndSetting()
+    {
+        using var seeded = NewSeededScratch();
+        var kill = new SIL.Motif.Host.PanGloss.PanGlossMemoryKill(12UL << 30, 13UL << 30);
+        var assessor = new FakeAssessor("memory-hungry", CollectedKinds,
+            _ => throw new AssessorUnavailableException("memory-hungry", kill.Describe()) { MemoryKill = kill });
+
+        var outcome = AssessCommand.Run(
+            new AssessRequest(seeded.FwDataPath, AllWordforms), NewManagedRoot(), assessor, NewInvoker(),
+            onProgress: null, CancellationToken.None);
+
+        var refusal = outcome.Refusal!;
+        Assert.Equal("assess.parser-memory-limit", refusal.Code);
+        Assert.Equal(FailureReason.Refused, refusal.Reason);
+        Assert.Contains("12 GiB", refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("13 GiB", refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("MOTIF_PARSER_MEMORY_LIMIT", refusal.Message, StringComparison.Ordinal);
+        Assert.Equal(seeded.FwDataPath, refusal.Facts!["projectPath"]);
+        Assert.Equal((12UL << 30).ToString(System.Globalization.CultureInfo.InvariantCulture), refusal.Facts["limitBytes"]);
+        Assert.Equal((13UL << 30).ToString(System.Globalization.CultureInfo.InvariantCulture), refusal.Facts["peakBytes"]);
+        Assert.Equal("MOTIF_PARSER_MEMORY_LIMIT", refusal.Facts["setting"]);
+    }
+
+    [Fact]
     public void AnAssessorThatCouldNotRunItsParser_IsRefusedAsParserUnavailable_AndRecordsNothing()
     {
         using var seeded = NewSeededScratch();

@@ -19,6 +19,7 @@ public sealed class PanGlossMemoryCeilingTests
 {
     private static readonly TimeSpan BoundedWait = TimeSpan.FromSeconds(30);
     private const int StackBytes = 1024 * 1024 * 1024;
+    private const ulong TenGiB = 10UL * 1024 * 1024 * 1024;
 
     // Twelve 1 GiB stacks reserve more than the 10 GiB ceiling while touching almost none of it.
     private const int Threads = 12;
@@ -38,14 +39,14 @@ public sealed class PanGlossMemoryCeilingTests
     public async Task ReservedThreadStacksDoNotCountAgainstTheCeilingWithoutACgroup()
     {
         if (!OperatingSystem.IsLinux()) return;
-        using var job = UnixPanGlossJob.WithoutCgroup(PanGlossContainment.DefaultMemoryLimitBytes, linux: true);
+        using var job = UnixPanGlossJob.WithoutCgroup(TenGiB, linux: true);
 
         var (exitCode, standardOutput, standardError) = await RunAsync(job, Threads, StackBytes);
 
         Assert.True(exitCode == 0, $"exit {exitCode}: {standardError}");
         Assert.Equal($"threads-started {Threads}", standardOutput.Trim());
         Assert.True(job.Report.AggregateMemoryLimit);
-        Assert.Equal(PanGlossContainment.DefaultMemoryLimitBytes, job.Report.MemoryLimitBytes);
+        Assert.Equal(TenGiB, job.Report.MemoryLimitBytes);
     }
 
     [RequiresLinuxFact]
