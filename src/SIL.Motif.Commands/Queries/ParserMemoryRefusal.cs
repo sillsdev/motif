@@ -21,6 +21,6 @@ public static class ParserMemoryRefusal
             ["setting"] = PanGlossMemoryLimit.Variable,
         };
         if (kill.PeakBytes is { } peak) facts["peakBytes"] = peak.ToString(CultureInfo.InvariantCulture);
-        return new Refusal(RefusalCodes.AssessParserMemoryLimit, FailureReason.Refused, kill.Describe(), facts);
+        return new Refusal("assess.parser-memory-limit", FailureReason.Refused, kill.Describe(), facts);
     }
 }
