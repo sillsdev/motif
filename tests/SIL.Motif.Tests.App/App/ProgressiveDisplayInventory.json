@@ -220,21 +220,24 @@
     "view": "HandoffPanel",
     "name": "HandoffPanelPlannedFilesItems",
     "source": "PlannedFiles",
-    "mode": "rows",
+    "mode": "finite",
+    "reason": "The five files an AI Handoff declares.",
     "control": "ItemsControl"
   },
   {
     "view": "HandoffPanel",
     "name": "HandoffPanelFilesItems",
     "source": "Handoff.Files",
-    "mode": "rows",
+    "mode": "finite",
+    "reason": "The files one AI Handoff wrote, from the same five declared files.",
     "control": "ItemsControl"
   },
   {
     "view": "HandoffPanel",
     "name": "HandoffPanelQuestionsItems",
     "source": "Questions",
-    "mode": "rows",
+    "mode": "finite",
+    "reason": "Three fixed starter questions.",
     "control": "ItemsControl"
   },
   {

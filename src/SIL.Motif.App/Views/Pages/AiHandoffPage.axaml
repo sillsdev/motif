@@ -16,8 +16,6 @@
         <views:CopyableTextBlock Classes="section-title" Text="AI Handoff" />
       </DockPanel>
     </Border>
-    <ScrollViewer Grid.Row="1">
-      <ContentControl x:Name="HandoffHost" />
-    </ScrollViewer>
+    <ContentControl x:Name="HandoffHost" Grid.Row="1" />
   </Grid>
 </UserControl>

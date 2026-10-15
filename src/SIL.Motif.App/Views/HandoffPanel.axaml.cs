@@ -23,6 +23,22 @@ public sealed partial class HandoffPanel : UserControl
 
     public HandoffViewModel Handoff { get; }
 
+    // Below the breakpoint the guide drops under the files, so neither column is squeezed.
+    private void OnHandoffSizeChanged(object? sender, SizeChangedEventArgs e)
+    {
+        if (!this.TryFindResource("Component.Handoff.ColumnsBreakpoint", out var resource) ||
+            resource is not double breakpoint) return;
+        var narrow = e.NewSize.Width < breakpoint;
+        var columns = this.FindControl<Grid>("HandoffColumns")!;
+        var guide = this.FindControl<StackPanel>("HandoffGuide")!;
+        columns.ColumnDefinitions = new ColumnDefinitions(narrow ? "*" : "*,*");
+        columns.RowDefinitions = new RowDefinitions(narrow ? "Auto,Auto" : "Auto");
+        Grid.SetColumn(guide, narrow ? 0 : 1);
+        Grid.SetRow(guide, narrow ? 1 : 0);
+        guide.HorizontalAlignment = narrow ? Avalonia.Layout.HorizontalAlignment.Stretch
+            : Avalonia.Layout.HorizontalAlignment.Right;
+    }
+
     private void OnUseWholeAssessmentClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e) => Handoff.UseWholeAssessment();
 
     /// <summary>What the folder will hold, shown before the first write so its contents are no surprise.</summary>

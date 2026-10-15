@@ -34,8 +34,6 @@ public sealed partial class TryWordPanel : UserControl
     {
         if (!this.TryFindResource("Component.TryWord.ColumnsBreakpoint", out var resource) ||
             resource is not double breakpoint) return;
-        var shortHeight = (double)this.FindResource("Component.TryWord.ShortPageHeight")!;
-        Classes.Set("shortPage", e.NewSize.Height < shortHeight);
         var compact = e.NewSize.Width < breakpoint;
         var input = this.FindControl<Grid>("TryWordInputGrid")!;
         input.ColumnDefinitions = new ColumnDefinitions(compact ? "*,Auto" : "*,Auto,Auto,Auto");

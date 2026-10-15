@@ -7,9 +7,11 @@
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.HandoffPanel"
              x:DataType="views:HandoffPanel">
-  <Grid ColumnDefinitions="*,*" ColumnSpacing="{DynamicResource Component.Handoff.ColumnGap}" Margin="{DynamicResource Component.Handoff.PageMargin}">
+  <ScrollViewer>
+  <Border Padding="{DynamicResource Component.Handoff.PageMargin}">
+  <Grid x:Name="HandoffColumns" ColumnDefinitions="*,*" ColumnSpacing="{DynamicResource Component.Handoff.ColumnGap}"
+        RowSpacing="{DynamicResource Component.Handoff.SectionGap}" SizeChanged="OnHandoffSizeChanged">
 
-    <ScrollViewer>
       <StackPanel Spacing="{DynamicResource Component.Handoff.SectionGap}">
 
         <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap"
@@ -55,9 +57,6 @@
           <StackPanel Spacing="{DynamicResource Component.Handoff.CardGap}">
             <views:CopyableTextBlock TextWrapping="Wrap" Classes="section-title" Text="What goes in" FontSize="{DynamicResource Component.Handoff.TitleSize}" />
             <ItemsControl x:Name="HandoffPanelPlannedFilesItems" ItemsSource="{Binding PlannedFiles}">
-              <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
-              </ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="views:PlannedHandoffFile">
                   <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Component.Handoff.PlannedGap}" Margin="{DynamicResource Component.Handoff.PlannedMargin}">
@@ -100,9 +99,6 @@
 
             <ItemsControl x:Name="HandoffPanelFilesItems" ItemsSource="{Binding Handoff.Files}" AutomationProperties.Name="AI Handoff files"
                           AutomationProperties.AutomationId="{x:Static app:AutomationIds.HandoffFiles}">
-              <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
-              </ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:HandoffFileViewModel">
                   <Border Classes="handoffFile" PointerPressed="OnFileTilePointerPressed"
@@ -132,12 +128,10 @@
                                  Converter={x:Static md:ValueConverters.ToObservableStringBuilder}}" />
         </Expander>
       </StackPanel>
-    </ScrollViewer>
 
-    <!-- Right: the three steps to a chat, and what to ask once you are there. -->
-    <ScrollViewer Grid.Column="1" MaxWidth="{DynamicResource Component.Handoff.GuideWidth}"
-                  HorizontalAlignment="Right">
-      <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
+    <!-- Right when wide, below when narrow: the three steps to a chat, and what to ask once you are there. -->
+      <StackPanel x:Name="HandoffGuide" Grid.Column="1" MaxWidth="{DynamicResource Component.Handoff.GuideWidth}"
+                  HorizontalAlignment="Right" VerticalAlignment="Top" Spacing="{DynamicResource Intent.Space.Compact}">
         <views:CopyableTextBlock TextWrapping="Wrap" Classes="section-title" Text="Get a chat model's help" FontSize="{DynamicResource Component.Handoff.TitleSize}" />
 
         <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Group}" Margin="{DynamicResource Component.Handoff.FirstStepMargin}">
@@ -180,9 +174,6 @@
             <views:CopyableTextBlock TextWrapping="Wrap" Text="Try asking" FontWeight="{DynamicResource Intent.Weight.Section}" />
             <views:CopyableTextBlock TextWrapping="Wrap" Classes="muted" FontSize="{DynamicResource Intent.Type.Label}" Text="Click a question to copy it." />
             <ItemsControl x:Name="HandoffPanelQuestionsItems" ItemsSource="{Binding Questions}">
-              <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
-              </ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="x:String">
                   <Button Classes="handoffQuestion" Click="OnCopyQuestionClick" Tag="{Binding}"
@@ -196,6 +187,7 @@
           </StackPanel>
         </Border>
       </StackPanel>
-    </ScrollViewer>
   </Grid>
+  </Border>
+  </ScrollViewer>
 </UserControl>

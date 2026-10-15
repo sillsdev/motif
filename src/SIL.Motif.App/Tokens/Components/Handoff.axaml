@@ -9,6 +9,7 @@
     <StaticResource x:Key="Component.Handoff.PageMargin" ResourceKey="Intent.Inset.Page" />
     <StaticResource x:Key="Component.Handoff.ColumnGap" ResourceKey="Primitive.Space.20" />
     <StaticResource x:Key="Component.Handoff.GuideWidth" ResourceKey="Primitive.Size.420" />
+    <StaticResource x:Key="Component.Handoff.ColumnsBreakpoint" ResourceKey="Primitive.Size.600" />
     <StaticResource x:Key="Component.Handoff.SectionGap" ResourceKey="Primitive.Space.14" />
     <StaticResource x:Key="Component.Handoff.CardGap" ResourceKey="Primitive.Space.10" />
     <StaticResource x:Key="Component.Handoff.LineGap" ResourceKey="Primitive.Space.1" />

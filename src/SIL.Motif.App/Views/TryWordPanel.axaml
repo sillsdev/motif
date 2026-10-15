@@ -66,6 +66,7 @@
         </Grid>
       </Border>
   <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" views:InspectLink.Trace="{Binding Trace.InspectorTrace}">
+    <Border Classes="tryWordPageInset">
     <StackPanel Classes="tryWordPage">
       <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" IsVisible="{Binding !Trace.HasResult}"
                                Text="Try any word to read the parser's recorded search." />
@@ -350,6 +351,7 @@
         </StackPanel>
       </Border>
     </StackPanel>
+    </Border>
   </ScrollViewer>
   </Grid>
 </UserControl>
