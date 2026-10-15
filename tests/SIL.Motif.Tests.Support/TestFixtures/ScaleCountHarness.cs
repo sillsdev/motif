@@ -49,16 +49,24 @@ public static class ScaleCountHarness
         return references.Count(reference => reference.TryGetTarget(out var value) && type.IsInstanceOfType(value));
     }
 
-    /// <summary>After the UI settles, forces two full collections and checks a creation-time weak-reference budget.</summary>
+    /// <summary>After the UI settles, forces full collections until the count settles and checks a creation-time weak-reference budget.</summary>
     public static int AssertLiveViewModelBudget(IEnumerable<WeakReference<object>> references, Type type,
         int minimum, int maximum)
     {
         ArgumentNullException.ThrowIfNull(references);
         ArgumentNullException.ThrowIfNull(type);
-        GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, blocking: true, compacting: false);
-        GC.WaitForPendingFinalizers();
-        GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, blocking: true, compacting: false);
-        var count = CountLiveViewModels(references, type);
+        var count = int.MaxValue;
+        // A model can survive one more round behind a finalizer; a real leak never settles.
+        for (var round = 0; round < 8; round++)
+        {
+            GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, blocking: true, compacting: false);
+            GC.WaitForPendingFinalizers();
+            GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, blocking: true, compacting: false);
+            var live = CountLiveViewModels(references, type);
+            var settled = live == count || live <= maximum;
+            count = live;
+            if (settled) break;
+        }
         if (count < minimum || count > maximum)
             throw new InvalidOperationException($"Expected {type.Name} live count in {minimum}..{maximum}; found {count}.");
         return count;

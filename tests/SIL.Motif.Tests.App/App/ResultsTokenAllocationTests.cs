@@ -18,7 +18,11 @@ public sealed class ProcessAllocationCollection
 public sealed class ResultsTokenAllocationTests(ITestOutputHelper output)
 {
     [Fact]
-    public async Task UnparsedOccurrencesKeepStoredMorphDisplaysAffordableUntilTheyAreRead()
+    public void UnparsedOccurrencesKeepStoredMorphDisplaysAffordableUntilTheyAreRead() =>
+        // The line pages are single-threaded by contract, so their continuations must resume on the UI thread.
+        AvaloniaHeadlessFixture.RunUntilComplete(MeasureUnparsedOccurrencesAsync, TimeSpan.FromSeconds(60));
+
+    private async Task MeasureUnparsedOccurrencesAsync()
     {
         var wordform = Guid.NewGuid();
         var link = $"silfw://localhost/link?database=Scale&tool=lexiconEdit&guid={Guid.NewGuid():D}";

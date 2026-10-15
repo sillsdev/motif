@@ -248,10 +248,12 @@ internal sealed class SelectionLinePages
 
     private void CompleteWaiting()
     {
-        foreach (var waiter in _waiting)
+        // Completing a waiter can re-enter this page; detach the list first so no enumeration sees a change.
+        var waiting = _waiting.ToArray();
+        _waiting.Clear();
+        foreach (var waiter in waiting)
             waiter.Completion.TrySetResult(waiter.Page.Active && waiter.Page.Published &&
                 waiter.Page.Offset == waiter.Offset ? waiter.Page.Line?.Tokens ?? [] : []);
-        _waiting.Clear();
     }
 
     private void ReleaseTokens()

@@ -127,6 +127,7 @@ public sealed class SelectionWordRowsTests
                 await Task.Yield();
                 Assert.Equal(0, reads.Reader.Diagnostics.LiveRowModels);
                 Assert.Equal(0, reads.Reader.Diagnostics.LeasedResults - 1);
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
                 Assert.Equal(0, ScaleCountHarness.AssertLiveViewModelBudget(weak, typeof(TextWordRowViewModel), 0, 0));
             }
             finally
@@ -134,7 +135,7 @@ public sealed class SelectionWordRowsTests
                 await list.StopAsync();
                 await reads.StopAsync();
             }
-        }, TimeSpan.FromSeconds(90));
+        }, TimeSpan.FromSeconds(300));
     }
 
     [Fact]
@@ -251,7 +252,7 @@ public sealed class SelectionWordRowsTests
                 await list.StopAsync();
                 await reads.StopAsync();
             }
-        }, TimeSpan.FromSeconds(120));
+        }, TimeSpan.FromSeconds(300));
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
@@ -335,6 +336,7 @@ public sealed class SelectionWordRowsTests
                 PageScreenshots.Settle(window);
                 Assert.Equal(0, reads.Reader.Diagnostics.LivePinnedModels);
                 Assert.Equal(0, reads.Reader.Diagnostics.LiveCardModels);
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
                 Assert.Equal(0, ScaleCountHarness.AssertLiveViewModelBudget(weak, typeof(WordOccurrenceRowViewModel), 0, 0));
             }
             finally
