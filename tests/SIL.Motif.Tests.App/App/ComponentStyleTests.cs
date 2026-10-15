@@ -212,6 +212,64 @@ public sealed partial class ComponentStyleTests
     }
 
     [Fact]
+    public void EveryFilterChipVariantSeparatesItsLabelFromItsCountByTheGapToken()
+    {
+        var failures = new List<string>();
+        _avalonia.Invoke(() =>
+        {
+            Assert.True(Application.Current!.TryGetResource("Component.FilterChip.LabelGap", ThemeVariant.Light, out var token));
+            var gap = Convert.ToDouble(token);
+            Assert.True(gap > 0);
+            Button Row(params string[] classes)
+            {
+                var label = new TextBlock { Text = "Lost" };
+                var count = new TextBlock { Text = "1", Classes = { "chipCount" } };
+                var row = new StackPanel { Orientation = Orientation.Horizontal, Classes = { "filterChipRow" } };
+                row.Children.Add(label);
+                row.Children.Add(count);
+                var chip = Press(classes);
+                chip.Content = row;
+                return chip;
+            }
+            FilterChip View(params string[] classes)
+            {
+                var chip = new FilterChip { Label = "Lost", Count = 1 };
+                foreach (var name in classes) chip.Classes.Add(name);
+                return chip;
+            }
+            var variants = new (string Name, Control Chip)[]
+            {
+                ("list chip", Row("filterChip")),
+                ("active list chip", Row("filterChip", "active")),
+                ("filter chip", View()),
+                ("compact filter chip", View("compact")),
+            };
+            foreach (var (name, chip) in variants)
+            {
+                var window = new Window { Content = new StackPanel { Children = { chip } }, Width = 300, Height = 80 };
+                try
+                {
+                    window.Show();
+                    Dispatcher.UIThread.RunJobs();
+                    window.UpdateLayout();
+                    var texts = Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(chip).OfType<TextBlock>()
+                        .Where(text => text.Text is "Lost" or "1").OrderBy(text => text.Text == "1").ToList();
+                    if (texts.Count != 2) { failures.Add($"{name}: found {texts.Count} label/count texts."); continue; }
+                    var labelRight = texts[0].TranslatePoint(new Point(texts[0].Bounds.Width, 0), window)!.Value.X;
+                    var countLeft = texts[1].TranslatePoint(new Point(0, 0), window)!.Value.X;
+                    if (countLeft - labelRight < gap - 0.01)
+                        failures.Add($"{name}: label and count are {countLeft - labelRight} apart, under the {gap} gap token.");
+                }
+                finally
+                {
+                    window.Close();
+                }
+            }
+        });
+        Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures));
+    }
+
+    [Fact]
     public void AnUnavailableFilterChipStillLooksLikeAChip()
     {
         var failures = new List<string>();

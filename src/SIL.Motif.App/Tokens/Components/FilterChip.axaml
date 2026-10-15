@@ -9,6 +9,7 @@
     <StaticResource x:Key="Component.FilterChip.Radius" ResourceKey="Intent.Radius.Control" />
     <StaticResource x:Key="Component.FilterChip.CompactPadding" ResourceKey="Primitive.Inset.5_1_5_1" />
     <StaticResource x:Key="Component.FilterChip.CompactMargin" ResourceKey="Primitive.Inset.0_0_2_0" />
+    <StaticResource x:Key="Component.FilterChip.LabelGap" ResourceKey="Intent.Space.Snug" />
     <StaticResource x:Key="Component.FilterChip.CompactHeight" ResourceKey="Primitive.Size.24" />
   </Styles.Resources>
   <Style Selector="Button.filterChip">
@@ -41,16 +42,16 @@
     <Setter Property="MinHeight" Value="{DynamicResource Component.FilterChip.CompactHeight}" />
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
   </Style>
-  <Style Selector="Button.filterChip.compact Grid.filterChipRow">
-    <Setter Property="ColumnSpacing" Value="{DynamicResource Intent.Space.Compact}" />
-  </Style>
   <Style Selector="Button.filterChip.active">
     <Setter Property="Background" Value="{DynamicResource Intent.Primary.Fill}" />
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Primary}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.Primary}" />
   </Style>
   <Style Selector="Grid.filterChipRow">
-    <Setter Property="ColumnSpacing" Value="{DynamicResource Intent.Space.Snug}" />
+    <Setter Property="ColumnSpacing" Value="{DynamicResource Component.FilterChip.LabelGap}" />
+  </Style>
+  <Style Selector="StackPanel.filterChipRow">
+    <Setter Property="Spacing" Value="{DynamicResource Component.FilterChip.LabelGap}" />
   </Style>
   <Style Selector="Button.filterChip TextBlock.chipCount">
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
