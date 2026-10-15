@@ -334,6 +334,16 @@
     "description": "Sets or clears a part of speech's explicit default inflection class after checking the expected current reference. Clearing can reveal an inherited default; Motif stages a Draft for a person to review and Apply.",
     "source": "Hand-written from the closed intent and composer contract."
   },
+  "compose-edit-stem-allomorph-stem-name": {
+    "title": "Set a stem allomorph's name",
+    "description": "Sets or clears the stem name of one stem allomorph after checking the expected current stem name. The name must belong to a stem category of the entry or an ancestor; Motif stages a Draft for a person to review and Apply.",
+    "source": "Hand-written from the closed intent and composer contract."
+  },
+  "compose-edit-stem-inflection-class": {
+    "title": "Set a stem's class",
+    "description": "Sets or clears the inflection class of one stem analysis after checking the expected current class. The class must belong to the stem's part of speech or an ancestor; Motif stages a Draft for a person to review and Apply.",
+    "source": "Hand-written from the closed intent and composer contract."
+  },
   "compose-edit-affix-inflection-classes": {
     "title": "Edit affix class restrictions",
     "description": "Replaces an ordinary inflectional prefix, suffix or interfix's exact class restriction set after checking the expected current ids. An empty set removes the restriction; Motif stages a Draft for a person to review and Apply.",

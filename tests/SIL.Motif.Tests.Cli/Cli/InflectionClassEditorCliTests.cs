@@ -13,6 +13,8 @@ public sealed class InflectionClassEditorCliTests
     [Theory]
     [InlineData("compose-edit-part-of-speech-inflection-class-default")]
     [InlineData("compose-edit-affix-inflection-classes")]
+    [InlineData("compose-edit-stem-allomorph-stem-name")]
+    [InlineData("compose-edit-stem-inflection-class")]
     public void EditorVerbsRemainDraftCommandsButAreNotAgentToolsAndReachCliUsage(string verb)
     {
         var descriptor = Assert.Single(CommandCatalog.All, command => command.Name == verb);

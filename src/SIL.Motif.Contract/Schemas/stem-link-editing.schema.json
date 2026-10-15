@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://motif.sil.org/contracts/stem-link-editing/v1",
+  "title": "Stem link editors",
+  "description": "Closed stem name and stem inflection class edits. Null clears the link. Live expected state, target type and category ownership are checked against LibLCM.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/EditStemAllomorphStemName"
+    },
+    {
+      "$ref": "#/$defs/EditStemInflectionClass"
+    }
+  ],
+  "$defs": {
+    "CanonicalId": {
+      "type": "string",
+      "pattern": "^[\\s\\S]*[A-Za-z0-9_-]{22}$",
+      "description": "Optional prefix plus 22-character unpadded base64url suffix decoding to 128 bits."
+    },
+    "EditStemAllomorphStemName": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "target": {
+          "$ref": "#/$defs/CanonicalId"
+        },
+        "expectedStemName": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CanonicalId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "stemName": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CanonicalId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "target",
+        "expectedStemName",
+        "stemName"
+      ]
+    },
+    "EditStemInflectionClass": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "target": {
+          "$ref": "#/$defs/CanonicalId"
+        },
+        "expectedInflectionClass": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CanonicalId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "inflectionClass": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CanonicalId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "target",
+        "expectedInflectionClass",
+        "inflectionClass"
+      ]
+    }
+  }
+}

@@ -121,6 +121,12 @@ public static partial class ProposalCommands
         new("compose-edit-affix-inflection-classes", "EditAffixInflectionClasses",
             (cache, input, _) => EditAffixInflectionClassesComposer.Build(cache,
                 EditAffixInflectionClassesIntentParser.Parse(input))),
+        new("compose-edit-stem-allomorph-stem-name", "EditStemAllomorphStemName",
+            (cache, input, _) => EditStemAllomorphStemNameComposer.Build(cache,
+                EditStemAllomorphStemNameIntentParser.Parse(input))),
+        new("compose-edit-stem-inflection-class", "EditStemInflectionClass",
+            (cache, input, _) => EditStemInflectionClassComposer.Build(cache,
+                EditStemInflectionClassIntentParser.Parse(input))),
         new("compose-edit-allomorph-condition", "EditAllomorphCondition", (cache, input, _) =>
                 EditAllomorphConditionComposer.Build(cache, EditAllomorphConditionIntentParser.Parse(input)),
             ReplacePrevious: (input, operation) => ReplacesTarget(input, operation,

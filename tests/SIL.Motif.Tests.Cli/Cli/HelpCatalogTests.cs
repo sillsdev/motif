@@ -82,6 +82,8 @@ public sealed class HelpCatalogTests
                      "compose-edit-allomorph-condition",
                      "compose-edit-part-of-speech-inflection-class-default",
                      "compose-edit-affix-inflection-classes",
+                     "compose-edit-stem-allomorph-stem-name",
+                     "compose-edit-stem-inflection-class",
                      "order-allomorphs",
                      "compose-batch",
                  })

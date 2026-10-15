@@ -328,6 +328,20 @@ Dry Run and Apply check affected explicit defaults against the category domain a
 declared graph is lowered, so ownership changes between composition and Dry Run cannot authorize a
 foreign default. Invalid choices leave the live project unchanged.
 
+The stem link editors attach existing grammar choices to existing stems. `EditStemAllomorphStemName`
+accepts closed `{target, expectedStemName, stemName}` with all three required and both stem names
+nullable. The target must be a stem allomorph, lexeme or alternate; an exact expected-current mismatch is
+refused; equal decoded identities emit no operations. A desired stem name must be owned by the part of
+speech of one of the entry's stem analyses or an ancestor of it, and an entry with no such analysis is
+refused. Setting lowers `grammar/moStemAllomorph/setStemName` with closed `{ref}`; clearing lowers
+`grammar/moStemAllomorph/clearStemName` with closed `{}`. `EditStemInflectionClass` accepts closed
+`{target, expectedInflectionClass, inflectionClass}` with the same null and no-op rules. The target must be
+a stem analysis with a part of speech, and a desired class must belong to that part of speech or an
+ancestor. It lowers the existing `grammar/moStemMsa/setInflectionClass` and `clearInflectionClass` kinds.
+Neither editor adds an operation kind or contract version; coverage uses the existing
+`MoStemAllomorph.StemName` and `MoStemMsa.InflectionClass` inventory rows. The closed schemas and portable
+vectors are in `stem-link-editing.schema.json` and `stem-link-editing.vectors.json`.
+
 `AuthorStemName` accepts closed `{category, name, ws, regions:[[{feature, value}]], abbreviation?}`.
 It requires at least one nonempty region, each feature at most once per region, each feature a closed
 morphosyntactic feature and each value owned by that feature. Names are unique within the category

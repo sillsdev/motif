@@ -291,6 +291,8 @@ try
         case "compose-relink-natural-class":
         case "compose-edit-part-of-speech-inflection-class-default":
         case "compose-edit-affix-inflection-classes":
+        case "compose-edit-stem-allomorph-stem-name":
+        case "compose-edit-stem-inflection-class":
             if (!flags.TryGetValue("draft", out var soundDraft) ||
                 !flags.TryGetValue("project", out var soundProject) ||
                 !flags.TryGetValue("intent", out var soundIntent))
@@ -326,6 +328,10 @@ try
                     ProposalCommands.ComposeEditPartOfSpeechInflectionClassDefault(
                         new(soundProject, CliProductVersion(), soundDraft, soundIntent)),
                 "compose-edit-affix-inflection-classes" => ProposalCommands.ComposeEditAffixInflectionClasses(
+                    new(soundProject, CliProductVersion(), soundDraft, soundIntent)),
+                "compose-edit-stem-allomorph-stem-name" => ProposalCommands.ComposeEditStemAllomorphStemName(
+                    new(soundProject, CliProductVersion(), soundDraft, soundIntent)),
+                "compose-edit-stem-inflection-class" => ProposalCommands.ComposeEditStemInflectionClass(
                     new(soundProject, CliProductVersion(), soundDraft, soundIntent)),
                 _ => ProposalCommands.ComposeAuthorEnvironment(new(soundProject, CliProductVersion(), soundDraft, soundIntent)),
             });

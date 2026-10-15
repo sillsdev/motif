@@ -1,0 +1,221 @@
+{
+  "contract": "stem-link-editing/v1",
+  "vectors": [
+    {
+      "shape": "EditStemAllomorphStemName",
+      "input": {
+        "target": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "expectedStemName": null,
+        "stemName": "AAAAAAAAAAAAAAAAAAAAAg"
+      },
+      "valid": true
+    },
+    {
+      "shape": "EditStemAllomorphStemName",
+      "input": {
+        "target": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "expectedStemName": "AAAAAAAAAAAAAAAAAAAAAg",
+        "stemName": null
+      },
+      "valid": true
+    },
+    {
+      "shape": "EditStemAllomorphStemName",
+      "input": {
+        "target": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "expectedStemName": "AAAAAAAAAAAAAAAAAAAAAg",
+        "stemName": "AAAAAAAAAAAAAAAAAAAAAg"
+      },
+      "valid": true
+    },
+    {
+      "shape": "EditStemAllomorphStemName",
+      "input": {
+        "expectedStemName": null,
+        "stemName": "AAAAAAAAAAAAAAAAAAAAAg"
+      },
+      "valid": false
+    },
+    {
+      "shape": "EditStemAllomorphStemName",
+      "input": {
+        "target": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "stemName": "AAAAAAAAAAAAAAAAAAAAAg"
+      },
+      "valid": false
+    },
+    {
+      "shape": "EditStemAllomorphStemName",
+      "input": {
+        "target": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "expectedStemName": null
+      },
+      "valid": false
+    },
+    {
+      "shape": "EditStemAllomorphStemName",
+      "input": {
+        "target": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "expectedStemName": null,
+        "stemName": "AAAAAAAAAAAAAAAAAAAAAg",
+        "extra": true
+      },
+      "valid": false
+    },
+    {
+      "shape": "EditStemAllomorphStemName",
+      "input": {
+        "target": "short",
+        "expectedStemName": null,
+        "stemName": "AAAAAAAAAAAAAAAAAAAAAg"
+      },
+      "valid": false
+    },
+    {
+      "shape": "EditStemAllomorphStemName",
+      "input": {
+        "target": null,
+        "expectedStemName": null,
+        "stemName": "AAAAAAAAAAAAAAAAAAAAAg"
+      },
+      "valid": false
+    },
+    {
+      "shape": "EditStemAllomorphStemName",
+      "input": {
+        "target": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "expectedStemName": "",
+        "stemName": "AAAAAAAAAAAAAAAAAAAAAg"
+      },
+      "valid": false
+    },
+    {
+      "shape": "EditStemAllomorphStemName",
+      "input": {
+        "target": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "expectedStemName": 7,
+        "stemName": "AAAAAAAAAAAAAAAAAAAAAg"
+      },
+      "valid": false
+    },
+    {
+      "shape": "EditStemAllomorphStemName",
+      "input": {
+        "target": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "expectedStemName": null,
+        "stemName": [
+          "AAAAAAAAAAAAAAAAAAAAAg"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "shape": "EditStemInflectionClass",
+      "input": {
+        "target": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "expectedInflectionClass": null,
+        "inflectionClass": "AAAAAAAAAAAAAAAAAAAAAg"
+      },
+      "valid": true
+    },
+    {
+      "shape": "EditStemInflectionClass",
+      "input": {
+        "target": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "expectedInflectionClass": "AAAAAAAAAAAAAAAAAAAAAg",
+        "inflectionClass": null
+      },
+      "valid": true
+    },
+    {
+      "shape": "EditStemInflectionClass",
+      "input": {
+        "target": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "expectedInflectionClass": "AAAAAAAAAAAAAAAAAAAAAg",
+        "inflectionClass": "AAAAAAAAAAAAAAAAAAAAAg"
+      },
+      "valid": true
+    },
+    {
+      "shape": "EditStemInflectionClass",
+      "input": {
+        "expectedInflectionClass": null,
+        "inflectionClass": "AAAAAAAAAAAAAAAAAAAAAg"
+      },
+      "valid": false
+    },
+    {
+      "shape": "EditStemInflectionClass",
+      "input": {
+        "target": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "inflectionClass": "AAAAAAAAAAAAAAAAAAAAAg"
+      },
+      "valid": false
+    },
+    {
+      "shape": "EditStemInflectionClass",
+      "input": {
+        "target": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "expectedInflectionClass": null
+      },
+      "valid": false
+    },
+    {
+      "shape": "EditStemInflectionClass",
+      "input": {
+        "target": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "expectedInflectionClass": null,
+        "inflectionClass": "AAAAAAAAAAAAAAAAAAAAAg",
+        "extra": true
+      },
+      "valid": false
+    },
+    {
+      "shape": "EditStemInflectionClass",
+      "input": {
+        "target": "short",
+        "expectedInflectionClass": null,
+        "inflectionClass": "AAAAAAAAAAAAAAAAAAAAAg"
+      },
+      "valid": false
+    },
+    {
+      "shape": "EditStemInflectionClass",
+      "input": {
+        "target": null,
+        "expectedInflectionClass": null,
+        "inflectionClass": "AAAAAAAAAAAAAAAAAAAAAg"
+      },
+      "valid": false
+    },
+    {
+      "shape": "EditStemInflectionClass",
+      "input": {
+        "target": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "expectedInflectionClass": "",
+        "inflectionClass": "AAAAAAAAAAAAAAAAAAAAAg"
+      },
+      "valid": false
+    },
+    {
+      "shape": "EditStemInflectionClass",
+      "input": {
+        "target": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "expectedInflectionClass": 7,
+        "inflectionClass": "AAAAAAAAAAAAAAAAAAAAAg"
+      },
+      "valid": false
+    },
+    {
+      "shape": "EditStemInflectionClass",
+      "input": {
+        "target": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "expectedInflectionClass": null,
+        "inflectionClass": [
+          "AAAAAAAAAAAAAAAAAAAAAg"
+        ]
+      },
+      "valid": false
+    }
+  ]
+}

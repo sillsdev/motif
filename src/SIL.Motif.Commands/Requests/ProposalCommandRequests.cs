@@ -207,6 +207,22 @@ public sealed record ComposeEditInflectionalAffixRequest(
 public sealed record ComposeEditPartOfSpeechInflectionClassDefaultRequest(
     string FwDataPath, string ProductVersion, string DraftName, string IntentJson);
 
+/// <summary>Sets or clears the stem name of one stem allomorph in a Draft.</summary>
+/// <param name="FwDataPath">The saved project this Draft belongs to.</param>
+/// <param name="ProductVersion">The Motif version opening the paired store.</param>
+/// <param name="DraftName">The Draft to append the authored operations to.</param>
+/// <param name="IntentJson">The closed stem-name edit resolved against the prepared Draft.</param>
+public sealed record ComposeEditStemAllomorphStemNameRequest(
+    string FwDataPath, string ProductVersion, string DraftName, string IntentJson);
+
+/// <summary>Sets or clears the inflection class of one stem analysis in a Draft.</summary>
+/// <param name="FwDataPath">The saved project this Draft belongs to.</param>
+/// <param name="ProductVersion">The Motif version opening the paired store.</param>
+/// <param name="DraftName">The Draft to append the authored operations to.</param>
+/// <param name="IntentJson">The closed class edit resolved against the prepared Draft.</param>
+public sealed record ComposeEditStemInflectionClassRequest(
+    string FwDataPath, string ProductVersion, string DraftName, string IntentJson);
+
 /// <summary>Edits the exact inflection class restrictions on one ordinary affix form in a Draft.</summary>
 /// <param name="FwDataPath">The saved project this Draft belongs to.</param>
 /// <param name="ProductVersion">The Motif version opening the paired store.</param>

@@ -21,7 +21,7 @@ public sealed class ToolSurfaceTests
     }
 
     [Fact]
-    public void OnlyTheTwoNumeralEditorsOptOutOfDefaultToolExposure()
+    public void OnlyTheNumeralAndStemEditorsOptOutOfDefaultToolExposure()
     {
         var optedOut = CommandCatalog.All.Where(command => !command.ExposeAsAgentTool)
             .Select(command => command.Name)
@@ -32,12 +32,15 @@ public sealed class ToolSurfaceTests
         {
             "compose-edit-affix-inflection-classes",
             "compose-edit-part-of-speech-inflection-class-default",
+            "compose-edit-stem-allomorph-stem-name",
+            "compose-edit-stem-inflection-class",
         }, optedOut);
 
         var numeralEditors = CommandCatalog.All.Where(command =>
             command.Name is "compose-edit-part-of-speech-inflection-class-default" or
-                "compose-edit-affix-inflection-classes").ToArray();
-        Assert.Equal(2, numeralEditors.Length);
+                "compose-edit-affix-inflection-classes" or "compose-edit-stem-allomorph-stem-name" or
+                "compose-edit-stem-inflection-class").ToArray();
+        Assert.Equal(4, numeralEditors.Length);
         Assert.All(numeralEditors, command =>
         {
             Assert.Equal(CommandSurface.AdvancedAi, command.Surface);
