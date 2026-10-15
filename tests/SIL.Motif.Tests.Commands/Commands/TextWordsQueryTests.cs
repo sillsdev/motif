@@ -332,10 +332,15 @@ public sealed class TextWordsQueryTests : IDisposable
         var disapprovedToken = Assert.Single(tokens, item => item.Token.WordformId == otherId).Token;
         Assert.Equal(CanonicalId.FromGuid(approvedAnalysisId).Value, approvedToken.Analysis!.StoredAnalysisId);
         Assert.Equal(ReadingGrade.Approved, approvedToken.Analysis.StoredAnalysisOpinion);
-        Assert.Equal(CanonicalId.FromGuid(approvedId).Value, approvedToken.Analysis.Identity!.SourceWordformGuid);
+        Assert.Equal(approvedId.ToString("D"), approvedToken.Analysis.Identity!.SourceWordformGuid);
+        Assert.All(approvedToken.Analysis.Identity!.Morphs, morph =>
+        {
+            Assert.True(Guid.TryParseExact(morph.Form, "D", out _));
+            Assert.True(Guid.TryParseExact(morph.Msa, "D", out _));
+        });
         Assert.Equal(CanonicalId.FromGuid(disapprovedAnalysisId).Value, disapprovedToken.Analysis!.StoredAnalysisId);
         Assert.Equal(ReadingGrade.Disapproved, disapprovedToken.Analysis.StoredAnalysisOpinion);
-        Assert.Equal(CanonicalId.FromGuid(otherId).Value, disapprovedToken.Analysis.Identity!.SourceWordformGuid);
+        Assert.Equal(otherId.ToString("D"), disapprovedToken.Analysis.Identity!.SourceWordformGuid);
     }
 
     private const string DualForm = "dualword";

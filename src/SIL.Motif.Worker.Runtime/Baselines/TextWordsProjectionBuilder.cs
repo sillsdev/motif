@@ -189,7 +189,7 @@ public static class TextWordsProjectionBuilder
                 .Order(StringComparer.Ordinal).ToArray())).ToArray())
         {
             SourceAnalysisId = CanonicalId.FromGuid(analysis.Guid).Value,
-            SourceWordformGuid = CanonicalId.FromGuid(wordform.Guid).Value,
+            SourceWordformGuid = wordform.Guid.ToString("D"),
             WritingSystem = cache.WritingSystemFactory.GetStrFromWs(cache.DefaultVernWs),
         };
     }
