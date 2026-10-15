@@ -91,8 +91,6 @@ public sealed partial record WindowRefusal
         [C.AssessInvalidLimit] = "Enter a per-word time limit greater than zero.",
         [C.AssessInvocationInconsistent] = "Motif could not record these measurements together. Measure the words again.",
         [C.AssessMeasurementsIncomplete] = "Measuring did not finish. Measure the words again.",
-        [C.AssessParserMemoryLimit] =
-            "The parser used more memory than Motif allows, so it was stopped. Measure fewer words at once or set a step limit, or change MOTIF_PARSER_MEMORY_LIMIT.",
         [C.AssessParserUnavailable] = ParserUnusable,
         [C.AssessUnsupportedKind] =
             "The PanGloss Motif found cannot take this measurement. Install the PanGloss that matches this Motif, then try again.",

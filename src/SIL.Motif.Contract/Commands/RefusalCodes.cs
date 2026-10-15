@@ -34,7 +34,6 @@ public static class RefusalCodes
     public const string AssessInvalidLimit = "assess.invalid-limit";
     public const string AssessInvocationInconsistent = "assess.invocation-inconsistent";
     public const string AssessMeasurementsIncomplete = "assess.measurements-incomplete";
-    public const string AssessParserMemoryLimit = "assess.parser-memory-limit";
     public const string AssessParserUnavailable = "assess.parser-unavailable";
     public const string AssessUnsupportedKind = "assess.unsupported-kind";
     public const string AssessmentCancelled = "assessment.cancelled";
