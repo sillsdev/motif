@@ -129,6 +129,8 @@ public static class ChangeVocabulary
             ["EditAffixTemplate"] = ("Change affix template", "Change an affix template"),
             ["EditInflectionalAffix"] = ("Change affix", "Change an inflectional affix"),
             ["EditAllomorphCondition"] = ("Change where allomorph", "Change where an allomorph occurs"),
+            ["AuthorText"] = ("Add text", "Add a text"),
+            ["EditAnalysisDecision"] = ("Decide analysis", "Record a decision about an analysis"),
             ["OrderAllomorphs"] = ("Reorder allomorphs of", "Reorder allomorphs"),
             ["RetireAllomorph"] = ("Retire allomorph", "Retire an allomorph"),
             ["RetireRedundantZeroAffix"] = ("Retire zero affix", "Retire a zero affix"),

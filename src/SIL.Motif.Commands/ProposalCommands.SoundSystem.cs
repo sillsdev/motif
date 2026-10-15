@@ -148,6 +148,31 @@ public static partial class ProposalCommands
         ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
             DraftComposers["compose-edit-allomorph-condition"]);
 
+    /// <summary>
+    /// Stages a new Text, and a wordform for each token that has none, in a Draft. A token reuses the wordform
+    /// whose form is exactly that NFD string in the writing system; nothing is matched by similarity.
+    /// </summary>
+    /// <remarks>
+    /// Closed input is <c>{ "title", "ws", "paragraphs": [ { "segments": [ ["token", ...], ... ] } ] }</c>. The
+    /// <see cref="ComposedOperationsResponse.CreatedObjects"/> list names every created wordform and the Text.
+    /// </remarks>
+    public static CommandOutcome<ComposedOperationsResponse> ComposeAuthorText(ComposeAuthorTextRequest request) =>
+        ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
+            DraftComposers["compose-author-text"]);
+
+    /// <summary>
+    /// Stages one human decision about an existing analysis or wordform in a Draft: approve, disapprove, return to
+    /// unknown, or mark the spelling incorrect.
+    /// </summary>
+    /// <remarks>
+    /// Closed input is <c>{ "decision": "approve|disapprove|unknown", "analysis": "&lt;id&gt;" }</c> or
+    /// <c>{ "decision": "misspelled", "wordform": "&lt;id&gt;" }</c>.
+    /// </remarks>
+    public static CommandOutcome<ComposedOperationsResponse> ComposeEditAnalysisDecision(
+        ComposeEditAnalysisDecisionRequest request) =>
+        ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
+            DraftComposers["compose-edit-analysis-decision"]);
+
     public static CommandOutcome<ComposedOperationsResponse> ComposeOrderAllomorphs(ComposeOrderAllomorphsRequest request) =>
         ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
             DraftComposers["order-allomorphs"]);
@@ -594,7 +619,7 @@ public static partial class ProposalCommands
             foreach (var property in value.EnumerateObject())
                 CollectIds(property.Value, ids, property.Name is "msa" or "featStruc" or "feature" or "value" or
                     "entry" or "form" or "inflType" or "morphType" or "sense" or "recordTypeId" or "wordformId" or
-                    "analysisId" or "environments" or "members" or "phoneme" or
+                    "analysisId" or "words" or "environments" or "members" or "phoneme" or
                     "naturalClass" or "ref" or "member");
         else if (value.ValueKind == JsonValueKind.Array)
             foreach (var item in value.EnumerateArray()) CollectIds(item, ids, reference);

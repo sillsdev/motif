@@ -3214,6 +3214,146 @@
                   "intent"
                 ],
                 "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "compose-author-text"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-author-text.",
+                    "properties": {
+                      "title": {
+                        "type": "string",
+                        "description": "The Text\u0027s title, in NFD."
+                      },
+                      "ws": {
+                        "type": "string",
+                        "description": "Writing system tag of the title, the paragraphs and every wordform form."
+                      },
+                      "paragraphs": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "segments": {
+                              "type": "array",
+                              "items": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                },
+                                "description": "Word tokens, each one exact NFD form without spaces."
+                              },
+                              "description": "Segments in order; each is the NFD word tokens of one segment."
+                            }
+                          },
+                          "required": [
+                            "segments"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "description": "Paragraphs in order, each a list of segments of word tokens."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "title",
+                      "ws",
+                      "paragraphs"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "compose-edit-analysis-decision"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-edit-analysis-decision.",
+                    "properties": {
+                      "decision": {
+                        "type": "string",
+                        "description": "The human decision to record.",
+                        "enum": [
+                          "approve",
+                          "disapprove",
+                          "unknown",
+                          "misspelled"
+                        ]
+                      },
+                      "analysis": {
+                        "type": "string",
+                        "description": "Id of a stored analysis; required for approve, disapprove and unknown."
+                      },
+                      "wordform": {
+                        "type": "string",
+                        "description": "Id of a wordform; required for misspelled."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "decision"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
               }
             ]
           },

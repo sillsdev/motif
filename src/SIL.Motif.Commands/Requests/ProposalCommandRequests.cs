@@ -245,6 +245,28 @@ public sealed record ComposeEditAllomorphConditionRequest(
 public sealed record ComposeOrderAllomorphsRequest(
     string FwDataPath, string ProductVersion, string DraftName, string IntentJson);
 
+/// <summary>Requests a new Text, with the wordforms its tokens still need, staged in a Draft.</summary>
+/// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
+/// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
+/// <param name="DraftName">The name of the Draft being authored.</param>
+/// <param name="IntentJson">
+/// Closed <c>{title, ws, paragraphs:[{segments:[[token,...],...]}]}</c> input. Every token is one NFD form without
+/// spaces; a token whose exact form already is a wordform in <c>ws</c> reuses it, and any other token creates one.
+/// </param>
+public sealed record ComposeAuthorTextRequest(
+    string FwDataPath, string ProductVersion, string DraftName, string IntentJson);
+
+/// <summary>Requests one human decision about an existing analysis or wordform, staged in a Draft.</summary>
+/// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
+/// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
+/// <param name="DraftName">The name of the Draft being authored.</param>
+/// <param name="IntentJson">
+/// Closed <c>{decision, analysis}</c> input for approve, disapprove or unknown, or <c>{decision, wordform}</c> for
+/// misspelled, naming the exact canonical identity.
+/// </param>
+public sealed record ComposeEditAnalysisDecisionRequest(
+    string FwDataPath, string ProductVersion, string DraftName, string IntentJson);
+
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
 /// <param name="DraftName">The name of the Draft being authored.</param>

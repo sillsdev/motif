@@ -453,6 +453,28 @@ try
                         allomorphConditionDraft, allomorphConditionIntent))), successAsJson: false);
             break;
 
+        case "compose-author-text":
+            if (!flags.TryGetValue("draft", out var authorTextDraft) ||
+                !flags.TryGetValue("project", out var authorTextProject) ||
+                !flags.TryGetValue("intent", out var authorTextIntent))
+                return Usage("Usage: motif compose-author-text --draft <name> --project <fwdata> " +
+                    "--intent '<closed intent JSON>'", asJson);
+            result = RenderProposal(ComposeWithCitation(authorTextProject, authorTextDraft, authorTextIntent,
+                () => ProposalCommands.ComposeAuthorText(new ComposeAuthorTextRequest(
+                    authorTextProject, CliProductVersion(), authorTextDraft, authorTextIntent))), successAsJson: false);
+            break;
+
+        case "compose-edit-analysis-decision":
+            if (!flags.TryGetValue("draft", out var decisionDraft) ||
+                !flags.TryGetValue("project", out var decisionProject) ||
+                !flags.TryGetValue("intent", out var decisionIntent))
+                return Usage("Usage: motif compose-edit-analysis-decision --draft <name> --project <fwdata> " +
+                    "--intent '<closed intent JSON>'", asJson);
+            result = RenderProposal(ComposeWithCitation(decisionProject, decisionDraft, decisionIntent,
+                () => ProposalCommands.ComposeEditAnalysisDecision(new ComposeEditAnalysisDecisionRequest(
+                    decisionProject, CliProductVersion(), decisionDraft, decisionIntent))), successAsJson: false);
+            break;
+
         case "order-allomorphs":
             if (!flags.TryGetValue("draft", out var orderAllomorphsDraft) ||
                 !flags.TryGetValue("project", out var orderAllomorphsProject) ||

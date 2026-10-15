@@ -369,6 +369,16 @@
     "description": "Stages every intent in a JSON file in one Draft with one project load, through the same checks as each composing command alone. If any intent is refused, nothing is added, and both a label and comment are still required before Finalize. Only a person can Apply.",
     "source": "Hand-written from command behavior."
   },
+  "compose-author-text": {
+    "title": "Author a text",
+    "description": "Stages a new Text from a title and paragraphs of segments of word tokens in a Draft, creating a wordform for each token that has none. A token reuses a wordform only when its exact NFD form already exists in the writing system. Only a person can Apply.",
+    "source": "Authored from the typed command contract."
+  },
+  "compose-edit-analysis-decision": {
+    "title": "Decide an analysis",
+    "description": "Stages one human decision about an existing analysis or wordform in a Draft: approve, disapprove, return to unknown, or mark the spelling incorrect. It names the exact canonical identity. Only a person can Apply.",
+    "source": "Authored from the typed command contract."
+  },
   "order-allomorphs": {
     "title": "Order alternate forms",
     "description": "Changes the order of existing alternate forms within one entry after checking their current order. The lexeme form cannot be moved, and Motif stages the moves in a Draft for human review. Only a person can Apply.",

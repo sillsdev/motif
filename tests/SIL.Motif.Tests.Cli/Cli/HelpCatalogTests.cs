@@ -85,6 +85,8 @@ public sealed class HelpCatalogTests
                      "compose-edit-stem-allomorph-stem-name",
                      "compose-edit-stem-inflection-class",
                      "order-allomorphs",
+                     "compose-author-text",
+                     "compose-edit-analysis-decision",
                      "compose-batch",
                  })
         {

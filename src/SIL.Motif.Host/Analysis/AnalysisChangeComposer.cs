@@ -64,14 +64,28 @@ public static class AnalysisChangeComposer
                 extensions: ChangeExtension(intent.ChangeId))];
         }
 
-        var reading = intent.Reading ?? throw new InvalidOperationException(
-            $"'{intent.Kind}' requires an Assessment with a parser reading for this word.");
-        if (reading.Morphs.Count == 0)
-            throw new InvalidOperationException("A parser reading requires at least one morph.");
-        var existing = wordform.AnalysesOC.Where(analysis => Matches(analysis, reading) &&
-            (intent.StoredAnalysisId is null || analysis.Guid == intent.StoredAnalysisId.Value.ToGuid())).ToArray();
-        if (intent.StoredAnalysisId is not null && existing.Length != 1)
-            throw new InvalidOperationException("The chosen stored analysis does not match the reading.");
+        var reading = intent.Reading;
+        IWfiAnalysis[] existing;
+        if (reading is null && intent.StoredAnalysisId is { } decided &&
+            intent.Kind is AnalysisChangeKinds.Approve or AnalysisChangeKinds.Reject or AnalysisChangeKinds.Candidate)
+        {
+            // A person deciding on an analysis already stored needs no parser reading to find it.
+            existing = wordform.AnalysesOC.Where(analysis => analysis.Guid == decided.ToGuid()).ToArray();
+            if (existing.Length != 1)
+                throw new InvalidOperationException("Choose one stored analysis under this wordform.");
+        }
+        else
+        {
+            reading ??= intent.Reading ?? throw new InvalidOperationException(
+                $"'{intent.Kind}' requires an Assessment with a parser reading for this word.");
+            if (reading.Morphs.Count == 0)
+                throw new InvalidOperationException("A parser reading requires at least one morph.");
+            var matched = reading;
+            existing = wordform.AnalysesOC.Where(analysis => Matches(analysis, matched) &&
+                (intent.StoredAnalysisId is null || analysis.Guid == intent.StoredAnalysisId.Value.ToGuid())).ToArray();
+            if (intent.StoredAnalysisId is not null && existing.Length != 1)
+                throw new InvalidOperationException("The chosen stored analysis does not match the reading.");
+        }
         if (intent.Kind is AnalysisChangeKinds.Approve or AnalysisChangeKinds.Reject or AnalysisChangeKinds.Candidate &&
             existing.Length > 1)
             throw new InvalidOperationException("Several stored analyses match this reading. Choose one by its stored identity.");
@@ -98,7 +112,7 @@ public static class AnalysisChangeComposer
         if (existing.Length == 0)
         {
             var prerequisites = new List<OperationDependency>();
-            foreach (var morph in reading.Morphs)
+            foreach (var morph in reading!.Morphs)
             {
                 if (morph.Form is { } form && !Created(FromGuid(form)))
                     Resolve<IMoForm>(cache, FromGuid(form));
@@ -110,7 +124,7 @@ public static class AnalysisChangeComposer
             creationId = CanonicalId.Mint();
             analysisId = CanonicalId.Mint();
             operations.Add(new OperationEnvelope(creationId.Value, WfiAnalysisOperationKinds.CreateAnalysis,
-                entityId: analysisId, target: intent.WordformId, after: MorphPayload(reading),
+                entityId: analysisId, target: intent.WordformId, after: MorphPayload(reading!),
                 dependsOn: prerequisites, extensions: ChangeExtension(intent.ChangeId)));
 
             bool Created(CanonicalId id)

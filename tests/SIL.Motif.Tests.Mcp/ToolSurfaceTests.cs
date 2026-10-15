@@ -158,7 +158,7 @@ public sealed class ToolSurfaceTests
         Assert.DoesNotContain("intentsJson", batch.Tool.ArgumentNames);
         var branches = intents["items"]!["oneOf"]!.AsArray();
         var verbs = branches.Select(branch => branch!["properties"]!["verb"]!["enum"]![0]!.GetValue<string>()).ToArray();
-        Assert.Equal(23, verbs.Length);
+        Assert.Equal(25, verbs.Length);
         Assert.Equal(new[]
         {
             "compose-author-lexeme-form",
@@ -184,6 +184,8 @@ public sealed class ToolSurfaceTests
             "compose-edit-inflectional-affix",
             "compose-edit-allomorph-condition",
             "order-allomorphs",
+            "compose-author-text",
+            "compose-edit-analysis-decision",
         }.Order(StringComparer.Ordinal), verbs.Order(StringComparer.Ordinal));
         Assert.DoesNotContain("compose-record-parsimony-disposition", verbs);
         Assert.DoesNotContain("retire-allomorph", verbs);

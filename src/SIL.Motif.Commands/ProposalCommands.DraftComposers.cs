@@ -1,6 +1,7 @@
 using System.Text.Json;
 using SIL.LCModel;
 using SIL.Motif.Commands.Retirement;
+using SIL.Motif.Host.Analysis;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Responses;
@@ -141,6 +142,10 @@ public static partial class ProposalCommands
                 OrderAllomorphsComposer.Build(cache, OrderAllomorphsIntentParser.Parse(input)),
             ReplacePrevious: (input, operation) => ReplacesTarget(input, operation,
                 LexEntryAlternateFormsOperationKinds.MoveAlternateForms)),
+        new("compose-author-text", "AuthorText", (cache, input, _) =>
+            AuthorTextComposer.Build(cache, AuthorTextIntentParser.Parse(input))),
+        new("compose-edit-analysis-decision", "EditAnalysisDecision", (cache, input, _) =>
+            EditAnalysisDecisionComposer.Build(cache, EditAnalysisDecisionIntentParser.Parse(input))),
         new("compose-record-parsimony-disposition", "RecordParsimonyDisposition", (cache, input, proposalId) =>
             RecordParsimonyDispositionComposer.Build(cache, RecordParsimonyDispositionIntentParser.Parse(input),
                 proposalId)),
