@@ -905,12 +905,19 @@ try
                 "[--words <file>|--all-words] " +
                 "[--wait] [--wait-timeout-ms <ms>] [--json]", asJson, out trialWaitTimeout) is { } trialUsage)
                 return trialUsage;
-            result = RenderCommand(
-                JobCommands.EnqueueTrial(
-                    new EnqueueTrialRequest(
-                        trialProject, CliProductVersion(), positionals[0], flags.GetValueOrDefault("scope"),
-                        Words: trialWords, AllWords: flags.ContainsKey("all-words"))),
-                successAsJson: false);
+            // The Baseline is assessed before the Trial is queued, so `difference produce` has a before side.
+            using (var trialLease = MotifUpdateGate.TryAcquire())
+            {
+                if (trialLease is null)
+                    return RefuseActivityDuringUpdate();
+                result = RunWithConsoleCancellation(cancellationToken => RenderCommand(
+                    TrialBaselines.EnqueueWithBaseline(
+                        new EnqueueTrialRequest(
+                            trialProject, CliProductVersion(), positionals[0], flags.GetValueOrDefault("scope"),
+                            Words: trialWords, AllWords: flags.ContainsKey("all-words")),
+                        RunnerOptions.ResolveRoot(), null, cancellationToken),
+                    successAsJson: false));
+            }
             // A job just entered the queue: wake the runner before anything below waits on it.
             if (result.ExitCode == 0) startRunner(trialProject, error.WriteLine);
             if (result.ExitCode == 0 && flags.ContainsKey("wait"))

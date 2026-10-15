@@ -251,6 +251,82 @@ public sealed class ProposalDifferenceCommandsTests : IDisposable
         Assert.Contains(sita.Facts.Before.MatchedUnknownAnalysisIds, id => id.Length > 0);
     }
 
+    [Fact]
+    public void ATrialWithNoRecordedBaselineAssessmentSaysSoAndNamesTheRemedy()
+    {
+        using var fixture = new Fixture(_root, noBaselineIds: true);
+
+        var refusal = ProposalDifferenceCommands.Produce(fixture.ProduceRequest()).Refusal!;
+
+        Assert.Equal("difference.no-before", refusal.Code);
+        Assert.Contains("No Baseline Assessment was recorded", refusal.Message);
+        Assert.Contains("Re-run the Trial", refusal.Message);
+    }
+
+    [Fact]
+    public void ABaselineAssessmentBySomeOtherAssessorSaysNoParseTimeAssessmentMatches()
+    {
+        using var fixture = new Fixture(_root, beforeAssessor: "someone-else");
+
+        var refusal = ProposalDifferenceCommands.Produce(fixture.ProduceRequest()).Refusal!;
+
+        Assert.Equal("difference.no-before", refusal.Code);
+        Assert.Contains("no ParseTime Assessment by the assessor 'pangloss'", refusal.Message);
+        Assert.Contains("Re-run the Trial", refusal.Message);
+    }
+
+    [Fact]
+    public void ABaselineAssessmentOnAnotherBaselineTokenSaysTheBaselineChanged()
+    {
+        using var fixture = new Fixture(_root, beforeTokenSeed: 'b');
+
+        var refusal = ProposalDifferenceCommands.Produce(fixture.ProduceRequest()).Refusal!;
+
+        Assert.Equal("difference.no-before", refusal.Code);
+        Assert.Contains("The Baseline changed since the Trial", refusal.Message);
+        Assert.Contains("Recapture the Baseline, then re-run the Trial", refusal.Message);
+    }
+
+    [Fact]
+    public void ABaselineAssessmentWithNoWordResultsSaysThereIsNothingToCompare()
+    {
+        using var fixture = new Fixture(_root, beforeNoWords: true);
+
+        var refusal = ProposalDifferenceCommands.Produce(fixture.ProduceRequest()).Refusal!;
+
+        Assert.Equal("difference.no-before", refusal.Code);
+        Assert.Contains("no per-word results", refusal.Message);
+    }
+
+    [Fact]
+    public void ACliStyleTrialRecordsItsBaselineAssessmentsSoTheDifferenceCanBeProduced()
+    {
+        using var fixture = new Fixture(_root, noBaselineIds: true);
+        IReadOnlyList<string>? assessed = null;
+
+        var queued = TrialBaselines.EnqueueWithBaseline(
+            new SIL.Motif.Commands.Requests.EnqueueTrialRequest(fixture.ProjectPath, "1.0", fixture.ProposalId,
+                Words: ["sita", "mutu"]),
+            words =>
+            {
+                assessed = words;
+                return CommandOutcome<AssessCommandResponse>.Success(new AssessCommandResponse(
+                    null!, null!, ["before"], ""));
+            });
+
+        Assert.True(queued.Succeeded, queued.Refusal?.Message);
+        Assert.Equal(["sita", "mutu"], assessed);
+        var job = new JobRepository(fixture.Database).Get(queued.Value!.JobId)!;
+        Assert.Equal(["before"], TrialJobInput.Parse(job.InputJson).BaselineAssessmentIds);
+        fixture.CompleteTrial(queued.Value.JobId);
+
+        var produced = ProposalDifferenceCommands.Produce(
+            fixture.ProduceRequest() with { JobId = queued.Value.JobId });
+
+        Assert.True(produced.Succeeded, produced.Refusal?.Message);
+        Assert.Equal(2, produced.Value!.Summary.Words);
+    }
+
     public void Dispose()
     {
         try { Directory.Delete(_root, recursive: true); }
@@ -264,9 +340,19 @@ public sealed class ProposalDifferenceCommandsTests : IDisposable
         private readonly bool _beforeOmitsSita;
         private readonly bool _ambiguousMutu;
         private readonly bool _duplicateBefore;
+        private readonly string[]? _jobBaselineIds;
+        private readonly string _beforeAssessor;
+        private readonly char _beforeTokenSeed;
+        private readonly bool _beforeNoWords;
 
-        public Fixture(string testRoot, bool beforeOmitsSita = false, bool ambiguousMutu = false, bool duplicateBefore = false)
+        public Fixture(string testRoot, bool beforeOmitsSita = false, bool ambiguousMutu = false, bool duplicateBefore = false,
+            string[]? jobBaselineIds = null, bool noBaselineIds = false, string beforeAssessor = "pangloss",
+            char beforeTokenSeed = 'a', bool beforeNoWords = false)
         {
+            _jobBaselineIds = noBaselineIds ? null : jobBaselineIds ?? ["before"];
+            _beforeAssessor = beforeAssessor;
+            _beforeTokenSeed = beforeTokenSeed;
+            _beforeNoWords = beforeNoWords;
             _duplicateBefore = duplicateBefore;
             _beforeOmitsSita = beforeOmitsSita;
             _ambiguousMutu = ambiguousMutu;
@@ -369,7 +455,7 @@ public sealed class ProposalDifferenceCommandsTests : IDisposable
             var input = JsonSerializer.Serialize(new
             {
                 proposalJson = json, scope = (string?)null, words = new[] { "sita", "mutu" }, allWords = false,
-                limits = (TrialLimits?)null, baselineAssessmentIds = new[] { "before" },
+                limits = (TrialLimits?)null, baselineAssessmentIds = _jobBaselineIds,
             }, MotifJson.CreateOptions());
             var job = jobs.Create("trial-1", ProjectWorkspaceKey.Compute(Project), TrialJobHandler.TrialKind, input,
                 "2026-09-24T11:00:00Z");
@@ -381,13 +467,31 @@ public sealed class ProposalDifferenceCommandsTests : IDisposable
             }, MotifJson.CreateOptions()));
         }
 
+        public void CompleteTrial(string jobId)
+        {
+            var jobs = new JobRepository(Database);
+            var job = jobs.Transition(jobId, JobStatus.Running);
+            job = jobs.PublishDryRun(job.JobId, DryRun(IntentDigest.Compute(ProposalJsonParser.Parse(
+                TrialJobInput.Parse(job.InputJson).ProposalJson))), job.Version);
+            jobs.Transition(job.JobId, JobStatus.Completed, JsonSerializer.Serialize(new
+            {
+                baselineToken = Token, assessmentIds = new[] { "after" }, allWords = false,
+            }, MotifJson.CreateOptions()));
+        }
+
         private void Record(AssessmentRepository assessments, string id, CanonicalId? proposal, string? digest,
             params AssessedWord[] words)
         {
             if (_beforeOmitsSita && id == "before") words = words.Where(word => word.Word != "sita").ToArray();
             if (_duplicateBefore && id == "before") words = [.. words, Word("sita", 5, Reading(FormA))];
-            assessments.Record(new NewAssessmentRecord(id, proposal, digest, "pangloss", AssessmentKinds.ParseTime, "{}",
-                "sha256:scope", "whitespace", "1", _tokenJson, Selection.Create("Default", ["sita", "mutu"]),
+            if (_beforeNoWords && id == "before") words = [];
+            var before = id == "before";
+            var tokenJson = before && _beforeTokenSeed != 'a'
+                ? JsonSerializer.Serialize(new BaselineToken("project-id", "sha256:" + new string(_beforeTokenSeed, 64),
+                    "projection-v1", "2026-09-24T10:00:00Z", "sha256:" + new string('a', 64)), MotifJson.CreateOptions())
+                : _tokenJson;
+            assessments.Record(new NewAssessmentRecord(id, proposal, digest, before ? _beforeAssessor : "pangloss",
+                AssessmentKinds.ParseTime, "{}", "sha256:scope", "whitespace", "1", tokenJson, Selection.Create("Default", ["sita", "mutu"]),
                 "sha256:outcome", "sha256:semantic", "sha256:grammar", "fingerprint", "pipeline", 0, words,
                 SavedUtc: "2026-09-24T11:00:00Z"));
         }

@@ -60,12 +60,13 @@ public static class ProposalDifferenceCommands
                 return Refuse("difference.no-parse-assessment", FailureReason.Refused,
                     "The Trial recorded no ParseTime Assessment, so there are no parses to compare.");
             var after = assessments.Get(afterId);
-            var before = (input.BaselineAssessmentIds ?? []).Select(assessments.Get).FirstOrDefault(record =>
+            var recorded = (input.BaselineAssessmentIds ?? []).Select(assessments.Get).ToArray();
+            var before = recorded.FirstOrDefault(record =>
                 record.Kind == AssessmentKinds.ParseTime && record.Assessor == after.Assessor &&
                 record.BaselineToken == after.BaselineToken);
-            if (before is null || before.Words is null || after.Words is null)
-                return Refuse("difference.no-before", FailureReason.Refused,
-                    "The Trial has no matching Baseline ParseTime Assessment. Trial the Proposal again.");
+            var noBefore = NoBeforeMessage(recorded, before, after);
+            if (noBefore is not null)
+                return Refuse("difference.no-before", FailureReason.Refused, noBefore);
 
             var key = ProjectWorkspaceKey.Compute(project);
             var baselines = new BaselineRepository(database);
@@ -88,13 +89,32 @@ public static class ProposalDifferenceCommands
             var text = read.Texts.Single();
 
             Built built;
-            try { built = Build(text, before.Words, after.Words); }
+            try { built = Build(text, before!.Words!, after.Words!); }
             catch (DifferenceRefusalException refusal) { return CommandOutcome<ProposalDifferenceResponse>.Refused(refusal.Refusal); }
             var summary = Summarize(built, trial.JobId, request.ProposalId, before.AssessmentId, after.AssessmentId,
                 text, JsonSerializer.Serialize(read.Baseline.Token, MotifJson.CreateOptions()));
             new ProposalDifferenceRepository(database).Publish(new NewProposalDifference(summary, built.Words));
             return Show(database, summary, new ProposalDifferenceFilter(), 0, 25);
         });
+    }
+
+    // Says which condition left the Trial without a usable before side, and what to do about it.
+    private static string? NoBeforeMessage(IReadOnlyList<AssessmentRecord> recorded, AssessmentRecord? before,
+        AssessmentRecord after)
+    {
+        if (recorded.Count == 0)
+            return "No Baseline Assessment was recorded for this Trial, so there is no before side. " +
+                "Re-run the Trial with: motif proposal trial --project <fwdata> <proposalId>; it now records one.";
+        if (!recorded.Any(record => record.Kind == AssessmentKinds.ParseTime && record.Assessor == after.Assessor))
+            return $"The Trial's Baseline Assessments include no ParseTime Assessment by the assessor '{after.Assessor}' " +
+                "that measured the Trial. Re-run the Trial so its Baseline is assessed with the same assessor.";
+        if (before is null)
+            return "The Baseline changed since the Trial: its Baseline ParseTime Assessment was taken on a different " +
+                "Baseline token. Recapture the Baseline, then re-run the Trial.";
+        if (before.Words is not { Count: > 0 } || after.Words is not { Count: > 0 })
+            return "A ParseTime Assessment of this Trial has no per-word results to compare. " +
+                "Re-run the Trial so both sides record their words.";
+        return null;
     }
 
     /// <summary>Reads a saved Difference's summary and one page of its matching words.</summary>

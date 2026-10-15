@@ -188,6 +188,29 @@ public static class JobCommands
         });
     }
 
+    /// <summary>The words a Trial request would measure: its own, or those its Proposal touches; null means all.</summary>
+    internal static CommandOutcome<IReadOnlyList<string>?> ResolveTrialWords(EnqueueTrialRequest request)
+    {
+        if (request.Words is not null || request.AllWords)
+            return CommandOutcome<IReadOnlyList<string>?>.Success(request.Words);
+        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
+        {
+            var repository = new ProposalRepository(database);
+            try
+            {
+                var id = ProposalCommands.NormalizeId(request.ProposalId);
+                var record = repository.Get(CanonicalId.Parse(id));
+                if (record.DraftName is null) (record, _) = repository.GetFinalized(CanonicalId.Parse(id));
+                return CommandOutcome<IReadOnlyList<string>?>.Success(
+                    DerivedTrialWords(ProposalJsonParser.Parse(CanonicalProposalJson(record))));
+            }
+            catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)
+            {
+                return CommandOutcome<IReadOnlyList<string>?>.Refused(ProposalCommands.ProposalLoadRefusal(exception));
+            }
+        });
+    }
+
     private static Refusal? InputSizeRefusal(string inputJson, string kind)
     {
         var bytes = Encoding.UTF8.GetByteCount(inputJson);
