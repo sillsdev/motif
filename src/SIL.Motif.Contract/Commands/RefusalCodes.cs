@@ -5,12 +5,12 @@ namespace SIL.Motif.Contract.Commands;
 /// checks rather than on a string it retypes.
 /// </summary>
 /// <remarks>
-/// Commands still spell their codes as literals, because the command catalogue pins every literal it
-/// declares. What keeps the two in step is a test: every constant here must appear as a literal somewhere in
-/// the commands or the window, pinned by `EveryCatalogueCodeIsOneACommandOrTheWindowDeclares`. So renaming the
-/// last literal of a code fails the test suite, not the build. The test does not tie a code to a particular
-/// command: a command that stops using a code another command still declares passes it. The CLI does not
-/// read this list; it prints each command's own message.
+/// This class, <see cref="HostRefusalCodes"/> and the Parsimony codes together are the closed registry of
+/// every refusal code, pinned by `RegistryCoversEveryCodeTheSourceUses`: a code the source spells that no
+/// constant names fails the suite. Some call sites still spell their code as a literal. Every constant here
+/// must appear as a literal or a reference in the commands or the window, pinned by
+/// `EveryCatalogueCodeIsOneACommandOrTheWindowDeclares`. The CLI does not read this list; it prints each
+/// command's own message.
 /// </remarks>
 public static class RefusalCodes
 {
@@ -168,4 +168,322 @@ public static class RefusalCodes
     public const string WordTraceNoBaseline = "wordtrace.no-baseline";
     public const string WordTraceParserRefused = "wordtrace.parser-refused";
     public const string WordTraceParserUnavailable = "wordtrace.parser-unavailable";
+
+    /// <summary>Another Apply is already running for this project.</summary>
+    public const string ApplyInProgress = "apply.in-progress";
+    /// <summary>The Proposal has not been tried, so it cannot be applied.</summary>
+    public const string ApplyTrialMissing = "apply.trial-missing";
+    /// <summary>The Proposal or the project changed since it was tried.</summary>
+    public const string ApplyTrialStale = "apply.trial-stale";
+
+    /// <summary>A replacement Assessment was asked for without a complete Assessment of this Baseline to replace.</summary>
+    public const string AssessInvalidReplacement = "assess.invalid-replacement";
+
+    /// <summary>An analyses aggregate was asked for from an Assessment that has no per-word ParseTime or Correctness rows.</summary>
+    public const string AssessmentAggregateUnavailable = "assessment.aggregate-unavailable";
+    /// <summary>The exact Baseline an Assessment was made against is no longer available.</summary>
+    public const string AssessmentBaselineUnavailable = "assessment.baseline-unavailable";
+    /// <summary>An Assessment's stored evidence could not be read.</summary>
+    public const string AssessmentInvalidEvidence = "assessment.invalid-evidence";
+    /// <summary>An Assessment id is not a valid Motif id.</summary>
+    public const string AssessmentInvalidId = "assessment.invalid-id";
+    /// <summary>The named Assessment is not in the Motif store.</summary>
+    public const string AssessmentNotFound = "assessment.not-found";
+
+    /// <summary>A command that needs a Baseline found none for the project.</summary>
+    public const string BaselineMissing = "baseline.missing";
+    /// <summary>The command is offered only in Advanced AI mode.</summary>
+    public const string CommandAdvancedAiModeRequired = "command.advanced-ai-mode-required";
+    /// <summary>The command is offered only when developer commands are enabled.</summary>
+    public const string CommandDeveloperCommandsRequired = "command.developer-commands-required";
+
+    /// <summary>A comparison named an Assessment that is not in the store.</summary>
+    public const string ComparisonAssessmentNotFound = "comparison.assessment-not-found";
+    /// <summary>The two Assessments cannot be compared.</summary>
+    public const string ComparisonRefused = "comparison.refused";
+
+    /// <summary>A corpus bundle could not be read.</summary>
+    public const string CorpusBundleInvalid = "corpus.bundle-invalid";
+    /// <summary>A corpus document could not be added or read.</summary>
+    public const string CorpusDocumentInvalid = "corpus.document-invalid";
+    /// <summary>The named corpus has no such document.</summary>
+    public const string CorpusDocumentNotFound = "corpus.document-not-found";
+    /// <summary>A corpus request is not valid.</summary>
+    public const string CorpusInvalid = "corpus.invalid";
+    /// <summary>The store holds no corpus with that id.</summary>
+    public const string CorpusNotFound = "corpus.not-found";
+
+    /// <summary>The exact Baseline file behind the current evidence is missing.</summary>
+    public const string CurrentEvidenceBaselineUnavailable = "current-evidence.baseline-unavailable";
+
+    /// <summary>The project changed after the Trial ran, so its recorded decisions may differ.</summary>
+    public const string DifferenceBaselineChanged = "difference.baseline-changed";
+    /// <summary>One side of a Difference holds several different parses for a word.</summary>
+    public const string DifferenceDuplicateParseRows = "difference.duplicate-parse-rows";
+    /// <summary>A Difference category code is not one the product defines.</summary>
+    public const string DifferenceInvalidBucket = "difference.invalid-bucket";
+    /// <summary>A Difference page offset or limit is out of range.</summary>
+    public const string DifferenceInvalidPage = "difference.invalid-page";
+    /// <summary>The Proposal id for a Difference is not a Motif id.</summary>
+    public const string DifferenceInvalidProposal = "difference.invalid-proposal";
+    /// <summary>A Difference decision state is not one the product defines.</summary>
+    public const string DifferenceInvalidState = "difference.invalid-state";
+    /// <summary>The Text id for a Difference is not a GUID.</summary>
+    public const string DifferenceInvalidText = "difference.invalid-text";
+    /// <summary>The project has no Baseline to compare decisions against.</summary>
+    public const string DifferenceNoBaseline = "difference.no-baseline";
+    /// <summary>The Trial has no before-side Assessment to compare with.</summary>
+    public const string DifferenceNoBefore = "difference.no-before";
+    /// <summary>The Trial recorded no ParseTime Assessment to compare.</summary>
+    public const string DifferenceNoParseAssessment = "difference.no-parse-assessment";
+    /// <summary>The Proposal has no completed Trial, or none with the requested job id.</summary>
+    public const string DifferenceNoTrial = "difference.no-trial";
+    /// <summary>No saved Difference matches the request.</summary>
+    public const string DifferenceNone = "difference.none";
+    /// <summary>The current Baseline has no Text with the requested id.</summary>
+    public const string DifferenceTextNotFound = "difference.text-not-found";
+    /// <summary>The Trial did not complete, so there is nothing to compare.</summary>
+    public const string DifferenceTrialIncomplete = "difference.trial-incomplete";
+    /// <summary>Captured decisions hold an opinion that is not approved, disapproved or unknown.</summary>
+    public const string DifferenceUnexpectedOpinion = "difference.unexpected-opinion";
+
+    /// <summary>A Draft request or its content is not valid.</summary>
+    public const string DraftInvalid = "draft.invalid";
+    /// <summary>A Draft with that name already exists.</summary>
+    public const string DraftNameCollision = "draft.name-collision";
+    /// <summary>No Draft has that name.</summary>
+    public const string DraftNotFound = "draft.not-found";
+
+    /// <summary>Reading grammar objects needs a Baseline and the project has none.</summary>
+    public const string GrammarReadBaselineMissing = "grammar-read.baseline-missing";
+    /// <summary>The current Baseline file is missing, so grammar objects cannot be read.</summary>
+    public const string GrammarReadBaselineUnavailable = "grammar-read.baseline-unavailable";
+    /// <summary>A grammar read request is not valid.</summary>
+    public const string GrammarReadInvalidRequest = "grammar-read.invalid-request";
+
+    /// <summary>No grammar check could run, so there are no findings to report.</summary>
+    public const string GrammarCheckNotRun = "grammarcheck.not-run";
+
+    /// <summary>The selected trace does not record the Baseline that produced it.</summary>
+    public const string HandoffTraceBaselineUnavailable = "handoff.trace-baseline-unavailable";
+    /// <summary>A trace Handoff does not hold only that trace and its captured Baseline.</summary>
+    public const string HandoffTraceUnavailable = "handoff.trace-unavailable";
+
+    /// <summary>The project has no analysis writing system to initialize with.</summary>
+    public const string InitializationAnalysisWritingSystemRequired = "initialization.analysis-writing-system-required";
+    /// <summary>Initialization was cancelled before the field definition changed.</summary>
+    public const string InitializationCancelled = "initialization.cancelled";
+    /// <summary>Initialization was asked for without the confirmation phrase.</summary>
+    public const string InitializationConfirmationRequired = "initialization.confirmation-required";
+    /// <summary>Initialization did not save, so the project is unchanged.</summary>
+    public const string InitializationNotSaved = "initialization.not-saved";
+    /// <summary>Initialization may or may not have saved; the project needs inspection.</summary>
+    public const string InitializationOutcomeUnknown = "initialization.outcome-unknown";
+    /// <summary>A private recovery copy could not be made, so the project was not changed.</summary>
+    public const string InitializationRecoveryCopyFailed = "initialization.recovery-copy-failed";
+
+    /// <summary>An inspect request named no subject.</summary>
+    public const string InspectInvalidRequest = "inspect.invalid-request";
+
+    /// <summary>The job already finished, so there is nothing to cancel.</summary>
+    public const string JobAlreadyFinished = "job.already-finished";
+    /// <summary>A job recorded an Assessment that is missing from the project store.</summary>
+    public const string JobAssessmentsInconsistent = "job.assessments-inconsistent";
+    /// <summary>The Dry Run job finished without completing.</summary>
+    public const string JobDryRunIncomplete = "job.dry-run-incomplete";
+    /// <summary>A job's structured input exceeds the size limit.</summary>
+    public const string JobInputTooLarge = "job.input-too-large";
+    /// <summary>A job id is missing or not valid.</summary>
+    public const string JobInvalidId = "job.invalid-id";
+    /// <summary>A job was asked to move before itself.</summary>
+    public const string JobInvalidMove = "job.invalid-move";
+    /// <summary>Trial words are blank or carry surrounding whitespace.</summary>
+    public const string JobInvalidWords = "job.invalid-words";
+    /// <summary>The job to move before is not an active job.</summary>
+    public const string JobMoveTargetNotFound = "job.move-target-not-found";
+    /// <summary>The job recorded no Assessments.</summary>
+    public const string JobNoAssessments = "job.no-assessments";
+    /// <summary>The job is still running, so it cannot be requeued.</summary>
+    public const string JobNotFinished = "job.not-finished";
+    /// <summary>The project records no job with that id.</summary>
+    public const string JobNotFound = "job.not-found";
+
+    /// <summary>The project has several definitions of the reserved judgment field.</summary>
+    public const string JudgmentFieldAmbiguous = "judgment.field-ambiguous";
+    /// <summary>A reserved judgment field has an incompatible schema.</summary>
+    public const string JudgmentFieldIncompatible = "judgment.field-incompatible";
+    /// <summary>The project holds judgments in an old format that Motif no longer reads.</summary>
+    public const string JudgmentOldFormat = "judgment.old-format";
+
+    /// <summary>The machine store of Known projects could not be read consistently.</summary>
+    public const string MachineStoreInconsistent = "machine-store.inconsistent";
+
+    /// <summary>An operation id is missing or not valid.</summary>
+    public const string OperationInvalidId = "operation.invalid-id";
+    /// <summary>An operation target is not a valid canonical id.</summary>
+    public const string OperationInvalidTarget = "operation.invalid-target";
+    /// <summary>An operation's writing system is empty.</summary>
+    public const string OperationInvalidWritingSystem = "operation.invalid-writing-system";
+
+    /// <summary>The saved user preferences could not be used.</summary>
+    public const string PreferencesRefused = "preferences.refused";
+    /// <summary>Saving user preferences failed, so choices last only until Motif closes.</summary>
+    public const string PreferencesUnavailable = "preferences.unavailable";
+
+    /// <summary>A project already exists at the chosen name and folder.</summary>
+    public const string ProjectCreateExists = "project-create.exists";
+    /// <summary>LibLCM could not create the project; what Motif wrote was removed.</summary>
+    public const string ProjectCreateFailed = "project-create.failed";
+    /// <summary>The parent folder for a new project does not exist.</summary>
+    public const string ProjectCreateFolderNotFound = "project-create.folder-not-found";
+    /// <summary>The parent folder for a new project is not a usable path.</summary>
+    public const string ProjectCreateInvalidFolder = "project-create.invalid-folder";
+    /// <summary>A new project's name is not allowed.</summary>
+    public const string ProjectCreateInvalidName = "project-create.invalid-name";
+    /// <summary>A word-forming character is not a single visible character.</summary>
+    public const string ProjectCreateInvalidWordForming = "project-create.invalid-word-forming";
+    /// <summary>A new project's writing system tag is not a valid BCP 47 tag.</summary>
+    public const string ProjectCreateInvalidWritingSystem = "project-create.invalid-writing-system";
+
+    /// <summary>A project-level refusal with no more specific code.</summary>
+    public const string ProjectRefused = "project.refused";
+    /// <summary>FieldWorks is saving the project, so the command was refused as busy.</summary>
+    public const string ProjectSaving = "project.saving";
+    /// <summary>The project's saved data could not be read.</summary>
+    public const string ProjectUnreadable = "project.unreadable";
+    /// <summary>The project lacks a writing system the command needs.</summary>
+    public const string ProjectWritingSystemMissing = "project.writing-system-missing";
+
+    /// <summary>The Proposal was already applied.</summary>
+    public const string ProposalAlreadyApplied = "proposal.already-applied";
+    /// <summary>An applied Proposal and its Receipts cannot be deleted.</summary>
+    public const string ProposalAppliedFinal = "proposal.applied-final";
+    /// <summary>The Proposal has an open Draft that must be finalized or discarded first.</summary>
+    public const string ProposalHasDraft = "proposal.has-draft";
+    /// <summary>A Draft failed Proposal validation.</summary>
+    public const string ProposalInconsistent = "proposal.inconsistent";
+    /// <summary>A Proposal id is not a Motif id.</summary>
+    public const string ProposalInvalidId = "proposal.invalid-id";
+    /// <summary>The Proposal cannot move to the requested status from its current one.</summary>
+    public const string ProposalInvalidStatus = "proposal.invalid-status";
+    /// <summary>Only a declined, superseded or withdrawn Proposal can be deleted.</summary>
+    public const string ProposalNotClosed = "proposal.not-closed";
+    /// <summary>The Proposal's status no longer allows changing it.</summary>
+    public const string ProposalNotEditable = "proposal.not-editable";
+    /// <summary>The store holds no Proposal with that id.</summary>
+    public const string ProposalNotFound = "proposal.not-found";
+    /// <summary>The Proposal is the user's own pending changes and is handled on Review changes.</summary>
+    public const string ProposalPendingChanges = "proposal.pending-changes";
+    /// <summary>A split assigns one operation to more than one group.</summary>
+    public const string ProposalSplitDuplicateOperation = "proposal.split-duplicate-operation";
+    /// <summary>A Proposal was named as its own replacement.</summary>
+    public const string ProposalSupersedeSelf = "proposal.supersede-self";
+    /// <summary>The Proposal was replaced by another one.</summary>
+    public const string ProposalSuperseded = "proposal.superseded";
+    /// <summary>A Trial of the Proposal is running, so it cannot be deleted.</summary>
+    public const string ProposalTrialRunning = "proposal.trial-running";
+    /// <summary>A Proposal list was filtered by a status that does not exist.</summary>
+    public const string ProposalUnknownStatus = "proposal.unknown-status";
+
+    /// <summary>A report named an Assessment that is not in the store.</summary>
+    public const string ReportAssessmentNotFound = "report.assessment-not-found";
+    /// <summary>A report kind is not one the product defines.</summary>
+    public const string ReportInvalidKind = "report.invalid-kind";
+    /// <summary>A report could not be produced from the named Assessment.</summary>
+    public const string ReportRefused = "report.refused";
+
+    /// <summary>More than one staged Draft names the same Proposal id.</summary>
+    public const string RetirementReviewDraftAmbiguous = "retirement-review.draft-ambiguous";
+    /// <summary>No staged Draft has the requested Proposal id.</summary>
+    public const string RetirementReviewDraftNotFound = "retirement-review.draft-not-found";
+    /// <summary>The staged retirement review could not be read safely.</summary>
+    public const string RetirementReviewEvidenceInconsistent = "retirement-review.evidence-inconsistent";
+    /// <summary>The Draft Proposal id is not valid.</summary>
+    public const string RetirementReviewInvalidDraft = "retirement-review.invalid-draft";
+    /// <summary>The latest Dry Run describes an earlier revision of the Draft.</summary>
+    public const string RetirementReviewStaleDryRun = "retirement-review.stale-dry-run";
+
+    /// <summary>A review mark lacks an entry, a content digest or an evidence digest.</summary>
+    public const string ReviewInvalidMark = "review.invalid-mark";
+    /// <summary>A Proposal's changes could not be read as a list.</summary>
+    public const string ReviewUnreadable = "review.unreadable";
+
+    /// <summary>The window could not open the Selection reader.</summary>
+    public const string SelectionReaderOpenFailed = "selection-reader.open-failed";
+    /// <summary>The saved texts changed under the reader since it was opened.</summary>
+    public const string SelectionReaderPresentationChanged = "selection-reader.presentation-changed";
+
+    /// <summary>A Selection limit policy is missing or not valid.</summary>
+    public const string SelectionInvalidLimits = "selection.invalid-limits";
+    /// <summary>The retry source is not a Baseline ParseTime Assessment.</summary>
+    public const string SelectionRetrySourceInvalid = "selection.retry-source-invalid";
+    /// <summary>The retry source Assessment belongs to a different Baseline.</summary>
+    public const string SelectionRetrySourceMismatch = "selection.retry-source-mismatch";
+    /// <summary>The retry source Assessment is not in the store.</summary>
+    public const string SelectionRetrySourceNotFound = "selection.retry-source-not-found";
+    /// <summary>The retry source Assessment belongs to a different project.</summary>
+    public const string SelectionRetrySourceProjectMismatch = "selection.retry-source-project-mismatch";
+    /// <summary>A retry Selection was asked for without a source Assessment id.</summary>
+    public const string SelectionRetrySourceRequired = "selection.retry-source-required";
+    /// <summary>A source Assessment id was given without a retry kind.</summary>
+    public const string SelectionRetrySourceWithoutRetry = "selection.retry-source-without-retry";
+    /// <summary>The saved Selection changed since the window last read it.</summary>
+    public const string SelectionRevisionConflict = "selection.revision-conflict";
+
+    /// <summary>Forwarded arguments already name a format that the JSON request would override.</summary>
+    public const string StatsFormatConflict = "stats.format-conflict";
+    /// <summary>The named Assessment is not part of the Proposal's Trial.</summary>
+    public const string StatsWrongAssessment = "stats.wrong-assessment";
+    /// <summary>The named Assessment did not collect per-object statistics.</summary>
+    public const string StatsWrongKind = "stats.wrong-kind";
+
+    /// <summary>Words from different saved Selections were marked together.</summary>
+    public const string TextsMixedEvidence = "texts.mixed-evidence";
+    /// <summary>The exact source occurrence is absent from the Baseline.</summary>
+    public const string TextsOccurrenceNotFound = "texts.occurrence-not-found";
+
+    /// <summary>A timing request lacks a valid grouping or a positive top count.</summary>
+    public const string TimingInvalidRequest = "timing.invalid-request";
+    /// <summary>A timing word set is not valid.</summary>
+    public const string TimingInvalidWordSet = "timing.invalid-word-set";
+    /// <summary>The named Assessment is not part of the Proposal's Trial.</summary>
+    public const string TimingWrongAssessment = "timing.wrong-assessment";
+
+    /// <summary>The Proposal has not been tried yet.</summary>
+    public const string TrialNone = "trial.none";
+    /// <summary>The Trial's scratch project was removed, so the trace cannot be reopened.</summary>
+    public const string TrialScratchGone = "trial.scratch-gone";
+
+    /// <summary>An uses request names nothing to look up.</summary>
+    public const string UsesInvalidRequest = "uses.invalid-request";
+    /// <summary>No stored Assessment matches the current Baseline and default Selection.</summary>
+    public const string UsesNoAssessment = "uses.no-assessment";
+
+    /// <summary>A window check found a problem the user must fix before continuing.</summary>
+    public const string WindowCheck = "window.check";
+    /// <summary>A diagnostic could not be saved or copied.</summary>
+    public const string WindowDiagnosticNotWritten = "window.diagnostic-not-written";
+    /// <summary>A saved diagnostic file could not be read at all.</summary>
+    public const string WindowDiagnosticUnreadable = "window.diagnostic-unreadable";
+    /// <summary>The action needs an open project and none is open.</summary>
+    public const string WindowNoProject = "window.no-project";
+    /// <summary>The window could not open the chosen project.</summary>
+    public const string WindowOpenFailed = "window.open-failed";
+    /// <summary>The window could not open a Proposal.</summary>
+    public const string WindowOpenProposalFailed = "window.open-proposal-failed";
+
+    /// <summary>The Baseline changed before the word was read.</summary>
+    public const string WordContextBaselineChanged = "word-context.baseline-changed";
+    /// <summary>The exact Baseline file is missing, so the word's analyses cannot be read.</summary>
+    public const string WordContextBaselineUnavailable = "word-context.baseline-unavailable";
+    /// <summary>A word-context request was empty.</summary>
+    public const string WordContextEmptyWord = "word-context.empty-word";
+
+    /// <summary>Reading a word's state was cancelled.</summary>
+    public const string WordReadStateCancelled = "word.read-state-cancelled";
+    /// <summary>A word read-state request is not valid.</summary>
+    public const string WordReadStateInvalid = "word.read-state-invalid";
+
+    /// <summary>A saved trace file could not be read.</summary>
+    public const string WordTraceDiagnosticUnreadable = "wordtrace.diagnostic-unreadable";
 }

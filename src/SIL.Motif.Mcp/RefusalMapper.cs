@@ -17,32 +17,32 @@ internal static class RefusalMapper
     /// <summary>What to do after specific refusals; anything not listed falls back to its reason's advice.</summary>
     private static readonly IReadOnlyDictionary<string, string> Hints = new Dictionary<string, string>(StringComparer.Ordinal)
     {
-        ["baseline.missing"] = "Call motif_capture_baseline once, then repeat this call.",
-        ["baseline.unavailable"] = "Call motif_capture_baseline to take a fresh saved copy, then repeat this call.",
-        ["project.busy"] = "Another Motif task holds this project. Wait about ten seconds and repeat the same call.",
-        ["project.in-use"] = "FieldWorks has the project open. Ask the linguist to save and close it, then repeat.",
-        ["project.registration-failed"] = "Check that the worker root at {workerRoot} and machine store at " +
+        [RefusalCodes.BaselineMissing] = "Call motif_capture_baseline once, then repeat this call.",
+        [HostRefusalCodes.BaselineUnavailable] = "Call motif_capture_baseline to take a fresh saved copy, then repeat this call.",
+        [RefusalCodes.ProjectBusy] = "Another Motif task holds this project. Wait about ten seconds and repeat the same call.",
+        [RefusalCodes.ProjectInUse] = "FieldWorks has the project open. Ask the linguist to save and close it, then repeat.",
+        [HostRefusalCodes.ProjectRegistrationFailed] = "Check that the worker root at {workerRoot} and machine store at " +
             "{machineStorePath} are writable and valid. If another writer holds the store, let it finish, " +
             "then call motif_open again.",
-        ["change.project-saving"] = "FieldWorks is saving. Wait a few seconds and repeat the same call.",
-        ["project.not-found"] = "The project file is missing. Tell the linguist; do not guess another path.",
-        ["job.wait-timeout"] = "The job is still running. Call this tool again with job set to {jobId} to keep waiting.",
-        ["job.wait-cancelled"] = "The wait was cancelled. Call this tool again with job set to {jobId}.",
-        ["proposal.not-found"] = "Call motif_proposals to list the proposals that exist, then use one of those ids.",
-        ["proposal.invalid-id"] = "Use the proposalId a tool returned, or one from motif_proposals; do not type one.",
-        ["draft.revision-conflict"] = "The draft changed since you last read it. Call motif_proposals with its id and retry.",
-        ["job.dry-run-incomplete"] = "The Dry Run did not complete. Revise the Draft and run a new Dry Run.",
-        ["store.other-version"] = "Motif's data for this project was made by another version. Tell the linguist; do not retry.",
-        ["parse.already-running"] = "A parse is already running. Wait a minute, then repeat the call.",
+        [RefusalCodes.ChangeProjectSaving] = "FieldWorks is saving. Wait a few seconds and repeat the same call.",
+        [RefusalCodes.ProjectNotFound] = "The project file is missing. Tell the linguist; do not guess another path.",
+        [RefusalCodes.JobWaitTimeout] = "The job is still running. Call this tool again with job set to {jobId} to keep waiting.",
+        [RefusalCodes.JobWaitCancelled] = "The wait was cancelled. Call this tool again with job set to {jobId}.",
+        [RefusalCodes.ProposalNotFound] = "Call motif_proposals to list the proposals that exist, then use one of those ids.",
+        [RefusalCodes.ProposalInvalidId] = "Use the proposalId a tool returned, or one from motif_proposals; do not type one.",
+        [RefusalCodes.DraftRevisionConflict] = "The draft changed since you last read it. Call motif_proposals with its id and retry.",
+        [RefusalCodes.JobDryRunIncomplete] = "The Dry Run did not complete. Revise the Draft and run a new Dry Run.",
+        [RefusalCodes.StoreOtherVersion] = "Motif's data for this project was made by another version. Tell the linguist; do not retry.",
+        [RefusalCodes.ParseAlreadyRunning] = "A parse is already running. Wait a minute, then repeat the call.",
         ["assess.parser-memory-limit"] =
             "The parser used more memory than Motif allows. Tell the linguist; do not retry unchanged.",
-        ["assess.parser-unavailable"] = "The parser is not installed here. Tell the linguist; evaluation tools cannot run.",
-        ["grammarcheck.parser-unavailable"] = "The parser is not installed here. Tell the linguist; evaluation tools cannot run.",
-        ["project.writing-system-missing"] = "This is a setup problem, not damaged data. Tell the linguist what the " +
+        [RefusalCodes.AssessParserUnavailable] = "The parser is not installed here. Tell the linguist; evaluation tools cannot run.",
+        [RefusalCodes.GrammarCheckParserUnavailable] = "The parser is not installed here. Tell the linguist; evaluation tools cannot run.",
+        [RefusalCodes.ProjectWritingSystemMissing] = "This is a setup problem, not damaged data. Tell the linguist what the " +
             "message says to fix; do not retry unchanged.",
-        ["tool.unknown-argument"] = "Remove the argument the message names, or check this tool's input schema.",
-        ["tool.missing-argument"] = "Add the argument the message names, then call again.",
-        ["tool.failed"] = "This failed unexpectedly; the diagnostic log has 'tool {toolName} failed'. Repeat the call once; " +
+        [HostRefusalCodes.ToolUnknownArgument] = "Remove the argument the message names, or check this tool's input schema.",
+        [HostRefusalCodes.ToolMissingArgument] = "Add the argument the message names, then call again.",
+        [HostRefusalCodes.ToolFailed] = "This failed unexpectedly; the diagnostic log has 'tool {toolName} failed'. Repeat the call once; " +
             "if it fails again, stop and tell the linguist.",
     };
 
