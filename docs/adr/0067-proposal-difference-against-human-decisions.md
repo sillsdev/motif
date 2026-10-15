@@ -1,4 +1,4 @@
-# ADR 0066 — Proposal Differences use captured FieldWorks decisions
+# ADR 0067 — Proposal Differences use captured FieldWorks decisions
 
 People trying a grammar change can see which words still match an approved analysis and which acquire readings worth checking. Every front end shows the same evidence from the human decisions saved in FieldWorks, and an older result keeps the project state it described.
 
