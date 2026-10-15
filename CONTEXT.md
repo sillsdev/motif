@@ -20,6 +20,20 @@ surface may churn beneath a stable operation vocabulary
 ([ADR 0029](docs/adr/0029-agents-address-layer-1-only.md)).
 _Avoid_: macro, template, high-level operation, composite
 
+**Composer**:
+The catalogued command that turns one Intent into Motif operations, together with the linguistic policy that keeps
+them consistent, such as reusing an existing analysis rather than adding a duplicate. It is named for the intent a
+linguist would recognise (`compose-author-stem-name`), never for a field or a language, and it is the same command
+whether a person runs it from the command line or an agent calls it as a tool
+([ADR 0069](docs/adr/0069-the-agent-api.md)).
+_Avoid_: setter, endpoint, builder, wizard
+
+**Phenomenon**:
+A cross-linguistic pattern a grammar must express, such as noun class, infixation, reduplication or stem
+alternation. Languages are many and phenomena are few, so each Composer declares the phenomena it serves and an
+agent finds Composers by phenomenon; no Composer is written for one language.
+_Avoid_: feature (a FieldWorks term), construction, rule
+
 **Lowering**:
 Turning one Motif operation into the concrete changes that realize it against a particular store.
 _Avoid_: compilation, translation, expansion
