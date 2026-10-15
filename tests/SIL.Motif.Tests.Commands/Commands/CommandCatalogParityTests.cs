@@ -126,6 +126,7 @@ public sealed class CommandCatalogParityTests
         "difference.trial-incomplete",
         "difference.unexpected-opinion",
         "draft.invalid", "draft.name-collision", "draft.not-found", "draft.revision-conflict",
+        "evidence.invalid-page", "evidence.unknown-tier",
         "handoff.cancelled", "handoff.destination-exists", "handoff.invocation-mismatch", "handoff.invocation-not-found",
         "handoff.invocation-required", "handoff.parser-unavailable", "handoff.source-unavailable",
         "handoff.statistics-unavailable", "handoff.text-not-found",
