@@ -2,7 +2,7 @@
 
 Open **Settings** from the bottom of the left navigation rail to change how Motif looks and to find its keyboard shortcuts, project parsing limits, grammar-check defaults, problem reports, and version information. **Help** beside it opens guidance for the current page. Display choices are remembered for this user on this computer; a project's parsing limits are saved with that project's [Default Selection](term:default-selection).
 
-Settings opens as a page. **Back** returns to the page you were using; Escape does the same after handling any field edit. The section navigator collapses in a narrow window. Select **Settings** again to open it, then choose a section or collapse the side bar to use the page's full width.
+Settings opens as a page. **Back** returns to the page you were using; Escape does the same after handling any field edit. The section navigator is the page's side panel and collapses in a narrow window. Select **Settings** again to open it, then choose a section or collapse the side bar to use the page's full width. [The Motif window](guide:the-window) describes how the panels fold away and return.
 
 ## Display
 
