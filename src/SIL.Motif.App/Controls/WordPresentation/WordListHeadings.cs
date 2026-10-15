@@ -5,7 +5,7 @@ internal static class WordListHeadings
 {
     internal const string DefaultMeaning = "Meaning";
 
-    /// <summary>Returns a column's heading, or an empty string for a column that has none.</summary>
+    /// <summary>Returns a column's heading, or an empty string for a column that has none; Tick has none.</summary>
     internal static string TextOf(WordListColumn column, string meaningHeader) => column switch
     {
         WordListColumn.Word => "Word",
@@ -14,7 +14,9 @@ internal static class WordListHeadings
         WordListColumn.PanGloss => "PanGloss",
         WordListColumn.Meaning => meaningHeader,
         WordListColumn.Places => "Places",
+        WordListColumn.Warnings => "Warnings",
         WordListColumn.Time => "Time",
+        WordListColumn.Read => "Read",
         WordListColumn.Next => "Next",
         _ => string.Empty,
     };

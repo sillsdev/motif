@@ -104,7 +104,8 @@ public sealed class WordListSlot : ScrollViewer
             WritingSystemText.GetResolver(this), out var styleRevision, out var uiLocale);
         var measureSize = new Size(outerWidth, availableSize.Height);
         var resolved = _policy.Resolve(outerWidth, Schema, ShowsMeaning,
-            styleRevision, uiLocale, sizing);
+            styleRevision, uiLocale, sizing,
+            (header as ModuleWordRowHeader)?.MeaningHeader ?? WordListHeadings.DefaultMeaning);
         if (!ReferenceEquals(_layout, resolved))
         {
             _layout = resolved;

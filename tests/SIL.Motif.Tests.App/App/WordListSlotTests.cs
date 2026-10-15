@@ -203,6 +203,28 @@ public sealed class WordListSlotTests(AvaloniaHeadlessFixture avalonia)
     }
 
     [Fact]
+    public void StackedCaptionsCoverWarningsAndReadAndFollowThePagesMeaningHeading()
+    {
+        avalonia.Invoke(() =>
+        {
+            var (_, _, rows, window) = Show(width: 420, WordListSchemas.All, meaningHeader: "Gloss");
+            try
+            {
+                var captions = rows.GetVisualDescendants().OfType<TextBlock>()
+                    .Where(block => block.Classes.Contains("wordPresentationCaption")).Select(block => block.Text).ToHashSet();
+                Assert.Contains("Warnings", captions);
+                Assert.Contains("Read", captions);
+                Assert.Contains("Gloss", captions);
+                Assert.DoesNotContain("Meaning", captions);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
     public void SizingHintsThatArriveAfterTheFirstLayoutResizeTheirTrack()
     {
         avalonia.Invoke(() =>
@@ -230,12 +252,15 @@ public sealed class WordListSlotTests(AvaloniaHeadlessFixture avalonia)
     private static (WordListSlot Slot, WordRowHeader Header, ListBox Rows, Window Window) Show(
         double width,
         WordListSchema? schema = null,
-        bool showsMeaning = true)
+        bool showsMeaning = true,
+        string? meaningHeader = null)
     {
         var items = Enumerable.Range(0, 100).Select(index => new WordPresentation(
             new WordPresentationKey($"slot-word:{index}"), 0,
-            WordRowViewModel.NotParsed($"word-{index}"), WordListOwner.WordList)).ToArray();
+            new WordRowViewModel(WordRowViewModel.NotParsed($"word-{index}").Row with { WarningsNamed = 2, IsUnread = true }),
+            WordListOwner.WordList)).ToArray();
         var header = new WordRowHeader();
+        if (meaningHeader is not null) header.MeaningHeader = meaningHeader;
         var rows = new ListBox
         {
             Classes = { "wordRows" },

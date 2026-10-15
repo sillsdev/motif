@@ -347,7 +347,7 @@ public sealed class WordRow : UserControl
                     _shell.Children.Add(cell);
                     break;
                 default:
-                    rest.Children.Add(Captioned(column, cell!));
+                    rest.Children.Add(Captioned(column, cell!, MeaningHeaderOf()));
                     break;
             }
         }
@@ -357,10 +357,12 @@ public sealed class WordRow : UserControl
         _shell.Children.Add(rest);
     }
 
+    private string MeaningHeaderOf() => _builtLayout?.MeaningHeader ?? WordListHeadings.DefaultMeaning;
+
     // Stacking hides the column header, so each stacked cell carries that header's text as caption and name.
-    private static Control Captioned(WordListColumn column, Control cell)
+    private static Control Captioned(WordListColumn column, Control cell, string meaningHeader)
     {
-        var heading = WordListHeadings.TextOf(column, WordListHeadings.DefaultMeaning);
+        var heading = WordListHeadings.TextOf(column, meaningHeader);
         if (heading.Length == 0) return cell;
         // A caption inline with the cell's own first line costs width, not another line of height.
         if (cell is MorphemePanel strip)

@@ -244,6 +244,9 @@ internal sealed record WordListLayout(
     string UiLocale,
     long Revision)
 {
+    /// <summary>The heading the page gave its Meaning column, which a stacked row uses as that cell's caption.</summary>
+    public string MeaningHeader { get; init; } = WordListHeadings.DefaultMeaning;
+
     /// <summary>Returns the assigned width of a visible column.</summary>
     public double WidthOf(WordListColumn column)
     {
@@ -263,6 +266,7 @@ internal sealed class WordListPolicy
     private bool _lastShowsMeaning;
     private long _lastStyleRevision;
     private string? _lastUiLocale;
+    private string _lastMeaningHeader = WordListHeadings.DefaultMeaning;
     private long _revision;
 
     /// <summary>Resolves immutable track widths from the parent's slot and module-owned sizing inputs.</summary>
@@ -272,7 +276,8 @@ internal sealed class WordListPolicy
         bool showsMeaning,
         long styleRevision,
         string? uiLocale,
-        WordListSizing sizing)
+        WordListSizing sizing,
+        string meaningHeader = WordListHeadings.DefaultMeaning)
     {
         ArgumentNullException.ThrowIfNull(schema);
         ArgumentNullException.ThrowIfNull(sizing);
@@ -283,7 +288,7 @@ internal sealed class WordListPolicy
         var locale = string.IsNullOrWhiteSpace(uiLocale) ? CultureInfo.CurrentUICulture.Name : uiLocale.Trim();
         if (_lastLayout is not null &&
             _lastAvailableWidth.Equals(availableLogicalWidth) && _lastSchema == schema &&
-            _lastShowsMeaning == showsMeaning && _lastStyleRevision == styleRevision &&
+            _lastShowsMeaning == showsMeaning && _lastMeaningHeader == meaningHeader && _lastStyleRevision == styleRevision &&
             string.Equals(_lastUiLocale, locale, StringComparison.Ordinal) && _lastSizing!.HasSameValues(sizing))
             return _lastLayout;
 
@@ -314,10 +319,11 @@ internal sealed class WordListPolicy
         var trackAreaWidth = stacked ? contentWidth : Math.Max(contentWidth, widths.Values.Sum() + gapWidth);
         var layout = new WordListLayout(schema, showsMeaning, tracks.MoveToImmutable(), availableLogicalWidth,
             sizing.OuterChromeWidth, sizing.ReservedVerticalScrollbarWidth, contentWidth, trackAreaWidth,
-            sizing.ColumnGap, stacked, styleRevision, locale, ++_revision);
+            sizing.ColumnGap, stacked, styleRevision, locale, ++_revision) { MeaningHeader = meaningHeader };
         _lastAvailableWidth = availableLogicalWidth;
         _lastSchema = schema;
         _lastShowsMeaning = showsMeaning;
+        _lastMeaningHeader = meaningHeader;
         _lastStyleRevision = styleRevision;
         _lastUiLocale = locale;
         _lastSizing = sizing;
