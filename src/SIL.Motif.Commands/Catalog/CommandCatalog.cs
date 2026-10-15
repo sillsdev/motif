@@ -215,8 +215,8 @@ public static class CommandCatalog
 
         // Overview and Timing
         new CommandDescriptor("overview", typeof(OverviewRequest), typeof(OverviewResponse), CommandSurface.Released, AgentClass.Read),
-        new CommandDescriptor("difference produce", typeof(ProposalDifferenceProduceRequest), typeof(ProposalDifferenceResponse), CommandSurface.Developer, AgentClass.Evaluate) { ExposeAsAgentTool = false },
-        new CommandDescriptor("difference show", typeof(ProposalDifferenceShowRequest), typeof(ProposalDifferenceResponse), CommandSurface.Developer, AgentClass.Read) { ExposeAsAgentTool = false },
+        new CommandDescriptor("difference produce", typeof(ProposalDifferenceProduceRequest), typeof(ProposalDifferenceResponse), CommandSurface.Developer, AgentClass.Evaluate),
+        new CommandDescriptor("difference show", typeof(ProposalDifferenceShowRequest), typeof(ProposalDifferenceResponse), CommandSurface.Developer, AgentClass.Read),
         new CommandDescriptor("proposal trial", typeof(ReadTrialRequest), typeof(TrialRecord), CommandSurface.Developer, AgentClass.Read),
         new CommandDescriptor("warnings", typeof(WarningsRequest), typeof(WarningsResponse), CommandSurface.Released, AgentClass.Read),
         new CommandDescriptor("grammar check", typeof(GrammarCheckRequest), typeof(GrammarCheckResponse), CommandSurface.Released, AgentClass.Evaluate),
