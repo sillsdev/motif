@@ -110,6 +110,48 @@ public sealed class ProposalRepositoryTests : IDisposable
         Assert.Single(repository.List(new ProposalListFilter()));
     }
 
+    [Theory]
+    [InlineData("rejected")]
+    [InlineData("withdrawn")]
+    [InlineData("deferred")]
+    [InlineData("superseded")]
+    public void SetStatusNeverMovesAnAppliedProposal(string target)
+    {
+        using var database = MotifDatabase.OpenOwned(Path.Combine(_root, "final.motif.db"),
+            new ProjectLocator(Path.Combine(_root, "final.fwdata"), "final"),
+            MotifSchema.CurrentSchema, new Version(1, 0));
+        var repository = new ProposalRepository(database);
+        var id = CanonicalId.Mint("proposal/");
+        repository.SaveRevision(new ProposalRevisionRecord(
+            id, "sha256:final", "{\"proposalId\":\"" + id.Value + "\"}", "proposed", null, null, null));
+        repository.SetStatus(id, "applied", supersededBy: null);
+
+        var outcome = repository.Transition(id, new[] { "proposed", "deferred" }, target, supersededBy: "other");
+
+        Assert.False(outcome.Moved);
+        Assert.Equal("applied", outcome.Status);
+        Assert.Equal("applied", repository.GetForTransition(id).Status);
+    }
+
+    [Fact]
+    public void TransitionMovesAProposalInAnAllowedStatusAndRecordsTheReplacement()
+    {
+        using var database = MotifDatabase.OpenOwned(Path.Combine(_root, "move.motif.db"),
+            new ProjectLocator(Path.Combine(_root, "move.fwdata"), "move"),
+            MotifSchema.CurrentSchema, new Version(1, 0));
+        var repository = new ProposalRepository(database);
+        var id = CanonicalId.Mint("proposal/");
+        repository.SaveRevision(new ProposalRevisionRecord(
+            id, "sha256:move", "{\"proposalId\":\"" + id.Value + "\"}", "proposed", null, null, null));
+
+        var outcome = repository.Transition(id, new[] { "proposed" }, "superseded", supersededBy: "other");
+
+        Assert.True(outcome.Moved);
+        var record = repository.GetForTransition(id);
+        Assert.Equal("superseded", record.Status);
+        Assert.Equal("other", record.SupersededBy);
+    }
+
     [Fact]
     public void RejectsConflictingRevisionAndFiltersArchivedHistory()
     {

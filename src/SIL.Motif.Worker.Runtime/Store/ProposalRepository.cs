@@ -105,7 +105,18 @@ public interface IProposalRepository
     /// </summary>
     /// <exception cref="KeyNotFoundException">No finalized Proposal is recorded under this id.</exception>
     ProposalRecord GetForTransition(CanonicalId proposalId);
-    /// <summary>Moves a Proposal to a new status, naming the replacement when it is superseded.</summary>
+    /// <summary>
+    /// Moves a finalized Proposal to <paramref name="to"/> only if its status, read in the same store
+    /// transaction as the write, is one of <paramref name="allowedFrom"/>; otherwise changes nothing and
+    /// reports the status found, so an Apply that commits first is never overwritten.
+    /// </summary>
+    /// <exception cref="KeyNotFoundException">No finalized Proposal is recorded under this id.</exception>
+    StatusTransitionOutcome Transition(
+        CanonicalId proposalId, IReadOnlyCollection<string> allowedFrom, string to, string? supersededBy = null);
+    /// <summary>
+    /// Writes a status with no check of the current one, for fixtures and for callers that already hold the
+    /// right to overwrite; a command that moves a Proposal on a user's request uses <see cref="Transition"/>.
+    /// </summary>
     void SetStatus(CanonicalId proposalId, string status, string? supersededBy);
     /// <summary>Records the Apply Receipt and marks its Proposal applied in one store transaction.</summary>
     void RecordAppliedReceipt(Receipt receipt);
@@ -760,6 +771,41 @@ public sealed class ProposalRepository : IProposalRepository
     }
 
     /// <inheritdoc />
+    public StatusTransitionOutcome Transition(
+        CanonicalId proposalId, IReadOnlyCollection<string> allowedFrom, string to, string? supersededBy = null)
+    {
+        ArgumentNullException.ThrowIfNull(allowedFrom);
+        using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction();
+        var placeholders = string.Join(", ", allowedFrom.Select((_, i) => "$from" + i));
+        using var update = connection.CreateCommand();
+        update.Transaction = transaction;
+        update.CommandText = $"""
+            UPDATE Proposals SET Status = $status, SupersededBy = $superseded
+            WHERE ProposalId = $id AND DraftName IS NULL AND Status IN ({placeholders});
+            """;
+        update.Parameters.AddWithValue("$status", to);
+        update.Parameters.AddWithValue("$superseded", (object?)supersededBy ?? DBNull.Value);
+        update.Parameters.AddWithValue("$id", proposalId.Value);
+        var index = 0;
+        foreach (var from in allowedFrom) update.Parameters.AddWithValue("$from" + index++, from);
+        if (update.ExecuteNonQuery() > 0)
+        {
+            transaction.Commit();
+            return new StatusTransitionOutcome(true, to);
+        }
+
+        using var read = connection.CreateCommand();
+        read.Transaction = transaction;
+        read.CommandText = "SELECT Status FROM Proposals WHERE ProposalId = $id AND DraftName IS NULL;";
+        read.Parameters.AddWithValue("$id", proposalId.Value);
+        var observed = read.ExecuteScalar() as string ??
+            throw new KeyNotFoundException(
+                $"Proposal '{proposalId.Value}' not found in store. Run 'list' to see committed proposals.");
+        return new StatusTransitionOutcome(false, observed);
+    }
+
+    /// <inheritdoc />
     public void SetStatus(CanonicalId proposalId, string status, string? supersededBy)
     {
         using var connection = _database.OpenConnection();
@@ -968,3 +1014,8 @@ public sealed class ProposalRepository : IProposalRepository
 
     private static DateTimeOffset? ParseNullableUtc(string? value) => value is null ? null : DateTimeOffset.Parse(value, CultureInfo.InvariantCulture);
 }
+
+/// <summary>What a guarded status write did: whether it moved the Proposal, and the status it left it in.</summary>
+/// <param name="Moved">True when the Proposal was in an allowed origin status and now has the new one.</param>
+/// <param name="Status">The new status when moved, otherwise the status found in the same transaction.</param>
+public sealed record StatusTransitionOutcome(bool Moved, string Status);

@@ -817,21 +817,21 @@ public static partial class ProposalCommands
         TransitionStatus(
             request.FwDataPath, request.ProductVersion, request.ProposalId, ManifestStatus.Deferred,
             DeferrableFrom, null,
-            (repository, id, _) => repository.SetStatus(id, ManifestStatus.Deferred, supersededBy: null));
+            (repository, id) => repository.Transition(id, DeferrableFrom, ManifestStatus.Deferred));
 
     /// <summary>Moves a Proposal to <c>rejected</c>: not wanted, as opposed to wanted later.</summary>
     public static CommandOutcome<ProposalStatusChangedResponse> Reject(RejectRequest request) =>
         TransitionStatus(
             request.FwDataPath, request.ProductVersion, request.ProposalId, ManifestStatus.Rejected,
             RejectableFrom, null,
-            (repository, id, _) => repository.SetStatus(id, ManifestStatus.Rejected, supersededBy: null));
+            (repository, id) => repository.Transition(id, RejectableFrom, ManifestStatus.Rejected));
 
     /// <summary>Moves an open Proposal to <c>withdrawn</c>: its author took it back; it can be reopened as a Draft.</summary>
     public static CommandOutcome<ProposalStatusChangedResponse> Withdraw(RejectRequest request) =>
         TransitionStatus(
             request.FwDataPath, request.ProductVersion, request.ProposalId, ManifestStatus.Withdrawn,
             RejectableFrom, null,
-            (repository, id, _) => repository.SetStatus(id, ManifestStatus.Withdrawn, supersededBy: null));
+            (repository, id) => repository.Transition(id, RejectableFrom, ManifestStatus.Withdrawn));
 
     /// <summary>Marks a Proposal <c>superseded</c> by another, naming which one replaced it.</summary>
     public static CommandOutcome<ProposalStatusChangedResponse> Supersede(SupersedeRequest request)
@@ -871,7 +871,7 @@ public static partial class ProposalCommands
         return TransitionStatus(
             request.FwDataPath, request.ProductVersion, request.ProposalId, ManifestStatus.Superseded,
             SupersedableFrom, supersededById,
-            (repository, id, _) =>
+            (repository, id) =>
             {
                 // Any status counts as existing: a replacement may itself be rejected or applied.
                 try
@@ -885,14 +885,15 @@ public static partial class ProposalCommands
                         "Run 'list' to see committed proposals.");
                 }
 
-                repository.SetStatus(id, ManifestStatus.Superseded, supersededById);
+                return repository.Transition(
+                    id, SupersedableFrom, ManifestStatus.Superseded, supersededById);
             });
     }
 
     /// <summary>Moves a Proposal to a new status, refusing if its current status is not an allowed origin.</summary>
     private static CommandOutcome<ProposalStatusChangedResponse> TransitionStatus(
         string fwDataPath, string productVersion, string proposalId, string newStatus, string[] allowedFrom,
-        string? relatedProposalId, Action<ProposalRepository, CanonicalId, ProposalRecord> persist)
+        string? relatedProposalId, Func<ProposalRepository, CanonicalId, StatusTransitionOutcome> persist)
     {
         return ProjectStoreCommand.Run(fwDataPath, productVersion, (database, _) =>
         {
@@ -901,6 +902,13 @@ public static partial class ProposalCommands
                 var repository = new ProposalRepository(database);
                 var id = NormalizeId(proposalId);
                 var canonicalId = CanonicalId.Parse(id);
+
+                CommandOutcome<ProposalStatusChangedResponse> InvalidStatus(string status) =>
+                    CommandOutcome<ProposalStatusChangedResponse>.Refused(new Refusal(
+                        "proposal.invalid-status", FailureReason.Refused,
+                        $"Proposal {id} is '{status}'; cannot move to '{newStatus}' from there. " +
+                        $"Allowed from: {string.Join(", ", allowedFrom)}.",
+                        Fact(("proposalId", id), ("status", status), ("requestedStatus", newStatus))));
 
                 ProposalRecord record;
                 try
@@ -912,16 +920,11 @@ public static partial class ProposalCommands
                     return CommandOutcome<ProposalStatusChangedResponse>.Refused(ProposalNotFound(id));
                 }
 
-                if (Array.IndexOf(allowedFrom, record.Status) < 0)
-                {
-                    return CommandOutcome<ProposalStatusChangedResponse>.Refused(new Refusal(
-                        "proposal.invalid-status", FailureReason.Refused,
-                        $"Proposal {id} is '{record.Status}'; cannot move to '{newStatus}' from there. " +
-                        $"Allowed from: {string.Join(", ", allowedFrom)}.",
-                        Fact(("proposalId", id), ("status", record.Status), ("requestedStatus", newStatus))));
-                }
+                if (Array.IndexOf(allowedFrom, record.Status) < 0) return InvalidStatus(record.Status);
 
-                persist(repository, canonicalId, record);
+                // The write re-checks status in its own transaction; an Apply may commit after the read.
+                var outcome = persist(repository, canonicalId);
+                if (!outcome.Moved) return InvalidStatus(outcome.Status);
 
                 return CommandOutcome<ProposalStatusChangedResponse>.Success(
                     new ProposalStatusChangedResponse(id, newStatus, relatedProposalId));
