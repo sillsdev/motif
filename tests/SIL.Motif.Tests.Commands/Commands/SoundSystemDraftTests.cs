@@ -386,6 +386,47 @@ public sealed class SoundSystemDraftTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public void EditAffixTemplateAddsASlotMintedEarlierInTheSameDraftWithDependencies()
+    {
+        using var cache = pristine.NewScratch();
+        var path = cache.ProjectId.Path;
+        var categoryId = CanonicalId.FromGuid(pristine.Seed.PartOfSpeechId).Value;
+        cache.Dispose();
+
+        const string version = "0.1.0";
+        const string draft = "edit-affix-template";
+        Assert.True(ProposalCommands.New(new(path, version, draft, "Extend a template")).Succeeded);
+        string Slot(string name)
+        {
+            var result = ProposalCommands.ComposeAuthorAffixSlot(new(path, version, draft,
+                JsonSerializer.Serialize(new { category = categoryId, name, ws = "en", optional = false })));
+            Assert.True(result.Succeeded, result.Refusal?.Message);
+            return result.Value!.Operations.Single(op => op.Kind.EndsWith("/createAffixSlots", StringComparison.Ordinal))
+                .EntityId!;
+        }
+        var template = ProposalCommands.ComposeAuthorAffixTemplate(new(path, version, draft,
+            JsonSerializer.Serialize(new
+            {
+                category = categoryId, name = "indicative", ws = "en", prefixSlots = Array.Empty<string>(),
+                suffixSlots = Array.Empty<string>(), final = false,
+            })));
+        Assert.True(template.Succeeded, template.Refusal?.Message);
+        var templateId = template.Value!.Operations
+            .Single(op => op.Kind.EndsWith("/createAffixTemplates", StringComparison.Ordinal)).EntityId!;
+        var second = Slot("POST");
+
+        var edit = ProposalCommands.ComposeEditAffixTemplate(new(path, version, draft,
+            JsonSerializer.Serialize(new
+            {
+                target = templateId, expectedPrefixSlots = Array.Empty<string>(), prefixSlots = Array.Empty<string>(),
+                expectedSuffixSlots = Array.Empty<string>(), suffixSlots = new[] { second },
+            })));
+        Assert.True(edit.Succeeded, edit.Refusal?.Message);
+        var add = Assert.Single(edit.Value!.Operations);
+        Assert.EndsWith("/addRefSuffixSlots", add.Kind, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void AuthorAffixTemplateReferencesASlotCreatedEarlierInTheSameDraft()
     {
         using var cache = pristine.NewScratch();

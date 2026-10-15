@@ -27,6 +27,7 @@ public static class EditAffixTemplateComposer
         RequireExpected(intent.Target, "suffix", intent.ExpectedSuffixSlots, currentSuffix);
         RequireUnique(intent.Target, "prefix", intent.PrefixSlots);
         RequireUnique(intent.Target, "suffix", intent.SuffixSlots);
+        RequireSlotsOfCategory(cache, template, intent);
 
         return Edits(intent.Target, currentPrefix, intent.PrefixSlots,
                 MoInflAffixTemplatePrefixSlotsOperationKinds.AddRefPrefixSlots,
@@ -57,7 +58,7 @@ public static class EditAffixTemplateComposer
     private static void RequireExpected(CanonicalId target, string side,
         IReadOnlyList<CanonicalId> expected, IReadOnlyList<CanonicalId> current)
     {
-        if (!expected.SequenceEqual(current))
+        if (!expected.SequenceEqual(current, CanonicalId.ByGuid))
             throw new InvalidOperationException(
                 $"'{ConstructName}': target '{target.Value}' {side} slots differ from the expected order.");
     }
@@ -67,5 +68,30 @@ public static class EditAffixTemplateComposer
         if (desired.Distinct(CanonicalId.ByGuid).Count() != desired.Count)
             throw new InvalidOperationException(
                 $"'{ConstructName}': {side} slots of target '{target.Value}' must contain unique identities.");
+    }
+
+    private static void RequireSlotsOfCategory(LcmCache cache, IMoInflAffixTemplate template,
+        EditAffixTemplateIntent intent)
+    {
+        var slotIds = intent.PrefixSlots.Concat(intent.SuffixSlots).ToArray();
+        if (slotIds.Distinct(CanonicalId.ByGuid).Count() != slotIds.Length)
+            throw new InvalidOperationException(
+                $"'{ConstructName}': a slot cannot appear more than once across the prefix and suffix lists.");
+        var category = template.Owner as IPartOfSpeech;
+        foreach (var slotId in slotIds)
+        {
+            var slot = ReferenceFieldLowering.Resolve<IMoInflAffixSlot>(cache, slotId, ConstructName);
+            if (!BelongsToCategoryOrAncestor(slot, category))
+                throw new InvalidOperationException(
+                    $"'{ConstructName}': slot '{slotId.Value}' does not belong to the template category or one of its ancestors.");
+        }
+    }
+
+    private static bool BelongsToCategoryOrAncestor(IMoInflAffixSlot slot, IPartOfSpeech? category)
+    {
+        var owner = slot.Owner as IPartOfSpeech;
+        for (var current = category; current is not null; current = current.Owner as IPartOfSpeech)
+            if (owner?.Guid == current.Guid) return true;
+        return false;
     }
 }

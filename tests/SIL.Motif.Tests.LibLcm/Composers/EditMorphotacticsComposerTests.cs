@@ -127,6 +127,44 @@ public sealed class EditMorphotacticsComposerTests : IDisposable
     }
 
     [Fact]
+    public void EditAffixTemplateRefusesForeignCategorySlotsCrossListDuplicatesUnknownIdsAndStaleExpectations()
+    {
+        var fv = CreateSlot(_category, "FV");
+        var foreign = CreateSlot(CreateCategory(null, "Other"), "Foreign");
+        var template = CreateTemplate(_category, [], [fv]);
+
+        string Refusal(EditAffixTemplateIntent intent) =>
+            Assert.Throws<InvalidOperationException>(() => EditAffixTemplateComposer.Build(_cache, intent)).Message;
+
+        Assert.Contains("does not belong to the template category or one of its ancestors",
+            Refusal(new(Id(template), [], [], [Id(fv)], [Id(fv), Id(foreign)])), StringComparison.Ordinal);
+        Assert.Contains("more than once across the prefix and suffix lists",
+            Refusal(new(Id(template), [], [Id(fv)], [Id(fv)], [Id(fv)])), StringComparison.Ordinal);
+        Assert.Contains("differ from the expected order",
+            Refusal(new(Id(template), [], [], [], [Id(fv)])), StringComparison.Ordinal);
+        Assert.Throws<KeyNotFoundException>(() => EditAffixTemplateComposer.Build(_cache,
+            new(Id(template), [], [], [Id(fv)], [Id(fv), CanonicalId.Mint()])));
+    }
+
+    [Fact]
+    public void EditAffixTemplateAddsAnAncestorSlotAndReordersInOneEdit()
+    {
+        var parentSlot = CreateSlot(_category, "Parent");
+        var child = CreateCategory(_category, "Child");
+        var own = CreateSlot(child, "Own");
+        var existing = CreateSlot(child, "Existing");
+        var template = CreateTemplate(child, [], [existing, own]);
+
+        var operations = EditAffixTemplateComposer.Build(_cache, new EditAffixTemplateIntent(Id(template),
+            [], [], [Id(existing), Id(own)], [Id(parentSlot), Id(own), Id(existing)]));
+
+        var proposal = Proposal(operations.ToArray());
+        var dryRun = ScratchDryRun.Of(_cache, proposal);
+        ProposalApplier.Apply(_cache, proposal, dryRun.Anchor, "motif-tests");
+        Assert.Equal([parentSlot.Guid, own.Guid, existing.Guid], template.SuffixSlotsRS.Select(item => item.Guid));
+    }
+
+    [Fact]
     public void EditInflectionalAffixAllowsSlotsFromItsCategoryOrAnAncestorAndChangesNoOtherField()
     {
         var parentSlot = CreateSlot(_category, "Parent");
