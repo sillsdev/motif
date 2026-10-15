@@ -9,11 +9,12 @@ public sealed class ComposeVerbDispatchTests
     public void EveryVerbOfTheSoundSystemComposeBlockHasItsOwnArmAndNoComposerIsTheDefault()
     {
         var source = File.ReadAllText(Path.Combine(FindRepoRoot(), "src", "SIL.Motif.Cli", "Program.cs"));
-        var start = source.IndexOf("case \"compose-author-feature-value\":", StringComparison.Ordinal);
-        var end = source.IndexOf("case \"compose-batch\":", StringComparison.Ordinal);
-        Assert.InRange(start, 0, end);
+        var split = source.IndexOf("var soundOutcome", StringComparison.Ordinal);
+        Assert.True(split > 0, "The sound-system compose block was not found.");
+        var start = source.LastIndexOf("break;", split, StringComparison.Ordinal);
+        var end = source.IndexOf("break;", split, StringComparison.Ordinal);
         var block = source[start..end];
-        var split = block.IndexOf("var soundOutcome", StringComparison.Ordinal);
+        split -= start;
         var labels = Regex.Matches(block[..split], "case \"(compose-[a-z-]+)\":").Select(m => m.Groups[1].Value).ToList();
         var arms = block[split..];
 
