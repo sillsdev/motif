@@ -49,12 +49,14 @@ internal static class ReachabilityAssertions
             var popupControls = surface is TopLevel ? OpenPopupControls(surface) : [];
             var modalControls = surface is TopLevel ? OpenModalControls(surface) : [];
             var popupOverlays = surface is TopLevel ? OpenPopupOverlays(surface, topLevel) : [];
+            var pageBehindLightDismiss = HasOpenLightDismissPopup(surface);
             var controls = Controls(surface)
                 .Where(control => ReferenceEquals(TopLevel.GetTopLevel(control), topLevel))
                 .Where(control => !popupControls.Contains(control))
                 .Where(control => !modalControls.Contains(control))
                 .ToArray();
             foreach (var control in controls.Where(IsInteractive).Where(_ => !modalCoversSurface)
+                         .Where(_ => !pageBehindLightDismiss)
                          .Where(control => popupOverlays.All(overlay =>
                              !overlay.Bounds.Intersects(BoundsIn(control, topLevel)))))
             {
@@ -531,6 +533,20 @@ internal static class ReachabilityAssertions
                 if (control is SetupDialog { IsEffectivelyVisible: true }) Add(control, preservePopupRoot: true);
             }
         }
+    }
+
+    // An open light-dismiss popup puts its dismiss layer over whatever it opened from, page or parent popup.
+    private static bool HasOpenLightDismissPopup(Visual surface)
+    {
+        foreach (var control in Controls(surface).OfType<Control>())
+        {
+            if (control is Button { Flyout: PopupFlyoutBase { IsOpen: true } flyout } &&
+                flyout.Popup.IsLightDismissEnabled) return true;
+            if (control.ContextFlyout is PopupFlyoutBase { IsOpen: true } contextFlyout &&
+                contextFlyout.Popup.IsLightDismissEnabled) return true;
+            if (control is Popup { IsOpen: true, IsLightDismissEnabled: true }) return true;
+        }
+        return false;
     }
 
     private static HashSet<Control> OpenModalControls(Visual surface)

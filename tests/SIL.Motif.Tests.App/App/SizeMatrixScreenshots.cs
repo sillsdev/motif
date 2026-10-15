@@ -94,16 +94,18 @@ public sealed class SizeMatrixScreenshots
                     var settings = OpenSettings(window);
                     if (selection.Contains("settings-open"))
                         await CaptureScene(run, window, workspace, "settings-open",
-                            expectedPage: WorkspacePage.Overview, expectedTab: null, sizes: sizes, selection: selection);
+                            expectedPage: WorkspacePage.Settings, expectedTab: null, sizes: sizes, selection: selection);
                     if (selection.Contains("settings-parsing"))
                     {
                         var model = Assert.IsType<SettingsViewModel>(settings.DataContext);
                         model.SelectGroup(SettingsGroup.Parsing);
                         PageScreenshots.Settle(window);
                         await CaptureScene(run, window, workspace, "settings-parsing",
-                            expectedPage: WorkspacePage.Overview, expectedTab: null, sizes: sizes, selection: selection);
+                            expectedPage: WorkspacePage.Settings, expectedTab: null, sizes: sizes, selection: selection);
                     }
                     HeadlessClick.Click(window, settings.FindControl<Button>("SettingsClose")!, "Leave Settings");
+                    PageScreenshots.Settle(window);
+                    Assert.NotEqual(WorkspacePage.Settings, workspace.CurrentPage);
                 }
 
                 if (selection.Contains("open-recent-projects"))
@@ -192,7 +194,12 @@ public sealed class SizeMatrixScreenshots
                 {
                     refusedWorkspace.CurrentPage = WorkspacePage.Overview;
                     Assert.True(refusedWorkspace.HasRefreshRefusal);
-                    var refusal = Assert.Single(refusedWindow.GetLogicalDescendants().OfType<RefusalBlock>(),
+                    // The refusal lives in the notice details flyout, so the capture opens it as a person does.
+                    var opener = refusedWindow.FindControl<Button>("NoticeDetailsButton")!;
+                    HeadlessClick.Click(refusedWindow, opener, "See project notices");
+                    PageScreenshots.Settle(refusedWindow);
+                    var details = Assert.IsAssignableFrom<Control>(Assert.IsType<Flyout>(opener.Flyout).Content);
+                    var refusal = Assert.Single(details.GetLogicalDescendants().OfType<RefusalBlock>(),
                         block => AutomationProperties.GetName(block) == "Refresh refusal");
                     Assert.NotNull(refusal.StoreDeletionCommand);
                     var delete = FindStoreDeletionButton(refusal.GetLogicalDescendants().OfType<Button>());
@@ -200,6 +207,7 @@ public sealed class SizeMatrixScreenshots
                     Assert.True(delete.IsEffectivelyEnabled);
                     await CaptureScene(run, refusedWindow, refusedWorkspace, "refused-store-delete-action",
                         expectedPage: WorkspacePage.Overview, expectedTab: null, sizes: sizes, selection: selection);
+                    opener.Flyout!.Hide();
                 }
                 finally { refusedWindow.Close(); }
             }
@@ -462,37 +470,21 @@ internal sealed record ControlMatch(string Type, string? Name = null, string? An
 
 internal static class ExpectedMatrixFindings
 {
+    private static readonly ExpectedFindingLocation[] AllMatrixPoints =
+        MatrixSizes.Names.SelectMany(size => new[] { 100, 150 }.SelectMany(zoom =>
+            new[] { "light", "dark" }.Select(theme => new ExpectedFindingLocation(size, zoom, theme)))).ToArray();
+
     internal static IReadOnlyList<ExpectedLayoutFinding> Entries { get; } =
     [
-        new("1-overview", "text-own-box-overflow", new("CopyableTextBlock", Name: "motif-overview-selection-label"), null, [new("half", 150, "light")], "The overview subtitle is wider than its text box at this zoom.", "matrix/1-overview-half-150-light.png",
-            "V09", "overview subtitle wider than its text box", "LD"),
-        new("2c-texts-lists", "page-horizontal-scroll", new("WordListSlot", Name: "motif-lists-words-slot"), null, [new("thin", 100, "dark")], "The word list keeps columns wider than the page in the narrow dark capture.", "matrix/2c-texts-lists-thin-100-dark.png",
-            "V05", "result table wider than the page", "LD"),
-        new("open-recent-projects", "popup-outside-window", new("FlyoutPresenter", Name: "motif-project-menu-flyout"), null, [new("thin", 100, "light"), new("half", 100, "light"), new("full", 100, "light"), new("short", 100, "light"), new("half", 150, "light"), new("thin", 100, "dark"), new("full", 100, "dark")], "The recent-project menu overlaps the top bar at these sizes.", "matrix/open-recent-projects-thin-100-light.png",
+        new("open-recent-projects", "popup-outside-window", new("FlyoutPresenter", Name: "motif-project-menu-flyout"), null, [..AllMatrixPoints], "The recent-project menu overlaps the top bar at these sizes.", "matrix/open-recent-projects-thin-100-light.png",
             "V25", "recent-projects menu overlaps the top bar", "UF"),
-        new("open-recent-projects", "text-own-box-overflow", new("CopyableTextBlock", Name: "motif-overview-selection-label"), null, [new("half", 150, "light")], "The overview subtitle is wider than its text box behind the open menu.", "matrix/open-recent-projects-half-150-light.png",
-            "V09", "overview subtitle wider than its text box", "LD"),
-        new("ai-assistants-advanced", "text-own-box-overflow", new("CopyableTextBlock", Name: "motif-assistants-empty-text"), null, [new("half", 150, "light")], "The assistant setup instructions are wider than their text box at this zoom.", "matrix/ai-assistants-advanced-half-150-light.png",
-            "V15", "assistant setup text wider than its text box", "LD"),
-        new("refused-store-delete-action", "text-own-box-overflow", new("CopyableTextBlock", Name: "motif-overview-selection-label"), null, [new("half", 150, "light")], "The refusal notice leaves an overview subtitle wider than its text box.", "matrix/refused-store-delete-action-half-150-light.png",
-            "V09", "overview subtitle wider than its text box", "LD"),
-        new("review-pending-changes", "page-horizontal-scroll", new("WordListSlot", Name: "motif-review-words-slot"), null, [new("thin", 100, "light"), new("half", 100, "light"), new("half", 150, "light"), new("thin", 100, "dark")], "The pending-change list keeps columns wider than the page at these sizes.", "matrix/review-pending-changes-thin-100-light.png",
-            "V03", "review panel text and actions overlap", "LD"),
-        new("review-pending-changes", "page-horizontal-scroll", new("Grid", Name: "motif-review-words-grid"), null, [new("half", 150, "light")], "The pending-change list extends beyond the page body at this zoom.", "matrix/review-pending-changes-half-150-light.png",
-            "V03", "review panel text and actions overlap", "LD"),
-        new("review-pending-changes", "unreachable-control", new("Button", Name: "motif-word-open-in-text"), null, [new("thin", 100, "light"), new("half", 100, "light"), new("full", 100, "light"), new("short", 100, "light"), new("half", 150, "light"), new("thin", 100, "dark"), new("full", 100, "dark")], "Pending change actions extend beyond the visible review area.", "matrix/review-pending-changes-thin-100-light.png",
-            "V35", "word row Next action off-screen", "UF"),
-        new("review-pending-changes", "unreachable-control", new("Button", Name: "motif-word-try-a-word"), null, [new("thin", 100, "light"), new("half", 100, "light"), new("full", 100, "light"), new("short", 100, "light"), new("half", 150, "light"), new("thin", 100, "dark"), new("full", 100, "dark")], "Pending change actions extend beyond the visible review area.", "matrix/review-pending-changes-thin-100-light.png",
-            "V35", "word row Next action off-screen", "UF"),
-        new("review-pending-changes", "unreachable-control", new("Button", Name: "motif-word-undo-change"), null, [new("thin", 100, "light"), new("half", 100, "light"), new("half", 150, "light"), new("thin", 100, "dark")], "Pending change actions extend beyond the visible review area.", "matrix/review-pending-changes-thin-100-light.png",
-            "V03", "review panel text and actions overlap", "LD"),
-        new("2a-texts-matrix", "unreachable-control", new("WordRow", Name: "motif-word-row-matrix-alikula-row"), null, [new("thin", 150, "light")], "Word rows with always-visible actions are wider than the results viewport and its scroll route.", "matrix/2a-texts-matrix-thin-150-light.png",
+        new("2a-texts-matrix", "unreachable-control", new("WordRow", Name: "motif-word-row-matrix-alikula-row"), null, [new("thin", 150, "light"), new("thin", 150, "dark")], "Word rows with always-visible actions are wider than the results viewport and its scroll route.", "matrix/2a-texts-matrix-thin-150-light.png",
             "H01", "matrix word row beyond its scroll route", "Analyze texts"),
-        new("2a-texts-matrix", "unreachable-control", new("RepeatButton", Name: "PART_PageDownButton"), null, [new("thin", 150, "light"), new("half", 150, "light")], "The results list's page-down region sits outside the page body at this zoom.", "matrix/2a-texts-matrix-thin-150-light.png",
+        new("2a-texts-matrix", "unreachable-control", new("RepeatButton", Name: "PART_PageDownButton"), null, [new("thin", 150, "light"), new("half", 150, "light"), new("thin", 150, "dark"), new("half", 150, "dark")], "The results list's page-down region sits outside the page body at this zoom.", "matrix/2a-texts-matrix-thin-150-light.png",
             "H01", "matrix scroll bar outside the page body", "Analyze texts"),
-        new("2c-texts-lists", "unreachable-control", new("WordRow", Name: "motif-word-row-lists-hawajafika-row"), null, [new("thin", 150, "light")], "Word rows with always-visible actions are wider than the list viewport and its scroll route.", "matrix/2c-texts-lists-thin-150-light.png",
+        new("2c-texts-lists", "unreachable-control", new("WordRow", Name: "motif-word-row-lists-hawajafika-row"), null, [new("thin", 150, "light"), new("thin", 150, "dark")], "Word rows with always-visible actions are wider than the list viewport and its scroll route.", "matrix/2c-texts-lists-thin-150-light.png",
             "H02", "list word row beyond its scroll route", "Analyze texts"),
-        new("2c-texts-lists", "unreachable-control", new("Button", Name: "motif-handoff-list"), null, [new("thin", 150, "light")], "The list's AI Handoff action sits beyond the narrow page at this zoom.", "matrix/2c-texts-lists-thin-150-light.png",
+        new("2c-texts-lists", "unreachable-control", new("Button", Name: "motif-handoff-list"), null, [new("thin", 150, "light"), new("thin", 150, "dark")], "The list's AI Handoff action sits beyond the narrow page at this zoom.", "matrix/2c-texts-lists-thin-150-light.png",
             "H02", "list handoff action beyond the page", "Analyze texts"),
     ];
 

@@ -327,6 +327,49 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
     }
 
     [Fact]
+    public void ControlsBehindAnOpenLightDismissFlyoutAreNotCheckedForReachabilityButAClosedOneIs()
+    {
+        avalonia.Invoke(() =>
+        {
+            var farButton = new Button { Name = "FarButton", Content = "Far", Width = 60, Height = 24 };
+            Canvas.SetLeft(farButton, 120);
+            Canvas.SetTop(farButton, 60);
+            var offscreen = new Button { Name = "OffscreenButton", Content = "Off", Width = 60, Height = 24 };
+            Canvas.SetLeft(offscreen, 400);
+            Canvas.SetTop(offscreen, 60);
+            var anchor = new Button
+            {
+                Name = "LightDismissAnchor", Width = 10, Height = 10,
+                Flyout = new Flyout { Content = new Border { Width = 40, Height = 20 } },
+            };
+            var window = new Window
+            {
+                Content = new Canvas { Width = 200, Height = 100, Children = { farButton, offscreen, anchor } },
+                Width = 220, Height = 120,
+            };
+            try
+            {
+                window.Show();
+                PageScreenshots.Settle(window);
+                var context = new LayoutFindingContext("synthetic", "thin", 100, "light");
+                Assert.Contains(ReachabilityAssertions.Inspect(window, context), finding =>
+                    finding.Check == LayoutCheckNames.UnreachableControl && finding.Control.Name == "OffscreenButton");
+
+                anchor.Flyout!.ShowAt(anchor);
+                PageScreenshots.Settle(window);
+                Assert.True(((Flyout)anchor.Flyout).Popup.IsLightDismissEnabled);
+                Assert.DoesNotContain(ReachabilityAssertions.Inspect(window, context), finding =>
+                    finding.Check == LayoutCheckNames.UnreachableControl);
+            }
+            finally
+            {
+                anchor.Flyout?.Hide();
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
     public void AnOpenFlyoutOutsideTheWindowIsReportedWithAStableCheckName()
     {
         avalonia.Invoke(() =>
