@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Templates;
@@ -164,6 +165,39 @@ public sealed class WordListSlotTests(AvaloniaHeadlessFixture avalonia)
             finally
             {
                 window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void StackedRowsCaptionAndNameEachCellWithItsColumnHeadingAndWideRowsShowNone()
+    {
+        avalonia.Invoke(() =>
+        {
+            var (_, header, narrowRows, narrow) = Show(width: 420, WordListSchemas.Timing);
+            var (_, _, wideRows, wide) = Show(width: 1400, WordListSchemas.Timing);
+            try
+            {
+                var headings = Enum.GetValues<WordListColumn>()
+                    .Select(header.HeadingFor).OfType<TextBlock>().Select(block => block.Text).ToHashSet();
+                var captions = narrowRows.GetVisualDescendants().OfType<TextBlock>()
+                    .Where(block => block.Classes.Contains("wordPresentationCaption")).ToArray();
+                Assert.NotEmpty(captions);
+                foreach (var caption in captions)
+                {
+                    Assert.Contains(caption.Text, headings);
+                    Assert.True(caption.IsEffectivelyVisible);
+                    var cell = caption.GetVisualAncestors().OfType<Control>()
+                        .First(ancestor => !string.IsNullOrEmpty(AutomationProperties.GetName(ancestor)));
+                    Assert.Equal(caption.Text, AutomationProperties.GetName(cell));
+                }
+                Assert.Empty(wideRows.GetVisualDescendants().OfType<TextBlock>()
+                    .Where(block => block.Classes.Contains("wordPresentationCaption")));
+            }
+            finally
+            {
+                narrow.Close();
+                wide.Close();
             }
         });
     }

@@ -14,7 +14,7 @@ public sealed class WordRowHeader : UserControl
     private readonly Dictionary<WordListColumn, Control> _headings;
 
     public static readonly StyledProperty<string> MeaningHeaderProperty =
-        AvaloniaProperty.Register<WordRowHeader, string>(nameof(MeaningHeader), "Meaning");
+        AvaloniaProperty.Register<WordRowHeader, string>(nameof(MeaningHeader), WordListHeadings.DefaultMeaning);
 
     static WordRowHeader() =>
         WordListLayoutScope.LayoutProperty.Changed.AddClassHandler<WordRowHeader>((header, _) => header.Rebuild());
@@ -47,7 +47,7 @@ public sealed class WordRowHeader : UserControl
     public void Rebuild()
     {
         var layout = WordListLayoutScope.GetLayout(this);
-        // Column headings mean nothing once rows stack, so a stacked list shows none.
+        // A stacked row captions its own cells with these same headings, so the header row hides.
         _frame.IsVisible = layout?.Stacked != true;
         // Hidden headings stay in the tree: the sizing styles reach them there.
         var tracks = layout is null ? DefaultColumns() : layout.Schema.OrderedColumns(layout.ShowsMeaning).ToArray();
@@ -86,18 +86,7 @@ public sealed class WordRowHeader : UserControl
         return heading;
     }
 
-    private string HeadingText(WordListColumn column) => column switch
-    {
-        WordListColumn.Word => "Word",
-        WordListColumn.Opinion => "Opinion",
-        WordListColumn.FieldWorks => "FieldWorks",
-        WordListColumn.PanGloss => "PanGloss",
-        WordListColumn.Meaning => MeaningHeader,
-        WordListColumn.Places => "Places",
-        WordListColumn.Time => "Time",
-        WordListColumn.Next => "Next",
-        _ => string.Empty,
-    };
+    private string HeadingText(WordListColumn column) => WordListHeadings.TextOf(column, MeaningHeader);
 
     private static string HeadingClass(WordListColumn column) => column switch
     {

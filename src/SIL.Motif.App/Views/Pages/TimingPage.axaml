@@ -326,7 +326,7 @@
             </StackPanel>
           </Grid>
 
-          <!-- The word lists take the page's full width, so each row keeps its columns and next steps at 1040. -->
+          <!-- The word lists take the page's full width, so each row keeps its columns while the column minimums fit and stacks beneath that. -->
           <Border Classes="card" IsVisible="{Binding HasRule}">
             <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
               <views:CopyableTextBlock Classes="section-title" Text="{Binding RuleWordsTitle}" TextWrapping="Wrap" />

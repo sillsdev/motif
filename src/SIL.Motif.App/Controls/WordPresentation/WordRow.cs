@@ -347,7 +347,7 @@ public sealed class WordRow : UserControl
                     _shell.Children.Add(cell);
                     break;
                 default:
-                    rest.Children.Add(cell);
+                    rest.Children.Add(Captioned(column, cell!));
                     break;
             }
         }
@@ -355,6 +355,34 @@ public sealed class WordRow : UserControl
         Grid.SetRow(rest, 1);
         Grid.SetColumn(rest, 1);
         _shell.Children.Add(rest);
+    }
+
+    // Stacking hides the column header, so each stacked cell carries that header's text as caption and name.
+    private static Control Captioned(WordListColumn column, Control cell)
+    {
+        var heading = WordListHeadings.TextOf(column, WordListHeadings.DefaultMeaning);
+        if (heading.Length == 0) return cell;
+        // A caption inline with the cell's own first line costs width, not another line of height.
+        if (cell is MorphemePanel strip)
+        {
+            strip.Caption = heading;
+            AutomationProperties.SetName(strip, heading);
+            return strip;
+        }
+        // Next's buttons name their own verbs and wrapped beside a caption they cost a line, so it is named only.
+        if (column == WordListColumn.Next)
+        {
+            AutomationProperties.SetName(cell, heading);
+            return cell;
+        }
+        var wrapper = new Grid { Classes = { "wordPresentationStackedCell" } };
+        wrapper.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+        wrapper.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(1, GridUnitType.Star)));
+        wrapper.Children.Add(new TextBlock { Text = heading, Classes = { "wordPresentationHeading", "wordPresentationCaption" } });
+        Grid.SetColumn(cell, 1);
+        wrapper.Children.Add(cell);
+        AutomationProperties.SetName(wrapper, heading);
+        return wrapper;
     }
 
     private Control? Cell(WordPresentation data, WordListColumn column, bool hasOpinionColumn)

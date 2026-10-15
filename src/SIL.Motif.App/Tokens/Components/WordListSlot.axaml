@@ -15,10 +15,10 @@
     <StaticResource x:Key="Component.WordListSlot.Opinion.Minimum" ResourceKey="Primitive.Size.70" />
     <StaticResource x:Key="Component.WordListSlot.Opinion.Preferred" ResourceKey="Primitive.Size.90" />
     <StaticResource x:Key="Component.WordListSlot.Opinion.Maximum" ResourceKey="Primitive.Size.110" />
-    <StaticResource x:Key="Component.WordListSlot.FieldWorks.Minimum" ResourceKey="Primitive.Size.170" />
+    <StaticResource x:Key="Component.WordListSlot.FieldWorks.Minimum" ResourceKey="Primitive.Size.130" />
     <StaticResource x:Key="Component.WordListSlot.FieldWorks.Preferred" ResourceKey="Primitive.Size.170" />
     <StaticResource x:Key="Component.WordListSlot.FieldWorks.Maximum" ResourceKey="Primitive.Size.420" />
-    <StaticResource x:Key="Component.WordListSlot.PanGloss.Minimum" ResourceKey="Primitive.Size.170" />
+    <StaticResource x:Key="Component.WordListSlot.PanGloss.Minimum" ResourceKey="Primitive.Size.130" />
     <StaticResource x:Key="Component.WordListSlot.PanGloss.Preferred" ResourceKey="Primitive.Size.170" />
     <StaticResource x:Key="Component.WordListSlot.PanGloss.Maximum" ResourceKey="Primitive.Size.420" />
     <StaticResource x:Key="Component.WordListSlot.Meaning.Minimum" ResourceKey="Primitive.Size.90" />

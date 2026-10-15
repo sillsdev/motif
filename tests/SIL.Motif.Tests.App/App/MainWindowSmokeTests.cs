@@ -1344,7 +1344,9 @@ public sealed class MainWindowSmokeTests
                 var explanation = row.GetVisualDescendants().OfType<TextBlock>()
                     .Single(text => text.Text == priority.Explanation);
                 Assert.True(explanation.IsEffectivelyVisible);
-                Assert.Equal(TextWrapping.NoWrap, explanation.TextWrapping);
+                // A stacked row wraps its reason so the whole sentence stays visible; a wide row keeps one line.
+                var stacked = SIL.Motif.App.Controls.WordPresentation.WordListLayoutScope.GetLayout(row)?.Stacked == true;
+                Assert.Equal(stacked ? TextWrapping.Wrap : TextWrapping.NoWrap, explanation.TextWrapping);
 
                 var body = row.GetVisualDescendants().OfType<Border>().Single(border => border.Classes.Contains("wordPresentationFrame"));
                 HeadlessClick.Click(window, body, "motifa in Fix these first");

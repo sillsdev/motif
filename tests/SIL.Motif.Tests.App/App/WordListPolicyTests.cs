@@ -92,6 +92,26 @@ public sealed class WordListPolicyTests
     }
 
     [Fact]
+    public void PolicyStacksExactlyWhenTheMinimumTracksExceedTheTrackBudget()
+    {
+        var schema = WordListSchemas.All;
+        var sizing = Sizing();
+        var columns = schema.OrderedColumns(true);
+        var minimums = columns.Sum(column => Math.Max(Minimum(column), Heading(column)));
+        var needed = minimums + (columns.Length - 1) * 8 + 24 + 18;
+        Assert.True(needed - 42 >= 520, "The boundary must come from the track minimums, not the breakpoint.");
+
+        var atBoundary = new WordListPolicy().Resolve(needed, schema, true, 0, "en", sizing);
+        Assert.False(atBoundary.Stacked);
+        Assert.Equal(minimums, atBoundary.Tracks.Sum(track => track.Width), precision: 8);
+        Assert.True(new WordListPolicy().Resolve(needed - 0.5, schema, true, 0, "en", sizing).Stacked);
+
+        static double Minimum(WordListColumn column) => ColumnSizing(column).MinimumWidth;
+        static double Heading(WordListColumn column) => ColumnSizing(column).HeadingWidth;
+        static WordColumnSizing ColumnSizing(WordListColumn column) => Sizing().For(column);
+    }
+
+    [Fact]
     public void PolicyReusesAnUnchangedLayoutAndAdvancesForMeaningStyleOrLocaleChanges()
     {
         var schema = WordListSchema.Create(WordListColumnSet.FieldWorks | WordListColumnSet.Meaning);

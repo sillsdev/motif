@@ -58,6 +58,9 @@ public sealed class MorphemePanel : Decorator
     public static readonly StyledProperty<Mark?> LeadingMarkProperty =
         AvaloniaProperty.Register<MorphemePanel, Mark?>(nameof(LeadingMark));
 
+    public static readonly StyledProperty<string?> CaptionProperty =
+        AvaloniaProperty.Register<MorphemePanel, string?>(nameof(Caption));
+
     public static readonly StyledProperty<string?> LeadingTextProperty =
         AvaloniaProperty.Register<MorphemePanel, string?>(nameof(LeadingText));
 
@@ -102,6 +105,7 @@ public sealed class MorphemePanel : Decorator
         MaxVisibleMorphsProperty.Changed.AddClassHandler<MorphemePanel>((panel, _) => panel.InvalidateParts());
         LeadingMarkProperty.Changed.AddClassHandler<MorphemePanel>((panel, _) => panel.InvalidateParts());
         LeadingTextProperty.Changed.AddClassHandler<MorphemePanel>((panel, _) => panel.InvalidateParts());
+        CaptionProperty.Changed.AddClassHandler<MorphemePanel>((panel, _) => panel.InvalidateParts());
         OverflowRequestProperty.Changed.AddClassHandler<MorphemePanel>((panel, _) => panel.InvalidateParts());
         SeparatorBrushProperty.Changed.AddClassHandler<MorphemePanel>((panel, _) => panel.InvalidateVisual());
         SeparatorThicknessProperty.Changed.AddClassHandler<MorphemePanel>((panel, _) => panel.InvalidateVisual());
@@ -214,6 +218,13 @@ public sealed class MorphemePanel : Decorator
     {
         get => GetValue(LeadingMarkProperty);
         set => SetValue(LeadingMarkProperty, value);
+    }
+
+    /// <summary>A heading shown inline before the first part, for a strip whose column heading is hidden.</summary>
+    public string? Caption
+    {
+        get => GetValue(CaptionProperty);
+        set => SetValue(CaptionProperty, value);
     }
 
     /// <summary>The accessible words paired with <see cref="LeadingMark"/>.</summary>
@@ -352,6 +363,13 @@ public sealed class MorphemePanel : Decorator
                 Mark = LeadingMark,
                 Text = LeadingText,
                 Classes = { "wordPresentationLeadingMark" },
+            });
+        if (Caption is { Length: > 0 })
+            _parts.Children.Insert(0, new TextBlock
+            {
+                Text = Caption,
+                VerticalAlignment = VerticalAlignment.Center,
+                Classes = { "wordPresentationHeading", "wordPresentationCaption" },
             });
     }
 
