@@ -5,6 +5,7 @@ A linguist sees an affix change with a grammatical value such as person, number 
 ## Encode the pattern
 
 - Declare a feature and its values when the distinction has grammatical meaning the rest of the analysis needs to see.
+- Put a noun's gender pair (for example 7/8) on the stem's grammatical analysis and its number on the class prefix's required features: each reading shows the prefix's number, the stem's gender filters which prefixes fit, and a number requirement never filters a stem that lacks one.
 - Put the supported value on the stem's grammatical analysis. Restrict an inflectional affix to its required feature values, then link it to the appropriate slot.
 - Keep the template for the shared order of positions. Use separate templates only when forms have different required positions; use an optional slot only when that position may truly be absent.
 - Do not use an arbitrary inflection class for a value that must participate in agreement. Do not let every affix compete in the slot without the feature restrictions the data supports.
