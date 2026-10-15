@@ -147,14 +147,6 @@
     <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.None}" />
     <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerBottom}" />
   </Style>
-  <Style Selector="ListBox.tryWordComparisonList, ListBox#TryWordPanelFieldWorksAnalysesItems">
-    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
-    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.None}" />
-  </Style>
-  <Style Selector="ListBox.tryWordComparisonList ListBoxItem, ListBox#TryWordPanelFieldWorksAnalysesItems ListBoxItem">
-    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
-    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-  </Style>
   <Style Selector="Button.tryWordResultAction">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Body}" />
     <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />

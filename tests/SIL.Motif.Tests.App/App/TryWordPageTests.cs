@@ -1094,16 +1094,16 @@ public sealed class TryWordPageTests
             {
                 window.Show();
                 Settle(window);
-                var analyses = window.GetVisualDescendants().OfType<ListBox>()
+                var analyses = window.GetVisualDescendants().OfType<ProgressiveItemsControl>()
                     .Single(list => list.Name == "TryWordPanelFieldWorksAnalysesItems");
-                Assert.Same(page.FieldWorksAnalyses, analyses.ItemsSource);
+                Assert.Same(page.FieldWorksAnalyses, analyses.FullItemsSource);
                 Assert.Equal(3, analyses.ItemCount);
                 var texts = new List<string>();
                 for (var index = 0; index < analyses.ItemCount; index++)
                 {
                     analyses.ScrollIntoView(index);
                     Settle(window);
-                    var row = Assert.IsType<ListBoxItem>(analyses.ContainerFromIndex(index));
+                    var row = Assert.IsAssignableFrom<Control>(analyses.ContainerFromIndex(index));
                     texts.AddRange(VisibleTexts(row));
                     texts.AddRange(ContextTexts(window).OfType<string>());
                 }

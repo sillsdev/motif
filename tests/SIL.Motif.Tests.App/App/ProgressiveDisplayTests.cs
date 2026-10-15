@@ -926,6 +926,44 @@ public sealed class ProgressiveDisplayTests
     }
 
     [Fact]
+    public void ALargeTryWordAnalysisListRealizesOnePageOfItsOwnRowsAndOffersMore()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, sampleWindow) = await PageScreenshots.OpenOverSampleData(renderForCapture: false);
+            var panel = new TryWordPanel(workspace.PageModel<TryWordPageModel>());
+            var window = new Window { Width = 1240, Height = 780, Content = new ScrollViewer { Content = panel } };
+            try
+            {
+                var analyses = Enumerable.Range(0, 924).Select(index => new TraceAnalysisViewModel(
+                    new TraceAnalysis($"analysis-{index}", index, $"surface-{index}", "available",
+                        [.. Enumerable.Range(0, 4).Select(part => new TraceMorph(null, $"m{part}", null, $"g{part}",
+                            "N", null, null, null, null, null))]), allowLiveLinks: false)).ToArray();
+                window.Show();
+                var list = panel.FindControl<ProgressiveItemsControl>("TryWordParserAnalysesItems")!;
+                foreach (var ancestor in list.GetLogicalAncestors().OfType<Control>()) ancestor.IsVisible = true;
+                list.IsVisible = true;
+                list.FullItemsSource = analyses;
+                PageScreenshots.Settle(window);
+                await list.PageRefresh;
+                PageScreenshots.Settle(window);
+                Assert.InRange(list.GetRealizedContainers().Count(), 1, 22);
+                Assert.Contains(list.GetVisualDescendants().OfType<Button>(), button => Equals(button.Content, "Show 20 more"));
+                list.ShowItem(analyses[^1]);
+                PageScreenshots.Settle(window);
+                Assert.InRange(list.GetRealizedContainers().Count(), 1, 22);
+                Assert.Contains(analyses[^1], list.Items);
+            }
+            finally
+            {
+                window.Close();
+                sampleWindow.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromSeconds(60));
+    }
+
+    [Fact]
     public void WrappingCollectionChangesResetThePageAndPreserveEveryItem()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(() =>

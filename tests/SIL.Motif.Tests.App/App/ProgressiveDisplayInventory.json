@@ -646,8 +646,8 @@
     "view": "TryWordPanel",
     "name": "TryWordPanelFieldWorksAnalysesItems",
     "source": "FieldWorksAnalyses",
-    "mode": "rows",
-    "control": "ListBox"
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
   },
   {
     "view": "TryWordPanel",
@@ -940,8 +940,8 @@
     "view": "TryWordPanel",
     "name": "TryWordParserAnalysesItems",
     "source": "Trace.Analyses",
-    "mode": "rows",
-    "control": "ListBox"
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
   },
   {
     "view": "TryWordPanel",

@@ -87,7 +87,7 @@ public sealed class TryWordHLayoutTests
                 PageScreenshots.Settle(window);
                 var panel = Assert.Single(page.GetVisualDescendants().OfType<TryWordPanel>());
                 var scroll = panel.GetVisualDescendants().OfType<ScrollViewer>()
-                    .First(viewer => viewer.Content is StackPanel);
+                    .First(viewer => viewer.Content is Border { Child: StackPanel });
                 Assert.Equal(0, scroll.Offset.Y);
                 var attempts = Named<ListBox>(page, "Attempts that got furthest");
                 Assert.NotEmpty(model.Trace.ClosestAttempts);
@@ -103,12 +103,13 @@ public sealed class TryWordHLayoutTests
                     candidate => ReferenceEquals(candidate.TemplatedParent, scroll));
                 var origin = first.TranslatePoint(default, presenter)!.Value;
                 Assert.InRange(origin.Y, 0, presenter.Bounds.Height);
-                Assert.True(origin.Y + first.Bounds.Height <= presenter.Bounds.Height + 1,
+                // A very short window keeps the full analysis rows, so there the row starts in view and scrolls the rest.
+                Assert.True(height < 600 || origin.Y + first.Bounds.Height <= presenter.Bounds.Height + 1,
                     $"First attempt bottom {origin.Y + first.Bounds.Height} exceeds viewport {presenter.Bounds.Height}.");
                 Assert.Single(page.GetVisualDescendants().OfType<TextBlock>().Where(block =>
                     block.IsEffectivelyVisible && block.Text?.StartsWith("Parsed", StringComparison.Ordinal) == true));
-                var analyses = panel.FindControl<ListBox>("TryWordParserAnalysesItems")!;
-                Assert.Same(model.Trace.Analyses, analyses.ItemsSource);
+                var analyses = panel.FindControl<ProgressiveItemsControl>("TryWordParserAnalysesItems")!;
+                Assert.Same(model.Trace.Analyses, analyses.FullItemsSource);
                 var details = Named<Expander>(page, "Full parser analysis details");
                 Assert.False(details.IsExpanded);
                 details.IsExpanded = true;
@@ -168,7 +169,7 @@ public sealed class TryWordHLayoutTests
                 var input = Named<TextBox>(page, "Word to try");
                 var run = Named<Button>(page, "Try the word");
                 var tools = Named<Button>(page, "Try a Word tools");
-                var scroll = page.GetVisualDescendants().OfType<ScrollViewer>().First(viewer => viewer.Content is StackPanel);
+                var scroll = page.GetVisualDescendants().OfType<ScrollViewer>().First(viewer => viewer.Content is Border { Child: StackPanel });
                 var before = input.TranslatePoint(default, window)!.Value;
                 scroll.Offset = new Vector(0, scroll.Extent.Height);
                 PageScreenshots.Settle(window);

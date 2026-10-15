@@ -128,11 +128,8 @@
             <views:CopyableTextBlock Grid.Column="1" Text="{Binding FieldWorksContextStatus}" Classes="muted"
                                      FontSize="{DynamicResource Intent.Type.Label}" TextWrapping="Wrap" />
           </Grid>
-          <ListBox IsVisible="{Binding HasFieldWorksAnalyses}" x:Name="TryWordPanelFieldWorksAnalysesItems" ItemsSource="{Binding FieldWorksAnalyses}" AutomationProperties.Name="Every stored FieldWorks analysis">
-            <ListBox.ItemsPanel>
-              <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
-            </ListBox.ItemsPanel>
-            <ListBox.ItemTemplate>
+          <views:ProgressiveItemsControl IsVisible="{Binding HasFieldWorksAnalyses}" x:Name="TryWordPanelFieldWorksAnalysesItems" FullItemsSource="{Binding FieldWorksAnalyses}" AutomationProperties.Name="Every stored FieldWorks analysis">
+            <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:TryWordStoredAnalysis">
                 <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
                   <views:MarkChip Mark="{Binding OpinionMark}" Text="{Binding OpinionLabel}" HorizontalAlignment="Left" />
@@ -165,8 +162,8 @@
                                            IsVisible="{Binding HasUnrecordedStep}" />
                 </StackPanel>
               </DataTemplate>
-            </ListBox.ItemTemplate>
-          </ListBox>
+            </ItemsControl.ItemTemplate>
+          </views:ProgressiveItemsControl>
           <HyperlinkButton Content="Word Analyses in FieldWorks" NavigateUri="{Binding ResultWordContext.WordAnalysesLink}"
                            IsVisible="{Binding ResultWordContext.WordAnalysesLink, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
         </StackPanel>
@@ -174,11 +171,11 @@
       <Border x:Name="TryWordParserComparison" Grid.Column="1" Classes="tryWordSection">
         <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
           <TextBlock Text="Parser" FontWeight="{DynamicResource Intent.Weight.Section}" FontSize="{DynamicResource Intent.Type.Label}" />
-          <ListBox x:Name="TryWordParserAnalysesItems" ItemsSource="{Binding Trace.Analyses}"
+          <views:ProgressiveItemsControl x:Name="TryWordParserAnalysesItems" FullItemsSource="{Binding Trace.Analyses}"
 
-                   IsVisible="{Binding Trace.HasAnalyses}" Classes="tryWordComparisonList"
+                   IsVisible="{Binding Trace.HasAnalyses}"
                    AutomationProperties.Name="Recorded parser analyses">
-            <ListBox.ItemTemplate>
+            <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:TraceAnalysisViewModel">
                 <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}" ToolTip.Tip="{Binding ProjectionErrorText}">
                   <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
@@ -207,8 +204,8 @@
                   </views:ProgressiveItemsControl>
                 </StackPanel>
               </DataTemplate>
-            </ListBox.ItemTemplate>
-          </ListBox>
+            </ItemsControl.ItemTemplate>
+          </views:ProgressiveItemsControl>
         </StackPanel>
       </Border>
       </Grid>
