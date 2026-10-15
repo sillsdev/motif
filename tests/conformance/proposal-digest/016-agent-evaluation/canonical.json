@@ -1,0 +1,1 @@
+{"contractVersions":{"analysis":"1.0"},"operations":[{"after":{"agent":{"id":"agent_AgMEBQYHCAkKCwwNDg8QEQ","name":"Source validation (Motif)","version":"swh-sources-2026-10"},"member":"approves"},"kind":"analysis/wfiAnalysis/addAgentEvaluations","operationId":"agent_AAECAwQFBgcICQoLDA0ODw","target":"agent_AQIDBAUGBwgJCgsMDQ4PEA"}]}

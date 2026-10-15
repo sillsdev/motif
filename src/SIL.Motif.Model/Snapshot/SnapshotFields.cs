@@ -39,6 +39,9 @@ public static partial class SnapshotFields
     /// <summary>A <c>WfiAnalysis</c>'s evaluation references.</summary>
     public const string WfiAnalysisEvaluations = "analysis/wfiAnalysis/evaluations";
 
+    /// <summary>The fact that decision evidence was recorded for a wordform or analysis; it changes no project data.</summary>
+    public const string DecisionEvidenceRecorded = "analysis/decisionEvidence/recorded";
+
     /// <summary>A <c>WfiWordform</c>'s owned analyses.</summary>
     public const string WfiWordformAnalyses = "analysis/wfiWordform/analyses";
 

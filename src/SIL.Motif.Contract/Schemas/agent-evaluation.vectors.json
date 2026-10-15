@@ -1,0 +1,182 @@
+{
+  "contract": "agent-evaluation/v1",
+  "vectors": [
+    {
+      "shape": "AgentEvaluationPayload",
+      "input": {
+        "agent": {
+          "id": "AAAAAAAAAAAAAAAAAAAAAA",
+          "name": "Source validation (Motif)",
+          "version": "swh-sources-2026-10"
+        },
+        "member": "approves"
+      },
+      "valid": true,
+      "note": "approval by a new agent"
+    },
+    {
+      "shape": "AgentEvaluationPayload",
+      "input": {
+        "agent": {
+          "id": "AAAAAAAAAAAAAAAAAAAAAA",
+          "name": "Source validation (Motif)",
+          "version": "swh-sources-2026-10"
+        },
+        "member": "disapproves"
+      },
+      "valid": true,
+      "note": "disapproval"
+    },
+    {
+      "shape": "AgentEvaluationPayload",
+      "input": {
+        "member": "approves"
+      },
+      "valid": false,
+      "note": "agent is required"
+    },
+    {
+      "shape": "AgentEvaluationPayload",
+      "input": {
+        "agent": {
+          "id": "AAAAAAAAAAAAAAAAAAAAAA",
+          "name": "Source validation (Motif)",
+          "version": "swh-sources-2026-10"
+        }
+      },
+      "valid": false,
+      "note": "member is required"
+    },
+    {
+      "shape": "AgentEvaluationPayload",
+      "input": {
+        "agent": {
+          "id": "AAAAAAAAAAAAAAAAAAAAAA",
+          "name": "Source validation (Motif)",
+          "version": "swh-sources-2026-10"
+        },
+        "member": "maybe"
+      },
+      "valid": false,
+      "note": "member is approves or disapproves"
+    },
+    {
+      "shape": "AgentEvaluationPayload",
+      "input": {
+        "agent": {
+          "id": "AAAAAAAAAAAAAAAAAAAAAA",
+          "name": "Source validation (Motif)",
+          "version": "swh-sources-2026-10"
+        },
+        "member": "approves",
+        "by": "x"
+      },
+      "valid": false,
+      "note": "no extra property"
+    },
+    {
+      "shape": "AgentEvaluationPayload",
+      "input": {
+        "agent": {
+          "id": "AAAAAAAAAAAAAAAAAAAAAA",
+          "name": "Source validation (Motif)",
+          "version": "swh-sources-2026-10",
+          "human": false
+        },
+        "member": "approves"
+      },
+      "valid": false,
+      "note": "the agent is never described as human or not; it is always non-human"
+    },
+    {
+      "shape": "AgentEvaluationPayload",
+      "input": {
+        "agent": {
+          "name": "N",
+          "version": "1"
+        },
+        "member": "approves"
+      },
+      "valid": false,
+      "note": "agent id is required"
+    },
+    {
+      "shape": "AgentEvaluationPayload",
+      "input": {
+        "agent": {
+          "id": "AAAAAAAAAAAAAAAAAAAAAA",
+          "name": "",
+          "version": "swh-sources-2026-10"
+        },
+        "member": "approves"
+      },
+      "valid": false,
+      "note": "name is not blank"
+    },
+    {
+      "shape": "AgentEvaluationPayload",
+      "input": {
+        "agent": {
+          "id": "AAAAAAAAAAAAAAAAAAAAAA",
+          "name": " N",
+          "version": "swh-sources-2026-10"
+        },
+        "member": "approves"
+      },
+      "valid": false,
+      "note": "name is trimmed"
+    },
+    {
+      "shape": "AgentEvaluationPayload",
+      "input": {
+        "agent": {
+          "id": "AAAAAAAAAAAAAAAAAAAAAA",
+          "name": "Source validation (Motif)",
+          "version": ""
+        },
+        "member": "approves"
+      },
+      "valid": false,
+      "note": "version is not blank"
+    },
+    {
+      "shape": "AgentEvaluationPayload",
+      "input": {
+        "agent": {
+          "id": "AAAAAAAAAAAAAAAAAAAAAA",
+          "name": "Source validation (Motif)",
+          "version": "1\u0001"
+        },
+        "member": "approves"
+      },
+      "valid": false,
+      "note": "no control characters"
+    },
+    {
+      "shape": "AgentEvaluationPayload",
+      "input": {
+        "agent": {
+          "id": "AAAAAAAAAAAAAAAAAAAAAA",
+          "name": "é",
+          "version": "swh-sources-2026-10"
+        },
+        "member": "approves"
+      },
+      "valid": false,
+      "note": "name is NFD"
+    },
+    {
+      "shape": "AgentEvaluationPayload",
+      "input": {
+        "agent": {
+          "id": "short",
+          "name": "Source validation (Motif)",
+          "version": "swh-sources-2026-10"
+        },
+        "member": "approves"
+      },
+      "valid": false,
+      "note": "id is a portable id"
+    }
+  ]
+}

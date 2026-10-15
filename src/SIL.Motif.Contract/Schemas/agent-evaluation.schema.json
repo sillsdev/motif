@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://motif.sil.org/contracts/agent-evaluation/v1",
+  "title": "Agent evaluation payload",
+  "description": "The closed after payload of analysis/wfiAnalysis/addAgentEvaluations: a named non-human agent approves or disapproves one analysis. The agent is found by its authored id or created non-human; one agent exists per name and version. The default user agent, the parser agent and every other built-in agent are refused, as is a human agent. The parser also enforces NFD and rejects control characters in name and version.",
+  "$ref": "#/$defs/AgentEvaluationPayload",
+  "$defs": {
+    "AgentEvaluationPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["agent", "member"],
+      "properties": {
+        "agent": { "$ref": "#/$defs/Agent" },
+        "member": { "enum": ["approves", "disapproves"] }
+      }
+    },
+    "Agent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "version"],
+      "properties": {
+        "id": { "type": "string", "minLength": 22 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "version": { "type": "string", "minLength": 1, "maxLength": 60 }
+      }
+    }
+  }
+}

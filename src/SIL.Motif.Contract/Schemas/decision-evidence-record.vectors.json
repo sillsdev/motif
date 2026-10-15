@@ -1,0 +1,8 @@
+{
+  "contract": "decision-evidence-record/v1",
+  "vectors": [
+    { "shape": "DecisionEvidenceRecordPayload", "input": {}, "valid": true, "note": "the empty payload" },
+    { "shape": "DecisionEvidenceRecordPayload", "input": { "tier": "undecided" }, "valid": false, "note": "the evidence is provenance, never payload" },
+    { "shape": "DecisionEvidenceRecordPayload", "input": { "spellingStatus": "incorrect" }, "valid": false, "note": "spelling status is a person's and is never accepted here" }
+  ]
+}

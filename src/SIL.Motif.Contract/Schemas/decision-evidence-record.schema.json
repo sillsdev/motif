@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://motif.sil.org/contracts/decision-evidence-record/v1",
+  "title": "Decision evidence record payload",
+  "description": "The closed after payload of analysis/decisionEvidence/record: empty. The operation targets an existing wordform or analysis, must carry a decisionEvidence provenance entry, and changes nothing in the FieldWorks project.",
+  "$ref": "#/$defs/DecisionEvidenceRecordPayload",
+  "$defs": {
+    "DecisionEvidenceRecordPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {}
+    }
+  }
+}

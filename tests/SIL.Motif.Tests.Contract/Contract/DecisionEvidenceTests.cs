@@ -93,11 +93,27 @@ public sealed class DecisionEvidenceTests
     public void AProposalWithAMalformedEntryIsRefusedWhenParsed()
     {
         var proposal = """
-            {"contractVersions":{"lexical":"1.0"},"proposalId":"AAAAAAAAAAAAAAAAAAAAAA","requires":[],
+            {"contractVersions":{"sequence":"1.0"},"proposalId":"AAAAAAAAAAAAAAAAAAAAAA","requires":[],
              "operations":[{"operationId":"BBBBBBBBBBBBBBBBBBBBBB","kind":"sequence/move",
              "target":"CCCCCCCCCCCCCCCCCCCCCC","placement":{"after":"DDDDDDDDDDDDDDDDDDDDDD"},
              "provenance":[{"type":"decisionEvidence","tier":"gold","sources":[]}]}]}
             """;
-        Assert.Throws<ContractParseException>(() => ProposalJsonParser.Parse(proposal));
+        Assert.Contains("tier", Assert.Throws<ContractParseException>(() => ProposalJsonParser.Parse(proposal)).Message);
+    }
+
+    [Fact]
+    public void EvidenceDoesNotChangeTheIntentDigest()
+    {
+        const string template = """
+            {"contractVersions":{"sequence":"1.0"},"proposalId":"AAAAAAAAAAAAAAAAAAAAAA","requires":[],
+             "operations":[{"operationId":"BBBBBBBBBBBBBBBBBBBBBB","kind":"sequence/move",
+             "target":"CCCCCCCCCCCCCCCCCCCCCC","placement":{"after":"DDDDDDDDDDDDDDDDDDDDDD"},"provenance":[PROV]}]}
+            """;
+        var without = ProposalJsonParser.Parse(template.Replace("PROV", ""));
+        var with = ProposalJsonParser.Parse(template.Replace("PROV", Typo));
+
+        Assert.Equal(
+            SIL.Motif.Contract.Canonicalization.IntentDigest.Compute(without),
+            SIL.Motif.Contract.Canonicalization.IntentDigest.Compute(with));
     }
 }

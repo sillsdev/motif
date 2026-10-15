@@ -40,6 +40,8 @@ public class ConformanceVectorTests
         OperationKindRegistry.Register("grammar/moStemName/clearName");
         OperationKindRegistry.Register("lexical/lexDb/createEntries");
         OperationKindRegistry.Register("analysis/langProject/createWordforms");
+        OperationKindRegistry.Register("analysis/wfiAnalysis/addAgentEvaluations");
+        OperationKindRegistry.Register("analysis/decisionEvidence/record");
         OperationKindRegistry.Register("texts/langProject/createTexts");
         OperationKindRegistry.Register("lexical/lexEntry/createSenses");
         OperationKindRegistry.Register("lexical/lexEntry/createMorphoSyntaxAnalyses");

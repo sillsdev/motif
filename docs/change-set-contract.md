@@ -178,6 +178,22 @@ and a form that another identity takes after the Dry Run changes the footprint (
 a fresh Dry Run. Approving or disapproving an analysis and marking spelling use the existing analysis
 kinds on the created identity, and its Text occurrences remain out of scope.
 
+A program's decision about an analysis is recorded by `analysis/wfiAnalysis/addAgentEvaluations`, which targets the
+analysis and takes the closed payload `{ "agent": { "id", "name", "version" }, "member": "approves" | "disapproves" }`.
+The agent is found by its authored identity or created non-human under the project's analyzing agents; it is never
+matched by name, and one agent exists per name and version, so a new source release is a new agent identity. The
+default user agent, the parser agent and every other built-in agent are refused, as are a human agent, the human
+agent's name and an identity that is not an agent. No operation of this family reads or writes a person's evaluation
+or a wordform's spelling status. Its effect records the agent's name, version and non-human flag and the agent's
+opinion on the analysis (`agent:<id>`, `opinion:<id>`); a Proposal may carry the evidence for the decision as a
+`decisionEvidence` provenance entry on the same operation.
+
+A word-form tier with no FieldWorks counterpart, such as a typo or an ill-formed word, is recorded by
+`analysis/decisionEvidence/record`, which targets an existing wordform or analysis, takes the empty closed payload
+`{}` and must carry a `decisionEvidence` provenance entry. It changes nothing in the project: its effect has the same
+before and after, and no operation of the family reads or writes spelling status or any person's evaluation. Two
+records for one target in one Proposal conflict.
+
 A Text is created whole by `texts/langProject/createTexts`, which targets the project root with the closed payload
 `{ "name": { "ws", "text" }, "contents": <id>, "paragraphs": [ { "id", "ws", "segments": [ { "id", "words": [<wordformId>, ...] } ] } ] }`.
 The payload authors every identity it creates (the Text's `entityId`, its contents, each paragraph and each

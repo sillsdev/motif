@@ -1,0 +1,23 @@
+{
+  "contractVersions": {
+    "analysis": "1.0"
+  },
+  "operations": [
+    {
+      "operationId": "agent_AAECAwQFBgcICQoLDA0ODw",
+      "kind": "analysis/decisionEvidence/record",
+      "target": "agent_AQIDBAUGBwgJCgsMDQ4PEA",
+      "after": {},
+      "provenance": [
+        {
+          "type": "decisionEvidence",
+          "tier": "misspelled-typo",
+          "sources": [ { "kind": "dictionary", "source": "Kamusi ya Kiswahili Sanifu", "locator": "sita" } ],
+          "detail": { "intendedForm": "sita", "editType": "vowel substitution" }
+        }
+      ]
+    }
+  ],
+  "proposalId": "AAAAAAAAAAAAAAAAAAAAIA",
+  "requires": []
+}

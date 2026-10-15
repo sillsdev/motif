@@ -1,0 +1,34 @@
+{
+  "contractVersions": {
+    "analysis": "1.0"
+  },
+  "operations": [
+    {
+      "operationId": "agent_AAECAwQFBgcICQoLDA0ODw",
+      "kind": "analysis/wfiAnalysis/addAgentEvaluations",
+      "target": "agent_AQIDBAUGBwgJCgsMDQ4PEA",
+      "after": {
+        "agent": {
+          "id": "agent_AgMEBQYHCAkKCwwNDg8QEQ",
+          "name": "Source validation (Motif)",
+          "version": "swh-sources-2026-10"
+        },
+        "member": "approves"
+      },
+      "provenance": [
+        {
+          "type": "decisionEvidence",
+          "tier": "source-approved",
+          "sources": [
+            { "kind": "dictionary", "source": "Kamusi ya Kiswahili Sanifu", "locator": "sita" },
+            { "kind": "grammar", "source": "NALRC 2001", "locator": "§ 4" },
+            { "kind": "corpus", "source": "swh build split", "locator": "42" }
+          ],
+          "detail": { "corpusCount": 42 }
+        }
+      ]
+    }
+  ],
+  "proposalId": "AAAAAAAAAAAAAAAAAAAAIA",
+  "requires": []
+}

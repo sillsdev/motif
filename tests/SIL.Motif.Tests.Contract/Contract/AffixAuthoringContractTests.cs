@@ -53,6 +53,61 @@ public sealed class AffixAuthoringContractTests
     }
 
     [Fact]
+    public void DecisionEvidenceRecordSchemaIsClosedAndItsVectorsAgreeWithTheParser()
+    {
+        using var schema = typeof(CanonicalId).Assembly.GetManifestResourceStream(
+            "SIL.Motif.Contract.Schemas.decision-evidence-record.schema.json");
+        Assert.NotNull(schema);
+        using var schemaDocument = JsonDocument.Parse(schema!);
+        Assert.False(schemaDocument.RootElement.GetProperty("$defs").GetProperty("DecisionEvidenceRecordPayload")
+            .GetProperty("additionalProperties").GetBoolean());
+        using var stream = typeof(CanonicalId).Assembly.GetManifestResourceStream(
+            "SIL.Motif.Contract.Schemas.decision-evidence-record.vectors.json");
+        Assert.NotNull(stream);
+        using var document = JsonDocument.Parse(stream!);
+        foreach (var vector in document.RootElement.GetProperty("vectors").EnumerateArray())
+        {
+            var input = vector.GetProperty("input");
+            if (vector.GetProperty("valid").GetBoolean()) DecisionEvidenceRecordPayload.Parse(input);
+            else Assert.Throws<SIL.Motif.Contract.Parsing.ContractParseException>(() => DecisionEvidenceRecordPayload.Parse(input));
+        }
+    }
+
+    [Fact]
+    public void AgentEvaluationSchemaIsClosedAndItsVectorsAgreeWithTheParser()
+    {
+        using var schema = typeof(CanonicalId).Assembly.GetManifestResourceStream(
+            "SIL.Motif.Contract.Schemas.agent-evaluation.schema.json");
+        Assert.NotNull(schema);
+        using var schemaDocument = JsonDocument.Parse(schema!);
+        var definitions = schemaDocument.RootElement.GetProperty("$defs");
+        Assert.False(definitions.GetProperty("AgentEvaluationPayload").GetProperty("additionalProperties").GetBoolean());
+        Assert.False(definitions.GetProperty("Agent").GetProperty("additionalProperties").GetBoolean());
+        using var stream = typeof(CanonicalId).Assembly.GetManifestResourceStream(
+            "SIL.Motif.Contract.Schemas.agent-evaluation.vectors.json");
+        Assert.NotNull(stream);
+        using var document = JsonDocument.Parse(stream!);
+        var accepted = 0;
+        var refused = 0;
+        foreach (var vector in document.RootElement.GetProperty("vectors").EnumerateArray())
+        {
+            var input = vector.GetProperty("input");
+            if (vector.GetProperty("valid").GetBoolean())
+            {
+                _ = AgentEvaluationPayload.Parse(input);
+                accepted++;
+            }
+            else
+            {
+                Assert.ThrowsAny<Exception>(() => AgentEvaluationPayload.Parse(input));
+                refused++;
+            }
+        }
+        Assert.Equal(2, accepted);
+        Assert.Equal(12, refused);
+    }
+
+    [Fact]
     public void WordformCreateSchemaIsClosedAndItsVectorsAgreeWithTheParser()
     {
         using var schema = typeof(CanonicalId).Assembly.GetManifestResourceStream(
