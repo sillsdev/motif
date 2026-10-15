@@ -816,6 +816,52 @@ public sealed class DeterministicAssessCommandTests : IDisposable
         Assert.Empty(stored[0].Analyses);
     }
 
+    // The project's default scope chooses the kinds; ParseTime is always collected because Assess reports it.
+    [Theory]
+    [InlineData("ParseTime", "ParseTime", null)]
+    [InlineData("ObjectTiming", "ParseTime,ObjectTiming", null)]
+    [InlineData("ParseTime,Correctness", null, "Correctness")]
+    [InlineData("ParseTime,Bogus", null, "Bogus")]
+    public void TheProjectScopesCollectListChoosesWhatAssessCollects(string collect, string? expected, string? refusedKind)
+    {
+        using var seeded = NewSeededScratch();
+        var configured = new SIL.Motif.Host.Config.ProjectConfiguration(
+            [new SIL.Motif.Host.Config.AssessmentScopeConfiguration(
+                SIL.Motif.Host.Config.AssessmentScopeConfiguration.DefaultName, "all", "pangloss", collect.Split(','),
+                TimeSpan.FromMilliseconds(2500), perWordStepLimit: 500000)],
+            gateOnRegression: false, purgeOnApply: true);
+        File.WriteAllText(Path.ChangeExtension(seeded.FwDataPath, ".motif.toml"),
+            SIL.Motif.Host.Config.ProjectConfigurationFile.Render(configured));
+        AssessmentScope? seen = null;
+        var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind =>
+            kind == AssessmentKind.ParseTime
+                ? new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
+                    [new(0, "motifa", 12, SIL.Motif.Host.Parser.WordOutcome.Analysed, "complete-match")],
+                    2500, seeded.FwDataPath, []) { PerWordStepLimit = 500000 })
+                : new AssessmentRaw.WordMeasurements([]))
+        {
+            CaptureEvidence = (scope, candidate) =>
+            {
+                seen = scope;
+                return FakeAssessmentEvidence.Capture(_managedRootsParent, scope, candidate);
+            }
+        };
+
+        var outcome = AssessCommand.Run(new AssessRequest(seeded.FwDataPath,
+            new SelectionRequest(false, [], ["motifa"], false, null), null, null), NewManagedRoot(),
+            assessor, NewInvoker(), null, CancellationToken.None);
+
+        if (refusedKind is not null)
+        {
+            Assert.False(outcome.Succeeded);
+            Assert.Contains(refusedKind, outcome.Refusal!.Message, StringComparison.Ordinal);
+            Assert.Null(seen);
+            return;
+        }
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        Assert.Equal(expected!.Split(','), seen!.Collect.Select(kind => kind.ToString()));
+    }
+
     [Theory]
     [InlineData(null, null, null, 500000, 20_000)]
     [InlineData(4000, 150000, null, 150000, 4000)]
