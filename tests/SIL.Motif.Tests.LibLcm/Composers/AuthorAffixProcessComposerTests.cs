@@ -645,6 +645,54 @@ public sealed class AuthorAffixProcessComposerTests : IDisposable
         Assert.DoesNotContain(ProjectAppliedLog.ReadAll(_cache), record => record.ProposalId == set.ProposalId.ToGuid());
     }
 
+    [Fact]
+    public void PrerequisitesOfAnExistingProcessAreBoundWhateverPrefixSpellsItsIdentity()
+    {
+        var create = Proposal(AuthorAffixProcessComposer.Build(_cache, Intent()));
+        ProposalApplier.Apply(_cache, create, ScratchDryRun.Of(_cache, create).Anchor, "affix-core-tests");
+        var process = Process(create);
+        Proposal Edit(CanonicalId target)
+        {
+            var input = CanonicalId.Mint();
+            return Proposal([
+                new OperationEnvelope(CanonicalId.Mint(), MoAffixProcessInputOperationKinds.Create, target: target,
+                    entityId: input, after: JsonSerializer.SerializeToElement(new { @class = "PhSimpleContextSeg" })),
+                new OperationEnvelope(CanonicalId.Mint(), PhSimpleContextSegFeatureStructureOperationKinds.SetFeatureStructure,
+                    target: input, after: JsonSerializer.SerializeToElement(new { @ref = Id(_unrelated).Value })),
+            ]);
+        }
+        foreach (var spelling in new[] { Id(process), CanonicalId.FromGuid(process.Guid, "p:") })
+        {
+            var proposal = Edit(spelling);
+            var before = FootprintProbe.ComputeCurrentFootprintDigest(_cache, proposal);
+            Setup(() => _unrelated.CodesOS[0].Representation.set_String(_cache.DefaultVernWs, "zz" + spelling.Prefix));
+            Assert.NotEqual(before, FootprintProbe.ComputeCurrentFootprintDigest(_cache, proposal));
+        }
+    }
+
+    [Fact]
+    public void AMissingReferencedPhonemeIsRefusedByNameNotWithAKeyNotFoundException()
+    {
+        var intent = Intent() with { Input = [new("c", Phoneme: CanonicalId.Mint()), new("rest", Remaining: true)],
+            Output = [new(Copy: "c"), new(Copy: "rest")] };
+        var error = Assert.ThrowsAny<Exception>(() => AuthorAffixProcessComposer.Build(_cache, intent));
+        Assert.IsNotType<KeyNotFoundException>(error);
+        var create = Proposal(AuthorAffixProcessComposer.Build(_cache, Intent()));
+        ProposalApplier.Apply(_cache, create, ScratchDryRun.Of(_cache, create).Anchor, "affix-core-tests");
+        var edit = Proposal([
+            new OperationEnvelope(CanonicalId.Mint(), MoAffixProcessInputOperationKinds.Create,
+                target: Id(Process(create)), entityId: CanonicalId.Mint(),
+                after: JsonSerializer.SerializeToElement(new { @class = "PhSimpleContextSeg" })),
+        ]);
+        var missing = CanonicalId.Mint();
+        var withMissing = Proposal([.. edit.Operations, new OperationEnvelope(CanonicalId.Mint(),
+            PhSimpleContextSegFeatureStructureOperationKinds.SetFeatureStructure, target: edit.Operations[0].EntityId,
+            after: JsonSerializer.SerializeToElement(new { @ref = missing.Value }))]);
+        var refusal = Assert.Throws<InvalidOperationException>(() =>
+            FootprintProbe.ComputeCurrentFootprintDigest(_cache, withMissing));
+        Assert.Contains(missing.Value, refusal.Message, StringComparison.Ordinal);
+    }
+
     private AuthorAffixProcessIntent Intent() => new(CanonicalId.FromGuid(MoMorphTypeTags.kguidMorphInfix), "COPY",
         _cache.WritingSystemFactory.GetStrFromWs(_cache.DefaultAnalWs), new(LexicalEntryMsaKind.Unclassified, Id(_category)),
         [new("c", NaturalClass: Id(_class)), new("v", Phoneme: Id(_vowel)), new("rest", Remaining: true)],

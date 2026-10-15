@@ -40,7 +40,7 @@ public static class AuthorAffixProcessComposer
         var processCreate = operations.Single(operation => operation.Kind == LexEntryLexemeFormOperationKinds.CreateLexemeForm);
         var process = processCreate.EntityId!.Value;
         var creates = operations.Where(operation => operation.EntityId is not null)
-            .ToDictionary(operation => operation.EntityId!.Value, operation => operation.OperationId);
+            .ToDictionary(operation => operation.EntityId!.Value, operation => operation.OperationId, CanonicalId.ByGuid);
         var parts = new Dictionary<string, CanonicalId>(StringComparer.Ordinal);
         CanonicalId? priorInput = null;
         foreach (var part in intent.Input)

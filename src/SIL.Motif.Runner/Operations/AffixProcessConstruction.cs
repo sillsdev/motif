@@ -26,8 +26,6 @@ internal static class AffixProcessConstruction
             throw new InvalidOperationException("The lexeme-form slot is occupied; process creation cannot replace it.");
         var process = cache.ServiceLocator.GetInstance<IMoAffixProcessFactory>().Create(id.ToGuid());
         entry.LexemeFormOA = process;
-        foreach (var mapping in process.OutputOS.ToArray()) process.OutputOS.Remove(mapping);
-        foreach (var input in process.InputOS.ToArray()) process.InputOS.Remove(input);
         process.MorphTypeRA = morphType;
         process.IsAbstract = false;
         return process;

@@ -19,7 +19,7 @@ internal static class AffixProcessPrerequisiteFootprint
                 operation.Kind == LexEntryLexemeFormOperationKinds.CreateLexemeForm && operation.After is { } after &&
                 after.ValueKind == System.Text.Json.JsonValueKind.Object && after.TryGetProperty("class", out var concreteClass) &&
                 concreteClass.ValueKind == System.Text.Json.JsonValueKind.String && concreteClass.GetString() == "MoAffixProcess")
-            .Select(operation => operation.EntityId).Where(id => id is not null).Select(id => id!.Value).ToHashSet();
+            .Select(operation => operation.EntityId).Where(id => id is not null).Select(id => id!.Value).ToHashSet(CanonicalId.ByGuid);
         var existing = AffixProcessSemanticValidator.FindAffectedProcesses(cache, proposal.Operations);
         processes.UnionWith(existing.Select(process => CanonicalId.FromGuid(process.Guid)));
         if (processes.Count == 0) return Array.Empty<ExpectedEffect>();
@@ -28,14 +28,14 @@ internal static class AffixProcessPrerequisiteFootprint
         inputs.UnionWith(existing.SelectMany(process => process.InputOS).Select(input => CanonicalId.FromGuid(input.Guid)));
         outputs.UnionWith(existing.SelectMany(process => process.OutputOS).Select(output => CanonicalId.FromGuid(output.Guid)));
         var entries = proposal.Operations.Where(operation => operation.EntityId is { } entity && processes.Contains(entity))
-            .Select(operation => operation.Target).Where(id => id is not null).Select(id => id!.Value).ToHashSet();
+            .Select(operation => operation.Target).Where(id => id is not null).Select(id => id!.Value).ToHashSet(CanonicalId.ByGuid);
         entries.UnionWith(existing.Select(process => process.Owner).OfType<ILexEntry>()
             .Select(entry => CanonicalId.FromGuid(entry.Guid)));
         var msas = Created(LexEntryMorphoSyntaxAnalysesOperationKinds.Create, entries);
         msas.UnionWith(existing.Select(process => process.Owner).OfType<ILexEntry>()
             .SelectMany(entry => entry.MorphoSyntaxAnalysesOC).Select(msa => CanonicalId.FromGuid(msa.Guid)));
         var minted = FootprintPlan.TargetsMintedWithinProposal(proposal);
-        var objects = new Dictionary<CanonicalId, ObjectSnapshot>();
+        var objects = new Dictionary<CanonicalId, ObjectSnapshot>(CanonicalId.ByGuid);
         var usesPhonemes = false;
         var sound = SoundSystemSnapshots.Read(cache);
         var repository = cache.ServiceLocator.GetInstance<ICmObjectRepository>();
@@ -100,11 +100,18 @@ internal static class AffixProcessPrerequisiteFootprint
 
         HashSet<CanonicalId> Created(string kind, HashSet<CanonicalId> owners) => proposal.Operations
             .Where(operation => operation.Kind == kind && operation.Target is { } owner && owners.Contains(owner) && operation.EntityId is not null)
-            .Select(operation => operation.EntityId!.Value).ToHashSet();
+            .Select(operation => operation.EntityId!.Value).ToHashSet(CanonicalId.ByGuid);
+
+        void RequireExisting(CanonicalId id, string what)
+        {
+            if (!repository.IsValidObjectId(id.ToGuid()))
+                throw new InvalidOperationException($"'{what}': '{id.Value}' does not exist in this project.");
+        }
 
         void Ownership(CanonicalId id)
         {
             if (minted.Contains(id)) return;
+            RequireExisting(id, "affix prerequisite");
             var value = repository.GetObject(id.ToGuid());
             for (ICmObject? current = value; current is not null; current = current.Owner)
             {
@@ -141,6 +148,7 @@ internal static class AffixProcessPrerequisiteFootprint
         {
             usesPhonemes = true;
             if (minted.Contains(id)) return;
+            RequireExisting(id, "affix prerequisite phoneme");
             var phone = ReferenceFieldLowering.Resolve<IPhPhoneme>(cache, id, "affix prerequisite");
             Add(phone);
             foreach (var code in phone.CodesOS) Add(code);
@@ -156,6 +164,7 @@ internal static class AffixProcessPrerequisiteFootprint
                     Phone(PhNCSegmentsSegmentsMemberPayload.Parse(member.After!.Value, member.Kind));
                 return;
             }
+            RequireExisting(id, "affix prerequisite natural class");
             var naturalClass = ReferenceFieldLowering.Resolve<IPhNaturalClass>(cache, id, "affix prerequisite");
             Add(naturalClass);
             if (naturalClass is IPhNCSegments segments)
