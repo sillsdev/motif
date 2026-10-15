@@ -1,0 +1,26 @@
+{
+  "contractVersions": { "lexical": "1.0" },
+  "proposalId": "agent_AAECAwQFBgcICQoLDA0ODw",
+  "requires": [],
+  "operations": [
+    {
+      "operationId": "agent_QEFCQ0RFRkdISUpLTE1OTw",
+      "kind": "lexical/entry/create",
+      "entityId": "agent_ICEiIyQlJicoKSorLC0uLw",
+      "after": { "headword": "run", "count": 3 },
+      "rationale": "Corpus evidence suggests a new headword entry.",
+      "confidence": 0.92,
+      "provenance": [
+        {
+          "type": "decisionEvidence",
+          "tier": "misspelled-typo",
+          "sources": [ { "kind": "dictionary", "source": "Kamusi ya Kiswahili Sanifu", "locator": "sita" } ],
+          "detail": { "intendedForm": "sita", "editType": "vowel substitution", "corpusCount": 0 },
+          "stagedBy": "Source validation staging tool"
+        }
+      ],
+      "extensions": {}
+    }
+  ],
+  "extensions": {}
+}

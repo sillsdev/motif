@@ -442,3 +442,18 @@ public sealed record ComposeAuthorInflectionClassRequest(string FwDataPath, stri
 /// <param name="IntentJson">The closed stem name input, resolved against the prepared Draft.</param>
 public sealed record ComposeAuthorStemNameRequest(string FwDataPath, string ProductVersion,
     string DraftName, string IntentJson);
+
+/// <summary>Reads the decision evidence staged for one wordform or analysis.</summary>
+/// <param name="FwDataPath">The FieldWorks project.</param>
+/// <param name="ProductVersion">The running product version.</param>
+/// <param name="Subject">The wordform or analysis identity.</param>
+public sealed record EvidenceShowRequest(string FwDataPath, string ProductVersion, string Subject);
+
+/// <summary>Lists decision evidence, counts first and then one page.</summary>
+/// <param name="FwDataPath">The FieldWorks project.</param>
+/// <param name="ProductVersion">The running product version.</param>
+/// <param name="Tier">Only records of this tier, when given.</param>
+/// <param name="Offset">The first row of the page.</param>
+/// <param name="Limit">The page size.</param>
+public sealed record EvidenceListRequest(
+    string FwDataPath, string ProductVersion, string? Tier = null, int Offset = 0, int Limit = 50);

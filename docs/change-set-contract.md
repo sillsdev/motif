@@ -105,6 +105,19 @@ one; a malformed or repeated citation makes the Proposal unparseable. Other `pro
 Like all of `provenance`, a citation is excluded from the intent digest. A citation names a source, never a
 person or an agent ([ADR 0064](adr/0064-every-operation-can-cite-its-source.md)).
 
+A source-validated decision records why a program, not a person, decided as a second typed `provenance` entry:
+`{"type":"decisionEvidence","tier":"misspelled-typo","sources":[{"kind":"dictionary","source":"...","locator":"..."}],
+"detail":{"intendedForm":"...","editType":"..."},"stagedBy":"..."}`. The entry is closed: `tier` is one of
+`source-approved`, `valid-attested`, `valid-productive`, `misspelled-typo`, `ill-formed`, `nonstandard-variant`,
+`join-split`, `name-foreign-number` or `undecided`; `sources` holds at most 12 entries, each a `kind`
+(`dictionary`, `grammar`, `corpus` or `example`), a `source` of 1 to 300 characters and an optional `locator`
+of at most 120; `detail` accepts only `intendedForm`, `editType`, `violatedRule`, `standardForm` and a whole-number
+`corpusCount`. A tier names the detail it requires: `misspelled-typo` needs `intendedForm` and `editType`,
+`ill-formed` needs `violatedRule`, `nonstandard-variant` needs `standardForm`, and `source-approved` needs a
+dictionary, a grammar and a corpus source. An operation carries at most one, and a malformed or repeated entry makes
+the Proposal unparseable. It is outside the intent digest and outside the FieldWorks project; `motif evidence show`
+and `motif evidence list` read it from Applied Proposals, and every row is labelled source-validated, not human.
+
 ## Operation vocabulary
 
 The catalog is a closed, versioned, hashed set of **ten primitive verbs** — Layer 0. Each is admitted

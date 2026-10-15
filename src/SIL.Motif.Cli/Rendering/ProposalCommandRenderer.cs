@@ -47,6 +47,8 @@ public static class ProposalCommandRenderer
             ApplyPendingResult => "Nothing to apply." + Environment.NewLine,
             AppliedLogProjection p => ProjectionText.Render(p),
             CitationTraceResponse r => RenderCitations(r),
+            DecisionEvidenceShowResponse r => RenderEvidenceShow(r),
+            DecisionEvidenceListResponse r => RenderEvidenceList(r),
             DraftCreatedResponse r => RenderDraftCreated(r),
             SetGlossAddedResponse r => RenderSetGlossAdded(r),
             DeleteLexemeFormAddedResponse r => RenderDeleteLexemeFormAdded(r),
@@ -80,6 +82,33 @@ public static class ProposalCommandRenderer
             text.AppendLine($"    cites:    {row.Citation?.ToString() ?? "(none)"}");
         }
         return text.ToString();
+    }
+
+    private static string RenderEvidenceShow(DecisionEvidenceShowResponse response)
+    {
+        var text = new StringBuilder();
+        text.AppendLine($"{response.Records.Count} source-validated record(s) for {response.Subject} (not a person's decision).");
+        foreach (var row in response.Records) AppendEvidenceRow(text, row);
+        return text.ToString();
+    }
+
+    private static string RenderEvidenceList(DecisionEvidenceListResponse response)
+    {
+        var text = new StringBuilder();
+        text.AppendLine($"{response.Total} source-validated record(s) in {response.AppliedProposals} Applied Proposal(s):");
+        foreach (var (tier, count) in response.TierCounts) text.AppendLine($"  {tier}: {count}");
+        text.AppendLine($"Showing {response.Rows.Count} from offset {response.Offset}.");
+        foreach (var row in response.Rows) AppendEvidenceRow(text, row);
+        return text.ToString();
+    }
+
+    private static void AppendEvidenceRow(StringBuilder text, DecisionEvidenceRow row)
+    {
+        text.AppendLine($"  {row.Subject}  [{row.Tier}] source-validated, not a person  (proposal {row.ProposalId}, {row.OperationId})");
+        foreach (var source in row.Sources)
+            text.AppendLine($"    {source.Kind}: {source.Source}{(source.Locator is null ? "" : ", " + source.Locator)}");
+        foreach (var (name, value) in row.Detail) text.AppendLine($"    {name}: {value}");
+        if (row.StagedBy is not null) text.AppendLine($"    staged by: {row.StagedBy}");
     }
 
     private static string RenderPendingChanges(PendingChangesSnapshot snapshot)

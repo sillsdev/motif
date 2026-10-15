@@ -258,6 +258,10 @@ public static class CliVerbCatalog
         new CliVerbDescriptor("Commands", "log", "log", new[] { "log --project <fwdata> [--json]" }),
         new CliVerbDescriptor("Commands", "citations", "citations",
             new[] { "citations --project <fwdata> [--uncited] [--json]" }),
+        new CliVerbDescriptor("Commands", "evidence show", "evidence show",
+            new[] { "evidence show <subject> --project <fwdata> [--json]" }),
+        new CliVerbDescriptor("Commands", "evidence list", "evidence list",
+            new[] { "evidence list --project <fwdata> [--tier <tier>] [--offset <n>] [--limit <n>] [--json]" }),
 
         new CliVerbDescriptor(
             "Configuration", "config", "config show",

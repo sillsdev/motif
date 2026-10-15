@@ -155,6 +155,8 @@ public static class CommandCatalog
         new CommandDescriptor("apply", typeof(ApplyRequest), typeof(ApplyPendingResult), CommandSurface.Released, AgentClass.HumanOnly),
         new CommandDescriptor("log", typeof(LogRequest), typeof(AppliedLogProjection), CommandSurface.Developer, AgentClass.Read),
         new CommandDescriptor("citations", typeof(CitationsRequest), typeof(CitationTraceResponse), CommandSurface.Developer, AgentClass.Read),
+        new CommandDescriptor("evidence show", typeof(EvidenceShowRequest), typeof(DecisionEvidenceShowResponse), CommandSurface.Developer, AgentClass.Read),
+        new CommandDescriptor("evidence list", typeof(EvidenceListRequest), typeof(DecisionEvidenceListResponse), CommandSurface.Developer, AgentClass.Read),
 
         // CorpusCommands
         new CommandDescriptor("add-corpus", typeof(AddCorpusRequest), typeof(CorpusAddedResponse), CommandSurface.Released, AgentClass.HumanOnly),

@@ -991,6 +991,32 @@ try
                 flags.ContainsKey("uncited"))));
             break;
 
+        case "evidence":
+            if (positionals.Count == 2 && positionals[0] == "show")
+            {
+                if (!flags.TryGetValue("project", out var evidenceShowProject))
+                    return Usage(UsageLineFor("evidence show"), asJson);
+                result = RenderProposal(ProposalCommands.EvidenceShow(
+                    new EvidenceShowRequest(evidenceShowProject, CliProductVersion(), positionals[1])));
+                break;
+            }
+            if (positionals.Count == 1 && positionals[0] == "list")
+            {
+                var evidenceOffset = 0;
+                var evidenceLimit = 50;
+                if (!flags.TryGetValue("project", out var evidenceListProject) ||
+                    flags.TryGetValue("offset", out var evidenceOffsetText) &&
+                    !int.TryParse(evidenceOffsetText, NumberStyles.None, CultureInfo.InvariantCulture, out evidenceOffset) ||
+                    flags.TryGetValue("limit", out var evidenceLimitText) &&
+                    !int.TryParse(evidenceLimitText, NumberStyles.None, CultureInfo.InvariantCulture, out evidenceLimit))
+                    return Usage(UsageLineFor("evidence list"), asJson);
+                result = RenderProposal(ProposalCommands.EvidenceList(new EvidenceListRequest(
+                    evidenceListProject, CliProductVersion(), flags.GetValueOrDefault("tier"), evidenceOffset,
+                    evidenceLimit)));
+                break;
+            }
+            return Usage(UsageLineFor("evidence show"), asJson);
+
         case "add-corpus":
             if (!flags.TryGetValue("project", out var addCorpusProject) ||
                 !flags.TryGetValue("id", out var corpusId) ||
@@ -2243,7 +2269,7 @@ static string ResolveCommandName(string verb, IReadOnlyDictionary<string, string
         return "trial --pending";
     if (verb == "phonology-examples" && positionals.FirstOrDefault() is "save" or "list" or "show")
         return verb + " " + positionals[0];
-    if (verb is "config" or "baseline" or "grammar" or "jobs" or "project" or "selection" or "texts" or "setup" or "store" or "word" or "difference")
+    if (verb is "config" or "baseline" or "grammar" or "jobs" or "project" or "selection" or "texts" or "setup" or "store" or "word" or "difference" or "evidence")
     {
         var candidate = positionals.Count > 0 ? verb + " " + positionals[0] : verb;
         if (CommandCatalog.All.Any(command => command.Name == candidate)) return candidate;

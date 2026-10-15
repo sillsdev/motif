@@ -23,6 +23,8 @@ is reserved for tool data (rule 7).
 1. **A citation is a typed `provenance` entry.** `{"type":"citation","source":"...","locator":"..."}`: `source`
    required (1–300 characters), `locator` optional (at most 120), no other property, at most one per
    operation. Proposal parsing refuses a malformed or repeated citation; other `provenance` entries stay open.
+   `decisionEvidence` is a second typed entry on the same channel, with the same rules: closed, at most one per
+   operation, outside the digest and never naming an author of the Proposal.
    No new envelope field, no `extensions` key, and no change to the intent digest: two Proposals that differ
    only in their citations have the same digest.
 2. **A citation is supplied beside an intent, never inside it.** An authoring request takes an optional
