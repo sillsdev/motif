@@ -51,8 +51,33 @@ to add: one definition, its lowering, and its Help. This is revisited only with 
 composers land, a Phenomenon with no Composer holds up a language for more than a day, the task evaluations in
 section 9 record it and a later ADR weighs a gated route against that record.
 
-### 4. Discovery: a small default and a search by goal
+### 4. Discovery: stage tools and a bank of Composers
+
+Both major agent hosts now hide MCP tools behind a search step by default, and at least one host's search misses
+tools by their exact name or is never called. So Motif does not depend on the host finding a Composer.
+
+- **Stage tools.** The default profile offers about fifteen tools, one per stage or verb of the edit loop, marked to
+  load always, and the server instructions open with a map of them short enough for every host to read.
+- **The Composer bank.** Two of the stage tools reach every Composer. `motif_find_composer` takes a goal in a
+  linguist's words or a Phenomenon and returns the matching Composers, each with when to reach for it, its schema and
+  a worked example, together with the Phenomenon's help page: what that issue needs, in which order, and the
+  pitfalls. `motif_compose` takes one or more steps, each a Composer's verb and its intent, and is the one way to
+  author; a single step and a batch are the same call.
+- **Found by goal.** A Composer's definition declares its Phenomena from a closed list kept in the catalog, and its
+  Help gives a few example goals in a linguist's words, which translators can translate like the rest of Help. The
+  search reads those goals with the Title and Description. A Composer without a Phenomenon or an example goal fails
+  the build.
+- **The expanded profile.** One tool per Composer is still generated from each definition, in an expanded profile,
+  so the two shapes can be compared by the task evaluations rather than argued.
+
 ### 5. Naming and shape
+
+- Tool names are `motif_<verb>_<noun>`; arguments are camelCase.
+- One idea has one name on every tool: `proposal` for a Draft or a Proposal, `project` for the project.
+- An id is passed back exactly as Motif returned it, prefix included.
+- Every tool takes `detail` (`concise` by default, or `detailed`); a response that would exceed about four thousand
+  tokens pages instead of inlining.
+
 ### 6. Refusals and next steps
 
 A refusal is the API teaching its caller. Every refusal:
@@ -66,6 +91,13 @@ No read returns plausible zeros or an empty list when it could not look; it says
 Parsimony note already does. A success whose next step is obvious says it in `next`.
 
 ### 7. Skills are generated from the catalog
+
+What a skill says about commands is generated: each command's route on both renderings side by side, the
+Phenomenon index of Composers, and the crosswalk between CLI verbs and MCP tools. What is written by hand is written
+once: the slice playbook (pick a Phenomenon and cite the source; compose; Dry Run; Trial; compare the Difference and
+human decisions; Parsimony; Finalize; record the evidence), including how ids returned by one step feed the next.
+The build fails when a skill names a tool, a CLI verb or a Help link that does not resolve.
+
 ### 8. Versioning and stability
 
 Before 1.0 a rename is a rename, as for stored shapes (AGENTS.md rule 18): no tool aliases and no deprecated argument
@@ -81,6 +113,10 @@ across typologically different languages, run by the existing harness (ADR 0059)
 (calls by tool, tool errors, turns, tokens, wall time), each run records refusals by code and whether the agent found
 the expected Composer at all, and keeps these per run so later questions ("which refusal costs agents most turns?")
 can be asked of stored runs. Grading stays on the resulting grammar, never on the sequence of calls.
+
+Real sessions are recorded the same way, on the person's machine only: the activity log records each call's stage,
+Composer and refusal code and whether it followed the previous response's next step, and `motif activity` answers
+the same questions of it. Nothing is sent anywhere.
 
 
 ## Consequences
