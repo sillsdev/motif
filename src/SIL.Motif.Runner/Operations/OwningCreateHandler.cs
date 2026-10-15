@@ -23,10 +23,14 @@ internal sealed class OwningCreateHandler<TOwner>(
         if (operation.StorageIdOverride is not null)
             throw new InvalidOperationException($"'{kind}': storage GUID overrides are not supported for this create.");
         var entityId = operation.EntityId ?? throw new InvalidOperationException($"'{kind}' requires entityId.");
+        if (entityId.ToGuid() == Guid.Empty)
+            throw new InvalidOperationException($"'{kind}': creation requires a nonzero entity identity; LibLCM cannot preserve the zero GUID.");
         var after = operation.After ?? throw new InvalidOperationException($"'{kind}' requires after.");
         ClosedPayloadParsing.RequireObject(after, kind);
         ClosedPayloadParsing.RejectUnknownProperties(after, concreteClasses.Length == 0 ? Array.Empty<string>() :
             new[] { "class" }, kind);
+        if (typeof(TOwner) == typeof(IMoAffixProcess) && after.EnumerateObject().Count() != 1)
+            throw new InvalidOperationException($"'{kind}': the class property must occur exactly once.");
         string? concreteClass = null;
         if (concreteClasses.Length != 0)
         {

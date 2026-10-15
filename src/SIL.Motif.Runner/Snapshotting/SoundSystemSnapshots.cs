@@ -48,6 +48,7 @@ public static class SoundSystemSnapshots
             }
         }
         foreach (var context in data.ContextsOS) Add(context);
+        foreach (var (id, snapshot) in AffixProcessSnapshots.Read(cache)) objects[id] = snapshot;
         return objects;
 
         void Structure(IFsFeatStruc? structure)

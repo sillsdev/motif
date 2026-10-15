@@ -1,0 +1,209 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://motif.sil.org/contracts/author-affix-process/v1",
+  "title": "Author affix process",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "morphType",
+    "gloss",
+    "analysisWs",
+    "msa",
+    "input",
+    "output"
+  ],
+  "properties": {
+    "morphType": {
+      "$ref": "#/$defs/CanonicalId"
+    },
+    "gloss": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
+    "analysisWs": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
+    "definition": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
+    "msa": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "category"
+          ],
+          "properties": {
+            "kind": {
+              "const": "inflectional"
+            },
+            "category": {
+              "$ref": "#/$defs/CanonicalId"
+            },
+            "slots": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/CanonicalId"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "category",
+            "toCategory"
+          ],
+          "properties": {
+            "kind": {
+              "const": "derivational"
+            },
+            "category": {
+              "$ref": "#/$defs/CanonicalId"
+            },
+            "toCategory": {
+              "$ref": "#/$defs/CanonicalId"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "category"
+          ],
+          "properties": {
+            "kind": {
+              "const": "unclassified"
+            },
+            "category": {
+              "$ref": "#/$defs/CanonicalId"
+            }
+          }
+        }
+      ]
+    },
+    "input": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 16,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "phoneme"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              "phoneme": {
+                "$ref": "#/$defs/CanonicalId"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "naturalClass"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              "naturalClass": {
+                "$ref": "#/$defs/CanonicalId"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "remaining"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              "remaining": {
+                "const": true
+              }
+            }
+          }
+        ]
+      }
+    },
+    "output": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "copy"
+            ],
+            "properties": {
+              "copy": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "insert"
+            ],
+            "properties": {
+              "insert": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 64,
+                "items": {
+                  "$ref": "#/$defs/CanonicalId"
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "CanonicalId": {
+      "type": "string",
+      "minLength": 22,
+      "pattern": "^[\\s\\S]*[A-Za-z0-9_-]{22}(?![\\s\\S])"
+    }
+  },
+  "$comment": "Runtime semantic validation also requires unique local names, a unique final remaining part, all inputs copied, inserted material or repeated copying, and at most 256 expanded mappings. Project references and affix morphology are resolved against the loaded project. Duplicate JSON properties are refused by the parser."
+}

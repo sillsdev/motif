@@ -70,9 +70,23 @@ public static class AuthorLexicalEntryIntentParser
         SoundSystemIntentParsing.Object(authored, ConstructName,
             "form", "formWs", "morphType", "gloss", "analysisWs", "definition", "msa", "inflectionClasses",
             "environments");
+        var parsedMsa = ParseMsa(authored, ConstructName);
+        return new AuthorLexicalEntryIntent(
+            SoundSystemIntentParsing.Text(authored, "form"),
+            SoundSystemIntentParsing.Text(authored, "formWs"),
+            SoundSystemIntentParsing.Id(authored, "morphType"),
+            SoundSystemIntentParsing.Text(authored, "gloss"),
+            SoundSystemIntentParsing.Text(authored, "analysisWs"),
+            parsedMsa,
+            authored.TryGetProperty("definition", out _) ? SoundSystemIntentParsing.Text(authored, "definition") : null,
+            NonEmptyIds(authored, "inflectionClasses"), NonEmptyIds(authored, "environments"));
+    }
+
+    internal static LexicalEntryMsa ParseMsa(JsonElement authored, string constructName)
+    {
         if (!authored.TryGetProperty("msa", out var msa))
-            throw new ContractParseException($"'{ConstructName}': 'msa' is required.");
-        SoundSystemIntentParsing.Object(msa, ConstructName + ".msa",
+            throw new ContractParseException($"'{constructName}': 'msa' is required.");
+        SoundSystemIntentParsing.Object(msa, constructName + ".msa",
             "kind", "category", "toCategory", "slots", "inflectionClass");
         var kind = SoundSystemIntentParsing.Text(msa, "kind") switch
         {
@@ -81,28 +95,20 @@ public static class AuthorLexicalEntryIntentParser
             "derivational" => LexicalEntryMsaKind.Derivational,
             "unclassified" => LexicalEntryMsaKind.Unclassified,
             var other => throw new ContractParseException(
-                $"'{ConstructName}': msa kind '{other}' must be stem, inflectional, derivational or unclassified."),
+                $"'{constructName}': msa kind '{other}' must be stem, inflectional, derivational or unclassified."),
         };
         var toCategory = Optional(msa, "toCategory");
         var slots = msa.TryGetProperty("slots", out _) ? SoundSystemIntentParsing.Ids(msa, "slots", ordered: false) : null;
         var inflectionClass = Optional(msa, "inflectionClass");
         if (toCategory is not null && kind != LexicalEntryMsaKind.Derivational)
-            throw new ContractParseException($"'{ConstructName}': only a derivational msa takes 'toCategory'.");
+            throw new ContractParseException($"'{constructName}': only a derivational msa takes 'toCategory'.");
         if (kind == LexicalEntryMsaKind.Derivational && toCategory is null)
-            throw new ContractParseException($"'{ConstructName}': a derivational msa needs 'toCategory'.");
+            throw new ContractParseException($"'{constructName}': a derivational msa needs 'toCategory'.");
         if (slots is not null && kind != LexicalEntryMsaKind.Inflectional)
-            throw new ContractParseException($"'{ConstructName}': only an inflectional msa takes 'slots'.");
+            throw new ContractParseException($"'{constructName}': only an inflectional msa takes 'slots'.");
         if (inflectionClass is not null && kind != LexicalEntryMsaKind.Stem)
-            throw new ContractParseException($"'{ConstructName}': only a stem msa takes 'inflectionClass'.");
-        return new AuthorLexicalEntryIntent(
-            SoundSystemIntentParsing.Text(authored, "form"),
-            SoundSystemIntentParsing.Text(authored, "formWs"),
-            SoundSystemIntentParsing.Id(authored, "morphType"),
-            SoundSystemIntentParsing.Text(authored, "gloss"),
-            SoundSystemIntentParsing.Text(authored, "analysisWs"),
-            new LexicalEntryMsa(kind, SoundSystemIntentParsing.Id(msa, "category"), toCategory, slots, inflectionClass),
-            authored.TryGetProperty("definition", out _) ? SoundSystemIntentParsing.Text(authored, "definition") : null,
-            NonEmptyIds(authored, "inflectionClasses"), NonEmptyIds(authored, "environments"));
+            throw new ContractParseException($"'{constructName}': only a stem msa takes 'inflectionClass'.");
+        return new LexicalEntryMsa(kind, SoundSystemIntentParsing.Id(msa, "category"), toCategory, slots, inflectionClass);
     }
 
     /// <summary>Reads an optional unordered identity list; present means nonempty and free of repeats.</summary>
@@ -135,7 +141,12 @@ public static class AuthorLexicalEntryComposer
     /// <param name="intent">The authored entry.</param>
     /// <param name="mintId">Overrides id minting; tests supply a deterministic source.</param>
     public static IReadOnlyList<OperationEnvelope> Build(
-        LcmCache cache, AuthorLexicalEntryIntent intent, Func<CanonicalId>? mintId = null)
+        LcmCache cache, AuthorLexicalEntryIntent intent, Func<CanonicalId>? mintId = null) =>
+        BuildEntry(cache, intent, mintId, null);
+
+    /// <summary>Builds an entry whose lexeme form is created from <paramref name="formPayload"/> when it is given.</summary>
+    internal static IReadOnlyList<OperationEnvelope> BuildEntry(
+        LcmCache cache, AuthorLexicalEntryIntent intent, Func<CanonicalId>? mintId, object? formPayload)
     {
         ArgumentNullException.ThrowIfNull(cache);
         ArgumentNullException.ThrowIfNull(intent);
@@ -154,11 +165,12 @@ public static class AuthorLexicalEntryComposer
             },
         };
         RequireMsaShape(intent.Msa);
-        var form = LexicalFormAuthoring.RequireText(intent.Form, "form", ConstructName);
+        var form = formPayload is null ? LexicalFormAuthoring.RequireText(intent.Form, "form", ConstructName) : "";
         var gloss = LexicalFormAuthoring.RequireText(intent.Gloss, "gloss", ConstructName);
         var definition = intent.Definition is null
             ? null : LexicalFormAuthoring.RequireText(intent.Definition, "definition", ConstructName);
-        LexicalFormAuthoring.RequireWritingSystem(cache, intent.FormWritingSystem, vernacular: true, ConstructName);
+        if (formPayload is null)
+            LexicalFormAuthoring.RequireWritingSystem(cache, intent.FormWritingSystem, vernacular: true, ConstructName);
         LexicalFormAuthoring.RequireWritingSystem(cache, intent.AnalysisWritingSystem, vernacular: false, ConstructName);
 
         var morphType = LexicalFormAuthoring.Resolve<IMoMorphType>(cache, intent.MorphType, ConstructName);
@@ -203,7 +215,7 @@ public static class AuthorLexicalEntryComposer
         var afterEntry = new[] { new OperationDependency(createEntry) };
         var formId = Mint();
         var createForm = Add(LexEntryLexemeFormOperationKinds.CreateLexemeForm, entryId,
-            new { morphType = intent.MorphType.Value, ws = intent.FormWritingSystem, text = form },
+            formPayload ?? new { morphType = intent.MorphType.Value, ws = intent.FormWritingSystem, text = form },
             entityId: formId, dependsOn: afterEntry);
         foreach (var (kind, member) in LexicalFormAuthoring.Links(formClass, environments, restrictedClasses))
             Add(kind, formId, new { member = member.Value }, dependsOn: [new OperationDependency(createForm)]);

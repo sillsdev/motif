@@ -539,7 +539,7 @@ foreach ($r in $rows) {
         $compRationale = $null
     }
     if ($r.Class -eq 'MoAffixProcess' -and $r.Field -eq 'Input') {
-        $compRationale = 'Positional (pattern-node order is the rule''s match), but Output resolves against it by ContentRA.IndexInOwner+1 -- a discovered footprint on move, not merely declared (change-set-contract.md#declared-vs-discovered-footprint).'
+        $compRationale = 'Positional: pattern-node order is the rule''s match. Output references retain input identity when input order changes; deletion can cascade to referencing mappings and needs a discovered closure. Flat process creation emits PhVariable, PhSimpleContextSeg and PhSimpleContextNC only; delete, move and reparent are not emitted.'
     }
 
     # --- Verbs ---
@@ -592,6 +592,9 @@ foreach ($r in $rows) {
     # --- Assemble Rationale (fold in comparison-class / hc notes for traceability) ---
     $ratParts = New-Object System.Collections.Generic.List[string]
     $ratParts.Add($rationale)
+    if ($r.Class -eq 'MoAffixProcess' -and $r.Field -eq 'Output') {
+        $ratParts.Add('Flat process creation emits MoCopyFromInput and singleton MoInsertPhones only; delete, move and reparent are not emitted.')
+    }
     if ($compRationale) { $ratParts.Add("ComparisonClass: $compRationale") }
     if ($hcNote) { $ratParts.Add("HcReachable: $hcNote") }
     if ($r.Sig -eq 'Integer') {

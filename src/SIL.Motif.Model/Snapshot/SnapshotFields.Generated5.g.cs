@@ -40,6 +40,12 @@ public static partial class SnapshotFields
     /// <summary>A <c>LexSense</c>'s <c>Definition</c> basic MultiUnicode field.</summary>
     public const string LexSenseDefinition = "lexical/lexSense/definition";
 
+    /// <summary>A <c>MoAffixProcess</c>'s <c>Input</c> owning PhContextOrVar field.</summary>
+    public const string MoAffixProcessInput = "grammar/moAffixProcess/input";
+
+    /// <summary>A <c>MoAffixProcess</c>'s <c>Output</c> owning MoRuleMapping field.</summary>
+    public const string MoAffixProcessOutput = "grammar/moAffixProcess/output";
+
     /// <summary>A <c>MoInflAffixSlot</c>'s <c>Name</c> basic MultiUnicode field.</summary>
     public const string MoInflAffixSlotName = "grammar/moInflAffixSlot/name";
 

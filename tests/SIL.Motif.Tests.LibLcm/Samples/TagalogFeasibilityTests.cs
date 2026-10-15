@@ -15,14 +15,70 @@ using SIL.Motif.Host.Parser;
 using SIL.Motif.Tests.Parser;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace SIL.Motif.Tests.Samples;
 
 [Collection(LcmCacheTestCollection.Name)]
 public sealed class TagalogFeasibilityTests
 {
+    private readonly ITestOutputHelper _output;
+
     private const string ParserParametersXml =
         "<ParserParameters><HC><NoDefaultCompounding>true</NoDefaultCompounding><Strata /></HC></ParserParameters>";
+
+    public TagalogFeasibilityTests(ITestOutputHelper output) => _output = output;
+
+    [RealParserFact]
+    public void SyntheticAffixProcessesParseSevenApprovedTagalogForms()
+    {
+        var run = RunPanelAssessment(controls: false);
+        WritePanelEvidence(run.Response);
+
+        Assert.Equal(
+            run.Authored.Words.OrderBy(word => word, StringComparer.Ordinal),
+            run.Response.Selection.Words);
+        foreach (var (word, expected) in run.Authored.ExpectedMorphs)
+        {
+            var row = Assert.Single(run.Response.Words, candidate => candidate.Word == word);
+            var details = DescribeParserResult(row, run.Response);
+            AssertCompletedExpectedReading(row, expected, details);
+        }
+    }
+
+    [RealParserFact]
+    public void SyntheticAffixProcessRejectsCompletedNegativeControlsWithPositiveWitnesses()
+    {
+        var run = RunPanelAssessment(controls: true);
+        WritePanelEvidence(run.Response);
+
+        Assert.Equal(
+            run.Authored.NegativeControlWords.Concat(run.Authored.PositiveControlMorphs.Keys)
+                .OrderBy(word => word, StringComparer.Ordinal),
+            run.Response.Selection.Words);
+        foreach (var (word, expected) in run.Authored.PositiveControlMorphs)
+        {
+            var row = Assert.Single(run.Response.Words, candidate => candidate.Word == word);
+            AssertCompletedExpectedReading(row, expected, DescribeParserResult(row, run.Response));
+        }
+
+        foreach (var (word, forbidden) in run.Authored.ForbiddenMorphs)
+        {
+            var row = Assert.Single(run.Response.Words, candidate => candidate.Word == word);
+            var details = DescribeParserResult(row, run.Response);
+            Assert.False(row.IsIncomplete);
+            Assert.Equal("no-analysis", row.Outcome);
+            Assert.Equal("Search completed", row.CompletionStatus);
+            var morphology = Assert.IsType<ParseWordEvidence>(row.Morphology);
+            Assert.Null(morphology.Refusal);
+            Assert.Empty(morphology.Unavailable);
+            Assert.Empty(morphology.Analyses);
+            Assert.False(morphology.InvalidShape);
+            Assert.False(morphology.Capped);
+            Assert.False(morphology.TimedOut);
+            Assert.False(HasExpectedIdentityReading(row, forbidden), details);
+        }
+    }
 
     [RealParserFact]
     public void InitialConsonantEnvironmentParsesUmAndInInfixesFromAText()
@@ -114,6 +170,57 @@ public sealed class TagalogFeasibilityTests
 
             Assert.True(outcome.Succeeded, outcome.Refusal?.Message ?? "The Assessment returned no result.");
             return new AssessmentRun(authored, outcome.Value!);
+        }
+        finally
+        {
+            if (Directory.Exists(temporaryRoot))
+                Directory.Delete(temporaryRoot, recursive: true);
+        }
+    }
+
+    private PanelAssessmentRun RunPanelAssessment(bool controls)
+    {
+        var temporaryRoot = Path.Combine(
+            Path.GetTempPath(), "motif-synthetic-tagalog-panel-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(temporaryRoot);
+
+        try
+        {
+            string projectPath;
+            TagalogAffixPanelFixture authored = null!;
+            using (var cache = NewLangProjFixture.CreateCache(temporaryRoot))
+            {
+                NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                {
+                    cache.LangProject.MorphologicalDataOA.ParserParameters = ParserParametersXml;
+                    authored = TagalogAffixPanelFixture.Author(cache);
+                });
+
+                new FwDataProjectLoader().Save(cache);
+                projectPath = cache.ProjectId.Path;
+            }
+
+            var parserPath = PanGlossExecutable.TryLocate();
+            Assert.NotNull(parserPath);
+            _output.WriteLine($"PanGloss executable: {parserPath}");
+            var request = new AssessRequest(
+                projectPath,
+                new SelectionRequest(
+                    false,
+                    [controls ? authored.ControlTextId : authored.TextId],
+                    [],
+                    false,
+                    null),
+                PerWordLimitMs: 5000);
+            var outcome = AssessCommand.Assess(
+                request,
+                Path.Combine(temporaryRoot, "motif"),
+                parserPath,
+                null,
+                CancellationToken.None);
+
+            Assert.True(outcome.Succeeded, outcome.Refusal?.Message ?? "The Assessment returned no result.");
+            return new PanelAssessmentRun(authored, outcome.Value!);
         }
         finally
         {
@@ -283,11 +390,57 @@ public sealed class TagalogFeasibilityTests
             details);
     }
 
+    private static void AssertCompletedExpectedReading(
+        AssessmentWordResult row,
+        IReadOnlyList<TagalogAffixPanelMorph> expected,
+        string details)
+    {
+        Assert.False(row.IsIncomplete, details);
+        Assert.Equal("analysed", row.Outcome);
+        Assert.Equal("Search completed", row.CompletionStatus);
+        var correctness = Assert.IsType<WordCorrectness>(row.Correctness);
+        Assert.Equal("covered", correctness.Status);
+        Assert.Equal(1, correctness.Expected);
+        Assert.Equal(1, correctness.Matched);
+        var morphology = Assert.IsType<ParseWordEvidence>(row.Morphology);
+        Assert.Null(morphology.Refusal);
+        Assert.False(morphology.InvalidShape);
+        Assert.False(morphology.Capped);
+        Assert.False(morphology.TimedOut);
+        Assert.Empty(morphology.Unavailable);
+        Assert.True(HasExpectedIdentityReading(row, expected), details);
+    }
+
     private static bool HasExpectedReading(AssessmentWordResult row, IReadOnlyList<AuthoredMorph> expected)
     {
         var expectedForms = expected.Select(morph => morph.Form.Guid.ToString("D")).ToArray();
         return row.Morphology!.Analyses.Any(analysis =>
             analysis.Morphs.Select(morph => morph.Form).SequenceEqual(expectedForms, StringComparer.Ordinal));
+    }
+
+    private static bool HasExpectedIdentityReading(
+        AssessmentWordResult row, IReadOnlyList<TagalogAffixPanelMorph> expected)
+    {
+        return row.Morphology!.Analyses.Any(analysis =>
+            analysis.Morphs.Count == expected.Count && analysis.Morphs.Zip(expected).All(pair =>
+                pair.First.Form == pair.Second.Form.ToString("D") &&
+                pair.First.Msa == pair.Second.Msa.ToString("D")));
+    }
+
+    private void WritePanelEvidence(AssessCommandResponse response)
+    {
+        _output.WriteLine("HC per-word timings:");
+        foreach (var word in response.Words)
+            _output.WriteLine(
+                $"  {word.Word}: {word.ElapsedMs?.ToString() ?? "not recorded"} ms; " +
+                $"completion: {word.CompletionStatus}; incomplete: {word.IsIncomplete}");
+
+        var warnings = response.GrammarWarnings ?? [];
+        _output.WriteLine("Grammar warnings:");
+        if (warnings.Count == 0)
+            _output.WriteLine("  none");
+        foreach (var warning in warnings)
+            _output.WriteLine($"  {warning}");
     }
 
     private static string DescribeParserResult(AssessmentWordResult row, AssessCommandResponse response)
@@ -307,4 +460,6 @@ public sealed class TagalogFeasibilityTests
         IReadOnlyDictionary<string, AuthoredMorph[]> ExpectedMorphs);
 
     private sealed record AssessmentRun(AuthoredText Authored, AssessCommandResponse Response);
+
+    private sealed record PanelAssessmentRun(TagalogAffixPanelFixture Authored, AssessCommandResponse Response);
 }

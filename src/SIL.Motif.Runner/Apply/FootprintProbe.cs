@@ -44,6 +44,7 @@ public static class FootprintProbe
         }
 
         entries.AddRange(AffixAuthoringPrerequisites.Read(cache, proposal));
+        entries.AddRange(AffixProcessPrerequisiteFootprint.Read(cache, proposal));
         return FootprintDigest.Compute(entries);
     }
 }

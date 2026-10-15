@@ -1,0 +1,125 @@
+{
+  "vectors": [
+    {
+      "name": "ordinary-colon",
+      "accept": true,
+      "payload": {
+        "morphType": "mt:AAAAAAAAAAAAAAAAAAAAAA",
+        "ws": "en",
+        "text": "x"
+      }
+    },
+    {
+      "name": "ordinary-unicode-multiline",
+      "accept": true,
+      "payload": {
+        "morphType": "前/\n:AAAAAAAAAAAAAAAAAAAAAA",
+        "ws": "en",
+        "text": "x"
+      }
+    },
+    {
+      "name": "ordinary-nonzero-padding-bits",
+      "accept": true,
+      "payload": {
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAR",
+        "ws": "en",
+        "text": "x"
+      }
+    },
+    {
+      "name": "ordinary-short",
+      "accept": false,
+      "payload": {
+        "morphType": "AAAAAAAAAAAAAAAAAAAAA",
+        "ws": "en",
+        "text": "x"
+      }
+    },
+    {
+      "name": "ordinary-invalid-suffix",
+      "accept": false,
+      "payload": {
+        "morphType": "mt:AAAAAAAAAAAAAAAAAAAAA:",
+        "ws": "en",
+        "text": "x"
+      }
+    },
+    {
+      "name": "ordinary-trailing-newline",
+      "accept": false,
+      "payload": {
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAA\n",
+        "ws": "en",
+        "text": "x"
+      }
+    },
+    {
+      "name": "ordinary-unknown-property",
+      "accept": false,
+      "payload": {
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAA",
+        "ws": "en",
+        "text": "x",
+        "class": "MoAffixProcess"
+      }
+    },
+    {
+      "name": "process-colon",
+      "accept": true,
+      "payload": {
+        "class": "MoAffixProcess",
+        "morphType": "mt:AAAAAAAAAAAAAAAAAAAAAA"
+      }
+    },
+    {
+      "name": "process-unicode-multiline",
+      "accept": true,
+      "payload": {
+        "class": "MoAffixProcess",
+        "morphType": "前/\n:AAAAAAAAAAAAAAAAAAAAAA"
+      }
+    },
+    {
+      "name": "process-nonzero-padding-bits",
+      "accept": true,
+      "payload": {
+        "class": "MoAffixProcess",
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAR"
+      }
+    },
+    {
+      "name": "process-short",
+      "accept": false,
+      "payload": {
+        "class": "MoAffixProcess",
+        "morphType": "AAAAAAAAAAAAAAAAAAAAA"
+      }
+    },
+    {
+      "name": "process-invalid-suffix",
+      "accept": false,
+      "payload": {
+        "class": "MoAffixProcess",
+        "morphType": "mt:AAAAAAAAAAAAAAAAAAAAA:"
+      }
+    },
+    {
+      "name": "process-trailing-newline",
+      "accept": false,
+      "payload": {
+        "class": "MoAffixProcess",
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAA\n"
+      }
+    },
+    {
+      "name": "process-unknown-property",
+      "accept": false,
+      "payload": {
+        "class": "MoAffixProcess",
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAA",
+        "ws": "en"
+      }
+    }
+  ]
+}

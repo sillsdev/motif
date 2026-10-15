@@ -1,0 +1,765 @@
+{
+  "vectors": [
+    {
+      "name": "whole-stem-copy",
+      "accept": true,
+      "intent": {
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAA",
+        "gloss": "REDUP",
+        "analysisWs": "en",
+        "msa": {
+          "kind": "unclassified",
+          "category": "AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "input": [
+          {
+            "name": "stem",
+            "remaining": true
+          }
+        ],
+        "output": [
+          {
+            "copy": "stem"
+          },
+          {
+            "copy": "stem"
+          }
+        ]
+      }
+    },
+    {
+      "name": "flat-infix-cv-repeated-insert",
+      "accept": true,
+      "intent": {
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAA",
+        "gloss": "REDUP",
+        "analysisWs": "en",
+        "msa": {
+          "kind": "unclassified",
+          "category": "AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "input": [
+          {
+            "name": "c",
+            "naturalClass": "AAAAAAAAAAAAAAAAAAAAAg"
+          },
+          {
+            "name": "v",
+            "phoneme": "AAAAAAAAAAAAAAAAAAAAAQ"
+          },
+          {
+            "name": "rest",
+            "remaining": true
+          }
+        ],
+        "output": [
+          {
+            "copy": "c"
+          },
+          {
+            "insert": [
+              "AAAAAAAAAAAAAAAAAAAAAQ",
+              "AAAAAAAAAAAAAAAAAAAAAQ"
+            ]
+          },
+          {
+            "copy": "v"
+          },
+          {
+            "copy": "c"
+          },
+          {
+            "copy": "v"
+          },
+          {
+            "copy": "rest"
+          }
+        ]
+      }
+    },
+    {
+      "name": "written-form-forbidden",
+      "accept": false,
+      "intent": {
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAA",
+        "gloss": "REDUP",
+        "analysisWs": "en",
+        "msa": {
+          "kind": "unclassified",
+          "category": "AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "input": [
+          {
+            "name": "stem",
+            "remaining": true
+          }
+        ],
+        "output": [
+          {
+            "copy": "stem"
+          },
+          {
+            "copy": "stem"
+          }
+        ],
+        "form": "x"
+      }
+    },
+    {
+      "name": "identity-only",
+      "accept": false,
+      "intent": {
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAA",
+        "gloss": "REDUP",
+        "analysisWs": "en",
+        "msa": {
+          "kind": "unclassified",
+          "category": "AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "input": [
+          {
+            "name": "stem",
+            "remaining": true
+          }
+        ],
+        "output": [
+          {
+            "copy": "stem"
+          }
+        ]
+      }
+    },
+    {
+      "name": "missing-part",
+      "accept": false,
+      "intent": {
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAA",
+        "gloss": "REDUP",
+        "analysisWs": "en",
+        "msa": {
+          "kind": "unclassified",
+          "category": "AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "input": [
+          {
+            "name": "stem",
+            "remaining": true
+          }
+        ],
+        "output": [
+          {
+            "copy": "other"
+          },
+          {
+            "copy": "stem"
+          }
+        ]
+      }
+    },
+    {
+      "name": "empty-insertion",
+      "accept": false,
+      "intent": {
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAA",
+        "gloss": "REDUP",
+        "analysisWs": "en",
+        "msa": {
+          "kind": "unclassified",
+          "category": "AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "input": [
+          {
+            "name": "stem",
+            "remaining": true
+          }
+        ],
+        "output": [
+          {
+            "copy": "stem"
+          },
+          {
+            "copy": "stem"
+          },
+          {
+            "insert": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "stem-msa",
+      "accept": false,
+      "intent": {
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAA",
+        "gloss": "REDUP",
+        "analysisWs": "en",
+        "msa": {
+          "kind": "stem",
+          "category": "AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "input": [
+          {
+            "name": "stem",
+            "remaining": true
+          }
+        ],
+        "output": [
+          {
+            "copy": "stem"
+          },
+          {
+            "copy": "stem"
+          }
+        ]
+      }
+    },
+    {
+      "name": "remaining-false",
+      "accept": false,
+      "intent": {
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAA",
+        "gloss": "REDUP",
+        "analysisWs": "en",
+        "msa": {
+          "kind": "unclassified",
+          "category": "AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "input": [
+          {
+            "name": "stem",
+            "remaining": false
+          }
+        ],
+        "output": [
+          {
+            "copy": "stem"
+          },
+          {
+            "copy": "stem"
+          }
+        ]
+      }
+    },
+    {
+      "name": "unknown-input-property",
+      "accept": false,
+      "intent": {
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAA",
+        "gloss": "REDUP",
+        "analysisWs": "en",
+        "msa": {
+          "kind": "unclassified",
+          "category": "AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "input": [
+          {
+            "name": "stem",
+            "remaining": true,
+            "factory": "PhVariable"
+          }
+        ],
+        "output": [
+          {
+            "copy": "stem"
+          },
+          {
+            "copy": "stem"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ambiguous-output",
+      "accept": false,
+      "intent": {
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAA",
+        "gloss": "REDUP",
+        "analysisWs": "en",
+        "msa": {
+          "kind": "unclassified",
+          "category": "AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "input": [
+          {
+            "name": "stem",
+            "remaining": true
+          }
+        ],
+        "output": [
+          {
+            "copy": "stem",
+            "insert": [
+              "AAAAAAAAAAAAAAAAAAAAAQ"
+            ]
+          },
+          {
+            "copy": "stem"
+          }
+        ]
+      }
+    },
+    {
+      "name": "null-definition",
+      "accept": false,
+      "intent": {
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAA",
+        "gloss": "REDUP",
+        "analysisWs": "en",
+        "msa": {
+          "kind": "unclassified",
+          "category": "AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "input": [
+          {
+            "name": "stem",
+            "remaining": true
+          }
+        ],
+        "output": [
+          {
+            "copy": "stem"
+          },
+          {
+            "copy": "stem"
+          }
+        ],
+        "definition": null
+      }
+    },
+    {
+      "name": "null-output",
+      "accept": false,
+      "intent": {
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAA",
+        "gloss": "REDUP",
+        "analysisWs": "en",
+        "msa": {
+          "kind": "unclassified",
+          "category": "AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "input": [
+          {
+            "name": "stem",
+            "remaining": true
+          }
+        ],
+        "output": null
+      }
+    },
+    {
+      "name": "uncopied-part",
+      "accept": false,
+      "intent": {
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAA",
+        "gloss": "REDUP",
+        "analysisWs": "en",
+        "msa": {
+          "kind": "unclassified",
+          "category": "AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "input": [
+          {
+            "name": "first",
+            "phoneme": "AAAAAAAAAAAAAAAAAAAAAQ"
+          },
+          {
+            "name": "stem",
+            "remaining": true
+          }
+        ],
+        "output": [
+          {
+            "copy": "stem"
+          },
+          {
+            "copy": "stem"
+          }
+        ]
+      }
+    },
+    {
+      "name": "punctuated-prefix",
+      "accept": true,
+      "schemaAccept": true,
+      "intent": {
+        "morphType": "ph:AAAAAAAAAAAAAAAAAAAAAA",
+        "gloss": "REDUP",
+        "analysisWs": "en",
+        "msa": {
+          "kind": "unclassified",
+          "category": "ph:AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "input": [
+          {
+            "name": "c",
+            "naturalClass": "ph:AAAAAAAAAAAAAAAAAAAAAg"
+          },
+          {
+            "name": "v",
+            "phoneme": "ph:AAAAAAAAAAAAAAAAAAAAAQ"
+          },
+          {
+            "name": "rest",
+            "remaining": true
+          }
+        ],
+        "output": [
+          {
+            "copy": "c"
+          },
+          {
+            "insert": [
+              "ph:AAAAAAAAAAAAAAAAAAAAAQ",
+              "ph:AAAAAAAAAAAAAAAAAAAAAQ"
+            ]
+          },
+          {
+            "copy": "v"
+          },
+          {
+            "copy": "c"
+          },
+          {
+            "copy": "v"
+          },
+          {
+            "copy": "rest"
+          }
+        ]
+      }
+    },
+    {
+      "name": "unicode-multiline-prefix",
+      "accept": true,
+      "schemaAccept": true,
+      "intent": {
+        "morphType": "前/\n:AAAAAAAAAAAAAAAAAAAAAA",
+        "gloss": "REDUP",
+        "analysisWs": "en",
+        "msa": {
+          "kind": "unclassified",
+          "category": "前/\n:AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "input": [
+          {
+            "name": "c",
+            "naturalClass": "前/\n:AAAAAAAAAAAAAAAAAAAAAg"
+          },
+          {
+            "name": "v",
+            "phoneme": "前/\n:AAAAAAAAAAAAAAAAAAAAAQ"
+          },
+          {
+            "name": "rest",
+            "remaining": true
+          }
+        ],
+        "output": [
+          {
+            "copy": "c"
+          },
+          {
+            "insert": [
+              "前/\n:AAAAAAAAAAAAAAAAAAAAAQ",
+              "前/\n:AAAAAAAAAAAAAAAAAAAAAQ"
+            ]
+          },
+          {
+            "copy": "v"
+          },
+          {
+            "copy": "c"
+          },
+          {
+            "copy": "v"
+          },
+          {
+            "copy": "rest"
+          }
+        ]
+      }
+    },
+    {
+      "name": "nonzero-padding-bits",
+      "accept": true,
+      "schemaAccept": true,
+      "intent": {
+        "morphType": "morph:AAAAAAAAAAAAAAAAAAAAAR",
+        "gloss": "REDUP",
+        "analysisWs": "en",
+        "msa": {
+          "kind": "unclassified",
+          "category": "AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "input": [
+          {
+            "name": "stem",
+            "remaining": true
+          }
+        ],
+        "output": [
+          {
+            "copy": "stem"
+          },
+          {
+            "copy": "stem"
+          }
+        ]
+      }
+    },
+    {
+      "name": "empty-gloss",
+      "accept": false,
+      "schemaAccept": false,
+      "intent": {
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAA",
+        "gloss": "",
+        "analysisWs": "en",
+        "msa": {
+          "kind": "unclassified",
+          "category": "AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "input": [
+          {
+            "name": "stem",
+            "remaining": true
+          }
+        ],
+        "output": [
+          {
+            "copy": "stem"
+          },
+          {
+            "copy": "stem"
+          }
+        ]
+      }
+    },
+    {
+      "name": "whitespace-gloss",
+      "accept": false,
+      "schemaAccept": false,
+      "intent": {
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAA",
+        "gloss": " \t\n",
+        "analysisWs": "en",
+        "msa": {
+          "kind": "unclassified",
+          "category": "AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "input": [
+          {
+            "name": "stem",
+            "remaining": true
+          }
+        ],
+        "output": [
+          {
+            "copy": "stem"
+          },
+          {
+            "copy": "stem"
+          }
+        ]
+      }
+    },
+    {
+      "name": "empty-analysisWs",
+      "accept": false,
+      "schemaAccept": false,
+      "intent": {
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAA",
+        "gloss": "REDUP",
+        "analysisWs": "",
+        "msa": {
+          "kind": "unclassified",
+          "category": "AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "input": [
+          {
+            "name": "stem",
+            "remaining": true
+          }
+        ],
+        "output": [
+          {
+            "copy": "stem"
+          },
+          {
+            "copy": "stem"
+          }
+        ]
+      }
+    },
+    {
+      "name": "whitespace-analysisWs",
+      "accept": false,
+      "schemaAccept": false,
+      "intent": {
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAA",
+        "gloss": "REDUP",
+        "analysisWs": " \t\n",
+        "msa": {
+          "kind": "unclassified",
+          "category": "AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "input": [
+          {
+            "name": "stem",
+            "remaining": true
+          }
+        ],
+        "output": [
+          {
+            "copy": "stem"
+          },
+          {
+            "copy": "stem"
+          }
+        ]
+      }
+    },
+    {
+      "name": "empty-definition",
+      "accept": false,
+      "schemaAccept": false,
+      "intent": {
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAA",
+        "gloss": "REDUP",
+        "analysisWs": "en",
+        "msa": {
+          "kind": "unclassified",
+          "category": "AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "input": [
+          {
+            "name": "stem",
+            "remaining": true
+          }
+        ],
+        "output": [
+          {
+            "copy": "stem"
+          },
+          {
+            "copy": "stem"
+          }
+        ],
+        "definition": ""
+      }
+    },
+    {
+      "name": "whitespace-definition",
+      "accept": false,
+      "schemaAccept": false,
+      "intent": {
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAA",
+        "gloss": "REDUP",
+        "analysisWs": "en",
+        "msa": {
+          "kind": "unclassified",
+          "category": "AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "input": [
+          {
+            "name": "stem",
+            "remaining": true
+          }
+        ],
+        "output": [
+          {
+            "copy": "stem"
+          },
+          {
+            "copy": "stem"
+          }
+        ],
+        "definition": " \t\n"
+      }
+    },
+    {
+      "name": "short",
+      "accept": false,
+      "schemaAccept": false,
+      "intent": {
+        "morphType": "AAAAAAAAAAAAAAAAAAAAA",
+        "gloss": "REDUP",
+        "analysisWs": "en",
+        "msa": {
+          "kind": "unclassified",
+          "category": "AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "input": [
+          {
+            "name": "stem",
+            "remaining": true
+          }
+        ],
+        "output": [
+          {
+            "copy": "stem"
+          },
+          {
+            "copy": "stem"
+          }
+        ]
+      }
+    },
+    {
+      "name": "invalid-suffix",
+      "accept": false,
+      "schemaAccept": false,
+      "intent": {
+        "morphType": "ph:AAAAAAAAAAAAAAAAAAAAA:",
+        "gloss": "REDUP",
+        "analysisWs": "en",
+        "msa": {
+          "kind": "unclassified",
+          "category": "AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "input": [
+          {
+            "name": "stem",
+            "remaining": true
+          }
+        ],
+        "output": [
+          {
+            "copy": "stem"
+          },
+          {
+            "copy": "stem"
+          }
+        ]
+      }
+    },
+    {
+      "name": "trailing-newline",
+      "accept": false,
+      "schemaAccept": false,
+      "intent": {
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAA\n",
+        "gloss": "REDUP",
+        "analysisWs": "en",
+        "msa": {
+          "kind": "unclassified",
+          "category": "AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "input": [
+          {
+            "name": "stem",
+            "remaining": true
+          }
+        ],
+        "output": [
+          {
+            "copy": "stem"
+          },
+          {
+            "copy": "stem"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -17,6 +17,21 @@ public static class OwningCreateCatalogWriter
 
     private static readonly Creation[] Creations =
     [
+        new("MoAffixProcess", "Input", "PhContextOrVar", FieldCard.Seq,
+            "IPhContextOrVar child = concreteClass switch\n" +
+            "{\n" +
+            "    \"PhVariable\" => cache.ServiceLocator.GetInstance<IPhVariableFactory>().Create(guid),\n" +
+            "    \"PhSimpleContextSeg\" => cache.ServiceLocator.GetInstance<IPhSimpleContextSegFactory>().Create(guid),\n" +
+            "    \"PhSimpleContextNC\" => cache.ServiceLocator.GetInstance<IPhSimpleContextNCFactory>().Create(guid),\n" +
+            "    _ => throw new InvalidOperationException(\"Unsupported affix input class.\"),\n" +
+            "};\nowner.InputOS.Insert(index, child);"),
+        new("MoAffixProcess", "Output", "MoRuleMapping", FieldCard.Seq,
+            "IMoRuleMapping child = concreteClass switch\n" +
+            "{\n" +
+            "    \"MoCopyFromInput\" => cache.ServiceLocator.GetInstance<IMoCopyFromInputFactory>().Create(guid),\n" +
+            "    \"MoInsertPhones\" => cache.ServiceLocator.GetInstance<IMoInsertPhonesFactory>().Create(guid),\n" +
+            "    _ => throw new InvalidOperationException(\"Unsupported affix output class.\"),\n" +
+            "};\nowner.OutputOS.Insert(index, child);"),
         new("PhPhonData", "PhonemeSets", "PhPhonemeSet", FieldCard.Seq,
             "var child = cache.ServiceLocator.GetInstance<IPhPhonemeSetFactory>().Create(guid);\n" +
             "owner.PhonemeSetsOS.Insert(index, child);"),
@@ -204,7 +219,11 @@ public static class OwningCreateCatalogWriter
                 .Replace("__SEQ__", creation.Card == FieldCard.Seq ? "true" : "false")
                 .Replace("__ATOMIC__", creation.Card == FieldCard.Atomic ? "true" : "false")
                 .Replace("__POSITION_MATTERS__", creation.PositionMatters ? "true" : "false")
-                .Replace("__CLASSES__", creation.Sig switch
+                .Replace("__CLASSES__", creation.Owner == "MoAffixProcess"
+                    ? creation.Field == "Input"
+                        ? "new[] { \"PhVariable\", \"PhSimpleContextSeg\", \"PhSimpleContextNC\" }"
+                        : "new[] { \"MoCopyFromInput\", \"MoInsertPhones\" }"
+                    : creation.Sig switch
                 {
                     "PhNaturalClass" => "new[] { \"PhNCSegments\", \"PhNCFeatures\" }",
                     "PhSegmentRule" => "new[] { \"PhRegularRule\" }",

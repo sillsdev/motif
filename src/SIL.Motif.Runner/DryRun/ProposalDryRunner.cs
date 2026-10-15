@@ -1,3 +1,4 @@
+using SIL.Motif.Runner.Snapshotting;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -93,16 +94,19 @@ public static class ProposalDryRunner
 
             footprintDigest = FootprintProbe.ComputeCurrentFootprintDigest(cache, proposal);
 
+            var processBefore = AffixProcessSnapshots.Read(cache);
             foreach (var operation in operationOrder)
             {
                 var handler = OperationHandlerRegistry.Resolve(operation.Kind, "Stage C dryRun");
                 effects.AddRange(OperationEffectCapture.Apply(handler, cache, operation, touchedTargets));
             }
 
+            AffixProcessSemanticValidator.ValidateProposal(cache, proposal.Operations);
             RuleContextSemanticValidator.ValidateProposal(cache, proposal.Operations);
             InflectionRegionSemanticValidator.ValidateProposal(cache, proposal.Operations);
             LexicalFormSemanticValidator.ValidateProposal(cache, proposal.Operations);
             InflFeatsSemanticValidator.ValidateProposal(cache, proposal.Operations);
+            AffixProcessSnapshots.AppendGraphEffects(processBefore, cache, effects);
         }
 
         var effectDigest = ExpectedEffectSetDigest.Compute(effects);

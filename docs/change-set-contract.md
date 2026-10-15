@@ -407,9 +407,9 @@ placement adjacency and operation-slot rules still apply.
   distinct from `set` because a whole-collection `set` would violate minimal-diff.
 - **`move`** — reorder a sequence member using identity-relative anchors (`{after, before}`), never a
   numeric index. Kept distinct from `addRef`/`removeRef` because placement is identity-relative, not
-  a value. Applies to both `owning/seq` and `rel/seq` targets. Discovered-footprint on
-  `MoAffixProcess.Input`, whose `Output` mappings resolve positionally; see
-  [declared vs discovered footprint](#declared-vs-discovered-footprint).
+  a value. Applies to both `owning/seq` and `rel/seq` targets. `MoAffixProcess.Input` is ordered,
+  while copies retain the identity of their referenced input part when its position changes.
+  Input deletion has a discovered cascade; flat affix-process creation exposes no move or delete.
 - **`reparent`** — move an *existing* owned object to a different owner, as one operation, never
   delete-plus-create (which would double-count in the effect model). `set` may never target an
   owning slot, so cross-owner moves are always `reparent`, never a `set` of the owner reference.
@@ -632,7 +632,7 @@ and intent prove it is the same deletion, not an unresolved target.
 
 ### Owning-atomic replacement
 
-`create` may target an occupied `owning/atomic` slot, including a change to which allomorph is the lexeme form. Assigning a replacement deletes the displaced object through LibLCM ownership semantics; it does not detach it or leave an orphan. The `LexEntry.LexemeForm` behavior is pinned by `DisplacedOccupantFactTests`. The observed deletion remains part of the read-back effects, but it does not require a separate orphan disclosure or a compensating `delete`.
+`create` may target an occupied `owning/atomic` slot, including a change to which allomorph is the lexeme form. Assigning a replacement deletes the displaced object through LibLCM ownership semantics; it does not detach it or leave an orphan. The `LexEntry.LexemeForm` behavior is pinned by `DisplacedOccupantFactTests`. The observed deletion remains part of the read-back effects, but it does not require a separate orphan disclosure or a compensating `delete`. The closed process branch of lexeme-form creation requires an empty slot; ordinary creation and deletion refuse an incumbent `MoAffixProcess` until a whole-graph deletion binds its members and incoming references.
 
 This rule is specific to ownership. Removing a `rel` reference does not itself delete its target; when intent includes deleting an unreferenced target, represent that deletion explicitly so it remains reviewable.
 
@@ -1070,18 +1070,18 @@ identity alone can miss a real change.
 
 An operation's reach is either **declared** — statically knowable from authored intent alone (`set`,
 `clear`, `addRef`, `move`) — or **discovered** — knowable only by evaluating the baseline. This is one
-rule with four triggers, not four separate mechanisms
+rule with three triggers, not three separate mechanisms
 ([ADR 0009](adr/0009-layered-api-primitives-and-composers.md) §5,
 [ADR 0008](adr/0008-operation-model-reparent-and-compound-ops.md) §2):
 
 1. `delete` when referrers exist;
 2. `merge`;
-3. `replace` (subclass convert with reference redirect, or a GUID change via create-then-merge);
-4. `move` on `MoAffixProcess.Input` — its `Output` mappings (`MoCopyFromInput`, `MoModifyFromInput`)
-   hold a `rel/atomic` reference into `Input` that `HCLoader` resolves positionally
-   (`ContentRA.IndexInOwner + 1`), so reordering or mid-sequence-inserting into `Input` silently
-   renumbers every `Output` mapping
-   ([API surface, layer 1](api-surface-layer1.md#comparison-class)).
+3. `replace` (subclass convert with reference redirect, or a GUID change via create-then-merge).
+
+`MoAffixProcess.Input` order changes the match. Copy mappings retain their `ContentRA` identity;
+its exported part number follows the referent, so a move does not detach a copy. Deleting an input
+can delete its referencing mappings and belongs to trigger 1. The flat creation family exposes neither
+move nor delete ([API surface, layer 1](api-surface-layer1.md#comparison-class)).
 
 A discovered-reach operation uses read-back-derived effects (the footprint-plus-cascade closure from
 [expected effects](#expected-effects)) and **forces a full Dry Run**; it may not claim a static
@@ -1197,3 +1197,11 @@ deletes + inserts + commonCount - LISLength
 The implementation uses O(n log n) time and O(n) space. Its deterministic tie-breaking and emitted
 edit order are pinned by tests, and its move count is checked against a breadth-first-search oracle
 for every five-member permutation pair.
+
+## Flat affix-process creation
+
+An author can create an affix that copies named portions of a stem or inserts phonemes between them.
+The whole entry, its grammatical info, sense and process graph form one atomic Proposal.
+
+The [affix-process contract](affix-process-contract.md) specifies the closed authoring shape, typed
+construction operations, bounds, prerequisite footprint, read-back, rollback and refusal behavior.

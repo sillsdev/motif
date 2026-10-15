@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://motif.sil.org/contracts/create-lexeme-form/v1",
+  "title": "Create lexeme form payload",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "morphType",
+        "ws",
+        "text"
+      ],
+      "properties": {
+        "morphType": {
+          "type": "string",
+          "minLength": 22,
+          "pattern": "^[\\s\\S]*[A-Za-z0-9_-]{22}(?![\\s\\S])"
+        },
+        "ws": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "class",
+        "morphType"
+      ],
+      "properties": {
+        "class": {
+          "const": "MoAffixProcess"
+        },
+        "morphType": {
+          "type": "string",
+          "minLength": 22,
+          "pattern": "^[\\s\\S]*[A-Za-z0-9_-]{22}(?![\\s\\S])"
+        }
+      }
+    }
+  ]
+}

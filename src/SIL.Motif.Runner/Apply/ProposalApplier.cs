@@ -1,3 +1,4 @@
+using SIL.Motif.Runner.Snapshotting;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -177,6 +178,7 @@ public static class ProposalApplier
         // One outer unit of work for the whole Proposal; see the remarks above for the failure-recovery contract.
         using (var undoHelper = new UndoableUnitOfWorkHelper(actionHandler, "Motif apply", "Motif apply"))
         {
+            var processBefore = AffixProcessSnapshots.Read(cache);
             var operationIndex = 0;
             foreach (var operation in operationOrder)
             {
@@ -185,10 +187,12 @@ public static class ProposalApplier
                 afterOperation?.Invoke(++operationIndex, operation);
             }
 
+            AffixProcessSemanticValidator.ValidateProposal(cache, proposal.Operations);
             RuleContextSemanticValidator.ValidateProposal(cache, proposal.Operations);
             InflectionRegionSemanticValidator.ValidateProposal(cache, proposal.Operations);
             LexicalFormSemanticValidator.ValidateProposal(cache, proposal.Operations);
             InflFeatsSemanticValidator.ValidateProposal(cache, proposal.Operations);
+            AffixProcessSnapshots.AppendGraphEffects(processBefore, cache, effects);
 
             // Exactly one applied-log entry, written inside this same unit of work, so a rollback leaves none.
             ProjectAppliedLog.WriteEntry(cache, logEntry);

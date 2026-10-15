@@ -117,7 +117,7 @@ Override list — `seq` alone does **not** imply positional:
 | `PhPhonData.PhonRules` | **Feeding** | a neighbour rule's *content* edit changes what this rule produces |
 | `LexEntry.AlternateForms` | **Feeding** | allomorph order encodes disjunctive elsewhere-blocking |
 | `PhRegularRule.StrucDesc`, `PhSegRuleRHS.{StrucChange,LeftContext,RightContext}` | **a third mode** | index *is* identity for alpha variables (α/β/γ) — see below |
-| `MoAffixProcess.Input` | **discovered footprint** | `Output` mappings resolve by position, not identity — see below |
+| `MoAffixProcess.Input` | **positional, declared order** | Copies retain referenced input identity; input deletion has a discovered cascade — see below |
 
 **Correction to an earlier claim.** The index-as-identity mode does **not** live on
 `PhPhonData.FeatConstraints`. Alpha-variable names come from `IPhRegularRule.FeatureConstraints`, a

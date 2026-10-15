@@ -73,6 +73,7 @@ internal static class RuleContextSemanticValidator
             }
             if (value is IPhPhonContext context)
             {
+                if (context.Owner is IMoAffixProcess) return;
                 if (FindRule(context) is { } ownerRule) rules[ownerRule.Guid] = ownerRule;
                 else standaloneContexts[value.Guid] = context;
                 return;
