@@ -50,6 +50,34 @@ public sealed class DryRunOperationLinkTests
     }
 
     [Fact]
+    public void ADependencySpelledWithAPrefixOrdersAfterTheOperationItNames()
+    {
+        var entry = Id(1);
+        var bundle = Id(2);
+        var retarget = Id(3);
+        var delete = Id(4);
+        var prefixedRetarget = CanonicalId.Parse("op_" + retarget.Suffix);
+        var proposal = new Proposal(
+            new Dictionary<string, string> { ["analysis"] = "1.0", ["lexical"] = "1.0" },
+            Id(5), null,
+            [
+                new OperationEnvelope(delete, AlternateFormRetirementOperationKinds.DeleteAlternateForm,
+                    target: entry, after: JsonSerializer.SerializeToElement(new { forms = new[] { Id(6).Value } }),
+                    dependsOn: [new OperationDependency(prefixedRetarget)]),
+                new OperationEnvelope(retarget, AllomorphRetargetOperationKinds.SetBundleMorph,
+                    target: bundle),
+            ]);
+        var dryRun = new DryRun("intent", "baseline",
+            [Effect(bundle, "analysis/wfiMorphBundle/morph")], "effects", Anchor());
+
+        var projection = DryRunProjectionBuilder.Build(proposal.ProposalId.Value, dryRun, proposal);
+
+        Assert.Equal(new[] { retarget.Value, delete.Value },
+            projection.Operations.Select(operation => operation.OperationId));
+        Assert.Equal(new[] { prefixedRetarget.Value }, projection.Operations[1].DependsOn);
+    }
+
+    [Fact]
     public void AlternateFormCreateIsLinkedToItsPreviewEffect()
     {
         var entry = Id(1);

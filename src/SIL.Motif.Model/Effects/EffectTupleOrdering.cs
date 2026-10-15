@@ -3,11 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using SIL.Motif.Contract.Canonicalization;
+using SIL.Motif.Contract.Ids;
 
 namespace SIL.Motif.Model.Effects;
 
 /// <summary>
-/// Orders effect tuples by identity and field, then by canonical UTF-8 payload bytes when those keys tie.
+/// Orders effect tuples by id spelling (the digest order of ADR 0007 decision 2) and field, then by canonical
+/// UTF-8 payload bytes when those keys tie.
 /// The sort includes only the payload parts the caller emits; excluded evidence cannot affect ordering.
 /// </summary>
 internal static class EffectTupleOrdering
@@ -18,12 +20,12 @@ internal static class EffectTupleOrdering
     internal static IReadOnlyList<ExpectedEffect> Sort(IEnumerable<ExpectedEffect> effects,
         bool includeAfter, bool includePreview)
     {
-        var ordered = effects.OrderBy(effect => effect.CanonicalId)
+        var ordered = effects.OrderBy(effect => effect.CanonicalId, CanonicalId.SpellingOrder)
             .ThenBy(effect => effect.Field, StringComparer.Ordinal).ToList();
         for (var start = 0; start < ordered.Count;)
         {
             var end = start + 1;
-            while (end < ordered.Count && ordered[end].CanonicalId == ordered[start].CanonicalId &&
+            while (end < ordered.Count && ordered[end].CanonicalId.SpellingEquals(ordered[start].CanonicalId) &&
                 string.Equals(ordered[end].Field, ordered[start].Field, StringComparison.Ordinal)) end++;
             if (end - start > 1)
             {

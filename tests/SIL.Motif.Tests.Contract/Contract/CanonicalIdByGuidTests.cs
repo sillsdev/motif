@@ -10,7 +10,7 @@ namespace SIL.Motif.Tests.Contract;
 public class CanonicalIdByGuidTests
 {
     [Fact]
-    public void TwoSpellingsOfOneGuidAreOneObjectButStayDistinctIds()
+    public void TwoSpellingsOfOneGuidAreOneObjectAndKeepTheirSpelling()
     {
         var guid = Guid.NewGuid();
         var prefixed = CanonicalId.FromGuid(guid, "entry/");
@@ -18,7 +18,10 @@ public class CanonicalIdByGuidTests
 
         Assert.True(CanonicalId.ByGuid.Equals(prefixed, bare));
         Assert.Equal(CanonicalId.ByGuid.GetHashCode(prefixed), CanonicalId.ByGuid.GetHashCode(bare));
-        Assert.NotEqual(prefixed, bare);
+        Assert.Equal(prefixed, bare);
+        Assert.False(prefixed.SpellingEquals(bare));
+        Assert.Equal("entry/", prefixed.Prefix);
+        Assert.Equal("", bare.Prefix);
         Assert.False(CanonicalId.ByGuid.Equals(prefixed, CanonicalId.FromGuid(Guid.NewGuid(), "entry/")));
     }
 

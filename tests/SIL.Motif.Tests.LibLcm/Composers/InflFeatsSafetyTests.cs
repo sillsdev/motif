@@ -352,7 +352,7 @@ public sealed class InflFeatsSafetyTests : IDisposable
         var dryRun = ScratchDryRun.Of(_cache, proposal);
         ProposalApplier.Apply(_cache, proposal, dryRun.Anchor, "feature-identity-tests");
         Assert.Equal(structureId.ToGuid(), Get<IMoInflAffMsa>(_cache, msa).InflFeatsOA!.Guid);
-        Assert.Equal(structureId, create.EntityId);
+        Assert.True(structureId.SpellingEquals(create.EntityId!.Value));
     }
 
     [Fact]

@@ -243,6 +243,44 @@ public class ProposalJsonParserTests
     }
 
     [Fact]
+    public void Parse_OperationIdInTwoSpellings_IsRejectedAsDuplicate()
+    {
+        var suffix = TestIds.Op1.Substring(TestIds.Op1.Length - 22);
+        var json = $$"""
+            {
+              "contractVersions": { "lexical": "1.0" },
+              "proposalId": "{{TestIds.Proposal1}}",
+              "operations": [
+                { "operationId": "a_{{suffix}}", "kind": "lexical/entry/create", "entityId": "{{TestIds.Entity1}}" },
+                { "operationId": "{{suffix}}", "kind": "lexical/entry/create", "entityId": "{{TestIds.Entity2}}" }
+              ]
+            }
+            """;
+
+        var ex = Assert.Throws<ContractParseException>(() => ProposalJsonParser.Parse(json));
+        Assert.Contains("Duplicate operationId", ex.Message);
+    }
+
+    [Fact]
+    public void Parse_EntityIdCreatedUnderTwoSpellings_IsRejected()
+    {
+        var suffix = TestIds.Entity1.Substring(TestIds.Entity1.Length - 22);
+        var json = $$"""
+            {
+              "contractVersions": { "lexical": "1.0" },
+              "proposalId": "{{TestIds.Proposal1}}",
+              "operations": [
+                { "operationId": "{{TestIds.Op1}}", "kind": "lexical/entry/create", "entityId": "e_{{suffix}}" },
+                { "operationId": "{{TestIds.Op2}}", "kind": "lexical/entry/create", "entityId": "{{suffix}}" }
+              ]
+            }
+            """;
+
+        var ex = Assert.Throws<ContractParseException>(() => ProposalJsonParser.Parse(json));
+        Assert.Contains("more than one creator operation", ex.Message);
+    }
+
+    [Fact]
     public void Parse_EntityIdWithTwoCreatorOperations_IsRejected()
     {
         var json = $$"""

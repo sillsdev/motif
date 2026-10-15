@@ -15,7 +15,7 @@ namespace SIL.Motif.Runner.DryRun;
 public sealed class PrerequisiteExecutionPlan
 {
     private static readonly IComparer<string> ProposalIdComparer = Comparer<string>.Create(
-        (left, right) => CanonicalId.Parse(left).CompareTo(CanonicalId.Parse(right)));
+        (left, right) => CanonicalId.SpellingOrder.Compare(CanonicalId.Parse(left), CanonicalId.Parse(right)));
 
     private PrerequisiteExecutionPlan(Proposal requested, IList<Proposal> prerequisites)
     {

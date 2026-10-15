@@ -14,21 +14,41 @@ namespace SIL.Motif.Contract.Ids;
 /// padding, decoding to exactly 16 bytes. The prefix is preserved exactly with no normalization
 /// and carries no structural meaning.
 ///
+/// An id's identity is the 128 bits its suffix decodes to. <see cref="Equals(CanonicalId)"/>,
+/// <see cref="GetHashCode"/>, <c>==</c> and <c>!=</c> compare that identity, so a prefixed and a bare
+/// spelling of one GUID are equal, and so are two suffix spellings that differ only in the unused
+/// trailing bits. The spelling stays available through <see cref="Value"/> and <see cref="Prefix"/>,
+/// and <see cref="SpellingEquals"/> compares it exactly. The type has no natural order; code that
+/// sorts ids names <see cref="SpellingOrder"/>.
+///
 /// This type does not reject a non-canonical (nonzero low-order bit) suffix as long as it decodes
 /// to 16 bytes; the contract's four structural rules do not require that. <see cref="Mint"/> and
 /// <see cref="FromGuid"/> always produce the canonical zero-bit encoding.
 /// </remarks>
-public readonly struct CanonicalId : IEquatable<CanonicalId>, IComparable<CanonicalId>
+public readonly struct CanonicalId : IEquatable<CanonicalId>
 {
     public const int SuffixLength = 22;
     public const int ByteLength = 16;
 
     private readonly string? _suffix;
+    private readonly ulong _high;
+    private readonly ulong _low;
 
     private CanonicalId(string prefix, string suffix)
     {
         Prefix = prefix;
         _suffix = suffix;
+        var bytes = Base64Url.Decode(suffix);
+        _high = ReadUInt64(bytes, 0);
+        _low = ReadUInt64(bytes, 8);
+    }
+
+    private static ulong ReadUInt64(byte[] bytes, int offset)
+    {
+        ulong value = 0;
+        for (var i = 0; i < 8; i++)
+            value = (value << 8) | bytes[offset + i];
+        return value;
     }
 
     /// <summary>Everything before the final 22 characters, preserved exactly. Empty if none.</summary>
@@ -197,45 +217,37 @@ public readonly struct CanonicalId : IEquatable<CanonicalId>, IComparable<Canoni
     }
 
     /// <summary>
-    /// Compares ids by the GUID they encode, ignoring the optional prefix (design rule 8), for every place that asks
-    /// whether two ids name one object: operation slots, staged-dependency edges and Footprint exclusions.
+    /// Compares ids by the GUID they encode, ignoring the optional prefix (design rule 8). Equivalent to the
+    /// type's own equality, kept so call sites that spell out the comparer stay valid.
     /// </summary>
-    /// <remarks>
-    /// <see cref="Equals(CanonicalId)"/> stays exact, because an id's spelling is part of a canonical document; this
-    /// comparer is for identity questions. It decodes rather than comparing suffix text, since the last of the 22
-    /// characters carries bits the GUID does not use.
-    /// </remarks>
     public static System.Collections.Generic.IEqualityComparer<CanonicalId> ByGuid { get; } = new GuidComparer();
 
     private sealed class GuidComparer : System.Collections.Generic.IEqualityComparer<CanonicalId>
     {
-        public bool Equals(CanonicalId x, CanonicalId y) => x.ToGuid() == y.ToGuid();
+        public bool Equals(CanonicalId x, CanonicalId y) => x.Equals(y);
 
-        public int GetHashCode(CanonicalId id) => id.ToGuid().GetHashCode();
-    }
-
-    public bool Equals(CanonicalId other) =>
-        string.Equals(Prefix, other.Prefix, StringComparison.Ordinal) &&
-        string.Equals(_suffix, other._suffix, StringComparison.Ordinal);
-
-    public override bool Equals(object? obj) => obj is CanonicalId other && Equals(other);
-
-    public override int GetHashCode()
-    {
-        unchecked
-        {
-            var hash = 17;
-            hash = hash * 31 + (Prefix?.GetHashCode() ?? 0);
-            hash = hash * 31 + (_suffix?.GetHashCode() ?? 0);
-            return hash;
-        }
+        public int GetHashCode(CanonicalId id) => id.GetHashCode();
     }
 
     /// <summary>
-    /// Byte-ordinal comparison of the UTF-8 encoding of <see cref="Value"/> (prefix included), per
-    /// ADR 0007 decision 2. Never decode-as-GUID.
+    /// Orders ids by byte-ordinal comparison of the UTF-8 encoding of <see cref="Value"/> (prefix included), per
+    /// ADR 0007 decision 2. Required wherever order feeds a digest or canonical serialization.
     /// </summary>
-    public int CompareTo(CanonicalId other) => Utf8Ordinal.Compare(Value, other.Value);
+    public static System.Collections.Generic.IComparer<CanonicalId> SpellingOrder { get; } =
+        System.Collections.Generic.Comparer<CanonicalId>.Create((a, b) => Utf8Ordinal.Compare(a.Value, b.Value));
+
+    /// <summary>True when both ids have exactly the same <see cref="Prefix"/> and <see cref="Suffix"/> text.</summary>
+    public bool SpellingEquals(CanonicalId other) =>
+        string.Equals(Prefix, other.Prefix, StringComparison.Ordinal) &&
+        string.Equals(_suffix, other._suffix, StringComparison.Ordinal);
+
+    /// <summary>True when both ids decode to the same 128 bits, whatever their prefix or suffix spelling.</summary>
+    public bool Equals(CanonicalId other) =>
+        IsInitialized == other.IsInitialized && _high == other._high && _low == other._low;
+
+    public override bool Equals(object? obj) => obj is CanonicalId other && Equals(other);
+
+    public override int GetHashCode() => HashCode.Combine(IsInitialized, _high, _low);
 
     public override string ToString() => IsInitialized ? Value : "(uninitialized CanonicalId)";
 

@@ -215,9 +215,8 @@ public sealed class ProposalDryRunnerTests : IDisposable
     [Fact]
     public void ExecutionPlan_IndependentUnicodePrefixes_UsesCanonicalUtf8ByteOrder()
     {
-        var identity = Guid.Parse("00112233-4455-6677-8899-aabbccddeeff");
-        var bmpId = CanonicalId.FromGuid(identity, "\uE000");
-        var nonBmpId = CanonicalId.FromGuid(identity, "\U00010000");
+        var bmpId = CanonicalId.FromGuid(Guid.Parse("00112233-4455-6677-8899-aabbccddeeff"), "\uE000");
+        var nonBmpId = CanonicalId.FromGuid(Guid.Parse("10112233-4455-6677-8899-aabbccddeeff"), "\U00010000");
         var bmp = WithIdentityAndRequirements(
             BuildSetGlossProposal(CanonicalId.Mint(), "en", "BMP"), bmpId);
         var nonBmp = WithIdentityAndRequirements(

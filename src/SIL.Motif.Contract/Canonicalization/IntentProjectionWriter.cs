@@ -2,6 +2,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
 
 namespace SIL.Motif.Contract.Canonicalization;
@@ -41,7 +42,7 @@ public static class IntentProjectionWriter
             if (proposal.Requires.Count > 0)
             {
                 writer.WriteStartArray("requires");
-                foreach (var id in proposal.Requires.OrderBy(x => x))
+                foreach (var id in proposal.Requires.OrderBy(x => x, CanonicalId.SpellingOrder))
                     writer.WriteStringValue(id.Value);
                 writer.WriteEndArray();
             }
@@ -89,7 +90,7 @@ public static class IntentProjectionWriter
         if (operation.DependsOn.Count > 0)
         {
             writer.WriteStartArray("dependsOn");
-            foreach (var id in operation.DependsOn.Select(d => d.OperationId).OrderBy(x => x))
+            foreach (var id in operation.DependsOn.Select(d => d.OperationId).OrderBy(x => x, CanonicalId.SpellingOrder))
                 writer.WriteStringValue(id.Value);
             writer.WriteEndArray();
         }

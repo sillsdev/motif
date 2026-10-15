@@ -43,7 +43,7 @@ public sealed class PhonologicalRulePlacementPrefixTests(PristineProjectFixture 
 
         var create = Assert.Single(nextOperations, operation =>
             operation.Kind == PhPhonDataPhonRulesOperationKinds.Create);
-        Assert.Equal(prefixedId, create.Placement?.After);
+        Assert.True(prefixedId.SpellingEquals(create.Placement!.After!.Value));
         SoundSystemComposerTests.Execute(cache, nextOperations);
         Assert.Equal(new[] { existing.Guid, create.EntityId!.Value.ToGuid() },
             cache.LangProject.PhonologicalDataOA.PhonRulesOS.Select(rule => rule.Guid));

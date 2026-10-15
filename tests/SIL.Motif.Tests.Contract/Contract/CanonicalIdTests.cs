@@ -137,7 +137,65 @@ public class CanonicalIdTests
 
         Assert.Equal(a, b);
         Assert.Equal(a.GetHashCode(), b.GetHashCode());
-        Assert.NotEqual(a, c);
+        Assert.True(a.SpellingEquals(b));
+        Assert.False(a.SpellingEquals(c));
+        Assert.Equal("p_", a.Prefix);
+        Assert.Equal("q_", c.Prefix);
+    }
+
+    [Fact]
+    public void Equality_IsIdentity_SoPrefixAndBareAreOneId()
+    {
+        var prefixed = CanonicalId.Parse("p_" + FixedVectorSuffix);
+        var bare = CanonicalId.Parse(FixedVectorSuffix);
+        var other = CanonicalId.Parse("p_" + "EBESExQVFhcYGRobHB0eHw");
+
+        Assert.Equal(prefixed, bare);
+        Assert.True(prefixed == bare);
+        Assert.False(prefixed != bare);
+        Assert.Equal(prefixed.GetHashCode(), bare.GetHashCode());
+        Assert.NotEqual(prefixed, other);
+        Assert.Single(new HashSet<CanonicalId> { prefixed, bare });
+    }
+
+    [Fact]
+    public void Equality_TreatsNonCanonicalLastCharacterAsTheSameIdentity()
+    {
+        // 'w' and 'x' differ only in the two unused trailing bits of the 22nd character.
+        var canonical = CanonicalId.Parse("AAECAwQFBgcICQoLDA0ODw");
+        var nonCanonical = CanonicalId.Parse("AAECAwQFBgcICQoLDA0ODx");
+
+        Assert.Equal(canonical, nonCanonical);
+        Assert.Equal(canonical.GetHashCode(), nonCanonical.GetHashCode());
+        Assert.False(canonical.SpellingEquals(nonCanonical));
+        Assert.True(canonical.SpellingEquals(CanonicalId.Parse("AAECAwQFBgcICQoLDA0ODw")));
+    }
+
+    [Fact]
+    public void Equality_OfUninitializedDefaultNeverThrows()
+    {
+        var uninitialized = default(CanonicalId);
+        var initialized = CanonicalId.Mint();
+
+        Assert.True(uninitialized == default);
+        Assert.Equal(uninitialized.GetHashCode(), default(CanonicalId).GetHashCode());
+        Assert.False(uninitialized == initialized);
+        Assert.False(initialized.Equals(uninitialized));
+        Assert.False(uninitialized.SpellingEquals(initialized));
+        Assert.True(uninitialized.SpellingEquals(default));
+    }
+
+    [Fact]
+    public void SpellingOrder_IsUtf8OrdinalOnTheFullValue()
+    {
+        var a = CanonicalId.Parse("a_" + FixedVectorSuffix);
+        var b = CanonicalId.Parse("b_" + FixedVectorSuffix);
+        var bare = CanonicalId.Parse("ICEiIyQlJicoKSorLC0uLw");
+
+        Assert.True(CanonicalId.SpellingOrder.Compare(a, b) < 0);
+        Assert.True(CanonicalId.SpellingOrder.Compare(b, a) > 0);
+        Assert.Equal(0, CanonicalId.SpellingOrder.Compare(a, a));
+        Assert.True(CanonicalId.SpellingOrder.Compare(bare, a) < 0);
     }
 
     [Fact]

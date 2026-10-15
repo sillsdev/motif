@@ -96,6 +96,21 @@ public sealed class RewriteRuleContextTests(PristineProjectFixture pristine)
         Assert.Throws<ContractParseException>(() => OperationExecutionOrder.Sort([cyclicFirst, cyclicSecond]));
     }
 
+    [Fact]
+    public void OperationExecutionOrder_ResolvesDependsOnWrittenInAnotherSpelling()
+    {
+        var guid = Guid.NewGuid();
+        var first = new OperationEnvelope(CanonicalId.FromGuid(guid, "first_"), "test/first");
+        var second = new OperationEnvelope(CanonicalId.Mint(), "test/second",
+            dependsOn: [new(CanonicalId.FromGuid(guid))]);
+
+        var ordered = OperationExecutionOrder.Sort([second, first]);
+
+        Assert.Equal([first.OperationId, second.OperationId], ordered.Select(operation => operation.OperationId));
+        Assert.Throws<ContractParseException>(() => OperationExecutionOrder.Sort(
+            [first, new OperationEnvelope(CanonicalId.FromGuid(guid), "test/again")]));
+    }
+
     [Theory]
     [InlineData("input")]
     [InlineData("output")]
@@ -367,7 +382,8 @@ public sealed class RewriteRuleContextTests(PristineProjectFixture pristine)
         var enable = operations.Single(operation => operation.Kind == PhSegmentRuleDisabledOperationKinds.SetDisabled);
         Assert.False(enable.After!.Value.GetProperty("value").GetBoolean());
         Assert.Equal(operations.Where(operation => operation.OperationId != enable.OperationId)
-            .Select(operation => operation.OperationId).Order(), enable.DependsOn.Select(dependency => dependency.OperationId).Order());
+            .Select(operation => operation.OperationId).Order(CanonicalId.SpellingOrder),
+            enable.DependsOn.Select(dependency => dependency.OperationId).Order(CanonicalId.SpellingOrder));
 
         var proposal = Proposal(operations.Reverse().ToArray());
         var dryRun = ScratchDryRun.Of(cache, proposal);

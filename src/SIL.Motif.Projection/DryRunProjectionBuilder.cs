@@ -1,4 +1,5 @@
 using DryRunResult = SIL.Motif.Model.DryRun.DryRun;
+using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Responses;
 using System.Collections.Generic;
@@ -20,22 +21,23 @@ public static class DryRunProjectionBuilder
 
     private static IReadOnlyList<ProposalOperationView> OrderOperations(Proposal proposal)
     {
-        var operations = proposal.Operations.ToDictionary(item => item.OperationId.Value, System.StringComparer.Ordinal);
+        // Keyed by identity, so a dependency spelled with another prefix still names its operation (ADR 0068).
+        var operations = proposal.Operations.ToDictionary(item => item.OperationId);
         if (operations.Values.SelectMany(operation => operation.DependsOn)
-            .Any(dependency => !operations.ContainsKey(dependency.OperationId.Value)))
+            .Any(dependency => !operations.ContainsKey(dependency.OperationId)))
             throw new System.IO.InvalidDataException("The Proposal dependency graph names an absent operation.");
-        var remaining = operations.Keys.ToHashSet(System.StringComparer.Ordinal);
+        var remaining = operations.Keys.ToHashSet();
         var emitted = new List<ProposalOperationView>(operations.Count);
         while (remaining.Count > 0)
         {
             var ready = remaining.Select(id => operations[id])
                 .Where(operation => operation.DependsOn.All(dependency =>
-                    !remaining.Contains(dependency.OperationId.Value)))
-                .OrderBy(operation => operation.OperationId.Value, System.StringComparer.Ordinal).ToArray();
+                    !remaining.Contains(dependency.OperationId)))
+                .OrderBy(operation => operation.OperationId, CanonicalId.SpellingOrder).ToArray();
             if (ready.Length == 0) throw new System.IO.InvalidDataException("The Proposal dependency graph has a cycle.");
             foreach (var operation in ready)
             {
-                remaining.Remove(operation.OperationId.Value);
+                remaining.Remove(operation.OperationId);
                 emitted.Add(new ProposalOperationView(operation.OperationId.Value, operation.Kind,
                     operation.Target?.Value, operation.EntityId?.Value,
                     operation.DependsOn.Select(dependency => dependency.OperationId.Value)

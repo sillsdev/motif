@@ -17,9 +17,9 @@ namespace SIL.Motif.Model.Effects;
 /// RFC 8785 canonicalization preserves array order rather than sorting it — so this writer must
 /// presort deterministically itself, the same discipline
 /// <see cref="SIL.Motif.Contract.Canonicalization.IntentProjectionWriter"/> applies to
-/// <c>requires</c>/<c>dependsOn</c>. Effects sort by canonical id first (via <c>CanonicalId</c>'s
-/// own byte-ordinal <see cref="IComparable{T}"/>), then by field name (ordinal), then canonical UTF-8
-/// bytes of before and after. Published output also uses preview bytes to break remaining ties;
+/// <c>requires</c>/<c>dependsOn</c>. Effects sort through <c>EffectTupleOrdering</c>: by canonical id
+/// spelling first (<see cref="SIL.Motif.Contract.Ids.CanonicalId.SpellingOrder"/>), then by field name
+/// (ordinal), then canonical UTF-8 bytes of before and after. Published output also uses preview bytes to break remaining ties;
 /// preview evidence never participates in semantic ordering or the effect digest.
 /// </remarks>
 public static class ExpectedEffectSetJsonWriter

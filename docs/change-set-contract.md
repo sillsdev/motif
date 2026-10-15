@@ -551,9 +551,12 @@ The suffix is always the final 22 characters. Everything preceding it is the pre
 exactly with no normalization or character/separator requirement. Document resource limits may
 bound total string length, but validators do not assign prefix semantics.
 
-`proposalId` and every `operationId` must be present and valid. Operation IDs must be unique within
-one Proposal. A proposed entity ID may have only one creator operation in a Proposal; later
-operations reference that creation. Global uniqueness of Proposal and operation IDs cannot be
+`proposalId` and every `operationId` must be present and valid. Two IDs are the same ID when their
+suffixes decode to the same 128 bits, whatever their prefixes or suffix spelling; spelling is kept for
+the canonical document and the digest, never for identity. Operation IDs must be unique within
+one Proposal in that sense. A proposed entity ID may have only one creator operation in a Proposal;
+later operations reference that creation, and `dependsOn` and `requires` entries resolve to the
+operation or Proposal with the same identity however they are spelled. Global uniqueness of Proposal and operation IDs cannot be
 proven or enforced by the runner. Only entity IDs participate in LibLCM GUID realization.
 
 For entity IDs, the 16 canonical bytes map left-to-right to the ordinary textual GUID hexadecimal
