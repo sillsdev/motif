@@ -54,7 +54,7 @@ short enough for every host to read in full.
 | `motif_find_composer` | reads | The Composers for a goal in a linguist's words or a Subject, each with when to reach for it, its schema and a worked example, and that Subject's help page |
 | `motif_try_word` | reads | One word against the project as it stands |
 | `motif_results` | reads | Everything a Proposal's Trial collected, by `aspect`, paged |
-| `motif_proposal` | writes | A Proposal's simple state changes, by `action`: `start`, `trial`, `finalize`, `withdraw` |
+| `motif_proposal` | writes | A Proposal's simple state changes, by `action`: `start`, `rationale`, `trial`, `finalize`, `withdraw` |
 | `motif_compose` | writes | Authoring: one or more steps, each a Composer's verb and its intent, and operations to remove |
 
 A tool that reads never writes, so a host that asks a person before every write keeps working. Each `action` and
@@ -113,9 +113,13 @@ task evaluations record.
 - An id is passed back exactly as Motif returned it, prefix included.
 - Every tool takes `detail` (`concise` by default, or `detailed`); a response that would exceed about four thousand
   tokens pages instead of inlining.
-- A Proposal has a one-line label and a **Description** in Markdown, shown rendered to people and agents and
-  required before Finalize. An agent writes it when it starts the Proposal and revises it as it composes. Citations
-  stay on the operations they support (ADR 0064).
+- A Proposal has a one-line label and a **Rationale**: Markdown saying what it changes and why, shown rendered to
+  people and agents and required before Finalize. An agent writes it when it starts the Proposal and revises it with
+  `motif_proposal` as it composes. Citations stay on the operations they support (ADR 0064).
+- A person answers in the Proposal's note, which only a person writes. An agent reads it with the Proposal and never
+  writes it. Each of the two records the Proposal content it was written for, so a reader can tell when it is out of
+  date. An MCP server cannot start an agent's turn on any host Motif supports, so every response about a Proposal
+  says whether the person has written the note since the Rationale was last set, and its next step says to read it.
 
 ### 7. Refusals and next steps
 
@@ -129,7 +133,7 @@ says it in `next`.
 
 What a skill says about commands is generated: each command's route on both renderings side by side, the Subject
 index of Composers, and the crosswalk between CLI verbs and MCP tools. What is written by hand is written once: the
-slice playbook (pick a Subject and cite the source; start a Proposal with its Description; compose; run a Trial;
+slice playbook (pick a Subject and cite the source; start a Proposal with its Rationale; read the person's note; compose; run a Trial;
 read the results; Finalize; record the evidence), including how ids returned by one step feed the next. The build
 fails when a skill names a tool, a CLI verb or a Help link that does not resolve.
 
@@ -154,7 +158,7 @@ questions of it. Nothing is sent anywhere.
   Trial collects Parsimony and explanations, `motif_results` reports those aspects as not collected rather than
   computing them live.
 - The Difference that only the MCP server could produce moves into the shared commands.
-- The comment on a Proposal is renamed Description; stored Proposals carry the new name with no migration (rule 18).
+- The comment on a Proposal is renamed Rationale; stored Proposals carry the new name with no migration (rule 18).
 - Agents will soon edit prose as well as rules: senses and definitions from corpus evidence, and grammar explanation
   beside the rules it explains. Those arrive as Composers under the lexicography and description Subjects.
 

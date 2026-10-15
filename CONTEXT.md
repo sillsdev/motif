@@ -69,6 +69,13 @@ deleted with its Trials. A reopened Declined or Withdrawn Proposal stays closed 
 discarding the Draft leaves it as it was.
 _Avoid_: state, closed-out, archived, cancelled
 
+**Rationale**:
+A Proposal's account of what it changes and why, in Markdown, written by whoever builds the Proposal (usually an
+agent) and shown rendered to people and agents. Finalize requires it. It records the Proposal content it was written
+for, so a reader can see when later changes have left it out of date. A person's reply belongs in the Proposal's
+note, which an agent reads but never writes.
+_Avoid_: description (that is Help text), comment, summary, commit message
+
 **Finalize**:
 To commit a Draft's content as the Proposal's first immutable revision, handing it to a person to review.
 Finalizing is not needed to measure a Proposal: a Draft can be Dry Run and Trialled as often as its author
