@@ -96,6 +96,37 @@ public sealed class EditMorphotacticsComposerTests : IDisposable
     }
 
     [Fact]
+    public void EditAffixTemplateAddsAndRemovesSlotsAndReadsBackTheRequestedOrder()
+    {
+        var fv = CreateSlot(_category, "FV");
+        var post = CreateSlot(_category, "POST");
+        var gone = CreateSlot(_category, "GONE");
+        var template = CreateTemplate(_category, [gone], [fv]);
+        var intent = new EditAffixTemplateIntent(Id(template), [Id(gone)], [], [Id(fv)], [Id(fv), Id(post)]);
+
+        var operations = EditAffixTemplateComposer.Build(_cache, intent);
+
+        Assert.Equal([MoInflAffixTemplatePrefixSlotsOperationKinds.RemoveRefPrefixSlots,
+            MoInflAffixTemplateSuffixSlotsOperationKinds.AddRefSuffixSlots], operations.Select(op => op.Kind));
+        var proposal = Proposal(operations.ToArray());
+        var dryRun = ScratchDryRun.Of(_cache, proposal);
+        ProposalApplier.Apply(_cache, proposal, dryRun.Anchor, "motif-tests");
+
+        Assert.Empty(template.PrefixSlotsRS);
+        Assert.Equal([fv.Guid, post.Guid], template.SuffixSlotsRS.Select(item => item.Guid));
+    }
+
+    [Fact]
+    public void EditAffixTemplateRejectsDuplicateRequestedSlots()
+    {
+        var fv = CreateSlot(_category, "FV");
+        var template = CreateTemplate(_category, [], [fv]);
+        var error = Assert.Throws<InvalidOperationException>(() => EditAffixTemplateComposer.Build(_cache,
+            new EditAffixTemplateIntent(Id(template), [], [], [Id(fv)], [Id(fv), Id(fv)])));
+        Assert.Contains("unique identities", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void EditInflectionalAffixAllowsSlotsFromItsCategoryOrAnAncestorAndChangesNoOtherField()
     {
         var parentSlot = CreateSlot(_category, "Parent");

@@ -9,13 +9,13 @@ using SIL.Motif.Runner.Operations;
 
 namespace SIL.Motif.Runner.Composers;
 
-/// <summary>Builds explicit, identity-anchored order edits for an existing affix template.</summary>
+/// <summary>Builds explicit, identity-anchored membership and order edits for an existing affix template.</summary>
 public static class EditAffixTemplateComposer
 {
     private const string ConstructName = "EditAffixTemplate";
     private const string Rationale = "Authored by the EditAffixTemplate composer.";
 
-    /// <summary>Requires exact expected sequences and emits only moves of existing slots.</summary>
+    /// <summary>Requires exact expected sequences, then adds, removes and moves slots to reach the requested ones.</summary>
     public static IReadOnlyList<OperationEnvelope> Build(LcmCache cache, EditAffixTemplateIntent intent)
     {
         ArgumentNullException.ThrowIfNull(cache);
@@ -25,28 +25,34 @@ public static class EditAffixTemplateComposer
         var currentSuffix = template.SuffixSlotsRS.Select(slot => CanonicalId.FromGuid(slot.Guid)).ToArray();
         RequireExpected(intent.Target, "prefix", intent.ExpectedPrefixSlots, currentPrefix);
         RequireExpected(intent.Target, "suffix", intent.ExpectedSuffixSlots, currentSuffix);
-        RequireSameMembers(intent.Target, "prefix", currentPrefix, intent.PrefixSlots);
-        RequireSameMembers(intent.Target, "suffix", currentSuffix, intent.SuffixSlots);
+        RequireUnique(intent.Target, "prefix", intent.PrefixSlots);
+        RequireUnique(intent.Target, "suffix", intent.SuffixSlots);
 
         return Edits(intent.Target, currentPrefix, intent.PrefixSlots,
+                MoInflAffixTemplatePrefixSlotsOperationKinds.AddRefPrefixSlots,
+                MoInflAffixTemplatePrefixSlotsOperationKinds.RemoveRefPrefixSlots,
                 MoInflAffixTemplatePrefixSlotsOperationKinds.MovePrefixSlots)
             .Concat(Edits(intent.Target, currentSuffix, intent.SuffixSlots,
+                MoInflAffixTemplateSuffixSlotsOperationKinds.AddRefSuffixSlots,
+                MoInflAffixTemplateSuffixSlotsOperationKinds.RemoveRefSuffixSlots,
                 MoInflAffixTemplateSuffixSlotsOperationKinds.MoveSuffixSlots))
             .ToArray();
     }
 
     private static IEnumerable<OperationEnvelope> Edits(CanonicalId target, IReadOnlyList<CanonicalId> current,
-        IReadOnlyList<CanonicalId> desired, string moveKind) =>
-        OrderedSequenceDiff.Create(current, desired).Select(edit =>
-        {
-            if (edit.Kind != OrderedSequenceEditKind.Move || edit.Placement is null)
-                throw new InvalidOperationException("Template edits may only move existing slots.");
-            return new OperationEnvelope(CanonicalId.Mint(), moveKind,
-                target: target,
-                after: JsonSerializer.SerializeToElement(new { member = edit.Member.Value }),
-                placement: edit.Placement,
-                rationale: Rationale);
-        });
+        IReadOnlyList<CanonicalId> desired, string addKind, string removeKind, string moveKind) =>
+        OrderedSequenceDiff.Create(current, desired).Select(edit => new OperationEnvelope(CanonicalId.Mint(),
+            edit.Kind switch
+            {
+                OrderedSequenceEditKind.Add => addKind,
+                OrderedSequenceEditKind.Remove => removeKind,
+                OrderedSequenceEditKind.Move => moveKind,
+                _ => throw new InvalidOperationException("Unsupported template slot edit."),
+            },
+            target: target,
+            after: JsonSerializer.SerializeToElement(new { member = edit.Member.Value }),
+            placement: edit.Kind == OrderedSequenceEditKind.Remove ? null : edit.Placement,
+            rationale: Rationale));
 
     private static void RequireExpected(CanonicalId target, string side,
         IReadOnlyList<CanonicalId> expected, IReadOnlyList<CanonicalId> current)
@@ -56,11 +62,10 @@ public static class EditAffixTemplateComposer
                 $"'{ConstructName}': target '{target.Value}' {side} slots differ from the expected order.");
     }
 
-    private static void RequireSameMembers(CanonicalId target, string side,
-        IReadOnlyList<CanonicalId> current, IReadOnlyList<CanonicalId> desired)
+    private static void RequireUnique(CanonicalId target, string side, IReadOnlyList<CanonicalId> desired)
     {
-        if (current.Count != desired.Count || !current.ToHashSet().SetEquals(desired))
+        if (desired.Distinct(CanonicalId.ByGuid).Count() != desired.Count)
             throw new InvalidOperationException(
-                $"'{ConstructName}': {side} order may only reorder the slots already used by target '{target.Value}'.");
+                $"'{ConstructName}': {side} slots of target '{target.Value}' must contain unique identities.");
     }
 }

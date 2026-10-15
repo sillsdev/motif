@@ -320,8 +320,8 @@
     "source": "Hand-written from command behavior."
   },
   "compose-edit-affix-template": {
-    "title": "Reorder an affix template",
-    "description": "Changes the explicit order of existing prefix or suffix slots in a known affix template. The intent preserves the slot set, and Motif stages a Draft without Applying it automatically. Only a person can Apply.",
+    "title": "Edit an affix template",
+    "description": "Adds, removes or reorders the existing prefix or suffix slots of a known affix template. Motif stages a Draft without Applying it automatically. Only a person can Apply.",
     "source": "Hand-written from command behavior."
   },
   "compose-edit-inflectional-affix": {
