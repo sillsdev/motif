@@ -178,6 +178,32 @@ public sealed class ProposalDeleteTests : IDisposable
         command.ExecuteNonQuery();
     }
 
+    [Fact]
+    public void AProposalWhoseAssessmentIsPinnedIsRefusedAndKeepsItsTrialsAndReviewMarks()
+    {
+        using var fixture = new TrialsTests.ProjectFixture(_root);
+        var proposal = fixture.SaveProposal();
+        fixture.RecordAssessment(proposal, "pinned-root", AssessmentKinds.ParseTime);
+        fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", "trial", ["pinned-root"]);
+        new ProposalRepository(fixture.Database).SetStatus(proposal.Id, "rejected", null);
+        SIL.Motif.Commands.Review.ReviewMarks.Put(fixture.Database, proposal.Id.Value, "entry", "content", "evidence");
+        using (var connection = fixture.Database.OpenConnection())
+        using (var pin = connection.CreateCommand())
+        {
+            pin.CommandText = "INSERT INTO AssessmentPins (AssessmentId, PinnedBy, PinnedUtc) " +
+                "VALUES ('pinned-root', 'test', '2026-09-24T11:00:00Z');";
+            pin.ExecuteNonQuery();
+        }
+
+        var deleted = ProposalLifecycleCommand.Delete(fixture.Database, fixture.Project, proposal.Id.Value);
+
+        Assert.Equal("proposal.applied-final", deleted.Refusal?.Code);
+        Assert.NotNull(new ProposalRepository(fixture.Database).Get(proposal.Id));
+        Assert.NotNull(new JobRepository(fixture.Database).Get("trial"));
+        Assert.NotNull(new AssessmentRepository(fixture.Database).Get("pinned-root"));
+        Assert.Single(SIL.Motif.Commands.Review.ReviewMarks.Read(fixture.Database, proposal.Id.Value));
+    }
+
     public void Dispose()
     {
         try { Directory.Delete(_root, recursive: true); }
