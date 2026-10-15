@@ -51,6 +51,18 @@ public sealed partial class TextsPage : UserControl, IWorkspacePaneProvider
         actions.SizeChanged += (_, _) => ArrangeHeader(header.Bounds.Width);
         ArrangeHeader(header.Bounds.Width);
 
+        // The page scrolls instead of squeezing the reader: below the minimum height its rows stay bounded.
+        var analyzeScroll = this.FindControl<ScrollViewer>("AnalyzeTextsScroll")!;
+        var analyzeHost = this.FindControl<Grid>("AnalyzeTextsHost")!;
+        void FitAnalyzeHeight()
+        {
+            if (!this.TryFindResource("Component.TextsPage.AnalyzeMinHeight", out var resource) ||
+                resource is not double minimum) return;
+            analyzeHost.Height = Math.Max(analyzeScroll.Bounds.Height, minimum);
+        }
+        analyzeScroll.SizeChanged += (_, _) => FitAnalyzeHeight();
+        FitAnalyzeHeight();
+
         Host("CompareHost").Content = new ComparePanel(page.Assess.Compare);
         var selection = new SelectionPanel(page.Selection, page.Words, settings);
         _selectionHost.Content = selection;

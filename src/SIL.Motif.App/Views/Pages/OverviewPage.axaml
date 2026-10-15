@@ -9,6 +9,7 @@
              x:Class="SIL.Motif.App.Views.OverviewPage"
              x:DataType="vm:OverviewPageModel" controls:WritingSystemText.Resolver="{Binding Context.TextStyles}" SizeChanged="OnOverviewSizeChanged">
   <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+    <Border Classes="overviewPageFrame">
     <StackPanel Classes="overviewPage">
       <Border Classes="overviewHeader" AutomationProperties.Name="Project summary">
         <StackPanel Classes="overviewHeaderContent">
@@ -338,5 +339,6 @@
         </StackPanel>
       </Expander>
     </StackPanel>
+    </Border>
   </ScrollViewer>
 </UserControl>

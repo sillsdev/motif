@@ -73,8 +73,9 @@
         <views:CopyableTextBlock Classes="muted" Text="No results yet. Choose the words to parse on Analyze texts, then parse them."
             IsVisible="{Binding ShowEmptyResults}" HorizontalAlignment="Center" VerticalAlignment="Center" />
       </Panel>
-      <Grid x:Name="AnalyzeTextsHost" ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Group}"
-            IsVisible="{Binding ShowAnalyzeTextsContent}">
+      <ScrollViewer x:Name="AnalyzeTextsScroll" IsVisible="{Binding ShowAnalyzeTextsContent}"
+                    HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+      <Grid x:Name="AnalyzeTextsHost" ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Group}">
         <ContentControl x:Name="SelectionHost" Width="{DynamicResource Component.TextsPage.SelectionPanelWidth}"
                         IsVisible="{Binding ShowSelectionPanel}"
                         IsEnabled="{Binding Context.ProjectAndSelectionEnabled}" />
@@ -97,6 +98,7 @@
           <ContentControl x:Name="WordListHost" Grid.Row="2" IsVisible="{Binding ShowWordList}" />
         </Grid>
       </Grid>
+      </ScrollViewer>
       <ContentControl x:Name="ListsHost" IsVisible="{Binding ShowLists}" Classes.waiting="{Binding Assess.IsActive}" />
       <ContentControl x:Name="DifferenceHost" IsVisible="{Binding ShowWhatChanged}" />
       <ContentControl x:Name="CentredParsePromptHost" IsVisible="{Binding ShowCentredParsePrompt}"

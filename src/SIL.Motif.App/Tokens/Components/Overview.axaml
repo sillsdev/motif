@@ -26,8 +26,11 @@
   <Style Selector="Button.overviewInspectorAction">
     <Setter Property="HorizontalAlignment" Value="Stretch" />
   </Style>
+  <!-- The inset is the scrolled content's own padding so a scroll that reveals a control counts it. -->
+  <Style Selector="Border.overviewPageFrame">
+    <Setter Property="Padding" Value="{DynamicResource Component.Overview.PageMargin}" />
+  </Style>
   <Style Selector="StackPanel.overviewPage">
-    <Setter Property="Margin" Value="{DynamicResource Component.Overview.PageMargin}" />
     <Setter Property="Spacing" Value="{DynamicResource Component.Overview.SectionGap}" />
   </Style>
   <Style Selector="StackPanel.overviewHeaderContent">

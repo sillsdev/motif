@@ -82,7 +82,7 @@ public sealed class ReaderToolbarResponsiveTests
                     var controls = new Control[] { picker, search, read, select };
                     var panelBounds = TransformedBounds(panel, window);
                     var toolbarBounds = TransformedBounds(toolbar, window);
-                    AssertInsideWindow(panelBounds, window, $"reader panel at {width}x{height}/{zoom}%/{themeName}");
+                    AssertInsideWindowOrPageScroll(panel, panelBounds, window, $"reader panel at {width}x{height}/{zoom}%/{themeName}");
                     AssertInsideWindow(toolbarBounds, window, $"reader toolbar at {width}x{height}/{zoom}%/{themeName}");
                     foreach (var control in controls)
                         AssertInsideWindow(TransformedBounds(control, window), window,
@@ -279,6 +279,23 @@ public sealed class ReaderToolbarResponsiveTests
             Assert.False(bounds[left].Rect.Intersects(bounds[right].Rect),
                 $"{bounds[left].Name} overlaps {bounds[right].Name} at {state}: " +
                 $"{bounds[left].Rect} / {bounds[right].Rect}.");
+    }
+
+    private static void AssertInsideWindowOrPageScroll(Visual panel, Rect bounds, Window window, string name)
+    {
+        Assert.True(bounds.Left >= -1 && bounds.Top >= -1 && bounds.Right <= window.ClientSize.Width + 1,
+            $"{name} is outside {window.ClientSize}: {bounds}.");
+        if (bounds.Bottom <= window.ClientSize.Height + 1) return;
+        // Below its minimum height Analyze texts scrolls as a page, so the rest of the reader is one scroll away.
+        var page = panel.GetVisualAncestors().OfType<ScrollViewer>()
+            .SingleOrDefault(viewer => viewer.Name == "AnalyzeTextsScroll");
+        Assert.True(page is not null, $"{name} is outside {window.ClientSize} with no page scroll: {bounds}.");
+        var pageBounds = TransformedBounds(page, window);
+        AssertInsideWindow(pageBounds, window, $"{name} page scroll");
+        var below = TransformedBounds(panel, page).Bottom - page.Bounds.Height;
+        var remaining = page.Extent.Height - page.Viewport.Height - page.Offset.Y;
+        Assert.True(remaining + 1 >= below,
+            $"{name} ends {below:0.#} below its page scroll, which can move {remaining:0.#}.");
     }
 
     private static void AssertInsideWindow(Rect bounds, Window window, string name) =>
