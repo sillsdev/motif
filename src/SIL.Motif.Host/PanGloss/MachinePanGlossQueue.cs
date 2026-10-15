@@ -175,6 +175,10 @@ public sealed class MachinePanGlossQueue : IDisposable
             JobAdmitted?.Invoke(cpuJob);
             await job.ExecuteAsync(cpuJob, linked.Token).ConfigureAwait(false);
         }
+        catch (PanGlossMemoryLimitSettingException exception)
+        {
+            job.Fail(exception);
+        }
         finally
         {
             lease.Dispose();

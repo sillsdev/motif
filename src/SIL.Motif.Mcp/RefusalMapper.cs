@@ -34,6 +34,8 @@ internal static class RefusalMapper
         ["job.dry-run-incomplete"] = "The Dry Run did not complete. Revise the Draft and run a new Dry Run.",
         ["store.other-version"] = "Motif's data for this project was made by another version. Tell the linguist; do not retry.",
         ["parse.already-running"] = "A parse is already running. Wait a minute, then repeat the call.",
+        ["assess.parser-memory-limit"] =
+            "The parser used more memory than Motif allows. Tell the linguist; do not retry unchanged.",
         ["assess.parser-unavailable"] = "The parser is not installed here. Tell the linguist; evaluation tools cannot run.",
         ["grammarcheck.parser-unavailable"] = "The parser is not installed here. Tell the linguist; evaluation tools cannot run.",
         ["project.writing-system-missing"] = "This is a setup problem, not damaged data. Tell the linguist what the " +

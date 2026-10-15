@@ -189,6 +189,9 @@ public sealed class AssessorUnavailableException : Exception
 
     /// <summary>The original parser refusal, when execution reached the parser.</summary>
     public SIL.Motif.Host.PanGloss.PanGlossOutcome.Refused? ParserRefusal { get; init; }
+
+    /// <summary>Set when Motif stopped the parser for passing its memory ceiling.</summary>
+    public SIL.Motif.Host.PanGloss.PanGlossMemoryKill? MemoryKill { get; init; }
 }
 
 /// <summary>

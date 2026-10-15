@@ -7,10 +7,10 @@ using System.Text;
 namespace SIL.Motif.Host.PanGloss;
 
 [SupportedOSPlatform("linux")]
-internal sealed class LinuxPanGlossJob(ulong memoryLimitBytes) : UnixPanGlossJob(memoryLimitBytes, linux: true);
+internal sealed class LinuxPanGlossJob(ulong? memoryLimitBytes) : UnixPanGlossJob(memoryLimitBytes, linux: true);
 
 [SupportedOSPlatform("macos")]
-internal sealed class MacPanGlossJob(ulong memoryLimitBytes) : UnixPanGlossJob(memoryLimitBytes, linux: false);
+internal sealed class MacPanGlossJob(ulong? memoryLimitBytes) : UnixPanGlossJob(memoryLimitBytes, linux: false);
 
 internal class UnixPanGlossJob : PanGlossContainmentJob
 {
@@ -18,22 +18,22 @@ internal class UnixPanGlossJob : PanGlossContainmentJob
     private const short SpawnSetProcessGroup = 2;
     private const int KillSignal = 9;
     private readonly bool _linux;
-    private readonly ulong _memoryLimitBytes;
+    private readonly ulong? _memoryLimitBytes;
     private readonly UnixCgroup? _cgroup;
     private readonly string? _captureDirectory;
     private readonly HashSet<int> _processGroups = [];
     private bool _disposed;
 
-    internal UnixPanGlossJob(ulong memoryLimitBytes, bool linux, string? captureDirectory = null)
+    internal UnixPanGlossJob(ulong? memoryLimitBytes, bool linux, string? captureDirectory = null)
         : this(memoryLimitBytes, linux, TryCreateCgroup(memoryLimitBytes, linux), captureDirectory)
     {
     }
 
     /// <summary>A job that takes the no-cgroup path even where a delegated cgroup exists.</summary>
-    internal static UnixPanGlossJob WithoutCgroup(ulong memoryLimitBytes, bool linux) =>
+    internal static UnixPanGlossJob WithoutCgroup(ulong? memoryLimitBytes, bool linux) =>
         new(memoryLimitBytes, linux, cgroup: null, captureDirectory: null);
 
-    private UnixPanGlossJob(ulong memoryLimitBytes, bool linux, UnixCgroup? cgroup, string? captureDirectory)
+    private UnixPanGlossJob(ulong? memoryLimitBytes, bool linux, UnixCgroup? cgroup, string? captureDirectory)
         : base(CreateReport(memoryLimitBytes, linux, cgroup))
     {
         _linux = linux;
@@ -96,7 +96,10 @@ internal class UnixPanGlossJob : PanGlossContainmentJob
                 arguments, environment), "starting the parser");
             _processGroups.Add(processId);
             return new PanGlossChildProcess(new UnixPanGlossChildProcess(processId, stdout, stderr,
-                () => KillProcessGroup(processId), _cgroup is null ? GroupMemory() : null, _memoryLimitBytes));
+                () => KillProcessGroup(processId),
+                _cgroup is null && _memoryLimitBytes is not null ? GroupMemory() : null, _memoryLimitBytes ?? 0,
+                _cgroup is not null && _memoryLimitBytes is { } limit
+                    ? () => UnixCgroup.ReadMemoryKill(_cgroup.Path, limit) : null));
         }
         catch
         {
@@ -206,12 +209,15 @@ internal class UnixPanGlossJob : PanGlossContainmentJob
             throw new Win32Exception(2, $"Executable not found: '{startInfo.FileName}'.");
     }
 
-    private static PanGlossContainmentReport CreateReport(ulong memoryLimitBytes, bool linux, UnixCgroup? cgroup)
+    private static PanGlossContainmentReport CreateReport(ulong? memoryLimitBytes, bool linux, UnixCgroup? cgroup)
     {
         if (cgroup is not null)
-            return new PanGlossContainmentReport(PanGlossCpuBudget.CpuRateHardCapBasisPoints, memoryLimitBytes, true,
+            return new PanGlossContainmentReport(PanGlossCpuBudget.CpuRateHardCapBasisPoints, memoryLimitBytes,
+                memoryLimitBytes is not null,
                 "Linux cgroup v2 quota at half of Environment.ProcessorCount CPUs.",
-                "Linux cgroup v2 aggregate memory.max hard limit.",
+                memoryLimitBytes is null
+                    ? "No memory ceiling: the Linux cgroup v2 memory.max is max, by the user's choice."
+                    : "Linux cgroup v2 aggregate memory.max hard limit.",
                 "The child joins the cgroup before exec; cgroup.kill stops members still in that subtree.",
                 ["A descendant with permission to leave the delegated cgroup and process group can escape termination."]);
 
@@ -221,12 +227,16 @@ internal class UnixPanGlossJob : PanGlossContainmentJob
         var unavailable = linux
             ? "Without a delegated writable cgroup v2, the kernel enforces no CPU rate or memory limit; the process-group watchdog samples every 50 ms."
             : "Finite RLIMIT_DATA and RLIMIT_AS values are unavailable on macOS; the process-group watchdog samples every 50 ms.";
-        return new PanGlossContainmentReport(null, memoryLimitBytes, true,
+        return new PanGlossContainmentReport(null, memoryLimitBytes, memoryLimitBytes is not null,
             linux
                 ? "No hard CPU rate limit; Motif limits batch threads and RLIMIT_CPU is not substituted."
                 : "No hard CPU rate limit is available; PanGloss batch threads are limited by Motif.",
-            $"{sampled}, sampled every 50 ms, with a {memoryLimitBytes} byte ceiling.",
-            "The child starts in its own process group; members are killed on close or when sampled memory exceeds the ceiling.",
+            memoryLimitBytes is { } ceiling
+                ? $"{sampled}, sampled every 50 ms, with a {ceiling} byte ceiling."
+                : "No memory ceiling: the process group is not sampled for memory, by the user's choice.",
+            memoryLimitBytes is null
+                ? "The child starts in its own process group; members are killed on close."
+                : "The child starts in its own process group; members are killed on close or when sampled memory exceeds the ceiling.",
             [
                 unavailable,
                 "The 50 ms sampling interval can allow overshoot, and a peak released between samples can be missed.",
@@ -234,7 +244,7 @@ internal class UnixPanGlossJob : PanGlossContainmentJob
             ]);
     }
 
-    private static UnixCgroup? TryCreateCgroup(ulong memoryLimitBytes, bool linux)
+    private static UnixCgroup? TryCreateCgroup(ulong? memoryLimitBytes, bool linux)
     {
         if (!linux) return null;
         var parent = UnixCgroup.FindDelegatedParent();
@@ -245,9 +255,9 @@ internal class UnixPanGlossJob : PanGlossContainmentJob
             Directory.CreateDirectory(path);
             if (!File.Exists(Path.Combine(path, "cgroup.kill"))) throw new IOException("cgroup.kill is unavailable.");
             File.WriteAllText(Path.Combine(path, "cpu.max"), PanGlossCpuBudget.LinuxCpuMax(Environment.ProcessorCount));
-            File.WriteAllText(Path.Combine(path, "memory.max"), memoryLimitBytes.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            File.WriteAllText(Path.Combine(path, "memory.max"), UnixCgroup.MemoryMaxText(memoryLimitBytes));
             var swapLimit = Path.Combine(path, "memory.swap.max");
-            if (File.Exists(swapLimit)) File.WriteAllText(swapLimit, "0");
+            if (memoryLimitBytes is not null && File.Exists(swapLimit)) File.WriteAllText(swapLimit, "0");
             return new UnixCgroup(path);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
@@ -267,11 +277,14 @@ internal sealed class UnixPanGlossChildProcess : IPanGlossChildProcess
     private readonly Action _kill;
     private readonly Task<int> _exitCode;
     private readonly PanGlossMemoryWatchdog? _memoryWatchdog;
+    private readonly Func<PanGlossMemoryKill?>? _cgroupMemoryKill;
     private bool _disposed;
 
     internal UnixPanGlossChildProcess(int processId, FileStream stdout, FileStream stderr, Action kill,
-        IProcessGroupMemory? groupMemory = null, ulong memoryLimitBytes = 0)
+        IProcessGroupMemory? groupMemory = null, ulong memoryLimitBytes = 0,
+        Func<PanGlossMemoryKill?>? cgroupMemoryKill = null)
     {
+        _cgroupMemoryKill = cgroupMemoryKill;
         Id = processId;
         _stdout = stdout;
         _stderr = stderr;
@@ -285,6 +298,8 @@ internal sealed class UnixPanGlossChildProcess : IPanGlossChildProcess
     public int ExitCode => _exitCode.GetAwaiter().GetResult();
     public async Task WaitForExitAsync(CancellationToken cancellationToken) =>
         _ = await _exitCode.WaitAsync(cancellationToken).ConfigureAwait(false);
+
+    public PanGlossMemoryKill? MemoryKill => _memoryWatchdog?.MemoryKill ?? _cgroupMemoryKill?.Invoke();
 
     public Task WaitForContainmentAsync(CancellationToken cancellationToken) =>
         _memoryWatchdog?.WaitForCompletionAsync(cancellationToken) ?? Task.CompletedTask;
@@ -336,6 +351,40 @@ internal sealed class UnixPanGlossChildProcess : IPanGlossChildProcess
 internal sealed class UnixCgroup(string path) : IDisposable
 {
     internal string Path { get; } = path;
+
+    /// <summary>The text for memory.max: the byte count, or <c>max</c> for no limit.</summary>
+    internal static string MemoryMaxText(ulong? limitBytes) =>
+        limitBytes?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "max";
+
+    /// <summary>
+    /// A memory kill when the cgroup's kernel OOM killer removed a member, with memory.peak where the kernel
+    /// keeps it; the kernel counts an OOM kill only for a breach of memory.max.
+    /// </summary>
+    internal static PanGlossMemoryKill? ReadMemoryKill(string cgroupPath, ulong limitBytes)
+    {
+        try
+        {
+            var events = System.IO.Path.Combine(cgroupPath, "memory.events");
+            if (!File.Exists(events)) return null;
+            var killed = File.ReadLines(events).Any(line =>
+            {
+                var fields = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                return fields.Length == 2 && fields[0] == "oom_kill" &&
+                    ulong.TryParse(fields[1], System.Globalization.NumberStyles.None,
+                        System.Globalization.CultureInfo.InvariantCulture, out var count) && count > 0;
+            });
+            if (!killed) return null;
+            var peakFile = System.IO.Path.Combine(cgroupPath, "memory.peak");
+            ulong? peak = File.Exists(peakFile) &&
+                ulong.TryParse(File.ReadAllText(peakFile).Trim(), System.Globalization.NumberStyles.None,
+                    System.Globalization.CultureInfo.InvariantCulture, out var measured) ? measured : null;
+            return new PanGlossMemoryKill(limitBytes, peak);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
 
     internal void Kill()
     {

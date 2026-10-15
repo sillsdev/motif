@@ -67,6 +67,8 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
 
         if (_executable is null)
             return new PanGlossOutcome.Unavailable(MissingExecutableMessage) { ExecutableMissing = true };
+        try { _ = PanGlossMemoryLimit.FromEnvironment(); }
+        catch (PanGlossMemoryLimitSettingException exception) { return new PanGlossOutcome.Unavailable(exception.Message); }
 
         try
         {
@@ -250,6 +252,8 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
 
                 var standardError = await stdErrTask.ConfigureAwait(false);
                 var standardOutput = await stdOutTask.ConfigureAwait(false);
+                if (process.ExitCode != 0 && process.MemoryKill is { } memoryKill)
+                    return new PanGlossOutcome.MemoryLimit(memoryKill);
                 if (process.ExitCode != 0 && !request.AcceptsNonzeroExit(standardOutput))
                 {
                     return new PanGlossOutcome.Refused(process.ExitCode, StandardError: standardError,

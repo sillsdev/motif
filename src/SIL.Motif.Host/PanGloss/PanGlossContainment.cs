@@ -5,7 +5,7 @@ namespace SIL.Motif.Host.PanGloss;
 /// <summary>Describes the limits and process-tree controls applied to one PanGloss invocation.</summary>
 public sealed record PanGlossContainmentReport(
     int? CpuRateBasisPoints,
-    ulong MemoryLimitBytes,
+    ulong? MemoryLimitBytes,
     bool AggregateMemoryLimit,
     string Cpu,
     string Memory,
@@ -56,6 +56,9 @@ public sealed class PanGlossChildProcess : IDisposable
 
     internal void KillProcessTree() => _process.KillProcessTree();
 
+    /// <summary>The memory stop that ended this process, once it has exited; null when none did.</summary>
+    internal PanGlossMemoryKill? MemoryKill => _process.MemoryKill;
+
     internal Task WaitForContainmentAsync(CancellationToken cancellationToken) =>
         _process is UnixPanGlossChildProcess unixProcess
             ? unixProcess.WaitForContainmentAsync(cancellationToken)
@@ -73,15 +76,20 @@ internal interface IPanGlossChildProcess : IDisposable
     Task<string> ReadStandardOutputAsync();
     Task<string> ReadStandardErrorAsync();
     void KillProcessTree();
+
+    /// <summary>What the memory ceiling did to this process, read after it exits; null when nothing.</summary>
+    PanGlossMemoryKill? MemoryKill { get; }
 }
 
 internal static class PanGlossContainment
 {
-    internal const ulong DefaultMemoryLimitBytes = 10UL * 1024 * 1024 * 1024;
+    /// <summary>A job held to the ceiling the environment asks for; throws when that setting is invalid.</summary>
+    internal static PanGlossContainmentJob CreateJob() => CreateJob(PanGlossMemoryLimit.FromEnvironment());
 
-    internal static PanGlossContainmentJob CreateJob(ulong memoryLimitBytes = DefaultMemoryLimitBytes)
+    /// <summary>A job held to <paramref name="memoryLimitBytes"/>, or to no memory ceiling when null.</summary>
+    internal static PanGlossContainmentJob CreateJob(ulong? memoryLimitBytes)
     {
-        if (OperatingSystem.IsWindows()) return new WindowsCpuJob();
+        if (OperatingSystem.IsWindows()) return new WindowsCpuJob(memoryLimitBytes);
         if (OperatingSystem.IsLinux()) return new LinuxPanGlossJob(memoryLimitBytes);
         if (OperatingSystem.IsMacOS()) return new MacPanGlossJob(memoryLimitBytes);
         throw new PlatformNotSupportedException("PanGloss containment supports Windows, Linux and macOS.");

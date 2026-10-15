@@ -69,6 +69,12 @@ public abstract record PanGlossOutcome
         public override string Message => Detail;
     }
 
+    /// <summary>Motif stopped the parser because it passed the memory ceiling; see <see cref="PanGlossMemoryKill"/>.</summary>
+    public sealed record MemoryLimit(PanGlossMemoryKill Kill) : PanGlossOutcome
+    {
+        public override string Message => Kill.Describe();
+    }
+
     /// <summary>The caller cancelled; if a process had started, its tree was killed.</summary>
     public sealed record Cancelled : PanGlossOutcome
     {

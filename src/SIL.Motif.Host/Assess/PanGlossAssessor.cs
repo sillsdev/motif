@@ -107,6 +107,7 @@ public sealed class PanGlossAssessor : IAssessor
                 {
                     ExecutableMissing = outcome is PanGlossOutcome.Unavailable { ExecutableMissing: true },
                     ParserRefusal = outcome as PanGlossOutcome.Refused,
+                    MemoryKill = (outcome as PanGlossOutcome.MemoryLimit)?.Kill,
                 };
             var matchingArtifacts = evidence.InvocationId == invocationId &&
                 Path.GetFullPath(evidence.SourcePath) == Path.Combine(Path.GetFullPath(directory), "source.fwdata");

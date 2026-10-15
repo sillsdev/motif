@@ -31,6 +31,7 @@ internal sealed class PanGlossMemoryWatchdog : IDisposable
     private readonly CancellationTokenSource _stop = new();
     private readonly Task _sampling;
     private string? _failureReason;
+    private PanGlossMemoryKill? _memoryKill;
     private bool _disposed;
 
     internal PanGlossMemoryWatchdog(int processGroupId, ulong memoryLimitBytes, IProcessGroupMemory memory,
@@ -44,6 +45,9 @@ internal sealed class PanGlossMemoryWatchdog : IDisposable
     }
 
     internal string? FailureReason => Volatile.Read(ref _failureReason);
+
+    /// <summary>Set, with the sample that passed the ceiling, before the group is killed for memory.</summary>
+    internal PanGlossMemoryKill? MemoryKill => Volatile.Read(ref _memoryKill);
 
     internal Task WaitForCompletionAsync(CancellationToken cancellationToken) =>
         _sampling.WaitAsync(cancellationToken);
@@ -75,8 +79,10 @@ internal sealed class PanGlossMemoryWatchdog : IDisposable
                 else
                 {
                     emptySamples = 0;
-                    if (_memory.SumBytes(processIds) > _memoryLimitBytes)
+                    var sampled = _memory.SumBytes(processIds);
+                    if (sampled > _memoryLimitBytes)
                     {
+                        Volatile.Write(ref _memoryKill, new PanGlossMemoryKill(_memoryLimitBytes, sampled));
                         _failureReason = $"The parser process group exceeded its {_memory.Measure} memory limit.";
                         _terminate();
                         return;

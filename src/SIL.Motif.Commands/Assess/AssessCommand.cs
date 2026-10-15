@@ -300,9 +300,11 @@ public static class AssessCommand
             }
             catch (AssessorUnavailableException ex)
             {
-                var refusal = ex.ParserRefusal is { } failure
-                    ? ParserExecutionRefusal.From(RefusalCodes.AssessParserUnavailable, request.ProjectPath, failure)
-                    : ParserUnavailable(request.ProjectPath, ex.Message, ex.ExecutableMissing);
+                var refusal = ex.MemoryKill is { } memoryKill
+                    ? ParserMemoryRefusal.From(request.ProjectPath, memoryKill)
+                    : ex.ParserRefusal is { } failure
+                        ? ParserExecutionRefusal.From(RefusalCodes.AssessParserUnavailable, request.ProjectPath, failure)
+                        : ParserUnavailable(request.ProjectPath, ex.Message, ex.ExecutableMissing);
                 new ParserRefusalRepository(database).Save(baseline.Token, refusal);
                 return CommandOutcome<AssessCommandResponse>.Refused(refusal);
             }

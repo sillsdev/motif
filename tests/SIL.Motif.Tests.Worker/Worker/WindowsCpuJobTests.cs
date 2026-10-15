@@ -36,17 +36,32 @@ public sealed class WindowsCpuJobTests
     [RequiresWindowsFact]
     public void BoundsCommittedMemoryForTheWholeJobNotJustOneProcess()
     {
-        using var job = new WindowsCpuJob();
+        const ulong limit = 12UL * 1024 * 1024 * 1024;
+        using var job = new WindowsCpuJob(limit);
 
         var limits = job.QueryExtendedLimits();
 
-        Assert.Equal(
-            WindowsCpuJob.JobMemoryLimitBytes, (ulong)limits.JobMemoryLimit);
+        Assert.Equal(limit, (ulong)limits.JobMemoryLimit);
+        Assert.Equal(limit, job.Report.MemoryLimitBytes);
         Assert.Equal(
             NativeMethods.JOB_OBJECT_LIMIT_JOB_MEMORY,
             limits.BasicLimitInformation.LimitFlags & NativeMethods.JOB_OBJECT_LIMIT_JOB_MEMORY);
         // Charging the job rather than each process is what stops several parsers adding up past the bound.
         Assert.Equal(UIntPtr.Zero, limits.ProcessMemoryLimit);
+    }
+
+    [RequiresWindowsFact]
+    public void WithNoCeilingTheJobSetsNoMemoryLimitButStillKillsOnClose()
+    {
+        using var job = new WindowsCpuJob(null);
+
+        var limits = job.QueryExtendedLimits();
+
+        Assert.Equal(0u, limits.BasicLimitInformation.LimitFlags & NativeMethods.JOB_OBJECT_LIMIT_JOB_MEMORY);
+        Assert.Equal(NativeMethods.JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
+            limits.BasicLimitInformation.LimitFlags & NativeMethods.JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE);
+        Assert.Null(job.Report.MemoryLimitBytes);
+        Assert.False(job.Report.AggregateMemoryLimit);
     }
 
     // A short parser call such as --describe can finish before it is assigned; that is not a failure.

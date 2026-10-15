@@ -25,8 +25,18 @@ public sealed class WindowsCpuJob : PanGlossContainmentJob
     /// <summary>The CPU hard-cap rate, in basis points of total machine CPU capacity.</summary>
     public const int CpuRateHardCapBasisPoints = PanGlossCpuBudget.CpuRateHardCapBasisPoints;
 
+    private readonly SafeJobObjectHandle _handle;
+    private readonly ulong? _memoryLimitBytes;
+    private bool _disposed;
+
+    /// <summary>Creates a job object held to the memory ceiling the environment asks for.</summary>
+    public WindowsCpuJob() : this(PanGlossMemoryLimit.FromEnvironment())
+    {
+    }
+
     /// <summary>
-    /// The committed-memory ceiling for everything in the job, matching the parser's own ratified limit.
+    /// Creates a job object and immediately applies the CPU hard cap, kill-on-close, and a committed-memory
+    /// ceiling for everything in the job, or none when <paramref name="memoryLimitBytes"/> is null.
     /// </summary>
     /// <remarks>
     /// A single word can drive the parser into an allocation far larger than the machine has any reason to
@@ -34,22 +44,19 @@ public sealed class WindowsCpuJob : PanGlossContainmentJob
     /// than refusing the word. The job charges every member, so a runaway is stopped by the governor
     /// instead of by the allocator.
     /// </remarks>
-    public const ulong JobMemoryLimitBytes = 10UL * 1024 * 1024 * 1024;
-
-    private readonly SafeJobObjectHandle _handle;
-    private bool _disposed;
-
-    /// <summary>Creates a job object and immediately applies the CPU hard cap and kill-on-close limit.</summary>
-    public WindowsCpuJob() : base(new PanGlossContainmentReport(
+    public WindowsCpuJob(ulong? memoryLimitBytes) : base(new PanGlossContainmentReport(
         CpuRateHardCapBasisPoints,
-        JobMemoryLimitBytes,
-        AggregateMemoryLimit: true,
+        memoryLimitBytes,
+        AggregateMemoryLimit: memoryLimitBytes is not null,
         Cpu: "Windows Job Object hard cap at 5000 basis points.",
-        Memory: "10 GiB aggregate committed-memory hard limit.",
+        Memory: memoryLimitBytes is { } ceiling
+            ? $"{PanGlossMemoryLimit.Format(ceiling)} aggregate committed-memory hard limit."
+            : "No memory ceiling, by the user's choice.",
         ProcessTree: "Job Object kill-on-close; each child is suspended until assigned.",
         Limitations: Array.Empty<string>()))
     {
-        var jobMemoryLimit = CreateNativeMemoryLimit();
+        _memoryLimitBytes = memoryLimitBytes;
+        var jobMemoryLimit = CreateNativeMemoryLimit(memoryLimitBytes);
         _handle = NativeMethods.CreateJobObject(IntPtr.Zero, null);
         if (_handle.IsInvalid)
             throw new Win32Exception(Marshal.GetLastWin32Error());
@@ -91,7 +98,7 @@ public sealed class WindowsCpuJob : PanGlossContainmentJob
         try
         {
             AssignProcess(process);
-            return new PanGlossChildProcess(new WindowsPanGlossChildProcess(process));
+            return new PanGlossChildProcess(new WindowsPanGlossChildProcess(process, ReadMemoryKill));
         }
         catch
         {
@@ -149,11 +156,12 @@ public sealed class WindowsCpuJob : PanGlossContainmentJob
             });
     }
 
-    private static UIntPtr CreateNativeMemoryLimit()
+    private static UIntPtr CreateNativeMemoryLimit(ulong? memoryLimitBytes)
     {
+        if (memoryLimitBytes is null) return UIntPtr.Zero;
         if (UIntPtr.Size != sizeof(ulong))
-            throw new PlatformNotSupportedException("The 10 GiB PanGloss memory limit requires a 64-bit process.");
-        return new UIntPtr(JobMemoryLimitBytes);
+            throw new PlatformNotSupportedException("The PanGloss memory limit requires a 64-bit process.");
+        return new UIntPtr(memoryLimitBytes.Value);
     }
 
     private void ApplyKillOnClose(UIntPtr jobMemoryLimit)
@@ -164,10 +172,16 @@ public sealed class WindowsCpuJob : PanGlossContainmentJob
                 BasicLimitInformation = new NativeMethods.JOBOBJECT_BASIC_LIMIT_INFORMATION
                 {
                     LimitFlags = NativeMethods.JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
-                        | NativeMethods.JOB_OBJECT_LIMIT_JOB_MEMORY,
+                        | (_memoryLimitBytes is null ? 0 : NativeMethods.JOB_OBJECT_LIMIT_JOB_MEMORY),
                 },
                 JobMemoryLimit = jobMemoryLimit,
             });
+    }
+
+    private PanGlossMemoryKill? ReadMemoryKill(int exitCode)
+    {
+        if (_memoryLimitBytes is not { } limit || _disposed) return null;
+        return PanGlossMemoryKill.FromJobPeak(limit, (ulong)QueryExtendedLimits().PeakJobMemoryUsed, exitCode);
     }
 
     /// <summary>The job's configured extended limits, so a test can read back what was actually set.</summary>
@@ -217,10 +231,12 @@ public sealed class WindowsCpuJob : PanGlossContainmentJob
 }
 
 [SupportedOSPlatform("windows")]
-internal sealed class WindowsPanGlossChildProcess(Process process) : IPanGlossChildProcess
+internal sealed class WindowsPanGlossChildProcess(Process process, Func<int, PanGlossMemoryKill?> readMemoryKill)
+    : IPanGlossChildProcess
 {
     public int Id => process.Id;
     public int ExitCode => process.ExitCode;
+    public PanGlossMemoryKill? MemoryKill => process.HasExited ? readMemoryKill(process.ExitCode) : null;
     public Task WaitForExitAsync(CancellationToken cancellationToken) => process.WaitForExitAsync(cancellationToken);
     public Task<string> ReadStandardOutputAsync() => ReadToEndOnOwnThread(process.StandardOutput);
     public Task<string> ReadStandardErrorAsync() => ReadToEndOnOwnThread(process.StandardError);

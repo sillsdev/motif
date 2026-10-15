@@ -216,6 +216,7 @@ public static class GrammarCheckQuery
         PanGlossOutcome.Unavailable unavailable => new Refusal(
             "grammarcheck.parser-unavailable", FailureReason.Refused, unavailable.Message,
             ParserNotFoundFact.Mark(Fact(("projectPath", projectPath)), unavailable.ExecutableMissing)),
+        PanGlossOutcome.MemoryLimit memoryLimit => ParserMemoryRefusal.From(projectPath, memoryLimit.Kill),
         PanGlossOutcome.TimedOut timedOut => new Refusal(
             "grammarcheck.timed-out", FailureReason.Refused, timedOut.Message,
             Fact(("projectPath", projectPath))),
