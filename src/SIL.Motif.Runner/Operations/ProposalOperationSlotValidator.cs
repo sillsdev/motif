@@ -9,10 +9,11 @@ public static class ProposalOperationSlotValidator
 {
     public static void Validate(Proposal proposal)
     {
-        if (FindConflict(proposal.Operations) is not { } collision) return;
-        throw new ContractParseException(
-            $"Operations {collision.Existing.OperationId.Value} and {collision.Duplicate.OperationId.Value} " +
-            "address the same target, field, and member slot.");
+        if (FindConflict(proposal.Operations) is { } collision)
+            throw new ContractParseException(
+                $"Operations {collision.Existing.OperationId.Value} and {collision.Duplicate.OperationId.Value} " +
+                "address the same target, field, and member slot.");
+        TextCreateDependencies.Validate(proposal.Operations);
     }
 
     public static (OperationEnvelope Existing, OperationEnvelope Duplicate)? FindConflict(

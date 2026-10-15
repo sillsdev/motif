@@ -139,14 +139,31 @@ public class ManifestHandAuthoredRowsTests
     }
 
     [Fact]
-    public void SegmentAnalyses_RecordsTheAnalysisDeleteSideEffect()
+    public void SegmentAnalyses_IsWrittenByTheTextCreateAndKeepsTheAnalysisDeleteSideEffect()
     {
         var row = ManifestTsvParser.Parse(RepoPaths.DefaultManifestPath())
             .Single(item => item.Class == "Segment" && item.Field == "Analyses");
 
-        Assert.Equal("out", row.Scope);
-        Assert.Contains("touched indirectly by analysis/wfiAnalysis/delete", row.ScopeReason,
-            StringComparison.Ordinal);
-        Assert.Contains("MoveConcAnnotationsToWordform", row.Rationale, StringComparison.Ordinal);
+        Assert.Equal("in", row.Scope);
+        Assert.Contains("texts/langProject/createTexts", row.ScopeReason, StringComparison.Ordinal);
+        Assert.Contains("texts/langProject/createTexts", row.Rationale, StringComparison.Ordinal);
+        Assert.Contains("analysis/wfiAnalysis/delete", row.Rationale, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TextCreateRows_AreClassifiedAsAuthoredByTheTextCreate()
+    {
+        var rows = ManifestTsvParser.Parse(RepoPaths.DefaultManifestPath());
+        foreach (var (owner, field) in new[]
+                 {
+                     ("Text", "Contents"), ("Segment", "Analyses"), ("Segment", "BeginOffset"),
+                     ("StTxtPara", "Segments"), ("StTxtPara", "ParseIsCurrent"),
+                 })
+        {
+            var row = rows.Single(item => item.Class == owner && item.Field == field);
+            Assert.Equal("in", row.Scope);
+            Assert.Equal("semantic-operation", row.Classification);
+            Assert.Contains("texts/langProject/createTexts", row.ScopeReason, StringComparison.Ordinal);
+        }
     }
 }

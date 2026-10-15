@@ -171,11 +171,14 @@ The payload authors every identity it creates (the Text's `entityId`, its conten
 segment); the Text's identity is unique across them. Each word is an existing wordform's identity, so every
 occurrence is bound by identity and nothing is tokenised or matched by form. A paragraph's text is its segments'
 wordform forms in the paragraph's writing system, joined by single spaces; a wordform that does not exist or has no form
-in that writing system fails the create, and a wordform created earlier in the same Proposal is reached through
-`dependsOn`. The create fails for any created identity that already exists, accepts no placement and no storage-GUID
+in that writing system fails the create. A wordform created in the same Proposal must be named in the text create's
+`dependsOn`, directly or through other declared dependencies, whatever the array order: an undeclared dependency is a
+contract error before any operation runs, because order is never inferred from position. The create fails for any created identity that already exists, accepts no placement and no storage-GUID
 override, and holds at most 1,000 paragraphs, 500 words per segment and 20,000 words. Its effect records the Text's
 `ref`, `name:<ws>`, `paragraphs`, `segments`, `words` and a `structure` digest of every identity and binding, never other
-Texts. The Text's occurrence index in a later Baseline is the position of a word within its paragraph's segments;
+Texts. Each segment begins at the offset of its first word and keeps the single separating space that follows it, so a segment's
+baseline text is its words joined by spaces plus that space (none for a paragraph's last segment). A later Baseline lists one line per
+segment, numbered from 1 across the Text, and a word's occurrence index is its zero-based position within its segment;
 glosses, translations, punctuation, analyses and the other Text fields remain out of scope.
 
 Dictionary entries are unowned in LibLCM: the lexicon lists them through a virtual `Entries` property the

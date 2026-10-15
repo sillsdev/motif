@@ -24,8 +24,10 @@ membership with no inventory row to classify. The wordform create projects, per 
 `analysis/langProject/wordforms` (`WordformOwningSnapshots`). The lexical create families additionally project virtual `LexDb.Entries`, ordered `LexEntry.Senses`
 and unordered `LexEntry.MorphoSyntaxAnalyses` through `LexiconOwningSnapshots`.
 The Text create projects, per Text, its identity, name, paragraphs, segments and occurrence bindings through
-`texts/langProject/texts` (`TextOwningSnapshots`); the `Text`, `StText`, `StTxtPara` and `Segment` rows keep their classification
-because the create is one composite operation, not a per-field family.
+`texts/langProject/texts` (`TextOwningSnapshots`). The rows the create writes (`Text.Contents`, `Segment.Analyses`,
+`Segment.BeginOffset`, `StTxtPara.Segments`, `StTxtPara.ParseIsCurrent`) are scoped in as `semantic-operation` rows whose
+rationale names the create; it is one composite operation, so no per-field kind is generated for them, and
+`ordering-evidence.tsv` records the two positional ones.
 Closed shapes, ownership, normalization and evidence refresh are specified in the
 [Proposal contract](../docs/change-set-contract.md).
 
@@ -172,7 +174,7 @@ A naming heuristic was wrong in **both** directions, which is why this is comput
 **In scope: 494 properties across 100 classes** (494 = 214 `basic` + 148 `owning` + 132 `rel`). Was 473
 across 95 until [ADR 0025](../docs/adr/0025-parser-first-build-order.md) brought in 21 analysis rows —
 the approval half of word analysis, which has durable identity. Occurrence assignment
-(`Segment.Analyses`) remains out. Basic —
+(`Segment.Analyses`) came in later with the Text create, which brings the count to 505. Basic —
 MultiUnicode 52, MultiString 51, Unicode 35, Integer 28, Boolean 25, String 10, Time 5, Guid 2,
 TextPropBinary 1. Relations — owning/atomic 69, rel/atomic 57, owning/col 39, rel/col 38, owning/seq 33,
 rel/seq 28. Excluded as `trace`: 28 props across 9 classes.

@@ -120,12 +120,12 @@ public class OrderingEvidenceTests
     /// the number here changes and someone has to look.
     /// </summary>
     [Fact]
-    public void ThirtyTwoOfTheSixtyFourClaims_RestOnCardSeqAlone()
+    public void ThirtyTwoOfTheSixtySixClaims_HaveModelProse_AndTheRestRestOnCardSeqAlone()
     {
         var evidence = OrderingEvidenceTsv.Read(RepoPaths.DefaultOrderingEvidencePath());
 
-        Assert.Equal(64, evidence.Count);
+        Assert.Equal(66, evidence.Count);
         Assert.Equal(32, evidence.Count(e => e.HasStatement));
-        Assert.Equal(32, evidence.Count(e => !e.HasStatement));
+        Assert.Equal(34, evidence.Count(e => !e.HasStatement));
     }
 }

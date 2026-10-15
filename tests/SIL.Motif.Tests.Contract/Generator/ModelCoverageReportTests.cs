@@ -27,8 +27,8 @@ public class ModelCoverageReportTests
         Assert.True(File.Exists(coverage.ModelFilePath));
         Assert.Equal("7000072", coverage.ModelVersion);
         Assert.Equal(898, coverage.TotalFieldCount);
-        Assert.Equal(500, coverage.InScopeCount);
-        Assert.Equal(898 - 500, coverage.OutOfScopeCount);
+        Assert.Equal(505, coverage.InScopeCount);
+        Assert.Equal(898 - 505, coverage.OutOfScopeCount);
     }
 
     [Fact]

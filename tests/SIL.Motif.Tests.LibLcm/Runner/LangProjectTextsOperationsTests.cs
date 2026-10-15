@@ -8,6 +8,7 @@ using SIL.Motif.Model.Snapshot;
 using SIL.Motif.Runner.Apply;
 using SIL.Motif.Runner.Operations;
 using SIL.Motif.Runner.Snapshotting;
+using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.LCModel;
 using SIL.LCModel.Core.Text;
@@ -163,6 +164,125 @@ public sealed class LangProjectTextsOperationsTests : IDisposable
         Assert.Equal(_sita.Value, fields["w:" + segment.Value + ":0"]);
         Assert.Equal(_mutu.Value, fields["w:" + segment.Value + ":1"]);
         Assert.Equal("Hadithi", fields["name:" + _ws]);
+    }
+
+    [Fact]
+    public void CreateText_BaselineReaderSeesTheContractedLinesOffsetsAndOccurrenceBindings()
+    {
+        var textId = CanonicalId.Mint();
+        var (firstSegment, secondSegment) = (CanonicalId.Mint(), CanonicalId.Mint());
+        var paragraphId = CanonicalId.Mint();
+        var proposal = Proposal(textId, Payload(textId, CanonicalId.Mint(), paragraphId,
+            (firstSegment, [_sita, _mutu]), (secondSegment, [_mutu, _sita, _sita])));
+        var dryRun = ScratchDryRun.Of(_cache, proposal);
+        ProposalApplier.Apply(_cache, proposal, dryRun.Anchor, "tester");
+
+        var projection = TextWordsProjectionBuilder.Build(_cache, CancellationToken.None, new HashSet<Guid> { textId.ToGuid() });
+
+        var text = Assert.Single(projection.Texts);
+        Assert.Equal("Hadithi", text.Title);
+        Assert.Equal([1, 2], text.Lines.Select(line => line.Number));
+        Assert.All(text.Lines, line => Assert.Equal(paragraphId.ToGuid(), line.ParagraphId));
+        Assert.Equal([firstSegment.ToGuid(), secondSegment.ToGuid()], text.Lines.Select(line => line.SegmentId));
+        Assert.Equal(new[] { _sita, _mutu }.Select(id => id.ToGuid()), text.Lines[0].Tokens.Select(token => token.WordformId!.Value));
+        Assert.Equal(new[] { _mutu, _sita, _sita }.Select(id => id.ToGuid()), text.Lines[1].Tokens.Select(token => token.WordformId!.Value));
+        Assert.Equal([0, 1], text.Lines[0].Tokens.Select(token => token.OccurrenceIndex));
+        Assert.Equal([0, 1, 2], text.Lines[1].Tokens.Select(token => token.OccurrenceIndex));
+        Assert.Equal(["sita", "mutu"], text.Lines[0].Tokens.Select(token => token.Forms.Single().Text));
+        var paragraph = Assert.Single(_cache.ServiceLocator.GetInstance<ITextRepository>().GetObject(textId.ToGuid())
+            .ContentsOA!.ParagraphsOS.OfType<IStTxtPara>());
+        Assert.Equal(["sita mutu ", "mutu sita sita"], paragraph.SegmentsOS.Select(segment => segment.BaselineText.Text));
+        Assert.Equal([0, 10], paragraph.SegmentsOS.Select(segment => segment.BeginOffset));
+        Assert.True(paragraph.ParseIsCurrent);
+    }
+
+    [Fact]
+    public void CreateText_AWordformCreatedInTheSameProposalMustBeDeclaredWhateverTheArrayOrder()
+    {
+        var wordform = CanonicalId.Mint();
+        var createWord = new OperationEnvelope(CanonicalId.Mint(), LangProjectWordformsOperationKinds.Create, wordform,
+            Root(), Json(new { ws = _ws, text = "kitu" }));
+        var textId = CanonicalId.Mint();
+        var createText = new OperationEnvelope(CanonicalId.Mint(), LangProjectTextsOperationKinds.Create, textId, Root(),
+            Json(Payload(textId, CanonicalId.Mint(), CanonicalId.Mint(), (CanonicalId.Mint(), [wordform]))));
+        Proposal Of(params OperationEnvelope[] operations) => new(
+            new Dictionary<string, string> { ["analysis"] = "1.0", ["texts"] = "1.0" }, CanonicalId.Mint(), null, operations);
+
+        var wordformFirst = Assert.Throws<ContractParseException>(() => ScratchDryRun.Of(_cache, Of(createWord, createText)));
+        var textFirst = Assert.Throws<ContractParseException>(() => ScratchDryRun.Of(_cache, Of(createText, createWord)));
+
+        Assert.Contains("without declaring it in dependsOn", wordformFirst.Message, StringComparison.Ordinal);
+        Assert.Contains("without declaring it in dependsOn", textFirst.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void CreateText_ATransitiveDeclaredDependencyIsEnoughInAnyArrayOrder()
+    {
+        var (first, second) = (CanonicalId.Mint(), CanonicalId.Mint());
+        var createFirst = new OperationEnvelope(CanonicalId.Mint(), LangProjectWordformsOperationKinds.Create, first, Root(),
+            Json(new { ws = _ws, text = "kitu" }));
+        var createSecond = new OperationEnvelope(CanonicalId.Mint(), LangProjectWordformsOperationKinds.Create, second, Root(),
+            Json(new { ws = _ws, text = "kiti" }), dependsOn: [new OperationDependency(createFirst.OperationId)]);
+        var textId = CanonicalId.Mint();
+        var createText = new OperationEnvelope(CanonicalId.Mint(), LangProjectTextsOperationKinds.Create, textId, Root(),
+            Json(Payload(textId, CanonicalId.Mint(), CanonicalId.Mint(), (CanonicalId.Mint(), [first, second]))),
+            dependsOn: [new OperationDependency(createSecond.OperationId)]);
+        var proposal = new Proposal(new Dictionary<string, string> { ["analysis"] = "1.0", ["texts"] = "1.0" },
+            CanonicalId.Mint(), null, [createText, createSecond, createFirst]);
+
+        var dryRun = ScratchDryRun.Of(_cache, proposal);
+        ProposalApplier.Apply(_cache, proposal, dryRun.Anchor, "tester");
+
+        Assert.Equal(2, InterlinearTextReader.ReadWordforms(
+            _cache.ServiceLocator.GetInstance<ITextRepository>().GetObject(textId.ToGuid())).Count());
+    }
+
+    [Fact]
+    public void CreateText_AnEarlierSuccessfulOperationIsRolledBackWhenTheTextFails()
+    {
+        var wordform = CanonicalId.Mint();
+        var createWord = new OperationEnvelope(CanonicalId.Mint(), LangProjectWordformsOperationKinds.Create, wordform,
+            Root(), Json(new { ws = _ws, text = "kitu" }));
+        var textId = CanonicalId.Mint();
+        var createText = new OperationEnvelope(CanonicalId.Mint(), LangProjectTextsOperationKinds.Create, textId, Root(),
+            Json(Payload(textId, CanonicalId.Mint(), CanonicalId.Mint(), (CanonicalId.Mint(), [wordform, _sita]))),
+            dependsOn: [new OperationDependency(createWord.OperationId)]);
+        var proposal = new Proposal(new Dictionary<string, string> { ["analysis"] = "1.0", ["texts"] = "1.0" },
+            CanonicalId.Mint(), null, [createWord, createText]);
+        var dryRun = ScratchDryRun.Of(_cache, proposal);
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+            _cache.ServiceLocator.GetInstance<ICmObjectRepository>().GetObject(_sita.ToGuid()).Delete());
+        var wordforms = _cache.ServiceLocator.GetInstance<IWfiWordformRepository>().Count;
+        var texts = _cache.ServiceLocator.GetInstance<ITextRepository>().Count;
+
+        Assert.ThrowsAny<Exception>(() => ProposalApplier.Apply(_cache, proposal, dryRun.Anchor, "tester"));
+
+        Assert.Equal(wordforms, _cache.ServiceLocator.GetInstance<IWfiWordformRepository>().Count);
+        Assert.Equal(texts, _cache.ServiceLocator.GetInstance<ITextRepository>().Count);
+        Assert.False(_cache.ServiceLocator.GetInstance<ICmObjectRepository>().IsValidObjectId(wordform.ToGuid()));
+    }
+
+    [Fact]
+    public void CreateTextPayload_EnforcesTheDeclaredLimits()
+    {
+        object Segment(int words) => new { id = CanonicalId.Mint().Value, words = Enumerable.Repeat(_sita.Value, words).ToArray() };
+        object Paragraph(params object[] segments) => new { id = CanonicalId.Mint().Value, ws = _ws, segments };
+        JsonElement Doc(params object[] paragraphs) => Json(new
+        {
+            name = new { ws = _ws, text = "T" }, contents = CanonicalId.Mint().Value, paragraphs,
+        });
+
+        _ = LangProjectTextsCreatePayload.Parse(Doc(Paragraph(Segment(LangProjectTextsCreatePayload.MaxWordsPerSegment))));
+        _ = LangProjectTextsCreatePayload.Parse(Doc(Enumerable.Range(0, LangProjectTextsCreatePayload.MaxParagraphs)
+            .Select(_ => Paragraph(Segment(1))).ToArray()));
+        _ = LangProjectTextsCreatePayload.Parse(Doc(Enumerable.Range(0, 40).Select(_ => Paragraph(Segment(500))).ToArray()));
+
+        Assert.Throws<ContractParseException>(() => LangProjectTextsCreatePayload.Parse(
+            Doc(Paragraph(Segment(LangProjectTextsCreatePayload.MaxWordsPerSegment + 1)))));
+        Assert.Throws<ContractParseException>(() => LangProjectTextsCreatePayload.Parse(
+            Doc(Enumerable.Range(0, LangProjectTextsCreatePayload.MaxParagraphs + 1).Select(_ => Paragraph(Segment(1))).ToArray())));
+        Assert.Throws<ContractParseException>(() => LangProjectTextsCreatePayload.Parse(
+            Doc(Enumerable.Range(0, 41).Select(_ => Paragraph(Segment(500))).ToArray())));
     }
 
     [Theory]
