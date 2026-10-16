@@ -25,10 +25,14 @@
         </StackPanel>
       </Button>
       <ContentControl x:Name="WorkingPageHost" Grid.Row="1" />
-      <ScrollViewer x:Name="PageActionFooterViewport" Grid.Row="2"
-                    HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-        <ContentControl x:Name="PageActionFooterHost" />
-      </ScrollViewer>
+      <StackPanel Grid.Row="2">
+        <ScrollViewer x:Name="PageActionFooterViewport" Focusable="True" IsTabStop="True"
+                      AutomationProperties.Name="Details"
+                      HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+          <ContentControl x:Name="PageActionFooterHost" />
+        </ScrollViewer>
+        <ContentControl x:Name="PageActionRowHost" />
+      </StackPanel>
     </Grid>
     <Border x:Name="InspectorPane" Grid.Column="3" Classes="workspaceInspector" IsVisible="False">
       <Grid RowDefinitions="Auto,*,Auto">
@@ -44,10 +48,14 @@
           <ContentControl x:Name="PageInspectorHost" IsVisible="False" />
           <views:CopyableTextBlock x:Name="InspectorEmpty" Classes="muted workspaceEmpty" Text="Select an item to inspect." />
         </Grid>
-        <ScrollViewer x:Name="InspectorFooterViewport" Grid.Row="2"
-                      HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-          <ContentControl x:Name="InspectorFooterHost" />
-        </ScrollViewer>
+        <StackPanel Grid.Row="2">
+          <ScrollViewer x:Name="InspectorFooterViewport" Focusable="True" IsTabStop="True"
+                        AutomationProperties.Name="Details"
+                        HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <ContentControl x:Name="InspectorFooterHost" />
+          </ScrollViewer>
+          <ContentControl x:Name="InspectorRowHost" />
+        </StackPanel>
       </Grid>
     </Border>
     <Button x:Name="InspectorStrip" Grid.Column="3" Classes="workspaceInspectorStrip" Click="OnShowInspector"

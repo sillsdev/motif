@@ -421,22 +421,22 @@ public sealed class MainWindowSmokeTests
     [Fact]
     public void ReviewChangesShowsTheFieldWorksBackupReminder()
     {
-        _avalonia.Invoke(() =>
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window, _) = NewComposedWindow();
+            var (workspace, window) = await ReviewScreenshots.OpenAsync(new FakeCommandClient());
             try
             {
                 workspace.CurrentPage = WorkspacePage.Review;
-                window.Show();
-                window.UpdateLayout();
-                Assert.Contains("FieldWorks must be closed, or it keeps its own copy. Keep a backup: this is a tech demo.",
-                    window.GetVisualDescendants().OfType<TextBlock>().Select(text => text.Text));
+                PageScreenshots.Settle(window);
+                var note = Assert.Single(window.GetVisualDescendants().OfType<TextBlock>(), text => text.Text ==
+                    "FieldWorks must be closed, or it keeps its own copy. Keep a backup: this is a tech demo.");
+                Assert.True(note.IsEffectivelyVisible, "The backup reminder is hidden.");
             }
             finally
             {
                 window.Close();
             }
-        });
+        }, TimeSpan.FromMinutes(1));
     }
 
     [Fact]

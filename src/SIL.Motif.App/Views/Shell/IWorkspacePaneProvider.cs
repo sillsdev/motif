@@ -20,4 +20,10 @@ public interface IWorkspacePaneProvider
 
     /// <summary>Actions pinned below the Inspector, or below the page when it collapses; null means no pinned actions.</summary>
     Control? InspectorFooter => null;
+
+    /// <summary>
+    /// Actions that stay in view below <see cref="InspectorFooter"/> and are never scrolled away; the footer's
+    /// own height is cut to what they leave. Null means no pinned actions.
+    /// </summary>
+    Control? InspectorActions => null;
 }

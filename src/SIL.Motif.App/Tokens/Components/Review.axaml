@@ -3,6 +3,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Styles.Resources>
     <StaticResource x:Key="Component.Review.PageMargin" ResourceKey="Intent.Inset.Page" />
+    <StaticResource x:Key="Component.Review.FooterActionHeight" ResourceKey="Primitive.Size.22" />
+    <StaticResource x:Key="Component.Review.FooterPadding" ResourceKey="Primitive.Inset.8_0_8_0" />
     <StaticResource x:Key="Component.Review.GroupMargin" ResourceKey="Primitive.Inset.0_0_8_8" />
     <StaticResource x:Key="Component.Review.GroupRadius" ResourceKey="Intent.Radius.None" />
     <StaticResource x:Key="Component.Review.EntryMargin" ResourceKey="Primitive.Inset.0_0_8_0" />
@@ -23,7 +25,6 @@
     <StaticResource x:Key="Component.Review.ActionPadding" ResourceKey="Primitive.Inset.8_3_8_3" />
     <StaticResource x:Key="Component.Review.GapStart" ResourceKey="Primitive.Inset.10_0_0_0" />
     <StaticResource x:Key="Component.Review.GapEnd" ResourceKey="Primitive.Inset.0_0_6_0" />
-    <StaticResource x:Key="Component.Review.RightWidth" ResourceKey="Primitive.Size.320" />
     <StaticResource x:Key="Component.Review.TableActionsWidth" ResourceKey="Primitive.Size.110" />
     <StaticResource x:Key="Component.Review.TableCompactFitWidth" ResourceKey="Primitive.Size.90" />
     <x:String x:Key="Component.Review.TableCompactColumns">* 0 0 0 0 Component.Review.TableCompactFitWidth Component.Review.TableActionsWidth</x:String>
@@ -49,8 +50,21 @@
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
     <Setter Property="Margin" Value="{DynamicResource Intent.Inset.None}" />
   </Style>
-  <Style Selector="StackPanel.reviewRight">
-    <Setter Property="MaxWidth" Value="{DynamicResource Component.Review.RightWidth}" />
+  <Style Selector="StackPanel.reviewFooterDetails">
+    <Setter Property="Margin" Value="{DynamicResource Component.Review.HeaderGuidanceGap}" />
+  </Style>
+  <Style Selector="Border.reviewActions Button.reviewAction">
+    <Setter Property="MinHeight" Value="{DynamicResource Component.Review.FooterActionHeight}" />
+  </Style>
+  <Style Selector="Border.reviewActions">
+    <Setter Property="Padding" Value="{DynamicResource Component.Review.FooterPadding}" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+  </Style>
+  <Style Selector="Border.reviewFooter">
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerTop}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.Review.FooterPadding}" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
   </Style>
 
   <!-- A group of changes: a titled box; the ones that no longer fit in red, the Uncertain ones in amber. -->

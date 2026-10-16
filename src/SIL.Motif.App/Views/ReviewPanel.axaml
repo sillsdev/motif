@@ -9,91 +9,99 @@
              x:DataType="vm:ReviewPageModel">
   <UserControl.Resources>
     <DataTemplate x:Key="ApplyFooterTemplate" x:DataType="vm:ReviewPageModel">
-      <StackPanel Classes="reviewStack reviewRight" IsVisible="{Binding ShowsSideCards}">
-        <StackPanel.Styles>
+      <Border Classes="reviewFooter" IsVisible="{Binding ShowsSideCards}">
+    <StackPanel Classes="reviewRelated reviewFooterDetails">
+      <views:CopyableTextBlock x:Name="ApplyFullReason" Classes="reviewBlockedTitle" Text="{Binding ApplyDisabledReason}"
+                               IsVisible="{Binding !CanApply}" TextWrapping="Wrap"
+                               AutomationProperties.Name="Why Apply is unavailable" />
+      <views:RefusalBlock Classes="refusalFlow" DataContext="{Binding MeasurementRefusal}" />
+      <views:RefusalBlock Classes="refusalFlow" DataContext="{Binding ShownApplyRefusal}" />
+      <views:RefusalBlock Classes="refusalFlow" DataContext="{Binding DeclineRefusal}" />
+      <views:RefusalBlock Classes="refusalFlow" DataContext="{Binding Changes.ShownRefusal}" />
+
+      <StackPanel Classes="reviewCompact" IsVisible="{Binding HasReceipt}">
+        <views:CopyableTextBlock Classes="section-title" Text="Applied to the FieldWorks project" />
+        <views:CopyableTextBlock Text="{Binding ReceiptText}" TextWrapping="Wrap"
+                                 AutomationProperties.AutomationId="{x:Static app:AutomationIds.ApplyReceipt}" />
+      </StackPanel>
+      <views:CopyableTextBlock Classes="section-title" Text="{Binding ApplyTitle}"
+                               AutomationProperties.HelpText="{Binding ProjectName}"
+                               AutomationProperties.AutomationId="{x:Static app:AutomationIds.ReviewApplyTitle}"
+                               TextWrapping="Wrap" />
+      <views:CopyableTextBlock Classes="muted" Text="{Binding CountText}" TextWrapping="Wrap"
+                               AutomationProperties.AutomationId="{x:Static app:AutomationIds.ReviewApplyCount}" />
+      <ItemsControl x:Name="ApplyChecks" ItemsSource="{Binding ApplyChecks}" IsVisible="{Binding HasApplyChecks}"
+                    AutomationProperties.Name="What Apply checks">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate><StackPanel Classes="reviewCompact" /></ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:ApplyCheck">
+            <Border Classes="reviewPill reviewCheck" Classes.failed="{Binding !Passed}">
+              <views:CopyableTextBlock Text="{Binding MarkedText}" />
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+      <HyperlinkButton Classes="reviewLink" Content="Show them"
+                       Command="{Binding ShowNeedsAttentionCommand}"
+                       IsVisible="{Binding HasChangesNeedingAttention}"
+                       AutomationProperties.Name="Show changes that no longer fit or need another look" />
+      <views:CopyableTextBlock x:Name="ReviewNumbersText" Classes="muted" Text="{Binding NumbersText}"
+                               IsVisible="{Binding ShowsNumbersText}" TextWrapping="Wrap" />
+      <views:CopyableTextBlock x:Name="ReviewMeasurementProgress" Text="{Binding MeasurementProgressText}"
+                               IsVisible="{Binding IsMeasuring}" TextWrapping="Wrap" />
+      <views:CopyableTextBlock Text="{Binding ApplyBlockReason}" TextWrapping="Wrap"
+                               IsVisible="{Binding IsApplying}" />
+      <views:CopyableTextBlock x:Name="ApplyBackupNote"
+                               Text="FieldWorks must be closed, or it keeps its own copy. Keep a backup: this is a tech demo."
+                               TextWrapping="Wrap" />
+    </StackPanel>
+      </Border>
+    </DataTemplate>
+    <DataTemplate x:Key="ApplyActionsTemplate" x:DataType="vm:ReviewPageModel">
+      <Border Classes="reviewActions" IsVisible="{Binding ShowsSideCards}">
+        <Border.Styles>
           <Style Selector="Button.measureAction">
             <Setter Property="AutomationProperties.AutomationId" Value="{x:Static app:AutomationIds.MeasureChanges}" />
           </Style>
-        </StackPanel.Styles>
-          <Border Classes="card">
-            <StackPanel Classes="reviewRelated">
-              <views:CopyableTextBlock Classes="section-title" Text="{Binding ProjectName, StringFormat='Apply to {0}'}"
-                                       AutomationProperties.AutomationId="{x:Static app:AutomationIds.ReviewApplyTitle}"
-                                       TextWrapping="Wrap" />
-              <views:CopyableTextBlock Classes="muted" Text="{Binding CountText}" TextWrapping="Wrap"
-                                       AutomationProperties.AutomationId="{x:Static app:AutomationIds.ReviewApplyCount}" />
-              <ItemsControl x:Name="ApplyChecks" ItemsSource="{Binding ApplyChecks}" IsVisible="{Binding HasApplyChecks}"
-                            AutomationProperties.Name="What Apply checks">
-                <ItemsControl.ItemsPanel>
-                  <ItemsPanelTemplate><StackPanel Classes="reviewCompact" /></ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="vm:ApplyCheck">
-                    <Border Classes="reviewPill reviewCheck" Classes.failed="{Binding !Passed}">
-                      <views:CopyableTextBlock Text="{Binding MarkedText}" />
-                    </Border>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-              <ItemsControl x:Name="ApplyBlockers" ItemsSource="{Binding ApplyBlockers}"
-                            AutomationProperties.Name="What blocks Apply">
-                <ItemsControl.ItemsPanel>
-                  <ItemsPanelTemplate><StackPanel Classes="reviewRelated" /></ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="vm:ApplyBlocker">
-                    <StackPanel Classes="reviewCompact" IsVisible="{Binding IsMeasureAction}">
-                      <Button Classes="reviewAction" Content="{Binding ActionText}" Command="{Binding Action}"
-                              IsVisible="{Binding IsMeasureAction}"
-                              Classes.measureAction="{Binding IsMeasureAction}"
-                              AutomationProperties.Name="{Binding ActionAccessibleName}"
-                              />
-                    </StackPanel>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-              <HyperlinkButton Classes="reviewLink" Content="Show them"
-                               Command="{Binding ShowNeedsAttentionCommand}"
-                               IsVisible="{Binding HasChangesNeedingAttention}"
-                               AutomationProperties.Name="Show changes that no longer fit or need another look" />
-              <views:CopyableTextBlock x:Name="ReviewNumbersText" Classes="muted" Text="{Binding NumbersText}"
-                                       IsVisible="{Binding ShowsNumbersText}" TextWrapping="Wrap" />
-              <views:CopyableTextBlock x:Name="ReviewMeasurementProgress" Classes="reviewSmall" Text="{Binding MeasurementProgressText}"
-                                       IsVisible="{Binding IsMeasuring}" TextWrapping="Wrap" />
-              <views:RefusalBlock DataContext="{Binding MeasurementRefusal}" />
-              <Button Content="Cancel" Command="{Binding CancelMeasureCommand}"
-                      IsVisible="{Binding IsMeasuring}" />
-              <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding ApplyBlockReason}" TextWrapping="Wrap"
-                                       IsVisible="{Binding IsApplying}" />
-              <views:RefusalBlock DataContext="{Binding ShownApplyRefusal}" />
-              <Button Content="{Binding ApplyButtonText}" Command="{Binding ApplyCommand}"
-                      IsEnabled="{Binding CanApply}" AutomationProperties.Name="Apply to FieldWorks project"
-                      ToolTip.Tip="{Binding ApplyDisabledReason}" ToolTip.ShowOnDisabled="True"
-                      Classes="reviewApplyTooltip"
-                      views:ClearTipPlacement.IsEnabled="True"
-                      AutomationProperties.AutomationId="{x:Static app:AutomationIds.ApplyChanges}" />
-              <views:CopyableTextBlock Classes="reviewBlockedTitle" Text="{Binding ApplyDisabledReason}"
-                                       IsVisible="{Binding !CanApply}" TextWrapping="Wrap"
-                                       AutomationProperties.Name="Why Apply is unavailable" />
-              <Button Content="{Binding BackText}" Command="{Binding KeepEditingCommand}" IsVisible="{Binding ShowsBackButton}"
-                      AutomationProperties.AutomationId="{x:Static app:AutomationIds.ReviewBack}" />
-              <Button Content="Decline" Command="{Binding DeclineCommand}" IsVisible="{Binding ShowsDecline}"
-                      AutomationProperties.AutomationId="{x:Static app:AutomationIds.DeclineProposal}" />
-              <views:RefusalBlock DataContext="{Binding DeclineRefusal}" />
-              <views:CopyableTextBlock Classes="reviewSmall"
-                                       Text="FieldWorks must be closed, or it keeps its own copy. Keep a backup: this is a tech demo."
-                                       TextWrapping="Wrap" />
-              <views:RefusalBlock DataContext="{Binding Changes.ShownRefusal}" />
-            </StackPanel>
-          </Border>
-          <Border Classes="card" IsVisible="{Binding HasReceipt}">
-            <StackPanel Classes="reviewCompact">
-              <views:CopyableTextBlock Classes="section-title" Text="Applied to the FieldWorks project" />
-              <views:CopyableTextBlock Text="{Binding ReceiptText}" TextWrapping="Wrap"
-                                       AutomationProperties.AutomationId="{x:Static app:AutomationIds.ApplyReceipt}" />
-            </StackPanel>
-          </Border>
-      </StackPanel>
+        </Border.Styles>
+    <StackPanel x:Name="ApplyActions" Classes="reviewCompact">
+      <WrapPanel Classes="reviewToolbar">
+        <ItemsControl x:Name="ApplyBlockers" ItemsSource="{Binding ApplyBlockers}"
+                      AutomationProperties.Name="What blocks Apply">
+          <ItemsControl.Styles>
+            <Style Selector="ContentPresenter" x:DataType="vm:ApplyBlocker">
+              <Setter Property="IsVisible" Value="{Binding IsMeasureAction}" />
+            </Style>
+          </ItemsControl.Styles>
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate><StackPanel Classes="reviewRelated" Orientation="Horizontal" /></ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:ApplyBlocker">
+              <Button Classes="reviewAction" Content="{Binding ActionText}" Command="{Binding Action}"
+                      IsVisible="{Binding IsMeasureAction}"
+                      Classes.measureAction="{Binding IsMeasureAction}"
+                      AutomationProperties.Name="{Binding ActionAccessibleName}" />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <Button Classes="reviewAction" Content="Cancel" Command="{Binding CancelMeasureCommand}"
+                IsVisible="{Binding IsMeasuring}" />
+        <Button Content="{Binding ApplyButtonText}" Command="{Binding ApplyCommand}"
+                IsEnabled="{Binding CanApply}" AutomationProperties.Name="Apply to FieldWorks project"
+                ToolTip.Tip="{Binding ApplyDisabledReason}" ToolTip.ShowOnDisabled="True"
+                Classes="reviewAction reviewApplyTooltip"
+                views:ClearTipPlacement.IsEnabled="True"
+                AutomationProperties.AutomationId="{x:Static app:AutomationIds.ApplyChanges}" />
+        <Button Classes="reviewAction" Content="{Binding BackText}" Command="{Binding KeepEditingCommand}" IsVisible="{Binding ShowsBackButton}"
+                AutomationProperties.AutomationId="{x:Static app:AutomationIds.ReviewBack}" />
+        <Button Classes="reviewAction" Content="Decline" Command="{Binding DeclineCommand}" IsVisible="{Binding ShowsDecline}"
+                AutomationProperties.AutomationId="{x:Static app:AutomationIds.DeclineProposal}" />
+      </WrapPanel>
+    </StackPanel>
+      </Border>
     </DataTemplate>
     <DataTemplate x:Key="ReviewNavigatorTemplate" x:DataType="vm:ReviewPageModel">
       <StackPanel Classes="reviewRelated">

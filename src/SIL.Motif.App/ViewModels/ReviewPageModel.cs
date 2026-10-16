@@ -169,6 +169,17 @@ public sealed partial class ReviewPageModel : PageModel
     /// <summary>The open project's file name, which the apply card names.</summary>
     public string ProjectName => Context.ProjectName;
 
+    /// <summary>The Apply heading: the project's file name without its folder or extension.</summary>
+    public string ApplyTitle
+    {
+        get
+        {
+            var file = ProjectName[(ProjectName.LastIndexOfAny(['\\', '/']) + 1)..];
+            var name = file.EndsWith(".fwdata", StringComparison.OrdinalIgnoreCase) ? file[..^".fwdata".Length] : file;
+            return $"Apply to {(name.Length == 0 ? ProjectName : name)}";
+        }
+    }
+
     /// <summary>Removes only the changes that no longer fit the FieldWorks project.</summary>
     public IAsyncRelayCommand RemoveNonFittingCommand { get; }
 
@@ -1291,7 +1302,11 @@ public sealed partial class ReviewPageModel : PageModel
                 _retirementReviewCancellation?.Cancel();
             }
         }
-        if (e.PropertyName == nameof(WorkspaceContext.ProjectName)) OnPropertyChanged(nameof(ProjectName));
+        if (e.PropertyName == nameof(WorkspaceContext.ProjectName))
+        {
+            OnPropertyChanged(nameof(ProjectName));
+            OnPropertyChanged(nameof(ApplyTitle));
+        }
         if (e.PropertyName == nameof(WorkspaceContext.ProjectPath))
         {
             _measurementCancellation?.Cancel();

@@ -26,6 +26,8 @@
     <StaticResource x:Key="Component.Shell.HelpHeight" ResourceKey="Primitive.Size.600" />
     <StaticResource x:Key="Component.Shell.SidePanelWidth" ResourceKey="Primitive.Size.248" />
     <StaticResource x:Key="Component.Shell.WorkingPageMinWidth" ResourceKey="Primitive.Size.320" />
+    <StaticResource x:Key="Component.Shell.FooterDetailsMinHeight" ResourceKey="Primitive.Size.28" />
+    <StaticResource x:Key="Component.Shell.InspectorBodyMinHeight" ResourceKey="Primitive.Size.90" />
     <StaticResource x:Key="Component.Shell.WorkingPageMinHeight" ResourceKey="Primitive.Size.140" />
     <StaticResource x:Key="Component.Shell.SidePanelCollapseWidth" ResourceKey="Primitive.Size.1200" />
     <StaticResource x:Key="Component.Shell.InspectorCollapseWidth" ResourceKey="Primitive.Size.1000" />

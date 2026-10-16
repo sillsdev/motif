@@ -76,7 +76,13 @@ public sealed partial class MainWindow : Window
             noticeViewport.Bind(MaxHeightProperty, budgetHost.GetObservable(WorkspaceLayoutHost.BandBudgetProperty));
         if (_layoutHost is { } layoutHost)
             layoutHost.AttachedToVisualTree += (_, _) => UpdateFrameViewport(ClientSize.Width / (_settings?.ZoomScale ?? 1));
-        SizeChanged += (_, e) => UpdateFrameViewport(e.NewSize.Width / (_settings?.ZoomScale ?? 1));
+        SizeChanged += (_, e) =>
+        {
+            UpdateFrameViewport(e.NewSize.Width / (_settings?.ZoomScale ?? 1));
+        };
+        // The root's own width is the window's width after zoom, however the zoom was applied.
+        if (this.FindControl<LayoutTransformControl>("RootLayoutTransform")?.Child is { } zoomedRoot)
+            zoomedRoot.SizeChanged += (_, e) => StackNoticeActions(e.NewSize.Width);
         _keyboardStatusTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
         _keyboardStatusTimer.Tick += (_, _) =>
         {
@@ -275,6 +281,18 @@ public sealed partial class MainWindow : Window
         if (!KeyboardShortcutRegistry.Allows(entry, KeyboardShortcutRegistry.IsTextInput(e.Source), isCurrentItem)) return;
         _layoutHost?.ToggleSidePanel();
         e.Handled = true;
+    }
+
+    // Below the stack width the notice's actions take their own row, so text and actions never share a line.
+    private void StackNoticeActions(double width)
+    {
+        if (this.FindControl<StackPanel>("TechDemoNoticeActions") is not { } actions) return;
+        var stacked = width < (double)this.FindResource("Component.Notice.StackWidth")!;
+        Grid.SetColumn(actions, stacked ? 0 : 1);
+        Grid.SetRow(actions, stacked ? 1 : 0);
+        if (actions.Parent is Grid layout)
+            layout.RowSpacing = stacked ? (double)this.FindResource("Intent.Space.Minimal")! : 0;
+        actions.HorizontalAlignment = stacked ? Avalonia.Layout.HorizontalAlignment.Left : Avalonia.Layout.HorizontalAlignment.Right;
     }
 
     private void UpdateNoticeBand()

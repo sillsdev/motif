@@ -83,11 +83,11 @@ public sealed class ReviewDenseTableFrameScreenshots
                     {
                         Assert.Same(panel.InspectorFooter, host.FindControl<ContentControl>(host.FindControl<Border>("InspectorPane")!.IsVisible
                             ? "InspectorFooterHost" : "PageActionFooterHost")!.Content);
-                        var apply = Assert.Single(panel.InspectorFooter.GetVisualDescendants().OfType<Button>(), button =>
+                        var apply = Assert.Single(panel.InspectorActions.GetVisualDescendants().OfType<Button>(), button =>
                             AutomationProperties.GetAutomationId(button) == "motif-apply-changes");
                         var reason = Assert.Single(panel.InspectorFooter.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
                             AutomationProperties.GetName(text) == "Why Apply is unavailable");
-                        AssertReachable(apply, footer);
+                        AssertReachable(apply, panel.InspectorActions);
                         AssertReachable(reason, footer);
                         LayoutAssertions.AssertCurrent(window);
                     }

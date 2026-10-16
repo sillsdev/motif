@@ -1,3 +1,4 @@
+using Avalonia.Automation;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
@@ -9,6 +10,8 @@ using Avalonia.Media.Imaging;
 using Avalonia.Styling;
 using Avalonia.VisualTree;
 using SIL.Motif.App;
+using SIL.Motif.App.ViewModels;
+using SIL.Motif.App.Views;
 using SIL.Motif.App.Views.Shell;
 using SIL.Motif.Tests.App.Walkthrough;
 using Xunit;
@@ -34,7 +37,7 @@ public sealed class FooterHeightBudgetTests(AvaloniaHeadlessFixture avalonia)
 
     [Theory]
     [MemberData(nameof(MinimumWindowCases))]
-    public void LongFooterLeavesThePageUsableAndScrollsToDisabledApply(int height, int zoom, string theme)
+    public void LongFooterLeavesThePageUsableAndAnOverlongFooterStillScrolls(int height, int zoom, string theme)
     {
         avalonia.Invoke(() =>
         {
@@ -93,8 +96,10 @@ public sealed class FooterHeightBudgetTests(AvaloniaHeadlessFixture avalonia)
                 AssertFooterInOneHost(host, footer, inspectorVisible: true);
                 Assert.True(inspectorFooterViewport.IsEffectivelyVisible);
                 Assert.False(pageFooterViewport.IsEffectivelyVisible);
-                Assert.Equal(expectedBudget, inspectorFooterViewport.MaxHeight);
-                Assert.InRange(inspectorFooterViewport.Bounds.Height, expectedBudget - 2, expectedBudget + 2);
+                var inspectorBudget = Math.Min(FooterHeightCap, availableHeight - (double)host.FindResource("Component.Shell.PaneHeaderHeight")! -
+                    (double)host.FindResource("Component.Shell.InspectorBodyMinHeight")!);
+                Assert.Equal(inspectorBudget, inspectorFooterViewport.MaxHeight);
+                Assert.InRange(inspectorFooterViewport.Bounds.Height, Math.Min(inspectorBudget, expectedBudget) - 2, inspectorBudget + 2);
                 Assert.Equal(ScrollBarVisibility.Auto,
                     ScrollViewer.GetVerticalScrollBarVisibility(inspectorFooterViewport));
                 var inspectorPane = host.FindControl<Border>("InspectorPane")!;
@@ -112,6 +117,134 @@ public sealed class FooterHeightBudgetTests(AvaloniaHeadlessFixture avalonia)
             {
                 window?.Close();
                 application.RequestedThemeVariant = originalTheme;
+            }
+        });
+    }
+
+    [Theory]
+    [InlineData(640, 600, 150)]
+    [InlineData(640, 600, 100)]
+    [InlineData(1240, 800, 100)]
+    public void ReviewApplyAndItsReasonAreVisibleWithoutScrollingBesideTheFirstRunNotice(int width, int height, int zoom)
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var fake = new FakeCommandClient();
+            fake.PendingChangesIs(ReviewScreenshots.Blocked());
+            var (workspace, window) = await ReviewScreenshots.OpenAsync(fake);
+            try
+            {
+                workspace.CurrentPage = WorkspacePage.Review;
+                LayoutInvariantFixtures.Apply(window, new LayoutCell(width, height, zoom));
+                PageScreenshots.Settle(window);
+                SaveCaptureIfRequested(window, $"review-apply-{width}-{height}-{zoom}.png");
+                var apply = Assert.Single(window.GetVisualDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetAutomationId(button) == AutomationIds.ApplyChanges);
+                var reason = Assert.Single(window.GetVisualDescendants().OfType<ScrollViewer>(),
+                    scroll => scroll.Name is "PageActionFooterViewport" or "InspectorFooterViewport" && scroll.IsEffectivelyVisible);
+                foreach (var control in new Control[] { apply, reason })
+                {
+                    Assert.True(control.IsEffectivelyVisible, $"{control.GetType().Name} is not visible.");
+                    var box = new Rect(control.Bounds.Size).TransformToAABB(control.TransformToVisual(window)!.Value);
+                    Assert.True(box.Top >= 0 && box.Bottom <= window.ClientSize.Height + 1, $"Outside the window: {box}.");
+                    foreach (var scroller in control.GetVisualAncestors().OfType<ScrollViewer>())
+                    {
+                        var presenter = scroller.GetVisualDescendants().OfType<ScrollContentPresenter>().First();
+                        var view = new Rect(presenter.Bounds.Size).TransformToAABB(presenter.TransformToVisual(window)!.Value);
+                        Assert.True(view.Top <= box.Top + 1 && view.Bottom >= box.Bottom - 1,
+                            $"{control.GetType().Name} needs scrolling inside {scroller.Name}: {box} against {view}.");
+                    }
+                }
+                var minimum = (double)window.FindResource("Component.Shell.WorkingPageMinHeight")!;
+                Assert.True(window.FindControl<Panel>("PageHost")!.Bounds.Height >= minimum - 0.5,
+                    $"The page is {window.FindControl<Panel>("PageHost")!.Bounds.Height} tall; the minimum is {minimum}. " +
+                    $"Host {window.FindControl<WorkspaceLayoutHost>("WorkspaceLayout")!.Bounds.Height}, notice {window.FindControl<ScrollViewer>("TechDemoNoticeViewport")!.Bounds.Height}/{window.FindControl<ScrollViewer>("TechDemoNoticeViewport")!.MaxHeight}, footer {window.GetVisualDescendants().OfType<ScrollViewer>().First(v => v.Name == "PageActionFooterViewport").Bounds.Height}/{window.GetVisualDescendants().OfType<ScrollViewer>().First(v => v.Name == "PageActionFooterViewport").MaxHeight}.");
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, TimeSpan.FromMinutes(3));
+    }
+
+    [Theory]
+    [InlineData(640, 600, 150)]
+    [InlineData(960, 780, 150)]
+    public void ReviewShowsTheFullReasonApplyIsUnavailableUntruncatedInItsFocusableDetails(int width, int height, int zoom)
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var fake = new FakeCommandClient();
+            fake.PendingChangesIs(ReviewScreenshots.Blocked());
+            var (workspace, window) = await ReviewScreenshots.OpenAsync(fake);
+            try
+            {
+                workspace.CurrentPage = WorkspacePage.Review;
+                LayoutInvariantFixtures.Apply(window, new LayoutCell(width, height, zoom));
+                PageScreenshots.Settle(window);
+                var full = Assert.Single(window.GetVisualDescendants().OfType<TextBlock>(), text =>
+                    AutomationProperties.GetName(text) == "Why Apply is unavailable");
+                Assert.True(full.IsEffectivelyVisible, "The full reason is not shown.");
+                Assert.Equal(TextWrapping.Wrap, full.TextWrapping);
+                Assert.Equal(TextTrimming.None, full.TextTrimming);
+                Assert.True(full.DesiredSize.Width <= full.Bounds.Width + 1, "The full reason is cut off sideways.");
+                Assert.Contains(workspace.PageModel<ReviewPageModel>().ApplyDisabledReason!, full.Text);
+                var details = Assert.Single(window.GetVisualDescendants().OfType<ScrollViewer>(),
+                    scroll => scroll.Name is "PageActionFooterViewport" or "InspectorFooterViewport" && scroll.IsEffectivelyVisible);
+                Assert.True(details.Focusable && details.IsTabStop, "The details cannot take keyboard focus.");
+                Assert.Equal("Details", AutomationProperties.GetName(details));
+                var presenter = details.GetVisualDescendants().OfType<ScrollContentPresenter>().First();
+                var view = new Rect(presenter.Bounds.Size).TransformToAABB(presenter.TransformToVisual(window)!.Value);
+                var line = new Rect(0, 0, full.Bounds.Width, Math.Min(full.Bounds.Height, full.FontSize * 1.6))
+                    .TransformToAABB(full.TransformToVisual(window)!.Value);
+                Assert.True(line.Top >= view.Top - 1 && line.Bottom <= view.Bottom + 1,
+                    $"The reason's first line {line} is outside the details viewport {view} without scrolling.");
+                var top = line.Top;
+                Assert.All(details.GetVisualDescendants().OfType<TextBlock>().Where(text => !ReferenceEquals(text, full) &&
+                    text.IsEffectivelyVisible && !string.IsNullOrWhiteSpace(text.Text) && !text.GetVisualAncestors().Contains(full)),
+                    text => Assert.True(text.TransformToVisual(window)!.Value.Transform(default).Y >= top - 1,
+                        $"'{text.Text}' comes before the reason."));
+                var minimum = (double)window.FindResource("Component.Shell.FooterDetailsMinHeight")!;
+                Assert.True(details.Bounds.Height >= minimum - 0.5, $"The details are {details.Bounds.Height} tall.");
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, TimeSpan.FromMinutes(3));
+    }
+
+    [Fact]
+    public void ARefusalFlowsInItsHostButScrollsForItselfElsewhere()
+    {
+        avalonia.Invoke(() =>
+        {
+            var refusal = WindowRefusal.From(new SIL.Motif.Contract.Commands.Refusal(
+                SIL.Motif.Contract.Commands.RefusalCodes.StoreOtherVersion,
+                SIL.Motif.Contract.Responses.FailureReason.Refused, "Store belongs to another version."));
+            Assert.True(refusal.HasDetails, "The refusal has no details to fold.");
+            var flowing = new RefusalBlock { DataContext = refusal };
+            flowing.Classes.Add("refusalFlow");
+            var own = new RefusalBlock { DataContext = refusal };
+            var window = new Window { Width = 400, Height = 300, Content = new StackPanel { Children = { flowing, own } } };
+            window.Show();
+            try
+            {
+                PageScreenshots.Settle(window);
+                foreach (var viewer in flowing.GetVisualDescendants().OfType<ScrollViewer>())
+                {
+                    Assert.Equal(ScrollBarVisibility.Disabled, viewer.VerticalScrollBarVisibility);
+                    Assert.True(double.IsPositiveInfinity(viewer.MaxHeight), "A flowing refusal keeps a height cap.");
+                }
+                Assert.All(own.GetVisualDescendants().OfType<ScrollViewer>(),
+                    viewer => Assert.False(double.IsPositiveInfinity(viewer.MaxHeight)));
+                var token = (double)window.FindResource("Component.Refusal.HeaderHeight")!;
+                var header = Assert.Single(own.GetVisualDescendants().OfType<ToggleButton>(), toggle => toggle.Name == "ExpanderHeader");
+                Assert.InRange(header.Bounds.Height, token, token + 1);
+            }
+            finally
+            {
+                window.Close();
             }
         });
     }

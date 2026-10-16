@@ -13,7 +13,7 @@ public sealed class TechDemoNoticeViewModelTests
         var firstWindow = new TechDemoNoticeViewModel(preferences, new SucceedingUriLauncher());
 
         Assert.Equal(
-            "Motif is a tech demo. It reads your project and writes nothing until you press Apply. Keep a FieldWorks backup, and tell us what goes wrong.",
+            "Motif is a tech demo. It writes nothing until you press Apply. Keep a FieldWorks backup.",
             TechDemoNoticeViewModel.NoticeText);
         Assert.True(firstWindow.IsVisible);
 

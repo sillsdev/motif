@@ -1,8 +1,11 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.LogicalTree;
 using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 using SIL.Motif.App.Controls;
 using SIL.Motif.App.Controls.WordPresentation;
@@ -27,13 +30,14 @@ public sealed partial class ReviewPanel : UserControl, IWorkspacePaneProvider
         DenseTable.Attach(_items);
         PresentationHost = new ReviewWordPresentationHost(page);
         _footer = BuildPane("ApplyFooterTemplate");
+        _actions = BuildPane("ApplyActionsTemplate");
         _sidePanel = BuildPane("ReviewNavigatorTemplate");
         InspectorContent = new ReviewInspector(page, PresentationHost);
         _items.SelectionChanged += (_, _) =>
         {
             if (_items.SelectedItem is ReviewListEntryViewModel { Review: { } entry }) Page.SelectEntry(entry);
         };
-        foreach (var pane in new[] { _sidePanel, InspectorContent, _footer })
+        foreach (var pane in new[] { _sidePanel, InspectorContent, _footer, _actions })
             pane.AddHandler(KeyDownEvent, OnEntryKeyDown, RoutingStrategies.Tunnel);
         AddHandler(MorphemePanel.OverflowRequestedEvent, OnMorphologyRequested);
         AddHandler(KeyDownEvent, OnEntryKeyDown, RoutingStrategies.Tunnel);
@@ -49,6 +53,8 @@ public sealed partial class ReviewPanel : UserControl, IWorkspacePaneProvider
     public Control InspectorContent { get; }
 
     public Control InspectorFooter => _footer;
+
+    public Control InspectorActions => _actions;
 
     private Control BuildPane(string key)
     {
@@ -85,6 +91,7 @@ public sealed partial class ReviewPanel : UserControl, IWorkspacePaneProvider
 
     private readonly ListBox _items;
     private readonly Control _footer;
+    private readonly Control _actions;
     private readonly Control _sidePanel;
 
     private void OnReviewGotFocus(object? sender, FocusChangedEventArgs e)

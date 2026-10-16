@@ -282,8 +282,6 @@ public sealed class ReviewWorkspacePaneTests
         Assert.True(reason.IsEffectivelyVisible);
         Assert.False(string.IsNullOrWhiteSpace(reason.Text));
         Assert.Equal(page.ApplyDisabledReason, reason.Text);
-        var applyBottom = apply.TranslatePoint(default, host)!.Value.Y + apply.Bounds.Height;
-        Assert.True(reason.TranslatePoint(default, host)!.Value.Y >= applyBottom);
         Assert.True(reason.Bounds.Width > 0 && reason.Bounds.Height > 0);
     }
 

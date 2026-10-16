@@ -14,7 +14,7 @@
       <views:CopyableTextBlock Classes="error" Text="{Binding Sentence}" TextWrapping="Wrap"
                                IsVisible="{Binding !OffersStoreDeletion}" />
       <ScrollViewer Classes="refusalViewport" IsVisible="{Binding HasCompileIssues}"
-                    HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
+                    HorizontalScrollBarVisibility="Disabled"
                     AutomationProperties.Name="Fatal grammar issues">
         <ItemsControl x:Name="RefusalBlockCompileIssuesItems" ItemsSource="{Binding CompileIssues}">
           <ItemsControl.ItemsPanel>
@@ -49,7 +49,7 @@
       <Expander Classes="refusalDetails" Header="{Binding DetailsTitle}" AutomationProperties.Name="Refusal details"
                 IsExpanded="False" IsVisible="{Binding HasDetails}">
         <ScrollViewer Classes="refusalViewport" HorizontalScrollBarVisibility="Disabled"
-                      VerticalScrollBarVisibility="Auto" AutomationProperties.Name="Original refusal details">
+                      AutomationProperties.Name="Original refusal details">
           <views:CopyableTextBlock Classes="refusalDetails" Text="{Binding Details}" TextWrapping="Wrap" />
         </ScrollViewer>
       </Expander>

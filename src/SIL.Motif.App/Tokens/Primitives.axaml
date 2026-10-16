@@ -245,6 +245,7 @@
   <x:Double x:Key="Primitive.Size.480">480</x:Double>
   <x:Double x:Key="Primitive.Size.520">520</x:Double>
   <x:Double x:Key="Primitive.Size.640">640</x:Double>
+  <x:Double x:Key="Primitive.Size.Unbounded">Infinity</x:Double>
   <x:Double x:Key="Primitive.Size.760">760</x:Double>
   <x:Double x:Key="Primitive.Size.1100">1100</x:Double>
   <x:Double x:Key="Primitive.Size.16">16</x:Double>

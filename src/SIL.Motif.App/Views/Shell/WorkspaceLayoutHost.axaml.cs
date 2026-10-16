@@ -32,6 +32,7 @@ public sealed partial class WorkspaceLayoutHost : UserControl
     private bool _hasSidePanel;
     private bool _hasPageInspector;
     private Control? _inspectorFooter;
+    private Control? _inspectorActions;
     private bool _objectInspectorOpen;
     private bool _inspectorWasVisibleBeforeObject;
     private bool? _inspectorOverrideBeforeObject;
@@ -44,6 +45,8 @@ public sealed partial class WorkspaceLayoutHost : UserControl
     {
         AvaloniaXamlLoader.Load(this);
         AddHandler(PageInspectorRequestedEvent, OnPageInspectorRequested, RoutingStrategies.Bubble);
+        foreach (var rowHost in new[] { "InspectorRowHost", "PageActionRowHost" })
+            Part<ContentControl>(rowHost).SizeChanged += (_, _) => InvalidateMeasure();
         AttachedToVisualTree += (_, _) =>
         {
             _isAttachedToVisualTree = true;
@@ -96,12 +99,34 @@ public sealed partial class WorkspaceLayoutHost : UserControl
                 border.Name == "NoticeBand" && border.IsVisible) ? paneHeader : 0);
         var bandBudget = double.IsInfinity(availableSize.Height) ? double.PositiveInfinity
             : Math.Max(0, (availableSize.Height - pageMinHeight - fixedBands) / 2);
-        SetValue(BandBudgetProperty, bandBudget);
         var footerBudget = Math.Min(footerCap, bandBudget);
-        Part<ScrollViewer>("InspectorFooterViewport").MaxHeight = footerBudget;
-        Part<ScrollViewer>("PageActionFooterViewport").MaxHeight = footerBudget;
+        SetValue(BandBudgetProperty, footerBudget);
+        // Beside the page the Inspector column keeps its own body; the page's minimum height does not bind it.
+        var inspectorBody = (double)this.FindResource("Component.Shell.InspectorBodyMinHeight")!;
+        var inspectorBudget = double.IsInfinity(availableSize.Height) ? double.PositiveInfinity
+            : Math.Max(0, Math.Min(footerCap, availableSize.Height - paneHeader - inspectorBody));
+        FitFooter("InspectorFooterViewport", "InspectorRowHost", inspectorBudget);
+        FitFooter("PageActionFooterViewport", "PageActionRowHost", footerBudget);
         return base.MeasureOverride(availableSize);
     }
+
+    // The scrolling details take what the pinned actions leave, never less than their minimum.
+    private void FitFooter(string viewportName, string actionsName, double budget)
+    {
+        var viewport = Part<ScrollViewer>(viewportName);
+        var actions = Part<ContentControl>(actionsName);
+        if (actions.Content is not Control row)
+        {
+            viewport.MaxHeight = budget;
+            return;
+        }
+        var minimum = (double)this.FindResource("Component.Shell.FooterDetailsMinHeight")!;
+        viewport.MaxHeight = double.IsInfinity(budget) ? budget : Math.Max(minimum, budget - ActionsHeight(actions, row));
+    }
+
+    // Measured from the last arrange, so fitting the details cannot feed back on itself.
+    private static double ActionsHeight(ContentControl actions, Control row) =>
+        row.IsEffectivelyVisible ? actions.Bounds.Height : 0;
 
     /// <summary>Toggles the current page's side panel through a navigation-rail action.</summary>
     public void ToggleSidePanel()
@@ -149,6 +174,8 @@ public sealed partial class WorkspaceLayoutHost : UserControl
         Part<ContentControl>("PageInspectorHost").Content = null;
         Part<ContentControl>("InspectorFooterHost").Content = null;
         Part<ContentControl>("PageActionFooterHost").Content = null;
+        Part<ContentControl>("InspectorRowHost").Content = null;
+        Part<ContentControl>("PageActionRowHost").Content = null;
         var side = provider?.SidePanel;
         var inspector = provider?.InspectorContent;
         var footer = provider?.InspectorFooter;
@@ -156,9 +183,14 @@ public sealed partial class WorkspaceLayoutHost : UserControl
         Part<ContentControl>("SidePanelContent").Content = side;
         Part<ContentControl>("PageInspectorHost").Content = inspector;
         _inspectorFooter = footer;
+        _inspectorActions = provider?.InspectorActions;
         _hasSidePanel = side is not null;
         _hasPageInspector = inspector is not null;
-        if (!_isAttachedToVisualTree) Part<ContentControl>("InspectorFooterHost").Content = footer;
+        if (!_isAttachedToVisualTree)
+        {
+            Part<ContentControl>("InspectorFooterHost").Content = footer;
+            Part<ContentControl>("InspectorRowHost").Content = _inspectorActions;
+        }
         UpdatePanes();
     }
 
@@ -219,7 +251,7 @@ public sealed partial class WorkspaceLayoutHost : UserControl
         if (!_isAttachedToVisualTree) return;
         var sideVisible = _hasSidePanel && (_sidePanelOpenOverride ??
             _viewportWidth >= (double)this.FindResource("Component.Shell.SidePanelCollapseWidth")!);
-        var inspectorVisible = (_hasPageInspector || _inspectorFooter is not null || _objectInspectorOpen ||
+        var inspectorVisible = (_hasPageInspector || _inspectorFooter is not null || _inspectorActions is not null || _objectInspectorOpen ||
             _inspectorOpenOverride == true) && (_inspectorOpenOverride ??
             _viewportWidth >= (double)this.FindResource("Component.Shell.InspectorCollapseWidth")!);
         if (sideVisible && inspectorVisible && !BothPanelsFit()) sideVisible = false;
@@ -240,6 +272,9 @@ public sealed partial class WorkspaceLayoutHost : UserControl
         var previousHost = Part<ContentControl>(inspectorVisible ? "PageActionFooterHost" : "InspectorFooterHost");
         previousHost.Content = null;
         footerHost.Content = _inspectorFooter;
+        var rowHost = Part<ContentControl>(inspectorVisible ? "InspectorRowHost" : "PageActionRowHost");
+        Part<ContentControl>(inspectorVisible ? "PageActionRowHost" : "InspectorRowHost").Content = null;
+        rowHost.Content = _inspectorActions;
         Part<ScrollViewer>("InspectorFooterViewport").IsVisible = inspectorVisible && _inspectorFooter is not null;
         Part<ScrollViewer>("PageActionFooterViewport").IsVisible = !inspectorVisible && _inspectorFooter is not null;
         Part<Border>("SidePanelBorder").IsVisible = sideVisible;
@@ -249,6 +284,8 @@ public sealed partial class WorkspaceLayoutHost : UserControl
         Part<ContentControl>("PageInspectorHost").IsVisible = _hasPageInspector && !_objectInspectorOpen;
         Part<ContentControl>("ObjectInspectorHost").IsVisible = _objectInspectorOpen;
         Part<TextBlock>("InspectorEmpty").IsVisible = !_hasPageInspector && !_objectInspectorOpen;
+        // The band budget reads which bands show, so a visibility change must re-run it even at an unchanged size.
+        InvalidateMeasure();
     }
 
     private bool InspectorFitsBesidePage() => _viewportWidth >=

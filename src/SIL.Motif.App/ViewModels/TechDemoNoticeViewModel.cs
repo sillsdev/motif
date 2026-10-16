@@ -9,7 +9,7 @@ public sealed partial class TechDemoNoticeViewModel : ObservableObject
 {
     /// <summary>The first-run notice shown before a person applies changes.</summary>
     public const string NoticeText =
-        "Motif is a tech demo. It reads your project and writes nothing until you press Apply. Keep a FieldWorks backup, and tell us what goes wrong.";
+        "Motif is a tech demo. It writes nothing until you press Apply. Keep a FieldWorks backup.";
 
     private readonly ITechDemoNoticePreferences _preferences;
     private readonly IUriLauncher _launcher;

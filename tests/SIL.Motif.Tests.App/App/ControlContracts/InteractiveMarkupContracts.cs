@@ -124,6 +124,8 @@ internal static class InteractiveMarkupContracts
                 nameof(TryWordPageTests.ASelectedOccurrenceSurvivesBothMountedTreesAndFiltering))],
             [InteractiveControlFamily.Morpheme] = [new(typeof(MorphemePanelTests),
                 nameof(MorphemePanelTests.PartsKeepSelectableTextWritingSystemsLinksAndInspectorBehavior))],
+            [InteractiveControlFamily.ScrollViewport] = [new(typeof(FooterHeightBudgetTests),
+                nameof(FooterHeightBudgetTests.ReviewShowsTheFullReasonApplyIsUnavailableUntruncatedInItsFocusableDetails))],
             [InteractiveControlFamily.FocusableSurface] = [new(typeof(KeyboardInteractionContractTests),
                 nameof(KeyboardInteractionContractTests.ClosingTheCardReturnsFocusToItsOccurrence))],
             [InteractiveControlFamily.Occurrence] = [new(typeof(KeyboardInteractionContractTests),

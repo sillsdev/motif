@@ -533,19 +533,17 @@ public sealed class ReviewScreenshots
 
     private static void AssertSidePanelCardsHaveVisibleBody(MainWindow window)
     {
-        var sidePanel = Assert.Single(window.GetVisualDescendants().OfType<StackPanel>(),
-            panel => panel.Classes.Contains("reviewRight") && panel.IsEffectivelyVisible);
-        var cards = sidePanel.Children.OfType<Border>()
-            .Where(card => card.Classes.Contains("card") && card.IsEffectivelyVisible).ToArray();
-        Assert.NotEmpty(cards);
-        Assert.All(cards, card =>
-        {
-            var hasBody = card.GetVisualDescendants().Any(control => control.IsEffectivelyVisible &&
-                (control is Button || control is ItemsControl ||
-                 control is CopyableTextBlock text && !text.Classes.Contains("section-title") &&
-                 !string.IsNullOrWhiteSpace(text.Text)));
-            Assert.True(hasBody, "A visible Review side-panel card has only its title.");
-        });
+        var footer = Assert.Single(window.GetVisualDescendants().OfType<Border>(),
+            border => border.Classes.Contains("reviewFooter") && border.IsEffectivelyVisible);
+        var actions = Assert.Single(window.GetVisualDescendants().OfType<Border>(),
+            border => border.Classes.Contains("reviewActions") && border.IsEffectivelyVisible);
+        Assert.True(actions.GetVisualDescendants().OfType<Button>().Any(button => button.IsEffectivelyVisible),
+            "The visible Review actions have no button.");
+        var details = Assert.Single(window.GetVisualDescendants().OfType<ScrollViewer>(),
+            scroll => scroll.Name is "PageActionFooterViewport" or "InspectorFooterViewport" && scroll.IsEffectivelyVisible);
+        Assert.Contains(footer, details.GetVisualDescendants());
+        Assert.Contains(details.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
+            text.IsEffectivelyVisible && !text.Classes.Contains("section-title") && !string.IsNullOrWhiteSpace(text.Text));
     }
 
     internal static void SaveAll(MainWindow window, string folder, string name)
