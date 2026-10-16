@@ -46,6 +46,9 @@
   artifact plan, process hygiene, release version, publication policy, capture screens); a run without
   -Project is the full run that CI and landing batches use, and runs them.
 
+  A filtered run waits for a machine-wide test slot too. MOTIF_TEST_SLOTS=0 skips the wait when an outside
+  scheduler already admits runs.
+
   .PARAMETER Filter
   Run only matching tests in the selected project, using the VSTest filter syntax.
 
@@ -97,6 +100,9 @@ $env:MOTIF_DEVELOPER_COMMANDS = '1'
 # Every per-user tool cache except the shared packages folder lives under bin/.cache in this checkout.
 Import-Module (Join-Path $repoRoot 'tools/MotifToolEnvironment.psm1') -Force
 Initialize-MotifToolEnvironment -RepoRoot $repoRoot
+# Slots are machine-wide, so their folder is fixed before TEMP moves into this checkout.
+Import-Module (Join-Path $repoRoot 'tools/MotifTestSlot.psm1') -Force
+$testSlotDirectory = Get-MotifTestSlotDirectory
 # Defender scans the user's Temp folder; a developer checkout usually sits where build churn goes unscanned.
 $testTemporaryDirectory = Initialize-MotifTestTemporaryDirectory -RepoRoot $repoRoot
 if ($testTemporaryDirectory) { Write-Host "Test temporary folder: $testTemporaryDirectory" }
@@ -313,8 +319,7 @@ New-Item -ItemType Directory -Force -Path $resultsRoot | Out-Null
 
 # Held until this script exits, so a machine running many worktrees runs only a few suites at once.
 $phaseClocks['test slot wait'] = [Diagnostics.Stopwatch]::StartNew()
-Import-Module (Join-Path $repoRoot 'tools/MotifTestSlot.psm1') -Force
-$testSlot = Enter-MotifTestSlot
+$testSlot = Enter-MotifTestSlot -Directory $testSlotDirectory
 Write-PhaseDuration 'test slot wait'
 
 $coverageAdapter = ''
@@ -352,7 +357,8 @@ if ($preparePortable -or $prepareExplainedWordCard) {
 Write-PhaseDuration 'test artifact preparation'
 
 Write-Step ("dotnet test ($levelSelection levels, $($testProjects.Count) projects in $($testRuns.Count) processes, " +
-    "up to $projectConcurrency at a time, $testThreads xUnit threads each; $availableProcessors processors)")
+    "up to $projectConcurrency at a time, $(if ($testThreads -gt 0) { "$testThreads xUnit threads each" } else { 'default xUnit threads' }); " +
+    "$availableProcessors processors)")
 $clock = [Diagnostics.Stopwatch]::StartNew()
 $phaseClocks['test processes'] = $clock
 $jobs = foreach ($run in $testRuns) {
@@ -398,7 +404,7 @@ $jobs = foreach ($run in $testRuns) {
         $arguments += @('--environment', ('"TESTINGPLATFORM_TELEMETRY_OPTOUT={0}"' -f $env:TESTINGPLATFORM_TELEMETRY_OPTOUT))
         $arguments += @('--environment', ('"MOTIF_TEST_STDIN_TOKEN={0}"' -f $inputToken))
         # RunSettings arguments follow a literal -- and must come last; xUnit hands them to the sharded framework.
-        $arguments += @('--', ('xUnit.MaxParallelThreads={0}' -f $threads))
+        if ($threads -gt 0) { $arguments += @('--', ('xUnit.MaxParallelThreads={0}' -f $threads)) }
         # Without -NoNewWindow, Start-Process gives every project its own console window for the whole run.
         $process = Start-Process -FilePath 'dotnet' -ArgumentList $arguments -PassThru -NoNewWindow `
             -RedirectStandardInput $inputPath -RedirectStandardOutput $log -RedirectStandardError $errorLog

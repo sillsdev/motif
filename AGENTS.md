@@ -18,7 +18,7 @@ developer loop. Pass `-All` to run every level. CI and release validation use `-
 on Windows, Ubuntu 22.04, and macOS.
 
 **One machine, many worktrees: the scripts size themselves.** `build.ps1` passes `-m:N` to restore and build, with
-`N = MOTIF_BUILD_NODES` or, on a developer machine, a quarter of the processors (minimum two); CI is uncapped.
+`N = MOTIF_BUILD_NODES` or, on a developer machine, a quarter of the processors (minimum two). CI is uncapped: no `-m`, no slot, and xUnit keeps its own thread default.
 `test.ps1` gives each xUnit host `MaxParallelThreads = MOTIF_TEST_THREADS` or its share of the processors (minimum
 two). `./test.ps1 -Project <name>` (with or without `-Filter`) builds only that test project through
 `./build.ps1 -Project <name>` and skips the tooling regression scripts, which a run without `-Project` still runs.

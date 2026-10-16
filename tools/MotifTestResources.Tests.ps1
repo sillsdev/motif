@@ -5,7 +5,7 @@ Import-Module (Join-Path $PSScriptRoot 'MotifRestore.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'MotifTestSlot.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'MotifTestRunPlan.psm1') -Force
 
-$names = 'CI', 'MOTIF_BUILD_NODES', 'MOTIF_TEST_SLOTS', 'MOTIF_TEST_THREADS'
+$names = 'CI', 'MOTIF_BUILD_NODES', 'MOTIF_TEST_SLOTS', 'MOTIF_TEST_THREADS', 'MOTIF_TEST_SLOT_DIR', 'TMPDIR', 'TMP', 'TEMP'
 $saved = @{}
 foreach ($name in $names) { $saved[$name] = [Environment]::GetEnvironmentVariable($name) }
 
@@ -59,6 +59,33 @@ try {
     Assert-Equal (Get-MotifTestThreadCount -ProjectConcurrency 3 -ProcessorCount 20) 1 'explicit threads'
     Set-Environment @{ MOTIF_TEST_THREADS = 'x' }
     Assert-Equal (Get-MotifTestThreadCount -ProjectConcurrency 3 -ProcessorCount 20) 6 'bad threads fall back'
+
+    Set-Environment @{ CI = 'true' }
+    Assert-Equal (Get-MotifTestThreadCount -ProjectConcurrency 3 -ProcessorCount 20) 0 'CI leaves xUnit threads alone'
+    Set-Environment @{ CI = 'yes'; MOTIF_TEST_THREADS = '2' }
+    Assert-Equal (Get-MotifTestThreadCount -ProjectConcurrency 3 -ProcessorCount 20) 2 'explicit threads beat CI'
+
+    Set-Environment @{}
+    if ($IsWindows) {
+        Assert-Equal (Get-MotifTestSlotDirectory -TempPath 'C:\t') 'C:\t\motif-test-slots' 'Windows slot folder follows the TEMP given'
+    }
+    else {
+        $plain = Get-MotifTestSlotDirectory
+        Set-Environment @{ TMPDIR = '/private/agent-tmp'; TMP = '/private/agent-tmp'; TEMP = '/private/agent-tmp' }
+        Assert-Equal (Get-MotifTestSlotDirectory) $plain 'a relocated TMPDIR does not move the slot folder'
+        Assert-Equal $plain '/tmp/motif-test-slots' 'default slot folder'
+    }
+    Set-Environment @{ MOTIF_TEST_SLOT_DIR = '/shared/slots' }
+    Assert-Equal (Get-MotifTestSlotDirectory) '/shared/slots' 'MOTIF_TEST_SLOT_DIR wins'
+
+    $blocker = Join-Path ([IO.Path]::GetTempPath()) "motif-slot-blocker-$([guid]::NewGuid().ToString('N'))"
+    [IO.File]::WriteAllText($blocker, 'x')
+    try {
+        Set-Environment @{ MOTIF_TEST_SLOTS = '2' }
+        $slot = Enter-MotifTestSlot -Directory (Join-Path $blocker 'slots') -WarningAction SilentlyContinue
+        Assert-Equal ($null -eq $slot) $true 'an unusable slot folder means no slot, not a failure'
+    }
+    finally { Remove-Item -LiteralPath $blocker -Force }
 }
 finally {
     foreach ($name in $names) { [Environment]::SetEnvironmentVariable($name, $saved[$name]) }

@@ -31,11 +31,12 @@ function Get-MotifTestArtifactRequirements {
 
 <#
   .SYNOPSIS
-  The xUnit MaxParallelThreads for one test process.
+  The xUnit MaxParallelThreads for one test process; 0 means leave it to xUnit.
 
   .DESCRIPTION
   xUnit defaults to one thread per processor in every host, so three hosts at once on 20 processors would
-  ask for 60. MOTIF_TEST_THREADS, a positive whole number, wins; otherwise each host gets its share, the
+  ask for 60. MOTIF_TEST_THREADS, a positive whole number, wins; otherwise CI gets 0, meaning xUnit's own
+  default, and each developer-machine host gets its share, the
   processors divided by how many hosts run at once, and never fewer than two.
 #>
 function Get-MotifTestThreadCount {
@@ -47,6 +48,7 @@ function Get-MotifTestThreadCount {
 
     $threads = 0
     if ([int]::TryParse([string] $env:MOTIF_TEST_THREADS, [ref] $threads) -and $threads -gt 0) { return $threads }
+    if ($env:CI -match '^(?i:true|1|yes)$') { return 0 }
     return [Math]::Max(2, [int][Math]::Floor($ProcessorCount / [Math]::Max(1, $ProjectConcurrency)))
 }
 

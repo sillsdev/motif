@@ -21,13 +21,31 @@ function Get-MotifTestSlotCount {
 
 <#
   .SYNOPSIS
+  The folder that holds the machine-wide slot files, resolved before anything relocates TEMP.
+
+  .DESCRIPTION
+  MOTIF_TEST_SLOT_DIR wins. Otherwise Windows uses motif-test-slots in the temporary folder as it is at call
+  time, so the caller must ask before it moves TEMP into a checkout. Elsewhere it is /tmp/motif-test-slots
+  whatever TMPDIR says, so an agent with a private TMPDIR still shares slots with every other run.
+#>
+function Get-MotifTestSlotDirectory {
+    [CmdletBinding()]
+    param([string] $TempPath = [IO.Path]::GetTempPath())
+
+    if ($env:MOTIF_TEST_SLOT_DIR) { return $env:MOTIF_TEST_SLOT_DIR }
+    if ($IsWindows) { return Join-Path $TempPath 'motif-test-slots' }
+    return '/tmp/motif-test-slots'
+}
+
+<#
+  .SYNOPSIS
   Wait for one of the machine-wide test slots that Get-MotifTestSlotCount sizes.
 
   .DESCRIPTION
   Each test run sizes its own concurrency for the processors it sees, but nothing stops ten worktrees on
   one machine from running ten suites at once. That oversubscribes the processors, slows every suite
   several times over and makes timing-sensitive tests flaky. So a developer-machine run takes one of a
-  few slot files in MOTIF_TEST_SLOT_DIR (the system temporary folder's motif-test-slots by default)
+  few slot files in the -Directory folder (Get-MotifTestSlotDirectory by default)
   before it starts its tests, and the others wait. The slot is an exclusively opened file, so it frees
   itself when the run exits, however it exits.
 
@@ -38,13 +56,16 @@ function Get-MotifTestSlotCount {
 #>
 function Enter-MotifTestSlot {
     [CmdletBinding()]
-    param()
+    param([string] $Directory)
 
     $slots = Get-MotifTestSlotCount
     if ($slots -le 0) { return $null }
-    $directory = if ($env:MOTIF_TEST_SLOT_DIR) { $env:MOTIF_TEST_SLOT_DIR } else {
-        Join-Path ([IO.Path]::GetTempPath()) 'motif-test-slots' }
-    [IO.Directory]::CreateDirectory($directory) | Out-Null
+    $directory = if ($Directory) { $Directory } else { Get-MotifTestSlotDirectory }
+    try { [IO.Directory]::CreateDirectory($directory) | Out-Null }
+    catch {
+        Write-Warning "test slots unavailable ($($_.Exception.Message)); running without one"
+        return $null
+    }
 
     $announced = $false
     $started = [Diagnostics.Stopwatch]::StartNew()
@@ -57,6 +78,10 @@ function Enter-MotifTestSlot {
                 return $slot
             }
             catch [IO.IOException] { }
+            catch {
+                Write-Warning "test slots unavailable ($($_.Exception.Message)); running without one"
+                return $null
+            }
         }
         if (-not $announced) {
             Write-Host "All $slots test slots in $directory are taken; waiting for one (MOTIF_TEST_SLOTS, 0 turns the wait off)." -ForegroundColor Yellow
@@ -66,4 +91,4 @@ function Enter-MotifTestSlot {
     }
 }
 
-Export-ModuleMember -Function Enter-MotifTestSlot, Get-MotifTestSlotCount
+Export-ModuleMember -Function Enter-MotifTestSlot, Get-MotifTestSlotCount, Get-MotifTestSlotDirectory
