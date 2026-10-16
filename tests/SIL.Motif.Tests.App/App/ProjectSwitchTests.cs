@@ -588,10 +588,25 @@ public sealed class ProjectSwitchTests
         [new PendingChange(id, "wordform", id, ChangeKinds.IncorrectSpelling, null, null, [id])],
         [new ChangeFit(id, true, [])]);
 
-    private static AssessmentRecord StoredAssessment() => new(
-        "assessment-1", null, null, "pangloss", AssessmentKind.ParseTime.ToStoredKind(), "{}", "sha256:scope",
-        "whitespace", "1", "{}", Selection.Create("Default", ["dogs"]), null, null,
-        "sha256:grammar", null, null, null, "2026-09-24T12:00:00.0000000+00:00", Words: []);
+    private static AssessmentRecord StoredAssessment() => new AssessmentRecord(
+        AssessmentId: "assessment-1",
+        ProposalId: null,
+        ProposalIntentDigest: null,
+        Assessor: "pangloss",
+        Kind: AssessmentKind.ParseTime.ToStoredKind(),
+        ScopeJson: "{}",
+        ScopeDigest: "sha256:scope",
+        Subject: new AssessmentSubject.Words(Selection.Create("Default", ["dogs"]), "whitespace", "1"),
+        BaselineToken: "{}",
+        OutcomeDigest: null,
+        SemanticDigest: null,
+        GrammarSourceSha256: "sha256:grammar",
+        ModelFingerprint: null,
+        Pipeline: null,
+        DiagnosticCount: null,
+        SavedUtc: "2026-09-24T12:00:00.0000000+00:00",
+        Details: new AssessmentRecordDetails.Words([], null, null, [])
+    );
 
     private sealed record WorkspaceParts(FakeCommandClient Fake, FakeProjectPicker ProjectPicker,
         WorkspaceShellViewModel Workspace);

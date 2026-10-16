@@ -340,16 +340,20 @@ public sealed class WorkspaceContextTests
         Assert.Same(context.Changes, texts.Assess.Compare.Changes);
         var baseline = new BaselineRecord("project-1", Token, "root", ProjectPath,
             DateTimeOffset.UtcNow, DateTimeOffset.UtcNow);
-        var assessment = StoredAssessment() with
+        var stored = StoredAssessment();
+        var assessment = stored with
         {
-            Words = [new AssessedWord("dogs", "no-analysis", [], 10)
+            Details = ((AssessmentRecordDetails.Words)stored.Details) with
             {
-                ProjectStanding = ProjectStanding.Approved,
-                OccurrenceCount = 2,
-            }],
-            Invocation = new BatchInvocationEvidence("invocation/one", "source", "digest", "digest",
-                "words", "digest", "tsv", "digest", "stderr", "digest", 1000,
-                StepCap.Default, 1, false),
+                Rows = [new AssessedWord("dogs", "no-analysis", [], 10)
+                {
+                    ProjectStanding = ProjectStanding.Approved,
+                    OccurrenceCount = 2,
+                }],
+                Invocation = new BatchInvocationEvidence("invocation/one", "source", "digest", "digest",
+                    "words", "digest", "tsv", "digest", "stderr", "digest", 1000,
+                    StepCap.Default, 1, false),
+            },
         };
         fake.ReadCurrentEvidenceCompletesWith(new CurrentEvidenceSnapshot("one", DateTimeOffset.UtcNow,
             null, EvidenceFreshness.Current, baseline, null, null, null, assessment)
@@ -380,7 +384,7 @@ public sealed class WorkspaceContextTests
             DateTimeOffset.UtcNow, DateTimeOffset.UtcNow);
         fake.ReadCurrentEvidenceCompletesWith(new CurrentEvidenceSnapshot("one", DateTimeOffset.UtcNow,
             null, EvidenceFreshness.Current, baseline, null, null, null,
-            StoredAssessment() with { Words = [new AssessedWord("dogs", "timed-out", [])] }));
+            WithRows(StoredAssessment(), [new AssessedWord("dogs", "timed-out", [])])));
         fake.OverviewCompletesWith(Overview());
 
         await context.OpenProjectAsync(ProjectPath);
@@ -1511,10 +1515,28 @@ public sealed class WorkspaceContextTests
             OccurrenceCount = 1,
         };
 
-    private static AssessmentRecord StoredAssessment() => new(
-        "assessment-1", null, null, "pangloss", AssessmentKind.ParseTime.ToStoredKind(), "{}", "sha256:scope",
-        "whitespace", "1", "{}", Selection.Create("Default", ["dogs"]), null, null,
-        "sha256:grammar", null, null, null, "2026-09-24T12:00:00.0000000+00:00", Words: []);
+    private static AssessmentRecord WithRows(AssessmentRecord record, IReadOnlyList<AssessedWord> rows) =>
+        record with { Details = ((AssessmentRecordDetails.Words)record.Details) with { Rows = rows } };
+
+    private static AssessmentRecord StoredAssessment() => new AssessmentRecord(
+        AssessmentId: "assessment-1",
+        ProposalId: null,
+        ProposalIntentDigest: null,
+        Assessor: "pangloss",
+        Kind: AssessmentKind.ParseTime.ToStoredKind(),
+        ScopeJson: "{}",
+        ScopeDigest: "sha256:scope",
+        Subject: new AssessmentSubject.Words(Selection.Create("Default", ["dogs"]), "whitespace", "1"),
+        BaselineToken: "{}",
+        OutcomeDigest: null,
+        SemanticDigest: null,
+        GrammarSourceSha256: "sha256:grammar",
+        ModelFingerprint: null,
+        Pipeline: null,
+        DiagnosticCount: null,
+        SavedUtc: "2026-09-24T12:00:00.0000000+00:00",
+        Details: new AssessmentRecordDetails.Words([], null, null, [])
+    );
 
     private static OverviewResponse Overview() => new(
         "one", DateTimeOffset.UtcNow, null, 0, 0, 0, 0, 0, 0, 0, null, null, null, null, null,

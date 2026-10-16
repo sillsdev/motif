@@ -96,17 +96,15 @@ public static class CompareCommands
                 Kind: AssessmentKind.Difference.ToStoredKind(),
                 ScopeJson: scopeJson,
                 ScopeDigest: Digest(scopeJson),
-                TokeniserName: tokeniserName,
-                TokeniserVersion: tokeniserVersion,
+                Subject: new AssessmentSubject.Words(selection, tokeniserName, tokeniserVersion),
                 BaselineToken: "{\"from\":" + from.BaselineToken + ",\"to\":" + to.BaselineToken + "}",
-                Selection: selection,
                 OutcomeDigest: Digest(scopeJson),
                 SemanticDigest: Digest(string.Join('\n', words.Select(w => w.Word + "|" + w.Outcome))),
                 GrammarSourceSha256: string.Empty,
                 ModelFingerprint: "motif-comparison",
                 Pipeline: "compare",
                 DiagnosticCount: comparison.TokeniserMismatch ? 1 : 0,
-                Words: words));
+                Material: new AssessmentRecordMaterial.Words(words, null, null, [])));
 
             // Read back the row just recorded, so this can't disagree with a later report of the same row.
             var stored = repository.Get(assessmentId);

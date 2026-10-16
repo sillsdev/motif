@@ -272,15 +272,27 @@ public sealed class PendingChangesTests
             var reading = new ParseAnalysis([new ParseMorph(morphId, msaId, null, null)]);
             using var database = ProjectMotifDatabase.Open(_path);
             new AssessmentRepository(database).Record(new NewAssessmentRecord(
-                assessmentId, null, null, "test", "ParseTime", "{}", "sha256:scope",
-                "whitespace-and-punctuation", "1", JsonSerializer.Serialize(captured.Value!.Token),
-                Selection.Create("parser-change", ["analysis-decision"]), "sha256:outcome", "sha256:semantic",
-                "sha256:grammar", "model", "pipeline", 0,
-                [new AssessedWord("analysis-decision", "parsed", [], 0)
+            AssessmentId: assessmentId,
+            ProposalId: null,
+            ProposalIntentDigest: null,
+            Assessor: "test",
+            Kind: "ParseTime",
+            ScopeJson: "{}",
+            ScopeDigest: "sha256:scope",
+            Subject: new AssessmentSubject.Words(Selection.Create("parser-change", ["analysis-decision"]), "whitespace-and-punctuation", "1"),
+            BaselineToken: JsonSerializer.Serialize(captured.Value!.Token),
+            OutcomeDigest: "sha256:outcome",
+            SemanticDigest: "sha256:semantic",
+            GrammarSourceSha256: "sha256:grammar",
+            ModelFingerprint: "model",
+            Pipeline: "pipeline",
+            DiagnosticCount: 0,
+            Material: new AssessmentRecordMaterial.Words([new AssessedWord("analysis-decision", "parsed", [], 0)
                 {
                     Morphology = new ParseWordEvidence(ParseMorphEvidence.Schema, 0,
                         "analysis-decision", 0, false, false, false, [reading], []),
-                }]));
+                }], null, null, [])
+        ));
         }
         var pending = PendingChanges.Load(new PendingChangesRequest(_path, "1.0"));
         var added = PendingChanges.Put(new PutPendingChangeRequest(_path, "1.0", pending.Value!.Revision,
@@ -390,14 +402,23 @@ public sealed class PendingChangesTests
         using (var database = ProjectMotifDatabase.Open(_path))
         {
             new AssessmentRepository(database).Record(new NewAssessmentRecord(
-                CanonicalId.Mint("assessment/").Value, CanonicalId.Parse(proposalId),
-                finalized.Value.IntentDigest, "pangloss", "Correctness",
-                """{"perWordLimitMs":1000,"perWordStepLimit":{"steps":200000,"isUnbounded":false}}""",
-                "sha256:scope",
-                "none", "1", JsonSerializer.Serialize(captured.Value!.Token),
-                SIL.Motif.Host.Corpus.Selection.Create("review", ["review-word"]),
-                "sha256:outcome", "sha256:semantic", "sha256:grammar", "model", "pipeline", 0,
-                [CorrectnessFixture.Word("review-word", true)]));
+            AssessmentId: CanonicalId.Mint("assessment/").Value,
+            ProposalId: CanonicalId.Parse(proposalId),
+            ProposalIntentDigest: finalized.Value.IntentDigest,
+            Assessor: "pangloss",
+            Kind: "Correctness",
+            ScopeJson: """{"perWordLimitMs":1000,"perWordStepLimit":{"steps":200000,"isUnbounded":false}}""",
+            ScopeDigest: "sha256:scope",
+            Subject: new AssessmentSubject.Words(SIL.Motif.Host.Corpus.Selection.Create("review", ["review-word"]), "none", "1"),
+            BaselineToken: JsonSerializer.Serialize(captured.Value!.Token),
+            OutcomeDigest: "sha256:outcome",
+            SemanticDigest: "sha256:semantic",
+            GrammarSourceSha256: "sha256:grammar",
+            ModelFingerprint: "model",
+            Pipeline: "pipeline",
+            DiagnosticCount: 0,
+            Material: new AssessmentRecordMaterial.Words([CorrectnessFixture.Word("review-word", true)], null, null, [])
+        ));
         }
 
         var applied = ProposalCommands.Apply(new ApplyRequest(_path, "1.0", proposalId));
@@ -548,13 +569,23 @@ public sealed class PendingChangesTests
         using (var database = ProjectMotifDatabase.Open(_path))
         {
             new AssessmentRepository(database).Record(new NewAssessmentRecord(
-                CanonicalId.Mint("assessment/").Value, CanonicalId.Parse(proposalId),
-                finalized.Value.IntentDigest, "pangloss", "Correctness",
-                """{"perWordLimitMs":1000,"perWordStepLimit":{"steps":200000,"isUnbounded":false}}""",
-                "sha256:scope", "none", "1", JsonSerializer.Serialize(captured.Value!.Token),
-                SIL.Motif.Host.Corpus.Selection.Create("other", ["other-word"]),
-                "sha256:outcome", "sha256:semantic", "sha256:grammar", "model", "pipeline", 0,
-                [CorrectnessFixture.Word("other-word", true)]));
+            AssessmentId: CanonicalId.Mint("assessment/").Value,
+            ProposalId: CanonicalId.Parse(proposalId),
+            ProposalIntentDigest: finalized.Value.IntentDigest,
+            Assessor: "pangloss",
+            Kind: "Correctness",
+            ScopeJson: """{"perWordLimitMs":1000,"perWordStepLimit":{"steps":200000,"isUnbounded":false}}""",
+            ScopeDigest: "sha256:scope",
+            Subject: new AssessmentSubject.Words(SIL.Motif.Host.Corpus.Selection.Create("other", ["other-word"]), "none", "1"),
+            BaselineToken: JsonSerializer.Serialize(captured.Value!.Token),
+            OutcomeDigest: "sha256:outcome",
+            SemanticDigest: "sha256:semantic",
+            GrammarSourceSha256: "sha256:grammar",
+            ModelFingerprint: "model",
+            Pipeline: "pipeline",
+            DiagnosticCount: 0,
+            Material: new AssessmentRecordMaterial.Words([CorrectnessFixture.Word("other-word", true)], null, null, [])
+        ));
         }
 
         var applied = ProposalCommands.Apply(new ApplyRequest(_path, "1.0", proposalId));
@@ -764,11 +795,24 @@ public sealed class PendingChangesTests
             Morphology = new ParseWordEvidence(ParseMorphEvidence.Schema, 0, word, 0, false, false, false, [reading], []),
         };
         new AssessmentRepository(database).Record(new NewAssessmentRecord(
-            assessmentId, null, null, "test", AssessmentKind.ParseTime.ToStoredKind(), "{}",
-            "sha256:spelling-scope", "whitespace-and-punctuation", "1", JsonSerializer.Serialize(baseline.Token),
-            Selection.Create("Spelling", [word]), "sha256:spelling-outcome", "sha256:spelling-semantic",
-            "sha256:spelling-grammar", "spelling-test", "spelling-test", 0, [assessedWord],
-            SavedUtc: "2026-09-30T12:00:00Z"));
+            AssessmentId: assessmentId,
+            ProposalId: null,
+            ProposalIntentDigest: null,
+            Assessor: "test",
+            Kind: AssessmentKind.ParseTime.ToStoredKind(),
+            ScopeJson: "{}",
+            ScopeDigest: "sha256:spelling-scope",
+            Subject: new AssessmentSubject.Words(Selection.Create("Spelling", [word]), "whitespace-and-punctuation", "1"),
+            BaselineToken: JsonSerializer.Serialize(baseline.Token),
+            OutcomeDigest: "sha256:spelling-outcome",
+            SemanticDigest: "sha256:spelling-semantic",
+            GrammarSourceSha256: "sha256:spelling-grammar",
+            ModelFingerprint: "spelling-test",
+            Pipeline: "spelling-test",
+            DiagnosticCount: 0,
+            Material: new AssessmentRecordMaterial.Words([assessedWord], null, null, []),
+            SavedUtc: "2026-09-30T12:00:00Z"
+        ));
     }
 
     [Fact]

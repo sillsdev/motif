@@ -193,9 +193,7 @@ public sealed class RetainedInvocationRepositoryTests : IDisposable
         };
         selection = selection with { DescriptorSha256 = SelectionDescriptorDigest.Compute(selection) };
         var assessment = NewAssessment("wrong-resolved-hash-assessment", "ParseTime", "wrong-resolved-hash") with
-        {
-            Selection = new Selection("project", ["word"], selection.ResolvedSha256)
-        };
+        { Subject = ((AssessmentSubject.Words)NewAssessment("wrong-resolved-hash-assessment", "ParseTime", "wrong-resolved-hash").Subject) with { Selection = new Selection("project", ["word"], selection.ResolvedSha256) } };
 
         Assert.Throws<InvalidDataException>(() => repository.Record(
             NewRetained("wrong-resolved-hash") with { Selection = selection }, [assessment]));
@@ -321,15 +319,27 @@ public sealed class RetainedInvocationRepositoryTests : IDisposable
 
     private static NewAssessmentRecord NewAssessment(
         string id, string kind, string invocationId, BaselineToken? baseline = null) =>
-        new(id, null, null, "pangloss", kind, "{\"words\":\"all\"}", "sha256:scope", "none", "1",
-            JsonSerializer.Serialize(baseline ?? NewBaseline('b')), Selection.Create("project", ["word"]), "sha256:outcome",
-            "sha256:semantic", "sha256:source", "fingerprint", "pipeline", 0,
-            [new AssessedWord("word", "complete", [])])
-        {
-            Invocation = new BatchInvocationEvidence(
-                invocationId, "source.fwdata", "sha256:source", "sha256:executable", "words.txt", "sha256:words",
-                "rows.tsv", "sha256:rows", "stderr.txt", "sha256:stderr", 1000, 200000, 1, true)
-        };
+        new NewAssessmentRecord(
+            AssessmentId: id,
+            ProposalId: null,
+            ProposalIntentDigest: null,
+            Assessor: "pangloss",
+            Kind: kind,
+            ScopeJson: "{\"words\":\"all\"}",
+            ScopeDigest: "sha256:scope",
+            Subject: new AssessmentSubject.Words(Selection.Create("project", ["word"]), "none", "1"),
+            BaselineToken: JsonSerializer.Serialize(baseline ?? NewBaseline('b')),
+            OutcomeDigest: "sha256:outcome",
+            SemanticDigest: "sha256:semantic",
+            GrammarSourceSha256: "sha256:source",
+            ModelFingerprint: "fingerprint",
+            Pipeline: "pipeline",
+            DiagnosticCount: 0,
+            Material: new AssessmentRecordMaterial.Words([new AssessedWord("word", "complete", [])], null, null, [],
+                new BatchInvocationEvidence(
+                    invocationId, "source.fwdata", "sha256:source", "sha256:executable", "words.txt", "sha256:words",
+                    "rows.tsv", "sha256:rows", "stderr.txt", "sha256:stderr", 1000, 200000, 1, true))
+        );
 
     private static BaselineToken NewBaseline(char bundleMarker) => new(
         "project", "sha256:" + new string('a', 64), "projection-1", "2020-01-01T00:00:00Z",

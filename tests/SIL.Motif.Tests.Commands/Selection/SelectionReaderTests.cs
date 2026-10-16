@@ -823,10 +823,24 @@ public sealed class SelectionReaderTests(PristineProjectFixture pristine) : IDis
         }).ToArray();
         var baselineJson = System.Text.Json.JsonSerializer.Serialize(capture.Value!.Token, MotifJson.CreateOptions());
         new AssessmentRepository(database).Record(new NewAssessmentRecord(
-            "selection-reader-assessment", null, null, "pangloss", AssessmentKind.ParseTime.ToStoredKind(),
-            "{}", "sha256:scope", "whitespace", "1", baselineJson, selection, "sha256:outcome",
-            "sha256:semantic", "sha256:grammar", "fingerprint", "pipeline", 0, words,
-            SavedUtc: DateTimeOffset.UtcNow.ToString("O")));
+            AssessmentId: "selection-reader-assessment",
+            ProposalId: null,
+            ProposalIntentDigest: null,
+            Assessor: "pangloss",
+            Kind: AssessmentKind.ParseTime.ToStoredKind(),
+            ScopeJson: "{}",
+            ScopeDigest: "sha256:scope",
+            Subject: new AssessmentSubject.Words(selection, "whitespace", "1"),
+            BaselineToken: baselineJson,
+            OutcomeDigest: "sha256:outcome",
+            SemanticDigest: "sha256:semantic",
+            GrammarSourceSha256: "sha256:grammar",
+            ModelFingerprint: "fingerprint",
+            Pipeline: "pipeline",
+            DiagnosticCount: 0,
+            Material: new AssessmentRecordMaterial.Words(words, null, null, []),
+            SavedUtc: DateTimeOffset.UtcNow.ToString("O")
+        ));
 
         var opened = await SelectionReader.OpenAsync(database, new SelectionReadRequest(
             projectKey, [text.TextId], []) { ProjectPath = projectPath });
@@ -1174,18 +1188,15 @@ public sealed class SelectionReaderTests(PristineProjectFixture pristine) : IDis
         var root = NewAssessment("warning-root", capture.Value!.Token, selection,
             selection.Words.Select(word => new AssessedWord(word, "analysed", [])).ToArray(), null,
             DateTimeOffset.UtcNow.AddMinutes(-1)) with
-        {
-            Invocation = Invocation("warning-root-invocation", rootAllomorphWarning),
-            ObjectTimings = [oldTiming],
-        };
+        { Material = NewAssessment("warning-root", capture.Value!.Token, selection,
+            selection.Words.Select(word => new AssessedWord(word, "analysed", [])).ToArray(), null,
+            DateTimeOffset.UtcNow.AddMinutes(-1)).RequireWordMaterial() with { Invocation = Invocation("warning-root-invocation", rootAllomorphWarning), ObjectTimings = [oldTiming] } };
         new AssessmentRepository(database).Record(root);
         var replacementSelection = SIL.Motif.Host.Corpus.Selection.Create("Default", [form]);
         var replacement = NewAssessment("warning-replacement", capture.Value.Token, replacementSelection,
             [new AssessedWord(form, "analysed", [])], root.AssessmentId, DateTimeOffset.UtcNow) with
-        {
-            Invocation = Invocation("warning-replacement-invocation", replacementAllomorphWarning),
-            ObjectTimings = [newTiming],
-        };
+        { Material = NewAssessment("warning-replacement", capture.Value.Token, replacementSelection,
+            [new AssessedWord(form, "analysed", [])], root.AssessmentId, DateTimeOffset.UtcNow).RequireWordMaterial() with { Invocation = Invocation("warning-replacement-invocation", replacementAllomorphWarning), ObjectTimings = [newTiming] } };
         new AssessmentRepository(database).Record(replacement);
 
         var timingWarnings = new[]
@@ -2498,11 +2509,25 @@ public sealed class SelectionReaderTests(PristineProjectFixture pristine) : IDis
     private static NewAssessmentRecord NewAssessment(string assessmentId, BaselineToken baseline,
         SIL.Motif.Host.Corpus.Selection selection, IReadOnlyList<AssessedWord> words,
         string? replacesAssessmentId, DateTimeOffset savedUtc) =>
-        new(assessmentId, null, null, "pangloss", AssessmentKind.ParseTime.ToStoredKind(), "{}",
-            "sha256:scope", "whitespace", "1",
-            System.Text.Json.JsonSerializer.Serialize(baseline, MotifJson.CreateOptions()), selection,
-            "sha256:outcome", "sha256:semantic", "sha256:grammar", "fingerprint", "pipeline", 0, words,
-            SavedUtc: savedUtc.ToString("O"))
+        new NewAssessmentRecord(
+            AssessmentId: assessmentId,
+            ProposalId: null,
+            ProposalIntentDigest: null,
+            Assessor: "pangloss",
+            Kind: AssessmentKind.ParseTime.ToStoredKind(),
+            ScopeJson: "{}",
+            ScopeDigest: "sha256:scope",
+            Subject: new AssessmentSubject.Words(selection, "whitespace", "1"),
+            BaselineToken: System.Text.Json.JsonSerializer.Serialize(baseline, MotifJson.CreateOptions()),
+            OutcomeDigest: "sha256:outcome",
+            SemanticDigest: "sha256:semantic",
+            GrammarSourceSha256: "sha256:grammar",
+            ModelFingerprint: "fingerprint",
+            Pipeline: "pipeline",
+            DiagnosticCount: 0,
+            Material: new AssessmentRecordMaterial.Words(words, null, null, []),
+            SavedUtc: savedUtc.ToString("O")
+        )
         {
             ReplacesAssessmentId = replacesAssessmentId,
         };

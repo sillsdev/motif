@@ -1,3 +1,4 @@
+using SIL.Motif.Host.Assess;
 using System.Text.Json;
 using System.Globalization;
 using Avalonia;
@@ -1249,15 +1250,29 @@ public sealed class PageScreenshots
             Text(Letter, "Barua kwa mwalimu", ["walikula", "anapenda", "kitabu", "."]),
         ], forms.Values.ToArray());
         var fixture = new StoredSelectionFixture(projection, Token());
-        if (parse) fixture.RecordAssessment(new NewAssessmentRecord("assessment/one", null, null, "pangloss", AssessmentKinds.ParseTime,
-            "{}", "sha256:sample-scope", "whitespace", "1", JsonSerializer.Serialize(Token(), SIL.Motif.Contract.MotifJson.CreateOptions()),
-            Selection.Create("Sample", assessment.Words.Select(word => word.Word)), "sha256:sample-outcome", "sha256:sample-semantic",
-            "sha256:sample-grammar", "sample", "sample", 0, assessment.Words.Select(word => new AssessedWord(
+        if (parse) fixture.RecordAssessment(new NewAssessmentRecord(
+            AssessmentId: "assessment/one",
+            ProposalId: null,
+            ProposalIntentDigest: null,
+            Assessor: "pangloss",
+            Kind: AssessmentKinds.ParseTime,
+            ScopeJson: "{}",
+            ScopeDigest: "sha256:sample-scope",
+            Subject: new AssessmentSubject.Words(Selection.Create("Sample", assessment.Words.Select(word => word.Word)), "whitespace", "1"),
+            BaselineToken: JsonSerializer.Serialize(Token(), SIL.Motif.Contract.MotifJson.CreateOptions()),
+            OutcomeDigest: "sha256:sample-outcome",
+            SemanticDigest: "sha256:sample-semantic",
+            GrammarSourceSha256: "sha256:sample-grammar",
+            ModelFingerprint: "sample",
+            Pipeline: "sample",
+            DiagnosticCount: 0,
+            Material: new AssessmentRecordMaterial.Words(assessment.Words.Select(word => new AssessedWord(
                 word.Word, word.Outcome, [], word.ElapsedMs)
             { Morphology = word.Morphology, IsIncomplete = word.IsIncomplete, ProjectStanding = word.ProjectStanding,
                 ReadingGrades = word.ReadingGrades, OccurrenceCount = word.OccurrenceCount,
-                AnalysisComparison = word.AnalysisComparison, MissedApproved = word.MissedApproved }).ToArray(),
-            SavedUtc: CaptureStartAt.ToString("O")));
+                AnalysisComparison = word.AnalysisComparison, MissedApproved = word.MissedApproved }).ToArray(), null, null, []),
+            SavedUtc: CaptureStartAt.ToString("O")
+        ));
         return fixture;
     }
 

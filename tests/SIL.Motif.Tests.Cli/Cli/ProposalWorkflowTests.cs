@@ -1,3 +1,4 @@
+using SIL.Motif.Host.Assess;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -1012,17 +1013,29 @@ public sealed class ProposalWorkflowTests : IDisposable
         using (var database = ProjectMotifDatabase.Open(_fwDataPath))
         {
             new AssessmentRepository(database).Record(new NewAssessmentRecord(
-                assessmentId, null, null, "test", "ParseTime", "{}", "sha256:scope",
-                "whitespace-and-punctuation", "1", baselineToken,
-                Selection.Create("parser-change", [word]), "sha256:outcome", "sha256:semantic",
-                "sha256:grammar", "model", "pipeline", 0,
-                [new AssessedWord(word, "parsed", [], 0)
+            AssessmentId: assessmentId,
+            ProposalId: null,
+            ProposalIntentDigest: null,
+            Assessor: "test",
+            Kind: "ParseTime",
+            ScopeJson: "{}",
+            ScopeDigest: "sha256:scope",
+            Subject: new AssessmentSubject.Words(Selection.Create("parser-change", [word]), "whitespace-and-punctuation", "1"),
+            BaselineToken: baselineToken,
+            OutcomeDigest: "sha256:outcome",
+            SemanticDigest: "sha256:semantic",
+            GrammarSourceSha256: "sha256:grammar",
+            ModelFingerprint: "model",
+            Pipeline: "pipeline",
+            DiagnosticCount: 0,
+            Material: new AssessmentRecordMaterial.Words([new AssessedWord(word, "parsed", [], 0)
                 {
                     Morphology = new ParseWordEvidence(ParseMorphEvidence.Schema, 0, word, 0,
                         false, false, false,
                         [new ParseAnalysis([new ParseMorph(formGuid, msaGuid, null, null)]),
                          new ParseAnalysis([new ParseMorph(formGuid, msaGuid, null, "chosen-second")])], []),
-                }]));
+                }], null, null, [])
+        ));
         }
         var pending = PendingChanges.Load(new PendingChangesRequest(_fwDataPath, ProductVersion));
         Assert.True(pending.Succeeded, pending.Refusal?.Message);

@@ -1,3 +1,4 @@
+using SIL.Motif.Host.Assess;
 using SIL.LCModel;
 using System.Text.Json;
 using SIL.Motif.Commands.Assess;
@@ -376,17 +377,16 @@ public sealed class SelectionComposerTests : IDisposable
             Kind: kind,
             ScopeJson: "{}",
             ScopeDigest: "sha256:scope",
-            TokeniserName: "whitespace-and-punctuation",
-            TokeniserVersion: "1",
+            Subject: new AssessmentSubject.Words(Selection.Create("run", words.Select(w => w.Word)), "whitespace-and-punctuation", "1"),
             BaselineToken: baselineToken,
-            Selection: Selection.Create("run", words.Select(w => w.Word)),
             OutcomeDigest: "sha256:outcome",
             SemanticDigest: "sha256:semantic",
             GrammarSourceSha256: "sha256:grammar",
             ModelFingerprint: "fingerprint",
             Pipeline: "pipeline",
             DiagnosticCount: 0,
-            Words: assessedWords,
-            SavedUtc: savedUtc));
+            Material: new AssessmentRecordMaterial.Words(assessedWords, null, null, []),
+            SavedUtc: savedUtc
+        ));
     }
 }

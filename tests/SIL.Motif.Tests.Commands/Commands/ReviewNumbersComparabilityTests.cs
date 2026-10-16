@@ -75,8 +75,24 @@ public sealed class ReviewNumbersComparabilityTests
         var selection = Selection.Create("review", words.Select(word => word.Word));
         var scope = ScopeCodec.Write(new StoredScope.Trial("words", selection.Words,
             [AssessmentKind.Correctness], TimeSpan.FromSeconds(1), StepCap.Default));
-        return new AssessmentRecord(id, null, null, assessor, AssessmentKind.Correctness.ToStoredKind(),
-            scope, "scope", "whitespace", "1", "baseline", selection, null, null, "grammar", null,
-            null, null, "2026-09-24T12:00:00Z", Words: words);
+        return new AssessmentRecord(
+            AssessmentId: id,
+            ProposalId: null,
+            ProposalIntentDigest: null,
+            Assessor: assessor,
+            Kind: AssessmentKind.Correctness.ToStoredKind(),
+            ScopeJson: scope,
+            ScopeDigest: "scope",
+            Subject: new AssessmentSubject.Words(selection, "whitespace", "1"),
+            BaselineToken: "baseline",
+            OutcomeDigest: null,
+            SemanticDigest: null,
+            GrammarSourceSha256: "grammar",
+            ModelFingerprint: null,
+            Pipeline: null,
+            DiagnosticCount: null,
+            SavedUtc: "2026-09-24T12:00:00Z",
+            Details: new AssessmentRecordDetails.Words(words, null, null, [])
+        );
     }
 }

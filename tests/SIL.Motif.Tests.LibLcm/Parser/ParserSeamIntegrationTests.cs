@@ -26,7 +26,7 @@ public sealed class ParserSeamIntegrationTests(PristineProjectFixture pristine, 
             var assessor = new PanGlossAssessor(paths, invoker);
             using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(2));
             var produced = await assessor.ProduceAsync(
-                new([SeededProject.FirstForm, SeededProject.SecondForm], [AssessmentKind.Correctness],
+                new AssessmentScope.Words([SeededProject.FirstForm, SeededProject.SecondForm], [AssessmentKind.Correctness],
                     TimeSpan.FromSeconds(5)),
                 Path.GetDirectoryName(cache.ProjectId.Path)!, timeout.Token);
             var assessment = Assert.Single(produced);

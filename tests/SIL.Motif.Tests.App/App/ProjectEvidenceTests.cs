@@ -229,10 +229,13 @@ public sealed class ProjectEvidenceTests
     public async Task ExternalReplacementRefreshesEveryDependentPage(bool reopened)
     {
         var (fake, workspace) = NewWorkspace();
-        var root = StoredSnapshot().MatchingAssessment! with
+        var originalAssessment = StoredSnapshot().MatchingAssessment!;
+        var root = originalAssessment with
         {
-            Selection = Selection.Create("Default", ["cat", "dog"]),
-            Words = [new AssessedWord("cat", "timed-out", [], 20), new AssessedWord("dog", "analysed", [], 10)],
+            Subject = ((AssessmentSubject.Words)originalAssessment.Subject) with
+                { Selection = Selection.Create("Default", ["cat", "dog"]) },
+            Details = ((AssessmentRecordDetails.Words)originalAssessment.Details) with
+                { Rows = [new AssessedWord("cat", "timed-out", [], 20), new AssessedWord("dog", "analysed", [], 10)] },
         };
         var snapshot = StoredSnapshot() with { MatchingAssessment = root };
         fake.ReadCurrentEvidenceCompletesWith(snapshot);
@@ -248,8 +251,8 @@ public sealed class ProjectEvidenceTests
         {
             AssessmentId = "replacement-cat", ReplacesAssessmentId = root.AssessmentId,
             SavedUtc = Saved.AddMinutes(15).ToString("O"),
-            Selection = Selection.Create("cat", ["cat"]),
-            Words = [new AssessedWord("cat", "analysed", [], 3)],
+            Subject = ((AssessmentSubject.Words)root.Subject) with { Selection = Selection.Create("cat", ["cat"]) },
+            Details = ((AssessmentRecordDetails.Words)root.Details) with { Rows = [new AssessedWord("cat", "analysed", [], 3)] },
         };
         var updated = snapshot with { RerunAssessments = [replacement] };
         fake.ReadCurrentEvidenceCompletesWith(updated);
@@ -286,15 +289,27 @@ public sealed class ProjectEvidenceTests
 
     private static CurrentEvidenceSnapshot StoredSnapshot() => new("one", Saved, Saved, EvidenceFreshness.Current,
         new BaselineRecord("project-1", Token, "root", ProjectPath, Saved, Saved), null, null, null,
-        new AssessmentRecord("assessment-parse", null, null, "pangloss", AssessmentKind.ParseTime.ToStoredKind(),
-            "{}", "sha256:scope", "whitespace", "1", "{}", Selection.Create("Default", ["dogs"]), null, null,
-            "sha256:grammar", null, null, null, "2026-09-05T11:10:00.0000000+00:00",
-            Words: [new AssessedWord("dogs", "analysed", [], 10) { ProjectStanding = ProjectStanding.Approved }])
-        {
-            Invocation = new BatchInvocationEvidence("invocation/stored", "source", "digest", "digest",
+        new AssessmentRecord(
+            AssessmentId: "assessment-parse",
+            ProposalId: null,
+            ProposalIntentDigest: null,
+            Assessor: "pangloss",
+            Kind: AssessmentKind.ParseTime.ToStoredKind(),
+            ScopeJson: "{}",
+            ScopeDigest: "sha256:scope",
+            Subject: new AssessmentSubject.Words(Selection.Create("Default", ["dogs"]), "whitespace", "1"),
+            BaselineToken: "{}",
+            OutcomeDigest: null,
+            SemanticDigest: null,
+            GrammarSourceSha256: "sha256:grammar",
+            ModelFingerprint: null,
+            Pipeline: null,
+            DiagnosticCount: null,
+            SavedUtc: "2026-09-05T11:10:00.0000000+00:00",
+            Details: new AssessmentRecordDetails.Words([new AssessedWord("dogs", "analysed", [], 10) { ProjectStanding = ProjectStanding.Approved }], null, null, []) with { Invocation = new BatchInvocationEvidence("invocation/stored", "source", "digest", "digest",
                 "words", "digest", "tsv", "digest", "stderr", "digest", 1000,
-                SIL.Motif.Contract.Assess.StepCap.Default, 1, false),
-        });
+                SIL.Motif.Contract.Assess.StepCap.Default, 1, false),  }
+        ));
 
     private static AssessCommandResponse Run(string invocationId) => new(
         new BaselineCaptureResponse(Token, ProjectPath, Saved, false, false), new SelectionProjection([], []), [],

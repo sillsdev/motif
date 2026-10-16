@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using System.Globalization;
+using System.Text.Json;
 using System.Text.Json.Serialization;
+using SIL.Motif.Contract.Phonology;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Jobs;
@@ -9,9 +11,8 @@ using SIL.Motif.Host.Parsimony;
 namespace SIL.Motif.Host.PanGloss;
 
 /// <summary>
-/// One typed request for one subcommand the shipped <c>pangloss</c> binary has. This file is the only place
-/// Motif writes down the binary's command-line surface; the <c>assess</c> subcommand is absent because the
-/// binary has none.
+/// One typed request for a PanGloss subcommand. Command availability is checked per request so an older
+/// executable can still run supported commands, pinned by `MissingProducerAndOldCapabilityPreserveOrdinaryRequests`.
 /// </summary>
 public abstract record PanGlossRequest
 {
@@ -41,6 +42,40 @@ public abstract record PanGlossRequest
     /// <summary>Turns process output into the request's outcome.</summary>
     internal abstract PanGlossOutcome Finish(string scratch, string standardOutput, string standardError,
         TimeSpan elapsed, out BatchInvocationEvidence.BatchFileDigests? batchFileDigests);
+
+    /// <summary>Measures explicit phonology examples under one request-wide resource ceiling.</summary>
+    public sealed record PhonologyExamples(string GrammarPath, IReadOnlyList<PhonologyExample> Examples,
+        PhonologyLimits Limits) : PanGlossRequest
+    {
+        internal PhonologyInvocationInputs? Inputs { get; init; }
+        public override string Subcommand => "phonology-examples";
+        internal override void Validate() => PhonologyInvocationInputs.Freeze(this);
+        internal override void AddArguments(ProcessStartInfo startInfo, string scratch)
+        {
+            startInfo.ArgumentList.Add(Subcommand);
+            startInfo.ArgumentList.Add(GrammarPath);
+            startInfo.ArgumentList.Add(Path.Combine(scratch, "request.json"));
+            startInfo.ArgumentList.Add(Path.Combine(scratch, "result.json"));
+        }
+
+        internal override PanGlossOutcome Finish(string scratch, string standardOutput, string standardError,
+            TimeSpan elapsed, out BatchInvocationEvidence.BatchFileDigests? batchFileDigests)
+        {
+            batchFileDigests = null;
+            try
+            {
+                var bytes = PhonologyInvocationInputs.ReadBounded(Path.Combine(scratch, "result.json"));
+                var measurement = PhonologyExamplesReader.Read(bytes, Examples, Limits,
+                    Inputs ?? throw new InvalidOperationException("Phonology inputs were not prepared."));
+                return new PanGlossOutcome.Completed(string.Empty, standardError, elapsed) { Phonology = measurement };
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException or
+                ArgumentException or InvalidOperationException or FormatException or OverflowException)
+            {
+                return new PanGlossOutcome.Incomplete("Invalid phonology evidence: " + exception.Message, standardError);
+            }
+        }
+    }
 
     /// <summary>
     /// <c>pangloss batch</c> over a word list, a thread budget derived from half the machine's processor count

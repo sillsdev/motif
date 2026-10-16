@@ -1,3 +1,4 @@
+using SIL.Motif.Host.Assess;
 using System.Text.Json;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
@@ -150,11 +151,25 @@ public sealed class ProposalsRealClientTests(PristineProjectFixture pristine)
         var proposal = new ProposalRepository(database).Get(CanonicalId.Parse(proposalId));
         var baselineToken = new BaselineToken("project-id", "sha256:" + new string('1', 64), "projection-v1",
             "2026-09-24T10:00:00Z", "sha256:" + new string('a', 64));
-        new AssessmentRepository(database).Record(new NewAssessmentRecord(assessmentId, proposal.ProposalId,
-            proposal.IntentDigest, "pangloss", AssessmentKinds.ParseTime, "{}", "sha256:scope", "whitespace", "1",
-            JsonSerializer.Serialize(baselineToken, MotifJson.CreateOptions()), Selection.Create("Default", ["motifa"]),
-            "sha256:outcome", "sha256:semantic", "sha256:grammar", "fingerprint", "pipeline", 0,
-            [new AssessedWord("motifa", "analysed", [])], SavedUtc: "2026-09-24T11:00:00Z"));
+        new AssessmentRepository(database).Record(new NewAssessmentRecord(
+            AssessmentId: assessmentId,
+            ProposalId: proposal.ProposalId,
+            ProposalIntentDigest: proposal.IntentDigest,
+            Assessor: "pangloss",
+            Kind: AssessmentKinds.ParseTime,
+            ScopeJson: "{}",
+            ScopeDigest: "sha256:scope",
+            Subject: new AssessmentSubject.Words(Selection.Create("Default", ["motifa"]), "whitespace", "1"),
+            BaselineToken: JsonSerializer.Serialize(baselineToken, MotifJson.CreateOptions()),
+            OutcomeDigest: "sha256:outcome",
+            SemanticDigest: "sha256:semantic",
+            GrammarSourceSha256: "sha256:grammar",
+            ModelFingerprint: "fingerprint",
+            Pipeline: "pipeline",
+            DiagnosticCount: 0,
+            Material: new AssessmentRecordMaterial.Words([new AssessedWord("motifa", "analysed", [])], null, null, []),
+            SavedUtc: "2026-09-24T11:00:00Z"
+        ));
         var input = JsonSerializer.Serialize(new TrialJobInput(proposal.ProposalJson!, null, AllWords: true),
             MotifJson.CreateOptions());
         var jobs = new JobRepository(database);

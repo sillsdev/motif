@@ -49,11 +49,11 @@ public sealed class ScopeCodecTests
     [Fact]
     public void ScopeDefaultsToTwoIndependentBudgets()
     {
-        var scope = new AssessmentScope(Array.Empty<string>(), Array.Empty<AssessmentKind>(), TimeSpan.FromSeconds(1));
+        var scope = new AssessmentScope.Words(Array.Empty<string>(), Array.Empty<AssessmentKind>(), TimeSpan.FromSeconds(1));
         Assert.Equal(StepCap.Default, scope.PerWordStepLimit);
-        Assert.Throws<ArgumentOutOfRangeException>(() => new AssessmentScope(
+        Assert.Throws<ArgumentOutOfRangeException>(() => new AssessmentScope.Words(
             Array.Empty<string>(), Array.Empty<AssessmentKind>(), TimeSpan.FromSeconds(1), -1));
-        Assert.Throws<ArgumentOutOfRangeException>(() => new AssessmentScope(
+        Assert.Throws<ArgumentOutOfRangeException>(() => new AssessmentScope.Words(
             Array.Empty<string>(), Array.Empty<AssessmentKind>(), TimeSpan.Zero, 0));
     }
 

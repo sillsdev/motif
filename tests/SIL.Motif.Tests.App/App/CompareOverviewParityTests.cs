@@ -72,10 +72,24 @@ public sealed class CompareOverviewParityTests(PristineProjectFixture pristine) 
                     : null,
             }).ToArray();
             new AssessmentRepository(database).Record(new NewAssessmentRecord(
-                "assessment/parity", null, null, "pangloss", AssessmentKind.ParseTime.ToStoredKind(),
-                "{}", "sha256:scope", "whitespace", "1", tokenJson, selection,
-                "sha256:outcome", "sha256:semantic", "sha256:grammar", "model", "pipeline", 0,
-                words, SavedUtc: "2026-09-24T12:00:00.0000000+00:00"));
+                AssessmentId: "assessment/parity",
+                ProposalId: null,
+                ProposalIntentDigest: null,
+                Assessor: "pangloss",
+                Kind: AssessmentKind.ParseTime.ToStoredKind(),
+                ScopeJson: "{}",
+                ScopeDigest: "sha256:scope",
+                Subject: new AssessmentSubject.Words(selection, "whitespace", "1"),
+                BaselineToken: tokenJson,
+                OutcomeDigest: "sha256:outcome",
+                SemanticDigest: "sha256:semantic",
+                GrammarSourceSha256: "sha256:grammar",
+                ModelFingerprint: "model",
+                Pipeline: "pipeline",
+                DiagnosticCount: 0,
+                Material: new AssessmentRecordMaterial.Words(words, null, null, []),
+                SavedUtc: "2026-09-24T12:00:00.0000000+00:00"
+            ));
             stored = new AssessmentRepository(database).Get("assessment/parity");
         }
 

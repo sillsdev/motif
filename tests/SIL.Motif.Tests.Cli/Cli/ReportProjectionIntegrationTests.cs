@@ -1,3 +1,4 @@
+using SIL.Motif.Host.Assess;
 using System;
 using System.IO;
 using SIL.Motif.Cli.Rendering;
@@ -142,9 +143,23 @@ public sealed class ReportProjectionIntegrationTests
             MotifSchema.CurrentSchema, new Version(1, 0)))
         {
             new AssessmentRepository(database).Record(new NewAssessmentRecord(
-                assessmentId, null, null, "pangloss", "Correctness", "{}", "sha256:scope",
-                "whitespace-and-punctuation", "1", JsonSerializer.Serialize(captured.Value!.Token, MotifJson.CreateOptions()),
-                selection, null, null, Hash('a'), null, null, null, []));
+            AssessmentId: assessmentId,
+            ProposalId: null,
+            ProposalIntentDigest: null,
+            Assessor: "pangloss",
+            Kind: "Correctness",
+            ScopeJson: "{}",
+            ScopeDigest: "sha256:scope",
+            Subject: new AssessmentSubject.Words(selection, "whitespace-and-punctuation", "1"),
+            BaselineToken: JsonSerializer.Serialize(captured.Value!.Token, MotifJson.CreateOptions()),
+            OutcomeDigest: null,
+            SemanticDigest: null,
+            GrammarSourceSha256: Hash('a'),
+            ModelFingerprint: null,
+            Pipeline: null,
+            DiagnosticCount: null,
+            Material: new AssessmentRecordMaterial.Words([], null, null, [])
+        ));
         }
 
         var result = ProposalCommands.Analyses(new AssessmentAnalysesRequest(
@@ -166,8 +181,23 @@ public sealed class ReportProjectionIntegrationTests
             MotifSchema.CurrentSchema, new Version(1, 0)))
         {
             new AssessmentRepository(seedDatabase).Record(new NewAssessmentRecord(
-                assessmentId, null, null, "pangloss", "Correctness", "{}", "sha256:scope",
-                "whitespace-and-punctuation", "1", "{}", selection, null, null, Hash('a'), null, null, null, [word]));
+            AssessmentId: assessmentId,
+            ProposalId: null,
+            ProposalIntentDigest: null,
+            Assessor: "pangloss",
+            Kind: "Correctness",
+            ScopeJson: "{}",
+            ScopeDigest: "sha256:scope",
+            Subject: new AssessmentSubject.Words(selection, "whitespace-and-punctuation", "1"),
+            BaselineToken: "{}",
+            OutcomeDigest: null,
+            SemanticDigest: null,
+            GrammarSourceSha256: Hash('a'),
+            ModelFingerprint: null,
+            Pipeline: null,
+            DiagnosticCount: null,
+            Material: new AssessmentRecordMaterial.Words([word], null, null, [])
+        ));
         }
 
         var result = ReportCommands.Produce(new ProduceReportRequest(
@@ -323,8 +353,23 @@ public sealed class ReportProjectionIntegrationTests
             MotifSchema.CurrentSchema, new Version(1, 0)))
         {
             new AssessmentRepository(database).Record(new NewAssessmentRecord(
-                id, null, null, "pangloss", "Correctness", "{}", "sha256:scope",
-                "whitespace-and-punctuation", "1", "{}", selection, null, null, Hash('a'), null, null, null, [word]));
+            AssessmentId: id,
+            ProposalId: null,
+            ProposalIntentDigest: null,
+            Assessor: "pangloss",
+            Kind: "Correctness",
+            ScopeJson: "{}",
+            ScopeDigest: "sha256:scope",
+            Subject: new AssessmentSubject.Words(selection, "whitespace-and-punctuation", "1"),
+            BaselineToken: "{}",
+            OutcomeDigest: null,
+            SemanticDigest: null,
+            GrammarSourceSha256: Hash('a'),
+            ModelFingerprint: null,
+            Pipeline: null,
+            DiagnosticCount: null,
+            Material: new AssessmentRecordMaterial.Words([word], null, null, [])
+        ));
         }
 
         var result = ProposalCommands.Analyses(new AssessmentAnalysesRequest(
@@ -345,8 +390,23 @@ public sealed class ReportProjectionIntegrationTests
             MotifSchema.CurrentSchema, new Version(1, 0)))
         {
             new AssessmentRepository(database).Record(new NewAssessmentRecord(
-                id, null, null, "pangloss", "ObjectTiming", "{}", "sha256:scope",
-                "whitespace-and-punctuation", "1", "{}", selection, "outcome", "semantic", Hash('a'), "model", "pipeline", 0, []));
+            AssessmentId: id,
+            ProposalId: null,
+            ProposalIntentDigest: null,
+            Assessor: "pangloss",
+            Kind: "ObjectTiming",
+            ScopeJson: "{}",
+            ScopeDigest: "sha256:scope",
+            Subject: new AssessmentSubject.Words(selection, "whitespace-and-punctuation", "1"),
+            BaselineToken: "{}",
+            OutcomeDigest: "outcome",
+            SemanticDigest: "semantic",
+            GrammarSourceSha256: Hash('a'),
+            ModelFingerprint: "model",
+            Pipeline: "pipeline",
+            DiagnosticCount: 0,
+            Material: new AssessmentRecordMaterial.Words([], null, null, [])
+        ));
         }
 
         var result = ProposalCommands.Analyses(new AssessmentAnalysesRequest(

@@ -1,0 +1,328 @@
+{
+  "version": 1,
+  "grammarSha256": "df41de7421af1c419cc350e540d105927b0529eecea845960ee96cb0ea888260",
+  "grammarDependencies": [
+    {
+      "path": "WritingSystemStore/de.ldml",
+      "sha256": "fc4a2dd7836bdb0e384425d6af7aefcd1f7d0100f40d6d7fee0a48761f56b0af"
+    },
+    {
+      "path": "WritingSystemStore/en.ldml",
+      "sha256": "2cf2727518363b0c7d861e92ca2ee1fbaa030728fa494394390376f4f7f572c9"
+    },
+    {
+      "path": "WritingSystemStore/es.ldml",
+      "sha256": "11a4923bcd26939a18fd767621bdc7f140c4a5d29ac5473c0c27a8e579181dac"
+    },
+    {
+      "path": "WritingSystemStore/fr.ldml",
+      "sha256": "eb1bfaeacda88723a42bdedb15162d27263233d38d295a718f74c7507fc1c467"
+    },
+    {
+      "path": "WritingSystemStore/swh.ldml",
+      "sha256": "79fc87c69adda77725de13c6a41a3ecff91e7286a9dcba2c0f0fec25da3d0fd2"
+    }
+  ],
+  "requestSha256": "319882f18805ce494a3c879952b6ab6f26628a65e838592dc87458bc4a49a792",
+  "requestFileSha256": "8d4e2fd0721694271f33e66ea50cb64a210d3a2b2d99cda5d58898d5b6d43a40",
+  "build": "pangloss/0.8.4+403f3c43620a5d9880e3316ec8354a75edd93867",
+  "limits": {
+    "scope": "orderedPhonologyFolds",
+    "stepCap": 50000000,
+    "workCap": 10000000,
+    "timeoutMs": 30000,
+    "stepAllocation": "balancedByRequestOrder",
+    "timeAllocation": "sharedMonotonicDeadline"
+  },
+  "measuredEntryCount": 10,
+  "rows": [
+    {
+      "id": "r4-w-hardening",
+      "requestedContext": {
+        "kind": "fwdataEntry",
+        "entryGuid": "01a137cb-5854-43af-3726-2ae782b6acb3",
+        "msaGuid": "01a137cb-5854-679c-d51a-fda4a7aee768",
+        "msaClass": "MoStemMsa"
+      },
+      "resolvedContext": {
+        "kind": "fwdataEntry",
+        "entryGuid": "01a137cb-5854-43af-3726-2ae782b6acb3",
+        "msaGuid": "01a137cb-5854-679c-d51a-fda4a7aee768",
+        "msaClass": "MoStemMsa"
+      },
+      "underlying": "m+wili",
+      "expected": [
+        "mbili"
+      ],
+      "effectiveLimits": {
+        "stepCap": 10000000,
+        "workCap": 2000000,
+        "timeoutMs": 29999
+      },
+      "disposition": "agree",
+      "completion": "complete",
+      "expectedObserved": [
+        true
+      ],
+      "observed": "mbili",
+      "reason": null,
+      "steps": 7,
+      "workSteps": 204,
+      "capped": false,
+      "timedOut": false,
+      "orderedRuleIds": [
+        "01a137f6-9661-30df-e13f-0b3492570260",
+        "01a137f6-b447-7257-26d2-d9d3c1247459",
+        "01a137f6-caa9-92a7-f345-7fcf7113576a",
+        "01a137f6-eaa6-cc60-97db-a0de419276f9",
+        "01a137f7-057f-91ed-9b6c-764cff0452bf",
+        "01a137f7-2831-be2f-967b-fd4c4888aef1",
+        "01a137f7-3fbc-3d98-a11b-345cb491b7f8"
+      ],
+      "visitedRuleIds": [
+        "01a137f6-9661-30df-e13f-0b3492570260",
+        "01a137f6-b447-7257-26d2-d9d3c1247459",
+        "01a137f6-caa9-92a7-f345-7fcf7113576a",
+        "01a137f6-eaa6-cc60-97db-a0de419276f9",
+        "01a137f7-057f-91ed-9b6c-764cff0452bf",
+        "01a137f7-2831-be2f-967b-fd4c4888aef1",
+        "01a137f7-3fbc-3d98-a11b-345cb491b7f8"
+      ],
+      "appliedRuleIds": [
+        "01a137f6-eaa6-cc60-97db-a0de419276f9"
+      ]
+    },
+    {
+      "id": "r2-labial-assimilation",
+      "requestedContext": {
+        "kind": "fwdataEntry",
+        "entryGuid": "01a137cb-582c-8ae4-513b-2d97208d62c1",
+        "msaGuid": "01a137cb-582d-607b-a096-ab39aa375c0c",
+        "msaClass": "MoStemMsa"
+      },
+      "resolvedContext": {
+        "kind": "fwdataEntry",
+        "entryGuid": "01a137cb-582c-8ae4-513b-2d97208d62c1",
+        "msaGuid": "01a137cb-582d-607b-a096-ab39aa375c0c",
+        "msaClass": "MoStemMsa"
+      },
+      "underlying": "n+baya",
+      "expected": [
+        "mbaya"
+      ],
+      "effectiveLimits": {
+        "stepCap": 10000000,
+        "workCap": 2000000,
+        "timeoutMs": 29998
+      },
+      "disposition": "agree",
+      "completion": "complete",
+      "expectedObserved": [
+        true
+      ],
+      "observed": "mbaya",
+      "reason": null,
+      "steps": 7,
+      "workSteps": 213,
+      "capped": false,
+      "timedOut": false,
+      "orderedRuleIds": [
+        "01a137f6-9661-30df-e13f-0b3492570260",
+        "01a137f6-b447-7257-26d2-d9d3c1247459",
+        "01a137f6-caa9-92a7-f345-7fcf7113576a",
+        "01a137f6-eaa6-cc60-97db-a0de419276f9",
+        "01a137f7-057f-91ed-9b6c-764cff0452bf",
+        "01a137f7-2831-be2f-967b-fd4c4888aef1",
+        "01a137f7-3fbc-3d98-a11b-345cb491b7f8"
+      ],
+      "visitedRuleIds": [
+        "01a137f6-9661-30df-e13f-0b3492570260",
+        "01a137f6-b447-7257-26d2-d9d3c1247459",
+        "01a137f6-caa9-92a7-f345-7fcf7113576a",
+        "01a137f6-eaa6-cc60-97db-a0de419276f9",
+        "01a137f7-057f-91ed-9b6c-764cff0452bf",
+        "01a137f7-2831-be2f-967b-fd4c4888aef1",
+        "01a137f7-3fbc-3d98-a11b-345cb491b7f8"
+      ],
+      "appliedRuleIds": [
+        "01a137f6-b447-7257-26d2-d9d3c1247459"
+      ]
+    },
+    {
+      "id": "r3-r4-feeding",
+      "requestedContext": {
+        "kind": "fwdataEntry",
+        "entryGuid": "01a137cb-5854-43af-3726-2ae782b6acb3",
+        "msaGuid": "01a137cb-5854-679c-d51a-fda4a7aee768",
+        "msaClass": "MoStemMsa"
+      },
+      "resolvedContext": {
+        "kind": "fwdataEntry",
+        "entryGuid": "01a137cb-5854-43af-3726-2ae782b6acb3",
+        "msaGuid": "01a137cb-5854-679c-d51a-fda4a7aee768",
+        "msaClass": "MoStemMsa"
+      },
+      "underlying": "n+wili",
+      "expected": [
+        "mbili"
+      ],
+      "effectiveLimits": {
+        "stepCap": 10000000,
+        "workCap": 2000000,
+        "timeoutMs": 29997
+      },
+      "disposition": "agree",
+      "completion": "complete",
+      "expectedObserved": [
+        true
+      ],
+      "observed": "mbili",
+      "reason": null,
+      "steps": 7,
+      "workSteps": 287,
+      "capped": false,
+      "timedOut": false,
+      "orderedRuleIds": [
+        "01a137f6-9661-30df-e13f-0b3492570260",
+        "01a137f6-b447-7257-26d2-d9d3c1247459",
+        "01a137f6-caa9-92a7-f345-7fcf7113576a",
+        "01a137f6-eaa6-cc60-97db-a0de419276f9",
+        "01a137f7-057f-91ed-9b6c-764cff0452bf",
+        "01a137f7-2831-be2f-967b-fd4c4888aef1",
+        "01a137f7-3fbc-3d98-a11b-345cb491b7f8"
+      ],
+      "visitedRuleIds": [
+        "01a137f6-9661-30df-e13f-0b3492570260",
+        "01a137f6-b447-7257-26d2-d9d3c1247459",
+        "01a137f6-caa9-92a7-f345-7fcf7113576a",
+        "01a137f6-eaa6-cc60-97db-a0de419276f9",
+        "01a137f7-057f-91ed-9b6c-764cff0452bf",
+        "01a137f7-2831-be2f-967b-fd4c4888aef1",
+        "01a137f7-3fbc-3d98-a11b-345cb491b7f8"
+      ],
+      "appliedRuleIds": [
+        "01a137f6-caa9-92a7-f345-7fcf7113576a",
+        "01a137f6-eaa6-cc60-97db-a0de419276f9"
+      ]
+    },
+    {
+      "id": "unchanged-pya",
+      "requestedContext": {
+        "kind": "fwdataEntry",
+        "entryGuid": "01a137cb-5832-fc63-4303-a5f32c34a084",
+        "msaGuid": "01a137cb-5832-2cc0-cd47-ec51ab7ed477",
+        "msaClass": "MoStemMsa"
+      },
+      "resolvedContext": {
+        "kind": "fwdataEntry",
+        "entryGuid": "01a137cb-5832-fc63-4303-a5f32c34a084",
+        "msaGuid": "01a137cb-5832-2cc0-cd47-ec51ab7ed477",
+        "msaClass": "MoStemMsa"
+      },
+      "underlying": "pya",
+      "expected": [
+        "pya"
+      ],
+      "effectiveLimits": {
+        "stepCap": 10000000,
+        "workCap": 2000000,
+        "timeoutMs": 29996
+      },
+      "disposition": "agree",
+      "completion": "complete",
+      "expectedObserved": [
+        true
+      ],
+      "observed": "pya",
+      "reason": null,
+      "steps": 7,
+      "workSteps": 84,
+      "capped": false,
+      "timedOut": false,
+      "orderedRuleIds": [
+        "01a137f6-9661-30df-e13f-0b3492570260",
+        "01a137f6-b447-7257-26d2-d9d3c1247459",
+        "01a137f6-caa9-92a7-f345-7fcf7113576a",
+        "01a137f6-eaa6-cc60-97db-a0de419276f9",
+        "01a137f7-057f-91ed-9b6c-764cff0452bf",
+        "01a137f7-2831-be2f-967b-fd4c4888aef1",
+        "01a137f7-3fbc-3d98-a11b-345cb491b7f8"
+      ],
+      "visitedRuleIds": [
+        "01a137f6-9661-30df-e13f-0b3492570260",
+        "01a137f6-b447-7257-26d2-d9d3c1247459",
+        "01a137f6-caa9-92a7-f345-7fcf7113576a",
+        "01a137f6-eaa6-cc60-97db-a0de419276f9",
+        "01a137f7-057f-91ed-9b6c-764cff0452bf",
+        "01a137f7-2831-be2f-967b-fd4c4888aef1",
+        "01a137f7-3fbc-3d98-a11b-345cb491b7f8"
+      ],
+      "appliedRuleIds": []
+    },
+    {
+      "id": "unchanged-already-labial",
+      "requestedContext": {
+        "kind": "fwdataEntry",
+        "entryGuid": "01a137cb-582c-8ae4-513b-2d97208d62c1",
+        "msaGuid": "01a137cb-582d-607b-a096-ab39aa375c0c",
+        "msaClass": "MoStemMsa"
+      },
+      "resolvedContext": {
+        "kind": "fwdataEntry",
+        "entryGuid": "01a137cb-582c-8ae4-513b-2d97208d62c1",
+        "msaGuid": "01a137cb-582d-607b-a096-ab39aa375c0c",
+        "msaClass": "MoStemMsa"
+      },
+      "underlying": "m+baya",
+      "expected": [
+        "mbaya"
+      ],
+      "effectiveLimits": {
+        "stepCap": 10000000,
+        "workCap": 2000000,
+        "timeoutMs": 29996
+      },
+      "disposition": "agree",
+      "completion": "complete",
+      "expectedObserved": [
+        true
+      ],
+      "observed": "mbaya",
+      "reason": null,
+      "steps": 7,
+      "workSteps": 147,
+      "capped": false,
+      "timedOut": false,
+      "orderedRuleIds": [
+        "01a137f6-9661-30df-e13f-0b3492570260",
+        "01a137f6-b447-7257-26d2-d9d3c1247459",
+        "01a137f6-caa9-92a7-f345-7fcf7113576a",
+        "01a137f6-eaa6-cc60-97db-a0de419276f9",
+        "01a137f7-057f-91ed-9b6c-764cff0452bf",
+        "01a137f7-2831-be2f-967b-fd4c4888aef1",
+        "01a137f7-3fbc-3d98-a11b-345cb491b7f8"
+      ],
+      "visitedRuleIds": [
+        "01a137f6-9661-30df-e13f-0b3492570260",
+        "01a137f6-b447-7257-26d2-d9d3c1247459",
+        "01a137f6-caa9-92a7-f345-7fcf7113576a",
+        "01a137f6-eaa6-cc60-97db-a0de419276f9",
+        "01a137f7-057f-91ed-9b6c-764cff0452bf",
+        "01a137f7-2831-be2f-967b-fd4c4888aef1",
+        "01a137f7-3fbc-3d98-a11b-345cb491b7f8"
+      ],
+      "appliedRuleIds": []
+    }
+  ],
+  "counts": {
+    "agree": 5,
+    "disagree": 0,
+    "unavailable": 0,
+    "total": 5
+  },
+  "completionCounts": {
+    "complete": 5,
+    "incomplete": 0,
+    "notStarted": 0
+  }
+}

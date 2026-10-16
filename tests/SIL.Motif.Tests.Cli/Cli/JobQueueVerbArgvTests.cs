@@ -1,3 +1,4 @@
+using SIL.Motif.Host.Assess;
 using System.Diagnostics;
 using Microsoft.Data.Sqlite;
 using SIL.Motif.Cli;
@@ -266,17 +267,16 @@ public sealed class JobQueueVerbArgvTests : IDisposable
             Kind: "Correctness",
             ScopeJson: """{"perWordLimitMs":1000,"perWordStepLimit":{"steps":200000,"isUnbounded":false}}""",
             ScopeDigest: "sha256:" + new string('a', 64),
-            TokeniserName: "none",
-            TokeniserVersion: "1",
+            Subject: new AssessmentSubject.Words(selection, "none", "1"),
             BaselineToken: "{}",
-            Selection: selection,
             OutcomeDigest: "sha256:" + new string('b', 64),
             SemanticDigest: "sha256:" + new string('c', 64),
             GrammarSourceSha256: "sha256:" + new string('d', 64),
             ModelFingerprint: "model",
             Pipeline: "pipeline",
             DiagnosticCount: 0,
-            Words: new[] { new AssessedWord(word, "analysed", new[] { new ParsedAnalysis(null, Array.Empty<string>(), 0, "digest") }) }));
+            Material: new AssessmentRecordMaterial.Words(new[] { new AssessedWord(word, "analysed", new[] { new ParsedAnalysis(null, Array.Empty<string>(), 0, "digest") }) }, null, null, [])
+        ));
         return assessmentId;
     }
 

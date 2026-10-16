@@ -61,7 +61,9 @@ public sealed class AssessmentRepositoryTests : IDisposable
         var selected = Selection.Create("selection-1", ["bo", "za"]);
         var matching = NewAssessment("matching", null, null, "ParseTime",
             [new AssessedWord("bo", "analysed", []), new AssessedWord("za", "no-analysis", [])],
-            "2026-09-24T10:00:00.0000000+00:00") with { Selection = selected };
+            "2026-09-24T10:00:00.0000000+00:00") with { Subject = ((AssessmentSubject.Words)NewAssessment("matching", null, null, "ParseTime",
+            [new AssessedWord("bo", "analysed", []), new AssessedWord("za", "no-analysis", [])],
+            "2026-09-24T10:00:00.0000000+00:00").Subject) with { Selection = selected } };
         var unrelated = NewAssessment("unrelated", null, null, "ParseTime",
             [new AssessedWord("bo", "analysed", []), new AssessedWord("za", "no-analysis", [])],
             "2026-09-24T11:00:00.0000000+00:00") with { BaselineToken = "{\"baseline\":false}" };
@@ -220,9 +222,8 @@ public sealed class AssessmentRepositoryTests : IDisposable
         };
         repository.Record(NewAssessment("object-timing-identity", null, null, "ParseTime",
             [new AssessedWord("word", "analysed", []) { ElapsedNs = 725_001 }]) with
-        {
-            ObjectTimings = timings,
-        });
+        { Material = NewAssessment("object-timing-identity", null, null, "ParseTime",
+            [new AssessedWord("word", "analysed", []) { ElapsedNs = 725_001 }]).RequireWordMaterial() with { ObjectTimings = timings } });
 
         var stored = repository.Get("object-timing-identity");
 
@@ -254,10 +255,12 @@ public sealed class AssessmentRepositoryTests : IDisposable
         using var ownedDatabase = database;
         var evidence = Invocation("shared-run");
         var first = NewAssessment("timing", null, null, "ParseTime") with
-        {
-            Invocation = evidence, OutcomeDigest = null, SemanticDigest = null,
-            ModelFingerprint = null, Pipeline = null, DiagnosticCount = null
-        };
+        { OutcomeDigest = null,
+                SemanticDigest = null,
+                ModelFingerprint = null,
+                Pipeline = null,
+                DiagnosticCount = null,
+                Material = NewAssessment("timing", null, null, "ParseTime").RequireWordMaterial() with { Invocation = evidence } };
         repository.RecordBatch([first, first with { AssessmentId = "stats", Kind = "ObjectTiming" }]);
 
         var stored = repository.Get("timing");
@@ -280,7 +283,7 @@ public sealed class AssessmentRepositoryTests : IDisposable
     {
         var repository = NewRepository("atomic-batch.fwdata", out var database);
         using var ownedDatabase = database;
-        var first = NewAssessment("duplicate", null, null, "ParseTime") with { Invocation = Invocation("rollback-run") };
+        var first = NewAssessment("duplicate", null, null, "ParseTime") with { Material = NewAssessment("duplicate", null, null, "ParseTime").RequireWordMaterial() with { Invocation = Invocation("rollback-run") } };
         Assert.Throws<SqliteException>(() => repository.RecordBatch([first, first]));
         Assert.Throws<KeyNotFoundException>(() => repository.Get("duplicate"));
         using var connection = database.OpenConnection();
@@ -294,13 +297,11 @@ public sealed class AssessmentRepositoryTests : IDisposable
     {
         var repository = NewRepository("conflicting-evidence.fwdata", out var database);
         using var ownedDatabase = database;
-        var first = NewAssessment("original", null, null, "ParseTime") with { Invocation = Invocation("same-run") };
+        var first = NewAssessment("original", null, null, "ParseTime") with { Material = NewAssessment("original", null, null, "ParseTime").RequireWordMaterial() with { Invocation = Invocation("same-run") } };
         repository.Record(first);
         var conflicting = first with
-        {
-            AssessmentId = "conflicting",
-            Invocation = first.Invocation! with { PerWordStepLimit = 7 }
-        };
+        { AssessmentId = "conflicting",
+                Material = first.RequireWordMaterial() with { Invocation = first.Invocation! with { PerWordStepLimit = 7 } } };
         Assert.Throws<InvalidOperationException>(() => repository.RecordBatch([conflicting]));
         Assert.Throws<KeyNotFoundException>(() => repository.Get("conflicting"));
         Assert.Equal(first.Invocation, repository.Get("original").Invocation);
@@ -318,10 +319,12 @@ public sealed class AssessmentRepositoryTests : IDisposable
                 "warning: allomorph \"a3547f67\": cannot segment \"d+\"; skipped"),
         };
         var first = NewAssessment("timing", null, null, "ParseTime") with
-        {
-            Invocation = evidence, OutcomeDigest = null, SemanticDigest = null,
-            ModelFingerprint = null, Pipeline = null, DiagnosticCount = null
-        };
+        { OutcomeDigest = null,
+                SemanticDigest = null,
+                ModelFingerprint = null,
+                Pipeline = null,
+                DiagnosticCount = null,
+                Material = NewAssessment("timing", null, null, "ParseTime").RequireWordMaterial() with { Invocation = evidence } };
 
         repository.RecordBatch([first, first with { AssessmentId = "stats", Kind = "ObjectTiming" }]);
 
@@ -339,10 +342,12 @@ public sealed class AssessmentRepositoryTests : IDisposable
         var repository = NewRepository("quiet.fwdata", out var database);
         using var ownedDatabase = database;
         repository.Record(NewAssessment("quiet", null, null, "ParseTime") with
-        {
-            Invocation = Invocation("quiet-run"), OutcomeDigest = null, SemanticDigest = null,
-            ModelFingerprint = null, Pipeline = null, DiagnosticCount = null
-        });
+        { OutcomeDigest = null,
+                SemanticDigest = null,
+                ModelFingerprint = null,
+                Pipeline = null,
+                DiagnosticCount = null,
+                Material = NewAssessment("quiet", null, null, "ParseTime").RequireWordMaterial() with { Invocation = Invocation("quiet-run") } });
 
         var stored = repository.Get("quiet").Invocation!;
 
@@ -360,8 +365,8 @@ public sealed class AssessmentRepositoryTests : IDisposable
         var evidence = Invocation("material-run");
         var produced = new ProducedAssessment(AssessmentKind.ParseTime, "sha256:source",
             null, null, null, null, null, new AssessmentRaw.WordMeasurements([])) { Invocation = evidence };
-        var record = AssessmentMaterial.ToRecord(produced, "material", null, null, "pangloss", "{}",
-            "sha256:scope", "whitespace", "1", "baseline", Selection.Create("selection", []));
+        var record = AssessmentMaterial.ToWordRecord(produced, "material", null, null, "pangloss", "{}",
+            "sha256:scope", "baseline", new AssessmentSubject.Words(Selection.Create("selection", []), "whitespace", "1"));
         Assert.Equal(evidence, record.Invocation);
         Assert.Null(record.OutcomeDigest);
         Assert.Null(record.SemanticDigest);
@@ -777,22 +782,21 @@ public sealed class AssessmentRepositoryTests : IDisposable
             Kind: kind,
             ScopeJson: "{\"words\":\"all\"}",
             ScopeDigest: "sha256:scope",
-            TokeniserName: "whitespace",
-            TokeniserVersion: "1",
+            Subject: new AssessmentSubject.Words(selection, "whitespace", "1"),
             BaselineToken: "{\"baseline\":true}",
-            Selection: selection,
             OutcomeDigest: "sha256:outcome",
             SemanticDigest: "sha256:semantic",
             GrammarSourceSha256: "sha256:grammar",
             ModelFingerprint: "fingerprint",
             Pipeline: "pipeline",
             DiagnosticCount: 0,
-            Words: words ??
+            Material: new AssessmentRecordMaterial.Words(words ??
             [
                 new AssessedWord("bo", "complete", [new ParsedAnalysis("cat-guid", ["guid-root"], 0, "sha256:identity")]),
                 new AssessedWord("za", "incomplete", [])
-            ],
-            SavedUtc: savedUtc);
+            ], null, null, []),
+            SavedUtc: savedUtc
+        );
     }
 
     public void Dispose()

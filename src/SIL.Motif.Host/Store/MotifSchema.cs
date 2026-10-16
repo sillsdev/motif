@@ -16,7 +16,7 @@ public static class MotifSchema
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 47;
+    public const int CurrentSchema = 48;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
@@ -34,7 +34,8 @@ public static class MotifSchema
             command.CommandText = MetadataDdl + CorpusDdl + ProposalWorkflowDdl + SelectionDdl + AssessmentDdl + JobDdl +
                 BaselineDdl + BaselineTextWordsDdl + BaselineTextReadIndexDdl + RetainedInvocationDdl + ParsimonyBundleDdl + ParsimonyBundleLifetimeDdl +
                 GrammarCheckDdl + PendingChangeFitDdl + ReviewMarkDdl +
-                ReadOccurrenceDdl + ActiveParseDdl + ParserRefusalDdl + ProposalDifferenceDdl + PhonologyExampleDdl;
+                ReadOccurrenceDdl + ActiveParseDdl + ParserRefusalDdl + ProposalDifferenceDdl + PhonologyExampleDdl +
+                PhonologyAssessmentDdl;
             command.ExecuteNonQuery();
         }
 
@@ -66,7 +67,8 @@ public static class MotifSchema
             "ReadOccurrences", "ActiveParse", "ParserRefusals", "ParsimonyBundles", "ParsimonyBundleReferences",
             "ParsimonyReaderLeases", "ParsimonyBuildClaims", "CurrentParsimonyBundles",
             "ProposalDifferences", "ProposalDifferenceCases", "ProposalDifferenceOccurrences", "ProposalDifferenceBuckets",
-            "PhonologyExampleSets", "PhonologyExampleSetRevisions", "PhonologyExamples"
+            "PhonologyExampleSets", "PhonologyExampleSetRevisions", "PhonologyExamples",
+            "PhonologyAssessmentBindings", "PhonologyAssessmentRows", "PhonologyAssessmentDependencies"
         };
         var expectedIndexes = new HashSet<string>(StringComparer.Ordinal)
         {
@@ -223,14 +225,27 @@ public static class MotifSchema
         }
         if (table == "AssessedWords" && sql.IndexOf("CHECK (IsIncomplete IN (0, 1))", StringComparison.OrdinalIgnoreCase) < 0)
             throw new InvalidDataException($"Motif table {table} is missing a required invariant.");
+        if (table == "Assessments")
+        {
+            var expected = AssessmentDdl[AssessmentDdl.IndexOf("CHECK ((SubjectKind", StringComparison.Ordinal)..];
+            expected = expected[..expected.IndexOf(";", StringComparison.Ordinal)];
+            if (!sql.Contains(expected.Trim(), StringComparison.Ordinal))
+                throw new InvalidDataException("The Assessment subject branch constraints are invalid.");
+        }
         var requiredInvariants = table switch
         {
+            "PhonologyAssessmentBindings" => new[] { "UNIQUE (AssessmentId, RevisionId)" },
+            "PhonologyAssessmentRows" => new[] { "CHECK (Ordinal >= 0)", "PRIMARY KEY (AssessmentId, Ordinal)",
+                "UNIQUE (AssessmentId, ExampleId)", "FOREIGN KEY (AssessmentId, RevisionId)",
+                "FOREIGN KEY (RevisionId, Ordinal, ExampleId)" },
+            "PhonologyAssessmentDependencies" => new[] { "CHECK (Ordinal >= 0)", "UNIQUE (AssessmentId, Path)",
+                "PRIMARY KEY (AssessmentId, Ordinal)" },
             "PhonologyExampleSets" => new[]
                 { "FOREIGN KEY (SetId, CurrentRevisionId)", "DEFERRABLE INITIALLY DEFERRED" },
             "PhonologyExampleSetRevisions" => new[]
                 { "CHECK (RevisionNumber > 0)", "CHECK (ExampleCount BETWEEN 1 AND 500)", "UNIQUE (SetId, RevisionId)" },
             "PhonologyExamples" => new[]
-                { "CHECK (Ordinal >= 0)", "PRIMARY KEY (RevisionId, Ordinal)", "UNIQUE (RevisionId, ExampleId)" },
+                { "CHECK (Ordinal >= 0)", "PRIMARY KEY (RevisionId, Ordinal)", "UNIQUE (RevisionId, ExampleId)", "UNIQUE (RevisionId, Ordinal, ExampleId)" },
             _ => []
         };
         foreach (var invariant in requiredInvariants)
@@ -368,6 +383,14 @@ public static class MotifSchema
     private static IReadOnlyList<ForeignKeyShape> ForeignKeysFor(string table) => table switch
     {
         "CorpusDocuments" => [new("Corpora", "CorpusId", "CorpusId", "NO ACTION", "NO ACTION", "NONE")],
+        "PhonologyAssessmentBindings" => [new("PhonologyExampleSetRevisions", "RevisionId", "RevisionId", "NO ACTION", "NO ACTION", "NONE"),
+            new("Assessments", "AssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE")],
+        "PhonologyAssessmentRows" => [new("PhonologyExamples", "RevisionId", "RevisionId", "NO ACTION", "NO ACTION", "NONE"),
+            new("PhonologyExamples", "Ordinal", "Ordinal", "NO ACTION", "NO ACTION", "NONE"),
+            new("PhonologyExamples", "ExampleId", "ExampleId", "NO ACTION", "NO ACTION", "NONE"),
+            new("PhonologyAssessmentBindings", "AssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE"),
+            new("PhonologyAssessmentBindings", "RevisionId", "RevisionId", "NO ACTION", "NO ACTION", "NONE")],
+        "PhonologyAssessmentDependencies" => [new("PhonologyAssessmentBindings", "AssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE")],
         "Assessments" => [new("Assessments", "ReplacesAssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE"),
             new("AssessmentInvocations", "InvocationId", "InvocationId", "NO ACTION", "NO ACTION", "NONE"),
             new("Proposals", "ProposalId", "ProposalId", "NO ACTION", "NO ACTION", "NONE")],
@@ -438,16 +461,23 @@ public static class MotifSchema
             C("Title", "TEXT", true), C("Source", "TEXT", true), C("Text", "TEXT", true),
             C("ContentSha256", "TEXT", true), C("IngestedUtc", "TEXT", true), C("Licence", "TEXT"),
             C("CapabilitiesJson", "TEXT"), C("AttributesJson", "TEXT")],
+        "PhonologyAssessmentBindings" => [C("AssessmentId", "TEXT", true, 1), C("RevisionId", "TEXT", true),
+            C("HeaderJson", "TEXT", true)],
+        "PhonologyAssessmentRows" => [C("AssessmentId", "TEXT", true, 1), C("RevisionId", "TEXT", true),
+            C("Ordinal", "INTEGER", true, 2), C("ExampleId", "TEXT", true), C("EvidenceJson", "TEXT", true),
+            C("SummaryJson", "TEXT", true)],
+        "PhonologyAssessmentDependencies" => [C("AssessmentId", "TEXT", true, 1), C("Ordinal", "INTEGER", true, 2),
+            C("Path", "TEXT", true), C("Sha256", "TEXT", true)],
         "AssessmentInvocations" => [C("InvocationId", "TEXT", false, 1), C("EvidenceJson", "TEXT", true)],
         "Assessments" =>
-        [C("AssessmentId", "TEXT", false, 1), C("SelectionName", "TEXT", true), C("SelectionWordsJson", "TEXT", true),
-            C("SelectionSha256", "TEXT", true), C("SelectionProvenanceJson", "TEXT"), C("OutcomeDigest", "TEXT"),
+        [C("AssessmentId", "TEXT", false, 1), C("SelectionName", "TEXT"), C("SelectionWordsJson", "TEXT"),
+            C("SelectionSha256", "TEXT"), C("SelectionProvenanceJson", "TEXT"), C("OutcomeDigest", "TEXT"),
             C("SemanticDigest", "TEXT"), C("GrammarSourceSha256", "TEXT", true),
             C("ModelFingerprint", "TEXT"), C("Pipeline", "TEXT"), C("DiagnosticCount", "INTEGER"),
             C("SavedUtc", "TEXT", true), C("ProposalId", "TEXT"), C("ProposalIntentDigest", "TEXT"),
             C("Assessor", "TEXT", true), C("Kind", "TEXT", true), C("ScopeJson", "TEXT", true),
-            C("ScopeDigest", "TEXT", true), C("TokeniserName", "TEXT", true), C("TokeniserVersion", "TEXT", true),
-            C("BaselineToken", "TEXT", true), C("CachePath", "TEXT"), C("CacheDigest", "TEXT"), C("InvocationId", "TEXT"), C("ReplacesAssessmentId", "TEXT")],
+            C("ScopeDigest", "TEXT", true), C("TokeniserName", "TEXT"), C("TokeniserVersion", "TEXT"),
+            C("BaselineToken", "TEXT", true), C("CachePath", "TEXT"), C("CacheDigest", "TEXT"), C("InvocationId", "TEXT"), C("ReplacesAssessmentId", "TEXT"), C("SubjectKind", "TEXT", true), C("SubjectJson", "TEXT")],
         "AssessedWords" =>
         [C("AssessedWordId", "INTEGER", false, 1), C("AssessmentId", "TEXT", true), C("OrdinalIndex", "INTEGER", true),
             C("Word", "TEXT", true), C("Outcome", "TEXT", true), C("ElapsedMs", "INTEGER"), C("ElapsedNs", "INTEGER"),
@@ -712,9 +742,9 @@ public static class MotifSchema
         );
         CREATE TABLE Assessments (
             AssessmentId TEXT PRIMARY KEY,
-            SelectionName TEXT NOT NULL,
-            SelectionWordsJson TEXT NOT NULL,
-            SelectionSha256 TEXT NOT NULL,
+            SelectionName TEXT NULL,
+            SelectionWordsJson TEXT NULL,
+            SelectionSha256 TEXT NULL,
             SelectionProvenanceJson TEXT NULL,
             OutcomeDigest TEXT NULL,
             SemanticDigest TEXT NULL,
@@ -729,13 +759,24 @@ public static class MotifSchema
             Kind TEXT NOT NULL,
             ScopeJson TEXT NOT NULL,
             ScopeDigest TEXT NOT NULL,
-            TokeniserName TEXT NOT NULL,
-            TokeniserVersion TEXT NOT NULL,
+            TokeniserName TEXT NULL,
+            TokeniserVersion TEXT NULL,
             BaselineToken TEXT NOT NULL,
             CachePath TEXT NULL,
             CacheDigest TEXT NULL,
             InvocationId TEXT NULL REFERENCES AssessmentInvocations(InvocationId),
-            ReplacesAssessmentId TEXT NULL REFERENCES Assessments(AssessmentId)
+            ReplacesAssessmentId TEXT NULL REFERENCES Assessments(AssessmentId),
+            SubjectKind TEXT NOT NULL CHECK (SubjectKind IN ('words', 'phonologyExamples')),
+            SubjectJson TEXT NULL,
+            CHECK ((SubjectKind = 'words' AND Kind != 'PhonologyExamples' AND SubjectJson IS NULL
+                AND SelectionName IS NOT NULL AND SelectionWordsJson IS NOT NULL AND SelectionSha256 IS NOT NULL
+                AND TokeniserName IS NOT NULL AND TokeniserVersion IS NOT NULL)
+                OR (SubjectKind = 'phonologyExamples' AND Kind = 'PhonologyExamples' AND SubjectJson IS NOT NULL
+                AND SelectionName IS NULL AND SelectionWordsJson IS NULL AND SelectionSha256 IS NULL
+                AND SelectionProvenanceJson IS NULL AND TokeniserName IS NULL AND TokeniserVersion IS NULL
+                AND CachePath IS NULL AND CacheDigest IS NULL AND InvocationId IS NULL AND ReplacesAssessmentId IS NULL
+                AND ProposalIntentDigest IS NULL AND OutcomeDigest IS NULL AND SemanticDigest IS NULL
+                AND ModelFingerprint IS NULL AND Pipeline IS NULL AND DiagnosticCount IS NULL))
         );
         CREATE INDEX IX_Assessments_Proposal ON Assessments(ProposalId);
         CREATE INDEX IX_Assessments_Kind ON Assessments(Kind);
@@ -1119,7 +1160,8 @@ public static class MotifSchema
             ContextJson TEXT NOT NULL,
             CitationJson TEXT NULL,
             PRIMARY KEY (RevisionId, Ordinal),
-            UNIQUE (RevisionId, ExampleId)
+            UNIQUE (RevisionId, ExampleId),
+            UNIQUE (RevisionId, Ordinal, ExampleId)
         );
         CREATE UNIQUE INDEX IX_PhonologyExamples_RevisionExampleId ON PhonologyExamples(RevisionId, ExampleId);
 
@@ -1160,5 +1202,34 @@ public static class MotifSchema
         BEGIN
             SELECT RAISE(ABORT, 'Example Set examples are immutable');
         END;
+        """;
+
+    private const string PhonologyAssessmentDdl = """
+        CREATE TABLE PhonologyAssessmentBindings (
+            AssessmentId TEXT NOT NULL PRIMARY KEY REFERENCES Assessments(AssessmentId),
+            RevisionId TEXT NOT NULL REFERENCES PhonologyExampleSetRevisions(RevisionId),
+            HeaderJson TEXT NOT NULL,
+            UNIQUE (AssessmentId, RevisionId)
+        );
+        CREATE TABLE PhonologyAssessmentRows (
+            AssessmentId TEXT NOT NULL,
+            RevisionId TEXT NOT NULL,
+            Ordinal INTEGER NOT NULL CHECK (Ordinal >= 0),
+            ExampleId TEXT NOT NULL,
+            EvidenceJson TEXT NOT NULL,
+            SummaryJson TEXT NOT NULL,
+            PRIMARY KEY (AssessmentId, Ordinal),
+            UNIQUE (AssessmentId, ExampleId),
+            FOREIGN KEY (AssessmentId, RevisionId) REFERENCES PhonologyAssessmentBindings(AssessmentId, RevisionId),
+            FOREIGN KEY (RevisionId, Ordinal, ExampleId) REFERENCES PhonologyExamples(RevisionId, Ordinal, ExampleId)
+        );
+        CREATE TABLE PhonologyAssessmentDependencies (
+            AssessmentId TEXT NOT NULL REFERENCES PhonologyAssessmentBindings(AssessmentId),
+            Ordinal INTEGER NOT NULL CHECK (Ordinal >= 0),
+            Path TEXT NOT NULL,
+            Sha256 TEXT NOT NULL,
+            PRIMARY KEY (AssessmentId, Ordinal),
+            UNIQUE (AssessmentId, Path)
+        );
         """;
 }

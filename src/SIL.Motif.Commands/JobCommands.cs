@@ -525,7 +525,7 @@ public static class JobCommands
             try
             {
                 summaries = assessmentIds
-                    .Select(repository.Get)
+                    .Select(id => repository.GetHeader(id) ?? throw new KeyNotFoundException("The Assessment does not exist."))
                     .Select(record => new JobAssessmentSummary(
                         record.AssessmentId, record.Assessor, record.Kind, record.SavedUtc))
                     .ToArray();

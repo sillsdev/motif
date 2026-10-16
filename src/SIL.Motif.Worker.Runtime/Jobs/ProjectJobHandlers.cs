@@ -78,6 +78,8 @@ public static class ProjectJobHandlers
             [DryRunKind] = (job, token) => dryRun.RunAsync(job, project, token),
             [ParsimonyKind] = (job, token) => new ParsimonyJobHandler(database, baselines, workspaceKey,
                 project, options, invoker).RunAsync(job, token),
+            [PhonologyCheckJobHandler.JobKind] = (job, token) =>
+                new PhonologyCheckJobHandler(database, baselines, workspaceKey, invoker).RunAsync(job, token),
             [ParsimonyCandidateEvidenceBuilder.JobKind] = (job, token) =>
                 new ParsimonyCandidateEvidenceBuilder(database, workspaceKey, project, options, invoker, lanes)
                     .RunAsync(job, token),

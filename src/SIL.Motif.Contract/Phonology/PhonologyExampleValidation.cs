@@ -114,6 +114,23 @@ public static class PhonologyExampleValidation
         }
     }
 
+    /// <summary>The largest step ceiling a phonology check may request.</summary>
+    public const ulong MaxStepCap = 50_000_000;
+
+    /// <summary>The largest work ceiling a phonology check may request.</summary>
+    public const ulong MaxWorkCap = 5_000_000_000;
+
+    /// <summary>The longest shared deadline, in milliseconds, a phonology check may request.</summary>
+    public const uint MaxTimeoutMs = 600_000;
+
+    /// <summary>The ceilings a phonology check uses when its request names none.</summary>
+    public static readonly PhonologyLimits DefaultLimits = new(1_000_000, 100_000_000, 60_000);
+
+    /// <summary>Whether the ceilings are positive and within the producer's accepted range.</summary>
+    /// <param name="limits">The requested request-wide ceilings.</param>
+    public static bool AreLimitsInRange(PhonologyLimits limits) =>
+        limits is { StepCap: > 0 and <= MaxStepCap, WorkCap: > 0 and <= MaxWorkCap, TimeoutMs: > 0 and <= MaxTimeoutMs };
+
     public static void ValidatePageSize(int pageSize)
     {
         if (pageSize is < 1 or > MaxPageSize)

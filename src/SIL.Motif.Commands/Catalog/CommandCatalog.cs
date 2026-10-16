@@ -217,6 +217,10 @@ public static class CommandCatalog
             typeof(PhonologyExamplesListResponse), CommandSurface.Released, AgentClass.Read),
         new CommandDescriptor("phonology-examples show", typeof(ShowPhonologyExamplesRequest),
             typeof(PhonologyExamplesPageResponse), CommandSurface.Released, AgentClass.Read),
+        new CommandDescriptor("phonology-examples check", typeof(PhonologyCheckRequest),
+            typeof(JobEnqueuedResponse), CommandSurface.AdvancedAi, AgentClass.Evaluate),
+        new CommandDescriptor("phonology-examples results", typeof(PhonologyResultsRequest),
+            typeof(PhonologyResultsResponse), CommandSurface.Released, AgentClass.Read),
 
         new CommandDescriptor("writing-systems", typeof(WritingSystemsRequest),
             typeof(WritingSystemsResponse), CommandSurface.Released, AgentClass.Read),

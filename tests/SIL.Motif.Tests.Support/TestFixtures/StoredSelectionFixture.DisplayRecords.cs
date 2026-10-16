@@ -1,3 +1,4 @@
+using SIL.Motif.Host.Assess;
 using System.Text.Json;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract;
@@ -119,33 +120,44 @@ public sealed partial class StoredSelectionFixture
         var root = response.Measurements.LastOrDefault(item => item.Kind == AssessmentKinds.ParseTime)?.AssessmentId ??
             response.AssessmentIds.FirstOrDefault() ?? "fixture/assessment";
         var selection = Selection.Create("Fixture", response.Words.Select(word => word.Word));
-        var record = new NewAssessmentRecord(root, null, null, "test", AssessmentKinds.ParseTime, "{}",
-            selection.Sha256, "whitespace", "1", JsonSerializer.Serialize(response.Baseline.Token, MotifJson.CreateOptions()),
-            selection,
-            "sha256:fixture-outcome", "sha256:fixture-semantic", "sha256:fixture-grammar", "model", "pipeline", 0,
-            response.Words.Select(word => new AssessedWord(word.Word, word.Outcome, [], word.ElapsedMs)
+        var record = new NewAssessmentRecord(
+            AssessmentId: root,
+            ProposalId: null,
+            ProposalIntentDigest: null,
+            Assessor: "test",
+            Kind: AssessmentKinds.ParseTime,
+            ScopeJson: "{}",
+            ScopeDigest: selection.Sha256,
+            Subject: new AssessmentSubject.Words(selection, "whitespace", "1"),
+            BaselineToken: JsonSerializer.Serialize(response.Baseline.Token, MotifJson.CreateOptions()),
+            OutcomeDigest: "sha256:fixture-outcome",
+            SemanticDigest: "sha256:fixture-semantic",
+            GrammarSourceSha256: "sha256:fixture-grammar",
+            ModelFingerprint: "model",
+            Pipeline: "pipeline",
+            DiagnosticCount: 0,
+            Material: new AssessmentRecordMaterial.Words(response.Words.Select(word => new AssessedWord(word.Word, word.Outcome, [], word.ElapsedMs)
             {
                 Morphology = word.Morphology, IsIncomplete = word.IsIncomplete, ProjectStanding = word.ProjectStanding,
                 ReadingGrades = word.ReadingGrades, OccurrenceCount = word.OccurrenceCount,
                 AnalysisComparison = word.AnalysisComparison, MissedApproved = word.MissedApproved,
-            }).ToArray(), SavedUtc: DateTimeOffset.UtcNow.ToString("O"))
-        {
-            Invocation = new BatchInvocationEvidence(string.IsNullOrEmpty(response.InvocationId) ? root : response.InvocationId,
+            }).ToArray(), null, null, []) with { Invocation = new BatchInvocationEvidence(string.IsNullOrEmpty(response.InvocationId) ? root : response.InvocationId,
                 "fixture", "sha256:fixture-source", "sha256:fixture-parser", "fixture-words", "sha256:fixture-words",
                 "fixture-tsv", "sha256:fixture-tsv", "fixture-stderr", "sha256:fixture-stderr", null,
-                StepCap.Default, 1, false),
-        };
+                StepCap.Default, 1, false) },
+            SavedUtc: DateTimeOffset.UtcNow.ToString("O")
+        );
         RecordAssessment(record);
         foreach (var replacement in response.TimingOverrideAssessmentIds.Select((id, index) => (id, index)))
             RecordAssessment(record with
-            {
-                AssessmentId = replacement.id,
+            { AssessmentId = replacement.id,
                 ReplacesAssessmentId = root,
                 SavedUtc = DateTimeOffset.Parse(record.SavedUtc!).AddSeconds(replacement.index + 1).ToString("O"),
-                Invocation = record.Invocation! with { InvocationId = replacement.id },
-            });
+                Material = record.RequireWordMaterial() with { Invocation = record.Invocation! with { InvocationId = replacement.id } } });
         foreach (var measurement in response.Measurements.Where(item => item.AssessmentId != root)
                      .DistinctBy(item => item.AssessmentId))
-            RecordAssessment(record with { AssessmentId = measurement.AssessmentId, Kind = measurement.Kind, Words = [] });
+            RecordAssessment(record with { AssessmentId = measurement.AssessmentId,
+                Kind = measurement.Kind,
+                Material = record.RequireWordMaterial() with { Rows = [] } });
     }
 }

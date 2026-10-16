@@ -831,5 +831,15 @@
     "title": "Show phonology examples",
     "description": "Reads a bounded page from one exact saved Example Set revision, including its citations. It reads stored evidence without capturing a project or running PanGloss.",
     "source": "The shared command catalog and typed request contract."
+  },
+  "phonology-examples results": {
+    "title": "Read phonology check results",
+    "description": "Reads the stored result of one advisory phonology check as a page of per-example summaries or one complete example. It reads stored evidence without capturing a project or running PanGloss.",
+    "source": "The shared command catalog and typed request contract."
+  },
+  "phonology-examples check": {
+    "title": "Check phonology examples",
+    "description": "Queues an advisory check of one saved Example Set revision against the current Baseline's grammar and records the result as an Assessment. It never changes the FieldWorks project, Readiness or Apply.",
+    "source": "The shared command catalog and typed request contract."
   }
 }

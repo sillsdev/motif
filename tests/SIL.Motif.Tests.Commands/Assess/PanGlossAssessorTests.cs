@@ -27,6 +27,20 @@ public sealed class PanGlossAssessorTests : IDisposable
     }
 
     [Fact]
+    public async Task GrowingSupportedKindsDoesNotRequestExamplesForTheWordDefaultCollection()
+    {
+        var invoker = new FakeInvoker { Respond = request =>
+        {
+            Assert.IsType<PanGlossRequest.Batch>(request);
+            return new PanGlossOutcome.Unavailable("absent");
+        } };
+        var assessor = new PanGlossAssessor(_paths, invoker);
+        Assert.Contains(AssessmentKind.PhonologyExamples, assessor.SupportedKinds);
+        await Assert.ThrowsAsync<AssessorUnavailableException>(() => assessor.ProduceAsync(
+            new AssessmentScope.Words(["word"], [], TimeSpan.FromSeconds(1)), _candidate, CancellationToken.None));
+    }
+
+    [Fact]
     public async Task DefaultCollectionSharesOneCapturedBatchWithoutInventedReportMetadata()
     {
         using var invoker = RealFakeInvoker();
@@ -121,7 +135,7 @@ public sealed class PanGlossAssessorTests : IDisposable
         });
         using var invoker = RealFakeInvoker(parser);
         var assessor = new PanGlossAssessor(_paths, invoker);
-        var scope = new AssessmentScope(words, [AssessmentKind.ParseTime, AssessmentKind.ObjectTiming],
+        var scope = new AssessmentScope.Words(words, [AssessmentKind.ParseTime, AssessmentKind.ObjectTiming],
             TimeSpan.FromMilliseconds(700), 123);
         var started = new TaskCompletionSource<TrialWordProgress>(TaskCreationOptions.RunContinuationsAsynchronously);
         var firstFinished = new TaskCompletionSource<TrialWordProgress>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -385,7 +399,7 @@ public sealed class PanGlossAssessorTests : IDisposable
         Assert.Equal(kill, refusal.MemoryKill);
     }
 
-    private static AssessmentScope Scope(params AssessmentKind[] collect) =>
+    private static AssessmentScope.Words Scope(params AssessmentKind[] collect) =>
         new(["motifa"], collect.Length == 0 ? [AssessmentKind.ParseTime, AssessmentKind.ObjectTiming] : collect,
             TimeSpan.FromMilliseconds(700), 123);
 
@@ -396,7 +410,7 @@ public sealed class PanGlossAssessorTests : IDisposable
         var invoker = new RewritingInvoker(real);
         var assessor = new PanGlossAssessor(_paths, invoker);
         var produced = await assessor.ProduceAsync(
-            new(["motifa", "motifb"], [AssessmentKind.ParseTime, AssessmentKind.ObjectTiming],
+            new AssessmentScope.Words(["motifa", "motifb"], [AssessmentKind.ParseTime, AssessmentKind.ObjectTiming],
                 TimeSpan.FromMilliseconds(700), 123), _candidate, CancellationToken.None);
 
         Assert.Equal(1, invoker.Calls);

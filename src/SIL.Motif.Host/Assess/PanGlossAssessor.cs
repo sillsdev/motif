@@ -30,8 +30,10 @@ public interface IAssessorCachePathResolver
 public sealed class PanGlossAssessor : IAssessor
 {
     public const string AssessorName = "pangloss";
-    private static readonly IReadOnlyList<AssessmentKind> Supported =
+    private static readonly IReadOnlyList<AssessmentKind> WordDefaults =
         [AssessmentKind.ParseTime, AssessmentKind.ObjectTiming, AssessmentKind.Correctness];
+    private static readonly IReadOnlyList<AssessmentKind> Supported =
+        [.. WordDefaults, AssessmentKind.PhonologyExamples];
     private readonly IAssessorCachePathResolver _paths;
     private readonly IPanGlossInvoker _invoker;
     private readonly Func<string, string> _sourceDigest;
@@ -74,15 +76,28 @@ public sealed class PanGlossAssessor : IAssessor
         Action<bool>? onAdmissionWait, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(scope);
-        var wanted = scope.Collect.Count == 0 ? Supported : scope.Collect;
+        if (scope is AssessmentScope.PhonologyExamples examples)
+        {
+            var phonologySources = Directory.GetFiles(exportedCandidate, "*.fwdata", SearchOption.AllDirectories);
+            if (phonologySources.Length != 1)
+                throw new InvalidDataException("The phonology source must contain exactly one .fwdata file.");
+            var outcome = await _invoker.RunAsync(new PanGlossRequest.PhonologyExamples(
+                phonologySources[0], examples.Examples, examples.Limits), "assess:phonology-examples", cancellationToken)
+                .ConfigureAwait(false);
+            return [new ProducedAssessment(AssessmentKind.PhonologyExamples,
+                _sourceDigest(phonologySources[0]), null, null, null, null, null,
+                new AssessmentRaw.PhonologyExamples(PhonologyAssessmentOutcome.From(outcome)))];
+        }
+        var wordsScope = scope as AssessmentScope.Words ?? throw new ArgumentOutOfRangeException(nameof(scope));
+        var wanted = wordsScope.Collect.Count == 0 ? WordDefaults : wordsScope.Collect;
         foreach (var kind in wanted)
         {
-            if (!Supported.Contains(kind))
+            if (!WordDefaults.Contains(kind))
                 throw new AssessorRefusalException(AssessorName, kind,
                     "the supported batch route does not produce this measurement.");
         }
         cancellationToken.ThrowIfCancellationRequested();
-        var requestedWords = scope.Words.ToArray();
+        var requestedWords = wordsScope.WordForms.ToArray();
         var sources = Directory.GetFiles(exportedCandidate, "*.fwdata", SearchOption.AllDirectories);
         if (sources.Length != 1)
             throw new AssessorUnavailableException(AssessorName,
@@ -94,7 +109,7 @@ public sealed class PanGlossAssessor : IAssessor
         try
         {
             var batch = new PanGlossRequest.Batch(
-                sources[0], requestedWords, scope.PerWordLimit, cachePath, scope.PerWordStepLimit, directory)
+                sources[0], requestedWords, wordsScope.PerWordLimit, cachePath, wordsScope.PerWordStepLimit, directory)
                 { CollectAnalyses = true, OnProgress = onProgress, OnAdmissionWait = onAdmissionWait };
             var outcome = await _invoker.RunAsync(batch,
                 "assess:batch", cancellationToken).ConfigureAwait(false);
@@ -111,8 +126,8 @@ public sealed class PanGlossAssessor : IAssessor
                 };
             var matchingArtifacts = evidence.InvocationId == invocationId &&
                 Path.GetFullPath(evidence.SourcePath) == Path.Combine(Path.GetFullPath(directory), "source.fwdata");
-            if (!matchingArtifacts || evidence.PerWordStepLimit != scope.PerWordStepLimit ||
-                evidence.PerWordTimeoutMs != (scope.PerWordLimit is { } timeLimit
+            if (!matchingArtifacts || evidence.PerWordStepLimit != wordsScope.PerWordStepLimit ||
+                evidence.PerWordTimeoutMs != (wordsScope.PerWordLimit is { } timeLimit
                     ? (int)timeLimit.TotalMilliseconds : null) ||
                 evidence.Threads != batch.ThreadCount || evidence.CollectStatistics != (cachePath is not null))
                 throw new AssessorUnavailableException(AssessorName, "The invocation evidence does not match the requested scope.");

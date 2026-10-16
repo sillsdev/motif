@@ -185,12 +185,23 @@ public sealed class ReviewReadinessParityTests : IDisposable
         BaselineToken token, string word)
     {
         var id = CanonicalId.Mint("assessment/").Value;
-        new AssessmentRepository(fixture.Database).Record(new NewAssessmentRecord(id, proposal?.Id, proposal?.Digest,
-            "pangloss", RegressionChecker.RequiredKind,
-            """{"perWordLimitMs":1000,"perWordStepLimit":{"steps":200000,"isUnbounded":false}}""", "sha256:" + new string('a', 64), "none", "1",
-            JsonSerializer.Serialize(token, MotifJson.CreateOptions()), Selection.Create("test", [word]),
-            "sha256:" + new string('b', 64), "sha256:" + new string('c', 64), "sha256:" + new string('d', 64),
-            "model", "pipeline", 0, [CorrectnessFixture.Word(word, true)]));
+        new AssessmentRepository(fixture.Database).Record(new NewAssessmentRecord(
+            AssessmentId: id,
+            ProposalId: proposal?.Id,
+            ProposalIntentDigest: proposal?.Digest,
+            Assessor: "pangloss",
+            Kind: RegressionChecker.RequiredKind,
+            ScopeJson: """{"perWordLimitMs":1000,"perWordStepLimit":{"steps":200000,"isUnbounded":false}}""",
+            ScopeDigest: "sha256:" + new string('a', 64),
+            Subject: new AssessmentSubject.Words(Selection.Create("test", [word]), "none", "1"),
+            BaselineToken: JsonSerializer.Serialize(token, MotifJson.CreateOptions()),
+            OutcomeDigest: "sha256:" + new string('b', 64),
+            SemanticDigest: "sha256:" + new string('c', 64),
+            GrammarSourceSha256: "sha256:" + new string('d', 64),
+            ModelFingerprint: "model",
+            Pipeline: "pipeline",
+            DiagnosticCount: 0,
+            Material: new AssessmentRecordMaterial.Words([CorrectnessFixture.Word(word, true)], null, null, [])));
         return id;
     }
 

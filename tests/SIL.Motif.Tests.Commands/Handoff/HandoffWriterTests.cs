@@ -481,17 +481,17 @@ public sealed class HandoffWriterTests : IDisposable
             {
                 if (kind == AssessmentKind.ObjectTiming)
                 {
-                    WriteStatsCache(cachePath, scope.Words);
+                    WriteStatsCache(cachePath, ((AssessmentScope.Words)scope).WordForms);
                     return new AssessmentRaw.FileCache(cachePath, BatchInvocationEvidence.DigestFile(cachePath));
                 }
                 if (kind == AssessmentKind.ParseTime)
                 {
                     var projectPath = Directory.GetFiles(candidate, "*.fwdata", SearchOption.AllDirectories).Single();
-                    var words = scope.Words.Select((word, index) => new WordAnalysis(
+                    var words = ((AssessmentScope.Words)scope).WordForms.Select((word, index) => new WordAnalysis(
                         index, word, 1, WordOutcome.NoAnalysis, "none")).ToArray();
                     return new AssessmentRaw.Batch(new BatchAnalysis(words,
-                        (int)scope.PerWordLimit!.Value.TotalMilliseconds, projectPath, [])
-                    { PerWordStepLimit = scope.PerWordStepLimit });
+                        (int)((AssessmentScope.Words)scope).PerWordLimit!.Value.TotalMilliseconds, projectPath, [])
+                    { PerWordStepLimit = ((AssessmentScope.Words)scope).PerWordStepLimit });
                 }
                 return new AssessmentRaw.WordMeasurements([]);
             })
@@ -930,21 +930,21 @@ public sealed class HandoffWriterTests : IDisposable
             if (kind == AssessmentKind.ObjectTiming)
             {
                 var cachePath = Path.Combine(_root, "fake-stats-cache-" + Guid.NewGuid().ToString("N") + ".sqlite");
-                WriteStatsCache(cachePath, scope.Words);
+                WriteStatsCache(cachePath, ((AssessmentScope.Words)scope).WordForms);
                 return new AssessmentRaw.FileCache(cachePath, BatchInvocationEvidence.DigestFile(cachePath));
             }
             if (kind == AssessmentKind.ParseTime)
             {
                 var projectPath = Directory.GetFiles(candidate, "*.fwdata", SearchOption.AllDirectories).Single();
-                var words = scope.Words.Select((word, index) =>
+                var words = ((AssessmentScope.Words)scope).WordForms.Select((word, index) =>
                 {
                     var analyzed = StringComparer.Ordinal.Equals(word, analyzedWord);
                     return new WordAnalysis(index, word, analyzed ? 42 : 1,
                         analyzed ? WordOutcome.Analysed : WordOutcome.NoAnalysis, analyzed ? "sig" : "none");
                 }).ToArray();
                 return new AssessmentRaw.Batch(new BatchAnalysis(words,
-                    (int)scope.PerWordLimit!.Value.TotalMilliseconds, projectPath, [])
-                { PerWordStepLimit = scope.PerWordStepLimit });
+                    (int)((AssessmentScope.Words)scope).PerWordLimit!.Value.TotalMilliseconds, projectPath, [])
+                { PerWordStepLimit = ((AssessmentScope.Words)scope).PerWordStepLimit });
             }
             return new AssessmentRaw.WordMeasurements([]);
         })
@@ -1018,17 +1018,27 @@ public sealed class HandoffWriterTests : IDisposable
         [new RetainedInvocationMember("ParseTime", "foreign-assessment")]);
 
     private static NewAssessmentRecord ForeignAssessment(string id, string invocationId) =>
-        new(id, null, null, "pangloss", "ParseTime", "{\"words\":\"all\"}", "sha256:scope",
-            "none", "1", JsonSerializer.Serialize(ForeignBaseline()),
-            Selection.Create("project", ["word"]), "sha256:outcome", "sha256:semantic",
-            "sha256:source", "fingerprint", "pipeline", 0,
-            [new AssessedWord("word", "complete", [])])
-        {
-            Invocation = new BatchInvocationEvidence(
+        new NewAssessmentRecord(
+            AssessmentId: id,
+            ProposalId: null,
+            ProposalIntentDigest: null,
+            Assessor: "pangloss",
+            Kind: "ParseTime",
+            ScopeJson: "{\"words\":\"all\"}",
+            ScopeDigest: "sha256:scope",
+            Subject: new AssessmentSubject.Words(Selection.Create("project", ["word"]), "none", "1"),
+            BaselineToken: JsonSerializer.Serialize(ForeignBaseline()),
+            OutcomeDigest: "sha256:outcome",
+            SemanticDigest: "sha256:semantic",
+            GrammarSourceSha256: "sha256:source",
+            ModelFingerprint: "fingerprint",
+            Pipeline: "pipeline",
+            DiagnosticCount: 0,
+            Material: new AssessmentRecordMaterial.Words([new AssessedWord("word", "complete", [])], null, null, []) with { Invocation = new BatchInvocationEvidence(
                 invocationId, "source.fwdata", "sha256:source", "sha256:executable", "words.txt",
                 "sha256:words", "rows.tsv", "sha256:rows", "stderr.txt", "sha256:stderr",
-                1000, 200000, 1, true)
-        };
+                1000, 200000, 1, true) }
+        );
 
     private static SelectionDescriptor ForeignSelection()
     {

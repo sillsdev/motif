@@ -1,3 +1,4 @@
+using SIL.Motif.Host.Assess;
 using System.Text.Json;
 using SIL.LCModel;
 using SIL.LCModel.Core.Text;
@@ -291,9 +292,23 @@ public sealed class PendingChangesProposalTargetTests
             SIL.Motif.Worker.Projects.ProjectWorkspaceKey.Compute(project))!.Token;
         var selection = Selection.Create("trial", ["alpha-word"]);
         new AssessmentRepository(database).Record(new NewAssessmentRecord(
-            assessmentId, proposalId, "sha256:digest", "test", "ParseTime", "{}", "sha256:scope",
-            "whitespace-and-punctuation", "1", JsonSerializer.Serialize(token, MotifJson.CreateOptions()),
-            selection, "sha256:outcome", "sha256:semantic", "sha256:grammar", "model", "pipeline", 0, []));
+            AssessmentId: assessmentId,
+            ProposalId: proposalId,
+            ProposalIntentDigest: "sha256:digest",
+            Assessor: "test",
+            Kind: "ParseTime",
+            ScopeJson: "{}",
+            ScopeDigest: "sha256:scope",
+            Subject: new AssessmentSubject.Words(selection, "whitespace-and-punctuation", "1"),
+            BaselineToken: JsonSerializer.Serialize(token, MotifJson.CreateOptions()),
+            OutcomeDigest: "sha256:outcome",
+            SemanticDigest: "sha256:semantic",
+            GrammarSourceSha256: "sha256:grammar",
+            ModelFingerprint: "model",
+            Pipeline: "pipeline",
+            DiagnosticCount: 0,
+            Material: new AssessmentRecordMaterial.Words([], null, null, [])
+        ));
         return (token, new TrialEvidenceExpectation(proposalId.Value, "sha256:digest", assessmentId));
     }
 }

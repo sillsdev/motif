@@ -152,7 +152,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
         Assert.True(saved.Succeeded, saved.Refusal?.Message);
         Assert.Null(saved.Value!.Selection!.PerWordLimitMs);
 
-        AssessmentScope? observedScope = null;
+        AssessmentScope.Words? observedScope = null;
         var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind => kind switch
         {
             AssessmentKind.ParseTime => new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
@@ -163,7 +163,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
         {
             CaptureEvidence = (scope, candidate) =>
             {
-                observedScope = scope;
+                observedScope = (AssessmentScope.Words)scope;
                 return FakeAssessmentEvidence.Capture(_managedRootsParent, scope, candidate);
             },
         };
@@ -174,6 +174,33 @@ public sealed class DeterministicAssessCommandTests : IDisposable
         Assert.True(assessed.Succeeded, assessed.Refusal?.Message);
         Assert.Null(observedScope!.PerWordLimit);
         Assert.Equal(StepCap.Unbounded, observedScope.PerWordStepLimit);
+    }
+
+    [Fact]
+    public void DefaultCollectionIsWordKindsEvenWhenTheAssessorAlsoSupportsPhonologyExamples()
+    {
+        using var seeded = NewSeededScratch();
+        AssessmentScope.Words? observedScope = null;
+        var assessor = new FakeAssessor("fake-assessor", [.. CollectedKinds, AssessmentKind.PhonologyExamples], kind =>
+            kind == AssessmentKind.ParseTime
+                ? new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
+                    [new(0, "motifa", 12, SIL.Motif.Host.Parser.WordOutcome.Analysed, "complete")],
+                    null, seeded.FwDataPath, []) { PerWordStepLimit = StepCap.Unbounded })
+                : new AssessmentRaw.WordMeasurements([]))
+        {
+            CaptureEvidence = (scope, candidate) =>
+            {
+                observedScope = (AssessmentScope.Words)scope;
+                return FakeAssessmentEvidence.Capture(_managedRootsParent, scope, candidate);
+            },
+        };
+
+        var assessed = AssessCommand.Run(new AssessRequest(seeded.FwDataPath, new SelectionRequest(false, [], ["motifa"],
+            false, null), null, null), NewManagedRoot(), assessor, NewInvoker(), null, CancellationToken.None);
+
+        Assert.True(assessed.Succeeded, assessed.Refusal?.Message);
+        Assert.DoesNotContain(AssessmentKind.PhonologyExamples, observedScope!.Collect);
+        Assert.Contains(AssessmentKind.ParseTime, observedScope.Collect);
     }
 
     [Fact]
@@ -245,7 +272,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
             (SeededProject.AnalysedWordForm, 4, 1, 2, 2_000_000L, 99_000_000L),
             (SeededProject.UnanalysedWordForm, 3, 0, 0, 0L, 15_000_000L));
         var cacheDigest = BatchInvocationEvidence.DigestFile(cachePath);
-        AssessmentScope? observedScope = null;
+        AssessmentScope.Words? observedScope = null;
         var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind => kind switch
         {
             AssessmentKind.ParseTime => new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
@@ -258,7 +285,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
         {
             CaptureEvidence = (scope, candidate) =>
             {
-                observedScope = scope;
+                observedScope = (AssessmentScope.Words)scope;
                 return FakeAssessmentEvidence.Capture(_managedRootsParent, scope, candidate);
             },
         };
@@ -832,7 +859,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
             gateOnRegression: false, purgeOnApply: true);
         File.WriteAllText(Path.ChangeExtension(seeded.FwDataPath, ".motif.toml"),
             SIL.Motif.Host.Config.ProjectConfigurationFile.Render(configured));
-        AssessmentScope? seen = null;
+        AssessmentScope.Words? seen = null;
         var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind =>
             kind == AssessmentKind.ParseTime
                 ? new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
@@ -842,7 +869,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
         {
             CaptureEvidence = (scope, candidate) =>
             {
-                seen = scope;
+                seen = (AssessmentScope.Words)scope;
                 return FakeAssessmentEvidence.Capture(_managedRootsParent, scope, candidate);
             }
         };
@@ -877,7 +904,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
             gateOnRegression: false, purgeOnApply: true);
         File.WriteAllText(Path.ChangeExtension(seeded.FwDataPath, ".motif.toml"),
             SIL.Motif.Host.Config.ProjectConfigurationFile.Render(configured));
-        AssessmentScope? seen = null;
+        AssessmentScope.Words? seen = null;
         var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind =>
             kind == AssessmentKind.ParseTime
                 ? new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
@@ -887,7 +914,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
         {
             CaptureEvidence = (scope, candidate) =>
             {
-                seen = scope;
+                seen = (AssessmentScope.Words)scope;
                 return FakeAssessmentEvidence.Capture(_managedRootsParent, scope, candidate);
             }
         };
@@ -1339,7 +1366,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
         var managedRoot = NewManagedRoot();
         var assessor = new FakeAssessor("fake-assessor", CollectedKinds, rawForScope: (scope, _, kind) =>
             kind == AssessmentKind.ParseTime ? new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
-                scope.Words.Select((word, index) => new SIL.Motif.Host.Parser.WordAnalysis(index, word, 1,
+                ((AssessmentScope.Words)scope).WordForms.Select((word, index) => new SIL.Motif.Host.Parser.WordAnalysis(index, word, 1,
                     SIL.Motif.Host.Parser.WordOutcome.NoAnalysis, "none")).ToArray(), 1000, seeded.FwDataPath, []))
                 : new AssessmentRaw.WordMeasurements([]))
         {

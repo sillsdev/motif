@@ -139,7 +139,7 @@ public sealed class RealParserAffixMorphologyTests(PristineProjectFixture pristi
             using var invoker = new PanGlossInvoker();
             var assessor = new PanGlossAssessor(paths, invoker);
             var produced = await assessor.ProduceAsync(
-                new([word], [AssessmentKind.Correctness], TimeSpan.FromSeconds(5)),
+                new AssessmentScope.Words([word], [AssessmentKind.Correctness], TimeSpan.FromSeconds(5)),
                 Path.GetDirectoryName(cache.ProjectId.Path)!, CancellationToken.None);
             var batch = Assert.IsType<AssessmentRaw.Batch>(produced.Single().Raw).Analysis;
             return Assert.Single(batch.Words);

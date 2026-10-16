@@ -1,3 +1,4 @@
+using SIL.Motif.Host.Assess;
 using System.Text.Json;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Assess;
@@ -45,18 +46,28 @@ public sealed class RecipeVerificationTrialProjectionTests
         Assert.Contains(projected.Unavailable, reason => reason.Contains("invocation limits", StringComparison.Ordinal));
     }
 
-    private static AssessmentRecord Assessment(BatchInvocationEvidence? invocation) => new(
-        "assessment-id", null, null, "pangloss", "ParseTime", "{}", Digest, "pangloss", "v7",
-        JsonSerializer.Serialize(Baseline, MotifJson.CreateOptions()), Selection.Create("verify", ["ara"]),
-        null, null, Digest, "fingerprint", "batch", 0, "2026-10-07T12:00:00Z",
-        Words: [new AssessedWord("ara", "analysed", [], 5)
+    private static AssessmentRecord Assessment(BatchInvocationEvidence? invocation) => new AssessmentRecord(
+            AssessmentId: "assessment-id",
+            ProposalId: null,
+            ProposalIntentDigest: null,
+            Assessor: "pangloss",
+            Kind: "ParseTime",
+            ScopeJson: "{}",
+            ScopeDigest: Digest,
+            Subject: new AssessmentSubject.Words(Selection.Create("verify", ["ara"]), "pangloss", "v7"),
+            BaselineToken: JsonSerializer.Serialize(Baseline, MotifJson.CreateOptions()),
+            OutcomeDigest: null,
+            SemanticDigest: null,
+            GrammarSourceSha256: Digest,
+            ModelFingerprint: "fingerprint",
+            Pipeline: "batch",
+            DiagnosticCount: 0,
+            SavedUtc: "2026-10-07T12:00:00Z",
+            Details: new AssessmentRecordDetails.Words([new AssessedWord("ara", "analysed", [], 5)
         {
             Morphology = new ParseWordEvidence("fieldworks-parse-analysis/v1", 0, "ara", 5,
                 false, false, false, [], []),
-        }])
-    {
-        Invocation = invocation,
-    };
+        }], null, null, [], invocation));
 
     private static BatchInvocationEvidence Invocation() => new(
         "invocation-id", "/source.fwdata", Digest, "sha256:" + new string('b', 64),

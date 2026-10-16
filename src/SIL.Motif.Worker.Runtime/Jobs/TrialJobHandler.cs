@@ -224,7 +224,7 @@ internal sealed class TrialJobHandler
                 }
             }
             var limitMs = candidate.Scope.PerWordLimit is { } limit ? (int?)limit.TotalMilliseconds : null;
-            var initialProgress = new TrialWordProgress(0, candidate.Scope.Words.Count, null)
+            var initialProgress = new TrialWordProgress(0, candidate.Scope.WordForms.Count, null)
                 { PerWordLimitMs = limitMs };
             claim.PublishTrialProgress(initialProgress);
             var batchPhase = new JobStageProgress("batch", _grammarHealth is null ? 1 : 2,
@@ -281,7 +281,7 @@ internal sealed class TrialJobHandler
     }
 
     // What one attempt on a throwaway copy produces; assembled on the lane, read off it.
-    private sealed record CandidateRun(DryRunModel DryRun, AssessmentScope Scope, Selection Selection,
+    private sealed record CandidateRun(DryRunModel DryRun, AssessmentScope.Words Scope, Selection Selection,
         string ExportedDirectory, string GrammarPath, IReadOnlyDictionary<string, string> ProjectStandings);
 
     private async Task<CandidateRun> RunCandidateAsync(ClaimedJob claim, ProjectLane lane,
@@ -308,7 +308,7 @@ internal sealed class TrialJobHandler
                     ? requestedWords.Distinct(StringComparer.Ordinal).ToArray()
                     : cache is null ? [] : WordQueryResolver.Resolve(
                         allWords ? WordQueryResolver.AllWordformsQueryText : scopeConfiguration.Query, cache).ToArray();
-                var scope = new AssessmentScope(words, ParseCollect(scopeConfiguration.Collect),
+                var scope = new AssessmentScope.Words(words, ParseCollect(scopeConfiguration.Collect),
                     limits is { } selectedLimits ? selectedLimits.PerWordLimit : scopeConfiguration.PerWordLimit,
                     limits?.PerWordStepLimit ?? scopeConfiguration.PerWordStepLimit);
                 var projectStandings = ReadProjectStandings(cache, words);
@@ -329,13 +329,13 @@ internal sealed class TrialJobHandler
     }
 
     private IReadOnlyList<string> RecordAll(IReadOnlyList<ProducedAssessment> produced, Contract.Model.Proposal proposal,
-        DryRunModel dryRun, Selection selection, AssessmentScope scope,
+        DryRunModel dryRun, Selection selection, AssessmentScope.Words scope,
         AssessmentScopeConfiguration scopeConfiguration, string assessorName, BaselineToken baselineToken,
         IReadOnlyDictionary<string, string> projectStandings)
     {
         // The query is what the scope was told to do; the words are only what it resolved to on this run.
         var scopeJson = ScopeCodec.Write(new StoredScope.Trial(
-            scopeConfiguration.Query, scope.Words, scope.Collect, scope.PerWordLimit, scope.PerWordStepLimit));
+            scopeConfiguration.Query, scope.WordForms, scope.Collect, scope.PerWordLimit, scope.PerWordStepLimit));
         var scopeDigest = AssessmentMaterial.Digest(scopeJson);
         var baselineTokenJson = JsonSerializer.Serialize(baselineToken, MotifJson.CreateOptions());
 
@@ -344,14 +344,18 @@ internal sealed class TrialJobHandler
         foreach (var item in produced)
         {
             var assessmentId = CanonicalId.Mint("assessment/").Value;
-            var record = AssessmentMaterial.ToRecord(item, assessmentId, proposal.ProposalId,
-                dryRun.IntentDigest, assessorName, scopeJson, scopeDigest, "none", "1", baselineTokenJson, selection);
+            var record = AssessmentMaterial.ToWordRecord(item, assessmentId, proposal.ProposalId,
+                dryRun.IntentDigest, assessorName, scopeJson, scopeDigest, baselineTokenJson,
+                new AssessmentSubject.Words(selection, "none", "1"));
             records.Add(record with
             {
-                Words = record.Words.Select(word => projectStandings.TryGetValue(
-                    word.Word.Normalize(System.Text.NormalizationForm.FormD), out var standing)
-                    ? word with { ProjectStanding = standing }
-                    : word).ToArray(),
+                Material = record.RequireWordMaterial() with
+                {
+                    Rows = record.RequireWordMaterial().Rows.Select(word => projectStandings.TryGetValue(
+                        word.Word.Normalize(System.Text.NormalizationForm.FormD), out var standing)
+                        ? word with { ProjectStanding = standing }
+                        : word).ToArray(),
+                },
             });
             ids.Add(assessmentId);
         }

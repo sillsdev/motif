@@ -40,26 +40,48 @@ public sealed record ShowPhonologyExamplesRequest(
     [property: JsonPropertyName("pageSize")] int PageSize = 20,
     [property: JsonPropertyName("continuation")] PhonologyPageCursor? Continuation = null);
 
-/// <summary>Checks a stored phonology Example Set against a captured baseline.</summary>
+/// <summary>Queues a check of a stored phonology Example Set revision against a captured Baseline.</summary>
 /// <param name="ProjectPath">The path to the project that owns the revision.</param>
 /// <param name="RevisionId">The canonical id of the immutable Example Set revision to check.</param>
-/// <param name="Baseline">The captured project Baseline that binds this request.</param>
-/// <param name="Limits">Request-wide step and work ceilings divided across rows in request order, plus one shared deadline that starts after grammar and cache preparation.</param>
+/// <param name="Baseline">The captured Baseline that binds this request, or null for the project's current Baseline.</param>
+/// <param name="Limits">Request-wide step and work ceilings divided across rows in request order, plus one shared deadline that starts after grammar and cache preparation; null uses the defaults.</param>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record PhonologyCheckRequest(
     [property: JsonPropertyName("projectPath")] string ProjectPath,
     [property: JsonPropertyName("revisionId")] string RevisionId,
-    [property: JsonPropertyName("baseline")] BaselineToken Baseline,
-    [property: JsonPropertyName("limits")] PhonologyLimits Limits);
+    [property: JsonPropertyName("baseline")] BaselineToken? Baseline = null,
+    [property: JsonPropertyName("limits")] PhonologyLimits? Limits = null);
 
-/// <summary>Reads a page of results for a phonology check assessment.</summary>
+/// <summary>Reads stored results of a phonology check: a page of summaries or one complete example.</summary>
 /// <param name="ProjectPath">The path to the project containing the assessment.</param>
 /// <param name="AssessmentId">The canonical id of the assessment whose results are requested.</param>
-/// <param name="PageSize">The maximum number of results to return, from 1 through 100.</param>
-/// <param name="Continuation">The cursor for this exact assessment from the preceding page, or null for the first page.</param>
+/// <param name="Read">Which stored result to return: a bounded page of summaries, or one example's full detail.</param>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record PhonologyResultsRequest(
     [property: JsonPropertyName("projectPath")] string ProjectPath,
     [property: JsonPropertyName("assessmentId")] string AssessmentId,
-    [property: JsonPropertyName("pageSize")] int PageSize = 20,
-    [property: JsonPropertyName("continuation")] PhonologyPageCursor? Continuation = null);
+    [property: JsonPropertyName("read"), JsonRequired] PhonologyResultsRead Read);
+
+/// <summary>The closed choice of what a phonology results request returns.</summary>
+[JsonPolymorphic(TypeDiscriminatorPropertyName = "kind", UnknownDerivedTypeHandling =
+    JsonUnknownDerivedTypeHandling.FailSerialization)]
+[JsonDerivedType(typeof(PhonologyResultsRead.Page), "page")]
+[JsonDerivedType(typeof(PhonologyResultsRead.Example), "example")]
+public abstract record PhonologyResultsRead
+{
+    private PhonologyResultsRead() { }
+
+    /// <summary>Returns a bounded page of example summaries in authored order.</summary>
+    /// <param name="PageSize">The maximum number of summaries to return, from 1 through 100.</param>
+    /// <param name="Continuation">The cursor for this exact assessment from the preceding page, or null for the first page.</param>
+    [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+    public sealed record Page(
+        [property: JsonPropertyName("pageSize")] int PageSize = 20,
+        [property: JsonPropertyName("continuation")] PhonologyPageCursor? Continuation = null) : PhonologyResultsRead;
+
+    /// <summary>Returns the complete retained detail of one example.</summary>
+    /// <param name="ExampleId">The id of the example within the checked revision.</param>
+    [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+    public sealed record Example(
+        [property: JsonPropertyName("exampleId"), JsonRequired] string ExampleId) : PhonologyResultsRead;
+}

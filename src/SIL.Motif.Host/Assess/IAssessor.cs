@@ -1,3 +1,4 @@
+using SIL.Motif.Contract.Phonology;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Contract.Assess;
@@ -29,6 +30,9 @@ public enum AssessmentKind
 
     /// <summary>Which words now complete that did not before.</summary>
     Completion,
+
+    /// <summary>Generation evidence for explicit underlying and expected forms.</summary>
+    PhonologyExamples,
 }
 
 /// <summary>
@@ -63,43 +67,51 @@ public static class AssessmentKindNames
 /// produced a run is likewise not a field: it is the identity of whichever <see cref="IAssessor"/> a caller
 /// resolved, not a property of the request handed to it.
 /// </remarks>
-public sealed record AssessmentScope
+public abstract record AssessmentScope
 {
-    public AssessmentScope(
-        IReadOnlyList<string> words, IReadOnlyList<AssessmentKind> collect, TimeSpan? perWordLimit,
-        StepCap? perWordStepLimit = null)
-    {
-        ArgumentNullException.ThrowIfNull(words);
-        ArgumentNullException.ThrowIfNull(collect);
-        if (perWordLimit is { } finiteLimit && finiteLimit <= TimeSpan.Zero)
-            throw new ArgumentOutOfRangeException(nameof(perWordLimit), "A per-word limit must be positive.");
+    private AssessmentScope() { }
 
-        Words = words;
-        Collect = collect;
-        PerWordLimit = perWordLimit;
-        PerWordStepLimit = perWordStepLimit ?? StepCap.Default;
+    public sealed record Words : AssessmentScope
+    {
+        public Words(
+            IReadOnlyList<string> words, IReadOnlyList<AssessmentKind> collect, TimeSpan? perWordLimit,
+            StepCap? perWordStepLimit = null)
+        {
+            ArgumentNullException.ThrowIfNull(words);
+            ArgumentNullException.ThrowIfNull(collect);
+            if (perWordLimit is { } finiteLimit && finiteLimit <= TimeSpan.Zero)
+                throw new ArgumentOutOfRangeException(nameof(perWordLimit), "A per-word limit must be positive.");
+
+            WordForms = words;
+            Collect = collect;
+            PerWordLimit = perWordLimit;
+            PerWordStepLimit = perWordStepLimit ?? StepCap.Default;
+        }
+
+        /// <summary>The resolved word list this run was told to try — not a query, the words themselves.</summary>
+        public IReadOnlyList<string> WordForms { get; }
+
+        /// <summary>
+        /// Which kinds this run wants. Empty means the Assessor's own default for its kind, because no default
+        /// collection set is settled across Assessors yet (mirrors <c>AssessmentScopeConfiguration.Collect</c>).
+        /// </summary>
+        public IReadOnlyList<AssessmentKind> Collect { get; }
+
+        /// <summary>The per-word time cap, or null for no time cap; the analysis-attempt cap remains independently applicable.</summary>
+        public TimeSpan? PerWordLimit { get; }
+
+        /// <summary>The per-word analysis-attempt cap, or an explicit request for no attempt cap.</summary>
+        public StepCap PerWordStepLimit { get; }
     }
 
-    /// <summary>The resolved word list this run was told to try — not a query, the words themselves.</summary>
-    public IReadOnlyList<string> Words { get; }
-
-    /// <summary>
-    /// Which kinds this run wants. Empty means the Assessor's own default for its kind, because no default
-    /// collection set is settled across Assessors yet (mirrors <c>AssessmentScopeConfiguration.Collect</c>).
-    /// </summary>
-    public IReadOnlyList<AssessmentKind> Collect { get; }
-
-    /// <summary>The per-word time cap, or null for no time cap; the analysis-attempt cap remains independently applicable.</summary>
-    public TimeSpan? PerWordLimit { get; }
-
-    /// <summary>The per-word analysis-attempt cap, or an explicit request for no attempt cap.</summary>
-    public StepCap PerWordStepLimit { get; }
+    public sealed record PhonologyExamples(PhonologyRevisionReference Revision,
+        IReadOnlyList<PhonologyExample> Examples, PhonologyLimits Limits) : AssessmentScope;
 }
 
 /// <summary>
 /// The closed set of shapes an Assessment's raw material can take (ADR 0042's amendment on Reports: an
 /// Assessor returns raw form — <i>"a SQLite database, analyses of specific words"</i>). Sealed to a private
-/// constructor so only the three nested shapes can ever exist, the same discipline <see cref="AssessmentKind"/>
+/// constructor so only the declared nested shapes can ever exist, the same discipline <see cref="AssessmentKind"/>
 /// applies by being an enum: a caller can exhaustively switch over which one a kind produced.
 /// </summary>
 public abstract record AssessmentRaw
@@ -119,6 +131,8 @@ public abstract record AssessmentRaw
 
     /// <summary>A full batch run: per-word elapsed time and outcome, over the words a scope named.</summary>
     public sealed record Batch(BatchAnalysis Analysis) : AssessmentRaw;
+
+    public sealed record PhonologyExamples(PhonologyAssessmentOutcome Outcome) : AssessmentRaw;
 }
 
 /// <summary>
@@ -204,7 +218,7 @@ public sealed class AssessorUnavailableException : Exception
 /// <b>The one property that shapes everything here: an Assessor declares, up front and independent of any
 /// scope, which kinds it can ever produce — and asking for anything outside that is a loud refusal naming
 /// the kind and the reason.</b> <see cref="SupportedKinds"/> answers "what can this Assessor do at all"; a
-/// caller never has to diff it against a scope's <see cref="AssessmentScope.Collect"/> to predict what
+/// caller never has to diff it against a scope's <see cref="AssessmentScope.Words.Collect"/> to predict what
 /// <see cref="ProduceAsync"/> will do, because the two can never disagree.
 /// </para>
 /// <para>
@@ -223,7 +237,7 @@ public interface IAssessor
     IReadOnlyList<AssessmentKind> SupportedKinds { get; }
 
     /// <summary>
-    /// Produces one Assessment per kind in <paramref name="scope"/>'s <see cref="AssessmentScope.Collect"/>
+    /// Produces one Assessment per kind in <paramref name="scope"/>'s <see cref="AssessmentScope.Words.Collect"/>
     /// (or this Assessor's own default kinds, when it is empty).
     /// </summary>
     /// <param name="scope">What this run was told to do.</param>

@@ -468,22 +468,17 @@ public sealed class StatsCommandTests : IDisposable
             Kind: kind.ToStoredKind(),
             ScopeJson: "{}",
             ScopeDigest: "sha256:" + new string('0', 64),
-            TokeniserName: "none",
-            TokeniserVersion: "1",
+            Subject: new AssessmentSubject.Words(Selection.Create("test", Array.Empty<string>()), "none", "1"),
             BaselineToken: "{}",
-            Selection: Selection.Create("test", Array.Empty<string>()),
             OutcomeDigest: "sha256:" + new string('0', 64),
             SemanticDigest: "sha256:" + new string('0', 64),
             GrammarSourceSha256: "sha256:" + new string('0', 64),
             ModelFingerprint: "fp",
             Pipeline: "pipeline",
             DiagnosticCount: 0,
-            Words: Array.Empty<AssessedWord>(),
-            CachePath: cachePath,
-            CacheDigest: cachePath is null ? null : BatchInvocationEvidence.DigestFile(cachePath), SavedUtc: savedUtc)
-        {
-            Invocation = includeEvidence ? evidence : null
-        });
+            Material: new AssessmentRecordMaterial.Words(Array.Empty<AssessedWord>(), cachePath, cachePath is null ? null : BatchInvocationEvidence.DigestFile(cachePath), []) with { Invocation = includeEvidence ? evidence : null },
+            SavedUtc: savedUtc
+        ));
         return assessmentId;
     }
 

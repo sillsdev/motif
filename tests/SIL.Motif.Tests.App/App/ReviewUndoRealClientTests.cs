@@ -248,11 +248,25 @@ public sealed partial class ReviewUndoRealClientTests(PristineProjectFixture pri
             JsonSerializer.Serialize(baseline.Token, MotifJson.CreateOptions()));
         Assert.True(composition.Succeeded, composition.Refusal?.Message);
         var assessmentId = "assessment/review/" + Guid.NewGuid().ToString("N");
-        repository.Record(new NewAssessmentRecord(assessmentId, null, null, "test",
-            AssessmentKind.ParseTime.ToStoredKind(), "{}", "sha256:scope", "whitespace-and-punctuation", "1",
-            JsonSerializer.Serialize(baseline.Token, MotifJson.CreateOptions()), composition.Value!.Selection,
-            "sha256:outcome", "sha256:semantic", "sha256:grammar", "model", "pipeline", 0, assessedWords,
-            SavedUtc: DateTimeOffset.UtcNow.ToString("O")));
+        repository.Record(new NewAssessmentRecord(
+            AssessmentId: assessmentId,
+            ProposalId: null,
+            ProposalIntentDigest: null,
+            Assessor: "test",
+            Kind: AssessmentKind.ParseTime.ToStoredKind(),
+            ScopeJson: "{}",
+            ScopeDigest: "sha256:scope",
+            Subject: new AssessmentSubject.Words(composition.Value!.Selection, "whitespace-and-punctuation", "1"),
+            BaselineToken: JsonSerializer.Serialize(baseline.Token, MotifJson.CreateOptions()),
+            OutcomeDigest: "sha256:outcome",
+            SemanticDigest: "sha256:semantic",
+            GrammarSourceSha256: "sha256:grammar",
+            ModelFingerprint: "model",
+            Pipeline: "pipeline",
+            DiagnosticCount: 0,
+            Material: new AssessmentRecordMaterial.Words(assessedWords, null, null, []),
+            SavedUtc: DateTimeOffset.UtcNow.ToString("O")
+        ));
         return assessmentId;
     }
 

@@ -34,11 +34,14 @@ public sealed class EvidenceSetsTests : IDisposable
         var invocation = Invocation("invocation/current");
         var repository = new AssessmentRepository(fixture.Database);
         repository.Record(fixture.Assessment("root", AssessmentKinds.ParseTime, ["cat", "dog"],
-            "2026-09-24T11:00:00Z") with { Invocation = invocation });
+            "2026-09-24T11:00:00Z") with { Material = fixture.Assessment("root", AssessmentKinds.ParseTime, ["cat", "dog"],
+            "2026-09-24T11:00:00Z").RequireWordMaterial() with { Invocation = invocation } });
         repository.Record(fixture.Assessment("correctness", AssessmentKinds.Correctness, ["cat", "dog"],
-            "2026-09-24T11:00:00Z") with { Invocation = invocation });
+            "2026-09-24T11:00:00Z") with { Material = fixture.Assessment("correctness", AssessmentKinds.Correctness, ["cat", "dog"],
+            "2026-09-24T11:00:00Z").RequireWordMaterial() with { Invocation = invocation } });
         repository.Record(fixture.Assessment("object-timing", AssessmentKinds.ObjectTiming, ["cat", "dog"],
-            "2026-09-24T11:00:00Z") with { Invocation = invocation });
+            "2026-09-24T11:00:00Z") with { Material = fixture.Assessment("object-timing", AssessmentKinds.ObjectTiming, ["cat", "dog"],
+            "2026-09-24T11:00:00Z").RequireWordMaterial() with { Invocation = invocation } });
         repository.Record(fixture.Assessment("rerun", AssessmentKinds.ParseTime, ["cat"],
             "2026-09-24T11:05:00Z") with { ReplacesAssessmentId = "root" });
 
@@ -148,10 +151,25 @@ public sealed class EvidenceSetsTests : IDisposable
         private string TokenJson { get; }
 
         public NewAssessmentRecord Assessment(string id, string kind, IReadOnlyList<string> words, string savedUtc) =>
-            new(id, null, null, "pangloss", kind, "{}", "sha256:scope", "whitespace", "1", TokenJson,
-                Selection.Create("Default", words), "sha256:outcome", "sha256:semantic", "sha256:grammar",
-                "fingerprint", "pipeline", 0,
-                words.Select(word => new AssessedWord(word, "analysed", [])).ToArray(), SavedUtc: savedUtc);
+            new NewAssessmentRecord(
+            AssessmentId: id,
+            ProposalId: null,
+            ProposalIntentDigest: null,
+            Assessor: "pangloss",
+            Kind: kind,
+            ScopeJson: "{}",
+            ScopeDigest: "sha256:scope",
+            Subject: new AssessmentSubject.Words(Selection.Create("Default", words), "whitespace", "1"),
+            BaselineToken: TokenJson,
+            OutcomeDigest: "sha256:outcome",
+            SemanticDigest: "sha256:semantic",
+            GrammarSourceSha256: "sha256:grammar",
+            ModelFingerprint: "fingerprint",
+            Pipeline: "pipeline",
+            DiagnosticCount: 0,
+            Material: new AssessmentRecordMaterial.Words(words.Select(word => new AssessedWord(word, "analysed", [])).ToArray(), null, null, []),
+            SavedUtc: savedUtc
+        );
 
         public void Dispose() => Database.Dispose();
     }

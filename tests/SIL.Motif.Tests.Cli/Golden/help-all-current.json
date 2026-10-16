@@ -344,6 +344,20 @@
     },
     {
       "kind": "command",
+      "code": "phonology-examples results",
+      "slug": "phonology-examples-results",
+      "title": "Read phonology check results",
+      "description": "Reads the stored result of one advisory phonology check as a page of per-example summaries or one complete example. It reads stored evidence without capturing a project or running PanGloss.",
+      "helpPage": "# Read phonology check results\n\n\u0060phonology-examples results\u0060 reads the stored result of one phonology check: a page of per-example summaries, or one complete example. A check is advisory evidence about a saved Example Set against a [Baseline](term:baseline); it never changes Readiness and Apply ignores it.\n\n## When to use it\n\nUse this after a check has finished to see, for each example, whether the expected surface form was \u0060agree\u0060 (observed), \u0060disagree\u0060 (a completed search without it) or \u0060unavailable\u0060 (no usable measurement, such as a missing parser or lexical context). Unavailable is never a pass. The command reads stored rows only: it does not capture the project or run PanGloss.\n\n## Example\n\n\u0060\u0060\u0060powershell\nmotif phonology-examples results --project \u0022C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\u0022 \u003CassessmentId\u003E --json\nmotif phonology-examples results --project \u0022C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\u0022 \u003CassessmentId\u003E --example front-vowel --json\n\u0060\u0060\u0060\n\n## What it prints\n\nA page lists each example with its disposition, completion, observed form and how many rules applied, in authored order. A response with a continuation cursor has another page; pass that cursor as JSON with \u0060--continuation\u0060. A summary lists at most 32 applied rule ids and says how many it left out. \u0060--example \u003Cid\u003E\u0060 prints the complete retained example with every ordered, visited and applied rule, and \u0060--out \u003Cpath.json\u003E\u0060 also writes that JSON to a file. \u0060--example\u0060 cannot be combined with \u0060--page-size\u0060 or \u0060--continuation\u0060.\n\n## Related commands\n\n- [Show a saved phonology revision](cmd:phonology-examples%20show) reads the examples a check measured.\n- [List saved phonology examples](cmd:phonology-examples%20list) finds each set\u0027s current revision.\n",
+      "usage": [
+        "Usage: motif phonology-examples results --project \u003Cfwdata\u003E \u003CassessmentId\u003E [--page-size \u003Cn\u003E] [--continuation \u003Ccursor-json\u003E] [--json]",
+        "Usage: motif phonology-examples results --project \u003Cfwdata\u003E \u003CassessmentId\u003E --example \u003CexampleId\u003E [--out \u003Cpath.json\u003E] [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/phonology-examples-results/"
+    },
+    {
+      "kind": "command",
       "code": "phonology-examples show",
       "slug": "phonology-examples-show",
       "title": "Show phonology examples",

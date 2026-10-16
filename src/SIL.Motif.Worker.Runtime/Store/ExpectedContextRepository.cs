@@ -99,7 +99,8 @@ internal static class ExpectedContextRepository
                     .OrderBy(candidate => candidate.SavedUtc, StringComparer.Ordinal)
                     .ThenBy(candidate => candidate.AssessmentId, StringComparer.Ordinal)
                     .Select(candidate => candidate.AssessmentId).ToArray();
-                measurements = ReadMeasurementIds(connection, transaction, expected, root.Invocation?.InvocationId);
+                var invocation = root.Invocation;
+                measurements = ReadMeasurementIds(connection, transaction, expected, invocation?.InvocationId);
             }
         }
         else if (evidence.RootAssessmentId is not null)
@@ -159,7 +160,8 @@ internal static class ExpectedContextRepository
         SqliteTransaction transaction, ExpectedContext expected, AssessmentRecord? root)
     {
         var warnings = new List<string>();
-        if (root?.Invocation?.GrammarWarnings is { Length: > 0 } grammarWarnings)
+        var invocation = root?.Invocation;
+        if (invocation?.GrammarWarnings is { Length: > 0 } grammarWarnings)
             warnings.Add("grammar:" + Digest(grammarWarnings));
 
         using var command = connection.CreateCommand();

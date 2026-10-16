@@ -22,7 +22,7 @@ public sealed class FakeParserSeamIntegrationTests
             var assessor = new PanGlossAssessor(paths, invoker);
 
             await Assert.ThrowsAsync<DirectoryNotFoundException>(() => assessor.ProduceAsync(
-                new([SeededProject.FirstForm], [AssessmentKind.Correctness], TimeSpan.FromSeconds(5)),
+                new AssessmentScope.Words([SeededProject.FirstForm], [AssessmentKind.Correctness], TimeSpan.FromSeconds(5)),
                 Path.Combine(root, "not-exported"), CancellationToken.None));
 
             Assert.Empty(invoker.Requests);

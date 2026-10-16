@@ -1,3 +1,4 @@
+using SIL.Motif.Host.Assess;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -415,17 +416,16 @@ public sealed class ApplyPromotionGatingAndSweepTests
             Kind: kind,
             ScopeJson: """{"perWordLimitMs":1000,"perWordStepLimit":{"steps":200000,"isUnbounded":false}}""",
             ScopeDigest: "sha256:" + new string('a', 64),
-            TokeniserName: "none",
-            TokeniserVersion: "1",
+            Subject: new AssessmentSubject.Words(selection, "none", "1"),
             BaselineToken: baselineToken,
-            Selection: selection,
             OutcomeDigest: "sha256:" + new string('b', 64),
             SemanticDigest: "sha256:" + new string('c', 64),
             GrammarSourceSha256: GrammarSha,
             ModelFingerprint: "model",
             Pipeline: "pipeline",
             DiagnosticCount: 0,
-            Words: assessedWords));
+            Material: new AssessmentRecordMaterial.Words(assessedWords, null, null, [])
+        ));
         return assessmentId;
     }
 

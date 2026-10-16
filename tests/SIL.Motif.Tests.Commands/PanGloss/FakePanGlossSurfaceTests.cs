@@ -182,7 +182,8 @@ public sealed class FakePanGlossSurfaceTests
         if (!includeFacts) requests = requests.Where(request => request is not PanGlossRequest.Facts).ToArray();
         // Trace is checked by AssertTraceCommandIsDeclared; this walker cannot express an "=file" flag.
         var requestTypes = typeof(PanGlossRequest).GetNestedTypes()
-            .Where(type => typeof(PanGlossRequest).IsAssignableFrom(type) && type != typeof(PanGlossRequest.Trace))
+            .Where(type => typeof(PanGlossRequest).IsAssignableFrom(type) && type != typeof(PanGlossRequest.Trace) &&
+                type != typeof(PanGlossRequest.PhonologyExamples))
             .Where(type => includeFacts || type != typeof(PanGlossRequest.Facts))
             .OrderBy(type => type.Name);
         Assert.Equal(requestTypes, requests.Where(request => request is not PanGlossRequest.Trace)

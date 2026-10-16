@@ -508,8 +508,10 @@ public sealed class ProposalDifferenceCommandsTests : IDisposable
                     "projection-v1", "2026-09-24T10:00:00Z", "sha256:" + new string('a', 64)), MotifJson.CreateOptions())
                 : _tokenJson;
             assessments.Record(new NewAssessmentRecord(id, proposal, digest, before ? _beforeAssessor : "pangloss",
-                AssessmentKinds.ParseTime, "{}", "sha256:scope", "whitespace", "1", tokenJson, Selection.Create("Default", ["sita", "mutu"]),
-                "sha256:outcome", "sha256:semantic", "sha256:grammar", "fingerprint", "pipeline", 0, words,
+                AssessmentKinds.ParseTime, "{}", "sha256:scope", new SIL.Motif.Host.Assess.AssessmentSubject.Words(
+                    Selection.Create("Default", ["sita", "mutu"]), "whitespace", "1"), tokenJson,
+                "sha256:outcome", "sha256:semantic", "sha256:grammar", "fingerprint", "pipeline", 0,
+                new AssessmentRecordMaterial.Words(words, null, null, []),
                 SavedUtc: "2026-09-24T11:00:00Z"));
         }
 

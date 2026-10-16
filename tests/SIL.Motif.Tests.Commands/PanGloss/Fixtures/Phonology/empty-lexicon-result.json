@@ -1,0 +1,195 @@
+{
+  "version": 1,
+  "grammarSha256": "1f20aed4ed860f1b995312eb53c3cbac6b40fa901ca6421d43e58e662bd081ff",
+  "grammarDependencies": [],
+  "requestSha256": "319882f18805ce494a3c879952b6ab6f26628a65e838592dc87458bc4a49a792",
+  "requestFileSha256": "8d4e2fd0721694271f33e66ea50cb64a210d3a2b2d99cda5d58898d5b6d43a40",
+  "build": "pangloss/0.8.4+403f3c43620a5d9880e3316ec8354a75edd93867",
+  "limits": {
+    "scope": "orderedPhonologyFolds",
+    "stepCap": 50000000,
+    "workCap": 10000000,
+    "timeoutMs": 30000,
+    "stepAllocation": "balancedByRequestOrder",
+    "timeAllocation": "sharedMonotonicDeadline"
+  },
+  "measuredEntryCount": 0,
+  "rows": [
+    {
+      "id": "r4-w-hardening",
+      "requestedContext": {
+        "kind": "fwdataEntry",
+        "entryGuid": "01a137cb-5854-43af-3726-2ae782b6acb3",
+        "msaGuid": "01a137cb-5854-679c-d51a-fda4a7aee768",
+        "msaClass": "MoStemMsa"
+      },
+      "resolvedContext": null,
+      "underlying": "m+wili",
+      "expected": [
+        "mbili"
+      ],
+      "effectiveLimits": {
+        "stepCap": 10000000,
+        "workCap": 2000000,
+        "timeoutMs": 29999
+      },
+      "disposition": "unavailable",
+      "completion": "notStarted",
+      "expectedObserved": [
+        false
+      ],
+      "observed": null,
+      "reason": "emptyLexicon",
+      "steps": 0,
+      "workSteps": 0,
+      "capped": false,
+      "timedOut": false,
+      "orderedRuleIds": [],
+      "visitedRuleIds": [],
+      "appliedRuleIds": []
+    },
+    {
+      "id": "r2-labial-assimilation",
+      "requestedContext": {
+        "kind": "fwdataEntry",
+        "entryGuid": "01a137cb-582c-8ae4-513b-2d97208d62c1",
+        "msaGuid": "01a137cb-582d-607b-a096-ab39aa375c0c",
+        "msaClass": "MoStemMsa"
+      },
+      "resolvedContext": null,
+      "underlying": "n+baya",
+      "expected": [
+        "mbaya"
+      ],
+      "effectiveLimits": {
+        "stepCap": 10000000,
+        "workCap": 2000000,
+        "timeoutMs": 29999
+      },
+      "disposition": "unavailable",
+      "completion": "notStarted",
+      "expectedObserved": [
+        false
+      ],
+      "observed": null,
+      "reason": "emptyLexicon",
+      "steps": 0,
+      "workSteps": 0,
+      "capped": false,
+      "timedOut": false,
+      "orderedRuleIds": [],
+      "visitedRuleIds": [],
+      "appliedRuleIds": []
+    },
+    {
+      "id": "r3-r4-feeding",
+      "requestedContext": {
+        "kind": "fwdataEntry",
+        "entryGuid": "01a137cb-5854-43af-3726-2ae782b6acb3",
+        "msaGuid": "01a137cb-5854-679c-d51a-fda4a7aee768",
+        "msaClass": "MoStemMsa"
+      },
+      "resolvedContext": null,
+      "underlying": "n+wili",
+      "expected": [
+        "mbili"
+      ],
+      "effectiveLimits": {
+        "stepCap": 10000000,
+        "workCap": 2000000,
+        "timeoutMs": 29999
+      },
+      "disposition": "unavailable",
+      "completion": "notStarted",
+      "expectedObserved": [
+        false
+      ],
+      "observed": null,
+      "reason": "emptyLexicon",
+      "steps": 0,
+      "workSteps": 0,
+      "capped": false,
+      "timedOut": false,
+      "orderedRuleIds": [],
+      "visitedRuleIds": [],
+      "appliedRuleIds": []
+    },
+    {
+      "id": "unchanged-pya",
+      "requestedContext": {
+        "kind": "fwdataEntry",
+        "entryGuid": "01a137cb-5832-fc63-4303-a5f32c34a084",
+        "msaGuid": "01a137cb-5832-2cc0-cd47-ec51ab7ed477",
+        "msaClass": "MoStemMsa"
+      },
+      "resolvedContext": null,
+      "underlying": "pya",
+      "expected": [
+        "pya"
+      ],
+      "effectiveLimits": {
+        "stepCap": 10000000,
+        "workCap": 2000000,
+        "timeoutMs": 29999
+      },
+      "disposition": "unavailable",
+      "completion": "notStarted",
+      "expectedObserved": [
+        false
+      ],
+      "observed": null,
+      "reason": "emptyLexicon",
+      "steps": 0,
+      "workSteps": 0,
+      "capped": false,
+      "timedOut": false,
+      "orderedRuleIds": [],
+      "visitedRuleIds": [],
+      "appliedRuleIds": []
+    },
+    {
+      "id": "unchanged-already-labial",
+      "requestedContext": {
+        "kind": "fwdataEntry",
+        "entryGuid": "01a137cb-582c-8ae4-513b-2d97208d62c1",
+        "msaGuid": "01a137cb-582d-607b-a096-ab39aa375c0c",
+        "msaClass": "MoStemMsa"
+      },
+      "resolvedContext": null,
+      "underlying": "m+baya",
+      "expected": [
+        "mbaya"
+      ],
+      "effectiveLimits": {
+        "stepCap": 10000000,
+        "workCap": 2000000,
+        "timeoutMs": 29999
+      },
+      "disposition": "unavailable",
+      "completion": "notStarted",
+      "expectedObserved": [
+        false
+      ],
+      "observed": null,
+      "reason": "emptyLexicon",
+      "steps": 0,
+      "workSteps": 0,
+      "capped": false,
+      "timedOut": false,
+      "orderedRuleIds": [],
+      "visitedRuleIds": [],
+      "appliedRuleIds": []
+    }
+  ],
+  "counts": {
+    "agree": 0,
+    "disagree": 0,
+    "unavailable": 5,
+    "total": 5
+  },
+  "completionCounts": {
+    "complete": 0,
+    "incomplete": 0,
+    "notStarted": 5
+  }
+}

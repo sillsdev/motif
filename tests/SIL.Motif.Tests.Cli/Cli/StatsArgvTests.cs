@@ -196,19 +196,16 @@ public sealed class StatsArgvTests : IDisposable
             Kind: AssessmentKind.ObjectTiming.ToStoredKind(),
             ScopeJson: "{}",
             ScopeDigest: "sha256:" + new string('0', 64),
-            TokeniserName: "none",
-            TokeniserVersion: "1",
+            Subject: new AssessmentSubject.Words(Selection.Create("test", Array.Empty<string>()), "none", "1"),
             BaselineToken: "{}",
-            Selection: Selection.Create("test", Array.Empty<string>()),
             OutcomeDigest: "sha256:" + new string('0', 64),
             SemanticDigest: "sha256:" + new string('0', 64),
             GrammarSourceSha256: "sha256:" + new string('0', 64),
             ModelFingerprint: "fp",
             Pipeline: "pipeline",
             DiagnosticCount: 0,
-            Words: Array.Empty<AssessedWord>(),
-            CachePath: cachePath,
-            CacheDigest: BatchInvocationEvidence.DigestFile(cachePath)) { Invocation = evidence });
+            Material: new AssessmentRecordMaterial.Words(Array.Empty<AssessedWord>(), cachePath, BatchInvocationEvidence.DigestFile(cachePath), []) with { Invocation = evidence }
+        ));
         return assessmentId;
     }
 

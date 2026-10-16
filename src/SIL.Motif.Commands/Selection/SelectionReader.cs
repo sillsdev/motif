@@ -926,7 +926,8 @@ public sealed class SelectionReader : IDisposable, IAsyncDisposable
                 record.ProposalIntentDigest != digest || record.BaselineToken != root.BaselineToken) ||
             measurements.Select((record, index) => record!.Kind == measurementIds[index].Key).Any(matches => !matches))
             throw new EvidenceContextChangedException();
-        var warnings = root.Invocation?.GrammarWarnings is { Length: > 0 } grammarWarnings
+        var invocation = root.Invocation;
+        var warnings = invocation?.GrammarWarnings is { Length: > 0 } grammarWarnings
             ? new[] { "grammar:" + ExpectedContextRepository.Digest(grammarWarnings) }
             : [];
         var descriptor = new SelectionEvidenceExpectation("trial", null, [], [], root.Selection.Sha256,
@@ -982,8 +983,8 @@ public sealed class SelectionReader : IDisposable, IAsyncDisposable
         var replacements = root is null ? [] : AssessmentWordOverlay.ReplacementsFor(root,
             repository.ReadReplacementHeaders(connection, transaction, AssessmentKind.ParseTime.ToStoredKind(),
                 root.BaselineToken, root.AssessmentId));
-        var measurements = ExpectedContextRepository.ReadMeasurementIds(connection, transaction, expected,
-            root?.Invocation?.InvocationId);
+        var invocation = root?.Invocation;
+        var measurements = ExpectedContextRepository.ReadMeasurementIds(connection, transaction, expected, invocation?.InvocationId);
         var warnings = ExpectedContextRepository.ReadWarningIdentities(connection, transaction, expected, root);
         if (!descriptor.ReplacementAssessmentIds.SequenceEqual(replacements.Select(run => run.AssessmentId),
                 StringComparer.Ordinal) ||

@@ -32,10 +32,9 @@ public static class AssessmentMaterial
     };
 
     /// <summary>Builds one recordable Assessment from what an Assessor produced, sharing every recorder's fields.</summary>
-    public static NewAssessmentRecord ToRecord(
+    public static NewAssessmentRecord ToWordRecord(
         ProducedAssessment produced, string assessmentId, CanonicalId? proposalId, string? proposalIntentDigest,
-        string assessor, string scopeJson, string scopeDigest, string tokeniserName, string tokeniserVersion,
-        string baselineToken, Selection selection)
+        string assessor, string scopeJson, string scopeDigest, string baselineToken, AssessmentSubject.Words subject)
     {
         var (words, cachePath, cacheDigest) = From(produced.Raw);
         return new NewAssessmentRecord(
@@ -46,22 +45,16 @@ public static class AssessmentMaterial
             Kind: produced.Kind.ToStoredKind(),
             ScopeJson: scopeJson,
             ScopeDigest: scopeDigest,
-            TokeniserName: tokeniserName,
-            TokeniserVersion: tokeniserVersion,
+            Subject: subject,
             BaselineToken: baselineToken,
-            Selection: selection,
             OutcomeDigest: produced.OutcomeDigest,
             SemanticDigest: produced.SemanticDigest,
             GrammarSourceSha256: produced.GrammarSourceSha256,
             ModelFingerprint: produced.ModelFingerprint,
             Pipeline: produced.Pipeline,
             DiagnosticCount: produced.DiagnosticCount,
-            Words: words,
-            CachePath: cachePath,
-            CacheDigest: cacheDigest)
-        {
-            Invocation = produced.Invocation
-        };
+            Material: new AssessmentRecordMaterial.Words(words, cachePath, cacheDigest, [], produced.Invocation)
+        );
     }
 
     /// <summary>Hashes a recorded scope's wire JSON the same way for every recorder.</summary>

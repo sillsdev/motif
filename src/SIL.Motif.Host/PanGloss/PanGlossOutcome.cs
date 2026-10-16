@@ -25,6 +25,8 @@ public abstract record PanGlossOutcome
     {
         /// <summary>Retained batch evidence when the caller requested an artifact directory.</summary>
         public BatchInvocationEvidence? BatchEvidence { get; init; }
+        /// <summary>Validated phonology evidence with independent invocation bindings.</summary>
+        public Assess.PhonologyMeasurement? Phonology { get; init; }
         public string? MorphologyOutput { get; init; }
         internal GrammarFactsArtifact? FactsArtifact { get; init; }
 
@@ -51,6 +53,7 @@ public abstract record PanGlossOutcome
     /// <summary>The parser exited zero but did not write what the request promised — never read as success.</summary>
     public sealed record Incomplete(string Detail, string StandardError) : PanGlossOutcome
     {
+        public PanGlossIncompleteCause Cause { get; init; } = PanGlossIncompleteCause.InvalidEvidence;
         public override string Message => Detail;
     }
 
@@ -91,3 +94,6 @@ public abstract record PanGlossOutcome
 /// <param name="OutputSha256">The closed file's SHA-256 digest.</param>
 public sealed record PanGlossFactsArtifact(string Path, int SchemaVersion, string SourceSha256,
     string ModelFingerprint, long OutputBytes, string OutputSha256);
+
+/// <summary>The typed distinction between unusable evidence and failed invocation infrastructure.</summary>
+public enum PanGlossIncompleteCause { InvalidEvidence, Infrastructure }

@@ -430,12 +430,25 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine,
         var earlierSteps = new StepCap(2_000_000);
         using (var database = ProjectMotifDatabase.Open(path))
             new AssessmentRepository(database).Record(new NewAssessmentRecord(
-                "assessment-earlier", null, null, "test", RegressionChecker.RequiredKind,
-                ScopeCodec.Write(new StoredScope.Trial("words", ["limits-measure"], [AssessmentKind.Correctness],
+            AssessmentId: "assessment-earlier",
+            ProposalId: null,
+            ProposalIntentDigest: null,
+            Assessor: "test",
+            Kind: RegressionChecker.RequiredKind,
+            ScopeJson: ScopeCodec.Write(new StoredScope.Trial("words", ["limits-measure"], [AssessmentKind.Correctness],
                     earlierLimit, earlierSteps)),
-                "sha256:scope", "whitespace-and-punctuation", "1", "{}",
-                SIL.Motif.Host.Corpus.Selection.Create("words", ["limits-measure"]), "sha256:outcome", "sha256:semantic",
-                "sha256:grammar", "test-model", "test", 0, [], SavedUtc: "2026-09-28T12:00:00Z"));
+            ScopeDigest: "sha256:scope",
+            Subject: new AssessmentSubject.Words(SIL.Motif.Host.Corpus.Selection.Create("words", ["limits-measure"]), "whitespace-and-punctuation", "1"),
+            BaselineToken: "{}",
+            OutcomeDigest: "sha256:outcome",
+            SemanticDigest: "sha256:semantic",
+            GrammarSourceSha256: "sha256:grammar",
+            ModelFingerprint: "test-model",
+            Pipeline: "test",
+            DiagnosticCount: 0,
+            Material: new AssessmentRecordMaterial.Words([], null, null, []),
+            SavedUtc: "2026-09-28T12:00:00Z"
+        ));
 
         var outcome = await PendingChangesWorkflow.Measure(new MeasurePendingRequest(path, null, null,
             ["limits-measure"], "assessment-earlier"), new Progress<MeasureProgress>(), CancellationToken.None,

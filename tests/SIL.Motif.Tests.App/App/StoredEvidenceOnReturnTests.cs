@@ -83,15 +83,27 @@ public sealed class StoredEvidenceOnReturnTests
     private static CurrentEvidenceSnapshot Stored(string assessmentId, string word, DateTimeOffset savedUtc) =>
         new("one", Saved, Saved, EvidenceFreshness.Current,
             new BaselineRecord("project-1", Token, "root", ProjectPath, Saved, Saved), null, null, null,
-            new AssessmentRecord(assessmentId, null, null, "pangloss", AssessmentKind.ParseTime.ToStoredKind(),
-                "{}", "sha256:scope", "whitespace", "1", "{}", Selection.Create("Default", [word]), null, null,
-                "sha256:grammar", null, null, null, savedUtc.ToString("O"),
-                Words: [new AssessedWord(word, "analysed", [], 10) { ProjectStanding = ProjectStanding.Approved }])
-            {
-                Invocation = new BatchInvocationEvidence("invocation/" + assessmentId, "source", "digest", "digest",
+            new AssessmentRecord(
+                AssessmentId: assessmentId,
+                ProposalId: null,
+                ProposalIntentDigest: null,
+                Assessor: "pangloss",
+                Kind: AssessmentKind.ParseTime.ToStoredKind(),
+                ScopeJson: "{}",
+                ScopeDigest: "sha256:scope",
+                Subject: new AssessmentSubject.Words(Selection.Create("Default", [word]), "whitespace", "1"),
+                BaselineToken: "{}",
+                OutcomeDigest: null,
+                SemanticDigest: null,
+                GrammarSourceSha256: "sha256:grammar",
+                ModelFingerprint: null,
+                Pipeline: null,
+                DiagnosticCount: null,
+                SavedUtc: savedUtc.ToString("O"),
+                Details: new AssessmentRecordDetails.Words([new AssessedWord(word, "analysed", [], 10) { ProjectStanding = ProjectStanding.Approved }], null, null, []) with { Invocation = new BatchInvocationEvidence("invocation/" + assessmentId, "source", "digest", "digest",
                     "words", "digest", "tsv", "digest", "stderr", "digest", 1000,
-                    SIL.Motif.Contract.Assess.StepCap.Default, 1, false),
-            });
+                    SIL.Motif.Contract.Assess.StepCap.Default, 1, false) }
+            ));
 
     private static AssessCommandResponse Run(string assessmentId, string word) => new(
         new BaselineCaptureResponse(Token, ProjectPath, Saved, false, true), new SelectionProjection([word], []),

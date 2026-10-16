@@ -140,8 +140,14 @@ public static class PhonologyJson
             PropertyNameCaseInsensitive = false,
             UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
             RespectRequiredConstructorParameters = true,
+            RespectNullableAnnotations = true,
             AllowOutOfOrderMetadataProperties = true,
         };
+        options.Converters.Insert(0, new NullablePhonologyRowReasonJsonConverter());
+        options.Converters.Insert(0, new PhonologyRowReasonJsonConverter());
+        options.Converters.Insert(0, new PhonologyRowCompletionJsonConverter());
+        options.Converters.Insert(0, new PhonologyRowDispositionJsonConverter());
+        options.Converters.Insert(0, new PhonologyInvocationReasonJsonConverter());
         options.Converters.Insert(0, new PhonologyMsaClassJsonConverter());
         return options;
     }

@@ -52,6 +52,7 @@ internal static class Program
 
     private static readonly Command[] Dispatch =
     [
+        new("phonology-examples", ["grammar", "request.json", "out.json?"], [], RunPhonologyExamples),
         new("batch", ["grammar", "words.txt", "out.tsv"],
             [new("--word-timeout-ms", true), new("--step-cap", true), new("--threads", true), new("--stats", false),
                 new("--cache", true), new("--analyses", true)], RunBatch),
@@ -209,7 +210,10 @@ internal static class Program
                 contextVersion = FactsArtifact.ContextVersion,
                 statsManifestVersion = 1,
             },
-            commands = Dispatch.Where(command => !omissions.Contains(command.Name)).Select(command => new
+            commands = Dispatch.Where(command => !omissions.Contains(command.Name))
+                .Where(command => command.Name != "phonology-examples" ||
+                    File.Exists(Path.Combine(AppContext.BaseDirectory, "_fake-pangloss-phonology-v1")))
+                .Select(command => new
             {
                 name = command.Name,
                 summary = "Controlled test implementation of " + command.Name,
@@ -225,6 +229,12 @@ internal static class Program
             }),
         }));
         return 0;
+    }
+
+    private static int RunPhonologyExamples(string[] args)
+    {
+        RecordArgv(AppContext.BaseDirectory, args);
+        return PhonologyExamples.Run(args);
     }
 
     private static int Unrecognised(string command)

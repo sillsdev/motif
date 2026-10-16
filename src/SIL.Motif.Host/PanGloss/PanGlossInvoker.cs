@@ -60,10 +60,12 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
     {
         ArgumentNullException.ThrowIfNull(request);
         if (string.IsNullOrWhiteSpace(label)) throw new ArgumentException("Required.", nameof(label));
+        if (request is PanGlossRequest.PhonologyExamples phonology)
+            request = PhonologyInvocationInputs.Freeze(phonology);
         var cap = ResolveWallClockCap(request, wallClockCap);
         if (cap != Timeout.InfiniteTimeSpan && cap <= TimeSpan.Zero)
             throw new ArgumentOutOfRangeException(nameof(wallClockCap), "A cap must be positive or infinite.");
-        request.Validate();
+        if (request is not PanGlossRequest.PhonologyExamples) request.Validate();
 
         if (_executable is null)
             return new PanGlossOutcome.Unavailable(MissingExecutableMessage) { ExecutableMissing = true };
@@ -103,6 +105,7 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
         {
             PanGlossRequest.Batch { PerWordLimit: null } => Timeout.InfiniteTimeSpan,
             PanGlossRequest.Batch { PerWordLimit: { } limit } batch => BatchDeadline(batch.Words.Count, limit),
+            PanGlossRequest.PhonologyExamples phonology => DefaultWallClockCap + TimeSpan.FromMilliseconds(phonology.Limits.TimeoutMs),
             _ => DefaultWallClockCap,
         };
 
@@ -175,6 +178,9 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                 }
                 if (retained && request is PanGlossRequest.Facts facts)
                     sourceDigest = BatchInvocationEvidence.DigestFile(facts.SnapshotPath);
+                if (request is PanGlossRequest.PhonologyExamples phonology)
+                    request = await PhonologyInvocationInputs.PrepareAsync(phonology, scratch, executable, cancellationToken)
+                        .ConfigureAwait(false);
                 await request.PrepareAsync(scratch, cancellationToken).ConfigureAwait(false);
                 if (retained && request is PanGlossRequest.Batch)
                     wordsDigest = BatchInvocationEvidence.DigestFile(Path.Combine(scratch, "words.txt"));
@@ -242,7 +248,8 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                     catch (OperationCanceledException)
                     {
                         return new PanGlossOutcome.Incomplete(
-                            "Parser termination could not be confirmed after requesting cancellation.", string.Empty);
+                            "Parser termination could not be confirmed after requesting cancellation.", string.Empty)
+                        { Cause = PanGlossIncompleteCause.Infrastructure };
                     }
                     return cancellationToken.IsCancellationRequested
                         ? new PanGlossOutcome.Cancelled()
@@ -262,6 +269,8 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                             $"pangloss {request.Subcommand} exited {process.ExitCode}:" + Environment.NewLine +
                             standardError.Trim());
                 }
+                if (request is PanGlossRequest.PhonologyExamples { Inputs: { } inputs } && !inputs.Unchanged(executable))
+                    return new PanGlossOutcome.Incomplete("The staged phonology inputs or executable changed during invocation.", standardError);
                 var outcome = request.Finish(scratch, standardOutput, standardError, clock.Elapsed,
                     out var batchFileDigests);
                 if (process.ExitCode != 0 && outcome is not PanGlossOutcome.Completed)
@@ -328,7 +337,8 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
-            return new PanGlossOutcome.Incomplete($"Could not retain invocation evidence: {exception.Message}", string.Empty);
+            return new PanGlossOutcome.Incomplete($"Could not retain invocation evidence: {exception.Message}", string.Empty)
+            { Cause = PanGlossIncompleteCause.Infrastructure };
         }
         finally
         {

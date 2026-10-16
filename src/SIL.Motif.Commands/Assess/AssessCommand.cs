@@ -222,12 +222,13 @@ public static class AssessCommand
                         "Parse these words again requires a complete Assessment of this Baseline containing every requested word."));
             }
 
-            AssessmentScope scope;
+            AssessmentScope.Words scope;
             var exportedCandidate = Path.GetDirectoryName(baseline.FwDataPath)!;
             IReadOnlyList<ProducedAssessment> produced;
             try
             {
-                var supportedKinds = assessor.SupportedKinds;
+                var supportedKinds = assessor.SupportedKinds
+                    .Where(kind => kind != AssessmentKind.PhonologyExamples).ToArray();
                 IReadOnlyList<AssessmentKind> collected;
                 if (configured.Collect.Count == 0)
                 {
@@ -262,8 +263,8 @@ public static class AssessCommand
                         ? TimeSpan.FromMilliseconds(SelectionLimitPolicy.Resolve(defaultLimits,
                             ReadParserStepRate(assessments)).PerWordTimeLimitMs!.Value)
                         : EstimatePerWordTimeLimit(assessments, stepLimit);
-                scope = new AssessmentScope(composition.Selection.Words, collected, timeLimit, stepLimit);
-                var latestWordProgress = new TrialWordProgress(0, scope.Words.Count, null);
+                scope = new AssessmentScope.Words(composition.Selection.Words, collected, timeLimit, stepLimit);
+                var latestWordProgress = new TrialWordProgress(0, scope.WordForms.Count, null);
                 onProgress?.Invoke(new AssessmentProgress(
                     AssessmentStage.Parsing, 0, composition.Selection.Words.Count, "Parsing the Selection...")
                     { PerWordLimitMs = timeLimit is { } wordLimit ? (int)wordLimit.TotalMilliseconds : null });
@@ -324,8 +325,9 @@ public static class AssessCommand
             var artifactLeases = produced.Select(item => item.ArtifactLease).OfType<AssessmentArtifactLease>().Distinct().ToArray();
             try
             {
-                var expectedKinds = (scope.Collect.Count == 0 ? assessor.SupportedKinds : scope.Collect)
-                    .ToArray();
+                var expectedKinds = (scope.Collect.Count == 0
+                    ? assessor.SupportedKinds.Where(kind => kind != AssessmentKind.PhonologyExamples).ToArray()
+                    : scope.Collect).ToArray();
                 if (produced is null || produced.Count != expectedKinds.Length ||
                     produced.Select(item => item.Kind).Distinct().Count() != produced.Count ||
                     expectedKinds.Except(produced.Select(item => item.Kind)).Any() ||
@@ -338,7 +340,7 @@ public static class AssessCommand
                 if (cancellationToken.IsCancellationRequested)
                     return CommandOutcome<AssessCommandResponse>.Refused(Cancelled(request.ProjectPath));
                 var scopeJson = ScopeCodec.Write(
-                    new StoredScope.Trial(ScopeQuery, scope.Words, scope.Collect, scope.PerWordLimit, scope.PerWordStepLimit));
+                    new StoredScope.Trial(ScopeQuery, scope.WordForms, scope.Collect, scope.PerWordLimit, scope.PerWordStepLimit));
                 var scopeDigest = AssessmentMaterial.Digest(scopeJson);
                 var baselineTokenJson = JsonSerializer.Serialize(baseline.Token, MotifJson.CreateOptions());
                 var savedUtc = DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture);
@@ -350,20 +352,20 @@ public static class AssessCommand
                 foreach (var item in produced)
                 {
                     var assessmentId = CanonicalId.Mint("assessment/").Value;
-                    var record = AssessmentMaterial.ToRecord(item, assessmentId, proposalId: null,
-                        proposalIntentDigest: null, assessor.Name, scopeJson, scopeDigest, TokeniserName,
-                        TokeniserVersion, baselineTokenJson, composition.Selection) with
+                    var record = AssessmentMaterial.ToWordRecord(item, assessmentId, proposalId: null,
+                        proposalIntentDigest: null, assessor.Name, scopeJson, scopeDigest, baselineTokenJson,
+                        new AssessmentSubject.Words(composition.Selection, TokeniserName, TokeniserVersion)) with
                     { SavedUtc = savedUtc, ReplacesAssessmentId = request.ReplaceAssessmentId };
                     pendingRecords.Add(record);
                     assessmentIds.Add(assessmentId);
-                    if (record.CachePath is not null)
+                    if (record.RequireWordMaterial().CachePath is not null)
                     {
-                        statsCachePath = record.CachePath;
+                        statsCachePath = record.RequireWordMaterial().CachePath;
                         statisticsRecord = record;
                     }
                 }
 
-                var invocations = pendingRecords.Select(record => record.Invocation).Distinct().ToArray();
+                var invocations = pendingRecords.Select(record => record.RequireWordMaterial().Invocation).Distinct().ToArray();
                 var invocationCandidates = invocations.OfType<BatchInvocationEvidence>().Distinct().ToArray();
                 var invocation = invocationCandidates.Length == 1 ? invocationCandidates[0] : null;
                 if (invocations.Any(item => item is null) ||
@@ -483,7 +485,9 @@ public static class AssessCommand
                 {
                     pendingRecords = pendingRecords.Select(record => record with
                     {
-                        Words = record.Words.Select(word =>
+                        Material = record.RequireWordMaterial() with
+                        {
+                        Rows = record.RequireWordMaterial().Rows.Select(word =>
                         {
                             cancellationToken.ThrowIfCancellationRequested();
                             var stats = wordStats is not null && wordStats.TryGetValue(word.Word, out var found)
@@ -506,7 +510,8 @@ public static class AssessCommand
                             };
                         }).ToArray(),
                         ObjectTimings = record.Kind == AssessmentKind.ParseTime.ToStoredKind()
-                            ? objectTimings : record.ObjectTimings,
+                            ? objectTimings : record.RequireWordMaterial().ObjectTimings,
+                        },
                     }).ToList();
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -601,7 +606,7 @@ public static class AssessCommand
                         : "Correctness unavailable: this Assessment did not collect approved morphology comparisons.",
                     Measurements = pendingRecords.Select(record => new ProducedAssessmentReference(
                         record.AssessmentId, record.Kind,
-                        record.Invocation?.InvocationId ?? throw new InvalidDataException(
+                        record.RequireWordMaterial().Invocation?.InvocationId ?? throw new InvalidDataException(
                             "An Assessment is missing its invocation evidence."))).ToArray(),
                     InvocationId = invocation.InvocationId,
                     SelectionDescriptor = composition.Descriptor,

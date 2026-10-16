@@ -123,8 +123,8 @@ public sealed class RetainedInvocationRepository
             throw new InvalidDataException("A retained invocation supplied duplicate Assessment ids.");
 
         AssessmentRepository.ValidateRecords(assessments);
-        if (assessments.Any(assessment => assessment.Invocation is null) ||
-            assessments.Select(assessment => assessment.Invocation).Distinct().Count() != 1)
+        if (assessments.Any(assessment => assessment.RequireWordMaterial().Invocation is null) ||
+            assessments.Select(assessment => assessment.RequireWordMaterial().Invocation).Distinct().Count() != 1)
             throw new InvalidDataException("A retained invocation requires one shared invocation evidence record.");
         var byId = assessments.ToDictionary(assessment => assessment.AssessmentId, StringComparer.Ordinal);
         var baselineJson = JsonSerializer.Serialize(retained.BaselineToken, MotifJson.CreateOptions());
@@ -158,9 +158,12 @@ public sealed class RetainedInvocationRepository
         {
             if (!StringComparer.Ordinal.Equals(member.Kind, assessment.Kind))
                 throw new InvalidDataException("A retained invocation member has the wrong Assessment kind.");
-            ValidateMember(retained, baselineJson, assessment);
-            if (sharedInvocation is null) sharedInvocation = assessment.Invocation;
-            else if (sharedInvocation != assessment.Invocation)
+            var invocation = assessment.Invocation;
+            ValidateMember(retained, baselineJson, invocation, assessment.BaselineToken,
+                assessment.Assessor, assessment.ScopeJson, assessment.ScopeDigest, assessment.GrammarSourceSha256,
+                assessment.RequireWords().Selection);
+            if (sharedInvocation is null) sharedInvocation = invocation;
+            else if (sharedInvocation != invocation)
                 throw new InvalidDataException("A retained invocation's members disagree about shared evidence.");
         }
         ValidateRetrySource(retained.Selection, baselineJson);
@@ -188,15 +191,9 @@ public sealed class RetainedInvocationRepository
 
     private static void ValidateMember(
         RetainedInvocationRecord retained, string baselineJson, NewAssessmentRecord assessment)
-        => ValidateMember(retained, baselineJson, assessment.Invocation, assessment.BaselineToken,
+        => ValidateMember(retained, baselineJson, assessment.RequireWordMaterial().Invocation, assessment.BaselineToken,
             assessment.Assessor, assessment.ScopeJson, assessment.ScopeDigest, assessment.GrammarSourceSha256,
-            assessment.Selection);
-
-    private static void ValidateMember(
-        RetainedInvocationRecord retained, string baselineJson, AssessmentRecord assessment)
-        => ValidateMember(retained, baselineJson, assessment.Invocation, assessment.BaselineToken,
-            assessment.Assessor, assessment.ScopeJson, assessment.ScopeDigest, assessment.GrammarSourceSha256,
-            assessment.Selection);
+            ((SIL.Motif.Host.Assess.AssessmentSubject.Words)assessment.Subject).Selection);
 
     private static void ValidateMember(
         RetainedInvocationRecord retained, string baselineJson, BatchInvocationEvidence? invocation,

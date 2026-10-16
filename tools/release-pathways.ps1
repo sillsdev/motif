@@ -324,7 +324,8 @@ try {
     $examplesFile = Join-Path $releaseRoot 'phonology-examples.json'
     @{ name = 'Release pathway examples'; examples = @(@{
         id = 'probe'; underlying = 'a-ku'; expected = @('e-ki')
-        context = @{ kind = 'hcXmlEntry'; entryId = 'probe-entry' }
+        context = @{ kind = 'fwdataEntry'; entryGuid = '00000000-0000-4000-8000-000000000001'
+            msaGuid = '00000000-0000-4000-8000-000000000002'; msaClass = 'MoStemMsa' }
     }) } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $examplesFile -Encoding utf8
     $savedExamples = Invoke-CliJson @('phonology-examples', 'save', '--project', $first.ProjectPath,
         '--file', $examplesFile)
@@ -336,6 +337,20 @@ try {
         $listedExamples.items[0].revisionId -ne $examplesRevision -or
         @($shownExamples.items).Count -ne 1 -or $shownExamples.items[0].id -ne 'probe') {
         throw 'The installed phonology-examples save, list and show did not round-trip the saved example.'
+    }
+
+    $checkJob = Invoke-CliJson @('phonology-examples', 'check', '--project', $first.ProjectPath,
+        $examplesRevision, '--wait')
+    if ($checkJob.status -ne 'completed') {
+        throw "The installed phonology-examples check ended $($checkJob.status), not completed."
+    }
+    $checkAssessments = Invoke-CliJson @('jobs', 'assessments', '--project', $first.ProjectPath, $checkJob.jobId)
+    $checkAssessmentId = [string] @($checkAssessments.assessments)[0].assessmentId
+    $checkResults = Invoke-CliJson @('phonology-examples', 'results', '--project', $first.ProjectPath,
+        $checkAssessmentId)
+    if (-not $checkAssessmentId -or $checkResults.kind -ne 'page' -or @($checkResults.items).Count -ne 1 -or
+        $checkResults.items[0].example.id -ne 'probe') {
+        throw 'The installed phonology-examples check and results did not record and read one example.'
     }
 }
 finally {

@@ -1457,7 +1457,9 @@ try
             if (positionals.Count < 1 || !flags.TryGetValue("project", out var phonologyProject))
                 return Usage(UsageLineFor("phonology-examples save") + " OR " +
                     UsageLineFor("phonology-examples list") + " OR " +
-                    UsageLineFor("phonology-examples show"), asJson);
+                    UsageLineFor("phonology-examples show") + " OR " +
+                    UsageLineFor("phonology-examples check") + " OR " +
+                    UsageLineFor("phonology-examples results"), asJson);
             var phonologyPageSize = 20;
             if (flags.TryGetValue("page-size", out var phonologyPageSizeText) &&
                 (!int.TryParse(phonologyPageSizeText, NumberStyles.None, CultureInfo.InvariantCulture,
@@ -1521,10 +1523,81 @@ try
                     result = RenderCommand(PhonologyExampleCommands.Show(new ShowPhonologyExamplesRequest(
                         phonologyProject, positionals[1], phonologyPageSize, pageCursor)));
                     break;
+                case "check":
+                    if (positionals.Count != 2)
+                        return Usage(UsageLineFor("phonology-examples check"), asJson);
+                    var checkLimits = PhonologyExampleValidation.DefaultLimits;
+                    if (!TryReadCheckCeiling(flags, "step-cap", checkLimits.StepCap, out var checkStepCap) ||
+                        !TryReadCheckCeiling(flags, "work-cap", checkLimits.WorkCap, out var checkWorkCap) ||
+                        !TryReadCheckCeiling(flags, "timeout-ms", checkLimits.TimeoutMs, out var checkTimeout) ||
+                        checkTimeout > uint.MaxValue)
+                        return Usage("--step-cap, --work-cap and --timeout-ms must be whole numbers.", asJson);
+                    var checkWaitTimeout = JobCommands.DefaultWaitTimeout;
+                    if (flags.ContainsKey("wait") && ParseWaitTimeout(flags,
+                        UsageLineFor("phonology-examples check"), asJson, out checkWaitTimeout) is { } checkUsage)
+                        return checkUsage;
+                    var queuedCheck = PhonologyExampleCommands.Check(new PhonologyCheckRequest(phonologyProject,
+                        positionals[1], null, new PhonologyLimits(checkStepCap, checkWorkCap, (uint)checkTimeout)));
+                    result = RenderCommand(queuedCheck);
+                    if (queuedCheck.Succeeded)
+                    {
+                        startRunner(phonologyProject, error.WriteLine);
+                        if (flags.ContainsKey("wait"))
+                            result = RenderCommand(JobCommands.WaitForJob(new WaitForJobRequest(phonologyProject,
+                                queuedCheck.Value!.JobId, CliProductVersion(), checkWaitTimeout)));
+                    }
+                    break;
+                case "results":
+                    if (positionals.Count != 2)
+                        return Usage(UsageLineFor("phonology-examples results"), asJson);
+                    PhonologyResultsRead resultsRead;
+                    if (flags.TryGetValue("example", out var resultsExample))
+                    {
+                        if (flags.ContainsKey("page-size") || flags.ContainsKey("continuation") ||
+                            string.IsNullOrWhiteSpace(resultsExample))
+                            return Usage("--example reads one complete example and cannot be combined with " +
+                                "--page-size or --continuation.", asJson);
+                        resultsRead = new PhonologyResultsRead.Example(resultsExample);
+                    }
+                    else
+                    {
+                        PhonologyPageCursor? resultsCursor;
+                        try
+                        {
+                            resultsCursor = flags.TryGetValue("continuation", out var resultsCursorJson)
+                                ? DeserializePhonologyCursor<PhonologyPageCursor>(resultsCursorJson)
+                                : null;
+                            if (flags.ContainsKey("continuation") && resultsCursor is null)
+                                return Usage("--continuation must contain a results page cursor JSON object.", asJson);
+                        }
+                        catch (JsonException exception)
+                        {
+                            return Usage("--continuation is not a valid results page cursor: " + exception.Message, asJson);
+                        }
+                        resultsRead = new PhonologyResultsRead.Page(phonologyPageSize, resultsCursor);
+                    }
+                    var resultsOutcome = PhonologyExampleCommands.Results(new PhonologyResultsRequest(
+                        phonologyProject, positionals[1], resultsRead));
+                    if (flags.TryGetValue("out", out var resultsOut) && resultsOutcome.Succeeded)
+                    {
+                        try
+                        {
+                            File.WriteAllText(resultsOut, ProjectionJson.Serialize(resultsOutcome.Value!) +
+                                Environment.NewLine, new UTF8Encoding(false));
+                        }
+                        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+                        {
+                            return Usage("--out could not be written: " + exception.Message, asJson);
+                        }
+                    }
+                    result = RenderCommand(resultsOutcome);
+                    break;
                 default:
                     return Usage(UsageLineFor("phonology-examples save") + " OR " +
                         UsageLineFor("phonology-examples list") + " OR " +
-                        UsageLineFor("phonology-examples show"), asJson);
+                        UsageLineFor("phonology-examples show") + " OR " +
+                        UsageLineFor("phonology-examples check") + " OR " +
+                        UsageLineFor("phonology-examples results"), asJson);
             }
             break;
 
@@ -2193,6 +2266,13 @@ static CommandResult RunWithConsoleCancellation(Func<CancellationToken, CommandR
 static string JobsMoveUsage() => UsageLineFor("jobs move");
 
 /// <summary>The one printed usage line CliVerbCatalog holds for a catalogued command name.</summary>
+static bool TryReadCheckCeiling(IReadOnlyDictionary<string, string> flags, string name, ulong fallback, out ulong value)
+{
+    value = fallback;
+    return !flags.TryGetValue(name, out var text) ||
+        ulong.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out value);
+}
+
 static string UsageLineFor(string commandName)
 {
     foreach (var verb in CliVerbCatalog.All)
@@ -2270,7 +2350,7 @@ static string ResolveCommandName(string verb, IReadOnlyDictionary<string, string
         return "apply --proposal";
     if (verb == "trial" && flags.ContainsKey("pending"))
         return "trial --pending";
-    if (verb == "phonology-examples" && positionals.FirstOrDefault() is "save" or "list" or "show")
+    if (verb == "phonology-examples" && positionals.FirstOrDefault() is "save" or "list" or "show" or "check" or "results")
         return verb + " " + positionals[0];
     if (verb is "config" or "baseline" or "grammar" or "jobs" or "project" or "selection" or "texts" or "setup" or "store" or "word" or "difference" or "evidence")
     {

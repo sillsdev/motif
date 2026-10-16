@@ -411,10 +411,24 @@ public sealed class AgentChangesArgvTests : IDisposable
         var assessedWord = new AssessedWord(word, "analysed",
             [new ParsedAnalysis(null, [], 0, "sha256:cli-reading")]) { Morphology = morphology };
         new AssessmentRepository(database).Record(new NewAssessmentRecord(
-            "cli-accept-assessment", null, null, "test", AssessmentKind.ParseTime.ToStoredKind(), "{}",
-            "sha256:cli-scope", "whitespace-and-punctuation", "1", JsonSerializer.Serialize(baseline.Token),
-            selection, "sha256:cli-outcome", "sha256:cli-semantic", "sha256:cli-grammar", "cli-test",
-            "cli-test", 0, [assessedWord], SavedUtc: "2026-09-28T12:00:00Z"));
+            AssessmentId: "cli-accept-assessment",
+            ProposalId: null,
+            ProposalIntentDigest: null,
+            Assessor: "test",
+            Kind: AssessmentKind.ParseTime.ToStoredKind(),
+            ScopeJson: "{}",
+            ScopeDigest: "sha256:cli-scope",
+            Subject: new AssessmentSubject.Words(selection, "whitespace-and-punctuation", "1"),
+            BaselineToken: JsonSerializer.Serialize(baseline.Token),
+            OutcomeDigest: "sha256:cli-outcome",
+            SemanticDigest: "sha256:cli-semantic",
+            GrammarSourceSha256: "sha256:cli-grammar",
+            ModelFingerprint: "cli-test",
+            Pipeline: "cli-test",
+            DiagnosticCount: 0,
+            Material: new AssessmentRecordMaterial.Words([assessedWord], null, null, []),
+            SavedUtc: "2026-09-28T12:00:00Z"
+        ));
     }
 
     private static string AddWordform(string project, string word)

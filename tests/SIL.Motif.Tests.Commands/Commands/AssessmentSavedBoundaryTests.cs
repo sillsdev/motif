@@ -69,9 +69,10 @@ public sealed class AssessmentSavedBoundaryTests(PristineProjectFixture pristine
             var source = Path.Combine(directory, "source.fwdata");
             var statistics = Path.Combine(directory, "stats.sqlite");
             File.Copy(Directory.GetFiles(exportedCandidate, "*.fwdata", SearchOption.AllDirectories).Single(), source);
-            WriteStatsCache(statistics, scope.Words);
+            var wordsScope = (AssessmentScope.Words)scope;
+            WriteStatsCache(statistics, wordsScope.WordForms);
             var projectPath = Directory.GetFiles(exportedCandidate, "*.fwdata", SearchOption.AllDirectories).Single();
-            var words = scope.Words.Select((word, index) => new WordAnalysis(
+            var words = wordsScope.WordForms.Select((word, index) => new WordAnalysis(
                 index, word, 1, WordOutcome.NoAnalysis, "none")).ToArray();
             var evidence = new BatchInvocationEvidence("invocation", source, BatchInvocationEvidence.DigestFile(source),
                 "sha256:executable", "words", "sha256:words", "tsv", "sha256:tsv", "stderr", "sha256:stderr",
@@ -80,7 +81,7 @@ public sealed class AssessmentSavedBoundaryTests(PristineProjectFixture pristine
             return Task.FromResult<IReadOnlyList<ProducedAssessment>>([
                 new(AssessmentKind.ParseTime, evidence.SourceBytesSha256, null, null, null, null, null,
                     new AssessmentRaw.Batch(new BatchAnalysis(words, 1000, projectPath, [])
-                    { PerWordStepLimit = scope.PerWordStepLimit })) { Invocation = evidence, ArtifactLease = lease },
+                    { PerWordStepLimit = wordsScope.PerWordStepLimit })) { Invocation = evidence, ArtifactLease = lease },
                 new(AssessmentKind.ObjectTiming, evidence.SourceBytesSha256, null, null, null, null, null,
                     new AssessmentRaw.FileCache(statistics, BatchInvocationEvidence.DigestFile(statistics)))
                     { Invocation = evidence, ArtifactLease = lease }

@@ -12,7 +12,7 @@ namespace SIL.Motif.Tests.Assess;
 /// </summary>
 public sealed class AssessorSeamTests
 {
-    private static AssessmentScope Scope(params AssessmentKind[] collect) => new(
+    private static AssessmentScope.Words Scope(params AssessmentKind[] collect) => new(
         words: ["motifa"], collect: collect, perWordLimit: TimeSpan.FromSeconds(1));
 
     [Fact]

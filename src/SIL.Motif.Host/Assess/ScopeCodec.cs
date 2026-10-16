@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Assess;
+using SIL.Motif.Contract.Phonology;
 
 namespace SIL.Motif.Host.Assess;
 
@@ -14,6 +15,8 @@ namespace SIL.Motif.Host.Assess;
 public abstract record StoredScope
 {
     private StoredScope() { }
+
+    public sealed record PhonologyExamples(PhonologyRevisionReference Revision, PhonologyLimits Limits) : StoredScope;
 
     /// <summary>
     /// What a Trial told an Assessor to do, for any of the kinds a Trial run collects (<c>ParseTime</c>,
@@ -56,6 +59,7 @@ public static class ScopeCodec
     /// <summary>Writes a scope in the shape <see cref="ReadTrial"/> or <see cref="ReadDifference"/> reads back.</summary>
     public static string Write(StoredScope scope) => scope switch
     {
+        StoredScope.PhonologyExamples examples => JsonSerializer.Serialize(examples, PhonologyJson.CreateOptions()),
         StoredScope.Trial trial => JsonSerializer.Serialize(new TrialWire(
             trial.Query, trial.Words,
             trial.Collect.Select(kind => kind.ToString()).ToArray(),
@@ -78,6 +82,16 @@ public static class ScopeCodec
     public static StoredScope.Difference ReadDifference(string scopeJson, string reportKind) =>
         Read(scopeJson, reportKind) as StoredScope.Difference
             ?? throw new ReportRefusalException(reportKind, "the Assessment's recorded scope is a measurement, not a comparison.");
+
+    public static StoredScope.PhonologyExamples ReadPhonologyExamples(string scopeJson, string reportKind)
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<StoredScope.PhonologyExamples>(scopeJson, PhonologyJson.CreateOptions())
+                ?? throw Unreadable(reportKind);
+        }
+        catch (JsonException) { throw Unreadable(reportKind); }
+    }
 
     // Self-describing: a Difference scope is the only shape that ever carries "fromAssessmentId".
     private static StoredScope Read(string scopeJson, string reportKind)

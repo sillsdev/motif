@@ -166,9 +166,10 @@ public sealed class BaselineCaptureCommandTests : IDisposable
         {
             var assessments = new AssessmentRepository(database);
             assessments.Record(new NewAssessmentRecord("recent-results", null, null, "pangloss", "parse-time",
-                "{}", "sha256:scope", "whitespace", "1", JsonSerializer.Serialize(outcome.Value!.Token),
-                SIL.Motif.Host.Corpus.Selection.Create("Default", ["one"]), null, null, "sha256:grammar",
-                null, null, null, []));
+                "{}", "sha256:scope", new SIL.Motif.Host.Assess.AssessmentSubject.Words(
+                    SIL.Motif.Host.Corpus.Selection.Create("Default", ["one"]), "whitespace", "1"),
+                JsonSerializer.Serialize(outcome.Value!.Token), null, null, "sha256:grammar",
+                null, null, null, new AssessmentRecordMaterial.Words([], null, null, [])));
             assessments.PromoteToCurrent("recent-results");
         }
         Assert.Equal("Results available", Assert.Single(KnownProjectsQuery.List(root)).StateText);

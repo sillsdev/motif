@@ -26,3 +26,30 @@ public sealed record PhonologyExamplesPageResponse(
     [property: JsonPropertyName("exampleSet")] PhonologyExampleSetHeader ExampleSet,
     [property: JsonPropertyName("items")] IReadOnlyList<PhonologyExample> Items,
     [property: JsonPropertyName("continuation")] PhonologyPageCursor? Continuation);
+
+/// <summary>The stored result of a phonology check read: a page of summaries or one complete example.</summary>
+[JsonPolymorphic(TypeDiscriminatorPropertyName = "kind", UnknownDerivedTypeHandling =
+    JsonUnknownDerivedTypeHandling.FailSerialization)]
+[JsonDerivedType(typeof(PhonologyResultsPageResponse), "page")]
+[JsonDerivedType(typeof(PhonologyExampleResultResponse), "example")]
+public abstract record PhonologyResultsResponse;
+
+/// <summary>A bounded page of example summaries from one check.</summary>
+/// <param name="Assessment">The stored header of the check these summaries belong to.</param>
+/// <param name="Items">The summaries in this page, in authored order.</param>
+/// <param name="Continuation">The cursor for the next page, or null when the check is complete.</param>
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+public sealed record PhonologyResultsPageResponse(
+    [property: JsonPropertyName("assessment"), JsonRequired] PhonologyAssessmentHeader Assessment,
+    [property: JsonPropertyName("items"), JsonRequired] IReadOnlyList<PhonologyExampleSummary> Items,
+    [property: JsonPropertyName("continuation"), JsonRequired] PhonologyPageCursor? Continuation)
+    : PhonologyResultsResponse;
+
+/// <summary>The complete retained detail of one example from one check.</summary>
+/// <param name="Assessment">The stored header of the check this example belongs to.</param>
+/// <param name="Result">The complete retained example, including every rule list.</param>
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+public sealed record PhonologyExampleResultResponse(
+    [property: JsonPropertyName("assessment"), JsonRequired] PhonologyAssessmentHeader Assessment,
+    [property: JsonPropertyName("result"), JsonRequired] PhonologyExampleDetail Result)
+    : PhonologyResultsResponse;

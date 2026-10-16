@@ -116,18 +116,28 @@ public sealed class CurrentEvidenceQueryTests : IDisposable
     [Fact]
     public void LaterSubsetAssessmentReplacesOnlyItsWords()
     {
-        var baseline = new AssessmentRecord("base", null, null, "pangloss",
-            AssessmentKind.ParseTime.ToStoredKind(), "{}", "scope", "whitespace", "1", "token",
-            Selection.Create("Default", ["cat", "dog"]), null, null, "grammar", null, null, null,
-            "2026-09-24T12:00:00Z", Words: [new AssessedWord("cat", "timed-out", []),
-                new AssessedWord("dog", "analysed", [])]);
+        var baseline = new AssessmentRecord(
+            AssessmentId: "base",
+            ProposalId: null,
+            ProposalIntentDigest: null,
+            Assessor: "pangloss",
+            Kind: AssessmentKind.ParseTime.ToStoredKind(),
+            ScopeJson: "{}",
+            ScopeDigest: "scope",
+            Subject: new AssessmentSubject.Words(Selection.Create("Default", ["cat", "dog"]), "whitespace", "1"),
+            BaselineToken: "token",
+            OutcomeDigest: null,
+            SemanticDigest: null,
+            GrammarSourceSha256: "grammar",
+            ModelFingerprint: null,
+            Pipeline: null,
+            DiagnosticCount: null,
+            SavedUtc: "2026-09-24T12:00:00Z",
+            Details: new AssessmentRecordDetails.Words([new AssessedWord("cat", "timed-out", []),
+                new AssessedWord("dog", "analysed", [])], null, null, [])
+        );
         var rerun = baseline with
-        {
-            AssessmentId = "rerun",
-            Selection = Selection.Create("subset", ["cat"]),
-            SavedUtc = "2026-09-24T12:05:00Z",
-            Words = [new AssessedWord("cat", "analysed", [])],
-        };
+        { AssessmentId = "rerun", SavedUtc = "2026-09-24T12:05:00Z", Details = ((AssessmentRecordDetails.Words)baseline.Details) with { Rows = [new AssessedWord("cat", "analysed", [])] }, Subject = ((AssessmentSubject.Words)baseline.Subject) with { Selection = Selection.Create("subset", ["cat"]) } };
 
         var effective = AssessmentWordOverlay.Apply(baseline.Words!, [rerun]);
 
@@ -141,19 +151,28 @@ public sealed class CurrentEvidenceQueryTests : IDisposable
     {
         static AssessmentObjectTiming Row(string word, long ns) =>
             new("morph_rule", "rule-r", "authored", "analysis", "R", word, 1, null, ns);
-        var baseline = new AssessmentRecord("base", null, null, "pangloss",
-            AssessmentKind.ParseTime.ToStoredKind(), "{}", "scope", "whitespace", "1", "token",
-            Selection.Create("Default", ["cat", "dog"]), null, null, "grammar", null, null, null,
-            "2026-09-24T12:00:00Z", Words: [new AssessedWord("cat", "timed-out", []),
-                new AssessedWord("dog", "analysed", [])])
-        { ObjectTimings = [Row("cat", 9), Row("dog", 5)] };
+        var baseline = new AssessmentRecord(
+            AssessmentId: "base",
+            ProposalId: null,
+            ProposalIntentDigest: null,
+            Assessor: "pangloss",
+            Kind: AssessmentKind.ParseTime.ToStoredKind(),
+            ScopeJson: "{}",
+            ScopeDigest: "scope",
+            Subject: new AssessmentSubject.Words(Selection.Create("Default", ["cat", "dog"]), "whitespace", "1"),
+            BaselineToken: "token",
+            OutcomeDigest: null,
+            SemanticDigest: null,
+            GrammarSourceSha256: "grammar",
+            ModelFingerprint: null,
+            Pipeline: null,
+            DiagnosticCount: null,
+            SavedUtc: "2026-09-24T12:00:00Z",
+            Details: new AssessmentRecordDetails.Words([new AssessedWord("cat", "timed-out", []),
+                new AssessedWord("dog", "analysed", [])], null, null, []) with { ObjectTimings = [Row("cat", 9), Row("dog", 5)] }
+        );
         var rerun = baseline with
-        {
-            AssessmentId = "rerun",
-            Selection = Selection.Create("subset", ["cat", "bird"]),
-            Words = [new AssessedWord("cat", "analysed", []), new AssessedWord("bird", "analysed", [])],
-            ObjectTimings = [Row("cat", 2), Row("bird", 7)],
-        };
+        { AssessmentId = "rerun", Details = ((AssessmentRecordDetails.Words)baseline.Details) with { Rows = [new AssessedWord("cat", "analysed", []), new AssessedWord("bird", "analysed", [])], ObjectTimings = [Row("cat", 2), Row("bird", 7)] }, Subject = ((AssessmentSubject.Words)baseline.Subject) with { Selection = Selection.Create("subset", ["cat", "bird"]) } };
 
         var effective = AssessmentWordOverlay.ApplyObjectTimings(baseline, [rerun]);
 
@@ -183,14 +202,16 @@ public sealed class CurrentEvidenceQueryTests : IDisposable
             "words", "digest", "tsv", "digest", "stderr", "digest", 1000, StepCap.Default, 1, false);
         repository.Record(Record("base", ["cat", "dog"], [
             new AssessedWord("cat", "timed-out", []), new AssessedWord("dog", "analysed", [])],
-            "2026-09-24T11:00:00Z", tokenJson) with { Invocation = invocation });
+            "2026-09-24T11:00:00Z", tokenJson) with { Material = Record("base", ["cat", "dog"], [
+            new AssessedWord("cat", "timed-out", []), new AssessedWord("dog", "analysed", [])],
+            "2026-09-24T11:00:00Z", tokenJson).RequireWordMaterial() with { Invocation = invocation } });
         repository.Record(Record("correctness", ["cat", "dog"], [
             new AssessedWord("cat", "timed-out", []), new AssessedWord("dog", "analysed", [])],
             "2026-09-24T11:00:00Z", tokenJson) with
-        {
-            Kind = AssessmentKind.Correctness.ToStoredKind(),
-            Invocation = invocation,
-        });
+        { Kind = AssessmentKind.Correctness.ToStoredKind(),
+                Material = Record("correctness", ["cat", "dog"], [
+            new AssessedWord("cat", "timed-out", []), new AssessedWord("dog", "analysed", [])],
+            "2026-09-24T11:00:00Z", tokenJson).RequireWordMaterial() with { Invocation = invocation } });
         repository.Record(Record("rerun", ["cat"], [new AssessedWord("cat", "analysed", [])],
             "2026-09-24T11:05:00Z", tokenJson));
 
@@ -205,11 +226,25 @@ public sealed class CurrentEvidenceQueryTests : IDisposable
     }
 
     private static NewAssessmentRecord Record(string id, IReadOnlyList<string> words,
-        IReadOnlyList<AssessedWord> results, string savedUtc, string token) => new(
-        id, null, null, "pangloss", AssessmentKind.ParseTime.ToStoredKind(), "{}", "sha256:scope",
-        "whitespace", "1", token, Selection.Create("run", words), "sha256:outcome",
-        "sha256:semantic", "sha256:grammar", "fingerprint", "pipeline", 0, results,
-        SavedUtc: savedUtc);
+        IReadOnlyList<AssessedWord> results, string savedUtc, string token) => new NewAssessmentRecord(
+            AssessmentId: id,
+            ProposalId: null,
+            ProposalIntentDigest: null,
+            Assessor: "pangloss",
+            Kind: AssessmentKind.ParseTime.ToStoredKind(),
+            ScopeJson: "{}",
+            ScopeDigest: "sha256:scope",
+            Subject: new AssessmentSubject.Words(Selection.Create("run", words), "whitespace", "1"),
+            BaselineToken: token,
+            OutcomeDigest: "sha256:outcome",
+            SemanticDigest: "sha256:semantic",
+            GrammarSourceSha256: "sha256:grammar",
+            ModelFingerprint: "fingerprint",
+            Pipeline: "pipeline",
+            DiagnosticCount: 0,
+            Material: new AssessmentRecordMaterial.Words(results, null, null, []),
+            SavedUtc: savedUtc
+        );
 
     [Fact]
     public void DefaultTimingUsesExplicitReplacementsAndHistoryKeepsItsOwnRows()
@@ -235,12 +270,17 @@ public sealed class CurrentEvidenceQueryTests : IDisposable
             new("morph_rule", "rule-r", "authored", "analysis", "R", word, 1, null, ns);
         repository.Record(Record("base", ["cat", "dog"], [
             new AssessedWord("cat", "timed-out", [], 90), new AssessedWord("dog", "analysed", [], 5)],
-            "2026-09-24T11:00:00Z", tokenJson) with { ObjectTimings = [Row("cat", 9_000_000), Row("dog", 5_000_000)] });
+            "2026-09-24T11:00:00Z", tokenJson) with { Material = Record("base", ["cat", "dog"], [
+            new AssessedWord("cat", "timed-out", [], 90), new AssessedWord("dog", "analysed", [], 5)],
+            "2026-09-24T11:00:00Z", tokenJson).RequireWordMaterial() with { ObjectTimings = [Row("cat", 9_000_000), Row("dog", 5_000_000)] } });
         repository.Record(Record("explicit", ["cat"], [new AssessedWord("cat", "analysed", [], 2)],
             "2026-09-24T11:05:00Z", tokenJson) with
-        { ReplacesAssessmentId = "base", ObjectTimings = [Row("cat", 2_000_000)] });
+        { ReplacesAssessmentId = "base",
+                Material = Record("explicit", ["cat"], [new AssessedWord("cat", "analysed", [], 2)],
+            "2026-09-24T11:05:00Z", tokenJson).RequireWordMaterial() with { ObjectTimings = [Row("cat", 2_000_000)] } });
         repository.Record(Record("exploratory", ["dog"], [new AssessedWord("dog", "timed-out", [], 100)],
-            "2026-09-24T11:10:00Z", tokenJson) with { ObjectTimings = [Row("dog", 100_000_000)] });
+            "2026-09-24T11:10:00Z", tokenJson) with { Material = Record("exploratory", ["dog"], [new AssessedWord("dog", "timed-out", [], 100)],
+            "2026-09-24T11:10:00Z", tokenJson).RequireWordMaterial() with { ObjectTimings = [Row("dog", 100_000_000)] } });
 
         var evidence = CurrentEvidenceQuery.ReadCurrentEvidence(database, project, includeResolvedReadings: false, includeWordContext: false);
         var timing = TimingCommand.Timing(new TimingRequest(fwDataPath));
@@ -335,13 +375,19 @@ public sealed class CurrentEvidenceQueryTests : IDisposable
             new("morph_rule", "rule-r", "authored", "analysis", "R", word, 1, null, ns);
         repository.Record(Record("base", ["cat", "dog"], [
             new AssessedWord("cat", "timed-out", [], 90), new AssessedWord("dog", "analysed", [], 5)],
-            "2026-09-24T11:00:00Z", tokenJson) with { ObjectTimings = [Row("cat", 9_000_000), Row("dog", 5_000_000)] });
+            "2026-09-24T11:00:00Z", tokenJson) with { Material = Record("base", ["cat", "dog"], [
+            new AssessedWord("cat", "timed-out", [], 90), new AssessedWord("dog", "analysed", [], 5)],
+            "2026-09-24T11:00:00Z", tokenJson).RequireWordMaterial() with { ObjectTimings = [Row("cat", 9_000_000), Row("dog", 5_000_000)] } });
         repository.Record(Record("other", ["cat", "bird"], [
             new AssessedWord("cat", "analysed", [], 2), new AssessedWord("bird", "analysed", [], 40)],
-            "2026-09-24T11:05:00Z", tokenJson) with { ObjectTimings = [Row("cat", 2_000_000), Row("bird", 40_000_000)] });
+            "2026-09-24T11:05:00Z", tokenJson) with { Material = Record("other", ["cat", "bird"], [
+            new AssessedWord("cat", "analysed", [], 2), new AssessedWord("bird", "analysed", [], 40)],
+            "2026-09-24T11:05:00Z", tokenJson).RequireWordMaterial() with { ObjectTimings = [Row("cat", 2_000_000), Row("bird", 40_000_000)] } });
         repository.Record(Record("dog-reparse", ["dog"], [new AssessedWord("dog", "analysed", [], 3)],
             "2026-09-24T11:03:00Z", tokenJson) with
-        { ReplacesAssessmentId = "base", ObjectTimings = [Row("dog", 3_000_000)] });
+        { ReplacesAssessmentId = "base",
+                Material = Record("dog-reparse", ["dog"], [new AssessedWord("dog", "analysed", [], 3)],
+            "2026-09-24T11:03:00Z", tokenJson).RequireWordMaterial() with { ObjectTimings = [Row("dog", 3_000_000)] } });
 
         var timing = TimingCommand.Timing(new TimingRequest(fwDataPath, AssessmentId: useCurrentEvidence ? null : "base",
             OverrideAssessmentIds: ["other"]));

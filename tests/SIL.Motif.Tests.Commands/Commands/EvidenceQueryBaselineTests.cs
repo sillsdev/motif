@@ -1,3 +1,4 @@
+using SIL.Motif.Host.Assess;
 using System.IO;
 using System.Text.Json;
 using System.Xml.Linq;
@@ -609,15 +610,27 @@ public sealed class EvidenceQueryBaselineTests : IDisposable
         using (var database = ProjectMotifDatabase.Open(project.Path))
         {
             new AssessmentRepository(database).Record(new NewAssessmentRecord(
-                "mixed", null, null, "pangloss", AssessmentKinds.ParseTime, "{}", "sha256:scope",
-                "whitespace", "1", JsonSerializer.Serialize(project.Baseline.Token, MotifJson.CreateOptions()),
-                Selection.Create("Default", [SeededProject.AnalysedWordForm]), "sha256:outcome", "sha256:semantic",
-                "sha256:grammar", "fingerprint", "pipeline", 0,
-                [new AssessedWord(SeededProject.AnalysedWordForm, "analysed", [], 1)
+            AssessmentId: "mixed",
+            ProposalId: null,
+            ProposalIntentDigest: null,
+            Assessor: "pangloss",
+            Kind: AssessmentKinds.ParseTime,
+            ScopeJson: "{}",
+            ScopeDigest: "sha256:scope",
+            Subject: new AssessmentSubject.Words(Selection.Create("Default", [SeededProject.AnalysedWordForm]), "whitespace", "1"),
+            BaselineToken: JsonSerializer.Serialize(project.Baseline.Token, MotifJson.CreateOptions()),
+            OutcomeDigest: "sha256:outcome",
+            SemanticDigest: "sha256:semantic",
+            GrammarSourceSha256: "sha256:grammar",
+            ModelFingerprint: "fingerprint",
+            Pipeline: "pipeline",
+            DiagnosticCount: 0,
+            Material: new AssessmentRecordMaterial.Words([new AssessedWord(SeededProject.AnalysedWordForm, "analysed", [], 1)
                 {
                     ProjectStanding = standing, IsIncomplete = incomplete, Morphology = project.Morphology,
                     ReadingGrades = [ReadingGrade.Approved], AnalysisComparison = evidence,
-                }]));
+                }], null, null, [])
+        ));
             var stored = Assert.Single(new AssessmentRepository(database).Get("mixed").Words!);
             Assert.Equal(ProjectionJson.Serialize(evidence), ProjectionJson.Serialize(stored.AnalysisComparison));
         }
@@ -693,17 +706,30 @@ public sealed class EvidenceQueryBaselineTests : IDisposable
     {
         using var database = ProjectMotifDatabase.Open(project.Path);
         new AssessmentRepository(database).Record(new NewAssessmentRecord(
-            id, null, null, "pangloss", AssessmentKinds.ParseTime, "{}", "sha256:scope",
-            "whitespace", "1", JsonSerializer.Serialize(project.Baseline.Token, MotifJson.CreateOptions()),
-            Selection.Create("Default", words), "sha256:outcome", "sha256:semantic", grammarHash,
-            "fingerprint", "pipeline", 0, words.Select(word => new AssessedWord(word,
+            AssessmentId: id,
+            ProposalId: null,
+            ProposalIntentDigest: null,
+            Assessor: "pangloss",
+            Kind: AssessmentKinds.ParseTime,
+            ScopeJson: "{}",
+            ScopeDigest: "sha256:scope",
+            Subject: new AssessmentSubject.Words(Selection.Create("Default", words), "whitespace", "1"),
+            BaselineToken: JsonSerializer.Serialize(project.Baseline.Token, MotifJson.CreateOptions()),
+            OutcomeDigest: "sha256:outcome",
+            SemanticDigest: "sha256:semantic",
+            GrammarSourceSha256: grammarHash,
+            ModelFingerprint: "fingerprint",
+            Pipeline: "pipeline",
+            DiagnosticCount: 0,
+            Material: new AssessmentRecordMaterial.Words(words.Select(word => new AssessedWord(word,
                 parsed ? "analysed" : "no-analysis", [], 1)
             {
                 ProjectStanding = ProjectStanding.Approved,
                 MissedApproved = missedLink is null ? null : [new ParserReading([
                     new ParserReadingMorph("captured form", "captured gloss", "noun", null, false, missedLink)])],
                 Morphology = parsed && word == SeededProject.AnalysedWordForm ? project.Morphology : null,
-            }).ToArray()));
+            }).ToArray(), null, null, [])
+        ));
     }
 
     private sealed record CapturedProject(string Path, Guid TextId, BaselineCaptureResponse Baseline,

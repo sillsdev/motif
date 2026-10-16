@@ -187,6 +187,32 @@ public sealed class PhonologyExampleSetRepository
         }
     }
 
+    internal static (PhonologyExampleSetHeader Header, IReadOnlyList<PhonologyExample> Examples) ReadFrozen(
+        SqliteConnection connection, SqliteTransaction transaction, PhonologyRevisionReference revision)
+    {
+        var header = ReadHeader(connection, transaction, revision.RevisionId)
+            ?? throw new KeyNotFoundException("The exact Example Set revision does not exist.");
+        if (header.Revision != revision) throw new InvalidDataException("The Example Set revision binding differs.");
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = "SELECT Ordinal, ExampleId, Underlying, ExpectedJson, ContextJson, CitationJson " +
+            "FROM PhonologyExamples WHERE RevisionId = $id ORDER BY Ordinal;";
+        command.Parameters.AddWithValue("$id", revision.RevisionId);
+        using var reader = command.ExecuteReader();
+        var examples = new List<PhonologyExample>();
+        while (reader.Read())
+        {
+            if (reader.GetInt32(0) != examples.Count) throw new InvalidDataException("Example ordinals are not contiguous.");
+            examples.Add(ReadExample(reader));
+        }
+        if (examples.Count != revision.ExampleCount) throw new InvalidDataException("The Example Set count differs.");
+        var validated = PhonologyExampleValidation.ValidateAndCopy(header.Name, examples, proposalId: header.ProposalId);
+        if (validated.ExecutableSha256 != revision.ExecutableSha256 ||
+            validated.CitedRevisionSha256 != revision.CitedRevisionSha256)
+            throw new InvalidDataException("The retained Example Set digests differ.");
+        return (header, examples.AsReadOnly());
+    }
+
     private static void InsertExamples(SqliteConnection connection, SqliteTransaction transaction,
         string revisionId, IReadOnlyList<PhonologyExample> examples)
     {
@@ -255,9 +281,14 @@ public sealed class PhonologyExampleSetRepository
             throw new InvalidDataException("The project store has no project identity.");
     }
 
-    private static PhonologyExampleSetHeader? ReadHeader(SqliteConnection connection, string revisionId)
+    private static PhonologyExampleSetHeader? ReadHeader(SqliteConnection connection, string revisionId) =>
+        ReadHeader(connection, null, revisionId);
+
+    private static PhonologyExampleSetHeader? ReadHeader(SqliteConnection connection,
+        SqliteTransaction? transaction, string revisionId)
     {
         using var command = connection.CreateCommand();
+        command.Transaction = transaction;
         command.CommandText = HeaderQuery + " WHERE r.RevisionId = $revisionId;";
         command.Parameters.AddWithValue("$revisionId", revisionId);
         using var reader = command.ExecuteReader();

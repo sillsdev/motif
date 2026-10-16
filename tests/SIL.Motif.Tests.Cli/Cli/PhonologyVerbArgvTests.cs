@@ -57,6 +57,46 @@ public sealed class PhonologyVerbArgvTests(PristineProjectFixture pristine)
         Assert.Contains("'other'", unknownMessage, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void ResultsRefusesAnUnknownCheckAndAConflictingExampleSelection()
+    {
+        var project = pristine.CopyProjectFile();
+
+        var missing = Run("phonology-examples", "results", "--project", project, "assessment/none", "--json");
+        var conflict = Run("phonology-examples", "results", "--project", project, "assessment/none",
+            "--example", "front", "--page-size", "5", "--json");
+
+        Assert.NotEqual(0, missing.ExitCode);
+        using var missingEnvelope = JsonDocument.Parse(missing.Error);
+        Assert.Equal("phonology-examples.assessment-not-found",
+            missingEnvelope.RootElement.GetProperty("code").GetString());
+        Assert.NotEqual(0, conflict.ExitCode);
+        Assert.Contains("--example", conflict.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void CheckNeedsABaselineAndWholeNumberCeilings()
+    {
+        var project = pristine.CopyProjectFile();
+        var payload = Path.Combine(Path.GetDirectoryName(project)!, "examples.json");
+        File.WriteAllText(payload, """
+            {"name":"Set","examples":[{"id":"front","underlying":"a-ku","expected":["e-ki"],"context":{"kind":"hcXmlEntry","entryId":"entry-17"}}]}
+            """);
+        var save = Run("phonology-examples", "save", "--project", project, "--file", payload, "--json");
+        using var saved = JsonDocument.Parse(save.Output);
+        var revisionId = saved.RootElement.GetProperty("exampleSet").GetProperty("revision")
+            .GetProperty("revisionId").GetString()!;
+
+        var noBaseline = Run("phonology-examples", "check", "--project", project, revisionId, "--json");
+        var badCeiling = Run("phonology-examples", "check", "--project", project, revisionId, "--step-cap", "many", "--json");
+
+        Assert.NotEqual(0, noBaseline.ExitCode);
+        using var envelope = JsonDocument.Parse(noBaseline.Error);
+        Assert.Equal("phonology-examples.no-baseline", envelope.RootElement.GetProperty("code").GetString());
+        Assert.NotEqual(0, badCeiling.ExitCode);
+        Assert.Contains("--step-cap", badCeiling.Error, StringComparison.Ordinal);
+    }
+
     private static (int ExitCode, string Output, string Error) Run(params string[] arguments)
     {
         var start = new ProcessStartInfo(BuildOutput.Cli)

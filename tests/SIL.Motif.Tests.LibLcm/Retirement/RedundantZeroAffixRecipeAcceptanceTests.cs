@@ -243,7 +243,7 @@ public sealed partial class RedundantZeroAffixRecipeAcceptanceTests(PristineProj
     {
         var store = new StatsCacheStore(WorkspaceOwnership.Bootstrap(artifactRoot));
         var assessor = new PanGlossAssessor(store, invoker);
-        var produced = await assessor.ProduceAsync(new AssessmentScope(words, [AssessmentKind.ParseTime],
+        var produced = await assessor.ProduceAsync(new AssessmentScope.Words(words, [AssessmentKind.ParseTime],
                 TimeSpan.FromMilliseconds(1000), new StepCap(200_000)), Path.GetDirectoryName(projectPath)!,
             CancellationToken.None);
         var assessment = Assert.Single(produced);

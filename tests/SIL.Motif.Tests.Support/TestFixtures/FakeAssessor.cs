@@ -15,11 +15,11 @@ internal sealed class FakeAssessor : IAssessor
 
     private readonly IReadOnlyList<AssessmentKind> _declaredKinds;
     private readonly Func<AssessmentKind, AssessmentRaw>? _rawFor;
-    private readonly Func<AssessmentScope, string, AssessmentKind, AssessmentRaw>? _rawForScope;
+    private readonly Func<AssessmentScope.Words, string, AssessmentKind, AssessmentRaw>? _rawForScope;
 
     public FakeAssessor(
         string name, IReadOnlyList<AssessmentKind> declaredKinds, Func<AssessmentKind, AssessmentRaw>? rawFor = null,
-        Func<AssessmentScope, string, AssessmentKind, AssessmentRaw>? rawForScope = null)
+        Func<AssessmentScope.Words, string, AssessmentKind, AssessmentRaw>? rawForScope = null)
     {
         Name = name;
         _declaredKinds = declaredKinds;
@@ -31,7 +31,7 @@ internal sealed class FakeAssessor : IAssessor
 
     public IReadOnlyList<AssessmentKind> SupportedKinds => _declaredKinds;
 
-    public Func<AssessmentScope, string, BatchInvocationEvidence>? CaptureEvidence { get; init; }
+    public Func<AssessmentScope.Words, string, BatchInvocationEvidence>? CaptureEvidence { get; init; }
 
     public Action<Action<TrialWordProgress>>? EmitProgress { get; init; }
 
@@ -46,19 +46,21 @@ internal sealed class FakeAssessor : IAssessor
     public Task<IReadOnlyList<ProducedAssessment>> ProduceAsync(
         AssessmentScope scope, string exportedCandidate, CancellationToken cancellationToken)
     {
-        var wanted = scope.Collect.Count == 0 ? _declaredKinds : scope.Collect;
+        var words = scope as AssessmentScope.Words
+            ?? throw new AssessorRefusalException(Name, AssessmentKind.PhonologyExamples, "This fixture measures words.");
+        var wanted = words.Collect.Count == 0 ? _declaredKinds : words.Collect;
         foreach (var kind in wanted)
         {
             if (!_declaredKinds.Contains(kind))
                 throw new AssessorRefusalException(Name, kind, "the fake Assessor was not configured to declare this kind.");
         }
 
-        var evidence = CaptureEvidence?.Invoke(scope, exportedCandidate);
+        var evidence = CaptureEvidence?.Invoke(words, exportedCandidate);
         var grammarSourceSha256 = evidence?.SourceBytesSha256 ?? FakeGrammarSha256;
         IReadOnlyList<ProducedAssessment> produced = wanted
             .Select(kind => new ProducedAssessment(kind, grammarSourceSha256, "sha256:" + new string('0', 64),
                 "sha256:" + new string('0', 64), "fake-model", "fake-pipeline", 0,
-                _rawForScope?.Invoke(scope, exportedCandidate, kind) ?? _rawFor?.Invoke(kind)
+                _rawForScope?.Invoke(words, exportedCandidate, kind) ?? _rawFor?.Invoke(kind)
                     ?? new AssessmentRaw.WordMeasurements([])) { Invocation = evidence })
             .ToList();
         return Task.FromResult(produced);

@@ -1,3 +1,4 @@
+using SIL.Motif.Host.Assess;
 using System;
 using System.IO;
 using SIL.Motif.Contract.Projects;
@@ -37,20 +38,16 @@ internal static class SeededAssessment
             Kind: "ParseTime",
             ScopeJson: "{}",
             ScopeDigest: "sha256:scope",
-            TokeniserName: "whitespace-and-punctuation",
-            TokeniserVersion: "1",
+            Subject: new AssessmentSubject.Words(assessment.Selection, "whitespace-and-punctuation", "1"),
             BaselineToken: JsonSerializer.Serialize(captured.Value!.Token, MotifJson.CreateOptions()),
-            Selection: assessment.Selection,
             OutcomeDigest: assessment.Report.OutcomeDigest,
             SemanticDigest: assessment.Report.SemanticDigest,
             GrammarSourceSha256: assessment.Report.GrammarSourceSha256,
             ModelFingerprint: assessment.Report.ModelFingerprint,
             Pipeline: assessment.Report.Pipeline,
             DiagnosticCount: assessment.Report.DiagnosticCount,
-            Words: assessment.Report.Words)
-        {
-            Invocation = invocation,
-        });
+            Material: new AssessmentRecordMaterial.Words(assessment.Report.Words, null, null, []) with { Invocation = invocation }
+        ));
 
         return assessmentId;
     }

@@ -1,3 +1,4 @@
+using SIL.Motif.Host.Assess;
 using System.Text;
 using System.Text.Json;
 using System.Security.Cryptography;
@@ -214,9 +215,23 @@ public sealed class ReleasedExecutableTests(PristineProjectFixture pristine) : I
                 parsed ? [new ParsedAnalysis(null, [], 0, "digest")] : []);
         }).ToArray();
         new AssessmentRepository(database).Record(new NewAssessmentRecord(
-            id, null, null, "pangloss", "ParseTime", """{"words":[],"collect":[],"perWordLimitMs":1000,"perWordStepLimit":{"steps":200000,"isUnbounded":false}}""", "sha256:" + new string('a', 64),
-            "none", "1", "{}", selection, "sha256:" + new string('b', 64), "sha256:" + new string('c', 64),
-            "sha256:" + new string('d', 64), "model", "pipeline", 0, words));
+            AssessmentId: id,
+            ProposalId: null,
+            ProposalIntentDigest: null,
+            Assessor: "pangloss",
+            Kind: "ParseTime",
+            ScopeJson: """{"words":[],"collect":[],"perWordLimitMs":1000,"perWordStepLimit":{"steps":200000,"isUnbounded":false}}""",
+            ScopeDigest: "sha256:" + new string('a', 64),
+            Subject: new AssessmentSubject.Words(selection, "none", "1"),
+            BaselineToken: "{}",
+            OutcomeDigest: "sha256:" + new string('b', 64),
+            SemanticDigest: "sha256:" + new string('c', 64),
+            GrammarSourceSha256: "sha256:" + new string('d', 64),
+            ModelFingerprint: "model",
+            Pipeline: "pipeline",
+            DiagnosticCount: 0,
+            Material: new AssessmentRecordMaterial.Words(words, null, null, [])
+        ));
         return id;
     }
 

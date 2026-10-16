@@ -59,6 +59,8 @@ public static class CommandTextRenderer
             PhonologyExamplesSavedResponse r => RenderPhonologyExamplesSaved(r),
             PhonologyExamplesListResponse r => RenderPhonologyExamplesList(r),
             PhonologyExamplesPageResponse r => RenderPhonologyExamplesPage(r),
+            PhonologyResultsPageResponse r => RenderPhonologyResultsPage(r),
+            PhonologyExampleResultResponse r => RenderPhonologyExampleResult(r),
             ReportKindListResponse r => RenderReportKindList(r),
             ReportResponse r => RenderReport(r),
             ParsimonyReportResponse r => RenderParsimonyReport(r),
@@ -253,6 +255,65 @@ public static class CommandTextRenderer
         }
         AppendContinuation(builder, response.Continuation);
         return builder.ToString();
+    }
+
+    private static string RenderPhonologyResultsPage(PhonologyResultsPageResponse response)
+    {
+        var builder = new StringBuilder();
+        AppendPhonologyCheckHeader(builder, response.Assessment);
+        foreach (var item in response.Items)
+        {
+            builder.AppendLine(item.Evidence switch
+            {
+                PhonologyRowSummary.Produced row =>
+                    $"{item.Example.Id}: {item.Example.Underlying} → {string.Join(" | ", item.Example.Expected)}  " +
+                    $"{row.Disposition.ToString().ToLowerInvariant()} ({row.Completion.ToString().ToLowerInvariant()})" +
+                    (row.Observed is null ? "" : "  observed " + row.Observed) +
+                    $"  rules applied {row.AppliedRuleCount}" +
+                    (row.AppliedRulesOmitted > 0 ? $" ({row.AppliedRulesOmitted} not listed here)" : ""),
+                PhonologyRowSummary.Unavailable row =>
+                    $"{item.Example.Id}: unavailable ({row.Reason.ToString().ToLowerInvariant()}): {row.Detail}",
+                _ => $"{item.Example.Id}: unknown",
+            });
+        }
+        AppendContinuation(builder, response.Continuation);
+        return builder.ToString();
+    }
+
+    private static string RenderPhonologyExampleResult(PhonologyExampleResultResponse response)
+    {
+        var builder = new StringBuilder();
+        AppendPhonologyCheckHeader(builder, response.Assessment);
+        var example = response.Result.Example;
+        builder.AppendLine($"{example.Id}: {example.Underlying} → {string.Join(" | ", example.Expected)}");
+        switch (response.Result.Evidence)
+        {
+            case PhonologyRowEvidence.Produced row:
+                builder.AppendLine($"  {row.Disposition.ToString().ToLowerInvariant()} " +
+                    $"({row.Completion.ToString().ToLowerInvariant()}); observed " + (row.Observed ?? "nothing"));
+                builder.AppendLine("  Ordered rules: " + string.Join(", ", row.OrderedRuleIds));
+                builder.AppendLine("  Visited rules: " + string.Join(", ", row.VisitedRuleIds));
+                builder.AppendLine("  Applied rules: " + string.Join(", ", row.AppliedRuleIds));
+                break;
+            case PhonologyRowEvidence.Unavailable row:
+                builder.AppendLine($"  unavailable ({row.Reason.ToString().ToLowerInvariant()}): {row.Detail}");
+                break;
+        }
+        return builder.ToString();
+    }
+
+    private static void AppendPhonologyCheckHeader(StringBuilder builder, PhonologyAssessmentHeader header)
+    {
+        builder.AppendLine($"Phonology check {header.AssessmentId} of '{header.ExampleSet.Name}' " +
+            $"revision {header.ExampleSet.Revision.RevisionId}. Advisory evidence: it does not change Readiness or Apply.");
+        builder.AppendLine(header.Invocation switch
+        {
+            PhonologyInvocationBinding.Produced p =>
+                $"  {p.AgreeCount} agree, {p.DisagreeCount} disagree, {p.UnavailableCount} unavailable.",
+            PhonologyInvocationBinding.Unavailable u =>
+                $"  Not measured ({u.Reason.ToString().ToLowerInvariant()}): {u.Detail}",
+            _ => "  Unknown invocation.",
+        });
     }
 
     private static void AppendContinuation<T>(StringBuilder builder, T? continuation) where T : class

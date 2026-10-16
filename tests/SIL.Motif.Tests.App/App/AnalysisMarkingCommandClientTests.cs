@@ -355,11 +355,25 @@ public sealed class AnalysisMarkingCommandClientTests(PristineProjectFixture pri
         Assert.True(composition.Succeeded, composition.Refusal?.Message);
         var assessmentId = "assessment/marking/" + Guid.NewGuid().ToString("N");
         new AssessmentRepository(database).Record(new NewAssessmentRecord(
-            assessmentId, null, null, "test", AssessmentKind.ParseTime.ToStoredKind(), "{}", "sha256:scope",
-            "whitespace-and-punctuation", "1", JsonSerializer.Serialize(project.BaselineToken,
-                MotifJson.CreateOptions()), composition.Value!.Selection, "sha256:outcome", "sha256:semantic",
-            "sha256:grammar", "model", "pipeline", 0, words,
-            SavedUtc: DateTimeOffset.UtcNow.ToString("O")));
+            AssessmentId: assessmentId,
+            ProposalId: null,
+            ProposalIntentDigest: null,
+            Assessor: "test",
+            Kind: AssessmentKind.ParseTime.ToStoredKind(),
+            ScopeJson: "{}",
+            ScopeDigest: "sha256:scope",
+            Subject: new AssessmentSubject.Words(composition.Value!.Selection, "whitespace-and-punctuation", "1"),
+            BaselineToken: JsonSerializer.Serialize(project.BaselineToken,
+                MotifJson.CreateOptions()),
+            OutcomeDigest: "sha256:outcome",
+            SemanticDigest: "sha256:semantic",
+            GrammarSourceSha256: "sha256:grammar",
+            ModelFingerprint: "model",
+            Pipeline: "pipeline",
+            DiagnosticCount: 0,
+            Material: new AssessmentRecordMaterial.Words(words, null, null, []),
+            SavedUtc: DateTimeOffset.UtcNow.ToString("O")
+        ));
         return assessmentId;
     }
 

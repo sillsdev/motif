@@ -1,3 +1,4 @@
+using SIL.Motif.Host.Assess;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -163,17 +164,15 @@ public sealed class CompareCommandsTests : IDisposable
                 Kind: kind,
                 ScopeJson: """{"words":[],"collect":[],"perWordLimitMs":1000,"perWordStepLimit":{"steps":200000,"isUnbounded":false}}""",
                 ScopeDigest: "sha256:" + new string('a', 64),
-                TokeniserName: tokeniserName,
-                TokeniserVersion: tokeniserVersion,
+                Subject: new AssessmentSubject.Words(selection, tokeniserName, tokeniserVersion),
                 BaselineToken: "{}",
-                Selection: selection,
                 OutcomeDigest: "sha256:" + new string('b', 64),
                 SemanticDigest: "sha256:" + new string('c', 64),
                 GrammarSourceSha256: GrammarSha,
                 ModelFingerprint: "model",
                 Pipeline: "pipeline",
                 DiagnosticCount: 0,
-                Words: assessedWords));
+                Material: new AssessmentRecordMaterial.Words(assessedWords, null, null, [])));
             return CommandOutcome<string>.Success(string.Empty);
         });
         Assert.True(result.Succeeded);

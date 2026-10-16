@@ -29,6 +29,9 @@ internal sealed record PanGlossCapabilities(
             return $"the description does not expose '{commandName}'.";
         if (command.Hidden) return $"the description hides '{commandName}'.";
 
+        if (request is PanGlossRequest.PhonologyExamples &&
+            !command.Positionals.SequenceEqual(new[] { "grammar", "request.json", "out.json?" }))
+            return "the phonology-examples description does not declare the version-one request/result surface.";
         var positionalCount = 0;
         for (var index = 1; index < startInfo.ArgumentList.Count; index++)
         {

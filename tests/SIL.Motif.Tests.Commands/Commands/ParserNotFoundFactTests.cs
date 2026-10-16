@@ -126,7 +126,7 @@ public sealed class ParserNotFoundFactTests : IDisposable
         File.WriteAllText(Path.Combine(candidate, "source.fwdata"), "<languageproject/>");
         var assessor = new PanGlossAssessor(new FixedCachePaths(Path.Combine(_root, "cache")),
             new FakeInvoker { Respond = _ => Unavailable(missing: true) });
-        var scope = new AssessmentScope(["word"], [AssessmentKind.ParseTime], TimeSpan.FromSeconds(1));
+        var scope = new AssessmentScope.Words(["word"], [AssessmentKind.ParseTime], TimeSpan.FromSeconds(1));
 
         var thrown = Assert.Throws<AssessorUnavailableException>(() =>
             assessor.ProduceAsync(scope, candidate, _ => { }, CancellationToken.None).GetAwaiter().GetResult());

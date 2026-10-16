@@ -72,9 +72,10 @@ public sealed class DifferencePagingTests
             {
                 var assessments = new AssessmentRepository(database);
                 NewAssessmentRecord Record(string id, string kind, string scopeJson, IReadOnlyList<AssessedWord> rows) =>
-                    new(id, null, null, "fixture", kind, scopeJson, "scope", "none", "1", "{}",
-                        Selection.Create("fixture", words), "outcome", "semantic", "grammar", "model",
-                        "trial-difference/v1", 0, rows);
+                    new(id, null, null, "fixture", kind, scopeJson, "scope",
+                        new SIL.Motif.Host.Assess.AssessmentSubject.Words(Selection.Create("fixture", words), "none", "1"),
+                        "{}", "outcome", "semantic", "grammar", "model",
+                        "trial-difference/v1", 0, new AssessmentRecordMaterial.Words(rows, null, null, []));
                 assessments.RecordBatch([Record("before", "Correctness", "{}", before),
                     Record("after", "Correctness", "{}", after),
                     Record("difference", "Difference", scope, TrialResults.Classify(before, after, []))]);

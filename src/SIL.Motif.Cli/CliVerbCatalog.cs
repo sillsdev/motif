@@ -50,6 +50,14 @@ public static class CliVerbCatalog
         new CliVerbDescriptor("Project", "phonology-examples", "phonology-examples show",
             new[] { "phonology-examples show --project <fwdata> <revisionId> [--page-size <n>] " +
                 "[--continuation <cursor-json>] [--json]" }),
+        new CliVerbDescriptor("Project", "phonology-examples", "phonology-examples check",
+            new[] { "phonology-examples check --project <fwdata> <revisionId> [--step-cap <n>] [--work-cap <n>] " +
+                "[--timeout-ms <ms>] [--wait] [--wait-timeout-ms <ms>] [--json]" }),
+        new CliVerbDescriptor("Project", "phonology-examples", "phonology-examples results",
+            new[] { "phonology-examples results --project <fwdata> <assessmentId> [--page-size <n>] " +
+                "[--continuation <cursor-json>] [--json]",
+                "phonology-examples results --project <fwdata> <assessmentId> --example <exampleId> " +
+                "[--out <path.json>] [--json]" }),
         new CliVerbDescriptor(
             "Commands", "analyses", "analyses",
             new[]

@@ -539,11 +539,25 @@ public sealed class TrialsTests : IDisposable
         public void RecordAssessment(SavedProposal proposal, string assessmentId, string kind,
             string outcome = "analysed", string? projectStanding = null)
         {
-            _assessments.Record(new NewAssessmentRecord(assessmentId, proposal.Id, proposal.Digest, "pangloss", kind,
-                "{}", "sha256:scope", "whitespace", "1", _tokenJson, Selection.Create("Default", ["cat"]),
-                "sha256:outcome", "sha256:semantic", "sha256:grammar", "fingerprint", "pipeline", 0,
-                [new AssessedWord("cat", outcome, []) { ProjectStanding = projectStanding }],
-                SavedUtc: "2026-09-24T11:00:00Z"));
+            _assessments.Record(new NewAssessmentRecord(
+            AssessmentId: assessmentId,
+            ProposalId: proposal.Id,
+            ProposalIntentDigest: proposal.Digest,
+            Assessor: "pangloss",
+            Kind: kind,
+            ScopeJson: "{}",
+            ScopeDigest: "sha256:scope",
+            Subject: new AssessmentSubject.Words(Selection.Create("Default", ["cat"]), "whitespace", "1"),
+            BaselineToken: _tokenJson,
+            OutcomeDigest: "sha256:outcome",
+            SemanticDigest: "sha256:semantic",
+            GrammarSourceSha256: "sha256:grammar",
+            ModelFingerprint: "fingerprint",
+            Pipeline: "pipeline",
+            DiagnosticCount: 0,
+            Material: new AssessmentRecordMaterial.Words([new AssessedWord("cat", outcome, []) { ProjectStanding = projectStanding }], null, null, []),
+            SavedUtc: "2026-09-24T11:00:00Z"
+        ));
         }
 
         public void RecordProjectAssessment(string assessmentId, string kind, string outcome)
@@ -551,11 +565,25 @@ public sealed class TrialsTests : IDisposable
 
         public void RecordProjectAssessment(string assessmentId, string kind, params AssessedWord[] words)
         {
-            _assessments.Record(new NewAssessmentRecord(assessmentId, null, null, "pangloss", kind,
-                "{}", "sha256:scope", "whitespace", "1", _tokenJson,
-                Selection.Create("Default", _includeSecondWord ? ["cat", "dog"] : ["cat"]),
-                "sha256:outcome", "sha256:semantic", "sha256:grammar", "fingerprint", "pipeline", 0,
-                words, SavedUtc: "2026-09-24T10:45:00Z"));
+            _assessments.Record(new NewAssessmentRecord(
+            AssessmentId: assessmentId,
+            ProposalId: null,
+            ProposalIntentDigest: null,
+            Assessor: "pangloss",
+            Kind: kind,
+            ScopeJson: "{}",
+            ScopeDigest: "sha256:scope",
+            Subject: new AssessmentSubject.Words(Selection.Create("Default", _includeSecondWord ? ["cat", "dog"] : ["cat"]), "whitespace", "1"),
+            BaselineToken: _tokenJson,
+            OutcomeDigest: "sha256:outcome",
+            SemanticDigest: "sha256:semantic",
+            GrammarSourceSha256: "sha256:grammar",
+            ModelFingerprint: "fingerprint",
+            Pipeline: "pipeline",
+            DiagnosticCount: 0,
+            Material: new AssessmentRecordMaterial.Words(words, null, null, []),
+            SavedUtc: "2026-09-24T10:45:00Z"
+        ));
         }
 
         private static string PublishedDryRun(Proposal proposal,

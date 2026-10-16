@@ -1,0 +1,191 @@
+[
+  {
+    "name": "positive",
+    "sha256": "30805e5761b15c86553659514fbba0dc6e837fa7b05d410104b709bdacdecb8a",
+    "bytes": 10230,
+    "build": "pangloss/0.8.4+403f3c43620a5d9880e3316ec8354a75edd93867",
+    "counts": {
+      "agree": 5,
+      "disagree": 0,
+      "unavailable": 0,
+      "total": 5
+    },
+    "completionCounts": {
+      "complete": 5,
+      "incomplete": 0,
+      "notStarted": 0
+    },
+    "grammarSha256": "df41de7421af1c419cc350e540d105927b0529eecea845960ee96cb0ea888260",
+    "requestFileSha256": "8d4e2fd0721694271f33e66ea50cb64a210d3a2b2d99cda5d58898d5b6d43a40",
+    "producerRequestSha256": "319882f18805ce494a3c879952b6ab6f26628a65e838592dc87458bc4a49a792",
+    "grammarDependencies": [
+      {
+        "path": "WritingSystemStore/de.ldml",
+        "sha256": "fc4a2dd7836bdb0e384425d6af7aefcd1f7d0100f40d6d7fee0a48761f56b0af"
+      },
+      {
+        "path": "WritingSystemStore/en.ldml",
+        "sha256": "2cf2727518363b0c7d861e92ca2ee1fbaa030728fa494394390376f4f7f572c9"
+      },
+      {
+        "path": "WritingSystemStore/es.ldml",
+        "sha256": "11a4923bcd26939a18fd767621bdc7f140c4a5d29ac5473c0c27a8e579181dac"
+      },
+      {
+        "path": "WritingSystemStore/fr.ldml",
+        "sha256": "eb1bfaeacda88723a42bdedb15162d27263233d38d295a718f74c7507fc1c467"
+      },
+      {
+        "path": "WritingSystemStore/swh.ldml",
+        "sha256": "79fc87c69adda77725de13c6a41a3ecff91e7286a9dcba2c0f0fec25da3d0fd2"
+      }
+    ]
+  },
+  {
+    "name": "removed-r4",
+    "sha256": "8decb298496c5e0b9c34eaec0dac98f981d5564f3a2280ca89fa8d28f80a8244",
+    "bytes": 9656,
+    "build": "pangloss/0.8.4+403f3c43620a5d9880e3316ec8354a75edd93867",
+    "counts": {
+      "agree": 3,
+      "disagree": 2,
+      "unavailable": 0,
+      "total": 5
+    },
+    "completionCounts": {
+      "complete": 5,
+      "incomplete": 0,
+      "notStarted": 0
+    },
+    "grammarSha256": "0b4384ebe3d1e472d455c1be25359b2d2b12cdf4d0e28442b91a975af8069279",
+    "requestFileSha256": "8d4e2fd0721694271f33e66ea50cb64a210d3a2b2d99cda5d58898d5b6d43a40",
+    "producerRequestSha256": "319882f18805ce494a3c879952b6ab6f26628a65e838592dc87458bc4a49a792",
+    "grammarDependencies": [
+      {
+        "path": "WritingSystemStore/de.ldml",
+        "sha256": "fc4a2dd7836bdb0e384425d6af7aefcd1f7d0100f40d6d7fee0a48761f56b0af"
+      },
+      {
+        "path": "WritingSystemStore/en.ldml",
+        "sha256": "2cf2727518363b0c7d861e92ca2ee1fbaa030728fa494394390376f4f7f572c9"
+      },
+      {
+        "path": "WritingSystemStore/es.ldml",
+        "sha256": "11a4923bcd26939a18fd767621bdc7f140c4a5d29ac5473c0c27a8e579181dac"
+      },
+      {
+        "path": "WritingSystemStore/fr.ldml",
+        "sha256": "eb1bfaeacda88723a42bdedb15162d27263233d38d295a718f74c7507fc1c467"
+      },
+      {
+        "path": "WritingSystemStore/swh.ldml",
+        "sha256": "79fc87c69adda77725de13c6a41a3ecff91e7286a9dcba2c0f0fec25da3d0fd2"
+      }
+    ]
+  },
+  {
+    "name": "reversed-r3-r4",
+    "sha256": "0845075e3b8d2493cd384ecffdfac358f9f795e8deaa2e29f321f8e0e987ef21",
+    "bytes": 10186,
+    "build": "pangloss/0.8.4+403f3c43620a5d9880e3316ec8354a75edd93867",
+    "counts": {
+      "agree": 4,
+      "disagree": 1,
+      "unavailable": 0,
+      "total": 5
+    },
+    "completionCounts": {
+      "complete": 5,
+      "incomplete": 0,
+      "notStarted": 0
+    },
+    "grammarSha256": "4f57022bcee1789339e4fd9fad8f9764fb6bd043319da36893b3382c37ef4a12",
+    "requestFileSha256": "8d4e2fd0721694271f33e66ea50cb64a210d3a2b2d99cda5d58898d5b6d43a40",
+    "producerRequestSha256": "319882f18805ce494a3c879952b6ab6f26628a65e838592dc87458bc4a49a792",
+    "grammarDependencies": [
+      {
+        "path": "WritingSystemStore/de.ldml",
+        "sha256": "fc4a2dd7836bdb0e384425d6af7aefcd1f7d0100f40d6d7fee0a48761f56b0af"
+      },
+      {
+        "path": "WritingSystemStore/en.ldml",
+        "sha256": "2cf2727518363b0c7d861e92ca2ee1fbaa030728fa494394390376f4f7f572c9"
+      },
+      {
+        "path": "WritingSystemStore/es.ldml",
+        "sha256": "11a4923bcd26939a18fd767621bdc7f140c4a5d29ac5473c0c27a8e579181dac"
+      },
+      {
+        "path": "WritingSystemStore/fr.ldml",
+        "sha256": "eb1bfaeacda88723a42bdedb15162d27263233d38d295a718f74c7507fc1c467"
+      },
+      {
+        "path": "WritingSystemStore/swh.ldml",
+        "sha256": "79fc87c69adda77725de13c6a41a3ecff91e7286a9dcba2c0f0fec25da3d0fd2"
+      }
+    ]
+  },
+  {
+    "name": "empty-lexicon-result",
+    "sha256": "302bb680672023ab45393ae5713d49fb1482076fb954763cbba9e80186c837ac",
+    "bytes": 5029,
+    "build": "pangloss/0.8.4+403f3c43620a5d9880e3316ec8354a75edd93867",
+    "counts": {
+      "agree": 0,
+      "disagree": 0,
+      "unavailable": 5,
+      "total": 5
+    },
+    "completionCounts": {
+      "complete": 0,
+      "incomplete": 0,
+      "notStarted": 5
+    },
+    "grammarSha256": "1f20aed4ed860f1b995312eb53c3cbac6b40fa901ca6421d43e58e662bd081ff",
+    "requestFileSha256": "8d4e2fd0721694271f33e66ea50cb64a210d3a2b2d99cda5d58898d5b6d43a40",
+    "producerRequestSha256": "319882f18805ce494a3c879952b6ab6f26628a65e838592dc87458bc4a49a792",
+    "grammarDependencies": []
+  },
+  {
+    "name": "capped-result",
+    "sha256": "9a0e7b7227cab53e3c17b65ed09b242d299801c343b10ee1dd2db131df7b1fc0",
+    "bytes": 8328,
+    "build": "pangloss/0.8.4+403f3c43620a5d9880e3316ec8354a75edd93867",
+    "counts": {
+      "agree": 0,
+      "disagree": 0,
+      "unavailable": 5,
+      "total": 5
+    },
+    "completionCounts": {
+      "complete": 0,
+      "incomplete": 5,
+      "notStarted": 0
+    },
+    "grammarSha256": "df41de7421af1c419cc350e540d105927b0529eecea845960ee96cb0ea888260",
+    "requestFileSha256": "b6a9eab90d4e9d5bb1a7ba45444123e271c5f6709c3af7a592daba6ece48e0ce",
+    "producerRequestSha256": "a3dc049574c1daa5e19017c907f6f47db7de835d0f50565b854faa6b5d2df617",
+    "grammarDependencies": [
+      {
+        "path": "WritingSystemStore/de.ldml",
+        "sha256": "fc4a2dd7836bdb0e384425d6af7aefcd1f7d0100f40d6d7fee0a48761f56b0af"
+      },
+      {
+        "path": "WritingSystemStore/en.ldml",
+        "sha256": "2cf2727518363b0c7d861e92ca2ee1fbaa030728fa494394390376f4f7f572c9"
+      },
+      {
+        "path": "WritingSystemStore/es.ldml",
+        "sha256": "11a4923bcd26939a18fd767621bdc7f140c4a5d29ac5473c0c27a8e579181dac"
+      },
+      {
+        "path": "WritingSystemStore/fr.ldml",
+        "sha256": "eb1bfaeacda88723a42bdedb15162d27263233d38d295a718f74c7507fc1c467"
+      },
+      {
+        "path": "WritingSystemStore/swh.ldml",
+        "sha256": "79fc87c69adda77725de13c6a41a3ecff91e7286a9dcba2c0f0fec25da3d0fd2"
+      }
+    ]
+  }
+]

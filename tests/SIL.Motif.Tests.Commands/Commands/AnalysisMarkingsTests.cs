@@ -374,10 +374,24 @@ public sealed class AnalysisMarkingsTests(PristineProjectFixture pristine)
         using var database = OpenDatabase(scenario.Path);
         var selection = Selection.Create("analysis markings", words.Select(word => word.Word));
         new AssessmentRepository(database).Record(new NewAssessmentRecord(
-            "assessment-accept", null, null, "test", AssessmentKind.ParseTime.ToStoredKind(), "{}",
-            "sha256:scope", "whitespace-and-punctuation", "1", JsonSerializer.Serialize(scenario.BaselineToken),
-            selection, "sha256:outcome", "sha256:semantic", "sha256:grammar", "test-model", "test", 0,
-            words, SavedUtc: "2026-09-28T12:00:00Z"));
+            AssessmentId: "assessment-accept",
+            ProposalId: null,
+            ProposalIntentDigest: null,
+            Assessor: "test",
+            Kind: AssessmentKind.ParseTime.ToStoredKind(),
+            ScopeJson: "{}",
+            ScopeDigest: "sha256:scope",
+            Subject: new AssessmentSubject.Words(selection, "whitespace-and-punctuation", "1"),
+            BaselineToken: JsonSerializer.Serialize(scenario.BaselineToken),
+            OutcomeDigest: "sha256:outcome",
+            SemanticDigest: "sha256:semantic",
+            GrammarSourceSha256: "sha256:grammar",
+            ModelFingerprint: "test-model",
+            Pipeline: "test",
+            DiagnosticCount: 0,
+            Material: new AssessmentRecordMaterial.Words(words, null, null, []),
+            SavedUtc: "2026-09-28T12:00:00Z"
+        ));
     }
 
     private static void CaptureBaseline(string path)

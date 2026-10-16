@@ -12,7 +12,7 @@ public sealed class AssessmentEvidenceSet
     {
         Components = Array.AsReadOnly(new[] { assessment }.Concat(replacements).ToArray());
         Words = Array.AsReadOnly(AssessmentWordOverlay.Apply(WordsOf(assessment), replacements.Select(run =>
-            run with { Words = WordsOf(run) }).ToArray()).ToArray());
+            run with { Details = ((AssessmentRecordDetails.Words)run.Details) with { Rows = WordsOf(run) } }).ToArray()).ToArray());
         ObjectTimings = Array.AsReadOnly(AssessmentWordOverlay.ApplyObjectTimings(assessment, replacements).ToArray());
     }
 

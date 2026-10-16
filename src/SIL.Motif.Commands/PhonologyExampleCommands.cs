@@ -2,7 +2,15 @@ using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Phonology;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using System.Globalization;
+using System.Text.Json;
+using SIL.Motif.Contract;
+using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host;
+using SIL.Motif.Worker.Baselines;
+using SIL.Motif.Worker.Jobs;
+using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker.Store;
 
 namespace SIL.Motif.Commands;
@@ -112,6 +120,104 @@ public static class PhonologyExampleCommands
             catch (ArgumentException exception)
             {
                 return Invalid<PhonologyExamplesPageResponse>(exception.Message);
+            }
+        });
+    }
+
+    /// <summary>Queues an advisory check of one saved revision against the current Baseline's grammar.</summary>
+    /// <param name="request">The project, exact revision, optional Baseline binding and optional ceilings.</param>
+    public static CommandOutcome<JobEnqueuedResponse> Check(PhonologyCheckRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var limits = request.Limits ?? PhonologyExampleValidation.DefaultLimits;
+        try
+        {
+            PhonologyExampleValidation.ValidateRevisionId(request.RevisionId);
+        }
+        catch (ArgumentException exception)
+        {
+            return Invalid<JobEnqueuedResponse>(exception.Message);
+        }
+        if (!PhonologyExampleValidation.AreLimitsInRange(limits))
+            return Invalid<JobEnqueuedResponse>("The step, work and time ceilings must be positive and at most " +
+                $"{PhonologyExampleValidation.MaxStepCap.ToString(CultureInfo.InvariantCulture)}, " +
+                $"{PhonologyExampleValidation.MaxWorkCap.ToString(CultureInfo.InvariantCulture)} and " +
+                $"{PhonologyExampleValidation.MaxTimeoutMs.ToString(CultureInfo.InvariantCulture)} milliseconds.");
+
+        return ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, project) =>
+        {
+            try
+            {
+                new PhonologyExampleSetRepository(database).Read(request.RevisionId, 1, null);
+            }
+            catch (KeyNotFoundException exception)
+            {
+                return CommandOutcome<JobEnqueuedResponse>.Refused(new Refusal(
+                    "phonology-examples.revision-not-found", FailureReason.NotFound, exception.Message));
+            }
+            var workspaceKey = ProjectWorkspaceKey.Compute(project);
+            var current = new BaselineRepository(database).GetCurrentEvidence(workspaceKey);
+            if (current is null)
+                return CommandOutcome<JobEnqueuedResponse>.Refused(new Refusal("phonology-examples.no-baseline",
+                    FailureReason.Refused, "No Baseline is recorded. Capture a Baseline before checking phonology examples."));
+            if (request.Baseline is not null && request.Baseline != current.Baseline.Token)
+                return CommandOutcome<JobEnqueuedResponse>.Refused(new Refusal("phonology-examples.baseline-changed",
+                    FailureReason.Refused, "The named Baseline is no longer the current one; check against the current Baseline."));
+            var jobId = CanonicalId.Mint("job/").Value;
+            var input = JsonSerializer.Serialize(new PhonologyCheckJobInput(request.RevisionId,
+                current.Baseline.Token, limits), MotifJson.CreateOptions());
+            var job = new JobRepository(database).Create(jobId, workspaceKey, PhonologyCheckJobHandler.JobKind, input,
+                DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture));
+            return CommandOutcome<JobEnqueuedResponse>.Success(
+                new JobEnqueuedResponse(job.JobId, job.Kind, workspaceKey));
+        });
+    }
+
+    /// <summary>Reads the stored result of one phonology check as a summary page or one complete example.</summary>
+    /// <param name="request">The project, the check's Assessment id, and the closed page or example selection.</param>
+    public static CommandOutcome<PhonologyResultsResponse> Results(PhonologyResultsRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (request.Read is null)
+            return Invalid<PhonologyResultsResponse>("A results request names a page or an example to read.");
+        if (request.Read is PhonologyResultsRead.Page { PageSize: var pageSize, Continuation: var continuation })
+        {
+            try
+            {
+                PhonologyExampleValidation.ValidatePageSize(pageSize);
+                PhonologyExampleValidation.ValidatePageCursor(continuation, request.AssessmentId);
+            }
+            catch (ArgumentException exception)
+            {
+                return Invalid<PhonologyResultsResponse>(exception.Message);
+            }
+        }
+
+        return ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, _) =>
+        {
+            var results = new PhonologyAssessmentRepository(database);
+            try
+            {
+                PhonologyResultsResponse response = request.Read switch
+                {
+                    PhonologyResultsRead.Page page =>
+                        results.ReadPage(request.AssessmentId, page.PageSize, page.Continuation),
+                    PhonologyResultsRead.Example example =>
+                        results.ReadExample(request.AssessmentId, example.ExampleId),
+                    _ => throw new ArgumentException("Unknown results selection."),
+                };
+                return CommandOutcome<PhonologyResultsResponse>.Success(response);
+            }
+            catch (KeyNotFoundException exception)
+            {
+                var code = exception.Message.Contains("example", StringComparison.OrdinalIgnoreCase)
+                    ? "phonology-examples.example-not-found" : "phonology-examples.assessment-not-found";
+                return CommandOutcome<PhonologyResultsResponse>.Refused(new Refusal(
+                    code, FailureReason.NotFound, exception.Message));
+            }
+            catch (ArgumentException exception)
+            {
+                return Invalid<PhonologyResultsResponse>(exception.Message);
             }
         });
     }

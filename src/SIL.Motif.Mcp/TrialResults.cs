@@ -67,10 +67,13 @@ internal static class TrialResults
                     comparison.TokeniserMismatch, comparison.TokeniserWarning));
                 var rows = Classify(pair.Before.Words!, pair.After.Words!, input.NegativeWords ?? []);
                 assessments.Record(new NewAssessmentRecord(differenceId, proposal.ProposalId, pair.After.ProposalIntentDigest,
-                    pair.After.Assessor, "Difference", scope, AssessmentMaterial.Digest(scope), pair.After.TokeniserName,
-                    pair.After.TokeniserVersion, pair.After.BaselineToken, Selection.Create("trial-difference", comparison.SharedWords),
+                    pair.After.Assessor, "Difference", scope, AssessmentMaterial.Digest(scope),
+                    new AssessmentSubject.Words(Selection.Create("trial-difference", comparison.SharedWords),
+                        pair.After.TokeniserName, pair.After.TokeniserVersion),
+                    pair.After.BaselineToken,
                     AssessmentMaterial.Digest(scope), AssessmentMaterial.Digest(string.Join('\n', rows.Select(row => row.Word + row.Outcome))),
-                    pair.After.GrammarSourceSha256, pair.After.ModelFingerprint, "trial-difference/v1", 0, rows));
+                    pair.After.GrammarSourceSha256, pair.After.ModelFingerprint, "trial-difference/v1", 0,
+                    new AssessmentRecordMaterial.Words(rows, null, null, [])));
             }
             var difference = assessments.Get(differenceId);
             var storedRows = difference.Words ?? [];

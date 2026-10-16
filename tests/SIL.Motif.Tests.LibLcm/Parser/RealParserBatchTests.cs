@@ -50,7 +50,7 @@ public sealed class RealParserBatchTests(PristineProjectFixture pristine)
             var paths = new StatsCacheStore(WorkspaceOwnership.Bootstrap(root));
             using var invoker = new PanGlossInvoker();
             var assessor = new PanGlossAssessor(paths, invoker);
-            var produced = await assessor.ProduceAsync(new([SeededProject.FirstForm, SeededProject.FirstForm, "mofita"],
+            var produced = await assessor.ProduceAsync(new AssessmentScope.Words([SeededProject.FirstForm, SeededProject.FirstForm, "mofita"],
                 [AssessmentKind.ParseTime, AssessmentKind.Correctness], TimeSpan.FromSeconds(5)),
                 Path.GetDirectoryName(cache.ProjectId.Path)!, CancellationToken.None);
             var batch = Assert.IsType<AssessmentRaw.Batch>(produced.Single(item => item.Kind == AssessmentKind.Correctness).Raw).Analysis;
@@ -119,7 +119,7 @@ public sealed class RealParserBatchTests(PristineProjectFixture pristine)
             using var invoker = new PanGlossInvoker();
             var assessor = new PanGlossAssessor(paths, invoker);
             var produced = await assessor.ProduceAsync(
-                new(["motifv"], [AssessmentKind.Correctness], TimeSpan.FromSeconds(5)),
+                new AssessmentScope.Words(["motifv"], [AssessmentKind.Correctness], TimeSpan.FromSeconds(5)),
                 Path.GetDirectoryName(cache.ProjectId.Path)!, CancellationToken.None);
             var batch = Assert.IsType<AssessmentRaw.Batch>(produced.Single().Raw).Analysis;
             var word = Assert.Single(batch.Words);

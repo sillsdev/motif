@@ -12,7 +12,7 @@ internal static class FakeAssessmentEvidence
         var source = Path.Combine(directory, "source.fwdata");
         File.Copy(Directory.GetFiles(candidate, "*.fwdata", SearchOption.AllDirectories).Single(), source);
         var words = Path.Combine(directory, "words.txt");
-        File.WriteAllLines(words, scope.Words);
+        File.WriteAllLines(words, ((AssessmentScope.Words)scope).WordForms);
         var tsv = Path.Combine(directory, "out.tsv");
         File.WriteAllText(tsv, string.Empty);
         var stderr = Path.Combine(directory, "stderr.txt");
@@ -20,8 +20,8 @@ internal static class FakeAssessmentEvidence
         return new BatchInvocationEvidence(id, source, BatchInvocationEvidence.DigestFile(source),
             BatchInvocationEvidence.DigestFile(FakeParser.ExecutablePath),
             words, BatchInvocationEvidence.DigestFile(words), tsv, BatchInvocationEvidence.DigestFile(tsv),
-            stderr, BatchInvocationEvidence.DigestFile(stderr), scope.PerWordLimit is { } timeLimit
+            stderr, BatchInvocationEvidence.DigestFile(stderr), ((AssessmentScope.Words)scope).PerWordLimit is { } timeLimit
                 ? (int)timeLimit.TotalMilliseconds : null,
-            scope.PerWordStepLimit, PanGlossCpuBudget.DefaultBatchThreadCount, true);
+            ((AssessmentScope.Words)scope).PerWordStepLimit, PanGlossCpuBudget.DefaultBatchThreadCount, true);
     }
 }
