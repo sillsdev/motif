@@ -34,7 +34,9 @@
         <ListBox.ItemTemplate>
           <DataTemplate x:DataType="vm:TextChoiceViewModel">
             <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-              <CheckBox Content="{Binding Title}" IsChecked="{Binding IsChecked}" />
+              <CheckBox IsChecked="{Binding IsChecked}" AutomationProperties.Name="{Binding Title}">
+                <TextBlock Text="{Binding Title}" TextWrapping="Wrap" />
+              </CheckBox>
               <views:CopyableTextBlock Classes="muted" Text="{Binding CountsText}" TextWrapping="Wrap"
                          Margin="{DynamicResource Component.TextsPage.CountIndent}"
                          TextTrimming="CharacterEllipsis"
