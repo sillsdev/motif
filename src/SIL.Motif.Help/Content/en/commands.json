@@ -610,6 +610,26 @@
       "Say which features an inflectional affix carries"
     ]
   },
+  "compose-author-affix-process": {
+    "title": "Author an affix process",
+    "description": "Stages a new affix entry whose ordered input pattern matches phonemes, a natural class or the remaining stem, and whose output copies named parts or inserts phonemes: an infix or a partial or full reduplication. It refuses transformations that remove matched input. Dry Run and Trial before a person Applies the Proposal.",
+    "source": "Authored from the typed command contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "morphType": "Id of an affix morph type such as prefix, suffix or infix.",
+      "gloss": "The sense's gloss.",
+      "analysisWs": "Analysis writing system tag for the gloss and definition.",
+      "definition": "Optional definition of the sense.",
+      "msa": "Affix grammatical info: kind inflectional, derivational or unclassified, its category, and for derivational toCategory, for inflectional slots.",
+      "input": "Ordered pattern parts, each with a name and one of phoneme, naturalClass or remaining true; the remaining-stem part is last.",
+      "output": "Ordered realization, each item either copy of a named input part or insert of phoneme ids."
+    },
+    "goals": [
+      "Add an infix that is inserted after the first consonant of a stem",
+      "Copy the first syllable of a stem to mark a meaning",
+      "Repeat a whole stem with a separator between the copies"
+    ]
+  },
   "compose-author-feature-value": {
     "title": "Author a feature value",
     "description": "Stages a closed feature specification in an existing or earlier-staged structure, with value omitted when unchosen. Inflectional affix requirements use current morphosyntactic definitions, and any supplied value must belong to the exact feature. Only a person can Apply.",

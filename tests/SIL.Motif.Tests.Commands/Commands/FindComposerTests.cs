@@ -25,6 +25,8 @@ public sealed class FindComposerTests
         { "senses-and-definitions", "Write a definition for another sense of the word", "compose-author-lexical-entry" },
         { "texts-and-analyses", "Paste in a story so that I can check how its words are analysed", "compose-author-text" },
         { "parsimony-dispositions", "Mark this Parsimony finding as intentional", "compose-record-parsimony-disposition" },
+        { "infixation", "Add an infix inside the verb root after its first consonant", "compose-author-affix-process" },
+        { "reduplication", "Copy the first syllable of the stem to mark the plural", "compose-author-affix-process" },
     };
 
     private static FindComposerResponse Run(string? goal, string? subject, string detail = "concise")
@@ -156,8 +158,6 @@ public sealed class FindComposerTests
         "Export the dictionary to a printable file",
         "How many words parse?",
         "Print the paradigm tables for the inflection classes",
-        "Add reduplication of the stem to mark the plural",
-        "Add an infix inside the verb root",
         "Write a tone sandhi rule over words",
         "Add an example sentence to this entry",
         "Import a wordlist from a spreadsheet into the lexicon",
@@ -247,8 +247,6 @@ public sealed class FindComposerTests
     public static TheoryData<string> FreshGoalsNoComposerServes => new()
     {
         "Show me a chart of how many verbs take each prefix",
-        "Make the second syllable copy the first in the plural",
-        "Put the marker in the middle of the root",
         "Delete the whole project and start over",
         "Compare the tones of two speakers",
     };
@@ -256,6 +254,8 @@ public sealed class FindComposerTests
     public static TheoryData<string, string> FreshGoalsByExpectedVerb => new()
     {
         { "Create a class for the back vowels", "compose-author-natural-class" },
+        { "Make the second syllable copy the first in the plural", "compose-author-affix-process" },
+        { "Put the marker in the middle of the root", "compose-author-affix-process" },
         { "Mark the subject agreement slot as optional", "compose-edit-affix-slot" },
         { "Disapprove the wrong analysis of this wordform", "compose-edit-analysis-decision" },
         { "Add a second spelling for the plural prefix that appears before consonants", "compose-author-alternate-form" },

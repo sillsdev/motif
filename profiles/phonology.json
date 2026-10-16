@@ -57,6 +57,9 @@
       "tool": "motif_add_feature_structure"
     },
     {
+      "tool": "motif_add_affix_process"
+    },
+    {
       "tool": "motif_add_feature_value"
     },
     {

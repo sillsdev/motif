@@ -71,6 +71,10 @@
       "class": "Draft"
     },
     {
+      "name": "motif_add_affix_process",
+      "class": "Draft"
+    },
+    {
       "name": "motif_add_part_of_speech",
       "class": "Draft"
     },

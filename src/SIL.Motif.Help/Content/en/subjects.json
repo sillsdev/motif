@@ -161,18 +161,18 @@
   },
   "infixation": {
     "title": "Infixation",
-    "description": "Affixes that are inserted inside a root or stem rather than before or after it; Motif has no Composer for them yet.",
+    "description": "Affixes that are inserted inside a root or stem rather than before or after it, authored as an affix process with a stem pattern and an insertion.",
     "terms": [
       "infix",
       "infixation",
-      "circumfix",
       "inside the root",
+      "middle of the root",
       "inside a stem"
     ]
   },
   "reduplication": {
     "title": "Reduplication",
-    "description": "Marking a meaning by copying all or part of a stem; Motif has no Composer for it yet.",
+    "description": "Marking a meaning by copying all or part of a stem, authored as an affix process whose output copies parts of the stem.",
     "terms": [
       "reduplication",
       "reduplicate",

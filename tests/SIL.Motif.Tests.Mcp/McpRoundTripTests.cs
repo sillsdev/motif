@@ -1182,6 +1182,59 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public async Task AffixProcessToolResolvesEarlierStagedReferencesAndPersistsTypedOperations()
+    {
+        using var project = new WalkthroughProject(pristine);
+        await using var session = await Session.StartAsync(project.FwDataPath,
+            new McpLaunchOptions(Profile: "phonology"));
+        await session.CallAsync("motif_start_proposal", ("draft", "process"),
+            ("label", "Add a copying affix"), ("rationale", "The process repeats the matched stem."));
+        var phoneme = await session.CallAsync("motif_add_phoneme", ("draft", "process"),
+            ("name", "process-qh"), ("representations", new[] { "qh" }));
+        var phonemeId = phoneme.GetProperty("result").GetProperty("operations").EnumerateArray()
+            .Single(operation => operation.GetProperty("kind").GetString()!.EndsWith("/createPhonemes", StringComparison.Ordinal))
+            .GetProperty("entityId").GetString()!;
+        var naturalClass = await session.CallAsync("motif_add_natural_class", ("draft", "process"),
+            ("name", "process vowels"), ("abbreviation", "PV"), ("members", new[] { phonemeId }));
+        var naturalClassId = naturalClass.GetProperty("result").GetProperty("operations").EnumerateArray()
+            .Single(operation => operation.GetProperty("kind").GetString() == "grammar/phPhonData/createNaturalClasses")
+            .GetProperty("entityId").GetString()!;
+
+        var authored = await session.CallAsync("motif_add_affix_process", ("draft", "process"),
+            ("morphType", CanonicalId.FromGuid(MoMorphTypeTags.kguidMorphPrefix).Value),
+            ("gloss", "repeat"), ("analysisWs", "en"),
+            ("msa", new { kind = "unclassified", category = CanonicalId.FromGuid(project.Seed.PartOfSpeechId).Value }),
+            ("input", new object[]
+            {
+                new { name = "vowel", naturalClass = naturalClassId },
+                new { name = "stem", remaining = true },
+            }),
+            ("output", new object[]
+            {
+                new { copy = "vowel" }, new { copy = "stem" },
+                new { insert = new[] { phonemeId } }, new { copy = "stem" },
+            }));
+
+        Assert.True(authored.GetProperty("ok").GetBoolean(), authored.ToString());
+        var reportedOperations = authored.GetProperty("result").GetProperty("operations").EnumerateArray().ToArray();
+        Assert.Contains(reportedOperations, operation =>
+            operation.GetProperty("kind").GetString() == "lexical/lexEntry/createLexemeForm");
+        Assert.Equal(4, reportedOperations.Count(operation =>
+            operation.GetProperty("kind").GetString() == "grammar/moAffixProcess/createOutput"));
+
+        using var database = ProjectMotifDatabase.Open(project.FwDataPath);
+        var draft = ProposalCommands.DeserializeDraft(new ProposalRepository(database).GetDraft("process").ProposalJson!);
+        Assert.Contains(draft.ComposerProvenance, item =>
+            item.GetProperty("composer").GetString() == "AuthorAffixProcess");
+        Assert.Contains(draft.Operations, operation => operation.Kind == "lexical/lexEntry/createLexemeForm" &&
+            operation.After["class"].GetString() == "MoAffixProcess");
+        Assert.Contains(draft.Operations, operation => operation.Kind == "grammar/moInsertPhones/addRefContent" &&
+            operation.After.Values.Any(value => value.ValueKind == JsonValueKind.String && value.GetString() == phonemeId));
+        Assert.Contains(draft.Operations, operation => operation.Kind == "grammar/phSimpleContextNC/setFeatureStructure" &&
+            operation.After.Values.Any(value => value.ValueKind == JsonValueKind.String && value.GetString() == naturalClassId));
+    }
+
+    [Fact]
     public async Task AllomorphConditionToolAcceptsItsCamelCaseIntentFields()
     {
         using var project = new WalkthroughProject(pristine);

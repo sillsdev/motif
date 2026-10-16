@@ -24,6 +24,8 @@ internal static class ComposerSubjects
         "senses-and-definitions",
         "texts-and-analyses",
         "parsimony-dispositions",
+        "infixation",
+        "reduplication",
     ];
 
     /// <summary>
@@ -32,8 +34,6 @@ internal static class ComposerSubjects
     /// </summary>
     public static IReadOnlyList<string> Reserved { get; } =
     [
-        "infixation",
-        "reduplication",
         "example-sentences",
         "grammar-explanation",
         "outside-authoring",

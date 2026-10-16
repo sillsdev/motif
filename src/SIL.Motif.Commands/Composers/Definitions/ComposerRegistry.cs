@@ -6,6 +6,7 @@ internal static class ComposerDefinitions
     /// <summary>One instance of every typed definition.</summary>
     public static IReadOnlyList<IComposerDefinition> All { get; } = 
     [
+        new AuthorAffixProcessDefinition(),
         new AuthorFeatureValueDefinition(),
         new DeleteEmptySenseDefinition(),
         new EditAffixInflectionClassesDefinition(),

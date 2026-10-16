@@ -3316,6 +3316,146 @@
                     "type": "string",
                     "description": "Composing verb for this intent.",
                     "enum": [
+                      "compose-author-affix-process"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-author-affix-process.",
+                    "properties": {
+                      "morphType": {
+                        "type": "string",
+                        "description": "Id of an affix morph type such as prefix, suffix or infix."
+                      },
+                      "gloss": {
+                        "type": "string",
+                        "description": "The sense\u0027s gloss."
+                      },
+                      "analysisWs": {
+                        "type": "string",
+                        "description": "Analysis writing system tag for the gloss and definition."
+                      },
+                      "definition": {
+                        "type": "string",
+                        "description": "Optional definition of the sense."
+                      },
+                      "msa": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "inflectional",
+                              "derivational",
+                              "unclassified"
+                            ]
+                          },
+                          "category": {
+                            "type": "string"
+                          },
+                          "toCategory": {
+                            "type": "string"
+                          },
+                          "slots": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "category"
+                        ],
+                        "additionalProperties": false,
+                        "description": "Affix grammatical info: kind inflectional, derivational or unclassified, its category, and for derivational toCategory, for inflectional slots."
+                      },
+                      "input": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "phoneme": {
+                              "type": "string"
+                            },
+                            "naturalClass": {
+                              "type": "string"
+                            },
+                            "remaining": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "description": "Ordered pattern parts, each with a name and one of phoneme, naturalClass or remaining true; the remaining-stem part is last."
+                      },
+                      "output": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "copy": {
+                              "type": "string"
+                            },
+                            "insert": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "description": "Ordered realization, each item either copy of a named input part or insert of phoneme ids."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "morphType",
+                      "gloss",
+                      "analysisWs",
+                      "msa",
+                      "input",
+                      "output"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
                       "compose-author-feature-value"
                     ]
                   },
@@ -3993,6 +4133,128 @@
       "required": [
         "proposal",
         "text",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_add_affix_process",
+    "description": "Author an affix process. Stages a new affix entry whose ordered input pattern matches phonemes, a natural class or the remaining stem, and whose output copies named parts or inserts phonemes: an infix or a partial or full reduplication. It refuses transformations that remove matched input. Dry Run and Trial before a person Applies the Proposal.\nCommand: compose-author-affix-process. Agent class: Draft.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "morphType": {
+          "type": "string",
+          "description": "Id of an affix morph type such as prefix, suffix or infix."
+        },
+        "gloss": {
+          "type": "string",
+          "description": "The sense\u0027s gloss."
+        },
+        "analysisWs": {
+          "type": "string",
+          "description": "Analysis writing system tag for the gloss and definition."
+        },
+        "definition": {
+          "type": "string",
+          "description": "Optional definition of the sense."
+        },
+        "msa": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "inflectional",
+                "derivational",
+                "unclassified"
+              ]
+            },
+            "category": {
+              "type": "string"
+            },
+            "toCategory": {
+              "type": "string"
+            },
+            "slots": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "kind",
+            "category"
+          ],
+          "additionalProperties": false,
+          "description": "Affix grammatical info: kind inflectional, derivational or unclassified, its category, and for derivational toCategory, for inflectional slots."
+        },
+        "input": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "phoneme": {
+                "type": "string"
+              },
+              "naturalClass": {
+                "type": "string"
+              },
+              "remaining": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          "description": "Ordered pattern parts, each with a name and one of phoneme, naturalClass or remaining true; the remaining-stem part is last."
+        },
+        "output": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "copy": {
+                "type": "string"
+              },
+              "insert": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "additionalProperties": false
+          },
+          "description": "Ordered realization, each item either copy of a named input part or insert of phoneme ids."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "morphType",
+        "gloss",
+        "analysisWs",
+        "msa",
+        "input",
+        "output",
         "project"
       ],
       "additionalProperties": false
