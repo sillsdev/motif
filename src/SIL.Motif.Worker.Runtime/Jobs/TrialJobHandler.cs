@@ -151,7 +151,7 @@ internal sealed class TrialJobHandler
             !StringComparer.Ordinal.Equals(claim.Job.ProjectKey, workspaceKey))
             throw new InvalidOperationException("The job does not address this project's Trial.");
 
-        var baseline = _baselines.GetCurrent(workspaceKey);
+        var baseline = _baselines.GetCurrentPublished(workspaceKey);
         if (baseline is null)
         {
             claim.Transition(JobStatus.WaitingForBaseline);

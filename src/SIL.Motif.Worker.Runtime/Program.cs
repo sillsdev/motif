@@ -512,7 +512,7 @@ internal static class WorkerRuntime
             .ToArray();
         if (parked.Length == 0) return;
 
-        if (runtime.Baselines.GetCurrent(runtime.WorkspaceKey) is not null)
+        if (runtime.Baselines.GetCurrentPublished(runtime.WorkspaceKey) is not null)
         {
             foreach (var job in parked)
                 runtime.Jobs.Transition(job.JobId, JobStatus.Queued, job.Version);

@@ -107,6 +107,16 @@ public sealed class BaselineRepository
     }
 
     /// <summary>
+    /// The current Baseline, or null when its published <c>.fwdata</c> is gone from disk, as after the worker
+    /// root was moved aside: callers that open the file then wait for a fresh capture instead of failing on a path.
+    /// </summary>
+    public BaselineRecord? GetCurrentPublished(string projectKey)
+    {
+        var baseline = GetCurrent(projectKey);
+        return baseline is not null && File.Exists(baseline.FwDataPath) ? baseline : null;
+    }
+
+    /// <summary>
     /// Reads the most recently captured Baseline even when an Apply has since made it stale, for checks that must
     /// recognise evidence measured before that Apply without treating it as current.
     /// </summary>

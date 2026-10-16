@@ -100,7 +100,7 @@ public static class JobCommands
             }
 
             var workspaceKey = ProjectWorkspaceKey.Compute(project);
-            var baseline = new BaselineRepository(database).GetCurrent(workspaceKey);
+            var baseline = new BaselineRepository(database).GetCurrentPublished(workspaceKey);
             var source = baseline is null ? null : new DryRunSourceBinding(baseline.Token, baseline.RootDirectory,
                 baseline.FwDataPath, SourceDigest(baseline.FwDataPath));
             var input = new DryRunJobInput(DryRunJobInput.CurrentSchemaVersion,

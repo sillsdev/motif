@@ -90,7 +90,7 @@ internal sealed class DryRunJobHandler
                 JsonSerializer.Serialize(new { detail = exception.Message }));
         }
 
-        var currentBaseline = input.SourceBaseline is null ? _baselines.GetCurrent(workspaceKey) : null;
+        var currentBaseline = input.SourceBaseline is null ? _baselines.GetCurrentPublished(workspaceKey) : null;
         if (input.SourceBaseline is null && currentBaseline is null)
         {
             claim.Transition(JobStatus.WaitingForBaseline);

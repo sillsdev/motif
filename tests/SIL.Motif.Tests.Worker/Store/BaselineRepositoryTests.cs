@@ -52,6 +52,22 @@ public sealed class BaselineRepositoryTests : IDisposable
     }
 
     [Fact]
+    public void ABaselineWhosePublishedFileIsGoneIsNotAvailableToReadersThatOpenIt()
+    {
+        using var database = OpenDatabase("moved-root");
+        var repository = new BaselineRepository(database);
+        var publication = Publication("moved", "sha256:" + new string('a', 64));
+        repository.Record("workspace", publication, DateTimeOffset.Parse("2026-08-23T12:00:00Z"),
+            DateTimeOffset.Parse("2026-08-23T11:00:00Z"), TestTextWords.Empty, Summary());
+        Assert.Null(repository.GetCurrentPublished("workspace"));
+        Assert.NotNull(repository.GetCurrent("workspace"));
+
+        Directory.CreateDirectory(publication.RootDirectory);
+        File.WriteAllText(publication.FwDataPath, "");
+        Assert.NotNull(repository.GetCurrentPublished("workspace"));
+    }
+
+    [Fact]
     public void RecapturingTheSameSemanticStateAfterApplyDoesNotReviveEarlierEvidence()
     {
         using var database = OpenDatabase("same-state-drift");
