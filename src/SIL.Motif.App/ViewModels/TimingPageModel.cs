@@ -940,11 +940,16 @@ public sealed record TimingShare(string Label, string Kind, double? ElapsedMs, d
             : $"{calls:N0} {(calls == 1 ? "call" : "calls")}"
         : "Not counted";
 
-    /// <summary>Formats recorded times as milliseconds below ten seconds and seconds to one decimal above.</summary>
+    /// <summary>Formats recorded times as whole milliseconds, tenths below ten, and seconds from ten seconds.</summary>
     /// <param name="milliseconds">The measured time.</param>
-    public static string FormatDuration(double milliseconds) => milliseconds < 10_000
-        ? milliseconds.ToString("#,0.######", CultureInfo.CurrentCulture) + " ms"
-        : (milliseconds / 1000).ToString("N1", CultureInfo.CurrentCulture) + " s";
+    public static string FormatDuration(double milliseconds)
+    {
+        var culture = CultureInfo.CurrentCulture;
+        if (milliseconds >= 10_000) return (milliseconds / 1000).ToString("N1", culture) + " s";
+        if (milliseconds >= 10) return milliseconds.ToString("N0", culture) + " ms";
+        if (milliseconds > 0 && milliseconds < 0.05) return "<0.1 ms";
+        return milliseconds.ToString("#,0.#", culture) + " ms";
+    }
 
     /// <summary>Shows whole percentages, with positive shares below one percent shown as less than one percent.</summary>
     /// <param name="share">The fraction of total word time.</param>

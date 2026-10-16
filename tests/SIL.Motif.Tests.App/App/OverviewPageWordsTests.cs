@@ -154,7 +154,7 @@ public sealed class OverviewPageWordsTests
         await context.OpenProjectAsync(ProjectPath);
 
         Assert.Equal("142 words · 38.0 s total word time", page.SpeedMain);
-        Assert.Equal("median 6.4 ms a word · 95th percentile 48.2 ms", page.SpeedMedian);
+        Assert.Equal("median 6.4 ms a word · 95th percentile 48 ms", page.SpeedMedian);
         Assert.Equal("3 stopped at a search limit", page.SpeedDetails);
         Assert.Equal([("mwalimu", "700 ms"), ("hawajafika", "48 ms")],
             page.SlowestWordRows.Select(row => (row.Word, row.TimeText)));
@@ -192,7 +192,7 @@ public sealed class OverviewPageWordsTests
     }
 
     [Fact]
-    public async Task TheSpeedTileRetainsTimingPrecisionForPercentilesAndSlowestWords()
+    public async Task TheSpeedTileRoundsPercentilesAndSlowestWordsForReading()
     {
         using var culture = new CultureScope(System.Globalization.CultureInfo.GetCultureInfo("en-US"));
         var (fake, context) = NewContext();
@@ -210,8 +210,8 @@ public sealed class OverviewPageWordsTests
 
         await context.OpenProjectAsync(ProjectPath);
 
-        Assert.Equal("median 0.123456 ms a word · 95th percentile 0.654321 ms", page.SpeedMedian);
-        Assert.Equal([("z-slowest", "0.800001 ms"), ("a-next", "0.8 ms")],
+        Assert.Equal("median 0.1 ms a word · 95th percentile 0.7 ms", page.SpeedMedian);
+        Assert.Equal([("z-slowest", "0.8 ms"), ("a-next", "0.8 ms")],
             page.SlowestWordRows.Select(row => (row.Word, row.TimeText)));
     }
 
