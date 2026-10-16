@@ -50,7 +50,7 @@ internal sealed class RetireAllomorphDefinition : ComposerDefinition<RetireAllom
 
     /// <inheritdoc />
     public override ComposerExposure Exposure { get; } = new(CommandSurface.AdvancedAi, AgentClass.Draft,
-        OnByDefault: false, InBatch: false, ToolName: "motif_retire_allomorph", HandWrittenTool: true);
+        InBatch: false, ToolName: "motif_retire_allomorph", HandWrittenTool: true);
 
     /// <inheritdoc />
     public override Authored Parse(JsonElement authored)

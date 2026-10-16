@@ -28,7 +28,7 @@ internal sealed class RetireRedundantZeroAffixDefinition : ComposerDefinition<Re
 
     /// <inheritdoc />
     public override ComposerExposure Exposure { get; } = new(CommandSurface.AdvancedAi, AgentClass.Draft,
-        OnByDefault: false, InBatch: false, ToolName: "motif_retire_redundant_zero_affix", HandWrittenTool: true);
+        InBatch: false, ToolName: "motif_retire_redundant_zero_affix", HandWrittenTool: true);
 
     /// <inheritdoc />
     public override RetireRedundantZeroAffixIntentDocument Parse(JsonElement authored) =>

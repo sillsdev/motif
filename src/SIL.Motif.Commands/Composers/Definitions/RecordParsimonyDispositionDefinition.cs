@@ -85,7 +85,7 @@ internal sealed class RecordParsimonyDispositionDefinition : ComposerDefinition<
 
     /// <inheritdoc />
     public override ComposerExposure Exposure { get; } = new(CommandSurface.AdvancedAi, AgentClass.Draft,
-        OnByDefault: false, InBatch: false, ToolName: "motif_record_parsimony_disposition", HandWrittenTool: true);
+        InBatch: false, ToolName: "motif_record_parsimony_disposition", HandWrittenTool: true);
 
     /// <inheritdoc />
     public override ReplacementRule? Replaces { get; } = ReplacementRule.SameIdentity(FindingIdentity,
