@@ -47,7 +47,7 @@ public sealed class ComposeCliTests : IDisposable
         Assert.True(first.ExitCode == 0, first.Error + first.Output);
         var json = JsonNode.Parse(first.Output)!;
         Assert.Equal(2, json["intents"]!.AsArray().Count);
-        var removed = json["intents"]![1]!["operations"]!.AsArray().Select(node => node!["operationId"]!.GetValue<string>());
+        var removed = json["intents"]![1]!["operations"]!.AsArray().Select(node => node!["operationId"]!.GetValue<string>()).ToArray();
 
         var second = Run("compose", "--project", _project, "--proposal", "d", "--steps", Steps("r"),
             "--remove", string.Join(",", removed), "--json");
@@ -55,7 +55,10 @@ public sealed class ComposeCliTests : IDisposable
         Assert.True(second.ExitCode == 0, second.Error + second.Output);
         var after = JsonNode.Parse(second.Output)!;
         Assert.Single(after["intents"]!.AsArray());
-        Assert.True(after["operationCount"]!.GetValue<int>() < json["operationCount"]!.GetValue<int>() + 5);
+        var firstCount = json["operationCount"]!.GetValue<int>();
+        var removedCount = removed.Length;
+        var addedCount = after["intents"]![0]!["operations"]!.AsArray().Count;
+        Assert.Equal(firstCount - removedCount + addedCount, after["operationCount"]!.GetValue<int>());
         var text = Run("compose", "--project", _project, "--proposal", "d", "--steps", Steps("s"));
         Assert.True(text.ExitCode == 0, text.Error + text.Output);
         Assert.Contains("compose-author-phoneme", text.Output, StringComparison.Ordinal);

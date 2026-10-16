@@ -356,7 +356,7 @@ try
                 !flags.TryGetValue("project", out var callComposeProject) ||
                 !flags.TryGetValue("steps", out var callComposeStepsJson) || positionals.Count != 0)
                 return Usage("Usage: motif compose --proposal <name> --project <fwdata> --steps '<json array>' " +
-                    "[--remove <id>[,<id>...]] [--json]", asJson);
+                    "[--remove <id>[,<id>...]] [--json]  (--proposal names a Draft or a Proposal)", asJson);
             IReadOnlyList<ComposeStepRequest> callComposeSteps;
             try
             {

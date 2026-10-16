@@ -1220,6 +1220,9 @@ public static partial class ProposalCommands
             toRemove.Add(edge.DependentOperationId);
 
         draft.Operations = draft.Operations.Where(o => !toRemove.Contains(o.OperationId)).ToList();
+        // A composer entry whose every operation is gone describes nothing and would mislead a later replacement.
+        draft.ComposerProvenance.RemoveAll(entry => ProvenanceOperationIds(entry) is { Length: > 0 } ids &&
+                                                    ids.All(toRemove.Contains));
         // A contract group nothing uses any more must leave the map, or the Draft stops parsing.
         foreach (var group in draft.ContractVersions.Keys.ToArray())
             if (!draft.Operations.Any(o => SIL.Motif.Contract.Model.OperationKind.GetGroup(o.Kind) == group))
@@ -1227,6 +1230,12 @@ public static partial class ProposalCommands
 
         return null;
     }
+
+    private static string[]? ProvenanceOperationIds(JsonElement entry) =>
+        entry.ValueKind == JsonValueKind.Object && entry.TryGetProperty("operationIds", out var ids) &&
+        ids.ValueKind == JsonValueKind.Array
+            ? ids.EnumerateArray().Where(id => id.ValueKind == JsonValueKind.String).Select(id => id.GetString()!).ToArray()
+            : null;
 
     private static string DescribeOperationIds(IReadOnlyList<string> ids) =>
         ids.Count == 1 ? $"operation '{ids[0]}'" : $"operations {string.Join(", ", ids.Select(i => $"'{i}'"))}";

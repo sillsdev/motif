@@ -364,7 +364,8 @@ public static partial class ProposalCommands
                     OperationHandlerRegistry.Resolve(operation.Kind, "Draft composer preparation")
                         .ApplyAndCaptureEffect(cache, operation, new List<CanonicalId>());
                 var staged = new List<OperationEnvelope>(retained);
-                var validated = new List<OperationEnvelope>(previous.Operations);
+                // A replaced edit leaves before its replacement arrives, so it cannot conflict with it.
+                var validated = new List<OperationEnvelope>(retained);
                 var batchAdded = new List<OperationEnvelope>();
                 var availableLabels = new Dictionary<string, CanonicalId>(StringComparer.Ordinal);
                 var results = new List<(JsonElement Input, OperationEnvelope[] Added,
@@ -567,7 +568,8 @@ public static partial class ProposalCommands
             !provenance.TryGetProperty("input", out var input) || input.ValueKind != JsonValueKind.Object ||
             !input.TryGetProperty("target", out var targetValue) || targetValue.ValueKind != JsonValueKind.String)
             return false;
-        return string.Equals(targetValue.GetString(), target, StringComparison.Ordinal);
+        return CanonicalId.TryParse(targetValue.GetString(), out var recorded) &&
+               CanonicalId.TryParse(target, out var replacing) && CanonicalId.ByGuid.Equals(recorded, replacing);
     }
 
     private static void ValidateUniqueAdhocDisabledWrites(

@@ -94,6 +94,7 @@ public sealed class ComposeCommandTests(PristineProjectFixture pristine)
         Assert.True(extra.Succeeded, extra.Refusal?.Message);
         var removable = extra.Value!.Operations.Select(operation => operation.OperationId).ToArray();
         var before = ReadDraft(path, "atomic").Operations.Select(operation => operation.OperationId).ToArray();
+        var (revisionBefore, jsonBefore) = StoredDraft(path, "atomic");
 
         var refused = ProposalCommands.Compose(new(path, Version, "atomic",
         [
@@ -104,6 +105,9 @@ public sealed class ComposeCommandTests(PristineProjectFixture pristine)
         Assert.False(refused.Succeeded);
         Assert.Contains("Intent 1 (compose-author-phoneme)", refused.Refusal!.Message);
         Assert.Equal(before, ReadDraft(path, "atomic").Operations.Select(operation => operation.OperationId));
+        var (revisionAfter, jsonAfter) = StoredDraft(path, "atomic");
+        Assert.Equal(revisionBefore, revisionAfter);
+        Assert.Equal(jsonBefore, jsonAfter);
 
         var done = ProposalCommands.Compose(new(path, Version, "atomic",
             [Step("compose-author-phoneme", new { name = "y", representations = new[] { "y" } })], removable));
@@ -113,6 +117,113 @@ public sealed class ComposeCommandTests(PristineProjectFixture pristine)
         Assert.Empty(after.Intersect(removable));
         Assert.Equal(before.Except(removable).Count() + done.Value!.Intents.Single().Operations.Count, after.Length);
         Assert.Equal(after.Length, done.Value.OperationCount);
+    }
+
+    [Fact]
+    public void ASecondEditOfOneObjectInOneRequestIsRefusedWhateverPrefixSpellsItsId()
+    {
+        var setup = PrepareSlot();
+        foreach (var second in new[] { setup.Slot, CanonicalId.FromGuid(setup.SlotGuid, "other-").Value })
+        {
+            var draft = "twice-" + second.Length;
+            Assert.True(ProposalCommands.New(new(setup.Path, Version, draft, "twice")).Succeeded);
+            var (revision, json) = StoredDraft(setup.Path, draft);
+
+            var refused = ProposalCommands.Compose(new(setup.Path, Version, draft,
+                [Step("compose-edit-affix-slot", SlotEdit(setup.Slot)), Step("compose-edit-affix-slot", SlotEdit(second))],
+                null));
+
+            Assert.False(refused.Succeeded);
+            Assert.Contains("already edits the same target", refused.Refusal!.Message);
+            Assert.Equal((revision, json), StoredDraft(setup.Path, draft));
+        }
+    }
+
+    [Fact]
+    public void ALaterRequestReplacesTheEarlierEditOfTheSameObjectWhateverPrefixSpellsItsId()
+    {
+        var setup = PrepareSlot();
+        Assert.True(ProposalCommands.New(new(setup.Path, Version, "replace", "replace")).Succeeded);
+        var first = ProposalCommands.Compose(new(setup.Path, Version, "replace",
+            [Step("compose-edit-affix-slot", SlotEdit(setup.Slot))], null));
+        Assert.True(first.Succeeded, first.Refusal?.Message);
+        var firstIds = first.Value!.Intents.Single().Operations.Select(operation => operation.OperationId).ToArray();
+
+        var second = ProposalCommands.Compose(new(setup.Path, Version, "replace",
+            [Step("compose-edit-affix-slot", SlotEdit(CanonicalId.FromGuid(setup.SlotGuid, "other-").Value))], null));
+
+        Assert.True(second.Succeeded, second.Refusal?.Message);
+        var document = ReadDraft(setup.Path, "replace");
+        Assert.Equal(1, second.Value!.OperationCount);
+        Assert.Equal(second.Value.Intents.Single().Operations.Select(operation => operation.OperationId),
+            document.Operations.Select(operation => operation.OperationId));
+        Assert.Empty(document.Operations.Select(operation => operation.OperationId).Intersect(firstIds));
+        Assert.Single(document.ComposerProvenance);
+    }
+
+    [Fact]
+    public void RemovingAnOperationAndReAddingItsSlotInOneCallIsNotASlotConflict()
+    {
+        var setup = PrepareSlot();
+        Assert.True(ProposalCommands.New(new(setup.Path, Version, "readd", "readd")).Succeeded);
+        var first = ProposalCommands.Compose(new(setup.Path, Version, "readd",
+            [Step("compose-edit-affix-slot", SlotEdit(setup.Slot))], null));
+        Assert.True(first.Succeeded, first.Refusal?.Message);
+        var removed = first.Value!.Intents.Single().Operations.Select(operation => operation.OperationId).ToArray();
+
+        var again = ProposalCommands.Compose(new(setup.Path, Version, "readd",
+            [Step("compose-edit-affix-slot", SlotEdit(setup.Slot))], removed));
+
+        Assert.True(again.Succeeded, again.Refusal?.Message);
+        var stored = ReadDraft(setup.Path, "readd").Operations.Select(operation => operation.OperationId).ToArray();
+        Assert.Empty(stored.Intersect(removed));
+        Assert.Equal(again.Value!.Intents.Single().Operations.Select(operation => operation.OperationId), stored);
+    }
+
+    [Fact]
+    public void RemovedOperationsLeaveNoComposerProvenanceBehind()
+    {
+        var (path, _) = StartDraft("provenance");
+        var extra = ProposalCommands.ComposeAuthorPhoneme(new(path, Version, "provenance",
+            JsonSerializer.Serialize(new { name = "z", representations = new[] { "z" } })));
+        Assert.True(extra.Succeeded, extra.Refusal?.Message);
+        var removable = extra.Value!.Operations.Select(operation => operation.OperationId).ToArray();
+        Assert.Equal(2, ReadDraft(path, "provenance").ComposerProvenance.Count);
+
+        var done = ProposalCommands.Compose(new(path, Version, "provenance",
+            [Step("compose-author-phoneme", new { name = "y", representations = new[] { "y" } })], removable));
+
+        Assert.True(done.Succeeded, done.Refusal?.Message);
+        var provenance = ReadDraft(path, "provenance").ComposerProvenance;
+        Assert.Equal(2, provenance.Count);
+        Assert.DoesNotContain(provenance, entry => removable.Any(id =>
+            entry.GetProperty("operationIds").EnumerateArray().Any(listed => listed.GetString() == id)));
+    }
+
+    private static object SlotEdit(string target) => new { target, expectedOptional = false, optional = true };
+
+    private sealed record SlotFixture(string Path, string Slot, Guid SlotGuid);
+
+    private SlotFixture PrepareSlot()
+    {
+        using var cache = pristine.NewScratch();
+        var category = cache.ServiceLocator.GetInstance<IPartOfSpeechRepository>().GetObject(pristine.Seed.PartOfSpeechId);
+        IMoInflAffixSlot slot = null!;
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            slot = cache.ServiceLocator.GetInstance<IMoInflAffixSlotFactory>().Create();
+            category.AffixSlotsOC.Add(slot);
+            slot.Name.set_String(cache.DefaultAnalWs, "slot");
+        });
+        new FwDataProjectLoader().Save(cache);
+        return new(cache.ProjectId.Path, CanonicalId.FromGuid(slot.Guid).Value, slot.Guid);
+    }
+
+    private static (string Revision, string Json) StoredDraft(string path, string name)
+    {
+        using var database = ProjectMotifDatabase.Open(path);
+        var json = new ProposalRepository(database).GetDraft(name).ProposalJson!;
+        return (DraftRevision.Compute(json), json);
     }
 
     [Fact]

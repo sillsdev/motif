@@ -36,4 +36,4 @@ A removal that would leave another operation depending on it is refused; remove 
 
 The result lists each step's operations and the Draft's operation count afterwards. Add `--json` for the structured result.
 
-This command is available when Advanced AI mode is on. The MCP tool is `motif_compose`, with `proposal`, `steps` and `remove` arguments, and is off unless a profile selects it. `compose-batch` takes the same steps from a file and does not remove.
+This command is available when Advanced AI mode is on. The MCP tool is `motif_compose`, with `proposal`, `steps` and `remove` arguments, and is off unless a profile selects it. `compose` names its Draft with `--proposal`, because that argument names a Draft or a Proposal; `compose-batch` takes the same steps from a file and does not remove.

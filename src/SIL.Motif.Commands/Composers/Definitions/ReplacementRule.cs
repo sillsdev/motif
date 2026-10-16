@@ -17,6 +17,6 @@ internal sealed record ReplacementRule(IReadOnlyList<string> Kinds)
     /// <summary>Whether <paramref name="operation"/> is an earlier edit that <paramref name="authored"/> replaces.</summary>
     public bool Matches(JsonElement authored, OperationEnvelope operation) =>
         authored.TryGetProperty("target", out var targetValue) && targetValue.ValueKind == JsonValueKind.String &&
-        CanonicalId.TryParse(targetValue.GetString(), out var target) && operation.Target == target &&
+        CanonicalId.TryParse(targetValue.GetString(), out var target) && operation.Target is { } existing && CanonicalId.ByGuid.Equals(existing, target) &&
         Kinds.Contains(operation.Kind, StringComparer.Ordinal);
 }
