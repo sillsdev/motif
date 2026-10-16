@@ -120,8 +120,30 @@ public sealed class SoundSystemComposerTests(PristineProjectFixture pristine)
         Assert.Empty(SoundSystemSnapshots.Compare(before, SoundSystemSnapshots.Read(cache)));
     }
 
+    private static void AssertWordBoundaryOnlyMessage(InvalidOperationException error)
+    {
+        Assert.Contains("only the word boundary '#'", error.Message, StringComparison.Ordinal);
+        Assert.Contains("compose-author-phonological-rule", error.Message, StringComparison.Ordinal);
+    }
+
     [Fact]
-    public void EnvironmentBoundaryUsesReservedMorphemeIdentityAndKeepsExplicitMarkersLiteral()
+    public void PhonologicalRuleContextStillComposesWithMorphemeBoundary()
+    {
+        using var cache = pristine.NewScratch();
+        Execute(cache, AuthorPhonemeComposer.Build(cache, new("a", ["a"])));
+        Execute(cache, AuthorPhonemeComposer.Build(cache, new("b", ["b"])));
+        var set = cache.LangProject.PhonologicalDataOA.PhonemeSetsOS.Single();
+        CanonicalId Phoneme(string name) => CanonicalId.FromGuid(set.PhonemesOC.Single(phoneme =>
+            phoneme.Name.get_String(cache.DefaultVernWs)?.Text == name).Guid);
+        var operations = AuthorPhonologicalRuleComposer.Build(cache,
+            new AuthorPhonologicalRuleIntent("morpheme rule", PhonologicalRuleDirection.Simultaneous,
+                [new(Phoneme: Phoneme("a"))], [new(Phoneme: Phoneme("b"))],
+                [new(Boundary: "word"), new(Boundary: "morpheme")], [new(Boundary: "morpheme"), new(Boundary: "word")]));
+        Assert.NotEmpty(operations);
+    }
+
+    [Fact]
+    public void AllomorphEnvironmentRefusesMorphemeBoundaryAndBoundaryMarkers()
     {
         using var cache = pristine.NewScratch();
         var phoneme = AuthorPhonemeComposer.Build(cache, new("a", ["a"]));
@@ -133,30 +155,20 @@ public sealed class SoundSystemComposerTests(PristineProjectFixture pristine)
             NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
                 set.BoundaryMarkersOC.Remove(existingMorpheme));
         _ = AddBoundaryMarker(cache, Guid.NewGuid(), "+");
-        var beforeRefusal = SoundSystemSnapshots.Read(cache);
-        var missingReserved = Assert.Throws<InvalidOperationException>(() => AuthorEnvironmentComposer.Build(cache,
-            new("morpheme edge", [new(Boundary: "morpheme")], [])));
-        Assert.Contains("morpheme boundary", missingReserved.Message, StringComparison.Ordinal);
-        Assert.Empty(SoundSystemSnapshots.Compare(beforeRefusal, SoundSystemSnapshots.Read(cache)));
-
         var morpheme = AddBoundaryMarker(cache, LangProjectTags.kguidPhRuleMorphBdry, "+");
-        var environment = AuthorEnvironmentComposer.Build(cache,
-            new("morpheme edge", [new(Boundary: "morpheme")], []));
-        Execute(cache, environment);
-        var environmentId = environment.Single(operation =>
-            operation.Kind == PhPhonDataEnvironmentsOperationKinds.Create).EntityId!.Value;
-        Assert.Equal("/ + _", ((IPhEnvironment)cache.ServiceLocator.GetInstance<ICmObjectRepository>()
-            .GetObject(environmentId.ToGuid())).StringRepresentation.Text);
-        var beforeExplicitMorpheme = SoundSystemSnapshots.Read(cache);
+        var beforeMorpheme = SoundSystemSnapshots.Read(cache);
+        var morphemeError = Assert.Throws<InvalidOperationException>(() => AuthorEnvironmentComposer.Build(cache,
+            new("morpheme edge", [new(Boundary: "morpheme")], [])));
+        AssertWordBoundaryOnlyMessage(morphemeError);
         var literalMorphemeError = Assert.Throws<InvalidOperationException>(() => AuthorEnvironmentComposer.Build(cache,
             new("literal plus marker", [new(BoundaryMarker: morpheme)], [])));
-        Assert.Contains("environment syntax", literalMorphemeError.Message, StringComparison.Ordinal);
-        Assert.Empty(SoundSystemSnapshots.Compare(beforeExplicitMorpheme, SoundSystemSnapshots.Read(cache)));
+        AssertWordBoundaryOnlyMessage(literalMorphemeError);
+        Assert.Empty(SoundSystemSnapshots.Compare(beforeMorpheme, SoundSystemSnapshots.Read(cache)));
         var literalHash = AddBoundaryMarker(cache, Guid.NewGuid(), "#");
         var beforeLiteralRefusal = SoundSystemSnapshots.Read(cache);
         var error = Assert.Throws<InvalidOperationException>(() => AuthorEnvironmentComposer.Build(cache,
             new("literal hash", [new(BoundaryMarker: literalHash)], [])));
-        Assert.Contains("environment syntax", error.Message, StringComparison.Ordinal);
+        AssertWordBoundaryOnlyMessage(error);
         Assert.Equal(LangProjectTags.kguidPhRuleMorphBdry, morpheme.ToGuid());
         Assert.Empty(SoundSystemSnapshots.Compare(beforeLiteralRefusal, SoundSystemSnapshots.Read(cache)));
     }

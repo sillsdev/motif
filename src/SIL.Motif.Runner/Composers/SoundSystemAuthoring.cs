@@ -107,6 +107,8 @@ public static class AuthorEnvironmentComposer
         SoundSystemAuthoring.RequireName(intent.Name);
         if (intent.Left is null || intent.Right is null || intent.Left.Count + intent.Right.Count == 0)
             throw new InvalidOperationException("An environment needs at least one left or right context; an unconditional form needs no environment.");
+        RequireWordBoundaryOnly(intent.Left);
+        RequireWordBoundaryOnly(intent.Right);
         var pattern = RenderPattern(cache, intent.Left, intent.Right);
         var data = cache.LangProject.PhonologicalDataOA;
         var builder = new SoundSystemAuthoring.Builder(mintId);
@@ -119,6 +121,17 @@ public static class AuthorEnvironmentComposer
             left = ContextPayload(intent.Left), right = ContextPayload(intent.Right),
         });
         return builder.Operations;
+    }
+
+    // The parser drops a whole allomorph environment that holds '+' or any marker, leaving the form unconstrained.
+    private static void RequireWordBoundaryOnly(IReadOnlyList<EnvironmentContext> contexts)
+    {
+        if (contexts.Any(context => context is { Boundary: "morpheme" } or { BoundaryMarker: not null }))
+            throw new InvalidOperationException(
+                "An allomorph environment can use only the word boundary '#' at its outer edge; the parser ignores " +
+                "an environment with a morpheme boundary or another boundary marker, so the form would be unconstrained. " +
+                "A change conditioned by a morpheme boundary belongs in a phonological rule " +
+                "(compose-author-phonological-rule).");
     }
 
     internal static string RenderPattern(LcmCache cache, IReadOnlyList<EnvironmentContext> left, IReadOnlyList<EnvironmentContext> right) =>
