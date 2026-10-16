@@ -99,6 +99,7 @@ Read next:
 
 - [Current architecture](docs/current-architecture.md): project references, command sharing and cache ownership.
 - [CLI and command API](docs/cli-api.md): where command usage and Guides are kept.
+- [Building a grammar: a suggested order](src/SIL.Motif.Help/Content/en/guide/building-a-grammar.md): the order linguists usually work in, with the reasons; advice, not a rule.
 - [Semantic change contract](docs/change-set-contract.md) and [Proposal lifecycle](docs/proposal-lifecycle.md).
 - [Assessment model](docs/adr/0042-a-job-produces-assessments-an-assessor-makes-them.md) and [parser handoff](docs/pangloss-grammar-assessment-handoff-spec.md).
 - [Motif in Brief](docs/pitch/dist/Motif-in-Brief.pdf), a short illustrated pitch.

@@ -12,11 +12,11 @@ function parsimonyRecipeCodes() {
 const guideSections = [
 	{
 		title: 'Get started',
-		pages: ['what-is-motif', 'install', 'open-a-project', 'first-run-setup', 'reading-the-overview'],
+		pages: ['what-is-motif', 'install', 'open-a-project', 'first-run-setup', 'reading-the-overview', 'building-a-grammar'],
 	},
 	{
 		title: 'Pages of the window',
-		pages: ['overview', 'proposals', 'texts', 'keyboard-shortcuts', 'settings', 'try-a-word', 'timing', 'warnings', 'review-changes', 'ai-handoff'],
+		pages: ['the-window', 'overview', 'proposals', 'texts', 'keyboard-shortcuts', 'settings', 'try-a-word', 'timing', 'warnings', 'review-changes', 'ai-handoff'],
 	},
 	{
 		title: 'Everyday tasks',
