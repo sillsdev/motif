@@ -17,6 +17,14 @@ The default `./test.ps1` run is not a merge gate: it selects Unit and Integratio
 developer loop. Pass `-All` to run every level. CI and release validation use `-All`; the workflow runs
 on Windows, Ubuntu 22.04, and macOS.
 
+**One machine, many worktrees: the scripts size themselves.** `build.ps1` passes `-m:N` to restore and build, with
+`N = MOTIF_BUILD_NODES` or, on a developer machine, a quarter of the processors (minimum two); CI is uncapped.
+`test.ps1` gives each xUnit host `MaxParallelThreads = MOTIF_TEST_THREADS` or its share of the processors (minimum
+two). `./test.ps1 -Project <name>` (with or without `-Filter`) builds only that test project through
+`./build.ps1 -Project <name>` and skips the tooling regression scripts, which a run without `-Project` still runs.
+A test project's `SIL.Motif.Tests.Support` reference builds the `motif` and `SIL.Motif.Worker` apphosts; a project
+that starts another apphost by path needs its own `ProjectReference` to it.
+
 **`./test.ps1` needs no FieldWorks project or sibling FieldWorks checkout.** Every LibLCM project the suite
 exercises is a real, blank `LcmCache` built at run time by `NewLangProjFixture` and seeded by
 `SeededProject` (`tests/SIL.Motif.Tests.Support/TestFixtures/`). Synthetic evaluation sets live in the
