@@ -55,6 +55,34 @@ public sealed class GrammarWarningsViewModelTests
     }
 
     [Fact]
+    public void IdenticalFindingsShareARowThatSaysHowManyTheyAre()
+    {
+        var table = new GrammarWarningsViewModel();
+        table.Load([EntryWarning, EntryWarning, PhonemeWarning]);
+
+        var row = table.Rows.Cast<GrammarWarningRowViewModel>().Single(item => item.GroupCode == EntryWarning.Code);
+
+        Assert.Equal(3, table.TotalCount);
+        Assert.Equal("kuona · 2 findings", row.TableItemText);
+    }
+
+    [Fact]
+    public void ARawIdentifierInTheProblemTextIsShownAsTheItemsName()
+    {
+        var warning = EntryWarning with
+        {
+            Description = "boundary marker \"54c98259-07ae-5fe4-863d-f07b42d40e41\" collides.",
+            Subject = [new("+", GrammarWarningPartRole.Object, "33333333-3333-3333-3333-333333333333", "Phoneme")],
+        };
+        var table = new GrammarWarningsViewModel();
+        table.Load([warning]);
+
+        var row = Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(table.Rows));
+
+        Assert.Equal("boundary marker \"+\" collides.", row.TableProblemText);
+    }
+
+    [Fact]
     public void NoGroupOrDescriptionDoesNotGetMotifFallbackText()
     {
         var warning = EntryWarning with { Group = null, Title = null, CodeLabel = "", Description = string.Empty, Guidance = null };

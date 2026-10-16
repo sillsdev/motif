@@ -482,10 +482,19 @@ public sealed partial class GrammarWarningRowViewModel : ObservableObject
         GrammarDiagnosticLevel.Warning => "Warning",
         _ => "Note",
     };
-    /// <summary>The named item for the table's Item column, or the finding's title when it names none.</summary>
-    public string TableItemText => NamedItemText.Length > 0 ? NamedItemText : PanGlossTitle;
-    /// <summary>The PanGloss description for the table's problem column, or its message when it has none.</summary>
-    public string TableProblemText => Warning.Description.Length > 0 ? Warning.Description : Message;
+    /// <summary>
+    /// The named item for the table's Item column, or the finding's title when it names none, with a count when
+    /// identical findings share the row so the row total matches the group's count.
+    /// </summary>
+    public string TableItemText => (NamedItemText.Length > 0 ? NamedItemText : PanGlossTitle) +
+        (RepeatCount > 1 ? $" · {RepeatCount:N0} findings" : string.Empty);
+    /// <summary>The PanGloss description for the table's problem column, with raw identifiers shown as the item's name.</summary>
+    public string TableProblemText => RawIdentifier.Replace(
+        Warning.Description.Length > 0 ? Warning.Description : Message,
+        NamedItemText.Length > 0 ? NamedItemText : "an unnamed item");
+    private static readonly System.Text.RegularExpressions.Regex RawIdentifier = new(
+        "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}",
+        System.Text.RegularExpressions.RegexOptions.CultureInvariant);
     /// <summary>The Named words cell: an exact count, none, or a dash when no exact count is available.</summary>
     public string TableNamedWordsText => WarningWordsQuery.Touched(Findings.Where(item => item.NamesItem).ToArray())
         is not { IsComplete: true } ? "—" : YourWordsCount is { } count
