@@ -117,7 +117,7 @@
       "draft": "Draft name.",
       "recordTypeId": "Id of an existing possibility in the Notebook record type list.",
       "measureId": "The registered Parsimony measure id.",
-      "subject": "The exact finding subject: kind, plus the fields that kind needs. An edge or computed-group role is its numeric value.",
+      "subject": "The exact finding subject: kind, plus the fields that kind needs. An edge role is membership, precedence, rhs, left-context, right-context or constraint-use; a computed-group role is alternation-family, duplicate-pair, adhoc-cluster or adhoc-slot-order.",
       "disposition": "The proposed decision: fix, keep, ask or defer.",
       "evidenceDigest": "Canonical sha256 digest from the exact finding.",
       "evidenceContract": "Versioned evidence contract for the finding.",

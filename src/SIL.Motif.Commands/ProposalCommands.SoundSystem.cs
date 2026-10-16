@@ -176,23 +176,7 @@ public static partial class ProposalCommands
             return ComposeIntoDraft(database, project, request.DraftName, "RecordParsimonyDisposition",
                 (cache, proposalId) =>
                 {
-                    var input = JsonSerializer.SerializeToElement(new
-                    {
-                        recordTypeId = intent.RecordTypeId.Value,
-                        intent.MeasureId,
-                        intent.Subject,
-                        intent.Disposition,
-                        intent.EvidenceDigest,
-                        intent.EvidenceContract,
-                        intent.SubjectCaption,
-                        intent.MeasureCaption,
-                        intent.Reason,
-                        intent.Question,
-                        reportId = intent.ReportId?.Value,
-                    }, new JsonSerializerOptions(JsonSerializerDefaults.Web)
-                    {
-                        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-                    });
+                    var input = RecordParsimonyDispositionDefinition.ToAuthored(intent);
                     return (input, RecordParsimonyDispositionComposer.Build(cache, intent, proposalId));
                 });
         }

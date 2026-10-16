@@ -35,6 +35,11 @@ public static class RecordParsimonyDispositionIntentParser
 
     private static readonly JsonSerializerOptions SubjectOptions = new()
     {
+        Converters =
+        {
+            new ClosedJudgmentEnumConverter<JudgmentEdgeRole>(),
+            new ClosedJudgmentEnumConverter<JudgmentGroupRole>(),
+        },
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
         RespectRequiredConstructorParameters = true,

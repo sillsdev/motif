@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Contract.HumanJudgments;
 using SIL.Motif.Contract.Model;
@@ -15,18 +16,49 @@ internal sealed class RecordParsimonyDispositionDefinition : ComposerDefinition<
         Field.Id("id", IdRole.Reference, required: true),
         Field.Id("owningEntryId", IdRole.Reference));
 
+    // One list for the edge and computed-group roles, taken from the enums the hand tool schema also names.
+    private static readonly string[] RoleNames =
+        [.. ClosedJudgmentEnumConverter<JudgmentEdgeRole>.Names, .. ClosedJudgmentEnumConverter<JudgmentGroupRole>.Names];
+
     // A shape cannot tell the five subject kinds apart, so the parser requires each kind's own fields.
     private static readonly IntentShape Subject = IntentShape.Of(
         Field.Choice("kind", ["object", "project", "edge", "computed-group", "parsimony-finding"], required: true),
         Field.Nested("object", JudgmentObject),
         Field.Text("id"),
-        Field.Number("role"),
+        Field.Choice("role", RoleNames),
         Field.Nested("owner", JudgmentObject),
         Field.Nested("from", JudgmentObject),
         Field.Nested("to", JudgmentObject),
         Field.Text("measureId"),
         Field.Nested("members", JudgmentObject, many: true),
         Field.Text("findingId"));
+
+    /// <summary>The authored form of an intent built in code, the one the parser reads back and a draft records.</summary>
+    internal static JsonElement ToAuthored(RecordParsimonyDispositionIntent intent) =>
+        JsonSerializer.SerializeToElement(new
+        {
+            recordTypeId = intent.RecordTypeId.Value,
+            intent.MeasureId,
+            intent.Subject,
+            intent.Disposition,
+            intent.EvidenceDigest,
+            intent.EvidenceContract,
+            intent.SubjectCaption,
+            intent.MeasureCaption,
+            intent.Reason,
+            intent.Question,
+            reportId = intent.ReportId?.Value,
+        }, AuthoredOptions);
+
+    private static readonly JsonSerializerOptions AuthoredOptions = new(JsonSerializerDefaults.Web)
+    {
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        Converters =
+        {
+            new ClosedJudgmentEnumConverter<JudgmentEdgeRole>(),
+            new ClosedJudgmentEnumConverter<JudgmentGroupRole>(),
+        },
+    };
 
     /// <inheritdoc />
     public override string Verb => "compose-record-parsimony-disposition";

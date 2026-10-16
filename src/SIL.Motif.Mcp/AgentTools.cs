@@ -7,6 +7,7 @@ using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.HumanJudgments;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -1421,11 +1422,11 @@ internal static class AgentTools
             Schema.Object(("kind", Schema.String("Subject discriminator.", "project"), true),
                 ("id", Schema.String("Project identity."), true)),
             Schema.Object(("kind", Schema.String("Subject discriminator.", "edge"), true),
-                ("role", Schema.String("Directed relationship role.", "membership", "precedence", "rhs", "left-context", "right-context", "constraint-use"), true),
+                ("role", Schema.String("Directed relationship role.", ClosedJudgmentEnumConverter<JudgmentEdgeRole>.Names.ToArray()), true),
                 ("owner", JudgmentObject(), true), ("from", JudgmentObject(), true), ("to", JudgmentObject(), true)),
             Schema.Object(("kind", Schema.String("Subject discriminator.", "computed-group"), true),
                 ("measureId", Schema.String("Measure defining the group."), true),
-                ("role", Schema.String("Computed group role.", "alternation-family", "duplicate-pair", "adhoc-cluster", "adhoc-slot-order"), true),
+                ("role", Schema.String("Computed group role.", ClosedJudgmentEnumConverter<JudgmentGroupRole>.Names.ToArray()), true),
                 ("members", Schema.Array("Exact typed group members.", JudgmentObject()), true)),
         },
     };
