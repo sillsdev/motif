@@ -1,5 +1,6 @@
 using SIL.LCModel.Core.WritingSystems;
 using SIL.Motif.Host.LcmUtils;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Security.Cryptography;
 using SIL.Motif.Cli;
@@ -140,6 +141,116 @@ public sealed class ProcessWritingSystemRepositoryTests
         }
 
         await read.WaitAsync(ChildHangGuard);
+    }
+
+    [Fact]
+    public async Task ReplacingASharedWritingSystemSwapsItsFileWithoutRemovingIt()
+    {
+        FwDataProjectLoader.Init();
+        var repository = Assert.IsType<SerializedGlobalWritingSystemRepository>(
+            ProcessWritingSystemRepository.CurrentOutsideScratchLoads());
+        const string tag = "qaa-x-replace-in-place";
+        var folder = repository.PathToWritingSystems;
+        var fileName = tag + ".ldml";
+        var sentinelName = "replace-sentinel-" + Guid.NewGuid().ToString("N") + ".txt";
+        var deleted = new ConcurrentQueue<string>();
+        var created = new ConcurrentQueue<string>();
+        var sentinelSeen = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        try
+        {
+            repository.Set(new CoreWritingSystemDefinition(tag) { WindowsLcid = "1001" });
+            Assert.True(File.Exists(Path.Combine(folder, fileName)));
+
+            using var watcher = new FileSystemWatcher(folder);
+            watcher.Deleted += (_, change) => deleted.Enqueue(change.Name!);
+            watcher.Created += (_, change) =>
+            {
+                created.Enqueue(change.Name!);
+                if (change.Name == sentinelName) sentinelSeen.TrySetResult();
+            };
+            watcher.EnableRaisingEvents = true;
+
+            var replacement = new CoreWritingSystemDefinition(repository.Get(tag), cloneId: true)
+            {
+                WindowsLcid = "2002",
+            };
+            repository.Replace(tag, replacement);
+
+            File.WriteAllText(Path.Combine(folder, sentinelName), "");
+            await sentinelSeen.Task.WaitAsync(ChildHangGuard);
+
+            Assert.DoesNotContain(created, name => name.EndsWith(".localrepoupdate", StringComparison.Ordinal));
+            // Only Linux's watcher is relied on to report a rename over the file as a non-delete.
+            if (OperatingSystem.IsLinux()) Assert.DoesNotContain(fileName, deleted);
+            Assert.Contains("2002", File.ReadAllText(Path.Combine(folder, fileName)));
+        }
+        finally
+        {
+            File.Delete(Path.Combine(folder, sentinelName));
+            if (repository.Contains(tag)) repository.Remove(tag);
+        }
+    }
+
+    [Fact]
+    public void ReplacingASharedWritingSystemWithAnEqualDefinitionLeavesItsFileUntouched()
+    {
+        FwDataProjectLoader.Init();
+        var repository = Assert.IsType<SerializedGlobalWritingSystemRepository>(
+            ProcessWritingSystemRepository.CurrentOutsideScratchLoads());
+        const string tag = "qaa-x-replace-unchanged";
+        var path = Path.Combine(repository.PathToWritingSystems, tag + ".ldml");
+        try
+        {
+            repository.Set(new CoreWritingSystemDefinition(tag) { WindowsLcid = "1001" });
+            var bytesBefore = File.ReadAllBytes(path);
+            var writtenBefore = File.GetLastWriteTimeUtc(path);
+
+            repository.Set(new CoreWritingSystemDefinition(repository.Get(tag), cloneId: true));
+            var newer = new CoreWritingSystemDefinition(repository.Get(tag), cloneId: true);
+            newer.DateModified = newer.DateModified.AddDays(1);
+            repository.Replace(tag, newer);
+
+            Assert.Equal(bytesBefore, File.ReadAllBytes(path));
+            Assert.Equal(writtenBefore, File.GetLastWriteTimeUtc(path));
+        }
+        finally
+        {
+            if (repository.Contains(tag)) repository.Remove(tag);
+        }
+    }
+
+    [Fact]
+    public void ReplacingASharedWritingSystemUnderANewTagMovesItsFile()
+    {
+        FwDataProjectLoader.Init();
+        var repository = Assert.IsType<SerializedGlobalWritingSystemRepository>(
+            ProcessWritingSystemRepository.CurrentOutsideScratchLoads());
+        const string oldTag = "qaa-x-replace-old";
+        const string newTag = "qaa-x-replace-new";
+        var oldPath = Path.Combine(repository.PathToWritingSystems, oldTag + ".ldml");
+        var newPath = Path.Combine(repository.PathToWritingSystems, newTag + ".ldml");
+        try
+        {
+            repository.Set(new CoreWritingSystemDefinition(oldTag) { WindowsLcid = "1001" });
+            var renamed = new CoreWritingSystemDefinition(repository.Get(oldTag), cloneId: true)
+            {
+                LanguageTag = newTag,
+            };
+
+            repository.Replace(oldTag, renamed);
+
+            Assert.False(File.Exists(oldPath));
+            Assert.True(File.Exists(newPath));
+            Assert.False(repository.Contains(oldTag));
+            Assert.True(repository.Contains(newTag));
+            Assert.Contains("1001", File.ReadAllText(newPath));
+        }
+        finally
+        {
+            if (repository.Contains(oldTag)) repository.Remove(oldTag);
+            if (repository.Contains(newTag)) repository.Remove(newTag);
+            File.Delete(oldPath);
+        }
     }
 
     [Fact]

@@ -15,6 +15,19 @@ namespace SIL.Motif.Host.LcmUtils;
 /// reaches the shared repository through file-backed reads and writes. A process-local lock cannot protect Motif
 /// processes using the same repository path. A cross-process lock derived from that path guards construction and each
 /// access, as pinned by <c>ConcurrentSampleBuildersKeepTheSharedWritingSystemRepositoryReadable</c>.
+/// <para>
+/// That lock cannot cover every reader. A project's own store copies a shared definition as the template for a
+/// new writing system after the lock is released, so a shared file must never be missing while the lock is held
+/// either. The inherited <c>Replace</c> deletes the live file and later moves a stashed copy back over the saved
+/// one, which both opens that gap and discards the replacement. A replacement that keeps its writing system's
+/// identity therefore takes the old definition's place and is saved, and the save swaps the new file in, as
+/// pinned by <c>ReplacingASharedWritingSystemSwapsItsFileWithoutRemovingIt</c>. A replacement whose content
+/// matches the stored definition, apart from its date, writes nothing, so the shared file keeps its date and is
+/// not offered to other projects as newer, as pinned by
+/// <c>ReplacingASharedWritingSystemWithAnEqualDefinitionLeavesItsFileUntouched</c>. A replacement under another tag
+/// removes the old definition and saves the new one without restoring the old file, as pinned by
+/// <c>ReplacingASharedWritingSystemUnderANewTagMovesItsFile</c>.
+/// </para>
 /// </remarks>
 internal class SerializedGlobalWritingSystemRepository : CoreGlobalWritingSystemRepository
 {
@@ -115,7 +128,7 @@ internal class SerializedGlobalWritingSystemRepository : CoreGlobalWritingSystem
     {
         WithRepositoryGate(() =>
         {
-            if (base.Contains(ws.LanguageTag)) base.Replace(ws.LanguageTag, ws);
+            if (base.Contains(ws.LanguageTag)) ReplaceUnderGate(ws.LanguageTag, ws);
             else
             {
                 base.Set(ws);
@@ -128,7 +141,44 @@ internal class SerializedGlobalWritingSystemRepository : CoreGlobalWritingSystem
     /// <inheritdoc />
     public override void Replace(string languageTag, CoreWritingSystemDefinition newWs)
     {
-        WithRepositoryGate(() => base.Replace(languageTag, newWs));
+        WithRepositoryGate(() => ReplaceUnderGate(languageTag, newWs));
+    }
+
+    private void ReplaceUnderGate(string languageTag, CoreWritingSystemDefinition newWs)
+    {
+        var held = base.Contains(languageTag);
+        var keepsIdentity = held && newWs.Id == languageTag
+            && IetfLanguageTag.AreTagsEquivalent(languageTag, newWs.LanguageTag);
+        if (!keepsIdentity)
+        {
+            // The old tag's file goes with it; the inherited stash would move it back after the save.
+            if (held) base.Remove(languageTag);
+            base.Set(newWs);
+            base.Save();
+            return;
+        }
+
+        var stored = WritingSystems[languageTag];
+        if (ReferenceEquals(stored, newWs))
+        {
+            base.Save();
+            return;
+        }
+
+        if (HasSameContent(stored, newWs)) return;
+
+        // The id is already held by the old definition, so its dictionary entry is swapped, not added.
+        WritingSystems[languageTag] = newWs;
+        // Marked changed so the replacement is written over the file that holds the old definition.
+        newWs.ForceChanged();
+        base.Save();
+    }
+
+    // A definition that differs only in its date is left alone, so the shared file keeps its date and bytes.
+    private static bool HasSameContent(CoreWritingSystemDefinition stored, CoreWritingSystemDefinition candidate)
+    {
+        var probe = new CoreWritingSystemDefinition(stored, cloneId: true) { DateModified = candidate.DateModified };
+        return probe.ValueEquals(candidate);
     }
 
     public override bool TryGet(string languageTag, out CoreWritingSystemDefinition ws)
