@@ -15,6 +15,7 @@ using SIL.Motif.Host.Analysis;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Config;
 using SIL.Motif.Host.Store;
+using SIL.Motif.Projection.Store;
 using SIL.Motif.Runner.Operations;
 using SIL.Motif.Worker.Store;
 
@@ -168,6 +169,7 @@ public static class ProposalReview
         DraftDocument draft;
         string revision;
         string? label = record.Label;
+        SIL.Motif.Contract.Model.Proposal? stored = null;
         if (isDraft)
         {
             draft = ProposalCommands.DeserializeDraft(record.ProposalJson!);
@@ -177,6 +179,7 @@ public static class ProposalReview
         {
             var (finalized, envelope) = repository.GetFinalized(record.ProposalId);
             draft = ProposalCommands.ToDraftDocument(id, envelope, finalized.Label, finalized.Comment);
+            stored = envelope;
             revision = finalized.IntentDigest!;
             label = finalized.Label;
         }
@@ -270,7 +273,7 @@ public static class ProposalReview
         }
 
         return new ProposalReviewResponse(id, intentDigest, revision, entries, trial,
-            ReadinessOf(database, project, proposal, trial), fits, entries.Count(entry => entry.LookedAt))
+            ReadinessOf(database, project, record, stored ?? proposal, trial), fits, entries.Count(entry => entry.LookedAt))
         {
             Label = label,
             EvidenceDigest = evidenceDigest,
@@ -280,26 +283,21 @@ public static class ProposalReview
         };
     }
 
+    // A Draft has no bound Dry Run yet; the Trial's is what Apply binds, so Review asks as though it were bound.
     private static ReadinessProjection? ReadinessOf(MotifDatabase database, ProjectLocator project,
-        SIL.Motif.Contract.Model.Proposal proposal, TrialRecord? trial)
+        ProposalRecord record, SIL.Motif.Contract.Model.Proposal content, TrialRecord? trial)
     {
         if (trial is null) return null;
-        var assessments = new AssessmentRepository(database);
-        var candidate = ProposalCommands.FindCandidateAssessment(assessments, proposal.ProposalId, trial.IntentDigest);
-        var current = assessments.GetCurrent();
-        var currentCorrectness = current is not null &&
-            string.Equals(current.Kind, RegressionChecker.RequiredKind, StringComparison.Ordinal)
-                ? current.ToCorrectness() : null;
-        var configuration = new ProjectConfigurationReader().Read(project);
-        var dryRun = ProposalCommands.TrialDryRun(database, project, proposal.ProposalId);
-        var exemption = dryRun is null ? null
-            : JudgmentOnlyProposalReadiness.ExemptionFor(proposal, dryRun.ExpectedEffects);
-        var decision = Readiness.Evaluate(candidate?.ToCorrectness(), currentCorrectness, current?.BaselineToken,
-            candidate?.BaselineToken ?? "", configuration.GateOnRegression, ProposalCommands.ChangedWords(proposal),
-            exemption);
-        return new ReadinessProjection(decision.Reasons.Count == 0, decision.CorrectnessAssessmentRequired,
-            !decision.CorrectnessAssessmentRequired, decision.CorrectnessAssessmentExemptionReason,
-            decision.Reasons, false);
+        var manifest = record.DraftName is null
+            ? ProposalRecordMapping.ToManifest(record)
+            : new ManifestDocument
+            {
+                ProposalId = record.ProposalId.Value,
+                Status = record.Status,
+                CurrentIntentDigest = IntentDigest.Compute(content),
+                Anchor = ProposalCommands.TrialDryRun(database, project, record.ProposalId)?.Anchor,
+            };
+        return ApplyAuthorization.Evaluate(database, project, record, content, manifest).ToProjection(false);
     }
 
     private static RetirementProposalReviewProjection? ReadRetirement(MotifDatabase database,

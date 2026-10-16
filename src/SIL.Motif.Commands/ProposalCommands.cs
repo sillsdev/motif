@@ -1535,7 +1535,7 @@ public static partial class ProposalCommands
         return candidateId is null ? null : assessments.Get(candidateId);
     }
 
-    private static SIL.Motif.Model.DryRun.DryRun? FindCurrentBoundDryRun(
+    internal static SIL.Motif.Model.DryRun.DryRun? FindCurrentBoundDryRun(
         MotifDatabase database,
         ProjectLocator project,
         string proposalJson,
@@ -1601,7 +1601,7 @@ public static partial class ProposalCommands
     }
 
     /// <summary>The Dry Run of the Proposal's current Trial, when it is the one the bound anchor names.</summary>
-    private static SIL.Motif.Model.DryRun.DryRun? FindTrialBoundDryRun(
+    internal static SIL.Motif.Model.DryRun.DryRun? FindTrialBoundDryRun(
         MotifDatabase database, ProjectLocator project, CanonicalId proposalId, ManifestDocument manifest)
     {
         if (manifest.Anchor is not { } anchor) return null;
@@ -1640,7 +1640,7 @@ public static partial class ProposalCommands
         return currentBaseline.HasSameSemanticIdentity(completion.BaselineToken);
     }
 
-    private static bool AssessmentUsesCurrentBaseline(BaselineRepository baselines, string projectKey,
+    internal static bool AssessmentUsesCurrentBaseline(BaselineRepository baselines, string projectKey,
         AssessmentRecord? assessment)
     {
         if (assessment is null) return false;
@@ -1667,7 +1667,7 @@ public static partial class ProposalCommands
             .Select(word => word!)
             .Distinct(StringComparer.Ordinal).ToArray();
 
-    private static CommandOutcome<ApplyProjection> BuildApplyProjection(
+    internal static CommandOutcome<ApplyProjection> BuildApplyProjection(
         MotifDatabase database, ProjectLocator project, string proposalId, bool force = false)
     {
         LcmCache? cache = null;
@@ -1723,40 +1723,12 @@ public static partial class ProposalCommands
 
             var configuration = new ProjectConfigurationReader().Read(project);
             var assessments = new AssessmentRepository(database);
-            var candidate = manifest.CurrentIntentDigest is null
-                ? null
-                : FindCandidateAssessment(assessments, canonicalId, manifest.CurrentIntentDigest);
-            var current = assessments.GetCurrent();
-            var baselines = new BaselineRepository(database);
-            var projectKey = ProjectWorkspaceKey.Compute(project);
-            var baseline = baselines.GetCurrent(projectKey);
-            var currentBaselineToken = baseline is null ? current?.BaselineToken
-                : JsonSerializer.Serialize(baseline.Token, MotifJson.CreateOptions());
-            if (baseline is not null && !AssessmentUsesCurrentBaseline(baselines, projectKey, current))
-                current = candidate is null ? null : assessments.FindLatestBaselineAssessment(
-                    RegressionChecker.RequiredKind, currentBaselineToken!, candidate.Selection.Sha256,
-                    candidate.Selection.Words);
-            var candidateBaselineToken = candidate?.BaselineToken ?? "";
-            if (baseline is not null && candidate is not null)
-                candidateBaselineToken = AssessmentUsesCurrentBaseline(baselines, projectKey, candidate)
-                    ? currentBaselineToken! : "stale:" + candidate.BaselineToken;
-            var currentCorrectness = current is not null &&
-                string.Equals(current.Kind, RegressionChecker.RequiredKind, StringComparison.Ordinal)
-                    ? current.ToCorrectness()
-                    : null;
-
-            var boundDryRun = FindCurrentBoundDryRun(database, project, record.ProposalJson!, manifest, envelope)
-                ?? FindTrialBoundDryRun(database, project, canonicalId, manifest);
-            var exemptionReason = boundDryRun is null
-                ? null
-                : JudgmentOnlyProposalReadiness.ExemptionFor(envelope, boundDryRun.ExpectedEffects);
 
             // Checked before loading the project, same as the anchor check above.
-            var readiness = Readiness.Evaluate(
-                candidate?.ToCorrectness(), currentCorrectness, currentBaselineToken,
-                candidateBaselineToken, configuration.GateOnRegression,
-                ChangedWords(envelope), exemptionReason);
-            if (readiness.Reasons.Count > 0 && !force)
+            var authorization = ApplyAuthorization.Evaluate(database, project, record, envelope, manifest);
+            var candidate = authorization.Candidate;
+            var readiness = authorization.Readiness;
+            if (!authorization.Authorized(force))
             {
                 var guidance = candidate is null
                     ? "Apply requires a Correctness Assessment for this revision. Run a Trial that collects " +
@@ -1874,13 +1846,7 @@ public static partial class ProposalCommands
                         assessments.DeleteByProposal(canonicalId, candidate?.AssessmentId));
                 }
 
-                var readinessProjection = new ReadinessProjection(
-                    IsReady: readiness.Reasons.Count == 0,
-                    CorrectnessAssessmentRequired: readiness.CorrectnessAssessmentRequired,
-                    CorrectnessAssessmentExempt: !readiness.CorrectnessAssessmentRequired,
-                    CorrectnessAssessmentExemptionReason: readiness.CorrectnessAssessmentExemptionReason,
-                    Reasons: readiness.Reasons,
-                    Forced: force && readiness.Reasons.Count > 0);
+                var readinessProjection = authorization.ToProjection(force);
                 ApplyProjection projection;
                 try
                 {

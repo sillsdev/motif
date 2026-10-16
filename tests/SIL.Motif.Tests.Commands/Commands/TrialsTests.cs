@@ -458,10 +458,11 @@ public sealed class TrialsTests : IDisposable
             return new SavedProposal(id, json, digest);
         }
 
-        public void RecordBaseline(string bundleDigest, string capturedUtc, DateTimeOffset? sourceLastWriteUtc = null)
+        public BaselineToken RecordBaseline(string bundleDigest, string capturedUtc,
+            DateTimeOffset? sourceLastWriteUtc = null, string? semanticDigest = null)
         {
-            var token = new BaselineToken("project-id", "sha256:" + new string('1', 64), "projection-v1",
-                capturedUtc, bundleDigest);
+            var token = new BaselineToken("project-id", semanticDigest ?? "sha256:" + new string('1', 64),
+                "projection-v1", capturedUtc, bundleDigest);
             var baselineRoot = Path.Combine(_root, "baseline-" + capturedUtc.Replace(':', '-'));
             new BaselineRepository(Database).Record(ProjectWorkspaceKey.Compute(Project),
                 new BaselinePublication(baselineRoot, Path.Combine(baselineRoot, "project.fwdata"), token),
@@ -477,17 +478,19 @@ public sealed class TrialsTests : IDisposable
                     : new ProjectSummarySnapshot(2, 2, 2, 0, 0, ["cat"],
                         [new ProjectTextSummary(_textId, "Text", 1, 1,
                             new Dictionary<string, int>(StringComparer.Ordinal) { ["cat"] = 1 })]));
+            return token;
         }
 
         public string CreateJob(string proposalJson, string createdUtc, string jobId,
-            IReadOnlyList<string> assessmentIds, bool allWords = false)
+            IReadOnlyList<string> assessmentIds, bool allWords = false,
+            IReadOnlyList<SIL.Motif.Model.Effects.ExpectedEffect>? effects = null, BaselineToken? baseline = null)
         {
             var job = CreateRunningJob(proposalJson, createdUtc, jobId, allWords);
-            var dryRun = PublishedDryRun(ProposalJsonParser.Parse(proposalJson));
+            var dryRun = PublishedDryRun(ProposalJsonParser.Parse(proposalJson), effects);
             job = _jobs.PublishDryRun(job.JobId, dryRun, job.Version);
             var completion = JsonSerializer.Serialize(new
             {
-                baselineToken = Token,
+                baselineToken = baseline ?? Token,
                 assessmentIds,
                 allWords,
             }, MotifJson.CreateOptions());
@@ -555,20 +558,25 @@ public sealed class TrialsTests : IDisposable
                 words, SavedUtc: "2026-09-24T10:45:00Z"));
         }
 
-        private static string PublishedDryRun(Proposal proposal)
+        private static string PublishedDryRun(Proposal proposal,
+            IReadOnlyList<SIL.Motif.Model.Effects.ExpectedEffect>? effects = null)
         {
             var digest = IntentDigest.Compute(proposal);
+            var effectDigest = effects is null ? "sha256:" + new string('2', 64)
+                : SIL.Motif.Model.Effects.ExpectedEffectSetDigest.Compute(effects);
             return JsonSerializer.Serialize(new
             {
                 intentDigest = digest,
                 baselineNote = "baseline",
-                expectedEffects = Array.Empty<object>(),
-                effectDigest = "sha256:" + new string('2', 64),
+                expectedEffects = effects is null ? JsonDocument.Parse("[]").RootElement
+                    : JsonDocument.Parse(SIL.Motif.Model.Effects.ExpectedEffectSetJsonWriter.WritePublishedJson(effects))
+                        .RootElement,
+                effectDigest,
                 anchor = new
                 {
                     intentDigest = digest,
                     footprintDigest = "sha256:" + new string('3', 64),
-                    effectDigest = "sha256:" + new string('2', 64),
+                    effectDigest,
                     runnerVersion = "1.0.0",
                     libLcmVersion = "11.0.0",
                     projectionVersion = "projection-v1",
