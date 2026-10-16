@@ -85,10 +85,10 @@ public sealed record FindComposerResponse(
 /// stems are among the goal's stems, and the Subject with the most hits is the strongest. When that is one of the
 /// reserved Subjects (infixation, reduplication, example sentences, grammar explanation, or outside authoring),
 /// including on a tie with a served Subject, the answer is <c>noMatch</c> with it as the nearest Subject. Second,
-/// a composer matches only if its example goals and title together contain at least half of the goal's stems
-/// (rounded up, and at least two when the goal has three or more stems) and at least one of those stems is
-/// distinctive, meaning its inverse document frequency over the composers' text is above the median of the goal's
-/// stems (trivially true when they are all equal). Only matching composers are listed. When none matches, the
+/// a composer matches only if its example goals and title together contain at least two distinct stems of the
+/// goal, or at least one when the goal has two stems or fewer; overlap with a description or a Subject title alone
+/// never counts. The first step catches phenomena Motif has no composer for, which share common words with composers
+/// that serve something else; the second step is a plain overlap count. Only matching composers are listed. When none matches, the
 /// answer is <c>noMatch</c> with no results, the two nearest Subjects (the routed one first, then overlap with
 /// Subject titles, descriptions and terms, then the Subjects of weakly overlapping composers), up to three weak
 /// composers, and a ready sentence to relay.
@@ -174,16 +174,8 @@ public static class FindComposerCommand
         if (words.Count == 0 || reservedBest is not null)
             return CommandOutcome<FindComposerResponse>.Success(NoMatch(goal!, words, scored.Select(item =>
                 (item.Candidate, item.Score)).ToArray(), help, reservedBest, termHits));
-        var required = words.Count >= 3 ? Math.Max(2, (words.Count + 1) / 2) : 1;
-        var idf = words.ToDictionary(word => word, word =>
-            Math.Log((double)candidates.Length / Math.Max(1, fields.Count(field => field.Mentions(word)))),
-            StringComparer.Ordinal);
-        var median = Median(idf.Values);
-        var matching = scored.Where(item =>
-        {
-            var covered = item.Fields.Covered(words);
-            return covered.Count >= required && (idf.Values.Distinct().Count() == 1 || covered.Any(word => idf[word] > median));
-        }).ToArray();
+        var required = words.Count <= 2 ? 1 : 2;
+        var matching = scored.Where(item => item.Fields.Covered(words).Count >= required).ToArray();
         if (matching.Length == 0)
             return CommandOutcome<FindComposerResponse>.Success(NoMatch(goal!, words, scored.Select(item =>
                 (item.Candidate, item.Score)).ToArray(), help, null, termHits));
@@ -201,14 +193,6 @@ public static class FindComposerCommand
     private static Dictionary<string, int> TermHits(HashSet<string> words, HelpCatalog help) => help.Subjects
         .ToDictionary(subject => subject.Id, subject => (subject.Terms ?? []).Count(term =>
             Words(term).ToArray() is { Length: > 0 } stems && stems.All(words.Contains)), StringComparer.Ordinal);
-
-    private static double Median(IEnumerable<double> values)
-    {
-        var sorted = values.Order().ToArray();
-        return sorted.Length == 0 ? 0 : sorted.Length % 2 == 1
-            ? sorted[sorted.Length / 2]
-            : (sorted[(sorted.Length / 2) - 1] + sorted[sorted.Length / 2]) / 2;
-    }
 
     private static FindComposerResponse NoMatch(string goal, HashSet<string> words,
         IReadOnlyList<(Candidate Candidate, double Score)> weak, HelpCatalog help, string? routed,
