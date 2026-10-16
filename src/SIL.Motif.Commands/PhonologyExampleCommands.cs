@@ -210,7 +210,7 @@ public static class PhonologyExampleCommands
             }
             catch (KeyNotFoundException exception)
             {
-                var code = exception.Message.Contains("example", StringComparison.OrdinalIgnoreCase)
+                var code = exception is PhonologyExampleNotFoundException
                     ? "phonology-examples.example-not-found" : "phonology-examples.assessment-not-found";
                 return CommandOutcome<PhonologyResultsResponse>.Refused(new Refusal(
                     code, FailureReason.NotFound, exception.Message));

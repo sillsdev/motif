@@ -7,6 +7,10 @@ using SIL.Motif.Host.Store;
 
 namespace SIL.Motif.Worker.Store;
 
+/// <summary>The retained check exists but holds no example with the requested id.</summary>
+/// <param name="message">The refusal text for the caller.</param>
+public sealed class PhonologyExampleNotFoundException(string message) : KeyNotFoundException(message);
+
 /// <summary>Reads immutable phonology evidence without opening a language project or invoking an Assessor.</summary>
 public sealed class PhonologyAssessmentRepository(MotifDatabase database)
 {
@@ -67,7 +71,7 @@ public sealed class PhonologyAssessmentRepository(MotifDatabase database)
             ("$id", assessmentId), ("$example", exampleId));
         RepositoryReadCounters.QueryExecuted();
         using var reader = command.ExecuteReader();
-        if (!reader.Read()) throw new KeyNotFoundException("The retained example does not exist.");
+        if (!reader.Read()) throw new PhonologyExampleNotFoundException("The retained example does not exist.");
         var detail = Decode<PhonologyExampleDetail>(reader.GetString(1));
         if (detail.Ordinal != reader.GetInt32(0) || detail.Example.Id != exampleId)
             throw new InvalidDataException("The retained example identity differs from its row binding.");

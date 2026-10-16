@@ -2281,7 +2281,6 @@ static CommandResult RunWithConsoleCancellation(Func<CancellationToken, CommandR
 
 static string JobsMoveUsage() => UsageLineFor("jobs move");
 
-/// <summary>The one printed usage line CliVerbCatalog holds for a catalogued command name.</summary>
 static bool TryReadCheckCeiling(IReadOnlyDictionary<string, string> flags, string name, ulong fallback, out ulong value)
 {
     value = fallback;
@@ -2289,6 +2288,7 @@ static bool TryReadCheckCeiling(IReadOnlyDictionary<string, string> flags, strin
         ulong.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out value);
 }
 
+/// <summary>The one printed usage line CliVerbCatalog holds for a catalogued command name.</summary>
 static string UsageLineFor(string commandName)
 {
     foreach (var verb in CliVerbCatalog.All)
