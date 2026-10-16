@@ -3,6 +3,7 @@ using SIL.LCModel;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Requests;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Phonology;
 using SIL.Motif.Contract.Requests;
@@ -10,6 +11,7 @@ using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Parser;
+using SIL.Motif.Worker.Store;
 using SIL.Motif.Tests.Parser;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
@@ -25,12 +27,15 @@ public abstract class PhonologyCheckEndToEndBase : IDisposable
         Guid.NewGuid().ToString("N"));
 
     protected async Task<(string AssessmentId, PhonologyResultsPageResponse Page)> Check(
-        string project, IReadOnlyList<PhonologyExample> examples, string? parserPath)
+        string project, IReadOnlyList<PhonologyExample> examples, string? parserPath, bool storeUnverified = false)
     {
         var managedRoot = Path.Combine(_root, "managed-" + Guid.NewGuid().ToString("N"));
         var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(project), managedRoot);
         Assert.True(captured.Succeeded, captured.Refusal?.Message);
-        var saved = PhonologyExampleCommands.Save(new SavePhonologyExamplesRequest(project, "Check", examples));
+        // Examples that deliberately name entries the project lacks go straight to the store.
+        var saved = storeUnverified
+            ? StoreUnverified(project, examples)
+            : PhonologyExampleCommands.Save(new SavePhonologyExamplesRequest(project, "Check", examples));
         Assert.True(saved.Succeeded, saved.Refusal?.Message);
         var queued = PhonologyExampleCommands.Check(new PhonologyCheckRequest(project,
             saved.Value!.ExampleSet.Revision.RevisionId));
@@ -52,6 +57,16 @@ public abstract class PhonologyCheckEndToEndBase : IDisposable
         Assert.True(page.Succeeded, page.Refusal?.Message);
         return (assessmentId, Assert.IsType<PhonologyResultsPageResponse>(page.Value));
     }
+
+    private static CommandOutcome<PhonologyExamplesSavedResponse> StoreUnverified(
+        string project, IReadOnlyList<PhonologyExample> examples) =>
+        ProjectStoreCommand.Run(project, MotifProductVersion.CurrentText, (database, _) =>
+        {
+            var validated = PhonologyExampleValidation.ValidateAndCopy("Check", examples);
+            return CommandOutcome<PhonologyExamplesSavedResponse>.Success(new PhonologyExamplesSavedResponse(
+                new PhonologyExampleSetRepository(database).Save(validated.Name, validated.Examples, null, null),
+                "not-applicable"));
+        });
 
     protected string BlankProject()
     {
@@ -129,7 +144,8 @@ public sealed class PhonologyCheckUnavailableTests : PhonologyCheckEndToEndBase
     public async Task AMissingParserRecordsAnUnavailableCheckNeverAPass()
     {
         var project = BlankProject();
-        var run = await Check(project, Examples(), parserPath: Path.Combine(_root, "no-such-pangloss"));
+        var run = await Check(project, Examples(), parserPath: Path.Combine(_root, "no-such-pangloss"),
+            storeUnverified: true);
 
         var unavailable = Assert.IsType<PhonologyInvocationBinding.Unavailable>(run.Page.Assessment.Invocation);
         Assert.True(unavailable.Reason is PhonologyInvocationReason.AbsentProducer or
@@ -146,7 +162,7 @@ public sealed class PhonologyCheckRealParserTests : PhonologyCheckEndToEndBase
     public async Task AGrammarTheParserCannotLoadIsRecordedUnavailableNeverAgreeing()
     {
         var project = BlankProject();
-        var run = await Check(project, Examples(), PanGlossExecutable.TryLocate());
+        var run = await Check(project, Examples(), PanGlossExecutable.TryLocate(), storeUnverified: true);
 
         var refused = Assert.IsType<PhonologyInvocationBinding.Unavailable>(run.Page.Assessment.Invocation);
         Assert.Equal(PhonologyInvocationReason.InvocationRefused, refused.Reason);
@@ -166,7 +182,7 @@ public sealed class PhonologyCheckRealParserTests : PhonologyCheckEndToEndBase
 
         var unknown = await Check(CopySwahili(source, "unknown-entry"), [new PhonologyExample("ghost", "pya", ["pya"],
             new PhonologyGenerationContext.FwdataEntry(Guid.NewGuid().ToString(), Guid.NewGuid().ToString(),
-                PhonologyMsaClass.MoStemMsa))], parser);
+                PhonologyMsaClass.MoStemMsa))], parser, storeUnverified: true);
         var ghost = Assert.IsType<PhonologyInvocationBinding.Produced>(unknown.Page.Assessment.Invocation);
         Assert.Equal((0, 0, 1), (ghost.AgreeCount, ghost.DisagreeCount, ghost.UnavailableCount));
 

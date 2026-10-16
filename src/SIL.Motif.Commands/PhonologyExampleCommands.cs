@@ -34,14 +34,37 @@ public static class PhonologyExampleCommands
             return Invalid<PhonologyExamplesSavedResponse>(exception.Message);
         }
 
-        return ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, _) =>
+        return ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, project) =>
         {
             try
             {
+                var verification = "not-applicable";
+                if (PhonologyEntryVerification.HasFieldWorksContext(validated.Examples))
+                {
+                    var baseline = new BaselineRepository(database).GetCurrent(ProjectWorkspaceKey.Compute(project));
+                    if (baseline is null) verification = "not-verified-no-baseline";
+                    else if (!File.Exists(baseline.FwDataPath)) verification = "not-verified-baseline-file-missing";
+                    else
+                    {
+                        var missing = PhonologyEntryVerification.FindMissing(baseline.FwDataPath, validated.Examples);
+                        if (missing.Total > 0)
+                            return CommandOutcome<PhonologyExamplesSavedResponse>.Refused(new Refusal(
+                                "phonology-examples.entry-not-found", FailureReason.NotFound,
+                                $"{missing.Total} example(s) name FieldWorks entries or MSAs that are not in the current " +
+                                "Baseline: " + string.Join("; ", missing.Lines) +
+                                (missing.Total > missing.Lines.Count
+                                    ? $"; and {missing.Total - missing.Lines.Count} more." : "."),
+                                new Dictionary<string, string>
+                                {
+                                    ["missingExamples"] = missing.Total.ToString(CultureInfo.InvariantCulture),
+                                }));
+                        verification = "verified";
+                    }
+                }
                 var saved = new PhonologyExampleSetRepository(database).Save(validated.Name,
                     validated.Examples, validated.ExpectedRevisionId, validated.ProposalId);
                 return CommandOutcome<PhonologyExamplesSavedResponse>.Success(
-                    new PhonologyExamplesSavedResponse(saved));
+                    new PhonologyExamplesSavedResponse(saved, verification));
             }
             catch (PhonologyExampleSetRevisionConflictException exception)
             {

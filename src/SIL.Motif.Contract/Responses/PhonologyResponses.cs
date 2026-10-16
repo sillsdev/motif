@@ -5,9 +5,13 @@ namespace SIL.Motif.Contract.Responses;
 
 /// <summary>Confirms the current revision created or updated by a save request.</summary>
 /// <param name="ExampleSet">The saved revision header.</param>
+/// <param name="EntryVerification">Whether the examples' FieldWorks entries were found in the current Baseline:
+/// <c>verified</c>, <c>not-applicable</c> (no example names a FieldWorks entry), <c>not-verified-no-baseline</c>
+/// or <c>not-verified-baseline-file-missing</c>.</param>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record PhonologyExamplesSavedResponse(
-    [property: JsonPropertyName("exampleSet")] PhonologyExampleSetHeader ExampleSet);
+    [property: JsonPropertyName("exampleSet")] PhonologyExampleSetHeader ExampleSet,
+    [property: JsonPropertyName("entryVerification"), JsonRequired] string EntryVerification);
 
 /// <summary>Returns a page of Example Set headers in a project.</summary>
 /// <param name="Items">The headers in this page.</param>

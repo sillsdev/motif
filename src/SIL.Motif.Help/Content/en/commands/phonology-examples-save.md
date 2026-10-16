@@ -31,9 +31,17 @@ Then save it:
 motif phonology-examples save --project "C:\FieldWorks\Projects\Koro\Koro.fwdata" --file examples.json --json
 ```
 
+## What is checked
+
+An example whose context is a FieldWorks entry (`entryGuid` and `msaGuid`) is checked against the project's current Baseline, by reading the Baseline's saved project file. The entry must exist, and the stem MSA must belong to that entry. If one does not, nothing is saved and the refusal `phonology-examples.entry-not-found` names the example ids and the GUIDs that were not found, up to ten, with a count of the rest.
+
+An example whose context is an HC XML entry id (`hcXmlEntry`) is not checked against FieldWorks: those ids belong to a grammar export, not to the project.
+
+If the project has no Baseline yet, the set is still saved, because authoring examples before capturing a Baseline is a normal order of work. The response then says `not-verified-no-baseline`, and the check command will report any entry it cannot find as unavailable.
+
 ## What it prints
 
-The response names the saved set and revision, including its executable and cited revision digests. A citation-only edit creates a new cited revision while leaving the executable digest unchanged.
+The response names the saved set and revision, including its executable and cited revision digests, and an `entryVerification` value: `verified` when every FieldWorks entry was found in the Baseline, `not-applicable` when no example names a FieldWorks entry, or `not-verified-no-baseline` and `not-verified-baseline-file-missing` when the check could not run. A citation-only edit creates a new cited revision while leaving the executable digest unchanged.
 
 ## Related commands
 

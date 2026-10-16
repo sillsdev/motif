@@ -224,7 +224,14 @@ public static class CommandTextRenderer
     {
         var set = response.ExampleSet;
         return $"Saved phonology Example Set '{set.Name}' revision {set.Revision.RevisionId} " +
-            $"with {set.Revision.ExampleCount} examples." + Environment.NewLine;
+            $"with {set.Revision.ExampleCount} examples." + Environment.NewLine +
+            response.EntryVerification switch
+            {
+                "verified" => "FieldWorks entries: found in the current Baseline." + Environment.NewLine,
+                "not-verified-no-baseline" => "FieldWorks entries: not checked, because no Baseline is captured." + Environment.NewLine,
+                "not-verified-baseline-file-missing" => "FieldWorks entries: not checked, because the Baseline file is missing." + Environment.NewLine,
+                _ => "",
+            };
     }
 
     private static string RenderPhonologyExamplesList(PhonologyExamplesListResponse response)
