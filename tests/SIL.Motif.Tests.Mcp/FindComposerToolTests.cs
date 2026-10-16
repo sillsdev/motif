@@ -16,7 +16,6 @@ public sealed class FindComposerToolTests
     {
         Assert.True(Tool.ReadOnly);
         Assert.False(Tool.NeedsProject);
-        Assert.False(Tool.OnByDefault);
         Assert.DoesNotContain(MotifMcpServer.Expose(ToolProfile.Builtin), exposed => exposed.Name == Tool.Name);
         var selected = new ToolProfile("find", null, null, "concise", [new ToolSelection(Tool.Name, null, null, null)]);
         Assert.Contains(MotifMcpServer.Expose(selected), exposed => exposed.Name == Tool.Name);

@@ -24,7 +24,6 @@ internal static class ParsimonyTools
             true,
             false,
             false,
-            false,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ParsimonyViewsCommand.Measures(
                 new ListParsimonyMeasuresRequest(c.ProjectPath, c.ProductVersion))))) { Requests = [typeof(ListParsimonyMeasuresRequest)] },
 
@@ -44,7 +43,6 @@ internal static class ParsimonyTools
             false,
             false,
             false,
-            false,
             RunMeasure) { Requests = [typeof(EnqueueParsimonyReportRequest), typeof(WaitForParsimonyReportRequest),
             typeof(WaitForParsimonyReportSetRequest)] },
 
@@ -55,7 +53,6 @@ internal static class ParsimonyTools
             true,
             true,
             false,
-            false,
             true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ParsimonyCommands.Show(
                 new ShowParsimonyReportRequest(c.ProjectPath, c.ProductVersion, a.Required("report_id")))))) { Requests = [typeof(ShowParsimonyReportRequest)] },
@@ -64,7 +61,7 @@ internal static class ParsimonyTools
             "Reads the review state for one staged rule-based allomorph retirement Draft. It returns its latest " +
             "matching Dry Run and names evidence that is not available yet; it never invents a finding or parser result.",
             AgentClass.Read, Schema.Object(("draft_id", Schema.String("Exact staged Draft Proposal id."), true)),
-            true, true, false, false, true,
+            true, true, false, true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ParsimonyCommands.ReadRetirementReview(
                 new ReadRetirementReviewRequest(c.ProjectPath, c.ProductVersion, a.Required("draft_id")))))) { Requests = [typeof(ReadRetirementReviewRequest)] },
 
@@ -91,7 +88,6 @@ internal static class ParsimonyTools
             true,
             true,
             false,
-            false,
             true,
             ReadView) { Requests = [typeof(ReadParsimonyViewRequest)] },
 
@@ -111,7 +107,6 @@ internal static class ParsimonyTools
             false,
             false,
             false,
-            false,
             true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ParsimonyCommands.ReviseDisposition(
                 new ReviseParsimonyDispositionRequest(c.ProjectPath, c.ProductVersion, a.Required("draft"),
@@ -127,7 +122,6 @@ internal static class ParsimonyTools
                 ("expectedHeads", Schema.Array("Every current head with its exact content digest.",
                     Schema.Object(("revisionId", Schema.String("Portable id of the current revision."), true),
                         ("contentDigest", Schema.String("Canonical sha256 digest read with the revision."), true))), true)),
-            false,
             false,
             false,
             false,

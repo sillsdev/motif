@@ -25,7 +25,7 @@ internal sealed class EditStemAllomorphStemNameDefinition : ComposerDefinition<E
 
     /// <inheritdoc />
     public override ComposerExposure Exposure { get; } =
-        new(CommandSurface.AdvancedAi, AgentClass.Draft, OnByDefault: false, AgentTool: false);
+        new(CommandSurface.AdvancedAi, AgentClass.Draft, AgentTool: false);
 
     /// <inheritdoc />
     public override EditStemAllomorphStemNameIntent Parse(JsonElement authored) => EditStemAllomorphStemNameIntentParser.Parse(authored);

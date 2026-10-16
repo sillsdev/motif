@@ -106,7 +106,7 @@ internal static class CatalogTools
             .Select(property => (JsonNamingPolicy.CamelCase.ConvertName(property.Name),
                 FieldSchema(property.PropertyType), Required(command.RequestType, property))).ToArray());
         return new AgentTool(Name(command), Describe([command]), command.Agent, schema,
-            command.Agent == AgentClass.Read, command.Agent == AgentClass.Read, command.Name == "assess", false, true,
+            command.Agent == AgentClass.Read, command.Agent == AgentClass.Read, false, true,
             (context, args, cancellation) => Invoke(command, context, args, cancellation))
         { Requests = [command.RequestType], NeedsProject = command.RequestType.GetProperties().Any(p =>
             p.Name is "ProjectPath" or "FwDataPath") };

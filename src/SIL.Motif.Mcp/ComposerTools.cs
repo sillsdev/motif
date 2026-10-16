@@ -64,12 +64,12 @@ internal static class ComposerTools
         var verb = composer.Verb;
         var names = composer.FieldNames;
         return new AgentTool(composer.ToolName, description, composer.Agent, inputSchema, false, false,
-            composer.OnByDefault, false, true,
+            false, true,
             (context, args, cancellation) => Task.FromResult(ToolOutcome.From(
                 ProposalCommands.ComposeIntent(new ComposeIntentRequest(context.ProjectPath, context.ProductVersion,
                     args.Required(DraftArgument), verb, args.IntentJson([.. names]))),
                 result => "Use createdObjects[].id values in later composer calls; Dry Run and Trial the Draft, then Finalize.")))
-        { Routes = [new Exposure.ToolRoute(verb, null, composer.Agent)] };
+        { ComposerVerb = verb };
     }
 
     private static JsonObject Described(ComposerDescriptor composer, JsonObject shape)

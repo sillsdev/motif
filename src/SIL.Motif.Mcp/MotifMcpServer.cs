@@ -131,10 +131,9 @@ public static class MotifMcpServer
         var tool = tools.FirstOrDefault(candidate => candidate.Name == name);
         ToolOutcome outcome;
         CallToolResult result;
-        if (!context.AdvancedAiModeEnabled)
+        if (ExposurePolicy.CallGate(context.AdvancedAiModeEnabled) is { } gate)
         {
-            outcome = ToolOutcome.Refused("advanced-ai.disabled", FailureReason.Refused,
-                SIL.Motif.Commands.Preferences.FileAdvancedAiModePreferenceStore.DisabledMessage);
+            outcome = gate;
             result = RefusalMapper.ToResult(outcome.Refusal!, tools, args);
         }
         else if (tool is null)

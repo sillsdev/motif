@@ -23,36 +23,79 @@ public sealed class ExposurePolicyTests
 
     private static ToolProfile Profile(string name) => name == "builtin" ? ToolProfile.Builtin : ToolProfile.Load(name);
 
-    // The selection loop as it stood before the policy owned it, kept as the reference the policy must equal.
-    private static List<ExposedTool> ReferenceExpose(ToolProfile profile)
+    private static string GoldenPath(string profile, [System.Runtime.CompilerServices.CallerFilePath] string source = "") =>
+        Path.Combine(Path.GetDirectoryName(source)!, "Golden", "tools-list." + (profile == "builtin" ? "default" : profile) + ".json");
+
+    // The expectation is frozen: the tool-list golden where one exists, otherwise the profile's own explicit list.
+    private static List<(string Name, string? Description)> FrozenExpectation(string name, ToolProfile profile)
     {
-        var exposed = new List<ExposedTool>();
-        foreach (var tool in AgentTools.All)
-            if (profile.SelectionFor(tool.Name, tool.OnByDefault) is { } selection)
-                exposed.Add(new ExposedTool(tool, selection.As ?? tool.Name, selection.Description ?? tool.Description,
-                    selection.Detail ?? profile.DefaultDetail));
-        return exposed;
+        var path = GoldenPath(name);
+        if (File.Exists(path))
+            return [.. System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(path))!.AsArray()
+                .Select(node => (node!["name"]!.GetValue<string>(), (string?)node["description"]!.GetValue<string>()))];
+        return [.. profile.Tools.Select(selection => (selection.As ?? selection.Tool, selection.Description))];
     }
 
     [Theory]
     [MemberData(nameof(ShippedProfiles))]
-    public void ThePolicyExposesExactlyWhatTheProfileSelectionAlwaysDid(string name)
+    public void ThePolicyExposesExactlyTheToolsTheProfileListsInOrder(string name)
     {
         var profile = Profile(name);
-        var expected = ReferenceExpose(profile);
+        var expected = FrozenExpectation(name, profile);
         var actual = PolicyFor(profile).Tools;
 
-        Assert.Equal(expected.Count, actual.Count);
+        Assert.Equal(expected.Select(tool => tool.Name), actual.Select(tool => tool.Name));
         for (var index = 0; index < expected.Count; index++)
+            if (expected[index].Description is { } description) Assert.Equal(description, actual[index].Description);
+        Assert.Equal(actual.Select(tool => tool.Name), MotifMcpServer.Expose(profile).Select(tool => tool.Name));
+    }
+
+    [Fact]
+    public void TheDefaultProfileNamesOnlyToolsThatExistAndEachOnceInTheServersOrder()
+    {
+        var known = AgentTools.All.Select(tool => tool.Name).ToList();
+        var listed = ToolProfile.Builtin.Tools.Select(selection => selection.Tool).ToList();
+
+        Assert.NotEmpty(listed);
+        Assert.Empty(listed.Except(known));
+        Assert.Equal(listed.Count, listed.Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(known.Where(listed.Contains), listed);
+        Assert.False(ToolProfile.Builtin.AllTools);
+        Assert.All(ToolProfile.Builtin.Tools, selection => Assert.Null(selection.AlwaysLoad));
+    }
+
+    [Fact]
+    public void AProfileMayExposeEveryToolAndAProfileWithNoToolListIsRefused()
+    {
+        var all = new ToolProfile("all", null, null, "concise", [], AllTools: true);
+
+        Assert.Equal(AgentTools.All.Select(tool => tool.Name), PolicyFor(all).Tools.Select(tool => tool.Name));
+
+        var directory = Directory.CreateTempSubdirectory();
+        try
         {
-            Assert.Same(expected[index].Tool, actual[index].Tool);
-            Assert.Equal(expected[index].Name, actual[index].Name);
-            Assert.Equal(expected[index].Description, actual[index].Description);
-            Assert.Equal(expected[index].DefaultDetail, actual[index].DefaultDetail);
-            Assert.Equal(System.Text.Json.JsonSerializer.Serialize(expected[index].Describe()),
-                System.Text.Json.JsonSerializer.Serialize(actual[index].Describe()));
+            var path = Path.Combine(directory.FullName, "bare.json");
+            File.WriteAllText(path, "{ \"name\": \"bare\" }");
+            Assert.Throws<ProfileException>(() => ToolProfile.Load(path));
+            File.WriteAllText(path, "{ \"name\": \"full\", \"allTools\": true }");
+            Assert.True(ToolProfile.Load(path).AllTools);
         }
-        Assert.Equal(expected.Select(tool => tool.Name), MotifMcpServer.Expose(profile).Select(tool => tool.Name));
+        finally { directory.Delete(true); }
+    }
+
+    private static string ThisFile([System.Runtime.CompilerServices.CallerFilePath] string source = "") => source;
+
+    [Fact]
+    public void NoSourceFileMentionsAnOnByDefaultSwitch()
+    {
+        var root = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(ThisFile())!, "..", "..", "src"));
+        var sep = Path.DirectorySeparatorChar;
+        var hits = Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories)
+            .Where(path => !path.Contains($"{sep}obj{sep}") && !path.Contains($"{sep}bin{sep}"))
+            .Where(path => File.ReadAllText(path).Contains("OnByDefault", StringComparison.Ordinal))
+            .ToList();
+
+        Assert.Empty(hits);
     }
 
     [Theory]
@@ -104,6 +147,36 @@ public sealed class ExposurePolicyTests
         Assert.Equal("motif_add_phoneme", phoneme.ToolName);
         Assert.Null(phoneme.Selector);
         Assert.Contains("draft", phoneme.ArgNames);
+    }
+
+    [Fact]
+    public void TheComposeToolBeatsTheBatchForAVerbBothServeWhateverTheToolOrder()
+    {
+        var compose = new ToolSelection("motif_compose", null, null, null);
+        var batch = new ToolSelection("motif_compose_batch", null, null, null);
+        foreach (var tools in new[] { new[] { compose, batch }, new[] { batch, compose } })
+        {
+            var policy = PolicyFor(new ToolProfile("both", null, null, "concise", tools));
+            var step = Assert.IsType<CommandExposure.Tool>(policy.Resolve("compose-author-phoneme"));
+            Assert.Equal("motif_compose", step.ToolName);
+            Assert.Equal(new ToolSelector("steps[].verb", "compose-author-phoneme"), step.Selector);
+        }
+    }
+
+    [Fact]
+    public void EachSelectorPathNamesTheVerbDiscriminatorOfItsToolsRealSchema()
+    {
+        foreach (var tool in AgentTools.All.Where(tool => tool.VerbSelector is not null))
+        {
+            var path = tool.VerbSelector!.Split("[].");
+            var items = tool.InputSchema["properties"]![path[0]]!["items"]!["oneOf"]!.AsArray();
+            var verbs = items.Select(branch => branch!["properties"]![path[1]]!["enum"]![0]!.GetValue<string>()).ToHashSet();
+            var routed = tool.Routes.Select(route => route.Command).ToHashSet();
+
+            Assert.NotEmpty(routed);
+            Assert.All(routed, verb => Assert.Contains(verb, verbs));
+            Assert.All(tool.Routes, route => Assert.Equal(tool.VerbSelector, route.Selector!.Argument));
+        }
     }
 
     [Fact]

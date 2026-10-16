@@ -17,31 +17,12 @@ namespace SIL.Motif.Mcp;
 
 /// <summary>
 /// Every tool the server can offer, each built over the catalogued commands named in
-/// the command catalog. The built-in profile exposes the ones marked on by default; a
-/// profile may expose more, rename, or hide. Nothing here reaches a <see cref="AgentClass.HumanOnly"/> command.
+/// the command catalog. A profile lists the ones it exposes and may rename them.
+/// Nothing here reaches a <see cref="AgentClass.HumanOnly"/> command.
 /// </summary>
 internal static class AgentTools
 {
     private static readonly (string, JsonObject, bool)[] NoArguments = [];
-    private static readonly HashSet<string> DefaultAuthoringTools = new(StringComparer.Ordinal)
-    {
-        "motif_add_lexeme_form",
-        "motif_add_feature_structure",
-        "motif_add_phoneme",
-        "motif_add_natural_class",
-        "motif_add_environment",
-        "motif_add_phonological_rule",
-        "motif_add_part_of_speech",
-        "motif_add_lexical_entry",
-        "motif_add_alternate_form",
-        "motif_add_inflection_feature",
-        "motif_add_inflection_class",
-        "motif_add_stem_name",
-        "motif_add_affix_slot",
-        "motif_add_affix_template",
-        "motif_compose_batch",
-    };
-
     private static readonly string[] BatchComposerVerbs =
     [
         "compose-author-lexeme-form",
@@ -80,21 +61,20 @@ internal static class AgentTools
         return tools.Select(tool => tool.Name == "motif_compose_batch"
                 ? tool with { InputSchema = batchSchema }
                 : tool.Name == "motif_compose" ? tool with { InputSchema = composeSchema } : tool)
-            .Select(tool => DefaultAuthoringTools.Contains(tool.Name) ? tool with { OnByDefault = true } : tool)
-            .Select(tool => tool.Name == FindComposerTool ? FindComposerOptIn(tool) : tool)
-            .Select(tool => Exposure.ToolRoutes.WithRoutes(tool, [.. BatchComposerVerbs.Concat(ComposerTools.BatchVerbs).Distinct()]))
+            .Select(tool => tool.Name == FindComposerTool ? FindComposerSchema(tool) : tool)
+            .Select(tool => Exposure.ToolRoutes.Derive(tool, [.. BatchComposerVerbs.Concat(ComposerTools.BatchVerbs).Distinct()]))
             .ToArray();
     }
 
     private const string FindComposerTool = "motif_find_composer";
 
-    // Composer search is additive: a profile selects it by name until the older tools retire.
-    private static AgentTool FindComposerOptIn(AgentTool tool)
+    // Composer search offers a detail argument the generic builder does not derive.
+    private static AgentTool FindComposerSchema(AgentTool tool)
     {
         var schema = tool.InputSchema.DeepClone().AsObject();
         schema["properties"]!.AsObject()["detail"] = Schema.String(
             "concise (default) or detailed, which adds a worked example and the Subject page.", "concise", "detailed");
-        return tool with { OnByDefault = false, InputSchema = schema };
+        return tool with { InputSchema = schema };
     }
 
     /// <summary>Every tool name, which a profile may select.</summary>
@@ -111,7 +91,6 @@ internal static class AgentTools
             true,
             true,
             true,
-            true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(OverviewCommand.Overview(new OverviewRequest(c.ProjectPath)),
                 _ => "Read the grammar behind a failing word with motif_grammar, or look at one word with motif_word."))) { Requests = [typeof(OverviewRequest)] },
 
@@ -120,7 +99,6 @@ internal static class AgentTools
             AgentClass.Evaluate,
             Schema.Object(),
             false,
-            true,
             true,
             false,
             true,
@@ -136,7 +114,6 @@ internal static class AgentTools
                 ..Schema.Verbosity()]),
             true,
             true,
-            false,
             true,
             true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(WarningsCommand.Warnings(
@@ -148,7 +125,6 @@ internal static class AgentTools
             Schema.Object(Schema.Verbosity()),
             false,
             true,
-            false,
             true,
             true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(GrammarCheckQuery.Query(new GrammarCheckRequest(c.ProjectPath), ct)))) { Requests = [typeof(GrammarCheckRequest)] },
@@ -166,7 +142,6 @@ internal static class AgentTools
             true,
             true,
             true,
-            true,
             (c, a, ct) => Task.FromResult(ReadGrammar(c, a))),
 
         new("motif_lexicon",
@@ -176,7 +151,6 @@ internal static class AgentTools
                 ("morph_type", Schema.String("Only entries of this morph type, such as 'stem' or 'suffix'."), false),
                 ("offset", Schema.Integer("Entries to skip, for the next page.", 0, 100000), false),
                 ..Schema.Verbosity()]),
-            true,
             true,
             true,
             true,
@@ -192,7 +166,6 @@ internal static class AgentTools
             true,
             true,
             true,
-            true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(WordContextQuery.Query(
                 new WordContextRequest(c.ProjectPath, a.Required("word"))),
                 _ => "To see why the parser does or does not analyze it, call motif_try_word."))) { Requests = [typeof(WordContextRequest)] },
@@ -203,7 +176,6 @@ internal static class AgentTools
             Schema.Object(Schema.Verbosity()),
             true,
             true,
-            false,
             true,
             true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(TextInventoryQuery.Query(new TextInventoryRequest(c.ProjectPath))))) { Requests = [typeof(TextInventoryRequest)] },
@@ -214,7 +186,6 @@ internal static class AgentTools
             Schema.Object(),
             true,
             true,
-            false,
             false,
             true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(WritingSystemsQuery.Query(new WritingSystemsRequest(c.ProjectPath))))) { Requests = [typeof(WritingSystemsRequest)] },
@@ -228,7 +199,6 @@ internal static class AgentTools
                 ("comment", Schema.String("Why this change is right: the evidence, in a few sentences."), true)]),
             false,
             false,
-            true,
             false,
             true,
             (c, a, ct) => Task.FromResult(StartProposal(c, a))) { Requests = [typeof(NewDraftRequest)] },
@@ -237,7 +207,6 @@ internal static class AgentTools
             string.Empty,
             AgentClass.Read,
             Schema.Object([("topic", Schema.String("The guide topic to read.", EncodingGuides.Topics.ToArray()), true)]),
-            true,
             true,
             true,
             false,
@@ -259,7 +228,6 @@ internal static class AgentTools
                 ("gloss_text", Schema.String("The gloss text."), false)]),
             false,
             false,
-            true,
             false,
             true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalCommands.ComposeAuthorLexemeForm(
@@ -272,7 +240,6 @@ internal static class AgentTools
             AgentClass.Draft,
             Schema.Object([("draft", Schema.String("The draft name from motif_start_proposal."), true),
                 ("msa", Schema.String("Id of a stem or inflectional affix MSA with no existing feature structure."), true)]),
-            false,
             false,
             false,
             false,
@@ -293,7 +260,6 @@ internal static class AgentTools
             false,
             false,
             false,
-            false,
             true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalCommands.ComposeAuthorPhoneme(
                 new(c.ProjectPath, c.ProductVersion, a.Required("draft"), a.IntentJson("name", "representations", "features"))),
@@ -305,7 +271,6 @@ internal static class AgentTools
             Schema.Object(("draft", Schema.String("Draft name."), true),
                 ("name", Schema.String("Natural class name."), true), ("abbreviation", Schema.String("Unique environment abbreviation, such as V."), true),
                 ("members", Schema.StringArray("Phoneme ids in the first set."), false), ("features", Schema.FeatureValues(), false)),
-            false,
             false,
             false,
             false,
@@ -322,7 +287,6 @@ internal static class AgentTools
                 ("target", Schema.String("Canonical id of the existing segment natural class."), true),
                 ("expectedMembers", Schema.StringArray("Exact current phoneme ids in the class."), true),
                 ("members", Schema.StringArray("Requested distinct phoneme ids; the class must remain nonempty."), true)),
-            false,
             false,
             false,
             false,
@@ -348,7 +312,6 @@ internal static class AgentTools
             false,
             false,
             false,
-            false,
             true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalCommands.ComposeRelinkNaturalClass(new(
                 c.ProjectPath, c.ProductVersion, a.Required("draft"),
@@ -363,7 +326,6 @@ internal static class AgentTools
             false,
             false,
             false,
-            false,
             true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalCommands.ComposeAuthorEnvironment(
                 new(c.ProjectPath, c.ProductVersion, a.Required("draft"), a.IntentJson("name", "left", "right"))),
@@ -373,7 +335,6 @@ internal static class AgentTools
             string.Empty,
             AgentClass.Draft,
             RuleComposerSchema(),
-            false,
             false,
             false,
             false,
@@ -396,7 +357,6 @@ internal static class AgentTools
             false,
             false,
             false,
-            false,
             true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalCommands.ComposeAuthorAffixSlot(new(
                 c.ProjectPath, c.ProductVersion, a.Required("draft"),
@@ -414,7 +374,7 @@ internal static class AgentTools
                 ("values", Schema.Array("Nonempty named choices for this feature.", Schema.Object(
                     ("name", Schema.String("Value name; distinct within this feature."), true),
                     ("abbreviation", Schema.String("Optional short value label."), false))), true)),
-            false, false, false, false, true,
+            false, false, false, true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalCommands.ComposeAuthorInflectionFeature(new(
                 c.ProjectPath, c.ProductVersion, a.Required("draft"), a.IntentJson("name", "ws", "abbreviation", "values"))),
                 r => "Use the feature and value createdObjects[].id values in later composer calls; Dry Run and Trial before Finalize.")))
@@ -430,7 +390,7 @@ internal static class AgentTools
                 ("ws", Schema.String("Writing system tag for the name and abbreviation."), true),
                 ("abbreviation", Schema.String("Optional short class label."), false),
                 ("parent", Schema.String("Optional existing parent class in the declared category."), false)),
-            false, false, false, false, true,
+            false, false, false, true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalCommands.ComposeAuthorInflectionClass(new(
                 c.ProjectPath, c.ProductVersion, a.Required("draft"), a.IntentJson("category", "name", "ws", "abbreviation", "parent"))),
                 r => "Use a createdObjects[].id from this response when authoring a stem; Dry Run and Trial before Finalize.")))
@@ -449,7 +409,7 @@ internal static class AgentTools
                     Schema.Array("Nonempty choices; one value for each feature.", Schema.Object(
                         ("feature", Schema.String("Closed feature id in the morphosyntactic system."), true),
                         ("value", Schema.String("Value id belonging to that feature."), true)))), true)),
-            false, false, false, false, true,
+            false, false, false, true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalCommands.ComposeAuthorStemName(new(
                 c.ProjectPath, c.ProductVersion, a.Required("draft"), a.IntentJson("category", "name", "ws", "abbreviation", "regions"))),
                 r => "Attaching the created stem name to an allomorph is separate; Dry Run and Trial before Finalize.")))
@@ -478,7 +438,6 @@ internal static class AgentTools
             false,
             false,
             false,
-            false,
             true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalCommands.ComposeAuthorLexicalEntry(new(
                 c.ProjectPath, c.ProductVersion, a.Required("draft"),
@@ -503,7 +462,6 @@ internal static class AgentTools
             false,
             false,
             false,
-            false,
             true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalCommands.ComposeAuthorAlternateForm(new(
                 c.ProjectPath, c.ProductVersion, a.Required("draft"),
@@ -519,7 +477,6 @@ internal static class AgentTools
                 ("ws", Schema.String("Writing system tag for the name and abbreviation."), true),
                 ("abbreviation", Schema.String("Optional short label, such as n."), false),
                 ("parent", Schema.String("Optional canonical id of an existing category to place this one under."), false)),
-            false,
             false,
             false,
             false,
@@ -543,7 +500,6 @@ internal static class AgentTools
             false,
             false,
             false,
-            false,
             true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalCommands.ComposeAuthorAffixTemplate(new(
                 c.ProjectPath, c.ProductVersion, a.Required("draft"), AuthorAffixTemplateIntent(a))),
@@ -555,11 +511,10 @@ internal static class AgentTools
             Schema.Object(),
             false,
             false,
-            true,
             false,
             true,
             (c, a, ct) => Task.FromResult(ComposeBatch(c, a)))
-            { Requests = [typeof(ComposeBatchRequest)] },
+            { Requests = [typeof(ComposeBatchRequest)], VerbSelector = Exposure.ToolRoutes.BatchSelector },
 
         new("motif_compose",
             string.Empty,
@@ -568,17 +523,15 @@ internal static class AgentTools
             false,
             false,
             false,
-            false,
             true,
             (c, a, ct) => Task.FromResult(Compose(c, a)))
-            { Requests = [typeof(ComposeRequest)] },
+            { Requests = [typeof(ComposeRequest)], VerbSelector = Exposure.ToolRoutes.ComposeSelector },
 
         new("motif_retire_allomorph",
             string.Empty,
             AgentClass.Draft,
             Schema.Object(("draft", Schema.String("Draft name from motif_start_proposal."), true),
                 ("intent_json", Schema.String("Closed motif-retire-allomorph/v1 JSON with exact source, destination and reference identities."), true)),
-            false,
             false,
             false,
             false,
@@ -595,7 +548,6 @@ internal static class AgentTools
             false,
             false,
             false,
-            false,
             true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalCommands.ComposeRetireRedundantZeroAffix(
                 new(c.ProjectPath, c.ProductVersion, a.Required("draft"), a.Required("intent_json"))),
@@ -608,7 +560,6 @@ internal static class AgentTools
                 ("target", Schema.String("Canonical id of one flat allomorph or morpheme prohibition."), true),
                 ("expected_disabled", Schema.Boolean("The value the target must currently have."), true),
                 ("disabled", Schema.Boolean("The explicit Disabled value to write."), true)),
-            false,
             false,
             false,
             false,
@@ -629,7 +580,6 @@ internal static class AgentTools
             false,
             false,
             false,
-            false,
             true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalCommands.ComposeEditAffixSlot(new(
                 c.ProjectPath, c.ProductVersion, a.Required("draft"), EditAffixSlotIntent(a))),
@@ -647,7 +597,6 @@ internal static class AgentTools
             false,
             false,
             false,
-            false,
             true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalCommands.ComposeEditAffixTemplate(new(
                 c.ProjectPath, c.ProductVersion, a.Required("draft"), EditAffixTemplateIntent(a))),
@@ -660,7 +609,6 @@ internal static class AgentTools
                 ("target", Schema.String("Canonical id of the existing inflectional affix MSA."), true),
                 ("expected_slots", Schema.StringArray("Current slot ids assigned to the MSA."), true),
                 ("slots", Schema.StringArray("Requested slot ids; order has no meaning."), true)),
-            false,
             false,
             false,
             false,
@@ -680,7 +628,6 @@ internal static class AgentTools
             false,
             false,
             false,
-            false,
             true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalCommands.ComposeEditAllomorphCondition(new(
                 c.ProjectPath, c.ProductVersion, a.Required("draft"),
@@ -694,7 +641,6 @@ internal static class AgentTools
                 ("target", Schema.String("Canonical id of the owning lexical entry."), true),
                 ("expectedAlternates", Schema.StringArray("Current alternate-form ids in project order."), true),
                 ("alternates", Schema.StringArray("Requested order of those same alternate forms."), true)),
-            false,
             false,
             false,
             false,
@@ -716,7 +662,6 @@ internal static class AgentTools
             false,
             false,
             false,
-            false,
             true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalCommands.ComposeAuthorText(new(
                 c.ProjectPath, c.ProductVersion, a.Required("draft"), a.IntentJson("title", "ws", "paragraphs"))),
@@ -735,7 +680,6 @@ internal static class AgentTools
                         ("msa", Schema.String("Id of the morphosyntactic analysis."), false),
                         ("inflType", Schema.String("Id of the inflectional type."), false),
                         ("guessedString", Schema.String("Surface text of a guessed morph with no allomorph."), false))), false)),
-            false,
             false,
             false,
             false,
@@ -763,7 +707,6 @@ internal static class AgentTools
             false,
             false,
             false,
-            false,
             true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(
                 ProposalCommands.ComposeRecordParsimonyDisposition(new(c.ProjectPath, c.ProductVersion,
@@ -778,7 +721,6 @@ internal static class AgentTools
             Schema.Object(),
             true,
             true,
-            false,
             false,
             true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ParsimonyCommands.ListNotebookRecordTypes(
@@ -799,7 +741,6 @@ internal static class AgentTools
             false,
             false,
             false,
-            false,
             true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ParsimonyCommands.RecordDisposition(
                 new(c.ProjectPath, c.ProductVersion, a.Required("report_id"), a.Required("finding_id"),
@@ -816,7 +757,6 @@ internal static class AgentTools
                 ("text", Schema.String("The new gloss."), true)]),
             false,
             true,
-            true,
             false,
             true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalCommands.AddSetGloss(new AddSetGlossRequest(
@@ -829,7 +769,6 @@ internal static class AgentTools
             Schema.Object([("draft", Schema.String("The draft name."), true),
                 ("operation_ids", Schema.StringArray("Operation ids to remove."), true)]),
             false,
-            true,
             true,
             false,
             true,
@@ -847,7 +786,6 @@ internal static class AgentTools
             false,
             false,
             true,
-            true,
             false,
             DryRun) { Requests = [typeof(EnqueueDryRunRequest), typeof(WaitForDryRunRequest)] },
 
@@ -863,7 +801,6 @@ internal static class AgentTools
             false,
             false,
             true,
-            true,
             false,
             Trial) { Requests = [typeof(EnqueueTrialRequest), typeof(WaitForJobRequest)] },
 
@@ -872,7 +809,6 @@ internal static class AgentTools
             AgentClass.Evaluate,
             Schema.Object([("word", Schema.String("The word to parse."), true), ..Schema.Verbosity()]),
             false,
-            true,
             true,
             true,
             true,
@@ -887,7 +823,6 @@ internal static class AgentTools
             true,
             false,
             false,
-            false,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(JobCommands.Show(
                 new ShowJobRequest(c.ProjectPath, a.Required("job"), c.ProductVersion))))) { Requests = [typeof(ShowJobRequest)] },
 
@@ -899,7 +834,6 @@ internal static class AgentTools
                 ("expected_revision", Schema.String("The revision you last read, to refuse if the draft changed."), false)]),
             false,
             false,
-            true,
             false,
             true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalCommands.Finalize(new FinalizeRequest(
@@ -912,7 +846,6 @@ internal static class AgentTools
             Schema.Object([("proposal", Schema.String("The id of the Proposal you started and now take back."), true)]),
             false,
             false,
-            true,
             false,
             true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalLifecycleCommand.Withdraw(
@@ -929,7 +862,6 @@ internal static class AgentTools
             true,
             true,
             true,
-            true,
             (c, a, ct) => Task.FromResult(a.Optional("proposal") is { } id
                 ? ToolOutcome.From(ProposalCommands.Show(new ShowProposalRequest(c.ProjectPath, c.ProductVersion, id)))
                 : ToolOutcome.From(ProposalStandingsCommand.Read(
@@ -941,29 +873,28 @@ internal static class AgentTools
             Schema.Object(),
             true,
             true,
-            true,
             false,
             false,
             (c, a, ct) => Task.FromResult(Activity(c))),
         new("motif_open", string.Empty, AgentClass.Read,
             Schema.Object(("path", Schema.String("Path to an existing FieldWorks .fwdata project."), true)),
-            false, true, true, false, true,
+            false, true, false, true,
             (c, a, ct) => Task.Run(() => OpenProject(a), ct))
             { Requests = [typeof(OpenRequest)], NeedsProject = false },
-        new("motif_list_projects", string.Empty, AgentClass.Read, Schema.Object(), true, true, true, false, false,
+        new("motif_list_projects", string.Empty, AgentClass.Read, Schema.Object(), true, true, false, false,
             (c, a, ct) => Task.FromResult(ToolOutcome.Ok(System.Text.Json.JsonSerializer.SerializeToNode(
                 KnownProjectsQuery.List(), new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web))!)))
             { NeedsProject = false },
         new("motif_assess", string.Empty, AgentClass.Evaluate,
             Schema.Object([("words", Schema.StringArray("Words to assess; omit for the Default Selection."), false),
-                ..Schema.Verbosity()]), false, false, true, true, true,
+                ..Schema.Verbosity()]), false, false, true, true,
             (c, a, ct) => Task.Run(() => ToolOutcome.From(TrialResults.Assess(c, a.List("words"), ct)), ct))
             { Requests = [typeof(AssessRequest)] },
         new("motif_difference", string.Empty, AgentClass.Read,
             Schema.Object(("difference", Schema.String("Stored Difference Assessment id."), true),
                 ("category", Schema.String("Category to page through.", TrialResults.Categories), true),
                 ("offset", Schema.Integer("Rows to skip.", 0, 1000000), false),
-                ("limit", Schema.Integer("Page size, maximum 200.", 1, 200), false)), true, true, true, false, true,
+                ("limit", Schema.Integer("Page size, maximum 200.", 1, 200), false)), true, true, false, true,
             (c, a, ct) => Task.FromResult(TrialResults.Read(c, a))),
         new("motif_proposal_difference", string.Empty, AgentClass.Read,
             Schema.Object(("proposal", Schema.String("Proposal whose newest saved Difference to read."), false),
@@ -975,7 +906,7 @@ internal static class AgentTools
                 ("before_state", Schema.String("Approval state a listed word had before the Proposal.", ApprovalStates), false),
                 ("after_state", Schema.String("Approval state a listed word has after the Proposal.", ApprovalStates), false),
                 ("offset", Schema.Integer("Words to skip.", 0, 1000000), false),
-                ("limit", Schema.Integer("Page size, maximum 200.", 1, 200), false)), true, true, true, false, true,
+                ("limit", Schema.Integer("Page size, maximum 200.", 1, 200), false)), true, true, false, true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalDifferenceCommands.Show(new ProposalDifferenceShowRequest(
                 c.ProjectPath, a.Optional("proposal"), a.Optional("difference"), a.Flag("could_be_bad"), a.Optional("bucket"),
                 a.Optional("before_state"), a.Optional("after_state"), a.Int("offset", 0), a.Int("limit", 25))))))
@@ -984,7 +915,7 @@ internal static class AgentTools
             Schema.Object(("proposal", Schema.String("Proposal whose completed Trial is compared."), true),
                 ("text", Schema.String("GUID of the Text whose recorded human decisions are compared."), true),
                 ("job", Schema.String("Completed Trial job id; omit for the newest completed Trial."), false)),
-            false, false, true, false, true,
+            false, false, false, true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalDifferenceCommands.Produce(
                 new ProposalDifferenceProduceRequest(c.ProjectPath, a.Required("proposal"), a.Required("text"),
                     a.Optional("job"))))))

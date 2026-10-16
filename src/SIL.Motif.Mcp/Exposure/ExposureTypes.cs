@@ -16,7 +16,8 @@ internal sealed record ToolSelector(string Argument, string Value);
 /// <param name="Command">The catalog command name.</param>
 /// <param name="Selector">What to pass to select the command, or <see langword="null"/> when the tool is the command.</param>
 /// <param name="Class">The command's agent class, which a tool serving several classes cannot state on its own.</param>
-internal sealed record ToolRoute(string Command, ToolSelector? Selector, AgentClass Class);
+/// <param name="Rank">Which route wins when two tools reach the command; the lower number wins.</param>
+internal sealed record ToolRoute(string Command, ToolSelector? Selector, AgentClass Class, int Rank);
 
 /// <summary>What an agent should be told to do to reach a command under the active settings.</summary>
 internal abstract record CommandExposure

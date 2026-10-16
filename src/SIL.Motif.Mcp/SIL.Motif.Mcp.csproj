@@ -27,6 +27,11 @@
     <Content Include="..\..\profiles\*.json" Link="profiles\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- The built-in profile is the shipped default profile, embedded so a packaged build cannot lose it. -->
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\profiles\default.json" LogicalName="motif-profiles/default.json" />
+  </ItemGroup>
+
   <ItemGroup>
     <EmbeddedResource Include="Resources\encoding-guides\*.md">
       <LogicalName>motif-guides/%(Filename)%(Extension)</LogicalName>

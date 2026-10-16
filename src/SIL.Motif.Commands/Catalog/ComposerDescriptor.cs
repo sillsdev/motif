@@ -19,7 +19,6 @@ public sealed class ComposerDescriptor
         Verb = definition.Verb;
         Surface = exposure.Surface;
         Agent = exposure.Agent;
-        OnByDefault = exposure.OnByDefault;
         AgentTool = exposure.AgentTool;
         InBatch = exposure.InBatch && exposure.AgentTool;
         ToolName = exposure.ToolName ?? ToolNameFor(Verb);
@@ -35,9 +34,6 @@ public sealed class ComposerDescriptor
 
     /// <summary>What an AI agent may do with the composer.</summary>
     public AgentClass Agent { get; }
-
-    /// <summary>Whether the composer's AI tool is registered without the user naming it.</summary>
-    public bool OnByDefault { get; }
 
     /// <summary>Whether AI agents are offered the composer; false keeps it CLI-first.</summary>
     public bool AgentTool { get; }

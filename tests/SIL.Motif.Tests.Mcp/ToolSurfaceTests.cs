@@ -59,7 +59,6 @@ public sealed class ToolSurfaceTests
         foreach (var composer in SIL.Motif.Commands.ProposalCommands.ComposerDescriptors.Where(c => c.IsAgentTool))
         {
             var tool = Assert.Single(AgentTools.All, candidate => candidate.Name == composer.ToolName);
-            Assert.Equal(composer.OnByDefault, tool.OnByDefault);
             Assert.Equal(["draft", .. composer.FieldNames, "project"], tool.ArgumentNames);
             Assert.False(tool.InputSchema["additionalProperties"]!.GetValue<bool>());
             var batch = AgentTools.All.Single(candidate => candidate.Name == "motif_compose_batch").InputSchema.ToJsonString();

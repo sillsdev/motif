@@ -25,7 +25,7 @@ internal sealed class EditStemInflectionClassDefinition : ComposerDefinition<Edi
 
     /// <inheritdoc />
     public override ComposerExposure Exposure { get; } =
-        new(CommandSurface.AdvancedAi, AgentClass.Draft, OnByDefault: false, AgentTool: false);
+        new(CommandSurface.AdvancedAi, AgentClass.Draft, AgentTool: false);
 
     /// <inheritdoc />
     public override EditStemInflectionClassIntent Parse(JsonElement authored) => EditStemInflectionClassIntentParser.Parse(authored);

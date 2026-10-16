@@ -25,7 +25,7 @@ internal sealed class EditAffixInflectionClassesDefinition : ComposerDefinition<
 
     /// <inheritdoc />
     public override ComposerExposure Exposure { get; } =
-        new(CommandSurface.AdvancedAi, AgentClass.Draft, OnByDefault: false, AgentTool: false);
+        new(CommandSurface.AdvancedAi, AgentClass.Draft, AgentTool: false);
 
     /// <inheritdoc />
     public override EditAffixInflectionClassesIntent Parse(JsonElement authored) => EditAffixInflectionClassesIntentParser.Parse(authored);

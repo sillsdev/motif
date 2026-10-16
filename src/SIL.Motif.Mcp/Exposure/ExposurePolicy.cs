@@ -1,5 +1,6 @@
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Commands.Preferences;
+using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.Mcp.Exposure;
 
@@ -16,13 +17,17 @@ internal sealed class ExposurePolicy
         Settings = settings;
         _tools = tools;
         var table = new Dictionary<string, CommandExposure>(StringComparer.Ordinal);
+        var ranks = new Dictionary<string, int>(StringComparer.Ordinal);
         foreach (var exposed in tools)
             foreach (var route in exposed.Tool.Routes)
             {
                 var candidate = new CommandExposure.Tool(exposed.Name, route.Selector, [.. exposed.Tool.ArgumentNames]);
-                // A tool that is the command beats a tool that reaches it by a selecting argument.
-                if (!table.TryGetValue(route.Command, out var held) || Rank(candidate) < Rank((CommandExposure.Tool)held))
+                // The route's own rank decides: a tool that is the command beats one reached by a selecting argument.
+                if (!ranks.TryGetValue(route.Command, out var held) || route.Rank < held)
+                {
                     table[route.Command] = candidate;
+                    ranks[route.Command] = route.Rank;
+                }
             }
         RouteTable = table;
     }
@@ -62,22 +67,25 @@ internal sealed class ExposurePolicy
             : new CommandExposure.Unavailable(CommandAvailabilityFacts.For(descriptor));
     }
 
+    /// <summary>The refusal every tool call gets while Advanced AI mode is off, or <see langword="null"/> when it is on.</summary>
+    public static ToolOutcome? CallGate(bool advancedAiModeEnabled) => advancedAiModeEnabled
+        ? null
+        : ToolOutcome.Refused("advanced-ai.disabled", FailureReason.Refused, FileAdvancedAiModePreferenceStore.DisabledMessage);
+
     /// <summary>Whether an agent may ever be offered a command or composer of this surface and class.</summary>
     public static bool IsAgentEligible(CommandSurface surface, AgentClass agent) =>
         CommandSurfacePolicy.IsAgentEligible(surface, agent);
 
-    private static int Rank(CommandExposure.Tool tool) => tool.Selector is null ? 0 : 1;
-
     private static List<ExposedTool> Select(ToolProfile profile, IReadOnlyList<AgentTool> tools)
     {
         var known = tools.ToDictionary(tool => tool.Name, StringComparer.Ordinal);
-        foreach (var selection in profile.Tools ?? [])
+        foreach (var selection in profile.Tools)
             if (!known.ContainsKey(selection.Tool))
                 throw new ProfileException($"Profile '{profile.Name}' names tool '{selection.Tool}', which does not exist. " +
                     $"Tools are: {string.Join(", ", known.Keys.Order(StringComparer.Ordinal))}.");
         var exposed = new List<ExposedTool>();
         foreach (var tool in tools)
-            if (profile.SelectionFor(tool.Name, tool.OnByDefault) is { } selection)
+            if (profile.SelectionFor(tool.Name) is { } selection)
                 exposed.Add(new ExposedTool(tool, selection.As ?? tool.Name, selection.Description ?? tool.Description,
                     selection.Detail ?? profile.DefaultDetail));
         var duplicate = exposed.GroupBy(tool => tool.Name, StringComparer.Ordinal).FirstOrDefault(group => group.Count() > 1);

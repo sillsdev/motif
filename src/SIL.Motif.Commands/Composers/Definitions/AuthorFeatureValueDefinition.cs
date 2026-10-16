@@ -25,7 +25,7 @@ internal sealed class AuthorFeatureValueDefinition : ComposerDefinition<AuthorFe
 
     /// <inheritdoc />
     public override ComposerExposure Exposure { get; } =
-        new(CommandSurface.AdvancedAi, AgentClass.Draft, OnByDefault: true, ToolName: "motif_add_feature_value");
+        new(CommandSurface.AdvancedAi, AgentClass.Draft, ToolName: "motif_add_feature_value");
 
     /// <inheritdoc />
     public override AuthorFeatureValueIntent Parse(JsonElement authored) => AuthorFeatureValueIntentParser.Parse(authored);

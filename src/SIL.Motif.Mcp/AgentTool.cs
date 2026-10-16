@@ -157,7 +157,6 @@ internal sealed class ToolArgumentException(string code, string message,
 /// <param name="InputSchema">JSON Schema for the arguments, including the Known project selector.</param>
 /// <param name="ReadOnly">The MCP <c>readOnlyHint</c>: the call changes nothing in Motif's store or the project.</param>
 /// <param name="Idempotent">The MCP <c>idempotentHint</c>: repeating the call with the same arguments adds nothing.</param>
-/// <param name="OnByDefault">Whether the built-in profile exposes the tool.</param>
 /// <param name="HasDetail">Whether the tool honours <c>detail</c> and <c>limit</c>.</param>
 /// <param name="Serialized">Whether the call opens the project and must take its turn.</param>
 /// <param name="Run">Runs the call; it returns refusals rather than throwing for anything the command declines.</param>
@@ -168,14 +167,19 @@ internal sealed record AgentTool(
     JsonObject InputSchema,
     bool ReadOnly,
     bool Idempotent,
-    bool OnByDefault,
     bool HasDetail,
     bool Serialized,
     Func<ServerContext, ToolArgs, CancellationToken, Task<ToolOutcome>> Run)
 {
     public IReadOnlyList<Type> Requests { get; init; } = [];
 
-    /// <summary>The catalogued commands this tool carries out, by command name; empty for a tool with no command.</summary>
+    /// <summary>The composer verb a typed composer tool is, or <see langword="null"/> for any other tool.</summary>
+    public string? ComposerVerb { get; init; }
+
+    /// <summary>The argument path whose value picks a composer verb in a tool serving several, such as a batch.</summary>
+    public string? VerbSelector { get; init; }
+
+    /// <summary>The catalogued commands this tool carries out, by command name; derived once by the route table.</summary>
     public IReadOnlyList<Exposure.ToolRoute> Routes { get; init; } = [];
 
     public bool NeedsProject { get; init; } = true;

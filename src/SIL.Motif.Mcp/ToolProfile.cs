@@ -12,13 +12,15 @@ namespace SIL.Motif.Mcp;
 /// <param name="Description">What this profile is for, for the person choosing between profiles.</param>
 /// <param name="Instructions">Server instructions sent to the model at connection, or none.</param>
 /// <param name="DefaultDetail">Either <c>concise</c> or <c>detailed</c>; a tool's own selection overrides it.</param>
-/// <param name="Tools">The tools to expose; <see langword="null"/> exposes every tool that is on by default.</param>
+/// <param name="Tools">The tools to expose, in the order given; ignored when <paramref name="AllTools"/> is set.</param>
+/// <param name="AllTools">Whether every tool the server can offer is exposed, under its own name and text.</param>
 public sealed record ToolProfile(
     string Name,
     string? Description,
     string? Instructions,
     string DefaultDetail,
-    IReadOnlyList<ToolSelection>? Tools)
+    IReadOnlyList<ToolSelection> Tools,
+    bool AllTools = false)
 {
     private static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web)
     {
@@ -27,8 +29,8 @@ public sealed record ToolProfile(
         UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
     };
 
-    /// <summary>The profile of a server started with no <c>--profile</c>: every default tool, built-in text.</summary>
-    public static ToolProfile Builtin { get; } = new("builtin", null, DefaultInstructions.Text, "concise", null);
+    /// <summary>The profile of a server started with no <c>--profile</c>: the embedded default tool list, built-in text.</summary>
+    public static ToolProfile Builtin { get; } = LoadEmbeddedDefault();
 
     /// <summary>Loads a profile from a path, or from the shipped <c>profiles</c> folder when given a bare name.</summary>
     public static ToolProfile Load(string pathOrName)
@@ -38,16 +40,7 @@ public sealed record ToolProfile(
             throw new ProfileException($"Profile '{pathOrName}' was not found as a file or as a shipped profile.");
         try
         {
-            var raw = JsonSerializer.Deserialize<RawProfile>(File.ReadAllText(path), Options)
-                ?? throw new ProfileException($"Profile '{path}' is empty.");
-            var detail = raw.DefaultDetail ?? "concise";
-            if (detail is not ("concise" or "detailed"))
-                throw new ProfileException($"Profile '{path}': defaultDetail must be 'concise' or 'detailed'.");
-            return new ToolProfile(raw.Name ?? Path.GetFileNameWithoutExtension(path), raw.Description,
-                raw.InstructionsFile is { } file
-                    ? File.ReadAllText(Path.Combine(Path.GetDirectoryName(Path.GetFullPath(path))!, file))
-                    : raw.Instructions ?? (raw.NoInstructions ? null : DefaultInstructions.Text),
-                detail, raw.Tools);
+            return Parse(File.ReadAllText(path), path, Path.GetDirectoryName(Path.GetFullPath(path))!);
         }
         catch (JsonException exception)
         {
@@ -56,17 +49,42 @@ public sealed record ToolProfile(
     }
 
     /// <summary>The profile's selection for a tool, or <see langword="null"/> when the profile hides it.</summary>
-    internal ToolSelection? SelectionFor(string tool, bool onByDefault)
+    internal ToolSelection? SelectionFor(string tool) =>
+        AllTools ? new ToolSelection(tool, null, null, null) : Tools.FirstOrDefault(selection => selection.Tool == tool);
+
+    private static ToolProfile Parse(string json, string source, string folder)
     {
-        if (Tools is null) return onByDefault ? new ToolSelection(tool, null, null, null) : null;
-        return Tools.FirstOrDefault(selection => selection.Tool == tool);
+        var raw = JsonSerializer.Deserialize<RawProfile>(json, Options)
+            ?? throw new ProfileException($"Profile '{source}' is empty.");
+        var detail = raw.DefaultDetail ?? "concise";
+        if (detail is not ("concise" or "detailed"))
+            throw new ProfileException($"Profile '{source}': defaultDetail must be 'concise' or 'detailed'.");
+        if (raw.Tools is null && !raw.AllTools)
+            throw new ProfileException($"Profile '{source}' lists no tools; list them under \"tools\" or set \"allTools\": true.");
+        return new ToolProfile(raw.Name ?? Path.GetFileNameWithoutExtension(source), raw.Description,
+            raw.InstructionsFile is { } file
+                ? File.ReadAllText(Path.Combine(folder, file))
+                : raw.Instructions ?? (raw.NoInstructions ? null : DefaultInstructions.Text),
+            detail, raw.Tools ?? [], raw.AllTools);
     }
+
+    // The default ships inside the assembly, so a packaged build cannot lose it.
+    private static ToolProfile LoadEmbeddedDefault()
+    {
+        using var stream = typeof(ToolProfile).Assembly.GetManifestResourceStream(EmbeddedDefault)
+            ?? throw new InvalidOperationException($"The default profile '{EmbeddedDefault}' is not embedded in the MCP server.");
+        using var reader = new StreamReader(stream);
+        return Parse(reader.ReadToEnd(), EmbeddedDefault, AppContext.BaseDirectory) with { Name = "builtin" };
+    }
+
+    internal const string EmbeddedDefault = "motif-profiles/default.json";
 
     private static string ShippedPath(string name) =>
         Path.Combine(AppContext.BaseDirectory, "profiles", name.EndsWith(".json", StringComparison.Ordinal) ? name : name + ".json");
 
     private sealed record RawProfile(string? Name, string? Description, string? Instructions,
-        string? InstructionsFile, bool NoInstructions, string? DefaultDetail, List<ToolSelection>? Tools);
+        string? InstructionsFile, bool NoInstructions, string? DefaultDetail, List<ToolSelection>? Tools,
+        bool AllTools);
 }
 
 /// <summary>One tool a profile exposes, with the profile's changes to how the model sees it.</summary>
@@ -74,7 +92,8 @@ public sealed record ToolProfile(
 /// <param name="As">The name the model sees instead, or <see langword="null"/> to keep <paramref name="Tool"/>.</param>
 /// <param name="Description">Replacement description text, or <see langword="null"/> to keep the built-in one.</param>
 /// <param name="Detail">This tool's default detail level, or <see langword="null"/> for the profile's.</param>
-public sealed record ToolSelection(string Tool, string? As, string? Description, string? Detail);
+/// <param name="AlwaysLoad">Whether the client should load the tool up front rather than on demand; unset keeps its default.</param>
+public sealed record ToolSelection(string Tool, string? As, string? Description, string? Detail, bool? AlwaysLoad = null);
 
 /// <summary>A profile that cannot be used; the message says what to change.</summary>
 public sealed class ProfileException(string message) : Exception(message);

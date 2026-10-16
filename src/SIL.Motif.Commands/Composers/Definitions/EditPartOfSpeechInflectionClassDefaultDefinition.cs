@@ -25,7 +25,7 @@ internal sealed class EditPartOfSpeechInflectionClassDefaultDefinition : Compose
 
     /// <inheritdoc />
     public override ComposerExposure Exposure { get; } =
-        new(CommandSurface.AdvancedAi, AgentClass.Draft, OnByDefault: false, AgentTool: false);
+        new(CommandSurface.AdvancedAi, AgentClass.Draft, AgentTool: false);
 
     /// <inheritdoc />
     public override EditPartOfSpeechInflectionClassDefaultIntent Parse(JsonElement authored) => EditPartOfSpeechInflectionClassDefaultIntentParser.Parse(authored);

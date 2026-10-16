@@ -49,7 +49,7 @@ public sealed class CatalogExecutionTests
             TextWriter.Null, advancedAiModeEnabled: true);
         var agent = new AgentTool("motif_throwing_catalog_handler", "", AgentClass.Read,
             new JsonObject { ["type"] = "object", ["properties"] = new JsonObject() }, true, true,
-            true, false, false, (_, _, _) => Task.FromException<ToolOutcome>(
+            false, false, (_, _, _) => Task.FromException<ToolOutcome>(
                 new ArgumentException("The handler rejected this value."))) { NeedsProject = false };
         var exposed = new ExposedTool(agent, agent.Name, agent.Description, "detailed");
 
