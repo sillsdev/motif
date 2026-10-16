@@ -175,6 +175,16 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
+Write-Step 'Help golden'
+Import-Module (Join-Path $repoRoot 'tools/MotifHelpGolden.psm1') -Force
+$helpDiffers = Compare-MotifHelpGolden -RepoRoot $repoRoot -Configuration $Configuration
+if ($helpDiffers) {
+    Write-Host ''
+    Write-Host "Help golden is stale; entries that differ: $($helpDiffers -join ', ')" -ForegroundColor Red
+    Write-Host "Regenerate with: pwsh ./tools/Update-HelpGolden.ps1 -Configuration $Configuration" -ForegroundColor Red
+    exit 1
+}
+
 Write-Host ''
 Write-Host 'Build OK: comments clean, solution compiles.' -ForegroundColor Green
 exit 0

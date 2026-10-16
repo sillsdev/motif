@@ -279,6 +279,9 @@ a Title of at most 30 characters and a one-to-three-sentence Description in `src
 Help page at `src/SIL.Motif.Help/Content/en/commands/<slug>.md`. `HelpCatalogTests.EnglishCatalogCoversEveryReleasedCommandAndRequiredTerms`
 fails the suite when a Released command lacks any of them, so adding or promoting a command means writing them.
 Glossary terms live the same way in `terms.json` and `terms/`; the Guide lives in `src/SIL.Motif.Help/Content/en/guide/`.
+`./build.ps1` ends by running the built CLI's `help --all --json` in off mode and comparing it with
+`tests/SIL.Motif.Tests.Cli/Golden/help-all-current.json`, so a Help edit that leaves the golden stale fails the build in
+seconds; after an intended edit, run `pwsh ./tools/Update-HelpGolden.ps1 -Configuration <Configuration>` and commit the diff.
 
 Help pages and Guide pages are plain CommonMark read by three readers — `motif help`, the window and the site —
 so they carry no front matter, MDX or HTML. Cross-links name codes, not URLs: `[text](cmd:assess)`,
