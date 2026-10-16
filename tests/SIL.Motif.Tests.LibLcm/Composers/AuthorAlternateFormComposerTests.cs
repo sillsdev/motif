@@ -91,11 +91,11 @@ public sealed class AuthorAlternateFormComposerTests : IDisposable
         var existing = Id(Assert.Single(Get<ILexEntry>(_cache, entry).AlternateFormsOS));
 
         var operations = AuthorAlternateFormComposer.Build(_cache,
-            Prefix(entry, "mw", [environment], [class12], new Placement(existing, null)));
+            Prefix(entry, "mw", [environment], [class12], new Placement(null, existing)));
 
         var create = Assert.Single(operations, operation =>
             operation.Kind == LexEntryAlternateFormsCreateOperationKinds.CreateAlternateForms);
-        Assert.Equal(new Placement(existing, null), create.Placement);
+        Assert.Equal(new Placement(null, existing), create.Placement);
         Assert.Equal(3, operations.Count);
         foreach (var link in operations.Where(operation => operation != create))
         {
@@ -120,6 +120,66 @@ public sealed class AuthorAlternateFormComposerTests : IDisposable
         var refusal = Assert.Throws<InvalidOperationException>(() =>
             AuthorAlternateFormComposer.Build(_cache, stem with { Environments = null, InflectionClasses = [class12] }));
         Assert.Contains("only an affix form takes 'inflectionClasses'", refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AnEnvironmentNamingAnUnknownNaturalClassIsRefusedAndOneNamingAnAbbreviationIsAccepted()
+    {
+        var (entry, _, _) = AddInflectionalPrefix(_cache, "m", _category);
+        var byName = EnvironmentWithPattern("/ [Vowels] _");
+        var byAbbreviation = EnvironmentWithPattern("/ [V] _");
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            var vowels = _cache.ServiceLocator.GetInstance<IPhNCSegmentsFactory>().Create();
+            _cache.LangProject.PhonologicalDataOA.NaturalClassesOS.Add(vowels);
+            vowels.Abbreviation.set_String(_cache.DefaultAnalWs, "V");
+            vowels.Name.set_String(_cache.DefaultAnalWs, "Vowels");
+        });
+
+        var refusal = Assert.Throws<InvalidOperationException>(() =>
+            AuthorAlternateFormComposer.Build(_cache, Prefix(entry, "mw", [byName])));
+        Assert.Contains("natural class 'Vowels'", refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("abbreviation", refusal.Message, StringComparison.Ordinal);
+        Assert.NotEmpty(AuthorAlternateFormComposer.Build(_cache, Prefix(entry, "mw", [byAbbreviation])));
+    }
+
+    [Fact]
+    public void AnOrderThatLetsAnUnrestrictedFormShadowARestrictedOneIsRefusedWithTheNextStep()
+    {
+        var environment = AddEnvironment(_cache, "after vowel");
+        var (entry, _, _) = AddInflectionalPrefix(_cache, "m", _category);
+        ApplyOps(_cache, AuthorAlternateFormComposer.Build(_cache, Prefix(entry, "mu")));
+        var plain = Id(Assert.Single(Get<ILexEntry>(_cache, entry).AlternateFormsOS));
+        var digest = BaselineSemanticDigest.Compute(_cache);
+
+        var behind = Assert.Throws<InvalidOperationException>(() => AuthorAlternateFormComposer.Build(_cache,
+            Prefix(entry, "mw", [environment], placement: new Placement(plain, null))));
+        Assert.Contains("never be selected", behind.Message, StringComparison.Ordinal);
+        Assert.Contains("Place it before 'mu'", behind.Message, StringComparison.Ordinal);
+        Assert.NotEmpty(AuthorAlternateFormComposer.Build(_cache,
+            Prefix(entry, "mw", [environment], placement: new Placement(null, plain))));
+
+        ApplyOps(_cache, AuthorAlternateFormComposer.Build(_cache,
+            Prefix(entry, "mw", [environment], placement: new Placement(null, plain))));
+        var restricted = Id(Get<ILexEntry>(_cache, entry).AlternateFormsOS[0]);
+        var ahead = Assert.Throws<InvalidOperationException>(() => AuthorAlternateFormComposer.Build(_cache,
+            Prefix(entry, "mx", placement: new Placement(null, restricted))));
+        Assert.Contains("stop it from ever being selected", ahead.Message, StringComparison.Ordinal);
+        Assert.NotEmpty(AuthorAlternateFormComposer.Build(_cache,
+            Prefix(entry, "mx", placement: new Placement(plain, null))));
+        Assert.NotEqual(digest, BaselineSemanticDigest.Compute(_cache));
+    }
+
+    private CanonicalId EnvironmentWithPattern(string pattern)
+    {
+        IPhEnvironment environment = null!;
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            environment = _cache.ServiceLocator.GetInstance<IPhEnvironmentFactory>().Create();
+            _cache.LangProject.PhonologicalDataOA.EnvironmentsOS.Add(environment);
+            environment.StringRepresentation = SIL.LCModel.Core.Text.TsStringUtils.MakeString(pattern, _cache.DefaultVernWs);
+        });
+        return CanonicalId.FromGuid(environment.Guid);
     }
 
     [Fact]

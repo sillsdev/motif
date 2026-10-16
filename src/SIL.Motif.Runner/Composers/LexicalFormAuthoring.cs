@@ -83,8 +83,30 @@ internal static class LexicalFormAuthoring
     {
         RequireDistinct(environments, "environments", construct);
         foreach (var environment in environments)
-            Resolve<IPhEnvironment>(cache, environment, construct);
+            RequireKnownNaturalClasses(Resolve<IPhEnvironment>(cache, environment, construct), construct);
         return Sorted(environments);
+    }
+
+    /// <summary>
+    /// Refuses an environment whose pattern names a natural class by anything but an existing abbreviation, so a
+    /// form is never linked to an environment that does not restrict it; pinned by
+    /// `AnEnvironmentNamingAnUnknownNaturalClassIsRefusedAndOneNamingAnAbbreviationIsAccepted`.
+    /// </summary>
+    public static void RequireKnownNaturalClasses(IPhEnvironment environment, string construct)
+    {
+        var abbreviations = environment.Cache.LangProject.PhonologicalDataOA.NaturalClassesOS
+            .Select(item => item.Abbreviation.BestAnalysisAlternative.Text)
+            .Where(text => !string.IsNullOrEmpty(text)).ToHashSet(StringComparer.Ordinal);
+        var pattern = environment.StringRepresentation?.Text ?? "";
+        foreach (System.Text.RegularExpressions.Match token in System.Text.RegularExpressions.Regex.Matches(pattern, @"\[([^\]]*)\]"))
+        {
+            var name = token.Groups[1].Value;
+            if (!abbreviations.Contains(name))
+                throw new InvalidOperationException(
+                    $"'{construct}': environment '{environment.Guid}' names natural class '{name}', which is not the " +
+                    "abbreviation of any natural class, so the parser would ignore the environment and leave the form " +
+                    "unrestricted; use the class abbreviation in the environment.");
+        }
     }
 
     /// <summary>

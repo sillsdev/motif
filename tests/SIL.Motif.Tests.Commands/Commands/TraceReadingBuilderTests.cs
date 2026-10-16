@@ -151,6 +151,18 @@ public sealed class TraceReadingBuilderTests
     }
 
     [Fact]
+    public void ARecordedDisjunctiveAllomorphRefusalReachesTheNoParseReasons()
+    {
+        var tree = """
+            {"type":"WordAnalysis","children":[
+              {"type":"MorphologicalRuleSynthesis","source":"-i","failureReason":"DisjunctiveAllomorph","children":[]}]}
+            """;
+        var reading = TraceReadingBuilder.Build(PanGlossTraceDiagnosticReader.Read(TraceEnvelope.Of("ajari", tree)));
+
+        Assert.Contains(TraceFailureSentences.Explain("DisjunctiveAllomorph", "-i"), reading.NoParseReasons);
+    }
+
+    [Fact]
     public void AlternateGuidSpellingsShareOneRuleRef()
     {
         var reading = AlternateGuidReading();

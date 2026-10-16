@@ -112,6 +112,7 @@ public static class AuthorAlternateFormComposer
         }
 
         RequirePlacement(entry, intent.Placement);
+        RequireOrderThatCanBeSelected(entry, intent.Placement, environments.Count > 0);
 
         var source = mintId ?? (() => CanonicalId.Mint());
         CanonicalId Mint() => LexicalFormAuthoring.Normalize(source());
@@ -148,6 +149,41 @@ public static class AuthorAlternateFormComposer
             throw new InvalidOperationException(
                 $"'{ConstructName}': placement neighbours are missing or not adjacent in the current order.");
     }
+
+    // An unrestricted form ahead of a restricted one always wins, and the lexeme form comes last.
+    private static void RequireOrderThatCanBeSelected(ILexEntry entry, Placement? placement, bool restricted)
+    {
+        var forms = entry.AlternateFormsOS.ToList();
+        var gap = placement is null ? 0
+            : placement.After is { } after ? forms.FindIndex(form => form.Guid == after.ToGuid()) + 1
+            : forms.FindIndex(form => form.Guid == placement.Before!.Value.ToGuid());
+        var ahead = forms.Take(gap).ToList();
+        var behind = forms.Skip(gap).ToList();
+        if (entry.LexemeFormOA is { } lexeme) behind.Add(lexeme);
+        if (restricted)
+        {
+            if (ahead.FirstOrDefault(form => !HasEnvironments(form)) is { } blocker)
+                throw new InvalidOperationException(
+                    $"'{ConstructName}': a restricted form placed after the unrestricted form '{FormText(blocker)}' would " +
+                    "never be selected, because an unrestricted form earlier in the order always wins. Place it " +
+                    $"before '{FormText(blocker)}'.");
+        }
+        else if (behind.FirstOrDefault(HasEnvironments) is { } shadowed)
+        {
+            throw new InvalidOperationException(
+                $"'{ConstructName}': an unrestricted form placed before the restricted form '{FormText(shadowed)}' " +
+                $"would stop it from ever being selected. Place it after '{FormText(shadowed)}', or give it environments.");
+        }
+    }
+
+    private static bool HasEnvironments(IMoForm form) => form switch
+    {
+        IMoAffixAllomorph affix => affix.PhoneEnvRC.Count > 0,
+        IMoStemAllomorph stem => stem.PhoneEnvRC.Count > 0,
+        _ => false,
+    };
+
+    private static string FormText(IMoForm form) => form.Form.BestVernacularAlternative.Text ?? "?";
 
     private static IReadOnlyList<IPartOfSpeech> AffixCategories(ILexEntry entry)
     {

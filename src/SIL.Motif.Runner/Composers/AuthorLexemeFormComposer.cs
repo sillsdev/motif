@@ -68,7 +68,8 @@ public static class AuthorLexemeFormComposer
             if (environments.Distinct().Count() != environments.Count)
                 throw new InvalidOperationException("Lexeme form environments must be distinct.");
             foreach (var environment in environments)
-                ReferenceFieldLowering.Resolve<IPhEnvironment>(cache, environment, ConstructName);
+                LexicalFormAuthoring.RequireKnownNaturalClasses(
+                    ReferenceFieldLowering.Resolve<IPhEnvironment>(cache, environment, ConstructName), ConstructName);
         }
 
         var mint = mintId ?? (() => CanonicalId.Mint());

@@ -109,7 +109,8 @@ public static class EditAllomorphConditionComposer
             .Select(item => CanonicalId.FromGuid(item.Guid)).ToHashSet(CanonicalId.ByGuid);
         foreach (var id in ids)
         {
-            _ = ReferenceFieldLowering.Resolve<IPhEnvironment>(cache, id, ConstructName);
+            LexicalFormAuthoring.RequireKnownNaturalClasses(
+                ReferenceFieldLowering.Resolve<IPhEnvironment>(cache, id, ConstructName), ConstructName);
             if (!environments.Contains(id))
                 throw new InvalidOperationException(
                     $"'{ConstructName}': environment '{id.Value}' is not owned by this project's phonological data.");
