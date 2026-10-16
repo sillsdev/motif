@@ -530,6 +530,65 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         Assert.Equal("fix", only.GetProperty("disposition").GetString());
     }
 
+    [Fact]
+    public async Task ACompositionStepReplacesADispositionTheFindingToolStagedInTheSameDraft()
+    {
+        using var project = new WalkthroughProject(pristine);
+        SeedSavedDispositions(project);
+        var duplicateRules = CreateDuplicateAllomorphProhibitions(project);
+        Assert.True(BaselineCaptureCommand.Capture(
+            new BaselineCaptureRequest(project.FwDataPath), project.ManagedRoot).Succeeded);
+        var parserPath = FakeParser.CopyRecordingInvocations(Path.Combine(project.ManagedRoot, "mixed-disposition-parser"));
+        var primary = project.Seed.FirstLexemeFormId.ToString("D").ToLowerInvariant();
+        var other = project.Seed.SecondLexemeFormId.ToString("D").ToLowerInvariant();
+        FakeParser.WriteFactsFixture(parserPath, new
+        {
+            prohibitions = new[]
+            {
+                Prohibition(duplicateRules[0].ToGuid().ToString("D").ToLowerInvariant(), primary, other),
+                Prohibition(duplicateRules[1].ToGuid().ToString("D").ToLowerInvariant(), primary, other),
+            },
+        });
+        await using var runner = new InProcessRunnerLauncher(
+            new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), parserPath));
+        const string draft = "mixed-disposition";
+        JsonElement staged;
+        await using (var experimental = await Session.StartAsync(project.FwDataPath,
+                         new McpLaunchOptions(Profile: "parsimony-experimental", Runner: runner)))
+        {
+            var started = await experimental.CallAsync("motif_start_proposal", ("draft", draft),
+                ("label", "Record one finding twice"), ("comment", "The step replaces the tool's record."));
+            var measure = await experimental.CallAsync("motif_run_parsimony_measure", ("measure_id", "P-adhoc-duplicate"),
+                ("evidence_scope", "project-approved"), ("wait_seconds", 120));
+            Assert.True(measure.GetProperty("ok").GetBoolean(), measure.ToString());
+            var report = measure.GetProperty("result");
+            var finding = Assert.Single(report.GetProperty("findings").EnumerateArray());
+            var recordTypes = await experimental.CallAsync("motif_parsimony_record_types");
+            var recordTypeId = Assert.Single(recordTypes.GetProperty("result").GetProperty("recordTypes")
+                .EnumerateArray()).GetProperty("id").GetString()!;
+            await experimental.CallAsync("motif_dispose_parsimony_finding",
+                ("report_id", report.GetProperty("reportId").GetString()),
+                ("finding_id", finding.GetProperty("findingId").GetString()),
+                ("disposition", "defer"), ("record_type_id", recordTypeId), ("draft", draft),
+                ("reason", "Confirm the observed prohibition identities first."));
+            staged = Assert.Single(AssertDraftComposers(project.FwDataPath, draft,
+                started.GetProperty("result").GetProperty("proposalId").GetString()!, ["RecordParsimonyDisposition"]));
+        }
+
+        var revised = JsonNode.Parse(staged.GetRawText())!.AsObject();
+        revised["disposition"] = "fix";
+        revised["reason"] = "The duplicate is a real error.";
+        await using var session = await Session.StartAsync(project.FwDataPath,
+            new McpLaunchOptions(Profile: ComposeProfile(project.ManagedRoot)));
+
+        var replaced = await ComposeSteps(session, draft,
+            new { verb = "compose-record-parsimony-disposition", intent = JsonNode.Parse(revised.ToJsonString()) });
+
+        Assert.True(replaced.IsError != true, ((TextContentBlock)replaced.Content[0]).Text);
+        var only = Assert.Single(AssertDraftComposersOf(project.FwDataPath, draft));
+        Assert.Equal("fix", only.GetProperty("disposition").GetString());
+    }
+
     private static JsonElement[] AssertDraftComposersOf(string projectPath, string draftName)
     {
         var state = ReadDraftState(projectPath, draftName);
