@@ -41,7 +41,10 @@
   Run only System tests, without selecting the full suite.
 
   .PARAMETER Project
-  Run only the named test project, and build only it (build.ps1 -Project) rather than Motif.sln.
+  Run only the named test project, and build only it (build.ps1 -Project) rather than Motif.sln. A -Project
+  run also skips the tooling regression scripts (offline restore, tool environment, resource sizing, test
+  artifact plan, process hygiene, release version, publication policy, capture screens); a run without
+  -Project is the full run that CI and landing batches use, and runs them.
 
   .PARAMETER Filter
   Run only matching tests in the selected project, using the VSTest filter syntax.
@@ -150,86 +153,89 @@ if ($buildExitCode -ne 0) {
     exit 1
 }
 
-$phaseClocks['offline restore'] = [Diagnostics.Stopwatch]::StartNew()
-Write-Step 'offline restore regression'
-& pwsh -NoProfile -File (Join-Path $repoRoot 'tools/OfflineRestore.Tests.ps1')
-Write-PhaseDuration 'offline restore'
-if ($LASTEXITCODE -ne 0) {
-    Write-PhaseDuration 'whole gate'
-    exit 1
-}
-
-$phaseClocks['tool environment regression'] = [Diagnostics.Stopwatch]::StartNew()
-Write-Step 'tool environment regression'
-& pwsh -NoProfile -File (Join-Path $repoRoot 'tools/MotifToolEnvironment.Tests.ps1')
-Write-PhaseDuration 'tool environment regression'
-if ($LASTEXITCODE -ne 0) {
-    Write-PhaseDuration 'whole gate'
-    exit 1
-}
-
-$phaseClocks['resource sizing regression'] = [Diagnostics.Stopwatch]::StartNew()
-Write-Step 'node, slot and thread sizing regression'
-& pwsh -NoProfile -File (Join-Path $repoRoot 'tools/MotifTestResources.Tests.ps1')
-Write-PhaseDuration 'resource sizing regression'
-if ($LASTEXITCODE -ne 0) {
-    Write-PhaseDuration 'whole gate'
-    exit 1
-}
-
-$phaseClocks['artifact plan regression'] = [Diagnostics.Stopwatch]::StartNew()
-Write-Step 'test artifact plan regression'
-& pwsh -NoProfile -File (Join-Path $repoRoot 'tools/Test-MotifTestRunPlan.Tests.ps1')
-Write-PhaseDuration 'artifact plan regression'
-if ($LASTEXITCODE -ne 0) {
-    Write-PhaseDuration 'whole gate'
-    exit 1
-}
-
-$phaseClocks['process hygiene regression'] = [Diagnostics.Stopwatch]::StartNew()
-Write-Step 'worktree process hygiene regression'
-& pwsh -NoProfile -File (Join-Path $repoRoot 'tools/Test-MotifProcessHygiene.Tests.ps1')
-Write-PhaseDuration 'process hygiene regression'
-if ($LASTEXITCODE -ne 0) {
-    Write-PhaseDuration 'whole gate'
-    exit 1
-}
-
-$phaseClocks['release version regression'] = [Diagnostics.Stopwatch]::StartNew()
-Write-Step 'release version regression'
-& pwsh -NoProfile -File (Join-Path $repoRoot 'tools/MotifReleaseVersion.Tests.ps1')
-Write-PhaseDuration 'release version regression'
-if ($LASTEXITCODE -ne 0) {
-    Write-PhaseDuration 'whole gate'
-    exit 1
-}
-
-$phaseClocks['publication policy regression'] = [Diagnostics.Stopwatch]::StartNew()
-Write-Step 'publication policy regression'
-& pwsh -NoProfile -File (Join-Path $repoRoot 'tools/MotifReleasePublication.Tests.ps1')
-Write-PhaseDuration 'publication policy regression'
-if ($LASTEXITCODE -ne 0) {
-    Write-PhaseDuration 'whole gate'
-    exit 1
-}
-
-$phaseClocks['help golden regression'] = [Diagnostics.Stopwatch]::StartNew()
-Write-Step 'help golden gate regression'
-& pwsh -NoProfile -File (Join-Path $repoRoot 'tools/MotifHelpGolden.Tests.ps1')
-Write-PhaseDuration 'help golden regression'
-if ($LASTEXITCODE -ne 0) {
-    Write-PhaseDuration 'whole gate'
-    exit 1
-}
-
-if ($All) {
-    $phaseClocks['capture screen regression'] = [Diagnostics.Stopwatch]::StartNew()
-    Write-Step 'capture screenshot tooling regression'
-    & pwsh -NoProfile -File (Join-Path $repoRoot 'tools/Capture-Screens.Tests.ps1')
-    Write-PhaseDuration 'capture screen regression'
+# A -Project run is an iteration; the tooling regressions run in a full run, which CI and landing use.
+if (-not $Project) {
+    $phaseClocks['offline restore'] = [Diagnostics.Stopwatch]::StartNew()
+    Write-Step 'offline restore regression'
+    & pwsh -NoProfile -File (Join-Path $repoRoot 'tools/OfflineRestore.Tests.ps1')
+    Write-PhaseDuration 'offline restore'
     if ($LASTEXITCODE -ne 0) {
         Write-PhaseDuration 'whole gate'
         exit 1
+    }
+
+    $phaseClocks['tool environment regression'] = [Diagnostics.Stopwatch]::StartNew()
+    Write-Step 'tool environment regression'
+    & pwsh -NoProfile -File (Join-Path $repoRoot 'tools/MotifToolEnvironment.Tests.ps1')
+    Write-PhaseDuration 'tool environment regression'
+    if ($LASTEXITCODE -ne 0) {
+        Write-PhaseDuration 'whole gate'
+        exit 1
+    }
+
+    $phaseClocks['resource sizing regression'] = [Diagnostics.Stopwatch]::StartNew()
+    Write-Step 'node, slot and thread sizing regression'
+    & pwsh -NoProfile -File (Join-Path $repoRoot 'tools/MotifTestResources.Tests.ps1')
+    Write-PhaseDuration 'resource sizing regression'
+    if ($LASTEXITCODE -ne 0) {
+        Write-PhaseDuration 'whole gate'
+        exit 1
+    }
+
+    $phaseClocks['artifact plan regression'] = [Diagnostics.Stopwatch]::StartNew()
+    Write-Step 'test artifact plan regression'
+    & pwsh -NoProfile -File (Join-Path $repoRoot 'tools/Test-MotifTestRunPlan.Tests.ps1')
+    Write-PhaseDuration 'artifact plan regression'
+    if ($LASTEXITCODE -ne 0) {
+        Write-PhaseDuration 'whole gate'
+        exit 1
+    }
+
+    $phaseClocks['process hygiene regression'] = [Diagnostics.Stopwatch]::StartNew()
+    Write-Step 'worktree process hygiene regression'
+    & pwsh -NoProfile -File (Join-Path $repoRoot 'tools/Test-MotifProcessHygiene.Tests.ps1')
+    Write-PhaseDuration 'process hygiene regression'
+    if ($LASTEXITCODE -ne 0) {
+        Write-PhaseDuration 'whole gate'
+        exit 1
+    }
+
+    $phaseClocks['release version regression'] = [Diagnostics.Stopwatch]::StartNew()
+    Write-Step 'release version regression'
+    & pwsh -NoProfile -File (Join-Path $repoRoot 'tools/MotifReleaseVersion.Tests.ps1')
+    Write-PhaseDuration 'release version regression'
+    if ($LASTEXITCODE -ne 0) {
+        Write-PhaseDuration 'whole gate'
+        exit 1
+    }
+
+    $phaseClocks['publication policy regression'] = [Diagnostics.Stopwatch]::StartNew()
+    Write-Step 'publication policy regression'
+    & pwsh -NoProfile -File (Join-Path $repoRoot 'tools/MotifReleasePublication.Tests.ps1')
+    Write-PhaseDuration 'publication policy regression'
+    if ($LASTEXITCODE -ne 0) {
+        Write-PhaseDuration 'whole gate'
+        exit 1
+    }
+
+    $phaseClocks['help golden regression'] = [Diagnostics.Stopwatch]::StartNew()
+    Write-Step 'help golden gate regression'
+    & pwsh -NoProfile -File (Join-Path $repoRoot 'tools/MotifHelpGolden.Tests.ps1')
+    Write-PhaseDuration 'help golden regression'
+    if ($LASTEXITCODE -ne 0) {
+        Write-PhaseDuration 'whole gate'
+        exit 1
+    }
+
+    if ($All) {
+        $phaseClocks['capture screen regression'] = [Diagnostics.Stopwatch]::StartNew()
+        Write-Step 'capture screenshot tooling regression'
+        & pwsh -NoProfile -File (Join-Path $repoRoot 'tools/Capture-Screens.Tests.ps1')
+        Write-PhaseDuration 'capture screen regression'
+        if ($LASTEXITCODE -ne 0) {
+            Write-PhaseDuration 'whole gate'
+            exit 1
+        }
     }
 }
 
