@@ -833,7 +833,8 @@ public sealed class WalkthroughWindow : IDisposable
             }
 
             var bounds = new Rect(topLeft.Value, control.Bounds.Size);
-            if (bounds == previousBounds) stablePasses++;
+            // The anchor is deliberately not refreshed on a stable pass, so drift cannot accumulate across passes.
+            if (previousBounds is { } before && StillAimable(before, bounds)) stablePasses++;
             else
             {
                 previousBounds = bounds;
@@ -845,6 +846,10 @@ public sealed class WalkthroughWindow : IDisposable
             () => $"bounds history: {string.Join(" | ", observations)}");
         HeadlessClick.Click(root, control, accessibleName);
     }
+
+    // Live text resizes a control with one edge anchored; a control moving both edges is still arriving.
+    internal static bool StillAimable(Rect before, Rect now) =>
+        before.Y == now.Y && before.Height == now.Height && (before.X == now.X || before.Right == now.Right);
 
     private sealed class ScriptedProjectPicker(string path) : IProjectPicker
     {
