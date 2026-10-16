@@ -24,6 +24,14 @@ public sealed class CommandSurfacePolicy
     /// <summary>Whether Advanced AI mode commands are available.</summary>
     public bool AdvancedAiModeEnabled { get; }
 
+    /// <summary>
+    /// Whether an AI agent may ever be offered something on <paramref name="surface"/> with <paramref name="agent"/>:
+    /// only the Advanced AI and Released surfaces, and never a human-only class. One definition serves commands
+    /// and typed composers alike.
+    /// </summary>
+    public static bool IsAgentEligible(CommandSurface surface, AgentClass agent) =>
+        surface is CommandSurface.AdvancedAi or CommandSurface.Released && agent != AgentClass.HumanOnly;
+
     /// <summary>Whether <paramref name="command"/> is available on this surface.</summary>
     public bool IsAvailable(CommandDescriptor command) =>
         command.Surface switch

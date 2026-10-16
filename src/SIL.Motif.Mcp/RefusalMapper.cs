@@ -5,6 +5,7 @@ using ModelContextProtocol.Protocol;
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Help;
+using SIL.Motif.Mcp.Exposure;
 using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.Mcp;
@@ -17,7 +18,8 @@ namespace SIL.Motif.Mcp;
 internal static class RefusalMapper
 {
     private static readonly HelpCatalog Help = HelpCatalog.Load();
-    private static readonly Lazy<IReadOnlyList<ExposedTool>> DefaultTools = new(() => MotifMcpServer.Expose(ToolProfile.Builtin));
+    private static readonly Lazy<ExposurePolicy> DefaultPolicy = new(() => ExposurePolicy.ForExposed(
+        MotifMcpServer.Expose(ToolProfile.Builtin)));
 
     private static readonly IReadOnlyDictionary<FailureReason, string> ReasonHints = new Dictionary<FailureReason, string>
     {
@@ -38,16 +40,17 @@ internal static class RefusalMapper
     /// <param name="callerArgs">The arguments of the refused call, which a next step may reuse.</param>
     public static string NextFor(Refusal refusal, IReadOnlyList<ExposedTool>? exposed = null, JsonObject? callerArgs = null)
     {
+        var policy = exposed is null ? DefaultPolicy.Value : ExposurePolicy.ForExposed(exposed);
         var hint = RefusalCatalog.Specs.GetValueOrDefault(refusal.Code)?.Next is { } step
             && Help.RefusalWhy(refusal.Code) is { } why
-                ? why + RenderStep(step, refusal, exposed ?? DefaultTools.Value, callerArgs)
+                ? why + RenderStep(step, refusal, policy, callerArgs)
                 : ReasonHints[refusal.Reason];
         foreach (var (key, value) in refusal.Facts) hint = hint.Replace("{" + key + "}", value, StringComparison.Ordinal);
         return hint;
     }
 
     // A command with no tool in the active profile is the person's to run, never a bare CLI line for the agent.
-    private static string RenderStep(NextStep step, Refusal refusal, IReadOnlyList<ExposedTool> exposed, JsonObject? callerArgs)
+    internal static string RenderStep(NextStep step, Refusal refusal, ExposurePolicy policy, JsonObject? callerArgs)
     {
         if (step.Command == NextStep.AskPerson) return string.Empty;
         var caller = (callerArgs ?? []).Where(pair => pair.Value is JsonValue value && value.TryGetValue<string>(out _))
@@ -55,16 +58,16 @@ internal static class RefusalMapper
         var values = step.Args.Select(pair => (pair.Key, Value: pair.Value.Resolve(refusal.Facts, caller))).ToList();
         if (step.Command == NextStep.RepeatCall)
             return " Repeat this call" + SetClauses(values) + ".";
-        var request = CommandCatalog.All.Single(command => command.Name == step.Command).RequestType;
-        if (exposed.FirstOrDefault(tool => tool.Tool.Requests.Contains(request)) is { } tool)
-            return " Call `" + tool.Name + "`" + SetClauses(values) + ".";
+        if (policy.Resolve(step.Command) is CommandExposure.Tool tool)
+            return " Call `" + tool.ToolName + "`" + SetClauses(values, tool.Selector) + ".";
         var flags = string.Concat(values.Select(pair => " --" + pair.Key.Replace('_', '-') + " " + (pair.Value ?? "<" + pair.Key + ">")));
         return " Ask the person to run `motif " + step.Command + flags + "`.";
     }
 
-    private static string SetClauses(IReadOnlyList<(string Name, string? Value)> values)
+    private static string SetClauses(IReadOnlyList<(string Name, string? Value)> values, ToolSelector? selector = null)
     {
-        var given = values.Where(pair => pair.Value is not null).Select(pair => pair.Name + " set to " + pair.Value).ToList();
+        var given = (selector is null ? [] : new List<string> { selector.Argument + " set to " + selector.Value })
+            .Concat(values.Where(pair => pair.Value is not null).Select(pair => pair.Name + " set to " + pair.Value)).ToList();
         return given.Count == 0 ? string.Empty : " with " + string.Join(" and ", given);
     }
 

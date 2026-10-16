@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using SIL.Motif.Mcp.Exposure;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging;
@@ -43,8 +44,10 @@ public static class MotifMcpServer
         var profile = options.Profile is null ? ToolProfile.Builtin : ToolProfile.Load(options.Profile);
         var context = new ServerContext(string.Empty, MotifProductVersion.CurrentText,
             options.Runner ?? ProcessRunnerLauncher.FromEnvironment(), new ActivityLog(options.ActivityLogPath), profile, log, options.AdvancedAiModeEnabled, options.ParserPath);
-        var exposed = options.AdvancedAiModeEnabled ? Expose(profile) : [];
-        var includeParsimonyResources = exposed.Any(tool => tool.Tool.Name == "motif_parsimony_measures");
+        var policy = ExposurePolicy.Create(new ExposureSettings(
+            new SIL.Motif.Commands.Catalog.CommandSurfacePolicy(false, options.AdvancedAiModeEnabled), profile), AgentTools.All);
+        var exposed = policy.Tools;
+        var includeParsimonyResources = policy.Exposes("parsimony measures");
         var prompts = options.AdvancedAiModeEnabled
             ? Array.Empty<Prompt>()
             : new[]
@@ -65,8 +68,7 @@ public static class MotifMcpServer
         var server = McpServer.Create(new StreamServerTransport(input, output, "motif"), new McpServerOptions
         {
             ServerInfo = new Implementation { Name = "motif", Version = MotifProductVersion.CurrentText },
-            ServerInstructions = options.AdvancedAiModeEnabled ? profile.Instructions :
-                SIL.Motif.Commands.Preferences.FileAdvancedAiModePreferenceStore.DisabledServerInstructions,
+            ServerInstructions = policy.Instructions,
             Capabilities = new ServerCapabilities
             {
                 Tools = new ToolsCapability(),
@@ -115,23 +117,9 @@ public static class MotifMcpServer
     }
 
     /// <summary>The tools <paramref name="profile"/> exposes, in a stable order.</summary>
-    internal static IReadOnlyList<ExposedTool> Expose(ToolProfile profile)
-    {
-        var known = AgentTools.All.ToDictionary(tool => tool.Name, StringComparer.Ordinal);
-        foreach (var selection in profile.Tools ?? [])
-            if (!known.ContainsKey(selection.Tool))
-                throw new ProfileException($"Profile '{profile.Name}' names tool '{selection.Tool}', which does not exist. " +
-                    $"Tools are: {string.Join(", ", known.Keys.Order(StringComparer.Ordinal))}.");
-        var exposed = new List<ExposedTool>();
-        foreach (var tool in AgentTools.All)
-            if (profile.SelectionFor(tool.Name, tool.OnByDefault) is { } selection)
-                exposed.Add(new ExposedTool(tool, selection.As ?? tool.Name, selection.Description ?? tool.Description,
-                    selection.Detail ?? profile.DefaultDetail));
-        var duplicate = exposed.GroupBy(tool => tool.Name, StringComparer.Ordinal).FirstOrDefault(group => group.Count() > 1);
-        if (duplicate is not null)
-            throw new ProfileException($"Profile '{profile.Name}' gives two tools the name '{duplicate.Key}'.");
-        return exposed;
-    }
+    internal static IReadOnlyList<ExposedTool> Expose(ToolProfile profile) =>
+        ExposurePolicy.Create(new ExposureSettings(
+            new SIL.Motif.Commands.Catalog.CommandSurfacePolicy(false, true), profile), AgentTools.All).Tools;
 
     internal static async ValueTask<CallToolResult> CallAsync(ServerContext context, IReadOnlyList<ExposedTool> tools,
         string name, IDictionary<string, JsonElement>? arguments, CancellationToken cancellation)

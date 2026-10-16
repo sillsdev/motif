@@ -68,7 +68,8 @@ internal static class ComposerTools
             (context, args, cancellation) => Task.FromResult(ToolOutcome.From(
                 ProposalCommands.ComposeIntent(new ComposeIntentRequest(context.ProjectPath, context.ProductVersion,
                     args.Required(DraftArgument), verb, args.IntentJson([.. names]))),
-                result => "Use createdObjects[].id values in later composer calls; Dry Run and Trial the Draft, then Finalize.")));
+                result => "Use createdObjects[].id values in later composer calls; Dry Run and Trial the Draft, then Finalize.")))
+        { Routes = [new Exposure.ToolRoute(verb, null, composer.Agent)] };
     }
 
     private static JsonObject Described(ComposerDescriptor composer, JsonObject shape)

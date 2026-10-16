@@ -175,6 +175,9 @@ internal sealed record AgentTool(
 {
     public IReadOnlyList<Type> Requests { get; init; } = [];
 
+    /// <summary>The catalogued commands this tool carries out, by command name; empty for a tool with no command.</summary>
+    public IReadOnlyList<Exposure.ToolRoute> Routes { get; init; } = [];
+
     public bool NeedsProject { get; init; } = true;
 
     /// <summary>The argument names the schema declares.</summary>

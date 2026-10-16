@@ -52,8 +52,7 @@ public sealed class ComposerDescriptor
     public IReadOnlyList<string> FieldNames { get; }
 
     /// <summary>Whether the composer is offered as an AI tool at all.</summary>
-    public bool IsAgentTool =>
-        AgentTool && Surface is CommandSurface.AdvancedAi or CommandSurface.Released && Agent != AgentClass.HumanOnly;
+    public bool IsAgentTool => AgentTool && CommandSurfacePolicy.IsAgentEligible(Surface, Agent);
 
     /// <summary>A fresh copy of the closed JSON Schema of the intent.</summary>
     public JsonObject Schema() => _schema.DeepClone().AsObject();

@@ -82,6 +82,7 @@ internal static class AgentTools
                 : tool.Name == "motif_compose" ? tool with { InputSchema = composeSchema } : tool)
             .Select(tool => DefaultAuthoringTools.Contains(tool.Name) ? tool with { OnByDefault = true } : tool)
             .Select(tool => tool.Name == FindComposerTool ? FindComposerOptIn(tool) : tool)
+            .Select(tool => Exposure.ToolRoutes.WithRoutes(tool, [.. BatchComposerVerbs.Concat(ComposerTools.BatchVerbs).Distinct()]))
             .ToArray();
     }
 

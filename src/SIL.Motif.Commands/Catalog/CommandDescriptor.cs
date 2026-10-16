@@ -58,7 +58,5 @@ public sealed record CommandDescriptor(
     public bool ExposeAsAgentTool { get; init; } = true;
 
     /// <summary>Whether this command may be exposed as an MCP tool.</summary>
-    public bool IsAgentTool => ExposeAsAgentTool &&
-        Surface is CommandSurface.AdvancedAi or CommandSurface.Released &&
-        Agent != AgentClass.HumanOnly;
+    public bool IsAgentTool => ExposeAsAgentTool && CommandSurfacePolicy.IsAgentEligible(Surface, Agent);
 }
