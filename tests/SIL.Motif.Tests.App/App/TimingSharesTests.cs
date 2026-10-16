@@ -51,6 +51,7 @@ public sealed class TimingSharesTests
     [InlineData(1140.942292, "1,141 ms")]
     [InlineData(6.080588, "6.1 ms")]
     [InlineData(0.004, "<0.1 ms")]
+    [InlineData(9999.6, "10.0 s")]
     [InlineData(10000, "10.0 s")]
     [InlineData(10832, "10.8 s")]
     public void RecordedDurationsAreRoundedForReadingNeverShownAsRawFloats(

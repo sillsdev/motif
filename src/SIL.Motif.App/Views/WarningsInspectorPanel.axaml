@@ -33,7 +33,7 @@
             <DataTemplate x:DataType="vm:GrammarWarningRowViewModel">
               <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
                 <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-                  <views:CopyableTextBlock Text="{Binding TableItemText}" FontWeight="{DynamicResource Intent.Weight.Section}" />
+                  <views:CopyableTextBlock Text="{Binding TableItemName}" FontWeight="{DynamicResource Intent.Weight.Section}" />
                   <views:CopyableTextBlock Classes="muted" Text="What is wrong" FontWeight="{DynamicResource Intent.Weight.Section}" />
                   <views:CopyableTextBlock Text="{Binding TableProblemText}" TextWrapping="Wrap" />
                   <views:CopyableTextBlock Classes="muted" Text="{Binding ReachStateText}"

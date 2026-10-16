@@ -945,7 +945,7 @@ public sealed record TimingShare(string Label, string Kind, double? ElapsedMs, d
     public static string FormatDuration(double milliseconds)
     {
         var culture = CultureInfo.CurrentCulture;
-        if (milliseconds >= 10_000) return (milliseconds / 1000).ToString("N1", culture) + " s";
+        if (Math.Round(milliseconds) >= 10_000) return (milliseconds / 1000).ToString("N1", culture) + " s";
         if (milliseconds >= 10) return milliseconds.ToString("N0", culture) + " ms";
         if (milliseconds > 0 && milliseconds < 0.05) return "<0.1 ms";
         return milliseconds.ToString("#,0.#", culture) + " ms";

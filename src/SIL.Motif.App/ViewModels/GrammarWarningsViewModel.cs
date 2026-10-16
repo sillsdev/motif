@@ -486,12 +486,25 @@ public sealed partial class GrammarWarningRowViewModel : ObservableObject
     /// The named item for the table's Item column, or the finding's title when it names none, with a count when
     /// identical findings share the row so the row total matches the group's count.
     /// </summary>
-    public string TableItemText => (NamedItemText.Length > 0 ? NamedItemText : PanGlossTitle) +
-        (RepeatCount > 1 ? $" · {RepeatCount:N0} findings" : string.Empty);
-    /// <summary>The PanGloss description for the table's problem column, with raw identifiers shown as the item's name.</summary>
-    public string TableProblemText => RawIdentifier.Replace(
-        Warning.Description.Length > 0 ? Warning.Description : Message,
-        NamedItemText.Length > 0 ? NamedItemText : "an unnamed item");
+    public string TableItemText => TableItemName + (RepeatCount > 1 ? $" · {RepeatCount:N0} findings" : string.Empty);
+    /// <summary>The named item, or the finding's title when it names none, without any repeat count.</summary>
+    public string TableItemName => NamedItemText.Length > 0 ? NamedItemText : PanGlossTitle;
+    /// <summary>
+    /// The PanGloss description for the table's problem column. A raw identifier is shown as the name of the
+    /// subject or problem part that carries it, or as an unnamed item when no part does.
+    /// </summary>
+    public string TableProblemText
+    {
+        get
+        {
+            var names = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var part in Warning.Subject.Concat(Warning.Problem))
+                if (part.ObjectId is { Length: > 0 } id && !string.IsNullOrWhiteSpace(part.Text))
+                    names.TryAdd(id, part.Text);
+            return RawIdentifier.Replace(Warning.Description.Length > 0 ? Warning.Description : Message,
+                match => names.TryGetValue(match.Value, out var name) ? name : "an unnamed item");
+        }
+    }
     private static readonly System.Text.RegularExpressions.Regex RawIdentifier = new(
         "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}",
         System.Text.RegularExpressions.RegexOptions.CultureInvariant);

@@ -66,21 +66,35 @@ public sealed class GrammarWarningsViewModelTests
         Assert.Equal("kuona · 2 findings", row.TableItemText);
     }
 
-    [Fact]
-    public void ARawIdentifierInTheProblemTextIsShownAsTheItemsName()
+    private const string SubjectId = "54c98259-07ae-5fe4-863d-f07b42d40e41";
+    private const string OtherId = "33333333-3333-3333-3333-333333333333";
+
+    private static string ProblemText(string description, string subjectName = "+")
     {
         var warning = EntryWarning with
         {
-            Description = "boundary marker \"54c98259-07ae-5fe4-863d-f07b42d40e41\" collides.",
-            Subject = [new("+", GrammarWarningPartRole.Object, "33333333-3333-3333-3333-333333333333", "Phoneme")],
+            Description = description,
+            Subject = [new(subjectName, GrammarWarningPartRole.Object, SubjectId, "Phoneme")],
         };
         var table = new GrammarWarningsViewModel();
         table.Load([warning]);
-
-        var row = Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(table.Rows));
-
-        Assert.Equal("boundary marker \"+\" collides.", row.TableProblemText);
+        return Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(table.Rows)).TableProblemText;
     }
+
+    [Fact]
+    public void ARawIdentifierInTheProblemTextIsShownAsTheSubjectsName() =>
+        Assert.Equal("boundary marker \"+\" collides.", ProblemText($"boundary marker \"{SubjectId}\" collides."));
+
+    [Fact]
+    public void OnlyTheSubjectsOwnIdentifierTakesItsNameAndAnyOtherIsAnUnnamedItem() =>
+        Assert.Equal("+ collides with an unnamed item", ProblemText($"{SubjectId} collides with {OtherId}"));
+
+    [Theory]
+    [InlineData("$1")]
+    [InlineData("$&")]
+    [InlineData("a$$b")]
+    public void ANameWithReplacementSyntaxComesThroughLiterally(string name) =>
+        Assert.Equal($"marker {name} here", ProblemText($"marker {SubjectId} here", name));
 
     [Fact]
     public void NoGroupOrDescriptionDoesNotGetMotifFallbackText()
