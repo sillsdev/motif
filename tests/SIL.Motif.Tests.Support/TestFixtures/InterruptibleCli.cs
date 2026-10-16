@@ -35,6 +35,24 @@ public sealed class InterruptibleCli : IDisposable
         }
     }
 
+    /// <summary>
+    /// Starts the CLI as a POSIX shell starts a background job: with SIGINT ignored, a disposition that survives exec.
+    /// </summary>
+    public static InterruptibleCli StartWithInterruptIgnored(ProcessStartInfo start)
+    {
+        ArgumentNullException.ThrowIfNull(start);
+        if (OperatingSystem.IsWindows())
+            throw new PlatformNotSupportedException("An ignored SIGINT is a Unix process state.");
+        var arguments = start.ArgumentList.ToArray();
+        start.ArgumentList.Clear();
+        start.ArgumentList.Add("-c");
+        start.ArgumentList.Add("trap '' INT; exec \"$0\" \"$@\"");
+        start.ArgumentList.Add(start.FileName);
+        foreach (var argument in arguments) start.ArgumentList.Add(argument);
+        start.FileName = "/bin/sh";
+        return Start(start);
+    }
+
     public static InterruptibleCli Start(ProcessStartInfo start)
     {
         ArgumentNullException.ThrowIfNull(start);

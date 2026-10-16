@@ -47,6 +47,7 @@ internal static class Program
 public static int Main(string[] args)
 {
     CrashDialogs.Suppress();
+    InterruptSignal.RestoreIfIgnored();
     MotifInstallLifecycle.Initialize(args);
 
     if (args.Length > 0 && args[0] == "--update-smoke")

@@ -7,6 +7,7 @@ internal static class Program
     private static Task<int> Main(string[] args)
     {
         CrashDialogs.Suppress();
+        InterruptSignal.RestoreIfIgnored();
         return WorkerRuntime.RunAsync(args);
     }
 }

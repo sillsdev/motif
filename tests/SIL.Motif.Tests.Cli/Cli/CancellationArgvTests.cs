@@ -79,6 +79,34 @@ public sealed class CancellationArgvTests : IDisposable
         await AssertProcessStopped(parserId);
     }
 
+    [Fact]
+    public async Task InterruptingHandoffStartedWithInterruptIgnoredStillStopsTheParser()
+    {
+        // A background job in a POSIX shell script inherits SIGINT ignored; the CLI's Ctrl+C contract must hold anyway.
+        if (OperatingSystem.IsWindows()) return;
+        var project = _pristine.CopyProjectFile();
+        AddWordform(project, "ignored-interrupt-word");
+        await CaptureBaseline(project);
+        var selection = await CliProcess.RunAsync(_workerRoot, null, false, "selection", "set-default",
+            "--project", project, "--name", "Default", "--add-words", "motifa", "--json");
+        Assert.True(selection.ExitCode == 0, selection.FailureDetails);
+        var heartbeat = Path.Combine(_root, "ignored-interrupt-heartbeat.txt");
+        var processIdPath = Path.Combine(_root, "ignored-interrupt-process-id.txt");
+        var parser = CopyFakeParser(new { heartbeatPath = heartbeat, processIdPath });
+        var destination = Path.Combine(_root, "ignored-interrupt-handoff");
+        using var launched = InterruptibleCli.StartWithInterruptIgnored(CliProcess.CreateStartInfo(
+            _workerRoot, parser, false, "handoff", project, "--out", destination, "--no-assess", "--json"));
+
+        var parserId = await WaitForParser(launched, heartbeat, processIdPath);
+        Assert.True(launched.Interrupt(), "Could not send SIGINT to the CLI process.");
+        await launched.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(90));
+        var error = launched.ReadStderr();
+        Assert.True(launched.ExitCode == 2, $"Expected cancelled exit code 2.{Environment.NewLine}{error}");
+        Assert.Equal("handoff.cancelled", ProjectionJson.Deserialize<FailureEnvelope>(error)!.Code);
+        Assert.False(Directory.Exists(destination));
+        await AssertProcessStopped(parserId);
+    }
+
     public void Dispose()
     {
         try { Directory.Delete(_root, recursive: true); }
