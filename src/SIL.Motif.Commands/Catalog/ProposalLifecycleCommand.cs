@@ -22,7 +22,7 @@ public static class ProposalLifecycleCommand
 {
     /// <summary>The statuses a Proposal is closed in without having been applied.</summary>
     public static IReadOnlySet<string> DeletableStatuses { get; } =
-        new HashSet<string>(StringComparer.Ordinal) { ManifestStatus.Rejected, ManifestStatus.Superseded, "withdrawn" };
+        new HashSet<string>(ProposalLifecycle.AllowedFromWire(ProposalTransition.Delete), StringComparer.Ordinal);
 
     /// <summary>Deletes a declined, superseded or withdrawn Proposal that never applied, and its Trial records.</summary>
     public static CommandOutcome<ProposalDeletedResponse> Delete(DeleteProposalRequest request)
@@ -112,7 +112,7 @@ public static class ProposalLifecycleCommand
             return Refuse<ReopenedResponse>("proposal.applied-final", id,
                 "This Proposal was applied. An applied Proposal is final.");
         if (record.DraftName is not null ||
-            record.Status is not (ManifestStatus.Rejected or ManifestStatus.Withdrawn or ManifestStatus.Superseded))
+            !ProposalLifecycle.Allows(ProposalTransition.Reopen, record.Status))
             return Refuse<ReopenedResponse>("proposal.not-closed", id,
                 "Only a declined or withdrawn Proposal can be reopened.");
         return ProposalCommands.Reopen(new ReopenRequest(request.ProjectPath, version, ReviewDraftPrefix + id, id));

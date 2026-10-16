@@ -6,12 +6,6 @@ namespace SIL.Motif.Worker.Store;
 /// <summary>Removes one terminal Proposal and only the evidence no other store record retains.</summary>
 internal static class ProposalDeletion
 {
-    /// <summary>Whether a Proposal status is terminal.</summary>
-    /// <param name="status">The stored workflow status.</param>
-    /// <returns><see langword="true"/> when the Proposal has been closed.</returns>
-    internal static bool IsTerminal(string status) =>
-        status is "applied" or "rejected" or "superseded" or "withdrawn";
-
     /// <summary>Deletes a terminal Proposal and its removable evidence inside the caller's transaction.</summary>
     /// <param name="connection">The open connection that owns <paramref name="transaction"/>.</param>
     /// <param name="transaction">The transaction that includes this Proposal deletion.</param>
@@ -27,12 +21,12 @@ internal static class ProposalDeletion
             check.CommandText = "SELECT Status FROM Proposals WHERE ProposalId = $id;";
             check.Parameters.AddWithValue("$id", proposalId.Value);
             var status = check.ExecuteScalar() as string;
-            if (status is null || !IsTerminal(status))
+            if (status is null || !ProposalLifecycle.IsTerminal(status))
                 throw new InvalidOperationException("Only terminal Proposals may be archived.");
             check.CommandText = "SELECT DraftName FROM Proposals WHERE ProposalId = $id;";
             if (check.ExecuteScalar() is string)
                 throw new InvalidOperationException("A Proposal with an open Draft is kept until the Draft is finalized or discarded.");
-            if (status == "applied")
+            if (status == ProposalLifecycle.ToWire(ProposalStatus.Applied))
                 throw new InvalidOperationException("An applied Proposal is final: it and its Receipts are kept.");
             check.CommandText = "SELECT COUNT(*) FROM Receipts WHERE ProposalId = $id;";
             if ((long)check.ExecuteScalar()! > 0)

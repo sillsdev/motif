@@ -811,10 +811,10 @@ public static partial class ProposalCommands
         });
     }
 
-    private static readonly string[] DeferrableFrom = { ManifestStatus.Proposed };
-    private static readonly string[] RejectableFrom = { ManifestStatus.Proposed, ManifestStatus.Deferred };
-    private static readonly string[] SupersedableFrom =
-        { ManifestStatus.Proposed, ManifestStatus.Deferred, ManifestStatus.Rejected };
+    private static readonly string[] DeferrableFrom = ProposalLifecycle.AllowedFromWire(ProposalTransition.Defer);
+    private static readonly string[] RejectableFrom = ProposalLifecycle.AllowedFromWire(ProposalTransition.Reject);
+    private static readonly string[] WithdrawableFrom = ProposalLifecycle.AllowedFromWire(ProposalTransition.Withdraw);
+    private static readonly string[] SupersedableFrom = ProposalLifecycle.AllowedFromWire(ProposalTransition.Supersede);
 
     /// <summary>Moves a Proposal to <c>deferred</c>: still wanted, not currently applicable (ADR 0031 decision 4).</summary>
     public static CommandOutcome<ProposalStatusChangedResponse> Defer(DeferRequest request) =>
@@ -834,8 +834,8 @@ public static partial class ProposalCommands
     public static CommandOutcome<ProposalStatusChangedResponse> Withdraw(RejectRequest request) =>
         TransitionStatus(
             request.FwDataPath, request.ProductVersion, request.ProposalId, ManifestStatus.Withdrawn,
-            RejectableFrom, null,
-            (repository, id) => repository.Transition(id, RejectableFrom, ManifestStatus.Withdrawn));
+            WithdrawableFrom, null,
+            (repository, id) => repository.Transition(id, WithdrawableFrom, ManifestStatus.Withdrawn));
 
     /// <summary>Marks a Proposal <c>superseded</c> by another, naming which one replaced it.</summary>
     public static CommandOutcome<ProposalStatusChangedResponse> Supersede(SupersedeRequest request)
@@ -1435,7 +1435,7 @@ public static partial class ProposalCommands
     private static readonly string[] ListedStatuses =
     [
         "draft", ManifestStatus.Proposed, ManifestStatus.Deferred, ManifestStatus.Applied, ManifestStatus.Rejected,
-        ManifestStatus.Superseded, "withdrawn",
+        ManifestStatus.Superseded, ManifestStatus.Withdrawn,
     ];
 
     private static CommandOutcome<ProposalListProjection> BuildProposalList(MotifDatabase database, bool all,

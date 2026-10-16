@@ -249,7 +249,7 @@ public sealed class ProposalRepository : IProposalRepository
         using var transaction = connection.BeginTransaction();
         var created = revision.CreatedUtc ?? DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture);
         var bytes = revision.ProposalJsonBytes ?? Encoding.UTF8.GetBytes(revision.ProposalJson);
-        var archived = ProposalDeletion.IsTerminal(revision.Status)
+        var archived = ProposalLifecycle.IsTerminal(revision.Status)
             ? _clock.UtcNow.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture) : null;
         using (var parent = connection.CreateCommand())
         {
@@ -310,7 +310,7 @@ public sealed class ProposalRepository : IProposalRepository
     {
         policy ??= TimeRetentionPolicy.Default;
         return List(new ProposalListFilter(IncludeArchived: true))
-            .Where(proposal => ProposalDeletion.IsTerminal(proposal.Status) && proposal.Status != "applied" &&
+            .Where(proposal => ProposalLifecycle.IsTerminal(proposal.Status) && proposal.Status != ProposalLifecycle.ToWire(ProposalStatus.Applied) &&
                 proposal.DraftName is null &&
                 policy.ShouldPurge(ParseNullableUtc(proposal.ArchivedUtc), now)).ToArray();
     }
@@ -616,7 +616,7 @@ public sealed class ProposalRepository : IProposalRepository
                 WHERE DraftName = $name;
                 """;
             commit.Parameters.AddWithValue("$digest", intentDigest);
-            commit.Parameters.AddWithValue("$status", "proposed");
+            commit.Parameters.AddWithValue("$status", ProposalLifecycle.ToWire(ProposalStatus.Proposed));
             commit.Parameters.AddWithValue("$label", label);
             commit.Parameters.AddWithValue("$comment", comment);
             commit.Parameters.AddWithValue("$name", draftName);
