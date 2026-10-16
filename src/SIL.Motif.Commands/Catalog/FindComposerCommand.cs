@@ -27,6 +27,8 @@ public sealed record ComposerSubjectPage(string Id, string Title, string? Excerp
 /// <param name="SchemaSource"><c>shape</c> when the schema is the composer's own, <c>help</c> when it is not.</param>
 /// <param name="Example">In detailed mode, the first worked example on the composer's Help page, or null.</param>
 /// <param name="SubjectPage">In detailed mode, the Subject page that best fits the search.</param>
+/// <param name="Score">In a goal search, the rarity-weighted overlap that ranked the composer; null in a Subject search.</param>
+/// <param name="MatchedWords">In a goal search, the goal's words found in the composer's text; null in a Subject search.</param>
 public sealed record ComposerMatch(
     string Verb,
     string Title,
@@ -35,18 +37,56 @@ public sealed record ComposerMatch(
     JsonNode? IntentSchema,
     string SchemaSource,
     string? Example = null,
-    ComposerSubjectPage? SubjectPage = null);
+    ComposerSubjectPage? SubjectPage = null,
+    double? Score = null,
+    IReadOnlyList<string>? MatchedWords = null);
 
-/// <summary>The composers a search found, best first.</summary>
+/// <summary>A Subject named as the nearest to a goal no composer covers.</summary>
+/// <param name="Id">The Subject id.</param>
+/// <param name="Title">The Subject's heading.</param>
+public sealed record NearestSubject(string Id, string Title);
+
+/// <summary>A composer that overlaps a goal too weakly to cover it.</summary>
+/// <param name="Verb">The composing verb.</param>
+/// <param name="Score">The rarity-weighted overlap, rounded to two places.</param>
+public sealed record NearestComposer(string Verb, double Score);
+
+/// <summary>The composers a search found, best first, or the statement that none covers the goal.</summary>
 /// <param name="Mode"><c>goal</c> or <c>subject</c>, whichever the request used.</param>
-/// <param name="Results">At most five composers in a goal search, every composer of the Subject in a Subject search.</param>
-public sealed record FindComposerResponse(string Mode, IReadOnlyList<ComposerMatch> Results);
+/// <param name="Results">
+/// At most five composers in a goal search, every composer of the Subject in a Subject search; empty when
+/// <paramref name="NoMatch"/> is true.
+/// </param>
+/// <param name="NoMatch">True when no composer covers the goal, so a weak list would mislead.</param>
+/// <param name="NearestSubjects">When there is no match, up to two Subjects closest to the goal; otherwise null.</param>
+/// <param name="NearestComposers">When there is no match, up to three composers with their weak scores; otherwise null.</param>
+/// <param name="Missing">
+/// When there is no match, one sentence to relay to the person saying what Motif lacks; otherwise null.
+/// </param>
+/// <param name="Next">When there is no match, what to do: tell the person what is missing; otherwise null.</param>
+public sealed record FindComposerResponse(
+    string Mode,
+    IReadOnlyList<ComposerMatch> Results,
+    bool NoMatch = false,
+    IReadOnlyList<NearestSubject>? NearestSubjects = null,
+    IReadOnlyList<NearestComposer>? NearestComposers = null,
+    string? Missing = null,
+    string? Next = null);
 
 /// <summary>
 /// Searches the composer registry by goal or by Subject. The ranking is a case-insensitive overlap of the goal's
 /// words with each composer's example goals (weight 3), title (2) and description (1), and a word that appears in a
 /// Subject title the composer serves counts (2). Each word's hits are scaled by how few composers mention it, so a
 /// rare word outweighs a common one. Reading only: nothing is staged and no project is opened.
+/// <para>
+/// A composer covers a goal only when its example goals and title together contain at least two distinct stems of
+/// the goal's content words, or at least one when the goal has two content words or fewer. Content words are the
+/// goal's words of three or more letters minus a short stop-word list, each cut to a six-letter stem with a plural
+/// s removed. Overlap with a description or a Subject title alone never covers a goal. When no composer covers it,
+/// the answer is <c>noMatch</c> with no results, the two nearest Subjects (overlap with Subject titles and
+/// descriptions, then the Subjects of the weakly overlapping composers), up to three weak composers, and a ready
+/// sentence to relay. The rule looks at matching strength only and is not tuned to any goal.
+/// </para>
 /// </summary>
 public static class FindComposerCommand
 {
@@ -56,6 +96,8 @@ public static class FindComposerCommand
     private const int DescriptionWeight = 1;
     private const int SubjectTitleWeight = 2;
     private const int StemLength = 6;
+    private const int MaxNearestSubjects = 2;
+    private const int MaxNearestComposers = 3;
 
     private static readonly Lazy<HelpCatalog> Help = new(() => HelpCatalog.Load());
 
@@ -104,20 +146,67 @@ public static class FindComposerCommand
             return CommandOutcome<FindComposerResponse>.Success(new FindComposerResponse("subject", serving.ToArray()));
         }
 
-        var words = Words(goal!).ToHashSet(StringComparer.Ordinal);
+        var spelled = SpelledWords(goal!);
+        var words = spelled.Keys.ToHashSet(StringComparer.Ordinal);
         var fields = candidates.Select(candidate => candidate.Fields(help)).ToArray();
         var rarity = words.ToDictionary(word => word, word =>
             Math.Log(1 + (double)candidates.Length / Math.Max(1, fields.Count(field => field.Mentions(word)))),
             StringComparer.Ordinal);
-        var ranked = candidates
-            .Select((candidate, index) => (Candidate: candidate, Score: fields[index].Score(words, rarity)))
+        var scored = candidates
+            .Select((candidate, index) => (Candidate: candidate, Fields: fields[index], Score: fields[index].Score(words, rarity)))
             .Where(item => item.Score > 0)
             .OrderByDescending(item => item.Score)
             .ThenBy(item => item.Candidate.Verb, StringComparer.Ordinal)
-            .Take(MaxGoalResults)
-            .Select(item => item.Candidate.ToMatch(detailed.Value, help, item.Candidate.BestSubject(words, help)));
+            .ToArray();
+        var required = words.Count <= 2 ? 1 : 2;
+        if (!scored.Any(item => item.Fields.CoveringWords(words) >= required))
+            return CommandOutcome<FindComposerResponse>.Success(NoMatch(goal!, words, scored.Select(item =>
+                (item.Candidate, item.Score)).ToArray(), help));
+        var ranked = scored.Take(MaxGoalResults).Select(item => item.Candidate
+            .ToMatch(detailed.Value, help, item.Candidate.BestSubject(words, help))
+            with
+            {
+                Score = Math.Round(item.Score, 2),
+                MatchedWords = words.Where(item.Fields.Mentions).Select(word => spelled[word]).ToArray(),
+            });
         return CommandOutcome<FindComposerResponse>.Success(new FindComposerResponse("goal", ranked.ToArray()));
     }
+
+    private static FindComposerResponse NoMatch(string goal, HashSet<string> words,
+        IReadOnlyList<(Candidate Candidate, double Score)> weak, HelpCatalog help)
+    {
+        var composerScore = new Dictionary<string, double>(StringComparer.Ordinal);
+        foreach (var (candidate, score) in weak)
+            foreach (var id in candidate.Subjects) composerScore[id] = composerScore.GetValueOrDefault(id) + score;
+        var nearest = ComposerSubjects.All
+            .Select((id, index) =>
+            {
+                var entry = help.Subjects.FirstOrDefault(subject => subject.Id == id);
+                var overlap = (Words(SubjectTitle(help, id)).Count(words.Contains) * SubjectTitleWeight) +
+                    Words(entry?.Description ?? string.Empty).Count(words.Contains);
+                return (Id: id, Index: index, Overlap: overlap, Weak: composerScore.GetValueOrDefault(id));
+            })
+            .Where(item => item.Overlap > 0 || item.Weak > 0)
+            .OrderByDescending(item => item.Overlap).ThenByDescending(item => item.Weak).ThenBy(item => item.Index)
+            .Take(MaxNearestSubjects)
+            .Select(item => new NearestSubject(item.Id, SubjectTitle(help, item.Id)))
+            .ToArray();
+        var phrase = string.Join(' ', goal.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)).TrimEnd('?', '.', '!');
+        var missing = nearest.Length == 0
+            ? Template(help, "composer-no-match-no-subject", DefaultMissingNoSubject, phrase, null)
+            : Template(help, "composer-no-match", DefaultMissing, phrase, nearest[0].Title);
+        var next = Template(help, "composer-no-match-next", DefaultNext, phrase, null).Replace("{missing}", missing);
+        return new FindComposerResponse("goal", [], true, nearest,
+            weak.Take(MaxNearestComposers).Select(item => new NearestComposer(item.Candidate.Verb, Math.Round(item.Score, 2))).ToArray(),
+            missing, next);
+    }
+
+    private static string Template(HelpCatalog help, string code, string fallback, string goal, string? subject) =>
+        (help.RefusalWhy(code) ?? fallback).Replace("{goal}", goal).Replace("{subject}", subject ?? string.Empty);
+
+    private const string DefaultMissing = "Motif has no Composer for \"{goal}\" yet; the nearest Subject is {subject}.";
+    private const string DefaultMissingNoSubject = "Motif has no Composer for \"{goal}\" yet.";
+    private const string DefaultNext = "Tell the person what is missing: {missing}";
 
     private static CommandOutcome<FindComposerResponse> Refuse(string code, string message) =>
         CommandOutcome<FindComposerResponse>.Refused(new Refusal(code, FailureReason.InvalidArgument, message));
@@ -128,6 +217,16 @@ public static class FindComposerCommand
             .Where(word => word.Length >= 3 && !StopWords.Contains(word))
             .Select(Stem)
             .Distinct(StringComparer.Ordinal);
+
+    // Each stem with the goal's own first spelling of it, so a result can name the words the person used.
+    private static Dictionary<string, string> SpelledWords(string text)
+    {
+        var spelled = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var word in Regex.Split(text.ToLowerInvariant(), "[^\\p{L}\\p{N}]+")
+                     .Where(word => word.Length >= 3 && !StopWords.Contains(word)))
+            spelled.TryAdd(Stem(word), word);
+        return spelled;
+    }
 
     private static string Stem(string word)
     {
@@ -171,6 +270,9 @@ public static class FindComposerCommand
     private sealed record SearchFields(
         HashSet<string> Goals, HashSet<string> Title, HashSet<string> Description, HashSet<string> SubjectTitles)
     {
+        // How many of the goal's distinct stems the composer's example goals or title contain.
+        public int CoveringWords(HashSet<string> words) => words.Count(word => Goals.Contains(word) || Title.Contains(word));
+
         public bool Mentions(string word) =>
             Goals.Contains(word) || Title.Contains(word) || Description.Contains(word) || SubjectTitles.Contains(word);
 

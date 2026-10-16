@@ -177,6 +177,23 @@ internal static class CatalogTools
             context.StartRunner();
             return ToolOutcome.Ok(JsonNode.Parse(ProjectionJson.Serialize(job))!, jobId: job.JobId);
         }
+        if (value is FindComposerResponse { NoMatch: true } miss)
+        {
+            RecordFindComposerMiss(context, json, miss);
+            return ToolOutcome.Ok(JsonNode.Parse(ProjectionJson.Serialize(value))!, miss.Next);
+        }
         return ToolOutcome.Ok(JsonNode.Parse(ProjectionJson.Serialize(value))!);
+    }
+
+    // A goal no composer covers is a gap in Motif; it stays in this server's own activity log, on this machine.
+    private static void RecordFindComposerMiss(ServerContext context, JsonObject request, FindComposerResponse miss)
+    {
+        var entry = new JsonObject
+        {
+            ["goal"] = request["goal"]?.GetValue<string>(),
+            ["nearestSubject"] = miss.NearestSubjects?.FirstOrDefault()?.Id,
+        };
+        context.Activity.Record(new ActivityEntry(DateTimeOffset.UtcNow, "findComposerMiss", entry, false, null, 0, 0,
+            null, context.Profile.Name));
     }
 }

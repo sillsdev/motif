@@ -44,6 +44,33 @@ public sealed class FindComposerToolTests
         Assert.Equal("composer.goal-or-subject", both.Refusal!.Code);
     }
 
+    [Fact]
+    public async Task ANoMatchCallLogsAFindComposerMissWithTheGoalAndNearestSubjectAndMatchesLogNothing()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "find-composer-miss-" + Guid.NewGuid().ToString("N") + ".jsonl");
+        try
+        {
+            var log = new ActivityLog(path);
+            var context = new ServerContext("", "1.0", new NoRunnerLauncher(new JobRunnerLaunchOptions("root", null)),
+                log, ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
+
+            await Tool.Run(context, Args(("goal", "add a missing consonant")), CancellationToken.None);
+            Assert.DoesNotContain(log.Entries, entry => entry.Tool == "findComposerMiss");
+
+            var miss = await Tool.Run(context, Args(("goal", "Export the dictionary to a printable file")),
+                CancellationToken.None);
+            Assert.True(miss.Value!["noMatch"]!.GetValue<bool>());
+            Assert.Contains(miss.Value["missing"]!.GetValue<string>(), miss.Next!);
+
+            var entry = Assert.Single(log.Entries, e => e.Tool == "findComposerMiss");
+            Assert.Equal("Export the dictionary to a printable file", entry.Args["goal"]!.GetValue<string>());
+            Assert.Equal(miss.Value["nearestSubjects"]![0]!["id"]!.GetValue<string>(),
+                entry.Args["nearestSubject"]!.GetValue<string>());
+            Assert.Contains("findComposerMiss", File.ReadAllText(path));
+        }
+        finally { File.Delete(path); }
+    }
+
     private static ToolArgs Args(params (string Name, string Value)[] values)
     {
         var json = new JsonObject();

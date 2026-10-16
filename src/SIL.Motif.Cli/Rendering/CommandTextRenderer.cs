@@ -396,6 +396,17 @@ public static class CommandTextRenderer
 
     private static string RenderFindComposer(FindComposerResponse found)
     {
+        if (found.NoMatch)
+        {
+            var lines = new StringBuilder();
+            lines.AppendLine(found.Missing);
+            if (found.NearestSubjects is { Count: > 0 } subjects)
+                lines.Append("Nearest Subjects: ").AppendLine(string.Join(", ", subjects.Select(s => s.Id + " (" + s.Title + ")")));
+            if (found.NearestComposers is { Count: > 0 } composers)
+                lines.Append("Weakest overlap: ").AppendLine(string.Join(", ", composers.Select(c => c.Verb + " " + c.Score)));
+            lines.Append(found.Next);
+            return lines.ToString();
+        }
         if (found.Results.Count == 0)
             return "No composer fits that goal. Try other words, or list a Subject with --subject <id>.";
         var text = new StringBuilder();

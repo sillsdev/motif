@@ -95,6 +95,18 @@
     "why": "The detail level must be concise or detailed. Leave it out for concise.",
     "source": "Hand-written for the composer search."
   },
+  "composer-no-match": {
+    "why": "Motif has no Composer for \"{goal}\" yet; the nearest Subject is {subject}.",
+    "source": "Hand-written for the composer search; {goal} and {subject} are filled in."
+  },
+  "composer-no-match-no-subject": {
+    "why": "Motif has no Composer for \"{goal}\" yet.",
+    "source": "Hand-written for the composer search; {goal} is filled in."
+  },
+  "composer-no-match-next": {
+    "why": "Tell the person what is missing, in these words: {missing} Do not stage a nearby Composer as a stand-in for it.",
+    "source": "Hand-written for the composer search; {missing} is the sentence above."
+  },
   "composer.unknown-subject": {
     "why": "No composer serves that Subject. Search by goal to find the right composer, or use one of the Subject ids the search lists.",
     "source": "Hand-written for the composer search."
