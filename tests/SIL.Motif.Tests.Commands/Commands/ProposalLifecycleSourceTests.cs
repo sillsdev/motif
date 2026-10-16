@@ -21,6 +21,10 @@ public sealed class ProposalLifecycleSourceTests
     private static readonly Dictionary<string, string> NotAStatus = new(StringComparer.Ordinal)
     {
         ["SIL.Motif.Commands/Queries/TraceReadingBuilder.cs"] = "a parser trace step's outcome word",
+        ["SIL.Motif.Host/Parsimony/MeasureRunner.cs"] = "a parser's effect on a Parsimony measure",
+        ["SIL.Motif.Host/Parsimony/ParsimonyViewsQuery.cs"] = "a Parsimony judgment state",
+        ["SIL.Motif.Host/Parsimony/ParsimonyDispositionQuery.cs"] = "a Parsimony judgment state",
+        ["SIL.Motif.Contract/Responses/ProjectStanding.cs"] = "a form's standing in the project, not a Proposal's",
     };
 
     [Fact]
@@ -28,7 +32,7 @@ public sealed class ProposalLifecycleSourceTests
     {
         var src = Path.Combine(RepoPaths.FindRepoRoot(), "src");
         var offences = new List<string>();
-        foreach (var project in new[] { "SIL.Motif.Commands", "SIL.Motif.Worker.Runtime" })
+        foreach (var project in new[] { "SIL.Motif.Commands", "SIL.Motif.Worker.Runtime", "SIL.Motif.Host", "SIL.Motif.Contract" })
         foreach (var file in Directory.EnumerateFiles(Path.Combine(src, project), "*.cs", SearchOption.AllDirectories))
         {
             var relative = Path.GetRelativePath(src, file).Replace('\\', '/');

@@ -20,7 +20,6 @@ public enum ProposalTransition
     Supersede,
     Reopen,
     Delete,
-    Apply,
 }
 
 /// <summary>
@@ -66,7 +65,6 @@ public static class ProposalLifecycle
         ProposalTransition.Supersede => [ProposalStatus.Proposed, ProposalStatus.Deferred, ProposalStatus.Rejected],
         ProposalTransition.Reopen => [ProposalStatus.Rejected, ProposalStatus.Withdrawn, ProposalStatus.Superseded],
         ProposalTransition.Delete => [ProposalStatus.Rejected, ProposalStatus.Superseded, ProposalStatus.Withdrawn],
-        ProposalTransition.Apply => [ProposalStatus.Proposed, ProposalStatus.Deferred],
         _ => throw new ArgumentOutOfRangeException(nameof(transition)),
     };
 
