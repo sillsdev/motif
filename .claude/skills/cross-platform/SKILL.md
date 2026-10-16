@@ -85,7 +85,8 @@ the rule was broken.
 - Wait on a condition or on progress, bounded by the lifetime of the thing that makes progress. A fixed
   wall-clock deadline is a flake on a slower runner.
 - `test.ps1` runs at most one sixth as many test projects at once as there are processors, rounded down
-  with a minimum of two. `MOTIF_TEST_SLOTS` can cap concurrent runs across worktrees on one machine.
+  with a minimum of two. On a developer machine `MOTIF_TEST_SLOTS` (default a fifth of the processors, 0 for none)
+  caps concurrent runs across worktrees; CI takes no slot.
 - Polling a job's status by launching the CLI is slow on macOS, so a fast job can pass through a state
   between two polls. Treat any state past the one you waited for as reached.
 - Stored timestamps that SQL compares as text share one fixed-width format. For jobs that is

@@ -167,6 +167,15 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
+$phaseClocks['resource sizing regression'] = [Diagnostics.Stopwatch]::StartNew()
+Write-Step 'node and slot sizing regression'
+& pwsh -NoProfile -File (Join-Path $repoRoot 'tools/MotifTestResources.Tests.ps1')
+Write-PhaseDuration 'resource sizing regression'
+if ($LASTEXITCODE -ne 0) {
+    Write-PhaseDuration 'whole gate'
+    exit 1
+}
+
 $phaseClocks['artifact plan regression'] = [Diagnostics.Stopwatch]::StartNew()
 Write-Step 'test artifact plan regression'
 & pwsh -NoProfile -File (Join-Path $repoRoot 'tools/Test-MotifTestRunPlan.Tests.ps1')
@@ -292,7 +301,7 @@ if (-not $resultsRoot.StartsWith($binRoot, [StringComparison]::OrdinalIgnoreCase
 if (Test-Path $resultsRoot) { Remove-Item $resultsRoot -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $resultsRoot | Out-Null
 
-# Held until this script exits, so a machine running many worktrees runs only MOTIF_TEST_SLOTS suites at once.
+# Held until this script exits, so a machine running many worktrees runs only a few suites at once.
 $phaseClocks['test slot wait'] = [Diagnostics.Stopwatch]::StartNew()
 Import-Module (Join-Path $repoRoot 'tools/MotifTestSlot.psm1') -Force
 $testSlot = Enter-MotifTestSlot
