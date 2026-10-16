@@ -35,7 +35,7 @@
           <DataTemplate x:DataType="vm:TextChoiceViewModel">
             <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
               <CheckBox IsChecked="{Binding IsChecked}" AutomationProperties.Name="{Binding Title}">
-                <TextBlock Text="{Binding Title}" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding Title}" TextWrapping="Wrap" AutomationProperties.AccessibilityView="Raw" />
               </CheckBox>
               <views:CopyableTextBlock Classes="muted" Text="{Binding CountsText}" TextWrapping="Wrap"
                          Margin="{DynamicResource Component.TextsPage.CountIndent}"

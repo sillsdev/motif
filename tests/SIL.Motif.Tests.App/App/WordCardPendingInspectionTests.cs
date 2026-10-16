@@ -141,13 +141,31 @@ public sealed class WordCardPendingInspectionTests
                 window.UpdateLayout();
                 Assert.Single(card.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
                     text.Text == notParsed && text.IsEffectivelyVisible);
+                var cardBounds = new Rect(card.TranslatePoint(default, window)!.Value, card.Bounds.Size);
                 foreach (var morph in morphs)
                 {
-                    var form = Assert.Single(card.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
-                        ReferenceEquals(text.DataContext, morph) && text.Text == morph.Form);
-                    var origin = form.TranslatePoint(default, window)!.Value;
-                    Assert.True(origin.X + form.Bounds.Width <= window.Bounds.Width,
-                        $"{morph.Form} is cut off at {origin.X + form.Bounds.Width} of {window.Bounds.Width}.");
+                    var own = card.GetVisualDescendants().OfType<CopyableTextBlock>()
+                        .Where(text => ReferenceEquals(text.DataContext, morph)).ToArray();
+                    var form = Assert.Single(own, text => text.Text == morph.Form);
+                    var gloss = Assert.Single(own, text => text.Text == morph.GlossOrPlaceholder);
+                    var link = Assert.Single(card.GetVisualDescendants().OfType<InspectLink>(), item =>
+                        ReferenceEquals(item.DataContext, morph));
+                    Assert.True(link.IsEffectivelyVisible);
+                    var column = form.GetVisualParent()!;
+                    Assert.Same(column, gloss.GetVisualParent());
+                    Assert.Same(column, link.GetVisualParent());
+                    var columnBounds = new Rect(((Visual)column).TranslatePoint(default, window)!.Value,
+                        ((Visual)column).Bounds.Size);
+                    foreach (Control part in new Control[] { form, gloss, link })
+                    {
+                        var rect = new Rect(part.TranslatePoint(default, window)!.Value, part.Bounds.Size);
+                        Assert.True(cardBounds.Contains(rect.TopLeft) && cardBounds.Contains(rect.BottomRight),
+                            $"{morph.Form} part {part.GetType().Name} {rect} is outside the card {cardBounds}.");
+                        Assert.True(columnBounds.Inflate(0.5).Contains(rect.TopLeft)
+                            && columnBounds.Inflate(0.5).Contains(rect.BottomRight),
+                            $"{morph.Form} part {part.GetType().Name} {rect} is outside its column {columnBounds}.");
+                    }
+                    Assert.DoesNotContain(gloss.TextLayout.TextLines, line => line.HasCollapsed);
                 }
             }
             finally { window.Close(); }

@@ -23,11 +23,13 @@
               </ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:ParserReadingMorphViewModel">
-                  <StackPanel Margin="{DynamicResource Intent.Gap.CompactItem}">
+                  <StackPanel Margin="{DynamicResource Intent.Gap.CompactItem}"
+                              MaxWidth="{DynamicResource Component.WordCard.MorphColumnMaxWidth}">
                     <views:CopyableTextBlock Classes="reviewMorphForm" Text="{Binding Form}"
                                              controls:WritingSystemText.Id="{Binding FormWritingSystem}"
                                              controls:WritingSystemText.StyleName="Normal" />
                     <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding GlossOrPlaceholder}"
+                                             TextWrapping="Wrap"
                                              controls:WritingSystemText.Id="{Binding GlossWritingSystem}"
                                              controls:WritingSystemText.StyleName="Normal" />
                     <views:InspectLink Content="Inspect" Subject="{Binding InspectSubject}"

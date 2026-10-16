@@ -4,6 +4,7 @@
   <Styles.Resources>
     <StaticResource x:Key="Component.WordCard.HeaderPadding" ResourceKey="Primitive.Inset.8_3_8_3" />
     <StaticResource x:Key="Component.WordCard.HeadingType" ResourceKey="Primitive.Type.10" />
+    <StaticResource x:Key="Component.WordCard.MorphColumnMaxWidth" ResourceKey="Primitive.Size.110" />
   </Styles.Resources>
   <Style Selector="Grid.wordPresentationCardGrid">
     <Setter Property="ColumnSpacing" Value="{DynamicResource Intent.Space.Related}" />
