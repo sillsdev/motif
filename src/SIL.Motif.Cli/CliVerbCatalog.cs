@@ -408,6 +408,9 @@ public static class CliVerbCatalog
                 "[--by kind|rule] [--rule <kind>:<key>] [--structural | --local --scope <scope>] [--top N] [--json]",
             }),
         new CliVerbDescriptor(
+            "Project", "activity", "activity",
+            new[] { "activity --log <file.jsonl> [--json]" }),
+        new CliVerbDescriptor(
             "Project", "uses", "uses",
             new[]
             {

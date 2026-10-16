@@ -7,6 +7,7 @@ using ModelContextProtocol;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using SIL.Motif.Commands;
+using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host;
@@ -149,8 +150,28 @@ public static class MotifMcpServer
         }
         context.Activity.Record(new ActivityEntry(DateTimeOffset.UtcNow, tool?.Tool.Name ?? name, args,
             result.IsError == true, outcome.Refusal?.Code, ResultBytes(result), clock.ElapsedMilliseconds,
-            outcome.JobId, context.Profile.Name, outcome.FindComposer));
+            outcome.JobId, context.Profile.Name, outcome.FindComposer,
+            tool is null ? [] : ComposerVerbs(tool.Tool, args)),
+            outcome.Refusal is { } refused ? RefusalMapper.NextFor(refused, tools, args) : outcome.Next);
         return result;
+    }
+
+    /// <summary>The Composer verbs a call addresses, read from the catalog commands the tool serves.</summary>
+    private static string[] ComposerVerbs(AgentTool tool, JsonObject args)
+    {
+        var verbs = new List<string>();
+        foreach (var command in CommandCatalog.All.Where(command => tool.Requests.Contains(command.RequestType)))
+        {
+            if (command.RequestType == typeof(SIL.Motif.Commands.Requests.ComposeBatchRequest))
+            {
+                if (args["intents"] is JsonArray intents)
+                    verbs.AddRange(intents.Select(intent => intent?["verb"] is JsonValue value &&
+                        value.TryGetValue<string>(out var verb) ? verb : null).OfType<string>());
+            }
+            else if (command.Name.StartsWith("compose-", StringComparison.Ordinal) || command.Name == "order-allomorphs")
+                verbs.Add(command.Name);
+        }
+        return verbs.Distinct(StringComparer.Ordinal).ToArray();
     }
 
     private static async Task<ToolOutcome> RunAsync(ServerContext context, ExposedTool tool, JsonObject args,

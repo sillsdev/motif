@@ -1394,13 +1394,8 @@ internal static class AgentTools
         return ToolOutcome.Ok(new JsonObject
         {
             ["profile"] = context.Profile.Name,
-            ["calls"] = new JsonObject
-            {
-                ["total"] = entries.Count,
-                ["errors"] = entries.Count(entry => entry.IsError),
-                ["byTool"] = new JsonObject(entries.GroupBy(entry => entry.Tool).OrderBy(group => group.Key, StringComparer.Ordinal)
-                    .Select(group => new KeyValuePair<string, JsonNode?>(group.Key, group.Count()))),
-            },
+            ["calls"] = JsonNode.Parse(ProjectionJson.Serialize(ActivityQuery.Summarize(
+                entries.Select(entry => new ActivityCall(entry.Tool, entry.IsError, entry.Code, entry.FollowedNext))))),
             ["recent"] = new JsonArray(entries.TakeLast(10).Select(entry => (JsonNode)new JsonObject
             {
                 ["tool"] = entry.Tool,

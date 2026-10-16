@@ -1,6 +1,7 @@
 """Cost and effort measures are counted from stored transcripts, deterministically."""
 import csv
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -20,13 +21,24 @@ def call(tool, text, arguments=None, error=None):
 
 
 class MeasureRunTests(unittest.TestCase):
-    def trial(self, run, arm, number, success, records, cost=None):
+    def trial(self, run, arm, number, success, records, cost=None, activity=None, expected=None):
         trial = run / 'trials/task-a' / arm / f'trial-{number}'
         trial.mkdir(parents=True)
         (trial / 'transcript.jsonl').write_text('\n'.join(json.dumps(r) for r in records) + '\n')
         (trial / 'grade.json').write_text(json.dumps({'grade': 1.0 if success else 0.0, 'success': success}))
         (trial / 'integrity.json').write_text(json.dumps({'state': 'clean'}))
-        (trial / 'manifest.json').write_text(json.dumps({'armId': arm, 'costUsd': cost}))
+        manifest = {'armId': arm, 'costUsd': cost}
+        if expected is not None:
+            manifest['expectedComposers'] = expected
+        (trial / 'manifest.json').write_text(json.dumps(manifest))
+        if activity is not None:
+            (trial / 'frozen').mkdir()
+            (trial / 'frozen/activity.jsonl').write_text('\n'.join(json.dumps(a) for a in activity) + '\n')
+
+    def measure(self, run, **environment):
+        subprocess.run([sys.executable, str(SCRIPT), str(run)], check=True, capture_output=True, stdin=subprocess.DEVNULL,
+                       env=dict(os.environ, **{'MOTIF_TEST_GRAMMARS': '', **environment}))
+        return list(csv.DictReader(open(run / 'metrics.csv')))
 
     def test_counts_tokens_calls_reads_and_divides_spend_by_successes(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -102,6 +114,83 @@ class MeasureRunTests(unittest.TestCase):
             summary = (run / 'metrics.md').read_text()
             self.assertIn('| arm-a | ALL | 1/1 | 2200 | 1.0 | 1.0 | 2200 |', summary)
             self.assertIn('1 retried attempts reported no cost', summary)
+
+    ACTIVITY = [
+        {'tool': 'motif_overview', 'isError': True, 'code': 'baseline.missing', 'composers': [], 'followedNext': None},
+        {'tool': 'motif_add_phoneme', 'isError': True, 'code': 'tool.missing-argument', 'composers': ['compose-author-phoneme'], 'followedNext': False},
+        {'tool': 'motif_add_phoneme', 'isError': True, 'code': 'tool.missing-argument', 'composers': ['compose-author-phoneme'], 'followedNext': True},
+        {'tool': 'motif_dry_run', 'isError': False, 'code': None, 'composers': [], 'followedNext': True},
+        {'tool': 'motif_dry_run', 'isError': False, 'code': None},
+    ]
+
+    def test_counts_refusals_by_code_and_whether_the_agent_followed_next(self):
+        with tempfile.TemporaryDirectory() as directory:
+            run = Path(directory)
+            self.trial(run, 'arm-a', 1, True, [], activity=self.ACTIVITY)
+            row = self.measure(run)[0]
+            self.assertEqual(('3', 'baseline.missing=1 tool.missing-argument=2', '2', '1'),
+                             (row['refusals'], row['refusalCodes'], row['followedNext'], row['ignoredNext']))
+            summary = (run / 'metrics.md').read_text()
+            self.assertIn('Mean refusals', summary)
+            self.assertIn('| 3.0 | n/a | 2 / 1 |', summary)
+
+    def test_found_composer_is_none_when_the_task_declares_none(self):
+        with tempfile.TemporaryDirectory() as directory:
+            run = Path(directory)
+            self.trial(run, 'arm-a', 1, True, [], activity=self.ACTIVITY)
+            self.assertEqual('', self.measure(run)[0]['foundComposer'])
+
+    def test_found_composer_is_true_only_when_a_call_addressed_an_expected_composer(self):
+        with tempfile.TemporaryDirectory() as directory:
+            run = Path(directory)
+            self.trial(run, 'arm-a', 1, True, [], activity=self.ACTIVITY, expected=['compose-author-phoneme'])
+            self.trial(run, 'arm-a', 2, False, [], activity=self.ACTIVITY, expected=['compose-author-affix-slot'])
+            self.trial(run, 'arm-a', 3, False, [], activity=[], expected=['compose-author-phoneme'])
+            rows = self.measure(run)
+            self.assertEqual(['True', 'False', 'False'], [row['foundComposer'] for row in rows])
+            self.assertIn('| 2.0 | 1/3 |', (run / 'metrics.md').read_text())
+
+    def test_expected_composers_fall_back_to_the_task_definition(self):
+        with tempfile.TemporaryDirectory() as directory:
+            run = Path(directory)
+            grammars = run / 'grammars'
+            task_dir = grammars / 'sets/set-x/tasks/task-a'
+            task_dir.mkdir(parents=True)
+            (task_dir / 'task.yaml').write_text(json.dumps({'id': 'task-a', 'expectedComposers': ['compose-author-phoneme']}))
+            self.trial(run, 'arm-a', 1, True, [], activity=self.ACTIVITY)
+            self.assertEqual('True', self.measure(run, MOTIF_TEST_GRAMMARS=str(grammars))[0]['foundComposer'])
+
+    def test_a_trial_with_no_server_activity_has_zero_counts_and_a_blank_composer(self):
+        with tempfile.TemporaryDirectory() as directory:
+            run = Path(directory)
+            self.trial(run, 'arm-a', 1, True, [])
+            row = self.measure(run)[0]
+            self.assertEqual(('0', '', '0', '0', ''), (row['refusals'], row['refusalCodes'], row['followedNext'],
+                                                          row['ignoredNext'], row['foundComposer']))
+
+    def test_columns_that_existed_before_the_service_measures_keep_their_values(self):
+        with tempfile.TemporaryDirectory() as directory:
+            run = Path(directory)
+            usage = {'type': 'turn.completed', 'usage': {'input_tokens': 1000, 'cached_input_tokens': 400,
+                                                         'output_tokens': 100, 'reasoning_output_tokens': 60}}
+            summary = {'source': 'host-summary', 'payload': {'wallMs': 5000, 'turns': 2}}
+            self.trial(run, 'arm-a', 1, True,
+                       [call('motif_lexicon', 'x' * 2000), call('motif_add_phoneme', 'p', error='boom'),
+                        call('motif_guide', 'g', {'topic': 'slots'}), event(usage), summary],
+                       cost=1.5, activity=self.ACTIVITY, expected=['compose-author-phoneme'])
+            row = self.measure(run)[0]
+            expected = {
+                'task': 'task-a', 'arm': 'arm-a', 'trial': 'trial-1', 'model': '', 'integrity': 'clean', 'grade': '1.0',
+                'success': 'True', 'inputTokens': '1000', 'cachedInputTokens': '400', 'cacheWriteTokens': '0',
+                'outputTokens': '100', 'reasoningTokens': '60', 'totalTokens': '1100', 'wallSeconds': '5.0',
+                'turns': '2', 'mcpCalls': '3', 'mcpErrors': '1', 'readCalls': '2', 'draftCalls': '1',
+                'distinctTools': '3', 'guideTopics': '1', 'resourcesRead': '0', 'resultKiloChars': '2.0',
+                'shellCommands': '0', 'toolCounts': 'motif_add_phoneme=1 motif_guide=1 motif_lexicon=1',
+                'retryTokens': '0', 'costUsd': '1.5', 'unpricedRetryAttempts': '0',
+            }
+            self.assertEqual(expected, {key: row[key] for key in expected})
+            self.assertEqual(list(expected) + ['refusals', 'refusalCodes', 'followedNext', 'ignoredNext', 'foundComposer'],
+                             list(row))
 
 
 if __name__ == '__main__':

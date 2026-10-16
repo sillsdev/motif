@@ -8,7 +8,7 @@ the next two thousand languages mostly reuse what the first few built.
 
 **Status:** proposed, decided with the owner on 2026-10-15. Amends [ADR 0058](0058-the-agent-edit-loop.md)'s list of
 which commands become agent tools and its separate Dry Run and Trial tools; the meaning of a Dry Run and a Trial is
-unchanged. [ADR 0029](0029-agents-address-layer-1-only.md) stands. Builds on
+unchanged. [ADR 0029](0029-agents-address-layer-1-only.md) stands, with no gated primitive route. Builds on
 [ADR 0009](0009-layered-api-primitives-and-composers.md), [ADR 0043](0043-one-command-catalog-two-front-ends.md),
 [ADR 0047](0047-generated-help-walkthroughs-and-docs-site.md), [ADR 0059](0059-measuring-agents-fairly.md),
 [ADR 0064](0064-every-operation-can-cite-its-source.md) and [ADR 0067](0067-proposal-difference-against-human-decisions.md),
@@ -97,14 +97,38 @@ host's own tool search.
 - Each Subject has a help page: what that issue needs, in which order, and its pitfalls.
 - No Composer is written for one language.
 
-### 5. No primitive route
+### 5. No primitive route; a new Phenomenon's Composer arrives in days
 
-Agents do not stage Layer 0 primitives, even into a Draft behind a Trial: ADR 0029 stands. About half of the new
-surface the first grammars needed was linguistic policy that a generic setter would let an agent author wrongly,
-and the most harmful failures were silent linguistic side effects that a setter makes easier. The long tail is
-unblocked by making a Composer cheap to add: one definition, its lowering, and its Help. This is revisited only if,
-after one-definition Composers land, a Subject with no Composer holds up a language for more than a day, as the
-task evaluations record.
+Agents cannot use low-level operations: they never stage Layer 0 primitives, even into a Draft behind a Trial, and
+ADR 0029 stands without a revisit clause (the owner closed the gated-route option). About half of the new surface
+the first grammars needed was linguistic policy that a generic setter would let an agent author wrongly, and the
+most harmful failures were silent linguistic side effects that a setter makes easier. So a new language's long tail
+is unblocked by adding a Composer quickly, and the Composer definition makes that days of work, not weeks.
+
+**When the Composer lowers to existing operation kinds** (the usual case, about a day), the person adding it writes
+four things:
+
+1. **The domain work, in the Runner:** an intent record, its closed parser (unknown properties are refused, ids are
+   compared by identity as in ADR 0068) and the build step that lowers the intent to existing Motif operations.
+2. **One Composer definition, in Commands, about ten lines:** the verb (also the compose step's `verb`), the provenance
+   name, the closed shape of its fields, its exposure, its Subjects, and when needed which earlier edit it replaces,
+   what a batch label names, and its related objects.
+3. **Its Help:** a Title, a Description, one line per field, two to four example goals in a linguist's words naming no
+   language, and a Help page. A new Subject also gets its entry and its help page.
+4. **Its tests:** positive cases, refusals, and Dry Run and Apply read-back on a blank project, plus a real-parser test
+   when parsing behaviour is the point.
+
+Everything else is generated from the definition and never edited by hand: the CLI verb, its usage and dispatch, the
+catalog entry, membership and schema in `motif_compose`, `motif_find_composer`'s results, the per-Composer tool in the
+full profile, and the descriptions both renderings show. The test suite fails when Help, a Subject or an example goal is
+missing.
+
+**When it needs a new operation kind**, the operation family's definition of done applies in full (closed schema,
+prose semantics, validation and lowering, preview effects, Apply and read-back, conflict and rebase behaviour,
+snapshot and diff, positive, negative, rollback, round-trip and conformance fixtures, and a coverage-manifest row).
+That adds days per family and is where a Phenomenon really costs time. Either way, a Composer must name an intent a
+linguist would recognise, never a field or a mechanism (ADR 0029's review criterion), and is never written for one
+language.
 
 ### 6. Naming and shape
 
@@ -149,8 +173,10 @@ across typologically different languages, run by the existing harness (ADR 0059)
 (calls by tool, tool errors, turns, tokens, wall time), each run records refusals by code and whether the agent
 found the expected Composer. Grading stays on the resulting grammar, never on the sequence of calls. Real sessions
 are recorded the same way on the person's machine only: the activity log records each call's tool, Composer and
-refusal code and whether it followed the previous response's next step, and `motif activity` answers the same
-questions of it. Nothing is sent anywhere.
+refusal code and whether it followed the previous response's next step. "Followed" means the call used the tool the
+previous `next` named; arguments are not compared. Activity-log lines written before a field existed are still read,
+with that field blank. `motif activity` reads the activity log a session names and answers the same questions of it;
+a default log for every session is a later step. Nothing is sent anywhere.
 
 ## Consequences
 
@@ -164,7 +190,8 @@ questions of it. Nothing is sent anywhere.
 
 ## Rejected
 
-- **A gated primitive route** for the long tail: see section 5.
+- **A gated primitive route** for the long tail, staging Layer 0 primitives into a Draft behind a Trial: closed by
+  the owner (agents cannot use low level); see section 5.
 - **One tool per Composer on the default profile**, relying on the host's tool search: the hosts' search is lossy,
   and the count grows with every Composer.
 - **A try-a-word against a Proposal**: it computes evidence outside the Trial, so two readers of the same Proposal

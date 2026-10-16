@@ -230,6 +230,9 @@ public static class CommandCatalog
         new CommandDescriptor("grammar check", typeof(GrammarCheckRequest), typeof(GrammarCheckResponse), CommandSurface.Released, AgentClass.Evaluate),
         new CommandDescriptor("grammar read", typeof(GrammarReadRequest), typeof(GrammarReadResponse), CommandSurface.AdvancedAi, AgentClass.Read),
         new CommandDescriptor("timing", typeof(TimingRequest), typeof(TimingResponse), CommandSurface.Released, AgentClass.Read),
+        // motif_activity is the MCP rendering of this summary, with Proposals and jobs the file cannot hold.
+        new CommandDescriptor("activity", typeof(ActivityRequest), typeof(ActivitySummary), CommandSurface.Released, AgentClass.Read)
+            { ExposeAsAgentTool = false },
 
         // ObjectUsesQuery: the words that use an object, the words it ran in, and what a set of words shares
         new CommandDescriptor("uses", typeof(ObjectUsesRequest), typeof(ObjectUsesResponse), CommandSurface.Developer, AgentClass.Read),

@@ -220,6 +220,7 @@ $status = if ($integrity.state -ne 'clean') { $integrity.state }
 Write-ABJson (Join-Path $outputRoot 'manifest.json') ([ordered]@{
     schema = 'motif-controlled-trial/v1'
     runId = $manifest.runId; questionId = $manifest.questionId; taskId = $task.id; setId = $task.set
+    expectedComposers = if ($task.Contains('expectedComposers')) { @($task.expectedComposers) } else { $null }
     caseId = [Guid]::NewGuid().ToString('N'); armId = $manifest.arm.id; host = $manifest.arm.host; trial = $manifest.trial
     status = $status; integrity = $integrity
     failureClass = if ($grade.failureClass) { $grade.failureClass } else { $integrity.failureClass }

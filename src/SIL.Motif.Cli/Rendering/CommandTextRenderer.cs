@@ -89,6 +89,7 @@ public static class CommandTextRenderer
             WarningsResponse r => RenderWarnings(r),
             ProposalDifferenceResponse r => RenderProposalDifference(r),
             TimingResponse r => RenderTiming(r),
+            ActivitySummary r => RenderActivity(r),
             ObjectUsesResponse r => RenderUses(r),
             InspectResponse r => RenderInspect(r),
             HandoffCommandResponse r => RenderHandoff(r),
@@ -99,6 +100,19 @@ public static class CommandTextRenderer
             _ => throw new NotSupportedException($"No text rendering registered for '{typeof(T)}'."),
         };
         return new CommandResult(0, text);
+    }
+
+    private static string RenderActivity(ActivitySummary summary)
+    {
+        var text = new StringBuilder();
+        text.AppendLine($"Calls: {summary.Total}, errors: {summary.Errors}");
+        text.AppendLine($"Followed next: {summary.FollowedNext}, ignored next: {summary.IgnoredNext}");
+        text.AppendLine("Calls by tool:");
+        foreach (var (tool, count) in summary.ByTool) text.AppendLine($"  {tool}: {count}");
+        text.AppendLine("Refusals by code:");
+        foreach (var (code, count) in summary.RefusalsByCode) text.AppendLine($"  {code}: {count}");
+        if (summary.RefusalsByCode.Count == 0) text.AppendLine("  none");
+        return text.ToString();
     }
 
     private static string RenderProposalStandings(ProposalStandings standings)

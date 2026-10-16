@@ -7,6 +7,7 @@ Nothing here judges an answer: token, time and actual cost values come from reco
 import argparse
 import csv
 import json
+import os
 from collections import Counter, defaultdict
 from pathlib import Path
 
@@ -58,6 +59,44 @@ def bridge_calls(trial):
             yield name, arguments, payload.get('result'), payload.get('error')
     for name, arguments in requests.values():
         yield name, arguments, None, 'no response'
+
+
+def server_activity(trial):
+    return list(lines(trial / 'frozen' / 'activity.jsonl'))
+
+
+def declared_composers(trial, manifest):
+    """The Composer verbs the task expects, from the Episode manifest or else the task definition, or None."""
+    if isinstance(manifest.get('expectedComposers'), list):
+        return [str(verb) for verb in manifest['expectedComposers']] or None
+    task = trial.parts[-3]
+    configured = os.environ.get('MOTIF_TEST_GRAMMARS')
+    if not configured:
+        return None
+    root = Path(configured)
+    for base in (root / 'evals' / 'sets', root / 'sets', root):
+        for definition in sorted(base.glob(f'*/tasks/{task}/task.yaml')):
+            try:
+                expected = json.loads(definition.read_text(encoding='utf-8-sig')).get('expectedComposers')
+            except ValueError:
+                continue
+            return [str(verb) for verb in expected] if isinstance(expected, list) and expected else None
+    return None
+
+
+def measure_service(trial, manifest):
+    """How well the server served the agent: refusals by code, advice followed, expected Composer found."""
+    activity = server_activity(trial)
+    codes = Counter(entry['code'] for entry in activity if entry.get('code') is not None)
+    expected = declared_composers(trial, manifest)
+    addressed = {verb for entry in activity for verb in entry.get('composers') or []}
+    return {
+        'refusals': sum(codes.values()),
+        'refusalCodes': ' '.join(f'{code}={n}' for code, n in sorted(codes.items())),
+        'followedNext': sum(1 for entry in activity if entry.get('followedNext') is True),
+        'ignoredNext': sum(1 for entry in activity if entry.get('followedNext') is False),
+        'foundComposer': None if expected is None else bool(addressed & set(expected)),
+    }
 
 
 def measure_trial(trial, classes):
@@ -143,6 +182,7 @@ def main():
         row['retryTokens'] = sum(attempt['totalTokens'] for attempt in retried)
         row['costUsd'] = manifest.get('costUsd')
         row['unpricedRetryAttempts'] = manifest.get('unpricedRetryAttempts') or 0
+        row.update(measure_service(trial, manifest))
         rows.append(row)
     if not rows:
         raise SystemExit('No trials found under ' + str(run))
@@ -170,8 +210,9 @@ def write_summary(path, rows):
            'spend on every scored Episode by the number solved, so Agent failures count against an Arm. Average '
            'cost per Episode appears beside it; missing cost data remains incomplete.', '',
            '| Arm | Task | Solved | Tokens to solve | Price to solve (USD) | Average cost / Episode (USD) | Mean tokens | Mean wall s '
-           '| Mean MCP calls | Mean reads | Mean result kchars | Guide topics | MCP errors |',
-           '|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|']
+           '| Mean MCP calls | Mean reads | Mean result kchars | Guide topics | MCP errors | Mean refusals | Found Composer '
+           '| Followed / ignored next |',
+           '|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|']
     for (arm, task), items in sorted(groups.items(), key=lambda kv: (kv[0][0], kv[0][1] == 'ALL', kv[0][1])):
         n = len(items)
         solved = sum(1 for row in items if row['success'])
@@ -181,14 +222,18 @@ def write_summary(path, rows):
         average_cost = cost / n if cost is not None and n else None
         mean = lambda key: round(sum(row[key] for row in items) / n, 1)
         tokens_to_solve = per_success(tokens, solved)
-        out.append('| {} | {} | {}/{} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} |'.format(
+        declared = [row['foundComposer'] for row in items if row['foundComposer'] is not None]
+        out.append('| {} | {} | {}/{} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} / {} |'.format(
             arm, task, solved, n, tokens_to_solve if tokens_to_solve is not None else 'n/a',
             round(cost / solved, 4) if cost is not None and solved else 'incomplete costs' if cost is None else 'n/a',
             round(average_cost, 4) if average_cost is not None else 'incomplete costs',
             round(tokens / n), mean('wallSeconds'), mean('mcpCalls'), mean('readCalls'), mean('resultKiloChars'),
-            mean('guideTopics'), sum(row['mcpErrors'] for row in items)))
+            mean('guideTopics'), sum(row['mcpErrors'] for row in items), mean('refusals'),
+            f'{sum(declared)}/{len(declared)}' if declared else 'n/a',
+            sum(row['followedNext'] for row in items), sum(row['ignoredNext'] for row in items)))
     unpriced = sum(row['unpricedRetryAttempts'] for row in rows if row['integrity'] == 'clean' and row['success'] is not None)
-    out += ['', 'Costs come from the Episode manifest, including recorded Cloud retry spend; tokens to solve and mean '
+    out += ['', 'Refusals, followed next and found Composer come from the server activity log. Found Composer counts '
+            'Episodes whose task declares expectedComposers; n/a means no task did.', 'Costs come from the Episode manifest, including recorded Cloud retry spend; tokens to solve and mean '
             'tokens include the tokens of retried attempts. A missing value is not replaced with a token-rate estimate.']
     if unpriced:
         out.append(f'{unpriced} retried attempts reported no cost, so those prices are lower bounds.')

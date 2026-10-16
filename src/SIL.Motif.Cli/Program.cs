@@ -1657,6 +1657,12 @@ try
                 ProposalId: flags.GetValueOrDefault("proposal"))));
             break;
 
+        case "activity":
+            if (!flags.TryGetValue("log", out var activityLog))
+                return Usage(UsageLineFor("activity"), asJson);
+            result = RenderCommand(ActivityQuery.Read(new ActivityRequest(activityLog)));
+            break;
+
         case "uses":
             var usesFlags = new[] { "allomorph", "grammatical-info", "timing", "words" };
             if (!flags.TryGetValue("project", out var usesProject) || positionals.Count != 0 ||

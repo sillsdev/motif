@@ -4,6 +4,19 @@
   "entries": [
     {
       "kind": "command",
+      "code": "activity",
+      "slug": "activity",
+      "title": "Summarize agent activity",
+      "description": "Reads an activity log written by motif mcp --activity-log and reports calls by tool, errors, refusals by code, and how often the agent followed the advice it was given. Nothing is sent anywhere.",
+      "helpPage": "# Summarize agent activity\n\n\u0060activity\u0060 reads an activity log and reports how Motif\u0027s MCP server served an AI agent: the calls by tool, how many came back as errors, the refusals by code, and how often the agent followed the advice it was given.\n\nThe log exists only when the server was started with \u0060motif mcp --activity-log \u003Cfile\u003E\u0060; without that option nothing is written. The file stays on your machine, and \u0060activity\u0060 only reads it. Nothing is sent anywhere.\n\n## When to use it\n\nUse it after an agent session to see where the agent was refused and whether it acted on each response\u0027s next step. \u0022Followed\u0022 means the call used the tool the previous response\u0027s next step named; its arguments are not compared. The first call of a session counts as neither followed nor ignored.\n\n## Example\n\n\u0060\u0060\u0060powershell\nmotif activity --log \u0022C:\\Motif\\session-activity.jsonl\u0022 --json\n\u0060\u0060\u0060\n\n## What it prints\n\nThe response counts all calls, the calls that came back as errors, calls per tool, refusals per refusal code, and the calls that followed or ignored the previous next step. Lines written by an older Motif that lack the next-step field are still read and counted as neither. A line that is not a log entry is skipped. When the file is missing or unreadable, the command refuses and says how to start a session that writes one.\n",
+      "usage": [
+        "Usage: motif activity --log \u003Cfile.jsonl\u003E [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/activity/"
+    },
+    {
+      "kind": "command",
       "code": "add-corpus",
       "slug": "add-corpus",
       "title": "Describe a Corpus",

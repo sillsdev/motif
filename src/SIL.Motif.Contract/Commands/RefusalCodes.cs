@@ -14,6 +14,7 @@ namespace SIL.Motif.Contract.Commands;
 /// </remarks>
 public static class RefusalCodes
 {
+    public const string ActivityLogUnreadable = "activity.log-unreadable";
     public const string ParseAlreadyRunningHere = "parse.already-running-here";
     public const string ParseAlreadyRunning = "parse.already-running";
     public const string ApplyAppliedContentMismatch = "apply.applied-content-mismatch";

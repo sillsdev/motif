@@ -764,6 +764,10 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         var activity = await session.CallAsync("motif_activity");
         var result = activity.GetProperty("result");
         Assert.True(result.GetProperty("calls").GetProperty("total").GetInt32() >= 8);
+        var calls = result.GetProperty("calls");
+        Assert.Equal(JsonValueKind.Object, calls.GetProperty("byTool").ValueKind);
+        Assert.Equal(JsonValueKind.Object, calls.GetProperty("refusalsByCode").ValueKind);
+        Assert.True(calls.GetProperty("followedNext").GetInt32() + calls.GetProperty("ignoredNext").GetInt32() >= 1);
         Assert.Contains(result.GetProperty("proposals").GetProperty("proposals").EnumerateArray(),
             item => item.GetProperty("proposalId").GetString() == proposalId);
         Assert.NotEmpty(result.GetProperty("jobs").EnumerateArray());

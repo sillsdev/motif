@@ -88,15 +88,17 @@ public sealed class ToolSurfaceTests
     }
 
     [Fact]
-    public void OnlyTheNumeralAndStemEditorsOptOutOfDefaultToolExposure()
+    public void OnlyTheNumeralAndStemEditorsAndTheActivityLogReaderOptOutOfDefaultToolExposure()
     {
         var optedOut = CommandCatalog.All.Where(command => !command.ExposeAsAgentTool)
             .Select(command => command.Name)
             .Order(StringComparer.Ordinal)
             .ToArray();
 
+        // activity has the hand-written motif_activity tool, which also reads Proposals and jobs.
         Assert.Equal(new[]
         {
+            "activity",
             "compose-edit-affix-inflection-classes",
             "compose-edit-part-of-speech-inflection-class-default",
             "compose-edit-stem-allomorph-stem-name",
@@ -116,8 +118,9 @@ public sealed class ToolSurfaceTests
             Assert.DoesNotContain(AgentTools.All, tool => tool.Requests.Contains(command.RequestType));
         });
 
-        Assert.All(CommandCatalog.All.Except(numeralEditors), command =>
+        Assert.All(CommandCatalog.All.Except(numeralEditors).Where(command => command.Name != "activity"), command =>
             Assert.True(command.ExposeAsAgentTool));
+        Assert.DoesNotContain(AgentTools.All, tool => tool.Name == "motif_activity" && tool.Requests.Count > 0);
     }
 
     [Theory]

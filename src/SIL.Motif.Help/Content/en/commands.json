@@ -300,6 +300,11 @@
     "description": "Reads timing evidence for an Assessment, optionally narrowed to words or grouped by kind or rule. Use it to locate expensive parsing work after an Assessment.",
     "source": "Hand-written from docs/cli-api.md and command behavior."
   },
+  "activity": {
+    "title": "Summarize agent activity",
+    "description": "Reads an activity log written by motif mcp --activity-log and reports calls by tool, errors, refusals by code, and how often the agent followed the advice it was given. Nothing is sent anywhere.",
+    "source": "Authored from the agent activity log contract."
+  },
   "handoff": {
     "title": "Prepare an AI Handoff",
     "description": "Writes a folder with the grammar and selected Texts, plus retained parse evidence when an invocation is selected. The files contain real project data, so review them before sharing.",

@@ -38,6 +38,7 @@ public static class RefusalCatalog
     [
 
         // RefusalCodes
+        Spec(RefusalCodes.ActivityLogUnreadable, FailureReason.NotFound),
         Spec(RefusalCodes.ParseAlreadyRunningHere, FailureReason.Busy),
         Spec(RefusalCodes.ParseAlreadyRunning, FailureReason.Busy,
             NextStep.Repeat()),
