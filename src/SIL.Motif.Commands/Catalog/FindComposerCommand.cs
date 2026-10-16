@@ -88,6 +88,9 @@ public sealed record FindComposerResponse(
 /// a composer matches only if its example goals and title together contain at least two distinct stems of the
 /// goal, or at least one when the goal has two stems or fewer; overlap with a description or a Subject title alone
 /// never counts, and neither does a generic word such as add, form or rule.
+/// When instead the strongest Subject is a served one (reserved Subjects having fewer hits, since a tie is routed
+/// away above), the Composers of that Subject are also admitted as matches although they miss the overlap
+/// threshold; they follow the ordinary matches, ranked by the same score.
 /// The first step catches phenomena Motif has no composer for, which share common words with composers
 /// that serve something else; the second step is a plain overlap count. Only matching composers are listed. When none matches, the
 /// answer is <c>noMatch</c> with no results, the two nearest Subjects (the routed one first, then overlap with
@@ -208,6 +211,13 @@ public static class FindComposerCommand
                 (item.Candidate, item.Score)).ToArray(), help, reservedBest, termHits));
         var required = words.Count <= ShortGoalStems ? MatchesForShortGoal : MatchesForLongGoal;
         var matching = scored.Where(item => item.Fields.Covered(words).Count >= required).ToArray();
+        var servedBest = ServedSubjectsAtTop(termHits, best);
+        var routed = fields.Select((field, index) => (Candidate: candidates[index], Fields: field,
+                Score: field.Score(words, rarity)))
+            .Where(item => item.Candidate.Subjects.Any(servedBest.Contains) &&
+                !matching.Any(hit => hit.Candidate.Verb == item.Candidate.Verb))
+            .OrderByDescending(item => item.Score).ThenBy(item => item.Candidate.Verb, StringComparer.Ordinal);
+        matching = matching.Concat(routed).ToArray();
         if (matching.Length == 0)
             return CommandOutcome<FindComposerResponse>.Success(NoMatch(goal!, words, scored.Select(item =>
                 (item.Candidate, item.Score)).ToArray(), help, null, termHits));
@@ -224,6 +234,11 @@ public static class FindComposerCommand
     // A reserved Subject with the most term hits wins, ties with a served Subject included.
     private static string? ReservedSubjectAtTop(Dictionary<string, int> termHits, int best) =>
         best == 0 ? null : ComposerSubjects.Reserved.FirstOrDefault(id => termHits.GetValueOrDefault(id) == best);
+
+    // A served Subject with the most term hits routes its Composers in, mirroring the reserved-Subject rule.
+    private static HashSet<string> ServedSubjectsAtTop(Dictionary<string, int> termHits, int best) =>
+        best == 0 ? [] : ComposerSubjects.All.Where(id => termHits.GetValueOrDefault(id) == best)
+            .ToHashSet(StringComparer.Ordinal);
 
     // How many of each Subject's terms the goal names: every stem of a term must be among the goal's stems.
     private static Dictionary<string, int> TermHits(HashSet<string> words, HelpCatalog help) => help.Subjects
