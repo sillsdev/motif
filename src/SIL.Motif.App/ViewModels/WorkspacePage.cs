@@ -106,8 +106,21 @@ public sealed partial class PageViewModel : ObservableObject
 
     /// <summary>The count <see cref="Model"/> keeps beside the label, or empty when it has none.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasBadge))]
+    [NotifyPropertyChangedFor(nameof(HasBadge), nameof(ChangesNoun), nameof(WarningsNoun),
+        nameof(ChangesTip), nameof(WarningsTip))]
     private string _badge = string.Empty;
+
+    /// <summary>The status bar's words after a changes count: singular only for exactly one.</summary>
+    public string ChangesNoun => Badge == "1" ? " change not applied yet" : " changes not applied yet";
+
+    /// <summary>The status bar's word after a warnings count: singular only for exactly one.</summary>
+    public string WarningsNoun => Badge == "1" ? " warning" : " warnings";
+
+    /// <summary>The changes count and its words, for the status bar's tooltip.</summary>
+    public string ChangesTip => Badge + ChangesNoun;
+
+    /// <summary>The warnings count and its word, for the status bar's tooltip.</summary>
+    public string WarningsTip => Badge + WarningsNoun;
 
     /// <summary>Whether <see cref="Badge"/> has anything to show.</summary>
     public bool HasBadge => Badge.Length > 0;

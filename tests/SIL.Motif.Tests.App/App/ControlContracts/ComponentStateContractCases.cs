@@ -669,9 +669,9 @@ internal static class TooltipOwners
         new("status selection summary", "Views/MainWindow.axaml", "{Binding SelectionSummaryText}", TooltipScene.FrameStatus,
             control => control is CopyableTextBlock &&
                 AutomationProperties.GetAutomationId(control) == AutomationIds.SidebarSelectionSummary),
-        new("status changes", "Views/MainWindow.axaml", "{Binding Badge, StringFormat='{}{0} changes not applied yet'}",
+        new("status changes", "Views/MainWindow.axaml", "{Binding ChangesTip}",
             TooltipScene.FrameStatus, control => control is Button && Name(control) == "Review changes not applied yet"),
-        new("status warnings", "Views/MainWindow.axaml", "{Binding Badge, StringFormat='{}{0} warnings'}",
+        new("status warnings", "Views/MainWindow.axaml", "{Binding WarningsTip}",
             TooltipScene.FrameStatus, control => control is Button && Name(control) == "Open Warnings"),
         new("status parse progress", "Views/MainWindow.axaml", "{Binding ActiveParseProgress.StatusText}",
             TooltipScene.ParseProgress, control => control is Button && Name(control) == "See parse progress"),

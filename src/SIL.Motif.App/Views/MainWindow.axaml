@@ -301,19 +301,19 @@
           <Button x:Name="StatusChanges" x:DataType="vm:PageViewModel" IsVisible="{Binding HasBadge}"
                   Command="{Binding Model.ShowPageCommand}" CommandParameter="{x:Static vm:WorkspacePage.Review}"
                   AutomationProperties.Name="Review changes not applied yet"
-                  ToolTip.Tip="{Binding Badge, StringFormat='{}{0} changes not applied yet'}">
+                  ToolTip.Tip="{Binding ChangesTip}">
             <StackPanel Orientation="Horizontal">
               <TextBlock Text="{Binding Badge}" />
-              <TextBlock Classes="statusFull" Text=" changes not applied yet" />
+              <TextBlock Classes="statusFull" Text="{Binding ChangesNoun}" />
             </StackPanel>
           </Button>
           <Button x:Name="StatusWarnings" x:DataType="vm:PageViewModel" IsVisible="{Binding HasBadge}"
                   Command="{Binding Model.ShowPageCommand}" CommandParameter="{x:Static vm:WorkspacePage.Warnings}"
-                  AutomationProperties.Name="Open Warnings" ToolTip.Tip="{Binding Badge, StringFormat='{}{0} warnings'}">
+                  AutomationProperties.Name="Open Warnings" ToolTip.Tip="{Binding WarningsTip}">
             <StackPanel Orientation="Horizontal">
               <TextBlock Text="⚠ " />
               <TextBlock Text="{Binding Badge}" />
-              <TextBlock Classes="statusFull" Text=" warnings" />
+              <TextBlock Classes="statusFull" Text="{Binding WarningsNoun}" />
             </StackPanel>
           </Button>
           <Button x:Name="StatusParseProgress" IsVisible="{Binding ShowsParseAllWordsProgress}"
