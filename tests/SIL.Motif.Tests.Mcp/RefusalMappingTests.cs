@@ -114,7 +114,8 @@ public sealed class RefusalNextStepTests
         RefusalCodes.ProjectNotFound, RefusalCodes.JobWaitTimeout, RefusalCodes.JobWaitCancelled,
         RefusalCodes.ProposalNotFound, RefusalCodes.ProposalInvalidId, RefusalCodes.DraftRevisionConflict,
         RefusalCodes.JobDryRunIncomplete, RefusalCodes.StoreOtherVersion, RefusalCodes.ParseAlreadyRunning,
-        RefusalCodes.AssessParserUnavailable, RefusalCodes.GrammarCheckParserUnavailable,
+        RefusalCodes.AssessParserMemoryLimit, RefusalCodes.AssessParserUnavailable,
+        RefusalCodes.GrammarCheckParserUnavailable,
         RefusalCodes.ProjectWritingSystemMissing, HostRefusalCodes.ToolUnknownArgument,
         HostRefusalCodes.ToolMissingArgument, HostRefusalCodes.ToolFailed,
     ];
@@ -126,7 +127,7 @@ public sealed class RefusalNextStepTests
         var commands = SIL.Motif.Commands.Catalog.CommandCatalog.All.Select(command => command.Name).ToHashSet();
         var defaults = MotifMcpServer.Expose(ToolProfile.Builtin);
 
-        Assert.Equal(21, HintedCodes.Distinct().Count());
+        Assert.Equal(22, HintedCodes.Distinct().Count());
         foreach (var code in HintedCodes)
         {
             var spec = RefusalCatalog.Specs[code];

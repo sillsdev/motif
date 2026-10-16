@@ -59,6 +59,8 @@ public static class RefusalCatalog
         Spec(RefusalCodes.AssessInvalidLimit, FailureReason.InvalidArgument),
         Spec(RefusalCodes.AssessInvocationInconsistent, FailureReason.Refused),
         Spec(RefusalCodes.AssessMeasurementsIncomplete, FailureReason.StoreInconsistent),
+        Spec(RefusalCodes.AssessParserMemoryLimit, FailureReason.Refused,
+            NextStep.PersonStep()),
         Spec(RefusalCodes.AssessParserUnavailable, FailureReason.Refused,
             NextStep.PersonStep()),
         Spec(RefusalCodes.AssessUnsupportedKind, FailureReason.Refused),
