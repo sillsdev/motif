@@ -1416,7 +1416,7 @@ public sealed class MainWindowSmokeTests
                 var textChooser = Assert.Single(window.GetLogicalDescendants().OfType<ListBox>(), list =>
                     AutomationProperties.GetName(list) == "Texts to analyze");
                 var secondText = Assert.Single(textChooser.GetLogicalDescendants().OfType<CheckBox>(), checkBox =>
-                    Equals(checkBox.Content, "Beta"));
+                    AutomationProperties.GetName(checkBox) == "Beta");
                 HeadlessClick.Click(window, secondText, "Beta");
                 Assert.False(secondText.IsChecked);
                 await workspace.Context.EvidencePublication;
