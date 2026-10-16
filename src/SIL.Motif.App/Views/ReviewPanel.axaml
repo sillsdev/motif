@@ -105,7 +105,7 @@
     </DataTemplate>
     <DataTemplate x:Key="ReviewNavigatorTemplate" x:DataType="vm:ReviewPageModel">
       <StackPanel Classes="reviewRelated">
-        <views:CopyableTextBlock Classes="reviewEmphasis" Text="{Binding LookedAtText}"
+        <views:CopyableTextBlock Classes="reviewEmphasis" Text="{Binding LookedAtText}" TextWrapping="Wrap"
                                  AutomationProperties.AutomationId="{x:Static app:AutomationIds.ReviewLookedAt}" />
         <views:CopyableTextBlock Text="Show" Classes="muted" />
         <ComboBox SelectedIndex="{Binding SelectedFilterIndex, Mode=TwoWay}"
