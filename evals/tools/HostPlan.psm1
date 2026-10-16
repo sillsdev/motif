@@ -41,7 +41,7 @@ Read the project through the registered Motif MCP tools. In code mode, discover 
             '-c', ('mcp_servers.motif.args=[' + (@($bridgeArguments | ForEach-Object { $_ | ConvertTo-Json -Compress }) -join ',') + ']'),
             '-c', ('mcp_servers.motif.env={' + (@($environment.Keys | ForEach-Object { $_ + '=' + ($environment[$_] | ConvertTo-Json -Compress) }) -join ',') + '}'),
             '-c', 'mcp_servers.motif.enabled=true', '-c', 'mcp_servers.motif.required=true',
-            '-c', 'mcp_servers.motif.startup_timeout_sec=120', '-c', 'mcp_servers.motif.tool_timeout_sec=180'
+            '-c', 'mcp_servers.motif.startup_timeout_sec=120', '-c', 'mcp_servers.motif.tool_timeout_sec=900'
         )
         $arguments = @(
             'exec', '--json', '-m', [string]$Arm.model, '--sandbox', 'read-only', '--ephemeral',

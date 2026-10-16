@@ -139,7 +139,7 @@ def audited_run(config, label, command, timeout):
     broker = None
     descriptors = ()
     if label == "host" and config["host"] != "fake":
-        broker = Broker(config["host"], config["model"], archive, config.get("authMode"))
+        broker = Broker(config["host"], config["model"], archive, config.get("authMode"), config.get("agentBudget"))
         descriptors = (3, 4)
         command = ["/usr/bin/python3", "/opt/client/connection.py"] + command
     args += boundary(config, command)

@@ -59,7 +59,7 @@ def completed_rows(a_scores, b_scores, a_wall, b_wall, a_tools, b_tools):
                 'outputTokens': None,
                 'costUsd': 0.01,
                 'agentBudget': None,
-                'agentElapsedMs': None,
+                'agentToolCalls': None,
                 'trialRoot': f'/tmp/{arm_id}-{index}',
                 'activity': [],
             })

@@ -78,7 +78,7 @@ function Get-ABCommonEligibleTasks([object[]] $Completed, [object[]] $Arms, [int
 
 function Write-ABReport {
     param($completed, $selectedTasks, $arms, $trialCount, $primaryMetric, $questionData, $questionId, $runId, $runRoot,
-        [string] $measurementFingerprint = '')
+        [string] $measurementFingerprint = '', [object] $hostLoad = $null)
     $paired = [Collections.Generic.List[object]]::new()
     foreach ($task in $selectedTasks) {
         for ($trial = 1; $trial -le $trialCount; $trial++) {
@@ -245,6 +245,7 @@ function Write-ABReport {
     }
     $report.Add("Question: $($questionData.question)")
     $report.Add("Run: $runId | primary metric: $primaryMetric | trials per task: $trialCount | paired trials: $($paired.Count) | inconclusive or invalid trials: $incompleteCount")
+    if ($hostLoad) { $report.Add("Host 5-minute load: $($hostLoad.start) at start, $($hostLoad.end) at end. Time is not an Agent budget, so load changes time, not scores.") }
     $report.Add('')
     $integritySummary = Get-ABIntegritySummary @($completed)
     $report.Add('## Integrity')
@@ -350,6 +351,7 @@ function Write-ABReport {
     $summary = [ordered]@{
         runId = $runId
         measurementFingerprint = $measurementFingerprint
+        hostLoad = $hostLoad
         question = [string]$questionData.question
         questionId = $questionId
         mode = if ($isAA) { 'aa' } else { 'ab' }
@@ -394,7 +396,7 @@ function Write-ABReport {
                 timeToFirstProposalMs = $_.timeToFirstProposalMs; inputTokens = $_.inputTokens
                 outputTokens = $_.outputTokens; costUsd = $_.costUsd
                 agentBudget = if ($_.Contains('agentBudget')) { $_.agentBudget } else { $null }
-                agentElapsedMs = if ($_.Contains('agentElapsedMs')) { $_.agentElapsedMs } else { $null }
+                agentToolCalls = if ($_.Contains('agentToolCalls')) { $_.agentToolCalls } else { $null }
                 files = [ordered]@{
                     manifest = (Join-Path $_.trialRoot 'manifest.json')
                     transcript = (Join-Path $_.trialRoot 'transcript.jsonl')

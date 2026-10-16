@@ -19,149 +19,12 @@ $serverArguments = Get-ABServerArguments $manifest.profile $activityPath
 $systemAppend = $manifest.systemAppend
 $hostPlan = New-ABHostPlan $manifest.arm ([string]$task.promptText) $task.limits $systemAppend
 
-function Invoke-ABBudgetedAgent([string] $Executable, [string[]] $Arguments, [string] $Directory, [object] $Limits) {
-    $configuredWallSeconds = if ($Limits.Contains('wall_seconds')) { [int]$Limits.wall_seconds } else { 1800 }
-    $timeSeconds = if ($Limits.Contains('time_seconds')) { [int]$Limits.time_seconds } else { [Math]::Max(1, [int][Math]::Floor($configuredWallSeconds / 3)) }
-    $wallSeconds = $timeSeconds * 3
-    $turnBudget = if ($Limits.Contains('turns')) { [int]$Limits.turns } else { 60 }
-    $tokenBudget = if ($Limits.Contains('tokens')) { [int]$Limits.tokens } elseif ($env:MOTIF_AGENT_TOKEN_BUDGET) {
-        [int]$env:MOTIF_AGENT_TOKEN_BUDGET
-    } else { 100000 }
-    if ($timeSeconds -lt 1 -or $turnBudget -lt 1 -or $tokenBudget -lt 1 -or $configuredWallSeconds -lt $wallSeconds) {
-        throw 'Agent limits must have positive time, turn and token budgets and a wall cap at least three times time.'
-    }
-    $startInfo = [Diagnostics.ProcessStartInfo]::new($Executable)
-    $startInfo.UseShellExecute = $false
-    $startInfo.RedirectStandardOutput = $true
-    $startInfo.RedirectStandardError = $true
-    $startInfo.RedirectStandardInput = $true
-    $startInfo.CreateNoWindow = $true
-    $startInfo.WorkingDirectory = $Directory
-    foreach ($argument in $Arguments) { [void]$startInfo.ArgumentList.Add([string]$argument) }
-    $process = [Diagnostics.Process]::new()
-    $process.StartInfo = $startInfo
-    $clock = [Diagnostics.Stopwatch]::StartNew()
-    if (-not $process.Start()) { throw "Could not start '$Executable'." }
-    $process.StandardInput.Close()
-    $stdoutLines = [Collections.Generic.List[string]]::new()
-    $stderrLines = [Collections.Generic.List[string]]::new()
-    $stdoutTask = $process.StandardOutput.ReadLineAsync()
-    $stderrTask = $process.StandardError.ReadLineAsync()
-    $stdoutDone = $false
-    $stderrDone = $false
-    $lastOutputMs = 0L
-    $lastAccountedMs = 0L
-    $turns = 0
-    $activeElapsedMs = 0L
-    $inputTokens = 0
-    $outputTokens = 0
-    $usageByTurn = @{}
-    $failureClass = $null
-    $failure = $null
-    while (-not ($process.HasExited -and $stdoutDone -and $stderrDone)) {
-        if (-not $stdoutDone -and $stdoutTask.IsCompleted) {
-            $line = $stdoutTask.GetAwaiter().GetResult()
-            if ($null -eq $line) { $stdoutDone = $true }
-            else {
-                $stdoutLines.Add($line)
-                $outputAt = $clock.ElapsedMilliseconds
-                $quietGap = $outputAt - $lastOutputMs
-                if ($quietGap -ge 120000) {
-                    $failureClass = 'cloud_failure'
-                    $failure = 'The model service produced no host output for 120 seconds.'
-                }
-                $lastOutputMs = $outputAt
-                try {
-                    $event = $line | ConvertFrom-Json -AsHashtable
-                    if ($event.type -eq 'turn.completed') { $turns++ }
-                    if ($event.Contains('num_turns') -and $null -ne $event.num_turns) { $turns = [Math]::Max($turns, [int]$event.num_turns) }
-                    $usageKey = if ($event.Contains('turn_id') -and $event.turn_id) { 'turn-' + [string]$event.turn_id }
-                        elseif ($event.Contains('num_turns') -and $null -ne $event.num_turns) { 'turn-' + [string]$event.num_turns }
-                        elseif ($event.Contains('message') -and $event.message -is [System.Collections.IDictionary] -and $event.message.Contains('id')) {
-                            'message-' + [string]$event.message.id
-                        } else { 'turn-' + [string][Math]::Max(1, $turns) }
-                    $usageRows = [Collections.Generic.List[object]]::new()
-                    if ($event.Contains('usage') -and $event.usage) { $usageRows.Add($event.usage) }
-                    if ($event.Contains('message') -and $event.message -is [System.Collections.IDictionary] -and
-                        $event.message.Contains('usage') -and $event.message.usage) { $usageRows.Add($event.message.usage) }
-                    foreach ($usage in $usageRows) {
-                        if (-not $usageByTurn.ContainsKey($usageKey)) { $usageByTurn[$usageKey] = @{ input = 0; output = 0 } }
-                        if ($usage.Contains('input_tokens')) { $usageByTurn[$usageKey].input = [Math]::Max($usageByTurn[$usageKey].input, [int]$usage.input_tokens) }
-                        if ($usage.Contains('output_tokens')) { $usageByTurn[$usageKey].output = [Math]::Max($usageByTurn[$usageKey].output, [int]$usage.output_tokens) }
-                    }
-                } catch { }
-                $stdoutTask = $process.StandardOutput.ReadLineAsync()
-            }
-        }
-        if (-not $stderrDone -and $stderrTask.IsCompleted) {
-            $line = $stderrTask.GetAwaiter().GetResult()
-            if ($null -eq $line) { $stderrDone = $true }
-            else {
-                $stderrLines.Add($line)
-                $outputAt = $clock.ElapsedMilliseconds
-                $quietGap = $outputAt - $lastOutputMs
-                if ($quietGap -ge 120000) {
-                    $failureClass = 'cloud_failure'
-                    $failure = 'The model service produced no host output for 120 seconds.'
-                }
-                $lastOutputMs = $outputAt
-                $stderrTask = $process.StandardError.ReadLineAsync()
-            }
-        }
-        $elapsed = $clock.ElapsedMilliseconds
-        $inputTokens = [int](($usageByTurn.Values | ForEach-Object { [int]$_.input } | Measure-Object -Sum).Sum)
-        $outputTokens = [int](($usageByTurn.Values | ForEach-Object { [int]$_.output } | Measure-Object -Sum).Sum)
-        if (-not $process.HasExited -and $elapsed - $lastOutputMs -ge 120000) {
-            $failureClass = 'cloud_failure'
-            $failure = 'The model service produced no host output for 120 seconds.'
-        } else {
-            $activeElapsedMs += $elapsed - $lastAccountedMs
-            $lastAccountedMs = $elapsed
-        }
-        if (-not $failureClass -and -not $process.HasExited -and $activeElapsedMs -ge $timeSeconds * 1000) {
-            $failureClass = 'agent_failure'
-            $failure = "The Agent budget of $timeSeconds seconds was exhausted."
-        } elseif (-not $failureClass -and -not $process.HasExited -and $turns -gt $turnBudget) {
-            $failureClass = 'agent_failure'
-            $failure = "The Agent budget of $turnBudget turns was exceeded."
-        } elseif (-not $failureClass -and -not $process.HasExited -and $inputTokens + $outputTokens -gt $tokenBudget) {
-            $failureClass = 'agent_failure'
-            $failure = "The Agent budget of $tokenBudget tokens was exceeded."
-        } elseif (-not $failureClass -and -not $process.HasExited -and $elapsed -ge $wallSeconds * 1000) {
-            $failureClass = 'cloud_failure'
-            $failure = "The Episode reached the wall cap of $wallSeconds seconds before the active Agent time budget was used."
-        }
-        if ($failureClass -and -not $process.HasExited) { $process.Kill($true); $process.WaitForExit() }
-        if (-not ($process.HasExited -and $stdoutDone -and $stderrDone)) { Start-Sleep -Milliseconds 20 }
-    }
-    $clock.Stop()
-    if ($clock.ElapsedMilliseconds - $lastOutputMs -ge 120000) {
-        $failureClass = 'cloud_failure'
-        $failure = 'The model service produced no host output for 120 seconds.'
-    }
-    $inputTokens = [int](($usageByTurn.Values | ForEach-Object { [int]$_.input } | Measure-Object -Sum).Sum)
-    $outputTokens = [int](($usageByTurn.Values | ForEach-Object { [int]$_.output } | Measure-Object -Sum).Sum)
-    return [pscustomobject]@{
-        ExitCode = if ($failureClass) { 124 } else { $process.ExitCode }
-        TimedOut = [bool]$failureClass
-        WallMs = $clock.ElapsedMilliseconds
-        AgentElapsedMs = $activeElapsedMs
-        Stdout = $stdoutLines -join "`n"
-        Stderr = $stderrLines -join "`n"
-        Turns = $turns
-        InputTokens = $inputTokens
-        OutputTokens = $outputTokens
-        FailureClass = $failureClass
-        Failure = $failure
-        AgentBudget = @{ timeSeconds = $timeSeconds; turns = $turnBudget; tokens = $tokenBudget; wallCapSeconds = $wallSeconds }
-    }
-}
-
 $agentLaunchPath = Join-Path $privateRoot 'agent-launch.json'
 foreach ($path in @('/session/agent/config', '/session/agent/state')) { New-Item -ItemType Directory $path -Force | Out-Null }
 Write-ABJson '/session/agent/config/mcp.json' $hostPlan.mcpConfig
+$agentBudget = Get-ABAgentBudget $task.limits
 Write-ABJson $agentLaunchPath @{ plan = $hostPlan; host = $manifest.arm.host; serverCommand = $serverCommand
-    serverArguments = $serverArguments; preflight = [bool]$manifest.preflight }
+    serverArguments = $serverArguments; preflight = [bool]$manifest.preflight; toolCalls = $agentBudget.toolCalls }
 foreach ($path in @($privateRoot, $agentDirectory, $workerRoot)) { New-Item -ItemType Directory $path -Force | Out-Null }
 $registered = Invoke-ABProcess $motifExe (Get-ABProjectRegistrationArguments $fwDataPath) $agentDirectory @{} 300000
 if ($registered.ExitCode -ne 0 -or $registered.Stderr -match 'could not be recorded') {
@@ -205,7 +68,8 @@ if ($manifest.arm.host -eq 'fake') {
     }
     Write-ABJson '/session/agent/config/session.json' $fakeManifest
 }
-$hostRun = Invoke-ABBudgetedAgent '/usr/bin/python3' @('/opt/client/agent-boundary.py', $agentLaunchPath) $agentDirectory $task.limits
+$hostRun = Invoke-ABBudgetedAgent '/usr/bin/python3' @('/opt/client/agent-boundary.py', $agentLaunchPath) $agentDirectory $agentBudget `
+    '/session/output/mcp-transcript.jsonl' '/session/output/budget.json'
 if ($manifest.arm.host -eq 'fake') {
     foreach ($line in @($hostRun.Stdout -split "`r?`n" | Where-Object { $_ })) {
         Add-ABJsonl $transcriptPath ([ordered]@{ source = 'host-output'; stream = 'stdout'; payload = $line })
@@ -281,14 +145,14 @@ if ($manifest.arm.host -eq 'fake') {
         outputTokens = $outputTokens
         costUsd = $costUsd
         agentBudget = $hostRun.AgentBudget
-        agentElapsedMs = $hostRun.AgentElapsedMs
+        agentToolCalls = $hostRun.ToolCalls
         failureClass = $hostRun.FailureClass
     }
 }
 
 $hostClock.Stop()
 $hostData.agentBudget = $hostRun.AgentBudget
-$hostData.agentElapsedMs = $hostRun.AgentElapsedMs
+$hostData.agentToolCalls = $hostRun.ToolCalls
 if ($hostRun.FailureClass) { $hostData.failureClass = $hostRun.FailureClass }
 $hostData.primaryMetric = ''
 Write-ABJson $hostResultPath $hostData

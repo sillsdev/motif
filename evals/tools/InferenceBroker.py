@@ -102,13 +102,49 @@ def chatgpt_credentials():
         raise CloudFailure(LOGIN_FAILURE) from None
 
 
+def response_usage(content):
+    """Tokens one model response used: input with cached input counted once, plus output, as each provider reports it."""
+    documents = []
+    for line in content.splitlines():
+        if line.startswith(b"data:"):
+            documents.append(line[5:].strip())
+    if not documents:
+        documents = [content]
+    input_tokens = output_tokens = 0
+
+    def visit(node):
+        nonlocal input_tokens, output_tokens
+        if isinstance(node, dict):
+            usage = node.get("usage")
+            if isinstance(usage, dict):
+                # Anthropic reports cached input apart from input_tokens; OpenAI's input_tokens already includes it.
+                total = sum(usage.get(name) or 0 for name in
+                            ("input_tokens", "cache_read_input_tokens", "cache_creation_input_tokens")
+                            if isinstance(usage.get(name), int))
+                input_tokens = max(input_tokens, total)
+                if isinstance(usage.get("output_tokens"), int):
+                    output_tokens = max(output_tokens, usage["output_tokens"])
+            for value in node.values():
+                visit(value)
+        elif isinstance(node, list):
+            for value in node:
+                visit(value)
+
+    for document in documents:
+        try:
+            visit(json.loads(document))
+        except ValueError:
+            continue
+    return input_tokens + output_tokens
+
+
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         return None
 
 
 class Broker:
-    def __init__(self, host, model, archive, auth_mode=None):
+    def __init__(self, host, model, archive, auth_mode=None, budget=None):
         self.upstream, self.auth_mode = inference_upstream(host, auth_mode)
         self.origin, variable, self.paths = PROVIDERS[self.upstream]
         if self.upstream == "codex-chatgpt":
@@ -128,6 +164,9 @@ class Broker:
         self.denials = []
         self.count = 0
         self.last_success = 0
+        self.budget = budget
+        self.spent = {"turns": 0, "tokens": 0}
+        self.budget_exhausted = None
         self.session_id = str(uuid.uuid4())
         self.opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
         self.start_channel()
@@ -166,6 +205,13 @@ class Broker:
             self.denials.append("unconfigured model refused")
             self.record(None, body, outcome="refused", reason="unconfigured model", requestedPath=path)
             return 403, {}, b'{"error":{"message":"Model refused by the model service"}}'
+        exhausted = self.exhausted_budget()
+        if exhausted:
+            if not self.budget_exhausted:
+                self.budget_exhausted = exhausted
+                self.failure_events.append({"failureClass": "agent_failure", "evidence": exhausted, "request": self.count})
+            self.record(None, body, outcome="refused", reason="agent budget")
+            return 400, {"Content-Type": "application/json"}, json.dumps({"error": {"message": exhausted}}).encode()
         headers = {"Content-Type": "application/json"}
         destination = self.origin + path
         if self.upstream == "codex-chatgpt":
@@ -223,6 +269,8 @@ class Broker:
         except (OSError, http.client.HTTPException):
             self.record(destination, body, outcome="response_failure")
             raise CloudFailure("Inference upstream response failed") from None
+        self.spent["turns"] += 1
+        self.spent["tokens"] += response_usage(content)
         for secret in secrets:
             content = content.replace(secret.encode(), b"[redacted]")
             metadata["Content-Type"] = metadata["Content-Type"].replace(secret, "[redacted]")
@@ -240,6 +288,15 @@ class Broker:
         else:
             self.last_success = self.count
         return status, metadata, content
+
+    def exhausted_budget(self):
+        if not self.budget:
+            return None
+        if self.spent["turns"] >= self.budget["turns"]:
+            return "The Agent budget of %d turns was exhausted." % self.budget["turns"]
+        if self.spent["tokens"] >= self.budget["tokens"]:
+            return "The Agent budget of %d tokens was exhausted." % self.budget["tokens"]
+        return None
 
     def record(self, destination, body, status=None, **details):
         row = {"at": time.time(), "destination": destination, "status": status, "authMode": self.auth_mode,

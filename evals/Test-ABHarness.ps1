@@ -122,6 +122,12 @@ try {
         )
         $wrongCase = if ($Confirmation) { $null } else { Get-ABValidityWrongCase $repoRoot $task $validityFinals }
         $cases += [ordered]@{ name = 'wrong'; start = [string]$task.start; validationMode = $null; minimum = 0.0; maximum = 0.01 }
+        if (-not $Confirmation -and $task.id -eq 't0-lexicon-correct-gloss') {
+            # A slowed Episode must still score, and one past its tool-call budget is the Agent's failure.
+            $cases += [ordered]@{ name = 'slow'; start = [string]$task.start; validationMode = $null; minimum = 0.99; maximum = 1.0; sleepMs = 3000 }
+            $cases += [ordered]@{ name = 'over-budget'; start = [string]$task.start; validationMode = $null; minimum = 0.0; maximum = 0.01
+                toolCalls = 1; failureClass = 'agent_failure' }
+        }
         foreach ($case in $cases) {
             $safeTask = [string]$task.id
             $outputRoot = Join-Path $sampleRoot ("{0}/{1}/{2}" -f $safeTask, [string]$arm.id, $case.name)
@@ -130,6 +136,7 @@ try {
             New-Item -ItemType Directory -Path $outputRoot, $privateRoot -Force | Out-Null
             $validationTask = Read-ABJson (Join-Path $task.taskPath 'task.yaml')
             $validationTask.start = [string]$case.start
+            if ($case.Contains('toolCalls')) { $validationTask.limits.tool_calls = $case.toolCalls }
             $manifest = [ordered]@{
                 runId = 'validity'
                 questionId = 'validity'
@@ -149,6 +156,13 @@ try {
             }
             if ($Confirmation -and $case.name -in @('gold', 'wrong')) {
                 $manifest.fakeScript = $confirmationScripts[$task.taskPath][$case.name]
+            } elseif ($case.Contains('sleepMs')) {
+                $slowScript = Join-Path $privateRoot 'slow.jsonl'
+                $slowLines = foreach ($line in Get-Content -LiteralPath (Join-Path $PSScriptRoot "fake-scripts/$($task.id).jsonl")) {
+                    (@{ sleepMs = $case.sleepMs } | ConvertTo-Json -Compress); $line
+                }
+                Set-Content -LiteralPath $slowScript -Value $slowLines -Encoding utf8
+                $manifest.fakeScript = $slowScript
             } elseif ($case.name -eq 'wrong' -and $wrongCase.Contains('script')) {
                 $manifest.fakeScript = $wrongCase.script
             } elseif ($case.name -eq 'wrong') {
@@ -169,6 +183,13 @@ try {
             if ($trialResult.integrity.state -ne 'clean') {
                 $reasons = ($trialResult.integrity.reasons | ForEach-Object { $_.reason }) -join '; '
                 throw "Validity trial '$($task.id)' was $($trialResult.integrity.state): $reasons"
+            }
+            $actualClass = if ($trialResult.Contains('failureClass')) { $trialResult.failureClass } else { $null }
+            if ($case.Contains('failureClass') -and $actualClass -ne $case.failureClass) {
+                throw "Validity trial '$($task.id)' $($case.name) ended as '$actualClass'; expected '$($case.failureClass)'."
+            }
+            if ($case.name -eq 'slow' -and $actualClass) {
+                throw "Validity trial '$($task.id)' slowed Episode failed as '$actualClass'; time is not an Agent budget."
             }
             $grade = Read-ABJson $resultPath
             $score = $grade.primaryScore

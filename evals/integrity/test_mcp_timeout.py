@@ -57,7 +57,7 @@ for line in sys.stdin:
 
     def test_control_timeout_override_and_validation(self):
         module = Path(__file__).resolve().parents[1] / 'tools/ABHarness.psm1'
-        for value, expected in [('', 200000), ('320000', 320000), ('0', None), ('-1', None), ('1.5', None), ('2147483648', None)]:
+        for value, expected in [('', 900000), ('320000', 320000), ('0', None), ('-1', None), ('1.5', None), ('2147483648', None)]:
             with self.subTest(value=value):
                 env = dict(os.environ, MOTIF_FAKE_MCP_TIMEOUT_MS=value)
                 result = subprocess.run(['pwsh', '-NoProfile', '-Command',

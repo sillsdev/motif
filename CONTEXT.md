@@ -707,9 +707,10 @@ counted against the agent, and the task stays out of comparisons until the defec
 _Avoid_: infrastructure failure, flake
 
 **Agent budget**:
-The time, turns and tokens an agent may spend on one task. Time spent waiting on a stalled model service
-does not count against it.
-_Avoid_: wall limit, timeout
+The turns, tool calls and tokens an agent may spend on one task. Time is never part of it, so a slow host
+cannot fail an Episode; a separate safety wall kill only stops an Episode that never ends, and hitting it is a
+Harness defect.
+_Avoid_: wall limit, timeout, time budget
 
 **Price to solve**:
 Everything an arm spent on its scored Episodes divided by the number it solved, so failed Episodes count

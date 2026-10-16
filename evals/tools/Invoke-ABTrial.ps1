@@ -7,6 +7,7 @@ Import-Module (Join-Path $PSScriptRoot 'McpClient.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'ProductStaging.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'HostPlan.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'TaskTools.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'IsolatedHost.psm1') -Function Get-ABAgentBudget -Force -DisableNameChecking
 $manifest = Read-ABJson $RunManifest
 $trialRoot = [string]$manifest.trialRoot
 $keepStaging = $Keep -or ($manifest.Contains('keep') -and [bool]$manifest.keep)
@@ -147,13 +148,15 @@ $listSession = New-ABMcpSession $motifExe (Get-ABServerArguments $serverProfileP
 try { $allowed = @($listSession.Tools | ForEach-Object { [string]$_.name }) }
 finally { [void](Close-ABMcpSession $listSession) }
 $profile.tools = @(Get-ABServedToolClasses $allowed @($profile.tools) @($taskTools))
+$agentBudget = Get-ABAgentBudget $task.limits
 $boundaryConfig = [ordered]@{
     session = $sessionRoot
     archive = $outputRoot
     host = $manifest.arm.host
     model = $manifest.arm.model
     authMode = $authMode
-    timeout = [int]$task.limits.wall_seconds + 30
+    timeout = [int]$agentBudget.safetySeconds + 60
+    agentBudget = $agentBudget
     mounts = @(@($productRoot, '/opt/product'), @($clientRoot, '/opt/client'), @($dotnetRoot, '/opt/runtime'), @((Split-Path (Get-Command pwsh).Source), '/opt/powershell'), @($inputRoot, '/input'))
     allowedTools = $allowed
     protected = @($repoRoot, $env:MOTIF_TEST_GRAMMARS, $env:MOTIF_CONFIRMATION_GRAMMARS, $env:MOTIF_CONFIRMATION_RESULTS, [string]$manifest.setPath, [string]$manifest.taskPath, $controlRoot, [string]$RunManifest, [Environment]::GetFolderPath('UserProfile'))
@@ -177,7 +180,7 @@ if ($manifest.arm.host -ne 'fake') {
 }
 $configPath = Join-Path $controlRoot 'boundary.json'
 Write-ABJson $configPath $boundaryConfig
-$boundaryRun = Invoke-ABProcess (Get-Command python3).Source @((Join-Path $PSScriptRoot 'TrialBoundary.py'), $configPath) $controlRoot @{} ([int]$task.limits.wall_seconds * 1000 + 420000)
+$boundaryRun = Invoke-ABProcess (Get-Command python3).Source @((Join-Path $PSScriptRoot 'TrialBoundary.py'), $configPath) $controlRoot @{} ([int]$agentBudget.safetySeconds * 1000 + 420000)
 $integrityPath = Join-Path $outputRoot 'integrity.json'
 if (-not (Test-Path $integrityPath)) { throw "Boundary supervisor failed: $($boundaryRun.Stderr)" }
 $integrity = Read-ABJson $integrityPath
@@ -253,7 +256,7 @@ Write-ABJson (Join-Path $outputRoot 'manifest.json') ([ordered]@{
     toolErrors = @($activity | Where-Object { $_.isError }).Count
     timeToFirstProposalMs = $null; inputTokens = $hostData.inputTokens; outputTokens = $hostData.outputTokens; costUsd = $hostData.costUsd
     agentBudget = if ($hostData.Contains('agentBudget')) { $hostData.agentBudget } else { $null }
-    agentElapsedMs = if ($hostData.Contains('agentElapsedMs')) { $hostData.agentElapsedMs } else { $null }
+    agentToolCalls = if ($hostData.Contains('agentToolCalls')) { $hostData.agentToolCalls } else { $null }
 })
 Write-Host (Join-Path $outputRoot 'manifest.json')
 }

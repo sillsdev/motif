@@ -292,6 +292,7 @@ if (-not $SkipValidityCheck) {
 
 $runId = [DateTimeOffset]::UtcNow.ToString('yyyyMMdd-HHmmss') + '-' + [Guid]::NewGuid().ToString('N').Substring(0, 8)
 $runRoot = Join-Path $resultsRoot ("{0}/{1}" -f $questionId, $runId)
+$hostLoad = [ordered]@{ start = Get-ABHostLoad; end = $null }
 New-Item -ItemType Directory -Path $runRoot -Force | Out-Null
 $trialSpecs = [Collections.Generic.List[object]]::new()
 foreach ($task in $selectedTasks) {
@@ -404,13 +405,19 @@ while ($nextIndex -lt $trialSpecs.Count -or $active.Count -gt 0) {
             ForEach-Object { [string]$_.judge.verdict } | Sort-Object -Unique)
         $trialJudgeVerdict = if ($trialJudgeVerdicts.Count -eq 0) { 'not judged' }
             elseif ($trialJudgeVerdicts.Count -eq 1) { $trialJudgeVerdicts[0] } else { 'mixed' }
-        if ($trialManifest.failureClass -eq 'cloud_failure' -and $trialManifest.integrity.state -eq 'clean' -and $spec.attempt -lt 3) {
+        $safetyKill = $trialManifest.failureClass -eq 'harness_defect' -and
+            @($trialManifest.failureEvidence | Where-Object {
+                $(if ($_ -is [System.Collections.IDictionary]) { [string]$_.evidence } else { [string]$_ }) -match 'safety wall kill'
+            }).Count -gt 0
+        $safetyRetried = @($spec.cloudRetryHistory | Where-Object { $_.failureClass -eq 'harness_defect' }).Count -gt 0
+        if (($trialManifest.failureClass -eq 'cloud_failure' -and $trialManifest.integrity.state -eq 'clean' -and $spec.attempt -lt 3) -or
+            ($safetyKill -and -not $safetyRetried)) {
             $historyEvidence = if ($trialManifest.failureEvidence) { @($trialManifest.failureEvidence) } else { @('Cloud failure without detail.') }
             $attemptPath = Join-Path $spec.root ("cloud-attempts/attempt-{0}" -f $spec.attempt)
             New-Item -ItemType Directory -Path $attemptPath -Force | Out-Null
             Get-ChildItem -LiteralPath $spec.root -Force | Where-Object { $_.Name -ne 'cloud-attempts' } |
                 Move-Item -Destination $attemptPath
-            [void]$spec.cloudRetryHistory.Add([ordered]@{ attempt = $spec.attempt; failureClass = 'cloud_failure';
+            [void]$spec.cloudRetryHistory.Add([ordered]@{ attempt = $spec.attempt; failureClass = [string]$trialManifest.failureClass;
                 evidence = $historyEvidence; costUsd = $trialManifest.costUsd; archivedAt = $attemptPath })
             $retrySpec = Read-ABJson $spec.path
             Remove-ABTrialDirectory $spec.privateRoot -Keep:$Keep
@@ -424,7 +431,7 @@ while ($nextIndex -lt $trialSpecs.Count -or $active.Count -gt 0) {
             $spec.path = Join-Path $spec.privateRoot 'run-manifest.json'
             Write-ABJson $spec.path $retrySpec
             $trialSpecs.Add($spec)
-            Write-Host "Retrying $($spec.task.id) / $($spec.arm.id) / Episode $($spec.trial) after a Cloud failure."
+            Write-Host "Retrying $($spec.task.id) / $($spec.arm.id) / Episode $($spec.trial) after a $(if ($safetyKill) { 'safety wall kill' } else { 'Cloud failure' })."
             continue
         }
         $trialManifest.cloudRetries = [Math]::Max(0, [int]$spec.attempt - 1)
@@ -473,7 +480,7 @@ while ($nextIndex -lt $trialSpecs.Count -or $active.Count -gt 0) {
             finalAttemptCostUsd = $finalAttemptCost
             unpricedRetryAttempts = $unpricedRetryAttempts
             agentBudget = if ($trialManifest.Contains('agentBudget')) { $trialManifest.agentBudget } else { $null }
-            agentElapsedMs = if ($trialManifest.Contains('agentElapsedMs')) { $trialManifest.agentElapsedMs } else { $null }
+            agentToolCalls = if ($trialManifest.Contains('agentToolCalls')) { $trialManifest.agentToolCalls } else { $null }
             trialRoot = $spec.root
             activity = $activity
         })
@@ -485,7 +492,8 @@ while ($nextIndex -lt $trialSpecs.Count -or $active.Count -gt 0) {
 }
 
 Import-Module (Join-Path $PSScriptRoot 'tools/ABReport.psm1') -Force
-Write-ABReport $completed $selectedTasks $arms $trialCount $primaryMetric $questionData $questionId $runId $runRoot $fingerprint
+$hostLoad.end = Get-ABHostLoad
+Write-ABReport $completed $selectedTasks $arms $trialCount $primaryMetric $questionData $questionId $runId $runRoot $fingerprint $hostLoad
 $summaryPath = Join-Path $runRoot 'summary.json'
 $summary = Read-ABJson $summaryPath
 $summary.confirmation = [bool]$Confirmation

@@ -229,8 +229,15 @@ function Get-ABIntegritySummary([object[]] $Trials) {
         scorableRate = $rate; confidenceInterval95 = $interval }
 }
 
+function Get-ABHostLoad {
+    # The 5-minute load average; a loaded host slows tools and the parser, so every run records it.
+    if (-not (Test-Path -LiteralPath '/proc/loadavg')) { return $null }
+    $fields = (Get-Content -LiteralPath '/proc/loadavg' -Raw).Split(' ')
+    return [double]::Parse($fields[1], [Globalization.CultureInfo]::InvariantCulture)
+}
+
 function Get-ABFakeMcpTimeoutMs {
-    if (-not $env:MOTIF_FAKE_MCP_TIMEOUT_MS) { return 200000 }
+    if (-not $env:MOTIF_FAKE_MCP_TIMEOUT_MS) { return 900000 }
     $timeoutMs = 0
     if (-not [int]::TryParse($env:MOTIF_FAKE_MCP_TIMEOUT_MS, [ref]$timeoutMs) -or $timeoutMs -le 0) {
         throw 'MOTIF_FAKE_MCP_TIMEOUT_MS must be a positive integer in milliseconds.'
@@ -1119,7 +1126,7 @@ function Get-ABTestGrammarsPin([string] $EvalsRoot) {
     return [ordered]@{ tag = [string]$pin.tag; commit = [string]$pin.commit }
 }
 
-Export-ModuleMember -Function Get-ABTestGrammarsPin, Copy-ABRunArchive, Get-ABRunArchiveRoot, Get-ABAuthoringAttempts, Get-ABJudgeFamilies, Read-ABJson, Write-ABJson, Add-ABJsonl, Format-ABPosixArgument, Format-ABCommand, `
+Export-ModuleMember -Function Get-ABHostLoad, Get-ABTestGrammarsPin, Copy-ABRunArchive, Get-ABRunArchiveRoot, Get-ABAuthoringAttempts, Get-ABJudgeFamilies, Read-ABJson, Write-ABJson, Add-ABJsonl, Format-ABPosixArgument, Format-ABCommand, `
     Get-ABRepositoryFingerprint, Invoke-ABProcess, Resolve-ABTestGrammarsRoot, Read-ABLines, Test-ABTaskFuture, Get-ABParserRows, Get-ABToolAttempts, Get-ABGrade, `
     Test-ABInventedMorphology, Get-ABSetRoot, Get-ABConfirmationResultsRoot, Get-ABFakeScriptPath, Get-ABConfirmationValidityScripts, Get-ABValidityWrongCase, Get-ABServedToolClasses, Set-ABConfirmationTrialRoot, Get-ABIntegritySummary, Get-ABFakeMcpTimeoutMs, Get-ABTrialBase, New-ABTrialDirectory, Remove-ABTrialDirectory, `
     New-ABAAArms, Get-ABCounterbalancedArmOrder

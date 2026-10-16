@@ -25,12 +25,12 @@ $hostData.primaryMetric = $configData.primaryMetric
 $started = [DateTimeOffset]::UtcNow
 if ($hostData.Contains('failureClass') -and $hostData.failureClass -eq 'agent_failure') {
     $intent = Read-ABJson (Join-Path $configData.bundle 'intent.json')
-    $operations = if ($intent -and $intent.Contains('operations')) { @($intent.operations) } else { @() }
+    $operations = @(if ($intent -and $intent.Contains('operations')) { $intent.operations })
     $grade = [ordered]@{
         grade = 0.0; success = $false; primaryMetric = $configData.primaryMetric; primaryScore = 0.0
         operationCount = $operations.Count; gradingState = 'measured'; failureClass = 'agent_failure'
         failureEvidence = @([string]$(if ($hostData.Contains('failure')) { $hostData.failure } else { 'Agent execution failed within its budget.' }))
-        graders = @(); agentBudget = $hostData.agentBudget; agentElapsedMs = $hostData.agentElapsedMs
+        graders = @(); agentBudget = $hostData.agentBudget; agentToolCalls = $hostData.agentToolCalls
         gradedUtc = $started.ToString('O'); trialClosedUtc = $integrity.closedUtc
     }
     Write-ABJson (Join-Path $configData.outputRoot 'proposals.json') @{ proposal = $intent; operationCount = $operations.Count }

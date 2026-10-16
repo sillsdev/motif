@@ -75,6 +75,10 @@ try {
         $profileIndex = [Array]::IndexOf([string[]]$manifest.server.arguments, '--profile')
         $profileName = if ($manifest.Contains('profileName')) { [string]$manifest.profileName } elseif ($profileIndex -ge 0) { [string]$manifest.server.arguments[$profileIndex + 1] } else { '' }
         if ($scriptCall.Contains('skipProfiles') -and $profileName -in @($scriptCall.skipProfiles)) { continue }
+        if ($scriptCall.Contains('sleepMs')) {
+            Start-Sleep -Milliseconds ([int]$scriptCall.sleepMs)
+            continue
+        }
         if ($scriptCall.Contains('finalMessage')) {
             $finalMessage = [string]$scriptCall.finalMessage
             continue

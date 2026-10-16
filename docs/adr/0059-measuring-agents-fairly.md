@@ -35,9 +35,20 @@ smallest change and paired re-runs on a few dozen tasks, not large-sample signif
 - **Harness defect** (our grader, task or jail is wrong) is not counted; the task leaves the suite until
   it is fixed.
 
-Attribution of a time-out follows where the time went. The Agent budget (time, turns, tokens) pauses while
-the model service is stalled; 120 seconds with no output is a stall; a wall-clock cap of three times the
-budget ends the Episode regardless.
+Time is not an Agent budget, because a loaded host would otherwise turn slow tools into scored failures.
+The Agent budget is turns (model requests, counted by the inference broker for every host), tool calls
+(counted at the MCP bridge; asking again about a running job does not count) and tokens (input with cached
+input counted once, plus output, as the provider reports them). An upstream request with no answer for
+180 seconds is a Cloud failure. Wall time is only a safety kill of at least an hour; hitting it is a Harness
+defect, and the Episode is discarded and rerun once. The token count now includes cached input and the default
+is 1,500,000 where it was 100,000 counting only the input a host reported per turn (no cached input for
+Claude), so Episodes scored before this change were capped
+under a different count and are not comparable with later ones. The last live runs before the cap existed
+(default-vs-lean 20261006-180319-36ece477 and its re-run 20261006-191147-ebb8cac7) averaged about 190,000 input
+tokens per trial on the default profile and 112,000 on the lean one, so 100,000 under the new count would fail most
+real Episodes. Every run records the host's load at start and end.
+*Amended 2026-10-13: the Agent budget was time, turns and tokens, with active time paused during model
+stalls, a 120-second host-silence stall and a wall cap of three times the time budget.*
 
 **Price to solve** — total spend on scored Episodes divided by the number solved — is the headline cost,
 with average cost per Episode beside it.

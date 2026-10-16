@@ -48,10 +48,36 @@ def agent_boundary(plan, command):
     return args + ["--remount-ro", "/", "--chdir", "/workspace/work"] + command
 
 
+class ToolBudget:
+    """Counts the Agent's tool calls and answers each one past the budget with an error, so the host ends on its own."""
+
+    def __init__(self, limit):
+        self.limit = limit
+        self.used = 0
+        self.exhausted = None
+        self.lock = threading.Lock()
+
+    def refusal(self, payload):
+        if self.limit is None or not isinstance(payload, dict) or payload.get("method") != "tools/call":
+            return None
+        arguments = (payload.get("params") or {}).get("arguments")
+        # Re-asking for a running job is Motif's wait protocol; a slower host would otherwise spend more of the budget.
+        if isinstance(arguments, dict) and arguments.get("job"):
+            return None
+        with self.lock:
+            if self.used < self.limit:
+                self.used += 1
+                return None
+            self.exhausted = "The Agent budget of %d tool calls was exhausted." % self.limit
+        return {"jsonrpc": "2.0", "id": payload.get("id"),
+                "result": {"isError": True, "content": [{"type": "text", "text": self.exhausted + " Stop and report."}]}}
+
+
 class ToolBridge:
-    def __init__(self, command, arguments):
+    def __init__(self, command, arguments, tool_calls=None):
         self.command = command
         self.arguments = arguments
+        self.budget = ToolBudget(tool_calls)
         self.errors = []
         self.processes = []
         self.threads = []
@@ -85,6 +111,7 @@ class ToolBridge:
         self.processes.append(process)
         pending = {}
         stderr = []
+        sending = threading.Lock()
 
         def drain_errors():
             stderr.append(process.stderr.read())
@@ -101,7 +128,8 @@ class ToolBridge:
                         if not isinstance(tools, list):
                             raise RuntimeError("The agent did not receive a tool list")
                         Path("/session/output/client-tools.json").write_text(json.dumps(tools))
-                    connection.sendall(line)
+                    with sending:
+                        connection.sendall(line)
             except Exception as error:
                 self.errors.append(str(error))
 
@@ -118,6 +146,14 @@ class ToolBridge:
                     if len(line) > LIMIT or not line.endswith(b"\n"):
                         raise RuntimeError("Malformed tool request")
                     payload = json.loads(line)
+                    refusal = self.budget.refusal(payload)
+                    if refusal:
+                        self.log("sent", payload)
+                        self.log("received", refusal)
+                        Path("/session/output/budget.json").write_text(json.dumps({"exhausted": self.budget.exhausted}))
+                        with sending:
+                            connection.sendall(json.dumps(refusal).encode() + b"\n")
+                        continue
                     pending[payload.get("id")] = payload.get("method")
                     self.log("sent", payload)
                     process.stdin.write(line)
@@ -158,7 +194,7 @@ def main(config):
                       "state/data", "state/cache/powershell", "state/dotnet"):
         (Path("/session/agent") / directory).mkdir(parents=True, exist_ok=True)
     plan = config["plan"]
-    bridge = ToolBridge(config["serverCommand"], config["serverArguments"])
+    bridge = ToolBridge(config["serverCommand"], config["serverArguments"], config.get("toolCalls"))
     try:
         if config.get('preflight'):
             blocked = ["/session", "/input", "/opt/product", "/opt/runtime", "/home", "/mnt", "/workspace/run-manifest.json"]
