@@ -21,11 +21,11 @@ internal static class BaselineReads
         Read(projectPath, (cache, _) => read(cache));
 
     /// <summary>A lexicon page with the captured source of its entries and filtered count.</summary>
-    public static CommandOutcome<JsonObject> ReadLexicon(string projectPath, string? query, string? morphType,
+    public static CommandOutcome<JsonObject> ReadLexicon(string projectPath, LexiconFilter filter,
         int limit, int offset, bool detailed) =>
         Read(projectPath, (cache, baseline) =>
         {
-            var result = LexiconReader.Read(cache, query, morphType, limit, offset, detailed);
+            var result = LexiconReader.Read(cache, filter, limit, offset, detailed);
             result["source"] = JsonNode.Parse(ProjectionJson.Serialize(new BaselineReadSource(
                 baseline.Token, baseline.SourceLastWriteUtc, baseline.PublishedUtc)));
             return result;
@@ -41,9 +41,24 @@ internal static class BaselineReads
             if (!File.Exists(baseline.FwDataPath))
                 return Refused("baseline.unavailable", FailureReason.StoreInconsistent,
                     "Motif's saved copy of this project is missing from disk.");
-            using var reader = BaselineReadCache.Open(baseline.FwDataPath);
-            return CommandOutcome<JsonObject>.Success(read(reader.Cache, baseline));
+            lock (OpenGate)
+            {
+                // A Baseline is content-addressed and read-only here, so one open copy serves every read of it.
+                if (_open is null || _open.Value.Path != baseline.FwDataPath)
+                {
+                    _open?.Reader.Dispose();
+                    _open = null;
+                    _open = (baseline.FwDataPath, BaselineReadCache.Open(baseline.FwDataPath));
+                }
+                return CommandOutcome<JsonObject>.Success(read(_open.Value.Reader.Cache, baseline));
+            }
         });
+
+    private static readonly object OpenGate = new();
+    private static (string Path, BaselineReadCache Reader)? _open;
+
+    static BaselineReads() =>
+        AppDomain.CurrentDomain.ProcessExit += (_, _) => { lock (OpenGate) { _open?.Reader.Dispose(); _open = null; } };
 
     private static CommandOutcome<JsonObject> Refused(string code, FailureReason reason, string message) =>
         CommandOutcome<JsonObject>.Refused(new Refusal(code, reason, message));

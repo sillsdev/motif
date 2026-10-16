@@ -116,7 +116,7 @@
   },
   {
     "name": "motif_lexicon",
-    "description": "Read lexicon. Searches Baseline entries, senses, forms and glosses. Detailed results include allomorphs and their environments.",
+    "description": "Read lexicon. Searches Baseline entries and counts them by morph type and category. Filter by morphType, affix, category, headword or hasGloss. Concise results are one line per entry with its sense ids; detailed results include senses, allomorphs and their environments.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -124,9 +124,32 @@
           "type": "string",
           "description": "Text the headword, a gloss or a form contains."
         },
-        "morph_type": {
+        "morphType": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Only entries of these morph types, such as \u0027stem\u0027, \u0027root\u0027, \u0027prefix\u0027 or \u0027suffix\u0027."
+        },
+        "affix": {
+          "type": "boolean",
+          "description": "True keeps affix entries (prefix, suffix, infix, circumfix and the like); false keeps the rest."
+        },
+        "category": {
           "type": "string",
-          "description": "Only entries of this morph type, such as \u0027stem\u0027 or \u0027suffix\u0027."
+          "description": "Only entries with an analysis in this category, by exact name or id."
+        },
+        "headword": {
+          "type": "string",
+          "description": "Only entries whose headword starts with this text."
+        },
+        "headwordContains": {
+          "type": "string",
+          "description": "Only entries whose headword contains this text."
+        },
+        "hasGloss": {
+          "type": "boolean",
+          "description": "True keeps entries with a gloss; false keeps those without one."
         },
         "offset": {
           "type": "integer",

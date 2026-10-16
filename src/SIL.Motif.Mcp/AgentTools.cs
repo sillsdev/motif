@@ -149,7 +149,12 @@ internal static class AgentTools
             string.Empty,
             AgentClass.Read,
             Schema.Object([("query", Schema.String("Text the headword, a gloss or a form contains."), false),
-                ("morph_type", Schema.String("Only entries of this morph type, such as 'stem' or 'suffix'."), false),
+                ("morphType", Schema.StringArray("Only entries of these morph types, such as 'stem', 'root', 'prefix' or 'suffix'."), false),
+                ("affix", Schema.Boolean("True keeps affix entries (prefix, suffix, infix, circumfix and the like); false keeps the rest."), false),
+                ("category", Schema.String("Only entries with an analysis in this category, by exact name or id."), false),
+                ("headword", Schema.String("Only entries whose headword starts with this text."), false),
+                ("headwordContains", Schema.String("Only entries whose headword contains this text."), false),
+                ("hasGloss", Schema.Boolean("True keeps entries with a gloss; false keeps those without one."), false),
                 ("offset", Schema.Integer("Entries to skip, for the next page.", 0, 100000), false),
                 ..Schema.Verbosity()]),
             true,
@@ -1263,9 +1268,12 @@ internal static class AgentTools
     private static ToolOutcome ReadLexicon(ServerContext context, ToolArgs args)
     {
         var detailed = args.Optional("detail") == "detailed";
-        var outcome = BaselineReads.ReadLexicon(context.ProjectPath, args.Optional("query"),
-            args.Optional("morph_type"), args.Int("limit", 25), args.Int("offset", 0), detailed);
-        return ToolOutcome.From(outcome, "Use the entry, sense and grammatical info ids in changes. Page on with offset.");
+        var filter = new LexiconFilter(args.Optional("query"), args.List("morphType"), args.OptionalBoolean("affix"),
+            args.Optional("category"), args.Optional("headword"), args.Optional("headwordContains"),
+            args.OptionalBoolean("hasGloss"));
+        var outcome = BaselineReads.ReadLexicon(context.ProjectPath, filter, args.Int("limit", 25), args.Int("offset", 0), detailed);
+        return ToolOutcome.From(outcome, "Narrow with morphType, affix, category or headword, or page on with offset. " +
+            "Concise entries carry the entry and sense ids changes need; detail=detailed adds allomorphs and grammatical info.");
     }
 
     private static string LexemeFormIntent(ToolArgs args)

@@ -100,6 +100,13 @@ internal sealed class ToolArgs
         throw new ToolArgumentException("tool.invalid-argument", $"Argument '{name}' must be a Boolean.");
     }
 
+    public bool? OptionalBoolean(string name)
+    {
+        if (!_arguments.TryGetPropertyValue(name, out var node) || node is null) return null;
+        if (node is JsonValue value && value.TryGetValue<bool>(out var flag)) return flag;
+        throw new ToolArgumentException("tool.invalid-argument", $"Argument '{name}' must be a Boolean.");
+    }
+
     public int Int(string name, int fallback)
     {
         if (!_arguments.TryGetPropertyValue(name, out var node)) return fallback;

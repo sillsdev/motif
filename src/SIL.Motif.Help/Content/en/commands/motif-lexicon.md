@@ -1,3 +1,3 @@
 # Read lexicon
 
-Searches Baseline entries, senses, forms and glosses. Detailed results include allomorphs and their environments.
+Searches Baseline entries and counts them by morph type and category. Filter by morphType, affix, category, headword or hasGloss. Concise results are one line per entry with its sense ids; detailed results include senses, allomorphs and their environments.

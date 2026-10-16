@@ -59,13 +59,13 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
             source.GetProperty("token").GetRawText()));
         Assert.Equal(baseline.SourceLastWriteUtc, source.GetProperty("sourceLastWriteUtc").GetDateTimeOffset());
         Assert.Equal(baseline.PublishedUtc, source.GetProperty("publishedUtc").GetDateTimeOffset());
-        Assert.Equal(evidence.Value.ProjectSummary!.LexemeCount, lexicon.GetProperty("total").GetInt32());
+        Assert.Equal(evidence.Value.ProjectSummary!.LexemeCount, lexicon.GetProperty("matched").GetInt32());
         Assert.Equal(new BaselineReadSource(baseline.Token, baseline.SourceLastWriteUtc, baseline.PublishedUtc),
             ProjectionJson.Deserialize<BaselineReadSource>(source.GetRawText()));
         var overview = SIL.Motif.Commands.Catalog.OverviewCommand.Overview(new OverviewRequest(project.FwDataPath));
         Assert.True(overview.Succeeded, overview.Refusal?.Message);
         Assert.Equal(baseline.Token, overview.Value!.BaselineToken);
-        Assert.Equal(overview.Value.LexemeCount, lexicon.GetProperty("total").GetInt32());
+        Assert.Equal(overview.Value.LexemeCount, lexicon.GetProperty("matched").GetInt32());
 
         var loader = new FwDataProjectLoader();
         using (var cache = loader.LoadCache(project.FwDataPath))
@@ -81,7 +81,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         var filtered = (await session.CallAsync("motif_lexicon", ("query", SeededProject.FirstForm),
             ("detail", "detailed"), ("limit", 1))).GetProperty("result");
         Assert.True(JsonElement.DeepEquals(source, filtered.GetProperty("source")));
-        Assert.Equal(1, filtered.GetProperty("total").GetInt32());
+        Assert.Equal(1, filtered.GetProperty("matched").GetInt32());
 
         var replacement = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(project.FwDataPath), project.ManagedRoot);
         Assert.True(replacement.Succeeded, replacement.Refusal?.Message);
@@ -91,7 +91,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
             refreshed.GetProperty("source").GetProperty("token").GetRawText()));
         Assert.Equal(replacement.Value.SourceLastWriteUtc,
             refreshed.GetProperty("source").GetProperty("sourceLastWriteUtc").GetDateTimeOffset());
-        Assert.Equal(lexicon.GetProperty("total").GetInt32() - 1, refreshed.GetProperty("total").GetInt32());
+        Assert.Equal(lexicon.GetProperty("matched").GetInt32() - 1, refreshed.GetProperty("matched").GetInt32());
     }
 
     [Fact]
@@ -742,7 +742,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         var proposalId = started.GetProperty("result").GetProperty("proposalId").GetString()!;
 
         var glossed = await session.CallAsync("motif_set_gloss", ("draft", "gloss-fix"),
-            ("sense", sense.GetProperty("id").GetString()!), ("ws", sense.GetProperty("glossWs").GetString()!),
+            ("sense", sense.GetProperty("id").GetString()!), ("ws", lexicon.GetProperty("result").GetProperty("glossWs").GetString()!),
             ("text", "reworded gloss"));
         Assert.Equal(1, glossed.GetProperty("result").GetProperty("operationCount").GetInt32());
 
@@ -777,7 +777,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         await session.CallAsync("motif_remove_operations", ("draft", "gloss-fix"),
             ("operation_ids", new[] { operationId }));
         await session.CallAsync("motif_set_gloss", ("draft", "gloss-fix"),
-            ("sense", sense.GetProperty("id").GetString()!), ("ws", sense.GetProperty("glossWs").GetString()!),
+            ("sense", sense.GetProperty("id").GetString()!), ("ws", lexicon.GetProperty("result").GetProperty("glossWs").GetString()!),
             ("text", "revised gloss"));
         var oldDryRun = await session.CallAsync("motif_dry_run", ("proposal", proposalId),
             ("job", dryRun.GetProperty("result").GetProperty("job").GetString()));
