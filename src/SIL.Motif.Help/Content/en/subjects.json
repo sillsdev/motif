@@ -1,54 +1,218 @@
 {
   "sound-inventory": {
     "title": "Sound inventory",
-    "description": "The consonants, vowels and other sounds the language uses, kept as the project's phonemes."
+    "description": "The consonants, vowels and other sounds the language uses, kept as the project's phonemes.",
+    "terms": [
+      "phoneme",
+      "consonant",
+      "vowel",
+      "sound inventory",
+      "segment",
+      "contrast"
+    ]
   },
   "natural-classes": {
     "title": "Natural classes",
-    "description": "Groups of sounds that behave alike, such as the vowels or the voiceless stops, that rules and conditions refer to."
+    "description": "Groups of sounds that behave alike, such as the vowels or the voiceless stops, that rules and conditions refer to.",
+    "terms": [
+      "natural class",
+      "class of sounds",
+      "group of sounds",
+      "nasal",
+      "voiceless stop",
+      "obstruent"
+    ]
   },
   "phonological-rules": {
     "title": "Phonological rules",
-    "description": "Rules that say how a sound changes next to other sounds, and the environments that state where."
+    "description": "Rules that say how a sound changes next to other sounds, and the environments that state where.",
+    "terms": [
+      "phonological rule",
+      "sound change",
+      "vowel harmony",
+      "assimilation",
+      "deletion",
+      "epenthesis",
+      "devoicing",
+      "rule ordering"
+    ]
   },
   "conditioned-allomorphy": {
     "title": "Conditioned allomorphy",
-    "description": "Which form of a morpheme appears where, decided by the sounds around it or by what it attaches to."
+    "description": "Which form of a morpheme appears where, decided by the sounds around it or by what it attaches to.",
+    "terms": [
+      "allomorph",
+      "alternate form",
+      "environment",
+      "conditioned",
+      "morphophonemic",
+      "variant form"
+    ]
   },
   "affix-slots-and-templates": {
     "title": "Affix slots and templates",
-    "description": "The ordered positions on a word where affixes attach, and the templates that arrange them for a category."
+    "description": "The ordered positions on a word where affixes attach, and the templates that arrange them for a category.",
+    "terms": [
+      "affix slot",
+      "template",
+      "position class",
+      "prefix",
+      "suffix",
+      "affix order"
+    ]
   },
   "inflection-features": {
     "title": "Inflection features",
-    "description": "Grammatical features such as number or tense, their values, and the feature structures that carry them."
+    "description": "Grammatical features such as number or tense, their values, and the feature structures that carry them.",
+    "terms": [
+      "inflection feature",
+      "tense",
+      "aspect",
+      "agreement",
+      "feature value",
+      "singular and plural"
+    ]
   },
   "noun-class-and-gender": {
     "title": "Noun class and gender",
-    "description": "The classes that sort nouns, which agreement and affixes may depend on."
+    "description": "The classes that sort nouns, which agreement and affixes may depend on.",
+    "terms": [
+      "noun class",
+      "gender",
+      "agreement class",
+      "concord",
+      "masculine and feminine"
+    ]
   },
   "inflection-classes": {
     "title": "Inflection classes",
-    "description": "Groups of words that inflect the same way, and which classes an affix or a stem belongs to."
+    "description": "Groups of words that inflect the same way, and which classes an affix or a stem belongs to.",
+    "terms": [
+      "inflection class",
+      "declension",
+      "conjugation",
+      "stem class",
+      "class of stems"
+    ]
   },
   "stem-alternation": {
     "title": "Stem alternation",
-    "description": "Stems that take different shapes in different grammatical contexts, and the stem names that pick among them."
+    "description": "Stems that take different shapes in different grammatical contexts, and the stem names that pick among them.",
+    "terms": [
+      "stem alternation",
+      "stem name",
+      "stem variant",
+      "suppletive stem",
+      "special stem form",
+      "root allomorph"
+    ]
   },
   "lexical-entries-and-glosses": {
     "title": "Lexical entries and glosses",
-    "description": "Dictionary entries with their forms, alternate forms and short glosses."
+    "description": "Dictionary entries with their forms, alternate forms and short glosses.",
+    "terms": [
+      "lexical entry",
+      "lexeme form",
+      "citation form",
+      "gloss",
+      "lexicon",
+      "headword",
+      "affix entry"
+    ]
   },
   "senses-and-definitions": {
     "title": "Senses and definitions",
-    "description": "The meanings of an entry, each with a gloss and a fuller definition."
+    "description": "The meanings of an entry, each with a gloss and a fuller definition.",
+    "terms": [
+      "sense",
+      "definition",
+      "meaning",
+      "polysemy",
+      "semantic domain"
+    ]
   },
   "texts-and-analyses": {
     "title": "Texts and analyses",
-    "description": "Interlinear texts, and the decisions that approve or reject how each word is analysed."
+    "description": "Interlinear texts, and the decisions that approve or reject how each word is analysed.",
+    "terms": [
+      "text",
+      "interlinear",
+      "analysis",
+      "approve analysis",
+      "wordform",
+      "parse"
+    ]
   },
   "parsimony-dispositions": {
     "title": "Parsimony dispositions",
-    "description": "A recorded decision to keep, fix, ask about or defer a finding that points to a possible simplification of the grammar."
+    "description": "A recorded decision to keep, fix, ask about or defer a finding that points to a possible simplification of the grammar.",
+    "terms": [
+      "parsimony",
+      "finding",
+      "disposition",
+      "intentional",
+      "warning"
+    ]
+  },
+  "infixation": {
+    "title": "Infixation",
+    "description": "Affixes that are inserted inside a root or stem rather than before or after it; Motif has no Composer for them yet.",
+    "terms": [
+      "infix",
+      "infixation",
+      "circumfix",
+      "inside the root",
+      "inside a stem"
+    ]
+  },
+  "reduplication": {
+    "title": "Reduplication",
+    "description": "Marking a meaning by copying all or part of a stem; Motif has no Composer for it yet.",
+    "terms": [
+      "reduplication",
+      "reduplicate",
+      "reduplicated",
+      "copy the stem",
+      "partial copy",
+      "doubling"
+    ]
+  },
+  "example-sentences": {
+    "title": "Example sentences",
+    "description": "Sentences that illustrate how a word or sense is used; Motif has no Composer for them yet.",
+    "terms": [
+      "example sentence",
+      "usage example",
+      "sample sentence",
+      "illustrative sentence"
+    ]
+  },
+  "grammar-explanation": {
+    "title": "Grammar explanation",
+    "description": "Prose that describes or explains the grammar, such as the paragraphs of a grammar sketch; Motif has no Composer for it yet.",
+    "terms": [
+      "grammar sketch",
+      "grammar description",
+      "descriptive grammar",
+      "explanatory paragraph",
+      "prose description",
+      "grammar chapter"
+    ]
+  },
+  "outside-authoring": {
+    "title": "Outside Motif's authoring",
+    "description": "Requests that are not grammar or lexicon authoring, or that no Composer models: exports, imports, printouts, counts and reports, recordings, and tone rules that act across words.",
+    "terms": [
+      "export",
+      "import",
+      "print",
+      "count",
+      "how many",
+      "statistics",
+      "report",
+      "record audio",
+      "spreadsheet",
+      "tone sandhi"
+    ]
   }
 }

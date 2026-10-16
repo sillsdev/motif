@@ -61,7 +61,11 @@ public sealed record HelpEntry(
 /// The Subject's full page in plain CommonMark: what the work needs, in which order, and the usual pitfalls; null
 /// when the Subject has none.
 /// </param>
-public sealed record SubjectHelp(string Id, string Title, string Description, string? HelpPage = null);
+/// <param name="Terms">
+/// Distinctive words and phrases a person uses for the Subject, which a composer search routes a goal by.
+/// </param>
+public sealed record SubjectHelp(
+    string Id, string Title, string Description, string? HelpPage = null, IReadOnlyList<string>? Terms = null);
 
 /// <summary>Loads embedded Motif Help content and resolves its stable cross-links and documentation URLs.</summary>
 public sealed class HelpCatalog
@@ -317,7 +321,10 @@ public sealed class HelpCatalog
                     property.Value.GetProperty("title").GetString()!,
                     property.Value.GetProperty("description").GetString()!,
                     ReadResource($"help/{locale}/subjects/{property.Name}.md")
-                        ?? ReadResource($"help/{EnglishLocale}/subjects/{property.Name}.md"));
+                        ?? ReadResource($"help/{EnglishLocale}/subjects/{property.Name}.md"),
+                    property.Value.TryGetProperty("terms", out var terms)
+                        ? terms.EnumerateArray().Select(term => term.GetString()!).ToArray()
+                        : merged.GetValueOrDefault(property.Name)?.Terms);
         }
 
         return merged.Values.ToArray();

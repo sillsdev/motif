@@ -120,13 +120,14 @@
     ]
   },
   "retire-allomorph": {
-    "title": "Retire or replace a form",
+    "title": "Retire or merge forms",
     "description": "Stages one connected Proposal to retire ordinary prefix or suffix alternates after their references move; the sound-rule form also stages its natural class and rule. Dry Run shows bundle Morph and copied Form text changes, other references, and deletion together. Missing destinations are refused with counts for distinct unresolved Approved analyses, ad hoc rules, and other references; only a person can Apply.",
     "source": "Hand-written from the allomorph retirement and sound-rule replacement contracts.",
     "goals": [
-      "Remove a duplicate affix form",
+      "Merge duplicate forms of an affix",
       "Replace several listed forms with one",
-      "Retire an unused prefix after moving what refers to it"
+      "Retire an unused prefix after moving what refers to it",
+      "Remove an unused affix"
     ]
   },
   "retire-redundant-zero-affix": {
@@ -135,27 +136,30 @@
     "source": "Hand-written from the zero-affix retirement contract and command behavior.",
     "goals": [
       "Delete a zero affix nobody uses",
-      "Clean up an empty affix entry that does nothing"
+      "Remove an unused empty affix entry",
+      "Clean up a null affix that does nothing"
     ]
   },
   "compose-author-phonological-rule": {
-    "title": "Author a sound rule",
+    "title": "Author a phonological rule",
     "description": "Stages one simple rewrite rule in a Draft, using existing phonemes and natural classes with explicit context and rule placement. Empty input or output means insertion or deletion; unsupported alpha variables and metathesis are refused. Only a person can Apply.",
     "source": "Hand-written from the regular rewrite-rule composer contract and command behavior.",
     "goals": [
-      "Write a rule that voices a consonant between vowels",
-      "Add a vowel-harmony rule",
-      "Make a sound drop at the end of a word"
+      "Add a vowel harmony rule",
+      "Write an assimilation rule that voices a consonant between vowels",
+      "Add a deletion rule for a word-final vowel",
+      "Add an epenthesis rule that inserts a vowel into a cluster"
     ]
   },
   "compose-author-lexical-entry": {
-    "title": "Author a dictionary entry",
+    "title": "Author a lexical entry",
     "description": "Stages one new dictionary entry with its lexeme form, one sense with gloss and optional definition, and grammatical info: a stem, or an inflectional, derivational or unclassified affix. Each form can name environments, and an affix can name the inflection classes it attaches to. Inspect its Dry Run and try words with it before a person Applies the Proposal.",
     "source": "Hand-written from command behavior.",
     "goals": [
       "Add a new word with its meaning",
-      "Enter a stem with a gloss and its category",
-      "Add an affix entry with a short gloss"
+      "Enter a lexeme with a gloss and its category",
+      "Add an affix entry with a short gloss",
+      "Create a lexical entry with a citation form and part of speech"
     ]
   },
   "compose-author-alternate-form": {
@@ -504,7 +508,7 @@
     "source": "Authored from the typed command contract.",
     "goals": [
       "Enter a short text to analyse",
-      "Add a story paragraph by paragraph",
+      "Add an interlinear text paragraph by paragraph",
       "Create a text from segments of words"
     ]
   },
@@ -515,7 +519,8 @@
     "goals": [
       "Approve an analysis of a word",
       "Disapprove a wrong analysis",
-      "Return a word to undecided"
+      "Return a wordform to undecided",
+      "Approve the analysis in an interlinear text"
     ]
   },
   "order-allomorphs": {
@@ -687,9 +692,10 @@
     "description": "Stages a lexeme form with explicitly authored spelling, writing system and morph type in a Draft. Dry Run and Trial the Draft before Finalize; only a person can Apply.",
     "source": "The shared command catalog and typed request contract.",
     "goals": [
-      "Give an entry its dictionary spelling",
+      "Set the lexeme form of an entry",
       "Add the citation form of a new stem or affix",
-      "Record the lexeme form in another writing system"
+      "Record the lexeme form in another writing system",
+      "Fix the headword spelling of an entry"
     ]
   },
   "list": {

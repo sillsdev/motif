@@ -34,16 +34,18 @@ public sealed class ComposerSubjectsTests
     {
         var served = ProposalCommands.DraftComposers.Values.SelectMany(definition => definition.Subjects).ToHashSet();
         var help = Catalog().Subjects.ToDictionary(subject => subject.Id);
-        foreach (var subject in ComposerSubjects.All)
+        foreach (var subject in ComposerSubjects.All.Concat(ComposerSubjects.Reserved))
         {
-            Assert.Contains(subject, served);
+            if (ComposerSubjects.All.Contains(subject)) Assert.Contains(subject, served);
+            else Assert.DoesNotContain(subject, served);
             Assert.True(help.TryGetValue(subject, out var entry), subject);
             Assert.False(string.IsNullOrWhiteSpace(entry!.Title), subject);
             Assert.False(string.IsNullOrWhiteSpace(entry.Description), subject);
         }
 
-        Assert.Equal(ComposerSubjects.All.Order(StringComparer.Ordinal), help.Keys.Order(StringComparer.Ordinal));
-        Assert.All(ComposerSubjects.All, subject =>
+        Assert.Equal(ComposerSubjects.All.Concat(ComposerSubjects.Reserved).Order(StringComparer.Ordinal),
+            help.Keys.Order(StringComparer.Ordinal));
+        Assert.All(ComposerSubjects.All.Concat(ComposerSubjects.Reserved), subject =>
             Assert.Matches("^[a-z]+(-[a-z]+)*$", subject));
     }
 

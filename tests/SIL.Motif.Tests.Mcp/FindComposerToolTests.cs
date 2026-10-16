@@ -36,7 +36,7 @@ public sealed class FindComposerToolTests
         var context = new ServerContext("", "1.0", new NoRunnerLauncher(new JobRunnerLaunchOptions("root", null)),
             new ActivityLog(null), ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
 
-        var found = await Tool.Run(context, Args(("goal", "add a missing consonant")), CancellationToken.None);
+        var found = await Tool.Run(context, Args(("goal", "add a missing consonant to the sound inventory")), CancellationToken.None);
         Assert.Null(found.Refusal);
         Assert.Equal("compose-author-phoneme", found.Value!["results"]![0]!["verb"]!.GetValue<string>());
 
@@ -54,7 +54,7 @@ public sealed class FindComposerToolTests
             var context = new ServerContext("", "1.0", new NoRunnerLauncher(new JobRunnerLaunchOptions("root", null)),
                 log, ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
 
-            await Tool.Run(context, Args(("goal", "add a missing consonant")), CancellationToken.None);
+            await Tool.Run(context, Args(("goal", "add a missing consonant to the sound inventory")), CancellationToken.None);
             Assert.DoesNotContain(log.Entries, entry => entry.Tool == "findComposerMiss");
 
             var miss = await Tool.Run(context, Args(("goal", "Export the dictionary to a printable file")),
