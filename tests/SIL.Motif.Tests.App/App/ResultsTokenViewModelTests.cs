@@ -266,6 +266,6 @@ public sealed class ResultsTokenViewModelTests
 
         Assert.Equal("proposal/one", Assert.Single(fake.TraceWordRequests).ProposalId);
         Assert.True(trace.OffersTryAgain);
-        Assert.Equal("The Proposal's copy is gone. Try it again.", trace.ShownRefusal?.Sentence);
+        Assert.Equal("The copy these changes were tried on is gone. Try them again.", trace.ShownRefusal?.Sentence);
     }
 }
