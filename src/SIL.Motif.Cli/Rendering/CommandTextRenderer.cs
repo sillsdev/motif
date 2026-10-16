@@ -587,6 +587,28 @@ public static class CommandTextRenderer
         return text.ToString();
     }
 
+    /// <summary>The counts-and-one-page rendering <c>assess --summary</c> prints, as JSON or text.</summary>
+    public static CommandResult RenderAssessSummary(System.Text.Json.Nodes.JsonObject page, bool asJson)
+    {
+        if (asJson) return new CommandResult(0, page.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) +
+            Environment.NewLine);
+        var text = new StringBuilder();
+        text.AppendLine(CountsLine(page["counts"]!.Deserialize<AssessmentCounts>(
+            new JsonSerializerOptions(JsonSerializerDefaults.Web))!));
+        text.AppendLine("Assessment: " + page["assessment"] + "  (" + page["showing"] + ")");
+        foreach (var word in page["words"]!.AsArray())
+            text.AppendLine($"  {word!["word"]}: {word["outcome"]}" +
+                (word["reading"] is { } reading ? " (" + reading + ")" : string.Empty));
+        if (page["nextOffset"] is { } next)
+            text.AppendLine($"More: motif assess <project> --summary --offset {next}");
+        return new CommandResult(0, text.ToString());
+    }
+
+    private static string CountsLine(AssessmentCounts counts) =>
+        $"  Counts: {counts.Words} word(s); {counts.Analysed} analysed " +
+        $"({counts.Accepted} accepted, {counts.GuessOnly} guess-only); {counts.NoAnalysis} no-analysis; " +
+        $"{counts.TimedOut} timed-out; {counts.Capped} capped; {counts.Skipped} skipped";
+
     private static string RenderAssessed(AssessCommandResponse response)
     {
         var text = new StringBuilder();
@@ -597,6 +619,7 @@ public static class CommandTextRenderer
         foreach (var entry in response.Selection.Provenance)
             text.AppendLine("    " + entry.Source + ": " + entry.Count);
         text.AppendLine("  Assessments: " + string.Join(", ", response.AssessmentIds));
+        text.AppendLine(CountsLine(response.Counts));
         text.AppendLine();
         text.AppendLine(response.SummaryMarkdown);
         foreach (var word in response.Words)
