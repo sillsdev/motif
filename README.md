@@ -31,27 +31,27 @@ Motif reads your saved FieldWorks project and writes nothing to it until you ope
 
 ## See it
 
-![The Overview page after a parse: Text Coverage, approved analyses kept, speed and grammar warnings](site/fixtures/walkthroughs/review-apply-refresh-parse/steps/04-parsed.png)
+![The Overview page for a Swahili grammar after a parse: 604 of 865 words parse, with the speed, grammar warnings and slowest words beside it](docs/media/readme/overview.png)
 
-*Overview: how much of your text the grammar parses, how many approved analyses it still builds, how fast, and what to look at first.*
+*Overview: of the 865 words in the Selection, 604 parse, 253 do not parse and 8 cannot be read. Speed and the grammar warnings sit beside the coverage, and the slowest words are listed.*
 
-![Try a Word showing one parsed word with its analysis and morphemes](site/fixtures/walkthroughs/try-word-typing/steps/01-trace.png)
+![Analyze texts showing the first line of a Swahili text, with each word's FieldWorks and PanGloss analyses under it](docs/media/readme/analyze-texts.png)
 
-*Try a Word: type a word and see how the parser read it.*
+*Analyze texts: a Text read in place, each word with what FieldWorks has and what PanGloss builds, and Add where PanGloss proposes an analysis.*
 
-![Warnings page listing three grammar-check findings](site/fixtures/walkthroughs/warnings-filter/steps/01-findings.png)
+![Try a Word showing alipojitenga parsed with one analysis, its morphemes and glosses, and the parser's recorded trace](docs/media/readme/try-a-word.png)
 
-*Warnings: problems the grammar check found, to fix in FieldWorks.*
+*Try a Word: one Swahili word, the analysis the parser built and the steps it recorded on the way.*
 
-![Review changes listing three grammar changes, each with Keep and Undo, and Apply to FieldWorks project disabled until you have checked them](site/fixtures/walkthroughs/proposal-review-keep-undo/steps/01-review-list.png)
+![Warnings listing the grammar check's three findings, one error and two warnings, under Phonological rules](docs/media/readme/warnings.png)
 
-*Review changes: every change has Keep and Undo, and nothing reaches FieldWorks until you apply.*
+*Warnings: the problems the grammar check found, to fix in FieldWorks.*
 
-![AI Handoff listing the files to drag into a chat, with a starter prompt and suggested questions](site/fixtures/walkthroughs/handoff-cancel-retry/steps/01-completed-files.png)
+![Review changes listing one added analysis with Keep and Undo, and Apply to FieldWorks project disabled](docs/media/readme/review-changes.png)
 
-*AI Handoff: the files and starter prompt for a chat model such as Claude, ChatGPT or Gemini.*
+*Review changes: each change has Keep and Undo, and Apply to FieldWorks project stays off until you have looked at them.*
 
-These images come from the walkthrough tests, which run the window against a tiny test project, so the numbers are small.
+These images come from a real Swahili grammar project, parsed by PanGloss with no analyses approved by a person. The window shows a frame with a page rail on the left, a side panel, the Inspector on the right and a status bar. The one change in Review changes was staged in a scratch copy for the picture.
 
 ## Who it is for
 

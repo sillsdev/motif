@@ -111,6 +111,13 @@ reruns into it after deleting the previous capture files there (`*.png`, `matrix
 `index.html`, `diff.csv`); other files stay. `-NoDiff` skips the compiled pixel-diff tool and builds
 only the sheet.
 
+To capture the main pages of one real project, set `MOTIF_SCREENSHOTS` to a folder, `MOTIF_CAPTURE_PROJECT` to a
+`.fwdata` file and `MOTIF_PANGLOSS_EXE` to the pinned parser, then run
+`pwsh ./test.ps1 -Project SIL.Motif.Tests.App -Filter FullyQualifiedName~RealProjectReadmeCapture`. The test copies
+the project (with its `WritingSystemStore` and `SharedSettings` folders), runs an Assessment, stages one pending
+change in the copy, and saves Overview, Analyze texts, Warnings, Review changes and Try a Word at 1600x1000, 100%
+zoom, light theme, into `real-project/` under the screenshot folder. With either variable unset it skips.
+
 For a design comparison, pass `-ReferenceMap <json-file>`: a JSON object maps matrix scene names to
 artboard PNG paths, absolute or relative to the map file, for example
 `{"1-overview":"H/Overview.png","6-review":"H/Review.png"}`. The sheet copies references into its

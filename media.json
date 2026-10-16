@@ -1,6 +1,11 @@
 {
   "version": 1,
   "media": [
+    { "path": "docs/media/readme/analyze-texts.png", "classification": "record", "note": "Captured from the Swahili grammar project by RealProjectReadmeCapture at 1600x1000, 100%, light theme" },
+    { "path": "docs/media/readme/overview.png", "classification": "record", "note": "Captured from the Swahili grammar project by RealProjectReadmeCapture at 1600x1000, 100%, light theme" },
+    { "path": "docs/media/readme/review-changes.png", "classification": "record", "note": "Captured from the Swahili grammar project by RealProjectReadmeCapture at 1600x1000, 100%, light theme" },
+    { "path": "docs/media/readme/try-a-word.png", "classification": "record", "note": "Captured from the Swahili grammar project by RealProjectReadmeCapture at 1600x1000, 100%, light theme" },
+    { "path": "docs/media/readme/warnings.png", "classification": "record", "note": "Captured from the Swahili grammar project by RealProjectReadmeCapture at 1600x1000, 100%, light theme" },
     { "path": "docs/pitch/art/chapter-1.svg", "classification": "source" },
     { "path": "docs/pitch/art/chapter-2.svg", "classification": "source" },
     { "path": "docs/pitch/art/chapter-3.svg", "classification": "source" },
