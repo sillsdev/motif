@@ -405,6 +405,22 @@
       "Disable a duplicated prohibition"
     ]
   },
+  "compose-edit-compound-rule": {
+    "title": "Turn a compound rule off or on",
+    "description": "Stages one explicit Disabled value for an endocentric or exocentric compound rule in a Draft. FieldWorks compound rules join any two stems, so a rule that builds non-words can be switched off; the expected value guards against stale evidence, and only a person can Apply.",
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "target": "Id of the compound rule to turn off or on.",
+      "expectedDisabled": "Whether the rule is turned off now: true when it is, false when it is on.",
+      "disabled": "Whether the rule should be turned off: true to turn it off, false to turn it on."
+    },
+    "goals": [
+      "Stop compounding from making non-words",
+      "Disable a compound rule that accepts any two stems",
+      "Switch a compound rule back on"
+    ]
+  },
   "compose-edit-affix-slot": {
     "title": "Edit an affix slot",
     "description": "Changes whether an existing inflectional affix slot is optional. The response lists every affix and template using the shared slot; Motif stages a Draft and never Applies it automatically. Only a person can Apply.",

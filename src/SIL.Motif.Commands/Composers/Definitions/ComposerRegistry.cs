@@ -10,6 +10,7 @@ internal static class ComposerDefinitions
         new AuthorFeatureValueDefinition(),
         new DeleteEmptySenseDefinition(),
         new EditAffixInflectionClassesDefinition(),
+        new EditCompoundRuleDefinition(),
         new EditPartOfSpeechInflectionClassDefaultDefinition(),
         new EditStemAllomorphStemNameDefinition(),
         new EditStemInflectionClassDefinition(),

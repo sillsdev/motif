@@ -15,6 +15,7 @@ public sealed class InflectionClassEditorCliTests
     [InlineData("compose-edit-affix-inflection-classes")]
     [InlineData("compose-edit-stem-allomorph-stem-name")]
     [InlineData("compose-edit-stem-inflection-class")]
+    [InlineData("compose-edit-compound-rule")]
     public void EditorVerbsRemainDraftCommandsButAreNotAgentToolsAndReachCliUsage(string verb)
     {
         var descriptor = Assert.Single(CommandCatalog.All, command => command.Name == verb);

@@ -39,6 +39,20 @@
       "rule ordering"
     ]
   },
+  "compounding": {
+    "title": "Compounding",
+    "description": "Words built by joining two stems, and the rules FieldWorks uses to allow it.",
+    "terms": [
+      "compound",
+      "compounding",
+      "compound rule",
+      "stem plus stem",
+      "endocentric",
+      "exocentric",
+      "non-word",
+      "overgeneration"
+    ]
+  },
   "conditioned-allomorphy": {
     "title": "Conditioned allomorphy",
     "description": "Which form of a morpheme appears where, decided by the sounds around it or by what it attaches to.",
