@@ -76,9 +76,10 @@ internal static class AgentTools
     {
         var tools = CatalogTools.Build(BuildAdapters()).Concat(ComposerTools.Build()).ToArray();
         var batchSchema = ComposeBatchSchema(tools);
+        var composeSchema = ComposeSchema(tools);
         return tools.Select(tool => tool.Name == "motif_compose_batch"
                 ? tool with { InputSchema = batchSchema }
-                : tool)
+                : tool.Name == "motif_compose" ? tool with { InputSchema = composeSchema } : tool)
             .Select(tool => DefaultAuthoringTools.Contains(tool.Name) ? tool with { OnByDefault = true } : tool)
             .Select(tool => tool.Name == FindComposerTool ? FindComposerOptIn(tool) : tool)
             .ToArray();
@@ -559,6 +560,18 @@ internal static class AgentTools
             (c, a, ct) => Task.FromResult(ComposeBatch(c, a)))
             { Requests = [typeof(ComposeBatchRequest)] },
 
+        new("motif_compose",
+            string.Empty,
+            AgentClass.Draft,
+            Schema.Object(),
+            false,
+            false,
+            false,
+            false,
+            true,
+            (c, a, ct) => Task.FromResult(Compose(c, a)))
+            { Requests = [typeof(ComposeRequest)] },
+
         new("motif_retire_allomorph",
             string.Empty,
             AgentClass.Draft,
@@ -1005,7 +1018,7 @@ internal static class AgentTools
                 ("before", Schema.String("Adjacent existing rule after the insertion gap."), false)), false));
     }
 
-    private static JsonObject ComposeBatchSchema(IReadOnlyList<AgentTool> tools)
+    private static (string Verb, JsonObject Schema)[] StepIntentSchemas(IReadOnlyList<AgentTool> tools)
     {
         var typedIntents = ProposalCommands.ComposerDescriptors.Where(composer => composer.InBatch)
             .Select(ComposerTools.BatchIntentSchema);
@@ -1023,6 +1036,12 @@ internal static class AgentTools
             })
             .Concat(typedIntents)
             .ToArray();
+        return supportedIntents;
+    }
+
+    private static JsonObject ComposeBatchSchema(IReadOnlyList<AgentTool> tools)
+    {
+        var supportedIntents = StepIntentSchemas(tools);
         var citation = Schema.Object(
             ("source", Schema.String("Where this change came from."), true),
             ("locator", Schema.String("Optional page, section or other source location."), false));
@@ -1041,6 +1060,64 @@ internal static class AgentTools
             ("intents", Schema.Array("Semantic composer intents for one Draft. Referenced entity ids must come from earlier completed calls or batches; declare operation ordering and dependencies in the intents.",
                 item), true),
             ("project", Schema.String("Known project name or recorded .fwdata path."), true));
+    }
+
+    // Every step offers the verbs a batch offers, so the two tools cannot drift apart.
+    private static JsonObject ComposeSchema(IReadOnlyList<AgentTool> tools)
+    {
+        var citation = Schema.Object(
+            ("source", Schema.String("Where this change came from."), true),
+            ("locator", Schema.String("Optional page, section or other source location."), false));
+        var branches = new JsonArray(StepIntentSchemas(tools).Select(pair => (JsonNode)Schema.Object(
+            ("verb", Schema.String("Composing verb for this step.", pair.Verb), true),
+            ("intent", pair.Schema.DeepClone().AsObject(), true),
+            ("as", Schema.String("Optional label, for compose-author-phonological-rule only, that a later step's " +
+                "placement may name as @label."), false),
+            ("cite", citation.DeepClone().AsObject(), false))).ToArray());
+        var step = new JsonObject
+        {
+            ["type"] = "object",
+            ["description"] = "One composer's verb and its structured intent. The verb selects the matching intent fields.",
+            ["oneOf"] = branches,
+        };
+        return Schema.Object(
+            ("proposal", Schema.String("Name of the Draft from motif_start_proposal."), true),
+            ("steps", Schema.Array("Composing steps, applied in order; each sees the project as the earlier ones left it. " +
+                "One step and many are the same call.", step), true),
+            ("remove", Schema.Array("Operation ids to remove from the Draft first, in the same all-or-nothing save.",
+                Schema.String("Operation id.")), false),
+            ("project", Schema.String("Known project name or recorded .fwdata path."), true));
+    }
+
+    private static ToolOutcome Compose(ServerContext context, ToolArgs arguments)
+    {
+        if (arguments.Copy()["steps"] is not JsonArray steps)
+            throw new ToolArgumentException("tool.missing-argument", "Argument 'steps' is required and must be an array.");
+        var refusals = new List<string>();
+        for (var index = 0; index < steps.Count; index++)
+        {
+            if (steps[index] is not JsonObject step || step["verb"] is not JsonValue verbValue ||
+                !verbValue.TryGetValue<string>(out var verb) || string.IsNullOrWhiteSpace(verb))
+                refusals.Add($"Step {index} must have a string 'verb'.");
+            else if (!BatchComposerVerbs.Contains(verb, StringComparer.Ordinal) && !ComposerTools.BatchVerbs.Contains(verb))
+                refusals.Add($"Step {index} uses unsupported verb '{verb}'.");
+        }
+        if (refusals.Count > 0)
+            throw new ToolArgumentException("tool.invalid-argument",
+                "Every step must use one of the ordinary grammar composer verbs. " + string.Join(" ", refusals));
+        IReadOnlyList<ComposeStepRequest> parsed;
+        try
+        {
+            parsed = ComposeStepRequest.ParseList(steps.ToJsonString());
+        }
+        catch (InvalidOperationException exception)
+        {
+            throw new ToolArgumentException("tool.invalid-argument", exception.Message);
+        }
+        return ToolOutcome.From(ProposalCommands.Compose(new(context.ProjectPath, context.ProductVersion,
+                arguments.Required("proposal"), parsed, arguments.List("remove"))),
+            result => $"Draft now has {result.OperationCount} changes from {result.Intents.Count} steps. " +
+                "Dry Run the Draft, then Finalize for a person to Apply.");
     }
 
     private static ToolOutcome ComposeBatch(ServerContext context, ToolArgs arguments)

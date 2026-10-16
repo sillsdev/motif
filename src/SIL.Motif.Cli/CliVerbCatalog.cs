@@ -159,6 +159,8 @@ public static class CliVerbCatalog
             new[] { "order-allomorphs --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
         new CliVerbDescriptor("Commands", "compose-batch", "compose-batch",
             new[] { "compose-batch --draft <name> --project <fwdata> --intents <file.json> [--json]" }),
+        new CliVerbDescriptor("Commands", "compose", "compose",
+            new[] { "compose --proposal <name> --project <fwdata> --steps '<json array>' [--remove <id>[,<id>...]] [--json]" }),
         new CliVerbDescriptor("Commands", "compose-record-parsimony-disposition", "compose-record-parsimony-disposition",
             new[] { "compose-record-parsimony-disposition --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
         new CliVerbDescriptor("Commands", "retire-allomorph", "retire-allomorph",

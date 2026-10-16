@@ -78,15 +78,59 @@ public static partial class ProposalCommands
             var outcome = ComposeStepsIntoDraft(database, project, request.DraftName, steps, describeBatchFailure: true);
             if (!outcome.Succeeded)
                 return CommandOutcome<ComposedBatchResponse>.Refused(outcome.Refusal!);
-            var results = outcome.Value!;
-            return CommandOutcome<ComposedBatchResponse>.Success(new ComposedBatchResponse(request.DraftName,
-                results.Select((result, index) => new ComposedIntentResult(index, steps[index].Verb!,
-                    result.ComposerName, result.Operations, result.RelatedObjects)
-                {
-                    CreatedObjects = result.CreatedObjects,
-                }).ToArray(),
-                results.Length == 0 ? 0 : results[^1].OperationCount));
+            return CommandOutcome<ComposedBatchResponse>.Success(BatchResponse(request.DraftName, steps, outcome.Value!));
         });
+
+    /// <summary>
+    /// Removes operations from a Draft and composes any number of steps into it, each through the composer its
+    /// verb names, all in one save: every removal and every step stands, or none does.
+    /// </summary>
+    /// <remarks>
+    /// One step behaves as <see cref="ComposeIntent"/> does for its verb; many behave as <see cref="ComposeBatch"/>
+    /// does, so a later step sees the project as the earlier ones left it and may place a rule after an earlier
+    /// step's <c>as</c> label. A removal that would orphan a dependent operation is refused, never forced. A refusal
+    /// names the failing step's index and verb.
+    /// </remarks>
+    public static CommandOutcome<ComposedBatchResponse> Compose(ComposeRequest request) =>
+        ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
+        {
+            List<ComposeStep> steps;
+            try
+            {
+                if (request.Steps.Count == 0)
+                    throw new InvalidOperationException("A compose call needs at least one step.");
+                var labels = new HashSet<string>(StringComparer.Ordinal);
+                steps = request.Steps.Select((step, index) => BuildStep(index, step.Verb, step.Intent,
+                    step.As is null ? null : JsonSerializer.SerializeToElement(step.As), labels,
+                    () => step.Cite)).ToList();
+            }
+            catch (BatchEntryException exception)
+            {
+                return CommandOutcome<ComposedBatchResponse>.Refused(DraftInvalid(exception.Message,
+                    ("draftName", request.Proposal),
+                    ("intentIndex", exception.Index.ToString(CultureInfo.InvariantCulture)),
+                    ("verb", exception.Verb)));
+            }
+            catch (InvalidOperationException exception)
+            {
+                return CommandOutcome<ComposedBatchResponse>.Refused(
+                    DraftInvalid(exception.Message, ("draftName", request.Proposal)));
+            }
+            var outcome = ComposeStepsIntoDraft(database, project, request.Proposal, steps,
+                describeBatchFailure: true, remove: request.Remove);
+            return outcome.Succeeded
+                ? CommandOutcome<ComposedBatchResponse>.Success(BatchResponse(request.Proposal, steps, outcome.Value!))
+                : CommandOutcome<ComposedBatchResponse>.Refused(outcome.Refusal!);
+        });
+
+    private static ComposedBatchResponse BatchResponse(string draftName, IReadOnlyList<ComposeStep> steps,
+        ComposedOperationsResponse[] results) => new(draftName,
+        results.Select((result, index) => new ComposedIntentResult(index, steps[index].Verb!,
+            result.ComposerName, result.Operations, result.RelatedObjects)
+        {
+            CreatedObjects = result.CreatedObjects,
+        }).ToArray(),
+        results.Length == 0 ? 0 : results[^1].OperationCount);
 
     private static List<ComposeStep> ParseBatch(string json)
     {
@@ -120,38 +164,45 @@ public static partial class ProposalCommands
             if (verbValue.ValueKind != JsonValueKind.String || !entry.TryGetProperty("intent", out var intent))
                 throw new BatchEntryException(index, verb,
                     $"Intent {index} ({verb}): each entry has 'verb' (a composing verb) and 'intent'.");
-            if (!DraftComposers.TryGetValue(verb, out var composer))
-                throw new BatchEntryException(index, verb,
-                    $"Intent {index} ({verb}): this is not a verb a batch can run. Batchable verbs: " +
-                    string.Join(", ", DraftComposers.Keys.Order(StringComparer.Ordinal)) + ".");
-            string? label = null;
-            if (entry.TryGetProperty("as", out var labelValue))
-            {
-                if (verb != PhonologicalRuleComposerVerb)
-                    throw new BatchEntryException(index, verb,
-                        $"Intent {index} ({verb}): 'as' labels are supported only for {PhonologicalRuleComposerVerb}.");
-                if (labelValue.ValueKind != JsonValueKind.String || !IsRulePlacementLabel(labelValue.GetString()))
-                    throw new BatchEntryException(index, verb,
-                        $"Intent {index} ({verb}): 'as' must be a label matching [A-Za-z][A-Za-z0-9_-]{{0,20}}.");
-                label = labelValue.GetString();
-                if (!labels.Add(label!))
-                    throw new BatchEntryException(index, verb,
-                        $"Intent {index} ({verb}): label '{label}' is already declared in this batch.");
-            }
-            OperationCitation? citation;
-            try
-            {
-                citation = entry.TryGetProperty("citation", out var citationValue)
+            steps.Add(BuildStep(index, verb, intent.Clone(), entry.TryGetProperty("as", out var labelValue) ? labelValue : null,
+                labels, () => entry.TryGetProperty("citation", out var citationValue)
                     ? OperationCitation.Parse(citationValue)
-                    : null;
-            }
-            catch (Exception exception) when (exception is JsonException or InvalidOperationException or ContractParseException)
-            {
-                throw new BatchEntryException(index, verb, $"Intent {index} ({verb}): {exception.Message}");
-            }
-            steps.Add(ComposeStep.From(composer, intent.Clone(), citation, label, resolvePlacementLabels: true));
+                    : null));
         }
         return steps;
+    }
+
+    private static ComposeStep BuildStep(int index, string verb, JsonElement intent, JsonElement? labelValue,
+        HashSet<string> labels, Func<OperationCitation?> readCitation)
+    {
+        if (!DraftComposers.TryGetValue(verb, out var composer))
+            throw new BatchEntryException(index, verb,
+                $"Intent {index} ({verb}): this is not a verb a batch can run. Batchable verbs: " +
+                string.Join(", ", DraftComposers.Keys.Order(StringComparer.Ordinal)) + ".");
+        string? label = null;
+        if (labelValue is { } supplied)
+        {
+            if (verb != PhonologicalRuleComposerVerb)
+                throw new BatchEntryException(index, verb,
+                    $"Intent {index} ({verb}): 'as' labels are supported only for {PhonologicalRuleComposerVerb}.");
+            if (supplied.ValueKind != JsonValueKind.String || !IsRulePlacementLabel(supplied.GetString()))
+                throw new BatchEntryException(index, verb,
+                    $"Intent {index} ({verb}): 'as' must be a label matching [A-Za-z][A-Za-z0-9_-]{{0,20}}.");
+            label = supplied.GetString();
+            if (!labels.Add(label!))
+                throw new BatchEntryException(index, verb,
+                    $"Intent {index} ({verb}): label '{label}' is already declared in this batch.");
+        }
+        OperationCitation? citation;
+        try
+        {
+            citation = readCitation();
+        }
+        catch (Exception exception) when (exception is JsonException or InvalidOperationException or ContractParseException)
+        {
+            throw new BatchEntryException(index, verb, $"Intent {index} ({verb}): {exception.Message}");
+        }
+        return ComposeStep.From(composer, intent, citation, label, resolvePlacementLabels: true);
     }
 
     private sealed class BatchEntryException(int index, string verb, string message) : InvalidOperationException(message)

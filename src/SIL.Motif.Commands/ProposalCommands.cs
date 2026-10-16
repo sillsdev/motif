@@ -1114,87 +1114,9 @@ public static partial class ProposalCommands
                 if (!TryLoadDraft(repository, request.DraftName, out var draft, out var loadedJson))
                     return CommandOutcome<OperationsRemovedResponse>.Refused(DraftNotFound(request.DraftName));
 
-                if (request.OperationIds.Count == 0)
-                {
-                    return CommandOutcome<OperationsRemovedResponse>.Refused(new Refusal(
-                        "operation.invalid-id", FailureReason.InvalidArgument,
-                        "Specify at least one operation id to remove.",
-                        Fact(("draftName", request.DraftName))));
-                }
-
-                var requestedIds = new List<string>();
-                foreach (var raw in request.OperationIds)
-                {
-                    if (!CanonicalId.TryParse(raw, out var id, out var error))
-                    {
-                        return CommandOutcome<OperationsRemovedResponse>.Refused(new Refusal(
-                            "operation.invalid-id", FailureReason.InvalidArgument,
-                            $"'{raw}' is not a valid canonical operation id: {error}",
-                            Fact(("draftName", request.DraftName))));
-                    }
-                    requestedIds.Add(id.Value);
-                }
-
-                var byId = draft.Operations.ToDictionary(o => o.OperationId, StringComparer.Ordinal);
-                var missing = requestedIds.Where(id => !byId.ContainsKey(id)).ToList();
-                if (missing.Count > 0)
-                {
-                    return CommandOutcome<OperationsRemovedResponse>.Refused(new Refusal(
-                        "operation.invalid-id", FailureReason.Refused,
-                        $"Draft '{request.DraftName}' has no operation(s) " +
-                        $"{string.Join(", ", missing.Select(m => $"'{m}'"))}. Run 'show' on the source " +
-                        "Proposal, or inspect the draft file, to find valid operation ids.",
-                        Fact(("draftName", request.DraftName))));
-                }
-
-                var requestedOps = requestedIds.Select(id => byId[id]).ToList();
-
-                // Decision 6, point 4: force never means "guess" -- a cascading delete's reach is discovered-only, so refuse.
-                var unenumerable =
-                    requestedOps.FirstOrDefault(op => OperationDependencyGraph.IsCascadingDelete(op.Kind));
-                if (unenumerable is not null)
-                {
-                    return CommandOutcome<OperationsRemovedResponse>.Refused(new Refusal(
-                        "operation.cascading-delete", FailureReason.Refused,
-                        $"Cannot remove operation '{unenumerable.OperationId}' ({unenumerable.Kind}): it is a " +
-                        "cascading delete. LibLCM's ownership cascade reaches objects this Proposal never " +
-                        "names, and that reach is only known by inspecting the live project — this store has " +
-                        "no way to enumerate what removing it would affect. This removal is refused, not " +
-                        "forced; --force cannot help, because there is no enumerated consequence set for it " +
-                        "to accept.",
-                        Fact(("draftName", request.DraftName), ("operationId", unenumerable.OperationId))));
-                }
-
-                var requestedSet = new HashSet<string>(requestedIds, StringComparer.Ordinal);
-                var consequences = OperationDependencyGraph.TransitiveDependents(draft.Operations, requestedSet);
-
-                if (consequences.Count > 0 && !request.Force)
-                {
-                    var sb = new StringBuilder();
-                    sb.AppendLine(
-                        $"Removing {DescribeOperationIds(requestedIds)} from draft '{request.DraftName}' would " +
-                        $"orphan {consequences.Count} dependent operation(s):");
-                    foreach (var edge in consequences)
-                        sb.AppendLine($"  - {edge.Reason}");
-                    sb.AppendLine(
-                        "Re-run with --force to remove the requested operation(s) together with every " +
-                        "enumerated dependent above (force accepts the whole named consequence set, never a " +
-                        "guess).");
-                    return CommandOutcome<OperationsRemovedResponse>.Refused(new Refusal(
-                        "operation.invalid-dependency", FailureReason.InvalidArgument,
-                        sb.ToString().TrimEnd('\r', '\n'),
-                        Fact(("draftName", request.DraftName))));
-                }
-
-                var toRemove = new HashSet<string>(requestedSet, StringComparer.Ordinal);
-                foreach (var edge in consequences)
-                    toRemove.Add(edge.DependentOperationId);
-
-                draft.Operations = draft.Operations.Where(o => !toRemove.Contains(o.OperationId)).ToList();
-                // A contract group nothing uses any more must leave the map, or the Draft stops parsing.
-                foreach (var group in draft.ContractVersions.Keys.ToArray())
-                    if (!draft.Operations.Any(o => SIL.Motif.Contract.Model.OperationKind.GetGroup(o.Kind) == group))
-                        draft.ContractVersions.Remove(group);
+                var removal = RemoveFromDraft(draft, request.DraftName, request.OperationIds, request.Force,
+                    out var requestedIds, out var consequences);
+                if (removal is not null) return CommandOutcome<OperationsRemovedResponse>.Refused(removal);
                 if (!TrySaveLoadedDraft(repository, request.DraftName, loadedJson, draft))
                     return CommandOutcome<OperationsRemovedResponse>.Refused(DraftRevisionConflict(request.DraftName));
 
@@ -1213,6 +1135,97 @@ public static partial class ProposalCommands
                     DraftInvalid(ex.Message, ("draftName", request.DraftName)));
             }
         });
+    }
+
+    // Removes the named operations from a loaded Draft in memory; returns the refusal that stops it, or null.
+    private static Refusal? RemoveFromDraft(DraftDocument draft, string draftName, IReadOnlyList<string> operationIds,
+        bool force, out List<string> requestedIds, out IReadOnlyList<DeclaredDependencyEdge> consequences)
+    {
+        requestedIds = [];
+        consequences = [];
+        if (operationIds.Count == 0)
+        {
+            return new Refusal(
+                "operation.invalid-id", FailureReason.InvalidArgument,
+                "Specify at least one operation id to remove.",
+                Fact(("draftName", draftName)));
+        }
+
+        requestedIds = new List<string>();
+        foreach (var raw in operationIds)
+        {
+            if (!CanonicalId.TryParse(raw, out var id, out var error))
+            {
+                return new Refusal(
+                    "operation.invalid-id", FailureReason.InvalidArgument,
+                    $"'{raw}' is not a valid canonical operation id: {error}",
+                    Fact(("draftName", draftName)));
+            }
+            requestedIds.Add(id.Value);
+        }
+
+        var byId = draft.Operations.ToDictionary(o => o.OperationId, StringComparer.Ordinal);
+        var missing = requestedIds.Where(id => !byId.ContainsKey(id)).ToList();
+        if (missing.Count > 0)
+        {
+            return new Refusal(
+                "operation.invalid-id", FailureReason.Refused,
+                $"Draft '{draftName}' has no operation(s) " +
+                $"{string.Join(", ", missing.Select(m => $"'{m}'"))}. Run 'show' on the source " +
+                "Proposal, or inspect the draft file, to find valid operation ids.",
+                Fact(("draftName", draftName)));
+        }
+
+        var requestedOps = requestedIds.Select(id => byId[id]).ToList();
+
+        // Decision 6, point 4: force never means "guess" -- a cascading delete's reach is discovered-only, so refuse.
+        var unenumerable =
+            requestedOps.FirstOrDefault(op => OperationDependencyGraph.IsCascadingDelete(op.Kind));
+        if (unenumerable is not null)
+        {
+            return new Refusal(
+                "operation.cascading-delete", FailureReason.Refused,
+                $"Cannot remove operation '{unenumerable.OperationId}' ({unenumerable.Kind}): it is a " +
+                "cascading delete. LibLCM's ownership cascade reaches objects this Proposal never " +
+                "names, and that reach is only known by inspecting the live project — this store has " +
+                "no way to enumerate what removing it would affect. This removal is refused, not " +
+                "forced; --force cannot help, because there is no enumerated consequence set for it " +
+                "to accept.",
+                Fact(("draftName", draftName), ("operationId", unenumerable.OperationId)));
+        }
+
+        var requestedSet = new HashSet<string>(requestedIds, StringComparer.Ordinal);
+        consequences = OperationDependencyGraph.TransitiveDependents(draft.Operations, requestedSet);
+
+        if (consequences.Count > 0 && !force)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine(
+                $"Removing {DescribeOperationIds(requestedIds)} from draft '{draftName}' would " +
+                $"orphan {consequences.Count} dependent operation(s):");
+            foreach (var edge in consequences)
+                sb.AppendLine($"  - {edge.Reason}");
+            sb.AppendLine(
+                "Re-run with --force to remove the requested operation(s) together with every " +
+                "enumerated dependent above (force accepts the whole named consequence set, never a " +
+                "guess).");
+            return new Refusal(
+                "operation.invalid-dependency", FailureReason.InvalidArgument,
+                sb.ToString().TrimEnd('\r', '\n'),
+                Fact(("draftName", draftName)));
+        }
+
+        var toRemove = new HashSet<string>(requestedSet, StringComparer.Ordinal);
+        foreach (var edge in consequences)
+            toRemove.Add(edge.DependentOperationId);
+
+        draft.Operations = draft.Operations.Where(o => !toRemove.Contains(o.OperationId)).ToList();
+        // A contract group nothing uses any more must leave the map, or the Draft stops parsing.
+        foreach (var group in draft.ContractVersions.Keys.ToArray())
+            if (!draft.Operations.Any(o => SIL.Motif.Contract.Model.OperationKind.GetGroup(o.Kind) == group))
+                draft.ContractVersions.Remove(group);
+
+        return null;
     }
 
     private static string DescribeOperationIds(IReadOnlyList<string> ids) =>

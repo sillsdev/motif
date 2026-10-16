@@ -493,6 +493,11 @@
     "description": "Stages every intent in a JSON file in one Draft with one project load, through the same checks as each composing command alone. If any intent is refused, nothing is added, and both a label and comment are still required before Finalize. Only a person can Apply.",
     "source": "Hand-written from command behavior."
   },
+  "compose": {
+    "title": "Compose steps in a Draft",
+    "description": "Stages one or more composing steps in a Draft in one call, each a composing command's name and closed intent, and can first remove earlier operations. A later step sees the earlier ones, and if any step or removal is refused, nothing changes. Only a person can Apply.",
+    "source": "Hand-written from command behavior."
+  },
   "compose-author-text": {
     "title": "Author a text",
     "description": "Stages a new Text from a title and paragraphs of segments of word tokens in a Draft, creating a wordform for each token that has none. A token reuses a wordform only when its exact NFD form already exists in the writing system. Only a person can Apply.",

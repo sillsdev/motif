@@ -351,6 +351,28 @@ try
                 batchProject, CliProductVersion(), batchDraft, File.ReadAllText(batchFile))), successAsJson: false);
             break;
 
+        case "compose":
+            if (!flags.TryGetValue("proposal", out var callComposeProposal) ||
+                !flags.TryGetValue("project", out var callComposeProject) ||
+                !flags.TryGetValue("steps", out var callComposeStepsJson) || positionals.Count != 0)
+                return Usage("Usage: motif compose --proposal <name> --project <fwdata> --steps '<json array>' " +
+                    "[--remove <id>[,<id>...]] [--json]", asJson);
+            IReadOnlyList<ComposeStepRequest> callComposeSteps;
+            try
+            {
+                callComposeSteps = ComposeStepRequest.ParseList(callComposeStepsJson);
+            }
+            catch (InvalidOperationException exception)
+            {
+                return Usage("The --steps value is not usable: " + exception.Message, asJson);
+            }
+            var callComposeRemove = flags.TryGetValue("remove", out var callComposeRemoveText)
+                ? callComposeRemoveText.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                : null;
+            result = RenderProposal(ProposalCommands.Compose(new ComposeRequest(
+                callComposeProject, CliProductVersion(), callComposeProposal, callComposeSteps, callComposeRemove)));
+            break;
+
         case "retire-allomorph":
             if (!flags.TryGetValue("draft", out var retireDraft) ||
                 !flags.TryGetValue("project", out var retireProject) ||

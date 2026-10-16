@@ -327,13 +327,17 @@ public static partial class ProposalCommands
     /// <summary>Composes every step from one copy and one cache load; saves all of them or none.</summary>
     private static CommandOutcome<ComposedOperationsResponse[]> ComposeStepsIntoDraft(
         MotifDatabase database, ProjectLocator project, string draftName, IReadOnlyList<ComposeStep> steps,
-        bool describeBatchFailure = false)
+        bool describeBatchFailure = false, IReadOnlyList<string>? remove = null)
     {
         try
         {
             var repository = new ProposalRepository(database);
             if (!TryLoadDraft(repository, draftName, out var draft, out var loadedJson))
                 return CommandOutcome<ComposedOperationsResponse[]>.Refused(DraftNotFound(draftName));
+            // The removal is made on the loaded copy, so the one save below keeps it or drops it with the steps.
+            if (remove is { Count: > 0 } &&
+                RemoveFromDraft(draft, draftName, remove, false, out _, out _) is { } removal)
+                return CommandOutcome<ComposedOperationsResponse[]>.Refused(removal);
             var previous = ProposalJsonParser.Parse(BuildProposalJson(draft));
             var proposalId = CanonicalId.Parse(draft.ProposalId);
             var declaredLabels = steps.Select((step, index) => (step.Label, index))

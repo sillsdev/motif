@@ -1,4 +1,8 @@
 using System.Collections.Generic;
+using System.Linq;
+using System.Text.Json;
+using SIL.Motif.Contract.Model;
+using SIL.Motif.Contract.Parsing;
 
 namespace SIL.Motif.Commands.Requests;
 
@@ -252,6 +256,80 @@ public sealed record ComposeRecordParsimonyDispositionRequest(
 /// </param>
 public sealed record ComposeBatchRequest(
     string FwDataPath, string ProductVersion, string DraftName, string IntentsJson);
+
+/// <param name="Verb">The composing verb whose closed intent this step carries, such as <c>compose-author-phoneme</c>.</param>
+/// <param name="Intent">The closed intent JSON that verb takes.</param>
+/// <param name="As">An optional label a later step's rule placement may name as <c>@label</c>.</param>
+/// <param name="Cite">An optional source this step's changes were taken from.</param>
+public sealed record ComposeStepRequest(string Verb, JsonElement Intent, string? As = null, OperationCitation? Cite = null)
+{
+    /// <summary>
+    /// Reads a JSON array of steps, each <c>{"verb": "...", "intent": {...}}</c> with an optional <c>as</c> label and
+    /// <c>cite</c> object, refusing any other property.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">The text is not a well-formed array of steps.</exception>
+    public static IReadOnlyList<ComposeStepRequest> ParseList(string json)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            if (document.RootElement.ValueKind != JsonValueKind.Array)
+                throw new InvalidOperationException("'steps' is an array of {\"verb\", \"intent\"} objects.");
+            return document.RootElement.EnumerateArray().Select((entry, index) => Parse(entry, index)).ToArray();
+        }
+        catch (JsonException exception)
+        {
+            throw new InvalidOperationException("'steps' is not valid JSON: " + exception.Message, exception);
+        }
+    }
+
+    private static ComposeStepRequest Parse(JsonElement entry, int index)
+    {
+        const string shape = "each step has 'verb' and 'intent', with optional 'as' and 'cite'.";
+        if (entry.ValueKind != JsonValueKind.Object)
+            throw new InvalidOperationException($"Step {index}: {shape}");
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var property in entry.EnumerateObject())
+            if (!names.Add(property.Name) || property.Name is not ("verb" or "intent" or "as" or "cite"))
+                throw new InvalidOperationException($"Step {index}: {shape}");
+        if (!entry.TryGetProperty("verb", out var verb) || verb.ValueKind != JsonValueKind.String ||
+            !entry.TryGetProperty("intent", out var intent))
+            throw new InvalidOperationException($"Step {index}: {shape}");
+        string? label = null;
+        if (entry.TryGetProperty("as", out var labelValue))
+            label = labelValue.ValueKind == JsonValueKind.String
+                ? labelValue.GetString()
+                : throw new InvalidOperationException($"Step {index}: 'as' must be a string label.");
+        OperationCitation? cite;
+        try
+        {
+            cite = entry.TryGetProperty("cite", out var citeValue) ? OperationCitation.Parse(citeValue) : null;
+        }
+        catch (ContractParseException exception)
+        {
+            throw new InvalidOperationException($"Step {index}: {exception.Message}", exception);
+        }
+        return new ComposeStepRequest(verb.GetString()!, intent.Clone(), label, cite);
+    }
+}
+
+/// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
+/// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
+/// <param name="Proposal">The name of the Draft being authored.</param>
+/// <param name="Steps">
+/// The composing steps, each a composer's verb and closed intent with an optional label and citation. A later step
+/// sees the project as the earlier ones left it. One step and many are the same call.
+/// </param>
+/// <param name="Remove">
+/// Operation ids to remove from the Draft first. An operation another operation depends on is refused rather
+/// than forced, and the removal and every step are saved together or not at all.
+/// </param>
+public sealed record ComposeRequest(
+    string FwDataPath,
+    string ProductVersion,
+    string Proposal,
+    IReadOnlyList<ComposeStepRequest> Steps,
+    IReadOnlyList<string>? Remove = null);
 
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
