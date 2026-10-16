@@ -22,6 +22,15 @@
     <ProjectReference Include="..\..\src\SIL.Motif.Worker.Runtime\SIL.Motif.Worker.Runtime.csproj" />
   </ItemGroup>
 
+  <!--
+    CliProcess and IsolatedRunner start the motif and SIL.Motif.Worker apphosts by path, from any test project
+    that uses Support. Building them here means a single-project build produces both without the whole solution.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\SIL.Motif.Cli\SIL.Motif.Cli.csproj" ReferenceOutputAssembly="false" Private="false" />
+    <ProjectReference Include="..\..\src\SIL.Motif.Worker\SIL.Motif.Worker.csproj" ReferenceOutputAssembly="false" Private="false" />
+  </ItemGroup>
+
   <ItemGroup>
     <None Update="TestFixtures\**\*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

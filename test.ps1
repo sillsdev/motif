@@ -41,7 +41,7 @@
   Run only System tests, without selecting the full suite.
 
   .PARAMETER Project
-  Run only the named test project.
+  Run only the named test project, and build only it (build.ps1 -Project) rather than Motif.sln.
 
   .PARAMETER Filter
   Run only matching tests in the selected project, using the VSTest filter syntax.
@@ -139,6 +139,7 @@ if ($SkipBuild) {
 }
 else {
     $buildArguments = @{ Configuration = $Configuration }
+    if ($Project) { $buildArguments.Project = $Project }
     if ($NoProcessSweep) { $buildArguments.NoProcessSweep = $true }
     & pwsh -NoProfile -File (Join-Path $repoRoot 'build.ps1') @buildArguments
     $buildExitCode = $LASTEXITCODE

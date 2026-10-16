@@ -21,7 +21,12 @@
   .PARAMETER Configuration
   MSBuild configuration. Defaults to Debug, matching a bare `dotnet build`.
 
-  .PARAMETER SkipHygiene
+  .PARAMETER Project
+  Restore and build only tests/<Project>/<Project>.csproj and what it references, not Motif.sln. For
+  iterating on one test project: the hygiene gates, ICU staging, PanGloss staging and interface gate still
+  run. The test project (through SIL.Motif.Tests.Support) builds the CLI and worker apphosts its tests start.
+
+.PARAMETER SkipHygiene
   Compile without the comment and design-token gates. For bisecting a build break only -- CI never passes this, so
   anything it lets through fails there instead.
 
@@ -42,6 +47,7 @@ Keep the worktree lock and process policy but skip stale-process cleanup.
 [CmdletBinding()]
 param(
     [string] $Configuration = 'Debug',
+    [string] $Project,
     [switch] $SkipHygiene,
     [switch] $NoProcessSweep
 )
@@ -51,6 +57,13 @@ $ErrorActionPreference = 'Stop'
 
 $repoRoot = $PSScriptRoot
 $solution = Join-Path $repoRoot 'Motif.sln'
+$buildTarget = $solution
+if ($Project) {
+    if ($Project -notmatch '^[A-Za-z0-9_.]+$') { throw "-Project must be a test project name, not '$Project'." }
+    $buildTarget = Join-Path $repoRoot "tests/$Project/$Project.csproj"
+    if (-not (Test-Path -LiteralPath $buildTarget -PathType Leaf)) { throw "No test project file at $buildTarget." }
+}
+$targetText = if ($Project) { $Project } else { 'Motif.sln' }
 
 $profileRoot = $env:USERPROFILE
 if ([string]::IsNullOrWhiteSpace($profileRoot)) { $profileRoot = $env:HOME }
@@ -123,8 +136,8 @@ $buildNodes = Get-MotifBuildNodeLimit
 $nodeText = if ($buildNodes -gt 0) { "-m:$buildNodes" } else { 'no node cap' }
 $nodeArguments = @(if ($buildNodes -gt 0) { "-m:$buildNodes" })
 
-Write-Step "dotnet restore ($nodeText)"
-$restore = Invoke-MotifRestore -Target $solution -MaxNodes $buildNodes
+Write-Step "dotnet restore $targetText ($nodeText)"
+$restore = Invoke-MotifRestore -Target $buildTarget -MaxNodes $buildNodes
 $restore.Output | ForEach-Object { Write-Host $_ }
 if ($restore.ExitCode -ne 0) {
     Write-Host ''
@@ -132,8 +145,8 @@ if ($restore.ExitCode -ne 0) {
     exit 1
 }
 
-Write-Step "dotnet build ($Configuration, $nodeText)"
-& dotnet build $solution --configuration $Configuration --nologo --no-restore @nodeArguments
+Write-Step "dotnet build $targetText ($Configuration, $nodeText)"
+& dotnet build $buildTarget --configuration $Configuration --nologo --no-restore @nodeArguments
 if ($LASTEXITCODE -ne 0) {
     Write-Host ''
     Write-Host 'Build failed.' -ForegroundColor Red
@@ -196,7 +209,7 @@ if ($helpDiffers) {
 
 Write-Host ''
 $hygieneText = if ($SkipHygiene) { 'hygiene skipped' } else { 'comment and design-token hygiene' }
-Write-Host "Build OK: $hygieneText, restore, compile, PanGloss interface gate and Help golden all passed." -ForegroundColor Green
+Write-Host "Build OK: $hygieneText, restore, $targetText compiles, PanGloss interface gate and Help golden all passed." -ForegroundColor Green
 exit 0
 }
 finally {
