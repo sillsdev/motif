@@ -3,8 +3,9 @@ $ErrorActionPreference = 'Stop'
 
 Import-Module (Join-Path $PSScriptRoot 'MotifRestore.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'MotifTestSlot.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'MotifTestRunPlan.psm1') -Force
 
-$names = 'CI', 'MOTIF_BUILD_NODES', 'MOTIF_TEST_SLOTS'
+$names = 'CI', 'MOTIF_BUILD_NODES', 'MOTIF_TEST_SLOTS', 'MOTIF_TEST_THREADS'
 $saved = @{}
 foreach ($name in $names) { $saved[$name] = [Environment]::GetEnvironmentVariable($name) }
 
@@ -49,6 +50,15 @@ try {
     Assert-Equal (Get-MotifTestSlotCount -ProcessorCount 20) 0 'CI takes no slot'
     Set-Environment @{ CI = 'true'; MOTIF_TEST_SLOTS = '2' }
     Assert-Equal (Get-MotifTestSlotCount -ProcessorCount 20) 2 'CI honours an explicit slot count'
+
+    Set-Environment @{}
+    Assert-Equal (Get-MotifTestThreadCount -ProjectConcurrency 3 -ProcessorCount 20) 6 'threads for a third of 20'
+    Assert-Equal (Get-MotifTestThreadCount -ProjectConcurrency 12 -ProcessorCount 20) 2 'thread floor'
+    Assert-Equal (Get-MotifTestThreadCount -ProjectConcurrency 0 -ProcessorCount 20) 20 'zero concurrency is one'
+    Set-Environment @{ MOTIF_TEST_THREADS = '1' }
+    Assert-Equal (Get-MotifTestThreadCount -ProjectConcurrency 3 -ProcessorCount 20) 1 'explicit threads'
+    Set-Environment @{ MOTIF_TEST_THREADS = 'x' }
+    Assert-Equal (Get-MotifTestThreadCount -ProjectConcurrency 3 -ProcessorCount 20) 6 'bad threads fall back'
 }
 finally {
     foreach ($name in $names) { [Environment]::SetEnvironmentVariable($name, $saved[$name]) }

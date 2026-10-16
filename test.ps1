@@ -168,7 +168,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 $phaseClocks['resource sizing regression'] = [Diagnostics.Stopwatch]::StartNew()
-Write-Step 'node and slot sizing regression'
+Write-Step 'node, slot and thread sizing regression'
 & pwsh -NoProfile -File (Join-Path $repoRoot 'tools/MotifTestResources.Tests.ps1')
 Write-PhaseDuration 'resource sizing regression'
 if ($LASTEXITCODE -ne 0) {
@@ -275,6 +275,7 @@ if ($testProjects.Count -eq 0) {
 }
 $duplicateNames = @($testProjects | Group-Object Name | Where-Object Count -gt 1)
 if ($duplicateNames.Count -gt 0) { throw "Test project names must be unique: $($duplicateNames.Name -join ', ')" }
+Import-Module (Join-Path $repoRoot 'tools/MotifTestRunPlan.psm1') -Force
 $availableProcessors = [Environment]::ProcessorCount
 # Sized so four suites side by side do not oversubscribe the machine; see the help text.
 $projectConcurrency = [Math]::Max(2, [int][Math]::Floor($availableProcessors / 6))
@@ -291,6 +292,8 @@ $testRuns = @(foreach ($testProject in @($testProjects | Sort-Object -Property S
         }
     }
 })
+# Sized from the cap, not the run count, so a one-project run still leaves room for other worktrees' suites.
+$testThreads = Get-MotifTestThreadCount -ProjectConcurrency $projectConcurrency -ProcessorCount $availableProcessors
 $projectConcurrency = [Math]::Min($testRuns.Count, $projectConcurrency)
 
 $binRoot = [IO.Path]::GetFullPath((Join-Path $repoRoot 'bin')) + [IO.Path]::DirectorySeparatorChar
@@ -317,7 +320,6 @@ if ($Coverage) {
 }
 
 $phaseClocks['test artifact preparation'] = [Diagnostics.Stopwatch]::StartNew()
-Import-Module (Join-Path $repoRoot 'tools/MotifTestRunPlan.psm1') -Force
 $selectedProjectNames = @($testRuns | Select-Object -ExpandProperty Project -Unique)
 $artifactRequirements = Get-MotifTestArtifactRequirements -All:$All -System:$System `
     -SelectedProjects $selectedProjectNames -Filter $Filter
@@ -343,7 +345,7 @@ if ($preparePortable -or $prepareExplainedWordCard) {
 Write-PhaseDuration 'test artifact preparation'
 
 Write-Step ("dotnet test ($levelSelection levels, $($testProjects.Count) projects in $($testRuns.Count) processes, " +
-    "up to $projectConcurrency at a time; $availableProcessors processors)")
+    "up to $projectConcurrency at a time, $testThreads xUnit threads each; $availableProcessors processors)")
 $clock = [Diagnostics.Stopwatch]::StartNew()
 $phaseClocks['test processes'] = $clock
 $jobs = foreach ($run in $testRuns) {
@@ -357,9 +359,9 @@ $jobs = foreach ($run in $testRuns) {
     Start-ThreadJob -Name $run.Label -ThrottleLimit $projectConcurrency `
         -ArgumentList $run.Label, $run.Assembly, $run.Shard, $Filter, $levelSelection, $Configuration,
             $projectResults, $projectLog, $projectErrorLog, $projectInput, $inputToken, $coverageAdapter,
-            $coverageSettings -ScriptBlock {
+            $coverageSettings, $testThreads -ScriptBlock {
         param($name, $assemblyPath, $shard, $filter, $levels, $configuration, $projectResults, $log, $errorLog,
-            $inputPath, $inputToken, $coverageAdapter, $coverageSettings)
+            $inputPath, $inputToken, $coverageAdapter, $coverageSettings, $threads)
         $projectClock = [Diagnostics.Stopwatch]::StartNew()
         $arguments = @(
             'test'
@@ -388,6 +390,8 @@ $jobs = foreach ($run in $testRuns) {
         $arguments += @('--environment', ('"MOTIF_TEST_LEVELS={0}"' -f $levels))
         $arguments += @('--environment', ('"TESTINGPLATFORM_TELEMETRY_OPTOUT={0}"' -f $env:TESTINGPLATFORM_TELEMETRY_OPTOUT))
         $arguments += @('--environment', ('"MOTIF_TEST_STDIN_TOKEN={0}"' -f $inputToken))
+        # RunSettings arguments follow a literal -- and must come last; xUnit hands them to the sharded framework.
+        $arguments += @('--', ('xUnit.MaxParallelThreads={0}' -f $threads))
         # Without -NoNewWindow, Start-Process gives every project its own console window for the whole run.
         $process = Start-Process -FilePath 'dotnet' -ArgumentList $arguments -PassThru -NoNewWindow `
             -RedirectStandardInput $inputPath -RedirectStandardOutput $log -RedirectStandardError $errorLog
