@@ -6,7 +6,11 @@ namespace SIL.Motif.Contract.Commands;
 /// <param name="Code">The stable code, one of the constants of the refusal-code classes.</param>
 /// <param name="DefaultReason">The reason most of the code's call sites give; the refusal's own reason wins.</param>
 /// <param name="Next">What to do about it, or <see langword="null"/> when no single step applies.</param>
-public sealed record RefusalSpec(string Code, FailureReason DefaultReason, NextStep? Next);
+public sealed record RefusalSpec(string Code, FailureReason DefaultReason, NextStep? Next)
+{
+    /// <summary>Whether the window can show this refusal, so it needs a sentence in the window's words.</summary>
+    public bool ShownInWindow { get; init; }
+}
 
 /// <summary>
 /// The step that satisfies a refusal's missing precondition. <see cref="Command"/> is a catalog command name, or

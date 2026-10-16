@@ -204,7 +204,7 @@ public sealed class WindowRefusalTests
         var codePattern = new Regex(@"""([a-z][a-z]*(?:\.[a-z][a-z-]*)+)""");
         var referencePattern = new Regex(@"RefusalCodes\.(\w+)");
         var declared = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var project in new[] { "SIL.Motif.Commands", "SIL.Motif.App" })
+        foreach (var project in new[] { "SIL.Motif.Commands", "SIL.Motif.Runner", "SIL.Motif.App" })
         foreach (var file in Directory.EnumerateFiles(Path.Combine(root, "src", project), "*.cs",
                      SearchOption.AllDirectories))
         {
@@ -221,8 +221,8 @@ public sealed class WindowRefusalTests
     private static Refusal Refusal(string code) => new(code, FailureReason.Refused, "The command's own sentence.",
         new Dictionary<string, string> { ["storePath"] = StorePath });
 
-    private static IEnumerable<string> AllCatalogueCodes() => typeof(RefusalCodes)
-        .GetFields(BindingFlags.Public | BindingFlags.Static)
-        .Where(field => field.IsLiteral)
-        .Select(field => (string)field.GetRawConstantValue()!);
+    private static IEnumerable<string> AllCatalogueCodes() => RefusalCatalog.Specs.Values
+        .Where(spec => spec.ShownInWindow)
+        .Select(spec => spec.Code)
+        .Order(StringComparer.Ordinal);
 }

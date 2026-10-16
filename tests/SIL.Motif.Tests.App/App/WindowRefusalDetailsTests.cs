@@ -32,8 +32,8 @@ public sealed class WindowRefusalDetailsTests
     public static TheoryData<string> CatalogueCodes()
     {
         var data = new TheoryData<string>();
-        foreach (var field in typeof(RefusalCodes).GetFields())
-            if (field.IsLiteral) data.Add((string)field.GetRawConstantValue()!);
+        foreach (var spec in RefusalCatalog.Specs.Values.Where(spec => spec.ShownInWindow))
+            data.Add(spec.Code);
         return data;
     }
 

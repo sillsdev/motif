@@ -148,9 +148,7 @@ public sealed partial class WindowWordsTests
     public void EveryRefusalTheWindowShowsUsesWindowWords(string message)
     {
         const string fact = "assessmentId: assessment/one";
-        var refusals = typeof(RefusalCodes).GetFields(BindingFlags.Public | BindingFlags.Static)
-            .Where(field => field.IsLiteral)
-            .Select(field => (string)field.GetRawConstantValue()!)
+        var refusals = RefusalCatalog.Specs.Values.Where(spec => spec.ShownInWindow).Select(spec => spec.Code)
             .Select(code => WindowRefusal.From(new Refusal(code, FailureReason.Refused, message,
                 new Dictionary<string, string> { ["assessmentId"] = "assessment/one" })))
             .ToArray();
