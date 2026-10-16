@@ -7,7 +7,7 @@ The figure strip shows the project's counts: words you chose to measure, places 
 - **Speed**: how many words were timed, their total and median time, and the time recorded for each kind of grammar work.
 - **Slowest words**: the measured words with the longest times. **Stopped** marks a word explicitly recorded as hitting a parser search limit.
 - **Text coverage**: how many of your chosen words parse, and how many places in your texts they cover (each time a word occurs in a text). If no chosen words occur in the chosen Texts, it says there are no places to cover.
-- **Approved analyses kept**: how many words with an approved analysis the grammar rebuilt exactly.
+- **Approved analyses kept**: how many words with an approved analysis the grammar rebuilt exactly. When no analysis is approved yet, it says there is nothing to rebuild.
 - **Grammar warnings**: what the grammar check found, with errors counted separately.
 
 The **Grammar warnings** section gives the warning count and any nonzero error count. Its word line counts how many different chosen words exactly use an item named by a warning. Before parsing, it says **Parse to see which of your words they touch**. The table lists the three largest warning kinds. Where the evidence is complete, each kind shows the word count; matches based only on spelling are labelled separately. Open **Warnings →** to see each kind's subjects.

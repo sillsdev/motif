@@ -388,6 +388,7 @@ public sealed partial class OverviewPageModel : PageModel
 
     /// <summary>How many approved words the grammar still builds.</summary>
     public string AccuracyMain => !HasAssessment || Overview is not { } overview ? "Not parsed yet" :
+        overview.Accuracy.ApprovedWordCount == 0 ? "No analyses are approved yet, so there is nothing to rebuild" :
         $"{overview.Accuracy.ApprovedWordsKept:N0} of {overview.Accuracy.ApprovedWordCount:N0} rebuilt exactly";
 
     /// <summary>The recorded outcomes among Approved words that were not rebuilt exactly.</summary>
