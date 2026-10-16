@@ -6,6 +6,7 @@ Inflectional affixes occupy ordered positions on a word. A slot is one such posi
 
 - Keep one affix entry for one morpheme, with its prefix or suffix morph type, form and grammatical analysis. Do not make a new entry for each stem that takes the affix.
 - Put an inflectional affix in a slot owned by the part of speech it applies to, then arrange slots in a template.
+- Derivational affixes do not go in slots; they map a source category to a destination category.
 - Mark a slot optional only when the position may truly be absent. Use separate templates only when forms have different required positions.
 
 ## Composers, in order
@@ -20,6 +21,6 @@ Inflectional affixes occupy ordered positions on a word. A slot is one such posi
 ## Pitfalls
 
 - Do not use one broad slot for affixes with different grammatical jobs.
-- Do not add a null affix or an empty slot to stand for an assumed default.
+- Avoid null affixes unless a position is genuinely marked by absence; they slow the parser (Black §4.1.1). A required slot with no affixes in it is treated as optional by the parser, so fill required slots, with a zero affix where the language has one.
 - Editing a slot or template affects the affixes and templates that use it. Read the reported effects before finalizing.
 - Check with words that should take each affix and words that should not, and confirm order and that required slots are filled.

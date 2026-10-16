@@ -1,6 +1,6 @@
 # Noun class and gender
 
-Noun classes and genders sort nouns into groups that agreement and affixes may depend on. In the project these are inflection classes of the noun category, and an affix or a stem can be tied to them.
+Noun classes and genders sort nouns into groups that agreement and affixes may depend on. FieldWorks can model them two ways, and agreement systems such as Bantu noun classes use both: an inflection class says which class prefix a stem takes, and a feature carries the class to the words that agree with it (Black §2.1.2.7, Table 9).
 
 ## What the work needs
 
@@ -12,6 +12,7 @@ Noun classes and genders sort nouns into groups that agreement and affixes may d
 
 1. `compose-author-inflection-class` creates a class, or a subclass, under a category.
 2. `compose-author-inflection-feature` declares the agreement feature when the grouping is grammatical.
+   `compose-author-feature-structure` and `compose-author-feature-value` give noun stems the class feature.
 3. `compose-edit-stem-inflection-class` assigns a stem to its class.
 4. `compose-edit-affix-inflection-classes` restricts an affix to the classes it attaches to.
 

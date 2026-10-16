@@ -20,4 +20,6 @@ A phonological rule says how a sound changes next to other sounds, and the envir
 - Do not duplicate a whole affix for each place of articulation when one rule accounts for the alternation.
 - Do not write a rule that changes every nasal merely because some nasals assimilate.
 - Treat deletion, exceptional spellings and lexical restrictions as separate decisions. Do not hide them in an over-broad rule.
+- For the rule-based parser, every phoneme in the orthography must be defined and phonological features must tell each phoneme apart (Black §6.2).
+- An insertion rule whose left context ends with the morpheme boundary '+' does not apply in parsing (FieldWorks' Hermit Crab and PanGloss agree); put '+' at the right of the insertion site.
 - Check with attested forms for each conditioning context, forms where the sound should stay unchanged, and words that should not become valid.

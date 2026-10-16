@@ -5,6 +5,7 @@ The sound inventory is the set of consonants, vowels and other sounds the langua
 ## What the work needs
 
 - Read the phonemes the project already has before adding one. A sound that is present under another representation is an edit, not a new phoneme.
+- Where a project parses spelling rather than sound (English, for example), the letters and digraphs are its phonemes. A word containing a character that isn't defined can't be parsed (Black §6.2.1).
 - Give each phoneme a name and the written representations the language uses for it, in the right writing systems.
 - Add phonemes before anything that refers to them: natural classes, environments, then rules. A composer in a later step can name a phoneme created earlier in the same Draft through a declared dependency.
 
@@ -16,5 +17,5 @@ The sound inventory is the set of consonants, vowels and other sounds the langua
 ## Pitfalls
 
 - Do not add a phoneme because one form shows an unusual spelling. A spelling variant of a sound already in the inventory belongs in its representations.
-- Do not guess a sound's features. Phonological feature definitions are not authored here.
+- Do not guess a sound's features. The rule-based parser needs phonological feature definitions (Black §6.2.2), and no composer here authors them, so report that gap rather than skipping the step.
 - Check the inventory against attested words, including words with the new sound and words that should not change.

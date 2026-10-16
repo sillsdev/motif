@@ -6,6 +6,7 @@ One morpheme can have different spoken or written forms in different sound conte
 
 - Keep the variants under one lexical entry when the evidence supports one morpheme. Check that the forms really are one morpheme before treating their difference as sound conditioning.
 - Give each variant the environment where it occurs. Use a natural class when several sounds share the relevant property.
+- If the choice depends on the stem rather than its sounds, see Inflection classes; if on grammatical features, see Stem alternation.
 - Put the narrowest conditioned forms before a less restricted or elsewhere form. Order matters, so confirm it after any change.
 
 ## Composers, in order
@@ -21,4 +22,5 @@ One morpheme can have different spoken or written forms in different sound conte
 
 - Do not duplicate the same unrestricted form for every stem.
 - Do not use an environment broader than the evidence, such as after any consonant when only one class is supported.
+- An ad hoc prohibition is a last resort, after environments, classes and features (Black §2.4, §3.10).
 - After a change, test words from each sound context and words just outside them, and confirm the unrestricted form does not win before a narrower one.

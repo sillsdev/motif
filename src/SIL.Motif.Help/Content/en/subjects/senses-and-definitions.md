@@ -7,6 +7,7 @@ A sense is one meaning of an entry, with its gloss and definition. A word with s
 - Read the entry's existing senses first, so a meaning that is already recorded is not added again.
 - State the gloss briefly and the definition in a full sentence, in the writing systems the project uses for each.
 - Keep one sense for one meaning. Split a sense only when the evidence shows the meanings behave differently.
+- Unrelated meanings that share a form are separate entries (homographs), not senses.
 
 ## Composers, in order
 

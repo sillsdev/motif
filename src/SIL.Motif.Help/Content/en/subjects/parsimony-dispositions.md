@@ -1,11 +1,11 @@
 # Parsimony dispositions
 
-A Parsimony finding is a place where the grammar may be more complicated than it needs to be. A disposition is the linguist's decision about it: keep it as it is, fix it later, or record a question.
+A Parsimony finding is a place where the grammar may be more complicated than it needs to be. A disposition is the linguist's decision about it: fix, keep, ask or defer.
 
 ## What the work needs
 
 - Read the finding and its evidence before deciding. A disposition applies to a specific finding, not to a kind of finding.
-- Say which of the choices the linguist made, and why when the reason is not obvious, so a later reader can see it.
+- The four choices are fix (a separate change repairs it), keep (deliberate), ask (a question for the linguist) and defer (decide later). Say which one the linguist made, and why when the reason is not obvious, so a later reader can see it.
 - A disposition does not change the grammar. If the finding is accepted for repair, the fix is a separate change.
 
 ## Composers, in order

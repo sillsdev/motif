@@ -6,6 +6,7 @@ A natural class is a named group of sounds that behave alike, such as the vowels
 
 - The member phonemes must exist first. Members may be phonemes already in the project or phonemes created earlier in the same Draft.
 - A class should be as narrow as the evidence. A class of all consonants where only the nasals behave alike will let a rule apply to words it should not touch.
+- Give each class a unique abbreviation; environments name classes by abbreviation (Black §3.1).
 - When a class is wrong, correct its members rather than adding a second class for the same sounds.
 
 ## Composers, in order
