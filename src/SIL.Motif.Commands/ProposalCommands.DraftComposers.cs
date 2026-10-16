@@ -79,7 +79,7 @@ public static partial class ProposalCommands
             AuthorEnvironmentComposer.Build(cache, AuthorEnvironmentIntentParser.Parse(input))),
         new("compose-author-phonological-rule", "AuthorPhonologicalRule", ["phonological-rules"], (cache, input, _) =>
             AuthorPhonologicalRuleComposer.Build(cache, AuthorPhonologicalRuleIntentParser.Parse(input))),
-        new("compose-author-part-of-speech", "AuthorPartOfSpeech", ["inflection-classes", "affix-slots-and-templates"], (cache, input, _) =>
+        new("compose-author-part-of-speech", "AuthorPartOfSpeech", ["lexical-entries-and-glosses", "inflection-classes", "affix-slots-and-templates"], (cache, input, _) =>
             AuthorPartOfSpeechComposer.Build(cache, AuthorPartOfSpeechIntentParser.Parse(input))),
         new("compose-author-lexical-entry", "AuthorLexicalEntry", ["lexical-entries-and-glosses", "senses-and-definitions"], (cache, input, _) =>
             AuthorLexicalEntryComposer.Build(cache, AuthorLexicalEntryIntentParser.Parse(input))),
@@ -95,7 +95,7 @@ public static partial class ProposalCommands
             AuthorAffixSlotComposer.Build(cache, AuthorAffixSlotIntentParser.Parse(input))),
         new("compose-author-affix-template", "AuthorAffixTemplate", ["affix-slots-and-templates"], (cache, input, _) =>
             AuthorAffixTemplateComposer.Build(cache, AuthorAffixTemplateIntentParser.Parse(input))),
-        new("retire-allomorph", RetirementRecipes.RuleReplacement.ComposerName, ["lexical-entries-and-glosses"], (cache, input, _) =>
+        new("retire-allomorph", RetirementRecipes.RuleReplacement.ComposerName, ["conditioned-allomorphy", "lexical-entries-and-glosses"], (cache, input, _) =>
         {
             var json = input.GetRawText();
             return input.TryGetProperty("format", out var format) &&
@@ -104,7 +104,7 @@ public static partial class ProposalCommands
                     () => CanonicalId.Mint())
                 : RetireAllomorphComposer.Build(cache, RetireAllomorphCodec.Parse(json), () => CanonicalId.Mint());
         }),
-        new("retire-redundant-zero-affix", "RetireRedundantZeroAffix", ["lexical-entries-and-glosses"], (cache, input, _) =>
+        new("retire-redundant-zero-affix", "RetireRedundantZeroAffix", ["affix-slots-and-templates", "lexical-entries-and-glosses"], (cache, input, _) =>
             RetireRedundantZeroAffixComposer.Build(cache, RetireRedundantZeroAffixCodec.Parse(input.GetRawText()),
                 () => CanonicalId.Mint())),
         new("compose-edit-adhoc-prohibition", "EditAdhocProhibition", ["conditioned-allomorphy"], (cache, input, _) =>
