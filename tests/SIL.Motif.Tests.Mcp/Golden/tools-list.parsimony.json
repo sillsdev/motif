@@ -131,7 +131,7 @@
   },
   {
     "name": "motif_record_parsimony_disposition",
-    "description": "Stage a Parsimony disposition. Stages a keep, fix, ask, or defer decision for one exact Parsimony finding in a Draft Proposal. A pending keep does not suppress current findings, and only a person can Apply it.\nCommand: compose-record-parsimony-disposition. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+    "description": "Stage a Parsimony disposition. Stages a keep, fix, ask, or defer decision for one exact Parsimony finding in a Draft Proposal. A pending keep does not suppress current findings, and only a person can Apply it.\nCommand: compose-record-parsimony-disposition. Agent class: Draft.",
     "inputSchema": {
       "type": "object",
       "properties": {

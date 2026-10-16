@@ -164,20 +164,6 @@ public sealed record ComposeAuthorAffixTemplateRequest(
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
 /// <param name="DraftName">The name of the Draft being authored.</param>
 /// <param name="IntentJson">The closed semantic intent JSON accepted by this composer.</param>
-public sealed record ComposeRetireAllomorphRequest(
-    string FwDataPath, string ProductVersion, string DraftName, string IntentJson);
-
-/// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
-/// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
-/// <param name="DraftName">The name of the Draft being authored.</param>
-/// <param name="IntentJson">The closed semantic intent JSON accepted by this composer.</param>
-public sealed record ComposeRetireRedundantZeroAffixRequest(
-    string FwDataPath, string ProductVersion, string DraftName, string IntentJson);
-
-/// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
-/// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
-/// <param name="DraftName">The name of the Draft being authored.</param>
-/// <param name="IntentJson">The closed semantic intent JSON accepted by this composer.</param>
 public sealed record ComposeEditAdhocProhibitionRequest(
     string FwDataPath, string ProductVersion, string DraftName, string IntentJson);
 
@@ -237,13 +223,6 @@ public sealed record ComposeAuthorTextRequest(
 /// listed morphs, each by exact form, MSA and InflType identities, as a new analysis in the unknown state.
 /// </param>
 public sealed record ComposeEditAnalysisDecisionRequest(
-    string FwDataPath, string ProductVersion, string DraftName, string IntentJson);
-
-/// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
-/// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
-/// <param name="DraftName">The name of the Draft being authored.</param>
-/// <param name="IntentJson">The closed semantic intent JSON accepted by this composer.</param>
-public sealed record ComposeRecordParsimonyDispositionRequest(
     string FwDataPath, string ProductVersion, string DraftName, string IntentJson);
 
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>

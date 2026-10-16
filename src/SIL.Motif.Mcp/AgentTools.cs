@@ -528,7 +528,7 @@ internal static class AgentTools
             { Requests = [typeof(ComposeRequest)], VerbSelector = Exposure.ToolRoutes.ComposeSelector },
 
         new("motif_retire_allomorph",
-            string.Empty,
+            ComposerTools.Describe("retire-allomorph"),
             AgentClass.Draft,
             Schema.Object(("draft", Schema.String("Draft name from motif_start_proposal."), true),
                 ("intent_json", Schema.String("Closed motif-retire-allomorph/v1 JSON with exact source, destination and reference identities."), true)),
@@ -536,11 +536,11 @@ internal static class AgentTools
             false,
             false,
             true,
-            (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalCommands.ComposeRetireAllomorph(
-                new(c.ProjectPath, c.ProductVersion, a.Required("draft"), a.Required("intent_json"))),
-                r => $"Draft now has {r.OperationCount} operations. Run motif_dry_run and motif_trial, revise, then Finalize."))) { Requests = [typeof(ComposeRetireAllomorphRequest)] },
+            (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalCommands.ComposeIntent(
+                new(c.ProjectPath, c.ProductVersion, a.Required("draft"), "retire-allomorph", a.Required("intent_json"))),
+                r => $"Draft now has {r.OperationCount} operations. Run motif_dry_run and motif_trial, revise, then Finalize."))),
         new("motif_retire_redundant_zero_affix",
-            string.Empty,
+            ComposerTools.Describe("retire-redundant-zero-affix"),
             AgentClass.Draft,
             Schema.Object(
                 ("draft", Schema.String("Draft name from motif_start_proposal."), true),
@@ -549,9 +549,9 @@ internal static class AgentTools
             false,
             false,
             true,
-            (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalCommands.ComposeRetireRedundantZeroAffix(
-                new(c.ProjectPath, c.ProductVersion, a.Required("draft"), a.Required("intent_json"))),
-                r => $"Draft now has {r.OperationCount} operations. Run motif_dry_run and motif_trial, revise, then Finalize for a person to Apply."))) { Requests = [typeof(ComposeRetireRedundantZeroAffixRequest)] },
+            (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalCommands.ComposeIntent(
+                new(c.ProjectPath, c.ProductVersion, a.Required("draft"), "retire-redundant-zero-affix", a.Required("intent_json"))),
+                r => $"Draft now has {r.OperationCount} operations. Run motif_dry_run and motif_trial, revise, then Finalize for a person to Apply."))),
         new("motif_edit_adhoc_prohibition",
             string.Empty,
             AgentClass.Draft,
@@ -688,7 +688,7 @@ internal static class AgentTools
                 c.ProjectPath, c.ProductVersion, a.Required("draft"), a.IntentJson("decision", "analysis", "wordform", "morphs"))),
                 r => $"Draft now has {r.OperationCount} changes. Run motif_dry_run, revise, then Finalize; only a person can Apply."))) { Requests = [typeof(ComposeEditAnalysisDecisionRequest)] },
         new("motif_record_parsimony_disposition",
-            string.Empty,
+            ComposerTools.Describe("compose-record-parsimony-disposition"),
             AgentClass.Draft,
             Schema.Object([
                 ("draft", Schema.String("The draft name from motif_start_proposal."), true),
@@ -709,11 +709,11 @@ internal static class AgentTools
             false,
             true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(
-                ProposalCommands.ComposeRecordParsimonyDisposition(new(c.ProjectPath, c.ProductVersion,
-                    a.Required("draft"), a.IntentJson("recordTypeId", "measureId", "subject", "disposition",
-                        "evidenceDigest", "evidenceContract", "subjectCaption", "measureCaption", "reason",
-                        "question", "reportId"))),
-                r => $"Draft now has {r.OperationCount} changes. A pending keep does not suppress findings; only a person can Apply."))) { Requests = [typeof(ComposeRecordParsimonyDispositionRequest)] },
+                ProposalCommands.ComposeIntent(new(c.ProjectPath, c.ProductVersion,
+                    a.Required("draft"), "compose-record-parsimony-disposition", a.IntentJson("recordTypeId", "measureId",
+                        "subject", "disposition", "evidenceDigest", "evidenceContract", "subjectCaption", "measureCaption",
+                        "reason", "question", "reportId"))),
+                r => $"Draft now has {r.OperationCount} changes. A pending keep does not suppress findings; only a person can Apply."))),
 
         new("motif_parsimony_record_types",
             string.Empty,
@@ -950,9 +950,10 @@ internal static class AgentTools
                 ("before", Schema.String("Adjacent existing rule after the insertion gap."), false)), false));
     }
 
-    private static (string Verb, JsonObject Schema)[] StepIntentSchemas(IReadOnlyList<AgentTool> tools)
+    private static (string Verb, JsonObject Schema)[] StepIntentSchemas(IReadOnlyList<AgentTool> tools, bool forCompose)
     {
-        var typedIntents = ProposalCommands.ComposerDescriptors.Where(composer => composer.InBatch)
+        var typedIntents = ProposalCommands.ComposerDescriptors
+            .Where(composer => forCompose ? composer.InCompose : composer.InBatch)
             .Select(ComposerTools.BatchIntentSchema);
         var supportedIntents = BatchComposerVerbs
             .Select(verb =>
@@ -973,7 +974,7 @@ internal static class AgentTools
 
     private static JsonObject ComposeBatchSchema(IReadOnlyList<AgentTool> tools)
     {
-        var supportedIntents = StepIntentSchemas(tools);
+        var supportedIntents = StepIntentSchemas(tools, forCompose: false);
         var citation = Schema.Object(
             ("source", Schema.String("Where this change came from."), true),
             ("locator", Schema.String("Optional page, section or other source location."), false));
@@ -994,13 +995,13 @@ internal static class AgentTools
             ("project", Schema.String("Known project name or recorded .fwdata path."), true));
     }
 
-    // Every step offers the verbs a batch offers, so the two tools cannot drift apart.
+    // A step offers every batch verb, and the composers the retiring batch leaves out.
     private static JsonObject ComposeSchema(IReadOnlyList<AgentTool> tools)
     {
         var citation = Schema.Object(
             ("source", Schema.String("Where this change came from."), true),
             ("locator", Schema.String("Optional page, section or other source location."), false));
-        var branches = new JsonArray(StepIntentSchemas(tools).Select(pair => (JsonNode)Schema.Object(
+        var branches = new JsonArray(StepIntentSchemas(tools, forCompose: true).Select(pair => (JsonNode)Schema.Object(
             ("verb", Schema.String("Composing verb for this step.", pair.Verb), true),
             ("intent", pair.Schema.DeepClone().AsObject(), true),
             ("as", Schema.String("Optional label, for compose-author-phonological-rule only, that a later step's " +
@@ -1031,7 +1032,7 @@ internal static class AgentTools
             if (steps[index] is not JsonObject step || step["verb"] is not JsonValue verbValue ||
                 !verbValue.TryGetValue<string>(out var verb) || string.IsNullOrWhiteSpace(verb))
                 refusals.Add($"Step {index} must have a string 'verb'.");
-            else if (!BatchComposerVerbs.Contains(verb, StringComparer.Ordinal) && !ComposerTools.BatchVerbs.Contains(verb))
+            else if (!BatchComposerVerbs.Contains(verb, StringComparer.Ordinal) && !ComposerTools.ComposeVerbs.Contains(verb))
                 refusals.Add($"Step {index} uses unsupported verb '{verb}'.");
         }
         if (refusals.Count > 0)

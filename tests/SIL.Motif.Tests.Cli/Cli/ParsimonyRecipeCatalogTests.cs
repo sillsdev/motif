@@ -111,6 +111,8 @@ public sealed class ParsimonyRecipeCatalogTests
             .Where(name => name.StartsWith("Compose", StringComparison.Ordinal) &&
                            name.EndsWith("Request", StringComparison.Ordinal))
             .Select(name => name["Compose".Length..^"Request".Length])
+            .Concat(CommandCatalog.All.Where(command => command.RequestType == typeof(SIL.Motif.Commands.Requests.ComposeIntentRequest))
+                .Select(command => SIL.Motif.Commands.ProposalCommands.DraftComposers[command.Name].Composer))
             .ToHashSet(StringComparer.Ordinal);
         var expected = new Dictionary<string, string[]>(StringComparer.Ordinal)
         {

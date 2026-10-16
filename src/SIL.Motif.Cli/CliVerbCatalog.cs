@@ -161,12 +161,6 @@ public static class CliVerbCatalog
             new[] { "compose-batch --draft <name> --project <fwdata> --intents <file.json> [--json]" }),
         new CliVerbDescriptor("Commands", "compose", "compose",
             new[] { "compose --proposal <name> --project <fwdata> --steps '<json array>' [--remove <id>[,<id>...]] [--json]" }),
-        new CliVerbDescriptor("Commands", "compose-record-parsimony-disposition", "compose-record-parsimony-disposition",
-            new[] { "compose-record-parsimony-disposition --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
-        new CliVerbDescriptor("Commands", "retire-allomorph", "retire-allomorph",
-            new[] { "retire-allomorph --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
-        new CliVerbDescriptor("Commands", "retire-redundant-zero-affix", "retire-redundant-zero-affix",
-            new[] { "retire-redundant-zero-affix --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
         new CliVerbDescriptor(
             "Commands", "promote-gloss", "promote-gloss",
             new[]

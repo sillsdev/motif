@@ -21,6 +21,8 @@ public sealed class ComposerDescriptor
         Agent = exposure.Agent;
         AgentTool = exposure.AgentTool;
         InBatch = exposure.InBatch && exposure.AgentTool;
+        InCompose = exposure.InCompose && exposure.AgentTool;
+        HandWrittenTool = exposure.HandWrittenTool;
         ToolName = exposure.ToolName ?? ToolNameFor(Verb);
         FieldNames = shape.Fields.Select(field => field.Name).ToArray();
         _schema = shape.ToJsonSchema();
@@ -41,6 +43,12 @@ public sealed class ComposerDescriptor
     /// <summary>Whether a batch may name the composer's verb.</summary>
     public bool InBatch { get; }
 
+    /// <summary>Whether a step of the compose tool may name the composer's verb.</summary>
+    public bool InCompose { get; }
+
+    /// <summary>Whether the composer's AI tool is written by hand, so none is generated from its shape.</summary>
+    public bool HandWrittenTool { get; }
+
     /// <summary>The AI tool's name.</summary>
     public string ToolName { get; }
 
@@ -49,6 +57,9 @@ public sealed class ComposerDescriptor
 
     /// <summary>Whether the composer is offered as an AI tool at all.</summary>
     public bool IsAgentTool => AgentTool && CommandSurfacePolicy.IsAgentEligible(Surface, Agent);
+
+    /// <summary>Whether the composer's AI tool is generated from its shape and Help text.</summary>
+    public bool HasGeneratedTool => IsAgentTool && !HandWrittenTool;
 
     /// <summary>A fresh copy of the closed JSON Schema of the intent.</summary>
     public JsonObject Schema() => _schema.DeepClone().AsObject();

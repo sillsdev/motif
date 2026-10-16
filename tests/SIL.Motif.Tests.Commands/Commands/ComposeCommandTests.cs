@@ -7,6 +7,7 @@ using SIL.Motif.Commands.Store;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Runner.Composers;
@@ -198,6 +199,120 @@ public sealed class ComposeCommandTests(PristineProjectFixture pristine)
         Assert.Equal(2, provenance.Count);
         Assert.DoesNotContain(provenance, entry => removable.Any(id =>
             entry.GetProperty("operationIds").EnumerateArray().Any(listed => listed.GetString() == id)));
+    }
+
+    private sealed record NotebookFixture(string Path, string RecordType, string FirstEntry, string SecondEntry);
+
+    private NotebookFixture PrepareNotebook()
+    {
+        using var scratch = pristine.NewScratch();
+        var path = scratch.ProjectId.Path;
+        NonUndoableUnitOfWorkHelper.Do(scratch.ActionHandlerAccessor, () =>
+        {
+            var notebook = scratch.LangProject.ResearchNotebookOA;
+            var recordTypes = notebook.RecTypesOA ?? scratch.ServiceLocator.GetInstance<ICmPossibilityListFactory>().Create();
+            notebook.RecTypesOA = recordTypes;
+            var recordType = scratch.ServiceLocator.GetInstance<ICmPossibilityFactory>().Create();
+            recordTypes.PossibilitiesOS.Add(recordType);
+            recordType.Name.set_String(scratch.DefaultAnalWs,
+                SIL.LCModel.Core.Text.TsStringUtils.MakeString("Motif human judgment", scratch.DefaultAnalWs));
+        });
+        new FwDataProjectLoader().Save(scratch);
+        scratch.Dispose();
+        var workerRoot = Path.Combine(Path.GetTempPath(), "motif-compose-disposition-" + Guid.NewGuid().ToString("N"));
+        var initialized = ProjectInitializationCommand.Initialize(
+            new ProjectInitializationRequest(path, ProjectInitializationCommand.ConfirmationPhrase), workerRoot);
+        Assert.True(initialized.Succeeded, initialized.Refusal?.Message);
+        var recordType = Assert.Single(ParsimonyCommands.ListNotebookRecordTypes(
+            new ListNotebookRecordTypesRequest(path, Version)).Value!.RecordTypes,
+            item => item.Name == "Motif human judgment");
+        return new(path, recordType.Id, CanonicalId.FromGuid(pristine.Seed.FirstEntryId).Value,
+            CanonicalId.FromGuid(pristine.Seed.SecondEntryId).Value);
+    }
+
+    private static object Disposition(NotebookFixture setup, string subjectEntry, string disposition, string reason) => new
+    {
+        recordTypeId = setup.RecordType,
+        measureId = "R-nc-excess",
+        subject = new { kind = "object", @object = new { @class = "LexEntry", id = subjectEntry } },
+        disposition,
+        evidenceDigest = "sha256:" + new string('a', 64),
+        evidenceContract = "natural-class-excess/v1",
+        subjectCaption = "an entry",
+        measureCaption = "Class contains extra segments",
+        reason,
+    };
+
+    private static string[] DispositionRecords(string path, string draft) => ReadDraft(path, draft).ComposerProvenance
+        .Where(entry => entry.GetProperty("composer").GetString() == "RecordParsimonyDisposition")
+        .Select(entry => entry.GetProperty("input").GetProperty("reason").GetString()!).ToArray();
+
+    [Fact]
+    public void ADispositionStepRecordsItsDispositionInTheDraft()
+    {
+        var setup = PrepareNotebook();
+        Assert.True(ProposalCommands.New(new(setup.Path, Version, "disposition", "disposition")).Succeeded);
+
+        var composed = ProposalCommands.Compose(new(setup.Path, Version, "disposition",
+            [Step("compose-record-parsimony-disposition", Disposition(setup, setup.FirstEntry, "keep", "first"))], null));
+
+        Assert.True(composed.Succeeded, composed.Refusal?.Message);
+        var only = Assert.Single(composed.Value!.Intents);
+        Assert.Equal("RecordParsimonyDisposition", only.ComposerName);
+        Assert.NotEmpty(only.Operations);
+        Assert.Equal(["first"], DispositionRecords(setup.Path, "disposition"));
+    }
+
+    [Fact]
+    public void TwoDispositionsOfOneFindingInOneRequestAreRefusedAndTwoFindingsAreNot()
+    {
+        var setup = PrepareNotebook();
+        Assert.True(ProposalCommands.New(new(setup.Path, Version, "twice-disposition", "twice")).Succeeded);
+        var (revision, json) = StoredDraft(setup.Path, "twice-disposition");
+
+        var refused = ProposalCommands.Compose(new(setup.Path, Version, "twice-disposition",
+        [
+            Step("compose-record-parsimony-disposition", Disposition(setup, setup.FirstEntry, "keep", "first")),
+            Step("compose-record-parsimony-disposition", Disposition(setup, setup.FirstEntry, "fix", "second")),
+        ], null));
+
+        Assert.False(refused.Succeeded);
+        Assert.Contains("already records a disposition of the same finding", refused.Refusal!.Message);
+        Assert.Equal("1", refused.Refusal.Facts["intentIndex"]);
+        Assert.Equal((revision, json), StoredDraft(setup.Path, "twice-disposition"));
+
+        var both = ProposalCommands.Compose(new(setup.Path, Version, "twice-disposition",
+        [
+            Step("compose-record-parsimony-disposition", Disposition(setup, setup.FirstEntry, "keep", "first")),
+            Step("compose-record-parsimony-disposition", Disposition(setup, setup.SecondEntry, "fix", "second")),
+        ], null));
+        Assert.True(both.Succeeded, both.Refusal?.Message);
+        Assert.Equal(["first", "second"], DispositionRecords(setup.Path, "twice-disposition"));
+    }
+
+    [Fact]
+    public void ALaterRequestReplacesTheEarlierDispositionOfTheSameFindingAndLeavesOthers()
+    {
+        var setup = PrepareNotebook();
+        Assert.True(ProposalCommands.New(new(setup.Path, Version, "later-disposition", "later")).Succeeded);
+        var first = ProposalCommands.Compose(new(setup.Path, Version, "later-disposition",
+        [
+            Step("compose-record-parsimony-disposition", Disposition(setup, setup.FirstEntry, "keep", "first")),
+            Step("compose-record-parsimony-disposition", Disposition(setup, setup.SecondEntry, "keep", "other")),
+        ], null));
+        Assert.True(first.Succeeded, first.Refusal?.Message);
+        var firstIds = first.Value!.Intents[0].Operations.Select(operation => operation.OperationId).ToArray();
+        var otherIds = first.Value.Intents[1].Operations.Select(operation => operation.OperationId).ToArray();
+
+        var second = ProposalCommands.Compose(new(setup.Path, Version, "later-disposition",
+            [Step("compose-record-parsimony-disposition", Disposition(setup, setup.FirstEntry, "fix", "replaced"))], null));
+
+        Assert.True(second.Succeeded, second.Refusal?.Message);
+        var stored = ReadDraft(setup.Path, "later-disposition").Operations.Select(operation => operation.OperationId).ToArray();
+        Assert.Empty(stored.Intersect(firstIds));
+        Assert.Empty(otherIds.Except(stored));
+        Assert.Equal(otherIds.Length + second.Value!.Intents.Single().Operations.Count, stored.Length);
+        Assert.Equal(["other", "replaced"], DispositionRecords(setup.Path, "later-disposition"));
     }
 
     private static object SlotEdit(string target) => new { target, expectedOptional = false, optional = true };

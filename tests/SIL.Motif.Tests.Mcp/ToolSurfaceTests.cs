@@ -21,49 +21,70 @@ public sealed class ToolSurfaceTests
         Assert.All(AgentTools.All, tool => Assert.NotEqual(AgentClass.HumanOnly, tool.Class));
     }
 
+    private static readonly string[] BatchlessComposers =
+        ["retire-allomorph", "retire-redundant-zero-affix", "compose-record-parsimony-disposition"];
+
+    private static string[] AgentEligibleComposerVerbs() => CommandCatalog.All
+        .Where(command => SIL.Motif.Commands.ProposalCommands.ComposerVerbs.Contains(command.Name))
+        .Where(command => command.IsAgentTool)
+        .Select(command => command.Name)
+        .Order(StringComparer.Ordinal)
+        .ToArray();
+
+    private static string[] OfferedVerbs(string tool, string property) =>
+        AgentTools.All.Single(candidate => candidate.Name == tool).InputSchema["properties"]![property]!["items"]!["oneOf"]!
+            .AsArray().Select(branch => branch!["properties"]!["verb"]!["enum"]![0]!.GetValue<string>())
+            .Order(StringComparer.Ordinal).ToArray();
+
     [Fact]
     public void TheMcpBatchOffersEveryComposerVerbTheCatalogOffersToAgentsExceptThreeNamedOnes()
     {
-        // Retirements take one intent_json document, so a batch has no property schema for them.
-        var retirements = new[] { "retire-allomorph", "retire-redundant-zero-affix" };
-        // The default batch refuses a disposition on purpose, pinned by `McpRoundTripTests`.
-        var disposition = "compose-record-parsimony-disposition";
-        var notInBatch = retirements.Append(disposition);
-        foreach (var verb in notInBatch)
+        // The retiring batch keeps its published set; motif_compose offers the three it leaves out.
+        foreach (var verb in BatchlessComposers)
         {
             Assert.Contains(verb, SIL.Motif.Commands.ProposalCommands.ComposerVerbs);
             Assert.True(CommandCatalog.All.Single(command => command.Name == verb).IsAgentTool,
                 $"'{verb}' is excluded from the batch but is not an agent tool, so the exclusion is vacuous.");
         }
-        var agentEligible = CommandCatalog.All
-            .Where(command => SIL.Motif.Commands.ProposalCommands.ComposerVerbs.Contains(command.Name))
-            .Where(command => command.IsAgentTool)
-            .Select(command => command.Name)
-            .Except(notInBatch)
-            .Order(StringComparer.Ordinal)
-            .ToArray();
+        var expected = AgentEligibleComposerVerbs().Except(BatchlessComposers).ToArray();
 
-        var batch = AgentTools.All.Single(tool => tool.Name == "motif_compose_batch").InputSchema;
-        var offered = batch["properties"]!["intents"]!["items"]!["oneOf"]!.AsArray()
-            .Select(branch => branch!["properties"]!["verb"]!["enum"]![0]!.GetValue<string>())
-            .Order(StringComparer.Ordinal)
-            .ToArray();
-
-        Assert.Empty(agentEligible.Except(offered));
-        Assert.Empty(offered.Except(agentEligible));
+        Assert.Equal(expected, OfferedVerbs("motif_compose_batch", "intents"));
     }
 
     [Fact]
-    public void EveryTypedComposerHasExactlyOneToolBuiltFromItsShapeAndIsOffered()
+    public void TheMcpComposeToolOffersEveryComposerVerbTheCatalogOffersToAgents()
     {
-        foreach (var composer in SIL.Motif.Commands.ProposalCommands.ComposerDescriptors.Where(c => c.IsAgentTool))
-        {
-            var tool = Assert.Single(AgentTools.All, candidate => candidate.Name == composer.ToolName);
-            Assert.Equal(["draft", .. composer.FieldNames, "project"], tool.ArgumentNames);
-            Assert.False(tool.InputSchema["additionalProperties"]!.GetValue<bool>());
-            var batch = AgentTools.All.Single(candidate => candidate.Name == "motif_compose_batch").InputSchema.ToJsonString();
-            Assert.Equal(composer.InBatch, batch.Contains($"\"{composer.Verb}\"", StringComparison.Ordinal));
-        }
+        var expected = AgentEligibleComposerVerbs();
+
+        Assert.Equal(expected, OfferedVerbs("motif_compose", "steps"));
+        Assert.All(BatchlessComposers, verb => Assert.Contains(verb, expected));
+    }
+
+    [Theory]
+    [InlineData("retire-allomorph", "format")]
+    [InlineData("retire-redundant-zero-affix", "retirement")]
+    [InlineData("compose-record-parsimony-disposition", "subject")]
+    public void AStepOfAHandWrittenToolComposerHasASchemaClosedDownToItsLeaves(string verb, string nested)
+    {
+        var compose = AgentTools.All.Single(tool => tool.Name == "motif_compose").InputSchema;
+        var branch = compose["properties"]!["steps"]!["items"]!["oneOf"]!.AsArray().Single(candidate =>
+            candidate!["properties"]!["verb"]!["enum"]![0]!.GetValue<string>() == verb)!;
+        var intent = branch["properties"]!["intent"]!;
+        Assert.False(intent["additionalProperties"]!.GetValue<bool>());
+        Assert.NotNull(intent["properties"]![nested]);
+        Assert.DoesNotContain("\"intent_json\"", intent.ToJsonString());
+    }
+
+    [Theory]
+    [InlineData("motif_retire_allomorph", new[] { "draft", "intent_json", "project" })]
+    [InlineData("motif_retire_redundant_zero_affix", new[] { "draft", "intent_json", "project" })]
+    [InlineData("motif_record_parsimony_disposition", new[] { "draft", "recordTypeId", "measureId", "subject",
+        "disposition", "evidenceDigest", "evidenceContract", "subjectCaption", "measureCaption", "reason", "question",
+        "reportId", "project" })]
+    public void TheHandWrittenToolsKeepTheirArguments(string name, string[] arguments)
+    {
+        var tool = AgentTools.All.Single(candidate => candidate.Name == name);
+        Assert.Equal(arguments.Order(StringComparer.Ordinal), tool.ArgumentNames.Order(StringComparer.Ordinal));
     }
 
     [Fact]

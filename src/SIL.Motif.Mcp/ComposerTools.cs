@@ -25,9 +25,22 @@ internal static class ComposerTools
     internal static IEnumerable<string> BatchVerbs =>
         ProposalCommands.ComposerDescriptors.Where(composer => composer.InBatch).Select(composer => composer.Verb);
 
-    /// <summary>One tool for each typed definition an agent may use.</summary>
+    /// <summary>The verbs a compose step may name that are declared as typed definitions.</summary>
+    internal static IEnumerable<string> ComposeVerbs =>
+        ProposalCommands.ComposerDescriptors.Where(composer => composer.InCompose).Select(composer => composer.Verb);
+
+    /// <summary>The description a tool for a typed composer shows: its Help title and description, then its command.</summary>
+    internal static string Describe(string verb)
+    {
+        var composer = ProposalCommands.ComposerDescriptors.Single(candidate => candidate.Verb == verb);
+        var entry = Help.Find(HelpEntryKind.Command, verb)
+            ?? throw new InvalidOperationException($"Composer '{verb}' needs shared Help text.");
+        return entry.Title + ". " + entry.Description + "\nCommand: " + verb + ". " + "Agent class: " + composer.Agent + ".";
+    }
+
+    /// <summary>One tool for each typed definition an agent may use and that has no hand-written tool.</summary>
     internal static IReadOnlyList<AgentTool> Build() => ProposalCommands.ComposerDescriptors
-        .Where(composer => composer.IsAgentTool).Select(composer => CatalogTools.Prepare(Create(composer))).ToArray();
+        .Where(composer => composer.HasGeneratedTool).Select(composer => CatalogTools.Prepare(Create(composer))).ToArray();
 
     /// <summary>The closed schema of one batch entry's <c>intent</c> for a typed definition.</summary>
     internal static (string Verb, JsonObject Schema) BatchIntentSchema(ComposerDescriptor composer)
@@ -59,8 +72,7 @@ internal static class ComposerTools
             foreach (var field in fields) required.Add(field!.DeepClone());
         var inputSchema = new JsonObject { ["type"] = "object", ["properties"] = properties, ["required"] = required,
             ["additionalProperties"] = false };
-        var description = entry.Title + ". " + entry.Description + "\nCommand: " + composer.Verb + ". " +
-            "Agent class: " + composer.Agent + ".";
+        var description = Describe(composer.Verb);
         var verb = composer.Verb;
         var names = composer.FieldNames;
         return new AgentTool(composer.ToolName, description, composer.Agent, inputSchema, false, false,

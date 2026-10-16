@@ -11,6 +11,9 @@ internal static class ComposerDefinitions
         new EditPartOfSpeechInflectionClassDefaultDefinition(),
         new EditStemAllomorphStemNameDefinition(),
         new EditStemInflectionClassDefinition(),
+        new RetireAllomorphDefinition(),
+        new RetireRedundantZeroAffixDefinition(),
+        new RecordParsimonyDispositionDefinition(),
     ];
 }
 

@@ -52,7 +52,9 @@ internal enum IntentFieldKind
 /// <param name="Values">For a choice, the accepted strings.</param>
 /// <param name="Shape">For a nested field, the shape of each object.</param>
 /// <param name="Many">For a nested field, whether the value is an array of objects.</param>
-/// <param name="Nullable">For an id field, whether JSON null is a meaningful value, such as "no class".</param>
+/// <param name="Nullable">
+/// For an id, text or number field, whether JSON null is a meaningful value, such as "no class".
+/// </param>
 internal sealed record IntentField(
     string Name,
     IntentFieldKind Kind,
@@ -75,17 +77,17 @@ internal static class Field
     public static IntentField Ids(string name, IdRole role = IdRole.Reference, bool required = false) =>
         new(name, IntentFieldKind.Ids, required, role, null, null, false);
 
-    /// <summary>One string.</summary>
-    public static IntentField Text(string name, bool required = false) =>
-        new(name, IntentFieldKind.Text, required, IdRole.Opaque, null, null, false);
+    /// <summary>One string, or JSON null when <paramref name="nullable"/> says null means "none".</summary>
+    public static IntentField Text(string name, bool required = false, bool nullable = false) =>
+        new(name, IntentFieldKind.Text, required, IdRole.Opaque, null, null, false, nullable);
 
     /// <summary>A boolean.</summary>
     public static IntentField Flag(string name, bool required = false) =>
         new(name, IntentFieldKind.Flag, required, IdRole.Opaque, null, null, false);
 
-    /// <summary>A number.</summary>
-    public static IntentField Number(string name, bool required = false) =>
-        new(name, IntentFieldKind.Number, required, IdRole.Opaque, null, null, false);
+    /// <summary>A number, or JSON null when <paramref name="nullable"/> says null means "none".</summary>
+    public static IntentField Number(string name, bool required = false, bool nullable = false) =>
+        new(name, IntentFieldKind.Number, required, IdRole.Opaque, null, null, false, nullable);
 
     /// <summary>One string out of <paramref name="values"/>.</summary>
     public static IntentField Choice(string name, IReadOnlyList<string> values, bool required = false) =>
@@ -230,7 +232,10 @@ internal sealed class IntentShape
 
     private static JsonNode FieldSchema(IntentField field) => field.Kind switch
     {
-        IntentFieldKind.Id when field.Nullable => new JsonObject { ["type"] = new JsonArray("string", "null") },
+        IntentFieldKind.Id or IntentFieldKind.Text when field.Nullable =>
+            new JsonObject { ["type"] = new JsonArray("string", "null") },
+        IntentFieldKind.Number when field.Nullable =>
+            new JsonObject { ["type"] = new JsonArray("number", "null") },
         IntentFieldKind.Id or IntentFieldKind.Text => new JsonObject { ["type"] = "string" },
         IntentFieldKind.Ids => new JsonObject { ["type"] = "array", ["items"] = new JsonObject { ["type"] = "string" } },
         IntentFieldKind.Flag => new JsonObject { ["type"] = "boolean" },

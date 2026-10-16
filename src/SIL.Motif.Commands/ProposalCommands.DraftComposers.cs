@@ -95,18 +95,6 @@ public static partial class ProposalCommands
             AuthorAffixSlotComposer.Build(cache, AuthorAffixSlotIntentParser.Parse(input))),
         new("compose-author-affix-template", "AuthorAffixTemplate", ["affix-slots-and-templates"], (cache, input, _) =>
             AuthorAffixTemplateComposer.Build(cache, AuthorAffixTemplateIntentParser.Parse(input))),
-        new("retire-allomorph", RetirementRecipes.RuleReplacement.ComposerName, ["conditioned-allomorphy", "lexical-entries-and-glosses"], (cache, input, _) =>
-        {
-            var json = input.GetRawText();
-            return input.TryGetProperty("format", out var format) &&
-                   format.GetString() == RetirementRecipes.RuleReplacement.ProvenanceFormat
-                ? ReplaceListedAllomorphsWithRuleComposer.Build(cache, AllomorphRetirementCodec.Parse(json),
-                    () => CanonicalId.Mint())
-                : RetireAllomorphComposer.Build(cache, RetireAllomorphCodec.Parse(json), () => CanonicalId.Mint());
-        }),
-        new("retire-redundant-zero-affix", "RetireRedundantZeroAffix", ["affix-slots-and-templates", "lexical-entries-and-glosses"], (cache, input, _) =>
-            RetireRedundantZeroAffixComposer.Build(cache, RetireRedundantZeroAffixCodec.Parse(input.GetRawText()),
-                () => CanonicalId.Mint())),
         new("compose-edit-adhoc-prohibition", "EditAdhocProhibition", ["conditioned-allomorphy"], (cache, input, _) =>
                 EditAdhocProhibitionComposer.Build(cache, EditAdhocProhibitionIntentParser.Parse(input)),
             ValidateAppend: (staged, _, operations) => ValidateUniqueAdhocDisabledWrites(staged, operations)),
@@ -147,8 +135,5 @@ public static partial class ProposalCommands
             AuthorTextComposer.Build(cache, AuthorTextIntentParser.Parse(input))),
         new("compose-edit-analysis-decision", "EditAnalysisDecision", ["texts-and-analyses"], (cache, input, _) =>
             EditAnalysisDecisionComposer.Build(cache, EditAnalysisDecisionIntentParser.Parse(input))),
-        new("compose-record-parsimony-disposition", "RecordParsimonyDisposition", ["parsimony-dispositions"], (cache, input, proposalId) =>
-            RecordParsimonyDispositionComposer.Build(cache, RecordParsimonyDispositionIntentParser.Parse(input),
-                proposalId)),
     };
 }

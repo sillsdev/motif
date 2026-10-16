@@ -85,14 +85,6 @@ public static partial class ProposalCommands
         ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
             DraftComposers["compose-author-affix-template"]);
 
-    public static CommandOutcome<ComposedOperationsResponse> ComposeRetireAllomorph(ComposeRetireAllomorphRequest request) =>
-        ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
-            DraftComposers["retire-allomorph"]);
-
-    public static CommandOutcome<ComposedOperationsResponse> ComposeRetireRedundantZeroAffix(ComposeRetireRedundantZeroAffixRequest request) =>
-        ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
-            DraftComposers["retire-redundant-zero-affix"]);
-
     public static CommandOutcome<ComposedOperationsResponse> ComposeEditAdhocProhibition(ComposeEditAdhocProhibitionRequest request) =>
         ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
             DraftComposers["compose-edit-adhoc-prohibition"]);
@@ -143,10 +135,6 @@ public static partial class ProposalCommands
     public static CommandOutcome<ComposedOperationsResponse> ComposeOrderAllomorphs(ComposeOrderAllomorphsRequest request) =>
         ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
             DraftComposers["order-allomorphs"]);
-
-    public static CommandOutcome<ComposedOperationsResponse> ComposeRecordParsimonyDisposition(ComposeRecordParsimonyDispositionRequest request) =>
-        ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
-            DraftComposers["compose-record-parsimony-disposition"]);
 
     internal static CommandOutcome<ComposedOperationsResponse> ComposeRecordParsimonyDispositionFromFinding(
         MotifDatabase database,
@@ -343,14 +331,30 @@ public static partial class ProposalCommands
             var declaredLabels = steps.Select((step, index) => (step.Label, index))
                 .Where(item => item.Label is not null)
                 .ToDictionary(item => item.Label!, item => item.index, StringComparer.Ordinal);
+            var identityReplaced = steps.SelectMany(step => draft.ComposerProvenance
+                    .Where(provenance => SharesIdentity(provenance, step))
+                    .SelectMany(provenance => ProvenanceOperationIds(provenance) ?? []))
+                .ToHashSet(StringComparer.Ordinal);
             var replacedSet = steps
                 .SelectMany(step => step.Authored is { } authored && step.ReplacePrevious is { } replaces
                     ? previous.Operations.Where(operation => replaces(authored, operation))
                     : [])
                 .Select(operation => operation.OperationId.Value)
+                .Concat(identityReplaced)
                 .ToHashSet(StringComparer.Ordinal);
+            // A record replaced by identity is independent, so an edge to it passes through to what it waited on.
+            var bridged = previous.Operations.Where(operation => identityReplaced.Contains(operation.OperationId.Value))
+                .ToDictionary(operation => operation.OperationId.Value,
+                    operation => operation.DependsOn.Select(dependency => dependency.OperationId.Value).ToArray(),
+                    StringComparer.Ordinal);
             var retained = previous.Operations.Where(operation => !replacedSet.Contains(operation.OperationId.Value))
+                .Select(operation => operation.DependsOn.Any(dependency => bridged.ContainsKey(dependency.OperationId.Value))
+                    ? WithDependencies(operation, BridgeDependencies(
+                        operation.DependsOn.Select(item => item.OperationId.Value), bridged))
+                    : operation)
                 .ToArray();
+            foreach (var kept in draft.Operations.Where(operation => operation.DependsOn.Any(bridged.ContainsKey)))
+                kept.DependsOn = BridgeDependencies(kept.DependsOn, bridged).ToList();
             var composed = ProjectReadCache.ReadSaved(project, (_, cache) =>
             {
                 if (retained.Any(operation => operation.DependsOn.Any(dependency =>
@@ -367,6 +371,7 @@ public static partial class ProposalCommands
                 // A replaced edit leaves before its replacement arrives, so it cannot conflict with it.
                 var validated = new List<OperationEnvelope>(retained);
                 var batchAdded = new List<OperationEnvelope>();
+                var batchIdentities = new HashSet<(string Composer, string Identity)>();
                 var availableLabels = new Dictionary<string, CanonicalId>(StringComparer.Ordinal);
                 var results = new List<(JsonElement Input, OperationEnvelope[] Added,
                     IReadOnlyList<ComposedRelatedObject>? Related)>();
@@ -380,6 +385,8 @@ public static partial class ProposalCommands
                             batchAdded.Any(operation => replaces(authored, operation)))
                             throw new InvalidOperationException(
                                 "An earlier intent in this batch already edits the same target; author one edit.");
+                        if (IdentityOf(step) is { } identity && !batchIdentities.Add((step.Composer, identity)))
+                            throw new InvalidOperationException(step.Definition!.Replaces!.DuplicateMessage);
                         JsonElement input;
                         IReadOnlyList<OperationEnvelope> operations;
                         if (step.ResolvePlacementLabels && step.Definition is { } definition &&
@@ -434,6 +441,8 @@ public static partial class ProposalCommands
                     draft.Operations.Add(authored);
                     EnsureContractVersion(draft, declared.Kind);
                 }
+                if (IdentityOf(step) is not null)
+                    draft.ComposerProvenance.RemoveAll(provenance => SharesIdentity(provenance, step));
                 if (step.ReplacePrevious is not null && result.Input.ValueKind == JsonValueKind.Object &&
                     result.Input.TryGetProperty("target", out var replacementTarget) &&
                     replacementTarget.ValueKind == JsonValueKind.String)
@@ -558,6 +567,33 @@ public static partial class ProposalCommands
 
     private static bool ReplacesTarget(JsonElement authored, OperationEnvelope operation, params string[] kinds) =>
         ReplacementRule.SameTarget(kinds).Matches(authored, operation);
+
+    private static OperationEnvelope WithDependencies(OperationEnvelope operation, IEnumerable<string> dependencies) =>
+        new(operation.OperationId, operation.Kind, operation.EntityId, operation.Target, operation.After,
+            operation.Placement, dependencies.Select(id => new OperationDependency(CanonicalId.Parse(id))).ToArray(),
+            operation.StorageIdOverride, operation.Rationale, operation.Confidence, operation.Provenance,
+            operation.Extensions);
+
+    private static IEnumerable<string> BridgeDependencies(
+        IEnumerable<string> dependencies, IReadOnlyDictionary<string, string[]> bridged) => dependencies
+        .SelectMany(id => bridged.TryGetValue(id, out var through) ? BridgeDependencies(through, bridged) : [id])
+        .Distinct(StringComparer.Ordinal);
+
+    // The identity a step gives the object it edits, for a composer that replaces its earlier intents by identity.
+    private static string? IdentityOf(ComposeStep step) =>
+        step.Authored is { } authored && step.Definition?.Replaces?.Identity is { } identity ? identity(authored) : null;
+
+    // Whether a recorded intent is an earlier one of the step's composer that gave the same identity.
+    private static bool SharesIdentity(JsonElement provenance, ComposeStep step)
+    {
+        if (IdentityOf(step) is not { } identity ||
+            provenance.ValueKind != JsonValueKind.Object ||
+            !provenance.TryGetProperty("composer", out var composer) ||
+            composer.ValueKind != JsonValueKind.String || composer.GetString() != step.Composer ||
+            !provenance.TryGetProperty("input", out var input) || input.ValueKind != JsonValueKind.Object)
+            return false;
+        return step.Definition!.Replaces!.Identity!(input) == identity;
+    }
 
     private static bool ReplacesComposerIntent(JsonElement provenance, string composer, string? target)
     {

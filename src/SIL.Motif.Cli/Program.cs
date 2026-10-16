@@ -373,27 +373,6 @@ try
                 callComposeProject, CliProductVersion(), callComposeProposal, callComposeSteps, callComposeRemove)));
             break;
 
-        case "retire-allomorph":
-            if (!flags.TryGetValue("draft", out var retireDraft) ||
-                !flags.TryGetValue("project", out var retireProject) ||
-                !flags.TryGetValue("intent", out var retireIntent))
-                return Usage("Usage: motif retire-allomorph --draft <name> --project <fwdata> --intent '<closed intent JSON>'", asJson);
-            result = RenderProposal(ComposeWithCitation(retireProject, retireDraft, retireIntent,
-                () => ProposalCommands.ComposeRetireAllomorph(new ComposeRetireAllomorphRequest(
-                    retireProject, CliProductVersion(), retireDraft, retireIntent))), successAsJson: false);
-            break;
-
-        case "retire-redundant-zero-affix":
-            if (!flags.TryGetValue("draft", out var zeroDraft) ||
-                !flags.TryGetValue("project", out var zeroProject) ||
-                !flags.TryGetValue("intent", out var zeroIntent))
-                return Usage("Usage: motif retire-redundant-zero-affix --draft <name> --project <fwdata> --intent '<closed intent JSON>'", asJson);
-            result = RenderProposal(ComposeWithCitation(zeroProject, zeroDraft, zeroIntent,
-                () => ProposalCommands.ComposeRetireRedundantZeroAffix(
-                    new ComposeRetireRedundantZeroAffixRequest(zeroProject, CliProductVersion(), zeroDraft, zeroIntent))),
-                successAsJson: false);
-            break;
-
         case "compose-author-feature-structure":
             if (!flags.TryGetValue("draft", out var composeFsDraftName) ||
                 !flags.TryGetValue("project", out var composeFsProject) ||
@@ -406,17 +385,6 @@ try
             result = RenderProposal(ComposeWithCitation(composeFsProject, composeFsDraftName, composeFsIntent,
                 () => ProposalCommands.ComposeAuthorFeatureStructure(new ComposeAuthorFeatureStructureRequest(
                     composeFsProject, CliProductVersion(), composeFsDraftName, composeFsIntent))), successAsJson: false);
-            break;
-
-        case "compose-record-parsimony-disposition":
-            if (!flags.TryGetValue("draft", out var dispositionDraft) ||
-                !flags.TryGetValue("project", out var dispositionProject) ||
-                !flags.TryGetValue("intent", out var dispositionIntent))
-                return Usage("Usage: motif compose-record-parsimony-disposition --draft <name> " +
-                    "--project <fwdata> --intent '<closed intent JSON>'", asJson);
-            result = RenderProposal(ComposeWithCitation(dispositionProject, dispositionDraft, dispositionIntent,
-                () => ProposalCommands.ComposeRecordParsimonyDisposition(new ComposeRecordParsimonyDispositionRequest(
-                    dispositionProject, CliProductVersion(), dispositionDraft, dispositionIntent))), successAsJson: false);
             break;
 
         case "compose-edit-adhoc-prohibition":

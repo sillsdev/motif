@@ -28,6 +28,12 @@ internal static class CatalogTools
         var served = new HashSet<Type>();
         foreach (var adapter in adapters)
         {
+            // A tool for a typed composer carries its own description and serves no catalog request.
+            if (adapter.Requests.Count == 0 && adapter.Description.Length > 0)
+            {
+                tools.Add(Prepare(adapter));
+                continue;
+            }
             var commands = eligible.Where(command => adapter.Requests.Contains(command.RequestType)).ToArray();
             if (adapter.Requests.Count > 0 && commands.Length == 0) continue;
             if (commands.Length != adapter.Requests.Count)

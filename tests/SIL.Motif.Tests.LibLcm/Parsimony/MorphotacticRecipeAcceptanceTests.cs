@@ -406,8 +406,8 @@ public sealed partial class MorphotacticRecipeAcceptanceTests(
         ConfirmSurfaceNegative(cache, fixture.RecordType, "tma");
         const string reason = "Held-out b and m forms parse, so the class remains productive beyond p.";
         var result = await RunProposalAsync(cache, fixture.Wordforms, fixture.Words, "natural-class-keep-productive-class",
-            (path, draft) => ProposalCommands.ComposeRecordParsimonyDisposition(
-                new ComposeRecordParsimonyDispositionRequest(path, ProductVersion, draft,
+            (path, draft) => ProposalCommands.ComposeIntent(
+                new ComposeIntentRequest(path, ProductVersion, draft, "compose-record-parsimony-disposition",
                     JsonSerializer.Serialize(new
                     {
                         recordTypeId = fixture.RecordType.Value,

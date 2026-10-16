@@ -419,6 +419,126 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         AssertDraftStateUnchanged(before, ReadDraftState(project.FwDataPath, batchDraft));
     }
 
+    private static string ComposeProfile(string folder)
+    {
+        var path = Path.Combine(folder, "compose-profile.json");
+        File.WriteAllText(path, """
+            {"name":"compose-only","noInstructions":true,
+             "tools":[{"tool":"motif_start_proposal"},{"tool":"motif_compose"}]}
+            """);
+        return path;
+    }
+
+    private static async Task<CallToolResult> ComposeSteps(Session session, string draft, params object[] steps) =>
+        await session.Client.CallToolAsync("motif_compose", new Dictionary<string, object?>
+        {
+            ["project"] = session.ProjectPath,
+            ["proposal"] = draft,
+            ["steps"] = steps,
+        });
+
+    [Fact]
+    public async Task ACompositionStepRunsARetirementThatTheDefaultBatchRefuses()
+    {
+        using var project = new WalkthroughProject(pristine);
+        var retirementIntent = AddDuplicateAffixRetirementIntent(project, pristine.Seed);
+        using var parsed = JsonDocument.Parse(retirementIntent);
+        await using var session = await Session.StartAsync(project.FwDataPath,
+            new McpLaunchOptions(Profile: ComposeProfile(project.ManagedRoot)));
+        await session.CallAsync("motif_start_proposal", ("draft", "step-retirement"),
+            ("label", "Retire one duplicate alternate"), ("comment", "Compose it as a step."));
+
+        var composed = await ComposeSteps(session, "step-retirement",
+            new { verb = "retire-allomorph", intent = parsed.RootElement.Clone() });
+
+        Assert.True(composed.IsError != true, ((TextContentBlock)composed.Content[0]).Text);
+        var result = composed.StructuredContent!.Value.GetProperty("result");
+        Assert.Equal("RetireAllomorph", result.GetProperty("intents")[0].GetProperty("composerName").GetString());
+        Assert.True(result.GetProperty("operationCount").GetInt32() > 0);
+    }
+
+    [Fact]
+    public async Task ACompositionStepRecordsAndReplacesADispositionAndRefusesTwoOfOneFindingInOneCall()
+    {
+        using var project = new WalkthroughProject(pristine);
+        SeedSavedDispositions(project);
+        var duplicateRules = CreateDuplicateAllomorphProhibitions(project);
+        Assert.True(BaselineCaptureCommand.Capture(
+            new BaselineCaptureRequest(project.FwDataPath), project.ManagedRoot).Succeeded);
+        var parserPath = FakeParser.CopyRecordingInvocations(Path.Combine(project.ManagedRoot, "step-disposition-parser"));
+        var primary = project.Seed.FirstLexemeFormId.ToString("D").ToLowerInvariant();
+        var other = project.Seed.SecondLexemeFormId.ToString("D").ToLowerInvariant();
+        FakeParser.WriteFactsFixture(parserPath, new
+        {
+            prohibitions = new[]
+            {
+                Prohibition(duplicateRules[0].ToGuid().ToString("D").ToLowerInvariant(), primary, other),
+                Prohibition(duplicateRules[1].ToGuid().ToString("D").ToLowerInvariant(), primary, other),
+            },
+        });
+        await using var runner = new InProcessRunnerLauncher(
+            new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), parserPath));
+        JsonElement dispositionIntent;
+        await using (var experimental = await Session.StartAsync(project.FwDataPath,
+                         new McpLaunchOptions(Profile: "parsimony-experimental", Runner: runner)))
+        {
+            var started = await experimental.CallAsync("motif_start_proposal", ("draft", "step-disposition-source"),
+                ("label", "Record one measured decision"), ("comment", "Take its intent for a step."));
+            var measure = await experimental.CallAsync("motif_run_parsimony_measure", ("measure_id", "P-adhoc-duplicate"),
+                ("evidence_scope", "project-approved"), ("wait_seconds", 120));
+            Assert.True(measure.GetProperty("ok").GetBoolean(), measure.ToString());
+            var report = measure.GetProperty("result");
+            var finding = Assert.Single(report.GetProperty("findings").EnumerateArray());
+            var recordTypes = await experimental.CallAsync("motif_parsimony_record_types");
+            var recordTypeId = Assert.Single(recordTypes.GetProperty("result").GetProperty("recordTypes")
+                .EnumerateArray()).GetProperty("id").GetString()!;
+            await experimental.CallAsync("motif_dispose_parsimony_finding",
+                ("report_id", report.GetProperty("reportId").GetString()),
+                ("finding_id", finding.GetProperty("findingId").GetString()),
+                ("disposition", "defer"), ("record_type_id", recordTypeId), ("draft", "step-disposition-source"),
+                ("reason", "Confirm the observed prohibition identities first."));
+            dispositionIntent = Assert.Single(AssertDraftComposers(project.FwDataPath, "step-disposition-source",
+                started.GetProperty("result").GetProperty("proposalId").GetString()!, ["RecordParsimonyDisposition"]));
+        }
+
+        await using var session = await Session.StartAsync(project.FwDataPath,
+            new McpLaunchOptions(Profile: ComposeProfile(project.ManagedRoot)));
+        await session.CallAsync("motif_start_proposal", ("draft", "step-disposition"),
+            ("label", "Record a disposition as a step"), ("comment", "A step may record one."));
+
+        var recorded = await ComposeSteps(session, "step-disposition",
+            new { verb = "compose-record-parsimony-disposition", intent = dispositionIntent });
+        Assert.True(recorded.IsError != true, ((TextContentBlock)recorded.Content[0]).Text);
+        Assert.Equal("RecordParsimonyDisposition", recorded.StructuredContent!.Value.GetProperty("result")
+            .GetProperty("intents")[0].GetProperty("composerName").GetString());
+
+        var revised = JsonNode.Parse(dispositionIntent.GetRawText())!.AsObject();
+        revised["disposition"] = "fix";
+        revised["reason"] = "The duplicate is a real error.";
+        var before = ReadDraftState(project.FwDataPath, "step-disposition");
+        var twice = await ComposeSteps(session, "step-disposition",
+            new { verb = "compose-record-parsimony-disposition", intent = JsonNode.Parse(revised.ToJsonString()) },
+            new { verb = "compose-record-parsimony-disposition", intent = JsonNode.Parse(revised.ToJsonString()) });
+        Assert.True(twice.IsError);
+        Assert.Contains("already records a disposition of the same finding", ((TextContentBlock)twice.Content[0]).Text);
+        AssertDraftStateUnchanged(before, ReadDraftState(project.FwDataPath, "step-disposition"));
+
+        var replaced = await ComposeSteps(session, "step-disposition",
+            new { verb = "compose-record-parsimony-disposition", intent = JsonNode.Parse(revised.ToJsonString()) });
+        Assert.True(replaced.IsError != true, ((TextContentBlock)replaced.Content[0]).Text);
+        var only = Assert.Single(AssertDraftComposersOf(project.FwDataPath, "step-disposition"));
+        Assert.Equal("fix", only.GetProperty("disposition").GetString());
+    }
+
+    private static JsonElement[] AssertDraftComposersOf(string projectPath, string draftName)
+    {
+        var state = ReadDraftState(projectPath, draftName);
+        using var json = JsonDocument.Parse(state.ProposalJson);
+        var composers = json.RootElement.GetProperty("composerProvenance").EnumerateArray().ToArray();
+        Assert.All(composers, item => Assert.Equal("RecordParsimonyDisposition", item.GetProperty("composer").GetString()));
+        return composers.Select(item => item.GetProperty("input").Clone()).ToArray();
+    }
+
     [Fact]
     public async Task AddFeatureValueToolComposesItsOperationsIntoTheDraftAndRefusesUnknownArguments()
     {
@@ -1005,6 +1125,8 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         private readonly string _project;
 
         public McpClient Client { get; }
+
+        public string ProjectPath => _project;
 
         public static async Task<Session> StartAsync(string project, McpLaunchOptions options)
         {

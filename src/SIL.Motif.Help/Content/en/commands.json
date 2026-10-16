@@ -113,6 +113,20 @@
     "title": "Stage a Parsimony disposition",
     "description": "Stages a keep, fix, ask, or defer decision for one exact Parsimony finding in a Draft Proposal. A pending keep does not suppress current findings, and only a person can Apply it.",
     "source": "Hand-written from command behavior.",
+    "fields": {
+      "draft": "Draft name.",
+      "recordTypeId": "Id of an existing possibility in the Notebook record type list.",
+      "measureId": "The registered Parsimony measure id.",
+      "subject": "The exact finding subject: kind, plus the fields that kind needs. An edge or computed-group role is its numeric value.",
+      "disposition": "The proposed decision: fix, keep, ask or defer.",
+      "evidenceDigest": "Canonical sha256 digest from the exact finding.",
+      "evidenceContract": "Versioned evidence contract for the finding.",
+      "subjectCaption": "Readable name for the exact finding subject.",
+      "measureCaption": "Readable name for the Parsimony measure.",
+      "reason": "Optional explanation, stored with the readable record.",
+      "question": "Required only when disposition is ask.",
+      "reportId": "Optional source Parsimony Report id."
+    },
     "goals": [
       "Keep a finding as it is",
       "Decide to fix a finding later",
@@ -123,6 +137,18 @@
     "title": "Retire or merge forms",
     "description": "Stages one connected Proposal to retire ordinary prefix or suffix alternates after their references move; the sound-rule form also stages its natural class and rule. Dry Run shows bundle Morph and copied Form text changes, other references, and deletion together. Missing destinations are refused with counts for distinct unresolved Approved analyses, ad hoc rules, and other references; only a person can Apply.",
     "source": "Hand-written from the allomorph retirement and sound-rule replacement contracts.",
+    "fields": {
+      "draft": "Draft name.",
+      "format": "motif-retire-allomorph for a duplicate-form retirement, or motif-allomorph-retirement for a sound-rule replacement.",
+      "version": "1 for motif-retire-allomorph, 2 for motif-allomorph-retirement.",
+      "retirement": "Duplicate-form retirement only: the entry, its scope, the forms to retire and every bundle, role and ad hoc reference that moves.",
+      "duplicateSurvivors": "Duplicate-form retirement only: the exact surviving forms, each with its identity and semantic digest.",
+      "naturalClass": "Rule replacement only: the sound class to create or reuse.",
+      "rule": "Rule replacement only: the rewrite rule that replaces the listed forms, with its context and placement.",
+      "retirements": "Rule replacement only: one retirement for each entry, in the same shape as retirement.",
+      "operations": "Rule replacement only: the binding of every class, rule, retarget and deletion operation to its slot and dependencies.",
+      "display": "Rule replacement only: optional review title and description, left out of the retirement digest."
+    },
     "goals": [
       "Retire an allomorph and move its references to another allomorph",
       "Merge redundant allomorphs of an affix into one",
@@ -134,6 +160,12 @@
     "title": "Retire an unused zero affix",
     "description": "Stages deletion of one whole, unreferenced zero-affix entry when its only loaded realization is a recognized null marker, it adds no feature or class, every assigned slot is optional, and no assigned slot occurs in a template. Optional slot links are removed first and the slots remain; meaningful, referenced, or parser-distinguishing zeros are refused. Only a person can Apply.",
     "source": "Hand-written from the zero-affix retirement contract and command behavior.",
+    "fields": {
+      "draft": "Draft name.",
+      "format": "Always motif-retire-redundant-zero-affix.",
+      "version": "Always 1.",
+      "retirement": "The one zero-affix entry to retire, as an object with entry, its canonical id."
+    },
     "goals": [
       "Delete a zero affix nobody uses",
       "Remove an unused null affix entry from the lexicon",

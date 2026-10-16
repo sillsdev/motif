@@ -25,25 +25,20 @@ public sealed class ComposeToolTests
         Assert.Equal("string", Tool.InputSchema["properties"]!["remove"]!["items"]!["type"]!.GetValue<string>());
     }
 
-    // Composers a person reaches through the CLI only, which no agent batch or step may name.
-    private static readonly string[] CliOnlyComposers =
-        ["retire-allomorph", "retire-redundant-zero-affix", "compose-record-parsimony-disposition"];
-
     [Fact]
-    public void ItsStepVerbsAreTheRegistrysAgentBatchableVerbsAndMotifComposeBatchOffersTheSame()
+    public void ItsStepVerbsAreEveryComposerAnAgentIsOfferedAndMotifComposeBatchOffersThoseButThreeNamedOnes()
     {
         var batch = AgentTools.All.Single(tool => tool.Name == "motif_compose_batch");
         var offeredBySteps = Verbs(Tool, "steps");
         var offeredByBatch = Verbs(batch, "intents");
-        var excluded = ProposalCommands.ComposerDescriptors
-            .Where(composer => !composer.IsAgentTool || !composer.InBatch).Select(composer => composer.Verb)
-            .Concat(CliOnlyComposers).ToHashSet(StringComparer.Ordinal);
-        Assert.All(CliOnlyComposers, verb => Assert.Contains(verb, ProposalCommands.ComposerVerbs));
-        var registry = ProposalCommands.ComposerVerbs.Where(verb => !excluded.Contains(verb))
+        var cliFirst = ProposalCommands.ComposerDescriptors.Where(composer => !composer.IsAgentTool)
+            .Select(composer => composer.Verb).ToHashSet(StringComparer.Ordinal);
+        var registry = ProposalCommands.ComposerVerbs.Where(verb => !cliFirst.Contains(verb))
             .Order(StringComparer.Ordinal).ToArray();
 
         Assert.Equal(registry, offeredBySteps);
-        Assert.Equal(offeredByBatch, offeredBySteps);
+        string[] batchless = ["retire-allomorph", "retire-redundant-zero-affix", "compose-record-parsimony-disposition"];
+        Assert.Equal(registry.Except(batchless), offeredByBatch);
         var step = Tool.InputSchema["properties"]!["steps"]!["items"]!["oneOf"]![0]!["properties"]!.AsObject();
         Assert.Equal(["as", "cite", "intent", "verb"], step.Select(pair => pair.Key).Order(StringComparer.Ordinal));
     }

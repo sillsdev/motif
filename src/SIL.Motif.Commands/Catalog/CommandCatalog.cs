@@ -106,10 +106,6 @@ public static class CommandCatalog
             typeof(ComposedOperationsResponse), CommandSurface.AdvancedAi, AgentClass.Draft),
         new CommandDescriptor("compose-author-affix-template", typeof(ComposeAuthorAffixTemplateRequest),
             typeof(ComposedOperationsResponse), CommandSurface.AdvancedAi, AgentClass.Draft),
-        new CommandDescriptor("retire-allomorph", typeof(ComposeRetireAllomorphRequest),
-            typeof(ComposedOperationsResponse), CommandSurface.AdvancedAi, AgentClass.Draft),
-        new CommandDescriptor("retire-redundant-zero-affix", typeof(ComposeRetireRedundantZeroAffixRequest),
-            typeof(ComposedOperationsResponse), CommandSurface.AdvancedAi, AgentClass.Draft),
         new CommandDescriptor("compose-edit-adhoc-prohibition", typeof(ComposeEditAdhocProhibitionRequest),
             typeof(ComposedOperationsResponse), CommandSurface.AdvancedAi, AgentClass.Draft),
         new CommandDescriptor("compose-edit-affix-slot", typeof(ComposeEditAffixSlotRequest),
@@ -189,8 +185,6 @@ public static class CommandCatalog
             typeof(ComposedOperationsResponse), CommandSurface.AdvancedAi, AgentClass.HumanOnly),
         new CommandDescriptor("parsimony negative retract", typeof(RetractReviewedNegativeRequest),
             typeof(ComposedOperationsResponse), CommandSurface.AdvancedAi, AgentClass.HumanOnly),
-        new CommandDescriptor("compose-record-parsimony-disposition", typeof(ComposeRecordParsimonyDispositionRequest),
-            typeof(ComposedOperationsResponse), CommandSurface.AdvancedAi, AgentClass.Draft),
 
         // CompareCommands
         new CommandDescriptor("compare", typeof(ProduceComparisonRequest), typeof(CompareResponse), CommandSurface.Released, AgentClass.Read),
