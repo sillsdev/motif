@@ -108,6 +108,53 @@ public sealed class WordCardPendingInspectionTests
         }, TimeSpan.FromSeconds(30));
     }
 
+    [Fact]
+    public void ManyMorphemesWrapInsideTheCardAndTheNotParsedSentenceShowsOnce()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(() =>
+        {
+            var client = new FakeCommandClient();
+            var selection = new SelectionViewModel(client);
+            var context = new WorkspaceContext(selection, new AssessViewModel(client, selection),
+                new ChangesViewModel(client), client, new NoFolderPicker(), new NoDragSource(),
+                new BaselineViewModel(client));
+            var morphs = new[] { "u-", "me-", "ja", "-a" }.Select((form, index) =>
+                new ParserReadingMorphViewModel(new ParserReadingMorph(form, "SM.2SG/3/11/14 PRF", "prefix", null, false, null)
+                {
+                    AllomorphId = $"{index + 1}1111111-1111-1111-1111-111111111111",
+                    GrammaticalInfoId = $"{index + 1}2222222-2222-2222-2222-222222222222",
+                })).ToArray();
+            var notParsed = "No parse of umejaa is on screen yet. Parse all words to see what PanGloss builds.";
+            var card = new WordCard
+            {
+                Document = new WordCardDocument(new WordPresentationKey("pending:wrap"), 0,
+                [
+                    new WordCardPendingChange("umejaa", true, true, true, morphs, false, [], [], false, context),
+                    new WordCardAnalysis(null, null, notParsed),
+                ]),
+            };
+            var window = new Window { Content = card, Width = 320, Height = 600 };
+            try
+            {
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+                Assert.Single(card.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
+                    text.Text == notParsed && text.IsEffectivelyVisible);
+                foreach (var morph in morphs)
+                {
+                    var form = Assert.Single(card.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
+                        ReferenceEquals(text.DataContext, morph) && text.Text == morph.Form);
+                    var origin = form.TranslatePoint(default, window)!.Value;
+                    Assert.True(origin.X + form.Bounds.Width <= window.Bounds.Width,
+                        $"{morph.Form} is cut off at {origin.X + form.Bounds.Width} of {window.Bounds.Width}.");
+                }
+            }
+            finally { window.Close(); }
+            return Task.CompletedTask;
+        }, TimeSpan.FromSeconds(30));
+    }
+
     private sealed class NoFolderPicker : IHandoffFolderPicker
     {
         public Task<string?> PickFolderAsync(CancellationToken cancellationToken) => Task.FromResult<string?>(null);

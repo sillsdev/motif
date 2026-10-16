@@ -18,23 +18,21 @@
             <views:ProgressiveItemsControl x:Name="WordCardPendingMorphsItems" FullItemsSource="{Binding Morphs}">
               <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
-                  <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}" />
+                  <WrapPanel Orientation="Horizontal" />
                 </ItemsPanelTemplate>
               </ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:ParserReadingMorphViewModel">
-                  <StackPanel>
-                    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}">
-                      <views:CopyableTextBlock Classes="reviewMorphForm" Text="{Binding Form}"
-                                               controls:WritingSystemText.Id="{Binding FormWritingSystem}"
-                                               controls:WritingSystemText.StyleName="Normal" />
-                      <views:InspectLink Content="Inspect" Subject="{Binding InspectSubject}"
-                                         Captured="{Binding Captured}"
-                                         IsVisible="{Binding InspectSubject, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
-                    </StackPanel>
+                  <StackPanel Margin="{DynamicResource Intent.Gap.CompactItem}">
+                    <views:CopyableTextBlock Classes="reviewMorphForm" Text="{Binding Form}"
+                                             controls:WritingSystemText.Id="{Binding FormWritingSystem}"
+                                             controls:WritingSystemText.StyleName="Normal" />
                     <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding GlossOrPlaceholder}"
                                              controls:WritingSystemText.Id="{Binding GlossWritingSystem}"
                                              controls:WritingSystemText.StyleName="Normal" />
+                    <views:InspectLink Content="Inspect" Subject="{Binding InspectSubject}"
+                                       Captured="{Binding Captured}"
+                                       IsVisible="{Binding InspectSubject, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
                   </StackPanel>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
@@ -332,8 +330,6 @@
             </DataTemplate>
           </ContentControl.ContentTemplate>
         </ContentControl>
-        <views:CopyableTextBlock Classes="muted" Text="{Binding NotParsedText}" TextWrapping="Wrap"
-                                 IsVisible="{Binding NotParsedText, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
       </StackPanel>
     </DataTemplate>
     <DataTemplate x:Key="WordCardOccurrencesTemplate" x:DataType="word:WordCardOccurrences">
