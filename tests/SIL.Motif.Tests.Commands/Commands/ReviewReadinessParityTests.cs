@@ -7,6 +7,7 @@ using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Canonicalization;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Parsing;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Model.Effects;
@@ -71,6 +72,46 @@ public sealed class ReviewReadinessParityTests : IDisposable
 
         Assert.Equal(expected, applies);
         Assert.Equal(applies, review);
+    }
+
+    private const string NoCoveringAssessment =
+        "no Assessment covers its current content, so nothing has measured what it would do";
+
+    private const string NoDryRunBound = "no Dry Run is bound to it, so nothing has shown what it would change";
+
+    [Theory]
+    [InlineData("baseline-moved-without-a-new-trial", "its Assessment was measured against a different project state than the current one, so it has not been re-run since the project moved")]
+    [InlineData("stale-trial-digest", NoCoveringAssessment)]
+    [InlineData("judgment-only-anchor-mismatch", NoCoveringAssessment)]
+    [InlineData("no-anchor", NoDryRunBound)]
+    public void ReviewGivesTheExactReasonForEachNotReadyCase(string scenario, string expected)
+    {
+        using var fixture = new TrialsTests.ProjectFixture(_root);
+        var id = Arrange(fixture, scenario);
+
+        var reasons = ProposalReview.Read(fixture.Database, fixture.Project, id.Value).Value!.Readiness!.Reasons;
+
+        Assert.Equal(expected, string.Join(" | ", reasons));
+    }
+
+    [Fact]
+    public void APendingDraftChangedAfterItsTrialIsNotReadyInReviewAndRefusedByPendingApply()
+    {
+        using var fixture = new TrialsTests.ProjectFixture(_root);
+        var id = CanonicalId.Mint("proposal/");
+        var tried = Draft(id, "before");
+        var proposals = new ProposalRepository(fixture.Database);
+        proposals.CreateDraft(PendingChanges.DraftName, id, JsonSerializer.Serialize(tried, DraftOptions),
+            ProposalRoles.PendingChanges);
+        fixture.CreateJob(ProposalCommands.BuildProposalJson(tried), "2026-09-24T11:00:00Z", "trial", []);
+        proposals.SaveDraft(PendingChanges.DraftName, JsonSerializer.Serialize(Draft(id, "after"), DraftOptions));
+
+        var readiness = ProposalReview.Read(fixture.Database, fixture.Project, id.Value).Value!.Readiness!;
+        var applied = PendingChangesWorkflow.Apply(new ApplyProposalRequest(fixture.Project.FullFwDataPath, id.Value, null));
+
+        Assert.False(readiness.IsReady);
+        Assert.Equal(NoDryRunBound, string.Join(" | ", readiness.Reasons));
+        Assert.Equal("apply.trial-stale", applied.Refusal?.Code);
     }
 
     private static CanonicalId Arrange(TrialsTests.ProjectFixture fixture, string scenario)
@@ -152,6 +193,12 @@ public sealed class ReviewReadinessParityTests : IDisposable
             "model", "pipeline", 0, [CorrectnessFixture.Word(word, true)]));
         return id;
     }
+
+    private static readonly JsonSerializerOptions DraftOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true,
+    };
 
     private static DraftDocument Draft(CanonicalId proposalId, string text)
     {
