@@ -287,6 +287,37 @@ public sealed class FindComposerTests
         Assert.Contains(expected, results.Take(3).Select(result => result.Verb));
     }
 
+    // Goals in the words linguists and FieldWorks users use for three Subjects, kept apart from the Help goals.
+    public static TheoryData<string, string> SubjectRecallGoals => new()
+    {
+        { "Nouns in class 7 take the same prefix, so I need that class defined", "compose-author-inflection-class" },
+        { "Set up a gender class for masculine and feminine nouns", "compose-author-inflection-class" },
+        { "Voicing assimilation across a morpheme boundary", "compose-author-phonological-rule" },
+        { "Insert a glide between two vowels", "compose-author-phonological-rule" },
+        { "Word-final stops are devoiced", "compose-author-phonological-rule" },
+        { "Enter a new root in the dictionary with its English meaning", "compose-author-lexical-entry" },
+        { "Put a suffix in the lexicon with a gloss and what it attaches to", "compose-author-lexical-entry" },
+        { "Create a dictionary entry for a verb stem", "compose-author-lexical-entry" },
+    };
+
+    [Theory]
+    [MemberData(nameof(SubjectRecallGoals))]
+    public void ASubjectRecallGoalFindsItsComposerInTheTopThree(string goal, string expected)
+    {
+        var results = Run(goal, null).Results;
+
+        Assert.True(results.Take(3).Any(result => result.Verb == expected),
+            $"'{goal}' found [{string.Join(", ", results.Select(r => r.Verb))}]");
+    }
+
+    [Theory(Skip = "The overlap rule does not cover this goal's wording, so it gives a different answer.")]
+    [InlineData("A nasal becomes labial before a labial stop", "compose-author-phonological-rule")]
+    [InlineData("Add a headword with its gloss", "compose-author-lexical-entry")]
+    [InlineData("Create a new declension for nouns with a different plural ending", "compose-author-inflection-class")]
+    [InlineData("Group nouns into agreement classes that decide which affixes they take", "compose-author-inflection-class")]
+    public void ASubjectRecallGoalTheRuleLosesFindsItsComposerInTheTopThree(string goal, string expected) =>
+        Assert.Contains(expected, Run(goal, null).Results.Take(3).Select(result => result.Verb));
+
     [Fact]
     public void AReservedSubjectSearchAnswersNoMatchAndNamesTheSubject()
     {

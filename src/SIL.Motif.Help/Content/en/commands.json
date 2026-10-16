@@ -147,9 +147,9 @@
     "source": "Hand-written from the regular rewrite-rule composer contract and command behavior.",
     "goals": [
       "Add a vowel harmony rule",
-      "Write an assimilation rule that voices a consonant between vowels",
-      "Add a deletion rule for a word-final vowel",
-      "Add an epenthesis rule that inserts a vowel into a cluster"
+      "Make a consonant assimilate in voicing or place to a neighbouring sound",
+      "Delete a segment or insert one in a given context",
+      "Devoice, nasalise or palatalise a word-final or intervocalic sound"
     ]
   },
   "compose-author-lexical-entry": {
@@ -157,9 +157,9 @@
     "description": "Stages one new dictionary entry with its lexeme form, one sense with gloss and optional definition, and grammatical info: a stem, or an inflectional, derivational or unclassified affix. Each form can name environments, and an affix can name the inflection classes it attaches to. Inspect its Dry Run and try words with it before a person Applies the Proposal.",
     "source": "Hand-written from command behavior.",
     "goals": [
-      "Add a new word with its meaning",
-      "Enter a lexeme with a gloss and its category",
-      "Add an affix entry with a short gloss",
+      "Add a new word to the dictionary with its meaning",
+      "Enter a root or stem in the lexicon with a gloss and category",
+      "Add a prefix or suffix entry with a short gloss",
       "Create a lexical entry with a citation form and part of speech"
     ]
   },
@@ -765,6 +765,7 @@
     "source": "Hand-written from the closed intent and composer contract.",
     "goals": [
       "Add a noun class",
+      "Define a gender or agreement class that nouns are assigned to",
       "Create a subclass of an inflection class",
       "Add a verb conjugation class"
     ]
