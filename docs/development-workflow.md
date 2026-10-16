@@ -113,7 +113,7 @@ only the sheet.
 
 To capture the main pages of one real project, set `MOTIF_SCREENSHOTS` to a folder, `MOTIF_CAPTURE_PROJECT` to a
 `.fwdata` file and `MOTIF_PANGLOSS_EXE` to the pinned parser, then run
-`pwsh ./test.ps1 -Project SIL.Motif.Tests.App -Filter FullyQualifiedName~RealProjectReadmeCapture`. The test copies
+`pwsh ./test.ps1 -System -Project SIL.Motif.Tests.App -Filter FullyQualifiedName~RealProjectReadmeCapture`. The test copies
 the project (with its `WritingSystemStore` and `SharedSettings` folders), runs an Assessment, stages one pending
 change in the copy, and saves Overview, Analyze texts, Warnings, Review changes and Try a Word at 1600x1000, 100%
 zoom, light theme, into `real-project/` under the screenshot folder. With either variable unset it skips.
