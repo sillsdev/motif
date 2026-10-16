@@ -42,7 +42,7 @@ public sealed class CancellationArgvTests : IDisposable
 
         var parserId = await WaitForParser(launched, heartbeat, processIdPath);
         Assert.True(launched.Interrupt(), "Could not send Ctrl+Break to the CLI process group.");
-        await launched.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(90));
+        await launched.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(30));
         var error = launched.ReadStderr();
         Assert.True(launched.ExitCode == 2, $"Expected cancelled exit code 2.{Environment.NewLine}{error}");
         var failure = ProjectionJson.Deserialize<FailureEnvelope>(error)!;
@@ -69,7 +69,7 @@ public sealed class CancellationArgvTests : IDisposable
 
         var parserId = await WaitForParser(launched, heartbeat, processIdPath);
         Assert.True(launched.Interrupt(), "Could not send Ctrl+Break to the CLI process group.");
-        await launched.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(90));
+        await launched.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(30));
         var error = launched.ReadStderr();
         Assert.True(launched.ExitCode == 2, $"Expected cancelled exit code 2.{Environment.NewLine}{error}");
         var failure = ProjectionJson.Deserialize<FailureEnvelope>(error)!;
