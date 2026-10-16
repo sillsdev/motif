@@ -11,7 +11,6 @@
     { "name": "motif_guide", "class": "Read" },
     { "name": "motif_add_lexeme_form", "class": "Draft" },
     { "name": "motif_add_feature_structure", "class": "Draft" },
-    { "name": "motif_add_feature_value", "class": "Draft" },
     { "name": "motif_add_phoneme", "class": "Draft" },
     { "name": "motif_add_natural_class", "class": "Draft" },
     { "name": "motif_add_environment", "class": "Draft" },
@@ -37,7 +36,10 @@
     { "name": "motif_open", "class": "Read" },
     { "name": "motif_list_projects", "class": "Read" },
     { "name": "motif_assess", "class": "Evaluate" },
-    { "name": "motif_difference", "class": "Read" }
+    { "name": "motif_difference", "class": "Read" },
+    { "name": "motif_proposal_difference", "class": "Read" },
+    { "name": "motif_difference_produce", "class": "Evaluate" },
+    { "name": "motif_add_feature_value", "class": "Draft" }
   ],
   "hiddenTools": ["motif_apply", "motif_discard_draft", "motif_discard_proposal", "motif_store_delete"]
 }
