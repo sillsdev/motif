@@ -8,6 +8,7 @@ using Avalonia.LogicalTree;
 using Avalonia.VisualTree;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
+using SIL.Motif.Commands;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
@@ -159,6 +160,24 @@ public sealed partial class WindowWordsTests
             $"{refusal.Sentence} ⟨{refusal.Code}⟩",
             $"{refusal.Details?.Replace(fact, string.Empty, StringComparison.Ordinal)} ⟨{refusal.Code}⟩",
         }));
+    }
+
+    [Fact]
+    public void AChangeWhoseTrialCopyIsGoneSpeaksInTheRefusalsWords()
+    {
+        var fit = new ChangeFit("gone", ChangeFitStatus.Uncertain, [ChangeFitReasons.TrialScratchGone])
+        {
+            Uncertainty = new ChangeUncertainty(ChangeFitReasons.TrialScratchGone, [], []),
+        };
+        var noLongerFits = new ChangeFit("gone", ChangeFitStatus.NoLongerFits, [ChangeFitReasons.TrialScratchGone]);
+
+        var shown = new[] { fit, noLongerFits }.Select(f => new ChangeViewModel(ChangeKinds.Approve, "kitabu", "reading", fit: f))
+            .SelectMany(change => new[] { change.UncertaintyReason, change.DetailText })
+            .Where(text => text.Length > 0).ToArray();
+
+        Assert.NotEmpty(shown);
+        Assert.DoesNotContain(shown, text => text.Contains("Proposal", StringComparison.OrdinalIgnoreCase));
+        AssertWindowWords(shown);
     }
 
     [Fact]
