@@ -800,6 +800,7 @@ internal static class AgentTools
             AgentClass.Evaluate,
             Schema.Object([("proposal", Schema.String("The proposal id."), true),
                 ("words", Schema.StringArray("Words to parse. Omit to use the words the Proposal touches."), false),
+                ("wordsFile", Schema.String("Path to a UTF-8 file with one word per line, instead of words."), false),
                 ("negative_words", Schema.StringArray("Attested counterexamples that should not parse."), false),
                 ("job", Schema.String("A job id from an earlier 'running' result, to keep waiting for it."), false),
                 ("wait_seconds", Schema.Integer("How long to wait for the result. Default 40.", 1, 300), false),
@@ -906,8 +907,12 @@ internal static class AgentTools
             { NeedsProject = false },
         new("motif_assess", string.Empty, AgentClass.Evaluate,
             Schema.Object([("words", Schema.StringArray("Words to assess; omit for the Default Selection."), false),
+                ("wordsFile", Schema.String("Path to a UTF-8 file with one word per line, instead of words."), false),
+                ("assessment", Schema.String(
+                    "A stored Assessment id from an earlier result: page its words instead of measuring again."), false),
+                ("offset", Schema.Integer("Words to skip when paging. Default 0.", 0, 10000000), false),
                 ..Schema.Verbosity()]), false, false, true, true,
-            (c, a, ct) => Task.Run(() => ToolOutcome.From(TrialResults.Assess(c, a.List("words"), ct)), ct))
+            (c, a, ct) => Task.Run(() => AssessWords(c, a, ct), ct))
             { Requests = [typeof(AssessRequest)] },
         new("motif_difference", string.Empty, AgentClass.Read,
             Schema.Object(("difference", Schema.String("Stored Difference Assessment id."), true),
@@ -1371,6 +1376,45 @@ internal static class AgentTools
         return ToolOutcome.Ok(result, "If the changes fit, run motif_trial on sample words; if not, fix the draft first.", job);
     }
 
+    private static ToolOutcome AssessWords(ServerContext context, ToolArgs args, CancellationToken cancellation)
+    {
+        var detailed = args.Optional("detail") == "detailed";
+        var offset = args.Int("offset", 0);
+        var limit = args.Int("limit", 25);
+        var stored = args.Optional("assessment");
+        var named = WordListFile.Resolve(args.List("words"), args.Optional("wordsFile"));
+        if (!named.Succeeded) return ToolOutcome.Refused(named.Refusal!);
+        if (stored is not null)
+        {
+            if (named.Value!.Count > 0)
+                throw new ToolArgumentException("tool.invalid-argument",
+                    "Give either an assessment id to page or words to measure, not both.");
+            return ToolOutcome.From(ProjectStoreCommand.Run(context.ProjectPath, context.ProductVersion, (database, _) =>
+            {
+                AssessmentRecord record;
+                try { record = new AssessmentRepository(database).Get(stored); }
+                catch (KeyNotFoundException)
+                {
+                    throw new ToolArgumentException("tool.not-found",
+                        $"There is no Assessment '{stored}'. Use an id motif_assess returned.", FailureReason.NotFound);
+                }
+                if (record.Words is null)
+                    throw new ToolArgumentException("tool.invalid-argument", $"'{stored}' holds no word results.");
+                return CommandOutcome<JsonObject>.Success(
+                    AssessSummary.PageStored(stored, record.Words, offset, limit, detailed));
+            }), AssessNext(stored, offset, limit));
+        }
+        var outcome = TrialResults.Assess(context, named.Value!, cancellation);
+        if (!outcome.Succeeded) return ToolOutcome.Refused(outcome.Refusal!);
+        var page = AssessSummary.Page(outcome.Value!, offset, limit, detailed);
+        return ToolOutcome.Ok(page, AssessNext(page["assessment"]?.GetValue<string>(), offset, limit));
+    }
+
+    private static string AssessNext(string? assessment, int offset, int limit) => assessment is null
+        ? "Read the counts first; narrow the word list to see the rest."
+        : $"Read more words with motif_assess assessment={assessment} offset={offset + limit} limit={limit}; " +
+          "detail=detailed adds each word's readings for that page.";
+
     private static async Task<ToolOutcome> Trial(ServerContext context, ToolArgs args, CancellationToken cancellation)
     {
         var proposal = args.Required("proposal");
@@ -1379,7 +1423,9 @@ internal static class AgentTools
         if (job is null)
         {
             var negatives = args.List("negative_words");
-            var words = args.List("words").Concat(negatives).Distinct(StringComparer.Ordinal).ToArray();
+            var named = WordListFile.Resolve(args.List("words"), args.Optional("wordsFile"));
+            if (!named.Succeeded) return ToolOutcome.Refused(named.Refusal!);
+            var words = named.Value!.Concat(negatives).Distinct(StringComparer.Ordinal).ToArray();
             var queued = await Task.Run(() => TrialWorkflow.Enqueue(
                 new EnqueueTrialRequest(context.ProjectPath, context.ProductVersion, proposal,
                     Words: words.Length == 0 ? null : words, NegativeWords: negatives),

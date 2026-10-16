@@ -3807,6 +3807,10 @@
           },
           "description": "Words to parse. Omit to use the words the Proposal touches."
         },
+        "wordsFile": {
+          "type": "string",
+          "description": "Path to a UTF-8 file with one word per line, instead of words."
+        },
         "negative_words": {
           "type": "array",
           "items": {
@@ -4082,6 +4086,20 @@
             "type": "string"
           },
           "description": "Words to assess; omit for the Default Selection."
+        },
+        "wordsFile": {
+          "type": "string",
+          "description": "Path to a UTF-8 file with one word per line, instead of words."
+        },
+        "assessment": {
+          "type": "string",
+          "description": "A stored Assessment id from an earlier result: page its words instead of measuring again."
+        },
+        "offset": {
+          "type": "integer",
+          "description": "Words to skip when paging. Default 0.",
+          "minimum": 0,
+          "maximum": 10000000
         },
         "detail": {
           "type": "string",
