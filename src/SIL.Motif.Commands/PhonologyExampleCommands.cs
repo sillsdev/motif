@@ -46,10 +46,15 @@ public static class PhonologyExampleCommands
                     else if (!File.Exists(baseline.FwDataPath)) verification = "not-verified-baseline-file-missing";
                     else
                     {
-                        var missing = PhonologyEntryVerification.FindMissing(baseline.FwDataPath, validated.Examples);
-                        if (missing.Total > 0)
+                        PhonologyEntryVerification.Missing? missing = null;
+                        try { missing = PhonologyEntryVerification.FindMissing(baseline.FwDataPath, validated.Examples); }
+                        catch (Exception exception) when (exception is IOException or System.Xml.XmlException)
+                        {
+                            verification = "not-verified-baseline-file-missing";
+                        }
+                        if (missing is { Total: > 0 })
                             return CommandOutcome<PhonologyExamplesSavedResponse>.Refused(new Refusal(
-                                "phonology-examples.entry-not-found", FailureReason.NotFound,
+                                RefusalCodes.PhonologyExamplesEntryNotFound, FailureReason.NotFound,
                                 $"{missing.Total} example(s) name FieldWorks entries or MSAs that are not in the current " +
                                 "Baseline: " + string.Join("; ", missing.Lines) +
                                 (missing.Total > missing.Lines.Count
@@ -58,7 +63,7 @@ public static class PhonologyExampleCommands
                                 {
                                     ["missingExamples"] = missing.Total.ToString(CultureInfo.InvariantCulture),
                                 }));
-                        verification = "verified";
+                        if (missing is not null) verification = "verified";
                     }
                 }
                 var saved = new PhonologyExampleSetRepository(database).Save(validated.Name,

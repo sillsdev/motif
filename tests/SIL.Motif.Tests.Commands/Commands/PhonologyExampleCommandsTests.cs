@@ -103,6 +103,30 @@ public sealed class PhonologyExampleCommandsTests(PristineProjectFixture pristin
         Assert.Equal("not-applicable", hcOnly.Value!.EntryVerification);
     }
 
+    [Fact]
+    public void AnUnreadableBaselineFileDoesNotStopSaveAndReportsTheEntriesWereNotVerified()
+    {
+        var projectPath = pristine.CopyProjectFile();
+        var managedRoot = Path.Combine(Path.GetTempPath(), "SIL.Motif.PhonologySaveVerify", Guid.NewGuid().ToString("N"));
+        try
+        {
+            var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(projectPath), managedRoot);
+            Assert.True(captured.Succeeded, captured.Refusal?.Message);
+            foreach (var file in Directory.GetFiles(managedRoot, "*.fwdata", SearchOption.AllDirectories))
+                File.WriteAllText(file, "<not-xml");
+
+            var saved = PhonologyExampleCommands.Save(new SavePhonologyExamplesRequest(projectPath, "Broken",
+                [FieldWorksExample("broken", Guid.NewGuid().ToString(), Guid.NewGuid().ToString())]));
+
+            Assert.True(saved.Succeeded, saved.Refusal?.Message);
+            Assert.Equal("not-verified-baseline-file-missing", saved.Value!.EntryVerification);
+        }
+        finally
+        {
+            try { Directory.Delete(managedRoot, recursive: true); } catch (IOException) { }
+        }
+    }
+
     private static void WithBaseline(string projectPath, Action body)
     {
         var managedRoot = Path.Combine(Path.GetTempPath(), "SIL.Motif.PhonologySaveVerify", Guid.NewGuid().ToString("N"));

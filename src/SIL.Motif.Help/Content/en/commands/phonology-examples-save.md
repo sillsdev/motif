@@ -37,7 +37,7 @@ An example whose context is a FieldWorks entry (`entryGuid` and `msaGuid`) is ch
 
 An example whose context is an HC XML entry id (`hcXmlEntry`) is not checked against FieldWorks: those ids belong to a grammar export, not to the project.
 
-If the project has no Baseline yet, the set is still saved, because authoring examples before capturing a Baseline is a normal order of work. The response then says `not-verified-no-baseline`, and the check command will report any entry it cannot find as unavailable.
+If the project has no Baseline yet, the set is still saved, because authoring examples before capturing a Baseline is a normal order of work. The response then says `not-verified-no-baseline`, and the check command will report any entry it cannot find as unavailable. A Baseline file that is missing or unreadable gives `not-verified-baseline-file-missing` the same way.
 
 ## What it prints
 

@@ -267,6 +267,8 @@ public static class RefusalCatalog
         Spec(RefusalCodes.PreflightUnavailable, FailureReason.Refused),
         Spec(RefusalCodes.PhonologyExamplesAssessmentNotFound, FailureReason.NotFound),
         Spec(RefusalCodes.PhonologyExamplesBaselineChanged, FailureReason.Refused),
+        Spec(RefusalCodes.PhonologyExamplesEntryNotFound, FailureReason.NotFound,
+            Command("baseline capture", Caller("project"))),
         Spec(RefusalCodes.PhonologyExamplesExampleNotFound, FailureReason.NotFound),
         Spec(RefusalCodes.PhonologyExamplesInvalid, FailureReason.InvalidArgument),
         Spec(RefusalCodes.PhonologyExamplesNoBaseline, FailureReason.Refused,
