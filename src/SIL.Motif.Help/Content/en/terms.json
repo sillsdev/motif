@@ -69,6 +69,11 @@
     "description": "The CLI's preflight command checks changes against the live model before Apply. A change whose required inputs changed or disappeared no longer fits.",
     "source": "Hand-written from CONTEXT.md."
   },
+  "phonology-examples": {
+    "title": "Phonology Example Set",
+    "description": "A Phonology Example Set is a saved list of underlying forms with the surface forms an author expects, kept as advisory evidence that never changes Readiness or Apply. Its subcommands are phonology-examples save, list, show, check and results.",
+    "source": "Hand-written from CONTEXT.md."
+  },
   "proposal": {
     "title": "A reviewable set of changes",
     "description": "A Proposal groups related Motif operations so a person can inspect, measure, and apply them as one unit.",

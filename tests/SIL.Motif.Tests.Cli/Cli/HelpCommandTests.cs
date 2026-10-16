@@ -358,6 +358,22 @@ public sealed class HelpCommandTests
     }
 
     [Fact]
+    public void HelpForThePhonologyExamplesParentTopicNamesEverySubcommand()
+    {
+        var subcommands = new[] { "save", "list", "show", "check", "results" };
+        var brief = Run("help", "phonology-examples");
+        var full = Run("help", "phonology-examples", "--full");
+
+        Assert.Equal(0, brief.ExitCode);
+        Assert.Equal(0, full.ExitCode);
+        foreach (var subcommand in subcommands)
+        {
+            Assert.Contains(subcommand, brief.Output, StringComparison.Ordinal);
+            Assert.Contains("phonology-examples " + subcommand, full.Output, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
     public void OffModeHelpAndReleasedCatalogMatchCurrentGolden()
     {
         var result = Run("help", "--all", "--json");
