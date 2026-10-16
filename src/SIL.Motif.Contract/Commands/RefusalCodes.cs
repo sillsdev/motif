@@ -78,6 +78,9 @@ public static class RefusalCodes
     public const string ConfigInvalid = "config.invalid";
     public const string DraftRevisionConflict = "draft.revision-conflict";
 
+    public const string EvidenceInvalidPage = "evidence.invalid-page";
+    public const string EvidenceUnknownTier = "evidence.unknown-tier";
+
     public const string GrammarCheckCancelled = "grammarcheck.cancelled";
     public const string GrammarCheckMalformedFindings = "grammarcheck.malformed-findings";
     public const string GrammarCheckParserRefused = "grammarcheck.parser-refused";
@@ -98,6 +101,11 @@ public static class RefusalCodes
     public const string JobWaitCancelled = "job.wait-cancelled";
     public const string JobWaitTimeout = "job.wait-timeout";
     public const string PreflightUnavailable = "preflight.unavailable";
+
+    public const string PhonologyExamplesInvalid = "phonology-examples.invalid";
+    public const string PhonologyExamplesProposalNotFound = "phonology-examples.proposal-not-found";
+    public const string PhonologyExamplesRevisionConflict = "phonology-examples.revision-conflict";
+    public const string PhonologyExamplesRevisionNotFound = "phonology-examples.revision-not-found";
 
     public const string ProjectBackupUnreadable = "project.backup-unreadable";
     public const string ProjectBusy = "project.busy";
@@ -382,6 +390,8 @@ public static class RefusalCodes
     public const string ProposalNotFound = "proposal.not-found";
     /// <summary>The Proposal is the user's own pending changes and is handled on Review changes.</summary>
     public const string ProposalPendingChanges = "proposal.pending-changes";
+    /// <summary>A Phonology Example Set revision still cites the Proposal, so it cannot be deleted.</summary>
+    public const string ProposalRetainedByExampleSet = "proposal.retained-by-example-set";
     /// <summary>A split assigns one operation to more than one group.</summary>
     public const string ProposalSplitDuplicateOperation = "proposal.split-duplicate-operation";
     /// <summary>A Proposal was named as its own replacement.</summary>
