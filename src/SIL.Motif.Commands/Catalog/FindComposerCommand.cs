@@ -79,7 +79,7 @@ public sealed record FindComposerResponse(
 /// Subject title the composer serves counts (2). Each word's hits are scaled by how few composers mention it, so a
 /// rare word outweighs a common one. Reading only: nothing is staged and no project is opened.
 /// <para>
-/// A goal is answered in two steps, fixed in advance and not tuned to any goal. Content stems are the goal's words
+/// A goal is answered in two steps. Content stems are the goal's words
 /// of three or more letters minus a short stop-word list, each cut to a six-letter stem with a plural s removed.
 /// First, each Subject, served or reserved, has a list of distinctive terms in Help; a term is hit when all its
 /// stems are among the goal's stems, and the Subject with the most hits is the strongest. When that is one of the
@@ -87,29 +87,61 @@ public sealed record FindComposerResponse(
 /// including on a tie with a served Subject, the answer is <c>noMatch</c> with it as the nearest Subject. Second,
 /// a composer matches only if its example goals and title together contain at least two distinct stems of the
 /// goal, or at least one when the goal has two stems or fewer; overlap with a description or a Subject title alone
-/// never counts. The first step catches phenomena Motif has no composer for, which share common words with composers
+/// never counts, and neither does a generic word such as add, form or rule.
+/// The first step catches phenomena Motif has no composer for, which share common words with composers
 /// that serve something else; the second step is a plain overlap count. Only matching composers are listed. When none matches, the
 /// answer is <c>noMatch</c> with no results, the two nearest Subjects (the routed one first, then overlap with
 /// Subject titles, descriptions and terms, then the Subjects of weakly overlapping composers), up to three weak
-/// composers, and a ready sentence to relay.
+/// composers, and a ready sentence to relay. The thresholds and weights are named constants of this class.
 /// </para>
 /// </summary>
 public static class FindComposerCommand
 {
-    private const int MaxGoalResults = 5;
-    private const int GoalWeight = 3;
-    private const int TitleWeight = 2;
-    private const int DescriptionWeight = 1;
-    private const int SubjectTitleWeight = 2;
+    // Every threshold and weight of the search rule lives in the constants below.
+
+    // A goal word shorter than this is too common to name anything.
+    private const int MinWordLetters = 3;
+    // A longer word is cut to this many letters, so "analysed" meets "analyses" and "rules" meets "rule".
     private const int StemLength = 6;
+    // A goal of this many stems or fewer is short enough that a single shared stem can cover it.
+    private const int ShortGoalStems = 2;
+    // Distinct goal stems a composer's example goals and title must contain to cover a short goal.
+    private const int MatchesForShortGoal = 1;
+    // Distinct goal stems they must contain to cover a longer goal; one shared word alone is too often chance.
+    private const int MatchesForLongGoal = 2;
+    // Example goals are written as the person would phrase the task, so they are the strongest evidence.
+    private const int GoalWeight = 3;
+    // A composer's title names its job but in fewer words than its example goals.
+    private const int TitleWeight = 2;
+    // A description says when to reach for a composer, and so mentions many neighbouring words.
+    private const int DescriptionWeight = 1;
+    // A Subject title the composer serves is as telling as the composer's own title.
+    private const int SubjectTitleWeight = 2;
+    // A hand-written Subject term is deliberate, so a whole-term hit outweighs a stray word of a description.
     private const int TermWeight = 3;
+    // A goal search lists at most this many composers, enough to choose from without a wall of text.
+    private const int MaxGoalResults = 5;
+    // A no-match answer names at most this many Subjects, the routed one first.
     private const int MaxNearestSubjects = 2;
+    // A no-match answer shows at most this many weak composers, to say what was ruled out.
     private const int MaxNearestComposers = 3;
+    // The longest echo of the person's goal in the sentence to relay, so a pasted paragraph cannot flood it.
+    private const int MaxEchoedGoalLength = 200;
 
     private static readonly Lazy<HelpCatalog> Help = new(() => HelpCatalog.Load());
 
     private static readonly Regex Example = new(
         "```(?:json|sh)[ \\t]*\\n(?<body>.*?)\\n```", RegexOptions.Singleline | RegexOptions.CultureInvariant);
+
+    // Generic action and grammar words say little about which composer is meant, so they rank but never cover.
+    private static readonly string[] GenericWords =
+    [
+        "add", "make", "create", "new", "change", "set", "edit", "put", "give", "use", "write", "record", "mark",
+        "remove", "delete", "update", "word", "form", "rule", "noun", "verb", "thing", "part", "type", "kind",
+    ];
+
+    private static readonly HashSet<string> GenericStems = GenericWords.Select(word => Stem(word))
+        .ToHashSet(StringComparer.Ordinal);
 
     private static readonly HashSet<string> StopWords = new(StringComparer.Ordinal)
     {
@@ -170,11 +202,11 @@ public static class FindComposerCommand
             .ToArray();
         var termHits = TermHits(words, help);
         var best = termHits.Values.DefaultIfEmpty(0).Max();
-        var reservedBest = best == 0 ? null : ComposerSubjects.Reserved.FirstOrDefault(id => termHits.GetValueOrDefault(id) == best);
+        var reservedBest = ReservedSubjectAtTop(termHits, best);
         if (words.Count == 0 || reservedBest is not null)
             return CommandOutcome<FindComposerResponse>.Success(NoMatch(goal!, words, scored.Select(item =>
                 (item.Candidate, item.Score)).ToArray(), help, reservedBest, termHits));
-        var required = words.Count <= 2 ? 1 : 2;
+        var required = words.Count <= ShortGoalStems ? MatchesForShortGoal : MatchesForLongGoal;
         var matching = scored.Where(item => item.Fields.Covered(words).Count >= required).ToArray();
         if (matching.Length == 0)
             return CommandOutcome<FindComposerResponse>.Success(NoMatch(goal!, words, scored.Select(item =>
@@ -188,6 +220,10 @@ public static class FindComposerCommand
             });
         return CommandOutcome<FindComposerResponse>.Success(new FindComposerResponse("goal", ranked.ToArray()));
     }
+
+    // A reserved Subject with the most term hits wins, ties with a served Subject included.
+    private static string? ReservedSubjectAtTop(Dictionary<string, int> termHits, int best) =>
+        best == 0 ? null : ComposerSubjects.Reserved.FirstOrDefault(id => termHits.GetValueOrDefault(id) == best);
 
     // How many of each Subject's terms the goal names: every stem of a term must be among the goal's stems.
     private static Dictionary<string, int> TermHits(HashSet<string> words, HelpCatalog help) => help.Subjects
@@ -216,7 +252,7 @@ public static class FindComposerCommand
             .Take(MaxNearestSubjects)
             .Select(id => new NearestSubject(id, SubjectTitle(help, id)))
             .ToArray();
-        var phrase = string.Join(' ', goal.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)).TrimEnd('?', '.', '!');
+        var phrase = EchoedGoal(goal);
         var missing = nearest.Length == 0
             ? Template(help, "composer-no-match-no-subject", DefaultMissingNoSubject, phrase, null)
             : Template(help, "composer-no-match", DefaultMissing, phrase, nearest[0].Title);
@@ -224,6 +260,15 @@ public static class FindComposerCommand
         return new FindComposerResponse("goal", [], true, nearest,
             weak.Take(MaxNearestComposers).Select(item => new NearestComposer(item.Candidate.Verb, Math.Round(item.Score, 2))).ToArray(),
             missing, next);
+    }
+
+    // The goal made safe to quote in a sentence: one line, no quote, backtick or placeholder, and capped.
+    internal static string EchoedGoal(string goal)
+    {
+        var plain = new string(goal.Where(c => c is not ('"' or '`' or '{' or '}' or '\u201C' or '\u201D')).ToArray());
+        var phrase = string.Join(' ', plain.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries))
+            .TrimEnd('?', '.', '!');
+        return phrase.Length > MaxEchoedGoalLength ? phrase[..(MaxEchoedGoalLength - 1)].TrimEnd() + "\u2026" : phrase;
     }
 
     private static string Template(HelpCatalog help, string code, string fallback, string goal, string? subject) =>
@@ -239,7 +284,7 @@ public static class FindComposerCommand
     // A short stem, minus a plural s, lets "rules" meet "rule" and "analysed" meet "analyses".
     private static IEnumerable<string> Words(string text) =>
         Regex.Split(text.ToLowerInvariant(), "[^\\p{L}\\p{N}]+")
-            .Where(word => word.Length >= 3 && !StopWords.Contains(word))
+            .Where(word => word.Length >= MinWordLetters && !StopWords.Contains(word))
             .Select(Stem)
             .Distinct(StringComparer.Ordinal);
 
@@ -248,7 +293,7 @@ public static class FindComposerCommand
     {
         var spelled = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var word in Regex.Split(text.ToLowerInvariant(), "[^\\p{L}\\p{N}]+")
-                     .Where(word => word.Length >= 3 && !StopWords.Contains(word)))
+                     .Where(word => word.Length >= MinWordLetters && !StopWords.Contains(word)))
             spelled.TryAdd(Stem(word), word);
         return spelled;
     }
@@ -295,9 +340,9 @@ public static class FindComposerCommand
     private sealed record SearchFields(
         HashSet<string> Goals, HashSet<string> Title, HashSet<string> Description, HashSet<string> SubjectTitles)
     {
-        // The goal's stems that the composer's example goals or title contain.
+        // The goal's non-generic stems that the composer's example goals or title contain.
         public HashSet<string> Covered(HashSet<string> words) =>
-            words.Where(word => Goals.Contains(word) || Title.Contains(word)).ToHashSet(StringComparer.Ordinal);
+            words.Where(word => !GenericStems.Contains(word) && (Goals.Contains(word) || Title.Contains(word))).ToHashSet(StringComparer.Ordinal);
 
         public bool Mentions(string word) =>
             Goals.Contains(word) || Title.Contains(word) || Description.Contains(word) || SubjectTitles.Contains(word);

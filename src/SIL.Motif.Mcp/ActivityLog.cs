@@ -3,10 +3,13 @@ using System.Text.Json.Nodes;
 
 namespace SIL.Motif.Mcp;
 
-/// <summary>One tool call as the harness and <c>motif_activity</c> see it.</summary>
+/// <summary>
+/// One tool call as the harness and <c>motif_activity</c> see it. <c>FindComposer</c> is set only on a
+/// <c>motif_find_composer</c> goal search and says whether a composer matched and, if not, the nearest Subject.
+/// </summary>
 internal sealed record ActivityEntry(
     DateTimeOffset At, string Tool, JsonObject Args, bool IsError, string? Code, int ResultBytes, long DurationMs,
-    string? JobId, string Profile);
+    string? JobId, string Profile, JsonObject? FindComposer = null);
 
 /// <summary>
 /// Remembers every tool call this server answers, in memory for <c>motif_activity</c> and, when a file is

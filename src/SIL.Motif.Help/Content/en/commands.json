@@ -120,14 +120,14 @@
     ]
   },
   "retire-allomorph": {
-    "title": "Retire or merge forms",
+    "title": "Retire or replace a form",
     "description": "Stages one connected Proposal to retire ordinary prefix or suffix alternates after their references move; the sound-rule form also stages its natural class and rule. Dry Run shows bundle Morph and copied Form text changes, other references, and deletion together. Missing destinations are refused with counts for distinct unresolved Approved analyses, ad hoc rules, and other references; only a person can Apply.",
     "source": "Hand-written from the allomorph retirement and sound-rule replacement contracts.",
     "goals": [
-      "Merge duplicate forms of an affix",
-      "Replace several listed forms with one",
-      "Retire an unused prefix after moving what refers to it",
-      "Remove an unused affix"
+      "Retire an allomorph and move its references to another allomorph",
+      "Merge redundant allomorphs of an affix into one",
+      "Replace a duplicate form with the form a phonological rule derives",
+      "Retire an unused prefix or suffix alternate after moving what refers to it"
     ]
   },
   "retire-redundant-zero-affix": {
@@ -136,12 +136,13 @@
     "source": "Hand-written from the zero-affix retirement contract and command behavior.",
     "goals": [
       "Delete a zero affix nobody uses",
-      "Remove an unused empty affix entry",
-      "Clean up a null affix that does nothing"
+      "Remove an unused null affix entry from the lexicon",
+      "Retire a redundant zero morpheme that adds no feature",
+      "Clean up an empty affix whose slots are all optional"
     ]
   },
   "compose-author-phonological-rule": {
-    "title": "Author a phonological rule",
+    "title": "Author a sound rule",
     "description": "Stages one simple rewrite rule in a Draft, using existing phonemes and natural classes with explicit context and rule placement. Empty input or output means insertion or deletion; unsupported alpha variables and metathesis are refused. Only a person can Apply.",
     "source": "Hand-written from the regular rewrite-rule composer contract and command behavior.",
     "goals": [
@@ -152,7 +153,7 @@
     ]
   },
   "compose-author-lexical-entry": {
-    "title": "Author a lexical entry",
+    "title": "Author a dictionary entry",
     "description": "Stages one new dictionary entry with its lexeme form, one sense with gloss and optional definition, and grammatical info: a stem, or an inflectional, derivational or unclassified affix. Each form can name environments, and an affix can name the inflection classes it attaches to. Inspect its Dry Run and try words with it before a person Applies the Proposal.",
     "source": "Hand-written from command behavior.",
     "goals": [

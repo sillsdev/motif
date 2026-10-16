@@ -45,31 +45,37 @@ public sealed class FindComposerToolTests
     }
 
     [Fact]
-    public async Task ANoMatchCallLogsAFindComposerMissWithTheGoalAndNearestSubjectAndMatchesLogNothing()
+    public async Task AGoalSearchAddsNoExtraEntryAndItsOwnEntryRecordsTheOutcome()
     {
-        var path = Path.Combine(Path.GetTempPath(), "find-composer-miss-" + Guid.NewGuid().ToString("N") + ".jsonl");
+        var path = Path.Combine(Path.GetTempPath(), "find-composer-log-" + Guid.NewGuid().ToString("N") + ".jsonl");
         try
         {
             var log = new ActivityLog(path);
             var context = new ServerContext("", "1.0", new NoRunnerLauncher(new JobRunnerLaunchOptions("root", null)),
                 log, ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
+            var tools = MotifMcpServer.Expose(new ToolProfile("find", null, null, "concise",
+                [new ToolSelection(Tool.Name, null, null, null)]));
 
-            await Tool.Run(context, Args(("goal", "add a missing consonant to the sound inventory")), CancellationToken.None);
-            Assert.DoesNotContain(log.Entries, entry => entry.Tool == "findComposerMiss");
-
-            var miss = await Tool.Run(context, Args(("goal", "Export the dictionary to a printable file")),
+            await MotifMcpServer.CallAsync(context, tools, Tool.Name, Arguments("add a missing consonant to the sound inventory"),
                 CancellationToken.None);
-            Assert.True(miss.Value!["noMatch"]!.GetValue<bool>());
-            Assert.Contains(miss.Value["missing"]!.GetValue<string>(), miss.Next!);
+            var hit = Assert.Single(log.Entries);
+            Assert.Equal(Tool.Name, hit.Tool);
+            Assert.True(hit.FindComposer!["matched"]!.GetValue<bool>());
 
-            var entry = Assert.Single(log.Entries, e => e.Tool == "findComposerMiss");
-            Assert.Equal("Export the dictionary to a printable file", entry.Args["goal"]!.GetValue<string>());
-            Assert.Equal(miss.Value["nearestSubjects"]![0]!["id"]!.GetValue<string>(),
-                entry.Args["nearestSubject"]!.GetValue<string>());
-            Assert.Contains("findComposerMiss", File.ReadAllText(path));
+            await MotifMcpServer.CallAsync(context, tools, Tool.Name, Arguments("Export the dictionary to a printable file"),
+                CancellationToken.None);
+            Assert.Equal(2, log.Entries.Count);
+            var miss = log.Entries[1];
+            Assert.Equal(Tool.Name, miss.Tool);
+            Assert.False(miss.FindComposer!["matched"]!.GetValue<bool>());
+            Assert.False(string.IsNullOrEmpty(miss.FindComposer["nearestSubject"]!.GetValue<string>()));
+            Assert.Contains("\"findComposer\"", File.ReadAllText(path));
         }
         finally { File.Delete(path); }
     }
+
+    private static Dictionary<string, System.Text.Json.JsonElement> Arguments(string goal) =>
+        new() { ["goal"] = System.Text.Json.JsonSerializer.SerializeToElement(goal) };
 
     private static ToolArgs Args(params (string Name, string Value)[] values)
     {

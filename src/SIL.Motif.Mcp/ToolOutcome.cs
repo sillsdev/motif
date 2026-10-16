@@ -5,7 +5,8 @@ using SIL.Motif.Contract.Responses;
 namespace SIL.Motif.Mcp;
 
 /// <summary>What one tool call produced: a value and what to do next, or a typed refusal.</summary>
-internal sealed record ToolOutcome(JsonNode? Value, Refusal? Refusal, string? Next, string? JobId = null)
+internal sealed record ToolOutcome(JsonNode? Value, Refusal? Refusal, string? Next, string? JobId = null,
+    JsonObject? FindComposer = null)
 {
     public static ToolOutcome Ok(JsonNode value, string? next = null, string? jobId = null) =>
         new(value, null, next, jobId);

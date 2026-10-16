@@ -162,7 +162,7 @@ public static class MotifMcpServer
         }
         context.Activity.Record(new ActivityEntry(DateTimeOffset.UtcNow, tool?.Tool.Name ?? name, args,
             result.IsError == true, outcome.Refusal?.Code, ResultBytes(result), clock.ElapsedMilliseconds,
-            outcome.JobId, context.Profile.Name));
+            outcome.JobId, context.Profile.Name, outcome.FindComposer));
         return result;
     }
 
