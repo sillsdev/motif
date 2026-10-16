@@ -15,6 +15,9 @@ internal sealed class EditAffixInflectionClassesDefinition : ComposerDefinition<
     public override string Composer => "EditAffixInflectionClasses";
 
     /// <inheritdoc />
+    public override IReadOnlyList<string> Subjects { get; } = ["inflection-classes"];
+
+    /// <inheritdoc />
     public override IntentShape Shape { get; } = IntentShape.Of(
         Field.Id("target", IdRole.Target, required: true),
         Field.Ids("expectedInflectionClasses", required: true),

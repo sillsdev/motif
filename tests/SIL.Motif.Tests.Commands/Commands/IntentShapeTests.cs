@@ -160,7 +160,7 @@ public sealed class LegacyComposerAdapterTests
     public void TheAdapterDelegatesToTheRecordAndDeclaresNoShape()
     {
         var calls = new List<string>();
-        var legacy = new DraftComposer("verb", "Name",
+        var legacy = new DraftComposer("verb", "Name", ["sound-inventory"],
             (_, _, _) => { calls.Add("build"); return []; },
             ValidateAppend: (_, _, _) => calls.Add("validate"),
             ReplacePrevious: (_, _) => true,
@@ -182,7 +182,7 @@ public sealed class LegacyComposerAdapterTests
     [Fact]
     public void ARecordWithoutOptionalDelegatesReplacesNothingAndReportsNothing()
     {
-        IComposerDefinition adapter = new LegacyComposerAdapter(new DraftComposer("v", "N", (_, _, _) => []));
+        IComposerDefinition adapter = new LegacyComposerAdapter(new DraftComposer("v", "N", ["sound-inventory"], (_, _, _) => []));
         var authored = JsonDocument.Parse("{}").RootElement;
         Assert.False(adapter.CanReplacePrevious);
         Assert.False(adapter.ReplacePrevious(authored, new OperationEnvelope(CanonicalId.Mint(), "group/x")));

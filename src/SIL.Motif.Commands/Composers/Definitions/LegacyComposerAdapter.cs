@@ -23,6 +23,9 @@ internal sealed class LegacyComposerAdapter(DraftComposer legacy) : IComposerDef
     public string Composer => Legacy.Composer;
 
     /// <inheritdoc />
+    public IReadOnlyList<string> Subjects => Legacy.Subjects;
+
+    /// <inheritdoc />
     public IntentShape? Shape => null;
 
     /// <inheritdoc />

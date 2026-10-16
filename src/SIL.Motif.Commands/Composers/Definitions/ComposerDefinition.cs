@@ -20,6 +20,9 @@ internal abstract class ComposerDefinition<TIntent> : IComposerDefinition
     /// <inheritdoc />
     public abstract string Composer { get; }
 
+    /// <inheritdoc />
+    public abstract IReadOnlyList<string> Subjects { get; }
+
     /// <inheritdoc cref="IComposerDefinition.Shape" />
     public abstract IntentShape Shape { get; }
 

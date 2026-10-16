@@ -15,6 +15,9 @@ internal sealed class EditStemAllomorphStemNameDefinition : ComposerDefinition<E
     public override string Composer => "EditStemAllomorphStemName";
 
     /// <inheritdoc />
+    public override IReadOnlyList<string> Subjects { get; } = ["stem-alternation"];
+
+    /// <inheritdoc />
     public override IntentShape Shape { get; } = IntentShape.Of(
         Field.Id("target", IdRole.Target, required: true),
         Field.Id("expectedStemName", required: true, nullable: true),

@@ -19,7 +19,7 @@ public sealed class ComposerRegistryTests
     [Fact]
     public void AVerbDeclaredByATypedDefinitionAndALegacyComposerThrowsAtConstruction()
     {
-        var legacy = new DraftComposer("compose-author-feature-value", "Other", (_, _, _) => []);
+        var legacy = new DraftComposer("compose-author-feature-value", "Other", ["sound-inventory"], (_, _, _) => []);
         var failure = Assert.Throws<InvalidOperationException>(() =>
             ComposerRegistry.Build(ComposerDefinitions.All, [legacy]));
         Assert.Contains("compose-author-feature-value", failure.Message);

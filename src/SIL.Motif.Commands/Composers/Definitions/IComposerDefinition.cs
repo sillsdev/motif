@@ -18,6 +18,12 @@ internal interface IComposerDefinition
     /// <summary>The composer name recorded in the Draft's composer provenance.</summary>
     string Composer { get; }
 
+    /// <summary>
+    /// The Subjects the composer serves, each an id in <see cref="ComposerSubjects"/>; at least one, so an agent can
+    /// find the composer by topic.
+    /// </summary>
+    IReadOnlyList<string> Subjects { get; }
+
     /// <summary>The closed set of properties the intent may carry, or null when the composer checks them itself.</summary>
     IntentShape? Shape { get; }
 

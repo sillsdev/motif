@@ -15,6 +15,9 @@ internal sealed class EditStemInflectionClassDefinition : ComposerDefinition<Edi
     public override string Composer => "EditStemInflectionClass";
 
     /// <inheritdoc />
+    public override IReadOnlyList<string> Subjects { get; } = ["inflection-classes"];
+
+    /// <inheritdoc />
     public override IntentShape Shape { get; } = IntentShape.Of(
         Field.Id("target", IdRole.Target, required: true),
         Field.Id("expectedInflectionClass", required: true, nullable: true),

@@ -1,0 +1,54 @@
+{
+  "sound-inventory": {
+    "title": "Sound inventory",
+    "description": "The consonants, vowels and other sounds the language uses, kept as the project's phonemes."
+  },
+  "natural-classes": {
+    "title": "Natural classes",
+    "description": "Groups of sounds that behave alike, such as the vowels or the voiceless stops, that rules and conditions refer to."
+  },
+  "phonological-rules": {
+    "title": "Phonological rules",
+    "description": "Rules that say how a sound changes next to other sounds, and the environments that state where."
+  },
+  "conditioned-allomorphy": {
+    "title": "Conditioned allomorphy",
+    "description": "Which form of a morpheme appears where, decided by the sounds around it or by what it attaches to."
+  },
+  "affix-slots-and-templates": {
+    "title": "Affix slots and templates",
+    "description": "The ordered positions on a word where affixes attach, and the templates that arrange them for a category."
+  },
+  "inflection-features": {
+    "title": "Inflection features",
+    "description": "Grammatical features such as number or tense, their values, and the feature structures that carry them."
+  },
+  "noun-class-and-gender": {
+    "title": "Noun class and gender",
+    "description": "The classes that sort nouns, which agreement and affixes may depend on."
+  },
+  "inflection-classes": {
+    "title": "Inflection classes",
+    "description": "Groups of words that inflect the same way, and which classes an affix or a stem belongs to."
+  },
+  "stem-alternation": {
+    "title": "Stem alternation",
+    "description": "Stems that take different shapes in different grammatical contexts, and the stem names that pick among them."
+  },
+  "lexical-entries-and-glosses": {
+    "title": "Lexical entries and glosses",
+    "description": "Dictionary entries with their forms, alternate forms and short glosses."
+  },
+  "senses-and-definitions": {
+    "title": "Senses and definitions",
+    "description": "The meanings of an entry, each with a gloss and a fuller definition."
+  },
+  "texts-and-analyses": {
+    "title": "Texts and analyses",
+    "description": "Interlinear texts, and the decisions that approve or reject how each word is analysed."
+  },
+  "parsimony-dispositions": {
+    "title": "Parsimony dispositions",
+    "description": "A recorded decision to keep, fix, ask about or defer a finding that points to a possible simplification of the grammar."
+  }
+}

@@ -15,6 +15,9 @@ internal sealed class AuthorFeatureValueDefinition : ComposerDefinition<AuthorFe
     public override string Composer => "AuthorFeatureValue";
 
     /// <inheritdoc />
+    public override IReadOnlyList<string> Subjects { get; } = ["inflection-features"];
+
+    /// <inheritdoc />
     public override IntentShape Shape { get; } = IntentShape.Of(
         Field.Id("featStruc", IdRole.Reference, required: true),
         Field.Id("feature", IdRole.Reference, required: true),

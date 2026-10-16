@@ -37,6 +37,10 @@ public enum HelpEntryKind
 /// <param name="Fields">
 /// For a composing command, what each argument of its intent means, keyed by wire name; null for every other entry.
 /// </param>
+/// <param name="Goals">
+/// For a composing command, example goals a linguist might have that it serves, in plain words; null for every
+/// other entry.
+/// </param>
 public sealed record HelpEntry(
     HelpEntryKind Kind,
     string Code,
@@ -46,7 +50,14 @@ public sealed record HelpEntry(
     string Source,
     string? HelpPage,
     string Url,
-    IReadOnlyDictionary<string, string>? Fields = null);
+    IReadOnlyDictionary<string, string>? Fields = null,
+    IReadOnlyList<string>? Goals = null);
+
+/// <summary>A Subject a composer can serve, with the words that name it for a person.</summary>
+/// <param name="Id">The kebab-case Subject id.</param>
+/// <param name="Title">The short heading.</param>
+/// <param name="Description">One sentence saying what kind of linguistic work the Subject covers.</param>
+public sealed record SubjectHelp(string Id, string Title, string Description);
 
 /// <summary>Loads embedded Motif Help content and resolves its stable cross-links and documentation URLs.</summary>
 public sealed class HelpCatalog
@@ -62,8 +73,11 @@ public sealed class HelpCatalog
 
     private readonly IReadOnlyDictionary<string, string> _refusalWhy;
 
-    private HelpCatalog(string locale, IReadOnlyList<HelpEntry> entries, IReadOnlyDictionary<string, string> refusalWhy)
+    private HelpCatalog(
+        string locale, IReadOnlyList<HelpEntry> entries, IReadOnlyDictionary<string, string> refusalWhy,
+        IReadOnlyList<SubjectHelp> subjects)
     {
+        Subjects = subjects;
         _refusalWhy = refusalWhy;
         Locale = locale;
         Entries = entries;
@@ -75,6 +89,9 @@ public sealed class HelpCatalog
 
     /// <summary>The selected two-letter locale code.</summary>
     public string Locale { get; }
+
+    /// <summary>Every composer Subject with its title and description, in id order.</summary>
+    public IReadOnlyList<SubjectHelp> Subjects { get; }
 
     /// <summary>All command, interface, glossary, and Guide entries in stable kind and code order.</summary>
     public IReadOnlyList<HelpEntry> Entries { get; }
@@ -119,12 +136,13 @@ public sealed class HelpCatalog
                 var page = ReadPage(locale, kind, code) ?? ReadPage(EnglishLocale, kind, code);
                 var slug = CreateSlug(code);
                 var fields = MergeFields(englishMetadata?.Fields, localizedMetadata?.Fields);
+                var goals = localizedMetadata?.Goals ?? englishMetadata?.Goals;
                 entries.Add(new HelpEntry(
-                    kind, code, slug, title, description, source, page, BuildUrl(locale, kind, slug), fields));
+                    kind, code, slug, title, description, source, page, BuildUrl(locale, kind, slug), fields, goals));
             }
         }
 
-        return new HelpCatalog(locale, entries, ReadRefusalWhy(locale));
+        return new HelpCatalog(locale, entries, ReadRefusalWhy(locale), ReadSubjects(locale));
     }
 
     /// <summary>
@@ -280,6 +298,25 @@ public sealed class HelpCatalog
             string.IsNullOrWhiteSpace(description) ? null : description);
     }
 
+    // A translation supplies the Subjects it has; English fills the rest, as it does for every other field.
+    private static IReadOnlyList<SubjectHelp> ReadSubjects(string locale)
+    {
+        var merged = new SortedDictionary<string, SubjectHelp>(StringComparer.Ordinal);
+        foreach (var name in locale == EnglishLocale ? new[] { EnglishLocale } : new[] { EnglishLocale, locale })
+        {
+            if (ReadResource($"help/{name}/subjects.json") is not { } resource)
+                continue;
+            using var document = JsonDocument.Parse(resource);
+            foreach (var property in document.RootElement.EnumerateObject())
+                merged[property.Name] = new SubjectHelp(
+                    property.Name,
+                    property.Value.GetProperty("title").GetString()!,
+                    property.Value.GetProperty("description").GetString()!);
+        }
+
+        return merged.Values.ToArray();
+    }
+
     private static IReadOnlyDictionary<string, string> ReadRefusalWhy(string locale)
     {
         var merged = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -314,6 +351,9 @@ public sealed class HelpCatalog
                 value.TryGetProperty("fields", out var fields)
                     ? fields.EnumerateObject().ToDictionary(
                         field => field.Name, field => field.Value.GetString()!, StringComparer.Ordinal)
+                    : null,
+                value.TryGetProperty("goals", out var goals)
+                    ? goals.EnumerateArray().Select(goal => goal.GetString()!).ToArray()
                     : null));
         }
 
@@ -412,7 +452,8 @@ public sealed class HelpCatalog
     }
 
     private sealed record Metadata(
-        string? Title, string? Description, string? Source, Dictionary<string, string>? Fields = null);
+        string? Title, string? Description, string? Source, Dictionary<string, string>? Fields = null,
+        string[]? Goals = null);
 
     // A translation supplies the fields it has; English fills the rest, as it does for every other field.
     private static IReadOnlyDictionary<string, string>? MergeFields(

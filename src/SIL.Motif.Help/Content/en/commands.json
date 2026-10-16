@@ -112,47 +112,91 @@
   "compose-record-parsimony-disposition": {
     "title": "Stage a Parsimony disposition",
     "description": "Stages a keep, fix, ask, or defer decision for one exact Parsimony finding in a Draft Proposal. A pending keep does not suppress current findings, and only a person can Apply it.",
-    "source": "Hand-written from command behavior."
+    "source": "Hand-written from command behavior.",
+    "goals": [
+      "Keep a finding as it is",
+      "Decide to fix a finding later",
+      "Record a question about a finding"
+    ]
   },
   "retire-allomorph": {
     "title": "Retire or replace a form",
     "description": "Stages one connected Proposal to retire ordinary prefix or suffix alternates after their references move; the sound-rule form also stages its natural class and rule. Dry Run shows bundle Morph and copied Form text changes, other references, and deletion together. Missing destinations are refused with counts for distinct unresolved Approved analyses, ad hoc rules, and other references; only a person can Apply.",
-    "source": "Hand-written from the allomorph retirement and sound-rule replacement contracts."
+    "source": "Hand-written from the allomorph retirement and sound-rule replacement contracts.",
+    "goals": [
+      "Remove a duplicate affix form",
+      "Replace several listed forms with one",
+      "Retire an unused prefix after moving what refers to it"
+    ]
   },
   "retire-redundant-zero-affix": {
     "title": "Retire an unused zero affix",
     "description": "Stages deletion of one whole, unreferenced zero-affix entry when its only loaded realization is a recognized null marker, it adds no feature or class, every assigned slot is optional, and no assigned slot occurs in a template. Optional slot links are removed first and the slots remain; meaningful, referenced, or parser-distinguishing zeros are refused. Only a person can Apply.",
-    "source": "Hand-written from the zero-affix retirement contract and command behavior."
+    "source": "Hand-written from the zero-affix retirement contract and command behavior.",
+    "goals": [
+      "Delete a zero affix nobody uses",
+      "Clean up an empty affix entry that does nothing"
+    ]
   },
   "compose-author-phonological-rule": {
     "title": "Author a sound rule",
     "description": "Stages one simple rewrite rule in a Draft, using existing phonemes and natural classes with explicit context and rule placement. Empty input or output means insertion or deletion; unsupported alpha variables and metathesis are refused. Only a person can Apply.",
-    "source": "Hand-written from the regular rewrite-rule composer contract and command behavior."
+    "source": "Hand-written from the regular rewrite-rule composer contract and command behavior.",
+    "goals": [
+      "Write a rule that voices a consonant between vowels",
+      "Add a vowel-harmony rule",
+      "Make a sound drop at the end of a word"
+    ]
   },
   "compose-author-lexical-entry": {
     "title": "Author a dictionary entry",
     "description": "Stages one new dictionary entry with its lexeme form, one sense with gloss and optional definition, and grammatical info: a stem, or an inflectional, derivational or unclassified affix. Each form can name environments, and an affix can name the inflection classes it attaches to. Inspect its Dry Run and try words with it before a person Applies the Proposal.",
-    "source": "Hand-written from command behavior."
+    "source": "Hand-written from command behavior.",
+    "goals": [
+      "Add a new word with its meaning",
+      "Enter a stem with a gloss and its category",
+      "Add an affix entry with a short gloss"
+    ]
   },
   "compose-author-alternate-form": {
     "title": "Author an alternate form",
     "description": "Stages one more stem or affix form on an existing or earlier-staged entry, with its own environments and, for an affix, inflection classes. It adds no entry, sense or grammatical info and copies no condition from the lexeme form.",
-    "source": "Hand-written from command behavior."
+    "source": "Hand-written from command behavior.",
+    "goals": [
+      "Give a prefix a second form before vowels",
+      "Add a stem variant that appears in one environment",
+      "Record another shape of an existing affix"
+    ]
   },
   "compose-author-part-of-speech": {
     "title": "Author a part of speech",
     "description": "Stages a new part of speech, at the top of the category list or under an existing category, with its name and optional abbreviation. Later composer calls in the same Draft can use it as the category of entries, slots and affixes.",
-    "source": "Hand-written from command behavior."
+    "source": "Hand-written from command behavior.",
+    "goals": [
+      "Add a category for verbs the project lacks",
+      "Create a subcategory such as transitive verb",
+      "Add a noun category with an abbreviation"
+    ]
   },
   "compose-author-affix-slot": {
     "title": "Author an affix slot",
     "description": "Stages a named inflectional affix slot owned by an existing category and can assign existing inflectional affixes to it in the same Draft. Inspect its Dry Run and Trial before a person Applies the Proposal.",
-    "source": "Hand-written from command behavior."
+    "source": "Hand-written from command behavior.",
+    "goals": [
+      "Add a slot for a plural suffix that attaches to nouns",
+      "Make a slot for a subject prefix on verbs",
+      "Put existing inflectional affixes into a new slot"
+    ]
   },
   "compose-author-affix-template": {
     "title": "Author an affix template",
     "description": "Stages an active alternative template on an existing category, using ordered prefix and suffix slots that belong to the category or an ancestor. It preserves existing template order and records whether this template requires further derivation. Only a person can Apply.",
-    "source": "Hand-written from command behavior."
+    "source": "Hand-written from command behavior.",
+    "goals": [
+      "Arrange the prefix and suffix slots of a verb",
+      "Build a template for the order of noun affixes",
+      "Add an alternative template for a category"
+    ]
   },
   "compare": {
     "title": "Compare two Assessments",
@@ -312,22 +356,41 @@
   "compose-edit-adhoc-prohibition": {
     "title": "Edit an ad hoc prohibition",
     "description": "Stages one explicit Disabled value for a flat allomorph or morpheme prohibition in a Draft. The expected value guards against stale evidence; Motif never Applies this change automatically. Only a person can Apply.",
-    "source": "Hand-written from command behavior."
+    "source": "Hand-written from command behavior.",
+    "goals": [
+      "Turn off a rule that forbids two forms together",
+      "Switch a prohibition back on",
+      "Disable a duplicated prohibition"
+    ]
   },
   "compose-edit-affix-slot": {
     "title": "Edit an affix slot",
     "description": "Changes whether an existing inflectional affix slot is optional. The response lists every affix and template using the shared slot; Motif stages a Draft and never Applies it automatically. Only a person can Apply.",
-    "source": "Hand-written from command behavior."
+    "source": "Hand-written from command behavior.",
+    "goals": [
+      "Make an affix slot optional",
+      "Make a slot required again",
+      "See which affixes and templates a slot affects"
+    ]
   },
   "compose-edit-affix-template": {
     "title": "Edit an affix template",
     "description": "Adds, removes or reorders the existing prefix or suffix slots of a known affix template. Motif stages a Draft without Applying it automatically. Only a person can Apply.",
-    "source": "Hand-written from command behavior."
+    "source": "Hand-written from command behavior.",
+    "goals": [
+      "Add a slot to a template",
+      "Reorder the suffix slots",
+      "Remove a slot from a template"
+    ]
   },
   "compose-edit-inflectional-affix": {
     "title": "Edit an inflectional affix",
     "description": "Changes which existing category slots an inflectional affix MSA uses. Other MSA kinds and slots outside the category hierarchy are refused; Motif stages a Draft and never Applies it automatically. Only a person can Apply.",
-    "source": "Hand-written from command behavior."
+    "source": "Hand-written from command behavior.",
+    "goals": [
+      "Move an affix into a different slot",
+      "Change which slots an inflectional affix can fill"
+    ]
   },
   "compose-edit-part-of-speech-inflection-class-default": {
     "title": "Set a category class default",
@@ -338,7 +401,11 @@
       "target": "Id of the part of speech whose explicit default inflection class changes.",
       "expectedInflectionClass": "Id of the explicit default class stored now, or null when it has none; an inherited default does not count.",
       "inflectionClass": "Id of the class to make the explicit default, or null to clear it."
-    }
+    },
+    "goals": [
+      "Set the default class for nouns",
+      "Clear a category's default inflection class"
+    ]
   },
   "compose-edit-stem-allomorph-stem-name": {
     "title": "Set a stem allomorph's name",
@@ -349,7 +416,11 @@
       "target": "Id of the stem allomorph, the lexeme form or an alternate form, to edit.",
       "expectedStemName": "Id of the stem name the allomorph has now, or null when it has none.",
       "stemName": "Id of the stem name to set, or null to clear it."
-    }
+    },
+    "goals": [
+      "Say which stem name a stem variant uses",
+      "Clear the stem name from a variant"
+    ]
   },
   "compose-edit-stem-inflection-class": {
     "title": "Set a stem's class",
@@ -360,7 +431,12 @@
       "target": "Id of the stem analysis whose inflection class changes.",
       "expectedInflectionClass": "Id of the class the stem analysis has now, or null when it has none.",
       "inflectionClass": "Id of the class to set, or null to clear it."
-    }
+    },
+    "goals": [
+      "Assign a stem to its noun class",
+      "Change the inflection class of one stem",
+      "Clear a stem's class"
+    ]
   },
   "compose-edit-affix-inflection-classes": {
     "title": "Edit affix class restrictions",
@@ -371,22 +447,41 @@
       "target": "Id of the ordinary inflectional prefix, suffix or interfix form to edit.",
       "expectedInflectionClasses": "Ids of the inflection classes the form is restricted to now, as an unordered set; empty when it has no restriction.",
       "inflectionClasses": "Ids of the inflection classes the form should be restricted to, as an unordered set; empty removes the restriction."
-    }
+    },
+    "goals": [
+      "Restrict an affix to certain noun classes",
+      "Remove the class restriction from a suffix",
+      "Change which classes a prefix attaches to"
+    ]
   },
   "compose-edit-allomorph-condition": {
     "title": "Edit an allomorph condition",
     "description": "Changes the environment references on one existing stem or affix allomorph after checking its current list. Shared environments remain unchanged for every other allomorph that uses them. Only a person can Apply.",
-    "source": "Hand-written from command behavior."
+    "source": "Hand-written from command behavior.",
+    "goals": [
+      "Change where an allomorph is allowed to appear",
+      "Add an environment to a stem variant",
+      "Change which position an affix form takes"
+    ]
   },
   "compose-edit-natural-class": {
     "title": "Edit a natural class",
     "description": "Adds or removes phonemes from one existing segment natural class after checking its exact current members. The response lists rules, environments and insertions that still use the class. Only a person can Apply.",
-    "source": "Hand-written from command behavior."
+    "source": "Hand-written from command behavior.",
+    "goals": [
+      "Add a vowel to an existing class",
+      "Remove a sound that does not belong in a class",
+      "Correct the members of a natural class"
+    ]
   },
   "compose-relink-natural-class": {
     "title": "Relink natural-class users",
     "description": "Moves explicitly named environments and rewrite-rule contexts to a replacement class created earlier in the Draft. Other users remain on the source class. Only a person can Apply.",
-    "source": "Hand-written from command behavior."
+    "source": "Hand-written from command behavior.",
+    "goals": [
+      "Replace a class with a corrected one everywhere it is used",
+      "Move environments and rules onto a new vowel class"
+    ]
   },
   "compose-batch": {
     "title": "Compose many intents",
@@ -396,22 +491,40 @@
   "compose-author-text": {
     "title": "Author a text",
     "description": "Stages a new Text from a title and paragraphs of segments of word tokens in a Draft, creating a wordform for each token that has none. A token reuses a wordform only when its exact NFD form already exists in the writing system. Only a person can Apply.",
-    "source": "Authored from the typed command contract."
+    "source": "Authored from the typed command contract.",
+    "goals": [
+      "Enter a short text to analyse",
+      "Add a story paragraph by paragraph",
+      "Create a text from segments of words"
+    ]
   },
   "compose-edit-analysis-decision": {
     "title": "Decide an analysis",
     "description": "Stages one human decision about an existing analysis or wordform in a Draft: approve, disapprove, return to unknown, mark the spelling incorrect, or store a parser reading as an unknown analysis. It names the exact canonical identity. Only a person can Apply.",
-    "source": "Authored from the typed command contract."
+    "source": "Authored from the typed command contract.",
+    "goals": [
+      "Approve an analysis of a word",
+      "Disapprove a wrong analysis",
+      "Return a word to undecided"
+    ]
   },
   "order-allomorphs": {
     "title": "Order alternate forms",
     "description": "Changes the order of existing alternate forms within one entry after checking their current order. The lexeme form cannot be moved, and Motif stages the moves in a Draft for human review. Only a person can Apply.",
-    "source": "Hand-written from command behavior."
+    "source": "Hand-written from command behavior.",
+    "goals": [
+      "Put the most specific alternate form first",
+      "Reorder the alternate forms of an entry"
+    ]
   },
   "compose-author-feature-structure": {
     "title": "Author grammatical features",
     "description": "Stages an empty feature structure on an existing or earlier-staged stem or inflectional affix MSA in a Draft, refusing an occupied slot even when its structure has no selections. Inflectional affix features are word requirements; use the returned exact structure identity to author selections. Only a person can Apply.",
-    "source": "Authored from the typed command contract."
+    "source": "Authored from the typed command contract.",
+    "goals": [
+      "Attach grammatical features to a stem",
+      "Say which features an inflectional affix carries"
+    ]
   },
   "compose-author-feature-value": {
     "title": "Author a feature value",
@@ -422,22 +535,42 @@
       "featStruc": "Feature structure id.",
       "feature": "Feature id.",
       "value": "Optional symbolic value id."
-    }
+    },
+    "goals": [
+      "Mark a noun as plural in its feature structure",
+      "Set a value for a feature on an affix",
+      "Leave a feature unspecified on a stem"
+    ]
   },
   "compose-author-phoneme": {
     "title": "Author a phoneme",
     "description": "Stages a phoneme with explicitly authored name and representations in a Draft. Use its created identity in later natural classes or phonological rules. Only a person can Apply.",
-    "source": "Authored from the typed command contract."
+    "source": "Authored from the typed command contract.",
+    "goals": [
+      "Add a missing consonant to the sound inventory",
+      "Record a vowel with its written representations",
+      "Add a phoneme that rules will refer to"
+    ]
   },
   "compose-author-natural-class": {
     "title": "Author a natural class",
     "description": "Stages a named segment natural class with explicitly declared phoneme members in a Draft. Members may name existing phonemes or phonemes created earlier through declared dependencies. Only a person can Apply.",
-    "source": "Authored from the typed command contract."
+    "source": "Authored from the typed command contract.",
+    "goals": [
+      "Make a vowel class for harmony rules",
+      "Group the voiceless stops into one class",
+      "Define a class of sounds that an environment can name"
+    ]
   },
   "compose-author-environment": {
     "title": "Author an environment",
     "description": "Stages an environment with explicitly declared left and right contexts in a Draft. Contexts use project phonemes, natural classes or boundaries. Only a person can Apply.",
-    "source": "Authored from the typed command contract."
+    "source": "Authored from the typed command contract.",
+    "goals": [
+      "Say that a form appears after a vowel",
+      "Describe the sounds before and after where an affix changes",
+      "Make a word-initial environment for a rule"
+    ]
   },
   "show": {
     "title": "Show a Proposal",
@@ -542,7 +675,12 @@
   "compose-author-lexeme-form": {
     "title": "Author a lexeme form",
     "description": "Stages a lexeme form with explicitly authored spelling, writing system and morph type in a Draft. Dry Run and Trial the Draft before Finalize; only a person can Apply.",
-    "source": "The shared command catalog and typed request contract."
+    "source": "The shared command catalog and typed request contract.",
+    "goals": [
+      "Give an entry its dictionary spelling",
+      "Add the citation form of a new stem or affix",
+      "Record the lexeme form in another writing system"
+    ]
   },
   "list": {
     "title": "List Proposals",
@@ -597,17 +735,32 @@
   "compose-author-inflection-feature": {
     "title": "Author inflection feature",
     "description": "Adds a closed morphosyntactic feature and its named values to a Draft. Use the created ids in feature-structure and stem-name authoring, then Dry Run and Trial the Draft before Finalize.",
-    "source": "Hand-written from the closed intent and composer contract."
+    "source": "Hand-written from the closed intent and composer contract.",
+    "goals": [
+      "Add a number feature with singular and plural",
+      "Define a tense feature with its values",
+      "Create a feature that agreement can refer to"
+    ]
   },
   "compose-author-inflection-class": {
     "title": "Author inflection class",
     "description": "Adds an inflection class or subclass, such as a noun class, to a Draft. Its owner is explicit and the category's default is unchanged; use the created id when authoring a stem.",
-    "source": "Hand-written from the closed intent and composer contract."
+    "source": "Hand-written from the closed intent and composer contract.",
+    "goals": [
+      "Add a noun class",
+      "Create a subclass of an inflection class",
+      "Add a verb conjugation class"
+    ]
   },
   "compose-author-stem-name": {
     "title": "Author a stem name",
     "description": "Adds a category-owned stem name with explicit feature regions to a Draft. Each region states where an allomorph bearing this stem name is eligible; attaching it to an allomorph is a separate operation.",
-    "source": "Hand-written from the closed intent and composer contract."
+    "source": "Hand-written from the closed intent and composer contract.",
+    "goals": [
+      "Name the stem shape used in the plural",
+      "Say where a special stem form is allowed",
+      "Add a stem name for a set of feature conditions"
+    ]
   },
   "phonology-examples save": {
     "title": "Save phonology examples",
