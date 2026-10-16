@@ -446,7 +446,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         await using var session = await Session.StartAsync(project.FwDataPath,
             new McpLaunchOptions(Profile: ComposeProfile(project.ManagedRoot)));
         await session.CallAsync("motif_start_proposal", ("draft", "step-retirement"),
-            ("label", "Retire one duplicate alternate"), ("comment", "Compose it as a step."));
+            ("label", "Retire one duplicate alternate"), ("rationale", "Compose it as a step."));
 
         var composed = await ComposeSteps(session, "step-retirement",
             new { verb = "retire-allomorph", intent = parsed.RootElement.Clone() });
@@ -483,7 +483,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
                          new McpLaunchOptions(Profile: "parsimony-experimental", Runner: runner)))
         {
             var started = await experimental.CallAsync("motif_start_proposal", ("draft", "step-disposition-source"),
-                ("label", "Record one measured decision"), ("comment", "Take its intent for a step."));
+                ("label", "Record one measured decision"), ("rationale", "Take its intent for a step."));
             var measure = await experimental.CallAsync("motif_run_parsimony_measure", ("measure_id", "P-adhoc-duplicate"),
                 ("evidence_scope", "project-approved"), ("wait_seconds", 120));
             Assert.True(measure.GetProperty("ok").GetBoolean(), measure.ToString());
@@ -504,7 +504,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         await using var session = await Session.StartAsync(project.FwDataPath,
             new McpLaunchOptions(Profile: ComposeProfile(project.ManagedRoot)));
         await session.CallAsync("motif_start_proposal", ("draft", "step-disposition"),
-            ("label", "Record a disposition as a step"), ("comment", "A step may record one."));
+            ("label", "Record a disposition as a step"), ("rationale", "A step may record one."));
 
         var recorded = await ComposeSteps(session, "step-disposition",
             new { verb = "compose-record-parsimony-disposition", intent = dispositionIntent });
@@ -557,7 +557,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
                          new McpLaunchOptions(Profile: "parsimony-experimental", Runner: runner)))
         {
             var started = await experimental.CallAsync("motif_start_proposal", ("draft", draft),
-                ("label", "Record one finding twice"), ("comment", "The step replaces the tool's record."));
+                ("label", "Record one finding twice"), ("rationale", "The step replaces the tool's record."));
             var measure = await experimental.CallAsync("motif_run_parsimony_measure", ("measure_id", "P-adhoc-duplicate"),
                 ("evidence_scope", "project-approved"), ("wait_seconds", 120));
             Assert.True(measure.GetProperty("ok").GetBoolean(), measure.ToString());
@@ -605,7 +605,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         var (featStruc, feature, value) = SeedFeatureStructureWithClosedFeature(project);
         await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions());
         var started = await session.CallAsync("motif_start_proposal", ("draft", "feature-value"),
-            ("label", "Add a feature value"), ("comment", "The structure needs one specification."));
+            ("label", "Add a feature value"), ("rationale", "The structure needs one specification."));
         var proposalId = started.GetProperty("result").GetProperty("proposalId").GetString()!;
 
         var added = await session.CallAsync("motif_add_feature_value", ("draft", "feature-value"),
