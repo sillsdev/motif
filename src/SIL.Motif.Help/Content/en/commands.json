@@ -483,6 +483,11 @@
       "Move environments and rules onto a new vowel class"
     ]
   },
+  "find-composer": {
+    "title": "Find a composer",
+    "description": "Finds the composing commands that fit a goal in a linguist's words, or lists every composer that serves a Subject. Each result gives its title, when to use it, its Subjects and its intent schema; detailed adds a worked example and the Subject's page. Reads only; nothing is staged.",
+    "source": "Hand-written from command behavior."
+  },
   "compose-batch": {
     "title": "Compose many intents",
     "description": "Stages every intent in a JSON file in one Draft with one project load, through the same checks as each composing command alone. If any intent is refused, nothing is added, and both a label and comment are still required before Finalize. Only a person can Apply.",

@@ -809,6 +809,16 @@ try
                 reconfirmProject, CliProductVersion(), reconfirmRevision, reconfirmId)));
             break;
 
+        case "find-composer":
+            if (positionals.Count != 0 || flags.ContainsKey("goal") == flags.ContainsKey("subject") ||
+                flags.GetValueOrDefault("goal") == "true" || flags.GetValueOrDefault("subject") == "true")
+                return Usage("Usage: motif find-composer (--goal <text> | --subject <id>) " +
+                    "[--detail concise|detailed] [--json]", asJson);
+            result = RenderCommand(FindComposerCommand.Find(new FindComposerRequest(
+                flags.GetValueOrDefault("goal"), flags.GetValueOrDefault("subject"),
+                flags.GetValueOrDefault("detail", "concise"))));
+            break;
+
         case "review-numbers":
             if (!flags.TryGetValue("project", out var reviewProject) ||
                 !flags.TryGetValue("to", out var reviewTrial) ||

@@ -65,6 +65,7 @@ public static class CommandTextRenderer
             ParsimonyReportSetResponse r => RenderParsimonyReportSet(r),
             ParsimonyLatestReportResponse r => "Latest Parsimony Report " + r.ReportId + "\n  Baseline bundle: " + r.BundleId,
             ParsimonyExpectationProjection p => RenderParsimonyExpectations(p),
+            FindComposerResponse r => RenderFindComposer(r),
             ReviewNumbersResponse r => RenderReviewNumbers(r),
             MeasurePendingResult r => RenderReviewNumbers(r.Numbers),
             CompareResponse r => RenderCompare(r),
@@ -391,6 +392,29 @@ public static class CommandTextRenderer
         if (response.Review is { } review)
             text.Append(ProjectionText.Render(review));
         return text.ToString();
+    }
+
+    private static string RenderFindComposer(FindComposerResponse found)
+    {
+        if (found.Results.Count == 0)
+            return "No composer fits that goal. Try other words, or list a Subject with --subject <id>.";
+        var text = new StringBuilder();
+        foreach (var match in found.Results)
+        {
+            text.Append(match.Verb).Append(" - ").AppendLine(match.Title);
+            text.Append("  ").AppendLine(match.Description);
+            text.Append("  Subjects: ").AppendLine(string.Join(", ", match.Subjects));
+            text.AppendLine(match.IntentSchema is null
+                ? "  Intent: described on the Help page (motif help " + match.Verb + ")."
+                : "  Intent schema: use --json.");
+            if (match.Example is not null)
+                text.AppendLine("  Example:").AppendLine(string.Join(Environment.NewLine,
+                    match.Example.Split('\n').Select(line => "    " + line)));
+            if (match.SubjectPage is { } page)
+                text.Append("  ").Append(page.Title).Append(": ").AppendLine(page.Excerpt ?? "No page.");
+            text.AppendLine();
+        }
+        return text.ToString().TrimEnd();
     }
 
     private static string RenderReviewNumbers(ReviewNumbersResponse numbers) => (numbers.Comparability switch

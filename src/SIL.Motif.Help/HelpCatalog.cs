@@ -57,7 +57,11 @@ public sealed record HelpEntry(
 /// <param name="Id">The kebab-case Subject id.</param>
 /// <param name="Title">The short heading.</param>
 /// <param name="Description">One sentence saying what kind of linguistic work the Subject covers.</param>
-public sealed record SubjectHelp(string Id, string Title, string Description);
+/// <param name="HelpPage">
+/// The Subject's full page in plain CommonMark: what the work needs, in which order, and the usual pitfalls; null
+/// when the Subject has none.
+/// </param>
+public sealed record SubjectHelp(string Id, string Title, string Description, string? HelpPage = null);
 
 /// <summary>Loads embedded Motif Help content and resolves its stable cross-links and documentation URLs.</summary>
 public sealed class HelpCatalog
@@ -311,7 +315,9 @@ public sealed class HelpCatalog
                 merged[property.Name] = new SubjectHelp(
                     property.Name,
                     property.Value.GetProperty("title").GetString()!,
-                    property.Value.GetProperty("description").GetString()!);
+                    property.Value.GetProperty("description").GetString()!,
+                    ReadResource($"help/{locale}/subjects/{property.Name}.md")
+                        ?? ReadResource($"help/{EnglishLocale}/subjects/{property.Name}.md"));
         }
 
         return merged.Values.ToArray();

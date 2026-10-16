@@ -248,6 +248,13 @@ public static class RefusalCodes
     /// <summary>Captured decisions hold an opinion that is not approved, disapproved or unknown.</summary>
     public const string DifferenceUnexpectedOpinion = "difference.unexpected-opinion";
 
+    /// <summary>A composer search named both a goal and a Subject, or neither.</summary>
+    public const string ComposerGoalOrSubject = "composer.goal-or-subject";
+    /// <summary>A composer search asked for a level of detail other than concise or detailed.</summary>
+    public const string ComposerInvalidDetail = "composer.invalid-detail";
+    /// <summary>A composer search named a Subject that no composer serves.</summary>
+    public const string ComposerUnknownSubject = "composer.unknown-subject";
+
     /// <summary>A Draft request or its content is not valid.</summary>
     public const string DraftInvalid = "draft.invalid";
     /// <summary>A Draft with that name already exists.</summary>

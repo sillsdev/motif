@@ -64,4 +64,28 @@ public sealed class ComposerSubjectsTests
             }
         }
     }
+
+    [Fact]
+    public void EverySubjectHasAPlainHelpPageThatOpensWithAParagraph()
+    {
+        var subjects = Catalog().Subjects.ToDictionary(subject => subject.Id);
+        foreach (var id in ComposerSubjects.All)
+        {
+            var page = Assert.IsType<string>(subjects[id].HelpPage);
+            Assert.StartsWith("# ", page, StringComparison.Ordinal);
+            Assert.DoesNotContain("<", page, StringComparison.Ordinal);
+            Assert.False(page.StartsWith("---", StringComparison.Ordinal), id);
+            Assert.Contains("## Composers, in order", page, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
+    public void EverySubjectPageNamesOnlyRegisteredComposersAsCommands()
+    {
+        var verbs = ProposalCommands.DraftComposers.Keys.ToHashSet(StringComparer.Ordinal);
+        foreach (var subject in Catalog().Subjects)
+            foreach (System.Text.RegularExpressions.Match match in System.Text.RegularExpressions.Regex.Matches(
+                         subject.HelpPage!, "`((?:compose|retire|order)-[a-z-]+)`"))
+                Assert.True(verbs.Contains(match.Groups[1].Value), subject.Id + " names " + match.Groups[1].Value);
+    }
 }

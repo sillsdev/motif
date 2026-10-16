@@ -80,7 +80,19 @@ internal static class AgentTools
                 ? tool with { InputSchema = batchSchema }
                 : tool)
             .Select(tool => DefaultAuthoringTools.Contains(tool.Name) ? tool with { OnByDefault = true } : tool)
+            .Select(tool => tool.Name == FindComposerTool ? FindComposerOptIn(tool) : tool)
             .ToArray();
+    }
+
+    private const string FindComposerTool = "motif_find_composer";
+
+    // Composer search is additive: a profile selects it by name until the older tools retire.
+    private static AgentTool FindComposerOptIn(AgentTool tool)
+    {
+        var schema = tool.InputSchema.DeepClone().AsObject();
+        schema["properties"]!.AsObject()["detail"] = Schema.String(
+            "concise (default) or detailed, which adds a worked example and the Subject page.", "concise", "detailed");
+        return tool with { OnByDefault = false, InputSchema = schema };
     }
 
     /// <summary>Every tool name, which a profile may select.</summary>

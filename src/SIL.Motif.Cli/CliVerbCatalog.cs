@@ -85,6 +85,8 @@ public static class CliVerbCatalog
         new CliVerbDescriptor("Commands", "reconfirm-pending-change", "reconfirm-pending-change",
             new[] { "reconfirm-pending-change --project <fwdata> --expected-revision <revision> " +
                 "--change-id <id> [--json]" }),
+        new CliVerbDescriptor("Commands", "find-composer", "find-composer",
+            new[] { "find-composer (--goal <text> | --subject <id>) [--detail concise|detailed] [--json]" }),
         new CliVerbDescriptor("Commands", "review-numbers", "review-numbers",
             new[] { "review-numbers --project <fwdata> [--from <assessmentId>] " +
                 "--to <assessmentId> --touched-words <count> [--json]" }),

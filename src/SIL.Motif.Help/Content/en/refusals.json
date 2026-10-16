@@ -86,5 +86,17 @@
   "tool.failed": {
     "why": "The tool failed unexpectedly; the diagnostic log has 'tool {toolName} failed'. If it fails again after one repeat, stop and tell the linguist.",
     "source": "Hand-written from the Motif MCP refusal advice."
+  },
+  "composer.goal-or-subject": {
+    "why": "A composer search needs exactly one of a goal or a Subject. Give a goal in a few words to rank composers, or a Subject id to list every composer that serves it.",
+    "source": "Hand-written for the composer search."
+  },
+  "composer.invalid-detail": {
+    "why": "The detail level must be concise or detailed. Leave it out for concise.",
+    "source": "Hand-written for the composer search."
+  },
+  "composer.unknown-subject": {
+    "why": "No composer serves that Subject. Search by goal to find the right composer, or use one of the Subject ids the search lists.",
+    "source": "Hand-written for the composer search."
   }
 }
