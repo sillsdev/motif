@@ -248,7 +248,7 @@ class HarnessMeaningTests(unittest.TestCase):
             self.assertTrue(grade['success'])
 
     def grade(self, message=ANSWER, key=None, family='diagnose', mode='pass', operations=0, draft_attempt=False,
-              grader_type='answer', parsimony=False, judge_families=('opus', 'sol')):
+              grader_type='answer', parsimony=False, judge_families=('opus', 'sol'), proposal_failure=None):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / 'prompt.md').write_text('Diagnose the problem; do not invent morphology.')
@@ -265,14 +265,14 @@ class HarnessMeaningTests(unittest.TestCase):
             (root / 'request.json').write_text(json.dumps({'task': task,
                 'host': {'finalMessage': message, 'primaryMetric': 'task-success'},
                 'profile': {'tools': [{'name': 'motif_add_lexeme_form', 'class': 'Draft'}], 'hiddenTools': []}, 'operations': operations,
-                'judgeFamilies': judge_families,
+                'judgeFamilies': judge_families, 'failure': proposal_failure,
                 'closure': {'state': 'clean', 'closedUtc': 1}}))
             script = root / 'grade.ps1'
             script.write_text("$ErrorActionPreference='Stop'; Import-Module '" + str(TOOLS / 'ABHarness.psm1') + "';\n"
                 "$r=Read-ABJson (Join-Path $PSScriptRoot 'request.json');\n"
                 "Get-ABGrade $r.task $PSScriptRoot @() $r.operations $r.host @() "
                 "(Join-Path $PSScriptRoot 'transcript.jsonl') $r.profile @{operations=@()} $r.closure "
-                "$null $null $null $r.judgeFamilies "
+                "$null $null $r.failure $r.judgeFamilies "
                 '| ConvertTo-Json -Depth 80 -Compress')
             result = subprocess.run(['pwsh', '-NoProfile', '-File', str(script)], env=fake_environment(mode),
                                     stdin=subprocess.DEVNULL, capture_output=True, timeout=30)
@@ -289,6 +289,14 @@ class HarnessMeaningTests(unittest.TestCase):
         self.assertEqual(0, exact['score'])
         self.assertTrue(exact['diagnosticOnly'])
         self.assertEqual(0, exact['weight'])
+
+    def test_a_proposal_that_failed_validation_scores_zero_instead_of_crashing_the_grader(self):
+        key = {'category': 'x', 'object': 'y', 'meaning': MEANING, 'proposal': {'maxOperations': 1}}
+        result = self.grade(key=key, family='edit', grader_type='meaning', parsimony=True,
+                            proposal_failure={'code': 'ApplyPreconditionException', 'evidence': 'a target is missing'})
+        meaning = next(g for g in result['graders'] if g['type'] == 'meaning')
+        self.assertEqual(0, meaning['score'])
+        self.assertFalse(result['success'])
 
     def test_power_shell_grader_uses_selected_judge_family(self):
         result = self.grade(judge_families=['sol'])
@@ -371,7 +379,7 @@ class HarnessMeaningTests(unittest.TestCase):
 
     def test_validity_fixtures_pass_gold_and_fail_empty_and_tempting_wrong_finals(self):
         rows = json.loads((FIXTURES / 'validity-finals.json').read_text())
-        self.assertEqual(17, len(rows))
+        self.assertEqual(19, len(rows))
         for row in rows:
             meaning = {'required': row['required'], 'acceptedParaphrases': [row['gold']], 'mustNot': []}
             with self.subTest(task=row['task']), patch.dict(os.environ, fake_environment('validity'), clear=True):

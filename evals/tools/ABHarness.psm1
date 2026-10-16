@@ -129,6 +129,9 @@ function Get-ABConfirmationResultsRoot([string] $RepoRoot) {
 
 function Get-ABFakeScriptPath([string] $RepoRoot, [object] $Manifest) {
     if ($Manifest.Contains('fakeScript') -and $Manifest.fakeScript) { return [string]$Manifest.fakeScript }
+    if ($Manifest.Contains('arm') -and $Manifest.arm.Contains('fake_script_dir') -and $Manifest.arm.fake_script_dir) {
+        return Join-Path $RepoRoot ((([string]$Manifest.arm.fake_script_dir).TrimEnd('/')) + "/$($Manifest.task.id).jsonl")
+    }
     if ($Manifest.Contains('confirmation') -and [bool]$Manifest.confirmation) {
         $path = Join-Path ([string]$Manifest.taskPath) 'validity/gold.jsonl'
         if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
@@ -137,6 +140,25 @@ function Get-ABFakeScriptPath([string] $RepoRoot, [object] $Manifest) {
         return $path
     }
     return Join-Path $RepoRoot ("evals/fake-scripts/$($Manifest.task.id).jsonl")
+}
+
+function Get-ABServedToolClasses([string[]] $Served, [object[]] $ProfileTools, [object[]] $TaskTools) {
+    $classes = @{}
+    foreach ($tool in @($ProfileTools) + @($TaskTools)) { if ($tool) { $classes[[string]$tool.name] = [string]$tool.class } }
+    $unknown = @($Served | Where-Object { -not $classes.Contains([string]$_) })
+    if ($unknown.Count) {
+        throw "The server offered $($unknown -join ', '), which neither the grade profile nor the task's capabilities classify."
+    }
+    return @($Served | ForEach-Object { [ordered]@{ name = [string]$_; class = $classes[[string]$_] } })
+}
+
+function Get-ABValidityWrongCase([string] $RepoRoot, [object] $Task, [object[]] $Finals) {
+    $script = Join-Path $RepoRoot ("evals/fake-scripts/wrong/{0}.jsonl" -f [string]$Task.id)
+    if (Test-Path -LiteralPath $script -PathType Leaf) { return [ordered]@{ script = $script } }
+    $rows = @($Finals | Where-Object { $_.task -eq [string]$Task.id })
+    if ($rows.Count -eq 1) { return [ordered]@{ finalMessage = [string]$rows[0].wrong } }
+    throw ("Active task '{0}' has no tempting-wrong validity case: add evals/fake-scripts/wrong/{0}.jsonl " +
+        "or one validity-finals.json row.") -f [string]$Task.id
 }
 
 function Get-ABConfirmationValidityScripts([object] $Task) {
@@ -1008,6 +1030,7 @@ function Get-ABGrade(
     }
     if ($Task.family -eq 'safety' -or $null -ne $proposalLimit) {
         foreach ($semantic in $graderResults | Where-Object { $_.type -eq 'meaning' -and $_.state -eq 'measured' }) {
+            if ($null -eq $semantic.judge) { continue }
             $violations = @($semantic.judge.judges | Where-Object {
                 @($_.json.mustNot | Where-Object { $_.status -eq 'violated' }).Count -gt 0
             }).Count
@@ -1098,5 +1121,5 @@ function Get-ABTestGrammarsPin([string] $EvalsRoot) {
 
 Export-ModuleMember -Function Get-ABTestGrammarsPin, Copy-ABRunArchive, Get-ABRunArchiveRoot, Get-ABAuthoringAttempts, Get-ABJudgeFamilies, Read-ABJson, Write-ABJson, Add-ABJsonl, Format-ABPosixArgument, Format-ABCommand, `
     Get-ABRepositoryFingerprint, Invoke-ABProcess, Resolve-ABTestGrammarsRoot, Read-ABLines, Test-ABTaskFuture, Get-ABParserRows, Get-ABToolAttempts, Get-ABGrade, `
-    Test-ABInventedMorphology, Get-ABSetRoot, Get-ABConfirmationResultsRoot, Get-ABFakeScriptPath, Get-ABConfirmationValidityScripts, Set-ABConfirmationTrialRoot, Get-ABIntegritySummary, Get-ABFakeMcpTimeoutMs, Get-ABTrialBase, New-ABTrialDirectory, Remove-ABTrialDirectory, `
+    Test-ABInventedMorphology, Get-ABSetRoot, Get-ABConfirmationResultsRoot, Get-ABFakeScriptPath, Get-ABConfirmationValidityScripts, Get-ABValidityWrongCase, Get-ABServedToolClasses, Set-ABConfirmationTrialRoot, Get-ABIntegritySummary, Get-ABFakeMcpTimeoutMs, Get-ABTrialBase, New-ABTrialDirectory, Remove-ABTrialDirectory, `
     New-ABAAArms, Get-ABCounterbalancedArmOrder

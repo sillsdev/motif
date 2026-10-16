@@ -1,0 +1,48 @@
+{
+  "id": "mcp-parsimony",
+  "instructions": "You are working on a linguist's FieldWorks language project through Motif. Read the grammar and lexicon before making a small Proposal, run a Dry Run and Trial, and leave Apply to a person.",
+  "tools": [
+    {
+      "name": "motif_overview",
+      "class": "Read"
+    },
+    {
+      "name": "motif_grammar",
+      "class": "Read"
+    },
+    {
+      "name": "motif_start_proposal",
+      "class": "Draft"
+    },
+    {
+      "name": "motif_record_parsimony_disposition",
+      "class": "Draft"
+    },
+    {
+      "name": "motif_parsimony_record_types",
+      "class": "Read"
+    },
+    {
+      "name": "motif_dispose_parsimony_finding",
+      "class": "Draft"
+    },
+    {
+      "name": "motif_dry_run",
+      "class": "Evaluate"
+    },
+    {
+      "name": "motif_finalize_proposal",
+      "class": "Draft"
+    },
+    {
+      "name": "motif_proposals",
+      "class": "Read"
+    }
+  ],
+  "hiddenTools": [
+    "motif_apply",
+    "motif_discard_draft",
+    "motif_discard_proposal",
+    "motif_store_delete"
+  ]
+}

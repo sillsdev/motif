@@ -44,9 +44,15 @@ $measurementEnvironment = @{
     MOTIF_TEST_SLDR_CACHE_PATH = Join-Path $configData.scratchRoot 'sldr'
     MOTIF_TEST_SLDR_OFFLINE = '1'
 }
+if (-not $configData.Contains('startProject') -or -not (Test-Path -LiteralPath $configData.startProject -PathType Container)) {
+    throw 'This trial has no stored start project, so its Proposal cannot be measured against the project the agent worked on. Re-run the Episode.'
+}
+# Parse only the word lists this task's graders read, so one task's extra list never changes another's parser rows.
+$wordLists = @('heldout', 'negative') + @(@($configData.task.graders) | Where-Object { $_.Contains('words') } |
+    ForEach-Object { [string]$_.words }) | Select-Object -Unique
 $measurement = Invoke-ABProcess $configData.builder @('measure-output', '--set', $configData.setPath,
-    '--start', $configData.task.start, '--words-root', $gradingSetPath, '--proposal', (Join-Path $configData.bundle 'intent.json'),
-    '--out', $configData.scratchRoot) $configData.outputRoot $measurementEnvironment 720000
+    '--project', $configData.startProject, '--words-root', $gradingSetPath, '--proposal', (Join-Path $configData.bundle 'intent.json'),
+    '--word-lists', ($wordLists -join ','), '--out', $configData.scratchRoot) $configData.outputRoot $measurementEnvironment 720000
 if ($measurement.ExitCode) { throw "Independent output measurement failed: $($measurement.Stderr)" }
 $measured = $measurement.Stdout | ConvertFrom-Json -AsHashtable
 $activity = @(Read-ABLines (Join-Path $configData.bundle 'activity.jsonl'))

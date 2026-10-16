@@ -19,14 +19,23 @@ namespace SIL.Motif.EvalSets;
 
 internal static class OutputMeasurement
 {
-    internal static async Task<object> RunAsync(string language, string start, string proposalPath,
-        string outputRoot, string wordsRoot)
+    /// <summary>
+    /// Applies the frozen Proposal to a copy of <paramref name="startProjectDirectory"/>, the start project the
+    /// agent worked on. A rebuild would give new ids to the objects LibLCM creates without a stable id, such as
+    /// an affix's MSA, so a Proposal that targets one could not apply.
+    /// </summary>
+    /// <param name="wordLists">
+    /// The word lists under <c>words/</c> to parse; a list only some task graders read, such as <c>train</c>, is parsed
+    /// only when the caller names it, so other tasks' parser rows stay what they were.
+    /// </param>
+    internal static async Task<object> RunAsync(string startProjectDirectory, string proposalPath,
+        string outputRoot, string wordsRoot, IReadOnlyList<string>? wordLists = null)
     {
         RuntimeHelpers.RunModuleConstructor(typeof(LexicalSenseOperationKinds).Module.ModuleHandle);
         var json = await File.ReadAllTextAsync(proposalPath);
-        var build = EvaluationProjectBuilder.Build(language, outputRoot, start);
+        var projectPath = CopyStartProject(startProjectDirectory, Path.Combine(outputRoot, "project"));
         var loader = new FwDataProjectLoader();
-        using var scratch = DryRunScratch.Adopt(loader.LoadScratchCache(build.ProjectPath), "independent task input");
+        using var scratch = DryRunScratch.Adopt(loader.LoadScratchCache(projectPath), "independent task input");
         var lexiconBefore = ReadLexicon(scratch.PeekCache());
         Proposal? proposal = null;
         object? proposalFailure = null;
@@ -54,21 +63,36 @@ internal static class OutputMeasurement
         {
             var parserPath = PanGlossExecutable.TryLocate()
                 ?? throw new InvalidOperationException(PanGlossExecutable.NotFoundMessage);
-            var words = File.ReadAllLines(Path.Combine(wordsRoot, "words", "heldout.txt"))
-                .Concat(File.ReadAllLines(Path.Combine(wordsRoot, "words", "negative.txt")))
+            var words = (wordLists ?? DefaultWordLists)
+                .SelectMany(list => File.ReadAllLines(Path.Combine(wordsRoot, "words", list + ".txt")))
                 .Select(word => word.Trim()).Where(word => word.Length > 0).ToArray();
             if (words.Length == 0 || words.Distinct(StringComparer.Ordinal).Count() != words.Length)
                 throw new InvalidDataException("Measurement words must be nonempty and unique.");
             using var invoker = new PanGlossInvoker(parserPath);
             using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(10));
             var outcome = await invoker.RunAsync(
-                new PanGlossRequest.Batch(build.ProjectPath, words, TimeSpan.FromSeconds(1)) { CollectAnalyses = true },
+                new PanGlossRequest.Batch(projectPath, words, TimeSpan.FromSeconds(1)) { CollectAnalyses = true },
                 "output-measurement", timeout.Token, TimeSpan.FromMinutes(10));
             if (outcome is not PanGlossOutcome.Completed completed)
                 throw new InvalidOperationException(outcome.Message);
             parserRows = ParseMorphEvidence.Read(completed.MorphologyOutput ?? "", words);
         }
         return new { proposal = projection, proposalFailure, lexiconBefore, lexiconAfter, parserRows };
+    }
+
+    /// <summary>The word lists every task's graders read.</summary>
+    internal static readonly IReadOnlyList<string> DefaultWordLists = ["heldout", "negative"];
+
+    private static string CopyStartProject(string source, string destination)
+    {
+        if (!Directory.Exists(source))
+            throw new DirectoryNotFoundException($"The trial's start project is missing: {source}");
+        foreach (var directory in Directory.EnumerateDirectories(source, "*", SearchOption.AllDirectories))
+            Directory.CreateDirectory(Path.Combine(destination, Path.GetRelativePath(source, directory)));
+        Directory.CreateDirectory(destination);
+        foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
+            File.Copy(file, Path.Combine(destination, Path.GetRelativePath(source, file)), overwrite: true);
+        return Directory.EnumerateFiles(destination, "*.fwdata", SearchOption.AllDirectories).Single();
     }
 
     private static bool IsAgentProposalFailure(Exception exception) => exception is

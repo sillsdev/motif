@@ -1,0 +1,56 @@
+{
+  "compose-author-lexeme-form": [
+    {
+      "name": "motif_add_lexeme_form",
+      "class": "Draft"
+    }
+  ],
+  "add-set-gloss": [
+    {
+      "name": "motif_set_gloss",
+      "class": "Draft"
+    }
+  ],
+  "compose-edit-affix-template": [
+    {
+      "name": "motif_edit_affix_template",
+      "class": "Draft"
+    }
+  ],
+  "compose-edit-allomorph-condition": [
+    {
+      "name": "motif_edit_allomorph_condition",
+      "class": "Draft"
+    }
+  ],
+  "compose-edit-affix-slot": [
+    {
+      "name": "motif_edit_affix_slot",
+      "class": "Draft"
+    }
+  ],
+  "compose-author-alternate-form": [
+    {
+      "name": "motif_add_alternate_form",
+      "class": "Draft"
+    }
+  ],
+  "compose-author-phonological-rule": [
+    {
+      "name": "motif_add_phonological_rule",
+      "class": "Draft"
+    }
+  ],
+  "compose-author-feature-structure": [
+    {
+      "name": "motif_add_feature_structure",
+      "class": "Draft"
+    }
+  ],
+  "compose-author-feature-value": [
+    {
+      "name": "motif_add_feature_value",
+      "class": "Draft"
+    }
+  ]
+}

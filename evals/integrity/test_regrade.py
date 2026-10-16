@@ -16,7 +16,7 @@ from CalibrateMeaning import calibrate
 
 @unittest.skipUnless(os.name == 'posix' and shutil.which('pwsh'), 'Re-grade executable fixture requires Unix and PowerShell')
 class RegradeTests(unittest.TestCase):
-    def fixture(self, root, model=None, question=None):
+    def fixture(self, root, model=None, question=None, omit_start=False):
         repo = root / 'repo'
         tools = repo / 'evals/tools'
         tools.mkdir(parents=True)
@@ -67,6 +67,7 @@ class RegradeTests(unittest.TestCase):
             (trial / 'integrity.json').write_text(json.dumps(integrity))
             (trial / 'manifest.json').write_text(json.dumps(manifest))
             (trial / 'server.client-tools.json').write_text('[]')
+            if not omit_start: (trial / 'start').mkdir()
             (trial / 'proposals.json').write_text('{"proposal":{"operations":[]}}')
             trials.append({'task': 'diagnose', 'set': 'set', 'arm': arm, 'trial': 1, 'authMode': 'none',
                 'status': manifest['status'], 'integrity': integrity,
@@ -163,6 +164,19 @@ class RegradeTests(unittest.TestCase):
             self.assertIn('confirmation setting', (process.stdout + process.stderr).decode().lower())
             self.assertEqual([], list(source.glob('regrade-*')))
 
+    def test_a_trial_stored_without_its_start_project_is_not_regraded_against_a_rebuild(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            repo, grammar, source = self.fixture(root, omit_start=True)
+            process = subprocess.run(['pwsh', '-NoProfile', '-File', str(repo / 'evals/Regrade-ABRun.ps1'),
+                '-RunDirectory', str(source)], env=dict(fake_environment('pass'), MOTIF_TEST_GRAMMARS=str(grammar),
+                MOTIF_TRIAL_ROOT=str(root / 'staging')), stdin=subprocess.DEVNULL, capture_output=True, timeout=60)
+            self.assertEqual(0, process.returncode, process.stdout.decode() + process.stderr.decode())
+            outputs = list(source.glob('regrade-*'))
+            grade = json.loads((outputs[0] / 'trials/diagnose/left/trial-1/grade.json').read_text(encoding='utf-8-sig'))
+            self.assertEqual('harness_defect', grade['gradingState'])
+            self.assertIn('no stored start project', json.dumps(grade))
+
     def test_regrade_judges_with_the_stored_question_policy(self):
         for model, question, families in ((None, None, ['opus', 'sol']),
                                           ('claude-opus-5-5', {'judge_policy': 'other-family-alone'}, ['sol']),
@@ -190,6 +204,22 @@ class RegradeTests(unittest.TestCase):
                 self.assertEqual(current, result['testGrammars'])
                 self.assertEqual(changed, result['testGrammarsChanged'])
                 self.assertEqual(changed, 'task keys may differ' in result['reportText'])
+
+    def test_a_served_tool_with_no_grade_class_is_a_harness_defect_on_regrade(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            repo, grammar, source = self.fixture(root)
+            (source / 'trials/diagnose/left/trial-1/server.client-tools.json').write_text(
+                json.dumps([{'name': 'motif_mystery'}]))
+            process = subprocess.run(['pwsh', '-NoProfile', '-File', str(repo / 'evals/Regrade-ABRun.ps1'),
+                '-RunDirectory', str(source)], env=dict(fake_environment('pass'), MOTIF_TEST_GRAMMARS=str(grammar),
+                MOTIF_TRIAL_ROOT=str(root / 'staging')), stdin=subprocess.DEVNULL, capture_output=True, timeout=60)
+            self.assertEqual(0, process.returncode, process.stdout.decode() + process.stderr.decode())
+            result = json.loads((next(source.glob('regrade-*')) / 'summary.json').read_text(encoding='utf-8-sig'))
+            left = result['trials'][0]
+            self.assertIsNone(left['primaryScore'], json.dumps(left, indent=2))
+            self.assertEqual('harness_defect', left['failureClass'])
+            self.assertIn('motif_mystery', json.dumps(left['failureEvidence']))
 
     def regrade(self, mode, expected, right_clean=False, tamper=False, boundary_class=None, model=None, question=None,
                 grammars=None):

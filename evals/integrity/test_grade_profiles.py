@@ -58,5 +58,11 @@ class GradeProfileTests(unittest.TestCase):
                 self.assertEqual(set(renames.values()), canonical, 'canonicalTools must be the renamed tools\' real names')
 
 
+    def test_every_server_golden_has_a_grade_profile(self):
+        goldens = sorted(path.name.removeprefix('tools-list.').removesuffix('.json')
+                         for path in GOLDEN.glob('tools-list.*.json'))
+        missing = [name for name in goldens if not (PROFILES / f'mcp-{name}-grade.json').exists()]
+        self.assertEqual([], missing, 'an Arm on these server profiles would be graded with no tool classes')
+
 if __name__ == '__main__':
     unittest.main()

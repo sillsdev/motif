@@ -1,0 +1,5 @@
+{"tool": "motif_grammar", "arguments": {"kind": "templates", "detail": "detailed"}, "capture": {"template": "items[name=Noun suffixes].id", "first": "items[name=Noun suffixes].suffixSlots[name=Number].id", "second": "items[name=Noun suffixes].suffixSlots[name=Case].id"}}
+{"tool": "motif_start_proposal", "arguments": {"draft": "verb-slot-order", "label": "Put past before first person", "comment": "malatamu 'I cooked' shows past -ta before first-person -mu; the verb template had them the other way round."}}
+{"tool": "motif_edit_affix_template", "arguments": {"draft": "verb-slot-order", "target": "${template}", "expected_prefix_slots": [], "prefix_slots": [], "expected_suffix_slots": ["${first}", "${second}"], "suffix_slots": ["${second}", "${first}"]}}
+{"tool": "motif_finalize_proposal", "arguments": {"draft": "verb-slot-order"}}
+{"finalMessage": "I finalized a Proposal that reorders the suffix slots so the word parses."}

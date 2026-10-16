@@ -1,0 +1,3 @@
+{"tool": "motif_lexicon", "arguments": {"query": "basket"}, "capture": {"entry": "entries[0].id"}}
+{"tool": "motif_grammar", "arguments": {"kind": "morph_types"}, "capture": {"stemMorphType": "items[name=Stem].id"}}
+{"finalMessage": "I looked at the entry but drafted nothing."}

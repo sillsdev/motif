@@ -43,3 +43,14 @@ public sealed class RealEvalSetParserFactAttribute : RealParserFactAttribute
             Skip = TestGrammars.MissingReason;
     }
 }
+
+/// <summary>Runs a check that reads the pinned evaluation sets but needs no parser.</summary>
+public sealed class EvalSetFactAttribute : FactAttribute
+{
+    /// <summary>Skips with the missing dependency when the pinned evaluation data is unavailable.</summary>
+    public EvalSetFactAttribute()
+    {
+        if (TestGrammars.SetsRoot is null)
+            Skip = TestGrammars.MissingReason;
+    }
+}

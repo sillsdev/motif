@@ -169,5 +169,26 @@
     ],
     "gold": "The nasal assimilation rule has the wrong right-hand environment: it applies before vowels rather than bilabials. Underlying isen plus -mo needs n to become m before the bilabial m across the boundary, yielding isemmo. Restore the bilabial environment; retain isen and the single -mo ending.",
     "wrong": "The rule should change every n to m regardless of context; store isem as the verb stem."
+  },
+  {
+    "task": "t2-insufficient-class-conditioning",
+    "required": [
+      "States both hypotheses: conditioning by the stem's last sound, and lexical class membership.",
+      "States that the six forms cannot distinguish them.",
+      "Drafts nothing.",
+      "Names the deciding evidence: a vowel-final noun with -ta or a consonant-final noun with -na."
+    ],
+    "gold": "Two rules fit these six nouns equally well. The ending could depend on the noun's last sound (-na after a vowel: rezu, zanjopo, ime; -ta after a consonant: mungas, repuk, azok), or each noun could belong to a lexical class that takes -na or -ta. These six forms cannot tell the two analyses apart, so I have not drafted either; neither is established. One vowel-final noun that takes -ta, or a consonant-final noun that takes -na, would settle it.",
+    "wrong": "The ending is chosen by the stem's last sound: -na after a vowel and -ta after a consonant. I will draft those two environments on the class ending."
+  },
+  {
+    "task": "t2-edit-class-slot-obligatory",
+    "required": [
+      "Proposes making the class-ending slot obligatory again.",
+      "Keeps the change to the single slot, adding nothing else.",
+      "Says that bare nouns such as wowa no longer parse once it is obligatory, or that every recorded noun carries a class ending."
+    ],
+    "gold": "The noun class slot is optional, which lets bare nouns such as wowa parse; every recorded noun carries a class ending. I finalized a Proposal making that one slot obligatory again, and nothing else changes.",
+    "wrong": "I finalized a Proposal that makes the number slot obligatory."
   }
 ]

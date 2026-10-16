@@ -6,6 +6,7 @@ Import-Module (Join-Path $PSScriptRoot 'ABHarness.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'McpClient.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'ProductStaging.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'HostPlan.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'TaskTools.psm1') -Force
 $manifest = Read-ABJson $RunManifest
 $trialRoot = [string]$manifest.trialRoot
 $keepStaging = $Keep -or ($manifest.Contains('keep') -and [bool]$manifest.keep)
@@ -70,6 +71,8 @@ $seed = Invoke-ABProcess $builderExe @('build-project', '--set', $seedRoot, '--s
 if ($seed.ExitCode) { throw "Project preparation failed: $($seed.Stderr)" }
 $seedPath = [string](($seed.Stdout | ConvertFrom-Json -AsHashtable).projectPath)
 Copy-Item -Path (Join-Path (Split-Path $seedPath) '*') -Destination $projectRoot -Recurse
+# The grader measures against this copy: a rebuild would give MSAs and other unkeyed objects new ids.
+Copy-Item -LiteralPath (Split-Path $seedPath) -Destination (Join-Path $outputRoot 'start') -Recurse
 Get-ChildItem $projectRoot -Filter '*.fwdata*' | Where-Object { $_.Name -notlike '*.fwdata' } | Remove-Item -Force
 $fwDataPath = Join-Path $projectRoot 'project.fwdata'
 Move-Item -LiteralPath (Join-Path $projectRoot ([IO.Path]::GetFileName($seedPath))) -Destination $fwDataPath
@@ -90,6 +93,18 @@ if ($serverProfile.Contains('instructionsFile')) {
     $serverProfile.Remove('instructionsFile')
 }
 $serverProfile.name = 'workspace'
+$taskTools = @(Get-ABTaskTools $repoRoot $task)
+if ($taskTools.Count) {
+    $defaultTools = @()
+    if (-not $serverProfile.Contains('tools') -or $null -eq $serverProfile.tools) {
+        $defaultSession = New-ABMcpSession $motifExe (Get-ABServerArguments $serverProfilePath $null) $controlRoot @{} (Join-Path $controlRoot 'defaults.jsonl')
+        try { $defaultTools = @($defaultSession.Tools | ForEach-Object { [string]$_.name }) }
+        finally { [void](Close-ABMcpSession $defaultSession) }
+    }
+    $serverProfile = Join-ABTaskTools $serverProfile $defaultTools $taskTools
+    $serverProfilePath = Join-Path $controlRoot 'surface-with-task-tools.json'
+    Write-ABJson $serverProfilePath $serverProfile
+}
 Write-ABJson (Join-Path $inputRoot 'surface.json') $serverProfile
 Copy-Item (Join-Path $PSScriptRoot 'Invoke-IsolatedHost.ps1') (Join-Path $clientRoot 'host.ps1')
 Copy-Item (Join-Path $PSScriptRoot 'Invoke-ABFakeHost.ps1') (Join-Path $clientRoot 'relay.ps1')
@@ -131,9 +146,7 @@ if ($manifest.validationMode -eq 'empty') {
 $listSession = New-ABMcpSession $motifExe (Get-ABServerArguments $serverProfilePath $null) $controlRoot @{} (Join-Path $controlRoot 'listing.jsonl')
 try { $allowed = @($listSession.Tools | ForEach-Object { [string]$_.name }) }
 finally { [void](Close-ABMcpSession $listSession) }
-$gradeTools = @{}
-foreach ($tool in $profile.tools) { $gradeTools[$tool.name] = $tool.class }
-$profile.tools = @($allowed | ForEach-Object { @{ name = $_; class = if ($gradeTools.Contains($_)) { $gradeTools[$_] } else { 'Read' } } })
+$profile.tools = @(Get-ABServedToolClasses $allowed @($profile.tools) @($taskTools))
 $boundaryConfig = [ordered]@{
     session = $sessionRoot
     archive = $outputRoot
@@ -183,6 +196,7 @@ if ($integrity.state -eq 'clean' -and $integrity.failureClass -notin @('cloud_fa
         judgeFamilies = if ($manifest.Contains('judgeFamilies')) { @($manifest.judgeFamilies) } else { @('opus', 'sol') }
         outputRoot = $outputRoot
         scratchRoot = Join-Path $controlRoot 'measurement'
+        startProject = Join-Path $outputRoot 'start'
     }
     $gradeConfigPath = Join-Path $controlRoot 'grading.json'
     Write-ABJson $gradeConfigPath $gradeConfig
@@ -220,7 +234,7 @@ $status = if ($integrity.state -ne 'clean') { $integrity.state }
 Write-ABJson (Join-Path $outputRoot 'manifest.json') ([ordered]@{
     schema = 'motif-controlled-trial/v1'
     runId = $manifest.runId; questionId = $manifest.questionId; taskId = $task.id; setId = $task.set
-    expectedComposers = if ($task.Contains('expectedComposers')) { @($task.expectedComposers) } else { $null }
+    needs = if ($task.Contains('needs')) { @($task.needs) } else { $null }
     caseId = [Guid]::NewGuid().ToString('N'); armId = $manifest.arm.id; host = $manifest.arm.host; trial = $manifest.trial
     status = $status; integrity = $integrity
     failureClass = if ($grade.failureClass) { $grade.failureClass } else { $integrity.failureClass }
@@ -230,6 +244,7 @@ Write-ABJson (Join-Path $outputRoot 'manifest.json') ([ordered]@{
     sourceCommit = if ($manifest.arm.server.Contains('sourceCommit')) { $manifest.arm.server.sourceCommit } else { $null }
     authMode = $authMode
     projectPromptLine = $projectPromptLine
+    taskTools = @($taskTools | ForEach-Object { [string]$_.name })
     staging = @{ retained = [bool]$keepStaging; path = if ($keepStaging) { $trialRoot } else { $null } }
     excludedFromScoring = $integrity.state -ne 'clean' -or $grade.failureClass -in @('cloud_failure', 'harness_defect') -or
         $integrity.failureClass -in @('cloud_failure', 'harness_defect') -or

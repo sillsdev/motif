@@ -1,0 +1,5 @@
+{"tool": "motif_grammar", "arguments": {"kind": "templates", "detail": "detailed"}, "capture": {"template": "items[name=Noun suffixes].id", "first": "items[name=Noun suffixes].suffixSlots[name=Number].id", "second": "items[name=Noun suffixes].suffixSlots[name=Case].id"}}
+{"tool": "motif_start_proposal", "arguments": {"draft": "noun-slot-order", "label": "Put plural before locative", "comment": "qajewani 'in the baskets' shows plural -wa before locative -ni; the noun template had them the other way round."}}
+{"tool": "motif_edit_affix_template", "arguments": {"draft": "noun-slot-order", "target": "${template}", "expected_prefix_slots": [], "prefix_slots": [], "expected_suffix_slots": ["${second}", "${first}"], "suffix_slots": ["${first}", "${second}"]}}
+{"tool": "motif_finalize_proposal", "arguments": {"draft": "noun-slot-order"}}
+{"finalMessage": "I finalized a Proposal that reorders the noun template so Number (plural -wa) comes before Case (locative -ni), as qajewani shows."}

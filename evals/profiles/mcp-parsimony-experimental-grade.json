@@ -1,0 +1,112 @@
+{
+  "id": "mcp-parsimony-experimental",
+  "instructions": "You are working on a linguist's FieldWorks language project through Motif. Read the grammar and lexicon before making a small Proposal, run a Dry Run and Trial, and leave Apply to a person.",
+  "tools": [
+    {
+      "name": "motif_start_proposal",
+      "class": "Draft"
+    },
+    {
+      "name": "motif_add_natural_class",
+      "class": "Draft"
+    },
+    {
+      "name": "motif_edit_natural_class",
+      "class": "Draft"
+    },
+    {
+      "name": "motif_relink_natural_class",
+      "class": "Draft"
+    },
+    {
+      "name": "motif_add_phonological_rule",
+      "class": "Draft"
+    },
+    {
+      "name": "motif_add_affix_slot",
+      "class": "Draft"
+    },
+    {
+      "name": "motif_add_affix_template",
+      "class": "Draft"
+    },
+    {
+      "name": "motif_retire_allomorph",
+      "class": "Draft"
+    },
+    {
+      "name": "motif_edit_adhoc_prohibition",
+      "class": "Draft"
+    },
+    {
+      "name": "motif_edit_affix_slot",
+      "class": "Draft"
+    },
+    {
+      "name": "motif_edit_affix_template",
+      "class": "Draft"
+    },
+    {
+      "name": "motif_edit_inflectional_affix",
+      "class": "Draft"
+    },
+    {
+      "name": "motif_edit_allomorph_condition",
+      "class": "Draft"
+    },
+    {
+      "name": "motif_order_allomorphs",
+      "class": "Draft"
+    },
+    {
+      "name": "motif_parsimony_record_types",
+      "class": "Read"
+    },
+    {
+      "name": "motif_dispose_parsimony_finding",
+      "class": "Draft"
+    },
+    {
+      "name": "motif_dry_run",
+      "class": "Evaluate"
+    },
+    {
+      "name": "motif_finalize_proposal",
+      "class": "Draft"
+    },
+    {
+      "name": "motif_parsimony_measures",
+      "class": "Read"
+    },
+    {
+      "name": "motif_run_parsimony_measure",
+      "class": "Evaluate"
+    },
+    {
+      "name": "motif_parsimony_report",
+      "class": "Read"
+    },
+    {
+      "name": "motif_retirement_review",
+      "class": "Read"
+    },
+    {
+      "name": "motif_parsimony_view",
+      "class": "Read"
+    },
+    {
+      "name": "motif_revise_parsimony_disposition",
+      "class": "Draft"
+    },
+    {
+      "name": "motif_retract_parsimony_disposition",
+      "class": "Draft"
+    }
+  ],
+  "hiddenTools": [
+    "motif_apply",
+    "motif_discard_draft",
+    "motif_discard_proposal",
+    "motif_store_delete"
+  ]
+}

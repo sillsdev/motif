@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
     [switch] $ValidityOnly,
+    [string] $TaskFilter,
     [string] $ArmManifest,
     [string] $Configuration = 'Debug',
     [switch] $Confirmation,
@@ -41,6 +42,7 @@ if (-not (Test-Path -LiteralPath $motifExe) -or -not (Test-Path -LiteralPath $bu
 $tasks = @(Get-ChildItem -LiteralPath $setRoot -Filter 'task.yaml' -File -Recurse | ForEach-Object {
     $task = Read-ABJson $_.FullName
     if (Test-ABTaskFuture $task) { return }
+    if ($TaskFilter -and [string]$task.id -notlike $TaskFilter) { return }
     $task.taskPath = $_.Directory.FullName
     $task.setPath = Join-Path $setRoot ([string]$task.set)
     $task.promptPath = Join-Path $task.taskPath ([string]$task.prompt)
@@ -55,6 +57,7 @@ $confirmationScripts = @{}
 if ($Confirmation) {
     foreach ($task in $tasks) { $confirmationScripts[$task.taskPath] = Get-ABConfirmationValidityScripts $task }
 }
+if ($TaskFilter -and $ValidityOnly) { throw '-ValidityOnly stamps every active task, so it cannot be combined with -TaskFilter.' }
 
 $fakeArm = Read-ABJson (Join-Path $PSScriptRoot 'arms/fake-default.yaml')
 $fakeArm.server.profilePath = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot ([string]$fakeArm.server.grade_profile)))
@@ -117,10 +120,8 @@ try {
             [ordered]@{ name = 'gold'; start = [string]$task.start; validationMode = $null; minimum = 0.99; maximum = 1.0 },
             [ordered]@{ name = 'empty'; start = [string]$task.start; validationMode = 'empty'; minimum = 0.0; maximum = 0.01 }
         )
-        $finalFixture = @($validityFinals | Where-Object { $_.task -eq $task.id })
-        if ($Confirmation -or $finalFixture.Count -eq 1) {
-            $cases += [ordered]@{ name = 'wrong'; start = [string]$task.start; validationMode = $null; minimum = 0.0; maximum = 0.01 }
-        }
+        $wrongCase = if ($Confirmation) { $null } else { Get-ABValidityWrongCase $repoRoot $task $validityFinals }
+        $cases += [ordered]@{ name = 'wrong'; start = [string]$task.start; validationMode = $null; minimum = 0.0; maximum = 0.01 }
         foreach ($case in $cases) {
             $safeTask = [string]$task.id
             $outputRoot = Join-Path $sampleRoot ("{0}/{1}/{2}" -f $safeTask, [string]$arm.id, $case.name)
@@ -148,9 +149,11 @@ try {
             }
             if ($Confirmation -and $case.name -in @('gold', 'wrong')) {
                 $manifest.fakeScript = $confirmationScripts[$task.taskPath][$case.name]
+            } elseif ($case.name -eq 'wrong' -and $wrongCase.Contains('script')) {
+                $manifest.fakeScript = $wrongCase.script
             } elseif ($case.name -eq 'wrong') {
                 $wrongScript = Join-Path $privateRoot 'wrong.jsonl'
-                @{ finalMessage = $finalFixture[0].wrong } | ConvertTo-Json -Compress | Set-Content -LiteralPath $wrongScript -Encoding utf8
+                @{ finalMessage = $wrongCase.finalMessage } | ConvertTo-Json -Compress | Set-Content -LiteralPath $wrongScript -Encoding utf8
                 $manifest.fakeScript = $wrongScript
             }
             $manifestPath = Join-Path $privateRoot 'run-manifest.json'
@@ -188,7 +191,8 @@ try {
             '-NoProfile', '-File', (Join-Path $PSScriptRoot 'Invoke-ABQuestion.ps1'),
             '-Question', $questionPath, '-Trials', '1', '-Parallel', '2',
             '-Configuration', $Configuration, '-SkipValidityCheck'
-        ) + $(if ($Confirmation) { @('-Confirmation', '-Tasks', $fakeTaskId) } else { @() }) +
+        ) + $(if ($Confirmation) { @('-Confirmation', '-Tasks', $fakeTaskId) }
+            elseif ($TaskFilter) { @('-Tasks', $TaskFilter) } else { @() }) +
             $(if ($Keep) { @('-Keep') } else { @() })
         $fakeRun = Invoke-ABProcess (Get-Command pwsh).Source $fakeArguments $repoRoot @{} 7200000
         if ($fakeRun.ExitCode -ne 0) { throw "The fake-host end-to-end question failed:`n$($fakeRun.Stdout)`n$($fakeRun.Stderr)" }
@@ -206,7 +210,8 @@ try {
             throw "The confirmation smoke selected tasks other than '$fakeTaskId'."
         }
         $firstLine = ($reportText -split "`r?`n")[0]
-        if ([regex]::Matches($firstLine, '\.').Count -lt 2 -or $firstLine -notmatch 'not enough evidence|scored higher') {
+        # One filtered task is one independent unit, which has no interval, so its verdict is the no-interval sentence.
+        if (-not $TaskFilter -and ([regex]::Matches($firstLine, '\.').Count -lt 2 -or $firstLine -notmatch 'not enough evidence|scored higher')) {
             throw "The sample report does not begin with the required two-sentence verdict: $firstLine"
         }
         if (-not (Test-Path -LiteralPath (Join-Path (Split-Path -Parent $sampleReport) 'summary.json') -PathType Leaf)) {

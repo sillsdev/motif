@@ -11,6 +11,7 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 Import-Module (Join-Path $PSScriptRoot 'tools/ABHarness.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'tools/ABReport.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'tools/TaskTools.psm1') -Force
 $sourceRoot = (Resolve-Path -LiteralPath $RunDirectory).ProviderPath
 $source = Read-ABJson (Join-Path $sourceRoot 'summary.json')
 if (-not $source.Contains('measurementFingerprint') -or [string]$source.measurementFingerprint -notmatch '^[0-9a-f]{64}$') {
@@ -62,26 +63,33 @@ try {
             # Grade against the tools this trial's server offered, as the live trial did, not today's profile file.
             $served = Join-Path $trialSource 'server.client-tools.json'
             if (-not (Test-Path -LiteralPath $served)) { throw "Stored trial has no served tool list: $served" }
-            $classes = @{}
-            foreach ($tool in $profile.tools) { $classes[$tool.name] = $tool.class }
-            $profile.tools = @(Read-ABJson $served | ForEach-Object { [string]$_.name } | ForEach-Object {
-                @{ name = $_; class = if ($classes.Contains($_)) { $classes[$_] } else { 'Read' } } })
-            $config = @{
-                repoRoot = $repoRoot; confirmation = [bool]$Confirmation
-                bundle = Join-Path $trialSource 'frozen'; integrityPath = Join-Path $trialSource 'integrity.json'
-                task = $task; setPath = $task.setPath; builder = $builder; primaryMetric = $source.primaryMetric
-                profile = $profile; judgeFamilies = @(Get-ABJudgeFamilies $arm $JudgePolicy); outputRoot = $outputRoot; scratchRoot = Join-Path $scratchRoot ([Guid]::NewGuid().ToString('N'))
-            }
-            $configPath = Join-Path $scratchRoot 'grading.json'
-            Write-ABJson $configPath $config
-            $run = Invoke-ABProcess (Get-Command pwsh).Source @('-NoProfile', '-File',
-                (Join-Path $PSScriptRoot 'tools/Invoke-ABGrade.ps1'), '-Config', $configPath) $scratchRoot @{} 1600000
-            if ($run.ExitCode) {
+            $servedNames = @(Read-ABJson $served | ForEach-Object { [string]$_.name })
+            $classError = $null
+            try { $profile.tools = @(Get-ABServedToolClasses $servedNames @($profile.tools) @(Get-ABTaskTools $repoRoot $task)) }
+            catch { $classError = $_.Exception.Message }
+            if ($classError) {
                 $grade = @{ grade = $null; success = $null; primaryScore = $null; operationCount = 0
                     primaryMetric = $source.primaryMetric; graders = @(); gradingState = 'harness_defect';
-                    failureClass = 'harness_defect'; failureEvidence = @($run.Stderr) }
+                    failureClass = 'harness_defect'; failureEvidence = @($classError) }
                 Write-ABJson (Join-Path $outputRoot 'grade.json') $grade
-            } else { $grade = Read-ABJson (Join-Path $outputRoot 'grade.json') }
+            } else {
+                $config = @{
+                    repoRoot = $repoRoot; confirmation = [bool]$Confirmation
+                    bundle = Join-Path $trialSource 'frozen'; integrityPath = Join-Path $trialSource 'integrity.json'
+                    task = $task; setPath = $task.setPath; builder = $builder; primaryMetric = $source.primaryMetric
+                    startProject = Join-Path $trialSource 'start'; profile = $profile; judgeFamilies = @(Get-ABJudgeFamilies $arm $JudgePolicy); outputRoot = $outputRoot; scratchRoot = Join-Path $scratchRoot ([Guid]::NewGuid().ToString('N'))
+                }
+                $configPath = Join-Path $scratchRoot 'grading.json'
+                Write-ABJson $configPath $config
+                $run = Invoke-ABProcess (Get-Command pwsh).Source @('-NoProfile', '-File',
+                    (Join-Path $PSScriptRoot 'tools/Invoke-ABGrade.ps1'), '-Config', $configPath) $scratchRoot @{} 1600000
+                if ($run.ExitCode) {
+                    $grade = @{ grade = $null; success = $null; primaryScore = $null; operationCount = 0
+                        primaryMetric = $source.primaryMetric; graders = @(); gradingState = 'harness_defect';
+                        failureClass = 'harness_defect'; failureEvidence = @($run.Stderr) }
+                    Write-ABJson (Join-Path $outputRoot 'grade.json') $grade
+                } else { $grade = Read-ABJson (Join-Path $outputRoot 'grade.json') }
+            }
         } else { Write-ABJson (Join-Path $outputRoot 'grade.json') $grade }
         $row = @{} + $stored
         $row.Remove('files')

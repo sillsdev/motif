@@ -1,0 +1,6 @@
+{"tool": "motif_grammar", "arguments": {"kind": "environments", "detail": "detailed"}, "capture": {"afterVowel": "items[name=After a vowel].id", "afterConsonant": "items[name=After a consonant].id"}}
+{"tool": "motif_lexicon", "arguments": {"query": "PL", "detail": "detailed"}, "capture": {"allomorph": "entries[headword=-ra].lexemeForm.id"}}
+{"tool": "motif_start_proposal", "arguments": {"draft": "plural-environment", "label": "Plural -ra after vowels", "comment": "The recorded form does not parse; allowing the ending in both contexts lets it through."}}
+{"tool": "motif_edit_allomorph_condition", "arguments": {"draft": "plural-environment", "target": "${allomorph}", "field": "phoneEnv", "expectedEnvironments": ["${afterConsonant}"], "environments": ["${afterConsonant}", "${afterVowel}"]}}
+{"tool": "motif_finalize_proposal", "arguments": {"draft": "plural-environment"}}
+{"finalMessage": "I finalized a Proposal that also allows this ending in the new context, keeping its existing one."}

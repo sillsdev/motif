@@ -1,0 +1,6 @@
+{"tool": "motif_grammar", "arguments": {"kind": "environments", "detail": "detailed"}, "capture": {"afterVowel": "items[name=After a vowel].id", "afterConsonant": "items[name=After a consonant].id"}}
+{"tool": "motif_lexicon", "arguments": {"query": "PST", "detail": "detailed"}, "capture": {"allomorph": "entries[headword=-nu].alternateForms[form=du].id"}}
+{"tool": "motif_start_proposal", "arguments": {"draft": "past-environment", "label": "Past -du after consonants", "comment": "lafetdu shows -du after the consonant-final stem lafet; -du was restricted to after vowels, where -nu belongs."}}
+{"tool": "motif_edit_allomorph_condition", "arguments": {"draft": "past-environment", "target": "${allomorph}", "field": "phoneEnv", "expectedEnvironments": ["${afterVowel}"], "environments": ["${afterConsonant}"]}}
+{"tool": "motif_finalize_proposal", "arguments": {"draft": "past-environment"}}
+{"finalMessage": "I finalized a Proposal that conditions the past -du on a preceding consonant instead of a vowel; -nu stays after vowels."}

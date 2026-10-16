@@ -1,0 +1,5 @@
+{"tool": "motif_grammar", "arguments": {"kind": "templates", "detail": "detailed"}, "capture": {"classSlot": "items[name=Noun suffixes].suffixSlots[name=Noun class].id", "numberSlot": "items[name=Noun suffixes].suffixSlots[name=Number].id"}}
+{"tool": "motif_start_proposal", "arguments": {"draft": "class-slot", "label": "Make the noun class ending required", "comment": "Every recorded noun carries a class ending, so the slot should be obligatory."}}
+{"tool": "motif_edit_affix_slot", "arguments": {"draft": "class-slot", "target": "${numberSlot}", "expected_optional": true, "optional": false}}
+{"tool": "motif_finalize_proposal", "arguments": {"draft": "class-slot"}}
+{"finalMessage": "I finalized a Proposal that makes the number slot obligatory."}

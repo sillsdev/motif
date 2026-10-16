@@ -802,7 +802,7 @@ internal static class SampleBuilder
             var environments = includeGrammar ? AddEnvironments(cache, spec) : [];
             var positions = AddPartsOfSpeech(cache, spec);
             var inflectionClasses = includeGrammar ? AddInflectionClasses(cache, spec, positions) : [];
-            AddStems(cache, spec, positions, inflectionClasses, features);
+            AddStems(cache, spec, positions, inflectionClasses, features, includeGrammar);
             if (!includeGrammar) return;
             var slots = AddAffixSlots(cache, spec, positions);
             AddAffixTemplates(cache, spec, positions, slots);
@@ -1024,10 +1024,12 @@ internal static class SampleBuilder
         SampleSpec spec,
         IReadOnlyDictionary<string, IPartOfSpeech> positions,
         IReadOnlyDictionary<string, IMoInflClass> inflectionClasses,
-        IReadOnlyDictionary<string, FeatureDefinitionHandle> features)
+        IReadOnlyDictionary<string, FeatureDefinitionHandle> features,
+        bool includeGrammar)
     {
         foreach (var stem in spec.Stems)
-            AddStem(cache, spec.Id, stem, positions[stem.PartOfSpeech], inflectionClasses, features);
+            AddStem(cache, spec.Id, includeGrammar ? stem : stem with { InflectionClass = null, Features = null },
+                positions[stem.PartOfSpeech], inflectionClasses, features);
     }
 
     private static void SetVernacularWritingSystem(LcmCache cache, string tag)

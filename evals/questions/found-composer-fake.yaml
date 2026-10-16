@@ -1,0 +1,10 @@
+{
+  "question": "Does the found-Composer measure fall for an arm whose Episodes never call the Composer the task needs?",
+  "arm_a": "fake-default",
+  "arm_b": "fake-default-no-composer",
+  "tasks": [
+    "t1-lexicon-restore-missing-form"
+  ],
+  "trials": 1,
+  "primary_metric": "task-success"
+}

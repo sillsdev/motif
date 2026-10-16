@@ -58,7 +58,8 @@ function Resolve-ABScriptValue([object] $Value) {
         return $resolved
     }
     if ($Value -is [System.Collections.IEnumerable] -and $Value -isnot [string]) {
-        return @($Value | ForEach-Object { Resolve-ABScriptValue $_ })
+        # The leading comma keeps a one-item list a list; PowerShell would otherwise unroll it to its item.
+        return ,@($Value | ForEach-Object { Resolve-ABScriptValue $_ })
     }
     return $Value
 }

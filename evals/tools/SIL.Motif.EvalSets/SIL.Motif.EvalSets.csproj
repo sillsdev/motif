@@ -5,6 +5,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="SIL.Motif.Tests.LibLcm" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\..\tools\SampleProjects\SIL.Motif.SampleProjects.csproj" />
   </ItemGroup>
 </Project>

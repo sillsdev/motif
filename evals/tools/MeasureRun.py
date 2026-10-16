@@ -65,10 +65,16 @@ def server_activity(trial):
     return list(lines(trial / 'frozen' / 'activity.jsonl'))
 
 
+def composer_verbs(needs):
+    """The Composer verbs among a task's needs: compose-* verbs and order-allomorphs, or None when there are none."""
+    verbs = [str(need) for need in needs if str(need).startswith('compose-') or str(need) == 'order-allomorphs']
+    return verbs or None
+
+
 def declared_composers(trial, manifest):
-    """The Composer verbs the task expects, from the Episode manifest or else the task definition, or None."""
-    if isinstance(manifest.get('expectedComposers'), list):
-        return [str(verb) for verb in manifest['expectedComposers']] or None
+    """The Composer verbs the task needs, from the Episode manifest or else the task definition, or None."""
+    if isinstance(manifest.get('needs'), list):
+        return composer_verbs(manifest['needs'])
     task = trial.parts[-3]
     configured = os.environ.get('MOTIF_TEST_GRAMMARS')
     if not configured:
@@ -77,10 +83,10 @@ def declared_composers(trial, manifest):
     for base in (root / 'evals' / 'sets', root / 'sets', root):
         for definition in sorted(base.glob(f'*/tasks/{task}/task.yaml')):
             try:
-                expected = json.loads(definition.read_text(encoding='utf-8-sig')).get('expectedComposers')
+                needs = json.loads(definition.read_text(encoding='utf-8-sig')).get('needs')
             except ValueError:
                 continue
-            return [str(verb) for verb in expected] if isinstance(expected, list) and expected else None
+            return composer_verbs(needs) if isinstance(needs, list) else None
     return None
 
 
@@ -233,7 +239,7 @@ def write_summary(path, rows):
             sum(row['followedNext'] for row in items), sum(row['ignoredNext'] for row in items)))
     unpriced = sum(row['unpricedRetryAttempts'] for row in rows if row['integrity'] == 'clean' and row['success'] is not None)
     out += ['', 'Refusals, followed next and found Composer come from the server activity log. Found Composer counts '
-            'Episodes whose task declares expectedComposers; n/a means no task did.', 'Costs come from the Episode manifest, including recorded Cloud retry spend; tokens to solve and mean '
+            'Episodes whose task needs a Composer; n/a means no task did.', 'Costs come from the Episode manifest, including recorded Cloud retry spend; tokens to solve and mean '
             'tokens include the tokens of retried attempts. A missing value is not replaced with a token-rate estimate.']
     if unpriced:
         out.append(f'{unpriced} retried attempts reported no cost, so those prices are lower bounds.')

@@ -1,0 +1,5 @@
+{"tool": "motif_grammar", "arguments": {"kind": "templates", "detail": "detailed"}, "capture": {"template": "items[name=Verb suffixes].id", "tense": "items[name=Verb suffixes].suffixSlots[name=Tense].id", "person": "items[name=Verb suffixes].suffixSlots[name=Person].id"}}
+{"tool": "motif_start_proposal", "arguments": {"draft": "verb-slot-order", "label": "Put past before first person", "comment": "malatamu 'I cooked' shows past -ta before first-person -mu; the verb template had them the other way round."}}
+{"tool": "motif_edit_affix_template", "arguments": {"draft": "verb-slot-order", "target": "${template}", "expected_prefix_slots": [], "prefix_slots": [], "expected_suffix_slots": ["${person}", "${tense}"], "suffix_slots": ["${tense}", "${person}"]}}
+{"tool": "motif_finalize_proposal", "arguments": {"draft": "verb-slot-order"}}
+{"finalMessage": "I finalized a Proposal that reorders the verb template so Tense (past -ta) comes before Person (first-person -mu), as malatamu shows."}

@@ -37,9 +37,12 @@ internal static class Program
 
             if (args[0] == "measure-output")
             {
-                var result = await OutputMeasurement.RunAsync(languageText, Required(options, "start"),
+                var result = await OutputMeasurement.RunAsync(Required(options, "project"),
                     Required(options, "proposal"), Required(options, "out"),
-                    options.GetValueOrDefault("words-root", setDirectory));
+                    options.GetValueOrDefault("words-root", setDirectory),
+                    options.TryGetValue("word-lists", out var lists)
+                        ? lists.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                        : null);
                 Console.WriteLine(JsonSerializer.Serialize(result, JsonOptions));
                 return 0;
             }
@@ -83,7 +86,7 @@ internal static class Program
             if (!args[index].StartsWith("--", StringComparison.Ordinal) || index + 1 >= args.Count)
                 throw new InvalidDataException($"Unknown or incomplete option '{args[index]}'.");
             var name = args[index][2..];
-            if (name is not ("set" or "start" or "out" or "proposal" or "words-root") || !result.TryAdd(name, args[++index]))
+            if (name is not ("set" or "start" or "out" or "proposal" or "words-root" or "project" or "word-lists") || !result.TryAdd(name, args[++index]))
                 throw new InvalidDataException($"Unknown or repeated option '--{name}'.");
         }
         return result;

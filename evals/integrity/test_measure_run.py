@@ -29,7 +29,7 @@ class MeasureRunTests(unittest.TestCase):
         (trial / 'integrity.json').write_text(json.dumps({'state': 'clean'}))
         manifest = {'armId': arm, 'costUsd': cost}
         if expected is not None:
-            manifest['expectedComposers'] = expected
+            manifest['needs'] = expected
         (trial / 'manifest.json').write_text(json.dumps(manifest))
         if activity is not None:
             (trial / 'frozen').mkdir()
@@ -140,25 +140,53 @@ class MeasureRunTests(unittest.TestCase):
             self.trial(run, 'arm-a', 1, True, [], activity=self.ACTIVITY)
             self.assertEqual('', self.measure(run)[0]['foundComposer'])
 
+    def test_needs_that_name_no_composer_leave_the_measure_blank(self):
+        with tempfile.TemporaryDirectory() as directory:
+            run = Path(directory)
+            self.trial(run, 'arm-a', 1, True, [], activity=self.ACTIVITY, expected=['set-gloss', 'grader:rubric'])
+            self.assertEqual('', self.measure(run)[0]['foundComposer'])
+
+    def test_order_allomorphs_counts_as_a_composer_need(self):
+        with tempfile.TemporaryDirectory() as directory:
+            run = Path(directory)
+            activity = [{'tool': 'motif_order', 'isError': False, 'code': None, 'composers': ['order-allomorphs']}]
+            self.trial(run, 'arm-a', 1, True, [], activity=activity, expected=['order-allomorphs'])
+            self.assertEqual('True', self.measure(run)[0]['foundComposer'])
+
     def test_found_composer_is_true_only_when_a_call_addressed_an_expected_composer(self):
         with tempfile.TemporaryDirectory() as directory:
             run = Path(directory)
-            self.trial(run, 'arm-a', 1, True, [], activity=self.ACTIVITY, expected=['compose-author-phoneme'])
+            self.trial(run, 'arm-a', 1, True, [], activity=self.ACTIVITY, expected=['grader:rubric', 'compose-author-phoneme'])
             self.trial(run, 'arm-a', 2, False, [], activity=self.ACTIVITY, expected=['compose-author-affix-slot'])
             self.trial(run, 'arm-a', 3, False, [], activity=[], expected=['compose-author-phoneme'])
             rows = self.measure(run)
             self.assertEqual(['True', 'False', 'False'], [row['foundComposer'] for row in rows])
             self.assertIn('| 2.0 | 1/3 |', (run / 'metrics.md').read_text())
 
-    def test_expected_composers_fall_back_to_the_task_definition(self):
+    def test_needs_fall_back_to_the_task_definition(self):
         with tempfile.TemporaryDirectory() as directory:
             run = Path(directory)
             grammars = run / 'grammars'
             task_dir = grammars / 'sets/set-x/tasks/task-a'
             task_dir.mkdir(parents=True)
-            (task_dir / 'task.yaml').write_text(json.dumps({'id': 'task-a', 'expectedComposers': ['compose-author-phoneme']}))
+            (task_dir / 'task.yaml').write_text(json.dumps({'id': 'task-a', 'needs': ['builder:t2-empty-grammar', 'compose-author-phoneme']}))
             self.trial(run, 'arm-a', 1, True, [], activity=self.ACTIVITY)
             self.assertEqual('True', self.measure(run, MOTIF_TEST_GRAMMARS=str(grammars))[0]['foundComposer'])
+
+    def test_the_measure_separates_an_episode_that_used_the_expected_composer_from_one_that_did_not(self):
+        with tempfile.TemporaryDirectory() as directory:
+            run = Path(directory)
+            grammars = run / 'grammars'
+            task_dir = grammars / 'sets/eval-t2-lomi/tasks/task-a'
+            task_dir.mkdir(parents=True)
+            (task_dir / 'task.yaml').write_text(json.dumps({'id': 't2-edit-class-slot-obligatory', 'family': 'edit',
+                                                            'needs': ['compose-edit-affix-slot']}))
+            used = [{'tool': 'motif_dry_run', 'isError': False, 'code': None, 'composers': ['compose-edit-affix-slot']}]
+            missed = [{'tool': 'motif_add_phoneme', 'isError': False, 'code': None, 'composers': ['compose-author-phoneme']}]
+            self.trial(run, 'arm-a', 1, True, [], activity=used)
+            self.trial(run, 'arm-b', 1, True, [], activity=missed)
+            rows = self.measure(run, MOTIF_TEST_GRAMMARS=str(grammars))
+            self.assertEqual({'arm-a': 'True', 'arm-b': 'False'}, {row['arm']: row['foundComposer'] for row in rows})
 
     def test_a_trial_with_no_server_activity_has_zero_counts_and_a_blank_composer(self):
         with tempfile.TemporaryDirectory() as directory:
