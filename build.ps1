@@ -28,6 +28,11 @@
 .PARAMETER NoProcessSweep
 Keep the worktree lock and process policy but skip stale-process cleanup.
 
+  .NOTES
+  MSBuild node count: restore and build pass -m:N. N is MOTIF_BUILD_NODES when that is a positive whole
+  number; otherwise there is no cap on CI (the CI variable is true, 1 or yes) and a quarter of the
+  processors, at least two, on a developer machine, where many worktrees build at once.
+
   .EXAMPLE
   ./build.ps1
 
@@ -114,8 +119,12 @@ else {
 $restoreModule = Join-Path $repoRoot 'tools/MotifRestore.psm1'
 Import-Module $restoreModule -Force
 
-Write-Step 'dotnet restore'
-$restore = Invoke-MotifRestore -Target $solution
+$buildNodes = Get-MotifBuildNodeLimit
+$nodeText = if ($buildNodes -gt 0) { "-m:$buildNodes" } else { 'no node cap' }
+$nodeArguments = @(if ($buildNodes -gt 0) { "-m:$buildNodes" })
+
+Write-Step "dotnet restore ($nodeText)"
+$restore = Invoke-MotifRestore -Target $solution -MaxNodes $buildNodes
 $restore.Output | ForEach-Object { Write-Host $_ }
 if ($restore.ExitCode -ne 0) {
     Write-Host ''
@@ -123,8 +132,8 @@ if ($restore.ExitCode -ne 0) {
     exit 1
 }
 
-Write-Step "dotnet build ($Configuration)"
-& dotnet build $solution --configuration $Configuration --nologo --no-restore
+Write-Step "dotnet build ($Configuration, $nodeText)"
+& dotnet build $solution --configuration $Configuration --nologo --no-restore @nodeArguments
 if ($LASTEXITCODE -ne 0) {
     Write-Host ''
     Write-Host 'Build failed.' -ForegroundColor Red

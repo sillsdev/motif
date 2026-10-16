@@ -21,14 +21,36 @@ function Get-MotifPackageVersion {
     return $null
 }
 
+<#
+  .SYNOPSIS
+  The MSBuild node count a restore or build passes as -m:N, or 0 for no cap.
+
+  .DESCRIPTION
+  MOTIF_BUILD_NODES, a positive whole number, wins. Otherwise CI (CI set to true, 1 or yes, any case) gets
+  no cap, because a CI runner is one build on its own machine. Otherwise a developer machine gets a quarter
+  of its processors, at least two: a dozen worktrees building at once would each start one node per
+  processor and starve one another.
+#>
+function Get-MotifBuildNodeLimit {
+    [CmdletBinding()]
+    param([int] $ProcessorCount = [Environment]::ProcessorCount)
+
+    $nodes = 0
+    if ([int]::TryParse([string] $env:MOTIF_BUILD_NODES, [ref] $nodes) -and $nodes -gt 0) { return $nodes }
+    if ($env:CI -match '^(?i:true|1|yes)$') { return 0 }
+    return [Math]::Max(2, [int][Math]::Floor($ProcessorCount / 4))
+}
+
 function Invoke-MotifRestore {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][string] $Target,
-        [string] $ConfigFile
+        [string] $ConfigFile,
+        [int] $MaxNodes = 0
     )
 
     $arguments = @('restore', $Target, '--ignore-failed-sources', '--verbosity', 'minimal')
+    if ($MaxNodes -gt 0) { $arguments += "-m:$MaxNodes" }
     if (-not [string]::IsNullOrWhiteSpace($ConfigFile)) {
         $arguments += @('--configfile', $ConfigFile)
     }
@@ -64,4 +86,4 @@ function Invoke-MotifRestore {
     }
 }
 
-Export-ModuleMember -Function Invoke-MotifRestore
+Export-ModuleMember -Function Invoke-MotifRestore, Get-MotifBuildNodeLimit
