@@ -886,11 +886,13 @@ try
             {
                 if (flags.ContainsKey("all-words"))
                     return Usage("Use either --words <file> or --all-words, not both.", asJson);
-                if (!File.Exists(trialWordsPath))
-                    return Usage($"The --words file '{trialWordsPath}' does not exist.", asJson);
-                trialWords = File.ReadAllLines(trialWordsPath);
-                if (trialWords.Count == 0)
-                    return Usage("The --words file must contain at least one word.", asJson);
+                var trialWordList = WordListFile.Resolve(null, trialWordsPath);
+                if (!trialWordList.Succeeded)
+                {
+                    result = RenderCommand(trialWordList);
+                    break;
+                }
+                trialWords = trialWordList.Value!;
             }
             var trialWaitTimeout = JobCommands.DefaultWaitTimeout;
             if (flags.ContainsKey("wait") && ParseWaitTimeout(flags,
@@ -1931,11 +1933,22 @@ try
             if (!TryParseGuidList(flags.GetValueOrDefault("texts"), out var assessTextIds))
                 return Usage(AssessUsage(), asJson);
             flags.TryGetValue("words", out var assessWordsFile);
-            if (assessWordsFile is not null && !File.Exists(assessWordsFile))
-                return Usage($"The --words file '{assessWordsFile}' does not exist.", asJson);
-            var assessWords = assessWordsFile is not null
-                ? File.ReadAllLines(assessWordsFile)
-                : Array.Empty<string>();
+            var assessWordList = WordListFile.Resolve(null, assessWordsFile);
+            if (!assessWordList.Succeeded)
+            {
+                result = RenderCommand(assessWordList);
+                break;
+            }
+            var assessWords = assessWordList.Value!;
+            var assessSummary = flags.ContainsKey("summary");
+            var assessPageOffset = 0;
+            var assessPageLimit = 25;
+            if (flags.TryGetValue("offset", out var assessOffsetRaw) &&
+                    (!int.TryParse(assessOffsetRaw, out assessPageOffset) || assessPageOffset < 0) ||
+                flags.TryGetValue("limit", out var assessLimitRaw) &&
+                    (!int.TryParse(assessLimitRaw, out assessPageLimit) || assessPageLimit < 1) ||
+                (flags.ContainsKey("offset") || flags.ContainsKey("limit")) && !assessSummary)
+                return Usage(AssessUsage(), asJson);
             TimeSpan? assessRetrySlowerThan = null;
             if (hasAssessRetrySlowerThan)
             {
@@ -1970,9 +1983,16 @@ try
             {
                 if (activityLease is null)
                     return RefuseActivityDuringUpdate();
-                result = RunWithConsoleCancellation(cancellationToken => RenderCommand(AssessCommand.Assess(
-                    new AssessRequest(positionals[0], assessSelection, assessTimeLimitMs, assessStepCap, assessReplaces),
-                    asJson ? null : progress => error.WriteLine(progress.Message), cancellationToken)));
+                result = RunWithConsoleCancellation(cancellationToken =>
+                {
+                    var assessed = AssessCommand.Assess(
+                        new AssessRequest(positionals[0], assessSelection, assessTimeLimitMs, assessStepCap, assessReplaces),
+                        asJson ? null : progress => error.WriteLine(progress.Message), cancellationToken);
+                    if (!assessSummary || !assessed.Succeeded) return RenderCommand(assessed);
+                    alreadyRendered = true;
+                    return CommandTextRenderer.RenderAssessSummary(
+                        AssessSummary.Page(assessed.Value!, assessPageOffset, assessPageLimit, detailed: false), asJson);
+                });
             }
             break;
 
