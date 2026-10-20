@@ -1239,7 +1239,7 @@
           "items": {
             "type": "string"
           },
-          "description": "Words to parse. Omit to use the saved Default Selection."
+          "description": "Words to parse. Omit to use the words the Proposal touches."
         },
         "negative_words": {
           "type": "array",

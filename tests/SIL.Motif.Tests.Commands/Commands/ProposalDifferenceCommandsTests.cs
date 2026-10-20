@@ -384,6 +384,54 @@ public sealed class ProposalDifferenceCommandsTests : IDisposable
             .Where(job => job.JobId != "trial-1"));
     }
 
+    [Fact]
+    public void RequiredQueuesWithTheBaselineWhenItIsAssessed()
+    {
+        using var fixture = new Fixture(_root, noBaselineIds: true);
+
+        var queued = TrialWorkflow.Enqueue(
+            new SIL.Motif.Commands.Requests.EnqueueTrialRequest(fixture.ProjectPath, "1.0", fixture.ProposalId),
+            _ => CommandOutcome<AssessCommandResponse>.Success(new AssessCommandResponse(null!, null!, ["before"], "")),
+            BaselineMode.Required);
+
+        Assert.True(queued.Succeeded, queued.Refusal?.Message);
+        Assert.Null(queued.Value!.BaselineWarning);
+        var job = new JobRepository(fixture.Database).Get(queued.Value.Job.JobId)!;
+        Assert.Equal(["before"], TrialJobInput.Parse(job.InputJson).BaselineAssessmentIds);
+    }
+
+    [Fact]
+    public void ARefusedBaselineAssessmentRefusesRequiredAndWarnsBestEffort()
+    {
+        using var fixture = new Fixture(_root, noBaselineIds: true);
+        var request = new SIL.Motif.Commands.Requests.EnqueueTrialRequest(fixture.ProjectPath, "1.0", fixture.ProposalId,
+            Words: ["sita"]);
+        Func<IReadOnlyList<string>, CommandOutcome<AssessCommandResponse>> refused = _ =>
+            CommandOutcome<AssessCommandResponse>.Refused(new Refusal("assess.parser-unavailable",
+                FailureReason.Refused, "parser missing"));
+
+        var required = TrialWorkflow.Enqueue(request, refused, BaselineMode.Required);
+        var bestEffort = TrialWorkflow.Enqueue(request, refused, BaselineMode.BestEffort);
+
+        Assert.Equal("assess.parser-unavailable", required.Refusal!.Code);
+        Assert.True(bestEffort.Succeeded, bestEffort.Refusal?.Message);
+        Assert.Equal("parser missing", bestEffort.Value!.BaselineWarning);
+    }
+
+    [Fact]
+    public void AnEnqueueRefusalIsNotRelabelledAsAMissingBaseline()
+    {
+        using var fixture = new Fixture(_root, noBaselineIds: true);
+
+        var queued = TrialWorkflow.Enqueue(
+            new SIL.Motif.Commands.Requests.EnqueueTrialRequest(fixture.ProjectPath, "1.0", fixture.ProposalId,
+                Words: [" bad"]),
+            _ => CommandOutcome<AssessCommandResponse>.Success(new AssessCommandResponse(null!, null!, ["before"], "")),
+            BaselineMode.Required);
+
+        Assert.NotEqual("difference.no-before", queued.Refusal!.Code);
+    }
+
     public void Dispose()
     {
         try { Directory.Delete(_root, recursive: true); }

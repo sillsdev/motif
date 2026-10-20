@@ -799,7 +799,7 @@ internal static class AgentTools
             string.Empty,
             AgentClass.Evaluate,
             Schema.Object([("proposal", Schema.String("The proposal id."), true),
-                ("words", Schema.StringArray("Words to parse. Omit to use the saved Default Selection."), false),
+                ("words", Schema.StringArray("Words to parse. Omit to use the words the Proposal touches."), false),
                 ("negative_words", Schema.StringArray("Attested counterexamples that should not parse."), false),
                 ("job", Schema.String("A job id from an earlier 'running' result, to keep waiting for it."), false),
                 ("wait_seconds", Schema.Integer("How long to wait for the result. Default 40.", 1, 300), false),

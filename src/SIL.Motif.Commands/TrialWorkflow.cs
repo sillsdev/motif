@@ -47,15 +47,25 @@ public static class TrialWorkflow
     {
         ArgumentNullException.ThrowIfNull(request);
         string? warning = null;
+        var failed = false;
+        string? failure = null;
         CommandOutcome<JobEnqueuedResponse> queued;
         try
         {
-            queued = TrialBaselines.EnqueueWithBaseline(request, assess,
-                mode == BaselineMode.BestEffort ? reason => warning ??= reason : null);
+            queued = TrialBaselines.EnqueueWithBaseline(request, words =>
+            {
+                try { return assess(words); }
+                catch (Exception exception) when (exception is not OperationCanceledException)
+                {
+                    failed = true;
+                    failure = exception.Message;
+                    throw;
+                }
+            }, mode == BaselineMode.BestEffort ? reason => warning ??= reason : null);
         }
-        catch (Exception exception) when (exception is not OperationCanceledException)
+        catch (Exception) when (failed && mode == BaselineMode.Required)
         {
-            return CommandOutcome<TrialEnqueued>.Refused(Unavailable(exception.Message));
+            return CommandOutcome<TrialEnqueued>.Refused(Unavailable(failure!));
         }
         if (!queued.Succeeded) return CommandOutcome<TrialEnqueued>.Refused(queued.Refusal!);
         return CommandOutcome<TrialEnqueued>.Success(new TrialEnqueued(queued.Value!, warning));
