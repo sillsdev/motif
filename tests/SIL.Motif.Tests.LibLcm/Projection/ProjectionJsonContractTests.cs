@@ -47,7 +47,7 @@ public sealed class ProjectionJsonContractTests
     public void AppliedLogEntrySummary_KeysAreTheContract() =>
         AssertKeys(
             new AppliedLogEntrySummary("id", "20260101T000000Z", "user", "sha256:x"),
-            "proposalId", "timestampUtc", "user", "intentDigest");
+            "proposalId", "timestampUtc", "user", "intentDigest", "mode", "message");
 
     // Every key emitted at any depth must be named here, and every name here must be emitted.
     private static void AssertKeys<T>(T projection, params string[] expected)

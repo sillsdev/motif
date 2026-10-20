@@ -4,8 +4,9 @@ namespace SIL.Motif.Contract.Requests;
 /// <param name="ProjectPath">The FieldWorks project whose pending changes will be applied.</param>
 /// <param name="DraftId">The expected Draft identity, or <see langword="null"/> to use the current Draft.</param>
 /// <param name="Revision">The expected revision, or <see langword="null"/> to use the current revision.</param>
+/// <param name="Attribution">The mode, message and note choice; <see langword="null"/> is a person with no message.</param>
 public sealed record ApplyPendingRequest(
-    string ProjectPath, string? DraftId, string? Revision);
+    string ProjectPath, string? DraftId, string? Revision, ApplyAttribution? Attribution = null);
 
 /// <summary>Applies one Proposal from its current Trial: a finalized Proposal, or a Draft finalized first.</summary>
 /// <param name="ProjectPath">The FieldWorks project the Proposal will be applied to.</param>
@@ -13,7 +14,9 @@ public sealed record ApplyPendingRequest(
 /// <param name="ExpectedRevision">
 /// The Draft revision, or the intent digest of a finalized Proposal, the caller reviewed; <see langword="null"/> accepts the current one.
 /// </param>
-public sealed record ApplyProposalRequest(string ProjectPath, string ProposalId, string? ExpectedRevision);
+/// <param name="Attribution">The mode, message and note choice; <see langword="null"/> is a person with no message.</param>
+public sealed record ApplyProposalRequest(
+    string ProjectPath, string ProposalId, string? ExpectedRevision, ApplyAttribution? Attribution = null);
 
 /// <summary>Measures the selected words against one exact pending revision.</summary>
 /// <param name="ProjectPath">The FieldWorks project whose pending changes will be measured.</param>

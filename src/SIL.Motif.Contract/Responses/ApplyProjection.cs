@@ -4,7 +4,9 @@ using System.Text.Json.Serialization;
 namespace SIL.Motif.Contract.Responses;
 
 /// <summary>The applied-change-log entry an Apply just wrote (or found already present), for display.</summary>
-public sealed record AppliedLogEntrySummary(string ProposalId, string TimestampUtc, string User, string IntentDigest);
+public sealed record AppliedLogEntrySummary(
+    string ProposalId, string TimestampUtc, string User, string IntentDigest,
+    string Mode = "person", string Message = "");
 
 /// <summary>
 /// The <c>apply</c> report: whether the Proposal actually mutated the project (idempotent no-op

@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
+using SIL.Motif.Contract.Requests;
 
 namespace SIL.Motif.Model.AppliedLog;
 
@@ -10,10 +12,11 @@ namespace SIL.Motif.Model.AppliedLog;
 /// </summary>
 /// <remarks>
 /// <c>Version = &lt;proposalId&gt;</c><br/>
-/// <c>Name = Motif|&lt;format&gt;|&lt;timestamp&gt;|&lt;user&gt;|&lt;intentDigest&gt;|&lt;description&gt;</c>
+/// <c>Name = Motif|&lt;format&gt;|&lt;timestamp&gt;|&lt;user&gt;|&lt;intentDigest&gt;|&lt;mode&gt;|&lt;description&gt;</c>
 ///
 /// Every field before the description is fixed-width or constrained, so the description is a free
-/// tail and needs no escaping: parsing splits on the first five <c>|</c> and takes the remainder.
+/// tail and needs no escaping: parsing splits on the first six <c>|</c> and takes the remainder.
+/// Format 1, written before the mode existed, has no <c>mode</c> field and reads as <c>person</c>.
 /// This type never sees or produces the <c>proposalId</c> itself (that lives in
 /// <c>CmResource.Version</c>, a Guid, not text) — see <see cref="AppliedLogEntry.ProposalId"/>.
 /// </remarks>
@@ -23,7 +26,7 @@ public static class AppliedLogFormat
     public const string Prefix = "Motif";
 
     /// <summary>The current decimal format version.</summary>
-    public const int CurrentFormatVersion = 1;
+    public const int CurrentFormatVersion = 2;
 
     /// <summary>Fixed length of the UTC ISO 8601 basic timestamp field, e.g. <c>20260724T055701Z</c>.</summary>
     public const int TimestampLength = 16;
@@ -61,6 +64,7 @@ public static class AppliedLogFormat
         ValidateUser(entry.User);
         ValidateIntentDigestHex(entry.IntentDigest);
         ValidateDescription(entry.Description);
+        ValidateMode(entry.Mode);
 
         var name = string.Join(
             FieldSeparator.ToString(CultureInfo.InvariantCulture),
@@ -69,6 +73,7 @@ public static class AppliedLogFormat
             entry.TimestampUtc,
             entry.User,
             entry.IntentDigest,
+            entry.Mode,
             entry.Description);
 
         if (name.Length > MaxNameLength)
@@ -121,11 +126,14 @@ public static class AppliedLogFormat
             return false;
         }
 
-        var fields = SplitOnFirstNSeparators(name, 5);
-        if (fields.Length != 6)
+        var formatField = name.Split(FieldSeparator, 3).ElementAtOrDefault(1) ?? string.Empty;
+        var hasMode = !(int.TryParse(formatField, NumberStyles.None, CultureInfo.InvariantCulture, out var declared) &&
+                        declared < 2);
+        var fields = SplitOnFirstNSeparators(name, hasMode ? 6 : 5);
+        if (fields.Length != (hasMode ? 7 : 6))
         {
-            error = $"Expected 6 '|'-delimited fields (prefix, format, timestamp, user, intentDigest, " +
-                     $"description); found {fields.Length}.";
+            error = $"Expected {(hasMode ? 7 : 6)} '|'-delimited fields (prefix, format, timestamp, user, " +
+                    $"intentDigest, {(hasMode ? "mode, " : "")}description); found {fields.Length}.";
             return false;
         }
 
@@ -133,7 +141,13 @@ public static class AppliedLogFormat
         var timestamp = fields[2];
         var user = fields[3];
         var intentDigest = fields[4];
-        var description = fields[5];
+        var mode = hasMode ? fields[5] : ApplyModes.Person;
+        var description = hasMode ? fields[6] : fields[5];
+        if (!ApplyModes.IsKnown(mode))
+        {
+            error = $"'{mode}' is not an apply mode.";
+            return false;
+        }
 
         if (!int.TryParse(formatText, NumberStyles.None, CultureInfo.InvariantCulture, out var format))
         {
@@ -147,7 +161,7 @@ public static class AppliedLogFormat
             return false;
         }
 
-        entry = new AppliedLogEntry(proposalId, format, timestamp, user, intentDigest, description);
+        entry = new AppliedLogEntry(proposalId, format, timestamp, user, intentDigest, description, mode);
         error = null;
         return true;
     }
@@ -172,6 +186,12 @@ public static class AppliedLogFormat
 
         if (ContainsControlCharacter(timestampUtc))
             throw new ArgumentException("Timestamp must not contain control characters.", nameof(timestampUtc));
+    }
+
+    private static void ValidateMode(string mode)
+    {
+        if (!ApplyModes.IsKnown(mode))
+            throw new ArgumentException($"Apply mode '{mode}' must be 'person' or 'autonomous'.", nameof(mode));
     }
 
     private static void ValidateUser(string user)

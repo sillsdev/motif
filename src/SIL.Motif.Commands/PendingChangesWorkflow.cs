@@ -55,7 +55,7 @@ public static class PendingChangesWorkflow
         if (request.DraftId is { } expectedDraft && expectedDraft != current.DraftId)
             return RefuseApply("apply.changes-changed", ChangesChanged(isPending: true));
         return ApplyOne(new ApplyTarget(request.ProjectPath, current.DraftId, request.Revision, Force: false,
-            DryRunSource.Fresh), cancellationToken, dryRunTimeout, runnerLauncher);
+            DryRunSource.Fresh, request.Attribution), cancellationToken, dryRunTimeout, runnerLauncher);
     }
 
     /// <summary>
@@ -73,7 +73,7 @@ public static class PendingChangesWorkflow
     {
         ArgumentNullException.ThrowIfNull(request);
         return ApplyOne(new ApplyTarget(request.ProjectPath, request.ProposalId, request.ExpectedRevision,
-            Force: false, DryRunSource.Trial), cancellationToken, null, null);
+            Force: false, DryRunSource.Trial, request.Attribution), cancellationToken, null, null);
     }
 
     /// <summary>
@@ -85,14 +85,14 @@ public static class PendingChangesWorkflow
     {
         ArgumentNullException.ThrowIfNull(request);
         return ApplyOne(new ApplyTarget(request.FwDataPath, request.ProposalId, null, request.Force,
-            DryRunSource.Bound), CancellationToken.None, null, null);
+            DryRunSource.Bound, request.Attribution), CancellationToken.None, null, null);
     }
 
     // Lets a test run a second Apply between this one's reads and its Finalize, the window two processes share.
     internal static readonly AsyncLocal<Action?> BeforeFinalizeForTests = new();
 
     private sealed record ApplyTarget(string ProjectPath, string ProposalId, string? ExpectedRevision, bool Force,
-        DryRunSource DryRun);
+        DryRunSource DryRun, ApplyAttribution? Attribution);
 
     // Where the Dry Run Apply binds comes from; it is the only thing the front doors choose.
     private enum DryRunSource
@@ -112,6 +112,8 @@ public static class PendingChangesWorkflow
         CancellationToken cancellationToken, TimeSpan? dryRunTimeout, IJobRunnerLauncher? runnerLauncher)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        if (ApplyAttributionCheck.Refusal(target.Attribution) is { } attributionRefusal)
+            return CommandOutcome<ApplyPendingResult>.Refused(attributionRefusal);
         // A missing project has no folder to hold a lease in.
         if (!File.Exists(target.ProjectPath))
             return ApplyLeased(target, cancellationToken, dryRunTimeout, runnerLauncher);
@@ -180,7 +182,8 @@ public static class PendingChangesWorkflow
         };
         if (unbound is not null) return ReopenAfterRefusal(target.ProjectPath, identity, unbound);
 
-        var applied = ProposalCommands.Apply(new ApplyRequest(target.ProjectPath, version, proposalId, target.Force));
+        var applied = ProposalCommands.Apply(new ApplyRequest(target.ProjectPath, version, proposalId, target.Force,
+            target.Attribution));
         if (applied.Succeeded)
             return CommandOutcome<ApplyPendingResult>.Success(ApplyPendingResult.AppliedWith(applied.Value!,
                 identity.Summary!));

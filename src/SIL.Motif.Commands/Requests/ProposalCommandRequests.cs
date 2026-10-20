@@ -1,3 +1,4 @@
+using SIL.Motif.Contract.Requests;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
@@ -433,8 +434,10 @@ public sealed record ShowProposalRequest(string FwDataPath, string ProductVersio
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
 /// <param name="ProposalId">The exact canonical Proposal identity.</param>
 /// <param name="Force">Whether to override the requested command constraint.</param>
+/// <param name="Attribution">The mode, message and note choice; <see langword="null"/> is a person with no message.</param>
 public sealed record ApplyRequest(
-    string FwDataPath, string ProductVersion, string ProposalId, bool Force = false);
+    string FwDataPath, string ProductVersion, string ProposalId, bool Force = false,
+    ApplyAttribution? Attribution = null);
 
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>

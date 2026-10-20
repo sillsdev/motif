@@ -248,8 +248,8 @@ public static class CommandTextRenderer
         foreach (var entry in projection.Entries)
         {
             sb.AppendLine(
-                $"  {entry.ProposalId}  ts={entry.TimestampUtc}  user='{entry.User}'  " +
-                $"intentDigest={entry.IntentDigest}  description=\"{entry.Description}\"");
+                $"  {entry.ProposalId}  ts={entry.TimestampUtc}  mode={entry.Mode}  user='{entry.User}'  " +
+                $"intentDigest={entry.IntentDigest}  message=\"{entry.Description}\"");
         }
 
         foreach (var diagnostic in projection.Diagnostics)
@@ -403,6 +403,8 @@ public static class CommandTextRenderer
         sb.AppendLine(
             $"  applied-log entry: proposalId={logEntry.ProposalId} timestamp={logEntry.TimestampUtc} " +
             $"user='{logEntry.User}' intentDigest={logEntry.IntentDigest}");
+        sb.AppendLine($"  mode: {logEntry.Mode}");
+        if (logEntry.Message.Length > 0) sb.AppendLine($"  message: {logEntry.Message}");
         return sb.ToString();
     }
 
