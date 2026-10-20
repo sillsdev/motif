@@ -78,7 +78,6 @@ public sealed partial record WindowRefusal
         [C.ProposalClosed] = "These changes were already applied or closed, so their notes cannot be edited.",
         [C.ProposalNotFound] = "These changes could not be found. Refresh the list and try again.",
         [C.ProposalRationaleEmpty] = "These changes need an explanation of what they do before they can be finished.",
-        [C.ProposalTextTooLarge] = "That text is too long. Shorten it and try again.",
         [C.ApplyPreconditionFailed] =
             "Something in the project changed since this was checked. Check it again before applying.",
         [C.ApplyNotReady] = "The check did not give enough evidence to apply these changes. Check them again.",

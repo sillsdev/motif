@@ -121,17 +121,12 @@ public sealed class JobStatusJsonConverter : JsonConverter<JobStatus>
         writer.WriteStringValue(JobStatusJson.ToWire(value));
 }
 
-/// <summary>Limits structured job documents to one worker control frame.</summary>
+/// <summary>Checks that structured job documents are JSON objects or arrays; their size is not limited.</summary>
 public static class JobJson
 {
-    /// <summary>The UTF-8 bound for input, result, and progress JSON documents.</summary>
-    public const int MaxStructuredJsonUtf8Bytes = 1024 * 1024;
-
     public static void ValidateStructured(string json, string fieldName)
     {
         if (json is null) throw new ArgumentNullException(nameof(json));
-        if (Encoding.UTF8.GetByteCount(json) > MaxStructuredJsonUtf8Bytes)
-            throw new ArgumentException($"{fieldName} exceeds the structured JSON size limit.", fieldName);
         try
         {
             using var document = JsonDocument.Parse(json);

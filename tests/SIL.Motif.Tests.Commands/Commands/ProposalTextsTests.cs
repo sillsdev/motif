@@ -111,16 +111,14 @@ public sealed class ProposalTextsTests(PristineProjectFixture pristine)
     }
 
     [Fact]
-    public void AnEmptyOrOversizeTextIsRefusedAndAPrefixIsNotAProposal()
+    public void AnEmptyRationaleIsRefusedAndAPrefixIsNotAProposal()
     {
         var (path, id) = Finalized("limits");
 
         var empty = ProposalTexts.SetRationale(new SetRationaleRequest(path, Version, id, "  "));
-        var large = ProposalTexts.SetNote(new SetNoteRequest(path, Version, id, new string('x', 64 * 1024 + 1)));
         var prefix = ProposalTexts.SetRationale(new SetRationaleRequest(path, Version, id[..12], "A prefix."));
 
         Assert.Equal("proposal.rationale-empty", empty.Refusal?.Code);
-        Assert.Equal("proposal.text-too-large", large.Refusal?.Code);
         Assert.Equal("proposal.not-found", prefix.Refusal?.Code);
     }
 

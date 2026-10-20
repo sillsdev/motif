@@ -115,7 +115,6 @@ public static class RefusalCodes
 
     public const string ProposalClosed = "proposal.closed";
     public const string ProposalRationaleEmpty = "proposal.rationale-empty";
-    public const string ProposalTextTooLarge = "proposal.text-too-large";
 
     public const string ProjectBackupUnreadable = "project.backup-unreadable";
     public const string ProjectBusy = "project.busy";
@@ -317,8 +316,6 @@ public static class RefusalCodes
     public const string JobAssessmentsInconsistent = "job.assessments-inconsistent";
     /// <summary>The Dry Run job finished without completing.</summary>
     public const string JobDryRunIncomplete = "job.dry-run-incomplete";
-    /// <summary>A job's structured input exceeds the size limit.</summary>
-    public const string JobInputTooLarge = "job.input-too-large";
     /// <summary>A job id is missing or not valid.</summary>
     public const string JobInvalidId = "job.invalid-id";
     /// <summary>A job was asked to move before itself.</summary>

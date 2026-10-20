@@ -93,6 +93,7 @@ internal static class WorkerRuntime
             shutdown.Cancel();
         };
         Console.WriteLine(host.OwnerName);
+        RunnerIdentity.Publish(options.Root);
         host.Start();
 
         using var machine = MachineDatabase.Open(options.Root);

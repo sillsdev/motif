@@ -20,9 +20,6 @@ public sealed record NoteFinding(string ProposalId, bool NoteChanged);
 /// </summary>
 public static class ProposalTexts
 {
-    /// <summary>The largest text, in UTF-8 bytes, either field holds.</summary>
-    public const int MaxBytes = 64 * 1024;
-
     /// <summary>Writes a Proposal's Rationale, replacing the one there; allowed until the Proposal is closed.</summary>
     public static CommandOutcome<ProposalTextChangedResponse> SetRationale(SetRationaleRequest request)
     {
@@ -79,10 +76,6 @@ public static class ProposalTexts
             if (requireText && string.IsNullOrWhiteSpace(text))
                 return CommandOutcome<ProposalTextChangedResponse>.Refused(Refuse("proposal.rationale-empty",
                     FailureReason.InvalidArgument, "A Rationale cannot be empty. Say what the Proposal changes and why.",
-                    id.Value));
-            if (text is not null && Encoding.UTF8.GetByteCount(text) > MaxBytes)
-                return CommandOutcome<ProposalTextChangedResponse>.Refused(Refuse("proposal.text-too-large",
-                    FailureReason.InvalidArgument, $"The {field} is larger than {MaxBytes / 1024} KiB. Shorten it.",
                     id.Value));
             var repository = new ProposalRepository(database);
             ProposalRecord record;

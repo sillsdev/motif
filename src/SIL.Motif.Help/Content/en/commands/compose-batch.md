@@ -33,4 +33,4 @@ Labels must match `[A-Za-z][A-Za-z0-9_-]{0,20}` (1–21 ASCII characters). They 
 
 Intents run in file order, and each one sees the changes of the intents before it, so the Draft ends as it would after the same commands run one at a time. Other composers cannot refer to entities created earlier in the same file; put those intents in a second file and use the identities the first one reports. A refusal names the failing intent's position and command.
 
-There is no limit by intent or operation count. A subsequent Dry Run or Trial needs the Proposal's frozen job input to fit within 1 MiB of UTF-8 JSON; an oversized input is refused with `job.input-too-large` and advice to split the Proposal.
+There is no limit by intent or operation count.

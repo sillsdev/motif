@@ -125,55 +125,6 @@ public sealed class TrialDraftRevisionTests
             TrialJobInput.Parse(new JobRepository(database).Get(queued.Value!.JobId)!.InputJson).Words);
     }
 
-    [Fact]
-    public void ATrialWhoseWordListOutgrowsAJobInputKeepsItBesideTheStore()
-    {
-        var id = NewDraftWithOneGloss("long-word-list");
-        var words = Enumerable.Range(0, 120_000).Select(index => $"neno{index:D6}").ToArray();
-
-        var queued = JobCommands.EnqueueTrial(new EnqueueTrialRequest(_fwDataPath, ProductVersion, id, Words: words));
-
-        Assert.True(queued.Succeeded, queued.Refusal?.Message);
-        using var database = ProjectMotifDatabase.Open(_fwDataPath);
-        var input = TrialJobInput.Parse(new JobRepository(database).Get(queued.Value!.JobId)!.InputJson);
-        Assert.Null(input.Words);
-        var list = Assert.IsType<JobWordList>(input.WordList);
-        Assert.Equal(words.Length, list.Count);
-        Assert.Equal(words, JobWordLists.Read(database, list));
-    }
-
-    [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(true, true)]
-    public void AnOversizedProposalIsRefusedWithSplitAdviceBeforeQueueing(bool trial, bool longWords)
-    {
-        var created = ProposalCommands.New(new(_fwDataPath, ProductVersion, "oversized", null));
-        Assert.True(created.Succeeded, created.Refusal?.Message);
-        var added = ProposalCommands.AddSetGloss(new(_fwDataPath, ProductVersion, "oversized",
-            CanonicalId.Mint().Value, "en", new string('x', 1024 * 1024)));
-        Assert.True(added.Succeeded, added.Refusal?.Message);
-        var words = longWords
-            ? Enumerable.Range(0, 120_000).Select(index => $"neno{index:D6}").ToArray()
-            : null;
-
-        var queued = trial
-            ? JobCommands.EnqueueTrial(new(_fwDataPath, ProductVersion, created.Value!.ProposalId, Words: words))
-            : JobCommands.EnqueueDryRun(new(_fwDataPath, ProductVersion, created.Value!.ProposalId));
-
-        Assert.False(queued.Succeeded);
-        Assert.Equal("job.input-too-large", queued.Refusal!.Code);
-        Assert.Contains("Split", queued.Refusal.Message);
-        Assert.Contains("Proposal", queued.Refusal.Message);
-        Assert.Equal(trial ? "trial" : "dry-run", queued.Refusal.Facts["kind"]);
-        Assert.Equal("1048576", queued.Refusal.Facts["limitUtf8Bytes"]);
-        Assert.True(int.Parse(queued.Refusal.Facts["inputUtf8Bytes"],
-            System.Globalization.CultureInfo.InvariantCulture) > 1024 * 1024);
-        using var database = ProjectMotifDatabase.Open(_fwDataPath);
-        Assert.Empty(new JobRepository(database).ListActive());
-        Assert.False(Directory.Exists(database.FullPath + ".job-inputs"));
-    }
-
     private string NewDraftWithOneGloss(string draftName)
     {
         var created = ProposalCommands.New(new NewDraftRequest(_fwDataPath, ProductVersion, draftName, null));
