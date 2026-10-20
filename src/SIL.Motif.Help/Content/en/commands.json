@@ -480,6 +480,37 @@
       "Clear a stem's class"
     ]
   },
+  "compose-delete-empty-sense": {
+    "title": "Delete an empty sense",
+    "description": "Deletes one wholly empty sense of an entry, and the stem analysis only that sense uses. A sense with any content is refused; Motif stages a Draft for a person to review and Apply.",
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "target": "Id of the empty sense to delete.",
+      "entry": "Id of the entry that owns the sense; a different owner is refused."
+    },
+    "goals": [
+      "Remove an empty sense from a variant entry",
+      "Delete a sense and its unused analysis",
+      "Clean up blank senses left by an import"
+    ]
+  },
+  "compose-set-stem-part-of-speech": {
+    "title": "Set a stem's part of speech",
+    "description": "Sets the part of speech of one existing stem analysis after checking the expected current value. Its inflection class, if any, must belong to the new part of speech; Motif stages a Draft for a person to review and Apply.",
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "target": "Id of the stem analysis whose part of speech changes.",
+      "expectedPartOfSpeech": "Id of the part of speech the stem analysis has now, or null when it has none.",
+      "partOfSpeech": "Id of the part of speech to set."
+    },
+    "goals": [
+      "Give a stem analysis a part of speech",
+      "Fix the part of speech of one stem",
+      "Fill in a missing part of speech"
+    ]
+  },
   "compose-edit-affix-inflection-classes": {
     "title": "Edit affix class restrictions",
     "description": "Replaces an ordinary inflectional prefix, suffix or interfix's exact class restriction set after checking the expected current ids. An empty set removes the restriction; Motif stages a Draft for a person to review and Apply.",

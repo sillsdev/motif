@@ -15,6 +15,8 @@ A lexical entry is a stem or affix with its forms, senses, glosses and grammatic
 3. `compose-author-lexeme-form` gives an existing entry another lexeme form.
 4. `compose-author-alternate-form` adds a variant form under the entry.
 5. `compose-author-feature-structure` attaches grammatical features to the entry's analysis.
+6. `compose-set-stem-part-of-speech` gives an existing stem analysis its part of speech.
+7. `compose-delete-empty-sense` deletes a wholly empty sense and the stem analysis only it uses.
 
 ## Pitfalls
 

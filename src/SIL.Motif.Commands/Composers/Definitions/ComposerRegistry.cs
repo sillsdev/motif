@@ -7,10 +7,12 @@ internal static class ComposerDefinitions
     public static IReadOnlyList<IComposerDefinition> All { get; } = 
     [
         new AuthorFeatureValueDefinition(),
+        new DeleteEmptySenseDefinition(),
         new EditAffixInflectionClassesDefinition(),
         new EditPartOfSpeechInflectionClassDefaultDefinition(),
         new EditStemAllomorphStemNameDefinition(),
         new EditStemInflectionClassDefinition(),
+        new SetStemPartOfSpeechDefinition(),
         new RetireAllomorphDefinition(),
         new RetireRedundantZeroAffixDefinition(),
         new RecordParsimonyDispositionDefinition(),
