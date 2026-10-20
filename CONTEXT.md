@@ -267,8 +267,10 @@ _Avoid_: dry run, assessment, validation pass
 **Readiness**:
 Whether a Proposal has enough evidence to apply. Normally a Correctness Assessment covers its current
 content and project state and shows no regression; a judgment-only Proposal needs no Correctness when its
-current bound Dry Run confirms that its effects are limited to the bounded Notebook judgment writes. Readiness
-is computed from evidence, never granted by a person, and `--force` applies in spite of it.
+current bound Dry Run confirms that its effects are limited to the bounded Notebook judgment writes. Every
+Apply, from the App or the CLI, passes this evaluation: it needs a bound Dry Run anchor and no Readiness
+reasons, unless forced. Readiness is computed from evidence, never granted by a person, and `--force` applies
+in spite of it.
 _Avoid_: approval, sign-off, review, gate
 
 **Drift**:
@@ -281,9 +283,8 @@ different. The window says such a change "no longer fits".
 _Avoid_: staleness, conflict, merge failure
 
 **Apply Authorization**:
-An opaque, one-use, short-lived grant from the Motif worker for exactly one Apply attempt. It binds the
-project, Proposal intent, Dry Run, Baseline, and Assessment disposition; it is not a general security
-credential, and it is not anyone's approval — nothing in Motif authorises an Apply.
+The check every Apply passes on both the App and CLI paths: the Readiness evaluation (see **Readiness**).
+It is not a grant or a credential, and it is not anyone's approval — nothing in Motif authorises an Apply.
 _Avoid_: approval, token, permission
 
 **Conflict**:
@@ -527,8 +528,21 @@ _Avoid_: AI mode, agent mode, MCP mode
 The `motif mcp` process through which an AI assistant reaches Motif's typed commands as tools. It is the
 Motif API presented as Model Context Protocol tools, not a second API: every tool is a catalogued command,
 each tool names its project by Known project name or recorded path, and the server shows no tools and
-refuses every call while Advanced AI mode is off.
+refuses every call while Advanced AI mode is off. It is how Consultant mode
+works; Autonomous mode uses the CLI instead.
 _Avoid_: agent server, AI endpoint, Motif service
+
+**Consultant mode**:
+An AI consultant works with a linguist through the MCP server. It may build, Trial, Dry Run and Finalize
+Proposals, and queue them Ready, but it never Applies. Nothing reaches the language project without the
+linguist knowing.
+_Avoid_: supervised mode, MCP mode, linguist mode
+
+**Autonomous mode**:
+An AI acting as an autonomous linguist through the CLI, usually started by a developer to take a grammar
+from source to working parser. It may Apply. It never forces past Readiness, and it applies only with
+measured evidence that parsing did not regress.
+_Avoid_: auto mode, unsupervised, API mode, "the API" for the CLI
 
 **Text**:
 FieldWorks' term, kept for FieldWorks' meaning: an interlinearised document **in the language project**.

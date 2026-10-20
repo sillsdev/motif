@@ -4,6 +4,10 @@
 One local worker owns Motif's durable workflow, while FieldWorks or the CLI host remains the only owner
 of the live language project and performs Apply immediately.
 
+**Note, 2026-10-20:** the approved-Decision gate and the one-use Apply Authorization grant described below
+were never built or were removed. Human review is now Consultant mode: MCP never Applies, enforced by
+ExposurePolicy and the HumanOnly catalog entry. Readiness is the check every Apply passes.
+
 **Status:** accepted, 2026-08-22; **partly superseded 2026-08-26 by
 [ADR 0040](0040-one-api-the-cli.md)**. Decisions 1 and 8 — the named-pipe protocol, its clients, and wire
 capability negotiation — are withdrawn: there is now one API and it is the CLI, and the FieldWorks boundary
