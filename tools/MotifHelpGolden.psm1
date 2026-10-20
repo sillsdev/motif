@@ -25,6 +25,9 @@ function Invoke-MotifOffModeHelp {
     $start.StandardOutputEncoding = [Text.UTF8Encoding]::new($false)
     [void] $start.Environment.Remove('MOTIF_DEVELOPER_COMMANDS')
     $start.Environment['MOTIF_ADVANCED_AI_MODE_PATH'] = Join-Path $scratch 'advanced-ai-mode.json'
+    # Every CLI action appends a usage-log line under the worker root (default: per user), even `help`.
+    # Redirect it so the gate neither reads nor writes the user's state.
+    $start.Environment['MOTIF_WORKER_ROOT'] = Join-Path $scratch 'worker'
     $process = [Diagnostics.Process]::Start($start)
     try {
         $outputTask = $process.StandardOutput.ReadToEndAsync()
@@ -39,6 +42,24 @@ function Invoke-MotifOffModeHelp {
     }
 }
 
+# Maps "kind:code" to each entry's raw JSON text. Parsed with System.Text.Json rather than
+# ConvertFrom-Json -AsHashtable, which throws on object keys that differ only in case; the map itself is
+# ordinal (case-sensitive), so entries whose codes differ only in case stay distinct.
+function Get-MotifHelpEntryJson {
+    param([Parameter(Mandatory)][string] $Json)
+    $map = [Collections.Generic.Dictionary[string, string]]::new([StringComparer]::Ordinal)
+    $document = [Text.Json.JsonDocument]::Parse($Json)
+    try {
+        foreach ($entry in $document.RootElement.GetProperty('entries').EnumerateArray()) {
+            $key = "$($entry.GetProperty('kind').GetString()):$($entry.GetProperty('code').GetString())"
+            if ($map.ContainsKey($key)) { throw "The Help golden lists '$key' twice." }
+            $map[$key] = $entry.GetRawText()
+        }
+    }
+    finally { $document.Dispose() }
+    $map
+}
+
 # Returns the entry codes whose Help differs from the golden, or $null when the files match.
 function Compare-MotifHelpGolden {
     param(
@@ -48,11 +69,9 @@ function Compare-MotifHelpGolden {
     $actual = Invoke-MotifOffModeHelp -RepoRoot $RepoRoot -Configuration $Configuration
     $expected = [IO.File]::ReadAllText((Get-MotifHelpGoldenPath $RepoRoot)).Replace("`r`n", "`n")
     if ($actual -ceq $expected) { return $null }
-    $before = @{}
-    foreach ($entry in (ConvertFrom-Json $expected -AsHashtable).entries) { $before["$($entry.kind):$($entry.code)"] = ConvertTo-Json $entry -Depth 20 -Compress }
-    $after = @{}
-    foreach ($entry in (ConvertFrom-Json $actual -AsHashtable).entries) { $after["$($entry.kind):$($entry.code)"] = ConvertTo-Json $entry -Depth 20 -Compress }
-    $differ = @($before.Keys + $after.Keys | Sort-Object -Unique | Where-Object { $before[$_] -cne $after[$_] })
+    $before = Get-MotifHelpEntryJson $expected
+    $after = Get-MotifHelpEntryJson $actual
+    $differ = @($before.Keys + $after.Keys | Sort-Object -Unique -CaseSensitive | Where-Object { $before[$_] -cne $after[$_] })
     if ($differ.Count -eq 0) { $differ = @('(top-level fields)') }
     $differ
 }

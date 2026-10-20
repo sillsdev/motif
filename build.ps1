@@ -186,7 +186,8 @@ if ($helpDiffers) {
 }
 
 Write-Host ''
-Write-Host 'Build OK: comments clean, solution compiles.' -ForegroundColor Green
+$hygieneText = if ($SkipHygiene) { 'hygiene skipped' } else { 'comment and design-token hygiene' }
+Write-Host "Build OK: $hygieneText, restore, compile, PanGloss interface gate and Help golden all passed." -ForegroundColor Green
 exit 0
 }
 finally {
