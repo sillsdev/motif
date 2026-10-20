@@ -13,7 +13,7 @@ ExposurePolicy and the HumanOnly catalog entry. Readiness is the check every App
 capability negotiation — are withdrawn: there is now one API and it is the CLI, and the FieldWorks boundary
 in decision 2 is a process boundary rather than an in-process one. **Decisions 2 through 7 and 9 remain
 binding**: the saved Baseline, live-host authority, per-project live-access queue, PanGloss bounding,
-synchronous Apply with one-use authorization, explicit reconciliation, the single sibling SQLite database,
+synchronous Apply (its one-use authorization was never built; see the 2026-10-20 note), explicit reconciliation, the single sibling SQLite database,
 and media behaviour are all still the contract. This ADR supersedes ADR 0030 decisions 1 and 2, ADR 0036
 decision 6, and the long-lived CLI process mechanism in ADR 0020 decision 1. It preserves their
 one-live-writer, content-identity, and cross-runtime constraints. The complete protocol and lifecycle
