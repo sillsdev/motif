@@ -82,4 +82,10 @@ Use one Luna lane, with one commit and focused validation at each step: reproduc
 
 The costly decisions to reverse are list ownership of width, typed evidence/action seams, and separating run metrics from page styling. Keeping `SharedSizeGroup` preserves content-driven widths but couples scrolling to newly realized content. Merely moving the existing template into a `ControlTheme` preserves that coupling and unnecessary controls. TreeDataGrid offers an example of list-owned columns and recycled cells; Motif's modest fixed set of rich columns does not justify replacing its working list or taking a new grid dependency. AvaloniaEdit's drawing is supported by an editor-scale selection/input/clipboard/automation system, not a cheap substitution for a template. A whole-row canvas is rejected for this implementation. A future narrow drawing experiment requires a native trace showing remaining rendering cost and full behavioral parity before revisiting this decision.
 
-No performance gain or visual validation is claimed by this design document. Each production layout/control change must pass the final-source Release `-All` gate with the pinned PanGloss executable and `MOTIF_SCREENSHOTS`, and record source SHA, parser path/version, capture states, skipped categories and Windows-only follow-up under [development workflow](../development-workflow.md). Native Windows and macOS interaction traces are required before reporting the redesign's desktop performance.
+No performance gain or visual validation is claimed by this design document. Each production layout/control change must pass the final-source Release `-All` gate with the pinned PanGloss executable, and record source SHA, parser path/version, skipped categories and Windows-only follow-up under [development workflow](../development-workflow.md). Native Windows and macOS interaction traces are required before reporting the redesign's desktop performance.
+
+## Amendment, 2026-10-20: screenshots do not gate
+
+The final-source gate no longer requires `MOTIF_SCREENSHOTS` or reports capture states. Headless layout invariants,
+reachability, contrast and automation-id tests are the UI gate, and screenshots are taken only for a person's visual
+review. The rest of this ADR is unchanged. See [ADR 0075](0075-headless-checks-are-the-ui-gate-screenshots-are-for-people.md).

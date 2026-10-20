@@ -88,10 +88,12 @@ narrow its tests. Do not claim a full .NET run for Markdown-only work.
 
 For UI, layout, progress, shared-control, or window-copy changes, do not report DONE until the final
 source passes `pwsh ./test.ps1 -All -Configuration Release` with `MOTIF_PANGLOSS_EXE` pointing to the
-pinned executable in `pangloss-release.json`. Set `MOTIF_SCREENSHOTS` as well so page and state capture
-checks run, and report every skipped test category. Record the tested source SHA, the completed command
-and capture states, parser path/version, and any required Windows-only follow-up. A missing parser,
-skipped capture run, failed gate, or missing final result means validation is incomplete.
+pinned executable in `pangloss-release.json`. Headless layout, reachability, contrast and automation-id tests
+are the UI gate ([ADR 0075](adr/0075-headless-checks-are-the-ui-gate-screenshots-are-for-people.md)); leave
+`MOTIF_SCREENSHOTS` unset. Report every skipped test category. Record the tested source SHA, the completed command,
+parser path/version, and any required Windows-only follow-up. A missing parser, a failed gate, or a missing final
+result means validation is incomplete. Screenshots never gate READY, DONE or landing; set `MOTIF_SCREENSHOTS` only
+for a person's visual review, website media or walkthrough video, and then report the capture states.
 
 Use `pwsh ./tools/Capture-Screens.ps1 -All -Configuration Release` to capture every screenshot class
 and the full size matrix. Without `-All`, only the size-matrix class runs, capturing each scene in 7 cells (thin, half, full
