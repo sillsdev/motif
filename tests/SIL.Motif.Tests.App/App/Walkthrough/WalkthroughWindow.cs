@@ -711,8 +711,10 @@ public sealed class WalkthroughWindow : IDisposable
         WalkthroughSteps.EnsureAssessmentForAnalyze(this, TimeSpan.FromMinutes(3));
         ShowPage(WorkspacePage.Texts);
         ShowTextsTab(TextsTab.AnalyzeTexts);
-        var checkBox = Window.GetLogicalDescendants().OfType<CheckBox>().Single(control =>
-            Equals(control.Content, content));
+        var textChooser = Window.GetLogicalDescendants().OfType<ListBox>().Single(list =>
+            AutomationProperties.GetName(list) == "Texts to analyze");
+        var checkBox = textChooser.GetLogicalDescendants().OfType<CheckBox>().Single(control =>
+            AutomationProperties.GetName(control) == content);
         ShowStageOwning(checkBox);
         if (checkBox.IsChecked != true) ClickControl(checkBox, content);
         Assert.True(checkBox.IsChecked, $"'{content}' was not checked.");
