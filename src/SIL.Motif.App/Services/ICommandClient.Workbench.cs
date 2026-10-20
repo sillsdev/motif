@@ -1,3 +1,4 @@
+using SIL.Motif.Commands;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Commands.SelectionReading;
@@ -38,8 +39,11 @@ public partial interface ICommandClient
     Task<CommandOutcome<TrialRecord?>> ReadTrialAsync(
         ReadTrialRequest request, CancellationToken cancellationToken);
 
-    /// <summary>Queues a new Trial for a Proposal and starts the worker that will run it.</summary>
-    Task<CommandOutcome<JobEnqueuedResponse>> EnqueueTrialAsync(
+    /// <summary>
+    /// Queues a new Trial for a Proposal, with its Baseline assessed first, and starts the worker that will run it.
+    /// A Baseline that cannot be assessed does not refuse: the Trial is queued and the result carries the warning.
+    /// </summary>
+    Task<CommandOutcome<TrialEnqueued>> EnqueueTrialAsync(
         SIL.Motif.Commands.Requests.EnqueueTrialRequest request, CancellationToken cancellationToken);
 
     /// <summary>

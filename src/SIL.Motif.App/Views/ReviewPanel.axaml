@@ -15,6 +15,7 @@
                                IsVisible="{Binding !CanApply}" TextWrapping="Wrap"
                                AutomationProperties.Name="Why Apply is unavailable" />
       <views:RefusalBlock Classes="refusalFlow" DataContext="{Binding MeasurementRefusal}" />
+      <views:TrialBaselineNoticeBlock DataContext="{Binding BaselineNotice}" />
       <views:RefusalBlock Classes="refusalFlow" DataContext="{Binding ShownApplyRefusal}" />
       <views:RefusalBlock Classes="refusalFlow" DataContext="{Binding DeclineRefusal}" />
       <views:RefusalBlock Classes="refusalFlow" DataContext="{Binding Changes.ShownRefusal}" />

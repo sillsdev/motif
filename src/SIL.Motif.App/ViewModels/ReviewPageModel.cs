@@ -601,7 +601,11 @@ public sealed partial class ReviewPageModel : PageModel
         if (Changes.TargetProposalId is not { } proposalId) return;
         MeasurementRefusal = null;
         OnPropertyChanged(nameof(MeasurementRefusal));
+        BaselineNotice = null;
+        OnPropertyChanged(nameof(BaselineNotice));
         var outcome = await Context.TryAgainAsync(proposalId, CancellationToken.None).ConfigureAwait(true);
+        BaselineNotice = Context.TrialRun.StateFor(proposalId).BaselineNotice;
+        OnPropertyChanged(nameof(BaselineNotice));
         if (outcome.Refusal is { } refusal)
         {
             MeasurementRefusal = WindowRefusal.From(refusal);
@@ -836,6 +840,12 @@ public sealed partial class ReviewPageModel : PageModel
 
     /// <summary>Why the last requested measurement could not complete, in the window's words.</summary>
     public WindowRefusal? MeasurementRefusal { get; private set; }
+
+    /// <summary>
+    /// Why the latest Try again was not compared against a Baseline, in the window's words, or
+    /// <see langword="null"/> when it was.
+    /// </summary>
+    public string? BaselineNotice { get; private set; }
 
     /// <summary>Whether the measured changes can be applied to the FieldWorks project.</summary>
     public bool CanApply => HasReviewItems && Changes.Items.All(item => item.Fit is { StillFits: true }) &&

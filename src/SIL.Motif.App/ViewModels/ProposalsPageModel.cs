@@ -69,12 +69,13 @@ public sealed class ProposalCardViewModel : ObservableObject
     private bool _isSelected;
 
     public ProposalCardViewModel(ProposalCard card, IReadOnlyDictionary<string, string>? labels = null,
-        TrialStanding? standing = null, WindowRefusal? refusal = null)
+        TrialStanding? standing = null, WindowRefusal? refusal = null, string? baselineNotice = null)
     {
         ArgumentNullException.ThrowIfNull(card);
         Card = card;
         Standing = standing ?? card.Standing;
         ShownRefusal = refusal;
+        BaselineNotice = baselineNotice;
         Words = TrialStandingWords.For(Standing);
         OpenAutomationId = AutomationIds.ForProposalOpen(card.ProposalId);
         TryAgainAutomationId = AutomationIds.ForProposalTryAgain(card.ProposalId);
@@ -110,6 +111,12 @@ public sealed class ProposalCardViewModel : ObservableObject
 
     /// <summary>Why the last Try again of this Proposal did not produce a result, in the window's words.</summary>
     public WindowRefusal? ShownRefusal { get; }
+
+    /// <summary>
+    /// Why the latest Try again was not compared against a Baseline, in the window's words, or
+    /// <see langword="null"/> when it was; shown next to the Trial's result.
+    /// </summary>
+    public string? BaselineNotice { get; }
 
     public string ProposalId => Card.ProposalId;
 
@@ -640,7 +647,8 @@ public sealed partial class ProposalsPageModel : PageModel
     {
         var run = Context.TrialRun.StateFor(card.ProposalId);
         var standing = run.IsRunning ? TrialStanding.Trying : card.Standing;
-        return new ProposalCardViewModel(card, labels, standing, run.IsRunning ? null : run.ShownRefusal);
+        return new ProposalCardViewModel(card, labels, standing, run.IsRunning ? null : run.ShownRefusal,
+            run.IsRunning ? null : run.BaselineNotice);
     }
 
     private async Task SelectGroupFilterAsync(ProposalListFilter filter)

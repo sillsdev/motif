@@ -1,3 +1,4 @@
+using SIL.Motif.Commands;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Commands.SelectionReading;
@@ -40,8 +41,8 @@ public sealed partial class FakeCommandClient
     private Func<ReadTrialRequest, CancellationToken, Task<CommandOutcome<TrialRecord?>>> _readTrial =
         (_, _) => Completed<TrialRecord?>(null);
     private Func<SIL.Motif.Commands.Requests.EnqueueTrialRequest, CancellationToken,
-        Task<CommandOutcome<JobEnqueuedResponse>>> _enqueueTrial =
-        (_, _) => Completed(new JobEnqueuedResponse("job/test", "trial", "project/test"));
+        Task<CommandOutcome<TrialEnqueued>>> _enqueueTrial =
+        (_, _) => Completed(new TrialEnqueued(new JobEnqueuedResponse("job/test", "trial", "project/test"), null));
 
     private Func<ProjectHistoryRequest, CancellationToken, Task<CommandOutcome<ProjectHistoryResponse>>>
         _projectHistory = (_, _) => Completed(new ProjectHistoryResponse([]));
@@ -140,13 +141,13 @@ public sealed partial class FakeCommandClient
         return _readTrial(request, cancellationToken);
     }
 
-    public void EnqueueTrialCompletesWith(JobEnqueuedResponse response) =>
-        _enqueueTrial = (_, _) => Completed(response);
+    public void EnqueueTrialCompletesWith(JobEnqueuedResponse response, string? baselineWarning = null) =>
+        _enqueueTrial = (_, _) => Completed(new TrialEnqueued(response, baselineWarning));
 
     public void EnqueueTrialRefusesWith(Refusal refusal) =>
-        _enqueueTrial = (_, _) => Refused<JobEnqueuedResponse>(refusal);
+        _enqueueTrial = (_, _) => Refused<TrialEnqueued>(refusal);
 
-    public Task<CommandOutcome<JobEnqueuedResponse>> EnqueueTrialAsync(
+    public Task<CommandOutcome<TrialEnqueued>> EnqueueTrialAsync(
         SIL.Motif.Commands.Requests.EnqueueTrialRequest request, CancellationToken cancellationToken)
     {
         EnqueueTrialRequests.Add(request);

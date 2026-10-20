@@ -42,10 +42,11 @@ public sealed partial class CommandClient
             ? Task.FromResult(WaitCancelled<TrialRecord?>())
             : Task.Run(() => Trials.Read(request));
 
-    public async Task<CommandOutcome<JobEnqueuedResponse>> EnqueueTrialAsync(
+    public async Task<CommandOutcome<TrialEnqueued>> EnqueueTrialAsync(
         SIL.Motif.Commands.Requests.EnqueueTrialRequest request, CancellationToken cancellationToken)
     {
-        var queued = await OneAtATime(() => JobCommands.EnqueueTrial(request), cancellationToken)
+        var queued = await OneAtATime(() => TrialWorkflow.Enqueue(request, _managedRoot, _options.ParserPath,
+                BaselineMode.BestEffort, cancellationToken), cancellationToken)
             .ConfigureAwait(false);
         if (queued.Succeeded) _options.RunnerLauncher.Start(request.FwDataPath);
         return queued;

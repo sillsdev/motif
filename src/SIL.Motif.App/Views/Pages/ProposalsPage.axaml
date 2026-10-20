@@ -98,6 +98,7 @@
                 </StackPanel>
               </Border>
               <views:RefusalBlock DataContext="{Binding SelectedProposal.ShownRefusal}" />
+              <views:TrialBaselineNoticeBlock DataContext="{Binding SelectedProposal.BaselineNotice}" />
               <StackPanel Classes="proposalInspectorActions" Spacing="{DynamicResource Intent.Space.Compact}">
                 <Button Content="Open in Review changes" Classes="Primary" Theme="{DynamicResource SolidButton}"
                         Command="{Binding OpenInReviewCommand}" CommandParameter="{Binding SelectedProposal}"

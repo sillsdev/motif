@@ -18,9 +18,18 @@ namespace SIL.Motif.App.ViewModels;
 /// <param name="JobId">The queued Trial job, or <see langword="null"/> before one was queued.</param>
 /// <param name="Progress">The latest word progress the Trial reported, if any.</param>
 /// <param name="Refusal">Why the last Try again did not produce a result, if it did not.</param>
+/// <param name="BaselineWarning">
+/// Why the queued Trial was not compared against a Baseline, or <see langword="null"/> when it was.
+/// </param>
 public sealed record TrialRunState(string ProposalId, bool IsRunning, string? JobId, TrialWordProgress? Progress,
-    Refusal? Refusal)
+    Refusal? Refusal, string? BaselineWarning = null)
 {
+    /// <summary>
+    /// The warning in the window's words, to show next to the Trial's result, or <see langword="null"/> when the Trial
+    /// was compared against a Baseline.
+    /// </summary>
+    public string? BaselineNotice => TrialBaselineNotice.For(BaselineWarning);
+
     /// <summary>The refusal in the window's words, with the command's own account under Details.</summary>
     public WindowRefusal? ShownRefusal => Refusal is null ? null : WindowRefusal.From(Refusal);
 
@@ -87,7 +96,7 @@ public sealed partial class TrialRunViewModel : ObservableObject
             run = new Run(proposalId, _session,
                 CancellationTokenSource.CreateLinkedTokenSource(_session.Token, cancellationToken));
             _running[proposalId] = run;
-            Set(proposalId, new TrialRunState(proposalId, true, null, null, null));
+            Set(proposalId, new TrialRunState(proposalId, true, null, null, null, null));
         }
         _ = RunCoreAsync(run, projectPath);
         return run.Result.Task;
@@ -141,11 +150,12 @@ public sealed partial class TrialRunViewModel : ObservableObject
         var queued = await _commands.EnqueueTrialAsync(new EnqueueTrialRequest(projectPath,
             MotifProductVersion.CurrentText, run.ProposalId), token).ConfigureAwait(true);
         if (!queued.Succeeded) return CommandOutcome<TrialRecord?>.Refused(queued.Refusal!);
-        var jobId = queued.Value!.JobId;
+        var jobId = queued.Value!.Job.JobId;
+        var warning = queued.Value.BaselineWarning;
         lock (_gate)
         {
             if (ReferenceEquals(run.Session, _session))
-                Set(run.ProposalId, Current(run.ProposalId) with { JobId = jobId });
+                Set(run.ProposalId, Current(run.ProposalId) with { JobId = jobId, BaselineWarning = warning });
         }
 
         var waited = await _commands.WaitForJobAsync(new WaitForJobRequest(projectPath, jobId,
