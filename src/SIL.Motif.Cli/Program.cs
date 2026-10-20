@@ -28,10 +28,10 @@ using SIL.Motif.Contract;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Parsimony;
 using SIL.Motif.Contract.Phonology;
 using SIL.Motif.Contract.Projects;
-using SIL.Motif.Contract.Requests;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Worker.Store;
 using SIL.Motif.Projection.Usage;
@@ -931,6 +931,12 @@ try
             break;
 
         case "apply":
+            var applyAttribution = ApplyAttributionFromFlags(flags, environment);
+            if (ApplyAttributionCheck.Refusal(applyAttribution, flags.ContainsKey("force")) is { } applyAttributionRefusal)
+            {
+                result = RenderProposal(CommandOutcome<ApplyPendingResult>.Refused(applyAttributionRefusal));
+                break;
+            }
             if (flags.ContainsKey("all-pending"))
             {
                 if (positionals.Count != 0 || flags.ContainsKey("user") ||
@@ -939,7 +945,8 @@ try
                         "Usage: motif apply --all-pending --project <fwdata> [--revision <r>] " +
                         "[--json]", asJson);
                 var pendingRequest = new ApplyPendingRequest(pendingApplyProject,
-                    DraftId: null, Revision: flags.GetValueOrDefault("revision"));
+                    DraftId: null, Revision: flags.GetValueOrDefault("revision"),
+                    Attribution: applyAttribution);
                 result = RunWithConsoleCancellation(cancellationToken => RenderProposal(
                     PendingChangesWorkflow.Apply(pendingRequest, cancellationToken)));
                 break;
@@ -951,7 +958,7 @@ try
                     string.IsNullOrWhiteSpace(flags["proposal"]))
                     return Usage(UsageLineFor("apply --proposal"), asJson);
                 var proposalRequest = new ApplyProposalRequest(proposalApplyProject, flags["proposal"],
-                    flags.GetValueOrDefault("revision"));
+                    flags.GetValueOrDefault("revision"), applyAttribution);
                 result = RunWithConsoleCancellation(cancellationToken => RenderProposal(
                     PendingChangesWorkflow.Apply(proposalRequest, cancellationToken)));
                 break;
@@ -962,12 +969,13 @@ try
             {
                 return Usage(
                     "Usage: motif apply <proposalId> --project <fwdata> " +
-                    "[--force] [--json]", asJson);
+                    "[--force] [--autonomous] [--message <text>] [--note] [--json]", asJson);
             }
             var applyForce = flags.ContainsKey("force");
             result = RenderProposal(
                 PendingChangesWorkflow.Apply(
-                    new ApplyRequest(applyProject, CliProductVersion(), positionals[0], applyForce)));
+                    new ApplyRequest(applyProject, CliProductVersion(), positionals[0], applyForce,
+                        applyAttribution)));
             break;
 
         case "log":
@@ -2693,6 +2701,18 @@ static void EnsureUniqueJsonProperties(JsonElement element)
     {
         foreach (var item in element.EnumerateArray()) EnsureUniqueJsonProperties(item);
     }
+}
+
+// Autonomous is declared by --autonomous or MOTIF_AUTONOMOUS=1 (or true); with neither, the mode is person.
+static ApplyAttribution ApplyAttributionFromFlags(
+    Dictionary<string, string> flags, IReadOnlyDictionary<string, string?> environment)
+{
+    var env = environment.GetValueOrDefault(ApplyModes.EnvironmentVariable);
+    var autonomous = (flags.TryGetValue("autonomous", out var raw) && IsTruthyFlag(raw)) ||
+                     string.Equals(env?.Trim(), "1", StringComparison.Ordinal) ||
+                     string.Equals(env?.Trim(), "true", StringComparison.OrdinalIgnoreCase);
+    return new ApplyAttribution(autonomous ? ApplyModes.Autonomous : ApplyModes.Person,
+        flags.GetValueOrDefault("message"), flags.TryGetValue("note", out var note) && IsTruthyFlag(note));
 }
 
 static bool IsTruthyFlag(string value) => !string.Equals(value, "false", StringComparison.OrdinalIgnoreCase);

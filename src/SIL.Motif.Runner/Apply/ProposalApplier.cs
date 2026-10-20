@@ -7,6 +7,7 @@ using SIL.Motif.Contract.Model;
 using SIL.Motif.Model.AppliedLog;
 using SIL.Motif.Model.DryRun;
 using SIL.Motif.Model.Effects;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Model.Receipts;
 using SIL.Motif.Model.Snapshot;
 using SIL.Motif.Runner.AppliedLog;
@@ -66,13 +67,22 @@ public static class ProposalApplier
     /// was saved before the Dry Run</b> — strictly stronger than the rollback, since reload also
     /// discards the non-undoable schema phase (ADR 0005) rollback cannot reach (ADR 0016).
     /// </remarks>
+    /// <param name="mode">
+    /// <c>person</c> (the default) or <c>autonomous</c>, recorded in the applied-log entry and so in the Receipt.
+    /// </param>
+    /// <param name="note">
+    /// When not <see langword="null"/>, one Notebook record is written in the same unit of work, so it commits
+    /// and rolls back with the changes.
+    /// </param>
     public static Receipt Apply(
         LcmCache cache,
         Proposal proposal,
         BoundDryRunAnchor anchor,
         string applierIdentity,
-        string description = "") =>
-        Apply(cache, proposal, anchor, applierIdentity, description, null);
+        string description = "",
+        string mode = ApplyModes.Person,
+        ApplyNote? note = null) =>
+        Apply(cache, proposal, anchor, applierIdentity, description, mode, note, null);
 
     /// <summary>Observes each completed operation inside Apply's unit of work, pinned by <c>FailureAfterEachDispositionWriteRollsBackTheWholeNotebookRevision</c>.</summary>
     internal static Receipt Apply(
@@ -81,12 +91,24 @@ public static class ProposalApplier
         BoundDryRunAnchor anchor,
         string applierIdentity,
         string description,
+        Action<int, OperationEnvelope>? afterOperation) =>
+        Apply(cache, proposal, anchor, applierIdentity, description, ApplyModes.Person, null, afterOperation);
+
+    private static Receipt Apply(
+        LcmCache cache,
+        Proposal proposal,
+        BoundDryRunAnchor anchor,
+        string applierIdentity,
+        string description,
+        string mode,
+        ApplyNote? note,
         Action<int, OperationEnvelope>? afterOperation)
     {
         if (cache is null) throw new ArgumentNullException(nameof(cache));
         if (proposal is null) throw new ArgumentNullException(nameof(proposal));
         if (applierIdentity is null) throw new ArgumentNullException(nameof(applierIdentity));
         if (description is null) throw new ArgumentNullException(nameof(description));
+        if (mode is null) throw new ArgumentNullException(nameof(mode));
         ProposalOperationSlotValidator.Validate(proposal);
         var operationOrder = OperationExecutionOrder.Sort(proposal.Operations);
 
@@ -174,7 +196,8 @@ public static class ProposalApplier
             AppliedLogFormat.FormatTimestamp(DateTime.UtcNow),
             applierIdentity,
             intentDigestHex,
-            description);
+            description,
+            mode);
         _ = AppliedLogFormat.Format(logEntry); // throws on invalid input; result discarded here
 
         var effects = new List<ExpectedEffect>();
@@ -200,6 +223,8 @@ public static class ProposalApplier
             InflFeatsSemanticValidator.ValidateProposal(cache, proposal.Operations);
             AffixProcessSnapshots.AppendGraphEffects(processBefore, cache, effects);
 
+            if (note is not null) ApplyNoteWriter.Write(cache, note, logEntry, description);
+
             // Exactly one applied-log entry, written inside this same unit of work, so a rollback leaves none.
             ProjectAppliedLog.WriteEntry(cache, logEntry);
 
@@ -214,7 +239,7 @@ public static class ProposalApplier
               $"({touchedTargets.Count} target object(s)).";
         var resultNote =
             $"Applied {proposal.Operations.Count} operation(s) and committed; wrote one applied-log " +
-            $"entry ({logEntry.TimestampUtc}, user '{applierIdentity}').";
+            $"entry ({logEntry.TimestampUtc}, {mode}, user '{applierIdentity}').";
 
         return new Receipt(
             proposal.ProposalId,

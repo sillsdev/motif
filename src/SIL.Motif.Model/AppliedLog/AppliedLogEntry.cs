@@ -25,7 +25,11 @@ namespace SIL.Motif.Model.AppliedLog;
 /// </param>
 /// <param name="Description">
 /// Free single-line human-facing text, at most 128 characters. May contain <c>|</c>; never a
-/// control character.
+/// control character. This is the Receipt's message.
+/// </param>
+/// <param name="Mode">
+/// How the Proposal was applied: <c>person</c> or <c>autonomous</c>. Entries written before the mode was
+/// recorded (format 1) read as <c>person</c>.
 /// </param>
 public sealed record AppliedLogEntry(
     Guid ProposalId,
@@ -33,4 +37,5 @@ public sealed record AppliedLogEntry(
     string TimestampUtc,
     string User,
     string IntentDigest,
-    string Description);
+    string Description,
+    string Mode = SIL.Motif.Contract.Requests.ApplyModes.Person);

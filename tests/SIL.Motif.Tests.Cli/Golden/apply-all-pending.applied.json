@@ -7,6 +7,8 @@
       "alreadyApplied": "\u003Cfalse\u003E",
       "appliedLogEntry": {
         "intentDigest": "\u003Cstring\u003E",
+        "message": "\u003Cstring\u003E",
+        "mode": "\u003Cstring\u003E",
         "proposalId": "\u003Cstring\u003E",
         "timestampUtc": "\u003Cstring\u003E",
         "user": "\u003Cstring\u003E"

@@ -1,3 +1,4 @@
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Host.Assess;
 using System;
 using System.Collections.Generic;
@@ -67,6 +68,22 @@ public sealed class ApplyPromotionGatingAndSweepTests
         Assert.Throws<KeyNotFoundException>(() => assessments.Get(scratchId));
         var remaining = assessments.ListByProposal(CanonicalId.Parse(proposalId));
         Assert.Equal(new[] { candidateId }, remaining.Select(record => record.AssessmentId));
+    }
+
+    [Fact]
+    public void AnAutonomousApplyWithAMessageAndNoForceSucceeds_AndTheLogShowsModeAndMessage()
+    {
+        var proposalId = FinalizeAndTrial("autonomous-ready", "autonomous ready gloss");
+        RecordAssessment(proposalId, GetRecord(proposalId).IntentDigest!, "Correctness", ("alpha", true));
+
+        var result = ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, proposalId,
+            Attribution: new ApplyAttribution(ApplyModes.Autonomous, "Glossed from the corpus", WriteNote: true)));
+
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        Assert.Equal(("autonomous", "Glossed from the corpus"),
+            (result.Value!.AppliedLogEntry.Mode, result.Value.AppliedLogEntry.Message));
+        var entry = Assert.Single(ProposalCommands.Log(new LogRequest(_fwDataPath)).Value!.Entries);
+        Assert.Equal(("autonomous", "Glossed from the corpus"), (entry.Mode, entry.Description));
     }
 
     [Fact]

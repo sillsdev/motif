@@ -15,7 +15,7 @@ public static class AppliedLogProjectionBuilder
         var ordered = entries
             .OrderBy(e => e.TimestampUtc, StringComparer.Ordinal)
             .Select(e => new AppliedLogEntryView(
-                e.ProposalId.ToString("D"), e.TimestampUtc, e.User, e.IntentDigest, e.Description))
+                e.ProposalId.ToString("D"), e.TimestampUtc, e.User, e.IntentDigest, e.Description, e.Mode))
             .ToList();
 
         return new AppliedLogProjection(projectPath, ordered.Count, ordered, diagnostics);

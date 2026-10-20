@@ -20,11 +20,12 @@ properties, and both are used:
 
 ```
 Version = <proposalId>
-Name    = Motif|<format>|<timestamp>|<user>|<intentDigest>|<description>
+Name    = Motif|<format>|<timestamp>|<user>|<intentDigest>|<mode>|<description>
 ```
 
 Every field before the description is fixed-width or constrained, so the description is a free tail
-and **no escaping is needed**: parse by splitting on the first five `|` and taking the remainder.
+and **no escaping is needed**: parse by splitting on the first six `|` and taking the remainder. Format 1, written before the mode was
+recorded, has no `<mode>` field (parse on the first five `|`) and reads as `person`.
 
 An entry whose `Name` does not start with `Motif|` is not recognized by the parser and is treated as a
 foreign `CmResource`: ignored, never rewritten.
@@ -32,11 +33,12 @@ foreign `CmResource`: ignored, never rewritten.
 | Field | Rule |
 | --- | --- |
 | `Motif` | literal prefix identifying entries this runner owns |
-| `<format>` | decimal format version, currently `1` |
+| `<format>` | decimal format version, currently `2` |
 | `<timestamp>` | UTC ISO 8601 basic, fixed 16 characters, e.g. `20260724T055701Z` |
 | `<user>` | applier identity, at most 64 characters, may be empty, must not contain `\|` or control characters |
 | `<intentDigest>` | the Proposal's intent digest recorded at apply, fixed-length lowercase hex, no `\|` |
-| `<description>` | free single-line text, at most 128 characters, may contain `\|` |
+| `<mode>` | `person` or `autonomous`: how the Proposal was applied |
+| `<description>` | the Receipt's message: free single-line text, at most 128 characters, may contain `\|` |
 
 No length limit is declared on `Unicode` model properties in `MasterLCModel.xml`, and the 100-character
 limits in the LCM source apply to custom-field metadata rather than to model properties. `Name` is

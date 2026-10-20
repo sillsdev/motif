@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using SIL.Motif.Commands;
@@ -700,6 +701,113 @@ public sealed class ProposalWorkflowTests : IDisposable
         Assert.False(missingProject.Succeeded);
         Assert.Equal("project.not-found", missingProject.Refusal!.Code);
         Assert.Equal(FailureReason.InvalidArgument, missingProject.Refusal.Reason);
+    }
+
+    [Fact]
+    public void Apply_RecordsPersonModeWithTheLabelAsMessage_ByDefault_AndShowsThemInTheLog()
+    {
+        var id = FinalizeSetGloss("person-default", CanonicalId.FromGuid(_seed.FirstSenseId).Value, "person gloss");
+        Assert.True(RunDryRun(id).Succeeded);
+
+        var applied = ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, id, Force: true));
+
+        Assert.True(applied.Succeeded, applied.Refusal?.Message);
+        Assert.Equal(("person", "Prepare a dependent gloss"),
+            (applied.Value!.AppliedLogEntry.Mode, applied.Value.AppliedLogEntry.Message));
+        var log = ProposalCommands.Log(new LogRequest(_fwDataPath)).Value!;
+        Assert.Equal("person", Assert.Single(log.Entries).Mode);
+        Assert.Contains("mode=person", SIL.Motif.Projection.Rendering.CommandTextRenderer.Render(log), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Apply_InAutonomousModeRefusesWithoutAMessage_AndNeverForces()
+    {
+        var id = FinalizeSetGloss("autonomous", CanonicalId.FromGuid(_seed.FirstSenseId).Value, "agent gloss");
+        Assert.True(RunDryRun(id).Succeeded);
+
+        var noMessage = PendingChangesWorkflow.Apply(new ApplyRequest(_fwDataPath, ProductVersion, id, false,
+            new ApplyAttribution(ApplyModes.Autonomous)));
+        Assert.Equal("apply.message-required", noMessage.Refusal!.Code);
+
+        var forced = PendingChangesWorkflow.Apply(new ApplyRequest(_fwDataPath, ProductVersion, id, true,
+            new ApplyAttribution(ApplyModes.Autonomous, "Glossed from the corpus")));
+        Assert.Equal("apply.autonomous-force", forced.Refusal!.Code);
+        AssertAppliedLogEntryCount(0);
+    }
+
+    [Fact]
+    public void ApplyCli_TheFlagAndTheEnvironmentMarkerDeclareAutonomous_EachNeedsAMessage_AndNeitherForces()
+    {
+        var first = FinalizeSetGloss("cli-flag", CanonicalId.FromGuid(_seed.FirstSenseId).Value, "flag gloss");
+        Assert.True(RunDryRun(first).Succeeded);
+
+        var noMessage = RunCli(null, "apply", first, "--project", _fwDataPath, "--autonomous");
+        Assert.NotEqual(0, noMessage.ExitCode);
+        Assert.Contains("autonomous Apply needs a --message", noMessage.Output + noMessage.Error, StringComparison.Ordinal);
+        var envNoMessage = RunCli("1", "apply", first, "--project", _fwDataPath);
+        Assert.Contains("autonomous Apply needs a --message", envNoMessage.Output + envNoMessage.Error, StringComparison.Ordinal);
+
+        foreach (var (marker, extra) in new[] { ((string?)null, "--autonomous"), ("1", "--json") })
+        {
+            var forced = RunCli(marker, "apply", first, "--project", _fwDataPath, "--force", "--message", "m", extra);
+            Assert.NotEqual(0, forced.ExitCode);
+            Assert.Contains("never forces", forced.Output + forced.Error, StringComparison.Ordinal);
+        }
+        AssertAppliedLogEntryCount(0);
+    }
+
+    [Fact]
+    public void ApplyCli_InPersonModeTheMessageOverridesTheLabelAndTheNoteIsOptIn()
+    {
+        var id = FinalizeSetGloss("cli-person", CanonicalId.FromGuid(_seed.SecondSenseId).Value, "person gloss");
+        Assert.True(RunDryRun(id).Succeeded);
+
+        var person = RunCli(null, "apply", id, "--project", _fwDataPath, "--force", "--message", "My words", "--note");
+        Assert.True(person.ExitCode == 0, person.Error + person.Output);
+
+        var entry = Assert.Single(ProposalCommands.Log(new LogRequest(_fwDataPath)).Value!.Entries);
+        Assert.Equal(("person", "My words"), (entry.Mode, entry.Description));
+        Assert.Contains("Message: My words", Assert.Single(NotebookNotes()));
+    }
+
+    private (int ExitCode, string Output, string Error) RunCli(string? autonomousEnv, params string[] arguments)
+    {
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+        var environment = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+        {
+            [FileAdvancedAiModePreferenceStore.PathEnvironmentVariable] = Path.Combine(_workerRoot, "advanced-ai.json"),
+            [RunnerOptions.RootVariable] = _workerRoot,
+        };
+        if (autonomousEnv is not null) environment[ApplyModes.EnvironmentVariable] = autonomousEnv;
+        var exitCode = global::SIL.Motif.Cli.Program.Run(arguments, output, error, environment,
+            static (_, _) => { });
+        return (exitCode, output.ToString(), error.ToString());
+    }
+
+    [Fact]
+    public void Apply_WithANoteWritesOneNotebookRecordOfTheMotifChangeType()
+    {
+        var target = CanonicalId.FromGuid(_seed.FirstSenseId).Value;
+        var id = FinalizeSetGloss("note-one", target, "first noted gloss");
+        Assert.True(RunDryRun(id).Succeeded);
+        var noted = ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, id, true,
+            new ApplyAttribution(ApplyModes.Person, "kept it short", WriteNote: true)));
+        Assert.True(noted.Succeeded, noted.Refusal?.Message);
+
+        var note = Assert.Single(NotebookNotes());
+        Assert.Contains("Message: kept it short", note);
+        Assert.Contains("Receipt: Proposal " + id, note);
+        Assert.Contains("Establish the lexical state required by later proposals.", note);
+    }
+
+    private List<string> NotebookNotes()
+    {
+        using var cache = new FwDataProjectLoader().LoadScratchCache(_fwDataPath);
+        return cache.LangProject.ResearchNotebookOA.RecordsOC
+            .Where(r => r.TypeRA?.Name.AnalysisDefaultWritingSystem.Text == "Motif change")
+            .Select(r => string.Join("\n", r.DescriptionOA.ParagraphsOS.Cast<IStTxtPara>().Select(p => p.Contents.Text)))
+            .ToList();
     }
 
     private CommandOutcome<DryRunProjection> RunDryRun(string proposalId) =>

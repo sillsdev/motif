@@ -1,3 +1,4 @@
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using System;
 using System.Collections.Generic;
@@ -1535,7 +1536,7 @@ public static partial class ProposalCommands
     /// </remarks>
     public static CommandOutcome<ApplyProjection> Apply(ApplyRequest request) =>
         ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
-            BuildApplyProjection(database, project, request.ProposalId, request.Force));
+            BuildApplyProjection(database, project, request.ProposalId, request.Force, request.Attribution));
 
     /// <summary>The latest <c>Correctness</c> Assessment recorded against this exact revision, if any.</summary>
     internal static AssessmentRecord? FindCandidateAssessment(
@@ -1682,10 +1683,14 @@ public static partial class ProposalCommands
             .Distinct(StringComparer.Ordinal).ToArray();
 
     internal static CommandOutcome<ApplyProjection> BuildApplyProjection(
-        MotifDatabase database, ProjectLocator project, string proposalId, bool force = false)
+        MotifDatabase database, ProjectLocator project, string proposalId, bool force = false,
+        ApplyAttribution? attribution = null)
     {
         LcmCache? cache = null;
         var receiptRecorded = false;
+        attribution ??= new ApplyAttribution();
+        if (ApplyAttributionCheck.Refusal(attribution, force) is { } attributionRefusal)
+            return CommandOutcome<ApplyProjection>.Refused(attributionRefusal);
         try
         {
             var repository = new ProposalRepository(database);
@@ -1785,8 +1790,21 @@ public static partial class ProposalCommands
                             Fact(("proposalId", id))));
                     }
                 }
-                var description = manifest.Label ?? "";
-                var receipt = ProposalApplier.Apply(cache, envelope, manifest.Anchor, string.Empty, description);
+                if (attribution.WriteNote && !ApplyNoteWriter.CanWrite(cache))
+                {
+                    return CommandOutcome<ApplyProjection>.Refused(new Refusal(
+                        RefusalCodes.ApplyNoteUnavailable, FailureReason.Refused,
+                        "This project has no Research Notebook, so Apply cannot write a note there. " +
+                        "Apply again without the note.", Fact(("proposalId", id))));
+                }
+                var description = string.IsNullOrWhiteSpace(attribution.Message)
+                    ? manifest.Label ?? ""
+                    : attribution.Message.Trim();
+                var note = attribution.WriteNote
+                    ? new ApplyNote(manifest.Label ?? "Motif change", record.Rationale)
+                    : null;
+                var receipt = ProposalApplier.Apply(cache, envelope, manifest.Anchor, string.Empty, description,
+                    attribution.Mode, note);
 
                 // The core never saves; the host does, only after the unit of work has closed.
                 if (!receipt.AlreadyApplied)
@@ -1880,7 +1898,8 @@ public static partial class ProposalCommands
                     projection = new ApplyProjection(id, receipt.AlreadyApplied, receipt.ResultNote, [],
                         receipt.EffectDigest, new AppliedLogEntrySummary(
                             receipt.AppliedLogEntry.ProposalId.ToString("D"), receipt.AppliedLogEntry.TimestampUtc,
-                            receipt.AppliedLogEntry.User, receipt.AppliedLogEntry.IntentDigest), readinessProjection);
+                            receipt.AppliedLogEntry.User, receipt.AppliedLogEntry.IntentDigest,
+                            receipt.Mode, receipt.Message), readinessProjection);
                 }
                 if (readiness.CorrectnessAssessmentExemptionReason is { } reason)
                     postApplyNotes.Add("Correctness Assessment not required: " + reason);

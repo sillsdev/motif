@@ -49,4 +49,11 @@ public sealed record Receipt(
     string ResultNote,
     IReadOnlyList<ExpectedEffect> ActualEffects,
     string EffectDigest,
-    AppliedLogEntry AppliedLogEntry);
+    AppliedLogEntry AppliedLogEntry)
+{
+    /// <summary>How the Proposal was applied: <c>person</c> or <c>autonomous</c>.</summary>
+    public string Mode => AppliedLogEntry.Mode;
+
+    /// <summary>The message recorded with the Apply: the person's, or the Proposal's label by default.</summary>
+    public string Message => AppliedLogEntry.Description;
+}

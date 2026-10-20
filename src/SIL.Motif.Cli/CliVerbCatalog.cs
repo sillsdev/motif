@@ -241,10 +241,10 @@ public static class CliVerbCatalog
             }),
         new CliVerbDescriptor(
             "Commands", "apply", "apply",
-            new[] { "apply <proposalId> --project <fwdata> [--force] [--json]" }),
+            new[] { "apply <proposalId> --project <fwdata> [--force] [--autonomous] [--message <text>] [--note] [--json]" }),
         new CliVerbDescriptor(
             "Commands", "apply", "apply --all-pending",
-            new[] { "apply --all-pending --project <fwdata> [--revision <r>] [--json]" }),
+            new[] { "apply --all-pending --project <fwdata> [--revision <r>] [--autonomous] [--message <text>] [--note] [--json]" }),
         new CliVerbDescriptor("Commands", "log", "log", new[] { "log --project <fwdata> [--json]" }),
         new CliVerbDescriptor("Commands", "citations", "citations",
             new[] { "citations --project <fwdata> [--uncited] [--json]" }),
@@ -528,7 +528,7 @@ public static class CliVerbCatalog
                 "--evidence-digest <digest>] [--clear] [--json]",
             }),
         new CliVerbDescriptor("Commands", "apply", "apply --proposal",
-            new[] { "apply --proposal <id> --project <fwdata> [--revision <r>] [--json]" }),
+            new[] { "apply --proposal <id> --project <fwdata> [--revision <r>] [--autonomous] [--message <text>] [--note] [--json]" }),
     }.Concat(SIL.Motif.Commands.ProposalCommands.ComposerDescriptors.Select(composer =>
         new CliVerbDescriptor("Commands", composer.Verb, composer.Verb, new[] { ComposerUsage(composer.Verb) })))
         .ToArray());

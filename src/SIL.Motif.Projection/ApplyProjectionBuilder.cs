@@ -21,7 +21,9 @@ public static class ApplyProjectionBuilder
             receipt.AppliedLogEntry.ProposalId.ToString("D"),
             receipt.AppliedLogEntry.TimestampUtc,
             receipt.AppliedLogEntry.User,
-            receipt.AppliedLogEntry.IntentDigest),
+            receipt.AppliedLogEntry.IntentDigest,
+            receipt.Mode,
+            receipt.Message),
         readiness,
         citations);
 }

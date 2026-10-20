@@ -302,8 +302,9 @@ _Avoid_: drift, merge conflict, failed assessment
 
 **Receipt**:
 The record that one Proposal was applied to one project, naming the before and after state. The
-durable edge in a project's history. It carries the short message the person gave when applying, which
-is pre-filled with a summary of the changes, so they can later recognise what they did.
+durable edge in a project's history. It names whether a person applied the Proposal or an agent did
+in Autonomous mode, and carries a short message. A person's message defaults to the Proposal's label, so
+they can later recognise what they did; an Autonomous Apply must give one.
 _Avoid_: application receipt, success result, audit log
 
 **Parsimony review**:
