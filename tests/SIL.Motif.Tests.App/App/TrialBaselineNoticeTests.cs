@@ -1,4 +1,6 @@
+using System.Globalization;
 using Avalonia.Controls;
+using SIL.Motif.App;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Contract.Responses;
@@ -28,8 +30,8 @@ public sealed class TrialBaselineNoticeTests
                 var notice = block.FindControl<Border>("TrialBaselineNotice")!;
                 Assert.True(notice.IsVisible);
                 var text = block.FindControl<TextBlock>("TrialBaselineNoticeText")!.Text;
-                Assert.Contains("not compared against a Baseline", text, StringComparison.Ordinal);
-                Assert.Contains(Reason, text, StringComparison.Ordinal);
+                Assert.Equal(string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TrialBaselineNotice, Reason), text);
+                Assert.Equal(MotifAppStrings.TrialBaselineNoticeAccessibleName, Avalonia.Automation.AutomationProperties.GetName(notice));
             }
             finally
             {
@@ -74,8 +76,7 @@ public sealed class TrialBaselineNoticeTests
         await context.TryAgainAsync("proposal/one", CancellationToken.None);
         var warned = context.TrialRun.StateFor("proposal/one").BaselineNotice;
         Assert.NotNull(warned);
-        Assert.Contains("not compared against a Baseline", warned, StringComparison.Ordinal);
-        Assert.Contains(Reason, warned, StringComparison.Ordinal);
+        Assert.Equal(string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TrialBaselineNotice, Reason), warned);
 
         fake.EnqueueTrialCompletesWith(new JobEnqueuedResponse("job/two", "trial", "project/test"));
         await context.TryAgainAsync("proposal/one", CancellationToken.None);

@@ -172,4 +172,12 @@
     <value>Keyboard shortcut status</value>
     <comment>Accessible name of the status bar line that announces keyboard shortcut results.</comment>
   </data>
+  <data name="MotifApp.TrialBaselineNotice" xml:space="preserve">
+    <value>This Trial was not compared against a Baseline, so it will show no Difference. {0}</value>
+    <comment>Notice beside a Trial queued without a Baseline; {0} is the reason the Baseline was missing.</comment>
+  </data>
+  <data name="MotifApp.TrialBaselineNoticeAccessibleName" xml:space="preserve">
+    <value>Trial not compared against a Baseline</value>
+    <comment>Accessible name of the notice beside a Trial queued without a Baseline.</comment>
+  </data>
 </root>

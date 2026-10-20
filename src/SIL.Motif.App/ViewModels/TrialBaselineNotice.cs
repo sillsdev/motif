@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace SIL.Motif.App.ViewModels;
 
 /// <summary>The window's words for a Trial that was queued without a Baseline to compare against.</summary>
@@ -10,6 +12,5 @@ public static class TrialBaselineNotice
     public static string? For(string? baselineWarning) =>
         string.IsNullOrWhiteSpace(baselineWarning)
             ? null
-            : "This Trial was not compared against a Baseline, so it will show no Difference. " +
-              baselineWarning.Trim();
+            : string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TrialBaselineNotice, baselineWarning.Trim());
 }

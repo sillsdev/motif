@@ -96,4 +96,8 @@ public static class MotifAppStrings
     public static string SeeStoppedWordsAccessibleName => Text("MotifApp.SeeStoppedWordsAccessibleName");
 
     public static string KeyboardShortcutStatusAccessibleName => Text("MotifApp.KeyboardShortcutStatusAccessibleName");
+
+    public static string TrialBaselineNotice => Text("MotifApp.TrialBaselineNotice");
+
+    public static string TrialBaselineNoticeAccessibleName => Text("MotifApp.TrialBaselineNoticeAccessibleName");
 }
