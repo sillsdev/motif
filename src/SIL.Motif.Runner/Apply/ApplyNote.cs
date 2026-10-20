@@ -20,7 +20,7 @@ public sealed record ApplyNote(string Title, string? Rationale);
 
 /// <summary>
 /// Writes the one Notebook record an Apply with a note adds, through the same generated operations a human
-/// judgment record uses, inside the caller's unit of work so it reverses with the changes.
+/// judgment record uses, inside the caller's unit of work, so it commits or rolls back with the changes.
 /// </summary>
 public static class ApplyNoteWriter
 {

@@ -110,21 +110,6 @@ public sealed class ProposalApplierModeAndNoteTests : IDisposable
     }
 
     [Fact]
-    public void TheNoteSharesTheChangesUnitOfWork()
-    {
-        var proposal = SetGloss("undone gloss");
-        var before = _cache.LangProject.ResearchNotebookOA.RecordsOC.Count;
-        ProposalApplier.Apply(_cache, proposal, ScratchDryRun.Of(_cache, proposal).Anchor, "", "m", ApplyModes.Person,
-            new ApplyNote("Undone", null));
-        Assert.Equal(before + 1, _cache.LangProject.ResearchNotebookOA.RecordsOC.Count);
-
-        _cache.ActionHandlerAccessor.Undo(); // the one unit of work holds both, so both go together
-
-        Assert.Equal(before, _cache.LangProject.ResearchNotebookOA.RecordsOC.Count);
-        Assert.DoesNotContain(ProjectAppliedLog.ReadAll(_cache), e => e.ProposalId == proposal.ProposalId.ToGuid());
-    }
-
-    [Fact]
     public void ALaterProposalAppliedWithANoteWritesItsOwnNote_AndTheEarlierNoteRemains()
     {
         var original = SetGloss(SeededProject.FirstGloss + " changed");

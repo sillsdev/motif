@@ -32,7 +32,6 @@ using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Parsimony;
 using SIL.Motif.Contract.Phonology;
 using SIL.Motif.Contract.Projects;
-using SIL.Motif.Contract.Requests;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Worker.Store;
 using SIL.Motif.Projection.Usage;
