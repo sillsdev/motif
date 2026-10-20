@@ -139,7 +139,7 @@ public sealed class HelpCatalogTests
         var releasedApply = catalog.GetHelpPage(HelpEntryKind.Command, "apply --proposal")!;
         Assert.Contains("apply.not-ready", releasedApply, StringComparison.Ordinal);
         Assert.Contains("no stems", releasedApply, StringComparison.Ordinal);
-        Assert.Contains("no `--force` option", releasedApply, StringComparison.Ordinal);
+        Assert.Contains("`--force` does not skip Readiness here", releasedApply, StringComparison.Ordinal);
 
         var plainApply = catalog.GetHelpPage(HelpEntryKind.Command, "apply")!;
         Assert.Contains("`--force` skips the Readiness reasons", plainApply, StringComparison.Ordinal);

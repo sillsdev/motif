@@ -1,6 +1,6 @@
 # Apply with Readiness override
 
-This CLI command applies a Proposal using its already bound Dry Run. The optional `--force` switch lets a person proceed when a Readiness reason remains.
+This CLI command applies a Proposal using its already bound Dry Run. The optional `--force` switch lets a person proceed (Autonomous mode refuses it) when a Readiness reason remains.
 
 ## Usage
 

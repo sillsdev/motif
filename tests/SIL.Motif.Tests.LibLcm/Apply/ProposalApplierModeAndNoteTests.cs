@@ -110,6 +110,41 @@ public sealed class ProposalApplierModeAndNoteTests : IDisposable
     }
 
     [Fact]
+    public void TheNoteAndTheLogEntryAreWrittenInTheChangesOwnUnitOfWork()
+    {
+        var proposal = SetGloss("undone gloss");
+        var glossBefore = FirstGlossText();
+        var before = _cache.LangProject.ResearchNotebookOA.RecordsOC.Count;
+        ProposalApplier.Apply(_cache, proposal, ScratchDryRun.Of(_cache, proposal).Anchor, "", "m", ApplyModes.Person,
+            new ApplyNote("Undone", null));
+        Assert.Equal(before + 1, _cache.LangProject.ResearchNotebookOA.RecordsOC.Count);
+        Assert.Contains(ProjectAppliedLog.ReadAll(_cache), e => e.ProposalId == proposal.ProposalId.ToGuid());
+
+        // ActionHandler.Undo is only a test probe for "one unit of work"; motif offers no user-facing undo of an apply.
+        _cache.ActionHandlerAccessor.Undo();
+
+        Assert.Equal(before, _cache.LangProject.ResearchNotebookOA.RecordsOC.Count);
+        Assert.DoesNotContain(ProjectAppliedLog.ReadAll(_cache), e => e.ProposalId == proposal.ProposalId.ToGuid());
+        Assert.Equal(glossBefore, FirstGlossText());
+    }
+
+    [Fact]
+    public void ANoteWriteThatThrowsRollsBackTheChangesTheNoteAndTheLogEntry()
+    {
+        var proposal = SetGloss("never applied gloss");
+        var glossBefore = FirstGlossText();
+        var before = _cache.LangProject.ResearchNotebookOA.RecordsOC.Count;
+
+        // A null title makes the note's own write fail after the changes have been made in the unit of work.
+        Assert.ThrowsAny<Exception>(() => ProposalApplier.Apply(_cache, proposal,
+            ScratchDryRun.Of(_cache, proposal).Anchor, "", "m", ApplyModes.Person, new ApplyNote(null!, null)));
+
+        Assert.Equal(glossBefore, FirstGlossText());
+        Assert.Equal(before, _cache.LangProject.ResearchNotebookOA.RecordsOC.Count);
+        Assert.DoesNotContain(ProjectAppliedLog.ReadAll(_cache), e => e.ProposalId == proposal.ProposalId.ToGuid());
+    }
+
+    [Fact]
     public void ALaterProposalAppliedWithANoteWritesItsOwnNote_AndTheEarlierNoteRemains()
     {
         var original = SetGloss(SeededProject.FirstGloss + " changed");
@@ -125,6 +160,10 @@ public sealed class ProposalApplierModeAndNoteTests : IDisposable
     }
 
     private static string? TitleOf(IRnGenericRec record) => record.Title.Text;
+
+    private string? FirstGlossText() =>
+        _cache.ServiceLocator.GetInstance<ILexSenseRepository>().GetObject(_seed.FirstSenseId)
+            .Gloss.AnalysisDefaultWritingSystem?.Text;
 
     private Proposal SetGloss(string text)
     {

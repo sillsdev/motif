@@ -382,7 +382,7 @@
   },
   "apply": {
     "title": "Apply with Readiness override",
-    "description": "Applies one Proposal using its already bound Dry Run. The optional --force option skips Readiness checks only; changes that no longer fit remain refused, and only a person can Apply.",
+    "description": "Applies one Proposal using its already bound Dry Run. The optional --force option skips Readiness checks only; changes that no longer fit remain refused. MCP never applies; the CLI applies in person or in Autonomous mode, which refuses --force.",
     "source": "Hand-written from command behavior."
   },
   "apply --all-pending": {
@@ -841,7 +841,7 @@
   },
   "apply --proposal": {
     "title": "Apply one Proposal",
-    "description": "Applies one Proposal to the FieldWorks project as one unit of work, using the result of its latest Trial. It is a human-only Released command and does not offer a Readiness override.",
+    "description": "Applies one Proposal to the FieldWorks project as one unit of work, using the result of its latest Trial. MCP never applies; the CLI applies in person or in Autonomous mode. It has no Readiness override of its own.",
     "source": "Hand-written from command behavior."
   },
   "label": {

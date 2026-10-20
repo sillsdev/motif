@@ -943,7 +943,7 @@ try
                     !flags.TryGetValue("project", out var pendingApplyProject))
                     return Usage(
                         "Usage: motif apply --all-pending --project <fwdata> [--revision <r>] " +
-                        "[--json]", asJson);
+                        "[--autonomous] [--message <text>] [--note] [--json]", asJson);
                 var pendingRequest = new ApplyPendingRequest(pendingApplyProject,
                     DraftId: null, Revision: flags.GetValueOrDefault("revision"),
                     Attribution: applyAttribution);
