@@ -315,9 +315,12 @@ public sealed class KnownProjectsQueryTests : IDisposable
             RedirectStandardError = true,
             CreateNoWindow = true,
         };
+        // pwsh writes its startup profile to XDG_CACHE_HOME on exit; on a WSL /mnt drive that outlasts 5 s.
+        start.Environment["XDG_CACHE_HOME"] = Path.Combine(_root, "pwsh-cache");
         foreach (var argument in new[] { "-NoProfile", "-File", script, pathsFile, assemblyDirectory, sqliteWriter.ToString() }) start.ArgumentList.Add(argument);
         using var process = Process.Start(start)!;
         var error = process.StandardError.ReadToEndAsync();
+        var killed = false;
         try
         {
             var ready = await process.StandardOutput.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(30));
@@ -333,10 +336,10 @@ public sealed class KnownProjectsQueryTests : IDisposable
         finally
         {
             process.StandardInput.Close();
-            if (!process.WaitForExit(5000)) process.Kill(entireProcessTree: true);
+            if (!process.WaitForExit(5000)) { killed = true; process.Kill(entireProcessTree: true); }
             await process.WaitForExitAsync();
         }
-        Assert.True(process.ExitCode == 0, await error);
+        Assert.True(process.ExitCode == 0, $"hold.ps1 exited {process.ExitCode} (killed after 5s: {killed}). stderr: {await error}");
     }
 
     [Fact]
