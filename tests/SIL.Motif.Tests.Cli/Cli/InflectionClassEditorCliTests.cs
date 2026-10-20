@@ -15,7 +15,6 @@ public sealed class InflectionClassEditorCliTests
     [InlineData("compose-edit-affix-inflection-classes")]
     [InlineData("compose-edit-stem-allomorph-stem-name")]
     [InlineData("compose-edit-stem-inflection-class")]
-    [InlineData("compose-edit-compound-rule")]
     public void EditorVerbsRemainDraftCommandsButAreNotAgentToolsAndReachCliUsage(string verb)
     {
         var descriptor = Assert.Single(CommandCatalog.All, command => command.Name == verb);
@@ -26,6 +25,31 @@ public sealed class InflectionClassEditorCliTests
 
         Assert.NotNull(typeof(CommandDescriptor).GetProperty(nameof(CommandDescriptor.ExposeAsAgentTool))?
             .GetCustomAttribute<JsonIgnoreAttribute>());
+
+        var root = Path.Combine(Path.GetTempPath(), "motif-inflection-editor-cli", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var result = CliInProcess.Run(root, null, true, verb);
+            Assert.Equal(1, result.ExitCode);
+            Assert.Empty(result.Output);
+            Assert.Contains($"Usage: motif {verb}", result.Error, StringComparison.Ordinal);
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Theory]
+    [InlineData("compose-edit-compound-rule")]
+    public void EditorVerbsThatAreDraftAgentToolsStillReachCliUsage(string verb)
+    {
+        var descriptor = Assert.Single(CommandCatalog.All, command => command.Name == verb);
+        Assert.Equal(CommandSurface.AdvancedAi, descriptor.Surface);
+        Assert.Equal(AgentClass.Draft, descriptor.Agent);
+        Assert.True(descriptor.ExposeAsAgentTool);
+        Assert.True(descriptor.IsAgentTool);
 
         var root = Path.Combine(Path.GetTempPath(), "motif-inflection-editor-cli", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
