@@ -330,7 +330,7 @@ public static class RefusalCatalog
         Spec(RefusalCodes.TrialChangesChanged, FailureReason.Refused),
         Spec(RefusalCodes.TrialMeasurementIncomplete, FailureReason.Refused),
         Spec(RefusalCodes.TrialNothingPending, FailureReason.Refused),
-        Spec(RefusalCodes.TrialUpdateInProgress, FailureReason.Refused),
+        Spec(RefusalCodes.TrialUpdateInProgress, FailureReason.Busy),
         Spec(RefusalCodes.WordTraceCancelled, FailureReason.Cancelled),
         Spec(RefusalCodes.WordTraceMalformedDiagnostic, FailureReason.Refused),
         Spec(RefusalCodes.WordTraceMalformedOutput, FailureReason.Refused),

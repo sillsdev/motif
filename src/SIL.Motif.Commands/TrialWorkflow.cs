@@ -51,7 +51,7 @@ public static class TrialWorkflow
         using var lease = MotifUpdateGate.TryAcquire();
         if (lease is null)
             return CommandOutcome<TrialEnqueued>.Refused(new Refusal(RefusalCodes.TrialUpdateInProgress,
-                FailureReason.Refused, "Motif is installing an update. Try the Trial again in a moment."));
+                FailureReason.Busy, "Motif is installing an update. Try the Trial again in a moment."));
         string? warning = null;
         var failed = false;
         string? failure = null;

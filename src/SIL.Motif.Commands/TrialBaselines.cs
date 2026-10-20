@@ -59,7 +59,8 @@ public static class TrialBaselines
         }
         if (!before.Succeeded)
         {
-            if (onBaselineUnavailable is null) return CommandOutcome<JobEnqueuedResponse>.Refused(before.Refusal!);
+            // A cancelled measurement is the caller stopping, not a missing Baseline: nothing is queued.
+            if (onBaselineUnavailable is null || before.Refusal!.Reason == FailureReason.Cancelled) return CommandOutcome<JobEnqueuedResponse>.Refused(before.Refusal!);
             onBaselineUnavailable(before.Refusal!.Message);
             return JobCommands.EnqueueTrial(request);
         }

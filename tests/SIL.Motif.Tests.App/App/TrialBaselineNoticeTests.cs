@@ -52,6 +52,8 @@ public sealed class TrialBaselineNoticeTests
                 PageScreenshots.Settle(window);
 
                 Assert.False(block.FindControl<Border>("TrialBaselineNotice")!.IsVisible);
+                Assert.False(block.IsVisible);
+                Assert.Equal(0, block.DesiredSize.Height);
             }
             finally
             {

@@ -3,7 +3,8 @@
              xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              x:Class="SIL.Motif.App.Views.TrialBaselineNoticeBlock"
-             x:DataType="x:String">
+             x:DataType="x:String"
+             IsVisible="{Binding Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}">
   <Border x:Name="TrialBaselineNotice" Classes="notice"
           IsVisible="{Binding Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}"
           AutomationProperties.Name="Trial not compared against a Baseline">

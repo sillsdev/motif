@@ -909,13 +909,9 @@ try
                 if (queued.Value?.BaselineWarning is { } reason)
                     error.WriteLine(
                         "warning: the Trial has no Baseline Assessment, so `difference produce` will refuse it: " + reason);
-                var rendered = RenderCommand(queued.Succeeded
+                return RenderCommand(queued.Succeeded
                     ? CommandOutcome<JobEnqueuedResponse>.Success(queued.Value!.Job)
                     : CommandOutcome<JobEnqueuedResponse>.Refused(queued.Refusal!), successAsJson: false);
-                // Exit 3 is what every activity refused during an update returns, so a script retries.
-                return queued.Refusal?.Code == RefusalCodes.TrialUpdateInProgress
-                    ? rendered with { ExitCode = 3 }
-                    : rendered;
             });
             // A job just entered the queue: wake the runner before anything below waits on it.
             if (result.ExitCode == 0) startRunner(trialProject, error.WriteLine);

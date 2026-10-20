@@ -384,6 +384,28 @@ public sealed class ProposalDifferenceCommandsTests : IDisposable
             .Where(job => job.JobId != "trial-1"));
     }
 
+    [Theory]
+    [InlineData(BaselineMode.BestEffort)]
+    [InlineData(BaselineMode.Required)]
+    public void ACancelledBaselineMeasurementReturnsTheCancellationAndQueuesNothing(BaselineMode mode)
+    {
+        using var fixture = new Fixture(_root, noBaselineIds: true);
+        var request = new SIL.Motif.Commands.Requests.EnqueueTrialRequest(fixture.ProjectPath, "1.0", fixture.ProposalId,
+            Words: ["sita"]);
+        Func<IReadOnlyList<string>, CommandOutcome<AssessCommandResponse>> cancelled = _ =>
+            CommandOutcome<AssessCommandResponse>.Refused(
+                new Refusal("assess.cancelled", FailureReason.Cancelled, "The measurement was cancelled."));
+
+        var outcome = TrialWorkflow.Enqueue(request, cancelled, mode);
+
+        Assert.False(outcome.Succeeded);
+        Assert.Null(outcome.Value);
+        Assert.Equal(FailureReason.Cancelled, outcome.Refusal!.Reason);
+        Assert.Empty(new JobRepository(fixture.Database)
+            .ListByProjectAndKind(ProjectWorkspaceKey.Compute(fixture.Project), TrialJobHandler.TrialKind)
+            .Where(job => job.JobId != "trial-1"));
+    }
+
     [Fact]
     public void RequiredQueuesWithTheBaselineWhenItIsAssessed()
     {

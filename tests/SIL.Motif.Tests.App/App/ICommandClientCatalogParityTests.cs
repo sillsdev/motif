@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using SIL.Motif.App.Services;
+using SIL.Motif.Commands;
 using SIL.Motif.Commands.Catalog;
 using Xunit;
 
@@ -77,7 +78,7 @@ public sealed class ICommandClientCatalogParityTests
         new Dictionary<string, string>(StringComparer.Ordinal)
         {
             [nameof(ICommandClient.ReadProposalReviewEntryCountAsync)] = "proposal review",
-            // The window gets the queued job together with the Baseline warning, so only the request is the command's.
+            // The window gets the queued job together with the Baseline warning; its test below checks the response.
             [nameof(ICommandClient.EnqueueTrialAsync)] = "trial",
         };
 
@@ -108,6 +109,10 @@ public sealed class ICommandClientCatalogParityTests
             var method = methods[methodName];
             var descriptor = Assert.Single(CommandCatalog.All, command => command.Name == commandName);
             Assert.Equal(descriptor.RequestType, method.GetParameters()[0].ParameterType);
+            if (methodName != nameof(ICommandClient.EnqueueTrialAsync)) continue;
+            var enqueued = method.ReturnType.GetGenericArguments().Single().GetGenericArguments().Single();
+            Assert.Equal(typeof(TrialEnqueued), enqueued);
+            Assert.Equal(descriptor.ResponseType, enqueued.GetProperty(nameof(TrialEnqueued.Job))!.PropertyType);
         }
     }
 }
