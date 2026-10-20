@@ -183,6 +183,8 @@ public static class RefusalCodes
     public const string TrialChangesChanged = "trial.changes-changed";
     public const string TrialMeasurementIncomplete = "trial.measurement-incomplete";
     public const string TrialNothingPending = "trial.nothing-pending";
+    /// <summary>A Motif update is being installed, so no Trial can be queued until it finishes.</summary>
+    public const string TrialUpdateInProgress = "trial.update-in-progress";
 
     public const string WordTraceCancelled = "wordtrace.cancelled";
     public const string WordTraceMalformedDiagnostic = "wordtrace.malformed-diagnostic";

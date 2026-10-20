@@ -15,6 +15,7 @@ using SIL.Motif.Contract.Commands;
 using SIL.Motif.Host.Analysis;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Corpus;
+using SIL.Motif.Host.Installation;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Host.Texts;
@@ -380,6 +381,33 @@ public sealed class ProposalDifferenceCommandsTests : IDisposable
         Assert.True(bestEffort.Succeeded, bestEffort.Refusal?.Message);
         Assert.Equal("no parser", bestEffort.Value!.BaselineWarning);
         Assert.Single(new JobRepository(fixture.Database)
+            .ListByProjectAndKind(ProjectWorkspaceKey.Compute(fixture.Project), TrialJobHandler.TrialKind)
+            .Where(job => job.JobId != "trial-1"));
+    }
+
+    [Fact]
+    public void ATrialIsRefusedWithoutQueueingOrAssessingWhileAnUpdateHoldsTheGate()
+    {
+        using var fixture = new Fixture(_root, noBaselineIds: true);
+        var request = new SIL.Motif.Commands.Requests.EnqueueTrialRequest(fixture.ProjectPath, "1.0", fixture.ProposalId,
+            Words: ["sita"]);
+        var assessed = false;
+
+        using (var update = MotifUpdateGate.TryAcquireForUpdate())
+        {
+            Assert.NotNull(update);
+            var refused = TrialWorkflow.Enqueue(request, _ =>
+            {
+                assessed = true;
+                throw new InvalidOperationException("must not assess");
+            }, BaselineMode.BestEffort);
+
+            Assert.Equal("trial.update-in-progress", refused.Refusal!.Code);
+            Assert.Equal("Motif is installing an update. Try the Trial again in a moment.", refused.Refusal.Message);
+        }
+
+        Assert.False(assessed);
+        Assert.Empty(new JobRepository(fixture.Database)
             .ListByProjectAndKind(ProjectWorkspaceKey.Compute(fixture.Project), TrialJobHandler.TrialKind)
             .Where(job => job.JobId != "trial-1"));
     }

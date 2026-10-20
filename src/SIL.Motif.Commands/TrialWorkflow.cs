@@ -3,6 +3,7 @@ using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host.Installation;
 
 namespace SIL.Motif.Commands;
 
@@ -46,6 +47,11 @@ public static class TrialWorkflow
         Func<IReadOnlyList<string>, CommandOutcome<AssessCommandResponse>> assess, BaselineMode mode)
     {
         ArgumentNullException.ThrowIfNull(request);
+        // The lease covers the assess step too, because it runs the installed PanGloss binary an update replaces.
+        using var lease = MotifUpdateGate.TryAcquire();
+        if (lease is null)
+            return CommandOutcome<TrialEnqueued>.Refused(new Refusal(RefusalCodes.TrialUpdateInProgress,
+                FailureReason.Refused, "Motif is installing an update. Try the Trial again in a moment."));
         string? warning = null;
         var failed = false;
         string? failure = null;
