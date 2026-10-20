@@ -672,6 +672,22 @@
       "Add a phoneme that rules will refer to"
     ]
   },
+  "compose-edit-phoneme": {
+    "title": "Edit a phoneme's representations",
+    "description": "Stages new written representations for an existing phoneme, or respells one it has, so a multigraph such as ng, ts or dy is another way the same segment is written and never a second phoneme. It refuses a spelling another phoneme or boundary already has, and a respelling that an environment writes. Dry Run and Trial before a person Applies the Proposal.",
+    "source": "Authored from the typed command contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "target": "Id of the existing phoneme.",
+      "add": "New representations to append, each an object with a representation, such as ng.",
+      "respell": "Current representations to replace in place, each with from and to."
+    },
+    "goals": [
+      "Add the digraph ng as a way to write an existing nasal phoneme",
+      "Write the affricate with the digraph ts",
+      "Respell a phoneme's representation without creating a second phoneme"
+    ]
+  },
   "compose-author-natural-class": {
     "title": "Author a natural class",
     "description": "Stages a named segment natural class with explicitly declared phoneme members in a Draft. Members may name existing phonemes or phonemes created earlier through declared dependencies. Only a person can Apply.",

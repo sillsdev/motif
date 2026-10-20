@@ -263,6 +263,7 @@ public sealed class FindComposerTests
     public static TheoryData<string, string> FreshGoalsByExpectedVerb => new()
     {
         { "Create a class for the back vowels", "compose-author-natural-class" },
+        { "Write the velar nasal with the digraph ng as another spelling of an existing phoneme", "compose-edit-phoneme" },
         { "Make the second syllable copy the first in the plural", "compose-author-affix-process" },
         { "Put the marker in the middle of the root", "compose-author-affix-process" },
         { "Mark the subject agreement slot as optional", "compose-edit-affix-slot" },

@@ -9,6 +9,7 @@ internal static class ComposerDefinitions
         new AuthorAffixProcessDefinition(),
         new AuthorFeatureValueDefinition(),
         new DeleteEmptySenseDefinition(),
+        new EditPhonemeDefinition(),
         new EditAffixInflectionClassesDefinition(),
         new EditCompoundRuleDefinition(),
         new EditPartOfSpeechInflectionClassDefaultDefinition(),
