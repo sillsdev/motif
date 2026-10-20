@@ -23,7 +23,7 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
             var button = new Button { Name = "OffscreenAction", Content = "Continue", Width = 80, Height = 32 };
             Canvas.SetLeft(button, 180);
             Canvas.SetTop(button, 30);
-            var window = new Window
+            var window = new MotifTestWindow
             {
                 Content = new Canvas { Width = 300, Height = 100, Children = { button } },
                 Width = 120,
@@ -51,7 +51,7 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
         avalonia.Invoke(() =>
         {
             var button = new Button { Width = 0, Height = 0 };
-            var window = new Window { Content = button, Width = 120, Height = 90 };
+            var window = new MotifTestWindow { Content = button, Width = 120, Height = 90 };
             try
             {
                 window.Show();
@@ -72,7 +72,7 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
             Canvas.SetLeft(button, 150);
             var revealHost = new Canvas { Width = 50, Height = 32, Classes = { "hoverReveal" }, Children = { button } };
             var canvas = new Canvas { Width = 80, Height = 50, Children = { revealHost } };
-            var window = new Window { Content = canvas, Width = 100, Height = 80 };
+            var window = new MotifTestWindow { Content = canvas, Width = 100, Height = 80 };
             try
             {
                 window.Show();
@@ -113,7 +113,7 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
                 VerticalScrollBarVisibility = visibility,
                 Content = canvas,
             };
-            var window = new Window { Content = scroll, Width = 140, Height = 140 };
+            var window = new MotifTestWindow { Content = scroll, Width = 140, Height = 140 };
             try
             {
                 window.Show();
@@ -149,7 +149,7 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
                 Content = canvas,
             };
-            var window = new Window { Content = scroll, Width = 140, Height = 140 };
+            var window = new MotifTestWindow { Content = scroll, Width = 140, Height = 140 };
             try
             {
                 window.Show();
@@ -190,7 +190,7 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
                 VerticalScrollBarVisibility = ScrollBarVisibility.Disabled,
                 Content = new Grid { Width = 300, Height = 60, Children = { list } },
             };
-            var window = new Window { Content = outer, Width = 180, Height = 100 };
+            var window = new MotifTestWindow { Content = outer, Width = 180, Height = 100 };
             try
             {
                 window.Show();
@@ -256,7 +256,7 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
                 Content = new Canvas { Width = 110, Height = 400, Children = { inner } },
             };
-            var window = new Window { Content = outer, Width = 180, Height = 120 };
+            var window = new MotifTestWindow { Content = outer, Width = 180, Height = 120 };
             try
             {
                 window.Show();
@@ -295,7 +295,7 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
                     },
                 },
             };
-            var window = new Window
+            var window = new MotifTestWindow
             {
                 Content = new Canvas { Width = 200, Height = 100, Children = { behindText, anchor } },
                 Width = 220, Height = 120,
@@ -342,7 +342,7 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
                 Name = "LightDismissAnchor", Width = 10, Height = 10,
                 Flyout = new Flyout { Content = new Border { Width = 40, Height = 20 } },
             };
-            var window = new Window
+            var window = new MotifTestWindow
             {
                 Content = new Canvas { Width = 200, Height = 100, Children = { farButton, offscreen, anchor } },
                 Width = 220, Height = 120,
@@ -382,7 +382,7 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
             var hyphenated = Wrapped("HyphenatedWord", "well-known well-known", 70);
             var newline = Wrapped("Newlines", "abc\ndef", 400);
             var unwrapped = Wrapped("Unwrapped", "supercalifragilistic", 24, TextWrapping.NoWrap);
-            var window = new Window
+            var window = new MotifTestWindow
             {
                 Content = new StackPanel { Children = { split, spaced, hyphenated, newline, unwrapped } },
                 Width = 300, Height = 300,
@@ -436,7 +436,7 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
             collapsed.IsVisible = false;
             var grid = new Grid { Width = 160, Height = 30, Children = { cell } };
             SIL.Motif.App.Controls.DenseTable.SetColumns(grid, "*");
-            var window = new Window
+            var window = new MotifTestWindow
             {
                 Width = 400, Height = 500,
                 Content = new StackPanel
@@ -494,7 +494,7 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
                 Flyout = new Flyout { Content = new Border { Width = 180, Height = 36, Child = flyoutAction } },
             };
             var body = new StackPanel { Children = { anchor } };
-            var window = new Window
+            var window = new MotifTestWindow
             {
                 Content = new Grid { RowDefinitions = { new RowDefinition(GridLength.Auto), new RowDefinition(1, GridUnitType.Star) },
                     Children = { topBar, body } },
@@ -537,7 +537,7 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
             var unreachableAction = new Button { Name = "ModalOffscreenAction", Content = "Continue" };
             Canvas.SetLeft(unreachableAction, 500);
             dialogContent.Children.Add(new Canvas { Children = { unreachableAction } });
-            var window = new Window
+            var window = new MotifTestWindow
             {
                 Content = new Grid { Children = { pageText, dialog } }, Width = 240, Height = 120,
             };
@@ -570,7 +570,7 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
                 Name = "NarrowLabel", Text = "Words in Selection places", Width = 48,
                 TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.None,
             };
-            var window = new Window { Content = text, Width = 100, Height = 60 };
+            var window = new MotifTestWindow { Content = text, Width = 100, Height = 60 };
             try
             {
                 window.Show();
@@ -614,7 +614,7 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
                 Name = "PageList", Width = 150, Height = 60,
                 ItemsSource = Enumerable.Range(0, 20).Select(index => $"Page {index}"),
             };
-            var window = new Window { Content = list, Width = 180, Height = 100 };
+            var window = new MotifTestWindow { Content = list, Width = 180, Height = 100 };
             try
             {
                 window.Show();
@@ -642,7 +642,7 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
                 ItemsSource = Enumerable.Range(0, 20).Select(index => $"Page {index}"),
             };
             ScrollViewer.SetVerticalScrollBarVisibility(list, ScrollBarVisibility.Disabled);
-            var window = new Window { Content = list, Width = 180, Height = 90 };
+            var window = new MotifTestWindow { Content = list, Width = 180, Height = 90 };
             try
             {
                 window.Show();
@@ -671,7 +671,7 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
             };
             var page = new Border { Child = scroll };
             var pageHost = new Panel { Name = "PageHost", Children = { page } };
-            var window = new Window { Content = pageHost, Width = 100, Height = 70 };
+            var window = new MotifTestWindow { Content = pageHost, Width = 100, Height = 70 };
             try
             {
                 window.Show();
@@ -700,7 +700,7 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
             var tab = new Border { Child = scroll };
             var page = new Grid { Children = { tab } };
             var pageHost = new Panel { Name = "PageHost", Children = { page } };
-            var window = new Window { Content = pageHost, Width = 100, Height = 70 };
+            var window = new MotifTestWindow { Content = pageHost, Width = 100, Height = 70 };
             try
             {
                 window.Show();
@@ -730,7 +730,7 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
                 Content = content,
             };
             var pageHost = new Panel { Name = "PageHost", Children = { new Border { Child = scroll } } };
-            var window = new Window { Content = pageHost, Width = 100, Height = 70 };
+            var window = new MotifTestWindow { Content = pageHost, Width = 100, Height = 70 };
             try
             {
                 window.Show();
@@ -764,7 +764,7 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
                 Height = 60,
                 Children = { new Border { Child = scroll } },
             };
-            var window = new Window { Content = pageHost, Width = 120, Height = 90 };
+            var window = new MotifTestWindow { Content = pageHost, Width = 120, Height = 90 };
             try
             {
                 window.Show();
@@ -792,7 +792,7 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
                 TextWrapping = TextWrapping.NoWrap,
             };
             var pageHost = new Panel { Name = "PageHost", Width = 100, Height = 60, Children = { textBox } };
-            var window = new Window { Content = pageHost, Width = 120, Height = 90 };
+            var window = new MotifTestWindow { Content = pageHost, Width = 120, Height = 90 };
             try
             {
                 window.Show();
@@ -828,7 +828,7 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
                 Items = { new ListBoxItem { Content = cellScroll } },
             };
             var pageHost = new Panel { Name = "PageHost", Width = 100, Height = 60, Children = { list } };
-            var window = new Window { Content = pageHost, Width = 120, Height = 90 };
+            var window = new MotifTestWindow { Content = pageHost, Width = 120, Height = 90 };
             try
             {
                 window.Show();
@@ -908,7 +908,7 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
             };
             var pinned = new TextBlock { Name = "PinnedLabel", Text = "Pinned label", Width = 140, Height = 24 };
             Canvas.SetTop(pinned, pinnedTop);
-            var window = new Window
+            var window = new MotifTestWindow
             {
                 Content = new Canvas { Children = { scroll, pinned } }, Width = 180, Height = 120,
             };
@@ -957,7 +957,7 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
                 VerticalScrollBarVisibility = ScrollBarVisibility.Hidden,
                 Content = new Canvas { Width = 160, Height = 200, Children = { text } },
             };
-            var window = new Window { Content = scroll, Width = 180, Height = 120 };
+            var window = new MotifTestWindow { Content = scroll, Width = 180, Height = 120 };
             try
             {
                 window.Show();
@@ -985,7 +985,7 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
         {
             var first = new TextBlock { Text = "first" };
             var second = new TextBlock { Text = "second" };
-            var window = new Window
+            var window = new MotifTestWindow
             {
                 Content = new StackPanel { Children = { first, second } }, Width = 180, Height = 100,
             };
@@ -1009,7 +1009,7 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
         {
             var first = new TextBlock { Name = "FirstLabel", Text = "first label" };
             var second = new TextBlock { Name = "SecondLabel", Text = "second label" };
-            var window = new Window
+            var window = new MotifTestWindow
             {
                 Content = new Grid { Children = { first, second } }, Width = 180, Height = 60,
             };
@@ -1036,7 +1036,7 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
             var first = new TextBlock { Text = "first" };
             var second = new TextBlock { Text = "badge" };
             second.ZIndex = 1;
-            var window = new Window
+            var window = new MotifTestWindow
             {
                 Content = new Grid { Children = { first, second } }, Width = 180, Height = 60,
             };
@@ -1059,7 +1059,7 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
         avalonia.Invoke(() =>
         {
             var text = new TextBlock { Text = "A\u0378" };
-            var window = new Window { Content = text, Width = 180, Height = 60 };
+            var window = new MotifTestWindow { Content = text, Width = 180, Height = 60 };
             try
             {
                 window.Show();
@@ -1089,7 +1089,7 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
                 Name = "TopBar", Width = 100, Height = 40,
                 Child = new DockPanel { Children = { first, second } },
             };
-            var window = new Window { Content = topBar, Width = 140, Height = 80 };
+            var window = new MotifTestWindow { Content = topBar, Width = 140, Height = 80 };
             try
             {
                 window.Show();
@@ -1118,7 +1118,7 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
                 Name = "TopBar", Width = 100, Height = 40,
                 Child = new DockPanel { Children = { first, second } },
             };
-            var window = new Window { Content = topBar, Width = 140, Height = 80 };
+            var window = new MotifTestWindow { Content = topBar, Width = 140, Height = 80 };
             try
             {
                 window.Show();

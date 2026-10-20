@@ -80,7 +80,7 @@ public sealed class CrashWindowTests(AvaloniaHeadlessFixture avalonia)
     {
         avalonia.Invoke(() =>
         {
-            var main = new Window();
+            var main = new MotifTestWindow();
             var shutdowns = 0;
             var reporter = new CrashReporter(TimeProvider.System, Services());
             var detach = reporter.Attach(Dispatcher.UIThread, main, () =>
@@ -114,7 +114,7 @@ public sealed class CrashWindowTests(AvaloniaHeadlessFixture avalonia)
     {
         avalonia.Invoke(() =>
         {
-            var main = new Window();
+            var main = new MotifTestWindow();
             var reporter = new CrashReporter(TimeProvider.System, Services());
             var detach = reporter.Attach(Dispatcher.UIThread, main, () => { });
             try
@@ -144,7 +144,7 @@ public sealed class CrashWindowTests(AvaloniaHeadlessFixture avalonia)
     {
         avalonia.Invoke(() =>
         {
-            var main = new Window();
+            var main = new MotifTestWindow();
             var reporter = new CrashReporter(TimeProvider.System, Services());
             reporter.Attach(Dispatcher.UIThread, main, () => { })();
 
@@ -161,7 +161,7 @@ public sealed class CrashWindowTests(AvaloniaHeadlessFixture avalonia)
     {
         avalonia.Invoke(() =>
         {
-            var main = new Window();
+            var main = new MotifTestWindow();
             var shutdowns = 0;
             var reporter = new CrashReporter(TimeProvider.System, Services());
             var detach = reporter.Attach(Dispatcher.UIThread, main, () => shutdowns++);

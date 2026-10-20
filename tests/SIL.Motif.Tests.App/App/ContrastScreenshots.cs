@@ -64,7 +64,7 @@ public sealed class ContrastScreenshots
             foreach (var (theme, variant) in new[] { ("light", ThemeVariant.Light), ("dark", ThemeVariant.Dark) })
             {
                 var compare = MatrixListsWindowWordsTests.Compare(MatrixListsWindowWordsTests.EveryKindOfWord);
-                var matrix = new Window
+                var matrix = new MotifTestWindow
                 {
                     Content = new ComparePanel(compare), RequestedThemeVariant = variant, Width = 1100, Height = 700,
                 };

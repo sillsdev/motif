@@ -57,7 +57,7 @@ public sealed class ReviewSentenceContextTests
                 new TextBlock { Text = token?.Text }),
             FullItemsSource = source,
         };
-        var window = new Window { Width = 1024, Height = 700, Content = items };
+        var window = new MotifTestWindow { Width = 1024, Height = 700, Content = items };
         var weak = new List<WeakReference<object>>();
         try
         {

@@ -29,7 +29,7 @@ public sealed class WordRowActionScreenshots(AvaloniaHeadlessFixture avalonia)
                 State = new WordInteractionState(key),
                 VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top,
             };
-            var window = new Window { Content = row };
+            var window = new MotifTestWindow { Content = row };
             try
             {
                 window.Show();

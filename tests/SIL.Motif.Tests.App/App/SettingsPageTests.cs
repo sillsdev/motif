@@ -57,7 +57,7 @@ public sealed class SettingsPageTests
             model.Settings = assignAfterViewCreation ? null : settings;
             var entry = PageRegistry.For(WorkspacePage.Settings);
             var page = Assert.IsType<SettingsPage>(entry.CreateView(workspace.PageOf(WorkspacePage.Settings).Model));
-            var window = new Window { Content = page, Width = 820, Height = 600 };
+            var window = new MotifTestWindow { Content = page, Width = 820, Height = 600 };
             try
             {
                 window.Show();
@@ -164,7 +164,7 @@ public sealed class SettingsPageTests
             var model = workspace.PageModel<SettingsPageModel>();
             model.Settings = settings;
             var page = Assert.IsType<SettingsPage>(PageRegistry.For(WorkspacePage.Settings).CreateView(model));
-            var window = new Window { Content = page, Width = 820, Height = 600 };
+            var window = new MotifTestWindow { Content = page, Width = 820, Height = 600 };
             try
             {
                 window.Show();

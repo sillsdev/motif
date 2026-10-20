@@ -116,7 +116,7 @@ public sealed class HFrameActionTests(AvaloniaHeadlessFixture avalonia)
             var reason = new CopyableTextBlock { Text = "No changes selected" };
             var footer = new StackPanel { DataContext = context, Children = { apply, reason } };
             var host = new WorkspaceLayoutHost { Page = new Border(), Rail = new Border { Width = 44 } };
-            var window = new Window { Width = 640, Height = 600, Content = new LayoutTransformControl
+            var window = new MotifTestWindow { Width = 640, Height = 600, Content = new LayoutTransformControl
                 { LayoutTransform = new ScaleTransform(zoom / 100d, zoom / 100d), Child = host } };
             try
             {
@@ -148,7 +148,7 @@ public sealed class HFrameActionTests(AvaloniaHeadlessFixture avalonia)
         avalonia.Invoke(() =>
         {
             var host = new WorkspaceLayoutHost { Page = new Border(), Rail = new Border { Width = 44 } };
-            var window = new Window { Width = 640, Height = 600, Content = new LayoutTransformControl
+            var window = new MotifTestWindow { Width = 640, Height = 600, Content = new LayoutTransformControl
                 { LayoutTransform = new ScaleTransform(zoom / 100d, zoom / 100d), Child = host } };
             try
             {
@@ -179,7 +179,7 @@ public sealed class HFrameActionTests(AvaloniaHeadlessFixture avalonia)
         {
             var scale = zoom / 100d;
             var host = new WorkspaceLayoutHost { Page = new Border(), Rail = new Border { Width = 44 } };
-            var window = new Window { Width = 980 * scale, Height = 600, Content = new LayoutTransformControl
+            var window = new MotifTestWindow { Width = 980 * scale, Height = 600, Content = new LayoutTransformControl
                 { LayoutTransform = new ScaleTransform(scale, scale), Child = host } };
             try
             {

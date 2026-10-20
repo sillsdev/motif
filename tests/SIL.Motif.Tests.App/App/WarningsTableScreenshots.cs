@@ -53,7 +53,7 @@ public sealed class WarningsTableScreenshots
             grammar.LoadStored("warnings-capture.fwdata", new GrammarCheckResponse(warnings, HasBaseline: true));
             grammar.Warnings.MostYourWordsFirst = false;
             var panel = new GrammarPanel(grammar);
-            var window = new Window { Content = panel, Width = 640, Height = 780 };
+            var window = new MotifTestWindow { Content = panel, Width = 640, Height = 780 };
             try
             {
                 window.Show();

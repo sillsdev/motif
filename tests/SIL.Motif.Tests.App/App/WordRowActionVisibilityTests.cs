@@ -30,7 +30,7 @@ public sealed class WordRowActionVisibilityTests(AvaloniaHeadlessFixture avaloni
                 Data = new WordPresentation(key, 0, WordRowViewModel.NotParsed("kitabu"), WordListOwner.ReadOnly),
                 State = new WordInteractionState(key),
             };
-            var window = new Window { Content = row, Width = width, Height = height };
+            var window = new MotifTestWindow { Content = row, Width = width, Height = height };
             try
             {
                 window.Show();

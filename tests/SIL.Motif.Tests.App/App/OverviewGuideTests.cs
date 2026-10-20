@@ -47,7 +47,7 @@ public sealed class OverviewGuideTests
             var page = new OverviewPageModel(context);
             fake.OverviewCompletesWith(OverviewPageWordsTests.Populated());
             await context.OpenProjectAsync(@"C:\projects\sample.fwdata");
-            var window = new Window { Width = 1240, Height = 900, Content = new OverviewPage(page) };
+            var window = new MotifTestWindow { Width = 1240, Height = 900, Content = new OverviewPage(page) };
             try
             {
                 window.Show();

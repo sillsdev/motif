@@ -100,7 +100,7 @@ public sealed class WindowRefusalDetailsTests
         _avalonia.Invoke(() =>
         {
             var block = new RefusalBlock { DataContext = WindowRefusal.From(refusal) };
-            var window = new Window { Content = block, Width = 600, Height = 400 };
+            var window = new MotifTestWindow { Content = block, Width = 600, Height = 400 };
             try
             {
                 window.Show();

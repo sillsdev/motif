@@ -62,7 +62,7 @@ public sealed class ProgressiveDisplayTests
             var (workspace, sampleWindow) = await PageScreenshots.OpenOverSampleData(
                 renderForCapture: false,
                 composeWindow: viewName is "MainWindow" or "SettingsPage" or "SettingsNavigation");
-            var window = new Window { Width = 1240, Height = 780 };
+            var window = new MotifTestWindow { Width = 1240, Height = 780 };
             try
             {
                 Assert.Equal(PageScreenshots.Assessment().Words.Count, workspace.Assess.Words.AllRows.Count);
@@ -155,7 +155,7 @@ public sealed class ProgressiveDisplayTests
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {
             var block = new RefusalBlock { DataContext = CompileRefusal(2000) };
-            var window = new Window { Width = 1240, Height = 780, Content = block };
+            var window = new MotifTestWindow { Width = 1240, Height = 780, Content = block };
             try
             {
                 window.Show();
@@ -255,7 +255,7 @@ public sealed class ProgressiveDisplayTests
             {
                 Document = new WordCardDocument(new WordPresentationKey("scale:empty-card"), 0, []),
             };
-            var window = new Window
+            var window = new MotifTestWindow
             {
                 Width = 1240,
                 Height = 1200,
@@ -303,7 +303,7 @@ public sealed class ProgressiveDisplayTests
         {
             var (workspace, sampleWindow) = await PageScreenshots.OpenOverSampleData();
             var row = FixedWordRow(workspace);
-            var window = new Window { Width = 1240, Height = 780, Content = row };
+            var window = new MotifTestWindow { Width = 1240, Height = 780, Content = row };
             try
             {
                 window.Show();
@@ -350,7 +350,7 @@ public sealed class ProgressiveDisplayTests
                     [!PresentationWordRow.DataProperty] = new Avalonia.Data.Binding(),
                 }),
             };
-            var window = new Window { Width = 1240, Height = 600, Content = list };
+            var window = new MotifTestWindow { Width = 1240, Height = 600, Content = list };
             try
             {
                 window.Show();
@@ -453,7 +453,7 @@ public sealed class ProgressiveDisplayTests
             });
             var page = workspace.PageModel<ReviewPageModel>();
             var panel = new ReviewPanel(page);
-            var window = new Window { Width = 1240, Height = 780, Content = WorkspaceLayoutHost.ForPage(panel) };
+            var window = new MotifTestWindow { Width = 1240, Height = 780, Content = WorkspaceLayoutHost.ForPage(panel) };
             try
             {
                 window.Show();
@@ -585,7 +585,7 @@ public sealed class ProgressiveDisplayTests
         {
             var (workspace, sample) = await PageScreenshots.OpenOverSampleData();
             var panel = new DiagnosticPanel(workspace.PageModel<TryWordPageModel>().Diagnostics);
-            var window = new Window { Width = 1240, Height = 780, Content = new ScrollViewer { Content = panel } };
+            var window = new MotifTestWindow { Width = 1240, Height = 780, Content = new ScrollViewer { Content = panel } };
             try
             {
                 var leaf = new TraceStepViewModel(new TraceStep("Failed", "rule", "word", null, null, []), null);
@@ -898,7 +898,7 @@ public sealed class ProgressiveDisplayTests
                     $"part-{index}", SIL.Motif.Contract.Responses.GrammarWarningPartRole.Text)).ToArray(),
             };
             var panel = parts;
-            var window = new Window { Width = 1240, Height = 780, Content = panel };
+            var window = new MotifTestWindow { Width = 1240, Height = 780, Content = panel };
             try
             {
                 window.Show();
@@ -932,7 +932,7 @@ public sealed class ProgressiveDisplayTests
         {
             var (workspace, sampleWindow) = await PageScreenshots.OpenOverSampleData(renderForCapture: false);
             var panel = new TryWordPanel(workspace.PageModel<TryWordPageModel>());
-            var window = new Window { Width = 1240, Height = 780, Content = new ScrollViewer { Content = panel } };
+            var window = new MotifTestWindow { Width = 1240, Height = 780, Content = new ScrollViewer { Content = panel } };
             try
             {
                 var analyses = Enumerable.Range(0, 924).Select(index => new TraceAnalysisViewModel(
@@ -970,7 +970,7 @@ public sealed class ProgressiveDisplayTests
         {
             var source = new ObservableCollection<object>(Enumerable.Range(0, 500).Cast<object>());
             var items = new ProgressiveItemsControl { FullItemsSource = source };
-            var window = new Window { Width = 1240, Height = 780, Content = items };
+            var window = new MotifTestWindow { Width = 1240, Height = 780, Content = items };
             try
             {
                 window.Show();

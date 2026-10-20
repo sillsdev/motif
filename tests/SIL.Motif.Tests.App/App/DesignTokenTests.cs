@@ -261,20 +261,10 @@ public sealed class DesignTokenTests
         var button = new Button { Content = "Apply" };
         var textBox = new TextBox { Text = "Text" };
         var comboBox = new ComboBox { ItemsSource = new[] { "One" }, SelectedIndex = 0 };
-        var window = new Window
-        {
-            Content = new StackPanel { Children = { button, textBox, comboBox } },
-            Width = 240,
-            Height = 200,
-        };
-        if (motifRoot)
-        {
-            var heights = new Avalonia.Markup.Xaml.Styling.ResourceInclude(new Uri("avares://SIL.Motif.App/"))
-            {
-                Source = new Uri("avares://SIL.Motif.App/Tokens/Scoped/ControlHeights.axaml"),
-            };
-            window.Resources.MergedDictionaries.Add(heights);
-        }
+        Window window = motifRoot ? new MotifTestWindow() : new Window();
+        window.Content = new StackPanel { Children = { button, textBox, comboBox } };
+        window.Width = 240;
+        window.Height = 200;
 
         try
         {

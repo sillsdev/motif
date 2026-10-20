@@ -63,7 +63,7 @@ public sealed class HeadlessClickTests
     {
         var spacer = new Border { Height = 0 };
         var target = new Button { Content = "Target", Height = 40 };
-        var window = new Window { Width = 400, Height = 400, Content = new StackPanel { Children = { spacer, target } } };
+        var window = new MotifTestWindow { Width = 400, Height = 400, Content = new StackPanel { Children = { spacer, target } } };
         window.Show();
         window.UpdateLayout();
         Dispatcher.UIThread.RunJobs();

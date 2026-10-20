@@ -155,7 +155,7 @@ public sealed class SelectionWordRowsTests
             var commands = new FakeCommandClient { SelectionReaderHandler = fixture.OpenAsync };
             var reads = commands.ReaderOwner;
             var list = new TextWordsViewModel(commands, new SelectionViewModel(commands), reads);
-            var window = new Window { Width = 1000, Height = 700, Content = new TextWordsPanel(list) };
+            var window = new MotifTestWindow { Width = 1000, Height = 700, Content = new TextWordsPanel(list) };
             try
             {
                 await reads.ReloadAsync(fixture.ProjectPath, [textId], []);
@@ -212,7 +212,7 @@ public sealed class SelectionWordRowsTests
             var commands = new FakeCommandClient { SelectionReaderHandler = fixture.OpenAsync };
             var reads = commands.ReaderOwner;
             var list = new TextWordsViewModel(commands, new SelectionViewModel(commands), reads);
-            var window = new Window { Width = 1000, Height = 700, Content = new TextWordsPanel(list) };
+            var window = new MotifTestWindow { Width = 1000, Height = 700, Content = new TextWordsPanel(list) };
             try
             {
                 var before = WordRow.TotalCellBuilds;
@@ -282,7 +282,7 @@ public sealed class SelectionWordRowsTests
             var commands = new FakeCommandClient { SelectionReaderHandler = fixture.OpenAsync };
             var reads = new WorkspaceSelection(commands);
             var list = new TextWordsViewModel(commands, new SelectionViewModel(commands), reads);
-            var window = new Window { Width = 1000, Height = 700 };
+            var window = new MotifTestWindow { Width = 1000, Height = 700 };
             try
             {
                 await reads.ReloadAsync(fixture.ProjectPath, [textId], []);
@@ -393,7 +393,7 @@ public sealed class SelectionWordRowsTests
                     ItemTemplate = new Avalonia.Controls.Templates.FuncDataTemplate<WordOccurrenceRowViewModel>(
                         (item, _) => new TextBlock { Text = item?.Location }),
                 };
-                window = new Window { Width = 1000, Height = 700, Content = pages };
+                window = new MotifTestWindow { Width = 1000, Height = 700, Content = pages };
                 window.Show();
                 await pages.PageRefresh;
                 PageScreenshots.Settle(window);
@@ -566,7 +566,7 @@ public sealed class SelectionWordRowsTests
         using var observation = list.ObserveRowCreation(weak.Add);
         var panel = new TextWordsPanel(list);
         var rows = panel.FindControl<ListBox>("TextWordsPanelRowsItems")!;
-        var window = new Window { Width = 1440, Height = 900, Content = panel };
+        var window = new MotifTestWindow { Width = 1440, Height = 900, Content = panel };
         try
         {
             window.Show();

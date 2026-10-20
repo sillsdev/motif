@@ -73,7 +73,7 @@ public sealed class DenseTableTests
             grammar.LoadStored("dense-table.fwdata", new GrammarCheckResponse(
                 [environment, environment, affix], HasBaseline: true));
             var panel = new GrammarPanel(grammar);
-            var window = new Window { Content = panel, Width = 640, Height = 780 };
+            var window = new MotifTestWindow { Content = panel, Width = 640, Height = 780 };
             try
             {
                 window.Show();
@@ -225,7 +225,7 @@ public sealed class DenseTableTests
             };
             grammar.LoadStored("dense-columns.fwdata", new GrammarCheckResponse([warning, info], HasBaseline: true));
             var panel = new GrammarPanel(grammar);
-            var window = new Window { Content = panel, Width = 640, Height = 780 };
+            var window = new MotifTestWindow { Content = panel, Width = 640, Height = 780 };
             try
             {
                 window.Show();
@@ -357,7 +357,7 @@ public sealed class DenseTableTests
             var before = new Button { Content = "Before" };
             var after = new Button { Content = "After" };
             var host = new StackPanel { Children = { before, list, after } };
-            var window = new Window { Content = host, Width = 420, Height = 400 };
+            var window = new MotifTestWindow { Content = host, Width = 420, Height = 400 };
             try
             {
                 window.Show();
@@ -435,7 +435,7 @@ public sealed class DenseTableTests
             for (var index = 0; index < rowCount; index++) rows.Children.Add(Columns());
             var host = new StackPanel { Children = { header, rows } };
             DenseTable.SetIsWidthHost(host, true);
-            var window = new Window { Width = 900, Height = 400, Content = new ScrollViewer { Content = host } };
+            var window = new MotifTestWindow { Width = 900, Height = 400, Content = new ScrollViewer { Content = host } };
             try
             {
                 window.Show();
@@ -529,7 +529,7 @@ public sealed class DenseTableTests
             inspector.Bind(TextBlock.TextProperty, new Avalonia.Data.Binding("SelectedItem.SecondaryEvidence") { Source = list });
             var content = new Grid { RowDefinitions = new RowDefinitions("*,Auto"), Children = { host, inspector } };
             Grid.SetRow(inspector, 1);
-            var window = new Window { Width = 900, Height = 400, Content = content };
+            var window = new MotifTestWindow { Width = 900, Height = 400, Content = content };
             try
             {
                 window.Show();
@@ -614,7 +614,7 @@ public sealed class DenseTableTests
             var host = new Grid { RowDefinitions = new RowDefinitions("Auto,*"), Children = { headerBorder, rowBorder } };
             Grid.SetRow(rowBorder, 1);
             DenseTable.SetIsWidthHost(host, true);
-            var window = new Window { Width = 740, Height = 400, Content = host };
+            var window = new MotifTestWindow { Width = 740, Height = 400, Content = host };
             try
             {
                 window.Show();
@@ -674,7 +674,7 @@ public sealed class DenseTableTests
                     }),
             };
             DenseTable.Attach(list);
-            var window = new Window { Content = list, Width = 420, Height = 250 };
+            var window = new MotifTestWindow { Content = list, Width = 420, Height = 250 };
             try
             {
                 window.Show();

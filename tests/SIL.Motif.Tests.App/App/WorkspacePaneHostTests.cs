@@ -44,7 +44,7 @@ public sealed class WorkspacePaneHostTests(AvaloniaHeadlessFixture avalonia)
                 LayoutTransform = new ScaleTransform(1, 1),
                 Child = host,
             };
-            var window = new Window { Width = 1300, Height = 800, Content = transform };
+            var window = new MotifTestWindow { Width = 1300, Height = 800, Content = transform };
             try
             {
                 window.Show();
@@ -93,7 +93,7 @@ public sealed class WorkspacePaneHostTests(AvaloniaHeadlessFixture avalonia)
             var first = new PanePage();
             var second = new PanePage();
             var host = WorkspaceLayoutHost.ForPage(first);
-            var window = new Window { Width = 1600, Height = 800, Content = host };
+            var window = new MotifTestWindow { Width = 1600, Height = 800, Content = host };
             try
             {
                 window.Show();
@@ -128,7 +128,7 @@ public sealed class WorkspacePaneHostTests(AvaloniaHeadlessFixture avalonia)
         {
             var page = new PanePage();
             var host = WorkspaceLayoutHost.ForPage(page);
-            var window = new Window { Width = 1600, Height = 800, Content = host };
+            var window = new MotifTestWindow { Width = 1600, Height = 800, Content = host };
             try
             {
                 window.Show();

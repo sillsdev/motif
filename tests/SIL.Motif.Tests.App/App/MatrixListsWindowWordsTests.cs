@@ -396,7 +396,7 @@ public sealed partial class MatrixListsWindowWordsTests(AvaloniaHeadlessFixture 
 
     private static T WithWindow<T>(Control panel, Func<Window, T> read)
     {
-        var window = new Window { Content = panel, RequestedThemeVariant = ThemeVariant.Light, Width = 1400, Height = 900 };
+        var window = new MotifTestWindow { Content = panel, RequestedThemeVariant = ThemeVariant.Light, Width = 1400, Height = 900 };
         try
         {
             window.Show();

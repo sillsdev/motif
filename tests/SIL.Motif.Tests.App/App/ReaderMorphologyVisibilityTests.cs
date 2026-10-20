@@ -37,7 +37,7 @@ public sealed class ReaderMorphologyVisibilityTests(AvaloniaHeadlessFixture aval
                 StoredAnalyses = stored,
             }, result);
         var strip = new WordStripToken { Data = token, DataContext = token, VerticalAlignment = VerticalAlignment.Top };
-        var window = new Window { Content = strip };
+        var window = new MotifTestWindow { Content = strip };
         try
         {
             window.Show();

@@ -23,7 +23,7 @@ public sealed class ExpertTracePanelTests
             var trace = TraceWordViewModel.FromDiagnosticJson(ExpertTraceReadingTests.EnvironmentOperandDiagnostic(operandJson));
             trace.SelectedStep = trace.Root!;
             var panel = new ExpertTracePanel { DataContext = trace };
-            var window = new Window { Content = panel, Width = 1040, Height = 1500 };
+            var window = new MotifTestWindow { Content = panel, Width = 1040, Height = 1500 };
             try
             {
                 window.Show();
@@ -108,7 +108,7 @@ public sealed class ExpertTracePanelTests
                 """));
             trace.SelectedStep = trace.Root!.Children[0];
             var panel = new ExpertTracePanel { DataContext = trace };
-            var window = new Window { Content = panel, Width = 1040, Height = 1500 };
+            var window = new MotifTestWindow { Content = panel, Width = 1040, Height = 1500 };
             try
             {
                 window.Show();
@@ -132,7 +132,7 @@ public sealed class ExpertTracePanelTests
         {
             var trace = TraceWordViewModel.FromDiagnosticJson(ExpertTraceReadingTests.NotationDiagnostic);
             var panel = new ExpertTracePanel { DataContext = trace };
-            var window = new Window { Content = panel, Width = 1040, Height = 1500 };
+            var window = new MotifTestWindow { Content = panel, Width = 1040, Height = 1500 };
             try
             {
                 window.Show();

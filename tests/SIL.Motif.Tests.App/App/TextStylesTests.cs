@@ -220,7 +220,7 @@ public sealed class TextStylesTests
             children.Add(boldItalic);
             var panel = new StackPanel();
             foreach (var child in children) panel.Children.Add(child);
-            var window = new Window { Content = panel };
+            var window = new MotifTestWindow { Content = panel };
             SIL.Motif.App.Controls.WritingSystemText.SetResolver(window, resolver);
             window.Show();
             RenderFrame(window);
@@ -277,7 +277,7 @@ public sealed class TextStylesTests
             var first = new WritingSystemTextBlock { Text = WritingSystemTestData.Form };
             var second = new WritingSystemTextBlock { Text = WritingSystemTestData.Form };
             var third = new WritingSystemTextBlock { Text = WritingSystemTestData.Form };
-            var window = new Window { Content = new StackPanel { Children = { first, second, third } } };
+            var window = new MotifTestWindow { Content = new StackPanel { Children = { first, second, third } } };
             SIL.Motif.App.Controls.WritingSystemText.SetResolver(window, resolver);
             foreach (var text in new[] { first, second })
             {
@@ -314,7 +314,7 @@ public sealed class TextStylesTests
             resolver.ReplaceContext([WritingSystemTestData.Arabic]);
             var text = new WritingSystemTextBlock { Text = WritingSystemTestData.Form };
             var page = new StackPanel { IsVisible = false, Children = { text } };
-            var window = new Window { Content = page };
+            var window = new MotifTestWindow { Content = page };
             SIL.Motif.App.Controls.WritingSystemText.SetResolver(window, resolver);
             SIL.Motif.App.Controls.WritingSystemText.SetId(text, SeededProject.RightToLeftTag);
             SIL.Motif.App.Controls.WritingSystemText.SetStyleName(text, "Normal");
@@ -342,7 +342,7 @@ public sealed class TextStylesTests
             styles.SetFallbackFamilies(["fonts:MotifWalkthrough#DejaVu Sans"]);
             styles.ReplaceContext([WritingSystemTestData.Arabic]);
             var text = new WritingSystemTextBlock { Text = string.Empty };
-            var window = new Window { Content = text };
+            var window = new MotifTestWindow { Content = text };
             SIL.Motif.App.Controls.WritingSystemText.SetResolver(window, styles);
             SIL.Motif.App.Controls.WritingSystemText.SetId(text, SeededProject.RightToLeftTag);
             SIL.Motif.App.Controls.WritingSystemText.SetStyleName(text, "Normal");
@@ -378,7 +378,7 @@ public sealed class TextStylesTests
                 },
             };
             var viewport = new ScrollViewer { Content = content, Height = 24, ClipToBounds = true };
-            var window = new Window { Content = viewport, Width = 220, Height = 24 };
+            var window = new MotifTestWindow { Content = viewport, Width = 220, Height = 24 };
             SIL.Motif.App.Controls.WritingSystemText.SetResolver(window, styles);
             SIL.Motif.App.Controls.WritingSystemText.SetId(text, SeededProject.RightToLeftTag);
             SIL.Motif.App.Controls.WritingSystemText.SetStyleName(text, "Normal");
@@ -415,7 +415,7 @@ public sealed class TextStylesTests
             styles.SetFallbackFamilies(["fonts:MotifWalkthrough#DejaVu Sans"]);
             styles.ReplaceContext([WritingSystemTestData.Arabic]);
             var text = new WritingSystemTextBox { Text = WritingSystemTestData.Form };
-            var window = new Window { Content = text, Width = 320, Height = 80 };
+            var window = new MotifTestWindow { Content = text, Width = 320, Height = 80 };
             SIL.Motif.App.Controls.WritingSystemText.SetResolver(window, styles);
             SIL.Motif.App.Controls.WritingSystemText.SetId(text, SeededProject.RightToLeftTag);
             SIL.Motif.App.Controls.WritingSystemText.SetStyleName(text, "Normal");
@@ -487,7 +487,7 @@ public sealed class TextStylesTests
             }]);
             var text = new WritingSystemTextBox { Text = WritingSystemTestData.Form };
             var content = new StackPanel { Children = { text } };
-            var window = new Window { Content = content, Width = 320, Height = 80 };
+            var window = new MotifTestWindow { Content = content, Width = 320, Height = 80 };
             var deferredReports = new List<Action>();
             var deferredPublications = new List<Action>();
             text.PresentationReportScheduler = deferredReports.Add;
@@ -545,7 +545,7 @@ public sealed class TextStylesTests
             styles.SetFallbackFamilies(["fonts:MotifWalkthrough#DejaVu Sans"]);
             styles.ReplaceContext([WritingSystemTestData.Arabic]);
             var text = new WritingSystemTextBox { Text = string.Empty };
-            var window = new Window { Content = text, Width = 320, Height = 80 };
+            var window = new MotifTestWindow { Content = text, Width = 320, Height = 80 };
             SIL.Motif.App.Controls.WritingSystemText.SetResolver(window, styles);
             SIL.Motif.App.Controls.WritingSystemText.SetId(text, SeededProject.RightToLeftTag);
             SIL.Motif.App.Controls.WritingSystemText.SetStyleName(text, "Normal");
@@ -584,7 +584,7 @@ public sealed class TextStylesTests
             }]);
             var text = new WritingSystemTextBlock { Text = WritingSystemTestData.Form, IsVisible = false };
             var content = new StackPanel { Children = { text } };
-            var window = new Window { Content = content };
+            var window = new MotifTestWindow { Content = content };
             SIL.Motif.App.Controls.WritingSystemText.SetResolver(window, styles);
             SIL.Motif.App.Controls.WritingSystemText.SetId(text, SeededProject.RightToLeftTag);
             SIL.Motif.App.Controls.WritingSystemText.SetStyleName(text, "Normal");
@@ -637,7 +637,7 @@ public sealed class TextStylesTests
             }]);
             var text = new WritingSystemTextBlock { Text = WritingSystemTestData.Form };
             var panel = new StackPanel { Children = { text } };
-            var window = new Window { Content = panel };
+            var window = new MotifTestWindow { Content = panel };
             SIL.Motif.App.Controls.WritingSystemText.SetResolver(window, styles);
             SIL.Motif.App.Controls.WritingSystemText.SetId(text, SeededProject.RightToLeftTag);
             SIL.Motif.App.Controls.WritingSystemText.SetStyleName(text, "Normal");
@@ -712,7 +712,7 @@ public sealed class TextStylesTests
 
             var text = new TextBlock { Text = "Motif uses Andika." };
             styles.Apply(text, TextStyleRequest.Interface("en"));
-            var window = new Window { Content = text, Width = 320, Height = 80 };
+            var window = new MotifTestWindow { Content = text, Width = 320, Height = 80 };
             try
             {
                 window.Show();
@@ -774,7 +774,7 @@ public sealed class TextStylesTests
             styles.ReplaceContext([WritingSystemTestData.Arabic]);
             var text = new CopyableTextBlock { Text = WritingSystemTestData.Form };
             styles.Apply(text, TextStyleRequest.Linguistic(SeededProject.RightToLeftTag, "Normal"));
-            var window = new Window { Content = text };
+            var window = new MotifTestWindow { Content = text };
             window.Show();
             window.UpdateLayout();
 

@@ -134,7 +134,7 @@ public sealed class OverviewHLayoutTests
                 { Value = 1, Total = 2, Mark = example.Mark, Kind = example.Kind }).ToArray();
             var content = new StackPanel();
             foreach (var bar in bars) content.Children.Add(bar);
-            var window = new Window { Width = 400, Height = 300, Content = content };
+            var window = new MotifTestWindow { Width = 400, Height = 300, Content = content };
             try
             {
                 window.Show();

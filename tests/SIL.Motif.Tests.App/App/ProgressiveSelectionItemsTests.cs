@@ -97,7 +97,7 @@ public sealed class ProgressiveSelectionItemsTests
                 },
                 FullItemsSource = source,
             };
-            var window = new Window { Content = items, Width = 1240, Height = 780 };
+            var window = new MotifTestWindow { Content = items, Width = 1240, Height = 780 };
             window.Show();
             try
             {

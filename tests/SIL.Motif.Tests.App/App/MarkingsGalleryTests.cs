@@ -233,7 +233,7 @@ public sealed class MarkingsGalleryTests
 
     private static Window Show(Control content, ThemeVariant variant)
     {
-        var window = new Window { Content = content, RequestedThemeVariant = variant, Width = 760, Height = 460 };
+        var window = new MotifTestWindow { Content = content, RequestedThemeVariant = variant, Width = 760, Height = 460 };
         window.Show();
         Dispatcher.UIThread.RunJobs();
         window.UpdateLayout();

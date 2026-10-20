@@ -720,7 +720,7 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
         avalonia.Invoke(() =>
         {
             var panel = new GrammarPanel(grammar);
-            var window = new Window { Content = panel, Width = 1040, Height = 900 };
+            var window = new MotifTestWindow { Content = panel, Width = 1040, Height = 900 };
             try
             {
                 window.Show();
@@ -761,7 +761,7 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
         avalonia.Invoke(() =>
         {
             var panel = new GrammarPanel(grammar);
-            var window = new Window { Content = panel, Width = 1040, Height = 900 };
+            var window = new MotifTestWindow { Content = panel, Width = 1040, Height = 900 };
             try
             {
                 window.Show();

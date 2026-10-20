@@ -190,7 +190,7 @@ public sealed class TimingHeadlineTests
             context.PublishEvidence(new WorkspaceEvidence(Assessment() with { Measurements = [] },
                 DateTimeOffset.Now, WasRerun: false));
 
-            var window = new Window { Width = 1240, Height = 900, Content = new TimingPage(timing) };
+            var window = new MotifTestWindow { Width = 1240, Height = 900, Content = new TimingPage(timing) };
             try
             {
                 window.Show();
@@ -230,7 +230,7 @@ public sealed class TimingHeadlineTests
             await context.EvidencePublication;
             await timing.SelectWordSetCommand.ExecuteAsync("step-limit");
 
-            var window = new Window { Width = 900, Height = 700, Content = new TimingPage(timing) };
+            var window = new MotifTestWindow { Width = 900, Height = 700, Content = new TimingPage(timing) };
             try
             {
                 window.Show();
@@ -266,7 +266,7 @@ public sealed class TimingHeadlineTests
             await context.OpenProjectAsync(ProjectPath);
             context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
 
-            var window = new Window { Width = 1240, Height = 900, Content = new TimingPage(timing) };
+            var window = new MotifTestWindow { Width = 1240, Height = 900, Content = new TimingPage(timing) };
             try
             {
                 window.Show();
@@ -309,7 +309,7 @@ public sealed class TimingHeadlineTests
             context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
             await context.EvidencePublication;
 
-            var window = new Window { Width = 900, Height = 700, Content = new TimingPage(timing) };
+            var window = new MotifTestWindow { Width = 900, Height = 700, Content = new TimingPage(timing) };
             try
             {
                 window.Show();

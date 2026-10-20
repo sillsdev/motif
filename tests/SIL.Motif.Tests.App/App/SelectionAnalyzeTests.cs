@@ -117,7 +117,7 @@ public sealed class SelectionAnalyzeTests
         owner.NativeModelCreated += weak.Add;
         var panel = new ResultsInTextPanel(owner);
         var host = new Border { Child = panel };
-        var window = new Window { Width = 1240, Height = 780, Content = host };
+        var window = new MotifTestWindow { Width = 1240, Height = 780, Content = host };
         try
         {
             await reads.ReloadAsync(fixture.ProjectPath, [projection.Texts[0].TextId], []);

@@ -285,7 +285,7 @@ public sealed class TraceReaderReviewTests(AvaloniaHeadlessFixture avalonia)
         var files = new ScriptedDiagnosticFiles();
         var tools = new DiagnosticToolsViewModel(model, new RecordingClipboard(), files, files);
         var panel = new DiagnosticPanel(tools);
-        var window = new Window { Content = new ScrollViewer { Content = panel }, Width = 1240, Height = 1700 };
+        var window = new MotifTestWindow { Content = new ScrollViewer { Content = panel }, Width = 1240, Height = 1700 };
         try
         {
             window.Show();

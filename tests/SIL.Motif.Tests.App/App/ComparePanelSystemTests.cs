@@ -24,7 +24,7 @@ public sealed class ComparePanelSystemTests(AvaloniaHeadlessFixture avalonia)
             compare.Toggle(compare.Cells.Single(cell => cell.Row == WordProjectStatus.Approved &&
                 cell.Column == CompareColumnKind.NoParse), additive: false);
             var panel = new ComparePanel(compare);
-            var window = new Window
+            var window = new MotifTestWindow
             {
                 Content = panel,
                 RequestedThemeVariant = ThemeVariant.Light,

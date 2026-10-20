@@ -204,7 +204,7 @@ public sealed partial class WindowWordsTests
                 DataContext = new RetirementProposalReviewViewModel(ReviewScreenshots.RetirementProjection(
                     includeUnresolved: false)),
             };
-            var window = new Window { Width = 1000, Height = 1400, Content = panel };
+            var window = new MotifTestWindow { Width = 1000, Height = 1400, Content = panel };
             window.Show();
             PageScreenshots.Settle(window);
             shown.AddRange(Rendered(window));
@@ -240,7 +240,7 @@ public sealed partial class WindowWordsTests
                     "proposal/one", "waiting-for-evidence", "job/one", dryRun, null,
                     ["Before-and-after parser results are not available yet."])),
             };
-            var window = new Window { Width = 1000, Height = 900, Content = panel };
+            var window = new MotifTestWindow { Width = 1000, Height = 900, Content = panel };
             window.Show();
             PageScreenshots.Settle(window);
             shown.AddRange(Rendered(window));

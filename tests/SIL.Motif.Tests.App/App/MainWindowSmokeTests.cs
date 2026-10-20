@@ -895,7 +895,7 @@ public sealed class MainWindowSmokeTests
         {
             var text = new CopyableTextBlock { Text = "select or click me" };
             var parent = new Border { Child = text };
-            var window = new Window { Content = parent };
+            var window = new MotifTestWindow { Content = parent };
             var presses = 0;
             var releases = 0;
             parent.PointerPressed += (_, _) => presses++;

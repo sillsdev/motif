@@ -35,7 +35,7 @@ public sealed class HistoricalWordActionInvariantTests(AvaloniaHeadlessFixture a
                 Data = new WordPresentation(key, 0, WordRowViewModel.NotParsed("kitabu"), WordListOwner.ReadOnly),
                 State = new WordInteractionState(key),
             };
-            var window = new Window
+            var window = new MotifTestWindow
             {
                 Width = width, Height = height,
                 Content = new LayoutTransformControl { LayoutTransform = WindowZoomPolicy.Transform, Child = row },

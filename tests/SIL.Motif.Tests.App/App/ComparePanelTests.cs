@@ -30,7 +30,7 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
             compare.Toggle(compare.Cells.Single(cell => cell.Row == WordProjectStatus.Approved &&
                 cell.Column == CompareColumnKind.NoParse), additive: false);
             var panel = new ComparePanel(compare);
-            var window = new Window
+            var window = new MotifTestWindow
             {
                 Content = panel,
                 RequestedThemeVariant = ThemeVariant.Light,
@@ -88,7 +88,7 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
             compare.Toggle(compare.Cells.Single(cell => cell.Row == WordProjectStatus.Approved &&
                 cell.Column == CompareColumnKind.NoParse), additive: false);
             var panel = new ComparePanel(compare);
-            var window = new Window
+            var window = new MotifTestWindow
             {
                 Content = panel,
                 RequestedThemeVariant = ThemeVariant.Light,
@@ -147,7 +147,7 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
                     false, false, false, [new ParseAnalysis([]), new ParseAnalysis([])], []),
             })]);
             var panel = new ComparePanel(compare);
-            var window = new Window
+            var window = new MotifTestWindow
             {
                 Content = panel,
                 RequestedThemeVariant = ThemeVariant.Light,
@@ -297,7 +297,7 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
         {
             var compare = MatrixListsWindowWordsTests.Compare(MatrixListsWindowWordsTests.EveryKindOfWord);
             var panel = new ComparePanel(compare);
-            var window = new Window
+            var window = new MotifTestWindow
             {
                 Content = panel, RequestedThemeVariant = ThemeVariant.Light, Width = width, Height = height,
             };
@@ -424,7 +424,7 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
             compare.FixFirstRows[0].Word.PresentationState =
                 compare.FixFirstRows[0].Word.PresentationState with { IsOpen = true };
             var panel = new ComparePanel(compare);
-            var window = new Window
+            var window = new MotifTestWindow
             {
                 Content = panel,
                 RequestedThemeVariant = ThemeVariant.Light,
@@ -628,7 +628,7 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
 
     private static void WithPanel(CompareViewModel compare, double width, Action<Window> check)
     {
-        var window = new Window
+        var window = new MotifTestWindow
         {
             Content = new ComparePanel(compare),
             RequestedThemeVariant = ThemeVariant.Light,

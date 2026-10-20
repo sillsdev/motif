@@ -33,7 +33,7 @@ public sealed class ProposalsWorkspacePaneTests
             Assert.Null(sidePanel.Parent);
             Assert.Null(inspector.Parent);
             var host = WorkspaceLayoutHost.ForPage(page);
-            var window = new Window { Width = 1600, Height = 780, Content = host };
+            var window = new MotifTestWindow { Width = 1600, Height = 780, Content = host };
             try
             {
                 window.Show();
@@ -72,7 +72,7 @@ public sealed class ProposalsWorkspacePaneTests
             var page = new ProposalsPage(new ProposalsPageModel(
                 WorkspaceContextTests.NewContext(new FakeCommandClient())));
             var host = WorkspaceLayoutHost.ForPage(page);
-            var window = new Window { Width = 1000, Height = 780, Content = host };
+            var window = new MotifTestWindow { Width = 1000, Height = 780, Content = host };
             try
             {
                 window.Show();
@@ -103,7 +103,7 @@ public sealed class ProposalsWorkspacePaneTests
             await context.OpenProjectAsync(@"C:\projects\one.fwdata");
             var page = new ProposalsPage(model);
             var host = WorkspaceLayoutHost.ForPage(page);
-            var window = new Window { Width = 1600, Height = 780, Content = host };
+            var window = new MotifTestWindow { Width = 1600, Height = 780, Content = host };
             try
             {
                 window.Show();
@@ -133,7 +133,7 @@ public sealed class ProposalsWorkspacePaneTests
             await context.OpenProjectAsync(@"C:\projects\one.fwdata");
             var page = new ProposalsPage(model);
             var host = WorkspaceLayoutHost.ForPage(page);
-            var window = new Window { Width = 1000, Height = 780, Content = host };
+            var window = new MotifTestWindow { Width = 1000, Height = 780, Content = host };
             try
             {
                 window.Show();
@@ -169,7 +169,7 @@ public sealed class ProposalsWorkspacePaneTests
             await context.OpenProjectAsync(@"C:\projects\one.fwdata");
             var page = new ProposalsPage(model);
             var host = WorkspaceLayoutHost.ForPage(page);
-            var window = new Window { Width = 1000, Height = 780, Content = host };
+            var window = new MotifTestWindow { Width = 1000, Height = 780, Content = host };
             try
             {
                 window.Show();
@@ -207,7 +207,7 @@ public sealed class ProposalsWorkspacePaneTests
             await context.OpenProjectAsync(@"C:\projects\one.fwdata");
             var page = new ProposalsPage(model);
             var host = WorkspaceLayoutHost.ForPage(page);
-            var window = new Window { Width = 1000, Height = 780, Content = host };
+            var window = new MotifTestWindow { Width = 1000, Height = 780, Content = host };
             try
             {
                 window.Show();
@@ -252,7 +252,7 @@ public sealed class ProposalsWorkspacePaneTests
             fake.OnProposalStandings((request, _) => Task.FromResult(CommandOutcome<ProposalStandings>.Success(
                 new ProposalStandings(request.IncludeSetAside ? cards : activeCards, 1))));
             var (workspace, window) = await ReviewScreenshots.OpenAsync(fake);
-            var standalone = new Window { Width = 1600, Height = 780 };
+            var standalone = new MotifTestWindow { Width = 1600, Height = 780 };
             try
             {
                 var model = workspace.PageModel<ProposalsPageModel>();

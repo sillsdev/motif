@@ -28,7 +28,7 @@ public sealed class PageInspectorArbitrationTests(AvaloniaHeadlessFixture avalon
             var host = WorkspaceLayoutHost.ForPage(page);
             var objectInspector = new Border { DataContext = new object() };
             host.ObjectInspector = objectInspector;
-            var window = new Window { Width = 1300, Height = 800, Content = host };
+            var window = new MotifTestWindow { Width = 1300, Height = 800, Content = host };
             try
             {
                 window.Show();
@@ -77,7 +77,7 @@ public sealed class PageInspectorArbitrationTests(AvaloniaHeadlessFixture avalon
                 LayoutTransform = new ScaleTransform(scale, scale),
                 Child = host,
             };
-            var window = new Window { Width = 640 * scale, Height = 600, Content = transform };
+            var window = new MotifTestWindow { Width = 640 * scale, Height = 600, Content = transform };
             try
             {
                 window.Show();
@@ -137,7 +137,7 @@ public sealed class PageInspectorArbitrationTests(AvaloniaHeadlessFixture avalon
             var page = new InspectorPage();
             var host = WorkspaceLayoutHost.ForPage(page);
             host.ObjectInspector = new Border();
-            var window = new Window { Width = 1300, Height = 800, Content = host };
+            var window = new MotifTestWindow { Width = 1300, Height = 800, Content = host };
             RoutedEventArgs? requested = null;
             host.PageInspectorRequested += (_, args) => requested = args;
             try
@@ -322,7 +322,7 @@ public sealed class PageInspectorArbitrationTests(AvaloniaHeadlessFixture avalon
         {
             var host = WorkspaceLayoutHost.ForPage(new Border());
             host.ObjectInspector = new Border();
-            var window = new Window { Width = 1300, Height = 800, Content = host };
+            var window = new MotifTestWindow { Width = 1300, Height = 800, Content = host };
             try
             {
                 window.Show();

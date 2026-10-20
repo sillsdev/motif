@@ -226,7 +226,7 @@ public sealed class FooterHeightBudgetTests(AvaloniaHeadlessFixture avalonia)
             var flowing = new RefusalBlock { DataContext = refusal };
             flowing.Classes.Add("refusalFlow");
             var own = new RefusalBlock { DataContext = refusal };
-            var window = new Window { Width = 400, Height = 300, Content = new StackPanel { Children = { flowing, own } } };
+            var window = new MotifTestWindow { Width = 400, Height = 300, Content = new StackPanel { Children = { flowing, own } } };
             window.Show();
             try
             {
@@ -315,7 +315,7 @@ public sealed class FooterHeightBudgetTests(AvaloniaHeadlessFixture avalonia)
 
     private static Window Show(WorkspaceLayoutHost host, int width, int height, double scale)
     {
-        var window = new Window
+        var window = new MotifTestWindow
         {
             Width = width,
             Height = height,

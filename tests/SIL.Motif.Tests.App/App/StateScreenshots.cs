@@ -1326,7 +1326,7 @@ public sealed class TryWordReviewScreenshots
                 trace.SelectedCandidate.IsTreeContextExpanded = true;
                 var registered = window.GetVisualDescendants().OfType<TryAWordPage>().Single();
                 var inspectorContent = ((SIL.Motif.App.Views.Shell.IWorkspacePaneProvider)registered).InspectorContent!;
-                var inspectorWindow = new Window
+                var inspectorWindow = new MotifTestWindow
                 {
                     Content = inspectorContent, Width = width, Height = 5000,
                     RequestedThemeVariant = Application.Current!.RequestedThemeVariant,

@@ -329,7 +329,7 @@ public sealed class TimingSharesTests
         {
             using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
             var timing = await LoadedTiming(NineWords, Kinds, Rules);
-            var window = new Window { Width = 1240, Height = 1400, Content = new TimingPage(timing) };
+            var window = new MotifTestWindow { Width = 1240, Height = 1400, Content = new TimingPage(timing) };
             try
             {
                 window.Show();
@@ -358,7 +358,7 @@ public sealed class TimingSharesTests
         {
             using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
             var timing = await LoadedTiming(NineWords, Kinds, Rules);
-            var window = new Window { Width = 1240, Height = 1400, Content = new TimingPage(timing) };
+            var window = new MotifTestWindow { Width = 1240, Height = 1400, Content = new TimingPage(timing) };
             try
             {
                 window.Show();
@@ -403,7 +403,7 @@ public sealed class TimingSharesTests
         {
             using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
             var timing = await LoadedTiming(NineWords, Kinds, Rules, stepLimitedWord: "mwalimu");
-            var window = new Window { Width = 1040, Height = 1400, Content = new TimingPage(timing) };
+            var window = new MotifTestWindow { Width = 1040, Height = 1400, Content = new TimingPage(timing) };
             try
             {
                 window.Show();
@@ -452,7 +452,7 @@ public sealed class TimingSharesTests
         {
             using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
             var timing = await LoadedTiming(NineWords, Kinds, Rules);
-            var window = new Window { Width = 720, Height = 1400, Content = new TimingPage(timing) };
+            var window = new MotifTestWindow { Width = 720, Height = 1400, Content = new TimingPage(timing) };
             try
             {
                 window.Show();

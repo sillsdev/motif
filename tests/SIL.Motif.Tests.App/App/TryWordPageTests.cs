@@ -83,7 +83,7 @@ public sealed class TryWordPageTests
         {
             var page = new TryWordPageModel(NewContext(out _));
             page.Trace.Result = WordTraceQuery.LoadDiagnostic(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-hawajafika.json"))).Value!;
-            var window = new Window { Content = new TryWordPanel(page), Width = 1240, Height = 2400 };
+            var window = new MotifTestWindow { Content = new TryWordPanel(page), Width = 1240, Height = 2400 };
             try
             {
                 window.Show();
@@ -151,7 +151,7 @@ public sealed class TryWordPageTests
             var page = new TryWordPageModel(context);
             context.TryWord("dogs");
             await page.Trace.TryCommand.ExecutionTask!;
-            var window = new Window { Content = new TryWordPanel(page), Width = 1240, Height = 1600 };
+            var window = new MotifTestWindow { Content = new TryWordPanel(page), Width = 1240, Height = 1600 };
             try
             {
                 window.Show();
@@ -188,7 +188,7 @@ public sealed class TryWordPageTests
                 },
             };
             page.Trace.IsExpert = expert;
-            var window = new Window { Content = new TryWordPanel(page), Width = 1240, Height = 1600 };
+            var window = new MotifTestWindow { Content = new TryWordPanel(page), Width = 1240, Height = 1600 };
             try
             {
                 window.Show();
@@ -226,7 +226,7 @@ public sealed class TryWordPageTests
             context.PublishEvidence(new WorkspaceEvidence(Assessment(), DogsOrigin.MeasuredUtc, false));
             context.TryWord("dogs");
             await page.Trace.TryCommand.ExecutionTask!;
-            var window = new Window { Content = new TryWordPanel(page), Width = 1240, Height = 1600 };
+            var window = new MotifTestWindow { Content = new TryWordPanel(page), Width = 1240, Height = 1600 };
             const string warning = "This trace and the earlier parse used different Baselines. Refresh and try again.";
             try
             {
@@ -259,7 +259,7 @@ public sealed class TryWordPageTests
         {
             var page = new TryWordPageModel(NewContext(out _));
             page.Trace.Result = MatinluTrace();
-            var window = new Window { Content = new TryWordPanel(page), Width = 1240, Height = 2400 };
+            var window = new MotifTestWindow { Content = new TryWordPanel(page), Width = 1240, Height = 2400 };
             try
             {
                 window.Show();
@@ -307,7 +307,7 @@ public sealed class TryWordPageTests
             var page = new TryWordPageModel(NewContext(out _));
             page.Trace.Result = MatinluTrace();
             page.Trace.IsExpert = true;
-            var window = new Window { Content = new TryWordPanel(page), Width = 1240, Height = 2400 };
+            var window = new MotifTestWindow { Content = new TryWordPanel(page), Width = 1240, Height = 2400 };
             try
             {
                 window.Show();
@@ -417,7 +417,7 @@ public sealed class TryWordPageTests
             Assert.Equal("Producer name", root.Children[0].RecordedStep.Source);
             Assert.Same(page.Trace.Reading!.Root.Children[0], root.Children[0].RecordedStep);
             Assert.Equal("Producer name", Assert.Single(page.Trace.Reading.Refs).Label);
-            var window = new Window
+            var window = new MotifTestWindow
             {
                 Content = PageRegistry.For(WorkspacePage.TryAWord).CreateView(page), Width = 1040, Height = 1600,
             };
@@ -469,7 +469,7 @@ public sealed class TryWordPageTests
                 },
             };
             page.Trace.SelectedStep = page.Trace.ExpertEvents.Single(step => step.Source == "Vowel harmony");
-            var window = new Window
+            var window = new MotifTestWindow
             {
                 Content = PageRegistry.For(WorkspacePage.TryAWord).CreateView(page), Width = 1040, Height = 1600,
             };
@@ -564,7 +564,7 @@ public sealed class TryWordPageTests
                         DateTimeOffset.Parse("2026-09-02T11:00:00Z"), "Returned capture description"),
                 } : null,
             };
-            var window = new Window { Content = PageRegistry.For(WorkspacePage.TryAWord).CreateView(page), Width = 1040, Height = 1600 };
+            var window = new MotifTestWindow { Content = PageRegistry.For(WorkspacePage.TryAWord).CreateView(page), Width = 1040, Height = 1600 };
             try
             {
                 window.Show();
@@ -601,7 +601,7 @@ public sealed class TryWordPageTests
                 },
             };
             page.Trace.SelectedStep = Assert.Single(page.Trace.RecordedRoots);
-            var window = new Window { Content = PageRegistry.For(WorkspacePage.TryAWord).CreateView(page), Width = 1040, Height = 1600 };
+            var window = new MotifTestWindow { Content = PageRegistry.For(WorkspacePage.TryAWord).CreateView(page), Width = 1040, Height = 1600 };
             try
             {
                 window.Show();
@@ -633,7 +633,7 @@ public sealed class TryWordPageTests
             page.Trace.Result = response with { Reading = response.Reading! with { Root = refusal } };
             page.Trace.SelectedStep = Assert.Single(page.Trace.RecordedRoots);
             var view = PageRegistry.For(WorkspacePage.TryAWord).CreateView(page);
-            var window = new Window { Content = view, Width = 1040, Height = 1600 };
+            var window = new MotifTestWindow { Content = view, Width = 1040, Height = 1600 };
             try
             {
                 window.Show();
@@ -662,7 +662,7 @@ public sealed class TryWordPageTests
             page.Trace.Result = MatinluTrace();
             page.Trace.IsExpert = true;
             var view = PageRegistry.For(WorkspacePage.TryAWord).CreateView(page);
-            var window = new Window { Content = view, Width = 1240, Height = 1600 };
+            var window = new MotifTestWindow { Content = view, Width = 1240, Height = 1600 };
             try
             {
                 window.Show();
@@ -693,7 +693,7 @@ public sealed class TryWordPageTests
             var page = new TryWordPageModel(NewContext(out _));
             page.Trace.WordToTry = "dogs";
             page.Trace.Result = DogsTrace();
-            var window = new Window { Content = PageRegistry.For(WorkspacePage.TryAWord).CreateView(page), Width = 1240, Height = 1600 };
+            var window = new MotifTestWindow { Content = PageRegistry.For(WorkspacePage.TryAWord).CreateView(page), Width = 1240, Height = 1600 };
             try
             {
                 window.Show();
@@ -724,7 +724,7 @@ public sealed class TryWordPageTests
         {
             var page = new TryWordPageModel(NewContext(out _));
             page.Trace.Result = WordTraceQuery.LoadDiagnostic(TraceEnvelope.CapturedRuleLabel).Value!;
-            var window = new Window
+            var window = new MotifTestWindow
             {
                 Content = PageRegistry.For(WorkspacePage.TryAWord).CreateView(page), Width = 1240, Height = 2400,
             };
@@ -794,7 +794,7 @@ public sealed class TryWordPageTests
                 AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-matinlu.json"))).Value!;
             page.Trace.RuleFilter = "lu";
             page.Trace.IsExpert = true;
-            var window = new Window
+            var window = new MotifTestWindow
             {
                 Content = PageRegistry.For(WorkspacePage.TryAWord).CreateView(page), Width = width, Height = 2400,
             };
@@ -853,7 +853,7 @@ public sealed class TryWordPageTests
             };
             page.Trace.Result = new WordTraceResponse("dogs", false, false, "limit", 1, null, 1,
                 TraceReadingBuilder.Build("dogs", new TraceStep("WordAnalysis", null, "dogs", null, null, [progress]), [], []));
-            var window = new Window
+            var window = new MotifTestWindow
             {
                 Content = PageRegistry.For(WorkspacePage.TryAWord).CreateView(page), Width = 1040, Height = 1600,
             };
@@ -881,7 +881,7 @@ public sealed class TryWordPageTests
         _avalonia.Invoke(() =>
         {
             var page = new TryWordPageModel(NewContext(out _));
-            var window = new Window { Content = PageRegistry.For(WorkspacePage.TryAWord).CreateView(page), Width = 1040, Height = 800 };
+            var window = new MotifTestWindow { Content = PageRegistry.For(WorkspacePage.TryAWord).CreateView(page), Width = 1040, Height = 800 };
             try
             {
                 window.Show();
@@ -912,7 +912,7 @@ public sealed class TryWordPageTests
         {
             var page = new TryWordPageModel(NewContext(out _));
             page.RecentWords.Add("kitabu");
-            var window = new Window { Content = PageRegistry.For(WorkspacePage.TryAWord).CreateView(page), Width = 1040, Height = 800 };
+            var window = new MotifTestWindow { Content = PageRegistry.For(WorkspacePage.TryAWord).CreateView(page), Width = 1040, Height = 800 };
             try
             {
                 window.Show();
@@ -1025,7 +1025,7 @@ public sealed class TryWordPageTests
             fake.TraceWordCompletesWith(DogsTrace());
             context.TryWord("dogs");
             await page.Trace.TryCommand.ExecutionTask!;
-            var window = new Window { Content = new TryWordPanel(page), Width = 1040, Height = 1500 };
+            var window = new MotifTestWindow { Content = new TryWordPanel(page), Width = 1040, Height = 1500 };
             try
             {
                 window.Show();
@@ -1053,7 +1053,7 @@ public sealed class TryWordPageTests
             var page = new TryWordPageModel(context);
             context.TryWord("dogs");
             await page.Trace.TryCommand.ExecutionTask!;
-            var window = new Window { Content = new TryWordPanel(page), Width = 1040, Height = 1500 };
+            var window = new MotifTestWindow { Content = new TryWordPanel(page), Width = 1040, Height = 1500 };
             try
             {
                 window.Show();
@@ -1089,7 +1089,7 @@ public sealed class TryWordPageTests
             context.TryWord("dogs");
             await page.Trace.TryCommand.ExecutionTask!;
             page.Trace.WordToTry = "cats";
-            var window = new Window { Content = new TryWordPanel(page), Width = 1040, Height = 1500 };
+            var window = new MotifTestWindow { Content = new TryWordPanel(page), Width = 1040, Height = 1500 };
             try
             {
                 window.Show();
@@ -1136,7 +1136,7 @@ public sealed class TryWordPageTests
             fake.TraceWordCompletesWith(DogsTrace());
             context.TryWord("dogs");
             await page.Trace.TryCommand.ExecutionTask!;
-            var window = new Window { Content = new TryWordPanel(page), Width = 1040, Height = 1500 };
+            var window = new MotifTestWindow { Content = new TryWordPanel(page), Width = 1040, Height = 1500 };
             try
             {
                 window.Show();
@@ -1179,7 +1179,7 @@ public sealed class TryWordPageTests
             Assert.Equal("FieldWorks saved since", workspace.FreshnessLabel);
             Assert.Contains("FieldWorks saved since", workspace.FreshnessDetail);
 
-            var window = new Window { Content = new TryWordPanel(page), Width = 1040, Height = 1500 };
+            var window = new MotifTestWindow { Content = new TryWordPanel(page), Width = 1040, Height = 1500 };
             try
             {
                 window.Show();
@@ -1210,7 +1210,7 @@ public sealed class TryWordPageTests
             fake.TraceWordCompletesWith(DogsTrace());
             context.TryWord("dogs");
             await page.Trace.TryCommand.ExecutionTask!;
-            var window = new Window { Content = new TryWordPanel(page), Width = 1040, Height = 1500 };
+            var window = new MotifTestWindow { Content = new TryWordPanel(page), Width = 1040, Height = 1500 };
             try
             {
                 window.Show();
@@ -1271,7 +1271,7 @@ public sealed class TryWordPageTests
             model.RecentWords.Add("kitabu");
             model.RecentWords.Add("matinlu");
             var view = PageRegistry.For(WorkspacePage.TryAWord).CreateView(model);
-            var window = new Window { Content = view, Width = 1240, Height = 800 };
+            var window = new MotifTestWindow { Content = view, Width = 1240, Height = 800 };
             try
             {
                 window.Show();
@@ -1310,7 +1310,7 @@ public sealed class TryWordPageTests
             var context = NewContext(out _);
             var model = new TryWordPageModel(context);
             var view = PageRegistry.For(WorkspacePage.TryAWord).CreateView(model);
-            var window = new Window { Content = view, Width = 1200, Height = 800 };
+            var window = new MotifTestWindow { Content = view, Width = 1200, Height = 800 };
             try
             {
                 window.Show();
@@ -1440,7 +1440,7 @@ public sealed class TryWordPageTests
                 page.EarlierTimingSource);
 
             var view = PageRegistry.For(WorkspacePage.TryAWord).CreateView(page);
-            var window = new Window { Content = view, Width = 1240, Height = 1600 };
+            var window = new MotifTestWindow { Content = view, Width = 1240, Height = 1600 };
             try
             {
                 window.Show();
@@ -1643,7 +1643,7 @@ public sealed class TryWordPageTests
             await page.Trace.TryCommand.ExecutionTask!;
 
             var view = PageRegistry.For(WorkspacePage.TryAWord).CreateView(page);
-            var window = new Window { Content = view, Width = 1200, Height = 800 };
+            var window = new MotifTestWindow { Content = view, Width = 1200, Height = 800 };
             try
             {
                 window.Show();
@@ -1766,7 +1766,7 @@ public sealed class TryWordPageTests
             context.TryWord("matinlu");
             await page.Trace.TryCommand.ExecutionTask!;
             var view = PageRegistry.For(WorkspacePage.TryAWord).CreateView(page);
-            var window = new Window { Content = view, Width = 1240, Height = 2400 };
+            var window = new MotifTestWindow { Content = view, Width = 1240, Height = 2400 };
             try
             {
                 window.Show();

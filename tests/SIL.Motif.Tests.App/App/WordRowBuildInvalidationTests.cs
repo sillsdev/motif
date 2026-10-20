@@ -17,7 +17,7 @@ public sealed class WordRowBuildInvalidationTests
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {
             var row = new WordRow { Data = Presentation("review:layout", WordListOwner.Review) };
-            var window = new Window { Content = row, Width = 1000, Height = 180 };
+            var window = new MotifTestWindow { Content = row, Width = 1000, Height = 180 };
             try
             {
                 window.Show();
@@ -51,7 +51,7 @@ public sealed class WordRowBuildInvalidationTests
             var row = new WordRow { Data = Presentation("word-list:detached", WordListOwner.WordList) };
             var disconnectedParent = new StackPanel();
             disconnectedParent.Children.Add(row);
-            var window = new Window { Content = disconnectedParent, Width = 1000, Height = 180 };
+            var window = new MotifTestWindow { Content = disconnectedParent, Width = 1000, Height = 180 };
             try
             {
                 Assert.True(row.GetVisualAncestors().Any());
@@ -81,7 +81,7 @@ public sealed class WordRowBuildInvalidationTests
             {
                 Data = Presentation("word-list:selection", WordListOwner.WordList),
             };
-            var window = new Window { Content = row, Width = 1000, Height = 180 };
+            var window = new MotifTestWindow { Content = row, Width = 1000, Height = 180 };
             try
             {
                 window.Show();

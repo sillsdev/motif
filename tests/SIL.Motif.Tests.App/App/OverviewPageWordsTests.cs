@@ -889,7 +889,7 @@ public sealed class OverviewPageWordsTests
 
     private static Window Show(OverviewPageModel page)
     {
-        var window = new Window { Width = 1240, Height = 900, Content = new OverviewPage(page) };
+        var window = new MotifTestWindow { Width = 1240, Height = 900, Content = new OverviewPage(page) };
         window.Show();
         window.UpdateLayout();
         Dispatcher.UIThread.RunJobs();

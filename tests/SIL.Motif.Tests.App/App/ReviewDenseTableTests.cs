@@ -226,7 +226,7 @@ public sealed class ReviewDenseTableTests
             await page.LoadReviewAsync();
             var panel = new ReviewPanel(page);
             var host = WorkspaceLayoutHost.ForPage(panel);
-            var window = new Window { Width = 640, Height = 780, Content = host };
+            var window = new MotifTestWindow { Width = 640, Height = 780, Content = host };
             try
             {
                 window.Show();
@@ -283,7 +283,7 @@ public sealed class ReviewDenseTableTests
             var panel = new ReviewPanel(page);
             var host = WorkspaceLayoutHost.ForPage(panel);
             var transform = new LayoutTransformControl { Child = host };
-            var window = new Window { Width = 640, Height = 480, Content = transform };
+            var window = new MotifTestWindow { Width = 640, Height = 480, Content = transform };
             var prior = Application.Current!.RequestedThemeVariant;
             try
             {

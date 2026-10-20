@@ -98,7 +98,7 @@ public sealed class SelectionLinePagesTests
             list.ItemsSource = null;
             owner.Clear();
         });
-        var window = new Window { Width = 1000, Height = 700, Content = host };
+        var window = new MotifTestWindow { Width = 1000, Height = 700, Content = host };
         try
         {
             Assert.Throws<ArgumentException>(() => owner.RealizeLine(owner.Headers[0] with

@@ -100,7 +100,7 @@ public sealed class HFrameTests(AvaloniaHeadlessFixture avalonia)
         avalonia.Invoke(() =>
         {
             var host = new WorkspaceLayoutHost { Page = new Border(), ObjectInspector = new TextBlock { Text = "Object details" } };
-            var window = new Window { Width = 1920, Height = 1080, Content = host };
+            var window = new MotifTestWindow { Width = 1920, Height = 1080, Content = host };
             var side = new TextBlock { Text = "Texts" };
             var footer = new Button { Content = "Apply" };
             try
@@ -158,7 +158,7 @@ public sealed class HFrameTests(AvaloniaHeadlessFixture avalonia)
         avalonia.Invoke(() =>
         {
             var host = new WorkspaceLayoutHost { Page = new Border() };
-            var window = new Window { Width = 1920, Height = 1080, Content = host };
+            var window = new MotifTestWindow { Width = 1920, Height = 1080, Content = host };
             try
             {
                 window.Show();

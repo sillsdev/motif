@@ -24,7 +24,7 @@ public sealed class LegacyActionVisibilityTests(AvaloniaHeadlessFixture avalonia
             var action = new Button { Content = "Inspect the recorded rule",
                 Classes = { "revealControl", "revealLink", "revealOnHover" } };
             var owner = new Border { Classes = { "hoverReveal" }, Child = action };
-            var window = new Window { Width = 640, Height = 600,
+            var window = new MotifTestWindow { Width = 640, Height = 600,
                 Content = new StackPanel { Children = { outside, owner } } };
             var clicks = 0;
             action.Click += (_, _) => clicks++;

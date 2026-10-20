@@ -30,7 +30,7 @@ public sealed class ReaderJumpTests
             var assess = new AssessViewModel(client, selection);
             var owner = new ResultsInTextViewModel(words, assess, _ => { }, _ => { }, new ChangesViewModel(client), client, reads);
             var panel = new ResultsInTextPanel(owner);
-            var window = new Window { Width = 1240, Height = 780, Content = new Border { Child = panel } };
+            var window = new MotifTestWindow { Width = 1240, Height = 780, Content = new Border { Child = panel } };
             try
             {
                 await reads.ReloadAsync(fixture.ProjectPath, [projection.Texts[0].TextId], []);

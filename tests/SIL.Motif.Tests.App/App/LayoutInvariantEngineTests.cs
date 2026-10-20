@@ -23,7 +23,7 @@ public sealed class LayoutInvariantEngineTests(AvaloniaHeadlessFixture avalonia)
             {
                 Width = 40, Height = 80, TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.None,
             };
-            var window = new Window { Width = 320, Height = 160, Content = text };
+            var window = new MotifTestWindow { Width = 320, Height = 160, Content = text };
             var measurements = new LayoutTextMeasurements();
             var context = new LayoutFindingContext("measurement", "cell", 100, "light");
             try
@@ -313,7 +313,7 @@ public sealed class LayoutInvariantEngineTests(AvaloniaHeadlessFixture avalonia)
 
     private static void WithWindow(Control content, Action<Window> assertion)
     {
-        var window = new Window { Content = content, Width = 320, Height = 160 };
+        var window = new MotifTestWindow { Content = content, Width = 320, Height = 160 };
         try
         {
             window.Show();

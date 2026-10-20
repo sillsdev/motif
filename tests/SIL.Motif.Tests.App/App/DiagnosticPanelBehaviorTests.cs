@@ -57,7 +57,7 @@ public sealed class DiagnosticPanelBehaviorTests
                 MorphFilter = "needle",
             };
             var panel = new DiagnosticPanel(ToolsFor(model));
-            var window = new Window { Content = panel, Width = 1000, Height = 800 };
+            var window = new MotifTestWindow { Content = panel, Width = 1000, Height = 800 };
             try
             {
                 window.Show();
@@ -103,7 +103,7 @@ public sealed class DiagnosticPanelBehaviorTests
             };
             model.SelectedStep = model.FilteredRoots[0];
             var panel = new DiagnosticPanel(ToolsFor(model));
-            var window = new Window { Content = panel, Width = 600, Height = 800 };
+            var window = new MotifTestWindow { Content = panel, Width = 600, Height = 800 };
             try
             {
                 window.Show();
@@ -148,7 +148,7 @@ public sealed class DiagnosticPanelBehaviorTests
                     TraceReadingBuilder.Build("word", new TraceStep("WordAnalysis", null, null, null, null, []), [], [])),
             };
             var panel = new DiagnosticPanel(ToolsFor(model), showResultSummary: false);
-            var window = new Window { Content = panel, Width = 1000, Height = 800 };
+            var window = new MotifTestWindow { Content = panel, Width = 1000, Height = 800 };
             try
             {
                 window.Show();

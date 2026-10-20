@@ -37,7 +37,7 @@ public sealed class InteractionCueTests(AvaloniaHeadlessFixture avalonia)
             foreach (var theme in Themes)
             {
                 var (content, target) = Build(which);
-                var window = new Window { Content = content, RequestedThemeVariant = theme, Width = 400, Height = 300 };
+                var window = new MotifTestWindow { Content = content, RequestedThemeVariant = theme, Width = 400, Height = 300 };
                 try
                 {
                     window.Show();
@@ -75,7 +75,7 @@ public sealed class InteractionCueTests(AvaloniaHeadlessFixture avalonia)
         avalonia.Invoke(() =>
         {
             var (content, tile) = Build("overviewTile");
-            var window = new Window { Content = content, Width = 400, Height = 300 };
+            var window = new MotifTestWindow { Content = content, Width = 400, Height = 300 };
             try
             {
                 window.Show();
@@ -105,7 +105,7 @@ public sealed class InteractionCueTests(AvaloniaHeadlessFixture avalonia)
             {
                 var button = new Button { Content = "Refresh", Classes = { "Tertiary" } };
                 if (theme != "default") button.Theme = (ControlTheme)Application.Current!.FindResource(theme)!;
-                var window = new Window { Content = button, RequestedThemeVariant = variant, Width = 200, Height = 80 };
+                var window = new MotifTestWindow { Content = button, RequestedThemeVariant = variant, Width = 200, Height = 80 };
                 try
                 {
                     window.Show();
@@ -145,7 +145,7 @@ public sealed class InteractionCueTests(AvaloniaHeadlessFixture avalonia)
             foreach (var variant in Themes)
             {
                 var cell = new Border { Classes = { "matrixCell", family }, Width = 160, Height = 60, Child = new TextBlock { Text = "5" } };
-                var window = new Window { Content = cell, RequestedThemeVariant = variant, Width = 300, Height = 120 };
+                var window = new MotifTestWindow { Content = cell, RequestedThemeVariant = variant, Width = 300, Height = 120 };
                 try
                 {
                     window.Show();
@@ -182,7 +182,7 @@ public sealed class InteractionCueTests(AvaloniaHeadlessFixture avalonia)
         avalonia.Invoke(() =>
         {
             var link = new HyperlinkButton { Content = "Open in text" };
-            var window = new Window { Content = link, Width = 200, Height = 80 };
+            var window = new MotifTestWindow { Content = link, Width = 200, Height = 80 };
             try
             {
                 window.Show();
@@ -215,7 +215,7 @@ public sealed class InteractionCueTests(AvaloniaHeadlessFixture avalonia)
                     ActionName = "Open Different words in the Matrix",
                 }],
             };
-            var window = new Window { Content = bar, Width = 300, Height = 100 };
+            var window = new MotifTestWindow { Content = bar, Width = 300, Height = 100 };
             try
             {
                 window.Show();

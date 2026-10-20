@@ -32,7 +32,7 @@ public sealed class TextsListsPanelTests(AvaloniaHeadlessFixture avalonia)
             ]);
             var lists = new TextsListsViewModel(compare);
             var panel = new TextsListsPanel(lists);
-            var window = new Window { Content = panel, Width = 1200, Height = 800 };
+            var window = new MotifTestWindow { Content = panel, Width = 1200, Height = 800 };
             try
             {
                 window.Show();
@@ -68,7 +68,7 @@ public sealed class TextsListsPanelTests(AvaloniaHeadlessFixture avalonia)
             var compare = new CompareViewModel();
             compare.Load([Word("approved-empty", "no-analysis", ProjectStanding.Approved)]);
             var lists = new TextsListsViewModel(compare);
-            var window = new Window { Content = new TextsListsPanel(lists), Width = 1200, Height = 800 };
+            var window = new MotifTestWindow { Content = new TextsListsPanel(lists), Width = 1200, Height = 800 };
             try
             {
                 window.Show();
@@ -96,7 +96,7 @@ public sealed class TextsListsPanelTests(AvaloniaHeadlessFixture avalonia)
             compare.Load([Word("approved-empty", "no-analysis", ProjectStanding.Approved)]);
             var lists = new TextsListsViewModel(compare) { HandOff = _ => { } };
             var panel = new TextsListsPanel(lists);
-            var window = new Window { Content = panel, Width = 1200, Height = 800 };
+            var window = new MotifTestWindow { Content = panel, Width = 1200, Height = 800 };
             try
             {
                 window.Show();
@@ -136,7 +136,7 @@ public sealed class TextsListsPanelTests(AvaloniaHeadlessFixture avalonia)
             ]);
             var lists = new TextsListsViewModel(compare) { HandOff = _ => { } };
             var panel = new TextsListsPanel(lists);
-            var window = new Window { Content = panel, Width = width - SidebarWidth, Height = 800 };
+            var window = new MotifTestWindow { Content = panel, Width = width - SidebarWidth, Height = 800 };
             try
             {
                 window.Show();
@@ -187,7 +187,7 @@ public sealed class TextsListsPanelTests(AvaloniaHeadlessFixture avalonia)
             ]);
             var lists = new TextsListsViewModel(compare);
             var panel = new TextsListsPanel(lists);
-            var window = new Window { Content = panel, Width = 1200, Height = 800 };
+            var window = new MotifTestWindow { Content = panel, Width = 1200, Height = 800 };
             try
             {
                 window.Show();
@@ -234,7 +234,7 @@ public sealed class TextsListsPanelTests(AvaloniaHeadlessFixture avalonia)
             var compare = new CompareViewModel();
             compare.Load([Word("approved-empty", "no-analysis", ProjectStanding.Approved)]);
             var lists = new TextsListsViewModel(compare);
-            var window = new Window { Content = new TextsListsPanel(lists), Width = 1200, Height = 800 };
+            var window = new MotifTestWindow { Content = new TextsListsPanel(lists), Width = 1200, Height = 800 };
             try
             {
                 window.Show();

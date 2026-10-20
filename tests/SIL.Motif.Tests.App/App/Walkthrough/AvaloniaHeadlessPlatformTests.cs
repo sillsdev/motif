@@ -44,7 +44,7 @@ public sealed class AvaloniaHeadlessPlatformTests
 
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var window = new Window();
+            var window = new MotifTestWindow();
             window.Show();
             try
             {

@@ -51,7 +51,7 @@ public sealed class LayoutAssertionsTests(AvaloniaHeadlessFixture avalonia)
                     Width = 20,
                     TextWrapping = TextWrapping.NoWrap,
                 };
-                var window = new Window { Content = wrap(overflow), Width = 180, Height = 120 };
+                var window = new MotifTestWindow { Content = wrap(overflow), Width = 180, Height = 120 };
                 try
                 {
                     window.Show();
@@ -89,7 +89,7 @@ public sealed class LayoutAssertionsTests(AvaloniaHeadlessFixture avalonia)
                 Host = host,
                 State = new WordInteractionState(key, IsOpen: true),
             };
-            var window = new Window
+            var window = new MotifTestWindow
             {
                 Content = new ScrollViewer { Content = row },
                 Width = width,
@@ -143,7 +143,7 @@ public sealed class LayoutAssertionsTests(AvaloniaHeadlessFixture avalonia)
                 Content = new Border { Height = 2000 },
                 VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
             };
-            var window = new Window
+            var window = new MotifTestWindow
             {
                 Width = 900, Height = 500,
                 Content = new LayoutTransformControl
@@ -194,7 +194,7 @@ public sealed class LayoutAssertionsTests(AvaloniaHeadlessFixture avalonia)
                 Text = string.Join(' ', Enumerable.Repeat("wrapped words", 30)),
                 Width = 80, Height = 20, TextWrapping = TextWrapping.Wrap,
             };
-            var window = new Window { Width = 900, Height = 500, Content = text };
+            var window = new MotifTestWindow { Width = 900, Height = 500, Content = text };
             try
             {
                 window.Show();
@@ -236,7 +236,7 @@ public sealed class LayoutAssertionsTests(AvaloniaHeadlessFixture avalonia)
                 Data = new WordPresentation(new WordPresentationKey("layout-hit-test"), 0,
                     new WordRowViewModel(rowFacts), WordListOwner.ReadOnly),
             };
-            var window = new Window
+            var window = new MotifTestWindow
             {
                 Content = new ScrollViewer { Content = row },
                 Width = 1040,
@@ -271,7 +271,7 @@ public sealed class LayoutAssertionsTests(AvaloniaHeadlessFixture avalonia)
                 TextWrapping = TextWrapping.NoWrap,
                 Width = 28,
             };
-            var window = new Window { Content = heading, Width = 1040, Height = 120 };
+            var window = new MotifTestWindow { Content = heading, Width = 1040, Height = 120 };
             try
             {
                 window.Show();
@@ -293,7 +293,7 @@ public sealed class LayoutAssertionsTests(AvaloniaHeadlessFixture avalonia)
         {
             var heading = new TextBlock { Text = "Popup heading must fit", Width = 20 };
             var popup = new Popup { Child = heading };
-            var window = new Window
+            var window = new MotifTestWindow
             {
                 Content = new Border { Child = new Grid { Children = { popup } } },
                 Width = 1040,
@@ -340,7 +340,7 @@ public sealed class LayoutAssertionsTests(AvaloniaHeadlessFixture avalonia)
                     MinHeight = clipCell ? 80 : 0,
                 }),
             });
-            var window = new Window { Content = grid, Width = 1040, Height = 90 };
+            var window = new MotifTestWindow { Content = grid, Width = 1040, Height = 90 };
             try
             {
                 window.Show();
@@ -358,7 +358,7 @@ public sealed class LayoutAssertionsTests(AvaloniaHeadlessFixture avalonia)
         avalonia.Invoke(() =>
         {
             var grid = new Grid { Children = { new Border { Height = 24 } } };
-            var window = new Window { Content = grid, Width = 1040, Height = 120 };
+            var window = new MotifTestWindow { Content = grid, Width = 1040, Height = 120 };
             try
             {
                 window.Show();
@@ -403,7 +403,7 @@ public sealed class LayoutAssertionsTests(AvaloniaHeadlessFixture avalonia)
                 ColumnDefinitions = new ColumnDefinitions("80,80"),
                 Children = { new Border { Width = 140, Height = 24 } },
             };
-            var window = new Window { Content = grid, Width = 1040, Height = 120 };
+            var window = new MotifTestWindow { Content = grid, Width = 1040, Height = 120 };
             try
             {
                 window.Show();
@@ -430,7 +430,7 @@ public sealed class LayoutAssertionsTests(AvaloniaHeadlessFixture avalonia)
                 Classes = { "severityGlyph", "warning" },
                 Child = new TextBlock { Text = "⚠" },
             };
-            var window = new Window { Content = glyph, Width = 120, Height = 80 };
+            var window = new MotifTestWindow { Content = glyph, Width = 120, Height = 80 };
             try
             {
                 window.Show();
@@ -478,7 +478,7 @@ public sealed class LayoutAssertionsTests(AvaloniaHeadlessFixture avalonia)
                     },
                 },
             };
-            var window = new Window { Content = row, Width = 260, Height = 80 };
+            var window = new MotifTestWindow { Content = row, Width = 260, Height = 80 };
             try
             {
                 window.SetValue(TextElement.FontFamilyProperty,
@@ -532,7 +532,7 @@ public sealed class LayoutAssertionsTests(AvaloniaHeadlessFixture avalonia)
                     },
                 },
             };
-            var window = new Window { Content = row, Width = 260, Height = 80 };
+            var window = new MotifTestWindow { Content = row, Width = 260, Height = 80 };
             try
             {
                 window.SetValue(TextElement.FontFamilyProperty,

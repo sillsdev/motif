@@ -94,7 +94,7 @@ public sealed class MarkGlyphRenderingTests
     private static RenderedMark RenderInFreshWindow(Mark mark)
     {
         var chip = new MarkChip { Mark = mark, Text = mark.Word };
-        var window = new Window { Content = chip, Width = 300, Height = 60 };
+        var window = new MotifTestWindow { Content = chip, Width = 300, Height = 60 };
         try
         {
             window.Show();

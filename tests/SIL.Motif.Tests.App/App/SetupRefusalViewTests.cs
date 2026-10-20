@@ -70,7 +70,7 @@ public sealed class SetupRefusalViewTests
             Assert.NotNull(setup.ShownRefusal);
             setup.IsOpen = true;
             var dialog = new SetupDialog { DataContext = setup };
-            var window = new Window { Content = dialog, Width = 1000, Height = 800 };
+            var window = new MotifTestWindow { Content = dialog, Width = 1000, Height = 800 };
             try
             {
                 window.Show();
@@ -118,7 +118,7 @@ public sealed class SetupRefusalViewTests
             var setup = workspace!.Context.Setup!;
             setup.Step = 2;
             var dialog = new SetupDialog { DataContext = setup };
-            var window = new Window { Content = dialog, Width = 1000, Height = 800 };
+            var window = new MotifTestWindow { Content = dialog, Width = 1000, Height = 800 };
             try
             {
                 window.Show();
@@ -168,7 +168,7 @@ public sealed class SetupRefusalViewTests
             var setup = workspace!.Context.Setup!;
             setup.Step = 1;
             var dialog = new SetupDialog { DataContext = setup };
-            var window = new Window { Content = dialog, Width = 480, Height = 650 };
+            var window = new MotifTestWindow { Content = dialog, Width = 480, Height = 650 };
             try
             {
                 window.Show();

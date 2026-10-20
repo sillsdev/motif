@@ -124,7 +124,7 @@ public sealed class BoundedAssessmentProjectionTests
         var panel = new ComparePanel(compare);
         var rows = panel.FindControl<ListBox>("ComparePanelWordsItems")!;
         var host = new Border { Child = panel };
-        var window = new Window { Width = 1440, Height = 900, Content = host };
+        var window = new MotifTestWindow { Width = 1440, Height = 900, Content = host };
         try
         {
             window.Show();

@@ -110,7 +110,7 @@ public sealed class ScrollEndAnchorTests
         var content = new Border { Height = 1000 };
         var viewer = new ScrollViewer { Content = content };
         ScrollEndAnchor.Attach(viewer);
-        var window = new Window { Width = 300, Height = 200, Content = viewer };
+        var window = new MotifTestWindow { Width = 300, Height = 200, Content = viewer };
         window.Show();
         Settle(window);
         return (window, viewer, content);

@@ -24,7 +24,7 @@ public sealed class SettingsShortcutScopeTests
             var settings = SettingsPageTests.WindowSettings(frame);
             model.Settings = settings;
             var page = Assert.IsType<SettingsPage>(PageRegistry.For(WorkspacePage.Settings).CreateView(model));
-            var window = new Window
+            var window = new MotifTestWindow
             {
                 Width = 1920, Height = 1080,
                 Content = new LayoutTransformControl
@@ -77,7 +77,7 @@ public sealed class SettingsShortcutScopeTests
             var model = workspace.PageModel<SettingsPageModel>();
             model.Settings = settings;
             var page = Assert.IsType<SettingsPage>(PageRegistry.For(WorkspacePage.Settings).CreateView(model));
-            var window = new Window { Width = width, Height = height, Content = new LayoutTransformControl
+            var window = new MotifTestWindow { Width = width, Height = height, Content = new LayoutTransformControl
             {
                 Child = page, LayoutTransform = new Avalonia.Media.ScaleTransform(zoom / 100d, zoom / 100d),
             } };

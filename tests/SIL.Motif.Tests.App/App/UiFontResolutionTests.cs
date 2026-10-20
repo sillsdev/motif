@@ -63,7 +63,7 @@ public sealed class UiFontResolutionTests(AvaloniaHeadlessFixture avalonia, ITes
             var textBlock = new TextBlock { Text = "Motif is a tech demo." };
             var button = new Button { Content = "Undo" };
             var wordCard = WordCardWithText();
-            var window = new Window
+            var window = new MotifTestWindow
             {
                 Content = new StackPanel { Children = { textBlock, button, wordCard } },
                 Width = 600,
@@ -91,7 +91,7 @@ public sealed class UiFontResolutionTests(AvaloniaHeadlessFixture avalonia, ITes
             var textBlock = new TextBlock { Text = "Motif is a tech demo." };
             var button = new Button { Content = "Undo" };
             var wordCard = WordCardWithText();
-            var window = new Window
+            var window = new MotifTestWindow
             {
                 Content = new StackPanel { Children = { textBlock, button, wordCard } },
                 Width = 600,

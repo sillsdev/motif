@@ -191,7 +191,7 @@ public sealed class ViewTokenTests
             foreach (var variant in new[] { ThemeVariant.Light, ThemeVariant.Dark })
             {
                 var control = build();
-                var window = new Window { Content = control, RequestedThemeVariant = variant, Width = 800, Height = 400 };
+                var window = new MotifTestWindow { Content = control, RequestedThemeVariant = variant, Width = 800, Height = 400 };
                 try
                 {
                     window.Show();

@@ -63,7 +63,7 @@ public sealed class WarningsPageWordsTests
             var grammar = new GrammarViewModel(new FakeCommandClient());
             grammar.LoadStored("/tmp/warnings-scroll.fwdata", new GrammarCheckResponse(findings, HasBaseline: true));
             var panel = new GrammarPanel(grammar);
-            var window = new Window { Content = panel, Width = 700, Height = 780 };
+            var window = new MotifTestWindow { Content = panel, Width = 700, Height = 780 };
             try
             {
                 window.Show();
@@ -149,7 +149,7 @@ public sealed class WarningsPageWordsTests
             _avalonia.Invoke(() =>
             {
                 var panel = new GrammarPanel(grammar);
-                var window = new Window { Content = panel, Width = 1040, Height = 900 };
+                var window = new MotifTestWindow { Content = panel, Width = 1040, Height = 900 };
                 try
                 {
                     window.Show();
@@ -238,7 +238,7 @@ public sealed class WarningsPageWordsTests
         _avalonia.Invoke(() =>
         {
             var panel = new GrammarPanel(grammar);
-            var window = new Window { Content = panel, Width = 1040, Height = 900 };
+            var window = new MotifTestWindow { Content = panel, Width = 1040, Height = 900 };
             try
             {
                 window.Show();
@@ -345,7 +345,7 @@ public sealed class WarningsPageWordsTests
         _avalonia.Invoke(() =>
         {
             var panel = new GrammarPanel(grammar);
-            var window = new Window { Content = panel, Width = 1040, Height = 900 };
+            var window = new MotifTestWindow { Content = panel, Width = 1040, Height = 900 };
             try
             {
                 window.Show();
@@ -411,7 +411,7 @@ public sealed class WarningsPageWordsTests
         _avalonia.Invoke(() =>
         {
             var panel = new GrammarPanel(grammar);
-            var window = new Window { Content = panel, Width = 1040, Height = 600 };
+            var window = new MotifTestWindow { Content = panel, Width = 1040, Height = 600 };
             try
             {
                 window.Show();

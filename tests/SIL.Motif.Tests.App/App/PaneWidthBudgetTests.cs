@@ -25,7 +25,7 @@ public sealed class PaneWidthBudgetTests(AvaloniaHeadlessFixture avalonia)
             var scale = zoom / 100d;
             var page = new Border();
             var host = new WorkspaceLayoutHost { Page = page, Rail = new Border { Width = 44 } };
-            var window = new Window { Width = width, Height = 600, Content = new LayoutTransformControl
+            var window = new MotifTestWindow { Width = width, Height = 600, Content = new LayoutTransformControl
                 { LayoutTransform = new ScaleTransform(scale, scale), Child = host } };
             try
             {

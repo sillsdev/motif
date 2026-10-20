@@ -31,7 +31,7 @@ public sealed class TryWordHLayoutTests
             var model = workspace.PageModel<TryWordPageModel>();
             if (hasResult) model.Trace.Result = PageScreenshots.TraceWithIdentities();
             var page = PageRegistry.For(WorkspacePage.TryAWord).CreateView(model);
-            var window = new Window { Content = Zoom(page, 150), Width = 640, Height = 600 };
+            var window = new MotifTestWindow { Content = Zoom(page, 150), Width = 640, Height = 600 };
             try
             {
                 window.Show();
@@ -80,7 +80,7 @@ public sealed class TryWordHLayoutTests
             model.Trace.WordToTry = model.Trace.Result.Word;
             model.Trace.ShowDroppedPaths = true;
             var page = PageRegistry.For(WorkspacePage.TryAWord).CreateView(model);
-            var window = new Window { Content = Zoom(page, zoom), Width = width, Height = height };
+            var window = new MotifTestWindow { Content = Zoom(page, zoom), Width = width, Height = height };
             try
             {
                 window.Show();
@@ -161,7 +161,7 @@ public sealed class TryWordHLayoutTests
             model.Trace.WordToTry = model.Trace.Result.Word;
             var page = PageRegistry.For(WorkspacePage.TryAWord).CreateView(model);
             SIL.Motif.App.WindowZoomPolicy.EnablePopupTransforms(page);
-            var window = new Window { Content = Zoom(page, zoom), Width = width, Height = height };
+            var window = new MotifTestWindow { Content = Zoom(page, zoom), Width = width, Height = height };
             try
             {
                 window.Show();
@@ -255,7 +255,7 @@ public sealed class TryWordHLayoutTests
                 Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-matinlu.json"))).Value!;
             var page = PageRegistry.For(WorkspacePage.TryAWord).CreateView(model);
             SIL.Motif.App.WindowZoomPolicy.EnablePopupTransforms(page);
-            var window = new Window { Content = Zoom(page, zoom), Width = width, Height = 780 };
+            var window = new MotifTestWindow { Content = Zoom(page, zoom), Width = width, Height = 780 };
             try
             {
                 window.Show();
@@ -316,7 +316,7 @@ public sealed class TryWordHLayoutTests
             model.RecentWords.Add("matinlu");
             var page = PageRegistry.For(WorkspacePage.TryAWord).CreateView(model);
             SIL.Motif.App.WindowZoomPolicy.EnablePopupTransforms(page);
-            var window = new Window();
+            var window = new MotifTestWindow();
             try
             {
                 var theme = themeName == "Dark" ? ThemeVariant.Dark : ThemeVariant.Light;

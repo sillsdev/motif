@@ -22,7 +22,7 @@ public sealed class ReviewWorkspacePaneTests
         {
             var fake = ReviewDenseTableTests.MixedChanges();
             var (workspace, main) = await ReviewScreenshots.OpenAsync(fake);
-            var standalone = new Window { Width = 1600, Height = 1000 };
+            var standalone = new MotifTestWindow { Width = 1600, Height = 1000 };
             try
             {
                 workspace.CurrentPage = WorkspacePage.Review;
@@ -90,7 +90,7 @@ public sealed class ReviewWorkspacePaneTests
             fake.PendingChangesIs(undoAll ? OneChange() : new PendingChangesSnapshot(null, "none", [], []));
             fake.OnDraftDiscarded = _ => fake.PendingChangesIs(new PendingChangesSnapshot(null, "none", [], []));
             var (workspace, window) = await ReviewScreenshots.OpenAsync(fake);
-            var shellWindow = new Window { Width = 400, Height = 780 };
+            var shellWindow = new MotifTestWindow { Width = 400, Height = 780 };
             try
             {
                 workspace.CurrentPage = WorkspacePage.Review;
@@ -149,7 +149,7 @@ public sealed class ReviewWorkspacePaneTests
                 return completion.Task;
             };
             var (workspace, window) = await ReviewScreenshots.OpenAsync(fake);
-            var shellWindow = new Window { Width = 400, Height = 780 };
+            var shellWindow = new MotifTestWindow { Width = 400, Height = 780 };
             Task? measuring = null;
             try
             {
@@ -228,7 +228,7 @@ public sealed class ReviewWorkspacePaneTests
                 SIL.Motif.Tests.Support.TestFixtures.PendingMeasureResponseFactory.Create(
                     "job/one", "revision/one", FakeCommandClient.CompleteNumbers));
             var (workspace, window) = await ReviewScreenshots.OpenAsync(fake);
-            var shellWindow = new Window { Width = 400, Height = 780 };
+            var shellWindow = new MotifTestWindow { Width = 400, Height = 780 };
             try
             {
                 workspace.CurrentPage = WorkspacePage.Review;
@@ -295,7 +295,7 @@ public sealed class ReviewWorkspacePaneTests
             var (workspace, main) = await ReviewScreenshots.OpenAsync(fake);
             var panel = new ReviewPanel(workspace.PageModel<ReviewPageModel>());
             var host = WorkspaceLayoutHost.ForPage(panel);
-            var window = new Window { Width = 1600, Height = 780, Content = host };
+            var window = new MotifTestWindow { Width = 1600, Height = 780, Content = host };
             try
             {
                 window.Show();
@@ -388,7 +388,7 @@ public sealed class ReviewWorkspacePaneTests
             var fake = new FakeCommandClient();
             fake.PendingChangesIs(OneChange());
             var (workspace, main) = await ReviewScreenshots.OpenAsync(fake);
-            var standalone = new Window { Width = 1600, Height = 780 };
+            var standalone = new MotifTestWindow { Width = 1600, Height = 780 };
             try
             {
                 workspace.CurrentPage = WorkspacePage.Review;

@@ -22,7 +22,7 @@ public sealed class GrammarPanelLayoutTests
                 new(GrammarDiagnosticLevel.Information, "Example information", [], [], "Example information")
                     { Code = "example.info", Group = "Example information" },
             ], true));
-            var window = new Window { Content = new GrammarPanel(grammar), Width = 520, Height = 780 };
+            var window = new MotifTestWindow { Content = new GrammarPanel(grammar), Width = 520, Height = 780 };
             try
             {
                 window.Show();

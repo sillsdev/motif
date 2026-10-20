@@ -39,7 +39,7 @@ public sealed class WordPresentationTests
                 State = new WordInteractionState(key),
                 Host = host,
             };
-            var window = new Window { Content = row, Width = 900, Height = 120 };
+            var window = new MotifTestWindow { Content = row, Width = 900, Height = 120 };
             try
             {
                 window.Show();
@@ -86,7 +86,7 @@ public sealed class WordPresentationTests
             var key = new WordPresentationKey("entry:reopen-id");
             var host = new DeferredHost();
             var row = NewRow(key, host);
-            var window = new Window { Content = row, Width = 700, Height = 180 };
+            var window = new MotifTestWindow { Content = row, Width = 700, Height = 180 };
             try
             {
                 window.Show();
@@ -140,7 +140,7 @@ public sealed class WordPresentationTests
             var newKey = new WordPresentationKey("entry:new-recycled-id");
             var host = new DeferredHost();
             var row = NewRow(oldKey, host);
-            var window = new Window { Content = row, Width = 700, Height = 180 };
+            var window = new MotifTestWindow { Content = row, Width = 700, Height = 180 };
             try
             {
                 window.Show();
@@ -203,7 +203,7 @@ public sealed class WordPresentationTests
                 State = new WordInteractionState(key),
                 Host = host,
             };
-            var window = new Window { Content = row, Width = 700, Height = 180 };
+            var window = new MotifTestWindow { Content = row, Width = 700, Height = 180 };
             try
             {
                 window.Show();

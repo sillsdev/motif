@@ -69,7 +69,7 @@ public sealed class WarningsPagePaneTests
             var host = WorkspaceLayoutHost.ForPage(page);
             Assert.Same(sidePanel, host.FindControl<ContentControl>("SidePanelContent")!.Content);
             Assert.Same(inspector, host.FindControl<ContentControl>("PageInspectorHost")!.Content);
-            var window = new Window { Content = host, Width = 1600, Height = 780 };
+            var window = new MotifTestWindow { Content = host, Width = 1600, Height = 780 };
             try
             {
                 window.Show();
@@ -125,7 +125,7 @@ public sealed class WarningsPagePaneTests
             var page = new WarningsPage(pageModel);
             var filterPanel = Assert.IsType<WarningsFilterPanel>(Assert.IsAssignableFrom<IWorkspacePaneProvider>(page).SidePanel);
             var host = WorkspaceLayoutHost.ForPage(page);
-            var window = new Window { Content = host, Width = 1600, Height = 780 };
+            var window = new MotifTestWindow { Content = host, Width = 1600, Height = 780 };
             try
             {
                 window.Show();
@@ -270,7 +270,7 @@ public sealed class WarningsPagePaneTests
             var host = WorkspaceLayoutHost.ForPage(page);
             var inspectorPane = host.FindControl<Border>("InspectorPane")!;
             var pageInspector = host.FindControl<ContentControl>("PageInspectorHost")!;
-            var window = new Window { Content = host, Width = 640, Height = 780 };
+            var window = new MotifTestWindow { Content = host, Width = 640, Height = 780 };
             try
             {
                 window.Show();
@@ -323,7 +323,7 @@ public sealed class WarningsPagePaneTests
             var host = WorkspaceLayoutHost.ForPage(page);
             Assert.Same(sidePanel, host.FindControl<ContentControl>("SidePanelContent")!.Content);
             Assert.Same(inspector, host.FindControl<ContentControl>("PageInspectorHost")!.Content);
-            var window = new Window { Content = host, Width = 1600, Height = 780 };
+            var window = new MotifTestWindow { Content = host, Width = 1600, Height = 780 };
             try
             {
                 pageModel.Grammar.LoadStored("warnings-empty.fwdata", new GrammarCheckResponse([], HasBaseline: true));
@@ -366,7 +366,7 @@ public sealed class WarningsPagePaneTests
             var host = WorkspaceLayoutHost.ForPage(page);
             Assert.Same(sidePanel, host.FindControl<ContentControl>("SidePanelContent")!.Content);
             Assert.Same(inspector, host.FindControl<ContentControl>("PageInspectorHost")!.Content);
-            var window = new Window { Content = host, Width = 1600, Height = 780 };
+            var window = new MotifTestWindow { Content = host, Width = 1600, Height = 780 };
             try
             {
                 window.Show();

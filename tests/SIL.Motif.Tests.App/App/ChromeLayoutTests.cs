@@ -47,7 +47,7 @@ public sealed class ChromeLayoutTests
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {
             var buttons = CaptionPartNames.Select(name => new Button { Name = name }).ToArray();
-            var window = new Window
+            var window = new MotifTestWindow
             {
                 Width = 400,
                 Height = 80,
@@ -87,7 +87,7 @@ public sealed class ChromeLayoutTests
             var template = Assert.IsAssignableFrom<IWindowDrawnDecorationsTemplate>(theme.Setters.OfType<Setter>()
                 .Single(setter => setter.Property == WindowDrawnDecorations.TemplateProperty).Value);
             var overlay = Assert.IsAssignableFrom<Control>(template.Build().Result.Overlay);
-            var window = new Window { Width = 400, Height = 80, Title = "Motif (tech demo)", Content = overlay };
+            var window = new MotifTestWindow { Width = 400, Height = 80, Title = "Motif (tech demo)", Content = overlay };
             try
             {
                 window.Show();

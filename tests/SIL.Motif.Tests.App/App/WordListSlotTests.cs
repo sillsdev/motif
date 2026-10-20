@@ -279,7 +279,7 @@ public sealed class WordListSlotTests(AvaloniaHeadlessFixture avalonia)
             Content = content,
         };
         var host = new Grid { Width = width, Height = 300, Children = { slot } };
-        var window = new Window { Content = host, Width = width + 80, Height = 360 };
+        var window = new MotifTestWindow { Content = host, Width = width + 80, Height = 360 };
         window.Show();
         for (var pass = 0; pass < 3; pass++)
         {

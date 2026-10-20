@@ -135,7 +135,7 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
             foreach (var scene in ComponentStatusTextScenes())
             {
                 var (content, text) = scene.Build();
-                var window = new Window { Content = content, RequestedThemeVariant = theme, Width = 400, Height = 160 };
+                var window = new MotifTestWindow { Content = content, RequestedThemeVariant = theme, Width = 400, Height = 160 };
                 try
                 {
                     window.Show();
@@ -297,7 +297,7 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
             foreach (var theme in Themes)
             {
                 var compare = MatrixListsWindowWordsTests.Compare(MatrixListsWindowWordsTests.EveryKindOfWord);
-                var window = new Window
+                var window = new MotifTestWindow
                 {
                     Content = new ComparePanel(compare), RequestedThemeVariant = theme, Width = 1400, Height = 900,
                 };
@@ -418,7 +418,7 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
             foreach (var theme in Themes)
             {
                 var bar = new TimingKindBar();
-                var window = new Window { Content = bar, RequestedThemeVariant = theme, Width = 400, Height = 100 };
+                var window = new MotifTestWindow { Content = bar, RequestedThemeVariant = theme, Width = 400, Height = 100 };
                 try
                 {
                     window.Show();
@@ -463,7 +463,7 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
                     _ => new Button { Content = "Refresh" },
                 };
                 ToolTip.SetTip(control, "Still fits the project.");
-                var window = new Window { Content = control, RequestedThemeVariant = theme, Width = 400, Height = 200 };
+                var window = new MotifTestWindow { Content = control, RequestedThemeVariant = theme, Width = 400, Height = 200 };
                 try
                 {
                     window.Show();
@@ -513,7 +513,7 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
                 {
                     Children = { new Border { Classes = { "notice" }, Child = inNotice }, elsewhere },
                 };
-                var window = new Window { Content = panel, RequestedThemeVariant = theme, Width = 300, Height = 200 };
+                var window = new MotifTestWindow { Content = panel, RequestedThemeVariant = theme, Width = 300, Height = 200 };
                 try
                 {
                     window.Show();
@@ -553,12 +553,12 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
             var lists = new TextsListsViewModel(compare);
 
             var prior = Application.Current!.RequestedThemeVariant;
-            var reviewWindow = new Window
+            var reviewWindow = new MotifTestWindow
             {
                 Content = SIL.Motif.App.Views.Shell.WorkspaceLayoutHost.ForPage(new ReviewPanel(review)),
                 Width = 1100, Height = 800,
             };
-            var listsWindow = new Window { Content = new TextsListsPanel(lists), Width = 1100, Height = 800 };
+            var listsWindow = new MotifTestWindow { Content = new TextsListsPanel(lists), Width = 1100, Height = 800 };
             try
             {
                 Application.Current.RequestedThemeVariant = ThemeVariant.Light;
@@ -658,7 +658,7 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
 
     private static void AssertReadableIn(Control content, ThemeVariant theme, string what)
     {
-        var window = new Window { Content = content, RequestedThemeVariant = theme, Width = 300, Height = 100 };
+        var window = new MotifTestWindow { Content = content, RequestedThemeVariant = theme, Width = 300, Height = 100 };
         try
         {
             window.Show();

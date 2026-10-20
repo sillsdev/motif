@@ -47,7 +47,7 @@ public sealed class WordCardPendingInspectionTests
                 Document = new WordCardDocument(new WordPresentationKey("pending:inspection"), 0,
                     [new WordCardPendingChange("wa-guess", true, true, true, [named, unnamed], false, [], [], false, context)]),
             };
-            var window = new Window { Content = card, Width = 640, Height = 600 };
+            var window = new MotifTestWindow { Content = card, Width = 640, Height = 600 };
             InspectRequestedEventArgs? requested = null;
             var requests = 0;
             window.AddHandler(InspectLink.RequestedEvent, (_, args) => { requested = args; requests++; });
@@ -133,7 +133,7 @@ public sealed class WordCardPendingInspectionTests
                     new WordCardAnalysis(null, null, notParsed),
                 ]),
             };
-            var window = new Window { Content = card, Width = 320, Height = 600 };
+            var window = new MotifTestWindow { Content = card, Width = 320, Height = 600 };
             try
             {
                 window.Show();

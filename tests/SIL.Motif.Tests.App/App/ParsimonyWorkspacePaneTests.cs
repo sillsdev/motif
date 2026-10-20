@@ -109,7 +109,7 @@ public sealed class ParsimonyWorkspacePaneTests
         {
             var (workspace, window) = await PageScreenshots.OpenOverSampleData(advancedAiModeEnabled: true,
                 configure: (fake, _) => ParsimonyStateScreenshots.Configure(fake, "suppressed-with-reason"));
-            var resultWindow = new Window { Width = 1280, Height = 820 };
+            var resultWindow = new MotifTestWindow { Width = 1280, Height = 820 };
             try
             {
                 workspace.CurrentPage = WorkspacePage.Parsimony;
@@ -189,7 +189,7 @@ public sealed class ParsimonyWorkspacePaneTests
         {
             var (workspace, window) = await PageScreenshots.OpenOverSampleData(advancedAiModeEnabled: true,
                 configure: (fake, _) => ParsimonyStateScreenshots.Configure(fake, "listed-evidence"));
-            var resultWindow = new Window { Width = 1280, Height = 820 };
+            var resultWindow = new MotifTestWindow { Width = 1280, Height = 820 };
             try
             {
                 workspace.CurrentPage = WorkspacePage.Parsimony;
@@ -317,7 +317,7 @@ public sealed class ParsimonyWorkspacePaneTests
         {
             var (workspace, window) = await PageScreenshots.OpenOverSampleData(advancedAiModeEnabled: true,
                 configure: (fake, _) => ParsimonyStateScreenshots.Configure(fake, "listed-evidence"));
-            var hostWindow = new Window { Width = 1300, Height = 820 };
+            var hostWindow = new MotifTestWindow { Width = 1300, Height = 820 };
             try
             {
                 workspace.CurrentPage = WorkspacePage.Parsimony;
@@ -387,7 +387,7 @@ public sealed class ParsimonyWorkspacePaneTests
         {
             var (workspace, window) = await PageScreenshots.OpenOverSampleData(advancedAiModeEnabled: true,
                 configure: (fake, _) => ConfigureMixedFindingKinds(fake));
-            var shellWindow = new Window { Width = 1300, Height = 780 };
+            var shellWindow = new MotifTestWindow { Width = 1300, Height = 780 };
             try
             {
                 workspace.CurrentPage = WorkspacePage.Parsimony;
@@ -449,7 +449,7 @@ public sealed class ParsimonyWorkspacePaneTests
         {
             var (workspace, window) = await PageScreenshots.OpenOverSampleData(advancedAiModeEnabled: true,
                 configure: (fake, _) => ParsimonyStateScreenshots.Configure(fake, state));
-            var shellWindow = new Window { Width = 1300, Height = 780 };
+            var shellWindow = new MotifTestWindow { Width = 1300, Height = 780 };
             try
             {
                 workspace.CurrentPage = WorkspacePage.Parsimony;
@@ -492,7 +492,7 @@ public sealed class ParsimonyWorkspacePaneTests
                             new ParsimonyLatestReportResponse(report.ReportId, report.Inputs.BundleId)))
                         : latest.Task);
                 });
-            var shellWindow = new Window { Width = 1300, Height = 780 };
+            var shellWindow = new MotifTestWindow { Width = 1300, Height = 780 };
             Task? reload = null;
             try
             {

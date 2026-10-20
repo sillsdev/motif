@@ -64,7 +64,7 @@ public sealed class SetupHLayoutTests
             setup.IsOpen = true;
             var dialog = new SetupDialog { DataContext = setup };
             dialog.FitToAvailableArea(width / zoom, height / zoom);
-            var window = new Window
+            var window = new MotifTestWindow
             {
                 Content = new LayoutTransformControl
                 {
@@ -176,7 +176,7 @@ public sealed class SetupHLayoutTests
             var setup = workspace.Context.Setup!;
             setup.IsOpen = true;
             var dialog = new SetupDialog { DataContext = setup };
-            var window = new Window
+            var window = new MotifTestWindow
             {
                 Width = width, Height = height,
                 Content = new LayoutTransformControl { Child = dialog,

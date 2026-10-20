@@ -283,7 +283,7 @@ public sealed class ResultsInTextVirtualizationTests
                         { WordformId = Guid.NewGuid(), OccurrenceIndex = index }).ToArray())).ToArray())], true));
             await owner.SelectionRefresh;
             var panel = new ResultsInTextPanel(owner);
-            var window = new Window { Content = panel, Width = width, Height = 780 };
+            var window = new MotifTestWindow { Content = panel, Width = width, Height = 780 };
             window.Show();
             return new ReaderSetup(fixture, owner, words, panel, window);
         }

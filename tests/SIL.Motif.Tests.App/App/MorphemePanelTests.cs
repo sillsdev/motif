@@ -68,7 +68,7 @@ public sealed class MorphemePanelTests(AvaloniaHeadlessFixture avalonia)
             Assert.Contains("revealLink", link.Classes);
             Assert.Contains("revealOnHover", link.Classes);
 
-            var window = new Window { Content = panel, Width = 500, Height = 200 };
+            var window = new MotifTestWindow { Content = panel, Width = 500, Height = 200 };
             try
             {
                 window.Show();
@@ -141,7 +141,7 @@ public sealed class MorphemePanelTests(AvaloniaHeadlessFixture avalonia)
                 MaxVisibleMorphs = 30,
                 OverflowRequest = request,
             };
-            var window = new Window { Content = panel, Width = 320, Height = 900 };
+            var window = new MotifTestWindow { Content = panel, Width = 320, Height = 900 };
             var requested = new List<MorphemeOverflowRequestedEventArgs>();
             window.AddHandler(MorphemePanel.OverflowRequestedEvent, (_, e) => requested.Add(e));
 
@@ -215,7 +215,7 @@ public sealed class MorphemePanelTests(AvaloniaHeadlessFixture avalonia)
             };
             var morph = new ParserReadingMorphViewModel(source);
             var panel = new MorphemePanel { Morphs = [morph] };
-            var window = new Window { Content = panel, Width = 320, Height = 120 };
+            var window = new MotifTestWindow { Content = panel, Width = 320, Height = 120 };
             var requests = new List<InspectRequestedEventArgs>();
             window.AddHandler(InspectLink.RequestedEvent, (_, e) => requests.Add(e));
             try

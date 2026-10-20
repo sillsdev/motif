@@ -70,7 +70,7 @@ public sealed partial class ReviewUndoRealClientTests
             var created = new List<WeakReference<object>>();
             owner.NativeModelCreated += created.Add;
             var host = new Border { Child = panel };
-            var window = new Window { Width = 1240, Height = 780, Content = host };
+            var window = new MotifTestWindow { Width = 1240, Height = 780, Content = host };
             try
             {
                 var form = SeededProject.AnalysedWordForm;

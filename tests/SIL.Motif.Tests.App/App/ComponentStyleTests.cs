@@ -56,7 +56,7 @@ public sealed partial class ComponentStyleTests
             foreach (var item in Cases())
             {
                 var host = new StackPanel();
-                var window = new Window { Content = host, RequestedThemeVariant = variant, Width = 400, Height = 300 };
+                var window = new MotifTestWindow { Content = host, RequestedThemeVariant = variant, Width = 400, Height = 300 };
                 try
                 {
                     var target = item.Build(host);
@@ -93,7 +93,7 @@ public sealed partial class ComponentStyleTests
                 ShowShares = false,
                 Segments = [new SIL.Motif.App.ViewModels.OutcomeSegment(SIL.Motif.App.ViewModels.Mark.NoParse, 1, "none")],
             };
-            var window = new Window
+            var window = new MotifTestWindow
             {
                 Content = new StackPanel { Children = { chip, bar } },
                 Width = 300,
@@ -125,7 +125,7 @@ public sealed partial class ComponentStyleTests
         _avalonia.Invoke(() =>
         {
             var chip = Press("actionChip");
-            var window = new Window { Content = chip, Width = 120, Height = 40 };
+            var window = new MotifTestWindow { Content = chip, Width = 120, Height = 40 };
             try
             {
                 window.Show();
@@ -153,7 +153,7 @@ public sealed partial class ComponentStyleTests
             var button = Press("revealControl", "revealButton", "revealOnHover");
             AutomationProperties.SetName(button, "Open the word");
             var owner = new Border { Classes = { "hoverReveal" }, Background = Brushes.Transparent, Child = button };
-            var window = new Window { Content = owner, Width = 200, Height = 40 };
+            var window = new MotifTestWindow { Content = owner, Width = 200, Height = 40 };
             try
             {
                 window.Show();
@@ -186,7 +186,7 @@ public sealed partial class ComponentStyleTests
             foreach (var variant in new[] { ThemeVariant.Light, ThemeVariant.Dark })
             {
                 var expander = new Expander { Header = "Details", IsExpanded = true };
-                var window = new Window { Content = expander, RequestedThemeVariant = variant, Width = 400, Height = 300 };
+                var window = new MotifTestWindow { Content = expander, RequestedThemeVariant = variant, Width = 400, Height = 300 };
                 try
                 {
                     window.Show();
@@ -246,7 +246,7 @@ public sealed partial class ComponentStyleTests
             };
             foreach (var (name, chip) in variants)
             {
-                var window = new Window { Content = new StackPanel { Children = { chip } }, Width = 300, Height = 80 };
+                var window = new MotifTestWindow { Content = new StackPanel { Children = { chip } }, Width = 300, Height = 80 };
                 try
                 {
                     window.Show();
@@ -279,7 +279,7 @@ public sealed partial class ComponentStyleTests
             {
                 var chip = Press("filterChip");
                 chip.IsEnabled = false;
-                var window = new Window { Content = chip, RequestedThemeVariant = variant, Width = 120, Height = 40 };
+                var window = new MotifTestWindow { Content = chip, RequestedThemeVariant = variant, Width = 120, Height = 40 };
                 try
                 {
                     window.Show();
@@ -344,7 +344,7 @@ public sealed partial class ComponentStyleTests
             host.Children.Add(conflict);
             host.Children.Add(capped);
             host.Children.Add(divider);
-            var window = new Window { Content = host };
+            var window = new MotifTestWindow { Content = host };
             try
             {
                 window.Show();
@@ -414,7 +414,7 @@ public sealed partial class ComponentStyleTests
             foreach (var item in ComponentStateContractCases.All())
             {
                 var (content, target) = item.Build();
-                var window = new Window { Content = content, RequestedThemeVariant = variant, Width = 400, Height = 300 };
+                var window = new MotifTestWindow { Content = content, RequestedThemeVariant = variant, Width = 400, Height = 300 };
                 try
                 {
                     if (item.Stimulus.HasFlag(StateStimulus.Disabled)) target.IsEnabled = false;

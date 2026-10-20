@@ -6,8 +6,9 @@
   that differs between light and dark is two primitives, and Intent's theme dictionaries choose between them.
 
   Where Semi.Avalonia's own scale holds the same value, the primitive aliases Semi's key, so the two
-  scales cannot drift apart. Semi has no density mode; Motif's 26 and 28 control heights live in Components/ControlHeights.axaml,
-  scoped to Motif's roots, because a Semi key is never overridden application-wide. The padding
+  scales cannot drift apart. Semi has no density mode; Motif's 26 and 28 control heights live in
+  Tokens/Scoped/ControlHeights.axaml, scoped to Motif's roots, because a Semi key is never overridden
+  application-wide. The padding
   aliases are ButtonSmall/Default/LargePadding, TextBoxContentPadding, TextBoxTextAreaContentPadding,
   TextBoxInnerLeft/RightContentPadding, ComboBoxSelectorDefaultPadding, ComboBoxItemDefaultPadding and
   ComboBoxPopupBorderPadding. Semi's colour ramp is not aliased: its light and dark palettes give one key two values,

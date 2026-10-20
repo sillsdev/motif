@@ -24,7 +24,7 @@ public sealed class SelectionPanelLayoutTests
             await selection.SetProjectAsync("selection-layout.fwdata");
             foreach (var text in selection.Texts) selection.SetTextCounts(text.Id, 400, 400);
             var panel = new SelectionPanel(selection, new TextWordsViewModel(client, selection, client.ReaderOwner));
-            var window = new Window { Content = panel, Width = 230, Height = 780 };
+            var window = new MotifTestWindow { Content = panel, Width = 230, Height = 780 };
             try
             {
                 window.Show();
