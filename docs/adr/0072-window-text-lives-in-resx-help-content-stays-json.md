@@ -29,6 +29,7 @@ unbuilt design chose ICU JSON with live language switching. It was never built a
 5. **Counts:** the guide handles only whole sentences with placeholders. Where Motif needs a count sentence
    ("1 change", "N changes not applied yet"), a plural pattern is the value, and the gap is registered as a proposal
    to send upstream.
+   The plural subset and the CLDR cardinal rule table for every FieldWorks UI language live in `PluralText`.
 6. **Data text is never parsed for access keys.** Data goes in `TextBlock` or `Run`, never in string `Content`.
 7. **Crowdin:** none for Motif now; the .resx files join FieldWorks' project at the merge.
 

@@ -18,16 +18,16 @@ internal static class LocalizationHygiene
         var views = Path.Combine(root, "src", "SIL.Motif.App");
         var counts = Attributes.ToDictionary(a => a, _ => 0, StringComparer.Ordinal);
         var perFile = new SortedDictionary<string, int>(StringComparer.Ordinal);
-        foreach (var file in Directory.EnumerateFiles(views, "*.axaml", SearchOption.AllDirectories)
-                     .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}Tokens{Path.DirectorySeparatorChar}")))
+        foreach (var file in Directory.EnumerateFiles(views, "*.axaml", SearchOption.AllDirectories))
         {
+            var relative = Path.GetRelativePath(root, file).Replace('\\', '/');
             var text = File.ReadAllText(file);
             foreach (var attribute in Attributes)
             {
                 var n = Literals(text, attribute);
                 counts[attribute] += n;
                 if (n > 0)
-                    perFile[Path.GetRelativePath(root, file).Replace('\\', '/')] = perFile.GetValueOrDefault(Path.GetRelativePath(root, file).Replace('\\', '/')) + n;
+                    perFile[relative] = perFile.GetValueOrDefault(relative) + n;
             }
         }
 
@@ -36,7 +36,11 @@ internal static class LocalizationHygiene
                 Console.WriteLine($"{n,5}  {file}");
         foreach (var attribute in Attributes)
             Console.WriteLine($"localization hygiene (report only): {attribute,-27} {counts[attribute],5} literal");
-        Console.WriteLine($"localization hygiene (report only): ratchet baseline {counts.Values.Sum()} literal strings in .axaml");
+        var total = counts.Values.Sum();
+        var baselineFile = Path.Combine(root, "tools", "LocalizationHygiene", "baseline.txt");
+        var baseline = File.Exists(baselineFile) && int.TryParse(File.ReadAllText(baselineFile).Trim(), out var b) ? b : (int?)null;
+        var delta = baseline is { } known ? $", {total - known:+#;-#;0} against the checked-in baseline {known}" : "";
+        Console.WriteLine($"localization hygiene (report only): {total} literal strings in .axaml{delta}");
         return 0;
     }
 
