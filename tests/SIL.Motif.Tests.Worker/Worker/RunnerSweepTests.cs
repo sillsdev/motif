@@ -378,6 +378,50 @@ public sealed class RunnerSweepTests : IDisposable
             warning.Contains("database is locked", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public async Task AKnownProjectWhoseStoreStorageIsUnavailableIsRetriedNotReportedCorruptAndOtherProjectsStillRun()
+    {
+        using var machine = MachineDatabase.Open(_options.Root);
+        var known = new KnownProjectRegistry(machine);
+        var healthy = SeedProject(known, "outage-healthy");
+        SeedJob(healthy, "healthy-job", queueOrder: 2.0);
+        var outagePath = Path.Combine(_root, "outage-project.fwdata");
+        File.WriteAllText(outagePath, "placeholder");
+        var outage = new ProjectLocator(outagePath, "outage-project");
+        known.Record(ProjectWorkspaceKey.Compute(outage), outagePath, DateTimeOffset.UtcNow);
+        string storePath;
+        using (var first = new ProjectRuntimeRegistry(
+                   new ProjectDatabaseCatalog(MotifSchema.CurrentSchema, new Version(1, 0)),
+                   (jobs, key) => new WorkerRecoveryCoordinator(new WorkerRecovery(jobs),
+                       new WorkspaceCleaner(WorkspaceOwnership.Bootstrap(Path.Combine(_root, "owned-outage")))),
+                   new ProjectRuntimeActivity()))
+            storePath = first.GetOrOpen(outage).Database.FullPath;
+        var warnings = new List<string>();
+        Environment.SetEnvironmentVariable("MOTIF_TEST_STORAGE_UNAVAILABLE_FOR", storePath);
+        try
+        {
+            var outcome = await SIL.Motif.Worker.WorkerRuntime.SweepOnceAsync(known, _runtimes, _lanes, _options,
+                new FakeInvoker(), OwnerId, CancellationToken.None,
+                runClaimedAsync: (_, _) => Task.CompletedTask, reportWarning: warnings.Add);
+
+            Assert.Equal("healthy-job", outcome.JobId);
+            var warning = Assert.Single(warnings);
+            Assert.Contains("unavailable", warning, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("retried", warning, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("corrupt", warning, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("MOTIF_TEST_STORAGE_UNAVAILABLE_FOR", null);
+        }
+
+        var recovered = new List<string>();
+        await SIL.Motif.Worker.WorkerRuntime.SweepOnceAsync(known, _runtimes, _lanes, _options,
+            new FakeInvoker(), OwnerId, CancellationToken.None,
+            runClaimedAsync: (_, _) => Task.CompletedTask, reportWarning: recovered.Add);
+        Assert.Empty(recovered);
+    }
+
     private ProjectRuntime SeedProject(KnownProjectRegistry known, string identity)
     {
         var path = Path.Combine(_root, identity + ".fwdata");

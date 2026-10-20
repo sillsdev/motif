@@ -218,7 +218,7 @@ public static partial class ProposalCommands
             }
             catch (KeyNotFoundException) { }
         }
-        var current = new BaselineRepository(database).GetCurrent(projectKey);
+        var current = new BaselineRepository(database).GetCurrentPublished(projectKey);
         return current?.Token == token ? current : null;
     }
 

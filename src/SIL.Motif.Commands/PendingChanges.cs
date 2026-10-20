@@ -85,7 +85,7 @@ public static class PendingChanges
                 return Refuse("change.assessment-required",
                     "Name the Assessment that produced the chosen parser reading.",
                     ("changeId", change.ChangeId));
-            var baseline = new BaselineRepository(database).GetCurrent(ProjectWorkspaceKey.Compute(project));
+            var baseline = new BaselineRepository(database).GetCurrentPublished(ProjectWorkspaceKey.Compute(project));
             if (baseline is null)
                 return Refuse("change.baseline-missing", "Capture a Baseline before collecting changes.",
                     ("changeId", change.ChangeId));
@@ -137,7 +137,7 @@ public static class PendingChanges
                     ("expectedRevision", request.ExpectedRevision));
             if ((request.TextId is null ? 0 : 1) + (request.AnalysisIds is null ? 0 : 1) != 1)
                 return Refuse("change.scope-invalid", "Choose a list of analyses or one Text to remove analyses from.");
-            var baseline = new BaselineRepository(database).GetCurrent(ProjectWorkspaceKey.Compute(project));
+            var baseline = new BaselineRepository(database).GetCurrentPublished(ProjectWorkspaceKey.Compute(project));
             if (baseline is null)
                 return Refuse("change.baseline-missing", "Capture a Baseline before collecting analysis removals.");
             using var cache = LoadBaselineCache(baseline.FwDataPath);
@@ -267,7 +267,7 @@ public static class PendingChanges
                 return Refuse("change.scope-invalid", "Choose one wordform, one Selection, or one Text.",
                     ("assessmentId", request.AssessmentId));
 
-            var baseline = new BaselineRepository(database).GetCurrent(ProjectWorkspaceKey.Compute(project));
+            var baseline = new BaselineRepository(database).GetCurrentPublished(ProjectWorkspaceKey.Compute(project));
             if (baseline is null)
                 return Refuse("change.baseline-missing", "Capture a Baseline before accepting parser readings.",
                     ("assessmentId", request.AssessmentId));
@@ -829,7 +829,7 @@ public static class PendingChanges
                 return Refuse("change.not-found", changeId is null
                     ? "There are no pending changes to check."
                     : "The change is not in the pending Draft.", ("changeId", changeId));
-            var baseline = new BaselineRepository(database).GetCurrent(ProjectWorkspaceKey.Compute(project));
+            var baseline = new BaselineRepository(database).GetCurrentPublished(ProjectWorkspaceKey.Compute(project));
             var liveLastWriteTicks = File.GetLastWriteTimeUtc(project.FullFwDataPath).Ticks;
             if (baseline is null || liveLastWriteTicks > baseline.SourceLastWriteUtc.UtcDateTime.Ticks)
                 return Refuse("change.refresh-required", "Refresh the project before checking changes again.",

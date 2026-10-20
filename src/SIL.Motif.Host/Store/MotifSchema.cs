@@ -118,12 +118,23 @@ public static class MotifSchema
             ValidateTrigger(connection, transaction, trigger);
     }
 
+    /// <summary>Lets a test fail one named store's metadata read as a storage outage does.</summary>
+    private static void ThrowInjectedStorageFault(SqliteConnection connection)
+    {
+        var target = Environment.GetEnvironmentVariable("MOTIF_TEST_STORAGE_UNAVAILABLE_FOR");
+        if (target is null) return;
+        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        if (string.Equals(Path.GetFullPath(target), Path.GetFullPath(connection.DataSource), comparison))
+            throw new SqliteException("disk I/O error", 10);
+    }
+
     internal static (ProjectLocator Project, Version MinimumWorkerVersion) ReadMetadata(
         SqliteConnection connection,
         SqliteTransaction? transaction = null)
     {
         try
         {
+            ThrowInjectedStorageFault(connection);
             using var command = connection.CreateCommand();
             command.Transaction = transaction;
             command.CommandText = "SELECT COUNT(*) FROM MotifMetadata;";
@@ -148,6 +159,10 @@ public static class MotifSchema
         catch (SqliteException exception) when (SqliteConnections.IsCorruption(exception))
         {
             throw new InvalidDataException("Motif database metadata is corrupt.", exception);
+        }
+        catch (SqliteException exception) when (SqliteConnections.IsStorageUnavailableCode(exception.SqliteErrorCode))
+        {
+            throw new IOException("Motif database metadata could not be read: storage is unavailable.", exception);
         }
         catch (Exception exception) when (
             exception is FormatException or ArgumentException or InvalidOperationException or

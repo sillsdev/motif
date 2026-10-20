@@ -59,8 +59,9 @@ public sealed class BaselineRepositoryTests : IDisposable
         var publication = Publication("moved", "sha256:" + new string('a', 64));
         repository.Record("workspace", publication, DateTimeOffset.Parse("2026-08-23T12:00:00Z"),
             DateTimeOffset.Parse("2026-08-23T11:00:00Z"), TestTextWords.Empty, Summary());
+        Directory.Delete(publication.RootDirectory, recursive: true);
         Assert.Null(repository.GetCurrentPublished("workspace"));
-        Assert.NotNull(repository.GetCurrent("workspace"));
+        Assert.NotNull(repository.GetCurrentEvidence("workspace"));
 
         Directory.CreateDirectory(publication.RootDirectory);
         File.WriteAllText(publication.FwDataPath, "");
@@ -237,6 +238,8 @@ public sealed class BaselineRepositoryTests : IDisposable
     private BaselinePublication Publication(string folder, string digest)
     {
         var root = Path.Combine(_root, folder);
+        Directory.CreateDirectory(root);
+        File.WriteAllText(Path.Combine(root, "project.fwdata"), "");
         return new BaselinePublication(root, Path.Combine(root, "project.fwdata"),
             new BaselineToken("project-id", "sha256:" + new string('1', 64), "projection-v1",
                 "2026-08-23T00:00:00Z", digest));

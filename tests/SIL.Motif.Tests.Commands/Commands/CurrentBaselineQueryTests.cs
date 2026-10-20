@@ -1,4 +1,7 @@
 using SIL.Motif.Commands.Baselines;
+using SIL.Motif.Contract.Requests;
+using SIL.Motif.Contract.Responses;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
@@ -101,6 +104,83 @@ public sealed class CurrentBaselineQueryTests : IDisposable
         Assert.Equal(first.Value.Token, third.Value!.Token);
         Assert.Equal(captured.Value!.Token.BundleDigest, third.Value.Token!.BundleDigest);
     }
+
+    [Fact]
+    public void AMovedAsideManagedRootLeavesNoBaselineUntilTheNextCaptureAndTheStoreSitsBesideTheProject()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        var root = NewManagedRoot();
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(fwDataPath), root).Succeeded);
+        Assert.True(File.Exists(Path.ChangeExtension(fwDataPath, ".motif.db")));
+        Assert.NotNull(CurrentBaselineQuery.Query(new CurrentBaselineRequest(fwDataPath)).Value!.Token);
+
+        Directory.Delete(Path.Combine(root, "baselines"), recursive: true);
+        var gone = CurrentBaselineQuery.Query(new CurrentBaselineRequest(fwDataPath));
+
+        Assert.True(gone.Succeeded);
+        Assert.Null(gone.Value!.Token);
+        Assert.Null(gone.Value.SourceLastWriteUtc);
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(fwDataPath), root).Succeeded);
+        Assert.NotNull(CurrentBaselineQuery.Query(new CurrentBaselineRequest(fwDataPath)).Value!.Token);
+    }
+
+    [Fact]
+    public void SavingTheDefaultSelectionAfterTheBaselineCopyWasMovedAsideDoesNotOpenTheMissingFile()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        var root = NewManagedRoot();
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(fwDataPath), root).Succeeded);
+        Directory.Delete(Path.Combine(root, "baselines"), recursive: true);
+
+        var saved = SIL.Motif.Commands.SelectionCommands.SetDefault(new SetDefaultSelectionRequest(
+            fwDataPath, "moved-aside", [Guid.NewGuid()], []));
+
+        Assert.True(saved.Succeeded, saved.Refusal?.Code + ": " + saved.Refusal?.Message);
+    }
+
+    [Fact]
+    public void StorageThatIsUnavailableWhenTheStoreIsOpenedRefusesAsStoreIoNeverAsAnInconsistentStore()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(fwDataPath), NewManagedRoot()).Succeeded);
+        var storePath = Path.GetFullPath(Path.ChangeExtension(fwDataPath, ".motif.db"));
+        Environment.SetEnvironmentVariable(StorageFaultVariable, storePath);
+        try
+        {
+            var outcome = CurrentBaselineQuery.Query(new CurrentBaselineRequest(fwDataPath));
+
+            Assert.False(outcome.Succeeded);
+            Assert.Equal("project.store-io", outcome.Refusal!.Code);
+            Assert.Equal(FailureReason.Busy, outcome.Refusal.Reason);
+            Assert.DoesNotContain("corrupt", outcome.Refusal.Message, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(StorageFaultVariable, null);
+        }
+        Assert.True(CurrentBaselineQuery.Query(new CurrentBaselineRequest(fwDataPath)).Succeeded);
+    }
+
+    [Fact]
+    public void AFitReadWhoseBaselineFileIsGoneReadsTheSavedProjectInsteadOfOpeningTheMissingPath()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        var project = new SIL.Motif.Contract.Projects.ProjectLocator(
+            fwDataPath, Path.GetFileNameWithoutExtension(fwDataPath));
+        var liveWrite = File.GetLastWriteTimeUtc(fwDataPath);
+        var gone = new SIL.Motif.Worker.Baselines.BaselineRecord("key",
+            new SIL.Motif.Contract.Baselines.BaselineToken("id", "sha256:" + new string('1', 64), "projection-v1",
+                "2026-08-23T00:00:00Z", "sha256:" + new string('2', 64)),
+            Path.Combine(_managedRootsParent, "gone"), Path.Combine(_managedRootsParent, "gone", "x.fwdata"),
+            new DateTimeOffset(liveWrite, TimeSpan.Zero), DateTimeOffset.UtcNow);
+
+        var read = SIL.Motif.Commands.ProjectReadCache.ReadCurrent(project, gone, liveWrite.Ticks, (cache, ticks) => (cache is not null, ticks));
+
+        Assert.True(read.Item1);
+        Assert.Equal(liveWrite.Ticks, read.Item2);
+    }
+
+    private const string StorageFaultVariable = "MOTIF_TEST_STORAGE_UNAVAILABLE_FOR";
 
     private string NewManagedRoot()
     {

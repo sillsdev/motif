@@ -30,7 +30,7 @@ public static partial class ProposalCommands
                 var id = NormalizeId(request.ProposalId);
                 var proposal = content ?? new ProposalRepository(database).GetFinalized(CanonicalId.Parse(id)).Envelope;
                 var currentBaseline = new BaselineRepository(database)
-                    .GetCurrent(ProjectWorkspaceKey.Compute(project));
+                    .GetCurrentPublished(ProjectWorkspaceKey.Compute(project));
                 return ProjectReadCache.ReadCurrent(project, currentBaseline,
                     File.GetLastWriteTimeUtc(project.FullFwDataPath).Ticks, (cache, _) =>
                     {

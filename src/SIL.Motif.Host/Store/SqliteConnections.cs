@@ -48,4 +48,9 @@ public static class SqliteConnections
     internal static bool IsCorruption(SqliteException exception) => IsCorruptionCode(exception.SqliteErrorCode);
 
     internal static bool IsCorruptionCode(int errorCode) => errorCode is 11 or 26;
+
+    /// <summary>
+    /// Whether the SQLite error code is one of PERM, BUSY, LOCKED, READONLY, IOERR, FULL or CANTOPEN.
+    /// </summary>
+    internal static bool IsStorageUnavailableCode(int errorCode) => errorCode is 3 or 5 or 6 or 8 or 10 or 13 or 14;
 }

@@ -101,8 +101,17 @@ public static class JobCommands
 
             var workspaceKey = ProjectWorkspaceKey.Compute(project);
             var baseline = new BaselineRepository(database).GetCurrentPublished(workspaceKey);
-            var source = baseline is null ? null : new DryRunSourceBinding(baseline.Token, baseline.RootDirectory,
-                baseline.FwDataPath, SourceDigest(baseline.FwDataPath));
+            DryRunSourceBinding? source = null;
+            try
+            {
+                if (baseline is not null)
+                    source = new DryRunSourceBinding(baseline.Token, baseline.RootDirectory, baseline.FwDataPath,
+                        SourceDigest(baseline.FwDataPath));
+            }
+            catch (Exception exception) when (exception is FileNotFoundException or DirectoryNotFoundException)
+            {
+                // The copy vanished after the check; the job then waits for a fresh capture.
+            }
             var input = new DryRunJobInput(DryRunJobInput.CurrentSchemaVersion,
                 FrozenProposalRevision.Create(proposalJson), prerequisites, source);
             var jobs = new JobRepository(database);

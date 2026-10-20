@@ -464,7 +464,7 @@ public static class ParsimonyCommands
 
             var workspaceKey = ProjectWorkspaceKey.Compute(project);
             var baselines = new BaselineRepository(database);
-            var current = baselines.GetCurrent(workspaceKey);
+            var current = baselines.GetCurrentPublished(workspaceKey);
             var evidenceIsCurrent = current is not null && current.Token == stored.Value!.Inputs.BaselineToken;
             // A Report measured just before an Apply may still confirm its decision was recorded; it stages nothing.
             var measuredBeforeApply = !evidenceIsCurrent &&

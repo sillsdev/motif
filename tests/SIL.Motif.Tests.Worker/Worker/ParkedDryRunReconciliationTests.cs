@@ -107,6 +107,47 @@ public sealed class ParkedDryRunReconciliationTests : IDisposable
     }
 
     [Fact]
+    public void AParkedDryRunWhoseBaselineCopyVanishedAsksForAFreshCapture()
+    {
+        var runtime = OpenRuntime("baseline-copy-gone");
+        var parked = ParkDryRun(runtime, "dry-1");
+        RecordBaseline(runtime, publishedFileExists: false);
+
+        SIL.Motif.Worker.WorkerRuntime.ReconcileParkedJobs(runtime, _now);
+
+        Assert.Single(runtime.Jobs.ListByProjectAndKind(runtime.WorkspaceKey, BaselineRefreshKind));
+        Assert.Equal(JobStatus.WaitingForBaseline, runtime.Jobs.Get(parked)!.Status);
+    }
+
+    [Fact]
+    public void AParkedDryRunStaysParkedWhileItsBaselineCopyIsGoneAndIsClaimableOnceTheCopyIsCaptured()
+    {
+        var runtime = OpenRuntime("copy-gone-then-captured");
+        var parked = ParkDryRun(runtime, "dry-1");
+        RecordBaseline(runtime, publishedFileExists: false);
+
+        SIL.Motif.Worker.WorkerRuntime.ReconcileParkedJobs(runtime, _now);
+        Assert.Equal(JobStatus.WaitingForBaseline, runtime.Jobs.Get(parked)!.Status);
+
+        File.WriteAllText(Path.Combine(_root, "baseline.zip"), "");
+        SIL.Motif.Worker.WorkerRuntime.ReconcileParkedJobs(runtime, _now);
+        Assert.Equal(JobStatus.Queued, runtime.Jobs.Get(parked)!.Status);
+    }
+
+    [Fact]
+    public void AParkedTrialWhoseBaselineCopyVanishedAsksForAFreshCapture()
+    {
+        var runtime = OpenRuntime("trial-copy-gone");
+        var parked = Park(runtime, "trial-1", "trial");
+        RecordBaseline(runtime, publishedFileExists: false);
+
+        SIL.Motif.Worker.WorkerRuntime.ReconcileParkedJobs(runtime, _now);
+
+        Assert.Single(runtime.Jobs.ListByProjectAndKind(runtime.WorkspaceKey, BaselineRefreshKind));
+        Assert.Equal(JobStatus.WaitingForBaseline, runtime.Jobs.Get(parked)!.Status);
+    }
+
+    [Fact]
     public void AParkedTrialBecomesClaimableAgainOncePublishedBaselineExists()
     {
         var runtime = OpenRuntime("trial-baseline-exists");
@@ -199,8 +240,10 @@ public sealed class ParkedDryRunReconciliationTests : IDisposable
         return jobId;
     }
 
-    private void RecordBaseline(ProjectRuntime runtime)
+    private void RecordBaseline(ProjectRuntime runtime, bool publishedFileExists = true)
     {
+        Directory.CreateDirectory(_root);
+        if (publishedFileExists) File.WriteAllText(Path.Combine(_root, "baseline.zip"), "");
         var token = new BaselineToken("project-identity", "sha256:" + new string('a', 64), "1",
             _now.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ssZ"), "sha256:" + new string('b', 64));
         runtime.Baselines.Record(runtime.WorkspaceKey,

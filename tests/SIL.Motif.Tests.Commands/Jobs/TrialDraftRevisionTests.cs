@@ -1,4 +1,5 @@
 using SIL.Motif.Commands;
+using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Tests.TestFixtures;
@@ -66,6 +67,34 @@ public sealed class TrialDraftRevisionTests
         Assert.Single(frozenTrial.Operations);
         Assert.Equal(2, ProposalJsonParser.Parse(JobCommands.CanonicalProposalJson(
             new ProposalRepository(database).GetDraft("frozen"))).Operations.Count);
+    }
+
+    [Fact]
+    public void ADryRunQueuedAfterThePublishedBaselineWasMovedAsideBindsNoSourceAndWaitsForACapture()
+    {
+        var id = NewDraftWithOneGloss("moved-aside");
+        var root = Path.Combine(Path.GetTempPath(), "motif-dryrun-root-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(_fwDataPath), root).Succeeded);
+            var bound = JobCommands.EnqueueDryRun(new EnqueueDryRunRequest(_fwDataPath, ProductVersion, id));
+            Assert.True(bound.Succeeded, bound.Refusal?.Message);
+            using var database = ProjectMotifDatabase.Open(_fwDataPath);
+            var jobs = new JobRepository(database);
+            Assert.NotNull(DryRunJobInput.Parse(jobs.Get(bound.Value!.JobId)!.InputJson).SourceBaseline);
+
+            Directory.Delete(Path.Combine(root, "baselines"), recursive: true);
+            var unbound = JobCommands.EnqueueDryRun(new EnqueueDryRunRequest(_fwDataPath, ProductVersion, id));
+
+            Assert.True(unbound.Succeeded, unbound.Refusal?.Message);
+            Assert.Null(DryRunJobInput.Parse(jobs.Get(unbound.Value!.JobId)!.InputJson).SourceBaseline);
+        }
+        finally
+        {
+            try { Directory.Delete(root, recursive: true); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
     }
 
     [Fact]

@@ -73,7 +73,7 @@ public static class GrammarCheckQuery
         return ProjectStoreCommand.Run(request.ProjectPath, ResolveProductVersion(), (database, project) =>
         {
             var workspaceKey = ProjectWorkspaceKey.Compute(project);
-            var baseline = new BaselineRepository(database).GetCurrent(workspaceKey);
+            var baseline = new BaselineRepository(database).GetCurrentPublished(workspaceKey);
             if (baseline is null)
                 return CommandOutcome<GrammarCheckResponse>.Refused(
                     BaselineMissingRefusal.ForProject(request.ProjectPath));

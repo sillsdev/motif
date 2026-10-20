@@ -138,7 +138,7 @@ public static class AssessCommand
             {
                 var refusal = cancellationToken.IsCancellationRequested ? Cancelled(request.ProjectPath)
                     : ParserUnavailable(request.ProjectPath, PanGlossExecutable.NotFoundMessage, executableMissing: true);
-                var current = new BaselineRepository(database).GetCurrent(ProjectWorkspaceKey.Compute(project));
+                var current = new BaselineRepository(database).GetCurrentPublished(ProjectWorkspaceKey.Compute(project));
                 if (current is not null && refusal.Reason != FailureReason.Cancelled)
                     new ParserRefusalRepository(database).Save(current.Token, refusal);
                 return CommandOutcome<AssessCommandResponse>.Refused(refusal);
@@ -518,7 +518,7 @@ public static class AssessCommand
                 {
                     return CommandOutcome<AssessCommandResponse>.Refused(Cancelled(request.ProjectPath));
                 }
-                var currentBaseline = baselines.GetCurrent(workspaceKey);
+                var currentBaseline = baselines.GetCurrentPublished(workspaceKey);
                 if (currentBaseline is null || currentBaseline.Token != baseline.Token)
                     return CommandOutcome<AssessCommandResponse>.Refused(new Refusal(
                         "assess.baseline-changed", FailureReason.StoreInconsistent,
@@ -686,7 +686,7 @@ public static class AssessCommand
     private static CommandOutcome<BaselineCaptureResponse> EnsureBaseline(string projectPath, string managedRoot,
         ProjectLocator project, string workspaceKey, BaselineRepository baselines)
     {
-        var current = baselines.GetCurrent(workspaceKey);
+        var current = baselines.GetCurrentPublished(workspaceKey);
         if (current is null)
             return BaselineCaptureCommand.Capture(new BaselineCaptureRequest(projectPath), managedRoot);
 

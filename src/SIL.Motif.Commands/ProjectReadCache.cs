@@ -15,7 +15,8 @@ internal static class ProjectReadCache
         long liveLastWriteTicks, Func<LcmCache, long, T> action)
     {
         ArgumentNullException.ThrowIfNull(action);
-        if (baseline is not null && liveLastWriteTicks == baseline.SourceLastWriteUtc.UtcDateTime.Ticks)
+        if (baseline is not null && File.Exists(baseline.FwDataPath) &&
+            liveLastWriteTicks == baseline.SourceLastWriteUtc.UtcDateTime.Ticks)
         {
             using var reader = BaselineReadCache.Open(baseline.FwDataPath);
             return action(reader.Cache, liveLastWriteTicks);

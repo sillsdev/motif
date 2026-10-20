@@ -182,8 +182,11 @@ public static class ProjectStoreCommand
             ? "The project could not access required storage."
             : exception.Message;
 
+    // BUSY, LOCKED and IOERR clear when storage recovers, so a caller may retry them.
     private static Refusal StoreRefusal(Exception exception, string ioCode, string fwDataPath) => exception switch
     {
+        IOException { InnerException: Microsoft.Data.Sqlite.SqliteException { SqliteErrorCode: 5 or 6 or 10 } } => new Refusal(
+            ioCode, FailureReason.Busy, MessageFor(exception), OperationFacts(fwDataPath, exception)),
         IOException or UnauthorizedAccessException => new Refusal(
             ioCode, FailureReason.Refused, MessageFor(exception), OperationFacts(fwDataPath, exception)),
         NotSupportedException => new Refusal(

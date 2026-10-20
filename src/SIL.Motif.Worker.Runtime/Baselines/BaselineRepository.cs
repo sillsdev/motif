@@ -89,6 +89,17 @@ public sealed class BaselineRepository
         return false;
     }
 
+    /// <summary>
+    /// The current Baseline, or null when its published <c>.fwdata</c> is gone from disk, as after the worker root
+    /// was moved aside. Callers that open the file use this, so a missing copy reads as no Baseline and the runner
+    /// captures a fresh one; readers of stored rows keep <see cref="GetCurrent"/>, which needs no file.
+    /// </summary>
+    public BaselineRecord? GetCurrentPublished(string projectKey)
+    {
+        var baseline = GetCurrent(projectKey);
+        return baseline is not null && File.Exists(baseline.FwDataPath) ? baseline : null;
+    }
+
     public BaselineRecord? GetCurrent(string projectKey)
     {
         RequireProjectKey(projectKey);
@@ -104,16 +115,6 @@ public sealed class BaselineRepository
         RepositoryReadCounters.RecordDeserialized();
         var baseline = Read(reader);
         return HasApplyAfter(connection, transaction, baseline.PublishedUtc) ? null : baseline;
-    }
-
-    /// <summary>
-    /// The current Baseline, or null when its published <c>.fwdata</c> is gone from disk, as after the worker
-    /// root was moved aside: callers that open the file then wait for a fresh capture instead of failing on a path.
-    /// </summary>
-    public BaselineRecord? GetCurrentPublished(string projectKey)
-    {
-        var baseline = GetCurrent(projectKey);
-        return baseline is not null && File.Exists(baseline.FwDataPath) ? baseline : null;
     }
 
     /// <summary>

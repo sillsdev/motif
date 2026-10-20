@@ -511,6 +511,18 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
     }
 
     [Fact]
+    public void StorageThatCannotBeReachedIsClassifiedUnavailableNeverCorrupt()
+    {
+        foreach (var code in new[] { 3, 5, 6, 8, 10, 13, 14 })
+        {
+            Assert.True(SqliteConnections.IsStorageUnavailableCode(code));
+            Assert.False(SqliteConnections.IsCorruptionCode(code));
+        }
+        Assert.False(SqliteConnections.IsStorageUnavailableCode(11));
+        Assert.False(SqliteConnections.IsStorageUnavailableCode(26));
+    }
+
+    [Fact]
     public void WrongApplicationIdIsRejectedBeforeWrites()
     {
         var path = DatabasePath("wrong.fwdata");

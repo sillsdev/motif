@@ -417,7 +417,7 @@ public static class HandoffCommand
                             "handoff.trace-unavailable", FailureReason.Refused,
                             $"The Handoff could not read the trace for '{word}': {loadedTrace.Refusal!.Message}"));
                     var traceBaseline = new BaselineRepository(database)
-                        .GetCurrent(ProjectWorkspaceKey.Compute(project));
+                        .GetCurrentPublished(ProjectWorkspaceKey.Compute(project));
                     if (traceBaseline is null || !Equals(traceBaseline.Token, baseline.Token))
                         return CommandOutcome<HandoffCommandResponse>.Refused(new Refusal(
                             "handoff.trace-baseline-unavailable", FailureReason.Refused,

@@ -38,7 +38,7 @@ public static class CurrentBaselineQuery
         ProjectStoreCommand.Run(request.ProjectPath, ResolveProductVersion(), (database, project) =>
         {
             var workspaceKey = ProjectWorkspaceKey.Compute(project);
-            var baseline = new BaselineRepository(database).GetCurrent(workspaceKey);
+            var baseline = new BaselineRepository(database).GetCurrentPublished(workspaceKey);
             var held = File.Exists(project.FullFwDataPath + ".lock");
             return CommandOutcome<CurrentBaselineResponse>.Success(new CurrentBaselineResponse(
                 baseline?.Token, baseline?.SourceLastWriteUtc, held)

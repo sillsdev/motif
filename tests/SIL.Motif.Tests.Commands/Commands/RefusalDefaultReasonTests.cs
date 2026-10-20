@@ -35,6 +35,7 @@ public sealed class RefusalDefaultReasonTests
         ["parsimony.report-not-found"] = ("NotFound+Refused", PerSite),
         ["parsimony.result-invalid"] = ("Refused+StoreInconsistent", PerSite),
         ["project.not-found"] = ("InvalidArgument+NotFound", PerSite),
+        ["project.store-io"] = ("Busy+Refused", "Busy when SQLite reports the storage unavailable, Refused when Motif cannot delete its file"),
         ["proposal.inconsistent"] = ("Refused+StoreInconsistent", PerSite),
         ["proposal.not-found"] = ("NotFound+Refused", PerSite),
         ["report.assessment-not-found"] = ("InvalidArgument+NotFound", PerSite),

@@ -82,7 +82,7 @@ public static class WordTraceQuery
             if (parseLease is null)
                 return CommandOutcome<WordTraceResponse>.Refused(ProjectParseLease.BusyRefusal());
             var workspaceKey = ProjectWorkspaceKey.Compute(project);
-            var currentBaseline = new BaselineRepository(database).GetCurrent(workspaceKey);
+            var currentBaseline = new BaselineRepository(database).GetCurrentPublished(workspaceKey);
             var baseline = currentBaseline;
             if (request.ProposalId is { } proposalId)
             {

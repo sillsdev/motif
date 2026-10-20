@@ -46,7 +46,7 @@ public static class SelectionCommands
         return ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, project) =>
         {
             var workspaceKey = ProjectWorkspaceKey.Compute(project);
-            var baseline = new BaselineRepository(database).GetCurrent(workspaceKey);
+            var baseline = new BaselineRepository(database).GetCurrentPublished(workspaceKey);
             if (baseline is not null && request.TextIds.Count > 0)
             {
                 using var reader = BaselineReadCache.Open(baseline.FwDataPath);
