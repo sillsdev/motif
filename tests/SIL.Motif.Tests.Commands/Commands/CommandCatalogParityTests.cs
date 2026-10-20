@@ -104,7 +104,7 @@ public sealed class CommandCatalogParityTests
         "change.project-saving", "change.reading-missing", "change.reconfirm-not-allowed", "change.reconfirm-unneeded", "change.refresh-required", "change.revision-conflict", "change.scope-invalid", "change.slot-occupied",
         "change.stored-analysis-missing", "change.text-unavailable", "change.wordform-ambiguous", "change.wordform-changed",
         "change.wordform-missing",
-        "review.assessment-not-found", "review.numbers-unavailable", "trial.none", "trial.scratch-gone", "trial.update-in-progress",
+        "review.assessment-not-found", "review.numbers-unavailable", "trial.none", "trial.scratch-gone",
         "review.wrong-assessment-kind",
         "selection-reader.busy", "selection-reader.cancelled", "selection-reader.disposed", "selection-reader.invalid",
         "selection-reader.no-baseline", "selection-reader.ownership-limit", "selection-reader.presentation-changed",

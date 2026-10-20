@@ -898,8 +898,7 @@ try
                 "[--words <file>|--all-words] " +
                 "[--wait] [--wait-timeout-ms <ms>] [--json]", asJson, out trialWaitTimeout) is { } trialUsage)
                 return trialUsage;
-            // The Baseline is assessed before the Trial is queued, so `difference produce` has a before side.
-            // The update lease is taken inside the workflow, so this verb, the MCP tool and the window share it.
+            // The workflow assesses the Baseline and takes the update lease, as the MCP tool and the window do.
             result = RunWithConsoleCancellation(cancellationToken =>
             {
                 var queued = TrialWorkflow.Enqueue(

@@ -28,7 +28,6 @@ public sealed class ICommandClientCatalogParityTests
             [nameof(ICommandClient.ShowConfigAsync)] = "config show",
             [nameof(ICommandClient.MeasurePendingAsync)] = "trial --pending",
             [nameof(ICommandClient.ReadTrialAsync)] = "proposal trial",
-            [nameof(ICommandClient.EnqueueTrialAsync)] = "trial",
             [nameof(ICommandClient.WaitForJobAsync)] = "trial --wait",
             [nameof(ICommandClient.ApplyPendingAsync)] = "apply --all-pending",
             [nameof(ICommandClient.ApplyProposalAsync)] = "apply --proposal",
@@ -78,6 +77,8 @@ public sealed class ICommandClientCatalogParityTests
         new Dictionary<string, string>(StringComparer.Ordinal)
         {
             [nameof(ICommandClient.ReadProposalReviewEntryCountAsync)] = "proposal review",
+            // The window gets the queued job together with the Baseline warning, so only the request is the command's.
+            [nameof(ICommandClient.EnqueueTrialAsync)] = "trial",
         };
 
     [Fact]

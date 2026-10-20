@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Generator;
 using SIL.Motif.Tests.App.Walkthrough;
 using Xunit;
 
@@ -90,7 +91,7 @@ public sealed class TrialBaselineNoticeTests
 
         Assert.DoesNotContain(sources, source => source.Value.Contains("JobCommands.EnqueueTrial", StringComparison.Ordinal));
         Assert.DoesNotContain(sources, source => source.Value.Contains("EnqueueWithBaseline", StringComparison.Ordinal));
-        var client = Assert.Single(sources, source => source.Key.EndsWith("CommandClient.Workbench.cs", StringComparison.Ordinal));
+        var client = Assert.Single(sources, source => Path.GetFileName(source.Key) == "CommandClient.Workbench.cs");
         Assert.Contains("TrialWorkflow.Enqueue(", client.Value, StringComparison.Ordinal);
         Assert.Contains("BaselineMode.BestEffort", client.Value, StringComparison.Ordinal);
     }
