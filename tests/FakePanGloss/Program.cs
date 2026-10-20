@@ -85,7 +85,7 @@ internal static class Program
         }
         if (args is ["--version"])
         {
-            Console.WriteLine("pangloss 0.8.6");
+            Console.WriteLine("pangloss 0.8.8");
             return 0;
         }
         if (args is ["--allocate-memory", var requestedBytes])
