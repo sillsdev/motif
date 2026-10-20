@@ -116,6 +116,53 @@ public sealed class ProcessRunnerLauncherTests(PristineProjectFixture pristine)
         Assert.False(Directory.Exists(root));
     }
 
+    [Fact]
+    public void ALiveRunnerFromAnotherBuildIsNamedAndWarnedAboutWhenAnotherLaunchFindsIt()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "motif-stale-runner-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            File.WriteAllText(RunnerIdentity.PathFor(root), Environment.ProcessId + "\nolder-build");
+            var launcher = new ProcessRunnerLauncher(IsolatedRunner.Options(root) with
+            {
+                WorkerExecutable = Path.Combine(root, "absent", "SIL.Motif.Worker"),
+            });
+            var warnings = new List<string>();
+
+            launcher.Start(Path.Combine(root, "project.fwdata"), warnings.Add);
+
+            var stale = Assert.Single(warnings, warning => warning.Contains("older-build", StringComparison.Ordinal));
+            Assert.Contains(Environment.ProcessId.ToString(), stale, StringComparison.Ordinal);
+            Assert.Contains(RunnerIdentity.BuildId, stale, StringComparison.Ordinal);
+            Assert.Contains("stop", stale, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void ARunnerOfTheSameBuildOrOneThatIsGoneRaisesNoWarning()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "motif-same-runner-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            RunnerIdentity.Publish(root);
+            Assert.Null(RunnerIdentity.StaleWarning(root));
+            File.WriteAllText(RunnerIdentity.PathFor(root), int.MaxValue + "\nolder-build");
+            Assert.Null(RunnerIdentity.StaleWarning(root));
+            File.Delete(RunnerIdentity.PathFor(root));
+            Assert.Null(RunnerIdentity.StaleWarning(root));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
     private static SortedDictionary<string, string?> MotifVariables()
     {
         var variables = new SortedDictionary<string, string?>(StringComparer.Ordinal);

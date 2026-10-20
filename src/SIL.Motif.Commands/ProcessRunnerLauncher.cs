@@ -6,6 +6,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using WorkerRunnerOptions = SIL.Motif.Worker.RunnerOptions;
+using WorkerRunnerIdentity = SIL.Motif.Worker.RunnerIdentity;
 
 namespace SIL.Motif.Commands;
 
@@ -71,6 +72,8 @@ public sealed class ProcessRunnerLauncher : IJobRunnerLauncher
     public void Start(string projectPath, Action<string>? reportWarning = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(projectPath);
+        if (WorkerRunnerIdentity.StaleWarning(Options.Root) is { } stale)
+            reportWarning?.Invoke(stale);
         var executable = Locate(Options.WorkerExecutable);
         if (executable is null)
         {
