@@ -12,7 +12,7 @@ internal sealed record PanGlossSurfaceCheck(
 
 internal sealed record PanGlossCapabilities(
     ImmutableDictionary<string, PanGlossCommandCapabilities> Commands,
-    bool FactsContractSupported)
+    bool FactsContractSupported, int? ServeProtocol = null)
 {
     internal string? ValidateRequest(PanGlossRequest request)
     {
@@ -224,7 +224,9 @@ internal static class PanGlossSurface
         }
 
         detail = null;
-        return new PanGlossCapabilities(byName.ToImmutable(), HasFactsIdentity(root));
+        int? serveProtocol = root.TryGetProperty("serve_protocol", out var serveElement) &&
+            serveElement.ValueKind == JsonValueKind.Number && serveElement.TryGetInt32(out var served) ? served : null;
+        return new PanGlossCapabilities(byName.ToImmutable(), HasFactsIdentity(root), serveProtocol);
     }
 
     private static bool HasFactsIdentity(JsonElement root)

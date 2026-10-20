@@ -45,7 +45,7 @@ public sealed class PanGlossTracer : IPanGlossTracer
         };
     }
 
-    private static PanGlossTraceOutcome Interpret(string word, PanGlossOutcome.Completed completed)
+    internal static PanGlossTraceOutcome Interpret(string word, PanGlossOutcome.Completed completed)
     {
         if (!PanGlossTraceOutput.TryRead(completed.Output, out var document, out var error))
             return new PanGlossTraceOutcome.Malformed(word, completed.Output, error);

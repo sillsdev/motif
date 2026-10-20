@@ -42,8 +42,14 @@ public static class WordTraceQuery
     }
 
     public static CommandOutcome<WordTraceResponse> Query(
-        WordTraceRequest request, CancellationToken cancellationToken = default) =>
-        Query(request, PanGlossExecutable.TryLocate(), cancellationToken);
+        WordTraceRequest request, CancellationToken cancellationToken = default)
+    {
+        var parser = PanGlossExecutable.TryLocate();
+        if (!TryWordSessions.Enabled) return Query(request, parser, cancellationToken);
+        using var invoker = new PanGlossInvoker(parser);
+        using var tracer = TryWordSessions.TracerFor(parser, invoker);
+        return Query(request, tracer, cancellationToken);
+    }
 
     /// <summary>
     /// Traces a word for a caller that shows only the parser's answer. It skips the copy of the Baseline's FieldWorks
@@ -52,8 +58,12 @@ public static class WordTraceQuery
     public static CommandOutcome<WordTraceResponse> QueryAnswerOnly(
         WordTraceRequest request, CancellationToken cancellationToken = default)
     {
-        using var invoker = new PanGlossInvoker(PanGlossExecutable.TryLocate());
-        return Query(request, new PanGlossTracer(invoker), cancellationToken, hostEvidence: false);
+        var parser = PanGlossExecutable.TryLocate();
+        using var invoker = new PanGlossInvoker(parser);
+        if (!TryWordSessions.Enabled)
+            return Query(request, new PanGlossTracer(invoker), cancellationToken, hostEvidence: false);
+        using var tracer = TryWordSessions.TracerFor(parser, invoker);
+        return Query(request, tracer, cancellationToken, hostEvidence: false);
     }
 
     /// <summary>Traces a word with an explicitly selected parser.</summary>
@@ -109,8 +119,11 @@ public static class WordTraceQuery
             onProgress?.Invoke(new AssessmentProgress(AssessmentStage.Parsing, 0, 1, $"Tracing {request.Word}")
                 { CurrentWord = request.Word });
             var clock = Stopwatch.StartNew();
-            var outcome = tracer.TraceAsync(baseline.FwDataPath, request.Word, cancellationToken)
-                .GetAwaiter().GetResult();
+            // A Proposal's Trial copy is scratch, so it never gets a resident session.
+            var outcome = tracer is IWarmPanGlossTracer warm && request.ProposalId is null
+                ? warm.TraceAsync(request.ProjectPath, TryWordSessions.TokenText(baseline.Token), baseline.FwDataPath,
+                    request.Word, cancellationToken).GetAwaiter().GetResult()
+                : tracer.TraceAsync(baseline.FwDataPath, request.Word, cancellationToken).GetAwaiter().GetResult();
             var elapsedMs = (int)clock.ElapsedMilliseconds;
 
             var result = outcome switch
