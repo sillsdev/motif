@@ -17,3 +17,10 @@ A new staging action clears Redo. Apply, Refresh, project close and project swit
 The Help shortcut catalog and Keyboard shortcuts screen list Copy, Undo and Redo for the window, with platform-specific gestures. Text controls continue to display and use their native editing commands; the global history applies only outside text entry.
 
 Shortcut dispatch tests cover platform modifiers, focused text, selected text, and the four word lists. Staging history tests cover each recorded action, redo invalidation, Apply and Refresh clearing, external changes, and command-path reversals.
+
+## Amendment, 2026-10-20: shortcuts are shown in menus
+
+Every menu command shows its shortcut next to it, and menu commands and top-level menus carry access keys, as the
+FieldWorks UX guide requires. The shortcuts themselves are unchanged. Undo and Redo still act only on changes staged
+before Apply: Apply is one-way and Motif has no unapply. See
+[ADR 0073](0073-menus-buttons-access-keys-and-shortcuts-follow-fieldworks.md).

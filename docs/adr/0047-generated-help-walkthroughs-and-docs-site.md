@@ -111,3 +111,11 @@ translation task and never a code change.
 - The screenshot fixture loses its live clock and machine paths.
 - The public assemblies begin emitting XML documentation.
 - Node enters the repository for the site build only; the product build stays .NET.
+
+## Amendment, 2026-10-20: window text moves to .resx
+
+Decision 5 stands for Help, command and Walkthrough content: it stays in JSON and Markdown that Crowdin can read,
+because the CLI and the docs site share it. It no longer covers the window's own interface text. Labels, tooltips,
+messages and accessible names, including the window's shortcut labels, move to .resx as FieldWorks does it, and the
+docs site reads control Titles from the neutral .resx. Crowdin is not used for Motif until it joins FieldWorks'
+project at the merge. See [ADR 0072](0072-window-text-lives-in-resx-help-content-stays-json.md).

@@ -25,3 +25,11 @@ Shared token changes affect many pages, so validation includes state cues and ca
 Flat sections and shared scrolling rules require page migrations as well as token changes. This decision specifies the target; a token change alone does not establish that every page has reached it.
 
 The density contracts are exercised by `DesignTokenTests`, `ComponentStyleTests` and `InteractionCueTests`. Page reachability and final screenshots remain separate evidence, including Windows caption insets and platform font metrics.
+
+## Amendment, 2026-10-20: no app-wide Semi overrides, and the FieldWorks token map
+
+Decision 3 stands for the sizes (26 and 28 DIP), but Motif no longer sets them by overriding Semi's own height keys
+for the whole application. Motif-owned control themes or a resource scoped to the Motif root supply them, so a host
+keeps Semi's defaults. Decision 4 stands, and each shared purpose is mapped to FieldWorks' value. The 13 DIP Andika
+body is open pending an owner decision on the interface font. See
+[ADR 0074](0074-tokens-map-onto-fwavaloniatheme-and-never-override-semi.md).
