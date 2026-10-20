@@ -33,6 +33,12 @@ public static partial class PluralText
     private static string Romance(long n) =>
         n is 0 or 1 ? "one" : n % 1_000_000 == 0 ? "many" : "other";
 
+    // The magnitude of a count; long.MinValue has none that fits, so it takes the largest value.
+    private static long Magnitude(long n) => n == long.MinValue ? long.MaxValue : Math.Abs(n);
+
+    // European Portuguese: one is exactly 1, unlike Brazilian Portuguese.
+    private static string PortugalPortuguese(long n) => n == 1 ? "one" : n != 0 && n % 1_000_000 == 0 ? "many" : "other";
+
     private static string Spanish(long n) => n == 1 ? "one" : n != 0 && n % 1_000_000 == 0 ? "many" : "other";
 
     private static string Slavic(long n)
@@ -65,7 +71,7 @@ public static partial class PluralText
         ["en"] = OneIsOne, ["de"] = OneIsOne, ["az"] = OneIsOne, ["hu"] = OneIsOne, ["ml"] = OneIsOne,
         ["ne"] = OneIsOne, ["sw"] = OneIsOne, ["ta"] = OneIsOne, ["te"] = OneIsOne, ["tr"] = OneIsOne,
         ["ur"] = OneIsOne, ["es"] = Spanish,
-        ["fr"] = Romance, ["pt"] = Romance,
+        ["fr"] = Romance, ["pt"] = Romance, ["pt-PT"] = PortugalPortuguese,
         ["bn"] = OneIsZeroOrOne, ["fa"] = OneIsZeroOrOne, ["hi"] = OneIsZeroOrOne,
         ["ru"] = Slavic, ["pl"] = Polish, ["ar"] = Arabic,
         ["id"] = OtherOnly, ["ms"] = OtherOnly, ["zlm"] = OtherOnly, ["ko"] = OtherOnly, ["zh"] = OtherOnly,
@@ -78,18 +84,18 @@ public static partial class PluralText
 
     /// <summary>The CLDR cardinal category of <paramref name="count"/> in a language code such as "ru".</summary>
     public static string CategoryOf(long count, string language) =>
-        Rules.TryGetValue(language, out var rule) ? rule(Math.Abs(count)) : "other";
+        Rules.TryGetValue(language, out var rule) ? rule(Magnitude(count)) : "other";
 
     private static string Category(long count, CultureInfo culture)
     {
         for (var c = culture; c.Name.Length > 0; c = c.Parent)
         {
-            var language = c.Name.Split('-')[0];
-            if (Rules.TryGetValue(language, out var rule)) return rule(Math.Abs(count));
+            if (Rules.TryGetValue(c.Name, out var exact)) return exact(Magnitude(count));
+            if (Rules.TryGetValue(c.Name.Split('-')[0], out var rule)) return rule(Magnitude(count));
         }
 
         // The invariant culture reads the neutral English resx, so it counts as English.
-        return culture.Name.Length == 0 ? OneIsOne(Math.Abs(count)) : "other";
+        return culture.Name.Length == 0 ? OneIsOne(Magnitude(count)) : "other";
     }
 
     /// <summary>Whether <paramref name="value"/> is a plural pattern rather than a plain format string.</summary>
@@ -141,9 +147,14 @@ public static partial class PluralText
         return text.Replace("#", count.ToString("N0", culture), StringComparison.Ordinal);
     }
 
+    private static readonly bool DebugBuild = IsDebugBuild();
+
+    private static bool IsDebugBuild()
+    {
 #if DEBUG
-    private const bool DebugBuild = true;
+        return true;
 #else
-    private const bool DebugBuild = false;
+        return false;
 #endif
+    }
 }

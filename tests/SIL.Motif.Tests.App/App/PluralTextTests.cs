@@ -60,6 +60,17 @@ public sealed class PluralTextTests
         Assert.Empty(FieldWorksUiLanguages.Except(PluralText.SupportedLanguages, StringComparer.OrdinalIgnoreCase));
 
     [Fact]
+    public void EuropeanPortugueseHasItsOwnRuleAndNoCountOverflows()
+    {
+        var template = "{0, plural, one {one} other {other}}";
+        Assert.Equal("one", PluralText.Format(template, 0, new CultureInfo("pt-BR")));
+        Assert.Equal("other", PluralText.Format(template, 0, new CultureInfo("pt-PT")));
+        Assert.Equal("one", PluralText.Format(template, 1, new CultureInfo("pt-PT")));
+        Assert.Equal("other", PluralText.Format(template, 2, new CultureInfo("pt-PT")));
+        Assert.Equal("other", PluralText.CategoryOf(long.MinValue, "en"));
+    }
+
+    [Fact]
     public void ARegionalCultureUsesItsParentRuleAndAnUnknownOneUsesOther()
     {
         Assert.Equal("few", PluralText.Format("{0, plural, few {few} other {other}}", 3, new CultureInfo("ru-RU")));
