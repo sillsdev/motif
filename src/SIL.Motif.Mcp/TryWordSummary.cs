@@ -30,7 +30,6 @@ internal static class TryWordSummary
         if (response.InvalidShape) result["invalidShape"] = true;
         if (response.Guessed) result["guessed"] = true;
         if (response.DeepestRule is { Length: > 0 }) result["deepestRule"] = response.DeepestRule;
-        if (response.HostCapture?.LexiconEntryCount is { } entries) result["lexiconEntryCount"] = entries;
 
         var readings = new JsonArray();
         foreach (var analysis in reading.Analyses.DistinctBy(a => a.Signature ?? a.LegacyMorphemes).Take(MaxReadings))
