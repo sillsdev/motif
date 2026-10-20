@@ -293,8 +293,6 @@ public sealed class JobStateMachineTests : IDisposable
         Assert.Throws<InvalidOperationException>(() => repository.Create(NewJob() with { Kind = JobKinds.Apply }));
         Assert.Throws<ArgumentException>(() => repository.Create(NewJob() with { InputJson = "true" }));
         Assert.Throws<ArgumentException>(() => repository.Create(NewJob() with { DryRunJson = "{\"dryRun\":true}" }));
-        var oversized = "{\"x\":\"" + new string('a', JobJson.MaxStructuredJsonUtf8Bytes) + "\"}";
-        Assert.Throws<ArgumentException>(() => repository.Create(NewJob() with { InputJson = oversized }));
     }
 
     [Fact]

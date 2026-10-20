@@ -108,8 +108,6 @@ public static class JobCommands
             var jobs = new JobRepository(database);
             var jobId = CanonicalId.Mint("job/").Value;
             var inputJson = JsonSerializer.Serialize(input, MotifJson.CreateOptions());
-            if (InputSizeRefusal(inputJson, DryRunKind) is { } refusal)
-                return CommandOutcome<JobEnqueuedResponse>.Refused(refusal);
             var created = jobs.Create(jobId, workspaceKey, DryRunKind, inputJson, NowStamp());
             return CommandOutcome<JobEnqueuedResponse>.Success(
                 new JobEnqueuedResponse(created.JobId, DryRunKind, workspaceKey));
@@ -168,20 +166,6 @@ public static class JobCommands
             var input = new TrialJobInput(proposalJson, request.Scope, words, request.AllWords, prerequisites,
                 request.Limits, request.BaselineAssessmentIds, request.NegativeWords);
             var inputJson = JsonSerializer.Serialize(input, MotifJson.CreateOptions());
-            if (words is not null && Encoding.UTF8.GetByteCount(inputJson) > JobJson.MaxStructuredJsonUtf8Bytes)
-            {
-                // The reference has a fixed digest width, so check its size before writing a list file.
-                var externalInput = input with { Words = null, WordList = new JobWordList(new string('0', 64), words.Count) };
-                var externalJson = JsonSerializer.Serialize(externalInput, MotifJson.CreateOptions());
-                if (InputSizeRefusal(externalJson, TrialKind) is { } externalRefusal)
-                    return CommandOutcome<JobEnqueuedResponse>.Refused(externalRefusal);
-                inputJson = JsonSerializer.Serialize(input with
-                    {
-                        Words = null, WordList = JobWordLists.Store(database, words),
-                    }, MotifJson.CreateOptions());
-            }
-            if (InputSizeRefusal(inputJson, TrialKind) is { } refusal)
-                return CommandOutcome<JobEnqueuedResponse>.Refused(refusal);
             var created = jobs.Create(jobId, workspaceKey, TrialKind, inputJson, NowStamp());
             return CommandOutcome<JobEnqueuedResponse>.Success(
                 new JobEnqueuedResponse(created.JobId, TrialKind, workspaceKey));
@@ -209,19 +193,6 @@ public static class JobCommands
                 return CommandOutcome<IReadOnlyList<string>?>.Refused(ProposalCommands.ProposalLoadRefusal(exception));
             }
         });
-    }
-
-    private static Refusal? InputSizeRefusal(string inputJson, string kind)
-    {
-        var bytes = Encoding.UTF8.GetByteCount(inputJson);
-        return bytes <= JobJson.MaxStructuredJsonUtf8Bytes ? null : new Refusal(
-            "job.input-too-large", FailureReason.InvalidArgument,
-            $"The {kind} job input is {bytes.ToString(CultureInfo.InvariantCulture)} UTF-8 bytes; " +
-            $"the limit is {JobJson.MaxStructuredJsonUtf8Bytes.ToString(CultureInfo.InvariantCulture)} bytes (16 MiB). " +
-            "Split the Proposal into smaller Proposals and retry; frozen content, prerequisites and options must fit " +
-            "even when a Trial's word list is stored separately. No job was queued.",
-            Fact(("kind", kind), ("inputUtf8Bytes", bytes.ToString(CultureInfo.InvariantCulture)),
-                ("limitUtf8Bytes", JobJson.MaxStructuredJsonUtf8Bytes.ToString(CultureInfo.InvariantCulture))));
     }
 
     /// <summary>

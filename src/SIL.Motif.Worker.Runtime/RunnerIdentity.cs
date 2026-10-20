@@ -23,7 +23,7 @@ public static class RunnerIdentity
         MotifProductVersion.DisplayText + " [" + typeof(MotifProductVersion).Assembly.ManifestModule.ModuleVersionId + "]";
 
     /// <summary>Where the owner of <paramref name="root"/> records its identity.</summary>
-    public static string PathFor(string root) => Path.Combine(root, "runner.identity");
+    public static string PathFor(string root) => Path.Combine(root, "runner-identity");
 
     /// <summary>Records this process as the owner of <paramref name="root"/>; best-effort.</summary>
     public static void Publish(string root)
