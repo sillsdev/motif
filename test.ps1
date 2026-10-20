@@ -203,6 +203,15 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
+$phaseClocks['help golden regression'] = [Diagnostics.Stopwatch]::StartNew()
+Write-Step 'help golden gate regression'
+& pwsh -NoProfile -File (Join-Path $repoRoot 'tools/MotifHelpGolden.Tests.ps1')
+Write-PhaseDuration 'help golden regression'
+if ($LASTEXITCODE -ne 0) {
+    Write-PhaseDuration 'whole gate'
+    exit 1
+}
+
 if ($All) {
     $phaseClocks['capture screen regression'] = [Diagnostics.Stopwatch]::StartNew()
     Write-Step 'capture screenshot tooling regression'
