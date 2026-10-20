@@ -58,37 +58,51 @@ public sealed record LexSenseDeletePayload(CanonicalId? Msa)
 }
 
 /// <summary>
-/// Decides whether a sense carries anything a person wrote, by reading every field of the class except the
-/// analysis link, so a field added to LibLCM later is counted without a change here.
+/// Decides whether an object carries anything a person wrote, by reading every stored (non-virtual) field of its
+/// class, so a field added to LibLCM later is counted without a change here.
 /// </summary>
+/// <remarks>
+/// The rule: a string or unicode field is populated when its text is not empty; a multilingual field when any
+/// writing system's alternative is not empty; an owning or reference atomic field when it points at an object;
+/// an owning or reference collection or sequence when it has a member; a boolean when it is true; an integer when
+/// it is not zero; a time when it is not zero. Binary, GenDate and guid fields are not examined, because LibLCM
+/// gives a new object no value there that a person wrote.
+/// </remarks>
 public static class LexSenseEmptiness
 {
-    /// <summary>The name of the first populated field, or null when the sense is wholly empty.</summary>
-    public static string? FirstPopulatedField(LcmCache cache, ILexSense sense)
+    /// <summary>The name of the first populated field of a sense, ignoring its analysis link, or null when it is wholly empty.</summary>
+    public static string? FirstPopulatedField(LcmCache cache, ILexSense sense) =>
+        FirstPopulatedField(cache, (ICmObject)sense, "MorphoSyntaxAnalysis");
+
+    /// <summary>The name of the first populated field of <paramref name="item"/> not named in <paramref name="ignored"/>, or null.</summary>
+    public static string? FirstPopulatedField(LcmCache cache, ICmObject item, params string[] ignored)
     {
         ArgumentNullException.ThrowIfNull(cache);
-        ArgumentNullException.ThrowIfNull(sense);
+        ArgumentNullException.ThrowIfNull(item);
         var metadata = (IFwMetaDataCacheManaged)cache.MetaDataCacheAccessor;
         var data = cache.DomainDataByFlid;
         var writingSystems = cache.ServiceLocator.WritingSystems.AllWritingSystems.Select(ws => ws.Handle).ToArray();
-        foreach (var flid in metadata.GetFieldIds().Where(id => IsSameOrSubclass(metadata, sense.ClassID, metadata.GetOwnClsId(id))))
+        foreach (var flid in metadata.GetFieldIds().Where(id => IsSameOrSubclass(metadata, item.ClassID, metadata.GetOwnClsId(id))))
         {
             var name = metadata.GetFieldName(flid);
-            if (name == "MorphoSyntaxAnalysis" || ((IFwMetaDataCache)metadata).get_IsVirtual(flid))
+            if (ignored.Contains(name) || ((IFwMetaDataCache)metadata).get_IsVirtual(flid))
                 continue;
             var populated = (CellarPropertyType)metadata.GetFieldType(flid) switch
             {
                 CellarPropertyType.String =>
-                    data.get_StringProp(sense.Hvo, flid)?.Length > 0,
+                    data.get_StringProp(item.Hvo, flid)?.Length > 0,
                 CellarPropertyType.Unicode =>
-                    !string.IsNullOrEmpty(data.get_UnicodeProp(sense.Hvo, flid)),
+                    !string.IsNullOrEmpty(data.get_UnicodeProp(item.Hvo, flid)),
                 CellarPropertyType.MultiString or CellarPropertyType.MultiUnicode =>
-                    writingSystems.Any(ws => data.get_MultiStringAlt(sense.Hvo, flid, ws)?.Length > 0),
+                    writingSystems.Any(ws => data.get_MultiStringAlt(item.Hvo, flid, ws)?.Length > 0),
                 CellarPropertyType.OwningAtomic or CellarPropertyType.ReferenceAtomic =>
-                    data.get_ObjectProp(sense.Hvo, flid) != 0,
+                    data.get_ObjectProp(item.Hvo, flid) != 0,
                 CellarPropertyType.OwningCollection or CellarPropertyType.OwningSequence or
                     CellarPropertyType.ReferenceCollection or CellarPropertyType.ReferenceSequence =>
-                    data.get_VecSize(sense.Hvo, flid) > 0,
+                    data.get_VecSize(item.Hvo, flid) > 0,
+                CellarPropertyType.Boolean => data.get_BooleanProp(item.Hvo, flid),
+                CellarPropertyType.Integer => data.get_IntProp(item.Hvo, flid) != 0,
+                CellarPropertyType.Time => data.get_TimeProp(item.Hvo, flid) != 0,
                 _ => false,
             };
             if (populated)
@@ -127,6 +141,7 @@ internal sealed class LexSenseDeleteHandler : ICompoundOperationHandler
         var entryId = CanonicalId.FromGuid(entry.Guid);
         var senseBefore = ReadSenses(entry);
         var msaBefore = ReadAnalyses(entry);
+        var preview = Preview(entry, sense, msa);
         if (msa is not null)
             touchedTargets.Add(CanonicalId.FromGuid(msa.Guid));
         sense.Delete();
@@ -134,7 +149,7 @@ internal sealed class LexSenseDeleteHandler : ICompoundOperationHandler
             msa.Delete();
         var effects = new List<ExpectedEffect>
         {
-            new(entryId, SnapshotFields.LexEntrySenses, senseBefore, ReadSenses(entry)),
+            new(entryId, SnapshotFields.LexEntrySenses, senseBefore, ReadSenses(entry), preview),
         };
         if (msa is not null)
             effects.Add(new(entryId, SnapshotFields.LexEntryMorphoSyntaxAnalyses, msaBefore, ReadAnalyses(entry)));
@@ -146,10 +161,13 @@ internal sealed class LexSenseDeleteHandler : ICompoundOperationHandler
 
     public IReadOnlyList<ExpectedEffect> ReadCurrentFootprintEffects(LcmCache cache, OperationEnvelope operation)
     {
-        var (_, _, entry, msa) = Resolve(cache, operation);
+        var (_, sense, entry, msa) = Resolve(cache, operation);
         var entryId = CanonicalId.FromGuid(entry.Guid);
         var senses = ReadSenses(entry);
-        var effects = new List<ExpectedEffect> { new(entryId, SnapshotFields.LexEntrySenses, senses, senses) };
+        var effects = new List<ExpectedEffect>
+        {
+            new(entryId, SnapshotFields.LexEntrySenses, senses, senses, Preview(entry, sense, msa)),
+        };
         if (msa is not null)
         {
             var analyses = ReadAnalyses(entry);
@@ -179,12 +197,44 @@ internal sealed class LexSenseDeleteHandler : ICompoundOperationHandler
                 $"'{Kind}' names an analysis the sense no longer points at; recompute the Draft.");
         if (current.Owner?.Guid != entry.Guid)
             throw new InvalidOperationException($"'{Kind}' deletes only an analysis the sense's own entry owns.");
+        if (LexSenseEmptiness.FirstPopulatedField(cache, current) is { } msaField)
+            throw new InvalidOperationException(
+                $"'{Kind}' deletes only an analysis with no content, so the deletion can be reversed exactly; " +
+                $"the analysis has content in '{msaField}'.");
         if (entry.SensesOS.Any(other => other.Guid != sense.Guid && other.MorphoSyntaxAnalysisRA?.Guid == current.Guid))
             throw new InvalidOperationException($"'{Kind}' refuses an analysis another sense of the entry uses.");
         if (current.ReferringObjects.Any(other => other.Guid != sense.Guid))
             throw new InvalidOperationException(
                 $"'{Kind}' refuses an analysis that other objects, such as parser analyses, still refer to.");
         return (id, sense, entry, current);
+    }
+
+    /// <summary>The recorded before-state, enough to recreate the sense and analysis.</summary>
+    private static JsonElement Preview(ILexEntry entry, ILexSense sense, IMoMorphSynAnalysis? msa)
+    {
+        var index = entry.SensesOS.IndexOf(sense);
+        string? Neighbour(int at) => at >= 0 && at < entry.SensesOS.Count
+            ? CanonicalId.FromGuid(entry.SensesOS[at].Guid).Value : null;
+        return JsonSerializer.SerializeToElement(new
+        {
+            deletedSense = new
+            {
+                id = CanonicalId.FromGuid(sense.Guid).Value,
+                entry = CanonicalId.FromGuid(entry.Guid).Value,
+                index,
+                after = Neighbour(index - 1),
+                before = Neighbour(index + 1),
+                analysis = msa is null ? null : CanonicalId.FromGuid(msa.Guid).Value,
+            },
+            deletedAnalysis = msa is null ? null : new
+            {
+                id = CanonicalId.FromGuid(msa.Guid).Value,
+                @class = msa.ClassName,
+                content = "none",
+            },
+            reversal = "createSenses with the same id and placement, createMorphoSyntaxAnalyses of the same class and id, " +
+                "then setMorphoSyntaxAnalysis on the sense",
+        });
     }
 
     private static Dictionary<string, string> ReadSenses(ILexEntry entry)

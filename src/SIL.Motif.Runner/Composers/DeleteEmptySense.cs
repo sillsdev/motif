@@ -58,6 +58,9 @@ public static class DeleteEmptySenseComposer
         {
             if (msa.Owner?.Guid != entry.Guid)
                 throw new InvalidOperationException("The sense's analysis is not owned by its entry.");
+            if (LexSenseEmptiness.FirstPopulatedField(cache, msa) is { } msaField)
+                throw new InvalidOperationException(
+                    $"The sense's analysis has content in '{msaField}'; only an analysis with no content is deleted, so the deletion can be reversed exactly.");
             if (msa.ReferringObjects.Any(other => other.Guid != sense.Guid))
                 throw new InvalidOperationException(
                     "Other objects, such as parser analyses, still refer to the sense's analysis, so it cannot be deleted with the sense.");

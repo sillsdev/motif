@@ -520,6 +520,20 @@ The owning wordform row is the semantic effect; occurrence details are separate 
 evidence. Apply reads both back, so a changed analysis identity, reading, opinion, or Text use makes the
 collected change fail its fit check. Cancelling the pending change is Undo.
 
+`lexical/lexSense/delete` targets one top-level `LexSense` and has the closed `after` shape
+`{ "msa": "<id>" | null }`. The kind is named by ADR 0023 decision 2, which has `delete` name the concrete
+class of the deleted object, as `analysis/wfiAnalysis/delete` does. It deletes only a sense with no content:
+every stored field except the analysis link must be empty, so a gloss, definition, example, note, sub-sense or
+any other populated field refuses the operation, and no flag overrides that. It also refuses a sense that any
+other object refers to (a parser bundle, a variant's component list). `msa` names the stem or affix analysis
+deleted with the sense, or null to keep it. A named analysis must be the one the sense points at, owned by the
+sense's entry, used by no other sense, referred to by nothing but this sense, and itself without content, so the
+deletion can be reversed exactly: Dry Run and Receipt record the sense's id, entry, index and neighbours and the
+analysis's id and class, and `lexical/lexEntry/createSenses`, `lexical/lexEntry/createMorphoSyntaxAnalyses` and
+`lexical/lexSense/setMorphoSyntaxAnalysis` rebuild both with the same ids. The effects are the entry's
+`lexical/lexEntry/senses` map and, when an analysis is deleted, its `lexical/lexEntry/morphoSyntaxAnalyses` map.
+The composers are `compose-delete-empty-sense` and `compose-set-stem-part-of-speech`, both CLI-first.
+
 `analysis/wfiWordform/createAnalyses` targets a `WfiWordform`, supplies a fresh `entityId`, and has
 the closed `after` shape `{ "morphs": [{ "form": "<id>", "msa": "<id>",
 "inflType": "<id>", "guessedString": "..." }] }`. `morphs` is nonempty and ordered. The form,
