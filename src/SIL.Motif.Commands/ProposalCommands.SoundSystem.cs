@@ -486,7 +486,7 @@ public static partial class ProposalCommands
         .ToArray();
 
     /// <summary>Adds an ordering edge from each new operation to every staged one that made what it names.</summary>
-    private static OperationEnvelope[] DeclareDependencies(JsonElement input,
+    internal static OperationEnvelope[] DeclareDependencies(JsonElement input,
         IReadOnlyList<OperationEnvelope> operations, StagedDependencyIndex staged)
     {
         var authoredReferences = new HashSet<Guid>();
@@ -513,7 +513,7 @@ public static partial class ProposalCommands
     }
 
     /// <summary>Staged operations and their lookups, kept across steps.</summary>
-    private sealed class StagedDependencyIndex
+    internal sealed class StagedDependencyIndex
     {
         public List<OperationEnvelope> Operations { get; } = new();
         public Dictionary<CanonicalId, int> Positions { get; } = new();
@@ -552,7 +552,7 @@ public static partial class ProposalCommands
     }
 
     /// <summary>Drops each editor another predecessor already follows, so edits of one owner chain.</summary>
-    private static IEnumerable<CanonicalId> WithoutImplied(IReadOnlyList<CanonicalId> candidates,
+    internal static IEnumerable<CanonicalId> WithoutImplied(IReadOnlyList<CanonicalId> candidates,
         IReadOnlyList<CanonicalId> editors, IReadOnlyList<OperationEnvelope> staged,
         IReadOnlyDictionary<CanonicalId, int> positions)
     {
@@ -644,7 +644,7 @@ public static partial class ProposalCommands
                 "A Draft may contain only one write to an ad hoc prohibition's Disabled field.");
     }
 
-    private static void CollectIds(JsonElement value, HashSet<Guid> ids, bool reference = false)
+    internal static void CollectIds(JsonElement value, HashSet<Guid> ids, bool reference = false)
     {
         if (reference && value.ValueKind == JsonValueKind.String && CanonicalId.TryParse(value.GetString(), out var id))
             ids.Add(id.ToGuid());

@@ -41,27 +41,43 @@ public sealed class ProposalSlotIndexTests
     private static OperationEnvelope Delete(CanonicalId analysis) => new(CanonicalId.Mint(),
         WfiAnalysisOperationKinds.DeleteAnalysis, target: analysis);
 
+    private static OperationEnvelope Retarget(CanonicalId bundle) => new(CanonicalId.Mint(),
+        AllomorphRetargetOperationKinds.SetBundleMorph, target: bundle);
+
+    private static OperationEnvelope CreateWordform(CanonicalId root, CanonicalId entity) => new(CanonicalId.Mint(),
+        LangProjectWordformsOperationKinds.Create, entityId: entity, target: root,
+        after: JsonSerializer.SerializeToElement(new { ws = "en", text = "w" }));
+
     [Fact]
     public void AMixedDraftReportsTheSameConflictingPairAsPairwiseChecking()
     {
-        var senses = Enumerable.Range(0, 6).Select(_ => CanonicalId.Mint()).ToArray();
-        var analyses = Enumerable.Range(0, 3).Select(_ => CanonicalId.Mint()).ToArray();
+        // A small shared pool makes one target carry a gloss, a deletion and a retarget in the same draft.
+        var targets = Enumerable.Range(0, 4).Select(_ => CanonicalId.Mint()).ToArray();
+        var roots = Enumerable.Range(0, 2).Select(_ => CanonicalId.Mint()).ToArray();
+        var entities = Enumerable.Range(0, 3).Select(_ => CanonicalId.Mint()).ToArray();
         var random = new Random(20261020);
-        OperationEnvelope Next() => random.Next(4) == 0
-            ? Delete(analyses[random.Next(analyses.Length)])
-            : Gloss(senses[random.Next(senses.Length)], random.Next(2) == 0 ? "en" : "fr");
+        CanonicalId Target() => targets[random.Next(targets.Length)];
+        OperationEnvelope Next() => random.Next(6) switch
+        {
+            0 => Delete(Target()),
+            1 => Retarget(Target()),
+            2 => CreateWordform(roots[random.Next(roots.Length)], entities[random.Next(entities.Length)]),
+            _ => Gloss(Target(), random.Next(2) == 0 ? "en" : "fr"),
+        };
 
         var conflicts = 0;
-        for (var trial = 0; trial < 300; trial++)
+        const int trials = 400;
+        for (var trial = 0; trial < trials; trial++)
         {
             // The retained part may itself conflict: an append that fixes a Draft must still be accepted.
-            var retained = Enumerable.Range(0, random.Next(0, 8)).Select(_ => Next()).ToArray();
-            var added = Enumerable.Range(0, random.Next(1, 5)).Select(_ => Next()).ToArray();
+            var retained = Enumerable.Range(0, random.Next(0, 5)).Select(_ => Next()).ToArray();
+            var added = Enumerable.Range(0, random.Next(1, 4)).Select(_ => Next()).ToArray();
             var expected = Pairwise(retained, added);
             Assert.Equal(expected, Incremental(retained, added));
             if (expected is not null) conflicts++;
         }
-        Assert.InRange(conflicts, 30, 270);
+        Assert.True(conflicts > trials / 5, $"Only {conflicts} of {trials} drafts conflicted.");
+        Assert.True(conflicts < trials * 9 / 10, $"{conflicts} of {trials} drafts conflicted; too few clean ones.");
     }
 
     [Fact]
