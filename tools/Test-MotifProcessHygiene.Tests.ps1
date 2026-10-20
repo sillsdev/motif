@@ -51,12 +51,17 @@ function Start-TestProcess {
     return [Diagnostics.Process]::Start($startInfo)
 }
 
+# A starved machine slows a pwsh start 10 to 20 times, so child waits are generous.
+$script:ChildStartTimeoutSeconds = 180
+
 function Wait-ForFile {
     param([string] $Path, [Diagnostics.Process] $Process)
     $timer = [Diagnostics.Stopwatch]::StartNew()
     while (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
         if ($Process.HasExited) { throw "Test process exited with code $($Process.ExitCode) before it was ready." }
-        if ($timer.Elapsed.TotalSeconds -ge 60) { throw "Test process did not become ready: $Path" }
+        if ($timer.Elapsed.TotalSeconds -ge $script:ChildStartTimeoutSeconds) {
+            throw "Test process did not become ready within $($script:ChildStartTimeoutSeconds) s: $Path"
+        }
         Start-Sleep -Milliseconds 50
     }
 }
@@ -127,11 +132,13 @@ try {
         Wait-ForFile -Path @($insideReady, $worktreeReady, $hyphenReady)[$index] -Process $processes[$index]
     }
 
+    $sweepClock = [Diagnostics.Stopwatch]::StartNew()
     $sweepLock = Enter-MotifWorktreeLock -RepoRoot $sweepRoot -Context 'process sweep test'
     try {
         Stop-MotifStaleProcesses -RepoRoot $sweepRoot -LockHandle $sweepLock -AdditionalProcessNames @('pwsh')
     }
     finally { Exit-MotifWorktreeLock -LockHandle $sweepLock }
+    $sweepSeconds = $sweepClock.Elapsed.TotalSeconds
 
     Assert-True (-not (Test-ProcessAlive $processes[0].Id)) 'A process inside the worktree survived the sweep.'
     Assert-True (Test-ProcessAlive $processes[1].Id) 'A process in the .worktrees sibling was swept.'
@@ -147,12 +154,21 @@ try {
     }
     $ancestorStart.RedirectStandardOutput = $true
     $ancestorStart.RedirectStandardError = $true
+    # Allow 40 times the sweep just measured, never under 120 s.
+    $probeTimeoutSeconds = [Math]::Max(120, [Math]::Ceiling(40 * $sweepSeconds))
+    $probeClock = [Diagnostics.Stopwatch]::StartNew()
     $ancestorProcess = [Diagnostics.Process]::Start($ancestorStart)
-    if (-not $ancestorProcess.WaitForExit(30000)) {
-        $ancestorProcess.Kill()
-        throw 'The ancestor process probe did not finish.'
+    # Drain both pipes so a chatty probe cannot block on a full pipe.
+    $stdoutTask = $ancestorProcess.StandardOutput.ReadToEndAsync()
+    $stderrTask = $ancestorProcess.StandardError.ReadToEndAsync()
+    if (-not $ancestorProcess.WaitForExit($probeTimeoutSeconds * 1000)) {
+        $ancestorProcess.Kill($true)
+        throw "The ancestor process probe did not finish within $probeTimeoutSeconds s (in-process sweep took $([Math]::Round($sweepSeconds, 1)) s)."
     }
-    $probeOutput = $ancestorProcess.StandardOutput.ReadToEnd() + $ancestorProcess.StandardError.ReadToEnd()
+    $ancestorProcess.WaitForExit()
+    $probeOutput = $stdoutTask.GetAwaiter().GetResult() + $stderrTask.GetAwaiter().GetResult()
+    Write-Host ("Ancestor probe finished in {0:n1} s (limit {1} s, in-process sweep {2:n1} s)." -f
+        $probeClock.Elapsed.TotalSeconds, $probeTimeoutSeconds, $sweepSeconds)
     Assert-True ($ancestorProcess.ExitCode -eq 0) "The ancestor process probe failed: $probeOutput"
     [IO.File]::WriteAllText($ancestorMarker, 'parent alive')
     Assert-True (Test-ProcessAlive $PID) 'The current process did not survive the process sweep.'

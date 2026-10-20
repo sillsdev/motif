@@ -293,8 +293,7 @@ function Get-MotifProcessInformation {
             catch { }
             foreach ($link in @("/proc/$ProcessId/cwd", "/proc/$ProcessId/exe")) {
                 try {
-                    $item = Get-Item -LiteralPath $link -Force -ErrorAction Stop
-                    $target = $item.ResolveLinkTarget($true)
+                    $target = [IO.File]::ResolveLinkTarget($link, $true)
                     if ($target) { $paths.Add($target.FullName) }
                 }
                 catch { }
