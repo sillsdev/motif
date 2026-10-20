@@ -127,6 +127,12 @@ else {
         Write-Host 'Design-token hygiene failed. Run: dotnet run --file tools/TokenHygiene/token-hygiene.cs' -ForegroundColor Red
         exit 1
     }
+
+    Write-Step 'localization hygiene (report only)'
+    Push-Location $repoRoot
+    try { & dotnet run --file tools/LocalizationHygiene/localization-hygiene.cs --artifacts-path (Get-MotifToolArtifactsPath $repoRoot 'localization-hygiene') }
+    finally { Pop-Location }
+    $global:LASTEXITCODE = 0
 }
 
 $restoreModule = Join-Path $repoRoot 'tools/MotifRestore.psm1'
