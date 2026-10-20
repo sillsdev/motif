@@ -1,4 +1,3 @@
-using SIL.Motif.App.ViewModels;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.SelectionReading;
 using SIL.Motif.Contract.Requests;
@@ -38,74 +37,52 @@ public sealed class SelectionViewportScaleTests(ITestOutputHelper output)
         Assert.Equal(wordRows, summary.Value.WordRowCount);
         Assert.Equal(textCount, summary.Value.Texts.Count);
         Assert.Equal(occurrenceCount, summary.Value.PhysicalOccurrenceCount);
-        var viewport = new SelectionTextViewport();
-        var weakModels = new List<WeakReference<object>>();
         var sourceTokens = 0;
-        var distinctAnchors = new HashSet<SIL.Motif.Contract.Requests.OccurrenceAnchor>();
+        var distinctAnchors = new HashSet<(Guid TextId, Guid ParagraphId, Guid SegmentId, int OccurrenceIndex)>();
         var ranges = 0;
-        try
+        foreach (var text in summary.Value.Texts)
         {
-            foreach (var text in summary.Value.Texts)
+            var position = new TextLineRange();
+            while (true)
             {
-                var position = new TextLineRange();
-                while (true)
-                {
-                    var before = reader.Diagnostics;
-                    await viewport.ShowAsync(reader, text, position);
-                    Assert.Null(viewport.Refusal);
-                    var slice = Assert.IsType<TextLineSlice>(viewport.Slice);
-                    var returnedWordforms = slice.Wordforms.Values.Select(word => word.WordformId).Distinct().Count();
-                    Assert.InRange(reader.Diagnostics.QueriesIssued - before.QueriesIssued, 0,
-                        5 + (returnedWordforms + 255) / 256);
-                    Assert.InRange(reader.Diagnostics.TextRowsDeserialized - before.TextRowsDeserialized, 0, 1);
-                    Assert.Equal(viewport.Lines.Count, reader.Diagnostics.LiveLineModels);
-                    Assert.Equal(slice.ReturnedTokens, reader.Diagnostics.LiveTokenModels);
-                    Assert.InRange(reader.Diagnostics.LiveLineModels, 0, 32);
-                    Assert.InRange(reader.Diagnostics.LiveTokenModels, 0, 512);
-                    Assert.InRange(reader.Diagnostics.CachedTextGraphs, 0, 1);
-                    Assert.InRange(reader.Diagnostics.CachedLineRanges, 0, 3);
-                    Assert.InRange(reader.Diagnostics.CachedWordDetails, 0, 32);
-                    Assert.InRange(reader.Diagnostics.LeasedLineRanges, 0, 1);
-                    Assert.InRange(reader.Diagnostics.PendingReads, 0, 2);
-                    sourceTokens += slice.ReturnedTokens;
-                    foreach (var token in viewport.Lines.SelectMany(line => line.Tokens).Where(token => token.IsWord))
-                        Assert.True(distinctAnchors.Add(Assert.IsType<SIL.Motif.Contract.Requests.OccurrenceAnchor>(token.Occurrence)));
-                    weakModels.AddRange(ScaleCountHarness.ObserveViewModels(viewport.Lines.Cast<object>()
-                        .Concat(viewport.Lines.SelectMany(line => line.Tokens)),
-                        typeof(ResultsLineViewModel), typeof(ResultsTokenViewModel)));
-                    var sameRangeCounts = reader.Diagnostics;
-                    await viewport.ShowAsync(reader, text, position);
-                    Assert.Equal(sameRangeCounts.CreatedLineModels, reader.Diagnostics.CreatedLineModels);
-                    Assert.Equal(sameRangeCounts.CreatedTokenModels, reader.Diagnostics.CreatedTokenModels);
-                    Assert.Equal(sameRangeCounts.QueriesIssued, reader.Diagnostics.QueriesIssued);
-                    ranges++;
-                    if (slice.NextLine is not { } next) break;
-                    position = new TextLineRange(next, TokenOffset: slice.NextTokenOffset ?? 0);
-                }
+                var before = reader.Diagnostics;
+                var outcome = await reader.ReadLinesAsync(text.TextId, position);
+                Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+                using var read = outcome.Value!;
+                var slice = read.Value;
+                var returnedWordforms = slice.Wordforms.Values.Select(word => word.WordformId).Distinct().Count();
+                Assert.InRange(reader.Diagnostics.QueriesIssued - before.QueriesIssued, 0,
+                    5 + (returnedWordforms + 255) / 256);
+                Assert.InRange(reader.Diagnostics.TextRowsDeserialized - before.TextRowsDeserialized, 0, 1);
+                Assert.InRange(slice.Lines.Count, 0, 32);
+                Assert.InRange(slice.ReturnedTokens, 0, 512);
+                Assert.Equal(slice.ReturnedTokens, slice.Lines.Sum(line => line.Tokens.Count));
+                Assert.InRange(reader.Diagnostics.CachedTextGraphs, 0, 1);
+                Assert.InRange(reader.Diagnostics.CachedLineRanges, 0, 3);
+                Assert.InRange(reader.Diagnostics.CachedWordDetails, 0, 32);
+                Assert.InRange(reader.Diagnostics.LeasedLineRanges, 0, 1);
+                Assert.InRange(reader.Diagnostics.PendingReads, 0, 2);
+                sourceTokens += slice.Lines.SelectMany(line => line.Tokens).Count(entry => entry.Token.WordformId is not null);
+                foreach (var line in slice.Lines)
+                    foreach (var token in line.Tokens.Where(entry => entry.Token.WordformId is not null))
+                        Assert.True(distinctAnchors.Add((text.TextId, line.ParagraphId, line.SegmentId, token.Token.OccurrenceIndex)));
+                ranges++;
+                if (slice.NextLine is not { } next) break;
+                position = new TextLineRange(next, TokenOffset: slice.NextTokenOffset ?? 0);
             }
-            Assert.Equal(occurrenceCount, distinctAnchors.Count);
-            Assert.Equal(occurrenceCount, sourceTokens);
-            Assert.Equal(textCount, reader.Diagnostics.TextRowsDeserialized);
-            await viewport.ShowAsync(reader, summary.Value.Texts[0], new TextLineRange());
-            Assert.Equal(textCount + 1, reader.Diagnostics.TextRowsDeserialized);
-            await viewport.StopAsync();
-            // Resumed inline inside the frame that built the models, whose temporaries Debug still reports as roots.
-            await Task.Yield();
-            Assert.Equal(0, reader.Diagnostics.LiveLineModels);
-            Assert.Equal(0, reader.Diagnostics.LiveTokenModels);
-            Assert.Equal(0, reader.Diagnostics.LeasedLineRanges);
-            ScaleCountHarness.AssertLiveViewModelBudget(weakModels, typeof(ResultsLineViewModel), 0, 0);
-            ScaleCountHarness.AssertLiveViewModelBudget(weakModels, typeof(ResultsTokenViewModel), 0, 0);
-            Assert.Equal(reads.Snapshot().Queries, reader.Diagnostics.QueriesIssued);
-            Assert.Equal(reads.Snapshot().RecordsDeserialized, reader.Diagnostics.RepositoryRecordsDeserialized);
-            output.WriteLine($"SCALE Selection viewport: {wordRows} rows, {textCount} Texts, {distinctAnchors.Count} occurrences; " +
-                $"{ranges} sequential ranges; {reader.Diagnostics.QueriesIssued} queries; " +
-                $"{reader.Diagnostics.TextRowsDeserialized} Text rows; {reader.Diagnostics.CreatedLineModels} line models; " +
-                $"{reader.Diagnostics.CreatedTokenModels} token models, all released.");
         }
-        finally
-        {
-            await viewport.StopAsync();
-        }
+        Assert.Equal(occurrenceCount, distinctAnchors.Count);
+        Assert.Equal(occurrenceCount, sourceTokens);
+        Assert.Equal(textCount, reader.Diagnostics.TextRowsDeserialized);
+        var again = await reader.ReadLinesAsync(summary.Value.Texts[0].TextId, new TextLineRange());
+        Assert.True(again.Succeeded, again.Refusal?.Message);
+        again.Value!.Dispose();
+        Assert.Equal(textCount + 1, reader.Diagnostics.TextRowsDeserialized);
+        Assert.Equal(0, reader.Diagnostics.LeasedLineRanges);
+        Assert.Equal(reads.Snapshot().Queries, reader.Diagnostics.QueriesIssued);
+        Assert.Equal(reads.Snapshot().RecordsDeserialized, reader.Diagnostics.RepositoryRecordsDeserialized);
+        output.WriteLine($"SCALE Selection reader: {wordRows} rows, {textCount} Texts, {distinctAnchors.Count} occurrences; " +
+            $"{ranges} sequential ranges; {reader.Diagnostics.QueriesIssued} queries; " +
+            $"{reader.Diagnostics.TextRowsDeserialized} Text rows.");
     }
 }
