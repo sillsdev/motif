@@ -201,6 +201,30 @@ public sealed class WordTraceQueryTests : IDisposable
     }
 
     [Fact]
+    public void WithoutHostEvidenceTheTraceKeepsTheParserAnswerButSkipsTheFieldWorksProjectCopy()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        Capture(fwDataPath);
+        var invoker = new FakeInvoker
+        {
+            Respond = _ => new PanGlossOutcome.Completed(GoldenStandardOutput, string.Empty, TimeSpan.Zero),
+        };
+
+        var full = WordTraceQuery.Query(new WordTraceRequest(fwDataPath, "sagd"),
+            new PanGlossTracer(invoker), CancellationToken.None).Value!;
+        var light = WordTraceQuery.Query(new WordTraceRequest(fwDataPath, "sagd"),
+            new PanGlossTracer(invoker), CancellationToken.None, hostEvidence: false).Value!;
+
+        Assert.NotEmpty(full.HostCapture!.WritingSystems);
+        Assert.Empty(light.HostCapture!.WritingSystems);
+        Assert.Null(light.HostCapture.LexiconEntryCount);
+        Assert.Equal(full.Parsed, light.Parsed);
+        Assert.Equal(full.Reading.Attempts.Count, light.Reading.Attempts.Count);
+        Assert.Equal(full.Reading.Analyses.Count, light.Reading.Analyses.Count);
+        Assert.Equal(full.Reading.NoParseReasons, light.Reading.NoParseReasons);
+    }
+
+    [Fact]
     public void LiveTraceRecordsMeasuredHostElapsedTime()
     {
         var fwDataPath = _pristine.CopyProjectFile();

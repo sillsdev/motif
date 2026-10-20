@@ -818,8 +818,8 @@ internal static class AgentTools
             true,
             true,
             true,
-            (c, a, ct) => Task.FromResult(ToolOutcome.From(WordTraceQuery.Query(
-                new WordTraceRequest(c.ProjectPath, a.Required("word")), ct)))) { Requests = [typeof(WordTraceRequest)] },
+            (c, a, ct) => Task.FromResult(TryWord(c.ProjectPath, a.Required("word"), a.Optional("detail") == "detailed", ct)))
+            { Requests = [typeof(WordTraceRequest)] },
 
         new("motif_job",
             string.Empty,
@@ -1237,6 +1237,17 @@ internal static class AgentTools
             ["uri"] = EncodingGuides.UriPrefix + topic,
             ["guide"] = EncodingGuides.ReadTopic(topic),
         }, "Follow the guide's Trial check and ask the linguist if its evidence leaves a choice open.");
+    }
+
+    // Concise skips the slow FieldWorks project copy that only the detailed trace's links and tables need.
+    private static ToolOutcome TryWord(string projectPath, string word, bool detailed, CancellationToken ct)
+    {
+        var request = new WordTraceRequest(projectPath, word);
+        var outcome = detailed ? WordTraceQuery.Query(request, ct) : WordTraceQuery.QueryAnswerOnly(request, ct);
+        if (detailed) return ToolOutcome.From(outcome);
+        return outcome.Succeeded
+            ? ToolOutcome.From(CommandOutcome<JsonObject>.Success(TryWordSummary.Concise(outcome.Value!)))
+            : ToolOutcome.Refused(outcome.Refusal!);
     }
 
     private static ToolOutcome ReadGrammar(ServerContext context, ToolArgs args)

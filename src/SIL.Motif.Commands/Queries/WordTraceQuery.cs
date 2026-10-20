@@ -45,6 +45,17 @@ public static class WordTraceQuery
         WordTraceRequest request, CancellationToken cancellationToken = default) =>
         Query(request, PanGlossExecutable.TryLocate(), cancellationToken);
 
+    /// <summary>
+    /// Traces a word for a caller that shows only the parser's answer. It skips the copy of the Baseline's FieldWorks
+    /// project that supplies writing systems, FieldWorks links and captured names, which costs seconds on a large lexicon.
+    /// </summary>
+    public static CommandOutcome<WordTraceResponse> QueryAnswerOnly(
+        WordTraceRequest request, CancellationToken cancellationToken = default)
+    {
+        using var invoker = new PanGlossInvoker(PanGlossExecutable.TryLocate());
+        return Query(request, new PanGlossTracer(invoker), cancellationToken, hostEvidence: false);
+    }
+
     /// <summary>Traces a word with an explicitly selected parser.</summary>
     /// <param name="request">The project and word to trace.</param>
     /// <param name="cancellationToken">Cancels the trace.</param>
@@ -60,7 +71,7 @@ public static class WordTraceQuery
 
     internal static CommandOutcome<WordTraceResponse> Query(
         WordTraceRequest request, IPanGlossTracer tracer, CancellationToken cancellationToken,
-        Action<AssessmentProgress>? onProgress = null)
+        Action<AssessmentProgress>? onProgress = null, bool hostEvidence = true)
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(tracer);
@@ -141,7 +152,7 @@ public static class WordTraceQuery
             if (result.Succeeded) refusals.Clear(baseline.Token);
             else if (result.Refusal?.ParserDiagnostic is not null) refusals.Save(baseline.Token, result.Refusal);
             return result.Succeeded ? CommandOutcome<WordTraceResponse>.Success(
-                TraceDiagnosticCapture.Attach(result.Value!, baseline, project, elapsedMs)) : result;
+                TraceDiagnosticCapture.Attach(result.Value!, baseline, project, elapsedMs, hostEvidence)) : result;
         });
     }
 

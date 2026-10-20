@@ -17,11 +17,11 @@ namespace SIL.Motif.Commands.Queries;
 internal static class TraceDiagnosticCapture
 {
     internal static WordTraceResponse Attach(WordTraceResponse response, BaselineRecord baseline, ProjectLocator project,
-        long? wallElapsedMs = null)
+        long? wallElapsedMs = null, bool hostEvidence = true)
     {
         var baselineSource = new TraceBaselineSource(baseline.Token, baseline.SourceLastWriteUtc, baseline.PublishedUtc,
             $"Saved FieldWorks project as of {baseline.SourceLastWriteUtc:O}; Baseline captured {baseline.Token.CapturedUtc}.");
-        if (string.IsNullOrEmpty(response.DiagnosticJson)) return response with
+        if (!hostEvidence || string.IsNullOrEmpty(response.DiagnosticJson)) return response with
         {
             HostCapture = new TraceHostCapture(baseline.Token.ProjectIdentity, response.GrammarHash,
                 response.GrammarHashSemantics, baseline.Token.BundleDigest, DateTimeOffset.UtcNow, wallElapsedMs, [])
