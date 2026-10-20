@@ -246,9 +246,11 @@ public sealed class ParkedDryRunReconciliationTests : IDisposable
         if (publishedFileExists) File.WriteAllText(Path.Combine(_root, "baseline.zip"), "");
         var token = new BaselineToken("project-identity", "sha256:" + new string('a', 64), "1",
             _now.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ssZ"), "sha256:" + new string('b', 64));
-        runtime.Baselines.Record(runtime.WorkspaceKey,
-            new BaselinePublication(_root, Path.Combine(_root, "baseline.zip"), token), _now, _now,
-            TestTextWords.Empty);
+        var publication = new BaselinePublication(_root, Path.Combine(_root, "baseline.zip"), token);
+        runtime.Baselines.Record(runtime.WorkspaceKey, publication, _now, _now, TestTextWords.Empty);
+        // A Baseline counts as published only while its file is on disk.
+        Directory.CreateDirectory(Path.GetDirectoryName(publication.FwDataPath)!);
+        File.WriteAllText(publication.FwDataPath, "");
     }
 
     /// Drives one baseline-refresh attempt straight to a bounded infrastructure failure.

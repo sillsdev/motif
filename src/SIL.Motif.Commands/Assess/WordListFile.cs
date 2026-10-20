@@ -21,6 +21,9 @@ public static class WordListFile
         if (inline.Count > 0)
             return Refused(RefusalCodes.AssessWordsAmbiguous,
                 "Give either words or a words file, not both.", wordsFile);
+        if (!File.Exists(wordsFile))
+            return Refused(RefusalCodes.AssessWordsFileUnreadable,
+                $"The words file '{wordsFile}' does not exist.", wordsFile);
         string[] lines;
         try { lines = File.ReadAllLines(wordsFile, System.Text.Encoding.UTF8); }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException
