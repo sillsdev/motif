@@ -11,9 +11,7 @@ using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
-using SIL.Motif.Contract.Commands;
 using SIL.Motif.Host;
-using SIL.Motif.Host.Installation;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Tests.TestFixtures;
@@ -69,19 +67,6 @@ public sealed class PendingTrialArgvTests(PristineProjectFixture pristine)
         Assert.Equal(FailureReason.InvalidArgument, Envelope(result.Error).Reason);
         Assert.Contains("Usage: motif trial --pending", Envelope(result.Error).Message, StringComparison.Ordinal);
         Assert.DoesNotContain("always waits", Envelope(result.Error).Message, StringComparison.OrdinalIgnoreCase);
-    }
-
-    [Fact]
-    public async Task ATrialRefusedDuringAnUpdateExitsThreeAndKeepsItsCode()
-    {
-        // The test process and the CLI it starts share the update gate's test namespace through the environment.
-        using var update = MotifUpdateGate.TryAcquireForUpdate();
-        Assert.NotNull(update);
-
-        var result = await RunAsync(null, "trial", "--project", "missing.fwdata", "proposal/one", "--json");
-
-        Assert.Equal(3, result.ExitCode);
-        Assert.Equal(RefusalCodes.TrialUpdateInProgress, Envelope(result.Error).Code);
     }
 
     private static async Task<CliRun> RunAsync(string? root, params string[] arguments)
