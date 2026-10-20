@@ -17,15 +17,15 @@ every FieldWorks dialog (its minimum control height is Semi's 24).
 ## Decision
 
 1. **Keep the layered token names.** Renaming gains nothing, because FieldWorks' names are not a convention. A
-   mapping table, `docs/design/fw-token-map.md`, lists each Motif Intent or Component key beside its FieldWorks key and
-   value, with a reason wherever they differ, and a test pins the shared light values.
+   mapping table, `docs/design/fw-token-map.md`, to be written with the token work, will list each Motif Intent or Component key beside its FieldWorks key and
+   value, with a reason wherever they differ, and a test will pin the shared light values.
 2. **Adopt FieldWorks' light values** for the purposes that match (selected row, label ink, field border, rules),
    wherever Motif's contrast tests pass. A value that cannot pass is registered.
 3. **Never override a Semi key app-wide.** Control heights come from Motif-owned control themes or a resource scoped
    to the Motif root, so the visuals stay the same and a host keeps Semi's defaults.
 4. **The framework stays ready for theme variants.** Fuller dark and high-contrast work follows FieldWorks' net10
    migration and is not designed here. When hosted, Motif follows the host's theme.
-5. **Interface font and size are open:** pending an owner decision; the 13 DIP Andika body of ADR 0066 stands until then.
+5. **Interface font:** Motif keeps its bundled Andika at 13 DIP (owner decision, 2026-10-20). FieldWorks sets no UI family today (platform default, 11 px surface text), and a FieldWorks pull request is being prepared to bundle Andika as its standard Avalonia UI font, so this is expected to match.
 
 ## Consequences
 

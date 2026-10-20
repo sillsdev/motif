@@ -12,8 +12,7 @@ The [FieldWorks UX guide](https://github.com/sillsdev/FieldWorks/pull/1191) (`Do
 commands, comes from localizable resources, as whole sentences with placeholders. FieldWorks does this with a neutral
 .resx per project, a static accessor class (`Text(id) ?? id`), `{x:Static}` bindings in XAML, a reflection test and
 satellite files from Crowdin. Motif has about 1.2 to 1.6 thousand literal strings in the window, and an earlier
-design (`_briefs/arch-i18n.md`, outside the repository) chose ICU JSON with live language switching. That design
-was never built and is superseded.
+unbuilt design chose ICU JSON with live language switching. It was never built and is superseded.
 
 ## Decision
 

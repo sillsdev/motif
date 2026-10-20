@@ -31,5 +31,5 @@ The density contracts are exercised by `DesignTokenTests`, `ComponentStyleTests`
 Decision 3 stands for the sizes (26 and 28 DIP), but Motif no longer sets them by overriding Semi's own height keys
 for the whole application. Motif-owned control themes or a resource scoped to the Motif root supply them, so a host
 keeps Semi's defaults. Decision 4 stands, and each shared purpose is mapped to FieldWorks' value. The 13 DIP Andika
-body is open pending an owner decision on the interface font. See
+body stands as the interface font (owner decision, 2026-10-20). See
 [ADR 0074](0074-tokens-map-onto-fwavaloniatheme-and-never-override-semi.md).

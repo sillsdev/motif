@@ -27,13 +27,13 @@ language-independent automation ids.
 3. **Decisions where the guide is silent** are recorded in the register as proposals to send upstream, not as
    private Motif style.
 4. **Apply is one-way, and that is not a deviation.** Motif has no unapply. Proposals, Dry Run and Trials exist to
-   test before Apply, and Undo is meaningful only before Apply, within a Draft
+   test before Apply, and Undo exists only before Apply
    ([ADR 0016](0016-scratch-cache-copy-not-undo.md), [ADR 0005](0005-schema-operations-non-undoable-uow.md)).
    FieldWorks' own undo covers only a subset of its commands, and its Bulk Edit already works as Motif does: preview,
    clearly marked as not saved, a command that names what it does, then one step.
 5. **Dark mode and high contrast:** the token framework stays ready for theme variants. Fuller work comes after
    FieldWorks' move to net10 and is not designed here.
-6. **Interface font:** open, pending an owner decision. The guide sets no family, and this ADR does not pick one.
+6. **Interface font:** Motif keeps its bundled Andika at 13 px (owner decision, 2026-10-20). The guide sets no family, and a FieldWorks pull request to bundle Andika as its standard UI font is being prepared, so the register row is expected to become a match.
 7. **Crowdin:** Motif has no project now. Its strings join FieldWorks' project when the codebases merge.
 
 ## Consequences

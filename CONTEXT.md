@@ -252,8 +252,7 @@ _Avoid_: reviewed, accepted, approved, seen
 **Keep** and **Undo** (of a change in a Proposal):
 Keep marks a change looked at and leaves the Proposal as it is; Undo removes the change and every change
 that declared it depended on, which makes a new revision. Neither is Accept or Reject: nothing is
-approved, and an undone change is gone rather than refused. Undo exists only before Apply, within a Draft;
-once a Proposal is applied there is nothing to undo.
+approved, and an undone change is gone rather than refused. Undo exists only before Apply.
 _Avoid_: accept, reject, approve, discard
 
 **Preflight**:
@@ -285,7 +284,7 @@ _Avoid_: staleness, conflict, merge failure
 
 **Apply**:
 Writing a Proposal's changes into the FieldWorks project, always a person's act and always one-way: Motif
-has no unapply. A mistaken Apply is corrected by a new Proposal, never taken back. To test before it, a person
+has no unapply. To test before it, a person
 has Proposals, Dry Run and Trials ([ADR 0016](docs/adr/0016-scratch-cache-copy-not-undo.md),
 [ADR 0005](docs/adr/0005-schema-operations-non-undoable-uow.md)).
 _Avoid_: commit, save, publish, roll back
