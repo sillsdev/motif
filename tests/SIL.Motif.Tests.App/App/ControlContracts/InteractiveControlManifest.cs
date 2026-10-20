@@ -303,7 +303,7 @@ internal static class InteractiveControlManifest
 
 
         new("nested project menu entries", InteractiveControlFamily.Action,
-            "src/SIL.Motif.App/Views/MainWindow.axaml", "Open recent"),
+            "src/SIL.Motif.App/Views/MainWindow.axaml", "OpenRecentButton"),
         new("outcome summary and legend", InteractiveControlFamily.Summary,
             "src/SIL.Motif.App/Views/OutcomeBar.cs", "public sealed class OutcomeBar"),
         new("timing kind summary bar", InteractiveControlFamily.Summary,
@@ -321,7 +321,7 @@ internal static class InteractiveControlManifest
         new("diagnostic parser effort rows", InteractiveControlFamily.Collection,
             "src/SIL.Motif.App/Views/DiagnosticPanel.axaml", "AutomationProperties.Name=\"Parser effort rows\""),
         new("assessment progress bar", InteractiveControlFamily.Progress,
-            "src/SIL.Motif.App/Views/MainWindow.axaml", "AutomationProperties.Name=\"Parse all words progress\""),
+            "src/SIL.Motif.App/Views/MainWindow.axaml", "ParseAllWordsProgressAccessibleName"),
 
         new("Matrix selection summary", InteractiveControlFamily.Container,
             "src/SIL.Motif.App/Views/ComparePanel.axaml", "AutomationProperties.Name=\"{Binding Compare.SelectionText}\""),

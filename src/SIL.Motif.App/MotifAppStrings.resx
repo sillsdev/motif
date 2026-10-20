@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="MotifApp.ProjectMenuAccessibleName" xml:space="preserve">
+    <value>Project menu</value>
+    <comment>Accessible name of the project menu button in the top bar.</comment>
+  </data>
+  <data name="MotifApp.SelectNew" xml:space="preserve">
+    <value>Select New…</value>
+    <comment>Command in the project menu: pick another project file. The ellipsis means it asks for more input.</comment>
+  </data>
+  <data name="MotifApp.SelectNewDetail" xml:space="preserve">
+    <value>Choose another .fwdata file</value>
+    <comment>Detail line under the Select New command.</comment>
+  </data>
+  <data name="MotifApp.SelectNewAccessibleName" xml:space="preserve">
+    <value>Select a new project</value>
+    <comment>Accessible name of the Select New command.</comment>
+  </data>
+  <data name="MotifApp.OpenRecent" xml:space="preserve">
+    <value>Open Recent</value>
+    <comment>Command in the project menu that opens the list of recent projects.</comment>
+  </data>
+  <data name="MotifApp.OpenRecentAccessibleName" xml:space="preserve">
+    <value>Open a recent project</value>
+    <comment>Accessible name of the Open Recent command.</comment>
+  </data>
+  <data name="MotifApp.Configure" xml:space="preserve">
+    <value>Configure…</value>
+    <comment>Command in the project menu that opens the project configuration.</comment>
+  </data>
+  <data name="MotifApp.ConfigureAccessibleName" xml:space="preserve">
+    <value>Configure the project</value>
+    <comment>Accessible name of the Configure command.</comment>
+  </data>
+  <data name="MotifApp.WritingSystemsAndFonts" xml:space="preserve">
+    <value>Writing Systems and Fonts</value>
+    <comment>Command in the project menu that opens the writing system guide.</comment>
+  </data>
+  <data name="MotifApp.WritingSystemsAndFontsDetail" xml:space="preserve">
+    <value>How Motif displays project language text</value>
+    <comment>Detail line under the Writing Systems and Fonts command.</comment>
+  </data>
+  <data name="MotifApp.WritingSystemsAndFontsAccessibleName" xml:space="preserve">
+    <value>Writing system fonts and direction</value>
+    <comment>Accessible name of the Writing Systems and Fonts command.</comment>
+  </data>
+  <data name="MotifApp.SeeWhatChanged" xml:space="preserve">
+    <value>See What Changed</value>
+    <comment>Top bar button that shows what a refresh changed.</comment>
+  </data>
+  <data name="MotifApp.SeeWhatChangedAccessibleName" xml:space="preserve">
+    <value>See what the refresh changed</value>
+    <comment>Accessible name of the See What Changed button.</comment>
+  </data>
+  <data name="MotifApp.ParseAllWords" xml:space="preserve">
+    <value>Parse All Words</value>
+    <comment>Top bar button that parses the words the user chose.</comment>
+  </data>
+  <data name="MotifApp.ParseAllWordsAccessibleName" xml:space="preserve">
+    <value>Parse all words</value>
+    <comment>Accessible name of the Parse All Words button.</comment>
+  </data>
+  <data name="MotifApp.ParseAllWordsTip" xml:space="preserve">
+    <value>Parse the words you chose.</value>
+    <comment>Tooltip of the Parse All Words button.</comment>
+  </data>
+  <data name="MotifApp.ChooseWhatToParse" xml:space="preserve">
+    <value>Choose What to Parse</value>
+    <comment>Top bar button that opens the choice of what to parse.</comment>
+  </data>
+  <data name="MotifApp.ChooseWhatToParseAccessibleName" xml:space="preserve">
+    <value>Choose what to parse</value>
+    <comment>Accessible name of the Choose What to Parse button.</comment>
+  </data>
+  <data name="MotifApp.Refresh" xml:space="preserve">
+    <value>Refresh</value>
+    <comment>Top bar button that captures a new Baseline.</comment>
+  </data>
+  <data name="MotifApp.RefreshAccessibleName" xml:space="preserve">
+    <value>Refresh the project</value>
+    <comment>Accessible name of the Refresh button.</comment>
+  </data>
+  <data name="MotifApp.RefreshTip" xml:space="preserve">
+    <value>Capture a new Baseline from FieldWorks' last save.</value>
+    <comment>Tooltip of the Refresh button. Baseline is a Motif glossary term.</comment>
+  </data>
+  <data name="MotifApp.TechDemoStatus" xml:space="preserve">
+    <value>Tech demo: writes nothing until you press Apply</value>
+    <comment>Status bar notice that Motif writes only when the user presses Apply.</comment>
+  </data>
+  <data name="MotifApp.TechDemoStatusTip" xml:space="preserve">
+    <value>Keep a FieldWorks backup. Motif writes only when you press Apply.</value>
+    <comment>Tooltip of the status bar tech demo notice.</comment>
+  </data>
+  <data name="MotifApp.TechDemoCompact" xml:space="preserve">
+    <value>Tech Demo</value>
+    <comment>Status bar button shown when the window is too narrow for the full notice.</comment>
+  </data>
+  <data name="MotifApp.TechDemoCompactTip" xml:space="preserve">
+    <value>Tech demo: writes nothing until you press Apply. Report a problem.</value>
+    <comment>Tooltip of the compact Tech Demo button.</comment>
+  </data>
+  <data name="MotifApp.ReportProblem" xml:space="preserve">
+    <value>Report a Problem</value>
+    <comment>Command that opens the problem report.</comment>
+  </data>
+  <data name="MotifApp.ReportProblemAccessibleName" xml:space="preserve">
+    <value>Report a problem</value>
+    <comment>Accessible name of the Report a Problem command.</comment>
+  </data>
+  <data name="MotifApp.ReviewChangesAccessibleName" xml:space="preserve">
+    <value>Review changes not applied yet</value>
+    <comment>Accessible name of the status bar changes count button.</comment>
+  </data>
+  <data name="MotifApp.OpenWarningsAccessibleName" xml:space="preserve">
+    <value>Open Warnings</value>
+    <comment>Accessible name of the status bar warnings count button.</comment>
+  </data>
+  <data name="MotifApp.StatusChangesNounPattern" xml:space="preserve">
+    <value>{0, plural, one { change not applied yet} other { changes not applied yet}}</value>
+    <comment>Plural pattern: the words after the status bar changes count. Keeps its leading space.</comment>
+  </data>
+  <data name="MotifApp.StatusWarningsNounPattern" xml:space="preserve">
+    <value>{0, plural, one { warning} other { warnings}}</value>
+    <comment>Plural pattern: the word after the status bar warnings count. Keeps its leading space.</comment>
+  </data>
+  <data name="MotifApp.SeeParseProgressAccessibleName" xml:space="preserve">
+    <value>See parse progress</value>
+    <comment>Accessible name of the status bar parse progress button.</comment>
+  </data>
+  <data name="MotifApp.Parsing" xml:space="preserve">
+    <value>Parsing</value>
+    <comment>Status bar label shown while parsing when the window is narrow.</comment>
+  </data>
+  <data name="MotifApp.ParseProgressDetailsAccessibleName" xml:space="preserve">
+    <value>Parse progress details</value>
+    <comment>Accessible name of the parse progress text.</comment>
+  </data>
+  <data name="MotifApp.ParseAllWordsProgressAccessibleName" xml:space="preserve">
+    <value>Parse all words progress</value>
+    <comment>Accessible name of the parse progress bar.</comment>
+  </data>
+  <data name="MotifApp.Cancel" xml:space="preserve">
+    <value>Cancel</value>
+    <comment>Button that cancels parsing.</comment>
+  </data>
+  <data name="MotifApp.CancelParsingTip" xml:space="preserve">
+    <value>Cancel keeps the previous results.</value>
+    <comment>Tooltip of the Cancel button while parsing.</comment>
+  </data>
+  <data name="MotifApp.CancelParsingAccessibleName" xml:space="preserve">
+    <value>Cancel parsing all words</value>
+    <comment>Accessible name of the Cancel button while parsing.</comment>
+  </data>
+  <data name="MotifApp.ReportParseProblemAccessibleName" xml:space="preserve">
+    <value>Report a problem with parsing</value>
+    <comment>Accessible name of the Report a Problem button when parsing stalls.</comment>
+  </data>
+  <data name="MotifApp.SeeStoppedWords" xml:space="preserve">
+    <value>See Stopped Words</value>
+    <comment>Header of the expander listing words whose parse stopped.</comment>
+  </data>
+  <data name="MotifApp.SeeStoppedWordsAccessibleName" xml:space="preserve">
+    <value>See stopped words while parsing</value>
+    <comment>Accessible name of the stopped words expander.</comment>
+  </data>
+  <data name="MotifApp.KeyboardShortcutStatusAccessibleName" xml:space="preserve">
+    <value>Keyboard shortcut status</value>
+    <comment>Accessible name of the status bar line that announces keyboard shortcut results.</comment>
+  </data>
+</root>

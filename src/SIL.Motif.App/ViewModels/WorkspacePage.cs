@@ -111,10 +111,13 @@ public sealed partial class PageViewModel : ObservableObject
     private string _badge = string.Empty;
 
     /// <summary>The status bar's words after a changes count: singular only for exactly one.</summary>
-    public string ChangesNoun => Badge == "1" ? " change not applied yet" : " changes not applied yet";
+    public string ChangesNoun => PluralText.Format(MotifAppStrings.StatusChangesNounPattern, BadgeCount);
 
     /// <summary>The status bar's word after a warnings count: singular only for exactly one.</summary>
-    public string WarningsNoun => Badge == "1" ? " warning" : " warnings";
+    public string WarningsNoun => PluralText.Format(MotifAppStrings.StatusWarningsNounPattern, BadgeCount);
+
+    private int BadgeCount => int.TryParse(Badge, System.Globalization.NumberStyles.Integer,
+        System.Globalization.CultureInfo.CurrentCulture, out var count) ? count : 0;
 
     /// <summary>The changes count and its words, for the status bar's tooltip.</summary>
     public string ChangesTip => Badge + ChangesNoun;

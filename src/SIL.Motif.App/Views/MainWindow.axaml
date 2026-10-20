@@ -39,7 +39,7 @@
                 Theme="{DynamicResource OutlineButton}" Classes="Tertiary projectMenu"
                 chrome:WindowDecorationProperties.ElementRole="User"
                 IsEnabled="{Binding ProjectSwitchEnabled}"
-                AutomationProperties.Name="Project menu"
+                AutomationProperties.Name="{x:Static app:MotifAppStrings.ProjectMenuAccessibleName}"
                 AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProjectMenu}">
           <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
             <TextBlock Classes="projectName" Text="{Binding ProjectName}" TextTrimming="CharacterEllipsis"
@@ -50,17 +50,17 @@
             <Flyout Placement="BottomEdgeAlignedLeft" FlyoutPresenterClasses="projectMenu">
               <StackPanel Classes="menu projectMenu">
                 <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" Click="OnProjectMenuEntryClick"
-                        Command="{Binding SelectNewProjectCommand}" AutomationProperties.Name="Select a new project"
+                        Command="{Binding SelectNewProjectCommand}" AutomationProperties.Name="{x:Static app:MotifAppStrings.SelectNewAccessibleName}"
                         AutomationProperties.AutomationId="{x:Static app:AutomationIds.SelectNewProject}">
                   <StackPanel>
-                    <TextBlock Classes="menuTitle" Text="Select new&#x2026;" />
-                    <TextBlock Classes="menuDetail" Text="Choose another .fwdata file" />
+                    <TextBlock Classes="menuTitle" Text="{x:Static app:MotifAppStrings.SelectNew}" />
+                    <TextBlock Classes="menuDetail" Text="{x:Static app:MotifAppStrings.SelectNewDetail}" />
                   </StackPanel>
                 </Button>
                 <Button x:Name="OpenRecentButton" Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
-                        IsEnabled="{Binding HasRecentProjects}" AutomationProperties.Name="Open a recent project">
+                        IsEnabled="{Binding HasRecentProjects}" AutomationProperties.Name="{x:Static app:MotifAppStrings.OpenRecentAccessibleName}">
                   <StackPanel>
-                    <TextBlock Classes="menuTitle" Text="Open recent" />
+                    <TextBlock Classes="menuTitle" Text="{x:Static app:MotifAppStrings.OpenRecent}" />
                     <TextBlock Classes="menuDetail" Text="{Binding RecentProjectsText, StringFormat='{}{0} &#x203A;'}"
                                TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
                   </StackPanel>
@@ -70,17 +70,17 @@
                 </Button>
                 <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" Click="OnProjectMenuEntryClick"
                         Command="{Binding ConfigureCommand}"
-                        AutomationProperties.Name="Configure the project">
+                        AutomationProperties.Name="{x:Static app:MotifAppStrings.ConfigureAccessibleName}">
                   <StackPanel>
-                    <TextBlock Classes="menuTitle" Text="Configure&#x2026;" />
+                    <TextBlock Classes="menuTitle" Text="{x:Static app:MotifAppStrings.Configure}" />
                     <TextBlock Classes="menuDetail" Text="{Binding ConfigureDetailText}" />
                   </StackPanel>
                 </Button>
                 <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" Click="OnWritingSystemsGuideClick"
-                        AutomationProperties.Name="Writing system fonts and direction">
+                        AutomationProperties.Name="{x:Static app:MotifAppStrings.WritingSystemsAndFontsAccessibleName}">
                   <StackPanel>
-                    <TextBlock Classes="menuTitle" Text="Writing systems and fonts" />
-                    <TextBlock Classes="menuDetail" Text="How Motif displays project language text" />
+                    <TextBlock Classes="menuTitle" Text="{x:Static app:MotifAppStrings.WritingSystemsAndFonts}" />
+                    <TextBlock Classes="menuDetail" Text="{x:Static app:MotifAppStrings.WritingSystemsAndFontsDetail}" />
                   </StackPanel>
                 </Button>
               </StackPanel>
@@ -90,28 +90,28 @@
 
         <StackPanel x:Name="TopBarActions" Grid.Column="3" Classes="topBarGroup" Orientation="Horizontal"
                     VerticalAlignment="Center">
-          <Button Content="See what changed" Command="{Binding SeeWhatChangedCommand}"
+          <Button Content="{x:Static app:MotifAppStrings.SeeWhatChanged}" Command="{Binding SeeWhatChangedCommand}"
                   Theme="{DynamicResource OutlineButton}" Classes="Tertiary"
                   chrome:WindowDecorationProperties.ElementRole="User"
-                  IsVisible="{Binding ShowsSeeWhatChanged}" AutomationProperties.Name="See what the refresh changed" />
-          <Button Content="Parse all words" Command="{Binding ParseAllWordsCommand}"
+                  IsVisible="{Binding ShowsSeeWhatChanged}" AutomationProperties.Name="{x:Static app:MotifAppStrings.SeeWhatChangedAccessibleName}" />
+          <Button Content="{x:Static app:MotifAppStrings.ParseAllWords}" Command="{Binding ParseAllWordsCommand}"
                   Theme="{DynamicResource OutlineButton}" Classes="Tertiary"
                   chrome:WindowDecorationProperties.ElementRole="User"
                   IsVisible="{Binding ShowsParseAllWordsAction}"
-                  AutomationProperties.Name="Parse all words"
+                  AutomationProperties.Name="{x:Static app:MotifAppStrings.ParseAllWordsAccessibleName}"
                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParseAllWords}"
-                  ToolTip.Tip="Parse the words you chose." />
-          <Button x:Name="ChooseWhatToParseButton" Content="Choose what to parse" Command="{Binding ConfigureCommand}"
+                  ToolTip.Tip="{x:Static app:MotifAppStrings.ParseAllWordsTip}" />
+          <Button x:Name="ChooseWhatToParseButton" Content="{x:Static app:MotifAppStrings.ChooseWhatToParse}" Command="{Binding ConfigureCommand}"
                   Theme="{DynamicResource OutlineButton}" Classes="Tertiary"
                   chrome:WindowDecorationProperties.ElementRole="User"
                   IsVisible="{Binding ShowsChooseWhatToParseAction}"
-                  AutomationProperties.Name="Choose what to parse" />
-          <Button Content="Refresh" Command="{Binding RefreshCommand}"
+                  AutomationProperties.Name="{x:Static app:MotifAppStrings.ChooseWhatToParseAccessibleName}" />
+          <Button Content="{x:Static app:MotifAppStrings.Refresh}" Command="{Binding RefreshCommand}"
                   Theme="{DynamicResource OutlineButton}" Classes="Tertiary"
                   chrome:WindowDecorationProperties.ElementRole="User"
-                  IsVisible="{Binding ShowsRefreshAction}" AutomationProperties.Name="Refresh the project"
+                  IsVisible="{Binding ShowsRefreshAction}" AutomationProperties.Name="{x:Static app:MotifAppStrings.RefreshAccessibleName}"
                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.RefreshProject}"
-                  ToolTip.Tip="Capture a new Baseline from FieldWorks' last save." />
+                  ToolTip.Tip="{x:Static app:MotifAppStrings.RefreshTip}" />
         </StackPanel>
 
         <DockPanel x:Name="FreshnessLine" Grid.Column="2" Classes="freshness" VerticalAlignment="Center"
@@ -282,25 +282,25 @@
     <Border x:Name="StatusBar" Grid.Row="2" Classes="statusBar">
       <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Group}">
         <StackPanel Classes="statusGroup" Orientation="Horizontal">
-          <views:CopyableTextBlock Classes="statusFull" Text="Tech demo: writes nothing until you press Apply"
-                     ToolTip.Tip="Keep a FieldWorks backup. Motif writes only when you press Apply." />
-          <Button Classes="statusCompact" Content="Tech demo" Click="OnStatusReportProblemClick"
-                  AutomationProperties.Name="Report a problem"
-                  ToolTip.Tip="Tech demo: writes nothing until you press Apply. Report a problem." />
-          <HyperlinkButton Content="Report a problem" Classes="statusFull" Click="OnStatusReportProblemClick"
-                           AutomationProperties.Name="Report a problem" />
+          <views:CopyableTextBlock Classes="statusFull" Text="{x:Static app:MotifAppStrings.TechDemoStatus}"
+                     ToolTip.Tip="{x:Static app:MotifAppStrings.TechDemoStatusTip}" />
+          <Button Classes="statusCompact" Content="{x:Static app:MotifAppStrings.TechDemoCompact}" Click="OnStatusReportProblemClick"
+                  AutomationProperties.Name="{x:Static app:MotifAppStrings.ReportProblemAccessibleName}"
+                  ToolTip.Tip="{x:Static app:MotifAppStrings.TechDemoCompactTip}" />
+          <HyperlinkButton Content="{x:Static app:MotifAppStrings.ReportProblem}" Classes="statusFull" Click="OnStatusReportProblemClick"
+                           AutomationProperties.Name="{x:Static app:MotifAppStrings.ReportProblemAccessibleName}" />
         </StackPanel>
         <Grid Grid.Column="1">
           <views:CopyableTextBlock x:Name="StatusSelectionSummary"
                      AutomationProperties.AutomationId="{x:Static app:AutomationIds.SidebarSelectionSummary}" Text="{Binding SelectionSummaryText}"
                      TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding SelectionSummaryText}" />
           <TextBlock x:Name="KeyboardShortcutStatusLine" IsVisible="False" TextTrimming="CharacterEllipsis"
-                     AutomationProperties.LiveSetting="Polite" AutomationProperties.Name="Keyboard shortcut status" />
+                     AutomationProperties.LiveSetting="Polite" AutomationProperties.Name="{x:Static app:MotifAppStrings.KeyboardShortcutStatusAccessibleName}" />
         </Grid>
         <StackPanel Grid.Column="2" Classes="statusGroup" Orientation="Horizontal">
           <Button x:Name="StatusChanges" x:DataType="vm:PageViewModel" IsVisible="{Binding HasBadge}"
                   Command="{Binding Model.ShowPageCommand}" CommandParameter="{x:Static vm:WorkspacePage.Review}"
-                  AutomationProperties.Name="Review changes not applied yet"
+                  AutomationProperties.Name="{x:Static app:MotifAppStrings.ReviewChangesAccessibleName}"
                   ToolTip.Tip="{Binding ChangesTip}">
             <StackPanel Orientation="Horizontal">
               <TextBlock Text="{Binding Badge}" />
@@ -309,7 +309,7 @@
           </Button>
           <Button x:Name="StatusWarnings" x:DataType="vm:PageViewModel" IsVisible="{Binding HasBadge}"
                   Command="{Binding Model.ShowPageCommand}" CommandParameter="{x:Static vm:WorkspacePage.Warnings}"
-                  AutomationProperties.Name="Open Warnings" ToolTip.Tip="{Binding WarningsTip}">
+                  AutomationProperties.Name="{x:Static app:MotifAppStrings.OpenWarningsAccessibleName}" ToolTip.Tip="{Binding WarningsTip}">
             <StackPanel Orientation="Horizontal">
               <TextBlock Text="⚠ " />
               <TextBlock Text="{Binding Badge}" />
@@ -317,11 +317,11 @@
             </StackPanel>
           </Button>
           <Button x:Name="StatusParseProgress" IsVisible="{Binding ShowsParseAllWordsProgress}"
-                  AutomationProperties.Name="See parse progress" ToolTip.Tip="{Binding ActiveParseProgress.StatusText}">
+                  AutomationProperties.Name="{x:Static app:MotifAppStrings.SeeParseProgressAccessibleName}" ToolTip.Tip="{Binding ActiveParseProgress.StatusText}">
             <StackPanel Classes="statusGroup" Orientation="Horizontal">
               <TextBlock Text="{Binding ActiveParseProgress.StatusText}" Classes="statusFull"
                          MaxWidth="{DynamicResource Component.StatusBar.ProgressTextWidth}" TextTrimming="CharacterEllipsis" />
-              <TextBlock Text="Parsing" Classes="statusCompact" />
+              <TextBlock Text="{x:Static app:MotifAppStrings.Parsing}" Classes="statusCompact" />
               <ProgressBar Classes="statusProgress" Minimum="0" Maximum="1"
                            Value="{Binding ActiveParseProgress.Fraction}"
                            IsIndeterminate="{Binding ActiveParseProgress.IsIndeterminate}" />
@@ -334,30 +334,30 @@
         <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
           <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
             <views:CopyableTextBlock Text="{Binding ActiveParseProgress.StatusText}"
-                                     AutomationProperties.Name="Parse progress details"
+                                     AutomationProperties.Name="{x:Static app:MotifAppStrings.ParseProgressDetailsAccessibleName}"
                                      AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParseProgressDetails}"
                                      VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
             <ProgressBar Grid.Column="1" Classes="topBarParseProgress" Minimum="0" Maximum="1"
                          HorizontalAlignment="Left" VerticalAlignment="Center"
                          Value="{Binding ActiveParseProgress.Fraction}"
                          IsIndeterminate="{Binding ActiveParseProgress.IsIndeterminate}"
-                         AutomationProperties.Name="Parse all words progress"
+                         AutomationProperties.Name="{x:Static app:MotifAppStrings.ParseAllWordsProgressAccessibleName}"
                          AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParseAllWordsProgress}" />
             <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
-              <Button Content="Cancel" Command="{Binding CancelParsingCommand}"
-                      ToolTip.Tip="Cancel keeps the previous results."
-                      AutomationProperties.Name="Cancel parsing all words"
+              <Button Content="{x:Static app:MotifAppStrings.Cancel}" Command="{Binding CancelParsingCommand}"
+                      ToolTip.Tip="{x:Static app:MotifAppStrings.CancelParsingTip}"
+                      AutomationProperties.Name="{x:Static app:MotifAppStrings.CancelParsingAccessibleName}"
                       AutomationProperties.AutomationId="{x:Static app:AutomationIds.CancelAssessment}" />
-              <Button Content="Report a problem" Click="OnParseReportProblemClick"
+              <Button Content="{x:Static app:MotifAppStrings.ReportProblem}" Click="OnParseReportProblemClick"
                       IsVisible="{Binding ActiveParseProgress.IsStalled}"
-                      AutomationProperties.Name="Report a problem with parsing"
+                      AutomationProperties.Name="{x:Static app:MotifAppStrings.ReportParseProblemAccessibleName}"
                       AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParseReportProblem}" />
             </StackPanel>
           </Grid>
           <views:CopyableTextBlock Text="{Binding ActiveParseProgress.StoppedText}" TextWrapping="Wrap"
                                    IsVisible="{Binding ActiveParseProgress.HasStoppedWords}" />
-          <Expander Header="See stopped words" IsVisible="{Binding ActiveParseProgress.HasStoppedWords}"
-                    AutomationProperties.Name="See stopped words while parsing"
+          <Expander Header="{x:Static app:MotifAppStrings.SeeStoppedWords}" IsVisible="{Binding ActiveParseProgress.HasStoppedWords}"
+                    AutomationProperties.Name="{x:Static app:MotifAppStrings.SeeStoppedWordsAccessibleName}"
                     AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParseStoppedWords}">
             <ScrollViewer MaxHeight="{DynamicResource Component.Shell.ParseStoppedMaxHeight}">
               <ItemsControl x:Name="MainWindowStoppedWordsItems" ItemsSource="{Binding ActiveParseProgress.StoppedWords}">

@@ -3,6 +3,7 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
+    <!-- Explicit, as in FieldWorks: the resx manifest name and any later satellite assemblies derive from it. -->
     <RootNamespace>SIL.Motif.App</RootNamespace>
     <ApplicationIcon>Assets\motif.ico</ApplicationIcon>
     <!-- Views take their view model through the constructor and are always built in code, never by URI. -->
