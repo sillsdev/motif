@@ -25,7 +25,7 @@ internal sealed class EditCompoundRuleDefinition : ComposerDefinition<EditCompou
 
     /// <inheritdoc />
     public override ComposerExposure Exposure { get; } =
-        new(CommandSurface.AdvancedAi, AgentClass.Draft, AgentTool: false);
+        new(CommandSurface.AdvancedAi, AgentClass.Draft, ToolName: "motif_edit_compound_rule");
 
     /// <inheritdoc />
     public override EditCompoundRuleIntent Parse(JsonElement authored) => EditCompoundRuleIntentParser.Parse(authored);

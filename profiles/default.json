@@ -43,6 +43,7 @@
     { "tool": "motif_difference_produce" },
     { "tool": "motif_add_affix_process" },
     { "tool": "motif_add_feature_value" },
-    { "tool": "motif_edit_phoneme" }
+    { "tool": "motif_edit_phoneme" },
+    { "tool": "motif_edit_compound_rule" }
   ]
 }

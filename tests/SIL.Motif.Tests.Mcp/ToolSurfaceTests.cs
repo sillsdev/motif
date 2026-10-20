@@ -101,7 +101,6 @@ public sealed class ToolSurfaceTests
             "activity",
             "compose-delete-empty-sense",
             "compose-edit-affix-inflection-classes",
-            "compose-edit-compound-rule",
             "compose-edit-part-of-speech-inflection-class-default",
             "compose-edit-stem-allomorph-stem-name",
             "compose-edit-stem-inflection-class",
@@ -111,10 +110,9 @@ public sealed class ToolSurfaceTests
         var numeralEditors = CommandCatalog.All.Where(command =>
             command.Name is "compose-edit-part-of-speech-inflection-class-default" or
                 "compose-edit-affix-inflection-classes" or "compose-edit-stem-allomorph-stem-name" or
-                "compose-edit-compound-rule" or
                 "compose-edit-stem-inflection-class" or "compose-delete-empty-sense" or
                 "compose-set-stem-part-of-speech").ToArray();
-        Assert.Equal(7, numeralEditors.Length);
+        Assert.Equal(6, numeralEditors.Length);
         Assert.All(numeralEditors, command =>
         {
             Assert.Equal(CommandSurface.AdvancedAi, command.Surface);
@@ -248,7 +246,7 @@ public sealed class ToolSurfaceTests
         Assert.DoesNotContain("intentsJson", batch.Tool.ArgumentNames);
         var branches = intents["items"]!["oneOf"]!.AsArray();
         var verbs = branches.Select(branch => branch!["properties"]!["verb"]!["enum"]![0]!.GetValue<string>()).ToArray();
-        Assert.Equal(27, verbs.Length);
+        Assert.Equal(28, verbs.Length);
         Assert.Equal(new[]
         {
             "compose-author-lexeme-form",
@@ -256,6 +254,7 @@ public sealed class ToolSurfaceTests
             "compose-author-feature-value",
             "compose-author-phoneme",
             "compose-edit-phoneme",
+            "compose-edit-compound-rule",
             "compose-author-natural-class",
             "compose-edit-natural-class",
             "compose-relink-natural-class",

@@ -30,8 +30,11 @@ public sealed class CompoundRuleDraftTests(PristineProjectFixture pristine)
         Assert.False(stale.Succeeded);
         Assert.Contains("expected Disabled=True", stale.Refusal!.Message, StringComparison.Ordinal);
 
-        var unknown = Compose(path, new { target = CanonicalId.Mint().Value, expectedDisabled = false, disabled = true });
+        var unknownId = CanonicalId.Mint();
+        var unknown = Compose(path, new { target = unknownId.Value, expectedDisabled = false, disabled = true });
         Assert.False(unknown.Succeeded);
+        Assert.Contains(unknownId.ToGuid().ToString("D"), unknown.Refusal!.Message, StringComparison.Ordinal);
+        Assert.Contains("not found", unknown.Refusal.Message, StringComparison.Ordinal);
 
         var before = DraftBytes(path);
         Assert.DoesNotContain(MoCompoundRuleDisabledOperationKinds.SetDisabled, before, StringComparison.Ordinal);

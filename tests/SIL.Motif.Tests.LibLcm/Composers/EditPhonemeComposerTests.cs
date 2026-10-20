@@ -63,6 +63,18 @@ public sealed class EditPhonemeComposerTests(PristineProjectFixture pristine)
             Refusal(() => EditPhonemeComposer.Build(cache, new(a, ["é"], []))));
     }
 
+    [Theory]
+    [InlineData("\u00E9", "e\u0301")]
+    [InlineData("e\u0301", "\u00E9")]
+    public void RefusesAnInputThatDiffersFromAnExistingRepresentationOnlyByNormalizationForm(string existing, string input)
+    {
+        using var cache = pristine.NewScratch();
+        var a = Phoneme(cache, "a", "a");
+        Phoneme(cache, "e", existing);
+        Assert.StartsWith(EditPhonemeComposer.Duplicate,
+            Refusal(() => EditPhonemeComposer.Build(cache, new(a, [input], []))));
+    }
+
     [Fact]
     public void RefusesWithStableNames()
     {
