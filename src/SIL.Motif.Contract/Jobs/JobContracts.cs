@@ -121,11 +121,11 @@ public sealed class JobStatusJsonConverter : JsonConverter<JobStatus>
         writer.WriteStringValue(JobStatusJson.ToWire(value));
 }
 
-/// <summary>Limits structured job documents to one worker control frame.</summary>
+/// <summary>Bounds structured job documents, which are stored as SQLite TEXT and cross no frame-limited transport.</summary>
 public static class JobJson
 {
     /// <summary>The UTF-8 bound for input, result, and progress JSON documents.</summary>
-    public const int MaxStructuredJsonUtf8Bytes = 1024 * 1024;
+    public const int MaxStructuredJsonUtf8Bytes = 16 * 1024 * 1024;
 
     public static void ValidateStructured(string json, string fieldName)
     {

@@ -100,7 +100,7 @@ public sealed class TrialDraftRevisionTests
     public void ATrialWhoseWordListOutgrowsAJobInputKeepsItBesideTheStore()
     {
         var id = NewDraftWithOneGloss("long-word-list");
-        var words = Enumerable.Range(0, 120_000).Select(index => $"neno{index:D6}").ToArray();
+        var words = Enumerable.Range(0, 1_600_000).Select(index => $"neno{index:D7}").ToArray();
 
         var queued = JobCommands.EnqueueTrial(new EnqueueTrialRequest(_fwDataPath, ProductVersion, id, Words: words));
 
@@ -122,7 +122,7 @@ public sealed class TrialDraftRevisionTests
         var created = ProposalCommands.New(new(_fwDataPath, ProductVersion, "oversized", null));
         Assert.True(created.Succeeded, created.Refusal?.Message);
         var added = ProposalCommands.AddSetGloss(new(_fwDataPath, ProductVersion, "oversized",
-            CanonicalId.Mint().Value, "en", new string('x', 1024 * 1024)));
+            CanonicalId.Mint().Value, "en", new string('x', 16 * 1024 * 1024)));
         Assert.True(added.Succeeded, added.Refusal?.Message);
         var words = longWords
             ? Enumerable.Range(0, 120_000).Select(index => $"neno{index:D6}").ToArray()
@@ -137,9 +137,9 @@ public sealed class TrialDraftRevisionTests
         Assert.Contains("Split", queued.Refusal.Message);
         Assert.Contains("Proposal", queued.Refusal.Message);
         Assert.Equal(trial ? "trial" : "dry-run", queued.Refusal.Facts["kind"]);
-        Assert.Equal("1048576", queued.Refusal.Facts["limitUtf8Bytes"]);
+        Assert.Equal("16777216", queued.Refusal.Facts["limitUtf8Bytes"]);
         Assert.True(int.Parse(queued.Refusal.Facts["inputUtf8Bytes"],
-            System.Globalization.CultureInfo.InvariantCulture) > 1024 * 1024);
+            System.Globalization.CultureInfo.InvariantCulture) > 16 * 1024 * 1024);
         using var database = ProjectMotifDatabase.Open(_fwDataPath);
         Assert.Empty(new JobRepository(database).ListActive());
         Assert.False(Directory.Exists(database.FullPath + ".job-inputs"));

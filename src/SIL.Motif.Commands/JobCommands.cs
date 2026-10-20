@@ -217,7 +217,7 @@ public static class JobCommands
         return bytes <= JobJson.MaxStructuredJsonUtf8Bytes ? null : new Refusal(
             "job.input-too-large", FailureReason.InvalidArgument,
             $"The {kind} job input is {bytes.ToString(CultureInfo.InvariantCulture)} UTF-8 bytes; " +
-            $"the limit is {JobJson.MaxStructuredJsonUtf8Bytes.ToString(CultureInfo.InvariantCulture)} bytes (1 MiB). " +
+            $"the limit is {JobJson.MaxStructuredJsonUtf8Bytes.ToString(CultureInfo.InvariantCulture)} bytes (16 MiB). " +
             "Split the Proposal into smaller Proposals and retry; frozen content, prerequisites and options must fit " +
             "even when a Trial's word list is stored separately. No job was queued.",
             Fact(("kind", kind), ("inputUtf8Bytes", bytes.ToString(CultureInfo.InvariantCulture)),
