@@ -6,9 +6,8 @@
   that differs between light and dark is two primitives, and Intent's theme dictionaries choose between them.
 
   Where Semi.Avalonia's own scale holds the same value, the primitive aliases Semi's key, so the two
-  scales cannot drift apart. Semi has no density mode, so these height aliases are overridden here:
-  SemiHeightControlSmall/Default/Large, ButtonSmall/Default/LargeHeight, TextBoxSmall/Default/LargeHeight and
-  ComboBoxSmall/Default/LargeHeight. Small controls are 26 high; default and large controls are 28 high. The padding
+  scales cannot drift apart. Semi has no density mode; Motif's 26 and 28 control heights live in Components/ControlHeights.axaml,
+  scoped to Motif's roots, because a Semi key is never overridden application-wide. The padding
   aliases are ButtonSmall/Default/LargePadding, TextBoxContentPadding, TextBoxTextAreaContentPadding,
   TextBoxInnerLeft/RightContentPadding, ComboBoxSelectorDefaultPadding, ComboBoxItemDefaultPadding and
   ComboBoxPopupBorderPadding. Semi's colour ramp is not aliased: its light and dark palettes give one key two values,
@@ -273,18 +272,6 @@
   <x:Double x:Key="Primitive.Opacity.0">0</x:Double>
   <x:Double x:Key="Primitive.Opacity.100">1</x:Double>
 
-  <StaticResource x:Key="SemiHeightControlSmall" ResourceKey="Primitive.Size.26" />
-  <StaticResource x:Key="SemiHeightControlDefault" ResourceKey="Primitive.Size.28" />
-  <StaticResource x:Key="SemiHeightControlLarge" ResourceKey="Primitive.Size.28" />
-  <StaticResource x:Key="ButtonSmallHeight" ResourceKey="Primitive.Size.26" />
-  <StaticResource x:Key="ButtonDefaultHeight" ResourceKey="Primitive.Size.28" />
-  <StaticResource x:Key="ButtonLargeHeight" ResourceKey="Primitive.Size.28" />
-  <StaticResource x:Key="TextBoxSmallHeight" ResourceKey="Primitive.Size.26" />
-  <StaticResource x:Key="TextBoxDefaultHeight" ResourceKey="Primitive.Size.28" />
-  <StaticResource x:Key="TextBoxLargeHeight" ResourceKey="Primitive.Size.28" />
-  <StaticResource x:Key="ComboBoxSmallHeight" ResourceKey="Primitive.Size.26" />
-  <StaticResource x:Key="ComboBoxDefaultHeight" ResourceKey="Primitive.Size.28" />
-  <StaticResource x:Key="ComboBoxLargeHeight" ResourceKey="Primitive.Size.28" />
   <StaticResource x:Key="ButtonSmallPadding" ResourceKey="Primitive.Inset.4_0_4_0" />
   <StaticResource x:Key="ButtonDefaultPadding" ResourceKey="Primitive.Inset.8_0_8_0" />
   <StaticResource x:Key="ButtonLargePadding" ResourceKey="Primitive.Inset.8_0_8_0" />

@@ -1,0 +1,23 @@
+<!--
+  Motif's 26 and 28 control heights, for a Motif root's own resources.
+
+  Semi's button, text box and combo box themes read these height keys (24 by default). A Motif root merges this
+  dictionary into its own Resources, so every Motif control under it keeps its height, while the Application
+  holds no override and a host that loads Motif keeps Semi's 24 everywhere outside the root. A root is a Motif
+  window, or the control a host places Motif's views in. Never merge this into Application.Resources.
+-->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <StaticResource x:Key="SemiHeightControlSmall" ResourceKey="Primitive.Size.26" />
+  <StaticResource x:Key="SemiHeightControlDefault" ResourceKey="Primitive.Size.28" />
+  <StaticResource x:Key="SemiHeightControlLarge" ResourceKey="Primitive.Size.28" />
+  <StaticResource x:Key="ButtonSmallHeight" ResourceKey="Primitive.Size.26" />
+  <StaticResource x:Key="ButtonDefaultHeight" ResourceKey="Primitive.Size.28" />
+  <StaticResource x:Key="ButtonLargeHeight" ResourceKey="Primitive.Size.28" />
+  <StaticResource x:Key="TextBoxSmallHeight" ResourceKey="Primitive.Size.26" />
+  <StaticResource x:Key="TextBoxDefaultHeight" ResourceKey="Primitive.Size.28" />
+  <StaticResource x:Key="TextBoxLargeHeight" ResourceKey="Primitive.Size.28" />
+  <StaticResource x:Key="ComboBoxSmallHeight" ResourceKey="Primitive.Size.26" />
+  <StaticResource x:Key="ComboBoxDefaultHeight" ResourceKey="Primitive.Size.28" />
+  <StaticResource x:Key="ComboBoxLargeHeight" ResourceKey="Primitive.Size.28" />
+</ResourceDictionary>

@@ -9,6 +9,13 @@
         Height="{DynamicResource Component.Shell.CrashHeight}"
         MinWidth="{DynamicResource Component.Shell.CrashMinWidth}"
         MinHeight="{DynamicResource Component.Shell.CrashMinHeight}">
+  <Window.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="avares://SIL.Motif.App/Tokens/Scoped/ControlHeights.axaml" />
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </Window.Resources>
   <LayoutTransformControl LayoutTransform="{DynamicResource App.ZoomTransform}">
   <DockPanel Margin="{DynamicResource Component.Shell.CrashInset}">
     <StackPanel DockPanel.Dock="Bottom" Spacing="{DynamicResource Intent.Space.Related}">

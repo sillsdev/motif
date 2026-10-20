@@ -204,60 +204,89 @@ public sealed class DesignTokenTests
             Assert.Equal(new Thickness(7, 1, 7, 1), Assert.IsType<Thickness>(markChipPadding));
             Assert.True(Application.Current.TryGetResource("Component.Overview.PageMargin", null, out var pageMargin));
             Assert.Equal(new Thickness(8), Assert.IsType<Thickness>(pageMargin));
+        });
+    }
 
-            foreach (var (key, value) in new[]
-            {
-                ("SemiHeightControlSmall", 26d),
-                ("SemiHeightControlDefault", 28d),
-                ("SemiHeightControlLarge", 28d),
-                ("ButtonSmallHeight", 26d),
-                ("ButtonDefaultHeight", 28d),
-                ("ButtonLargeHeight", 28d),
-                ("TextBoxSmallHeight", 26d),
-                ("TextBoxDefaultHeight", 28d),
-                ("TextBoxLargeHeight", 28d),
-                ("ComboBoxSmallHeight", 26d),
-                ("ComboBoxDefaultHeight", 28d),
-                ("ComboBoxLargeHeight", 28d),
-            })
-            {
-                Assert.True(Application.Current.TryGetResource(key, null, out var height), $"{key} is missing.");
-                Assert.Equal(value, Assert.IsType<double>(height));
-            }
+    private static readonly string[] SemiHeightKeys =
+    [
+        "SemiHeightControlSmall", "SemiHeightControlDefault", "SemiHeightControlLarge",
+        "ButtonSmallHeight", "ButtonDefaultHeight", "ButtonLargeHeight",
+        "TextBoxSmallHeight", "TextBoxDefaultHeight", "TextBoxLargeHeight",
+        "ComboBoxSmallHeight", "ComboBoxDefaultHeight", "ComboBoxLargeHeight",
+    ];
+
+    [Fact]
+    public void PrimitivesDeclareNoSemiControlHeightOverride()
+    {
+        var keys = XDocument.Load(Path.Combine(AppDirectory(), "Tokens", "Primitives.axaml")).Descendants()
+            .Select(element => (string?)element.Attribute(Xaml + "Key"))
+            .Where(key => key is not null && SemiHeightKeys.Contains(key));
+        Assert.Empty(keys);
+        var scoped = XDocument.Load(Path.Combine(AppDirectory(), "Tokens", "Scoped", "ControlHeights.axaml")).Descendants()
+            .Select(element => (string?)element.Attribute(Xaml + "Key"))
+            .Where(key => key is not null);
+        Assert.Equal(SemiHeightKeys.Order(), scoped.Order());
+    }
+
+    [Fact]
+    public void ControlsInsideAMotifRootKeepTheirCompactHeights()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var (button, textBox, comboBox) = MeasureControls(motifRoot: true);
+            Assert.Equal(28d, button);
+            Assert.Equal(28d, textBox);
+            Assert.Equal(28d, comboBox);
         });
     }
 
     [Fact]
-    public void CompactSemiControlsStayWithinTheTargetHeight()
+    public void ControlsOutsideAMotifRootKeepSemisDefaultHeight()
     {
         _avalonia.Invoke(() =>
         {
-            var button = new Button { Content = "Apply" };
-            var textBox = new TextBox { Text = "Text" };
-            var window = new Window
-            {
-                Content = new StackPanel { Children = { button, textBox } },
-                Width = 240,
-                Height = 100,
-            };
-            try
-            {
-                Assert.True(Application.Current!.TryGetResource("SemiHeightControlDefault", null, out var semiHeight));
-                Assert.Equal(28d, Assert.IsType<double>(semiHeight));
-                window.Show();
-                Dispatcher.UIThread.RunJobs();
-                window.UpdateLayout();
-
-                Assert.True(button.Bounds.Height is >= 22 and <= 28,
-                    $"Button is {button.Bounds.Height:0.#} px high (Height={button.Height}, MinHeight={button.MinHeight}, Padding={button.Padding}).");
-                Assert.True(textBox.Bounds.Height is >= 22 and <= 28,
-                    $"TextBox is {textBox.Bounds.Height:0.#} px high (Height={textBox.Height}, MinHeight={textBox.MinHeight}, Padding={textBox.Padding}).");
-            }
-            finally
-            {
-                window.Close();
-            }
+            var (button, textBox, comboBox) = MeasureControls(motifRoot: false);
+            Assert.True(Application.Current!.TryGetResource("ButtonDefaultHeight", null, out var semiButton));
+            Assert.True(Application.Current.TryGetResource("TextBoxDefaultHeight", null, out var semiTextBox));
+            Assert.True(Application.Current.TryGetResource("ComboBoxDefaultHeight", null, out var semiComboBox));
+            Assert.Equal(Assert.IsType<double>(semiButton), button);
+            Assert.Equal(Assert.IsType<double>(semiTextBox), textBox);
+            Assert.Equal(Assert.IsType<double>(semiComboBox), comboBox);
+            Assert.All(new[] { button, textBox, comboBox }, height => Assert.True(height is not (26d or 28d)));
         });
+    }
+
+    private static (double Button, double TextBox, double ComboBox) MeasureControls(bool motifRoot)
+    {
+        var button = new Button { Content = "Apply" };
+        var textBox = new TextBox { Text = "Text" };
+        var comboBox = new ComboBox { ItemsSource = new[] { "One" }, SelectedIndex = 0 };
+        var window = new Window
+        {
+            Content = new StackPanel { Children = { button, textBox, comboBox } },
+            Width = 240,
+            Height = 200,
+        };
+        if (motifRoot)
+        {
+            var heights = new Avalonia.Markup.Xaml.Styling.ResourceInclude(new Uri("avares://SIL.Motif.App/"))
+            {
+                Source = new Uri("avares://SIL.Motif.App/Tokens/Scoped/ControlHeights.axaml"),
+            };
+            window.Resources.MergedDictionaries.Add(heights);
+        }
+
+        try
+        {
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+            window.UpdateLayout();
+            return (button.Bounds.Height, textBox.Bounds.Height, comboBox.Bounds.Height);
+        }
+        finally
+        {
+            window.Close();
+        }
     }
 
     [Fact]

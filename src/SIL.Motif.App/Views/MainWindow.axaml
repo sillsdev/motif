@@ -16,6 +16,13 @@
         MinWidth="{DynamicResource Component.Shell.MinWidth}"
         MinHeight="{DynamicResource Component.Shell.MinHeight}"
         WindowDecorations="Full">
+  <Window.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="avares://SIL.Motif.App/Tokens/Scoped/ControlHeights.axaml" />
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </Window.Resources>
   <LayoutTransformControl x:Name="RootLayoutTransform" ClipToBounds="True">
   <Grid RowDefinitions="Auto,*,Auto">
 

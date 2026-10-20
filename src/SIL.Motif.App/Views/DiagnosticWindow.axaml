@@ -6,6 +6,13 @@
         Height="{DynamicResource Component.Shell.DiagnosticHeight}"
         MinWidth="{DynamicResource Component.Shell.DiagnosticMinWidth}"
         MinHeight="{DynamicResource Component.Shell.DiagnosticMinHeight}">
+  <Window.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="avares://SIL.Motif.App/Tokens/Scoped/ControlHeights.axaml" />
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </Window.Resources>
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
     <LayoutTransformControl LayoutTransform="{DynamicResource App.ZoomTransform}">
       <ContentControl x:Name="PanelHost" />
