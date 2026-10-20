@@ -351,9 +351,10 @@ public static partial class ProposalCommands
                 foreach (var operation in OperationExecutionOrder.Sort(retained))
                     OperationHandlerRegistry.Resolve(operation.Kind, "Draft composer preparation")
                         .ApplyAndCaptureEffect(cache, operation, new List<CanonicalId>());
-                var staged = new List<OperationEnvelope>(retained);
+                var staged = new StagedDependencyIndex(retained);
                 // A replaced edit leaves before its replacement arrives, so it cannot conflict with it.
                 var validated = new List<OperationEnvelope>(retained);
+                var slotIndex = new ProposalSlotIndex(retained);
                 var batchAdded = new List<OperationEnvelope>();
                 var batchIdentities = new HashSet<(string Composer, string Identity)>();
                 var availableLabels = new Dictionary<string, CanonicalId>(StringComparer.Ordinal);
@@ -397,11 +398,11 @@ public static partial class ProposalCommands
                         var related = step.RelatedObjects?.Invoke(cache, input);
                         step.ValidateAppend?.Invoke(validated, input, operations);
                         var added = DeclareDependencies(input, operations, staged);
-                        ProposalOperationSlotValidator.ValidateAppend(validated, added);
+                        slotIndex.Append(added);
                         // Later steps read the project as a later single call would, after this step's changes.
                         if (index < steps.Count - 1)
                             ApplyToScratch(cache, added);
-                        staged.AddRange(added);
+                        staged.Add(added);
                         validated.AddRange(added);
                         batchAdded.AddRange(added);
                         results.Add((input, added, related));
@@ -486,12 +487,10 @@ public static partial class ProposalCommands
 
     /// <summary>Adds an ordering edge from each new operation to every staged one that made what it names.</summary>
     private static OperationEnvelope[] DeclareDependencies(JsonElement input,
-        IReadOnlyList<OperationEnvelope> operations, IReadOnlyList<OperationEnvelope> staged)
+        IReadOnlyList<OperationEnvelope> operations, StagedDependencyIndex staged)
     {
         var authoredReferences = new HashSet<Guid>();
         CollectIds(input, authoredReferences);
-        var positions = new Dictionary<CanonicalId, int>();
-        for (var index = 0; index < staged.Count; index++) positions[staged[index].OperationId] = index;
         return operations.Select(operation =>
         {
             var references = new HashSet<Guid>(authoredReferences);
@@ -499,17 +498,57 @@ public static partial class ProposalCommands
             if (operation.Placement?.After is { } left) references.Add(left.ToGuid());
             if (operation.Placement?.Before is { } right) references.Add(right.ToGuid());
             if (operation.After is { } after) CollectIds(after, references);
-            var creators = staged.Where(prior => prior.EntityId is { } created && references.Contains(created.ToGuid()))
-                .Select(prior => prior.OperationId).ToArray();
-            var editors = staged.Where(prior => prior.Target is { } modified && references.Contains(modified.ToGuid()))
-                .Select(prior => prior.OperationId).Except(creators).ToArray();
+            var creatorPositions = staged.PositionsMatching(staged.ByCreated, references);
+            var creators = creatorPositions.Select(position => staged.Operations[position].OperationId).ToArray();
+            var creatorSet = creators.ToHashSet();
+            var editors = staged.PositionsMatching(staged.ByTarget, references)
+                .Select(position => staged.Operations[position].OperationId).Except(creatorSet).ToArray();
             var dependencies = operation.DependsOn.Select(dependency => dependency.OperationId)
                 .Concat(creators)
-                .Concat(WithoutImplied(creators.Concat(editors).ToArray(), editors, staged, positions))
+                .Concat(WithoutImplied(creators.Concat(editors).ToArray(), editors, staged.Operations, staged.Positions))
                 .Distinct().Select(id => new OperationDependency(id)).ToArray();
             return new OperationEnvelope(operation.OperationId, operation.Kind, operation.EntityId,
                 operation.Target, operation.After, operation.Placement, dependencies, rationale: operation.Rationale);
         }).ToArray();
+    }
+
+    /// <summary>Staged operations and their lookups, kept across steps.</summary>
+    private sealed class StagedDependencyIndex
+    {
+        public List<OperationEnvelope> Operations { get; } = new();
+        public Dictionary<CanonicalId, int> Positions { get; } = new();
+        public Dictionary<Guid, List<int>> ByCreated { get; } = new();
+        public Dictionary<Guid, List<int>> ByTarget { get; } = new();
+
+        public StagedDependencyIndex(IEnumerable<OperationEnvelope> retained) => Add(retained);
+
+        public void Add(IEnumerable<OperationEnvelope> added)
+        {
+            foreach (var operation in added)
+            {
+                var position = Operations.Count;
+                Operations.Add(operation);
+                Positions[operation.OperationId] = position;
+                if (operation.EntityId is { } created) Index(ByCreated, created.ToGuid(), position);
+                if (operation.Target is { } modified) Index(ByTarget, modified.ToGuid(), position);
+            }
+        }
+
+        /// <summary>The positions, in staged order, of the operations indexed under any of the references.</summary>
+        public IReadOnlyList<int> PositionsMatching(Dictionary<Guid, List<int>> index, HashSet<Guid> references)
+        {
+            var found = new List<int>();
+            foreach (var reference in references)
+                if (index.TryGetValue(reference, out var positions)) found.AddRange(positions);
+            found.Sort();
+            return found;
+        }
+
+        private static void Index(Dictionary<Guid, List<int>> index, Guid key, int position)
+        {
+            if (!index.TryGetValue(key, out var positions)) index[key] = positions = new List<int>();
+            positions.Add(position);
+        }
     }
 
     /// <summary>Drops each editor another predecessor already follows, so edits of one owner chain.</summary>
