@@ -81,10 +81,10 @@ public sealed partial class PageViewModel : ObservableObject
         Title = title;
         Icon = icon;
         Model = model;
-        _badge = model.Badge;
+        _badgeCount = model.BadgeCount;
         model.PropertyChanged += (_, e) =>
         {
-            if (e.PropertyName == nameof(PageModel.Badge)) Badge = model.Badge;
+            if (e.PropertyName == nameof(PageModel.BadgeCount)) BadgeCount = model.BadgeCount;
         };
     }
 
@@ -104,29 +104,22 @@ public sealed partial class PageViewModel : ObservableObject
     /// <summary>The stable ID used to open this page from the sidebar.</summary>
     public string AutomationId => AutomationIds.ForPage(Page);
 
-    /// <summary>The count <see cref="Model"/> keeps beside the label, or empty when it has none.</summary>
+    /// <summary>The count <see cref="Model"/> keeps beside the label, or null when it has none.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasBadge), nameof(ChangesNoun), nameof(WarningsNoun),
-        nameof(ChangesTip), nameof(WarningsTip))]
-    private string _badge = string.Empty;
+    [NotifyPropertyChangedFor(nameof(Badge), nameof(HasBadge), nameof(ChangesTip), nameof(WarningsTip))]
+    private int? _badgeCount;
 
-    /// <summary>The status bar's words after a changes count: singular only for exactly one.</summary>
-    public string ChangesNoun => PluralText.Format(MotifAppStrings.StatusChangesNounPattern, BadgeCount);
+    /// <summary>The count as the sidebar shows it, or empty when there is none.</summary>
+    public string Badge => BadgeCount?.ToString(System.Globalization.CultureInfo.CurrentCulture) ?? string.Empty;
 
-    /// <summary>The status bar's word after a warnings count: singular only for exactly one.</summary>
-    public string WarningsNoun => PluralText.Format(MotifAppStrings.StatusWarningsNounPattern, BadgeCount);
+    /// <summary>The status bar's changes sentence, with its count inside the localized pattern.</summary>
+    public string ChangesTip => PluralText.Format(MotifAppStrings.StatusChangesPattern, BadgeCount ?? 0);
 
-    private int BadgeCount => int.TryParse(Badge, System.Globalization.NumberStyles.Integer,
-        System.Globalization.CultureInfo.CurrentCulture, out var count) ? count : 0;
-
-    /// <summary>The changes count and its words, for the status bar's tooltip.</summary>
-    public string ChangesTip => Badge + ChangesNoun;
-
-    /// <summary>The warnings count and its word, for the status bar's tooltip.</summary>
-    public string WarningsTip => Badge + WarningsNoun;
+    /// <summary>The status bar's warnings sentence, with its count inside the localized pattern.</summary>
+    public string WarningsTip => PluralText.Format(MotifAppStrings.StatusWarningsPattern, BadgeCount ?? 0);
 
     /// <summary>Whether <see cref="Badge"/> has anything to show.</summary>
-    public bool HasBadge => Badge.Length > 0;
+    public bool HasBadge => BadgeCount is not null;
 
     /// <summary>Whether the window offers this page; a page it does not offer is left out of the sidebar.</summary>
     public bool IsAvailable { get; init; } = true;

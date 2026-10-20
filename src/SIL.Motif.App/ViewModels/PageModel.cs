@@ -24,9 +24,13 @@ public abstract partial class PageModel : ObservableObject, IProjectStatePartici
     /// <summary>Opens the page passed as the command parameter.</summary>
     public IRelayCommand<WorkspacePage> ShowPageCommand { get; }
 
-    /// <summary>A short count beside the sidebar label, or empty when the page has nothing to count.</summary>
+    /// <summary>A count beside the sidebar label, or null when the page has nothing to count.</summary>
     [ObservableProperty]
-    private string _badge = string.Empty;
+    [NotifyPropertyChangedFor(nameof(Badge))]
+    private int? _badgeCount;
+
+    /// <summary>The count as the sidebar shows it, or empty when <see cref="BadgeCount"/> is null.</summary>
+    public string Badge => BadgeCount?.ToString(System.Globalization.CultureInfo.CurrentCulture) ?? string.Empty;
 
     /// <summary>Drops whatever the page showed for the previous project.</summary>
     protected virtual void OnProjectCleared()

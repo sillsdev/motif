@@ -76,8 +76,8 @@ public sealed class HFrameActionTests(AvaloniaHeadlessFixture avalonia)
                 window.Height = 600;
                 SettingsTestAccess.Model(window)
                     .ZoomPercent = zoom;
-                workspace.PageOf(WorkspacePage.Review).Badge = "3";
-                workspace.PageOf(WorkspacePage.Warnings).Badge = "2";
+                workspace.PageOf(WorkspacePage.Review).BadgeCount = 3;
+                workspace.PageOf(WorkspacePage.Warnings).BadgeCount = 2;
                 PageScreenshots.Settle(window);
                 foreach (var action in window.FindControl<Border>("TopBar")!.GetVisualDescendants()
                     .OfType<Button>().Where(button => button.IsEffectivelyVisible))

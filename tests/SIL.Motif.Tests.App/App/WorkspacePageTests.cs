@@ -267,7 +267,6 @@ public sealed class WorkspacePageTests
 
         Assert.Equal("1", review.Badge);
         Assert.Equal("1 change not applied yet", review.ChangesTip);
-        Assert.Equal(" change not applied yet", review.ChangesNoun);
         Assert.Equal("1 warning", review.WarningsTip);
     }
 

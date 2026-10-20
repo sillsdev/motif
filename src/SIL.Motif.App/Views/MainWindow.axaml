@@ -303,8 +303,8 @@
                   AutomationProperties.Name="{x:Static app:MotifAppStrings.ReviewChangesAccessibleName}"
                   ToolTip.Tip="{Binding ChangesTip}">
             <StackPanel Orientation="Horizontal">
-              <TextBlock Text="{Binding Badge}" />
-              <TextBlock Classes="statusFull" Text="{Binding ChangesNoun}" />
+              <TextBlock Classes="statusCompact" Text="{Binding Badge}" />
+              <TextBlock Classes="statusFull" Text="{Binding ChangesTip}" />
             </StackPanel>
           </Button>
           <Button x:Name="StatusWarnings" x:DataType="vm:PageViewModel" IsVisible="{Binding HasBadge}"
@@ -312,8 +312,8 @@
                   AutomationProperties.Name="{x:Static app:MotifAppStrings.OpenWarningsAccessibleName}" ToolTip.Tip="{Binding WarningsTip}">
             <StackPanel Orientation="Horizontal">
               <TextBlock Text="⚠ " />
-              <TextBlock Text="{Binding Badge}" />
-              <TextBlock Classes="statusFull" Text="{Binding WarningsNoun}" />
+              <TextBlock Classes="statusCompact" Text="{Binding Badge}" />
+              <TextBlock Classes="statusFull" Text="{Binding WarningsTip}" />
             </StackPanel>
           </Button>
           <Button x:Name="StatusParseProgress" IsVisible="{Binding ShowsParseAllWordsProgress}"

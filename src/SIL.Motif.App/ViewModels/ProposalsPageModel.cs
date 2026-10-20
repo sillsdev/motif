@@ -633,7 +633,7 @@ public sealed partial class ProposalsPageModel : PageModel
             : standings.SetAsideCount == 0 ? string.Empty
             : $"Show closed ({standings.SetAsideCount.ToString(CultureInfo.CurrentCulture)})";
         var waiting = cards.Count(card => card.Card.Group == ProposalGroup.WaitingForYou);
-        Badge = waiting == 0 ? string.Empty : waiting.ToString(CultureInfo.CurrentCulture);
+        BadgeCount = waiting == 0 ? null : waiting;
     }
 
     private ProposalCardViewModel CardFor(ProposalCard card, IReadOnlyDictionary<string, string> labels)

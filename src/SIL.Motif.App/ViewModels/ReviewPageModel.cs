@@ -345,12 +345,12 @@ public sealed partial class ReviewPageModel : PageModel
         OnPropertyChanged(nameof(ReviewEntries));
         var badgeCount = Context.CurrentPage != WorkspacePage.Review && _hiddenReviewEntryCount is { } hiddenCount
             ? Math.Max(hiddenCount, Changes.Items.Count) : _entries.Count;
-        Badge = BadgeText(badgeCount);
+        BadgeCount = BadgeOf(badgeCount);
         RaiseModeState();
         RaiseWalkState();
     }
 
-    private static string BadgeText(int count) => count > 0 ? count.ToString(CultureInfo.CurrentCulture) : string.Empty;
+    private static int? BadgeOf(int count) => count > 0 ? count : null;
 
     private async Task RefreshHiddenReviewBadgeAsync()
     {
@@ -358,7 +358,7 @@ public sealed partial class ReviewPageModel : PageModel
         _hiddenReviewEntryCount = null;
         if (Context.ProjectPath is not { } project)
         {
-            Badge = string.Empty;
+            BadgeCount = null;
             return;
         }
         var revision = Changes.Snapshot.Revision;
@@ -371,7 +371,7 @@ public sealed partial class ReviewPageModel : PageModel
             !string.Equals(Changes.TargetProposalId, proposalId, StringComparison.Ordinal) ||
             !outcome.Succeeded || outcome.Value is not { } result) return;
         _hiddenReviewEntryCount = result.EntryCount;
-        Badge = BadgeText(result.EntryCount);
+        BadgeCount = BadgeOf(result.EntryCount);
     }
 
     // The pending changes look as they always have until the person walks them; a Proposal starts walked.

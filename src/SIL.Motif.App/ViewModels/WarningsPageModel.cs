@@ -167,7 +167,7 @@ public sealed class WarningsPageModel : PageModel
             OnPropertyChanged(nameof(HasSelectedWarningArea));
         }
         TryOpenRequestedWarning();
-        Badge = Grammar.ShowFindings ? Grammar.Warnings.TotalCount.ToString(CultureInfo.CurrentCulture) : string.Empty;
+        BadgeCount = Grammar.ShowFindings ? Grammar.Warnings.TotalCount : null;
         PublishSummary();
         RaiseCheckState();
     }

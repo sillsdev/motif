@@ -120,13 +120,13 @@
     <value>Open Warnings</value>
     <comment>Accessible name of the status bar warnings count button.</comment>
   </data>
-  <data name="MotifApp.StatusChangesNounPattern" xml:space="preserve">
-    <value>{0, plural, one { change not applied yet} other { changes not applied yet}}</value>
-    <comment>Plural pattern: the words after the status bar changes count. Keeps its leading space.</comment>
+  <data name="MotifApp.StatusChangesPattern" xml:space="preserve">
+    <value>{0, plural, one {# change not applied yet} other {# changes not applied yet}}</value>
+    <comment>Plural pattern: the status bar changes sentence; # is the count.</comment>
   </data>
-  <data name="MotifApp.StatusWarningsNounPattern" xml:space="preserve">
-    <value>{0, plural, one { warning} other { warnings}}</value>
-    <comment>Plural pattern: the word after the status bar warnings count. Keeps its leading space.</comment>
+  <data name="MotifApp.StatusWarningsPattern" xml:space="preserve">
+    <value>{0, plural, one {# warning} other {# warnings}}</value>
+    <comment>Plural pattern: the status bar warnings sentence; # is the count.</comment>
   </data>
   <data name="MotifApp.SeeParseProgressAccessibleName" xml:space="preserve">
     <value>See parse progress</value>

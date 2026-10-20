@@ -832,7 +832,7 @@ public sealed partial class ParsimonyPageModel : PageModel
         _suppressedTotal = Math.Max(_suppressedTotal, _suppressedRows.Count);
         SyncLists();
         ShowAxes();
-        Badge = _activeTotal.ToString(System.Globalization.CultureInfo.CurrentCulture);
+        BadgeCount = _activeTotal;
         LoadingNote = LoadingNoteText();
         OnPropertyChanged(nameof(ActiveTabLabel));
         OnPropertyChanged(nameof(SuppressedTabLabel));
@@ -921,7 +921,7 @@ public sealed partial class ParsimonyPageModel : PageModel
             State = ParsimonyPageState.Refused;
             Message = refusal.Message;
         }
-        Badge = string.Empty;
+        BadgeCount = null;
     }
 
     private void ShowReport(ParsimonyReportResponse report, string path)
@@ -936,7 +936,7 @@ public sealed partial class ParsimonyPageModel : PageModel
         SyncLists();
         ShowAxes();
         State = ParsimonyPageState.Listed;
-        Badge = _activeTotal.ToString(System.Globalization.CultureInfo.CurrentCulture);
+        BadgeCount = _activeTotal;
         Message = string.Empty;
         NextStep = string.Empty;
         FixNote = string.Empty;
@@ -1408,7 +1408,7 @@ public sealed partial class ParsimonyPageModel : PageModel
         FixNote = string.Empty;
         Message = string.Empty;
         NextStep = string.Empty;
-        Badge = string.Empty;
+        BadgeCount = null;
         ActionsChanged();
     }
 
