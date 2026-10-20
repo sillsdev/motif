@@ -200,11 +200,12 @@ Run `pwsh ./test.ps1 -All -Configuration Release` with `MOTIF_PANGLOSS_EXE` set 
 from `pangloss-release.json`. Headless layout invariants are the layout gate: the quick tier runs in the
 default developer loop, and the full grid runs at System level.
 
-Screenshots are optional and default off, and never gate READY, DONE or landing
-([ADR 0075](docs/adr/0075-headless-checks-are-the-ui-gate-screenshots-are-for-people.md)). Leave `MOTIF_SCREENSHOTS` unset for batch gates and READY
-validation. Keep the capture harness, matrix and walkthrough infrastructure; set `MOTIF_SCREENSHOTS`
-when making a new design, publishing website media or recording walkthrough video, and use
-`pwsh ./tools/Capture-Screens.ps1` to regenerate, review, and diff the captures.
+Screenshots are optional and default off, and never gate READY, DONE or landing ([ADR
+0075](docs/adr/0075-headless-checks-are-the-ui-gate-screenshots-are-for-people.md)). Leave
+`MOTIF_SCREENSHOTS` unset for batch gates and READY validation. Keep the capture harness, matrix and
+walkthrough infrastructure; set `MOTIF_SCREENSHOTS` when making a new design, publishing website media
+or recording walkthrough video, and use `pwsh ./tools/Capture-Screens.ps1` to regenerate, review, and
+diff the captures.
 
 Report the tested source SHA, parser path/version, all skipped test categories and any Windows-only
 follow-up. When captures are requested, also report the completed capture states. A missing parser,

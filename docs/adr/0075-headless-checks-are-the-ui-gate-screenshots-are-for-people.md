@@ -25,7 +25,7 @@ makes the same choice: geometric assertions, not pixel diffs. It states that its
    level), reachability, contrast and automation-id tests in the normal test run decide whether UI, layout, progress,
    shared-control or window-copy work is READY, DONE and may land.
 2. **Screenshots are opt-in.** `MOTIF_SCREENSHOTS` stays unset for batch gates and READY validation. It is set for a
-   person's visual review (for example drover task T-dc), for website media and for walkthrough video.
+   person's visual review (for example a Windows visual review), for website media and for walkthrough video.
 3. **No pixel-diff gating.** No test fails because a picture differs from an earlier one. A defect a screenshot shows
    becomes a headless invariant, so the gate catches it next time.
 4. **The capture harness stays.** `Capture-Screens.ps1`, the size matrix and the walkthrough infrastructure are kept.
