@@ -3505,6 +3505,148 @@
                   "intent"
                 ],
                 "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "compose-edit-phoneme"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-edit-phoneme.",
+                    "properties": {
+                      "target": {
+                        "type": "string",
+                        "description": "Id of the existing phoneme."
+                      },
+                      "add": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "representation": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "representation"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "description": "New representations to append, each an object with a representation, such as ng."
+                      },
+                      "respell": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "from": {
+                              "type": "string"
+                            },
+                            "to": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "from",
+                            "to"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "description": "Current representations to replace in place, each with from and to."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "target"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "compose-edit-compound-rule"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-edit-compound-rule.",
+                    "properties": {
+                      "target": {
+                        "type": "string",
+                        "description": "Id of the compound rule to turn off or on."
+                      },
+                      "expectedDisabled": {
+                        "type": "boolean",
+                        "description": "Whether the rule is turned off now: true when it is, false when it is on."
+                      },
+                      "disabled": {
+                        "type": "boolean",
+                        "description": "Whether the rule should be turned off: true to turn it off, false to turn it on."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "target",
+                      "expectedDisabled",
+                      "disabled"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
               }
             ]
           },
@@ -4294,6 +4436,112 @@
         "draft",
         "featStruc",
         "feature",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_edit_phoneme",
+    "description": "Edit a phoneme\u0027s representations. Stages new written representations for an existing phoneme, or respells one it has, so a multigraph such as ng, ts or dy is another way the same segment is written and never a second phoneme. It refuses a spelling another phoneme or boundary already has, and a respelling that an environment writes. Dry Run and Trial before a person Applies the Proposal.\nCommand: compose-edit-phoneme. Agent class: Draft.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "target": {
+          "type": "string",
+          "description": "Id of the existing phoneme."
+        },
+        "add": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "representation": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "representation"
+            ],
+            "additionalProperties": false
+          },
+          "description": "New representations to append, each an object with a representation, such as ng."
+        },
+        "respell": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "string"
+              },
+              "to": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "from",
+              "to"
+            ],
+            "additionalProperties": false
+          },
+          "description": "Current representations to replace in place, each with from and to."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "target",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_edit_compound_rule",
+    "description": "Turn a compound rule off or on. Stages one explicit Disabled value for an endocentric or exocentric compound rule in a Draft. FieldWorks compound rules join any two stems, so a rule that builds non-words can be switched off; the expected value guards against stale evidence, and only a person can Apply.\nCommand: compose-edit-compound-rule. Agent class: Draft.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "target": {
+          "type": "string",
+          "description": "Id of the compound rule to turn off or on."
+        },
+        "expectedDisabled": {
+          "type": "boolean",
+          "description": "Whether the rule is turned off now: true when it is, false when it is on."
+        },
+        "disabled": {
+          "type": "boolean",
+          "description": "Whether the rule should be turned off: true to turn it off, false to turn it on."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "target",
+        "expectedDisabled",
+        "disabled",
         "project"
       ],
       "additionalProperties": false

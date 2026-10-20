@@ -22,6 +22,8 @@
     { "name": "motif_add_lexical_entry", "class": "Draft" },
     { "name": "motif_add_alternate_form", "class": "Draft" },
     { "name": "motif_add_affix_process", "class": "Draft" },
+    { "name": "motif_edit_phoneme", "class": "Draft" },
+    { "name": "motif_edit_compound_rule", "class": "Draft" },
     { "name": "motif_add_part_of_speech", "class": "Draft" },
     { "name": "motif_add_affix_template", "class": "Draft" },
     { "name": "motif_compose_batch", "class": "Draft" },

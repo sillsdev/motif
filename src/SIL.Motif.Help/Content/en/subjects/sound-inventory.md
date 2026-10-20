@@ -12,7 +12,8 @@ The sound inventory is the set of consonants, vowels and other sounds the langua
 ## Composers, in order
 
 1. `compose-author-phoneme` adds one phoneme with its representations.
-2. `compose-author-natural-class` groups phonemes once they exist.
+2. `compose-edit-phoneme` adds a representation such as a digraph (ng, ts, dy) to a phoneme that exists, or respells one.
+3. `compose-author-natural-class` groups phonemes once they exist.
 
 ## Pitfalls
 

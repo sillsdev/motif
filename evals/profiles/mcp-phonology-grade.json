@@ -75,6 +75,10 @@
       "class": "Draft"
     },
     {
+      "name": "motif_edit_phoneme",
+      "class": "Draft"
+    },
+    {
       "name": "motif_add_part_of_speech",
       "class": "Draft"
     },

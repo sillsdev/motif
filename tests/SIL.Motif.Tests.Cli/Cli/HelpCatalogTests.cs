@@ -109,6 +109,7 @@ public sealed class HelpCatalogTests
                      "compose-edit-affix-inflection-classes",
                      "compose-edit-stem-allomorph-stem-name",
                      "compose-edit-stem-inflection-class",
+                     "compose-edit-compound-rule",
                      "order-allomorphs",
                      "compose-author-text",
                      "compose-edit-analysis-decision",

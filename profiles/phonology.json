@@ -60,6 +60,9 @@
       "tool": "motif_add_affix_process"
     },
     {
+      "tool": "motif_edit_phoneme"
+    },
+    {
       "tool": "motif_add_feature_value"
     },
     {

@@ -15,6 +15,7 @@ public sealed class FindComposerTests
         { "sound-inventory", "I need to list the consonants and vowels that this language contrasts", "compose-author-phoneme" },
         { "natural-classes", "Group the sounds that pattern together, such as all the nasals", "compose-author-natural-class" },
         { "phonological-rules", "A final vowel is deleted, so I need a sound change rule for it", "compose-author-phonological-rule" },
+        { "compounding", "Compounding builds non-words, so I need to turn off the compound rule", "compose-edit-compound-rule" },
         { "conditioned-allomorphy", "The suffix surfaces in a different shape after a nasal", "compose-author-alternate-form" },
         { "affix-slots-and-templates", "Define the position where the tense prefix goes on verbs", "compose-author-affix-slot" },
         { "inflection-features", "Set up a tense feature with past and future values", "compose-author-inflection-feature" },
@@ -66,6 +67,14 @@ public sealed class FindComposerTests
     [MemberData(nameof(GoalsTheRuleLoses))]
     public void FindComposerFindsTheComposerForAGoalTheRuleLoses(string subject, string goal, string expected) =>
         Assert.Contains(expected, Run(goal, null).Results.Take(3).Select(result => result.Verb));
+
+    [Fact]
+    public void FindComposerRanksTheCompoundRuleComposerFirstForDisableCompoundingRule()
+    {
+        var results = Run("disable compounding rule", null).Results;
+
+        Assert.Equal("compose-edit-compound-rule", results[0].Verb);
+    }
 
     [Theory]
     [MemberData(nameof(GoalsTheRuleKeeps))]
@@ -254,6 +263,7 @@ public sealed class FindComposerTests
     public static TheoryData<string, string> FreshGoalsByExpectedVerb => new()
     {
         { "Create a class for the back vowels", "compose-author-natural-class" },
+        { "Write the velar nasal with the digraph ng as another spelling of an existing phoneme", "compose-edit-phoneme" },
         { "Make the second syllable copy the first in the plural", "compose-author-affix-process" },
         { "Put the marker in the middle of the root", "compose-author-affix-process" },
         { "Mark the subject agreement slot as optional", "compose-edit-affix-slot" },

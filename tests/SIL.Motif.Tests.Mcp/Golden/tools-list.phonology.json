@@ -1577,5 +1577,71 @@
     "readOnlyHint": false,
     "destructiveHint": false,
     "idempotentHint": false
+  },
+  {
+    "name": "motif_edit_phoneme",
+    "description": "Edit a phoneme\u0027s representations. Stages new written representations for an existing phoneme, or respells one it has, so a multigraph such as ng, ts or dy is another way the same segment is written and never a second phoneme. It refuses a spelling another phoneme or boundary already has, and a respelling that an environment writes. Dry Run and Trial before a person Applies the Proposal.\nCommand: compose-edit-phoneme. Agent class: Draft.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "target": {
+          "type": "string",
+          "description": "Id of the existing phoneme."
+        },
+        "add": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "representation": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "representation"
+            ],
+            "additionalProperties": false
+          },
+          "description": "New representations to append, each an object with a representation, such as ng."
+        },
+        "respell": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "string"
+              },
+              "to": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "from",
+              "to"
+            ],
+            "additionalProperties": false
+          },
+          "description": "Current representations to replace in place, each with from and to."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "target",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
   }
 ]

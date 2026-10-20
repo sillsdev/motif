@@ -1235,6 +1235,32 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public async Task EditPhonemeToolStagesADigraphOnAnEarlierPhonemeAndNeverApplies()
+    {
+        using var project = new WalkthroughProject(pristine);
+        await using var session = await Session.StartAsync(project.FwDataPath,
+            new McpLaunchOptions(Profile: "phonology"));
+        await session.CallAsync("motif_start_proposal", ("draft", "digraphs"),
+            ("label", "Add ng"), ("rationale", "The language writes the velar nasal as ng."));
+        var phoneme = await session.CallAsync("motif_add_phoneme", ("draft", "digraphs"),
+            ("name", "q"), ("representations", new[] { "q" }));
+        Assert.True(phoneme.GetProperty("ok").GetBoolean(), phoneme.ToString());
+        var phonemeId = phoneme.GetProperty("result").GetProperty("operations").EnumerateArray()
+            .Single(operation => operation.GetProperty("kind").GetString()!.EndsWith("/createPhonemes", StringComparison.Ordinal))
+            .GetProperty("entityId").GetString()!;
+
+        var edited = await session.CallAsync("motif_edit_phoneme", ("draft", "digraphs"),
+            ("target", phonemeId), ("add", new object[] { new { representation = "qh" } }));
+
+        Assert.True(edited.GetProperty("ok").GetBoolean(), edited.ToString());
+        using var database = ProjectMotifDatabase.Open(project.FwDataPath);
+        var draft = ProposalCommands.DeserializeDraft(new ProposalRepository(database).GetDraft("digraphs").ProposalJson!);
+        Assert.Contains(draft.ComposerProvenance, item => item.GetProperty("composer").GetString() == "EditPhoneme");
+        Assert.Contains(draft.Operations, operation => operation.Kind == "grammar/phCode/setRepresentation" &&
+            operation.After["text"].GetString() == "qh");
+    }
+
+    [Fact]
     public async Task AllomorphConditionToolAcceptsItsCamelCaseIntentFields()
     {
         using var project = new WalkthroughProject(pristine);

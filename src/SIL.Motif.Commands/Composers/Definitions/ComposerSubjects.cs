@@ -14,6 +14,7 @@ internal static class ComposerSubjects
         "sound-inventory",
         "natural-classes",
         "phonological-rules",
+        "compounding",
         "conditioned-allomorphy",
         "affix-slots-and-templates",
         "inflection-features",
