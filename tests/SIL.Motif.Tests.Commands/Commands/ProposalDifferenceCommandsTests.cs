@@ -344,6 +344,46 @@ public sealed class ProposalDifferenceCommandsTests : IDisposable
         Assert.Null(TrialJobInput.Parse(job.InputJson).BaselineAssessmentIds);
     }
 
+    [Fact]
+    public void ATrialQueuedThroughTheWorkflowHasABeforeSideAndProducesADifference()
+    {
+        using var fixture = new Fixture(_root, noBaselineIds: true);
+
+        var queued = TrialWorkflow.Enqueue(
+            new SIL.Motif.Commands.Requests.EnqueueTrialRequest(fixture.ProjectPath, "1.0", fixture.ProposalId),
+            _ => CommandOutcome<AssessCommandResponse>.Success(new AssessCommandResponse(null!, null!, ["before"], "")),
+            BaselineMode.BestEffort);
+
+        Assert.True(queued.Succeeded, queued.Refusal?.Message);
+        Assert.Null(queued.Value!.BaselineWarning);
+        fixture.CompleteTrial(queued.Value.Job.JobId);
+        var produced = ProposalDifferenceCommands.Produce(
+            fixture.ProduceRequest() with { JobId = queued.Value.Job.JobId });
+        Assert.True(produced.Succeeded, produced.Refusal?.Message);
+        Assert.Equal(2, produced.Value!.Summary.Words);
+    }
+
+    [Fact]
+    public void BestEffortQueuesWithAWarningAndRequiredRefusesWhenTheBaselineCannotBeAssessed()
+    {
+        using var fixture = new Fixture(_root, noBaselineIds: true);
+        var request = new SIL.Motif.Commands.Requests.EnqueueTrialRequest(fixture.ProjectPath, "1.0", fixture.ProposalId,
+            Words: ["sita"]);
+        Func<IReadOnlyList<string>, CommandOutcome<AssessCommandResponse>> broken =
+            _ => throw new InvalidOperationException("no parser");
+
+        var required = TrialWorkflow.Enqueue(request, broken, BaselineMode.Required);
+        var bestEffort = TrialWorkflow.Enqueue(request, broken, BaselineMode.BestEffort);
+
+        Assert.Equal("difference.no-before", required.Refusal!.Code);
+        Assert.Contains("no parser", required.Refusal.Message);
+        Assert.True(bestEffort.Succeeded, bestEffort.Refusal?.Message);
+        Assert.Equal("no parser", bestEffort.Value!.BaselineWarning);
+        Assert.Single(new JobRepository(fixture.Database)
+            .ListByProjectAndKind(ProjectWorkspaceKey.Compute(fixture.Project), TrialJobHandler.TrialKind)
+            .Where(job => job.JobId != "trial-1"));
+    }
+
     public void Dispose()
     {
         try { Directory.Delete(_root, recursive: true); }

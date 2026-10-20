@@ -1378,13 +1378,12 @@ internal static class AgentTools
         {
             var negatives = args.List("negative_words");
             var words = args.List("words").Concat(negatives).Distinct(StringComparer.Ordinal).ToArray();
-            var before = await Task.Run(() => TrialResults.Assess(context, words, cancellation), cancellation);
-            if (!before.Succeeded) return ToolOutcome.Refused(before.Refusal!);
-            var queued = JobCommands.EnqueueTrial(new EnqueueTrialRequest(context.ProjectPath, context.ProductVersion,
-                proposal, Words: before.Value!.Selection.Words,
-                BaselineAssessmentIds: before.Value!.AssessmentIds, NegativeWords: negatives));
+            var queued = await Task.Run(() => TrialWorkflow.Enqueue(
+                new EnqueueTrialRequest(context.ProjectPath, context.ProductVersion, proposal,
+                    Words: words.Length == 0 ? null : words, NegativeWords: negatives),
+                RunnerOptions.ResolveRoot(), context.ParserPath, BaselineMode.Required, cancellation), cancellation);
             if (!queued.Succeeded) return ToolOutcome.Refused(queued.Refusal!);
-            job = queued.Value!.JobId;
+            job = queued.Value!.Job.JobId;
         }
         // Wake on a resumed wait too: a queued job whose runner idled out or never started runs again.
         context.StartRunner();

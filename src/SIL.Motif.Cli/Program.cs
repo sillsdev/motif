@@ -903,15 +903,20 @@ try
             {
                 if (trialLease is null)
                     return RefuseActivityDuringUpdate();
-                result = RunWithConsoleCancellation(cancellationToken => RenderCommand(
-                    TrialBaselines.EnqueueWithBaseline(
+                result = RunWithConsoleCancellation(cancellationToken =>
+                {
+                    var queued = TrialWorkflow.Enqueue(
                         new EnqueueTrialRequest(
                             trialProject, CliProductVersion(), positionals[0], flags.GetValueOrDefault("scope"),
                             Words: trialWords, AllWords: flags.ContainsKey("all-words")),
-                        ResolveRoot(), null, cancellationToken,
-                        reason => error.WriteLine(
-                            "warning: the Trial has no Baseline Assessment, so `difference produce` will refuse it: " + reason)),
-                    successAsJson: false));
+                        ResolveRoot(), null, BaselineMode.BestEffort, cancellationToken);
+                    if (queued.Value?.BaselineWarning is { } reason)
+                        error.WriteLine(
+                            "warning: the Trial has no Baseline Assessment, so `difference produce` will refuse it: " + reason);
+                    return RenderCommand(queued.Succeeded
+                        ? CommandOutcome<JobEnqueuedResponse>.Success(queued.Value!.Job)
+                        : CommandOutcome<JobEnqueuedResponse>.Refused(queued.Refusal!), successAsJson: false);
+                });
             }
             // A job just entered the queue: wake the runner before anything below waits on it.
             if (result.ExitCode == 0) startRunner(trialProject, error.WriteLine);
