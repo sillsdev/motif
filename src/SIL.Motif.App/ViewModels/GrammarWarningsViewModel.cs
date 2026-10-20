@@ -104,7 +104,7 @@ public enum GrammarFindingBucket
 /// </summary>
 public static class GrammarLevelMarks
 {
-    public const string Error = "!";
+    public const string Error = "❗";
     public const string Warning = "⚠";
     public const string Information = "i";
 

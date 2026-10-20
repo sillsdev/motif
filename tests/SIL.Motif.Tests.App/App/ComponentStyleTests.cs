@@ -543,7 +543,8 @@ public sealed partial class ComponentStyleTests
             Border.BackgroundProperty, "Intent.Clear");
         yield return new("MarkChip", "a warning chip", host => Add(host, Box("markChip", "severity", "warning")),
             Border.BackgroundProperty, "Intent.Severity.Warning.Fill");
-        foreach (var (severity, key) in new[] { ("warning", "Warning"), ("error", "Error"), ("info", "Info") })
+        yield return new("Mark", "an error icon's colour", ErrorIcon, PathIcon.ForegroundProperty, "Intent.Severity.Error");
+        foreach (var (severity, key) in new[] { ("warning", "Warning"), ("info", "Info") })
             yield return new("MarkChip", $"a {severity} chip's count", host => Within(host, Box("markChip", "severity", severity),
                 "markWord", "severity", "severityMark", severity), TextBlock.ForegroundProperty, $"Intent.Severity.{key}");
 
@@ -1038,8 +1039,8 @@ public sealed partial class ComponentStyleTests
             Border.MinWidthProperty, "Component.Mark.GlyphSize");
         yield return new("Mark", "a severity glyph", host => Add(host, Box("severityGlyph", "error")),
             Border.CornerRadiusProperty, "Component.Mark.GlyphRadius");
-        yield return new("Mark", "an error glyph's ring", host => Add(host, Box("severityGlyph", "error")),
-            Border.BorderBrushProperty, "Intent.Severity.Error");
+        yield return new("Mark", "an error glyph, whose circle is drawn by its icon", host => Add(host, Box("severityGlyph", "error")),
+            Border.BorderBrushProperty, "Intent.Clear");
         yield return new("Mark", "a note glyph's ring", host => Add(host, Box("severityGlyph", "info")),
             Border.BorderBrushProperty, "Intent.Severity.Info");
         yield return new("Mark", "a warning glyph, which has no ring", host => Add(host, Box("severityGlyph", "warning")),
@@ -1341,6 +1342,13 @@ public sealed partial class ComponentStyleTests
             Child = glyph,
         };
         Add(host, border);
+        return Assert.IsType<PathIcon>(glyph.Child);
+    }
+
+    private static Control ErrorIcon(Panel host)
+    {
+        var glyph = new MarkGlyph { Mark = SIL.Motif.App.ViewModels.Mark.Error };
+        Add(host, new Border { Classes = { "severityGlyph", "error" }, Child = glyph });
         return Assert.IsType<PathIcon>(glyph.Child);
     }
 

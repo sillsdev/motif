@@ -111,7 +111,8 @@ public sealed class MarkVocabularyTests
     public void AGrammarWarningIsATriangleAnErrorACircledBangAndANoteAnI()
     {
         Assert.Equal("⚠", GrammarLevelMarks.Warning);
-        Assert.Equal("!", GrammarLevelMarks.Error);
+        Assert.Equal("❗", GrammarLevelMarks.Error);
+        Assert.NotNull(MarkGlyphs.IconDataFor(Mark.Of(GrammarDiagnosticLevel.Error)));
         Assert.Equal("i", GrammarLevelMarks.Information);
         Assert.Equal("error", Mark.Of(GrammarDiagnosticLevel.Error).Value);
     }
