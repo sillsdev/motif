@@ -33,7 +33,7 @@ public static class AssessSummary
         var end = offset + page.Length;
         var result = new JsonObject
         {
-            ["counts"] = JsonNode.Parse(ProjectionJson.Serialize(AssessmentCounts.Of(words))),
+            ["counts"] = ProjectionJson.ToNode(AssessmentCounts.Of(words)),
             ["assessment"] = assessmentId,
             ["showing"] = page.Length == 0 ? $"showing 0 of {words.Count}" : $"showing {offset + 1}-{end} of {words.Count}",
             ["offset"] = offset,
@@ -57,5 +57,5 @@ public static class AssessSummary
     }
 
     private static JsonNode Detailed(AssessmentWordResult row) =>
-        JsonNode.Parse(ProjectionJson.Serialize(row))!;
+        ProjectionJson.ToNode(row)!;
 }

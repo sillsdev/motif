@@ -28,6 +28,10 @@ public static class ProjectionJson
 
     public static string Serialize<T>(T projection) => JsonSerializer.Serialize(projection, Options);
 
+    /// <summary>The same projection as a JSON tree, for a caller that adds fields to it before it is rendered.</summary>
+    public static System.Text.Json.Nodes.JsonNode? ToNode<T>(T projection) =>
+        JsonSerializer.SerializeToNode(projection, Options);
+
     /// <summary>Reads a response back with the same conventions it was written with.</summary>
     /// <remarks>
     /// A consumer that reconstructs the options itself has to know the naming policy and that reasons are
