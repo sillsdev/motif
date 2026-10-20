@@ -1689,7 +1689,7 @@ public static partial class ProposalCommands
         LcmCache? cache = null;
         var receiptRecorded = false;
         attribution ??= new ApplyAttribution();
-        if (ApplyAttributionCheck.Refusal(attribution) is { } attributionRefusal)
+        if (ApplyAttributionCheck.Refusal(attribution, force) is { } attributionRefusal)
             return CommandOutcome<ApplyProjection>.Refused(attributionRefusal);
         try
         {

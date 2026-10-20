@@ -928,7 +928,7 @@ try
 
         case "apply":
             var applyAttribution = ApplyAttributionFromFlags(flags, environment);
-            if (ApplyAttributionCheck.Refusal(applyAttribution) is { } applyAttributionRefusal)
+            if (ApplyAttributionCheck.Refusal(applyAttribution, flags.ContainsKey("force")) is { } applyAttributionRefusal)
             {
                 result = RenderProposal(CommandOutcome<ApplyPendingResult>.Refused(applyAttributionRefusal));
                 break;

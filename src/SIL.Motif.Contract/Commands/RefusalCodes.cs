@@ -23,6 +23,7 @@ public static class RefusalCodes
     public const string ApplyChangesChanged = "apply.changes-changed";
     public const string ApplyDrift = "apply.drift";
     public const string ApplyDryRunMissing = "apply.dry-run-missing";
+    public const string ApplyAutonomousForce = "apply.autonomous-force";
     public const string ApplyMessageInvalid = "apply.message-invalid";
     public const string ApplyMessageRequired = "apply.message-required";
     public const string ApplyNoteUnavailable = "apply.note-unavailable";

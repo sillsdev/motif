@@ -720,45 +720,40 @@ public sealed class ProposalWorkflowTests : IDisposable
     }
 
     [Fact]
-    public void Apply_InAutonomousModeRefusesWithoutAMessage_AndRecordsTheMessageWhenGiven()
+    public void Apply_InAutonomousModeRefusesWithoutAMessage_AndNeverForces()
     {
         var id = FinalizeSetGloss("autonomous", CanonicalId.FromGuid(_seed.FirstSenseId).Value, "agent gloss");
         Assert.True(RunDryRun(id).Succeeded);
 
-        var refused = PendingChangesWorkflow.Apply(new ApplyRequest(_fwDataPath, ProductVersion, id, true,
+        var noMessage = PendingChangesWorkflow.Apply(new ApplyRequest(_fwDataPath, ProductVersion, id, false,
             new ApplyAttribution(ApplyModes.Autonomous)));
-        Assert.False(refused.Succeeded);
-        Assert.Equal("apply.message-required", refused.Refusal!.Code);
-        AssertAppliedLogEntryCount(0);
+        Assert.Equal("apply.message-required", noMessage.Refusal!.Code);
 
-        var applied = PendingChangesWorkflow.Apply(new ApplyRequest(_fwDataPath, ProductVersion, id, true,
+        var forced = PendingChangesWorkflow.Apply(new ApplyRequest(_fwDataPath, ProductVersion, id, true,
             new ApplyAttribution(ApplyModes.Autonomous, "Glossed from the corpus")));
-        Assert.True(applied.Succeeded, applied.Refusal?.Message);
-        var entry = Assert.Single(ProposalCommands.Log(new LogRequest(_fwDataPath)).Value!.Entries);
-        Assert.Equal(("autonomous", "Glossed from the corpus"), (entry.Mode, entry.Description));
+        Assert.Equal("apply.autonomous-force", forced.Refusal!.Code);
+        AssertAppliedLogEntryCount(0);
     }
 
     [Fact]
-    public void ApplyCli_TheFlagAndTheEnvironmentMarkerDeclareAutonomous_AndEachNeedsAMessage()
+    public void ApplyCli_TheFlagAndTheEnvironmentMarkerDeclareAutonomous_EachNeedsAMessage_AndNeitherForces()
     {
         var first = FinalizeSetGloss("cli-flag", CanonicalId.FromGuid(_seed.FirstSenseId).Value, "flag gloss");
         Assert.True(RunDryRun(first).Succeeded);
 
-        var noMessage = RunCli(null, "apply", first, "--project", _fwDataPath, "--force", "--autonomous");
+        var noMessage = RunCli(null, "apply", first, "--project", _fwDataPath, "--autonomous");
         Assert.NotEqual(0, noMessage.ExitCode);
         Assert.Contains("autonomous Apply needs a --message", noMessage.Output + noMessage.Error, StringComparison.Ordinal);
+        var envNoMessage = RunCli("1", "apply", first, "--project", _fwDataPath);
+        Assert.Contains("autonomous Apply needs a --message", envNoMessage.Output + envNoMessage.Error, StringComparison.Ordinal);
 
-        var viaEnvironment = RunCli("1", "apply", first, "--project", _fwDataPath, "--force");
-        Assert.NotEqual(0, viaEnvironment.ExitCode);
-
-        var flagged = RunCli(null, "apply", first, "--project", _fwDataPath, "--force", "--autonomous",
-            "--message", "by flag");
-        Assert.True(flagged.ExitCode == 0, flagged.Error + flagged.Output);
-
-        var entries = ProposalCommands.Log(new LogRequest(_fwDataPath)).Value!.Entries;
-        Assert.Contains(entries, e => e.Mode == "autonomous" && e.Description == "by flag");
-        var json = ProjectionJson.Serialize(ProposalCommands.Log(new LogRequest(_fwDataPath)).Value!);
-        Assert.Contains("\"mode\": \"autonomous\"", json, StringComparison.Ordinal);
+        foreach (var (marker, extra) in new[] { ((string?)null, "--autonomous"), ("1", "--json") })
+        {
+            var forced = RunCli(marker, "apply", first, "--project", _fwDataPath, "--force", "--message", "m", extra);
+            Assert.NotEqual(0, forced.ExitCode);
+            Assert.Contains("never forces", forced.Output + forced.Error, StringComparison.Ordinal);
+        }
+        AssertAppliedLogEntryCount(0);
     }
 
     [Fact]

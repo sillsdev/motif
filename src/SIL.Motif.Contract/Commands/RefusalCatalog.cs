@@ -187,6 +187,7 @@ public static class RefusalCatalog
         Spec(RefusalCodes.ApplyChangesChanged, FailureReason.Refused),
         Spec(RefusalCodes.ApplyDrift, FailureReason.StoreInconsistent),
         Spec(RefusalCodes.ApplyDryRunMissing, FailureReason.Refused),
+        Spec(RefusalCodes.ApplyAutonomousForce, FailureReason.InvalidArgument),
         Spec(RefusalCodes.ApplyMessageInvalid, FailureReason.InvalidArgument),
         Spec(RefusalCodes.ApplyMessageRequired, FailureReason.InvalidArgument),
         Spec(RefusalCodes.ApplyNoteUnavailable, FailureReason.Refused),

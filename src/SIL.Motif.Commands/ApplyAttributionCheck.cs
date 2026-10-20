@@ -10,12 +10,15 @@ namespace SIL.Motif.Commands;
 public static class ApplyAttributionCheck
 {
     /// <summary>Why <paramref name="attribution"/> cannot be applied with, or <see langword="null"/> when it can.</summary>
-    public static Refusal? Refusal(ApplyAttribution? attribution)
+    public static Refusal? Refusal(ApplyAttribution? attribution, bool force = false)
     {
         attribution ??= new ApplyAttribution();
         if (!ApplyModes.IsKnown(attribution.Mode))
             return new Refusal(RefusalCodes.ApplyMessageInvalid, FailureReason.InvalidArgument,
                 $"Apply mode '{attribution.Mode}' is not 'person' or 'autonomous'.", null);
+        if (attribution.Mode == ApplyModes.Autonomous && force)
+            return new Refusal(RefusalCodes.ApplyAutonomousForce, FailureReason.InvalidArgument,
+                "An autonomous Apply never forces past Readiness. Drop --force, or resolve the Readiness reasons.", null);
         var message = attribution.Message?.Trim();
         if (attribution.Mode == ApplyModes.Autonomous && string.IsNullOrEmpty(message))
             return new Refusal(RefusalCodes.ApplyMessageRequired, FailureReason.InvalidArgument,

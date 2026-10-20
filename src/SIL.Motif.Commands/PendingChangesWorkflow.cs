@@ -112,7 +112,7 @@ public static class PendingChangesWorkflow
         CancellationToken cancellationToken, TimeSpan? dryRunTimeout, IJobRunnerLauncher? runnerLauncher)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        if (ApplyAttributionCheck.Refusal(target.Attribution) is { } attributionRefusal)
+        if (ApplyAttributionCheck.Refusal(target.Attribution, target.Force) is { } attributionRefusal)
             return CommandOutcome<ApplyPendingResult>.Refused(attributionRefusal);
         // A missing project has no folder to hold a lease in.
         if (!File.Exists(target.ProjectPath))
