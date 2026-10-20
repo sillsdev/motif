@@ -544,7 +544,7 @@ public sealed partial class ComponentStyleTests
         yield return new("MarkChip", "a warning chip", host => Add(host, Box("markChip", "severity", "warning")),
             Border.BackgroundProperty, "Intent.Severity.Warning.Fill");
         yield return new("Mark", "an error icon's colour", ErrorIcon, PathIcon.ForegroundProperty, "Intent.Severity.Error");
-        foreach (var (severity, key) in new[] { ("warning", "Warning"), ("info", "Info") })
+        foreach (var (severity, key) in new[] { ("warning", "Warning"), ("error", "Error"), ("info", "Info") })
             yield return new("MarkChip", $"a {severity} chip's count", host => Within(host, Box("markChip", "severity", severity),
                 "markWord", "severity", "severityMark", severity), TextBlock.ForegroundProperty, $"Intent.Severity.{key}");
 
@@ -1045,9 +1045,9 @@ public sealed partial class ComponentStyleTests
             Border.BorderBrushProperty, "Intent.Severity.Info");
         yield return new("Mark", "a warning glyph, which has no ring", host => Add(host, Box("severityGlyph", "warning")),
             Border.BorderBrushProperty, "Intent.Clear");
-        yield return new("Mark", "a warning icon", WarningIcon, Control.WidthProperty, "Component.Mark.WarningIconSize");
+        yield return new("Mark", "a warning icon", WarningIcon, Control.WidthProperty, "Component.Mark.SeverityIconSize");
         yield return new("Mark", "a warning icon's colour", WarningIcon, PathIcon.ForegroundProperty, "Intent.Severity.Warning");
-        foreach (var (severity, key) in new[] { ("warning", "Warning"), ("error", "Error"), ("info", "Info") })
+        foreach (var (severity, key) in new[] { ("warning", "Warning"), ("info", "Info") })
             yield return new("Mark", $"a {severity} glyph's sign", host => Inside(host, Box("severityGlyph", severity)),
                 TextBlock.ForegroundProperty, $"Intent.Severity.{key}");
         yield return new("Mark", "a glyph's sign", host => Inside(host, Box("severityGlyph", "error")),
