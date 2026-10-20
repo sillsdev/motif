@@ -410,7 +410,7 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
                     AutomationProperties.GetAutomationId(text) == SIL.Motif.App.AutomationIds.ParsePromptText &&
                     text.IsEffectivelyVisible);
                 Assert.Contains(session.Window.GetVisualDescendants().OfType<Button>(), button =>
-                    button.Content?.ToString() == "Parse all words" && button.IsEffectivelyVisible &&
+                    button.Content?.ToString() == SIL.Motif.App.MotifAppStrings.ParseAllWords && button.IsEffectivelyVisible &&
                     ReferenceEquals(button.Command, workspace.ParseAllWordsCommand));
 
                 stage = "Texts prompt";

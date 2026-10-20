@@ -38,6 +38,18 @@ public sealed partial class TooltipOwnerManifestTests
     [GeneratedRegex(@"ToolTip\.SetTip\(\s*\w+\s*,\s*(.+?)\);")]
     private static partial Regex CodeTip();
 
+    [GeneratedRegex(@"^\{x:Static\s+app:MotifAppStrings\.(\w+)\}$")]
+    private static partial Regex LocalizedStaticTip();
+
+    /// <summary>A MotifAppStrings {x:Static} tip is declared by the resx text of its name.</summary>
+    private static string ResolveStaticText(string tip)
+    {
+        var match = LocalizedStaticTip().Match(tip);
+        if (!match.Success) return tip;
+        var property = typeof(MotifAppStrings).GetProperty(match.Groups[1].Value);
+        return property?.GetValue(null) as string ?? tip;
+    }
+
     [Fact]
     public void EveryTooltipTheViewsDeclareHasAnAuthoredOwner()
     {
@@ -52,7 +64,7 @@ public sealed partial class TooltipOwnerManifestTests
                 var tips = file.EndsWith(".cs", StringComparison.Ordinal)
                     ? CodeTip().Matches(text).Select(match => match.Groups[1].Value)
                     : MarkupTip().Matches(text).Select(match => match.Groups[1].Success ? match.Groups[1].Value : match.Groups[2].Value);
-                return tips.Select(tip => $"{source}: {tip}");
+                return tips.Select(tip => $"{source}: {ResolveStaticText(tip)}");
             })
             .Order(StringComparer.Ordinal)
             .ToList();
