@@ -11,4 +11,5 @@ public sealed record CompareResponse(
     int SharedWordCount,
     bool TokeniserMismatch,
     string? TokeniserWarning,
-    string Text);
+    string Text,
+    string? ParserWarning = null);

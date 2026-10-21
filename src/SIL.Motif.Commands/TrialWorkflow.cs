@@ -40,11 +40,12 @@ public static class TrialWorkflow
     public static CommandOutcome<TrialEnqueued> Enqueue(EnqueueTrialRequest request, string managedRoot,
         string? parserPath, BaselineMode mode, CancellationToken cancellationToken) =>
         Enqueue(request, words => TrialBaselines.Assess(request.FwDataPath, words, managedRoot, parserPath,
-            cancellationToken), mode);
+            cancellationToken), mode, parserPath ?? SIL.Motif.Host.Parser.PanGlossExecutable.TryLocate());
 
     /// <summary>As the public overload, with the Baseline measurement supplied by the caller.</summary>
     internal static CommandOutcome<TrialEnqueued> Enqueue(EnqueueTrialRequest request,
-        Func<IReadOnlyList<string>, CommandOutcome<AssessCommandResponse>> assess, BaselineMode mode)
+        Func<IReadOnlyList<string>, CommandOutcome<AssessCommandResponse>> assess, BaselineMode mode,
+        string? expectedParserPath = null)
     {
         ArgumentNullException.ThrowIfNull(request);
         // The lease covers the assess step too, because it runs the installed PanGloss binary an update replaces.
@@ -67,7 +68,7 @@ public static class TrialWorkflow
                     failure = exception.Message;
                     throw;
                 }
-            }, mode == BaselineMode.BestEffort ? reason => warning ??= reason : null);
+            }, mode == BaselineMode.BestEffort ? reason => warning ??= reason : null, expectedParserPath);
         }
         catch (Exception) when (failed && mode == BaselineMode.Required)
         {

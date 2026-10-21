@@ -168,6 +168,7 @@ public sealed class DifferenceReportProducer : IReportProducer
             $"  Words: {meta.FromWordCount} vs {meta.ToWordCount}, {meta.SharedWordCount} shared, " +
             $"{assessment.Words.Count} changed");
         if (meta.TokeniserMismatch) text.AppendLine("  WARNING: " + meta.TokeniserWarning);
+        if (meta.ParserWarning is not null) text.AppendLine("  WARNING: " + meta.ParserWarning);
         foreach (var word in assessment.Words.OrderBy(w => w.Word, StringComparer.Ordinal))
             text.AppendLine($"    {word.Word}: {word.Outcome}");
         return new RenderedReport(KindName, text.ToString());

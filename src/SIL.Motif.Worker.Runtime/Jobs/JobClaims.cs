@@ -28,14 +28,25 @@ public sealed class JobClaims : IJobClaimProtocol
     private const string QueuedAndDue = "(Status = 'queued' AND (NotBeforeUtc IS NULL OR NotBeforeUtc <= $now))";
     private const string RunningAndExpired = "(Status = 'running' AND (LeaseUntilUtc IS NULL OR LeaseUntilUtc <= $now))";
 
+    // A pinned job is claimable only by a Worker whose parser key equals the pin; an unpinned (legacy) job by any.
+    private const string ParserMatches =
+        "(CASE WHEN json_valid(InputJson) THEN json_extract(InputJson, '" + JobParserPin.KeyPath + "') END IS NULL " +
+        "OR json_extract(InputJson, '" + JobParserPin.KeyPath + "') = $parser)";
+
     private readonly MotifDatabase _database;
     private readonly JobRepository _jobs;
+    private readonly string? _parserKey;
 
     /// <summary>Creates a claim protocol over one project's paired database.</summary>
-    public JobClaims(MotifDatabase database, IJobClock? clock = null)
+    /// <param name="parserKey">
+    /// The <see cref="SIL.Motif.Host.PanGloss.ParserIdentity.Key"/> of this runner's parser, or null when it has
+    /// none; a job pinned to any other parser is left queued for the runner that has it.
+    /// </param>
+    public JobClaims(MotifDatabase database, IJobClock? clock = null, string? parserKey = null)
     {
         _database = database ?? throw new ArgumentNullException(nameof(database));
         _jobs = new JobRepository(database, clock);
+        _parserKey = parserKey;
     }
 
     /// <summary>Reads the identity and position of one project's next claimable row, without claiming it.</summary>
@@ -54,8 +65,9 @@ public sealed class JobClaims : IJobClaimProtocol
         using var connection = _database.OpenConnection();
         using var command = connection.CreateCommand();
         command.CommandText = "SELECT JobId, QueueOrder FROM Jobs WHERE ProjectKey = $project AND " +
-            "ArchivedUtc IS NULL AND (" + QueuedAndDue + " OR " + RunningAndExpired + ") " +
+            "ArchivedUtc IS NULL AND (" + QueuedAndDue + " OR " + RunningAndExpired + ") AND " + ParserMatches + " " +
             "ORDER BY QueueOrder, JobId LIMIT 1;";
+        command.Parameters.AddWithValue("$parser", (object?)_parserKey ?? DBNull.Value);
         command.Parameters.AddWithValue("$now", now);
         command.Parameters.AddWithValue("$project", projectKey);
         using var reader = command.ExecuteReader();
@@ -92,8 +104,10 @@ public sealed class JobClaims : IJobClaimProtocol
                 "UpdatedUtc = MAX(CreatedUtc, UpdatedUtc, $now), Version = Version + 1, " +
                 "Attempt = Attempt + CASE WHEN Status = 'running' THEN 1 ELSE 0 END " +
                 "WHERE JobId = (SELECT JobId FROM Jobs WHERE ProjectKey = $project AND ArchivedUtc IS NULL " +
-                "AND (" + QueuedAndDue + " OR " + RunningAndExpired + ") ORDER BY QueueOrder, JobId LIMIT 1) " +
+                "AND (" + QueuedAndDue + " OR " + RunningAndExpired + ") AND " + ParserMatches +
+                " ORDER BY QueueOrder, JobId LIMIT 1) " +
                 "AND (" + QueuedAndDue + " OR " + RunningAndExpired + ");";
+            claim.Parameters.AddWithValue("$parser", (object?)_parserKey ?? DBNull.Value);
             claim.Parameters.AddWithValue("$owner", ownerId);
             claim.Parameters.AddWithValue("$token", token);
             claim.Parameters.AddWithValue("$until", Stamp(now, lease));

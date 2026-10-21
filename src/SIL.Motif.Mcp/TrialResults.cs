@@ -64,7 +64,7 @@ internal static class TrialResults
                 var scope = ScopeCodec.Write(new StoredScope.Difference(pair.Before.AssessmentId, pair.After.AssessmentId,
                     comparison.FromWordCount, comparison.ToWordCount, comparison.SharedWords.Count,
                     pair.Before.GrammarSourceSha256, pair.After.GrammarSourceSha256,
-                    comparison.TokeniserMismatch, comparison.TokeniserWarning));
+                    comparison.TokeniserMismatch, comparison.TokeniserWarning, comparison.ParserWarning));
                 var rows = Classify(pair.Before.Words!, pair.After.Words!, input.NegativeWords ?? []);
                 assessments.Record(new NewAssessmentRecord(differenceId, proposal.ProposalId, pair.After.ProposalIntentDigest,
                     pair.After.Assessor, "Difference", scope, AssessmentMaterial.Digest(scope),

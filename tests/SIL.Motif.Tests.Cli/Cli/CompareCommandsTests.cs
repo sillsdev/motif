@@ -9,6 +9,7 @@ using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Corpus;
+using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Store;
@@ -68,6 +69,72 @@ public sealed class CompareCommandsTests : IDisposable
         Assert.Contains("whitespace", response.TokeniserWarning, StringComparison.Ordinal);
         Assert.Contains("icu", response.TokeniserWarning, StringComparison.Ordinal);
         Assert.Contains("WARNING", response.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TwoAssessmentsMadeByDifferentParsers_ComparesAndWarnsNamingBoth()
+    {
+        var fromId = RecordAssessment("pangloss", "ParseTime", "none", "1", [("alpha", true)], Parser("0.8.6", 'd'));
+        var toId = RecordAssessment("pangloss", "ParseTime", "none", "1", [("alpha", false)], Parser("0.8.8", 'e'));
+
+        var result = CompareCommands.Produce(new ProduceComparisonRequest(_project, ProductVersion, fromId, toId));
+
+        Assert.True(result.Succeeded);
+        var response = result.Value!;
+        Assert.NotNull(response.ParserWarning);
+        Assert.Contains("0.8.6", response.ParserWarning, StringComparison.Ordinal);
+        Assert.Contains("0.8.8", response.ParserWarning, StringComparison.Ordinal);
+        Assert.Contains("WARNING: " + response.ParserWarning, response.Text, StringComparison.Ordinal);
+        Assert.False(response.TokeniserMismatch);
+    }
+
+    [Fact]
+    public void TwoBuildsOfOneParserVersionWithDifferentBytes_AlsoWarn()
+    {
+        var fromId = RecordAssessment("pangloss", "ParseTime", "none", "1", [("alpha", true)], Parser("0.8.8", 'd'));
+        var toId = RecordAssessment("pangloss", "ParseTime", "none", "1", [("alpha", true)], Parser("0.8.8", 'e'));
+
+        var response = CompareCommands.Produce(new ProduceComparisonRequest(_project, ProductVersion, fromId, toId))
+            .Value!;
+
+        Assert.NotNull(response.ParserWarning);
+    }
+
+    [Fact]
+    public void TwoAssessmentsWithOneParserHashAreTheSameParserWhateverVersionTheyReport()
+    {
+        var fromId = RecordAssessment("pangloss", "ParseTime", "none", "1", [("alpha", true)], Parser("0.8.8", 'd'));
+        var toId = RecordAssessment("pangloss", "ParseTime", "none", "1", [("alpha", false)], Parser("0.8.9", 'd'));
+
+        var response = CompareCommands.Produce(new ProduceComparisonRequest(_project, ProductVersion, fromId, toId))
+            .Value!;
+
+        Assert.Null(response.ParserWarning);
+    }
+
+    [Fact]
+    public void TwoAssessmentsMadeByOneParser_DoNotWarn()
+    {
+        var fromId = RecordAssessment("pangloss", "ParseTime", "none", "1", [("alpha", true)], Parser("0.8.8", 'd'));
+        var toId = RecordAssessment("pangloss", "ParseTime", "none", "1", [("alpha", false)], Parser("0.8.8", 'd'));
+
+        var response = CompareCommands.Produce(new ProduceComparisonRequest(_project, ProductVersion, fromId, toId))
+            .Value!;
+
+        Assert.Null(response.ParserWarning);
+        Assert.DoesNotContain("WARNING", response.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AnAssessmentRecordedBeforeParsersWereRecorded_ComparesWithoutAWarning()
+    {
+        var fromId = RecordAssessment("pangloss", "ParseTime", "none", "1", [("alpha", true)], null);
+        var toId = RecordAssessment("pangloss", "ParseTime", "none", "1", [("alpha", false)], Parser("0.8.8", 'e'));
+
+        var response = CompareCommands.Produce(new ProduceComparisonRequest(_project, ProductVersion, fromId, toId))
+            .Value!;
+
+        Assert.Null(response.ParserWarning);
     }
 
     [Fact]
@@ -141,8 +208,22 @@ public sealed class CompareCommandsTests : IDisposable
         Assert.DoesNotContain("beta", changedWords);
     }
 
+    private static BatchInvocationEvidence Parser(string version, char digit) => new(
+        "invocation/" + version + digit, "source", "sha256:" + new string('1', 64),
+        "sha256:" + new string(digit, 64), "words", "sha256:" + new string('2', 64), "tsv",
+        "sha256:" + new string('3', 64), "stderr", "sha256:" + new string('4', 64), 1000,
+        SIL.Motif.Contract.Assess.StepCap.Default, 1, false)
+    {
+        ExecutableVersion = version,
+        ExecutablePath = "/parsers/" + version + "/pangloss",
+    };
+
     private string RecordAssessment(string assessor, string kind, string tokeniserName, string tokeniserVersion,
-        params (string Word, bool Analysed)[] words)
+        params (string Word, bool Analysed)[] words) =>
+        RecordAssessment(assessor, kind, tokeniserName, tokeniserVersion, words, null);
+
+    private string RecordAssessment(string assessor, string kind, string tokeniserName, string tokeniserVersion,
+        (string Word, bool Analysed)[] words, BatchInvocationEvidence? invocation)
     {
         var selection = Selection.Create("test", words.Select(w => w.Word));
         var assessmentId = CanonicalId.Mint("assessment/").Value;
@@ -172,7 +253,7 @@ public sealed class CompareCommandsTests : IDisposable
                 ModelFingerprint: "model",
                 Pipeline: "pipeline",
                 DiagnosticCount: 0,
-                Material: new AssessmentRecordMaterial.Words(assessedWords, null, null, [])));
+                Material: new AssessmentRecordMaterial.Words(assessedWords, null, null, []) { Invocation = invocation }));
             return CommandOutcome<string>.Success(string.Empty);
         });
         Assert.True(result.Succeeded);

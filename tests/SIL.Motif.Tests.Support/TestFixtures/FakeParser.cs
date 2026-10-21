@@ -125,6 +125,16 @@ internal static class FakeParser
         return File.Exists(log) ? File.ReadAllLines(log) : [];
     }
 
+    /// <summary>Copies the fake, reporting <paramref name="version"/> and carrying bytes unique to it.</summary>
+    internal static string CopyReportingVersion(string directory, string version)
+    {
+        var executable = Copy(directory);
+        File.WriteAllText(Path.Combine(directory, "_fake-pangloss-version"), "pangloss " + version);
+        // The key is the executable's bytes, so each reported version gets bytes of its own.
+        File.AppendAllText(executable, "\n" + version);
+        return executable;
+    }
+
     internal static string CopyWithWrongDescription(string candidateDirectory)
     {
         return CopyWithSentinel(candidateDirectory, WrongDescriptionFileName);

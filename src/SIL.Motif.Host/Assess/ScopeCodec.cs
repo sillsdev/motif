@@ -43,7 +43,8 @@ public abstract record StoredScope
         string FromGrammarSourceSha256,
         string ToGrammarSourceSha256,
         bool TokeniserMismatch,
-        string? TokeniserWarning) : StoredScope;
+        string? TokeniserWarning,
+        string? ParserWarning = null) : StoredScope;
 }
 
 /// <summary>
@@ -68,7 +69,8 @@ public static class ScopeCodec
         StoredScope.Difference difference => JsonSerializer.Serialize(new DifferenceWire(
             difference.FromAssessmentId, difference.ToAssessmentId, difference.FromWordCount,
             difference.ToWordCount, difference.SharedWordCount, difference.FromGrammarSourceSha256,
-            difference.ToGrammarSourceSha256, difference.TokeniserMismatch, difference.TokeniserWarning),
+            difference.ToGrammarSourceSha256, difference.TokeniserMismatch, difference.TokeniserWarning,
+            difference.ParserWarning),
             WireOptions),
         _ => throw new ArgumentOutOfRangeException(nameof(scope), scope, "Unknown stored scope shape."),
     };
@@ -142,7 +144,7 @@ public static class ScopeCodec
         return new StoredScope.Difference(
             wire.FromAssessmentId, wire.ToAssessmentId, wire.FromWordCount, wire.ToWordCount, wire.SharedWordCount,
             wire.FromGrammarSourceSha256 ?? string.Empty, wire.ToGrammarSourceSha256 ?? string.Empty,
-            wire.TokeniserMismatch, wire.TokeniserWarning);
+            wire.TokeniserMismatch, wire.TokeniserWarning, wire.ParserWarning);
     }
 
     private static IReadOnlyList<AssessmentKind> ParseCollect(IReadOnlyList<string>? collect, string reportKind)
@@ -177,5 +179,6 @@ public static class ScopeCodec
         [property: JsonPropertyName("fromGrammarSourceSha256")] string? FromGrammarSourceSha256,
         [property: JsonPropertyName("toGrammarSourceSha256")] string? ToGrammarSourceSha256,
         [property: JsonPropertyName("tokeniserMismatch")] bool TokeniserMismatch,
-        [property: JsonPropertyName("tokeniserWarning")] string? TokeniserWarning);
+        [property: JsonPropertyName("tokeniserWarning")] string? TokeniserWarning,
+        [property: JsonPropertyName("parserWarning")] string? ParserWarning = null);
 }

@@ -25,6 +25,16 @@ public sealed record BatchInvocationEvidence(
     internal sealed record TextSnapshot(string Text, string Sha256);
     internal sealed record BatchFileDigests(string? TsvSha256, string? AnalysesSha256);
 
+    /// <summary>The version the executable that ran this invocation reported, or null when recorded before this existed.</summary>
+    /// <remarks>
+    /// With <see cref="ExecutableBytesSha256"/> this is the parser identity <c>compare</c> checks, so two
+    /// Assessments made by different parsers are named as such.
+    /// </remarks>
+    public string? ExecutableVersion { get; init; }
+
+    /// <summary>Where the executable that ran this invocation was; information only, never compared.</summary>
+    public string? ExecutablePath { get; init; }
+
     public string? AnalysesPath { get; init; }
     public string? AnalysesSha256 { get; init; }
 

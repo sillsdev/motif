@@ -128,7 +128,8 @@ public static class JobCommands
     /// queues a Trial job and returns the job id that names it. A request with neither words nor all words
     /// measures <see cref="DerivedTrialWords"/>, so every front end tries a Proposal the same way.
     /// </summary>
-    public static CommandOutcome<JobEnqueuedResponse> EnqueueTrial(EnqueueTrialRequest request)
+    public static CommandOutcome<JobEnqueuedResponse> EnqueueTrial(EnqueueTrialRequest request,
+        string? parserPath = null)
     {
         if (request.Words?.Any(word => string.IsNullOrWhiteSpace(word) ||
                 !string.Equals(word, word.Trim(), StringComparison.Ordinal)) == true)
@@ -175,7 +176,8 @@ public static class JobCommands
             var input = new TrialJobInput(proposalJson, request.Scope, words, request.AllWords, prerequisites,
                 request.Limits, request.BaselineAssessmentIds, request.NegativeWords);
             var inputJson = JsonSerializer.Serialize(input, MotifJson.CreateOptions());
-            var created = jobs.Create(jobId, workspaceKey, TrialKind, inputJson, NowStamp());
+            var created = jobs.Create(jobId, workspaceKey, TrialKind,
+                JobParserPin.Stamp(inputJson, parserPath), NowStamp());
             return CommandOutcome<JobEnqueuedResponse>.Success(
                 new JobEnqueuedResponse(created.JobId, TrialKind, workspaceKey));
         });
@@ -308,8 +310,31 @@ public static class JobCommands
             {
                 TrialProgress = trialProgress,
                 StageProgress = stageProgress,
+                FailureCode = FailureCodeOf(job),
+                FailureDetail = FailureCodeOf(job) is null ? null : FailureField(job.ResultJson, "message"),
             });
         });
+    }
+
+    private static string? FailureCodeOf(JobRecord job) =>
+        job.Status == JobStatus.Failed && FailureField(job.ResultJson, "code") is { } code &&
+        (code == RefusalCodes.JobParserUnavailable || RefusalCatalog.Specs.ContainsKey(code)) ? code : null;
+
+    /// <summary>A string a failed job's result records under <paramref name="name"/>, if any.</summary>
+    private static string? FailureField(string? resultJson, string name)
+    {
+        if (resultJson is null) return null;
+        try
+        {
+            using var document = JsonDocument.Parse(resultJson);
+            return document.RootElement.ValueKind == JsonValueKind.Object &&
+                document.RootElement.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String
+                ? value.GetString() : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     private static (TrialWordProgress? TrialProgress, JobStageProgress? StageProgress) DecodeProgress(

@@ -1,3 +1,4 @@
+using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Parser;
 using System.Text.Json;
 
@@ -16,7 +17,9 @@ public sealed record ComparableAssessment(
     string Kind,
     string TokeniserName,
     string TokeniserVersion,
-    IReadOnlyList<AssessedWord> Words);
+    IReadOnlyList<AssessedWord> Words,
+    string? ParserVersion = null,
+    string? ParserSha256 = null);
 
 /// <summary>Where a caller turns what it already has into the narrow join view above.</summary>
 public static class ComparableAssessmentProjections
@@ -75,7 +78,14 @@ public sealed record AssessmentComparison(
     IReadOnlyList<string> SharedWords,
     bool TokeniserMismatch,
     string? TokeniserWarning,
-    IReadOnlyList<WordChange> Changes);
+    IReadOnlyList<WordChange> Changes)
+{
+    /// <summary>Whether both Assessments recorded the parser that ran them, and it was not the same one.</summary>
+    public bool ParserMismatch { get; init; }
+
+    /// <summary>Names the two parsers when <see cref="ParserMismatch"/>; otherwise null.</summary>
+    public string? ParserWarning { get; init; }
+}
 
 /// <summary>
 /// Joins two Assessments on the word (ADR 0042's amendment). What must match to compare at all is the
@@ -132,7 +142,20 @@ public static class AssessmentComparer
             if (change is not null) changes.Add(change);
         }
 
-        return new AssessmentComparison(from.Words.Count, to.Words.Count, sharedWords, tokeniserMismatch, warning, changes);
+        // Unknown on either side (recorded before parsers were) is not a mismatch: there is nothing to compare.
+        var parserMismatch = from.ParserSha256 is not null && to.ParserSha256 is not null &&
+            !string.Equals(from.ParserSha256, to.ParserSha256, StringComparison.Ordinal);
+        var parserWarning = parserMismatch
+            ? $"'{from.AssessmentId}' was parsed by {ParserIdentity.Describe(from.ParserVersion, from.ParserSha256)}; " +
+              $"'{to.AssessmentId}' by {ParserIdentity.Describe(to.ParserVersion, to.ParserSha256)}. A word that " +
+              "differs below may differ because the parser changed, not the grammar."
+            : null;
+
+        return new AssessmentComparison(from.Words.Count, to.Words.Count, sharedWords, tokeniserMismatch, warning, changes)
+        {
+            ParserMismatch = parserMismatch,
+            ParserWarning = parserWarning,
+        };
     }
 
     private static WordChange? Classify(string word, AssessedWord from, AssessedWord to)

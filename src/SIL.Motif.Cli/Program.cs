@@ -1264,7 +1264,7 @@ try
                 var queuedCandidate = ParsimonyCommands.EnqueueCandidate(new EnqueueParsimonyCandidateRequest(
                     candidateProject, CliProductVersion(), candidateDryRunJobId,
                     flags.GetValueOrDefault("measure") ?? "P-adhoc-duplicate", candidateScope.Value,
-                    ReadRepeatedFlagValues(flags, "assessment")));
+                    ReadRepeatedFlagValues(flags, "assessment")), SIL.Motif.Host.Parser.PanGlossExecutable.TryLocate());
                 result = RenderCommand(queuedCandidate);
                 if (queuedCandidate.Succeeded)
                 {
@@ -1355,7 +1355,7 @@ try
                 return parsimonyUsage;
             var enqueuedParsimony = ParsimonyCommands.Enqueue(new EnqueueParsimonyReportRequest(
                 parsimonyProject, CliProductVersion(), flags.GetValueOrDefault("measure") ?? "P-adhoc-duplicate",
-                evidenceScope.Value, ReadRepeatedFlagValues(flags, "assessment")));
+                evidenceScope.Value, ReadRepeatedFlagValues(flags, "assessment")), SIL.Motif.Host.Parser.PanGlossExecutable.TryLocate());
             result = RenderCommand(enqueuedParsimony);
             if (enqueuedParsimony.Succeeded)
             {
@@ -1563,7 +1563,8 @@ try
                         UsageLineFor("phonology-examples check"), asJson, out checkWaitTimeout) is { } checkUsage)
                         return checkUsage;
                     var queuedCheck = PhonologyExampleCommands.Check(new PhonologyCheckRequest(phonologyProject,
-                        positionals[1], null, new PhonologyLimits(checkStepCap, checkWorkCap, (uint)checkTimeout)));
+                        positionals[1], null, new PhonologyLimits(checkStepCap, checkWorkCap, (uint)checkTimeout)),
+                        SIL.Motif.Host.Parser.PanGlossExecutable.TryLocate());
                     result = RenderCommand(queuedCheck);
                     if (queuedCheck.Succeeded)
                     {

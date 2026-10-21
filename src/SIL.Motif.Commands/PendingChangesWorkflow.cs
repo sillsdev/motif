@@ -326,14 +326,14 @@ public static class PendingChangesWorkflow
             limits = earlier.Value;
         }
 
+        var launcher = runnerLauncher ?? ProcessRunnerLauncher.FromEnvironment();
         var queued = await Task.Run(() => JobCommands.EnqueueTrial(new EnqueueTrialRequest(
             request.ProjectPath, version, current.DraftId, Words: request.Words,
-            ExpectedDraftRevision: current.Revision, Limits: limits))).ConfigureAwait(false);
+            ExpectedDraftRevision: current.Revision, Limits: limits), launcher.Options.ParserPath)).ConfigureAwait(false);
         if (queued.Refusal?.Code == "draft.revision-conflict")
             return RefuseMeasure("trial.changes-changed", "The changes changed. Reload them before measuring.");
         if (!queued.Succeeded) return CommandOutcome<MeasurePendingResult>.Refused(queued.Refusal!);
         var jobId = queued.Value!.JobId;
-        var launcher = runnerLauncher ?? ProcessRunnerLauncher.FromEnvironment();
         launcher.Start(request.ProjectPath);
 
         MeasureProgress? lastProgress = null;

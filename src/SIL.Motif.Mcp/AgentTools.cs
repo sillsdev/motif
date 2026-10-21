@@ -1429,7 +1429,7 @@ internal static class AgentTools
             var queued = await Task.Run(() => TrialWorkflow.Enqueue(
                 new EnqueueTrialRequest(context.ProjectPath, context.ProductVersion, proposal,
                     Words: words.Length == 0 ? null : words, NegativeWords: negatives),
-                RunnerOptions.ResolveRoot(), context.ParserPath, BaselineMode.Required, cancellation), cancellation);
+                RunnerOptions.ResolveRoot(), context.JobParserPath, BaselineMode.Required, cancellation), cancellation);
             if (!queued.Succeeded) return ToolOutcome.Refused(queued.Refusal!);
             job = queued.Value!.Job.JobId;
         }

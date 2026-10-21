@@ -76,7 +76,7 @@ public static class CompareCommands
             var scopeJson = ScopeCodec.Write(new StoredScope.Difference(
                 request.FromAssessmentId, request.ToAssessmentId, comparison.FromWordCount, comparison.ToWordCount,
                 comparison.SharedWords.Count, from.GrammarSourceSha256, to.GrammarSourceSha256,
-                comparison.TokeniserMismatch, comparison.TokeniserWarning));
+                comparison.TokeniserMismatch, comparison.TokeniserWarning, comparison.ParserWarning));
             var words = comparison.Changes
                 .Select(change => new AssessedWord(
                     change.Word, $"{change.Kind}:{change.FromOutcome}->{change.ToOutcome}",
@@ -103,7 +103,7 @@ public static class CompareCommands
                 GrammarSourceSha256: string.Empty,
                 ModelFingerprint: "motif-comparison",
                 Pipeline: "compare",
-                DiagnosticCount: comparison.TokeniserMismatch ? 1 : 0,
+                DiagnosticCount: comparison.TokeniserMismatch || comparison.ParserMismatch ? 1 : 0,
                 Material: new AssessmentRecordMaterial.Words(words, null, null, [])));
 
             // Read back the row just recorded, so this can't disagree with a later report of the same row.
@@ -114,7 +114,7 @@ public static class CompareCommands
             return CommandOutcome<CompareResponse>.Success(new CompareResponse(
                 assessmentId, request.FromAssessmentId, request.ToAssessmentId, from.Assessor,
                 comparison.FromWordCount, comparison.ToWordCount, comparison.SharedWords.Count,
-                comparison.TokeniserMismatch, comparison.TokeniserWarning, rendered.Text));
+                comparison.TokeniserMismatch, comparison.TokeniserWarning, rendered.Text, comparison.ParserWarning));
         });
     }
 

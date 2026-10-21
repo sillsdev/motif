@@ -333,6 +333,8 @@ public static class RefusalCodes
     public const string JobInvalidWords = "job.invalid-words";
     /// <summary>The job to move before is not an active job.</summary>
     public const string JobMoveTargetNotFound = "job.move-target-not-found";
+    /// <summary>The parser a queued job was pinned to can no longer be started, so the job was failed.</summary>
+    public const string JobParserUnavailable = "job.parser-unavailable";
     /// <summary>The job recorded no Assessments.</summary>
     public const string JobNoAssessments = "job.no-assessments";
     /// <summary>The job is still running, so it cannot be requeued.</summary>

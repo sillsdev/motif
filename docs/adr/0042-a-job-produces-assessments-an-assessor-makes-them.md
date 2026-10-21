@@ -238,3 +238,11 @@ The registered Report producer interface accepts a closed input family: stored A
 Derived SQLite analysis artifacts are disposable and rebuildable. Reviewed negatives and Parsimony dispositions live in durable FieldWorks project data; their concrete representation is deferred to a forthcoming ADR. No negative or disposition tables are added to `Project.motif.db`.
 
 The Assessor remains responsible for interpreting its raw parser format. Motif joins that evidence to the frozen project evidence and presents the finding. A Parsimony Report is always advisory, and its threshold or disposition never changes Readiness or Apply. This narrows nothing in the configured regression policy that ADR 0042 decision 5 records for other Report kinds.
+
+### 2026-10-20 — a differing parser annotates a comparison
+
+The parser is context, like the tokeniser: two Assessments made by different parsers still join on the word,
+and `compare` says so. When both recorded the parser that ran them (executable version and content hash, see
+[ADR 0039](0039-one-worker-baseline-and-live-host-authority.md)'s amendment of the same date) and the two content hashes differ,
+the response, the stored Difference's scope and its report carry a warning naming both with their versions when known, because a change in
+the parser looks exactly like a change in the grammar. An Assessment that recorded no parser is not a mismatch.

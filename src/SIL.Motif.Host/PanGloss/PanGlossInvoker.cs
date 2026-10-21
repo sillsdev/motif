@@ -320,6 +320,8 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                 {
                     AnalysesPath = analysesPath,
                     AnalysesSha256 = analysesDigest,
+                    ExecutableVersion = ParserExecutableIdentity.ReadVersion(executable),
+                    ExecutablePath = Path.GetFullPath(executable),
                 };
                 published = true;
                 return completed with

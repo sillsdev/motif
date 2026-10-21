@@ -1399,6 +1399,25 @@ public sealed class PanGlossInvokerTests : IDisposable
     }
 
     [Fact]
+    public async Task CapturedBatchRecordsTheVersionAndPathOfTheParserThatRanIt()
+    {
+        var parser = FakeParser.CopyReportingVersion(Path.Combine(_root, "reporting"), "0.8.6");
+        var source = Project("identity");
+        var artifacts = Path.Combine(_root, Guid.NewGuid().ToString("N"));
+        using var invoker = new PanGlossInvoker(parser, NewQueue());
+
+        var outcome = await invoker.RunAsync(new PanGlossRequest.Batch(
+            source, ["motifa"], TimeSpan.FromMilliseconds(700), ArtifactDirectory: artifacts),
+            "test:identity", CancellationToken.None);
+
+        var evidence = Assert.IsType<BatchInvocationEvidence>(
+            Assert.IsType<PanGlossOutcome.Completed>(outcome).BatchEvidence);
+        Assert.Equal("0.8.6", evidence.ExecutableVersion);
+        Assert.Equal(Path.GetFullPath(parser), evidence.ExecutablePath);
+        Assert.Equal(BatchInvocationEvidence.DigestFile(parser), evidence.ExecutableBytesSha256);
+    }
+
+    [Fact]
     public async Task CapturedBatchRefusesToOverwriteAnExistingArtifactDirectory()
     {
         var source = Project("existing");

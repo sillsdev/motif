@@ -186,6 +186,47 @@ The reduction is deliberate and worth naming: a user with FieldWorks open used t
 project and could agree. Now they close it, or the refresh waits. Restoring that as a FieldWorks-side
 prompt that runs `motif` afterwards is a question for that surface rather than for this barrier.
 
+### 2026-10-20 — a Worker claims only the jobs its own parser can run
+
+The decision that one Worker serves a root assumed every Worker on that root runs the same parser. It does
+not hold when two builds share `~/.local/share/SIL/Motif`: a stale Worker (PanGloss 0.8.6) claimed the Trial
+jobs a newer build (0.8.8) queued and parsed them with the old engine, so Trial and Assess disagreed on five
+words and nothing recorded which parser had run. The "one Worker per product version" alternative stays
+rejected; the root still has one owner at a time. What changes is who may claim what.
+
+- **A job records the parser its enqueuer expects.** Trial, Parsimony, Parsimony candidate evidence and
+  phonology-check jobs carry `parserIdentity` in their input document: the SHA-256 of the executable's bytes,
+  its path, and its version when one is already known (else `unknown`). **The content hash alone is the key a
+  claim compares**: the bytes fully determine the parser, and a development build keeps its version across
+  rebuilds. The version is information only, and reading an identity never runs the parser, so the enqueue
+  path has no `--version` call or timeout. The path is information too, since two copies of one build are one
+  parser. The queue table is unchanged.
+- **A Worker claims a pinned job only when its own key matches.** A mismatched job stays queued, is not failed,
+  and does not block the jobs behind it. A Worker with no parser claims no pinned job.
+- **Legacy jobs are claimable by any Worker.** A job with no `parserIdentity` (queued before this amendment, or
+  by a caller that named no parser) keeps the behaviour it had: refusing it would strand work that no enqueuer
+  can re-pin.
+- **A Worker hands work it cannot run to a Worker that can.** Queued work pinned to another parser does not
+  keep a Worker alive. A Worker whose only queued work is such work retires, and as it exits it starts a Worker
+  (this runner again, through `dotnet <dll>` when it was started that way, with its output not redirected)
+  for the parser the **oldest** such job is pinned to, through the same arguments a wake gives (`--root`,
+  `--parser <pinned path>`, the namespace, idle and lease settings, `--wake-project`). It starts one only when
+  the pinned path exists and its current hash still equals the pin. The started Worker waits for ownership as a
+  wake waiter, claims the job, and hands over whatever it leaves behind in the same way. Nothing depends on
+  the enqueue's own Worker still waiting.
+- **A job whose parser cannot be started is failed, not stranded.** When the pinned path is gone, or the key
+  there differs after a rebuild or update, a Worker fails the job, queued or running with an expired lease, with the registered code
+  `job.parser-unavailable` and a message naming the pinned version and path and saying to run the Trial again.
+  The job's status shows the code and message, so `--wait`, the MCP wait and the App report it at once. A
+  queued job could not fail before; `queued -> failed` is now a legal transition for exactly this case.
+- **Unpinned means no readable parser file.** A job is queued unpinned only when no parser is configured or
+  its file is missing or unreadable. Any parser that exists pins by its hash, whether or not it reports a
+  version. An MCP job is pinned to the parser the launcher starts Workers with, not to a second value.
+- **A result records the parser that ran it.** Each batch invocation's evidence records the executable's
+  version and path beside the executable hash it already held, so Assess and Trial Assessments both say which
+  parser measured them. [`compare`](0042-a-job-produces-assessments-an-assessor-makes-them.md) warns when its two
+  Assessments recorded different parsers; an Assessment with no recorded parser is not a mismatch.
+
 ## Consequences
 
 This design makes repeated evaluation cheap and concurrent while keeping live-project writes under the host

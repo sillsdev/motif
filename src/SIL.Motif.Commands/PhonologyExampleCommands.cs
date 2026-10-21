@@ -154,7 +154,8 @@ public static class PhonologyExampleCommands
 
     /// <summary>Queues an advisory check of one saved revision against the current Baseline's grammar.</summary>
     /// <param name="request">The project, exact revision, optional Baseline binding and optional ceilings.</param>
-    public static CommandOutcome<JobEnqueuedResponse> Check(PhonologyCheckRequest request)
+    /// <param name="parserPath">The parser the woken runner will use, recorded on the job; null records none.</param>
+    public static CommandOutcome<JobEnqueuedResponse> Check(PhonologyCheckRequest request, string? parserPath = null)
     {
         ArgumentNullException.ThrowIfNull(request);
         var limits = request.Limits ?? PhonologyExampleValidation.DefaultLimits;
@@ -194,7 +195,8 @@ public static class PhonologyExampleCommands
             var jobId = CanonicalId.Mint("job/").Value;
             var input = JsonSerializer.Serialize(new PhonologyCheckJobInput(request.RevisionId,
                 current.Baseline.Token, limits), MotifJson.CreateOptions());
-            var job = new JobRepository(database).Create(jobId, workspaceKey, PhonologyCheckJobHandler.JobKind, input,
+            var job = new JobRepository(database).Create(jobId, workspaceKey, PhonologyCheckJobHandler.JobKind,
+                JobParserPin.Stamp(input, parserPath),
                 DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture));
             return CommandOutcome<JobEnqueuedResponse>.Success(
                 new JobEnqueuedResponse(job.JobId, job.Kind, workspaceKey));

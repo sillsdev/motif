@@ -1,6 +1,7 @@
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Requests;
+using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Store;
@@ -109,6 +110,89 @@ public sealed class TrialDraftRevisionTests
         var input = TrialJobInput.Parse(new JobRepository(database).Get(queued.Value!.JobId)!.InputJson);
         Assert.Null(input.Words);
         Assert.False(input.AllWords);
+    }
+
+    [Fact]
+    public void ATrialRecordsTheParserItsEnqueuerExpects()
+    {
+        var id = NewDraftWithOneGloss("pinned-trial");
+        var parser = FakeParser.CopyReportingVersion(
+            Path.Combine(Path.GetTempPath(), "motif-pin-" + Guid.NewGuid().ToString("N")), "0.8.8");
+        ParserExecutableIdentity.ReadVersion(parser);
+
+        var queued = JobCommands.EnqueueTrial(new EnqueueTrialRequest(_fwDataPath, ProductVersion, id,
+            Words: ["word"]), parser);
+
+        Assert.True(queued.Succeeded, queued.Refusal?.Message);
+        using var database = ProjectMotifDatabase.Open(_fwDataPath);
+        var inputJson = new JobRepository(database).Get(queued.Value!.JobId)!.InputJson;
+        var expected = ParserIdentity.Read(parser)!;
+        Assert.Equal(expected.Key, JobParserPin.KeyOf(inputJson));
+        using var document = System.Text.Json.JsonDocument.Parse(inputJson);
+        var pin = document.RootElement.GetProperty("parserIdentity");
+        Assert.Equal("0.8.8", pin.GetProperty("version").GetString());
+        Assert.Equal(expected.Sha256, pin.GetProperty("sha256").GetString());
+        Assert.Equal(parser, pin.GetProperty("path").GetString());
+        Assert.Equal(["word"], TrialJobInput.Parse(inputJson).Words);
+    }
+
+    [Fact]
+    public void ATrialQueuedWithNoParserNamedIsPinnedToNone()
+    {
+        var id = NewDraftWithOneGloss("unpinned-trial");
+
+        var queued = JobCommands.EnqueueTrial(new EnqueueTrialRequest(_fwDataPath, ProductVersion, id,
+            Words: ["word"]));
+
+        using var database = ProjectMotifDatabase.Open(_fwDataPath);
+        Assert.Null(JobParserPin.KeyOf(new JobRepository(database).Get(queued.Value!.JobId)!.InputJson));
+    }
+
+    [Fact]
+    public void AParserThatCannotBeIdentifiedStillPinsTheTrialByItsBytes()
+    {
+        var id = NewDraftWithOneGloss("unidentifiable-trial");
+        var broken = Path.Combine(Path.GetTempPath(), "motif-broken-" + Guid.NewGuid().ToString("N"));
+        File.WriteAllText(broken, "not an executable");
+
+        var queued = JobCommands.EnqueueTrial(new EnqueueTrialRequest(_fwDataPath, ProductVersion, id,
+            Words: ["word"]), broken);
+
+        Assert.True(queued.Succeeded, queued.Refusal?.Message);
+        using var database = ProjectMotifDatabase.Open(_fwDataPath);
+        var pin = JobParserPin.Read(new JobRepository(database).Get(queued.Value!.JobId)!.InputJson)!;
+        Assert.Equal(ParserIdentity.Read(broken)!.Sha256, pin.Key);
+        Assert.Equal("unknown", pin.Version);
+    }
+
+    [Fact]
+    public void AJobFailedBecauseItsParserIsGoneShowsItsCodeAndWaitReturnsItAtOnce()
+    {
+        var id = NewDraftWithOneGloss("stranded-trial");
+        var parser = FakeParser.CopyReportingVersion(
+            Path.Combine(Path.GetTempPath(), "motif-stranded-" + Guid.NewGuid().ToString("N")), "0.8.8");
+        ParserExecutableIdentity.ReadVersion(parser);
+        var queued = JobCommands.EnqueueTrial(new EnqueueTrialRequest(_fwDataPath, ProductVersion, id,
+            Words: ["word"]), parser);
+        using (var database = ProjectMotifDatabase.Open(_fwDataPath))
+        {
+            var jobs = new JobRepository(database);
+            var job = jobs.Get(queued.Value!.JobId)!;
+            jobs.Transition(job.JobId, SIL.Motif.Contract.Jobs.JobStatus.Failed, job.Version,
+                SIL.Motif.Contract.Jobs.JobFailureCategory.Infrastructure,
+                JobParserPin.UnavailableResult(JobParserPin.Read(job.InputJson)!));
+        }
+
+        var started = System.Diagnostics.Stopwatch.StartNew();
+        var waited = JobCommands.WaitForJob(new WaitForJobRequest(_fwDataPath, queued.Value!.JobId,
+            ProductVersion, TimeSpan.FromSeconds(60)));
+
+        Assert.True(started.Elapsed < TimeSpan.FromSeconds(10), "the wait took " + started.Elapsed);
+        Assert.True(waited.Succeeded, waited.Refusal?.Message);
+        Assert.Equal(SIL.Motif.Contract.Jobs.JobStatus.Failed, waited.Value!.Status);
+        Assert.Equal("job.parser-unavailable", waited.Value.FailureCode);
+        Assert.Contains("Run the Trial again", waited.Value.FailureDetail);
+        Assert.Contains("0.8.8", waited.Value.FailureDetail);
     }
 
     [Fact]

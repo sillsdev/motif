@@ -37,15 +37,15 @@ public static class TrialBaselines
         string managedRoot, string? parserPath, CancellationToken cancellationToken,
         Action<string>? onBaselineUnavailable = null) =>
         EnqueueWithBaseline(request, words => Assess(request.FwDataPath, words, managedRoot, parserPath,
-            cancellationToken), onBaselineUnavailable);
+            cancellationToken), onBaselineUnavailable, parserPath ?? SIL.Motif.Host.Parser.PanGlossExecutable.TryLocate());
 
     /// <summary>As the other overload, with the Baseline measurement supplied by the caller.</summary>
     internal static CommandOutcome<JobEnqueuedResponse> EnqueueWithBaseline(EnqueueTrialRequest request,
         Func<IReadOnlyList<string>, CommandOutcome<AssessCommandResponse>> assess,
-        Action<string>? onBaselineUnavailable = null)
+        Action<string>? onBaselineUnavailable = null, string? expectedParserPath = null)
     {
         ArgumentNullException.ThrowIfNull(request);
-        if (request.BaselineAssessmentIds is not null) return JobCommands.EnqueueTrial(request);
+        if (request.BaselineAssessmentIds is not null) return JobCommands.EnqueueTrial(request, expectedParserPath);
         var resolved = JobCommands.ResolveTrialWords(request);
         if (!resolved.Succeeded) return CommandOutcome<JobEnqueuedResponse>.Refused(resolved.Refusal!);
         var words = resolved.Value;
@@ -55,19 +55,19 @@ public static class TrialBaselines
         {
             // A project that cannot be assessed here still queues its Trial; the caller is told what is missing.
             onBaselineUnavailable(exception.Message);
-            return JobCommands.EnqueueTrial(request);
+            return JobCommands.EnqueueTrial(request, expectedParserPath);
         }
         if (!before.Succeeded)
         {
             // A cancelled measurement is the caller stopping, not a missing Baseline: nothing is queued.
             if (onBaselineUnavailable is null || before.Refusal!.Reason == FailureReason.Cancelled) return CommandOutcome<JobEnqueuedResponse>.Refused(before.Refusal!);
             onBaselineUnavailable(before.Refusal!.Message);
-            return JobCommands.EnqueueTrial(request);
+            return JobCommands.EnqueueTrial(request, expectedParserPath);
         }
         return JobCommands.EnqueueTrial(request with
         {
             Words = words,
             BaselineAssessmentIds = before.Value!.AssessmentIds,
-        });
+        }, expectedParserPath);
     }
 }
