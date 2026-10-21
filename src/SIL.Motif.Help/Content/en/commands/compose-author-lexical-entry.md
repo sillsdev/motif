@@ -19,6 +19,6 @@ Every id can belong to something an earlier command added to the same Draft, suc
 
 ## When not to use this
 
-- For an affix, prefer an inflectional MSA with its category and a slot over an unclassified one, which attaches without restriction.
+- For an affix, choose an inflectional or derivational MSA, not unclassified, which attaches without restriction; only an inflectional one fills an inflectional slot.
 - Do not create an entry per stem that takes the same affix; one affix entry serves them all.
 - For another form of an existing entry, use `compose-author-alternate-form`.

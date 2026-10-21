@@ -35,7 +35,7 @@ internal static class ComposerTools
         var composer = ProposalCommands.ComposerDescriptors.Single(candidate => candidate.Verb == verb);
         var entry = Help.Find(HelpEntryKind.Command, verb)
             ?? throw new InvalidOperationException($"Composer '{verb}' needs shared Help text.");
-        return entry.Title + ". " + (entry.Callout is { } line ? line + " " : string.Empty) + entry.Description + "\nCommand: " + verb + ". " + "Agent class: " + composer.Agent + ".";
+        return entry.Title + ". " + (entry.McpCallout is { } line ? line + " " : string.Empty) + entry.Description + "\nCommand: " + verb + ". " + "Agent class: " + composer.Agent + ".";
     }
 
     /// <summary>One tool for each typed definition an agent may use and that has no hand-written tool.</summary>

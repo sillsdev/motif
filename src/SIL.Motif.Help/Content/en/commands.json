@@ -158,7 +158,7 @@
     "guides": [
       "no-inflection"
     ],
-    "redirect": "Retire only what the evidence shows is spurious. If forms show no inflection, do not invent affixes to replace it (guide no-inflection)."
+    "redirect": "Retires listed forms and moves their references. Retire only a redundant form, and check every affected approved word in a Trial (guide no-inflection)."
   },
   "retire-redundant-zero-affix": {
     "title": "Retire an unused zero affix",
@@ -179,7 +179,7 @@
     "guides": [
       "no-inflection"
     ],
-    "redirect": "Retire only what the evidence shows is spurious. If forms show no inflection, do not invent affixes to replace it (guide no-inflection)."
+    "redirect": "Removes a zero affix that adds no feature. Keep one the evidence shows is a real position, and check affected words in a Trial (guide no-inflection)."
   },
   "compose-author-phonological-rule": {
     "title": "Author a phonological rule",
@@ -240,7 +240,7 @@
       "suffix-prefix-slots",
       "feature-conditioned-slots"
     ],
-    "redirect": "Put affixes in slots in speakers' order. No entry per stem, and no one broad slot for affixes with different jobs (guide suffix-prefix-slots)."
+    "redirect": "Add a category only when the evidence needs one; slots and classes belong to a category, so author it before them (guide suffix-prefix-slots)."
   },
   "compose-author-affix-slot": {
     "title": "Author an affix slot",
@@ -486,7 +486,7 @@
     "guides": [
       "workflow"
     ],
-    "redirect": "Only turns existing compounding off or on; it builds and fixes nothing. Trial known compounds before and after, and ask the linguist first (guide workflow)."
+    "redirect": "Only turns the parser's built-in default compounding off or on; it authors no compound rule. Trial known compounds first and ask the linguist (guide workflow)."
   },
   "compose-edit-affix-slot": {
     "title": "Edit an affix slot",
@@ -550,7 +550,7 @@
       "suffix-prefix-slots",
       "feature-conditioned-slots"
     ],
-    "redirect": "Put affixes in slots in speakers' order. No entry per stem, and no one broad slot for affixes with different jobs (guide suffix-prefix-slots)."
+    "redirect": "Sets only the default class for a category's stems. Use it when most stems share a class, not to cover exceptions (guide feature-conditioned-slots)."
   },
   "compose-edit-stem-allomorph-stem-name": {
     "title": "Set a stem allomorph's name",
@@ -645,7 +645,7 @@
       "suffix-prefix-slots",
       "feature-conditioned-slots"
     ],
-    "redirect": "Put affixes in slots in speakers' order. No entry per stem, and no one broad slot for affixes with different jobs (guide suffix-prefix-slots)."
+    "redirect": "Changes one stem's category, and with it which slots its affixes may fill. Check the evidence that the stem belongs to that category first (guide suffix-prefix-slots)."
   },
   "compose-edit-affix-inflection-classes": {
     "title": "Edit affix class restrictions",
@@ -666,7 +666,7 @@
       "suffix-prefix-slots",
       "feature-conditioned-slots"
     ],
-    "redirect": "Put affixes in slots in speakers' order. No entry per stem, and no one broad slot for affixes with different jobs (guide suffix-prefix-slots)."
+    "redirect": "Limits which stems an affix attaches to by class. Use it for arbitrary lexical grouping; a value that must agree is a feature (guide feature-conditioned-slots)."
   },
   "compose-edit-allomorph-condition": {
     "title": "Edit an allomorph condition",
@@ -843,7 +843,7 @@
       "nasal-assimilation",
       "conditioned-allomorphs"
     ],
-    "redirect": "Add or change a phoneme only for a real contrast; a surface variant a rule or allomorph explains is not a new phoneme (guides nasal-assimilation, conditioned-allomorphs)."
+    "redirect": "Add a phoneme for a real contrast, not only to record a surface variant, unless a rule needs it as an output segment (guides nasal-assimilation, conditioned-allomorphs)."
   },
   "compose-edit-phoneme": {
     "title": "Edit a phoneme's representations",
@@ -864,7 +864,7 @@
       "nasal-assimilation",
       "conditioned-allomorphs"
     ],
-    "redirect": "Add or change a phoneme only for a real contrast; a surface variant a rule or allomorph explains is not a new phoneme (guides nasal-assimilation, conditioned-allomorphs)."
+    "redirect": "Edit a phoneme for a real contrast, not only to record a surface variant, unless a rule needs it as an output segment (guides nasal-assimilation, conditioned-allomorphs)."
   },
   "compose-author-natural-class": {
     "title": "Author a natural class",
@@ -1111,7 +1111,7 @@
     "guides": [
       "conditioned-allomorphs"
     ],
-    "redirect": "Only names feature conditions; it attaches to no allomorph. For sound-conditioned forms use environments, not a stem name (guide conditioned-allomorphs)."
+    "redirect": "Only names feature conditions; attach it with compose-edit-stem-allomorph-stem-name. For sound-conditioned forms use environments, not a stem name (guide conditioned-allomorphs)."
   },
   "phonology-examples save": {
     "title": "Save phonology examples",

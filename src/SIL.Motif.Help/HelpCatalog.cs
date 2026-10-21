@@ -63,16 +63,19 @@ public sealed record HelpEntry(
     IReadOnlyList<string>? Guides = null,
     string? Redirect = null)
 {
-    /// <summary>
-    /// The one-line nudge naming this entry's encoding guides, worded for both the CLI and MCP, or null when it has none.
-    /// </summary>
+    /// <summary>The one-line nudge naming this entry's encoding guides, worded for the CLI, or null when it has none.</summary>
     public string? GuideLine => Guides is { Count: > 0 }
         ? "Research first: read encoding guide " + string.Join(", ", Guides) +
-            " (motif_guide topic, or motif help guide:encoding/<topic> --full) and check best practice before adding rules."
+            " (motif help guide:encoding/<topic> --full) and check best practice before adding rules."
         : null;
 
-    /// <summary>The guide line and the redirect joined as one block for a description, or null when neither exists.</summary>
-    public string? Callout => GuideLine is null ? Redirect : Redirect is null ? GuideLine : GuideLine + " " + Redirect;
+    /// <summary>The shorter nudge for MCP tool descriptions, naming the motif_guide topics, or null when there are none.</summary>
+    public string? McpGuideLine => Guides is { Count: > 0 }
+        ? "Research first: motif_guide topic " + string.Join(" or ", Guides) + "; check best practice."
+        : null;
+
+    /// <summary>The MCP guide line and the redirect joined for a tool description, or null when neither exists.</summary>
+    public string? McpCallout => McpGuideLine is null ? Redirect : Redirect is null ? McpGuideLine : McpGuideLine + " " + Redirect;
 }
 
 /// <summary>A Subject a composer can serve, with the words that name it for a person.</summary>

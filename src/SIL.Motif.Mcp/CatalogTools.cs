@@ -69,7 +69,7 @@ internal static class CatalogTools
         return entry.Title + ". " + GuidePrefix(entry) + entry.Description;
     }
 
-    private static string GuidePrefix(HelpEntry entry) => entry.Callout is { } line ? line + " " : string.Empty;
+    private static string GuidePrefix(HelpEntry entry) => entry.McpCallout is { } line ? line + " " : string.Empty;
 
     internal static string Describe(IEnumerable<CommandDescriptor> commands) => string.Join("\n", commands.Select(command =>
     {

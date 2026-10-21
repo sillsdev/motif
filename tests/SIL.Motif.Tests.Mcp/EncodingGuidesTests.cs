@@ -44,7 +44,7 @@ public sealed class EncodingGuidesTests
         foreach (var verb in verbs)
         {
             var entry = help.Find(HelpEntryKind.Command, verb)!;
-            Assert.StartsWith(entry.Title + ". " + entry.Callout + " " + entry.Description,
+            Assert.StartsWith(entry.Title + ". " + entry.McpCallout + " " + entry.Description,
                 ComposerTools.Describe(verb), StringComparison.Ordinal);
         }
     }

@@ -55,7 +55,7 @@ public sealed class HelpCatalogTests
         foreach (var entry in catalog.Entries.Where(entry => entry.Kind == HelpEntryKind.Command && entry.Guides is not null))
         {
             Assert.False(string.IsNullOrWhiteSpace(entry.Redirect), $"'{entry.Code}' has guides but no redirect.");
-            Assert.InRange(entry.Redirect!.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length, 8, 40);
+            Assert.InRange(entry.Redirect!.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length, 8, 26);
         }
     }
 
@@ -71,11 +71,11 @@ public sealed class HelpCatalogTests
     public void EveryGrammarComposerNamesAnEncodingGuideUnlessAllowListed()
     {
         var catalog = HelpCatalog.Load(System.Globalization.CultureInfo.GetCultureInfo("en"));
-        var composers = catalog.Entries.Where(entry => entry.Kind == HelpEntryKind.Command
-            && (entry.Code.StartsWith("compose", StringComparison.Ordinal)
-                || entry.Code is "order-allomorphs" or "retire-allomorph" or "retire-redundant-zero-affix" or "new")).ToArray();
+        var composers = SIL.Motif.Commands.ProposalCommands.ComposerDescriptors.Select(composer => composer.Verb)
+            .Concat(["compose", "compose-batch", "new", "order-allomorphs", "retire-allomorph", "retire-redundant-zero-affix"])
+            .Distinct().Select(verb => catalog.Find(HelpEntryKind.Command, verb) ?? throw new InvalidOperationException(verb)).ToArray();
 
-        Assert.Contains(composers, entry => entry.Code == "compose-author-phonological-rule");
+        Assert.Contains(composers, entry => entry.Code == "compose-author-affix-process");
         foreach (var entry in composers)
         {
             if (ComposersWithoutGuides.ContainsKey(entry.Code))

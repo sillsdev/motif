@@ -25,5 +25,5 @@ Ask when the forms do not decide whether the change is assimilation, a stored al
 ## Common wrong choices
 
 - Duplicating an affix for each place of articulation when one rule explains the alternation.
-- An unrestricted affix process for a nasal change, which slows the parser badly; use a phonological rule.
+- An unrestricted affix process for a nasal change, which can slow parsing a lot (about 300 times on one Cebuano draft); use a phonological rule.
 - A rule that changes every nasal because only some assimilate.

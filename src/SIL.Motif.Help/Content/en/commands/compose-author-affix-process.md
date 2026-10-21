@@ -19,6 +19,6 @@ Add `--cite-source <text>` and optionally `--cite-locator <text>` to record the 
 
 ## When not to use this
 
-- For nasal assimilation or substitution, use a phonological rule with `compose-author-phonological-rule`; unrestricted affix processes slow the parser badly.
+- For nasal assimilation or substitution, use a phonological rule with `compose-author-phonological-rule`; an unrestricted affix process can slow parsing a lot (about 300 times on one Cebuano draft).
 - For a form that changes with its sound context, keep allomorphs under one entry with environments, using `compose-author-alternate-form`.
 - For a plain prefix or suffix, use `compose-author-lexical-entry` and a slot.
