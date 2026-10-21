@@ -1103,7 +1103,7 @@
   },
   {
     "name": "motif_add_alternate_form",
-    "description": "Author an alternate form. Research first: motif_guide topic conditioned-allomorphs; check best practice. Use for a listed variant of one morpheme. Not for a regular sound change across many forms: use a phonological rule (guide nasal-assimilation). Stages one more stem or affix form on an existing or earlier-staged entry, with its own environments and, for an affix, inflection classes. It adds no entry, sense or grammatical info and copies no condition from the lexeme form.\nCommand: compose-author-alternate-form. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+    "description": "Author an alternate form. Research first: motif_guide topic conditioned-allomorphs; check best practice. Use for a listed variant of one morpheme. Not for a regular sound change, a phonological rule (guide nasal-assimilation), or a pattern-based form (compose-author-affix-process-allomorph). Stages one more stem or affix form on an existing or earlier-staged entry, with its own environments and, for an affix, inflection classes. It adds no entry, sense or grammatical info and copies no condition from the lexeme form.\nCommand: compose-author-alternate-form. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -3456,6 +3456,120 @@
                     "type": "string",
                     "description": "Composing verb for this intent.",
                     "enum": [
+                      "compose-author-affix-process-allomorph"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-author-affix-process-allomorph.",
+                    "properties": {
+                      "entry": {
+                        "type": "string",
+                        "description": "Id of the existing or earlier-staged affix entry whose lexeme form is an affix process."
+                      },
+                      "input": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "phoneme": {
+                              "type": "string"
+                            },
+                            "naturalClass": {
+                              "type": "string"
+                            },
+                            "remaining": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "description": "Ordered pattern parts, each with a name and one of phoneme, naturalClass or remaining true; the remaining-stem part is last."
+                      },
+                      "output": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "copy": {
+                              "type": "string"
+                            },
+                            "insert": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "description": "Ordered realization, each item either copy of a named input part or insert of phoneme ids. An input part left out of the output is deleted."
+                      },
+                      "inflectionClasses": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Optional ids of inflection classes of the stems this form attaches to."
+                      },
+                      "placement": {
+                        "type": "object",
+                        "properties": {
+                          "after": {
+                            "type": "string"
+                          },
+                          "before": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": false,
+                        "description": "The neighbouring alternate form ids, after, before or both; required when the entry already has alternate forms."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "entry",
+                      "input",
+                      "output"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
                       "compose-author-feature-value"
                     ]
                   },
@@ -4435,7 +4549,7 @@
   },
   {
     "name": "motif_add_affix_process",
-    "description": "Author an affix process. Research first: motif_guide topic workflow or conditioned-allomorphs; check best practice. Use for infixes, reduplication and stem-internal changes allomorphs cannot express. Nasal assimilation or substitution is a phonological rule (guide nasal-assimilation); context-conditioned forms are allomorphs (guide conditioned-allomorphs). Stages a new affix entry whose ordered input pattern matches phonemes, a natural class or the remaining stem, and whose output copies named parts or inserts phonemes: an infix, a partial or full reduplication, or a substitution that deletes matched input by omitting it from the output (Cebuano paN- before p/b gives m). It refuses an output that copies nothing or drops the remaining stem. Dry Run and Trial before a person Applies the Proposal.\nCommand: compose-author-affix-process. Agent class: Draft.",
+    "description": "Author an affix process. Research first: motif_guide topic workflow or conditioned-allomorphs; check best practice. Use for infixes, reduplication and stem-internal changes. Another pattern-based form of an existing entry: compose-author-affix-process-allomorph. Regular nasal assimilation is a phonological rule (guide nasal-assimilation). Stages a new affix entry whose ordered input pattern matches phonemes, a natural class or the remaining stem, and whose output copies named parts or inserts phonemes: an infix, a partial or full reduplication, or a substitution that deletes matched input by omitting it from the output (Cebuano paN- before p/b gives m). It refuses an output that copies nothing or drops the remaining stem. Dry Run and Trial before a person Applies the Proposal.\nCommand: compose-author-affix-process. Agent class: Draft.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -4545,6 +4659,102 @@
         "gloss",
         "analysisWs",
         "msa",
+        "input",
+        "output",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_add_affix_process_allomorph",
+    "description": "Add an affix process allomorph. Research first: motif_guide topic conditioned-allomorphs or workflow; check best practice. Use for one morpheme with several pattern-based forms. Plain spelling variants use an alternate form; a new morpheme needs its own entry (guide conditioned-allomorphs). Stages one more pattern-based form, an affix process with its own input pattern and output, on an existing affix entry that already realizes itself as a process. The entry\u0027s morph type is copied and the form applies to all of the entry\u0027s grammatical info. It refuses a stem, an entry with plain allomorphs, a repeated pattern and a missing placement.\nCommand: compose-author-affix-process-allomorph. Agent class: Draft.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "entry": {
+          "type": "string",
+          "description": "Id of the existing or earlier-staged affix entry whose lexeme form is an affix process."
+        },
+        "input": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "phoneme": {
+                "type": "string"
+              },
+              "naturalClass": {
+                "type": "string"
+              },
+              "remaining": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          "description": "Ordered pattern parts, each with a name and one of phoneme, naturalClass or remaining true; the remaining-stem part is last."
+        },
+        "output": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "copy": {
+                "type": "string"
+              },
+              "insert": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "additionalProperties": false
+          },
+          "description": "Ordered realization, each item either copy of a named input part or insert of phoneme ids. An input part left out of the output is deleted."
+        },
+        "inflectionClasses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Optional ids of inflection classes of the stems this form attaches to."
+        },
+        "placement": {
+          "type": "object",
+          "properties": {
+            "after": {
+              "type": "string"
+            },
+            "before": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "description": "The neighbouring alternate form ids, after, before or both; required when the entry already has alternate forms."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "entry",
         "input",
         "output",
         "project"

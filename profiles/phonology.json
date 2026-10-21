@@ -60,6 +60,9 @@
       "tool": "motif_add_affix_process"
     },
     {
+      "tool": "motif_add_affix_process_allomorph"
+    },
+    {
       "tool": "motif_edit_phoneme"
     },
     {

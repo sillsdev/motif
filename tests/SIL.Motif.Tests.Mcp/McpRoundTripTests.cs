@@ -1222,10 +1222,21 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         Assert.Equal(4, reportedOperations.Count(operation =>
             operation.GetProperty("kind").GetString() == "grammar/moAffixProcess/createOutput"));
 
+        var entryId = reportedOperations.Single(operation =>
+            operation.GetProperty("kind").GetString() == "lexical/lexDb/createEntries").GetProperty("entityId").GetString()!;
+        var allomorph = await session.CallAsync("motif_add_affix_process_allomorph", ("draft", "process"),
+            ("entry", entryId), ("input", new object[] { new { name = "stem", remaining = true } }),
+            ("output", new object[] { new { insert = new[] { phonemeId } }, new { copy = "stem" } }));
+        Assert.True(allomorph.GetProperty("ok").GetBoolean(), allomorph.ToString());
+
         using var database = ProjectMotifDatabase.Open(project.FwDataPath);
         var draft = ProposalCommands.DeserializeDraft(new ProposalRepository(database).GetDraft("process").ProposalJson!);
         Assert.Contains(draft.ComposerProvenance, item =>
             item.GetProperty("composer").GetString() == "AuthorAffixProcess");
+        Assert.Contains(draft.ComposerProvenance, item =>
+            item.GetProperty("composer").GetString() == "AuthorAffixProcessAllomorph");
+        Assert.Contains(draft.Operations, operation => operation.Kind == "lexical/lexEntry/createAlternateForms" &&
+            operation.After["class"].GetString() == "MoAffixProcess");
         Assert.Contains(draft.Operations, operation => operation.Kind == "lexical/lexEntry/createLexemeForm" &&
             operation.After["class"].GetString() == "MoAffixProcess");
         Assert.Contains(draft.Operations, operation => operation.Kind == "grammar/moInsertPhones/addRefContent" &&

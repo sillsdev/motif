@@ -227,7 +227,7 @@
     },
     "goals": [
       "Give one affix a second pattern-based form for other stems",
-      "Substitute the first consonant of a stem for one of its allomorphs",
+      "Add a nasal substitution form to an affix that already has one",
       "Add a form to an affix that already uses an affix process"
     ],
     "guides": [

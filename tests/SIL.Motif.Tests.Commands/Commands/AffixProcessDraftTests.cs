@@ -132,6 +132,45 @@ public sealed class AffixProcessDraftTests(PristineProjectFixture pristine)
         Assert.Equal(beforeFailure, ReadDraft(path, "batch").Operations.Select(operation => operation.OperationId));
     }
 
+    [Fact]
+    public void AllomorphComposerReplaysAStagedProcessEntryAndAddsAProcessAlternate()
+    {
+        using var cache = pristine.NewScratch();
+        var path = cache.ProjectId.Path;
+        var analysisWs = cache.WritingSystemFactory.GetStrFromWs(cache.DefaultAnalWs);
+        cache.Dispose();
+        Assert.True(ProposalCommands.New(new(path, Version, "allomorph", "Add a second process form")).Succeeded);
+        var phoneme = ProposalCommands.ComposeAuthorPhoneme(new(path, Version, "allomorph",
+            JsonSerializer.Serialize(new { name = "allomorph-i", representations = new[] { "i" } })));
+        var phonemeId = Assert.Single(phoneme.Value!.Operations,
+            operation => operation.Kind.EndsWith("/createPhonemes", StringComparison.Ordinal)).EntityId!;
+        var naturalClass = ProposalCommands.ComposeAuthorNaturalClass(new(path, Version, "allomorph",
+            JsonSerializer.Serialize(new { name = "allomorph vowels", abbreviation = "AV", members = new[] { phonemeId } })));
+        var naturalClassId = Assert.Single(naturalClass.Value!.Operations,
+            operation => operation.Kind.EndsWith("/createNaturalClasses", StringComparison.Ordinal)).EntityId!;
+        var entry = ProposalCommands.ComposeIntent(new(path, Version, "allomorph", "compose-author-affix-process",
+            ProcessIntent(phonemeId, naturalClassId, analysisWs, CanonicalId.FromGuid(pristine.Seed.PartOfSpeechId).Value)));
+        Assert.True(entry.Succeeded, entry.Refusal?.Message);
+        var entryId = Assert.Single(ReadDraft(path, "allomorph").Operations,
+            operation => operation.Kind == "lexical/lexDb/createEntries").EntityId!;
+
+        var composed = ProposalCommands.ComposeIntent(new(path, Version, "allomorph",
+            "compose-author-affix-process-allomorph", JsonSerializer.Serialize(new
+            {
+                entry = entryId,
+                input = new object[] { new { name = "stem", remaining = true } },
+                output = new object[] { new { insert = new[] { phonemeId } }, new { copy = "stem" } },
+            })));
+
+        Assert.True(composed.Succeeded, composed.Refusal?.Message);
+        var draft = ReadDraft(path, "allomorph");
+        Assert.Contains(draft.ComposerProvenance, item =>
+            item.GetProperty("composer").GetString() == "AuthorAffixProcessAllomorph");
+        var alternate = Assert.Single(draft.Operations, operation => operation.Kind == "lexical/lexEntry/createAlternateForms");
+        Assert.Equal("MoAffixProcess", alternate.After["class"].GetString());
+        Assert.Equal(entryId, alternate.Target);
+    }
+
     private static string ProcessIntent(string phonemeId, string naturalClassId, string analysisWs, string categoryId) => JsonSerializer.Serialize(new
     {
         morphType = CanonicalId.FromGuid(MoMorphTypeTags.kguidMorphPrefix).Value,
