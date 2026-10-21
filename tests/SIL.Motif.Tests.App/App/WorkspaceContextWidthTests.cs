@@ -31,7 +31,7 @@ public sealed class WorkspaceContextWidthTests
             typeof(IDiagnosticFilePicker), typeof(IDiagnosticWindowDialogs), typeof(IUriLauncher),
             typeof(IAsyncRelayCommand), typeof(IAsyncRelayCommand<string>), typeof(IRelayCommand),
             typeof(System.Collections.ObjectModel.ObservableCollection<KnownProjectSummary>),
-            typeof(IAdvancedAiModePreferenceStore), typeof(IAssistantConnectionService),
+            typeof(IAdvancedAiModePreferenceStore), typeof(IAssistantConnectionService), typeof(ITryWordSessions),
             typeof(SIL.Motif.Host.Preferences.IDefaultProposalChecksStore),
         ];
         var carried = typeof(WorkspaceContext).GetProperties(BindingFlags.Instance | BindingFlags.Public)
