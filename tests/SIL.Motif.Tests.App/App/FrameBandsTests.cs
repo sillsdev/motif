@@ -1,3 +1,4 @@
+using SIL.Motif.App;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
@@ -72,7 +73,7 @@ public sealed class FrameBandsTests
         (WorkspacePage.Overview, "Select a new project"),
         (WorkspacePage.Texts, "Parse all words in the Selection"),
         (WorkspacePage.TryAWord, "Try the word"),
-        (WorkspacePage.Review, "Go to Analyze texts"),
+        (WorkspacePage.Review, MotifAppStrings.GoToAnalyzeTexts),
         (WorkspacePage.AiHandoff, "Write the AI Handoff folder"),
         (WorkspacePage.AiAssistants, "Turn on Advanced AI mode"),
     ];

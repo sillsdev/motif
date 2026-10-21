@@ -745,14 +745,11 @@ public sealed partial class ReviewPageModel : PageModel
     /// The page's count of pending changes, which after an unconfirmed Apply cannot honestly say they are unapplied.
     /// </summary>
     public string CountText => NeedsReconciliation
-        ? _entries.Count == 1 ? "1 change may already be applied"
-        : _entries.Count > 1 ? $"{_entries.Count:N0} changes may already be applied"
-        : "Changes may already be applied"
+        ? _entries.Count > 0 ? PluralText.Format(MotifAppStrings.ChangesMayAlreadyBeAppliedPattern, _entries.Count)
+        : MotifAppStrings.ChangesMayAlreadyBeApplied
         : ReviewsPendingChanges
-        ? _entries.Count == 1 ? "1 change not applied yet"
-        : _entries.Count > 1 ? $"{_entries.Count:N0} changes not applied yet" : "No changes yet"
-        : $"{ProposalLabel} · {(_entries.Count == 0 ? "No changes" : _entries.Count == 1 ? "1 change"
-            : $"{_entries.Count:N0} changes")}";
+        ? _entries.Count > 0 ? PluralText.Format(MotifAppStrings.StatusChangesPattern, _entries.Count) : MotifAppStrings.NoChangesYet
+        : $"{ProposalLabel} · {(_entries.Count == 0 ? MotifAppStrings.NoChanges : PluralText.Format(MotifAppStrings.ChangeCountPattern, _entries.Count))}";
 
     /// <summary>The line under the heading, saying how the list is ordered and that nothing is written yet.</summary>
     public string HeaderNoteText => _entries.Any(entry => entry.IsGrammar)

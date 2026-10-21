@@ -1549,7 +1549,7 @@ public sealed class MainWindowSmokeTests
                 window.UpdateLayout();
 
                 var expander = window.GetLogicalDescendants().OfType<Expander>()
-                    .Single(control => Equals(control.Header, "Add words"));
+                    .Single(control => Equals(control.Header, MotifAppStrings.AddWords));
                 Assert.False(expander.IsExpanded);
                 var center = expander.TranslatePoint(
                     new Point(expander.Bounds.Width / 2, expander.Bounds.Height / 2), window)!.Value;

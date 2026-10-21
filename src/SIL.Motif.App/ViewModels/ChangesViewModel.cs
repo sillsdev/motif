@@ -790,7 +790,7 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
     public bool HasItems => Items.Count > 0;
 
     /// <summary>How many changes wait, as the Texts page's strip says it.</summary>
-    public string CountText => Items.Count == 1 ? "1 change not applied yet" : $"{Items.Count:N0} changes not applied yet";
+    public string CountText => PluralText.Format(MotifAppStrings.StatusChangesPattern, Items.Count);
 
     private void Raise()
     {

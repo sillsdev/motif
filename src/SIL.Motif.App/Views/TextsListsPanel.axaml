@@ -8,7 +8,7 @@
              x:DataType="views:TextsListsPanel">
   <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}"
         Margin="{DynamicResource Component.TextsPage.PageInset}">
-    <ItemsControl x:Name="TextsListsPanelListsItems" ItemsSource="{Binding Lists.Lists}" AutomationProperties.Name="Word lists">
+    <ItemsControl x:Name="TextsListsPanelListsItems" ItemsSource="{Binding Lists.Lists}" AutomationProperties.Name="{x:Static app:MotifAppStrings.WordListsAccessibleName}">
       <ItemsControl.ItemsPanel>
         <ItemsPanelTemplate>
           <WrapPanel />
@@ -43,7 +43,7 @@
       <ComboBox x:Name="TextsListsPanelSortChoicesItems" DockPanel.Dock="Left" ItemsSource="{Binding Lists.Compare.SortChoices}"
                 SelectedItem="{Binding Lists.Compare.Sort}"
                 MinWidth="{DynamicResource Component.TextsPage.CompareSortMinWidth}"
-                AutomationProperties.Name="Order the words in the selected list">
+                AutomationProperties.Name="{x:Static app:MotifAppStrings.OrderTheWordsInTheSelectedAccessibleName}">
         <ComboBox.ItemTemplate>
           <DataTemplate x:DataType="vm:CompareSort">
             <TextBlock Text="{Binding Converter={x:Static views:ComparePanel.SortLabel}}" />
@@ -52,11 +52,11 @@
       </ComboBox>
       <TextBox x:Name="ListsWordSearch" DockPanel.Dock="Left" Text="{Binding Lists.Compare.SearchText}"
                PlaceholderText="Search words..." Width="{DynamicResource Component.TextsPage.CompareSearchWidth}"
-               AutomationProperties.Name="Search words in Lists" />
+               AutomationProperties.Name="{x:Static app:MotifAppStrings.SearchWordsInListsAccessibleName}" />
       <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
         <Button Content="{Binding Lists.ParseAgainLabel}" Command="{Binding Lists.ParseAgainCommand}"
                 IsVisible="{Binding Lists.CanParseAgain}"
-                AutomationProperties.Name="Parse the selected list's stopped and unparsed words again"
+                AutomationProperties.Name="{x:Static app:MotifAppStrings.ParseTheSelectedListSStoppedAccessibleName}"
                 AutomationProperties.HelpText="{Binding Lists.ParseAgainHelpText}"
                 ToolTip.Tip="{Binding Lists.ParseAgainHelpText}" views:ClearTipPlacement.IsEnabled="True" />
         <Button Content="{Binding Lists.HandOffCheckedWordsLabel}"
@@ -80,7 +80,7 @@
       <word:WordRowHeader />
       <ListBox x:Name="TextsListsPanelWordsItems" Grid.Row="1" Classes="wordRows" ItemsSource="{Binding Lists.Compare.Words}"
                KeyboardNavigation.TabNavigation="Continue"
-               AutomationProperties.Name="Words in the selected list">
+               AutomationProperties.Name="{x:Static app:MotifAppStrings.WordsInTheSelectedListAccessibleName}">
         <ListBox.ItemTemplate>
           <DataTemplate x:DataType="vm:CompareWordViewModel">
             <word:WordRow Data="{Binding ListsPresentation}" State="{Binding PresentationState, Mode=TwoWay}"
@@ -90,7 +90,7 @@
       </ListBox>
       </Grid>
     </views:WordListSlot>
-    <views:CopyableTextBlock Grid.Row="3" Classes="muted" Text="Choose a list above to see its words."
+    <views:CopyableTextBlock Grid.Row="3" Classes="muted" Text="{x:Static app:MotifAppStrings.ChooseAListAboveToSee}"
                              IsVisible="{Binding !Lists.HasSelectedList}"
                              VerticalAlignment="Center" HorizontalAlignment="Center" />
   </Grid>

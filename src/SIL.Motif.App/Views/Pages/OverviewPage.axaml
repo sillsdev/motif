@@ -11,28 +11,28 @@
   <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
     <Border Classes="overviewPageFrame">
     <StackPanel Classes="overviewPage">
-      <Border Classes="overviewHeader" AutomationProperties.Name="Project summary">
+      <Border Classes="overviewHeader" AutomationProperties.Name="{x:Static app:MotifAppStrings.ProjectSummaryAccessibleName}">
         <StackPanel Classes="overviewHeaderContent">
           <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
-            <views:CopyableTextBlock Classes="overviewProjectName" Text="Overview" />
+            <views:CopyableTextBlock Classes="overviewProjectName" Text="{x:Static app:MotifAppStrings.Overview}" />
             <views:CopyableTextBlock Grid.Column="1" Classes="overviewMuted" TextWrapping="Wrap"
                                      Text="{Binding ProjectFileName}" VerticalAlignment="Center" />
           </Grid>
           <Border Classes="notice" IsVisible="{Binding HasOverviewRefusal}"
-                  AutomationProperties.Name="The Overview could not be read">
+                  AutomationProperties.Name="{x:Static app:MotifAppStrings.TheOverviewCouldNotBeReadAccessibleName}">
             <DockPanel LastChildFill="True">
               <StackPanel Classes="overviewRefusalActions" DockPanel.Dock="Right" Orientation="Horizontal">
-                <Button Content="Try again" Command="{Binding RetryOverviewCommand}"
-                        AutomationProperties.Name="Read the Overview again" />
+                <Button Content="{x:Static app:MotifAppStrings.TryAgain}" Command="{Binding RetryOverviewCommand}"
+                        AutomationProperties.Name="{x:Static app:MotifAppStrings.ReadTheOverviewAgainAccessibleName}" />
               </StackPanel>
               <views:RefusalBlock DataContext="{Binding OverviewRefusal}" />
             </DockPanel>
           </Border>
           <Border Classes="notice" IsVisible="{Binding HasLastParseRefusal}"
-                  AutomationProperties.Name="The latest parse was refused">
+                  AutomationProperties.Name="{x:Static app:MotifAppStrings.TheLatestParseWasRefusedAccessibleName}">
             <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
               <views:CopyableTextBlock Text="{Binding LastParseRefusal.Sentence}" TextWrapping="Wrap" />
-              <Expander Header="Parse failure details" AutomationProperties.Name="Latest parse failure details">
+              <Expander Header="{x:Static app:MotifAppStrings.ParseFailureDetails}" AutomationProperties.Name="{x:Static app:MotifAppStrings.LatestParseFailureDetailsAccessibleName}">
                 <views:RefusalBlock DataContext="{Binding LastParseRefusal}" />
               </Expander>
             </StackPanel>
@@ -41,34 +41,34 @@
             <StackPanel Classes="overviewCount">
               <views:CopyableTextBlock Classes="overviewCountValue" Text="{Binding SelectionWordCountText}"
                                        AutomationProperties.AutomationId="{x:Static app:AutomationIds.OverviewSelectionWordCount}" />
-              <views:CopyableTextBlock Classes="overviewMuted" TextWrapping="Wrap" Text="words in Selection" AutomationProperties.AutomationId="{x:Static app:AutomationIds.OverviewSelectionLabel}" />
+              <views:CopyableTextBlock Classes="overviewMuted" TextWrapping="Wrap" Text="{x:Static app:MotifAppStrings.WordsInSelection}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.OverviewSelectionLabel}" />
             </StackPanel>
             <StackPanel Classes="overviewCount">
               <views:CopyableTextBlock Classes="overviewCountValue" Text="{Binding TextOccurrenceCountText}" />
-              <views:CopyableTextBlock Classes="overviewMuted" TextWrapping="Wrap" Text="places" />
+              <views:CopyableTextBlock Classes="overviewMuted" TextWrapping="Wrap" Text="{x:Static app:MotifAppStrings.Places}" />
             </StackPanel>
             <StackPanel Classes="overviewCount">
               <views:CopyableTextBlock Classes="overviewCountValue" Text="{Binding WordformCountText}" />
-              <views:CopyableTextBlock Classes="overviewMuted" TextWrapping="Wrap" Text="wordforms" />
+              <views:CopyableTextBlock Classes="overviewMuted" TextWrapping="Wrap" Text="{x:Static app:MotifAppStrings.Wordforms}" />
             </StackPanel>
             <StackPanel Classes="overviewCount">
               <views:CopyableTextBlock Classes="overviewCountValue" Text="{Binding RuleCountText}" />
-              <views:CopyableTextBlock Classes="overviewMuted" TextWrapping="Wrap" Text="rules" />
+              <views:CopyableTextBlock Classes="overviewMuted" TextWrapping="Wrap" Text="{x:Static app:MotifAppStrings.Rules}" />
             </StackPanel>
             <StackPanel Classes="overviewCount">
               <views:CopyableTextBlock Classes="overviewCountValue" Text="{Binding LexemeCountText}" />
-              <views:CopyableTextBlock Classes="overviewMuted" TextWrapping="Wrap" Text="lexemes" />
+              <views:CopyableTextBlock Classes="overviewMuted" TextWrapping="Wrap" Text="{x:Static app:MotifAppStrings.Lexemes}" />
             </StackPanel>
           </UniformGrid>
         </StackPanel>
       </Border>
       <Border Classes="card" IsVisible="{Binding ShowChooseProject}"
-              AutomationProperties.Name="Choose a project">
+              AutomationProperties.Name="{x:Static app:MotifAppStrings.ChooseAProjectAccessibleName}">
         <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
-          <views:CopyableTextBlock Classes="overviewTileTitle" Text="Open a recent project" />
+          <views:CopyableTextBlock Classes="overviewTileTitle" Text="{x:Static app:MotifAppStrings.OpenARecentProject}" />
           <views:CopyableTextBlock Classes="overviewMuted" Text="{Binding NoKnownProjectsText}"
                                    IsVisible="{Binding ShowNoKnownProjects}" />
-          <ItemsControl x:Name="OverviewPageChooseProjectRowsItems" ItemsSource="{Binding ChooseProjectRows}" AutomationProperties.Name="Recent projects">
+          <ItemsControl x:Name="OverviewPageChooseProjectRowsItems" ItemsSource="{Binding ChooseProjectRows}" AutomationProperties.Name="{x:Static app:MotifAppStrings.RecentProjectsAccessibleName}">
             <ItemsControl.ItemsPanel>
               <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
             </ItemsControl.ItemsPanel>
@@ -90,21 +90,21 @@
                                                  IsVisible="{Binding HasWordformCount}" />
                       </StackPanel>
                     </StackPanel>
-                    <HyperlinkButton Grid.Column="1" Classes="overviewTileLink" Content="Open folder"
+                    <HyperlinkButton Grid.Column="1" Classes="overviewTileLink" Content="{x:Static app:MotifAppStrings.OpenFolder}"
                                      Command="{Binding $parent[views:OverviewPage].Page.Context.OpenProjectFolderCommand}"
                                      CommandParameter="{Binding FolderPath}" IsEnabled="{Binding CanOpenFolder}"
-                                     AutomationProperties.Name="Open project folder" />
+                                     AutomationProperties.Name="{x:Static app:MotifAppStrings.OpenProjectFolderAccessibleName}" />
                   </Grid>
                 </Border>
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>
-          <Button Content="Select a new project" Command="{Binding Context.BrowseForProjectCommand}"
-                  AutomationProperties.Name="Select a new project" />
+          <Button Content="{x:Static app:MotifAppStrings.SelectANewProject}" Command="{Binding Context.BrowseForProjectCommand}"
+                  AutomationProperties.Name="{x:Static app:MotifAppStrings.SelectANewProjectAccessibleName}" />
         </StackPanel>
       </Border>
       <Border Classes="notice" IsVisible="{Binding SelectionIsUnresolved}">
-        <views:CopyableTextBlock Text="The default Selection could not be resolved against the current Baseline; its word and place counts are unavailable."
+        <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.TheDefaultSelectionCouldNotBe}"
                                  TextWrapping="Wrap" />
       </Border>
       <Border Classes="card" IsVisible="{Binding Context.NeedsAssessment}">
@@ -114,10 +114,10 @@
       <Grid x:Name="OverviewDetailsGrid" ColumnDefinitions="*,*" ColumnSpacing="{DynamicResource Intent.Space.Group}">
         <StackPanel x:Name="OverviewLeftColumn" Spacing="{DynamicResource Component.Overview.SectionGap}">
           <Border Classes="overviewLookFirst" IsVisible="{Binding HasLookFirstRows}"
-              AutomationProperties.Name="Look first">
+              AutomationProperties.Name="{x:Static app:MotifAppStrings.LookFirstAccessibleName}">
         <StackPanel Classes="overviewLookFirstContent">
-          <TextBlock Classes="overviewTileTitle" Text="Look first" />
-          <ItemsControl x:Name="OverviewPageLookFirstRowsItems" ItemsSource="{Binding LookFirstRows}" AutomationProperties.Name="Stored results to look at first">
+          <TextBlock Classes="overviewTileTitle" Text="{x:Static app:MotifAppStrings.LookFirst}" />
+          <ItemsControl x:Name="OverviewPageLookFirstRowsItems" ItemsSource="{Binding LookFirstRows}" AutomationProperties.Name="{x:Static app:MotifAppStrings.StoredResultsToLookAtFirstAccessibleName}">
             <ItemsControl.ItemsPanel>
               <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
             </ItemsControl.ItemsPanel>
@@ -144,18 +144,18 @@
         </StackPanel>
       </Border>
           <Border Classes="overviewTile hoverReveal" IsVisible="{Binding ShowTiles}"
-                AutomationProperties.Name="Text coverage">
+                AutomationProperties.Name="{x:Static app:MotifAppStrings.TextCoverageAccessibleName}">
           <StackPanel Classes="overviewTileContent">
             <DockPanel LastChildFill="False">
-              <TextBlock Classes="overviewTileTitle" Text="Text coverage" DockPanel.Dock="Left" />
-              <HyperlinkButton Classes="overviewTileLink" Content="Texts →" DockPanel.Dock="Right"
+              <TextBlock Classes="overviewTileTitle" Text="{x:Static app:MotifAppStrings.TextCoverage}" DockPanel.Dock="Left" />
+              <HyperlinkButton Classes="overviewTileLink" Content="{x:Static app:MotifAppStrings.TextsArrow}" DockPanel.Dock="Right"
                                Command="{Binding OpenTextCoverageCommand}"
-                               AutomationProperties.Name="Open Text coverage in Texts" />
+                               AutomationProperties.Name="{x:Static app:MotifAppStrings.OpenTextCoverageInTextsAccessibleName}" />
             </DockPanel>
             <TextBlock Classes="overviewTileValue" Text="{Binding TextCoverageMain}" TextWrapping="Wrap"
                        AutomationProperties.AutomationId="{x:Static app:AutomationIds.OverviewTextCoverage}" />
             <TextBlock Classes="overviewMuted" Text="{Binding TextCoverageWords}" TextWrapping="Wrap" />
-            <ItemsControl x:Name="OverviewCoverageRows" Grid.IsSharedSizeScope="True" ItemsSource="{Binding TextCoverageSegments}" AutomationProperties.Name="Text coverage outcomes">
+            <ItemsControl x:Name="OverviewCoverageRows" Grid.IsSharedSizeScope="True" ItemsSource="{Binding TextCoverageSegments}" AutomationProperties.Name="{x:Static app:MotifAppStrings.TextCoverageOutcomesAccessibleName}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:OutcomeSegment">
                   <Button Classes="overviewTableRow" Command="{Binding Command}" AutomationProperties.Name="{Binding ActionName}">
@@ -178,17 +178,17 @@
           </StackPanel>
         </Border>
           <Border Classes="overviewTile hoverReveal" IsVisible="{Binding ShowTiles}"
-                AutomationProperties.Name="Approved analyses kept">
+                AutomationProperties.Name="{x:Static app:MotifAppStrings.ApprovedAnalysesKeptAccessibleName}">
           <StackPanel Classes="overviewTileContent">
             <DockPanel LastChildFill="False">
-              <TextBlock Classes="overviewTileTitle" Text="Approved analyses kept" DockPanel.Dock="Left" />
-              <HyperlinkButton Classes="overviewTileLink" Content="Matrix →" DockPanel.Dock="Right"
+              <TextBlock Classes="overviewTileTitle" Text="{x:Static app:MotifAppStrings.ApprovedAnalysesKept}" DockPanel.Dock="Left" />
+              <HyperlinkButton Classes="overviewTileLink" Content="{x:Static app:MotifAppStrings.MatrixArrow}" DockPanel.Dock="Right"
                                Command="{Binding OpenAccuracyCommand}"
-                               AutomationProperties.Name="Open Approved analyses kept in the Matrix" />
+                               AutomationProperties.Name="{x:Static app:MotifAppStrings.OpenApprovedAnalysesKeptInTheAccessibleName}" />
             </DockPanel>
             <TextBlock Classes="overviewTileValue" Text="{Binding AccuracyMain}" TextWrapping="Wrap" />
             <TextBlock Classes="overviewMuted" Text="{Binding AccuracyCaption}" TextWrapping="Wrap" />
-            <ItemsControl x:Name="OverviewAccuracyRows" Grid.IsSharedSizeScope="True" ItemsSource="{Binding AccuracySegments}" AutomationProperties.Name="Approved analyses kept outcomes">
+            <ItemsControl x:Name="OverviewAccuracyRows" Grid.IsSharedSizeScope="True" ItemsSource="{Binding AccuracySegments}" AutomationProperties.Name="{x:Static app:MotifAppStrings.ApprovedAnalysesKeptOutcomesAccessibleName}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:OutcomeSegment">
                   <Button Classes="overviewTableRow" Command="{Binding Command}" AutomationProperties.Name="{Binding ActionName}">
@@ -213,16 +213,16 @@
         </Border>
         </StackPanel>
         <StackPanel x:Name="OverviewRightColumn" Grid.Column="1" Spacing="{DynamicResource Component.Overview.SectionGap}">
-          <Border Classes="overviewTile" IsVisible="{Binding ShowTiles}" AutomationProperties.Name="Speed">
+          <Border Classes="overviewTile" IsVisible="{Binding ShowTiles}" AutomationProperties.Name="{x:Static app:MotifAppStrings.SpeedAccessibleName}">
           <StackPanel Classes="overviewTileContent">
             <DockPanel LastChildFill="True">
-              <HyperlinkButton DockPanel.Dock="Right" Classes="overviewTileLink" Content="Slowest words →" Command="{Binding OpenTimingCommand}" AutomationProperties.Name="Open slowest words in Timing" />
-              <TextBlock Classes="overviewTileTitle" Text="Speed" />
+              <HyperlinkButton DockPanel.Dock="Right" Classes="overviewTileLink" Content="{x:Static app:MotifAppStrings.SlowestWordsArrow}" Command="{Binding OpenTimingCommand}" AutomationProperties.Name="{x:Static app:MotifAppStrings.OpenSlowestWordsInTimingAccessibleName}" />
+              <TextBlock Classes="overviewTileTitle" Text="{x:Static app:MotifAppStrings.Speed}" />
             </DockPanel>
             <TextBlock Classes="overviewTileDetail" Text="{Binding SpeedMain}" TextWrapping="Wrap" AutomationProperties.AutomationId="{x:Static app:AutomationIds.OverviewSpeed}" />
             <TextBlock Classes="overviewMuted" Text="{Binding SpeedMedian}" TextWrapping="Wrap" />
             <TextBlock Classes="overviewMuted" Text="{Binding SpeedDetails}" TextWrapping="Wrap" IsVisible="{Binding SpeedDetails, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-            <views:ProgressiveItemsControl x:Name="OverviewTimingRows" Grid.IsSharedSizeScope="True" FullItemsSource="{Binding TimingKindShares}" AutomationProperties.Name="Overview time by kind">
+            <views:ProgressiveItemsControl x:Name="OverviewTimingRows" Grid.IsSharedSizeScope="True" FullItemsSource="{Binding TimingKindShares}" AutomationProperties.Name="{x:Static app:MotifAppStrings.OverviewTimeByKindAccessibleName}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:TimingShare">
                   <Border Classes="overviewTableRow">
@@ -245,10 +245,10 @@
             <TextBlock Classes="overviewMuted" Text="{Binding TimingAttributionNote}" TextWrapping="Wrap" IsVisible="{Binding TimingAttributionNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
           </StackPanel>
         </Border>
-        <Border Classes="overviewTile" IsVisible="{Binding HasSlowestWordRows}" AutomationProperties.Name="Slowest words">
+        <Border Classes="overviewTile" IsVisible="{Binding HasSlowestWordRows}" AutomationProperties.Name="{x:Static app:MotifAppStrings.SlowestWordsAccessibleName}">
           <StackPanel Classes="overviewTileContent">
-            <TextBlock Classes="overviewTileTitle" Text="Slowest words" />
-            <views:ProgressiveItemsControl x:Name="OverviewSlowestRows" FullItemsSource="{Binding SlowestTableRows}" AutomationProperties.Name="Slowest words and recorded times">
+            <TextBlock Classes="overviewTileTitle" Text="{x:Static app:MotifAppStrings.SlowestWords}" />
+            <views:ProgressiveItemsControl x:Name="OverviewSlowestRows" FullItemsSource="{Binding SlowestTableRows}" AutomationProperties.Name="{x:Static app:MotifAppStrings.SlowestWordsAndRecordedTimesAccessibleName}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:OverviewSlowWord">
                   <Border Classes="overviewTableRow">
@@ -266,18 +266,18 @@
             </views:ProgressiveItemsControl>
           </StackPanel>
         </Border>
-          <Border Classes="overviewTile hoverReveal" IsVisible="{Binding ShowWarningsTile}" AutomationProperties.Name="Grammar warnings">
+          <Border Classes="overviewTile hoverReveal" IsVisible="{Binding ShowWarningsTile}" AutomationProperties.Name="{x:Static app:MotifAppStrings.GrammarWarningsAccessibleName}">
           <StackPanel Classes="overviewTileContent">
             <DockPanel LastChildFill="False">
-              <TextBlock Classes="overviewTileTitle" Text="Grammar warnings" DockPanel.Dock="Left" />
-              <HyperlinkButton Classes="overviewTileLink" Content="Warnings →" DockPanel.Dock="Right"
+              <TextBlock Classes="overviewTileTitle" Text="{x:Static app:MotifAppStrings.GrammarWarnings}" DockPanel.Dock="Left" />
+              <HyperlinkButton Classes="overviewTileLink" Content="{x:Static app:MotifAppStrings.WarningsArrow}" DockPanel.Dock="Right"
                                Command="{Binding OpenWarningsCommand}"
-                               AutomationProperties.Name="Open Grammar warnings in Warnings" />
+                               AutomationProperties.Name="{x:Static app:MotifAppStrings.OpenGrammarWarningsInWarningsAccessibleName}" />
             </DockPanel>
             <TextBlock Classes="overviewTileValue" Text="{Binding WarningsCount}" TextWrapping="NoWrap" />
             <TextBlock Classes="overviewMuted" Text="{Binding WarningsYourWordsText}"
                        IsVisible="{Binding HasWarningsWordSummary}" TextWrapping="Wrap" />
-            <ItemsControl x:Name="OverviewPageWarningKindRowsItems" ItemsSource="{Binding WarningKindRows}" AutomationProperties.Name="Warning kinds and words">
+            <ItemsControl x:Name="OverviewPageWarningKindRowsItems" ItemsSource="{Binding WarningKindRows}" AutomationProperties.Name="{x:Static app:MotifAppStrings.WarningKindsAndWordsAccessibleName}">
               <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
               </ItemsControl.ItemsPanel>
@@ -304,20 +304,20 @@
         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{DynamicResource Component.Overview.HandoffGap}">
           <PathIcon Classes="overviewHandoffIcon" Data="M12 3l1.8 4.8L18 9.5l-4.2 1.7L12 16l-1.8-4.8L6 9.5l4.2-1.7z M18 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z" />
           <views:CopyableTextBlock Grid.Column="1" Classes="overviewHandoffText"
-                                   Text="Ask a chat model about anything on this page. AI Handoff writes the files and the question."
+                                   Text="{x:Static app:MotifAppStrings.AskAChatModelAboutAnything}"
                                    TextWrapping="Wrap" VerticalAlignment="Center" />
-          <Button Grid.Column="2" Content="Start an AI Handoff" Command="{Binding OpenAiHandoffCommand}"
-                  AutomationProperties.Name="Start an AI Handoff" />
+          <Button Grid.Column="2" Content="{x:Static app:MotifAppStrings.StartAnAIHandoff}" Command="{Binding OpenAiHandoffCommand}"
+                  AutomationProperties.Name="{x:Static app:MotifAppStrings.StartAnAIHandoffAccessibleName}" />
         </Grid>
       </Border>
 
-      <Expander Classes="overviewHistory" Header="Project history" AutomationProperties.Name="Project history">
+      <Expander Classes="overviewHistory" Header="{x:Static app:MotifAppStrings.ProjectHistory}" AutomationProperties.Name="{x:Static app:MotifAppStrings.ProjectHistoryAccessibleName}">
         <StackPanel Classes="overviewHistoryContent">
-          <views:CopyableTextBlock Classes="overviewMuted" Text="Loading history..." IsVisible="{Binding History.IsLoading}" />
+          <views:CopyableTextBlock Classes="overviewMuted" Text="{x:Static app:MotifAppStrings.LoadingHistory}" IsVisible="{Binding History.IsLoading}" />
           <views:RefusalBlock DataContext="{Binding History.ShownRefusal}" />
-          <views:CopyableTextBlock Classes="overviewMuted" Text="Nothing recorded for this project yet."
+          <views:CopyableTextBlock Classes="overviewMuted" Text="{x:Static app:MotifAppStrings.NothingRecordedForThisProjectYet}"
                                    IsVisible="{Binding !History.HasEntries}" />
-          <ItemsControl x:Name="OverviewPageEntriesItems" ItemsSource="{Binding History.Entries}" AutomationProperties.Name="Project history entries">
+          <ItemsControl x:Name="OverviewPageEntriesItems" ItemsSource="{Binding History.Entries}" AutomationProperties.Name="{x:Static app:MotifAppStrings.ProjectHistoryEntriesAccessibleName}">
             <ItemsControl.ItemsPanel>
               <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
             </ItemsControl.ItemsPanel>

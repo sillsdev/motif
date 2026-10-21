@@ -351,7 +351,7 @@ public sealed class ProposalsWorkspacePaneTests
                     text.IsEffectivelyVisible && text.Text == "Opened beside");
                 Assert.Contains(standaloneHost.GetVisualDescendants().OfType<Button>(), button =>
                     AutomationProperties.GetAutomationId(button) == staleCard.InspectorOpenAutomationId &&
-                    Equals(button.Content, "Open in Review changes"));
+                    Equals(button.Content, MotifAppStrings.OpenInReviewChanges));
 
                 var staleFlyout = Assert.IsType<Flyout>(staleMenu.Flyout);
                 staleFlyout.ShowAt(staleMenu);

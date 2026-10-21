@@ -13,26 +13,26 @@
               ColumnSpacing="{DynamicResource Intent.Space.Related}"
               RowSpacing="{DynamicResource Intent.Space.Compact}">
           <WrapPanel x:Name="TextsHeaderTabs">
-            <Button Content="Matrix" Classes="tab" Classes.active="{Binding ShowMatrix}"
+            <Button Content="{x:Static app:MotifAppStrings.Matrix}" Classes="tab" Classes.active="{Binding ShowMatrix}"
                   Theme="{DynamicResource BorderlessButton}" Command="{Binding ShowTabCommand}"
-                  CommandParameter="{x:Static vm:TextsTab.Matrix}" AutomationProperties.Name="Matrix tab" />
-            <Button Content="Analyze texts" Classes="tab" Classes.active="{Binding ShowAnalyzeTexts}"
+                  CommandParameter="{x:Static vm:TextsTab.Matrix}" AutomationProperties.Name="{x:Static app:MotifAppStrings.MatrixTabAccessibleName}" />
+            <Button Content="{x:Static app:MotifAppStrings.AnalyzeTexts}" Classes="tab" Classes.active="{Binding ShowAnalyzeTexts}"
                   Theme="{DynamicResource BorderlessButton}" Command="{Binding ShowTabCommand}"
-                  CommandParameter="{x:Static vm:TextsTab.AnalyzeTexts}" AutomationProperties.Name="Analyze texts tab"
+                  CommandParameter="{x:Static vm:TextsTab.AnalyzeTexts}" AutomationProperties.Name="{x:Static app:MotifAppStrings.AnalyzeTextsTabAccessibleName}"
                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.AnalyzeTextsTab}" />
-            <Button Content="Lists" Classes="tab" Classes.active="{Binding ShowLists}"
+            <Button Content="{x:Static app:MotifAppStrings.Lists}" Classes="tab" Classes.active="{Binding ShowLists}"
                   Theme="{DynamicResource BorderlessButton}" Command="{Binding ShowTabCommand}"
-                  CommandParameter="{x:Static vm:TextsTab.Lists}" AutomationProperties.Name="Lists tab" />
-            <Button Content="What changed" Classes="tab" Classes.active="{Binding ShowWhatChanged}"
+                  CommandParameter="{x:Static vm:TextsTab.Lists}" AutomationProperties.Name="{x:Static app:MotifAppStrings.ListsTabAccessibleName}" />
+            <Button Content="{x:Static app:MotifAppStrings.WhatChanged}" Classes="tab" Classes.active="{Binding ShowWhatChanged}"
                   Theme="{DynamicResource BorderlessButton}" Command="{Binding ShowTabCommand}"
-                  CommandParameter="{x:Static vm:TextsTab.WhatChanged}" AutomationProperties.Name="What changed tab" />
+                  CommandParameter="{x:Static vm:TextsTab.WhatChanged}" AutomationProperties.Name="{x:Static app:MotifAppStrings.WhatChangedTabAccessibleName}" />
           </WrapPanel>
           <StackPanel x:Name="TextsHeaderActions" Grid.Column="1" Orientation="Horizontal"
                       HorizontalAlignment="Right">
             <Button Classes="pendingStrip" Margin="{DynamicResource Intent.Gap.AfterGroup}"
                     VerticalAlignment="Center" IsVisible="{Binding Changes.HasItems}"
                     Command="{Binding ShowPageCommand}" CommandParameter="{x:Static vm:WorkspacePage.Review}"
-                    AutomationProperties.Name="Review the changes not applied yet"
+                    AutomationProperties.Name="{x:Static app:MotifAppStrings.ReviewTheChangesNotAppliedYetAccessibleName}"
                     AutomationProperties.AutomationId="{x:Static app:AutomationIds.ReviewChanges}">
               <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Snug}">
                 <Ellipse Width="{DynamicResource Component.MatrixCell.MarkerSize}"
@@ -40,14 +40,14 @@
                          Fill="{DynamicResource Intent.Warning.Text}" VerticalAlignment="Center" />
                 <TextBlock Text="{Binding Changes.CountText}" FontWeight="{DynamicResource Intent.Weight.Strong}"
                            VerticalAlignment="Center" />
-                <TextBlock Text="&#183; Review changes" Foreground="{DynamicResource Intent.Accent}"
+                <TextBlock Text="{x:Static app:MotifAppStrings.ReviewChanges}" Foreground="{DynamicResource Intent.Accent}"
                            VerticalAlignment="Center" />
               </StackPanel>
             </Button>
-            <Button Content="Parse all words" Command="{Binding Assess.RunCommand}"
+            <Button Content="{x:Static app:MotifAppStrings.ParseAllWords}" Command="{Binding Assess.RunCommand}"
                     VerticalAlignment="Center" Margin="{DynamicResource Intent.Gap.AfterGroup}"
                     IsVisible="{Binding !Context.NeedsAssessment}"
-                    AutomationProperties.Name="Parse all words in the Selection"
+                    AutomationProperties.Name="{x:Static app:MotifAppStrings.ParseAllWordsInTheSelectionAccessibleName}"
                     AutomationProperties.AutomationId="{x:Static app:AutomationIds.RunAssessment}" />
           </StackPanel>
         </Grid>
@@ -55,7 +55,7 @@
         <ScrollViewer x:Name="TextsParseStatusScroll" IsVisible="{Binding ShowAssessStatus}"
                       MaxHeight="{DynamicResource Component.TextsPage.AssessmentStatusMaxHeight}"
                       HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
-                      AutomationProperties.Name="Parse status">
+                      AutomationProperties.Name="{x:Static app:MotifAppStrings.ParseStatusAccessibleName}">
           <StackPanel Spacing="{DynamicResource Intent.Space.Compact}"
                       Margin="{DynamicResource Component.TextsPage.AssessmentStatusPadding}">
             <views:CopyableTextBlock Classes="muted" Text="{Binding Assess.EarlierResultsNote}" TextWrapping="Wrap"
@@ -70,7 +70,7 @@
     <Panel Grid.Row="1">
       <Panel IsVisible="{Binding ShowMatrixContent}" Classes.waiting="{Binding Assess.IsActive}">
         <ContentControl x:Name="CompareHost" />
-        <views:CopyableTextBlock Classes="muted" Text="No results yet. Choose the words to parse on Analyze texts, then parse them."
+        <views:CopyableTextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.NoResultsYetChooseTheWords}"
             IsVisible="{Binding ShowEmptyResults}" HorizontalAlignment="Center" VerticalAlignment="Center" />
       </Panel>
       <ScrollViewer x:Name="AnalyzeTextsScroll" IsVisible="{Binding ShowAnalyzeTextsContent}"
@@ -81,15 +81,15 @@
                         IsEnabled="{Binding Context.ProjectAndSelectionEnabled}" />
         <Grid Grid.Column="1" RowDefinitions="Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}">
           <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}">
-            <Button Content="Read text" Classes="tab" Classes.active="{Binding ShowTextReader}"
+            <Button Content="{x:Static app:MotifAppStrings.ReadText}" Classes="tab" Classes.active="{Binding ShowTextReader}"
                     Command="{Binding ShowAnalyzeViewCommand}"
                     CommandParameter="{x:Static vm:AnalyzeTextsView.TextReader}"
-                    AutomationProperties.Name="Show the text reader"
+                    AutomationProperties.Name="{x:Static app:MotifAppStrings.ShowTheTextReaderAccessibleName}"
                     AutomationProperties.AutomationId="{x:Static app:AutomationIds.AnalyzeTextReaderView}" />
-            <Button Content="Word list" Classes="tab" Classes.active="{Binding ShowWordList}"
+            <Button Content="{x:Static app:MotifAppStrings.WordList}" Classes="tab" Classes.active="{Binding ShowWordList}"
                     Command="{Binding ShowAnalyzeViewCommand}"
                     CommandParameter="{x:Static vm:AnalyzeTextsView.WordList}"
-                    AutomationProperties.Name="Show the word list"
+                    AutomationProperties.Name="{x:Static app:MotifAppStrings.ShowTheWordListAccessibleName}"
                     AutomationProperties.AutomationId="{x:Static app:AutomationIds.AnalyzeWordListView}" />
           </StackPanel>
           <ContentControl x:Name="AnalyzeParsePromptHost" Grid.Row="1" IsVisible="{Binding ShowAnalyzeParsePrompt}"

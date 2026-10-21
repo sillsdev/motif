@@ -180,4 +180,1116 @@
     <value>Trial not compared against a Baseline</value>
     <comment>Accessible name of the notice beside a Trial queued without a Baseline.</comment>
   </data>
+  <data name="MotifApp.ProjectSummaryAccessibleName" xml:space="preserve">
+    <value>Project summary</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.Overview" xml:space="preserve">
+    <value>Overview</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.TheOverviewCouldNotBeReadAccessibleName" xml:space="preserve">
+    <value>The Overview could not be read</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.TryAgain" xml:space="preserve">
+    <value>Try Again</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.ReadTheOverviewAgainAccessibleName" xml:space="preserve">
+    <value>Read the Overview again</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.TheLatestParseWasRefusedAccessibleName" xml:space="preserve">
+    <value>The latest parse was refused</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.ParseFailureDetails" xml:space="preserve">
+    <value>Parse Failure Details</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.LatestParseFailureDetailsAccessibleName" xml:space="preserve">
+    <value>Latest parse failure details</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.WordsInSelection" xml:space="preserve">
+    <value>words in Selection</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.Places" xml:space="preserve">
+    <value>places</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.Wordforms" xml:space="preserve">
+    <value>wordforms</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.Rules" xml:space="preserve">
+    <value>rules</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.Lexemes" xml:space="preserve">
+    <value>lexemes</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.ChooseAProjectAccessibleName" xml:space="preserve">
+    <value>Choose a project</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.OpenARecentProject" xml:space="preserve">
+    <value>Open a Recent Project</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.RecentProjectsAccessibleName" xml:space="preserve">
+    <value>Recent projects</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.OpenFolder" xml:space="preserve">
+    <value>Open Folder</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.OpenProjectFolderAccessibleName" xml:space="preserve">
+    <value>Open project folder</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.SelectANewProject" xml:space="preserve">
+    <value>Select a New Project</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.SelectANewProjectAccessibleName" xml:space="preserve">
+    <value>Select a new project</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.TheDefaultSelectionCouldNotBe" xml:space="preserve">
+    <value>The default Selection could not be resolved against the current Baseline; its word and place counts are unavailable.</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.LookFirstAccessibleName" xml:space="preserve">
+    <value>Look first</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.LookFirst" xml:space="preserve">
+    <value>Look first</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.StoredResultsToLookAtFirstAccessibleName" xml:space="preserve">
+    <value>Stored results to look at first</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.TextCoverageAccessibleName" xml:space="preserve">
+    <value>Text coverage</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.TextCoverage" xml:space="preserve">
+    <value>Text coverage</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.TextsArrow" xml:space="preserve">
+    <value>Texts →</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.OpenTextCoverageInTextsAccessibleName" xml:space="preserve">
+    <value>Open Text coverage in Texts</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.TextCoverageOutcomesAccessibleName" xml:space="preserve">
+    <value>Text coverage outcomes</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.ApprovedAnalysesKeptAccessibleName" xml:space="preserve">
+    <value>Approved analyses kept</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.ApprovedAnalysesKept" xml:space="preserve">
+    <value>Approved analyses kept</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.MatrixArrow" xml:space="preserve">
+    <value>Matrix →</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.OpenApprovedAnalysesKeptInTheAccessibleName" xml:space="preserve">
+    <value>Open Approved analyses kept in the Matrix</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.ApprovedAnalysesKeptOutcomesAccessibleName" xml:space="preserve">
+    <value>Approved analyses kept outcomes</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.SpeedAccessibleName" xml:space="preserve">
+    <value>Speed</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.SlowestWordsArrow" xml:space="preserve">
+    <value>Slowest Words →</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.OpenSlowestWordsInTimingAccessibleName" xml:space="preserve">
+    <value>Open slowest words in Timing</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.Speed" xml:space="preserve">
+    <value>Speed</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.OverviewTimeByKindAccessibleName" xml:space="preserve">
+    <value>Overview time by kind</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.SlowestWordsAccessibleName" xml:space="preserve">
+    <value>Slowest words</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.SlowestWords" xml:space="preserve">
+    <value>Slowest words</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.SlowestWordsAndRecordedTimesAccessibleName" xml:space="preserve">
+    <value>Slowest words and recorded times</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.GrammarWarningsAccessibleName" xml:space="preserve">
+    <value>Grammar warnings</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.GrammarWarnings" xml:space="preserve">
+    <value>Grammar warnings</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.WarningsArrow" xml:space="preserve">
+    <value>Warnings →</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.OpenGrammarWarningsInWarningsAccessibleName" xml:space="preserve">
+    <value>Open Grammar warnings in Warnings</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.WarningKindsAndWordsAccessibleName" xml:space="preserve">
+    <value>Warning kinds and words</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.AskAChatModelAboutAnything" xml:space="preserve">
+    <value>Ask a chat model about anything on this page. AI Handoff writes the files and the question.</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.StartAnAIHandoff" xml:space="preserve">
+    <value>Start an AI Handoff</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.StartAnAIHandoffAccessibleName" xml:space="preserve">
+    <value>Start an AI Handoff</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.ProjectHistory" xml:space="preserve">
+    <value>Project History</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.ProjectHistoryAccessibleName" xml:space="preserve">
+    <value>Project history</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.LoadingHistory" xml:space="preserve">
+    <value>Loading history...</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.NothingRecordedForThisProjectYet" xml:space="preserve">
+    <value>Nothing recorded for this project yet.</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.ProjectHistoryEntriesAccessibleName" xml:space="preserve">
+    <value>Project history entries</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.LostWords" xml:space="preserve">
+    <value>Lost words</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.RecordedApprovedLostWordsAccessibleName" xml:space="preserve">
+    <value>Recorded approved Lost words</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.SharedMorphemes" xml:space="preserve">
+    <value>Shared morphemes</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.Words" xml:space="preserve">
+    <value>Words</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.NamedByAGrammarWarning" xml:space="preserve">
+    <value>Named by a grammar warning</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.Matrix" xml:space="preserve">
+    <value>Matrix</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.MatrixTabAccessibleName" xml:space="preserve">
+    <value>Matrix tab</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.AnalyzeTexts" xml:space="preserve">
+    <value>Analyze Texts</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.AnalyzeTextsTabAccessibleName" xml:space="preserve">
+    <value>Analyze texts tab</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.Lists" xml:space="preserve">
+    <value>Lists</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.ListsTabAccessibleName" xml:space="preserve">
+    <value>Lists tab</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.WhatChanged" xml:space="preserve">
+    <value>What Changed</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.WhatChangedTabAccessibleName" xml:space="preserve">
+    <value>What changed tab</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.ReviewTheChangesNotAppliedYetAccessibleName" xml:space="preserve">
+    <value>Review the changes not applied yet</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.ReviewChanges" xml:space="preserve">
+    <value>· Review changes</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.ParseAllWordsInTheSelectionAccessibleName" xml:space="preserve">
+    <value>Parse all words in the Selection</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.ParseStatusAccessibleName" xml:space="preserve">
+    <value>Parse status</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.NoResultsYetChooseTheWords" xml:space="preserve">
+    <value>No results yet. Choose the words to parse on Analyze texts, then parse them.</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.ReadText" xml:space="preserve">
+    <value>Read Text</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.ShowTheTextReaderAccessibleName" xml:space="preserve">
+    <value>Show the text reader</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.WordList" xml:space="preserve">
+    <value>Word List</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.ShowTheWordListAccessibleName" xml:space="preserve">
+    <value>Show the word list</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.TextToReadAccessibleName" xml:space="preserve">
+    <value>Text to read</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.SearchWordsInAnalyzeTextsAccessibleName" xml:space="preserve">
+    <value>Search words in Analyze texts</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.SelectWordsForActionsAccessibleName" xml:space="preserve">
+    <value>Select words for actions</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.ChooseWordsWithCheckboxesAccessibleName" xml:space="preserve">
+    <value>Choose words with checkboxes</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.SelectAll" xml:space="preserve">
+    <value>Select All</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.SelectAllChosenWordOccurrencesAccessibleName" xml:space="preserve">
+    <value>Select all chosen word occurrences</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.ClearSelection" xml:space="preserve">
+    <value>Clear Selection</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.ClearSelectedWordOccurrencesAccessibleName" xml:space="preserve">
+    <value>Clear selected word occurrences</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.ForTheSelectedWords" xml:space="preserve">
+    <value>For the Selected Words</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.ApproveOneAnalysisAtATime" xml:space="preserve">
+    <value>Approve one analysis at a time. Opinions apply to one word because each word has its own readings.</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.AddReadingsAsUnknown" xml:space="preserve">
+    <value>Add Readings as Unknown</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.AcceptTheNewSet" xml:space="preserve">
+    <value>Accept the New Set</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.MarkIncorrect" xml:space="preserve">
+    <value>Mark Incorrect</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.RemoveAnalyses" xml:space="preserve">
+    <value>Remove Analyses</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.UndoChanges" xml:space="preserve">
+    <value>Undo Changes</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.CheckAgain" xml:space="preserve">
+    <value>Check Again</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.InThisText" xml:space="preserve">
+    <value>In This Text</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.AddReadingsAsUnknownInThis" xml:space="preserve">
+    <value>Add Readings as Unknown in This Text</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.AddParserReadingsAsUnknownInAccessibleName" xml:space="preserve">
+    <value>Add parser readings as Unknown in this Text</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.AcceptNewSetInThisText" xml:space="preserve">
+    <value>Accept New Set in This Text</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.AcceptNewSetForTheSelectedAccessibleName" xml:space="preserve">
+    <value>Accept new set for the selected Text</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.MarkSpellingsIncorrectInThisText" xml:space="preserve">
+    <value>Mark Spellings Incorrect in This Text</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.MarkSpellingsIncorrectInTheSelectedAccessibleName" xml:space="preserve">
+    <value>Mark spellings Incorrect in the selected Text</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.UndoChangesInThisText" xml:space="preserve">
+    <value>Undo Changes in This Text</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.UndoChangesInTheSelectedTextAccessibleName" xml:space="preserve">
+    <value>Undo changes in the selected Text</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.StageRemovalFromThisText" xml:space="preserve">
+    <value>Stage Removal from This Text</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.StageRemovalOfTheAnalysesUsedAccessibleName" xml:space="preserve">
+    <value>Stage removal of the analyses used in this Text</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.InAllChosenTexts" xml:space="preserve">
+    <value>In All Chosen Texts</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.AcceptNewSetInSelection" xml:space="preserve">
+    <value>Accept New Set in Selection</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.AcceptNewSetForTheSelectionAccessibleName" xml:space="preserve">
+    <value>Accept new set for the Selection</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.AddReadingsAsUnknownInAll" xml:space="preserve">
+    <value>Add Readings as Unknown in All Chosen Texts</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.AddParserReadingsAsUnknownInAccessibleName2" xml:space="preserve">
+    <value>Add parser readings as Unknown in all chosen Texts</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.MarkSpellingsIncorrectInAllChosen" xml:space="preserve">
+    <value>Mark Spellings Incorrect in All Chosen Texts</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.MarkSpellingsIncorrectInAllChosenAccessibleName" xml:space="preserve">
+    <value>Mark spellings Incorrect in all chosen Texts</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.UndoChangesInAllChosenTexts" xml:space="preserve">
+    <value>Undo Changes in All Chosen Texts</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.UndoChangesInAllChosenTextsAccessibleName" xml:space="preserve">
+    <value>Undo changes in all chosen Texts</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.CheckUncertainChangesAgainAccessibleName" xml:space="preserve">
+    <value>Check uncertain changes again</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.StageRemovalFromAllChosenTexts" xml:space="preserve">
+    <value>Stage Removal from All Chosen Texts</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.StageRemovalOfTheAnalysesUsedAccessibleName2" xml:space="preserve">
+    <value>Stage removal of the analyses used in all chosen Texts</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.Read" xml:space="preserve">
+    <value>Read ▾</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.MarkReadOrUnreadAccessibleName" xml:space="preserve">
+    <value>Mark read or unread</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.MarkThisTextAsRead" xml:space="preserve">
+    <value>Mark This Text as Read</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.MarkTheSelectedTextAsReadAccessibleName" xml:space="preserve">
+    <value>Mark the selected Text as read</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.MarkThisTextAsUnread" xml:space="preserve">
+    <value>Mark This Text as Unread</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.MarkTheSelectedTextAsUnreadAccessibleName" xml:space="preserve">
+    <value>Mark the selected Text as unread</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.SelectedOccurrenceCountAccessibleName" xml:space="preserve">
+    <value>Selected occurrence count</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.MarkSelectedAsRead" xml:space="preserve">
+    <value>Mark Selected as Read</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.MarkSelectedOccurrencesAsReadAccessibleName" xml:space="preserve">
+    <value>Mark selected occurrences as read</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.MarkSelectedAsUnread" xml:space="preserve">
+    <value>Mark Selected as Unread</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.MarkSelectedOccurrencesAsUnreadAccessibleName" xml:space="preserve">
+    <value>Mark selected occurrences as unread</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.ChooseTexts" xml:space="preserve">
+    <value>Choose Texts</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.ChooseTextsToAnalyzeAccessibleName" xml:space="preserve">
+    <value>Choose texts to analyze</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.TextLinesAndParserResultsAccessibleName" xml:space="preserve">
+    <value>Text lines and parser results</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.Word" xml:space="preserve">
+    <value>Word</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.FieldWorks" xml:space="preserve">
+    <value>FieldWorks</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.PanGloss" xml:space="preserve">
+    <value>PanGloss</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.EscClosesArrowNextWord" xml:space="preserve">
+    <value>Esc closes · ← → next word</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.CloseTheWordCardAccessibleName" xml:space="preserve">
+    <value>Close the word card</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.WordListsAccessibleName" xml:space="preserve">
+    <value>Word lists</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.OrderTheWordsInTheSelectedAccessibleName" xml:space="preserve">
+    <value>Order the words in the selected list</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.SearchWordsInListsAccessibleName" xml:space="preserve">
+    <value>Search words in Lists</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.ParseTheSelectedListSStoppedAccessibleName" xml:space="preserve">
+    <value>Parse the selected list's stopped and unparsed words again</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.WordsInTheSelectedListAccessibleName" xml:space="preserve">
+    <value>Words in the selected list</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.ChooseAListAboveToSee" xml:space="preserve">
+    <value>Choose a list above to see its words.</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.SearchWordsAccessibleName" xml:space="preserve">
+    <value>Search words</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.WordsToTestAccessibleName" xml:space="preserve">
+    <value>Words to test</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.Texts" xml:space="preserve">
+    <value>Texts</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.SelectAllTexts" xml:space="preserve">
+    <value>Select All Texts</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.SelectAllTextsAccessibleName" xml:space="preserve">
+    <value>Select all texts</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.Clear" xml:space="preserve">
+    <value>Clear</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.ClearAccessibleName" xml:space="preserve">
+    <value>Clear</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.SearchTextsAccessibleName" xml:space="preserve">
+    <value>Search texts</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.TextsToAnalyzeAccessibleName" xml:space="preserve">
+    <value>Texts to analyze</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.AddWords" xml:space="preserve">
+    <value>Add Words</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.WordsToAnalyzeOnePerLineAccessibleName" xml:space="preserve">
+    <value>Words to analyze, one per line</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.AnalysisOptions" xml:space="preserve">
+    <value>Analysis Options</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.AllWordforms" xml:space="preserve">
+    <value>All Wordforms</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.RetryFailed" xml:space="preserve">
+    <value>Retry Failed</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.DefaultSelectionParsingLimits" xml:space="preserve">
+    <value>Default Selection parsing limits</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.StepLimitPerWord" xml:space="preserve">
+    <value>Step limit per word</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.SelectionStepLimitPerWordAccessibleName" xml:space="preserve">
+    <value>Selection step limit per word</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.NoStepLimit" xml:space="preserve">
+    <value>No Step Limit</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.SelectionHasNoStepLimitAccessibleName" xml:space="preserve">
+    <value>Selection has no step limit</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.TimeLimitPerWordSeconds" xml:space="preserve">
+    <value>Time limit per word (seconds)</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.SelectionTimeLimitPerWordInAccessibleName" xml:space="preserve">
+    <value>Selection time limit per word in seconds</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.UseMotifSEstimate" xml:space="preserve">
+    <value>Use Motif's Estimate</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.UseMotifSEstimatedTimeLimitAccessibleName" xml:space="preserve">
+    <value>Use Motif's estimated time limit</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.SaveADefaultSelectionToEdit" xml:space="preserve">
+    <value>Save a Default Selection to edit its shared parsing limits.</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.RetrySlowerThanMs" xml:space="preserve">
+    <value>Retry slower than (ms)</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.RetrySlowerThanInMillisecondsAccessibleName" xml:space="preserve">
+    <value>Retry slower than, in milliseconds</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.WhyApplyIsUnavailableAccessibleName" xml:space="preserve">
+    <value>Why Apply is unavailable</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.AppliedToTheFieldWorksProject" xml:space="preserve">
+    <value>Applied to the FieldWorks Project</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.WhatApplyChecksAccessibleName" xml:space="preserve">
+    <value>What Apply checks</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.ShowThem" xml:space="preserve">
+    <value>Show Them</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.ShowChangesThatNoLongerFitAccessibleName" xml:space="preserve">
+    <value>Show changes that no longer fit or need another look</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.FieldWorksMustBeClosedOrIt" xml:space="preserve">
+    <value>FieldWorks must be closed, or it keeps its own copy. Keep a backup: this is a tech demo.</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.WhatBlocksApplyAccessibleName" xml:space="preserve">
+    <value>What blocks Apply</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.ApplyToFieldWorksProjectAccessibleName" xml:space="preserve">
+    <value>Apply to FieldWorks project</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.Decline" xml:space="preserve">
+    <value>Decline</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.Show" xml:space="preserve">
+    <value>Show</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.ShowChangesAccessibleName" xml:space="preserve">
+    <value>Show changes</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.AllChanges" xml:space="preserve">
+    <value>All changes</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.NotLookedAtYet" xml:space="preserve">
+    <value>Not looked at yet</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.StillFit" xml:space="preserve">
+    <value>Still fit</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.NeedADecision" xml:space="preserve">
+    <value>Need a decision</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.Previous" xml:space="preserve">
+    <value>Previous</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.Next" xml:space="preserve">
+    <value>Next</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.Keep" xml:space="preserve">
+    <value>Keep</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.Undo" xml:space="preserve">
+    <value>Undo</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.ReviewAllChangesAccessibleName" xml:space="preserve">
+    <value>Review all changes</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.ReviewAllChangesTip" xml:space="preserve">
+    <value>Review all changes</value>
+    <comment>Tooltip text.</comment>
+  </data>
+  <data name="MotifApp.ChooseAWordInAnalyzeTexts" xml:space="preserve">
+    <value>Choose a word in Analyze texts, then choose what should happen to its analysis.</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.GoToAnalyzeTexts" xml:space="preserve">
+    <value>Go to Analyze Texts</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.WordChange" xml:space="preserve">
+    <value>Word / Change</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.OpinionChange" xml:space="preserve">
+    <value>Opinion Change</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.Analysis" xml:space="preserve">
+    <value>Analysis</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.PanGlossEffects" xml:space="preserve">
+    <value>PanGloss / Effects</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.Where" xml:space="preserve">
+    <value>Where</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.Fits" xml:space="preserve">
+    <value>Fits</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.KeepUndo" xml:space="preserve">
+    <value>Keep / Undo</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.ChangesGroupedForReviewAccessibleName" xml:space="preserve">
+    <value>Changes grouped for review</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.CheckAllChangesAgainAgainstTheAccessibleName" xml:space="preserve">
+    <value>Check all changes again against the refreshed project</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.UndoAll" xml:space="preserve">
+    <value>Undo All</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.LookedAtAccessibleName" xml:space="preserve">
+    <value>Looked at</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.LookedAtTip" xml:space="preserve">
+    <value>Looked at</value>
+    <comment>Tooltip text.</comment>
+  </data>
+  <data name="MotifApp.Project" xml:space="preserve">
+    <value>Project</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.Details" xml:space="preserve">
+    <value>Details</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.DetailsForThisChangeAccessibleName" xml:space="preserve">
+    <value>Details for this change</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.SelectAChangeToSeeIts" xml:space="preserve">
+    <value>Select a change to see its details.</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.NowReads" xml:space="preserve">
+    <value>Now reads</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.RefreshedSentenceAccessibleName" xml:space="preserve">
+    <value>Refreshed sentence</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.SoundRuleReplacementReviewAccessibleName" xml:space="preserve">
+    <value>Sound-rule replacement review</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.ReviewSoundChanges" xml:space="preserve">
+    <value>Review Sound Changes</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.SoundChangesAndAffectedFormsAccessibleName" xml:space="preserve">
+    <value>Sound changes and affected forms</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.TestedReadings" xml:space="preserve">
+    <value>Tested Readings</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.BeforeAndAfterEvidenceForEachAccessibleName" xml:space="preserve">
+    <value>Before and after evidence for each affected reading</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.Problem" xml:space="preserve">
+    <value>Problem:</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.OtherChanges" xml:space="preserve">
+    <value>Other changes</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.SomeObservedChangesCouldNotBe" xml:space="preserve">
+    <value>Some observed changes could not be connected to a part.</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.SomeChangesNeedFurtherReview" xml:space="preserve">
+    <value>Some changes need further review.</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.DestinationNeeded" xml:space="preserve">
+    <value>Destination needed</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.SomeReviewDetailsCouldNotBe" xml:space="preserve">
+    <value>Some review details could not be checked.</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.ReadingProposals" xml:space="preserve">
+    <value>Reading Proposals…</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.NoProposalsYet" xml:space="preserve">
+    <value>No Proposals yet</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.ShowAllProposals" xml:space="preserve">
+    <value>Show All Proposals</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.NoProposalsToShow" xml:space="preserve">
+    <value>No Proposals to show.</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.SelectAProposal" xml:space="preserve">
+    <value>Select a Proposal.</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.Status" xml:space="preserve">
+    <value>Status</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.BuiltBy" xml:space="preserve">
+    <value>Built By</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.ItsChanges" xml:space="preserve">
+    <value>Its Changes</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.WhatItWouldDoToThe" xml:space="preserve">
+    <value>What It Would Do to the Numbers</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.OpenInReviewChanges" xml:space="preserve">
+    <value>Open in Review Changes</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.Reopen" xml:space="preserve">
+    <value>Reopen</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.Delete" xml:space="preserve">
+    <value>Delete</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.Proposals" xml:space="preserve">
+    <value>Proposals</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.EachOneIsTriedOnA" xml:space="preserve">
+    <value>Each one is tried on a copy of your project. Nothing reaches FieldWorks until you apply it.</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.NoProposalsYetChangesYouCollect" xml:space="preserve">
+    <value>No Proposals yet. Changes you collect and Proposals an assistant puts together are listed here.</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.Proposal" xml:space="preserve">
+    <value>Proposal</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.ApprovedKept" xml:space="preserve">
+    <value>Approved Kept</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.Coverage" xml:space="preserve">
+    <value>Coverage</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.Warnings" xml:space="preserve">
+    <value>Warnings</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.WordTime" xml:space="preserve">
+    <value>Word Time</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.ProposalsAccessibleName" xml:space="preserve">
+    <value>Proposals</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.Open" xml:space="preserve">
+    <value>Open</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.InspectorAccessibleName" xml:space="preserve">
+    <value>Inspector</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.TryAWord" xml:space="preserve">
+    <value>Try a Word</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.CloseTheInspectorAccessibleName" xml:space="preserve">
+    <value>Close the inspector</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.CloseEscStepsBackTip" xml:space="preserve">
+    <value>Close (Esc steps back)</value>
+    <comment>Tooltip text.</comment>
+  </data>
+  <data name="MotifApp.BreadcrumbAccessibleName" xml:space="preserve">
+    <value>Breadcrumb</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.Reading" xml:space="preserve">
+    <value>Reading…</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.InThisTraceAccessibleName" xml:space="preserve">
+    <value>In this trace</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.FromThisTrace" xml:space="preserve">
+    <value>From this trace</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.WhatItIsAccessibleName" xml:space="preserve">
+    <value>What it is</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.WhatItIs" xml:space="preserve">
+    <value>What It Is</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.YourWordsThatUseItAccessibleName" xml:space="preserve">
+    <value>Your words that use it</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.YourWordsThatUseIt" xml:space="preserve">
+    <value>Your Words That Use It</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.FromTheLastParseAllWords" xml:space="preserve">
+    <value>From the last Parse all words</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.GrammarWarningsAboutItAccessibleName" xml:space="preserve">
+    <value>Grammar warnings about it</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.GrammarWarningsAboutIt" xml:space="preserve">
+    <value>Grammar Warnings About It</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.FromTheLastGrammarCheck" xml:space="preserve">
+    <value>From the last grammar check</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.OpenWarnings" xml:space="preserve">
+    <value>Open Warnings</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.InFieldWorksAccessibleName" xml:space="preserve">
+    <value>In FieldWorks</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.InFieldWorks" xml:space="preserve">
+    <value>In FieldWorks</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.FromTheBaseline" xml:space="preserve">
+    <value>From the Baseline</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.CollapseSideBarAccessibleName" xml:space="preserve">
+    <value>Collapse side bar</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.CollapseSideBarTip" xml:space="preserve">
+    <value>Collapse side bar</value>
+    <comment>Tooltip text.</comment>
+  </data>
+  <data name="MotifApp.ShowSideBarAccessibleName" xml:space="preserve">
+    <value>Show side bar</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.DetailsAccessibleName" xml:space="preserve">
+    <value>Details</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.HideInspectorAccessibleName" xml:space="preserve">
+    <value>Hide Inspector</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.HideInspectorTip" xml:space="preserve">
+    <value>Hide Inspector</value>
+    <comment>Tooltip text.</comment>
+  </data>
+  <data name="MotifApp.InspectorHeading" xml:space="preserve">
+    <value>INSPECTOR</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.SelectAnItemToInspect" xml:space="preserve">
+    <value>Select an item to inspect.</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.ShowInspectorAccessibleName" xml:space="preserve">
+    <value>Show Inspector</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.ShowInspectorTip" xml:space="preserve">
+    <value>Show Inspector</value>
+    <comment>Tooltip text.</comment>
+  </data>
+  <data name="MotifApp.ChangesMayAlreadyBeAppliedPattern" xml:space="preserve">
+    <value>{0, plural, one {# change may already be applied} other {# changes may already be applied}}</value>
+    <comment>Plural pattern: the Review count after an Apply that was not confirmed; # is the count.</comment>
+  </data>
+  <data name="MotifApp.ChangesMayAlreadyBeApplied" xml:space="preserve">
+    <value>Changes may already be applied</value>
+    <comment>Review count after an unconfirmed Apply when no changes are listed.</comment>
+  </data>
+  <data name="MotifApp.NoChangesYet" xml:space="preserve">
+    <value>No changes yet</value>
+    <comment>Review count when nothing is waiting.</comment>
+  </data>
+  <data name="MotifApp.NoChanges" xml:space="preserve">
+    <value>No changes</value>
+    <comment>Review count for a Proposal with no changes.</comment>
+  </data>
+  <data name="MotifApp.ChangeCountPattern" xml:space="preserve">
+    <value>{0, plural, one {# change} other {# changes}}</value>
+    <comment>Plural pattern: a count of changes; # is the count.</comment>
+  </data>
+  <data name="MotifApp.WordCountPattern" xml:space="preserve">
+    <value>{0, plural, one {# word} other {# words}}</value>
+    <comment>Plural pattern: a count of words; # is the count.</comment>
+  </data>
+  <data name="MotifApp.ProposalCountPattern" xml:space="preserve">
+    <value>{0, plural, one {# proposal} other {# proposals}}</value>
+    <comment>Plural pattern: a count of Proposals; # is the count.</comment>
+  </data>
 </root>

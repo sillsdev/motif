@@ -139,7 +139,7 @@ public sealed class ReviewGrammarGroupViewModel(int count) : IDenseTableGroupHea
     public string Title => "Grammar changes";
 
     /// <summary>How many grammar changes the band heads, beside its title as a word group's count is.</summary>
-    public string CountText => $"· {count} {(count == 1 ? "change" : "changes")}";
+    public string CountText => "· " + PluralText.Format(MotifAppStrings.ChangeCountPattern, count);
 }
 
 /// <summary>One thing Apply checks for an open Proposal, and whether it passed.</summary>

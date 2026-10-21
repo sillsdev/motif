@@ -1,3 +1,4 @@
+using SIL.Motif.App;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
@@ -347,7 +348,7 @@ public sealed class ReviewWorkspacePaneTests
                 var page = workspace.PageModel<ReviewPageModel>();
                 var inspector = panel.InspectorContent;
                 var show = Assert.Single(panel.InspectorFooter.GetVisualDescendants().OfType<HyperlinkButton>(),
-                    button => button.Content?.ToString() == "Show them");
+                    button => button.Content?.ToString() == MotifAppStrings.ShowThem);
                 show.Command!.Execute(null);
                 PageScreenshots.Settle(window);
                 PageScreenshots.Settle(window);

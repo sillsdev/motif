@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
              xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
              xmlns:controls="using:SIL.Motif.App.Controls"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
@@ -16,7 +17,7 @@
                                VerticalAlignment="Center" />
       <TextBox x:Name="WordListSearch" Text="{Binding Words.SearchText}" PlaceholderText="Search words..."
                Width="{DynamicResource Component.TextsPage.WordListSearchWidth}"
-               Grid.Column="1" AutomationProperties.Name="Search words" />
+               Grid.Column="1" AutomationProperties.Name="{x:Static app:MotifAppStrings.SearchWordsAccessibleName}" />
       <Button Content="{Binding Words.HandOffCheckedWordsLabel}"
               Command="{Binding Words.HandOffCheckedWordsCommand}"
               AutomationProperties.Name="{Binding Words.HandOffCheckedWordsLabel}"
@@ -59,7 +60,7 @@
       <Grid RowDefinitions="Auto,*">
       <word:WordRowHeader />
       <ListBox x:Name="TextWordsPanelRowsItems" Grid.Row="1" Classes="wordRows" ItemsSource="{Binding Words.DisplayRows}"
-               AutomationProperties.Name="Words to test" KeyboardNavigation.TabNavigation="Continue">
+               AutomationProperties.Name="{x:Static app:MotifAppStrings.WordsToTestAccessibleName}" KeyboardNavigation.TabNavigation="Continue">
         <ListBox.ItemTemplate>
           <views:ResultsModelTemplate>
           <DataTemplate x:DataType="vm:TextWordRowViewModel">

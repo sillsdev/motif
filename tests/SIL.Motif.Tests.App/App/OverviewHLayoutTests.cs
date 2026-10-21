@@ -42,7 +42,7 @@ public sealed class OverviewHLayoutTests
                 var rowsBottom = rows.TranslatePoint(new Point(0, rows.Bounds.Height), presenter)!.Value.Y;
                 Assert.InRange(rowsBottom, 0, presenter.Bounds.Height);
                 var heading = page.GetVisualDescendants().OfType<TextBlock>()
-                    .Single(text => text.Text == "Text coverage");
+                    .Single(text => text.Text == MotifAppStrings.TextCoverage);
                 var headingBottom = heading.TranslatePoint(new Point(0, heading.Bounds.Height), presenter)!.Value.Y;
                 Assert.InRange(headingBottom, 0, presenter.Bounds.Height);
             }

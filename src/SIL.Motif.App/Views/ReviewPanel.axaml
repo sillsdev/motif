@@ -13,7 +13,7 @@
     <StackPanel Classes="reviewRelated reviewFooterDetails">
       <views:CopyableTextBlock x:Name="ApplyFullReason" Classes="reviewBlockedTitle" Text="{Binding ApplyDisabledReason}"
                                IsVisible="{Binding !CanApply}" TextWrapping="Wrap"
-                               AutomationProperties.Name="Why Apply is unavailable" />
+                               AutomationProperties.Name="{x:Static app:MotifAppStrings.WhyApplyIsUnavailableAccessibleName}" />
       <views:RefusalBlock Classes="refusalFlow" DataContext="{Binding MeasurementRefusal}" />
       <views:TrialBaselineNoticeBlock DataContext="{Binding BaselineNotice}" />
       <views:RefusalBlock Classes="refusalFlow" DataContext="{Binding ShownApplyRefusal}" />
@@ -21,7 +21,7 @@
       <views:RefusalBlock Classes="refusalFlow" DataContext="{Binding Changes.ShownRefusal}" />
 
       <StackPanel Classes="reviewCompact" IsVisible="{Binding HasReceipt}">
-        <views:CopyableTextBlock Classes="section-title" Text="Applied to the FieldWorks project" />
+        <views:CopyableTextBlock Classes="section-title" Text="{x:Static app:MotifAppStrings.AppliedToTheFieldWorksProject}" />
         <views:CopyableTextBlock Text="{Binding ReceiptText}" TextWrapping="Wrap"
                                  AutomationProperties.AutomationId="{x:Static app:AutomationIds.ApplyReceipt}" />
       </StackPanel>
@@ -32,7 +32,7 @@
       <views:CopyableTextBlock Classes="muted" Text="{Binding CountText}" TextWrapping="Wrap"
                                AutomationProperties.AutomationId="{x:Static app:AutomationIds.ReviewApplyCount}" />
       <ItemsControl x:Name="ApplyChecks" ItemsSource="{Binding ApplyChecks}" IsVisible="{Binding HasApplyChecks}"
-                    AutomationProperties.Name="What Apply checks">
+                    AutomationProperties.Name="{x:Static app:MotifAppStrings.WhatApplyChecksAccessibleName}">
         <ItemsControl.ItemsPanel>
           <ItemsPanelTemplate><StackPanel Classes="reviewCompact" /></ItemsPanelTemplate>
         </ItemsControl.ItemsPanel>
@@ -44,10 +44,10 @@
           </DataTemplate>
         </ItemsControl.ItemTemplate>
       </ItemsControl>
-      <HyperlinkButton Classes="reviewLink" Content="Show them"
+      <HyperlinkButton Classes="reviewLink" Content="{x:Static app:MotifAppStrings.ShowThem}"
                        Command="{Binding ShowNeedsAttentionCommand}"
                        IsVisible="{Binding HasChangesNeedingAttention}"
-                       AutomationProperties.Name="Show changes that no longer fit or need another look" />
+                       AutomationProperties.Name="{x:Static app:MotifAppStrings.ShowChangesThatNoLongerFitAccessibleName}" />
       <views:CopyableTextBlock x:Name="ReviewNumbersText" Classes="muted" Text="{Binding NumbersText}"
                                IsVisible="{Binding ShowsNumbersText}" TextWrapping="Wrap" />
       <views:CopyableTextBlock x:Name="ReviewMeasurementProgress" Text="{Binding MeasurementProgressText}"
@@ -55,7 +55,7 @@
       <views:CopyableTextBlock Text="{Binding ApplyBlockReason}" TextWrapping="Wrap"
                                IsVisible="{Binding IsApplying}" />
       <views:CopyableTextBlock x:Name="ApplyBackupNote"
-                               Text="FieldWorks must be closed, or it keeps its own copy. Keep a backup: this is a tech demo."
+                               Text="{x:Static app:MotifAppStrings.FieldWorksMustBeClosedOrIt}"
                                TextWrapping="Wrap" />
     </StackPanel>
       </Border>
@@ -70,7 +70,7 @@
     <StackPanel x:Name="ApplyActions" Classes="reviewCompact">
       <WrapPanel Classes="reviewToolbar">
         <ItemsControl x:Name="ApplyBlockers" ItemsSource="{Binding ApplyBlockers}"
-                      AutomationProperties.Name="What blocks Apply">
+                      AutomationProperties.Name="{x:Static app:MotifAppStrings.WhatBlocksApplyAccessibleName}">
           <ItemsControl.Styles>
             <Style Selector="ContentPresenter" x:DataType="vm:ApplyBlocker">
               <Setter Property="IsVisible" Value="{Binding IsMeasureAction}" />
@@ -88,17 +88,17 @@
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>
-        <Button Classes="reviewAction" Content="Cancel" Command="{Binding CancelMeasureCommand}"
+        <Button Classes="reviewAction" Content="{x:Static app:MotifAppStrings.Cancel}" Command="{Binding CancelMeasureCommand}"
                 IsVisible="{Binding IsMeasuring}" />
         <Button Content="{Binding ApplyButtonText}" Command="{Binding ApplyCommand}"
-                IsEnabled="{Binding CanApply}" AutomationProperties.Name="Apply to FieldWorks project"
+                IsEnabled="{Binding CanApply}" AutomationProperties.Name="{x:Static app:MotifAppStrings.ApplyToFieldWorksProjectAccessibleName}"
                 ToolTip.Tip="{Binding ApplyDisabledReason}" ToolTip.ShowOnDisabled="True"
                 Classes="reviewAction reviewApplyTooltip"
                 views:ClearTipPlacement.IsEnabled="True"
                 AutomationProperties.AutomationId="{x:Static app:AutomationIds.ApplyChanges}" />
         <Button Classes="reviewAction" Content="{Binding BackText}" Command="{Binding KeepEditingCommand}" IsVisible="{Binding ShowsBackButton}"
                 AutomationProperties.AutomationId="{x:Static app:AutomationIds.ReviewBack}" />
-        <Button Classes="reviewAction" Content="Decline" Command="{Binding DeclineCommand}" IsVisible="{Binding ShowsDecline}"
+        <Button Classes="reviewAction" Content="{x:Static app:MotifAppStrings.Decline}" Command="{Binding DeclineCommand}" IsVisible="{Binding ShowsDecline}"
                 AutomationProperties.AutomationId="{x:Static app:AutomationIds.DeclineProposal}" />
       </WrapPanel>
     </StackPanel>
@@ -108,13 +108,13 @@
       <StackPanel Classes="reviewRelated">
         <views:CopyableTextBlock Classes="reviewEmphasis" Text="{Binding LookedAtText}" TextWrapping="Wrap"
                                  AutomationProperties.AutomationId="{x:Static app:AutomationIds.ReviewLookedAt}" />
-        <views:CopyableTextBlock Text="Show" Classes="muted" />
+        <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.Show}" Classes="muted" />
         <ComboBox SelectedIndex="{Binding SelectedFilterIndex, Mode=TwoWay}"
-                  HorizontalAlignment="Stretch" AutomationProperties.Name="Show changes">
-          <ComboBoxItem Content="All changes" />
-          <ComboBoxItem Content="Not looked at yet" />
-          <ComboBoxItem Content="Still fit" />
-          <ComboBoxItem Content="Need a decision" />
+                  HorizontalAlignment="Stretch" AutomationProperties.Name="{x:Static app:MotifAppStrings.ShowChangesAccessibleName}">
+          <ComboBoxItem Content="{x:Static app:MotifAppStrings.AllChanges}" />
+          <ComboBoxItem Content="{x:Static app:MotifAppStrings.NotLookedAtYet}" />
+          <ComboBoxItem Content="{x:Static app:MotifAppStrings.StillFit}" />
+          <ComboBoxItem Content="{x:Static app:MotifAppStrings.NeedADecision}" />
         </ComboBox>
       </StackPanel>
     </DataTemplate>
@@ -130,16 +130,16 @@
                                          Text="{Binding ApplyBlockedTitle}" IsVisible="{Binding IsApplyBlocked}" />
               </StackPanel>
               <WrapPanel Classes="reviewToolbar" IsVisible="{Binding HasEntries}">
-                <Button Classes="reviewAction" Content="Previous" Command="{Binding PreviousCommand}"
+                <Button Classes="reviewAction" Content="{x:Static app:MotifAppStrings.Previous}" Command="{Binding PreviousCommand}"
                         AutomationProperties.AutomationId="{x:Static app:AutomationIds.ReviewPrevious}" />
-                <Button Classes="reviewAction" Content="Next" Command="{Binding NextCommand}"
+                <Button Classes="reviewAction" Content="{x:Static app:MotifAppStrings.Next}" Command="{Binding NextCommand}"
                         AutomationProperties.AutomationId="{x:Static app:AutomationIds.ReviewNext}" />
-                <Button Classes="reviewAction" Content="Keep" Command="{Binding KeepCommand}"
+                <Button Classes="reviewAction" Content="{x:Static app:MotifAppStrings.Keep}" Command="{Binding KeepCommand}"
                         AutomationProperties.AutomationId="{x:Static app:AutomationIds.ReviewKeep}" />
-                <Button Classes="reviewAction" Content="Undo" Command="{Binding UndoCommand}"
+                <Button Classes="reviewAction" Content="{x:Static app:MotifAppStrings.Undo}" Command="{Binding UndoCommand}"
                         AutomationProperties.AutomationId="{x:Static app:AutomationIds.ReviewUndo}" />
-                <Button Classes="denseTableMenu" Content="⋯" AutomationProperties.Name="Review all changes"
-                        ToolTip.Tip="Review all changes">
+                <Button Classes="denseTableMenu" Content="⋯" AutomationProperties.Name="{x:Static app:MotifAppStrings.ReviewAllChangesAccessibleName}"
+                        ToolTip.Tip="{x:Static app:MotifAppStrings.ReviewAllChangesTip}">
                   <Button.Flyout>
                     <Flyout Placement="BottomEdgeAlignedLeft">
                       <StackPanel Classes="menu">
@@ -160,15 +160,15 @@
                   <WrapPanel Classes="reviewToolbar">
                     <Button Classes="reviewAction" Content="{Binding UndoPrompt.UndoAllText}"
                             Command="{Binding UndoPrompt.UndoAllOfThem}" />
-                    <Button Classes="reviewAction" Content="Cancel" Command="{Binding UndoPrompt.Cancel}" />
+                    <Button Classes="reviewAction" Content="{x:Static app:MotifAppStrings.Cancel}" Command="{Binding UndoPrompt.Cancel}" />
                   </WrapPanel>
                 </StackPanel>
               </Border>
               <views:RefusalBlock DataContext="{Binding UndoRefusal}" />
               <StackPanel Classes="reviewCompact" IsVisible="{Binding ShowsEmptyState}">
                 <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap"
-                                         Text="Choose a word in Analyze texts, then choose what should happen to its analysis." />
-                <HyperlinkButton Classes="reviewLink" Content="Go to Analyze texts" Command="{Binding OpenAnalyzeTextsCommand}" />
+                                         Text="{x:Static app:MotifAppStrings.ChooseAWordInAnalyzeTexts}" />
+                <HyperlinkButton Classes="reviewLink" Content="{x:Static app:MotifAppStrings.GoToAnalyzeTexts}" Command="{Binding OpenAnalyzeTextsCommand}" />
               </StackPanel>
 
             </StackPanel>
@@ -181,19 +181,19 @@
       <Border Grid.Row="1" Classes="denseTableColumnHeader">
         <Grid x:Name="ReviewTableHeader" controls:DenseTable.Columns="{StaticResource Component.Review.TableColumns}"
               controls:DenseTable.CompactColumns="{StaticResource Component.Review.TableCompactColumns}">
-          <views:CopyableTextBlock Classes="denseTableHeading" Text="Word / change" TextWrapping="Wrap" VerticalAlignment="Center" />
-          <views:CopyableTextBlock Grid.Column="1" controls:DenseTable.Secondary="True" Classes="denseTableHeading" Text="Opinion change" TextWrapping="Wrap" VerticalAlignment="Center" />
-          <views:CopyableTextBlock Grid.Column="2" controls:DenseTable.Secondary="True" Classes="denseTableHeading" Text="Analysis" VerticalAlignment="Center" />
-          <views:CopyableTextBlock Grid.Column="3" controls:DenseTable.Secondary="True" Classes="denseTableHeading" Text="PanGloss / effects" TextWrapping="Wrap" VerticalAlignment="Center" />
-          <views:CopyableTextBlock Grid.Column="4" controls:DenseTable.Secondary="True" Classes="denseTableHeading" Text="Where" VerticalAlignment="Center" />
-          <views:CopyableTextBlock Grid.Column="5" Classes="denseTableHeading" Text="Fits" VerticalAlignment="Center" />
-          <views:CopyableTextBlock Grid.Column="6" Classes="denseTableHeading" Text="Keep / Undo" VerticalAlignment="Center" />
+          <views:CopyableTextBlock Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.WordChange}" TextWrapping="Wrap" VerticalAlignment="Center" />
+          <views:CopyableTextBlock Grid.Column="1" controls:DenseTable.Secondary="True" Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.OpinionChange}" TextWrapping="Wrap" VerticalAlignment="Center" />
+          <views:CopyableTextBlock Grid.Column="2" controls:DenseTable.Secondary="True" Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.Analysis}" VerticalAlignment="Center" />
+          <views:CopyableTextBlock Grid.Column="3" controls:DenseTable.Secondary="True" Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.PanGlossEffects}" TextWrapping="Wrap" VerticalAlignment="Center" />
+          <views:CopyableTextBlock Grid.Column="4" controls:DenseTable.Secondary="True" Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.Where}" VerticalAlignment="Center" />
+          <views:CopyableTextBlock Grid.Column="5" Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.Fits}" VerticalAlignment="Center" />
+          <views:CopyableTextBlock Grid.Column="6" Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.KeepUndo}" VerticalAlignment="Center" />
         </Grid>
       </Border>
       <ListBox x:Name="ReviewItems" Grid.Row="2" Classes="denseTable" ItemsSource="{Binding TableEntries}"
                SelectedItem="{Binding SelectedTableEntry, Mode=TwoWay}"
                Focusable="True" IsTabStop="True" KeyboardNavigation.TabNavigation="Once"
-               AutomationProperties.Name="Changes grouped for review"
+               AutomationProperties.Name="{x:Static app:MotifAppStrings.ChangesGroupedForReviewAccessibleName}"
                AutomationProperties.AutomationId="{x:Static app:AutomationIds.ReviewWordsSlot}">
         <ListBox.ItemsPanel><ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate></ListBox.ItemsPanel>
         <ListBox.DataTemplates>
@@ -211,10 +211,10 @@
                 <TextBlock Classes="denseTableGroupName" Text="{Binding Title}" TextTrimming="CharacterEllipsis"
                            ToolTip.Tip="{Binding NoteTip}" VerticalAlignment="Center" />
                 <TextBlock Grid.Column="1" Classes="denseTableCount" Text="{Binding WordCountText}" VerticalAlignment="Center" />
-                <Button Grid.Column="2" Classes="denseTableAction" Content="Check again"
+                <Button Grid.Column="2" Classes="denseTableAction" Content="{x:Static app:MotifAppStrings.CheckAgain}"
                         Command="{Binding $parent[views:ReviewPanel].Page.CheckAgainCommand}"
-                        IsVisible="{Binding IsNoLongerFits}" AutomationProperties.Name="Check all changes again against the refreshed project" />
-                <Button Grid.Column="3" Classes="denseTableAction" Content="Undo all" Command="{Binding UndoAllCommand}"
+                        IsVisible="{Binding IsNoLongerFits}" AutomationProperties.Name="{x:Static app:MotifAppStrings.CheckAllChangesAgainAgainstTheAccessibleName}" />
+                <Button Grid.Column="3" Classes="denseTableAction" Content="{x:Static app:MotifAppStrings.UndoAll}" Command="{Binding UndoAllCommand}"
                         AutomationProperties.Name="{Binding UndoAllAutomationName}"
                         AutomationProperties.AutomationId="{Binding UndoAllAutomationId}" />
               </Grid>
@@ -246,7 +246,7 @@
                             </ContentControl>
                           </StackPanel>
                           <views:CopyableTextBlock Grid.Column="1" Classes="denseTableCount" Text="✓" IsVisible="{Binding IsLookedAt}"
-                              VerticalAlignment="Center" AutomationProperties.Name="Looked at" ToolTip.Tip="Looked at" />
+                              VerticalAlignment="Center" AutomationProperties.Name="{x:Static app:MotifAppStrings.LookedAtAccessibleName}" ToolTip.Tip="{x:Static app:MotifAppStrings.LookedAtTip}" />
                         </Grid>
                         <ContentControl Grid.Column="1" controls:DenseTable.Secondary="True" Content="{Binding Change}" VerticalAlignment="Center">
                           <ContentControl.ContentTemplate>
@@ -285,7 +285,7 @@
                           </ContentControl>
                         </StackPanel>
                         <StackPanel Grid.Column="4" controls:DenseTable.Secondary="True" VerticalAlignment="Center">
-                          <views:CopyableTextBlock Classes="denseTableCell" Text="Project" IsVisible="{Binding IsGrammar}" />
+                          <views:CopyableTextBlock Classes="denseTableCell" Text="{x:Static app:MotifAppStrings.Project}" IsVisible="{Binding IsGrammar}" />
                           <views:CopyableTextBlock Classes="denseTableCell" Text="{Binding Change.Presentation.PendingChange.WhereText}"
                               IsVisible="{Binding !IsGrammar}" TextTrimming="CharacterEllipsis"
                               ToolTip.Tip="{Binding Change.Presentation.PendingChange.WhereText}" />
@@ -301,9 +301,9 @@
                         </Border>
                         <StackPanel Grid.Column="6" Orientation="Horizontal" VerticalAlignment="Center"
                                     Spacing="{StaticResource Intent.Space.Minimal}">
-                          <Button Classes="denseTableAction" Content="Keep" Command="{Binding KeepCommand}"
+                          <Button Classes="denseTableAction" Content="{x:Static app:MotifAppStrings.Keep}" Command="{Binding KeepCommand}"
                                   AutomationProperties.Name="{Binding TableKeepAutomationName}" />
-                          <Button Classes="denseTableAction" Content="Undo" Command="{Binding UndoCommand}"
+                          <Button Classes="denseTableAction" Content="{x:Static app:MotifAppStrings.Undo}" Command="{Binding UndoCommand}"
                                   AutomationProperties.Name="{Binding TableUndoAutomationName}" />
                           <Button Classes="denseTableMenu" Content="⋯" IsTabStop="True"
                                   AutomationProperties.Name="{Binding MoreAutomationName}">
@@ -311,12 +311,12 @@
                               <Flyout Placement="BottomEdgeAlignedLeft">
                                 <StackPanel Classes="menu">
                                   <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
-                                          Content="Details" Click="OnDetailsRequested"
-                                          AutomationProperties.Name="Details for this change" />
+                                          Content="{x:Static app:MotifAppStrings.Details}" Click="OnDetailsRequested"
+                                          AutomationProperties.Name="{x:Static app:MotifAppStrings.DetailsForThisChangeAccessibleName}" />
                                   <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
-                                          Content="Keep" Command="{Binding KeepCommand}" />
+                                          Content="{x:Static app:MotifAppStrings.Keep}" Command="{Binding KeepCommand}" />
                                   <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
-                                          Content="Undo" Command="{Binding UndoCommand}" />
+                                          Content="{x:Static app:MotifAppStrings.Undo}" Command="{Binding UndoCommand}" />
                                 </StackPanel>
                               </Flyout>
                             </Button.Flyout>

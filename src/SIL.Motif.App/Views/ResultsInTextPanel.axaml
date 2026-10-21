@@ -17,7 +17,7 @@
                   MinWidth="{DynamicResource Component.TextsPage.TextPickerWidth}"
                   MaxWidth="{DynamicResource Component.TextsPage.TextPickerMaxWidth}"
                   Margin="{DynamicResource Component.TextsPage.TextPickerGap}"
-                  AutomationProperties.Name="Text to read">
+                  AutomationProperties.Name="{x:Static app:MotifAppStrings.TextToReadAccessibleName}">
           <ComboBox.ItemTemplate>
             <DataTemplate x:DataType="vm:ResultsTextViewModel">
               <controls:WritingSystemTextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Title}"
@@ -28,10 +28,10 @@
         <TextBox x:Name="ReaderWordSearch" Grid.Column="1" Text="{Binding InText.SearchText}"
                  PlaceholderText="Search words..." MinWidth="{DynamicResource Component.TextsPage.ReaderSearchMinWidth}"
                  MaxWidth="{DynamicResource Component.TextsPage.ReaderSearchMaxWidth}"
-                 IsVisible="{Binding InText.HasTexts}" AutomationProperties.Name="Search words in Analyze texts" />
+                 IsVisible="{Binding InText.HasTexts}" AutomationProperties.Name="{x:Static app:MotifAppStrings.SearchWordsInAnalyzeTextsAccessibleName}" />
         <Button x:Name="ReaderSelectMenu" Grid.Column="3" Classes="menuButton" Content="{Binding InText.SelectMenuLabel}" VerticalAlignment="Center"
                 Padding="{DynamicResource Component.TextsPage.ReaderActionPadding}"
-                IsVisible="{Binding InText.HasResults}" AutomationProperties.Name="Select words for actions">
+                IsVisible="{Binding InText.HasResults}" AutomationProperties.Name="{x:Static app:MotifAppStrings.SelectWordsForActionsAccessibleName}">
           <Button.Flyout>
             <Flyout Placement="BottomEdgeAlignedRight">
               <StackPanel Spacing="{DynamicResource Intent.Space.Snug}"
@@ -40,92 +40,92 @@
                 <views:CopyableTextBlock Classes="muted" Text="{Binding InText.ScopeCountSummary}" />
                 <StackPanel>
                   <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="{Binding InText.ChooseWordsLabel}" Command="{Binding InText.ChooseWordsCommand}"
-                          AutomationProperties.Name="Choose words with checkboxes" />
-                  <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="Select all" Command="{Binding InText.SelectAllWordsCommand}"
-                          AutomationProperties.Name="Select all chosen word occurrences" />
-                  <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" Content="Clear selection" Command="{Binding InText.ClearSelectedWordsCommand}"
+                          AutomationProperties.Name="{x:Static app:MotifAppStrings.ChooseWordsWithCheckboxesAccessibleName}" />
+                  <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="{x:Static app:MotifAppStrings.SelectAll}" Command="{Binding InText.SelectAllWordsCommand}"
+                          AutomationProperties.Name="{x:Static app:MotifAppStrings.SelectAllChosenWordOccurrencesAccessibleName}" />
+                  <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" Content="{x:Static app:MotifAppStrings.ClearSelection}" Command="{Binding InText.ClearSelectedWordsCommand}"
                           IsVisible="{Binding InText.HasCheckedWords}"
-                          AutomationProperties.Name="Clear selected word occurrences" />
+                          AutomationProperties.Name="{x:Static app:MotifAppStrings.ClearSelectedWordOccurrencesAccessibleName}" />
                 </StackPanel>
                 <StackPanel Spacing="{DynamicResource Intent.Space.Compact}" IsVisible="{Binding InText.HasCheckedWords}">
-                  <views:CopyableTextBlock Classes="section-title" Text="For the selected words" />
+                  <views:CopyableTextBlock Classes="section-title" Text="{x:Static app:MotifAppStrings.ForTheSelectedWords}" />
                   <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap"
-                                           Text="Approve one analysis at a time. Opinions apply to one word because each word has its own readings." />
+                                           Text="{x:Static app:MotifAppStrings.ApproveOneAnalysisAtATime}" />
                   <StackPanel>
-                    <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="Add readings as Unknown" Command="{Binding InText.AddParserReadingsCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.CheckedWords}" />
-                    <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="Accept the new set" Command="{Binding InText.AcceptNewSetCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.CheckedWords}" />
-                    <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="Mark Incorrect" Command="{Binding InText.MarkSpellingsIncorrectCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.CheckedWords}" />
-                    <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="Remove analyses" Command="{Binding InText.RemoveAnalysesCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.CheckedWords}" />
-                    <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="Undo changes" Command="{Binding InText.UndoChangesCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.CheckedWords}" />
-                    <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" Content="Check again" Command="{Binding InText.RecheckCheckedChangesCommand}"
+                    <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="{x:Static app:MotifAppStrings.AddReadingsAsUnknown}" Command="{Binding InText.AddParserReadingsCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.CheckedWords}" />
+                    <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="{x:Static app:MotifAppStrings.AcceptTheNewSet}" Command="{Binding InText.AcceptNewSetCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.CheckedWords}" />
+                    <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="{x:Static app:MotifAppStrings.MarkIncorrect}" Command="{Binding InText.MarkSpellingsIncorrectCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.CheckedWords}" />
+                    <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="{x:Static app:MotifAppStrings.RemoveAnalyses}" Command="{Binding InText.RemoveAnalysesCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.CheckedWords}" />
+                    <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="{x:Static app:MotifAppStrings.UndoChanges}" Command="{Binding InText.UndoChangesCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.CheckedWords}" />
+                    <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" Content="{x:Static app:MotifAppStrings.CheckAgain}" Command="{Binding InText.RecheckCheckedChangesCommand}"
                             IsVisible="{Binding InText.HasCheckedUncertainChanges}" />
                   </StackPanel>
                 </StackPanel>
-                <views:CopyableTextBlock Classes="section-title" Text="In this Text" />
+                <views:CopyableTextBlock Classes="section-title" Text="{x:Static app:MotifAppStrings.InThisText}" />
                 <StackPanel>
-                  <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="Add readings as Unknown in this Text"
+                  <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="{x:Static app:MotifAppStrings.AddReadingsAsUnknownInThis}"
                           Command="{Binding InText.AddParserReadingsCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.SelectedText}"
-                          AutomationProperties.Name="Add parser readings as Unknown in this Text" />
-                  <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="Accept new set in this Text" Command="{Binding InText.AcceptNewSetCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.SelectedText}"
-                          AutomationProperties.Name="Accept new set for the selected Text" />
-                  <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="Mark spellings Incorrect in this Text"
+                          AutomationProperties.Name="{x:Static app:MotifAppStrings.AddParserReadingsAsUnknownInAccessibleName}" />
+                  <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="{x:Static app:MotifAppStrings.AcceptNewSetInThisText}" Command="{Binding InText.AcceptNewSetCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.SelectedText}"
+                          AutomationProperties.Name="{x:Static app:MotifAppStrings.AcceptNewSetForTheSelectedAccessibleName}" />
+                  <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="{x:Static app:MotifAppStrings.MarkSpellingsIncorrectInThisText}"
                           Command="{Binding InText.MarkSpellingsIncorrectCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.SelectedText}"
-                          AutomationProperties.Name="Mark spellings Incorrect in the selected Text" />
-                  <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="Undo changes in this Text" Command="{Binding InText.UndoChangesCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.SelectedText}"
-                          AutomationProperties.Name="Undo changes in the selected Text" />
+                          AutomationProperties.Name="{x:Static app:MotifAppStrings.MarkSpellingsIncorrectInTheSelectedAccessibleName}" />
+                  <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="{x:Static app:MotifAppStrings.UndoChangesInThisText}" Command="{Binding InText.UndoChangesCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.SelectedText}"
+                          AutomationProperties.Name="{x:Static app:MotifAppStrings.UndoChangesInTheSelectedTextAccessibleName}" />
                 </StackPanel>
                 <Expander Header="{Binding InText.SelectedTextRemoveHeader}" IsVisible="{Binding InText.HasSelectedTextAnalyses}">
                   <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
                     <views:CopyableTextBlock Classes="muted" Text="{Binding InText.SelectedTextRemovalPreview}" TextWrapping="Wrap" />
-                    <Button Content="Stage removal from this Text" Command="{Binding InText.RemoveAnalysesCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.SelectedText}"
-                            AutomationProperties.Name="Stage removal of the analyses used in this Text" />
+                    <Button Content="{x:Static app:MotifAppStrings.StageRemovalFromThisText}" Command="{Binding InText.RemoveAnalysesCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.SelectedText}"
+                            AutomationProperties.Name="{x:Static app:MotifAppStrings.StageRemovalOfTheAnalysesUsedAccessibleName}" />
                   </StackPanel>
                 </Expander>
-                <views:CopyableTextBlock Classes="section-title" Text="In all chosen Texts" />
+                <views:CopyableTextBlock Classes="section-title" Text="{x:Static app:MotifAppStrings.InAllChosenTexts}" />
                 <StackPanel>
-                  <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="Accept new set in Selection" Command="{Binding InText.AcceptNewSetCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.AssessmentSelection}"
-                          AutomationProperties.Name="Accept new set for the Selection" />
-                  <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="Add readings as Unknown in all chosen Texts"
+                  <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="{x:Static app:MotifAppStrings.AcceptNewSetInSelection}" Command="{Binding InText.AcceptNewSetCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.AssessmentSelection}"
+                          AutomationProperties.Name="{x:Static app:MotifAppStrings.AcceptNewSetForTheSelectionAccessibleName}" />
+                  <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="{x:Static app:MotifAppStrings.AddReadingsAsUnknownInAll}"
                           Command="{Binding InText.AddParserReadingsCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.ChosenTexts}"
-                          AutomationProperties.Name="Add parser readings as Unknown in all chosen Texts" />
-                  <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="Mark spellings Incorrect in all chosen Texts"
+                          AutomationProperties.Name="{x:Static app:MotifAppStrings.AddParserReadingsAsUnknownInAccessibleName2}" />
+                  <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="{x:Static app:MotifAppStrings.MarkSpellingsIncorrectInAllChosen}"
                           Command="{Binding InText.MarkSpellingsIncorrectCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.ChosenTexts}"
-                          AutomationProperties.Name="Mark spellings Incorrect in all chosen Texts" />
-                  <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="Undo changes in all chosen Texts" Command="{Binding InText.UndoChangesCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.ChosenTexts}"
-                          AutomationProperties.Name="Undo changes in all chosen Texts" />
-                  <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="Check again" Command="{Binding InText.RecheckChangesCommand}"
-                          AutomationProperties.Name="Check uncertain changes again" />
+                          AutomationProperties.Name="{x:Static app:MotifAppStrings.MarkSpellingsIncorrectInAllChosenAccessibleName}" />
+                  <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="{x:Static app:MotifAppStrings.UndoChangesInAllChosenTexts}" Command="{Binding InText.UndoChangesCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.ChosenTexts}"
+                          AutomationProperties.Name="{x:Static app:MotifAppStrings.UndoChangesInAllChosenTextsAccessibleName}" />
+                  <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="{x:Static app:MotifAppStrings.CheckAgain}" Command="{Binding InText.RecheckChangesCommand}"
+                          AutomationProperties.Name="{x:Static app:MotifAppStrings.CheckUncertainChangesAgainAccessibleName}" />
                 </StackPanel>
                 <Expander Header="{Binding InText.ChosenTextsRemoveHeader}" IsVisible="{Binding InText.HasChosenTextAnalyses}">
                   <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
                     <views:CopyableTextBlock Classes="muted" Text="{Binding InText.ChosenTextsRemovalPreview}" TextWrapping="Wrap" />
-                    <Button Content="Stage removal from all chosen Texts" Command="{Binding InText.RemoveAnalysesCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.ChosenTexts}"
-                            AutomationProperties.Name="Stage removal of the analyses used in all chosen Texts" />
+                    <Button Content="{x:Static app:MotifAppStrings.StageRemovalFromAllChosenTexts}" Command="{Binding InText.RemoveAnalysesCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.ChosenTexts}"
+                            AutomationProperties.Name="{x:Static app:MotifAppStrings.StageRemovalOfTheAnalysesUsedAccessibleName2}" />
                   </StackPanel>
                 </Expander>
               </StackPanel>
             </Flyout>
           </Button.Flyout>
         </Button>
-        <Button x:Name="ReaderReadMenu" Grid.Column="2" Classes="menuButton" Content="Read ▾" VerticalAlignment="Center" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ReaderReadMenu}"
+        <Button x:Name="ReaderReadMenu" Grid.Column="2" Classes="menuButton" Content="{x:Static app:MotifAppStrings.Read}" VerticalAlignment="Center" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ReaderReadMenu}"
                 Margin="{DynamicResource Component.TextsPage.ReaderActionGap}"
                 Padding="{DynamicResource Component.TextsPage.ReaderActionPadding}"
-                IsVisible="{Binding InText.HasResults}" AutomationProperties.Name="Mark read or unread">
+                IsVisible="{Binding InText.HasResults}" AutomationProperties.Name="{x:Static app:MotifAppStrings.MarkReadOrUnreadAccessibleName}">
           <Button.Flyout>
             <Flyout Placement="BottomEdgeAlignedRight">
               <StackPanel Classes="menu">
-                <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" Content="Mark this Text as read" Command="{Binding InText.MarkTextReadCommand}"
-                        AutomationProperties.Name="Mark the selected Text as read" />
-                <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" Content="Mark this Text as unread" Command="{Binding InText.MarkTextUnreadCommand}"
-                        AutomationProperties.Name="Mark the selected Text as unread" />
+                <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" Content="{x:Static app:MotifAppStrings.MarkThisTextAsRead}" Command="{Binding InText.MarkTextReadCommand}"
+                        AutomationProperties.Name="{x:Static app:MotifAppStrings.MarkTheSelectedTextAsReadAccessibleName}" />
+                <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" Content="{x:Static app:MotifAppStrings.MarkThisTextAsUnread}" Command="{Binding InText.MarkTextUnreadCommand}"
+                        AutomationProperties.Name="{x:Static app:MotifAppStrings.MarkTheSelectedTextAsUnreadAccessibleName}" />
                 <StackPanel Spacing="{DynamicResource Intent.Space.Compact}"
                             IsVisible="{Binding InText.HasSelectedReadStateOccurrences}">
                   <views:CopyableTextBlock Classes="muted" Text="{Binding InText.CheckedWordCountLabel}"
-                                           AutomationProperties.Name="Selected occurrence count" />
-                  <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" Content="Mark selected as read" Command="{Binding InText.MarkSelectionReadCommand}"
-                          AutomationProperties.Name="Mark selected occurrences as read" />
-                  <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" Content="Mark selected as unread" Command="{Binding InText.MarkSelectionUnreadCommand}"
-                          AutomationProperties.Name="Mark selected occurrences as unread" />
+                                           AutomationProperties.Name="{x:Static app:MotifAppStrings.SelectedOccurrenceCountAccessibleName}" />
+                  <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" Content="{x:Static app:MotifAppStrings.MarkSelectedAsRead}" Command="{Binding InText.MarkSelectionReadCommand}"
+                          AutomationProperties.Name="{x:Static app:MotifAppStrings.MarkSelectedOccurrencesAsReadAccessibleName}" />
+                  <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" Content="{x:Static app:MotifAppStrings.MarkSelectedAsUnread}" Command="{Binding InText.MarkSelectionUnreadCommand}"
+                          AutomationProperties.Name="{x:Static app:MotifAppStrings.MarkSelectedOccurrencesAsUnreadAccessibleName}" />
                 </StackPanel>
               </StackPanel>
             </Flyout>
@@ -173,11 +173,11 @@
                   Margin="{DynamicResource Component.TextsPage.EmptyStateMargin}"
                   IsVisible="{Binding InText.HasMessage}">
         <views:CopyableTextBlock Classes="muted" Text="{Binding InText.Message}" TextWrapping="Wrap" />
-        <Button Content="Choose texts" HorizontalAlignment="Left" IsVisible="{Binding InText.NeedsTexts}"
-                Click="OnGoToTextsClick" AutomationProperties.Name="Choose texts to analyze" />
+        <Button Content="{x:Static app:MotifAppStrings.ChooseTexts}" HorizontalAlignment="Left" IsVisible="{Binding InText.NeedsTexts}"
+                Click="OnGoToTextsClick" AutomationProperties.Name="{x:Static app:MotifAppStrings.ChooseTextsToAnalyzeAccessibleName}" />
       </StackPanel>
       <ScrollViewer Grid.Row="2" x:Name="TextScrollViewer" IsVisible="{Binding InText.HasLines}">
-        <ItemsControl x:Name="TextLineItems" ItemsSource="{Binding InText.DisplayedLines}" AutomationProperties.Name="Text lines and parser results">
+        <ItemsControl x:Name="TextLineItems" ItemsSource="{Binding InText.DisplayedLines}" AutomationProperties.Name="{x:Static app:MotifAppStrings.TextLinesAndParserResultsAccessibleName}">
           <ItemsControl.ItemsPanel>
             <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
           </ItemsControl.ItemsPanel>
@@ -203,9 +203,9 @@
                                           controls:WritingSystemText.FlowEnabled="True">
                 <StackPanel Classes="gutter stripRows"
                             controls:WritingSystemText.WindowText="True">
-                  <TextBlock Classes="gutterLabel gutterWordRow" Text="Word" />
-                  <TextBlock Classes="gutterLabel analysisRow fieldWorksRow" Text="FieldWorks" />
-                  <TextBlock Classes="gutterLabel analysisRow" Text="PanGloss" />
+                  <TextBlock Classes="gutterLabel gutterWordRow" Text="{x:Static app:MotifAppStrings.Word}" />
+                  <TextBlock Classes="gutterLabel analysisRow fieldWorksRow" Text="{x:Static app:MotifAppStrings.FieldWorks}" />
+                  <TextBlock Classes="gutterLabel analysisRow" Text="{x:Static app:MotifAppStrings.PanGloss}" />
                 </StackPanel>
                 <views:ProgressiveItemsControl x:Name="ResultsInTextPanelTokensItems" FullItemsSource="{Binding DisplayTokens}" HorizontalAlignment="Stretch">
                   <ItemsControl.ItemsPanel><ItemsPanelTemplate><views:WordStripWrapPanel Orientation="Horizontal"
@@ -246,7 +246,7 @@
                                                        IsVisible="{Binding IsPending}" VerticalAlignment="Center"
                                                        Margin="{DynamicResource Component.TextsPage.ShortLabelMargin}" />
                               <views:CopyableTextBlock Classes="muted" VerticalAlignment="Center"
-                                                       Text="Esc closes · ← → next word" TextWrapping="Wrap"
+                                                       Text="{x:Static app:MotifAppStrings.EscClosesArrowNextWord}" TextWrapping="Wrap"
                                                        Margin="{DynamicResource Component.TextsPage.ShortLabelMargin}" />
                             </WrapPanel>
                             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
@@ -260,7 +260,7 @@
                               </HyperlinkButton>
                               <Button Classes="wordPresentationCardClose" Content="×"
                                       Tag="{x:Static word:WordAction.CloseCard}"
-                                      AutomationProperties.Name="Close the word card" />
+                                      AutomationProperties.Name="{x:Static app:MotifAppStrings.CloseTheWordCardAccessibleName}" />
                             </StackPanel>
                           </Grid>
                         </Border>

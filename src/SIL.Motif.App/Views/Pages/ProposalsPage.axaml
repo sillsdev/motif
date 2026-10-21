@@ -10,7 +10,7 @@
     <DataTemplate x:Key="ProposalGroupFilterTemplate" x:DataType="vm:ProposalsPageModel">
       <StackPanel Classes="proposalFilterPane" Spacing="{DynamicResource Intent.Space.Compact}"
                   IsVisible="{Binding IsListed}">
-        <views:CopyableTextBlock Classes="muted" Text="Show" />
+        <views:CopyableTextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.Show}" />
         <ItemsControl x:Name="ProposalsGroupFilterItems" ItemsSource="{Binding GroupFilters}">
           <ItemsControl.ItemsPanel>
             <ItemsPanelTemplate><WrapPanel Classes="proposalFilters" /></ItemsPanelTemplate>
@@ -31,20 +31,20 @@
         <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
           <Border Classes="inspectorBodyFrame">
           <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
-            <views:CopyableTextBlock Classes="muted" Text="Reading Proposals…"
+            <views:CopyableTextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.ReadingProposals}"
                                      IsVisible="{Binding IsLoading}" TextWrapping="Wrap" />
-            <views:CopyableTextBlock Classes="muted" Text="No Proposals yet"
+            <views:CopyableTextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.NoProposalsYet}"
                                      IsVisible="{Binding IsEmpty}" TextWrapping="Wrap" />
             <StackPanel IsVisible="{Binding IsFilteredEmpty}"
                         Spacing="{DynamicResource Intent.Space.Compact}">
               <views:CopyableTextBlock Classes="muted" Text="{Binding FilterEmptyText}" TextWrapping="Wrap" />
-              <Button x:Name="ClearProposalFilter" Content="Show all Proposals"
+              <Button x:Name="ClearProposalFilter" Content="{x:Static app:MotifAppStrings.ShowAllProposals}"
                       Command="{Binding ClearGroupFilterCommand}"
                       AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalsClearFilter}" />
             </StackPanel>
-            <views:CopyableTextBlock Classes="muted" Text="No Proposals to show."
+            <views:CopyableTextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.NoProposalsToShow}"
                                      IsVisible="{Binding IsNoProposalsToShow}" TextWrapping="Wrap" />
-            <views:CopyableTextBlock Classes="muted" Text="Select a Proposal."
+            <views:CopyableTextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.SelectAProposal}"
                                      IsVisible="{Binding ShowSelectProposalPrompt}" TextWrapping="Wrap" />
             <views:CopyableTextBlock Classes="inspectorTitle" Text="{Binding SelectedProposal.Label}"
                                      IsVisible="{Binding HasSelectedProposal}"
@@ -52,18 +52,18 @@
             <StackPanel IsVisible="{Binding HasSelectedProposal}"
                         Spacing="{DynamicResource Intent.Space.Related}">
               <Grid Classes="inspectorFact" ColumnDefinitions="Auto,*">
-                <TextBlock Classes="inspectorFactLabel" Text="Status" />
+                <TextBlock Classes="inspectorFactLabel" Text="{x:Static app:MotifAppStrings.Status}" />
                 <views:CopyableTextBlock Grid.Column="1" Text="{Binding SelectedProposal.DetailsStatusText}"
                                          TextWrapping="Wrap" />
               </Grid>
               <Grid Classes="inspectorFact" ColumnDefinitions="Auto,*">
-                <TextBlock Classes="inspectorFactLabel" Text="Built by" />
+                <TextBlock Classes="inspectorFactLabel" Text="{x:Static app:MotifAppStrings.BuiltBy}" />
                 <views:CopyableTextBlock Grid.Column="1" Text="{Binding SelectedProposal.AuthorText}"
                                          TextWrapping="Wrap" />
               </Grid>
               <Border Classes="inspectorSection">
                 <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
-                  <TextBlock Classes="inspectorSectionTitle" Text="Its changes" />
+                  <TextBlock Classes="inspectorSectionTitle" Text="{x:Static app:MotifAppStrings.ItsChanges}" />
                   <views:CopyableTextBlock Text="{Binding SelectedProposal.ChangeCountText}" />
                   <views:CopyableTextBlock Classes="muted" Text="{Binding SelectedProposal.KindsText}"
                                            TextWrapping="Wrap" />
@@ -80,7 +80,7 @@
               </Border>
               <Border Classes="inspectorSection" IsVisible="{Binding SelectedProposal.HasNumbers}">
                 <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
-                  <TextBlock Classes="inspectorSectionTitle" Text="What it would do to the numbers" />
+                  <TextBlock Classes="inspectorSectionTitle" Text="{x:Static app:MotifAppStrings.WhatItWouldDoToThe}" />
                   <ItemsControl x:Name="ProposalsNumberItems" ItemsSource="{Binding SelectedProposal.Numbers}">
                     <ItemsControl.ItemTemplate>
                       <DataTemplate x:DataType="vm:ProposalNumber">
@@ -100,7 +100,7 @@
               <views:RefusalBlock DataContext="{Binding SelectedProposal.ShownRefusal}" />
               <views:TrialBaselineNoticeBlock DataContext="{Binding SelectedProposal.BaselineNotice}" />
               <StackPanel Classes="proposalInspectorActions" Spacing="{DynamicResource Intent.Space.Compact}">
-                <Button Content="Open in Review changes" Classes="Primary" Theme="{DynamicResource SolidButton}"
+                <Button Content="{x:Static app:MotifAppStrings.OpenInReviewChanges}" Classes="Primary" Theme="{DynamicResource SolidButton}"
                         Command="{Binding OpenInReviewCommand}" CommandParameter="{Binding SelectedProposal}"
                         Click="OnRequestPageInspector"
                         AutomationProperties.AutomationId="{Binding SelectedOpenAutomationId}" />
@@ -109,10 +109,10 @@
                           IsVisible="{Binding SelectedProposal.CanTry}"
                           Command="{Binding TryAgainCommand}" CommandParameter="{Binding SelectedProposal}"
                           AutomationProperties.AutomationId="{Binding SelectedTryAgainAutomationId}" />
-                  <Button Content="Reopen" IsVisible="{Binding SelectedProposal.CanReopen}"
+                  <Button Content="{x:Static app:MotifAppStrings.Reopen}" IsVisible="{Binding SelectedProposal.CanReopen}"
                           Command="{Binding ReopenCommand}" CommandParameter="{Binding SelectedProposal}"
                           AutomationProperties.AutomationId="{Binding SelectedReopenAutomationId}" />
-                  <Button Content="Delete" IsVisible="{Binding SelectedProposal.CanDelete}"
+                  <Button Content="{x:Static app:MotifAppStrings.Delete}" IsVisible="{Binding SelectedProposal.CanDelete}"
                           Command="{Binding DeleteCommand}" CommandParameter="{Binding SelectedProposal}"
                           AutomationProperties.AutomationId="{Binding SelectedDeleteAutomationId}" />
                 </WrapPanel>
@@ -129,39 +129,39 @@
     <StackPanel Grid.Row="0" Grid.Column="0" Classes="proposalsPage">
       <StackPanel Classes="proposalsHeading">
         <StackPanel Classes="proposalTitleRow">
-          <views:CopyableTextBlock Classes="section-title" Text="Proposals" />
+          <views:CopyableTextBlock Classes="section-title" Text="{x:Static app:MotifAppStrings.Proposals}" />
           <views:CopyableTextBlock Classes="muted" Text="{Binding TotalProposalCountText}"
                                    IsVisible="{Binding IsListed}" />
         </StackPanel>
         <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap"
-                                 Text="Each one is tried on a copy of your project. Nothing reaches FieldWorks until you apply it." />
+                                 Text="{x:Static app:MotifAppStrings.EachOneIsTriedOnA}" />
       </StackPanel>
       <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" IsVisible="{Binding IsLoading}"
-                               Text="Reading Proposals…" />
+                               Text="{x:Static app:MotifAppStrings.ReadingProposals}" />
       <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" IsVisible="{Binding IsEmpty}"
-                               Text="No Proposals yet. Changes you collect and Proposals an assistant puts together are listed here." />
+                               Text="{x:Static app:MotifAppStrings.NoProposalsYetChangesYouCollect}" />
       <views:RefusalBlock DataContext="{Binding ShownRefusal}" />
     </StackPanel>
     <Border Grid.Row="1" Grid.Column="0" Classes="denseTableColumnHeader" IsVisible="{Binding IsListed}">
       <Grid ColumnSpacing="{DynamicResource Intent.Space.Group}"
             controls:DenseTable.Columns="3* Narrow Narrow * * * * Actions"
             controls:DenseTable.CompactColumns="* 0 Narrow 0 0 0 0 Actions">
-        <views:CopyableTextBlock Classes="denseTableHeading" Text="Proposal" VerticalAlignment="Center" />
+        <views:CopyableTextBlock Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.Proposal}" VerticalAlignment="Center" />
         <Border Grid.Column="1" controls:DenseTable.Secondary="True">
-          <views:CopyableTextBlock Classes="denseTableHeading" Text="Built by" VerticalAlignment="Center" />
+          <views:CopyableTextBlock Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.BuiltBy}" VerticalAlignment="Center" />
         </Border>
-        <views:CopyableTextBlock Grid.Column="2" Classes="denseTableHeading" Text="Status" VerticalAlignment="Center" />
+        <views:CopyableTextBlock Grid.Column="2" Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.Status}" VerticalAlignment="Center" />
         <Border Grid.Column="3" controls:DenseTable.Secondary="True">
-          <views:CopyableTextBlock Classes="denseTableHeading" Text="Approved kept" VerticalAlignment="Center" />
+          <views:CopyableTextBlock Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.ApprovedKept}" VerticalAlignment="Center" />
         </Border>
         <Border Grid.Column="4" controls:DenseTable.Secondary="True">
-          <views:CopyableTextBlock Classes="denseTableHeading" Text="Coverage" VerticalAlignment="Center" />
+          <views:CopyableTextBlock Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.Coverage}" VerticalAlignment="Center" />
         </Border>
         <Border Grid.Column="5" controls:DenseTable.Secondary="True">
-          <views:CopyableTextBlock Classes="denseTableHeading" Text="Warnings" VerticalAlignment="Center" />
+          <views:CopyableTextBlock Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.Warnings}" VerticalAlignment="Center" />
         </Border>
         <Border Grid.Column="6" controls:DenseTable.Secondary="True">
-          <views:CopyableTextBlock Classes="denseTableHeading" Text="Word time" VerticalAlignment="Center" />
+          <views:CopyableTextBlock Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.WordTime}" VerticalAlignment="Center" />
         </Border>
         <Border Grid.Column="7" />
       </Grid>
@@ -170,7 +170,7 @@
              ItemsSource="{Binding Rows}" SelectedItem="{Binding SelectedProposal, Mode=TwoWay}"
              IsVisible="{Binding IsListed}" Focusable="True" IsTabStop="True"
              KeyboardNavigation.TabNavigation="Once"
-             AutomationProperties.Name="Proposals"
+             AutomationProperties.Name="{x:Static app:MotifAppStrings.ProposalsAccessibleName}"
              AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalsTable}">
       <ListBox.ItemsPanel>
         <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
@@ -242,11 +242,11 @@
                           Command="{Binding $parent[UserControl].((vm:ProposalsPageModel)DataContext).TryAgainCommand}"
                           CommandParameter="{Binding}"
                           AutomationProperties.AutomationId="{Binding TryAgainAutomationId}" />
-                  <Button Classes="denseTableAction" Content="Reopen" IsVisible="{Binding CanReopen}"
+                  <Button Classes="denseTableAction" Content="{x:Static app:MotifAppStrings.Reopen}" IsVisible="{Binding CanReopen}"
                           Command="{Binding $parent[UserControl].((vm:ProposalsPageModel)DataContext).ReopenCommand}"
                           CommandParameter="{Binding}"
                           AutomationProperties.AutomationId="{Binding ReopenAutomationId}" />
-                  <Button Classes="denseTableAction" Content="Open" IsVisible="{Binding ShowsOpenAction}"
+                  <Button Classes="denseTableAction" Content="{x:Static app:MotifAppStrings.Open}" IsVisible="{Binding ShowsOpenAction}"
                           Command="{Binding $parent[UserControl].((vm:ProposalsPageModel)DataContext).OpenCommand}"
                           CommandParameter="{Binding}"
                           AutomationProperties.AutomationId="{Binding OpenAutomationId}" />
@@ -261,20 +261,20 @@
                                   Command="{Binding $parent[UserControl].((vm:ProposalsPageModel)DataContext).TryAgainCommand}"
                                   CommandParameter="{Binding}" />
                           <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
-                                  Content="Reopen" IsVisible="{Binding CanReopen}"
+                                  Content="{x:Static app:MotifAppStrings.Reopen}" IsVisible="{Binding CanReopen}"
                                   Command="{Binding $parent[UserControl].((vm:ProposalsPageModel)DataContext).ReopenCommand}"
                                   CommandParameter="{Binding}" />
                           <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
-                                  Content="Details"
+                                  Content="{x:Static app:MotifAppStrings.Details}"
                                   Command="{Binding $parent[UserControl].((vm:ProposalsPageModel)DataContext).SelectProposalCommand}"
                                   CommandParameter="{Binding}" Click="OnRequestPageInspector"
                                   AutomationProperties.AutomationId="{Binding DetailsAutomationId}" />
                           <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
-                                  Content="Open" IsVisible="{Binding ShowsOpenAction}"
+                                  Content="{x:Static app:MotifAppStrings.Open}" IsVisible="{Binding ShowsOpenAction}"
                                   Command="{Binding $parent[UserControl].((vm:ProposalsPageModel)DataContext).OpenCommand}"
                                   CommandParameter="{Binding}" />
                           <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
-                                  Content="Delete" IsVisible="{Binding CanDelete}"
+                                  Content="{x:Static app:MotifAppStrings.Delete}" IsVisible="{Binding CanDelete}"
                                   Command="{Binding $parent[UserControl].((vm:ProposalsPageModel)DataContext).DeleteCommand}"
                                   CommandParameter="{Binding}" />
                         </StackPanel>

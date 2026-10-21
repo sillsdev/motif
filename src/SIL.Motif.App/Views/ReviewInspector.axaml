@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:controls="clr-namespace:SIL.Motif.App.Controls"
              xmlns:word="clr-namespace:SIL.Motif.App.Controls.WordPresentation"
@@ -10,7 +11,7 @@
     <StackPanel Classes="reviewRelated">
       <views:RetirementProposalReviewPanel DataContext="{Binding RetirementReview}"
           IsVisible="{Binding $parent[views:ReviewInspector].Page.HasRetirementReview}" />
-      <views:CopyableTextBlock Text="Select a change to see its details."
+      <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.SelectAChangeToSeeIts}"
                                IsVisible="{Binding Current, Converter={x:Static ObjectConverters.IsNull}}"
                                TextWrapping="Wrap" Classes="muted" />
       <ContentControl Content="{Binding Current}">
@@ -33,8 +34,8 @@
                       <views:CopyableTextBlock Text="{Binding DetailText}" IsVisible="{Binding HasDetailText}"
                                                TextWrapping="Wrap" />
                       <StackPanel Classes="reviewCompact" IsVisible="{Binding IsUncertain}">
-                        <views:CopyableTextBlock Text="Now reads" Classes="reviewSmall" />
-                        <views:ProgressiveItemsControl x:Name="ReviewInspectorAfterWordsItems" FullItemsSource="{Binding AfterWords}" AutomationProperties.Name="Refreshed sentence">
+                        <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.NowReads}" Classes="reviewSmall" />
+                        <views:ProgressiveItemsControl x:Name="ReviewInspectorAfterWordsItems" FullItemsSource="{Binding AfterWords}" AutomationProperties.Name="{x:Static app:MotifAppStrings.RefreshedSentenceAccessibleName}">
                           <views:ProgressiveItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></views:ProgressiveItemsControl.ItemsPanel>
                           <views:ProgressiveItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:UncertaintyTokenViewModel">
@@ -46,7 +47,7 @@
                             </DataTemplate>
                           </views:ProgressiveItemsControl.ItemTemplate>
                         </views:ProgressiveItemsControl>
-                        <Button Content="Check again" Classes="reviewAction"
+                        <Button Content="{x:Static app:MotifAppStrings.CheckAgain}" Classes="reviewAction"
                                 Command="{Binding $parent[views:ReviewInspector].Page.ReconfirmChangeCommand}"
                                 CommandParameter="{Binding}" AutomationProperties.Name="{Binding CheckAgainAutomationName}" />
                       </StackPanel>
@@ -69,9 +70,9 @@
                 </ContentControl.ContentTemplate>
               </ContentControl>
               <WrapPanel Classes="reviewActions">
-                <Button Content="Keep" Command="{Binding KeepCommand}" Classes="reviewAction"
+                <Button Content="{x:Static app:MotifAppStrings.Keep}" Command="{Binding KeepCommand}" Classes="reviewAction"
                         AutomationProperties.Name="{Binding KeepAutomationName}" />
-                <Button Content="Undo" Command="{Binding UndoCommand}" Classes="reviewAction"
+                <Button Content="{x:Static app:MotifAppStrings.Undo}" Command="{Binding UndoCommand}" Classes="reviewAction"
                         AutomationProperties.Name="{Binding UndoAutomationName}" />
               </WrapPanel>
             </StackPanel>

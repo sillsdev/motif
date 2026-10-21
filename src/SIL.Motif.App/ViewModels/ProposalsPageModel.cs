@@ -291,7 +291,7 @@ public sealed class ProposalCardViewModel : ObservableObject
         get
         {
             var count = Card.ChangeKinds.Sum(kind => kind.Count);
-            return $"{count.ToString(CultureInfo.CurrentCulture)} {(count == 1 ? "change" : "changes")}";
+            return PluralText.Format(MotifAppStrings.ChangeCountPattern, count);
         }
     }
 
@@ -537,7 +537,7 @@ public sealed partial class ProposalsPageModel : PageModel
         {
             if (!IsListed) return string.Empty;
             var count = Groups.Sum(group => group.Cards.Count) + (_includeSetAside ? 0 : _standings.SetAsideCount);
-            return $"{count.ToString(CultureInfo.CurrentCulture)} {(count == 1 ? "proposal" : "proposals")}";
+            return PluralText.Format(MotifAppStrings.ProposalCountPattern, count);
         }
     }
 
@@ -694,7 +694,7 @@ public sealed partial class ProposalsPageModel : PageModel
     }
 
     private static string ProposalCountText(int count) =>
-        $"{count.ToString(CultureInfo.CurrentCulture)} {(count == 1 ? "proposal" : "proposals")}";
+        PluralText.Format(MotifAppStrings.ProposalCountPattern, count);
 
     private void SetSelectedProposal(ProposalCardViewModel? proposal)
     {

@@ -1,3 +1,4 @@
+using SIL.Motif.App;
 using System.Globalization;
 using Avalonia.Controls;
 using Avalonia.LogicalTree;
@@ -21,7 +22,7 @@ public sealed class OverviewGuideTests
     public void TheOverviewGuideNamesEveryTableAndTheReadingGuideLinksBack()
     {
         var titles = RenderedTileTitles();
-        Assert.Equal(["Text coverage", "Approved analyses kept", "Speed", "Slowest words", "Grammar warnings"], titles);
+        Assert.Equal([MotifAppStrings.TextCoverage, MotifAppStrings.ApprovedAnalysesKept, MotifAppStrings.Speed, MotifAppStrings.SlowestWords, MotifAppStrings.GrammarWarnings], titles);
 
         var catalog = HelpCatalog.Load(CultureInfo.GetCultureInfo("en"));
         var guide = catalog.GetHelpPage(HelpEntryKind.Guide, "overview");

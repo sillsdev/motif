@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              x:Class="SIL.Motif.App.Views.Shell.WorkspaceLayoutHost">
   <Grid x:Name="PaneGrid" ColumnDefinitions="Auto,0,*,Auto">
@@ -9,7 +10,7 @@
         <Border Classes="workspacePaneHeader">
           <DockPanel>
             <Button x:Name="SidePanelCollapseButton" DockPanel.Dock="Right" Classes="workspacePaneButton" Content="‹" Click="OnCollapseSidePanel"
-                    AutomationProperties.Name="Collapse side bar" ToolTip.Tip="Collapse side bar" />
+                    AutomationProperties.Name="{x:Static app:MotifAppStrings.CollapseSideBarAccessibleName}" ToolTip.Tip="{x:Static app:MotifAppStrings.CollapseSideBarTip}" />
             <views:CopyableTextBlock x:Name="SidePanelTitle" Classes="workspacePaneLabel" VerticalAlignment="Center" />
           </DockPanel>
         </Border>
@@ -18,7 +19,7 @@
     </Border>
     <Grid x:Name="WorkingPageRegion" Grid.Column="2" RowDefinitions="Auto,*,Auto">
       <Button x:Name="SidePanelRevealButton" Classes="workspaceSidePanelReveal" IsVisible="False"
-              HorizontalAlignment="Left" Click="OnRevealSidePanel" AutomationProperties.Name="Show side bar">
+              HorizontalAlignment="Left" Click="OnRevealSidePanel" AutomationProperties.Name="{x:Static app:MotifAppStrings.ShowSideBarAccessibleName}">
         <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
           <TextBlock Classes="workspacePaneLabel" Text="{ReflectionBinding #SidePanelTitle.Text}" />
           <TextBlock Classes="workspacePaneLabel" Text="›" />
@@ -27,7 +28,7 @@
       <ContentControl x:Name="WorkingPageHost" Grid.Row="1" />
       <StackPanel Grid.Row="2">
         <ScrollViewer x:Name="PageActionFooterViewport" Focusable="True" IsTabStop="True"
-                      AutomationProperties.Name="Details"
+                      AutomationProperties.Name="{x:Static app:MotifAppStrings.DetailsAccessibleName}"
                       HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
           <ContentControl x:Name="PageActionFooterHost" />
         </ScrollViewer>
@@ -39,18 +40,18 @@
         <Border Classes="workspacePaneHeader">
           <DockPanel>
             <Button x:Name="InspectorHideButton" DockPanel.Dock="Right" Classes="workspacePaneButton" Content="›" Click="OnHideInspector"
-                    AutomationProperties.Name="Hide Inspector" ToolTip.Tip="Hide Inspector" />
-            <views:CopyableTextBlock Classes="workspacePaneLabel" Text="INSPECTOR" VerticalAlignment="Center" />
+                    AutomationProperties.Name="{x:Static app:MotifAppStrings.HideInspectorAccessibleName}" ToolTip.Tip="{x:Static app:MotifAppStrings.HideInspectorTip}" />
+            <views:CopyableTextBlock Classes="workspacePaneLabel" Text="{x:Static app:MotifAppStrings.InspectorHeading}" VerticalAlignment="Center" />
           </DockPanel>
         </Border>
         <Grid Grid.Row="1">
           <ContentControl x:Name="ObjectInspectorHost" />
           <ContentControl x:Name="PageInspectorHost" IsVisible="False" />
-          <views:CopyableTextBlock x:Name="InspectorEmpty" Classes="muted workspaceEmpty" Text="Select an item to inspect." />
+          <views:CopyableTextBlock x:Name="InspectorEmpty" Classes="muted workspaceEmpty" Text="{x:Static app:MotifAppStrings.SelectAnItemToInspect}" />
         </Grid>
         <StackPanel Grid.Row="2">
           <ScrollViewer x:Name="InspectorFooterViewport" Focusable="True" IsTabStop="True"
-                        AutomationProperties.Name="Details"
+                        AutomationProperties.Name="{x:Static app:MotifAppStrings.DetailsAccessibleName}"
                         HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
             <ContentControl x:Name="InspectorFooterHost" />
           </ScrollViewer>
@@ -60,10 +61,10 @@
     </Border>
     <Button x:Name="InspectorStrip" Grid.Column="3" Classes="workspaceInspectorStrip" Click="OnShowInspector"
             Height="{ReflectionBinding $parent[Grid].Bounds.Height}"
-            AutomationProperties.Name="Show Inspector" ToolTip.Tip="Show Inspector">
+            AutomationProperties.Name="{x:Static app:MotifAppStrings.ShowInspectorAccessibleName}" ToolTip.Tip="{x:Static app:MotifAppStrings.ShowInspectorTip}">
       <LayoutTransformControl VerticalAlignment="Top">
         <LayoutTransformControl.LayoutTransform><RotateTransform Angle="90" /></LayoutTransformControl.LayoutTransform>
-        <TextBlock Classes="workspacePaneLabel" Text="INSPECTOR" />
+        <TextBlock Classes="workspacePaneLabel" Text="{x:Static app:MotifAppStrings.InspectorHeading}" />
       </LayoutTransformControl>
     </Button>
   </Grid>

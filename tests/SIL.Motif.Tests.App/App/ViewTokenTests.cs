@@ -1,3 +1,4 @@
+using SIL.Motif.App;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using Avalonia;
@@ -147,9 +148,11 @@ public sealed class ViewTokenTests
     {
         var markup = File.ReadAllText(Path.Combine(AppDirectory(), "Views", "ResultsInTextPanel.axaml"));
         var bulk = markup[..markup.IndexOf("<ScrollViewer Grid.Row=\"2\"", StringComparison.Ordinal)];
-        Assert.Contains("Select all", bulk, StringComparison.Ordinal);
-        Assert.Contains("all chosen Texts", bulk, StringComparison.Ordinal);
-        Assert.Contains("Approve one analysis at a time", bulk, StringComparison.Ordinal);
+        Assert.Contains("MotifAppStrings.SelectAll", bulk, StringComparison.Ordinal);
+        Assert.Contains("MotifAppStrings.InAllChosenTexts", bulk, StringComparison.Ordinal);
+        Assert.Contains("All Chosen Texts", MotifAppStrings.AddReadingsAsUnknownInAll, StringComparison.Ordinal);
+        Assert.Contains("MotifAppStrings.ApproveOneAnalysisAtATime", bulk, StringComparison.Ordinal);
+        Assert.StartsWith("Approve one analysis at a time", MotifAppStrings.ApproveOneAnalysisAtATime, StringComparison.Ordinal);
         Assert.Contains("InText.AllCount", bulk, StringComparison.Ordinal);
     }
 

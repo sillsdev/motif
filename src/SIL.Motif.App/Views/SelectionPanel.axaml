@@ -9,28 +9,28 @@
   <ScrollViewer Margin="{DynamicResource Component.TextsPage.PageInset}">
     <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
       <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-        <views:CopyableTextBlock Text="Texts" FontSize="{DynamicResource Intent.Type.Section}"
+        <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.Texts}" FontSize="{DynamicResource Intent.Type.Section}"
                                  FontWeight="{DynamicResource Intent.Weight.Section}" />
         <views:CopyableTextBlock Classes="muted" Text="{Binding Selection.SummaryText}" TextWrapping="Wrap" />
       </StackPanel>
 
       <WrapPanel Orientation="Horizontal" ItemSpacing="{DynamicResource Intent.Space.Compact}"
                   IsVisible="{Binding Selection.HasTexts}">
-        <Button Content="Select all texts" Command="{Binding Selection.SelectAllTextsCommand}"
+        <Button Content="{x:Static app:MotifAppStrings.SelectAllTexts}" Command="{Binding Selection.SelectAllTextsCommand}"
                 Theme="{DynamicResource BorderlessButton}" Foreground="{DynamicResource Intent.Accent}"
-                AutomationProperties.Name="Select all texts"
+                AutomationProperties.Name="{x:Static app:MotifAppStrings.SelectAllTextsAccessibleName}"
                 AutomationProperties.AutomationId="{x:Static app:AutomationIds.SelectAllTexts}" />
-        <Button Content="Clear" Command="{Binding Selection.ClearTextsCommand}"
+        <Button Content="{x:Static app:MotifAppStrings.Clear}" Command="{Binding Selection.ClearTextsCommand}"
                 IsVisible="{Binding Selection.ShowClearTexts}"
                 Theme="{DynamicResource BorderlessButton}" Foreground="{DynamicResource Intent.Accent}"
-                AutomationProperties.Name="Clear" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ClearTexts}" />
+                AutomationProperties.Name="{x:Static app:MotifAppStrings.ClearAccessibleName}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ClearTexts}" />
       </WrapPanel>
 
       <TextBox PlaceholderText="Search texts..." Text="{Binding Selection.SearchText}"
-               AutomationProperties.Name="Search texts" />
+               AutomationProperties.Name="{x:Static app:MotifAppStrings.SearchTextsAccessibleName}" />
       <ListBox x:Name="SelectionPanelTextsItems" ItemsSource="{Binding Selection.Texts}"
                MaxHeight="{DynamicResource Component.TextsPage.SelectionListHeight}"
-               AutomationProperties.Name="Texts to analyze">
+               AutomationProperties.Name="{x:Static app:MotifAppStrings.TextsToAnalyzeAccessibleName}">
         <ListBox.ItemTemplate>
           <DataTemplate x:DataType="vm:TextChoiceViewModel">
             <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
@@ -50,54 +50,54 @@
                  IsVisible="{Binding Selection.TextsEmptyMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}"
                  TextWrapping="Wrap" />
 
-      <Expander Header="Add words" IsExpanded="False">
+      <Expander Header="{x:Static app:MotifAppStrings.AddWords}" IsExpanded="False">
         <TextBox Text="{Binding Selection.PastedWords}" AcceptsReturn="True" TextWrapping="Wrap"
                  MinHeight="{DynamicResource Component.TextsPage.AddedWordsHeight}"
-                 AutomationProperties.Name="Words to analyze, one per line" />
+                 AutomationProperties.Name="{x:Static app:MotifAppStrings.WordsToAnalyzeOnePerLineAccessibleName}" />
       </Expander>
 
-      <Expander Header="Analysis options" IsExpanded="False">
+      <Expander Header="{x:Static app:MotifAppStrings.AnalysisOptions}" IsExpanded="False">
         <StackPanel Spacing="{DynamicResource Intent.Space.Related}" Margin="{DynamicResource Intent.Gap.AfterGroup}">
-          <CheckBox Content="All wordforms" IsChecked="{Binding Selection.AllWordforms}" />
-          <CheckBox Content="Retry failed" IsChecked="{Binding Selection.RetryFailed}" />
+          <CheckBox Content="{x:Static app:MotifAppStrings.AllWordforms}" IsChecked="{Binding Selection.AllWordforms}" />
+          <CheckBox Content="{x:Static app:MotifAppStrings.RetryFailed}" IsChecked="{Binding Selection.RetryFailed}" />
           <StackPanel IsVisible="{Binding Settings.HasSavedSelection}"
                       Spacing="{DynamicResource Intent.Space.Related}">
-            <views:CopyableTextBlock Text="Default Selection parsing limits" />
+            <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.DefaultSelectionParsingLimits}" />
             <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-              <views:CopyableTextBlock Text="Step limit per word" />
+              <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.StepLimitPerWord}" />
               <NumericUpDown Classes="settingsNumber" Value="{Binding Settings.StepLimit}" Minimum="1"
                              Increment="100000" FormatString="N0" IsEnabled="{Binding !Settings.IsNoStepLimit}"
                              LostFocus="OnLimitLostFocus" KeyDown="OnLimitKeyDown"
-                             AutomationProperties.Name="Selection step limit per word" />
-              <CheckBox Content="No step limit" IsChecked="{Binding Settings.IsNoStepLimit}"
-                        Click="OnNoStepLimitClick" AutomationProperties.Name="Selection has no step limit" />
+                             AutomationProperties.Name="{x:Static app:MotifAppStrings.SelectionStepLimitPerWordAccessibleName}" />
+              <CheckBox Content="{x:Static app:MotifAppStrings.NoStepLimit}" IsChecked="{Binding Settings.IsNoStepLimit}"
+                        Click="OnNoStepLimitClick" AutomationProperties.Name="{x:Static app:MotifAppStrings.SelectionHasNoStepLimitAccessibleName}" />
               <TextBlock Classes="settingsRefusal" Text="{Binding Settings.StepLimitRefusal}"
                          IsVisible="{Binding Settings.HasStepLimitRefusal}" TextWrapping="Wrap" />
             </StackPanel>
             <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-              <views:CopyableTextBlock Text="Time limit per word (seconds)" />
+              <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.TimeLimitPerWordSeconds}" />
               <Grid RowDefinitions="Auto,Auto" RowSpacing="{DynamicResource Intent.Space.Compact}"
                     HorizontalAlignment="Left">
                 <NumericUpDown Classes="settingsNumber" Classes.refused="{Binding Settings.HasTimeLimitRefusal}"
                                Value="{Binding Settings.TimeLimitSeconds}" Minimum="0.001" Maximum="2147483.647"
                                Increment="0.1" FormatString="0.###" IsEnabled="{Binding Settings.IsTimeLimitEnabled}"
                                LostFocus="OnLimitLostFocus" KeyDown="OnLimitKeyDown"
-                               AutomationProperties.Name="Selection time limit per word in seconds" />
-                <Button Grid.Row="1" Classes="settingsLink" Content="Use Motif's estimate"
+                               AutomationProperties.Name="{x:Static app:MotifAppStrings.SelectionTimeLimitPerWordInAccessibleName}" />
+                <Button Grid.Row="1" Classes="settingsLink" Content="{x:Static app:MotifAppStrings.UseMotifSEstimate}"
                         IsVisible="{Binding Settings.ShowUseEstimate}" Click="OnUseEstimateClick"
-                        AutomationProperties.Name="Use Motif's estimated time limit" />
+                        AutomationProperties.Name="{x:Static app:MotifAppStrings.UseMotifSEstimatedTimeLimitAccessibleName}" />
               </Grid>
               <TextBlock Classes="settingsCaption" Text="{Binding Settings.StepLimitEstimateText}" TextWrapping="Wrap" />
               <TextBlock Classes="settingsRefusal" Text="{Binding Settings.TimeLimitRefusal}"
                          IsVisible="{Binding Settings.HasTimeLimitRefusal}" TextWrapping="Wrap" />
             </StackPanel>
           </StackPanel>
-          <TextBlock Classes="muted" Text="Save a Default Selection to edit its shared parsing limits."
+          <TextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.SaveADefaultSelectionToEdit}"
                      IsVisible="{Binding Settings.HasProjectWithoutSelection}" TextWrapping="Wrap" />
           <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-            <views:CopyableTextBlock Text="Retry slower than (ms)" />
+            <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.RetrySlowerThanMs}" />
             <NumericUpDown Value="{Binding Selection.RetrySlowerThanMilliseconds}" Minimum="0"
-                           AutomationProperties.Name="Retry slower than, in milliseconds" />
+                           AutomationProperties.Name="{x:Static app:MotifAppStrings.RetrySlowerThanInMillisecondsAccessibleName}" />
           </StackPanel>
           <views:CopyableTextBlock Classes="error" Text="{Binding Selection.StepLimitValidationMessage}"
                      IsVisible="{Binding Selection.StepLimitValidationMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />

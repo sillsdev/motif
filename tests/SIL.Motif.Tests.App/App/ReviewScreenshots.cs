@@ -1,3 +1,4 @@
+using SIL.Motif.App;
 using System.Globalization;
 using Avalonia;
 using Avalonia.Automation;
@@ -90,7 +91,7 @@ public sealed class ReviewScreenshots
                 var tracks = row.GetVisualDescendants().OfType<Grid>()
                     .Single(grid => DenseTable.GetColumns(grid) is not null);
                 Assert.Contains(panel.FindControl<Grid>("ReviewTableHeader")!.GetVisualDescendants().OfType<TextBlock>(),
-                    text => text.Text == "Opinion change");
+                    text => text.Text == MotifAppStrings.OpinionChange);
                 if (tracks.ColumnDefinitions[1].Width.Value == 0)
                 {
                     Assert.Equal(0, tracks.ColumnDefinitions[2].Width.Value);

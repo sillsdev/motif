@@ -1,3 +1,4 @@
+using SIL.Motif.App;
 using System.Text.Json;
 using Avalonia;
 using Avalonia.Automation;
@@ -814,7 +815,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                         $"saved={panel.Settings?.HasSavedSelection}; setup={workspace.Context.Setup?.CanRunDefaultSelection}; " +
                         $"setup path={workspace.Context.Setup?.ProjectPath}");
                     var options = panel.GetVisualDescendants().OfType<Expander>()
-                        .Single(expander => expander.Header?.ToString() == "Analysis options");
+                        .Single(expander => expander.Header?.ToString() == MotifAppStrings.AnalysisOptions);
                     options.IsExpanded = true;
                     PageScreenshots.Settle(window);
 

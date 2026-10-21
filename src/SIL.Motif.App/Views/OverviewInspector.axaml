@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:controls="clr-namespace:SIL.Motif.App.Controls"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
@@ -9,9 +10,9 @@
              x:DataType="vm:OverviewPageModel"
              controls:WritingSystemText.Resolver="{Binding Context.TextStyles}">
   <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
-    <views:CopyableTextBlock Text="Lost words" FontWeight="{DynamicResource Intent.Weight.Section}" />
+    <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.LostWords}" FontWeight="{DynamicResource Intent.Weight.Section}" />
     <views:CopyableTextBlock Text="{Binding LostWordsContextText}" TextWrapping="Wrap" />
-    <views:ProgressiveItemsControl x:Name="OverviewInspectorApprovedLostWordsItems" FullItemsSource="{Binding Overview.LookFirst.ApprovedLostWords}" AutomationProperties.Name="Recorded approved Lost words">
+    <views:ProgressiveItemsControl x:Name="OverviewInspectorApprovedLostWordsItems" FullItemsSource="{Binding Overview.LookFirst.ApprovedLostWords}" AutomationProperties.Name="{x:Static app:MotifAppStrings.RecordedApprovedLostWordsAccessibleName}">
       <ItemsControl.ItemTemplate><DataTemplate x:DataType="x:String">
         <HyperlinkButton Command="{Binding $parent[views:OverviewInspector].Page.OpenWordCommand}" CommandParameter="{Binding}"
                          AutomationProperties.Name="{Binding}">
@@ -21,8 +22,8 @@
     </views:ProgressiveItemsControl>
     <StackPanel IsVisible="{Binding HasAssessment}" Spacing="{DynamicResource Intent.Space.Related}">
       <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
-        <views:CopyableTextBlock Text="Shared morphemes" FontWeight="{DynamicResource Intent.Weight.Section}" />
-        <views:CopyableTextBlock Grid.Column="1" Text="Words" Classes="overviewMuted" />
+        <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.SharedMorphemes}" FontWeight="{DynamicResource Intent.Weight.Section}" />
+        <views:CopyableTextBlock Grid.Column="1" Text="{x:Static app:MotifAppStrings.Words}" Classes="overviewMuted" />
       </Grid>
       <views:CopyableTextBlock Text="{Binding SharedLostMorphemeContextText}" TextWrapping="Wrap" IsVisible="{Binding SharedLostMorphemeContextText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
       <views:ProgressiveItemsControl x:Name="OverviewInspectorSharedLostMorphemesItems" FullItemsSource="{Binding Overview.LookFirst.SharedLostMorphemes}">
@@ -33,7 +34,7 @@
                 <views:CopyableTextBlock Text="{Binding Form}" FontWeight="{DynamicResource Intent.Weight.Section}" TextWrapping="Wrap" controls:WritingSystemText.Id="{Binding $parent[views:OverviewInspector].Page.Context.TextStyles.DefaultVernacularId}" controls:WritingSystemText.StyleName="Normal" />
                 <views:CopyableTextBlock Grid.Column="1" Text="{Binding WordCount}" />
               </Grid>
-              <views:CopyableTextBlock Text="Named by a grammar warning" Classes="overviewMuted" TextWrapping="Wrap" IsVisible="{Binding NamedByWarning}" />
+              <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.NamedByAGrammarWarning}" Classes="overviewMuted" TextWrapping="Wrap" IsVisible="{Binding NamedByWarning}" />
             </StackPanel>
           </Border>
         </DataTemplate></ItemsControl.ItemTemplate>

@@ -1,3 +1,4 @@
+using SIL.Motif.App;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
@@ -202,7 +203,7 @@ public sealed class ReviewDenseTableTests
                 HeadlessClick.Click(window, heading, "Group heading");
                 Assert.Same(current, page.Current);
                 Assert.False(list.SelectedItem is IDenseTableGroupHeading);
-                var undo = Assert.Single(heading.GetVisualDescendants().OfType<Button>(), button => button.Content is "Undo all");
+                var undo = Assert.Single(heading.GetVisualDescendants().OfType<Button>(), button => Equals(button.Content, MotifAppStrings.UndoAll));
                 Assert.Same(group.UndoAllCommand, undo.Command);
                 var command = Assert.IsAssignableFrom<IAsyncRelayCommand>(undo.Command);
                 HeadlessClick.Click(window, undo, "Undo all in group");
