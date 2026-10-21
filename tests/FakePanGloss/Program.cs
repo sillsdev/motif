@@ -66,6 +66,8 @@ internal static class Program
         new("parse", ["grammar", "word"],
             [new("--trace", true), new("--trace-format", true), new("--trace-details", false),
                 new("--step-cap", true)], RunParse),
+        new("serve", [],
+            [new("--project", true), new("--step-cap", true), new("--word-timeout-ms", true)], RunServe),
         new("grammar-health", ["grammar", "out.json?"],
             [new("--fw-project", true), new("--stored-analyses", true)], RunGrammarHealth),
     ];
@@ -201,6 +203,7 @@ internal static class Program
         {
             schema_version = 1,
             binary = "pangloss",
+            interfaces = new { serveProtocol = 1 },
             facts = new
             {
                 format = FactsArtifact.Format,
@@ -558,6 +561,71 @@ internal static class Program
         return behaviour.ExitCode;
     }
 
+    // serve --project <path>: the resident protocol. One JSON line in, one JSON line out, in order.
+    private static int RunServe(string[] args)
+    {
+        var at = Array.IndexOf(args, "--project");
+        if (at < 0 || at + 1 >= args.Length)
+        {
+            Console.Error.WriteLine("usage: pangloss serve --project <path> [flags]");
+            return 64;
+        }
+        var project = args[at + 1];
+        var directory = Path.GetDirectoryName(Path.GetFullPath(project));
+        RecordArgv(directory, args);
+        var behaviour = Behaviour.Read(directory, "serve");
+        var utf8 = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+        var output = new StreamWriter(Console.OpenStandardOutput(), utf8) { AutoFlush = true, NewLine = "\n" };
+        if (behaviour.ServeStartLog is { } startLog)
+            File.AppendAllText(startLog, Environment.ProcessId.ToString(CultureInfo.InvariantCulture) + "\n");
+        if (behaviour.ServeLoadDelayMs > 0) Thread.Sleep(behaviour.ServeLoadDelayMs);
+        if (behaviour.ServeFatalCode is { } fatalCode)
+        {
+            output.WriteLine(JsonSerializer.Serialize(new { type = "fatal", code = fatalCode, message = "the fake serve was told to fail" }));
+            return 1;
+        }
+        if (behaviour.ServeCrashOnLoad) Environment.Exit(77);
+        output.WriteLine("{\"type\":\"ready\",\"protocol\":" + behaviour.ServeProtocol.ToString(CultureInfo.InvariantCulture) +
+            ",\"loadMs\":5}");
+        byte[]? hog = null;
+        if (behaviour.ServeAllocateBytes > 0)
+        {
+            hog = new byte[behaviour.ServeAllocateBytes];
+            for (var index = 0; index < hog.Length; index += 4096) hog[index] = 1;
+        }
+        var input = new StreamReader(Console.OpenStandardInput(), utf8);
+        while (input.ReadLine() is { } line)
+        {
+            using var request = JsonDocument.Parse(line);
+            var id = request.RootElement.GetProperty("id").GetString();
+            var op = request.RootElement.GetProperty("op").GetString();
+            if (op == "shutdown")
+            {
+                output.WriteLine(JsonSerializer.Serialize(new { id, type = "bye" }));
+                return 0;
+            }
+            var word = request.RootElement.GetProperty("word").GetString() ?? string.Empty;
+            if (behaviour.ServeRequestLog is { } requestLog) File.AppendAllText(requestLog, word + "\n");
+            if (word == "hang") Thread.Sleep(Timeout.Infinite);
+            if (behaviour.ServeRequestDelayMs > 0) Thread.Sleep(behaviour.ServeRequestDelayMs);
+            if (word == "incomplete")
+            {
+                output.WriteLine(JsonSerializer.Serialize(new { id, type = "error", code = "parse_incomplete", message = "stopped at a limit" }));
+                continue;
+            }
+            if (word == "boom")
+            {
+                output.WriteLine(JsonSerializer.Serialize(new { id, type = "error", code = "parse-failed", message = "the fake word failed" }));
+                continue;
+            }
+            var envelope = TraceEnvelope(word, behaviour.TraceSignature ?? word + "-sig", behaviour.TraceJson,
+                behaviour.TraceCapped, behaviour.TraceTimedOut, behaviour.TraceAnalyses);
+            output.WriteLine("{\"id\":" + JsonSerializer.Serialize(id) + ",\"type\":\"result\",\"result\":" + envelope + "}");
+        }
+        GC.KeepAlive(hog);
+        return 0;
+    }
+
     private static readonly JsonSerializerOptions Unescaped =
         new() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
 
@@ -856,6 +924,15 @@ internal static class Program
         public bool TraceTimedOut { get; init; }
         public int HoldTimeoutMs { get; init; } = 60_000;
         public string? GrammarHealthReportJson { get; init; }
+        // serve only: a log of one pid per start, a log of one word per request, and failure modes.
+        public string? ServeStartLog { get; init; }
+        public string? ServeRequestLog { get; init; }
+        public string? ServeFatalCode { get; init; }
+        public bool ServeCrashOnLoad { get; init; }
+        public int ServeLoadDelayMs { get; init; }
+        public int ServeRequestDelayMs { get; init; }
+        public int ServeProtocol { get; init; } = 1;
+        public int ServeAllocateBytes { get; init; }
 
         internal static Behaviour Read(string? directory, string? subcommand = null)
         {

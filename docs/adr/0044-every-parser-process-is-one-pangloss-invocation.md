@@ -18,6 +18,8 @@ takes its turn in the machine's queue, runs inside the machine's bound, observes
 reports what happened as an answer rather than an error, so nothing above it has to remember to catch
 anything.
 
+**Amended 2026-10-20** by the section "A long-lived parser session is an invocation" below.
+
 ## Context
 
 The five files in `SIL.Motif.Host` that start `pangloss` — the batch parser, the assessment process, the
@@ -120,6 +122,37 @@ listing of its subcommands and flags; when it exists, a test pins `FakePanGloss`
   comes from now that the parser's repository has confirmed the statistics meta row carries input identity
   only (K49). Those stay in the grill queue.
 
+## A long-lived parser session is an invocation
+
+**Amended 2026-10-20.** Owner decision, 2026-10-20: one resident `pangloss serve` process per open project is
+acceptable, and opening the Try a Word page in the App starts loading that project (prewarm). Loading a large
+lexicon costs about ten seconds and about 1.1 GB, and a word then costs about 0.1 seconds; one process per word
+pays the load every time. Invariants 2 to 4 are restated for a process that lives for minutes:
+
+1. **A session is an invocation.** It is started through the same Host module, and `PanGlossInvoker` remains the only
+   route for every one-shot request. The resident process is `WarmPanGlossPool`, in Host, because the pool owns
+   a process that outlives a request.
+2. **Admission per request.** The load takes machine-queue admission, and so does every request, and each holds the
+   machine's slots only while it runs. A word waiting behind an Assessment waits in the queue like any other parser job.
+3. **Containment and the memory ceiling for the life of the session.** The process runs inside its own containment
+   job from start to end, held to a memory ceiling of 3 GB (about 2.5 GB was the largest peak measured). A session past
+   the ceiling is killed, becomes Failed and its words take the cold path.
+4. **Idle timeout.** A session unused for ten minutes (default) is shut down: input closed, then killed. The next word
+   or prewarm starts another. A load that is not ready within 120 seconds is killed and Failed, so no state waits forever.
+5. **Cancel kills, then restart.** Cancelling a parse kills the process, because the protocol has no cancel; the next
+   word starts a new one. Cancelling a wait for a load abandons only the wait.
+6. **Cold-path fallback.** Any load failure, crash, ceiling kill, unreadable reply or per-word error sends that word
+   through the one-shot `parse` invocation, so the person gets a result or the cold error. A failed session is retried by
+   the next prewarm, or by a word after a 30-second cooldown. A parser that lacks `serve` protocol 1 (its `--describe`
+   has no `serve` command, or `interfaces.serveProtocol` is absent or not 1; the release manifest declares the same
+   `serveProtocol` once the pin carries it) is
+   never started: every word runs cold. The pin of 0.8.8 lacks it.
+7. **Keying and invalidation.** Sessions are keyed by Motif project plus BaselineToken and the Baseline's grammar path.
+   A new Baseline is a new token and replaces the session, killing the old process. Draft and Trial scratch projects
+   (a Proposal's trace) never use a session: they take the cold path.
+8. **Who hosts it.** Long-lived hosts (the MCP server, the App) enable sessions; a one-shot CLI process does not, since it
+   would exit before a second word could use the load. MCP never applies: a session only parses.
+
 ## Rejected alternatives
 
 - **A generic process runner: given arguments, run contained and return what came back.** Rejected: it
@@ -133,5 +166,7 @@ listing of its subcommands and flags; when it exists, a test pins `FakePanGloss`
 - **Wait for the parser's own architecture campaign to land, then design against the result.** Rejected: the
   campaign changes nothing Motif calls, and concentrating Motif's knowledge of the binary first is what
   makes the next change to that binary a one-file adjustment rather than a six-file hunt.
+- **Keep one process per word.** Rejected for Try a Word on large lexicons: the load, not the parse, is over 99% of the
+  time.
 - **Model `assess` in the module because `FakePanGloss` already implements it.** Rejected: a module that
   documents the binary's surface must not document a subcommand the binary does not have.

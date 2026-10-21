@@ -1243,6 +1243,8 @@ internal static class AgentTools
     private static ToolOutcome TryWord(string projectPath, string word, bool detailed, CancellationToken ct)
     {
         var request = new WordTraceRequest(projectPath, word);
+        // This host lives across calls, so a first word starts the resident parser (read-only).
+        TryWordSessions.Enable();
         var outcome = detailed ? WordTraceQuery.Query(request, ct) : WordTraceQuery.QueryAnswerOnly(request, ct);
         if (detailed) return ToolOutcome.From(outcome);
         return outcome.Succeeded

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -74,6 +75,125 @@ public sealed class WordTraceQueryTests : IDisposable
         Assert.Equal("wordtrace.no-baseline", outcome.Refusal!.Code);
         Assert.Contains("motif baseline capture", outcome.Refusal.Message);
         Assert.Empty(invoker.Requests);
+    }
+
+    private sealed class RecordingWarmTracer(IPanGlossTracer inner) : IWarmPanGlossTracer
+    {
+        public List<(string Project, string Token, string Grammar)> WarmCalls { get; } = [];
+        public int ColdCalls { get; private set; }
+
+        public Task<PanGlossTraceOutcome> TraceAsync(string grammarPath, string word, CancellationToken cancellationToken,
+            TimeSpan? timeout = null)
+        {
+            ColdCalls++;
+            return inner.TraceAsync(grammarPath, word, cancellationToken, timeout);
+        }
+
+        public Task<PanGlossTraceOutcome> TraceAsync(string projectKey, string stateToken, string grammarPath,
+            string word, CancellationToken cancellationToken, TimeSpan? timeout = null)
+        {
+            WarmCalls.Add((projectKey, stateToken, grammarPath));
+            return inner.TraceAsync(grammarPath, word, cancellationToken, timeout);
+        }
+    }
+
+    [Fact]
+    public void ATraceOfTheBaselineGoesThroughTheWarmSessionKeyedByProjectAndBaselineToken()
+    {
+        var path = _pristine.CopyProjectFile();
+        Capture(path);
+        var warm = new RecordingWarmTracer(new PanGlossTracer(new FakeInvoker
+        {
+            Respond = _ => new PanGlossOutcome.Completed(GoldenStandardOutput, string.Empty, TimeSpan.Zero),
+        }));
+
+        var outcome = WordTraceQuery.Query(new WordTraceRequest(path, "sagd"), warm, CancellationToken.None);
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        var call = Assert.Single(warm.WarmCalls);
+        Assert.Equal(path, call.Project);
+        Assert.Matches("^sha256:[0-9a-f]{64}\\|sha256:[0-9a-f]{64}$", call.Token);
+        Assert.Equal(0, warm.ColdCalls);
+    }
+
+    [Fact]
+    public void TheExplicitParserOverloadUsesTheResidentSessionOnlyWhenWarmIsOn()
+    {
+        var path = _pristine.CopyProjectFile();
+        Capture(path);
+        try
+        {
+            var cold = WordTraceQuery.Query(new WordTraceRequest(path, "motifa"), FakeParser.ExecutablePath,
+                CancellationToken.None, null, warm: false);
+            Assert.True(cold.Succeeded, cold.Refusal?.Message);
+            Assert.Equal(WarmSessionPhase.Idle, TryWordSessions.GetState(path, FakeParser.ExecutablePath).Phase);
+
+            var progress = new List<string?>();
+            var warm = WordTraceQuery.Query(new WordTraceRequest(path, "motifa"), FakeParser.ExecutablePath,
+                CancellationToken.None, p => progress.Add(p.CurrentWord), warm: true);
+            Assert.True(warm.Succeeded, warm.Refusal?.Message);
+            Assert.Equal(WarmSessionPhase.Ready, TryWordSessions.GetState(path, FakeParser.ExecutablePath).Phase);
+            Assert.Equal(["motifa"], progress);
+        }
+        finally
+        {
+            TryWordSessions.Shutdown();
+        }
+    }
+
+    [Fact]
+    public async Task EvictKillsTheProjectsSessionIdempotentlyAndCapturingABaselineEvictsIt()
+    {
+        var path = _pristine.CopyProjectFile();
+        Capture(path);
+        try
+        {
+            Assert.Equal(WarmSessionPhase.Ready, (await TryWordSessions.Prewarm(path, FakeParser.ExecutablePath)).Phase);
+            TryWordSessions.Evict(path);
+            TryWordSessions.Evict(path);
+            Assert.Equal(WarmSessionPhase.Idle, TryWordSessions.GetState(path, FakeParser.ExecutablePath).Phase);
+
+            Assert.Equal(WarmSessionPhase.Ready, (await TryWordSessions.Prewarm(path, FakeParser.ExecutablePath)).Phase);
+            Capture(path);
+            Assert.Equal(WarmSessionPhase.Idle, TryWordSessions.GetState(path, FakeParser.ExecutablePath).Phase);
+
+            Assert.Equal(WarmSessionPhase.Ready, (await TryWordSessions.Prewarm(path, FakeParser.ExecutablePath)).Phase);
+            TryWordSessions.Shutdown();
+            Assert.Equal(WarmSessionPhase.Idle, TryWordSessions.GetState(path, FakeParser.ExecutablePath).Phase);
+        }
+        finally
+        {
+            TryWordSessions.Shutdown();
+        }
+    }
+
+    [Fact]
+    public async Task PrewarmingAProjectWithoutABaselineIsFailedAndWithOneBecomesReadyThenFiresStateChanged()
+    {
+        var bare = _pristine.CopyProjectFile();
+        var none = await TryWordSessions.Prewarm(bare, FakeParser.ExecutablePath);
+        Assert.Equal(WarmSessionPhase.Failed, none.Phase);
+        Assert.Equal("wordtrace.no-baseline", none.FailureCode);
+
+        var path = _pristine.CopyProjectFile();
+        Capture(path);
+        var seen = new System.Collections.Concurrent.ConcurrentQueue<WarmSessionPhase>();
+        void Observe(object? sender, WarmSessionStateChangedEventArgs args) => seen.Enqueue(args.State.Phase);
+        TryWordSessions.StateChanged += Observe;
+        try
+        {
+            var state = await TryWordSessions.Prewarm(path, FakeParser.ExecutablePath);
+            Assert.Equal(WarmSessionPhase.Ready, state.Phase);
+            Assert.Equal(WarmSessionPhase.Ready, TryWordSessions.GetState(path, FakeParser.ExecutablePath).Phase);
+            await Task.Delay(300);
+            Assert.Contains(WarmSessionPhase.Loading, seen);
+            Assert.Contains(WarmSessionPhase.Ready, seen);
+        }
+        finally
+        {
+            TryWordSessions.StateChanged -= Observe;
+            TryWordSessions.Shutdown();
+        }
     }
 
     [Fact]

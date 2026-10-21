@@ -58,6 +58,7 @@ public static class BaselineCaptureCommand
         BaselineCaptureRequest request, string managedRoot, TimeProvider timeProvider)
     {
         ArgumentNullException.ThrowIfNull(timeProvider);
+        SIL.Motif.Commands.Queries.TryWordSessions.Evict(request.ProjectPath);
         return ProjectStoreCommand.Run(request.ProjectPath, ResolveProductVersion(), (database, project) =>
         {
             var staging = Path.Combine(managedRoot, "captures");

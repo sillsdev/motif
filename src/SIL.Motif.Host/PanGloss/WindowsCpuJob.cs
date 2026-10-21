@@ -235,6 +235,8 @@ internal sealed class WindowsPanGlossChildProcess(Process process, Func<int, Pan
     : IPanGlossChildProcess
 {
     public int Id => process.Id;
+    public Stream? InteractiveInput => process.StartInfo.RedirectStandardInput ? process.StandardInput.BaseStream : null;
+    public Stream? InteractiveOutput => process.StartInfo.RedirectStandardInput ? process.StandardOutput.BaseStream : null;
     public int ExitCode => process.ExitCode;
     public PanGlossMemoryKill? MemoryKill => process.HasExited ? readMemoryKill(process.ExitCode) : null;
     public Task WaitForExitAsync(CancellationToken cancellationToken) => process.WaitForExitAsync(cancellationToken);

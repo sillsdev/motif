@@ -55,6 +55,7 @@ internal class UnixPanGlossJob : PanGlossContainmentJob
         var stdout = CreateCaptureStream(_captureDirectory);
         var stderr = CreateCaptureStream(_captureDirectory);
         var processId = 0;
+        System.IO.Pipes.AnonymousPipeServerStream? inputPipe = null, outputPipe = null;
         var actions = Marshal.AllocHGlobal(1024);
         var attributes = Marshal.AllocHGlobal(1024);
         var shellPath = UnixNative.Utf8(ShellPath);
@@ -68,8 +69,22 @@ internal class UnixPanGlossJob : PanGlossContainmentJob
         {
             UnixNative.CheckSpawn(UnixNative.SpawnFileActionsInit(actions), "initializing process file actions");
             actionsInitialized = true;
-            UnixNative.CheckSpawn(UnixNative.SpawnFileActionsAddDup2(actions,
-                stdout.SafeFileHandle.DangerousGetHandle().ToInt32(), 1), "redirecting standard output");
+            var interactive = startInfo.RedirectStandardInput;
+            if (interactive)
+            {
+                // A resident parser talks over pipes: requests on its standard input, replies on its standard output.
+                inputPipe = new System.IO.Pipes.AnonymousPipeServerStream(
+                    System.IO.Pipes.PipeDirection.Out, HandleInheritability.None);
+                outputPipe = new System.IO.Pipes.AnonymousPipeServerStream(
+                    System.IO.Pipes.PipeDirection.In, HandleInheritability.None);
+                var readEnd = inputPipe.ClientSafePipeHandle.DangerousGetHandle().ToInt32();
+                var writeEnd = outputPipe.ClientSafePipeHandle.DangerousGetHandle().ToInt32();
+                UnixNative.CheckSpawn(UnixNative.SpawnFileActionsAddDup2(actions, readEnd, 0), "redirecting standard input");
+                UnixNative.CheckSpawn(UnixNative.SpawnFileActionsAddDup2(actions, writeEnd, 1), "redirecting standard output");
+            }
+            else
+                UnixNative.CheckSpawn(UnixNative.SpawnFileActionsAddDup2(actions,
+                    stdout.SafeFileHandle.DangerousGetHandle().ToInt32(), 1), "redirecting standard output");
             UnixNative.CheckSpawn(UnixNative.SpawnFileActionsAddDup2(actions,
                 stderr.SafeFileHandle.DangerousGetHandle().ToInt32(), 2), "redirecting standard error");
             var stdoutHandle = stdout.SafeFileHandle.DangerousGetHandle().ToInt32();
@@ -95,14 +110,19 @@ internal class UnixPanGlossJob : PanGlossContainmentJob
             UnixNative.CheckSpawn(UnixNative.Spawn(out processId, shellPath, actions, attributes,
                 arguments, environment), "starting the parser");
             _processGroups.Add(processId);
+            inputPipe?.DisposeLocalCopyOfClientHandle();
+            outputPipe?.DisposeLocalCopyOfClientHandle();
             return new PanGlossChildProcess(new UnixPanGlossChildProcess(processId, stdout, stderr,
                 () => KillProcessGroup(processId),
                 _cgroup is null && _memoryLimitBytes is not null ? GroupMemory() : null, _memoryLimitBytes ?? 0,
                 _cgroup is not null && _memoryLimitBytes is { } limit
-                    ? () => UnixCgroup.ReadMemoryKill(_cgroup.Path, limit) : null));
+                    ? () => UnixCgroup.ReadMemoryKill(_cgroup.Path, limit) : null)
+            { InteractiveInput = inputPipe, InteractiveOutput = outputPipe });
         }
         catch
         {
+            inputPipe?.Dispose();
+            outputPipe?.Dispose();
             stdout.Dispose();
             stderr.Dispose();
             throw;
@@ -295,6 +315,8 @@ internal sealed class UnixPanGlossChildProcess : IPanGlossChildProcess
     }
 
     public int Id { get; }
+    public Stream? InteractiveInput { get; init; }
+    public Stream? InteractiveOutput { get; init; }
     public int ExitCode => _exitCode.GetAwaiter().GetResult();
     public async Task WaitForExitAsync(CancellationToken cancellationToken) =>
         _ = await _exitCode.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -322,6 +344,8 @@ internal sealed class UnixPanGlossChildProcess : IPanGlossChildProcess
         if (_disposed) return;
         _disposed = true;
         _memoryWatchdog?.Dispose();
+        InteractiveInput?.Dispose();
+        InteractiveOutput?.Dispose();
         _stdout.Dispose();
         _stderr.Dispose();
     }

@@ -42,8 +42,10 @@ public static class WordTraceQuery
     }
 
     public static CommandOutcome<WordTraceResponse> Query(
-        WordTraceRequest request, CancellationToken cancellationToken = default) =>
-        Query(request, PanGlossExecutable.TryLocate(), cancellationToken);
+        WordTraceRequest request, CancellationToken cancellationToken = default)
+    {
+        return Query(request, PanGlossExecutable.TryLocate(), cancellationToken);
+    }
 
     /// <summary>
     /// Traces a word for a caller that shows only the parser's answer. It skips the copy of the Baseline's FieldWorks
@@ -52,21 +54,34 @@ public static class WordTraceQuery
     public static CommandOutcome<WordTraceResponse> QueryAnswerOnly(
         WordTraceRequest request, CancellationToken cancellationToken = default)
     {
-        using var invoker = new PanGlossInvoker(PanGlossExecutable.TryLocate());
-        return Query(request, new PanGlossTracer(invoker), cancellationToken, hostEvidence: false);
+        var parser = PanGlossExecutable.TryLocate();
+        using var invoker = new PanGlossInvoker(parser);
+        if (!TryWordSessions.Enabled)
+            return Query(request, new PanGlossTracer(invoker), cancellationToken, hostEvidence: false);
+        using var tracer = TryWordSessions.TracerFor(parser, invoker);
+        return Query(request, tracer, cancellationToken, hostEvidence: false);
     }
 
     /// <summary>Traces a word with an explicitly selected parser.</summary>
     /// <param name="request">The project and word to trace.</param>
     /// <param name="cancellationToken">Cancels the trace.</param>
-    /// <param name="onProgress">Receives parser progress, when supplied.</param>
+    /// <param name="onProgress">Receives one "Tracing the word" report before the trace, on the cold and the warm
+    /// path alike; neither path reports finer parser progress.</param>
     /// <param name="parserPath">The parser to run, or <see langword="null"/> when none is available.</param>
+    /// <remarks>Uses the project's resident session when <see cref="TryWordSessions.Enabled"/>, else one process per word.</remarks>
     public static CommandOutcome<WordTraceResponse> Query(
         WordTraceRequest request, string? parserPath, CancellationToken cancellationToken = default,
-        Action<AssessmentProgress>? onProgress = null)
+        Action<AssessmentProgress>? onProgress = null) =>
+        Query(request, parserPath, cancellationToken, onProgress, TryWordSessions.Enabled);
+
+    internal static CommandOutcome<WordTraceResponse> Query(
+        WordTraceRequest request, string? parserPath, CancellationToken cancellationToken,
+        Action<AssessmentProgress>? onProgress, bool warm)
     {
         using var invoker = new PanGlossInvoker(parserPath);
-        return Query(request, new PanGlossTracer(invoker), cancellationToken, onProgress);
+        if (!warm) return Query(request, new PanGlossTracer(invoker), cancellationToken, onProgress);
+        using var tracer = TryWordSessions.TracerFor(parserPath, invoker);
+        return Query(request, tracer, cancellationToken, onProgress);
     }
 
     internal static CommandOutcome<WordTraceResponse> Query(
@@ -109,8 +124,11 @@ public static class WordTraceQuery
             onProgress?.Invoke(new AssessmentProgress(AssessmentStage.Parsing, 0, 1, $"Tracing {request.Word}")
                 { CurrentWord = request.Word });
             var clock = Stopwatch.StartNew();
-            var outcome = tracer.TraceAsync(baseline.FwDataPath, request.Word, cancellationToken)
-                .GetAwaiter().GetResult();
+            // A Proposal's Trial copy is scratch, so it never gets a resident session.
+            var outcome = tracer is IWarmPanGlossTracer warm && request.ProposalId is null
+                ? warm.TraceAsync(request.ProjectPath, TryWordSessions.TokenText(baseline.Token), baseline.FwDataPath,
+                    request.Word, cancellationToken).GetAwaiter().GetResult()
+                : tracer.TraceAsync(baseline.FwDataPath, request.Word, cancellationToken).GetAwaiter().GetResult();
             var elapsedMs = (int)clock.ElapsedMilliseconds;
 
             var result = outcome switch

@@ -54,6 +54,12 @@ public sealed class PanGlossChildProcess : IDisposable
     /// <summary>Reads all text written to standard error after the process exits.</summary>
     public Task<string> ReadStandardErrorAsync() => _process.ReadStandardErrorAsync();
 
+    /// <summary>The pipe a resident parser reads requests from; null unless started with redirected standard input.</summary>
+    public Stream? InteractiveInput => _process.InteractiveInput;
+
+    /// <summary>The pipe a resident parser writes replies to; null unless started with redirected standard input.</summary>
+    public Stream? InteractiveOutput => _process.InteractiveOutput;
+
     internal void KillProcessTree() => _process.KillProcessTree();
 
     /// <summary>The memory stop that ended this process, once it has exited; null when none did.</summary>
@@ -72,6 +78,8 @@ internal interface IPanGlossChildProcess : IDisposable
 {
     int Id { get; }
     int ExitCode { get; }
+    Stream? InteractiveInput => null;
+    Stream? InteractiveOutput => null;
     Task WaitForExitAsync(CancellationToken cancellationToken);
     Task<string> ReadStandardOutputAsync();
     Task<string> ReadStandardErrorAsync();
