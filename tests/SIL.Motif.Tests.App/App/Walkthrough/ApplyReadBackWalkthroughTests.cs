@@ -105,7 +105,7 @@ public sealed class ApplyReadBackWalkthroughTests(PristineProjectFixture pristin
             Assert.False(reviewBadge.IsEffectivelyVisible);
             Assert.Contains("Changes applied to", review.ReceiptText, StringComparison.Ordinal);
             var receiptTitle = walkthrough.Window.GetLogicalDescendants().OfType<CopyableTextBlock>()
-                .Single(text => text.Text == "Applied to the FieldWorks project");
+                .Single(text => text.Text == MotifAppStrings.AppliedToTheFieldWorksProject);
             Assert.True(receiptTitle.IsEffectivelyVisible);
             var receipt = walkthrough.Window.GetLogicalDescendants().OfType<CopyableTextBlock>()
                 .Single(text => text.Text == review.ReceiptText);
