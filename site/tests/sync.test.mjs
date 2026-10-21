@@ -17,6 +17,7 @@ const guideSections = [
 	['refresh-numbers', 'change-an-analysis', 'replace-a-pending-change', 'apply-to-fieldworks', 'review-a-proposal', 'when-a-change-no-longer-fits', 'switch-projects', 'cancel-a-long-run', 'when-something-goes-wrong'],
 	['baseline', 'assessment', 'pangloss', 'text-coverage', 'default-selection', 'drift', 'pending-changes', 'writing-systems'],
 	['agents/start-here', 'agents/output-and-exit-codes', 'agents/measure-a-grammar', 'agents/work-with-jobs', 'agents/handoff'],
+	['encoding/workflow', 'encoding/ask-the-linguist', 'encoding/suffix-prefix-slots', 'encoding/conditioned-allomorphs', 'encoding/feature-conditioned-slots', 'encoding/nasal-assimilation', 'encoding/no-inflection'],
 	['ai-assistants', 'parsimony-findings', ...JSON.parse(readFileSync(
 		new URL('../../src/SIL.Motif.Help/Content/en/guide/parsimony/parsimony-recipes.json', import.meta.url), 'utf8'))
 		.recipes.map((recipe) => 'parsimony/recipes/' + recipe.measureId.toLowerCase())],

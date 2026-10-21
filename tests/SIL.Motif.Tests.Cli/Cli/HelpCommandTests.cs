@@ -33,7 +33,7 @@ public sealed class HelpCommandTests
         var list = Run("help");
         Assert.Equal(0, list.ExitCode);
         Assert.Contains("Encoding guides", list.Output, StringComparison.Ordinal);
-        Assert.Contains("motif help guide:encoding/nasal-assimilation --full", list.Output, StringComparison.Ordinal);
+        Assert.Contains("guide:encoding/nasal-assimilation", list.Output, StringComparison.Ordinal);
 
         var guide = Run("help", "guide:encoding/nasal-assimilation", "--full");
         Assert.Equal(0, guide.ExitCode);

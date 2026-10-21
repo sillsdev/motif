@@ -16,6 +16,8 @@ public static class HelpCommand
         @"\[(?<text>[^\]]+)\]\((?<kind>cmd|term|ui|guide):(?<code>[^)]+)\)", RegexOptions.CultureInvariant);
     private static readonly Regex ScreenshotPattern = new(
         @"!\[(?<alt>[^\]]*)\]\(shot:(?<id>[^/)]+)/(?<step>[^)]+)\)", RegexOptions.CultureInvariant);
+    private const string EncodingGuidePrefix = "encoding/";
+
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
         WriteIndented = true,
@@ -59,8 +61,8 @@ public static class HelpCommand
             output.WriteLine();
             output.WriteLine("Encoding guides (read the one for the phenomenon before composing rules):");
             foreach (var guide in catalog.Entries.Where(entry =>
-                         entry.Kind == HelpEntryKind.Guide && entry.Code.StartsWith("encoding/", StringComparison.Ordinal)))
-                output.WriteLine($"  {guide.Code["encoding/".Length..],-28}  {guide.Title}  (motif help guide:{guide.Code} --full)");
+                         entry.Kind == HelpEntryKind.Guide && entry.Code.StartsWith(EncodingGuidePrefix, StringComparison.Ordinal)))
+                output.WriteLine($"  guide:{guide.Code,-34}  {guide.Title}");
             output.WriteLine();
             PrintDiscoverySection(output, "Advanced AI commands", CommandSurface.AdvancedAi, policy);
             output.WriteLine();

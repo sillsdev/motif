@@ -30,3 +30,24 @@ Start by learning what the saved project and words already show. Make one small 
 
 - When the Dry Run and Trial support the change, call `motif_finalize_proposal` and tell the linguist what evidence was checked and what remains uncertain.
 - The linguist reviews the Proposal in Motif and decides whether to apply it. Do not claim that it was applied.
+
+## CLI equivalents
+
+The guides name MCP tools. From the CLI, use the matching `motif` command; run `motif help <command> --full` for its flags.
+
+| MCP tool | CLI command |
+|---|---|
+| `motif_list_projects`, `motif_open` | `motif open <fwdata>` |
+| `motif_overview` | `motif overview` |
+| `motif_grammar`, `motif_lexicon` | `motif grammar read --kind <kind>` (`lexical_entry` for the lexicon) |
+| `motif_texts` | `motif texts list` |
+| `motif_word` | `motif word-context --word <word>` |
+| `motif_try_word` | `motif trace --word <word>` |
+| `motif_start_proposal` | `motif new --draft <name>` |
+| the add and edit tools, such as `motif_add_phonological_rule` or `motif_edit_allomorph_condition` | the `compose-author-*` and `compose-edit-*` commands, such as `motif compose-author-phonological-rule` |
+| `motif_compose_batch` | `motif compose-batch` |
+| `motif_finalize_proposal` | `motif finalize` |
+| `motif_dry_run`, `motif_trial` | `motif dry-run`, `motif trial` (add `--wait` to read the result) |
+| `motif_difference` | `motif difference produce` |
+| `motif_guide` | `motif help guide:encoding/<topic> --full` |
+
