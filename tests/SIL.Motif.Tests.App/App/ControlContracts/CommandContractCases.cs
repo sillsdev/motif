@@ -146,6 +146,8 @@ internal static class CommandContractCases
             "DifferenceViewModelTests.ChoosingAMoveOutlinesItsCellsInBothMatrices"),
         new(typeof(SetupViewModel), nameof(SetupViewModel.SkipCommand), null, null, true,
             "WorkspaceShellViewModelTests.SkippingFirstSetupDoesNotSaveADefaultSelection"),
+        new(typeof(SetupViewModel), nameof(SetupViewModel.CancelCommand), null, null, true,
+            "SetupKeyboardTests.CancelAndEscAreUnavailableWhileTheSelectionIsBeingSaved"),
         new(typeof(SetupViewModel), nameof(SetupViewModel.BackCommand), null, null, false,
             "WorkspaceShellViewModelTests.FirstRunCannotStartBeforeTheLastSetupStep"),
         new(typeof(SetupViewModel), nameof(SetupViewModel.NextCommand), null, null, true,
