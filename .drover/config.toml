@@ -1,0 +1,24 @@
+schema_version = 1
+
+[scripts]
+test = ".drover/scripts/test.ps1"
+
+[run]
+platforms = ["wsl"]
+default = "wsl"
+sandbox_writable_roots = ["/tmp/.dotnet", "/tmp/.dotnet/shm"]
+
+[gate]
+platform = "wsl"
+timeout_s = 5400
+idle_s = 3600
+
+[review]
+backend = "codex"
+model = "gpt-6.1-sol"
+high_risk_model = "gpt-6.1-sol"
+effort = "high"
+
+[land]
+policy = "batch"
+push = false
