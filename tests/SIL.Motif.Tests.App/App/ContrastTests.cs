@@ -673,6 +673,66 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
         }
     }
 
+    // Light values Motif and FieldWorks' FwAvaloniaTheme share, written out here as FieldWorks holds them.
+    public static TheoryData<string, object> SharedLightValues() => new()
+    {
+        { "Intent.Space.Compact", 4.0 },                       // DialogLabelFieldGap, Semi ExtraTight
+        { "Intent.Space.Related", 6.0 },                       // DialogControlGap
+        { "Intent.Space.Group", 8.0 },                         // DialogButtonStripGap, Semi Tight
+        { "Intent.Gap.BeforeGroup", new Thickness(0, 8, 0, 0) },   // DialogGroupSeparation
+        { "Intent.Gap.BeforeRelated", new Thickness(0, 6, 0, 0) }, // DialogControlGapAbove, DialogLabelGroupGapAbove
+        { "Intent.Gap.AfterRelated", new Thickness(0, 0, 6, 0) },  // DataTree.TrailingGap
+        { "Intent.Inset.Chip", new Thickness(6, 2, 6, 2) },        // DataTree.OptionItemPadding
+        { "Intent.Stroke.Box", new Thickness(1) },                 // DialogFieldBorderThickness, DataTree.HairlineBorderThickness
+        { "Intent.Stroke.DividerTop", new Thickness(0, 1, 0, 0) }, // DataTree.TopHairlineBorderThickness
+        { "Intent.Stroke.DividerBottom", new Thickness(0, 0, 0, 1) }, // DataTree.BottomHairlineBorderThickness
+        { "Intent.Radius.Control", new CornerRadius(3) },          // DataTree.PickerCornerRadius, Semi Small
+    };
+
+    [Theory]
+    [MemberData(nameof(SharedLightValues))]
+    public void AValueMotifSharesWithFieldWorksStaysAtFieldWorksValue(string key, object expected)
+    {
+        avalonia.Invoke(() =>
+        {
+            Assert.True(Application.Current!.TryGetResource(key, ThemeVariant.Light, out var value), $"{key} does not resolve");
+            Assert.Equal(expected, value);
+        });
+    }
+
+    [Fact]
+    public void ANoFillIsFullyTransparentAsInFieldWorks()
+    {
+        avalonia.Invoke(() =>
+        {
+            Assert.True(Application.Current!.TryGetResource("Intent.Clear", ThemeVariant.Light, out var value));
+            var clear = Assert.IsAssignableFrom<ISolidColorBrush>(value);
+            Assert.Equal(0, clear.Color.A); // FwTransparentBrush
+        });
+    }
+
+    // FieldWorks colours Motif has not adopted: each must still read on Motif's light page.
+    [Fact]
+    public void FieldWorksLightColoursMotifHasNotAdoptedWouldPassContrast()
+    {
+        avalonia.Invoke(() =>
+        {
+            var white = Resolve("Intent.Surface", ThemeVariant.Light);
+            var subtle = Resolve("Intent.Surface.Subtle", ThemeVariant.Light);
+            var neutral = Resolve("Intent.Neutral.Fill", ThemeVariant.Light);
+            var selectedRow = Color.Parse("#D7E6FF"); // FwSelectedRowBrush
+            var label = Color.Parse("#696969");       // FwLabelBrush, FwSectionHeaderBrush
+            var fieldBorder = Color.Parse("#7A7A7A"); // FwDialogFieldBorderBrush
+
+            foreach (var ink in new[] { "Intent.Accent", "Intent.Text", "Intent.TextSecondary" })
+                Assert.True(Ratio(Resolve(ink, ThemeVariant.Light), selectedRow) >= Text, $"{ink} on FwSelectedRowBrush");
+            foreach (var surface in new[] { white, subtle, neutral })
+                Assert.True(Ratio(label, surface) >= Text, $"FwLabelBrush on {surface}");
+            foreach (var surface in new[] { white, subtle })
+                Assert.True(Ratio(fieldBorder, surface) >= Part, $"FwDialogFieldBorderBrush on {surface}");
+        });
+    }
+
     private static Color Resolve(string key, ThemeVariant theme)
     {
         Assert.True(Application.Current!.TryGetResource(key, theme, out var value), $"{key} does not resolve in {theme}");
