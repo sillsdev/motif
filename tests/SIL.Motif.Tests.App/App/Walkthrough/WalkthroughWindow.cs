@@ -673,8 +673,8 @@ public sealed class WalkthroughWindow : IDisposable
         WaitUntil(() => Workspace.Assess.TextWords is not { IsLoading: true }, TimeSpan.FromSeconds(30),
             "the chosen Texts' words did not finish loading");
         var addWords = Window.GetLogicalDescendants().OfType<Expander>().Single(expander =>
-            Equals(expander.Header, "Add words"));
-        ClickControl(addWords, "Add words");
+            Equals(expander.Header, MotifAppStrings.AddWords));
+        ClickControl(addWords, MotifAppStrings.AddWords);
         Window.UpdateLayout();
         Pump();
         Assert.True(addWords.IsExpanded, "Clicking the Add words header should expand it.");
