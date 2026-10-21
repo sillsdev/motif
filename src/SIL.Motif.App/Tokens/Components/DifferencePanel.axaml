@@ -5,6 +5,7 @@
     <StaticResource x:Key="Component.DifferencePanel.PanelInset" ResourceKey="Intent.Inset.Page" />
     <StaticResource x:Key="Component.DifferencePanel.MoveRowPadding" ResourceKey="Intent.Inset.Row" />
     <StaticResource x:Key="Component.DifferencePanel.MoveListHeight" ResourceKey="Primitive.Size.230" />
+    <StaticResource x:Key="Component.DifferencePanel.WordsListHeight" ResourceKey="Primitive.Size.320" />
   </Styles.Resources>
   <Style Selector=":is(TextBlock).columnHeader">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />

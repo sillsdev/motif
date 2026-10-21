@@ -37,8 +37,6 @@ public sealed class SharedWordListResponsiveTests
     private static readonly ResponsiveScene DifferenceScene =
         new("2d-texts-what-changed", TooltipScene.WhatChanged, WordListSchemas.WhatChanged, true, true);
 
-    private static readonly ResponsiveSize TallestZoomOnTheShortWindow = new(600, 150);
-
     private static readonly ResponsiveSize[] Sizes =
     [
         new(600, 100), new(600, 150), new(900, 100), new(900, 150),
@@ -86,12 +84,7 @@ public sealed class SharedWordListResponsiveTests
     public void TimingActionsStayVisibleAndReceivePointerBeforeFocus() => CheckActions(Scenes[3]);
 
     [Fact]
-    public void DifferenceActionsStayVisibleAndReceivePointerBeforeFocus() =>
-        CheckActions(DifferenceScene, size => size != TallestZoomOnTheShortWindow);
-
-    [Fact(Skip = "Product gap: What changed lays its word list out below the visible page at 640x600 and 150% zoom, so its rows and actions cannot be reached; unskip when the Difference host scrolls.")]
-    public void DifferenceActionsStayReachableOnTheShortWindowAtTheLargestZoom() =>
-        CheckActions(DifferenceScene, size => size == TallestZoomOnTheShortWindow);
+    public void DifferenceActionsStayVisibleAndReceivePointerBeforeFocus() => CheckActions(DifferenceScene);
 
     [ScreenshotFact]
     public void CapturesWordListsAt640By600And900AcrossZoomAndThemes()
@@ -154,13 +147,13 @@ public sealed class SharedWordListResponsiveTests
         }
     }
 
-    private static void CheckActions(ResponsiveScene selectedScene, Func<ResponsiveSize, bool>? includeSize = null)
+    private static void CheckActions(ResponsiveScene selectedScene)
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var failures = new List<string>();
             foreach (var theme in Themes)
-            foreach (var size in Sizes.Where(size => includeSize?.Invoke(size) ?? true))
+            foreach (var size in Sizes)
             {
                 await VisitWordListScenes(async (scene, _, workspace, window) =>
                 {

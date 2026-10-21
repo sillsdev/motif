@@ -5,9 +5,10 @@
              xmlns:word="clr-namespace:SIL.Motif.App.Controls.WordPresentation"
              x:Class="SIL.Motif.App.Views.DifferencePanel"
              x:DataType="views:DifferencePanel">
-  <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}"
-        Margin="{DynamicResource Component.DifferencePanel.PanelInset}"
-        IsVisible="{Binding Difference.HasDifference}">
+  <ScrollViewer x:Name="DifferenceScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                IsVisible="{Binding Difference.HasDifference}">
+  <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="{DynamicResource Intent.Space.Related}"
+        Margin="{DynamicResource Component.DifferencePanel.PanelInset}">
     <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
       <views:CopyableTextBlock Text="{Binding Difference.Summary}"
                                FontSize="{DynamicResource Intent.Type.Section}"
@@ -35,11 +36,12 @@
       </ListBox.ItemTemplate>
     </ListBox>
 
-    <views:WordListSlot Grid.Row="2" Grid.RowSpan="2" Schema="{x:Static word:WordListSchemas.WhatChanged}"
+    <views:WordListSlot Grid.Row="2" Schema="{x:Static word:WordListSchemas.WhatChanged}"
                         IsVisible="{Binding Difference.HasChosenMove}">
     <Grid RowDefinitions="Auto,*">
     <word:WordRowHeader />
     <ListBox x:Name="DifferencePanelWordsItems" Grid.Row="1" Classes="wordRows" ItemsSource="{Binding Difference.Words}"
+             MaxHeight="{DynamicResource Component.DifferencePanel.WordsListHeight}"
              AutomationProperties.Name="Words in the chosen move"
              KeyboardNavigation.TabNavigation="Continue">
       <ListBox.ItemTemplate>
@@ -53,4 +55,5 @@
     </Grid>
     </views:WordListSlot>
   </Grid>
+  </ScrollViewer>
 </UserControl>
